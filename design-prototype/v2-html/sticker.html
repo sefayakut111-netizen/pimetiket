@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Sticker Konfigüratörü · Pim Etiket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body class="sticker-mode">
+<div id="nav-holder"></div>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="row between items-center" style="flex-wrap:wrap; gap:8px;">
+      <div>
+        <span class="badge badge-turuncu">Sticker · Yeni</span>
+        <h1 style="font-size: 32px; margin-top: 8px;">Sticker bastır 🎯</h1>
+        <p class="text-mid" style="margin: 0;">25 adetten başlayan, festival havalı sticker'lar.</p>
+      </div>
+      <div class="row gap-2">
+        <a href="index.html" class="btn btn-ghost btn-sm">← Anasayfa</a>
+        <a href="etiket.html" class="btn btn-secondary btn-sm">Etikete geç →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm">
+  <div class="container">
+    <div class="config-grid">
+
+      <!-- LEFT: PREVIEW -->
+      <div>
+        <div class="preview-pane" style="background: linear-gradient(160deg, #FFE4C7 0%, #FFA89E 100%);">
+          <div class="row between items-center mb-3">
+            <span class="tag-chip" style="background: rgba(255,255,255,0.85);">Canlı Önizleme</span>
+            <span class="text-mid fs-13" style="background: rgba(255,255,255,0.85); padding: 4px 10px; border-radius: 8px;" id="shapeLbl">Yuvarlak</span>
+          </div>
+          <div class="preview-stage">
+            <svg id="stickerPreview" width="280" height="280" viewBox="0 0 280 280">
+              <defs>
+                <radialGradient id="stickerHolo" cx="50%" cy="40%">
+                  <stop offset="0%" stop-color="#FFF5EB"/>
+                  <stop offset="35%" stop-color="#FFD6CC"/>
+                  <stop offset="70%" stop-color="#FFA89E"/>
+                  <stop offset="100%" stop-color="#FF6B5B"/>
+                </radialGradient>
+                <linearGradient id="stickerHoloLine" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FFA89E"/>
+                  <stop offset="50%" stop-color="#FBCFE8"/>
+                  <stop offset="100%" stop-color="#A78BFA"/>
+                </linearGradient>
+              </defs>
+              <g id="stickerShape">
+                <!-- replaced by JS -->
+              </g>
+            </svg>
+          </div>
+          <div class="preview-info">
+            <div class="pi"><span class="text-mid fs-13">Şekil</span><strong id="infoShape">Yuvarlak</strong></div>
+            <div class="pi"><span class="text-mid fs-13">Malzeme</span><strong id="infoMaterial">Vinyl beyaz</strong></div>
+            <div class="pi"><span class="text-mid fs-13">Boyut</span><strong id="infoSize">75 × 75 mm</strong></div>
+            <div class="pi"><span class="text-mid fs-13">Kaplama</span><strong id="infoCoat">Mat</strong></div>
+          </div>
+        </div>
+
+        <div class="card card-cream" style="margin-top: 24px; display:flex; gap: 16px; align-items: center;">
+          <div style="width: 80px; flex-shrink: 0;" id="pimHelper"></div>
+          <div>
+            <strong style="display:block; margin-bottom: 4px;">Pim'in tüyo</strong>
+            <p style="margin: 0; font-size: 14px; color: var(--lacivert-soft);" id="pimAdvice">
+              Etkinlik ve marka hediyesi için <strong>Yuvarlak + Holografik</strong> seti müthiş gidiyor — küçük adetlerde bile premium görünür.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: CONFIG -->
+      <div>
+        <!-- Step 1: Shape -->
+        <div class="step-group">
+          <div class="step-group-head">
+            <div class="num">1</div>
+            <h3>Şekil</h3>
+          </div>
+          <div class="opt-grid-4" id="shapeGrid"></div>
+        </div>
+
+        <!-- Step 2: Material -->
+        <div class="step-group">
+          <div class="step-group-head">
+            <div class="num">2</div>
+            <h3>Malzeme</h3>
+          </div>
+          <div class="opt-grid" id="materialGrid"></div>
+        </div>
+
+        <!-- Step 3: Coating / Effect -->
+        <div class="step-group">
+          <div class="step-group-head">
+            <div class="num">3</div>
+            <h3>Efekt / kaplama</h3>
+          </div>
+          <div class="opt-grid" id="coatGrid"></div>
+        </div>
+
+        <!-- Step 4: Size -->
+        <div class="step-group">
+          <div class="step-group-head">
+            <div class="num">4</div>
+            <h3>Boyut</h3>
+          </div>
+          <div class="opt-grid-3" id="sizeGrid"></div>
+        </div>
+
+        <!-- Step 5: Quantity tiers -->
+        <div class="step-group">
+          <div class="step-group-head">
+            <div class="num">5</div>
+            <h3>Adet — kademeli fiyat</h3>
+          </div>
+          <div class="tiers" id="tiers"></div>
+        </div>
+
+        <div class="price-card" id="priceCard">
+          <h3>Toplam</h3>
+          <div class="price-total" id="priceTotal">350 ₺</div>
+          <div class="price-unit" id="priceUnit">3.50 ₺ / adet · KDV dahil</div>
+
+          <div class="delivery-line">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Teslim tahmini: <strong id="eta">17 Mayıs Pazar</strong> (sticker'da 5 iş günü)</span>
+          </div>
+
+          <button class="btn btn-primary" id="addToCart">
+            Sepete ekle
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-holder"></div>
+<div id="bottom-nav-holder"></div>
+<div id="pim-holder"></div>
+
+<script src="app.js"></script>
+<script>
+mountShell({ active: 'sticker', bottomActive: 'order' });
+document.getElementById('pimHelper').innerHTML = Pim.base({ mood: 'excited' });
+
+const SHAPES = [
+  { id: 'circle', name: 'Yuvarlak' },
+  { id: 'square', name: 'Kare' },
+  { id: 'rect', name: 'Dikdörtgen' },
+  { id: 'die-cut', name: 'Konturlu' },
+];
+const MATERIALS = [
+  { id: 'vinyl-white', name: 'Vinyl Beyaz', desc: 'Su ve UV dayanımlı, klasik', priceMul: 1 },
+  { id: 'vinyl-clear', name: 'Vinyl Şeffaf', desc: 'Görünmez fon, şık', priceMul: 1.1 },
+  { id: 'holographic', name: 'Holografik', desc: 'Işıkta gökkuşağı, vau!', priceMul: 1.45 },
+  { id: 'kraft', name: 'Kraft Sticker', desc: 'Doğal his, ürün etiketi', priceMul: 0.9 },
+];
+const COATS = [
+  { id: 'mat', name: 'Mat', desc: 'Yumuşak doku', priceAdd: 0 },
+  { id: 'parlak', name: 'Parlak', desc: 'Renkler canlı', priceAdd: 0 },
+  { id: 'glitter', name: 'Glitter Topping', desc: 'Pırıltılı yüzey', priceAdd: 0.4 },
+];
+const SIZES = [
+  { id: 'sm', name: 'Küçük', dim: '50 × 50 mm', mul: 0.7 },
+  { id: 'md', name: 'Orta', dim: '75 × 75 mm', mul: 1 },
+  { id: 'lg', name: 'Büyük', dim: '100 × 100 mm', mul: 1.5 },
+];
+// 6 tier kartı brief'te isteniyor — burada 6 kademe veriyoruz
+const TIERS = [
+  { qty: 25, save: 0, popular: false },
+  { qty: 50, save: 5, popular: false },
+  { qty: 100, save: 12, popular: true },
+  { qty: 250, save: 22, popular: false },
+  { qty: 500, save: 30, popular: false },
+  { qty: 1000, save: 40, popular: false },
+];
+
+const state = {
+  shape: 'circle',
+  material: 'vinyl-white',
+  coat: 'mat',
+  size: 'md',
+  qty: 100,
+};
+
+const $ = s => document.querySelector(s);
+
+function basePrice() {
+  const mat = MATERIALS.find(m => m.id === state.material);
+  const coat = COATS.find(c => c.id === state.coat);
+  const sz = SIZES.find(s => s.id === state.size);
+  return (4.50 * mat.priceMul + coat.priceAdd) * sz.mul;
+}
+
+function priceFor(qty) {
+  const tier = TIERS.slice().reverse().find(t => qty >= t.qty) || TIERS[0];
+  const unit = basePrice() * (1 - tier.save / 100);
+  return { unit, total: unit * qty };
+}
+
+/* render shape grid */
+const shapeGrid = $('#shapeGrid');
+shapeGrid.innerHTML = SHAPES.map(s => `
+  <button type="button" class="selectable ${state.shape===s.id?'selected':''}" data-id="${s.id}" style="text-align:center;">
+    ${shapeIcon(s.id)}
+    <div class="title fs-13">${s.name}</div>
+  </button>
+`).join('');
+shapeGrid.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  state.shape = b.dataset.id;
+  shapeGrid.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
+  b.classList.add('selected');
+  update();
+}));
+
+function shapeIcon(id) {
+  const stroke = 'var(--lacivert)';
+  if (id === 'circle') return `<svg width="34" height="34" viewBox="0 0 32 32" style="margin:0 auto 4px;"><circle cx="16" cy="16" r="13" fill="${'#FFD6CC'}" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+  if (id === 'square') return `<svg width="34" height="34" viewBox="0 0 32 32" style="margin:0 auto 4px;"><rect x="3" y="3" width="26" height="26" rx="3" fill="#FFD6CC" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+  if (id === 'rect') return `<svg width="34" height="34" viewBox="0 0 32 32" style="margin:0 auto 4px;"><rect x="3" y="8" width="26" height="16" rx="3" fill="#FFD6CC" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+  if (id === 'die-cut') return `<svg width="34" height="34" viewBox="0 0 32 32" style="margin:0 auto 4px;"><path d="M6 16 q4 -10 10 -10 q6 0 8 6 q3 6 -2 12 q-7 8 -14 0 q-4 -4 -2 -8z" fill="#FFD6CC" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+  return '';
+}
+
+/* materials */
+const matGrid = $('#materialGrid');
+matGrid.innerHTML = MATERIALS.map(m => `
+  <button type="button" class="selectable ${state.material===m.id?'selected':''}" data-id="${m.id}">
+    <div class="title">${m.name}</div>
+    <div class="sub">${m.desc} · ×${m.priceMul.toFixed(2)}</div>
+  </button>
+`).join('');
+matGrid.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  state.material = b.dataset.id;
+  matGrid.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
+  b.classList.add('selected');
+  update();
+}));
+
+/* coats */
+const coatGrid = $('#coatGrid');
+coatGrid.innerHTML = COATS.map(c => `
+  <button type="button" class="selectable ${state.coat===c.id?'selected':''}" data-id="${c.id}">
+    <div class="title">${c.name}</div>
+    <div class="sub">${c.desc}${c.priceAdd?` · +${c.priceAdd.toFixed(2)} ₺/adet`:''}</div>
+  </button>
+`).join('');
+coatGrid.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  state.coat = b.dataset.id;
+  coatGrid.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
+  b.classList.add('selected');
+  update();
+}));
+
+/* sizes */
+const sizeGrid = $('#sizeGrid');
+sizeGrid.innerHTML = SIZES.map(s => `
+  <button type="button" class="selectable ${state.size===s.id?'selected':''}" data-id="${s.id}" style="text-align:center;">
+    <div class="title">${s.name}</div>
+    <div class="sub">${s.dim}</div>
+  </button>
+`).join('');
+sizeGrid.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  state.size = b.dataset.id;
+  sizeGrid.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
+  b.classList.add('selected');
+  update();
+}));
+
+/* tier cards */
+function renderTiers() {
+  const host = $('#tiers');
+  host.innerHTML = TIERS.map(t => {
+    const { unit, total } = priceFor(t.qty);
+    return `
+      <button type="button" class="tier ${state.qty===t.qty?'selected':''} ${t.popular?'popular':''}" data-qty="${t.qty}">
+        ${t.save>0?`<span class="save">%${t.save} indirim</span>`:''}
+        <div class="qty">Adet</div>
+        <div class="qty-num">${t.qty}</div>
+        <div class="total">${fmtTL(total)}</div>
+        <div class="unit">${unit.toFixed(2)} ₺ / adet</div>
+      </button>
+    `;
+  }).join('');
+  host.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    state.qty = parseInt(b.dataset.qty);
+    renderTiers();
+    update();
+  }));
+}
+renderTiers();
+
+/* preview svg */
+function paintShape() {
+  const g = document.getElementById('stickerShape');
+  const isHolo = state.material === 'holographic';
+  const fill = isHolo ? 'url(#stickerHolo)' :
+               state.material === 'vinyl-clear' ? 'rgba(255,255,255,0.6)' :
+               state.material === 'kraft' ? '#E8C39A' :
+               '#ffffff';
+  const stroke = state.coat === 'glitter' ? 'url(#stickerHoloLine)' : 'rgba(255,255,255,0.85)';
+  let path = '';
+  const cx = 140, cy = 140;
+  if (state.shape === 'circle') path = `<circle cx="${cx}" cy="${cy}" r="100" fill="${fill}" stroke="${stroke}" stroke-width="6"/>`;
+  if (state.shape === 'square') path = `<rect x="40" y="40" width="200" height="200" rx="18" fill="${fill}" stroke="${stroke}" stroke-width="6"/>`;
+  if (state.shape === 'rect') path = `<rect x="20" y="80" width="240" height="120" rx="18" fill="${fill}" stroke="${stroke}" stroke-width="6"/>`;
+  if (state.shape === 'die-cut') path = `<path d="M40 140 q15 -90 80 -88 q70 4 100 60 q20 50 -20 100 q-50 50 -120 0 q-50 -32 -40 -72z" fill="${fill}" stroke="${stroke}" stroke-width="6"/>`;
+  const text = `
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Nunito" font-weight="700" font-size="44" fill="#1F2937">PiM</text>
+    <text x="${cx}" y="${cy+22}" text-anchor="middle" font-family="Nunito" font-weight="500" font-size="13" fill="#1F2937" opacity="0.7">demo sticker</text>
+  `;
+  const opacity = state.coat === 'mat' ? 'filter: saturate(0.92);' : '';
+  const glitter = state.coat === 'glitter' ? `
+    <circle cx="80" cy="80" r="2" fill="white" opacity="0.9"/>
+    <circle cx="200" cy="100" r="1.5" fill="white" opacity="0.9"/>
+    <circle cx="220" cy="180" r="2" fill="white" opacity="0.9"/>
+    <circle cx="100" cy="210" r="1.5" fill="white" opacity="0.9"/>
+    <circle cx="180" cy="220" r="2" fill="white" opacity="0.9"/>
+  ` : '';
+  g.innerHTML = `<g style="${opacity}">${path}${text}${glitter}</g>`;
+}
+
+function update() {
+  paintShape();
+  const sz = SIZES.find(s => s.id === state.size);
+  $('#infoShape').textContent = SHAPES.find(s => s.id===state.shape).name;
+  $('#shapeLbl').textContent = SHAPES.find(s => s.id===state.shape).name;
+  $('#infoMaterial').textContent = MATERIALS.find(m => m.id===state.material).name;
+  $('#infoSize').textContent = sz.dim;
+  $('#infoCoat').textContent = COATS.find(c => c.id===state.coat).name;
+
+  const { unit, total } = priceFor(state.qty);
+  countUp($('#priceTotal'), total, 400, fmtTL);
+  $('#priceUnit').textContent = `${unit.toFixed(2)} ₺ / adet · KDV dahil`;
+
+  // ETA: 5 working days
+  const eta = new Date();
+  let added = 0;
+  while (added < 5) {
+    eta.setDate(eta.getDate() + 1);
+    const d = eta.getDay();
+    if (d !== 0 && d !== 6) added++;
+  }
+  $('#eta').textContent = eta.toLocaleDateString('tr-TR', { day:'numeric', month:'long', weekday:'long' });
+
+  // Pim advice
+  const advice = $('#pimAdvice');
+  if (state.material === 'holographic') advice.innerHTML = '<strong>Holografik seçtin — bayıldım!</strong> Festival, etkinlik, marka hediyesi için herkes elinde tutsun ister. Bütçeyi biraz zorlar ama vau etkisi garantili.';
+  else if (state.coat === 'glitter') advice.innerHTML = '<strong>Glitter topping</strong> küçük adetlerde özel bir his veriyor. Düğün, parti, lansman için ideal.';
+  else if (state.shape === 'die-cut') advice.innerHTML = '<strong>Konturlu (die-cut)</strong> şekiller; logoyu bir taraftan çevirip kontur kesim yapıyoruz. Markanın silüetini öne çıkarır.';
+  else advice.innerHTML = 'Etkinlik ve marka hediyesi için <strong>Yuvarlak + Holografik</strong> seti müthiş gidiyor — küçük adetlerde bile premium görünür.';
+}
+
+document.getElementById('addToCart').addEventListener('click', () => {
+  toast('Sepete eklendi! Devam ediyoruz...', 'success');
+  setTimeout(() => location.href = 'sepet.html', 800);
+});
+
+update();
+</script>
+</body>
+</html>

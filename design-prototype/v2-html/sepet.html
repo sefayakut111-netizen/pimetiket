@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Sepet & Ödeme · Pim Etiket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<div id="nav-holder"></div>
+
+<section class="section-sm" style="background: var(--krem-onluk-soft);">
+  <div class="container">
+    <h1 style="font-size: 28px;">Sepet & Ödeme</h1>
+    <div class="row gap-2 items-center text-mid fs-14 mt-1">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--basari)" stroke-width="2.2" stroke-linecap="round"><path d="M12 2L4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4z"/></svg>
+      Bilgilerin SSL ile şifrelenmiş — 256-bit güvenlik
+    </div>
+  </div>
+</section>
+
+<section class="section-sm">
+  <div class="container">
+
+    <!-- Reminder bar -->
+    <div class="card-lg" style="background: linear-gradient(120deg, var(--turuncu-soft) 0%, #FFF7E6 100%); border: 1px solid var(--turuncu); display:flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
+      <div style="font-size: 22px;">⏱️</div>
+      <div style="flex: 1;">
+        <strong>3 gün içinde dosya yükleme süren var</strong>
+        <div class="fs-14 text-mid">Sipariş tamamlandıktan sonra 3 gün içinde dosyanı yüklemen yeterli — bu süre dolmadan fiyatın değişmiyor.</div>
+      </div>
+    </div>
+
+    <div class="checkout-grid">
+
+      <!-- LEFT -->
+      <div>
+        <!-- 1. Cart -->
+        <div class="card-lg mb-3">
+          <div class="row gap-2 items-center mb-3">
+            <div class="step-num" style="width: 32px; height: 32px; font-size: 14px; background: var(--lacivert); color: white; border:none;">1</div>
+            <h3 style="font-size: 18px;">Sepetin</h3>
+          </div>
+
+          <div class="cart-item">
+            <div class="thumb">
+              <div class="roll" style="width: 64px; height: 64px; transform: rotateX(-12deg) rotateY(-15deg);">
+                <div class="roll-core"></div>
+                <div class="roll-band"><div class="roll-label" style="padding: 2px;"><div style="font-size: 9px; font-weight: 700;">PiM</div></div></div>
+              </div>
+            </div>
+            <div>
+              <strong>Beyaz PP etiket · Mat selefon</strong>
+              <div class="text-mid fs-13">60 × 90 mm · 5.000 adet · Yön 4</div>
+              <div class="row gap-2 mt-1">
+                <button class="btn btn-ghost btn-sm" style="padding: 4px 8px;">Düzenle</button>
+                <button class="btn btn-ghost btn-sm" style="padding: 4px 8px; color: var(--hata);">Kaldır</button>
+              </div>
+            </div>
+            <div class="price">5.250 ₺</div>
+          </div>
+
+          <div class="cart-item">
+            <div class="thumb" style="background: linear-gradient(135deg, #FFE4C7, #FFA89E);">
+              <svg width="40" height="40" viewBox="0 0 60 60"><circle cx="30" cy="30" r="22" fill="white"/><text x="30" y="34" text-anchor="middle" font-family="Nunito" font-weight="700" font-size="11" fill="#1F2937">PiM</text></svg>
+            </div>
+            <div>
+              <strong>Holografik sticker · Yuvarlak 75mm</strong>
+              <div class="text-mid fs-13">100 adet · Mat kaplama</div>
+              <div class="row gap-2 mt-1">
+                <button class="btn btn-ghost btn-sm" style="padding: 4px 8px;">Düzenle</button>
+                <button class="btn btn-ghost btn-sm" style="padding: 4px 8px; color: var(--hata);">Kaldır</button>
+              </div>
+            </div>
+            <div class="price">650 ₺</div>
+          </div>
+        </div>
+
+        <!-- 2. Address -->
+        <div class="card-lg mb-3">
+          <div class="row gap-2 items-center mb-3">
+            <div class="step-num" style="width: 32px; height: 32px; font-size: 14px; background: var(--lacivert); color: white; border:none;">2</div>
+            <h3 style="font-size: 18px;">Teslim adresi</h3>
+          </div>
+          <div class="opt-grid">
+            <button type="button" class="selectable selected">
+              <div class="title">Ev adresim</div>
+              <div class="sub">Atatürk Cad. No:15 D:7, Beyoğlu / İstanbul</div>
+            </button>
+            <button type="button" class="selectable">
+              <div class="title">İş yeri</div>
+              <div class="sub">Sanayi Mah. 12. Sk. No:4, Bursa</div>
+            </button>
+          </div>
+          <button class="btn btn-ghost btn-sm mt-2">+ Yeni adres ekle</button>
+        </div>
+
+        <!-- 3. Shipping method -->
+        <div class="card-lg mb-3">
+          <div class="row gap-2 items-center mb-3">
+            <div class="step-num" style="width: 32px; height: 32px; font-size: 14px; background: var(--lacivert); color: white; border:none;">3</div>
+            <h3 style="font-size: 18px;">Kargo</h3>
+          </div>
+          <div class="opt-grid-3">
+            <button type="button" class="selectable selected"><div class="title">Yurtiçi Kargo</div><div class="sub">2-3 iş günü · Bedava</div></button>
+            <button type="button" class="selectable"><div class="title">Aras Kargo</div><div class="sub">2-3 iş günü · Bedava</div></button>
+            <button type="button" class="selectable"><div class="title">MNG Kargo</div><div class="sub">2-3 iş günü · Bedava</div></button>
+          </div>
+        </div>
+
+        <!-- 4. Payment -->
+        <div class="card-lg mb-3">
+          <div class="row gap-2 items-center mb-3">
+            <div class="step-num" style="width: 32px; height: 32px; font-size: 14px; background: var(--lacivert); color: white; border:none;">4</div>
+            <h3 style="font-size: 18px;">Ödeme yöntemi</h3>
+          </div>
+          <div class="opt-grid-3 mb-3">
+            <button type="button" class="selectable selected"><div class="title">Kredi/Banka kartı</div><div class="sub">Visa, Mastercard, Troy</div></button>
+            <button type="button" class="selectable"><div class="title">Havale / EFT</div><div class="sub">Sipariş onayı 1 saatte</div></button>
+            <button type="button" class="selectable"><div class="title">Kapıda ödeme</div><div class="sub">+25 ₺ kapı ücreti</div></button>
+          </div>
+          <div class="opt-grid">
+            <div class="field">
+              <label class="field-label">Kart üzerindeki isim</label>
+              <input class="input" placeholder="Ad Soyad"/>
+            </div>
+            <div class="field">
+              <label class="field-label">Kart numarası</label>
+              <input class="input" placeholder="•••• •••• •••• ••••"/>
+            </div>
+            <div class="field">
+              <label class="field-label">Son kullanma</label>
+              <input class="input" placeholder="AA / YY"/>
+            </div>
+            <div class="field">
+              <label class="field-label">CVV</label>
+              <input class="input" placeholder="•••"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Legal -->
+        <div class="card-lg">
+          <div class="row gap-2 items-center mb-3">
+            <div class="step-num" style="width: 32px; height: 32px; font-size: 14px; background: var(--lacivert); color: white; border:none;">5</div>
+            <h3 style="font-size: 18px;">Onaylar</h3>
+          </div>
+          <div class="col gap-3">
+            <label class="check"><input type="checkbox" checked/><span class="box"></span><span>Kullanım koşulları ve <a href="#">satış sözleşmesini</a> okudum, kabul ediyorum.</span></label>
+            <label class="check"><input type="checkbox" checked/><span class="box"></span><span><a href="#">KVKK aydınlatma metni</a> hakkında bilgilendirildim.</span></label>
+            <label class="check"><input type="checkbox"/><span class="box"></span><span>Kampanya ve fırsatlardan haberdar olmak için pazarlama izni veriyorum.</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT (sticky summary) -->
+      <div class="summary-card">
+        <div class="card-lg">
+          <h3 style="font-size: 16px; margin-bottom: 16px;">Sipariş özeti</h3>
+          <div class="row between text-mid fs-14"><span>Etiket (5.000 adet)</span><span>5.250 ₺</span></div>
+          <div class="row between text-mid fs-14 mt-1"><span>Sticker (100 adet)</span><span>650 ₺</span></div>
+          <div class="row between text-mid fs-14 mt-1"><span>Kargo</span><span style="color: var(--basari);">Bedava</span></div>
+          <div class="row between text-mid fs-14 mt-1"><span>KDV (%20)</span><span>0 ₺ <small>(dahil)</small></span></div>
+          <div class="divider"></div>
+
+          <label class="check mb-2">
+            <input type="checkbox" id="useWallet" checked/>
+            <span class="box"></span>
+            <span>Cüzdandan 500 ₺ kullan <span class="badge badge-yesil" style="height:20px; padding:2px 8px;">+%2 indirim</span></span>
+          </label>
+
+          <div class="row between" style="font-size: 22px; font-weight: 700;">
+            <span>Toplam</span>
+            <span id="grand">5.782 ₺</span>
+          </div>
+          <div class="text-mid fs-13 mt-1">2 ürün · KDV ve kargo dahil</div>
+
+          <button class="btn btn-primary btn-block btn-lg mt-3" onclick="completeOrder()">
+            Siparişi tamamla
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+
+          <div class="row gap-2 items-center text-mid fs-13" style="margin-top: 12px; justify-content: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>iyzico ile güvenli ödeme</span>
+          </div>
+        </div>
+
+        <div class="card mt-3" style="display:flex; gap: 12px; align-items: center;">
+          <div style="width: 60px;" id="pimSepet"></div>
+          <div class="fs-14 text-soft">
+            <strong>Pim:</strong> Sipariş geçtiğinde sana her adımda haber veririm — hiçbir şeyi kaçırmazsın.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-holder"></div>
+<div id="bottom-nav-holder"></div>
+<div id="pim-holder"></div>
+
+<script src="app.js"></script>
+<script>
+mountShell({ active: '', bottomActive: 'order' });
+document.getElementById('pimSepet').innerHTML = Pim.base({ mood: 'thumbsup' });
+
+const SUBTOTAL = 5900;
+function recalc() {
+  const useWallet = document.getElementById('useWallet').checked;
+  const wallet = useWallet ? 500 : 0;
+  const discount = useWallet ? Math.round((SUBTOTAL - wallet) * 0.02) : 0;
+  const total = SUBTOTAL - wallet - discount;
+  document.getElementById('grand').textContent = fmtTL(total);
+}
+document.getElementById('useWallet').addEventListener('change', recalc);
+recalc();
+
+function completeOrder() {
+  toast('Siparişin alındı! 🎉 Yönlendiriyoruz...', 'success');
+  setTimeout(() => location.href = 'siparis.html', 1200);
+}
+window.completeOrder = completeOrder;
+
+// Selectable groups
+document.querySelectorAll('.opt-grid, .opt-grid-3').forEach(grid => {
+  grid.querySelectorAll('.selectable').forEach(b => {
+    b.addEventListener('click', () => {
+      grid.querySelectorAll('.selectable').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+    });
+  });
+});
+</script>
+</body>
+</html>
