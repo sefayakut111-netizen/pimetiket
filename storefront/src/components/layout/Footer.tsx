@@ -1,3 +1,5 @@
+import { PimAsset } from "@/components/PimAsset";
+
 const FOOTER_GROUPS = [
   { t: "Ürün", links: ["Etiket", "Sticker", "Malzemeler", "Yaldız galerisi"] },
   { t: "Şirket", links: ["Hakkımızda", "Üretim ortakları", "Kariyer", "Basın"] },
@@ -14,12 +16,11 @@ export function Footer() {
         <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-8 mb-12">
           {/* Brand column */}
           <div>
-            <div className="inline-flex items-center gap-2 font-bold text-[19px] tracking-tight mb-4 text-white">
-              <span
-                aria-hidden
-                className="w-[22px] h-[22px] rounded-md bg-pim-mercan -rotate-6 shadow-mercan inline-block"
-              />
-              Pim Etiket
+            <div
+              className="mb-4 -ml-2 inline-block bg-white rounded-xl px-3 py-2"
+              title="Pim Etiket"
+            >
+              <PimAsset variant="logo" size={220} bob={false} />
             </div>
             <p className="text-[13px] max-w-[280px] text-white/65 leading-relaxed">
               Türkiye&rsquo;nin akıllı dijital baskı atölyesi. Bursa&rsquo;dan,

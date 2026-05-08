@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { PimAsset } from "@/components/PimAsset";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
@@ -20,16 +21,9 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-white/85 border-b border-black/[0.06]">
       <div className="mx-auto max-w-[1280px] px-8 h-16 flex items-center gap-8">
-        {/* Wordmark */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 font-bold text-[19px] tracking-tight"
-        >
-          <span
-            aria-hidden
-            className="w-[22px] h-[22px] rounded-md bg-pim-mercan -rotate-6 shadow-mercan inline-block"
-          />
-          Pim Etiket
+        {/* Combination mark — mascot + wordmark */}
+        <Link href="/" aria-label="Pim Etiket — Anasayfa" className="shrink-0">
+          <PimAsset variant="logo" size={200} bob={false} />
         </Link>
 
         {/* Nav */}
