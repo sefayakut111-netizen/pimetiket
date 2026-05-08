@@ -1,13 +1,14 @@
 /**
- * Pim Etiket — Geçici landing (D.3)
+ * Pim Etiket — Geçici landing (D.4)
  *
- * Pim mascot (TypeScript), 9 pose preview, Icon library — hepsi
- * canlı tokens üzerinden render oluyor. Gerçek anasayfa E.1
- * adımında design-prototype'tan taşınacak.
+ * Hero (Pim + wordmark + CTA) + 9-pose preview + Icon lib + UI lib showcase.
+ * Gerçek anasayfa E.1 adımında design-prototype'tan taşınacak.
  */
 
 import { Pim, type PimPose } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
+import { Button, Eyebrow } from "@/components/ui";
+import { UiShowcase } from "@/components/dev/UiShowcase";
 
 const POSES: PimPose[] = [
   "wave",
@@ -28,55 +29,48 @@ const ICON_LIST = Object.entries(Icon) as [
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-white animate-fade-up py-16">
-      <div className="text-center px-6 max-w-3xl">
-        {/* Hero — Pim + Wordmark */}
-        <div className="flex justify-center mb-6">
-          <Pim pose="wave" size={180} />
+    <main className="min-h-screen bg-white animate-fade-up py-16">
+      <div className="mx-auto px-6 max-w-3xl">
+        {/* HERO */}
+        <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <Pim pose="wave" size={180} />
+          </div>
+
+          <div className="inline-flex items-center gap-3 mb-8">
+            <span className="w-7 h-7 rounded-md bg-pim-mercan -rotate-6 shadow-mercan inline-block" />
+            <span className="text-xl font-bold tracking-tight">Pim Etiket</span>
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl font-semibold tracking-tight leading-[1.04]">
+            Markanın etiketi,
+            <br />
+            fikrinin <span className="text-pim-mercan">sticker&rsquo;ı</span>.
+          </h1>
+          <p className="mt-6 text-lg text-gri-700 max-w-md mx-auto leading-relaxed">
+            1000 adetten başlayan, AI destekli dijital baskı.
+            <br />
+            10 günde elinde.
+          </p>
+
+          <div className="mt-10 flex gap-3 justify-center flex-wrap">
+            <Button variant="primary" size="lg">
+              <Icon.Roll size={18} />
+              Etiket bastır
+            </Button>
+            <Button variant="secondary" size="lg">
+              <Icon.Sticker size={18} />
+              Sticker bastır
+            </Button>
+          </div>
+
+          <div className="mt-20">
+            <Eyebrow>D.4 — UI primitive lib hazır</Eyebrow>
+          </div>
         </div>
 
-        <div className="inline-flex items-center gap-3 mb-8">
-          <span className="w-7 h-7 rounded-md bg-pim-mercan -rotate-6 shadow-mercan inline-block" />
-          <span className="text-xl font-bold tracking-tight">Pim Etiket</span>
-        </div>
-
-        <h1 className="text-5xl sm:text-6xl font-semibold tracking-tight leading-[1.04]">
-          Markanın etiketi,
-          <br />
-          fikrinin <span className="text-pim-mercan">sticker&rsquo;ı</span>.
-        </h1>
-        <p className="mt-6 text-lg text-gri-700 max-w-md mx-auto leading-relaxed">
-          1000 adetten başlayan, AI destekli dijital baskı.
-          <br />
-          10 günde elinde.
-        </p>
-
-        {/* CTA */}
-        <div className="mt-10 flex gap-3 justify-center flex-wrap">
-          <button
-            type="button"
-            className="h-[52px] px-7 rounded-full bg-pim-mercan text-white font-semibold text-base shadow-mercan hover:bg-pim-mercan-koyu hover:-translate-y-0.5 transition-all duration-150 inline-flex items-center gap-2"
-          >
-            <Icon.Roll size={18} />
-            Etiket bastır
-          </button>
-          <button
-            type="button"
-            className="h-[52px] px-7 rounded-full bg-white text-lacivert font-semibold text-base ring-[1.5px] ring-lacivert hover:bg-lacivert hover:text-white hover:-translate-y-0.5 transition-all duration-150 inline-flex items-center gap-2"
-          >
-            <Icon.Sticker size={18} />
-            Sticker bastır
-          </button>
-        </div>
-
-        {/* D.3 marker */}
-        <div className="mt-20 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-pim-mercan">
-          <span className="w-5 h-0.5 bg-current rounded" />
-          D.3 — Pim mascot &amp; Icon lib yüklü
-        </div>
-
-        {/* 9-pose preview */}
-        <section className="mt-10">
+        {/* 9-POSE GRID */}
+        <section className="mt-12">
           <div className="text-xs font-semibold uppercase tracking-wider text-gri-500 mb-4">
             9 Pose API
           </div>
@@ -95,7 +89,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Icon library preview */}
+        {/* ICON GRID */}
         <section className="mt-12">
           <div className="text-xs font-semibold uppercase tracking-wider text-gri-500 mb-4">
             Icon library — {ICON_LIST.length} icon
@@ -113,7 +107,10 @@ export default function Home() {
           </div>
         </section>
 
-        <p className="mt-12 text-xs text-gri-500">
+        {/* UI SHOWCASE — interactive demos */}
+        <UiShowcase />
+
+        <p className="mt-16 text-xs text-center text-gri-500">
           Pim Etiket • Bursa •{" "}
           <a
             href="/docs/brand/PIM_MASCOT_BRIEF.md"
