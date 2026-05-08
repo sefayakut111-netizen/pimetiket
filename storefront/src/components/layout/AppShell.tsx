@@ -1,12 +1,24 @@
+"use client";
+
+/**
+ * AppShell — root sarıcı.
+ * Path admin ile başlıyorsa AdminShell, değilse public TopBar+Footer.
+ */
+
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
+import { AdminShell } from "./AdminShell";
 
-/**
- * Tüm sayfaların etrafına sarılan ana shell.
- * RootLayout'tan tek bir noktada cağrılır; sayfa içeriği `children` olarak gelir.
- */
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith("/admin") ?? false;
+
+  if (isAdmin) {
+    return <AdminShell>{children}</AdminShell>;
+  }
+
   return (
     <>
       <TopBar />
