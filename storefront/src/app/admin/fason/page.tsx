@@ -37,7 +37,7 @@ const FASONS: Fason[] = [
     city: "Bursa / Yıldırım",
     capacity: 50000,
     load: 32000,
-    speciality: ["etiket", "yaldız", "emboss"],
+    speciality: ["label", "foil", "emboss"],
     rating: 4.8,
     totalOrders: 312,
   },
@@ -47,7 +47,7 @@ const FASONS: Fason[] = [
     city: "Bursa / Osmangazi",
     capacity: 30000,
     load: 18500,
-    speciality: ["sticker", "holografik"],
+    speciality: ["sticker", "holographic"],
     rating: 4.6,
     totalOrders: 187,
   },
@@ -57,7 +57,7 @@ const FASONS: Fason[] = [
     city: "İstanbul / Beylikdüzü",
     capacity: 80000,
     load: 71000,
-    speciality: ["etiket", "metalik"],
+    speciality: ["label", "metallic"],
     rating: 4.5,
     totalOrders: 524,
   },
@@ -67,20 +67,20 @@ const FASONS: Fason[] = [
     city: "İzmir / Çiğli",
     capacity: 40000,
     load: 12000,
-    speciality: ["sticker", "etiket"],
+    speciality: ["sticker", "label"],
     rating: 4.9,
     totalOrders: 98,
   },
 ];
 
 const PENDING: PendingOrder[] = [
-  { id: "PE-2026-1188", customer: "Mehmet Kahveci", product: "Etiket × 2.500 Kraft + sıcak yaldız", qty: 2500, required: "yaldız" },
-  { id: "PE-2026-1190", customer: "Festival Co.", product: "Sticker × 1.000 Holografik", qty: 1000, required: "holografik" },
-  { id: "PE-2026-1191", customer: "Eko Atölye", product: "Etiket × 5.000 Beyaz semi-glos", qty: 5000, required: "etiket" },
+  { id: "PE-2026-1188", customer: "Mehmet Kahveci", product: "Etiket × 2.500 Kraft + sıcak yaldız", qty: 2500, required: "foil" },
+  { id: "PE-2026-1190", customer: "Festival Co.", product: "Sticker × 1.000 Holografik", qty: 1000, required: "holographic" },
+  { id: "PE-2026-1191", customer: "Eko Atölye", product: "Etiket × 5.000 Beyaz semi-glos", qty: 5000, required: "label" },
 ];
 
 export default function AdminFasonPage() {
-  const [filter, setFilter] = useState<string>("tumu");
+  const [filter, setFilter] = useState<string>("all");
 
   return (
     <main className="py-8 pb-20">
@@ -127,11 +127,11 @@ export default function AdminFasonPage() {
         {/* Filter chips */}
         <div className="flex gap-2 flex-wrap mb-4">
           {[
-            { id: "tumu", label: "Tümü" },
-            { id: "etiket", label: "Etiket" },
+            { id: "all", label: "Tümü" },
+            { id: "label", label: "Etiket" },
             { id: "sticker", label: "Sticker" },
-            { id: "yaldız", label: "Yaldız" },
-            { id: "holografik", label: "Holografik" },
+            { id: "foil", label: "Yaldız" },
+            { id: "holographic", label: "Holografik" },
           ].map((f) => (
             <button
               key={f.id}
@@ -154,7 +154,7 @@ export default function AdminFasonPage() {
 
         {/* Fason cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {FASONS.filter((f) => filter === "tumu" || f.speciality.includes(filter)).map((f) => {
+          {FASONS.filter((f) => filter === "all" || f.speciality.includes(filter)).map((f) => {
             const utilization = (f.load / f.capacity) * 100;
             const utilColor =
               utilization > 85

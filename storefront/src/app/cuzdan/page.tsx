@@ -15,28 +15,28 @@ import { cn } from "@/lib/cn";
 interface Transaction {
   id: string;
   date: string;
-  type: "yatirma" | "harcama" | "iade" | "bonus";
+  type: "deposit" | "purchase" | "refund" | "bonus";
   desc: string;
   amount: number;
 }
 
 const TRANSACTIONS: Transaction[] = [
-  { id: "t9", date: "8 May 2026", type: "iade", desc: "İade bonusu — PE-1175 hatalı kargo", amount: 120 },
-  { id: "t8", date: "5 May 2026", type: "harcama", desc: "Sipariş PE-2026-1182", amount: -4250 },
-  { id: "t7", date: "2 May 2026", type: "harcama", desc: "Sipariş PE-2026-1175", amount: -1750 },
-  { id: "t6", date: "28 Nis 2026", type: "yatirma", desc: "Cüzdana yatırma — kredi kartı", amount: 5000 },
-  { id: "t5", date: "21 Nis 2026", type: "harcama", desc: "Sipariş PE-2026-1167", amount: -1050 },
+  { id: "t9", date: "8 May 2026", type: "refund", desc: "İade bonusu — PE-1175 hatalı kargo", amount: 120 },
+  { id: "t8", date: "5 May 2026", type: "purchase", desc: "Sipariş PE-2026-1182", amount: -4250 },
+  { id: "t7", date: "2 May 2026", type: "purchase", desc: "Sipariş PE-2026-1175", amount: -1750 },
+  { id: "t6", date: "28 Nis 2026", type: "deposit", desc: "Cüzdana yatırma — kredi kartı", amount: 5000 },
+  { id: "t5", date: "21 Nis 2026", type: "purchase", desc: "Sipariş PE-2026-1167", amount: -1050 },
   { id: "t4", date: "20 Nis 2026", type: "bonus", desc: "Hoş geldin bonusu", amount: 100 },
-  { id: "t3", date: "20 Nis 2026", type: "yatirma", desc: "Cüzdana yatırma — kredi kartı", amount: 3000 },
+  { id: "t3", date: "20 Nis 2026", type: "deposit", desc: "Cüzdana yatırma — kredi kartı", amount: 3000 },
 ];
 
 const TYPE_META: Record<
   Transaction["type"],
   { label: string; color: string; bg: string }
 > = {
-  yatirma: { label: "Yatırma", color: "text-yesil", bg: "bg-yesil-soft" },
-  harcama: { label: "Sipariş", color: "text-lacivert", bg: "bg-gri-100" },
-  iade: { label: "İade", color: "text-yesil", bg: "bg-yesil-soft" },
+  deposit: { label: "Yatırma", color: "text-yesil", bg: "bg-yesil-soft" },
+  purchase: { label: "Sipariş", color: "text-lacivert", bg: "bg-gri-100" },
+  refund: { label: "İade", color: "text-yesil", bg: "bg-yesil-soft" },
   bonus: { label: "Bonus", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
 };
 

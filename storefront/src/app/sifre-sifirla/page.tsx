@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
@@ -18,6 +18,14 @@ import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow } from "@/components/ui";
 
 export default function SifreSifirlaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-64px)]" />}>
+      <SifreSifirlaInner />
+    </Suspense>
+  );
+}
+
+function SifreSifirlaInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");

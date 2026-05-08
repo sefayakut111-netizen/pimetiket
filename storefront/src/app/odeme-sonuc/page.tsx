@@ -6,12 +6,21 @@
 
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card } from "@/components/ui";
 
 export default function OdemeSonucPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-64px)]" />}>
+      <OdemeSonucInner />
+    </Suspense>
+  );
+}
+
+function OdemeSonucInner() {
   const sp = useSearchParams();
   const status = sp.get("status") ?? "success";
   const orderId = sp.get("order") ?? "PE-2026-XXXX";

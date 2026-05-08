@@ -35,17 +35,17 @@ const SAVED_ADDRESSES = [
 ];
 
 type Step = 1 | 2 | 3;
-type InvoiceType = "bireysel" | "kurumsal";
+type InvoiceType = "individual" | "corporate";
 
 export default function OdemePage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [addressId, setAddressId] = useState("a1");
-  const [invoiceType, setInvoiceType] = useState<InvoiceType>("bireysel");
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>("individual");
   const [tc, setTc] = useState("");
   const [vkn, setVkn] = useState("");
-  const [unvan, setUnvan] = useState("");
-  const [vergiDairesi, setVergiDairesi] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [taxOffice, setTaxOffice] = useState("");
   const [card, setCard] = useState({ no: "", name: "", exp: "", cvv: "" });
   const [acceptSatis, setAcceptSatis] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -187,7 +187,7 @@ export default function OdemePage() {
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 mb-5">
-                  {(["bireysel", "kurumsal"] as InvoiceType[]).map((t) => (
+                  {(["individual", "corporate"] as InvoiceType[]).map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -204,7 +204,7 @@ export default function OdemePage() {
                         {t}
                       </div>
                       <div className="text-[13px] text-gri-700">
-                        {t === "bireysel"
+                        {t === "individual"
                           ? "TC kimlik · e-arşiv fatura"
                           : "VKN · e-fatura veya e-arşiv"}
                       </div>
@@ -212,7 +212,7 @@ export default function OdemePage() {
                   ))}
                 </div>
 
-                {invoiceType === "bireysel" ? (
+                {invoiceType === "individual" ? (
                   <label className="block">
                     <span className="text-[13px] font-semibold mb-1.5 block">
                       TC Kimlik No
@@ -232,8 +232,8 @@ export default function OdemePage() {
                         Ünvan
                       </span>
                       <Input
-                        value={unvan}
-                        onChange={(e) => setUnvan(e.target.value)}
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
                         placeholder="Şirket/işletme tam ünvanı"
                       />
                     </label>
@@ -255,8 +255,8 @@ export default function OdemePage() {
                           Vergi dairesi
                         </span>
                         <Input
-                          value={vergiDairesi}
-                          onChange={(e) => setVergiDairesi(e.target.value)}
+                          value={taxOffice}
+                          onChange={(e) => setTaxOffice(e.target.value)}
                           placeholder="Örn: Yıldırım VD"
                         />
                       </label>

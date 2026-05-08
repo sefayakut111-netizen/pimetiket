@@ -194,7 +194,11 @@ export default function AuthPage() {
                   aria-label={showPw ? "Şifreyi gizle" : "Şifreyi göster"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded text-gri-500 hover:text-lacivert hover:bg-gri-100"
                 >
-                  {showPw ? "🙈" : "👁️"}
+                  {showPw ? (
+                    <Icon.EyeOff size={16} />
+                  ) : (
+                    <Icon.Eye size={16} />
+                  )}
                 </button>
               </div>
             </label>

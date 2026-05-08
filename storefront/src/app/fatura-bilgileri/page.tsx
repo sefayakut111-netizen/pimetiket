@@ -11,16 +11,16 @@ import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/Icon";
 
-type InvoiceType = "bireysel" | "kurumsal";
+type InvoiceType = "individual" | "corporate";
 
 export default function FaturaBilgileriPage() {
-  const [type, setType] = useState<InvoiceType>("bireysel");
+  const [type, setType] = useState<InvoiceType>("individual");
   const [tc, setTc] = useState("");
-  const [unvan, setUnvan] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [vkn, setVkn] = useState("");
-  const [vergiDairesi, setVergiDairesi] = useState("");
-  const [eFaturaTercih, setEFaturaTercih] = useState<"earsiv" | "efatura">(
-    "earsiv"
+  const [taxOffice, setTaxOffice] = useState("");
+  const [invoiceFormat, setEFaturaTercih] = useState<"earchive" | "einvoice">(
+    "earchive"
   );
 
   return (
@@ -44,7 +44,7 @@ export default function FaturaBilgileriPage() {
           </p>
 
           <div className="grid grid-cols-2 gap-3 mb-6">
-            {(["bireysel", "kurumsal"] as InvoiceType[]).map((t) => (
+            {(["individual", "corporate"] as InvoiceType[]).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -57,11 +57,11 @@ export default function FaturaBilgileriPage() {
                     : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
                 )}
               >
-                <div className="font-semibold text-base capitalize mb-0.5">
-                  {t}
+                <div className="font-semibold text-base mb-0.5">
+                  {t === "individual" ? "Bireysel" : "Kurumsal"}
                 </div>
                 <div className="text-[13px] text-gri-700">
-                  {t === "bireysel"
+                  {t === "individual"
                     ? "Şahıs olarak alışveriş"
                     : "Şirket adına alışveriş"}
                 </div>
@@ -69,7 +69,7 @@ export default function FaturaBilgileriPage() {
             ))}
           </div>
 
-          {type === "bireysel" ? (
+          {type === "individual" ? (
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
                 TC Kimlik No
@@ -82,7 +82,7 @@ export default function FaturaBilgileriPage() {
                 inputMode="numeric"
               />
               <span className="text-[12px] text-gri-700 mt-1.5 block">
-                E-arşiv fatura otomatik olarak e-postanıza gönderilir.
+                E-arşiv fatura otomatik olarak e-postana gönderilir.
               </span>
             </label>
           ) : (
@@ -92,8 +92,8 @@ export default function FaturaBilgileriPage() {
                   Şirket ünvanı
                 </span>
                 <Input
-                  value={unvan}
-                  onChange={(e) => setUnvan(e.target.value)}
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="Tam yasal ünvan"
                 />
               </label>
@@ -115,8 +115,8 @@ export default function FaturaBilgileriPage() {
                     Vergi dairesi
                   </span>
                   <Input
-                    value={vergiDairesi}
-                    onChange={(e) => setVergiDairesi(e.target.value)}
+                    value={taxOffice}
+                    onChange={(e) => setTaxOffice(e.target.value)}
                     placeholder="Örn: Yıldırım VD"
                   />
                 </label>
@@ -129,18 +129,18 @@ export default function FaturaBilgileriPage() {
                 <div className="grid grid-cols-2 gap-2">
                   {(
                     [
-                      { id: "earsiv", label: "E-arşiv (mükellef değilim)" },
-                      { id: "efatura", label: "E-fatura (mükellefim)" },
+                      { id: "earchive", label: "E-arşiv (mükellef değilim)" },
+                      { id: "einvoice", label: "E-fatura (mükellefim)" },
                     ] as const
                   ).map((opt) => (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => setEFaturaTercih(opt.id)}
-                      aria-pressed={eFaturaTercih === opt.id}
+                      aria-pressed={invoiceFormat === opt.id}
                       className={cn(
                         "p-3 rounded-lg ring-1 text-[13px] font-semibold transition-colors",
-                        eFaturaTercih === opt.id
+                        invoiceFormat === opt.id
                           ? "ring-pim-mercan bg-pim-mercan-tint/40 text-lacivert"
                           : "ring-gri-200 bg-white text-gri-700 hover:ring-pim-mercan-soft"
                       )}

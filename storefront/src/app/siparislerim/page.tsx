@@ -12,8 +12,16 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import type { OrderStatus } from "@/lib/order";
 
-type Status = "kontrolde" | "uretimde" | "kargoda" | "teslim" | "iptal";
+// Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
+// olarak gösterilir, daha basit. Admin daha granuler görür.
+type CustomerStatus =
+  | "qc_pending"
+  | "in_production"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 
 interface Order {
   id: string;
@@ -21,68 +29,71 @@ interface Order {
   title: string;
   qty: number;
   total: number;
-  status: Status;
+  status: CustomerStatus;
 }
 
 const ALL_ORDERS: Order[] = [
-  { id: "PE-2026-1182", date: "5 May 2026", title: "Olea Doğal Sabun — etiket", qty: 2000, total: 4250, status: "kontrolde" },
-  { id: "PE-2026-1175", date: "28 Nis 2026", title: "Bulutlu Roastery — sticker", qty: 500, total: 1750, status: "uretimde" },
-  { id: "PE-2026-1167", date: "21 Nis 2026", title: "Atölye Niş — Holografik tabaka", qty: 250, total: 1050, status: "kargoda" },
-  { id: "PE-2026-1098", date: "15 Mar 2026", title: "Olea Doğal Sabun — etiket (yenileme)", qty: 3000, total: 5800, status: "teslim" },
-  { id: "PE-2026-1051", date: "28 Şub 2026", title: "Çiğdem Atölye — etiket", qty: 1500, total: 3120, status: "teslim" },
-  { id: "PE-2026-0997", date: "12 Şub 2026", title: "Pop-up etkinlik — sticker", qty: 1000, total: 2900, status: "teslim" },
-  { id: "PE-2026-0913", date: "20 Oca 2026", title: "İptal edilmiş test", qty: 500, total: 1500, status: "iptal" },
+  { id: "PE-2026-1182", date: "5 May 2026", title: "Olea Doğal Sabun — etiket", qty: 2000, total: 4250, status: "qc_pending" },
+  { id: "PE-2026-1175", date: "28 Nis 2026", title: "Bulutlu Roastery — sticker", qty: 500, total: 1750, status: "in_production" },
+  { id: "PE-2026-1167", date: "21 Nis 2026", title: "Atölye Niş — Holografik tabaka", qty: 250, total: 1050, status: "shipped" },
+  { id: "PE-2026-1098", date: "15 Mar 2026", title: "Olea Doğal Sabun — etiket (yenileme)", qty: 3000, total: 5800, status: "delivered" },
+  { id: "PE-2026-1051", date: "28 Şub 2026", title: "Çiğdem Atölye — etiket", qty: 1500, total: 3120, status: "delivered" },
+  { id: "PE-2026-0997", date: "12 Şub 2026", title: "Pop-up etkinlik — sticker", qty: 1000, total: 2900, status: "delivered" },
+  { id: "PE-2026-0913", date: "20 Oca 2026", title: "İptal edilmiş test", qty: 500, total: 1500, status: "cancelled" },
 ];
 
 const STATUS_META: Record<
-  Status,
+  CustomerStatus,
   { label: string; color: string; bg: string }
 > = {
-  kontrolde: {
+  qc_pending: {
     label: "Kontrolde",
     color: "text-sari",
     bg: "bg-sari-soft",
   },
-  uretimde: {
+  in_production: {
     label: "Üretimde",
     color: "text-pim-mercan",
     bg: "bg-pim-mercan-tint",
   },
-  kargoda: {
+  shipped: {
     label: "Kargoda",
     color: "text-lacivert",
     bg: "bg-gri-100",
   },
-  teslim: {
+  delivered: {
     label: "Teslim edildi",
     color: "text-yesil",
     bg: "bg-yesil-soft",
   },
-  iptal: {
+  cancelled: {
     label: "İptal",
     color: "text-kirmizi",
     bg: "bg-gri-100",
   },
 };
 
-const FILTER_OPTIONS: { id: Status | "tumu"; label: string }[] = [
-  { id: "tumu", label: "Tümü" },
-  { id: "kontrolde", label: "Kontrolde" },
-  { id: "uretimde", label: "Üretimde" },
-  { id: "kargoda", label: "Kargoda" },
-  { id: "teslim", label: "Teslim edildi" },
-  { id: "iptal", label: "İptal" },
+const FILTER_OPTIONS: { id: CustomerStatus | "all"; label: string }[] = [
+  { id: "all", label: "Tümü" },
+  { id: "qc_pending", label: "Kontrolde" },
+  { id: "in_production", label: "Üretimde" },
+  { id: "shipped", label: "Kargoda" },
+  { id: "delivered", label: "Teslim edildi" },
+  { id: "cancelled", label: "İptal" },
 ];
+
+// Type re-export — gelecek import'lar için (lib/order.ts kanonik)
+export type { OrderStatus };
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
 export default function SiparislerimPage() {
-  const [filter, setFilter] = useState<Status | "tumu">("tumu");
+  const [filter, setFilter] = useState<CustomerStatus | "all">("all");
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
     return ALL_ORDERS.filter((o) => {
-      if (filter !== "tumu" && o.status !== filter) return false;
+      if (filter !== "all" && o.status !== filter) return false;
       if (search.length > 0) {
         const q = search.toLowerCase();
         return (
@@ -163,7 +174,7 @@ export default function SiparislerimPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                setFilter("tumu");
+                setFilter("all");
                 setSearch("");
               }}
             >
@@ -214,7 +225,7 @@ export default function SiparislerimPage() {
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      {o.status === "teslim" && (
+                      {o.status === "delivered" && (
                         <Button variant="secondary" size="sm" href="/etiket">
                           Tekrar sipariş
                         </Button>

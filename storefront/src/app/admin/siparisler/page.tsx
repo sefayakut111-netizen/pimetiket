@@ -11,8 +11,12 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import type { OrderStatus } from "@/lib/order";
 
-type Status = "yeni" | "ai-flag" | "operator" | "prova" | "uretim" | "kargo" | "teslim";
+// Admin view: 7 görünür alt-state (paid/qc_flagged/operator_review/
+// proof_pending/in_production/shipped/delivered). Müşteri "qc_pending"
+// ve "cancelled" admin'de daha granuler ayrılmış halde gözükür.
+type AdminVisibleStatus = Exclude<OrderStatus, "qc_pending" | "cancelled">;
 
 interface AdminOrder {
   id: string;
@@ -20,50 +24,50 @@ interface AdminOrder {
   product: string;
   qty: number;
   total: number;
-  status: Status;
+  status: AdminVisibleStatus;
   date: string;
   fason?: string;
 }
 
 const ORDERS: AdminOrder[] = [
-  { id: "PE-2026-1188", customer: "Mehmet Kahveci", product: "Etiket × 2.500", qty: 2500, total: 5680, status: "ai-flag", date: "8 May 14:25" },
-  { id: "PE-2026-1187", customer: "Pop-up Etk.", product: "Sticker × 500", qty: 500, total: 1750, status: "operator", date: "8 May 14:18" },
-  { id: "PE-2026-1186", customer: "Olea Sabun", product: "Etiket × 2.000", qty: 2000, total: 4250, status: "uretim", date: "8 May 13:30", fason: "Bursa-1" },
-  { id: "PE-2026-1185", customer: "Atölye Niş", product: "Sticker × 250", qty: 250, total: 1050, status: "kargo", date: "8 May 11:15", fason: "Bursa-2" },
-  { id: "PE-2026-1184", customer: "Bulutlu Roastery", product: "Etiket × 1.500", qty: 1500, total: 3120, status: "prova", date: "8 May 09:42" },
-  { id: "PE-2026-1183", customer: "Yeşil Yaprak", product: "Sticker × 1.000", qty: 1000, total: 2900, status: "yeni", date: "8 May 08:55" },
-  { id: "PE-2026-1182", customer: "Olea Sabun (#2)", product: "Etiket × 2.000", qty: 2000, total: 4250, status: "prova", date: "7 May 19:20" },
-  { id: "PE-2026-1181", customer: "Çiğdem Atölye", product: "Etiket × 3.000", qty: 3000, total: 5800, status: "teslim", date: "7 May 16:08", fason: "Bursa-1" },
+  { id: "PE-2026-1188", customer: "Mehmet Kahveci", product: "Etiket × 2.500", qty: 2500, total: 5680, status: "qc_flagged", date: "8 May 14:25" },
+  { id: "PE-2026-1187", customer: "Pop-up Etk.", product: "Sticker × 500", qty: 500, total: 1750, status: "operator_review", date: "8 May 14:18" },
+  { id: "PE-2026-1186", customer: "Olea Sabun", product: "Etiket × 2.000", qty: 2000, total: 4250, status: "in_production", date: "8 May 13:30", fason: "Bursa-1" },
+  { id: "PE-2026-1185", customer: "Atölye Niş", product: "Sticker × 250", qty: 250, total: 1050, status: "shipped", date: "8 May 11:15", fason: "Bursa-2" },
+  { id: "PE-2026-1184", customer: "Bulutlu Roastery", product: "Etiket × 1.500", qty: 1500, total: 3120, status: "proof_pending", date: "8 May 09:42" },
+  { id: "PE-2026-1183", customer: "Yeşil Yaprak", product: "Sticker × 1.000", qty: 1000, total: 2900, status: "paid", date: "8 May 08:55" },
+  { id: "PE-2026-1182", customer: "Olea Sabun (#2)", product: "Etiket × 2.000", qty: 2000, total: 4250, status: "proof_pending", date: "7 May 19:20" },
+  { id: "PE-2026-1181", customer: "Çiğdem Atölye", product: "Etiket × 3.000", qty: 3000, total: 5800, status: "delivered", date: "7 May 16:08", fason: "Bursa-1" },
 ];
 
-const STATUS_META: Record<Status, { label: string; color: string; bg: string }> = {
-  yeni: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  "ai-flag": { label: "AI flag", color: "text-sari", bg: "bg-sari-soft" },
-  operator: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  prova: { label: "Prova bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
-  uretim: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
-  kargo: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
-  teslim: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft" },
+const STATUS_META: Record<AdminVisibleStatus, { label: string; color: string; bg: string }> = {
+  paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  qc_flagged: { label: "AI flag", color: "text-sari", bg: "bg-sari-soft" },
+  operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  proof_pending: { label: "Prova bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
+  in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
+  shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
+  delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft" },
 };
 
-const FILTERS: { id: Status | "tumu"; label: string }[] = [
-  { id: "tumu", label: "Tümü" },
-  { id: "ai-flag", label: "AI flag (acil)" },
-  { id: "operator", label: "Operatör" },
-  { id: "prova", label: "Prova" },
-  { id: "uretim", label: "Üretim" },
-  { id: "kargo", label: "Kargo" },
+const FILTERS: { id: AdminVisibleStatus | "all"; label: string }[] = [
+  { id: "all", label: "Tümü" },
+  { id: "qc_flagged", label: "AI flag (acil)" },
+  { id: "operator_review", label: "Operatör" },
+  { id: "proof_pending", label: "Prova" },
+  { id: "in_production", label: "Üretim" },
+  { id: "shipped", label: "Kargo" },
 ];
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
 export default function AdminSiparislerPage() {
-  const [filter, setFilter] = useState<Status | "tumu">("tumu");
+  const [filter, setFilter] = useState<AdminVisibleStatus | "all">("all");
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
     return ORDERS.filter((o) => {
-      if (filter !== "tumu" && o.status !== filter) return false;
+      if (filter !== "all" && o.status !== filter) return false;
       if (search.length > 0) {
         const q = search.toLowerCase();
         return (

@@ -101,7 +101,7 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
           {/* LEFT — copy */}
           <div>
-            <Eyebrow>Türkiye&rsquo;nin akıllı dijital baskısı</Eyebrow>
+            <Eyebrow>Türkiye&rsquo;nin akıllı dijital baskı atölyesi</Eyebrow>
             <h1 className="mt-5 text-[44px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
               Markanın etiketi,
               <br />

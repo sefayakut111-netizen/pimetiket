@@ -27,6 +27,7 @@ import {
   PriceCard,
   Pill,
 } from "@/components/ui";
+import { deliveryEstimate } from "@/lib/pricing";
 
 // ============================================================
 // Configuration data
@@ -119,27 +120,6 @@ function tierDiscountForQty(qty: number) {
   return 1;
 }
 
-function deliveryEstimate(qty: number) {
-  const days = qty > 10000 ? 12 : qty > 3000 ? 10 : 8;
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  const months = [
-    "Oca",
-    "Şub",
-    "Mar",
-    "Nis",
-    "May",
-    "Haz",
-    "Tem",
-    "Ağu",
-    "Eyl",
-    "Eki",
-    "Kas",
-    "Ara",
-  ];
-  return `${d.getDate()} ${months[d.getMonth()]}`;
-}
-
 function upsellFor(qty: number) {
   if (qty < 2000) return { msg: "+1000 adet ekle, %4 daha tasarruf", to: 2000 };
   if (qty < 5000) return { msg: "5000'e çık, %6 daha tasarruf", to: 5000 };
@@ -173,7 +153,7 @@ export default function EtiketPage() {
     tierDiscount;
   const total = unit * qty;
 
-  const teslim = deliveryEstimate(qty);
+  const teslim = deliveryEstimate({ kind: "etiket", qty });
   const upsell = upsellFor(qty);
 
   return (

@@ -23,6 +23,7 @@ import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { FormSection, SelectableCard, PriceCard } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { deliveryEstimate } from "@/lib/pricing";
 
 // ============================================================
 // Configuration data
@@ -329,8 +330,8 @@ export default function StickerPage() {
               topLabel="SEÇİMİN"
               total={total}
               unitPrice={`${tier} adet × ${fmtUnit(currentUnit)} TL · KDV dahil`}
-              savingsLabel={savings > 0 ? `%${savings} tasarruf` : null}
-              deliveryDate="22 Mayıs 2026"
+              savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
+              deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
               ctaLabel="Sepete ekle"
             />
           </div>

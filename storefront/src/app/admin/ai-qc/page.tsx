@@ -17,7 +17,13 @@ type Severity = "warning" | "fatal";
 
 interface Flag {
   id: string;
-  category: "renk" | "cozunurluk" | "marka" | "yazim" | "boyut" | "guvenlik";
+  category:
+    | "color"
+    | "resolution"
+    | "brand"
+    | "spelling"
+    | "size"
+    | "security";
   severity: Severity;
   message: string;
 }
@@ -41,13 +47,13 @@ const QUEUE: QCItem[] = [
     flags: [
       {
         id: "f1",
-        category: "renk",
+        category: "color",
         severity: "warning",
         message: "CMYK renk uzayı kullanılmamış (RGB tespit edildi). Baskıda renk farkı olabilir.",
       },
       {
         id: "f2",
-        category: "yazim",
+        category: "spelling",
         severity: "warning",
         message: "İçerik metninde olası yazım hatası: 'kahveçi' → 'kahveci' olabilir mi?",
       },
@@ -62,7 +68,7 @@ const QUEUE: QCItem[] = [
     flags: [
       {
         id: "f3",
-        category: "marka",
+        category: "brand",
         severity: "fatal",
         message: "Tasarımda 3. taraf logosu (örn: Nike-tarzı tik) tespit edildi. Marka hakkı ihlali olabilir, üretmeden önce müşteri onayı + kanıt iste.",
       },
@@ -77,7 +83,7 @@ const QUEUE: QCItem[] = [
     flags: [
       {
         id: "f4",
-        category: "cozunurluk",
+        category: "resolution",
         severity: "warning",
         message: "DPI 192 — 300+ önerilir. Detay kaybolabilir.",
       },
@@ -89,12 +95,12 @@ const CAT_META: Record<
   Flag["category"],
   { label: string; icon: React.ReactNode }
 > = {
-  renk: { label: "Renk", icon: <Icon.Sparkle size={14} /> },
-  cozunurluk: { label: "Çözünürlük", icon: <Icon.Info size={14} /> },
-  marka: { label: "Marka/Telif", icon: <Icon.Star size={14} /> },
-  yazim: { label: "Yazım", icon: <Icon.Info size={14} /> },
-  boyut: { label: "Boyut", icon: <Icon.Box size={14} /> },
-  guvenlik: { label: "Güvenlik", icon: <Icon.Bolt size={14} /> },
+  color: { label: "Renk", icon: <Icon.Sparkle size={14} /> },
+  resolution: { label: "Çözünürlük", icon: <Icon.Info size={14} /> },
+  brand: { label: "Marka/Telif", icon: <Icon.Star size={14} /> },
+  spelling: { label: "Yazım", icon: <Icon.Info size={14} /> },
+  size: { label: "Boyut", icon: <Icon.Box size={14} /> },
+  security: { label: "Güvenlik", icon: <Icon.Bolt size={14} /> },
 };
 
 export default function AdminAiQcPage() {

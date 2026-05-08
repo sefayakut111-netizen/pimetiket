@@ -17,7 +17,7 @@ interface ProvaItem {
   customer: string;
   product: string;
   config: string;
-  status: "hazirlanacak" | "muşteriye-gondermek-uzere" | "müşteri-onay-bekliyor" | "değişiklik-istendi";
+  status: "to_prepare" | "ready_to_send" | "awaiting_customer" | "changes_requested";
   uploadedAt: string;
 }
 
@@ -27,7 +27,7 @@ const PROVA: ProvaItem[] = [
     customer: "Olea Sabun",
     product: "Etiket × 2.000",
     config: "Kraft + mat selefon + sıcak yaldız (altın) · 60×80mm",
-    status: "hazirlanacak",
+    status: "to_prepare",
     uploadedAt: "8 May 13:30",
   },
   {
@@ -35,7 +35,7 @@ const PROVA: ProvaItem[] = [
     customer: "Bulutlu Roastery",
     product: "Etiket × 1.500",
     config: "Beyaz semi-glos + parlak selefon · 50×70mm",
-    status: "müşteri-onay-bekliyor",
+    status: "awaiting_customer",
     uploadedAt: "8 May 09:42",
   },
   {
@@ -43,7 +43,7 @@ const PROVA: ProvaItem[] = [
     customer: "Olea Sabun (#2)",
     product: "Etiket × 2.000",
     config: "Kraft + mat selefon + emboss · 60×80mm",
-    status: "müşteri-onay-bekliyor",
+    status: "awaiting_customer",
     uploadedAt: "7 May 19:20",
   },
   {
@@ -51,7 +51,7 @@ const PROVA: ProvaItem[] = [
     customer: "Atölye Niş",
     product: "Sticker × 1.000",
     config: "Holografik + glitter · Yuvarlak 75mm",
-    status: "değişiklik-istendi",
+    status: "changes_requested",
     uploadedAt: "7 May 14:18",
   },
 ];
@@ -60,22 +60,22 @@ const STATUS_META: Record<
   ProvaItem["status"],
   { label: string; bg: string; color: string }
 > = {
-  hazirlanacak: {
+  to_prepare: {
     label: "Sen hazırlayacaksın",
     bg: "bg-pim-mercan-tint",
     color: "text-pim-mercan",
   },
-  "muşteriye-gondermek-uzere": {
+  ready_to_send: {
     label: "Göndermeye hazır",
     bg: "bg-yesil-soft",
     color: "text-yesil",
   },
-  "müşteri-onay-bekliyor": {
+  awaiting_customer: {
     label: "Müşteri onayı bekleniyor",
     bg: "bg-sari-soft",
     color: "text-[#7A560A]",
   },
-  "değişiklik-istendi": {
+  changes_requested: {
     label: "Değişiklik istendi",
     bg: "bg-kirmizi/10",
     color: "text-kirmizi",
@@ -167,17 +167,17 @@ export default function AdminProvaPage() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
-                    {p.status === "hazirlanacak" && (
+                    {p.status === "to_prepare" && (
                       <Button variant="primary" size="sm">
                         Prova oluştur <Icon.ArrowR size={12} />
                       </Button>
                     )}
-                    {p.status === "muşteriye-gondermek-uzere" && (
+                    {p.status === "ready_to_send" && (
                       <Button variant="primary" size="sm">
                         Müşteriye gönder
                       </Button>
                     )}
-                    {p.status === "müşteri-onay-bekliyor" && (
+                    {p.status === "awaiting_customer" && (
                       <>
                         <Button variant="secondary" size="sm">
                           Hatırlat
@@ -187,7 +187,7 @@ export default function AdminProvaPage() {
                         </Button>
                       </>
                     )}
-                    {p.status === "değişiklik-istendi" && (
+                    {p.status === "changes_requested" && (
                       <Button variant="primary" size="sm">
                         Yeni prova hazırla
                       </Button>
