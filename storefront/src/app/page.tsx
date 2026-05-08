@@ -13,6 +13,7 @@
  *   7. Bottom CTA (lacivert dot-pattern + Pim excited)
  */
 
+import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill, Eyebrow } from "@/components/ui";
@@ -131,10 +132,10 @@ export default function HomePage() {
               gelen dijital baskı. Pim sana yardım eder.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button variant="primary" size="lg">
+              <Button variant="primary" size="lg" href="/etiket">
                 <Icon.Roll size={18} /> Etiket bastır
               </Button>
-              <Button variant="secondary" size="lg">
+              <Button variant="secondary" size="lg" href="/sticker">
                 <Icon.Sticker size={18} /> Sticker bastır
               </Button>
             </div>
@@ -227,6 +228,7 @@ export default function HomePage() {
             sub="Rulodan etiket — kozmetik, gıda, içecek, parfüm."
             from="1000 adetten"
             price="2.13 TL/adet"
+            href="/etiket"
           />
           <ProductCard
             kind="sticker"
@@ -234,6 +236,7 @@ export default function HomePage() {
             sub="Tekli ya da tabakada — laptop, defter, kampanya."
             from="25 adetten"
             price="3.50 TL/adet"
+            href="/sticker"
           />
         </div>
       </section>
@@ -359,15 +362,15 @@ export default function HomePage() {
                   anında fiyat, gerisi bizden.
                 </p>
                 <div className="mt-7 flex gap-3 flex-wrap">
-                  <Button variant="primary" size="lg">
+                  <Button variant="primary" size="lg" href="/etiket">
                     Etiket bastır <Icon.ArrowR />
                   </Button>
-                  <button
-                    type="button"
+                  <Link
+                    href="/sticker"
                     className="inline-flex items-center justify-center gap-2 h-[52px] px-7 rounded-full text-white font-semibold text-base hover:bg-white/10 transition-colors"
                   >
                     Sticker&rsquo;a göz at
-                  </button>
+                  </Link>
                 </div>
               </div>
               <div className="flex justify-center">
@@ -391,17 +394,19 @@ function ProductCard({
   sub,
   from,
   price,
+  href,
 }: {
   kind: "etiket" | "sticker";
   title: string;
   sub: string;
   from: string;
   price: string;
+  href: string;
 }) {
   const isEtiket = kind === "etiket";
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       className="text-left bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] overflow-hidden flex hover:-translate-y-0.5 transition-transform"
     >
       <div
@@ -438,7 +443,7 @@ function ProductCard({
           </span>
         </div>
       </div>
-    </button>
+    </Link>
   );
 }
 
