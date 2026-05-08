@@ -17,25 +17,48 @@ shop specializing in product labels (rolled) and stickers (sheet).
 ================================================================
 CHARACTER: Pim
 ================================================================
-A round, egg-shaped bird character (no specific species, fully
-stylized). Cute, warm, subtly masculine, gender-neutral in feel.
-Inspired by the soft round silhouette of Duolingo's Duo and the
-illustrated warmth of Mailchimp's Freddie, but visually its own
-distinct character. Pim is portrayed as the "professor of labels" —
-a master craftsman who inspects every print with care.
+A round, egg-shaped **owl** character — stylized, soft, expressive.
+Cute, warm, subtly masculine, gender-neutral in feel. Inspired by
+the round silhouette of Duolingo's Duo, the illustrated warmth of
+Mailchimp's Freddie, and the iconic intellectual aura of Hedwig
+(Harry Potter), but visually its own distinct character. Pim is
+portrayed as the "professor of labels" — a master craftsman who
+inspects every print with care.
+
+The owl species is intentional: owl = wisdom + sharp inspection +
+nocturnal eye for detail. This pairs perfectly with the brand's
+"Etiket Profesörü" (Label Professor) persona and the magnifier
+inspect pose.
 
 ================================================================
 BODY AND FACE
 ================================================================
 - Egg-shaped body, vertically oriented, soft round silhouette
-- Two small wings, attached to body, slightly darker shade than body
-- Two small orange feet at the bottom
+- Two stylized owl wings on the sides — flat-vector simplification,
+  one or two visible feather strokes maximum (NOT realistic plumage),
+  slightly darker coral than body
+- A subtle V-shape hint on the chest suggesting soft chest plumage —
+  one or two short curved strokes only (NOT detailed feathers)
+- Two small orange owl talons at the bottom — three short toes per
+  foot, simplified geometric shapes (NOT anatomically detailed)
+- **Heart-shaped face disc** — a soft, lighter-toned area framing
+  both eyes (the signature owl facial structure). Subtle, low
+  contrast — read as a face feature, not a separate shape
+- Two short ear tufts on top of the head — small triangular
+  silhouettes flanking the crown (subtle, optional in simplified
+  marks). They give Pim a slightly inquisitive, alert profile
 - Large round eyes: white sclera, dark navy pupils, small white
-  highlights for life
+  highlights for life. Eyes are positioned **frontally** (owl-style,
+  both eyes face forward — not bird-side-eye), spaced wide enough
+  for the round glasses to fit naturally over both
 - Short straight eyebrows, slightly thick — subtle masculine cue,
   conveying focus and expertise
-- Small triangular beak in warm orange
-- Subtle soft-pink cheek blush dots at low opacity
+- Small **hooked owl beak** in warm orange — a short curved
+  triangular shape (NOT a flat songbird triangle); tip bends
+  slightly downward, beak overall reads as soft and friendly
+  (closer to a cartoon owl than a raptor)
+- Subtle soft-pink cheek blush dots at low opacity, placed on the
+  face disc area
 
 ================================================================
 GLASSES
@@ -203,9 +226,15 @@ TYPOGRAPHY (for wordmark)
 ================================================================
 REFERENCES (for style direction)
 ================================================================
-- Duolingo Duo — round body, expressive face
+- Hedwig (Harry Potter) — round owl silhouette + intellectual
+  glasses pairing; Pim is friendlier and more illustrated, but
+  the "wise owl with eyewear" association is intentional
+- Duolingo Duo — round body, expressive face, soft mascot warmth
 - Mailchimp Freddie — illustrated warmth, character personality
 - Reddit Snoo (older versions) — simple distinctive silhouette
+- Modern flat-vector owl mascots: Hootsuite Owly (older), Hooty
+  (lightweight illustrated owl), avoiding any realistic raptor
+  styling
 - Modern flat-vector mascot logos: Slack, Headspace, Notion
   illustrations
 - For round glasses reference: classic intellectual eyewear
@@ -222,7 +251,13 @@ OUTPUT FORMAT
 THINGS TO AVOID
 ================================================================
 - 3D rendering, photorealism, embossed effects
-- Detailed feather textures (body must read as a smooth shape)
+- Detailed feather textures (body must read as a smooth shape;
+  feathers are HINTED, not drawn)
+- **Realistic raptor/predator owl styling** — no sharp talons,
+  no menacing brow, no nocturnal-creepy palette. Pim is a friendly
+  cartoon owl, not a Halloween owl
+- **Side-eye songbird styling** — owl eyes must be FRONTAL, not
+  bird-side-eye. This is what makes the glasses fit naturally
 - Multiple gradients, neon glows, drop shadows
 - Background scenery or props beyond what's described on Pim
 - Overly cartoonish proportions (keep the egg shape clean)
@@ -238,18 +273,29 @@ THINGS TO AVOID
 
 ---
 
+## Karar geçmişi (Pim Etiket ekibi)
+
+- **2026-05-08 — Pim'in türü: BAYKUŞ.** Brief başlangıçta "egg-shaped bird, no specific species"
+  diyordu; Sefa'nın önerisiyle baykuş'a karar verildi. Sebep: "Etiket Profesörü" persona'sı
+  için bilgelik metaforu, yuvarlak gözlük baykuş gözleri üzerine doğal oturuyor, magnifier
+  inspect pose baykuş = mikro detay yakalama referansı doğrudan veriyor. Hedwig (Harry Potter)
+  bilinçli stil referansı.
+
 ## Notes for Pim Etiket team
 
-- The current `design-prototype/v1-jsx/pim.jsx` SVG is a **humanoid placeholder** (skin tone,
-  human-like body, krem apron). It does NOT match this brief. It will be **replaced** when the
-  professional vector logo is delivered, and the SVG component re-built to render the new
-  bird-shaped character with the same 9 pose API (`wave`, `think`, `wait`, `inspect`, `happy`,
-  `sad`, `excited`, `box`, `chat`).
+- The current `design-prototype/v1-jsx/pim.jsx` and `storefront/src/components/Pim.tsx`
+  SVGs are **humanoid placeholders** (skin tone, human-like body, krem apron). They do NOT
+  match this brief. They will be **replaced** when the professional vector owl logo is
+  delivered, and the SVG components re-rendered with the same 9 pose API (`wave`, `think`,
+  `wait`, `inspect`, `happy`, `sad`, `excited`, `box`, `chat`).
 - The 9-pose interface described in `DESIGN_SYSTEM.md §4` survives the redesign — only the
   underlying paths change.
-- All product copy referencing "Etiket Profesörü" assumes the bird-with-glasses character;
-  copy stays unchanged when the visuals are updated.
+- All product copy referencing "Etiket Profesörü" assumes the **owl-with-glasses** character;
+  copy stays unchanged when the visuals are updated. Voice/tone unaffected.
 - Brand colors (`#FF6B5B`, `#F5EBD9`, `#1F2937`, `#FF9933`, `#FFA89E`) are already wired into
-  `design.css`/`styles.css` tokens and `DESIGN_SYSTEM.md`. The Pantone references above are
-  the **print-side authoritative values** for any physical brand collateral (business cards,
-  packaging, stamps, embroidery).
+  `design.css`/`styles.css` tokens and `globals.css` (Tailwind 4 `@theme`). The Pantone
+  references above are the **print-side authoritative values** for any physical brand
+  collateral (business cards, packaging, stamps, embroidery).
+- When commissioning the professional illustrator: this brief is the canonical input.
+  Hand it over verbatim. Variations 1-7 (Detailed Mascot, Simplified Logo Mark, Icon Only,
+  Combination Mark, Horizontal/Vertical Lockups, Single-Color) are all required deliverables.

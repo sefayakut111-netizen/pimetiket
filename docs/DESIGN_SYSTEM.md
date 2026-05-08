@@ -267,17 +267,20 @@ Aynı API, iki tema. Test'lerle bilinçli kararı locker.
 
 ### 4.1 Karakterin özeti (brief'ten)
 
-- **Yumurta-şekilli kuş**, dik duruşlu, 2 küçük kanat, 2 turuncu ayak
-- **Yuvarlak büyük gözlük** (signature element), kalın çerçeve, lacivert
+- **Yumurta-şekilli BAYKUŞ** (2026-05-08 kararı), dik duruşlu, frontal yerleşik gözler,
+  2 stilize kanat, 2 turuncu pençe (talons), opsiyonel ear tufts, heart-shaped face disc
+- **Yuvarlak büyük gözlük** (signature element), kalın çerçeve, lacivert — Hedwig referansı
+- **Hooked owl beak** (üçgen değil, kıvrık), turuncu, küçük ve dostça
 - **Açık önlük** (krem) — beden üzerine giyilmiş, V yakası mercan vücudu gösterir
 - **2 cep**: solda ürün etiketi rulosu (ciddi), sağda renkli sticker karması (eğlenceli)
 - Renkler: Mercan vücut `#FF6B5B`, krem önlük `#F5EBD9`, lacivert outline `#1F2937`,
-  turuncu gaga/ayak `#FF9933`
+  turuncu gaga/pençe `#FF9933`
 
-> ⚠️ **Mevcut `design-prototype/v1-jsx/pim.jsx` placeholder'dır** — insanımsı bir karakter
-> çiziyor (cilt tonu, krem önlük). Brief uyarınca **yeniden çizilecek**. Bu bölümdeki pose API
-> ve animasyon kuralları (4.2–4.5) yeniden çizimde **AYNI KALIR**; yalnızca alt katmanın
-> path'leri değişir.
+> ⚠️ **Mevcut SVG'ler (`design-prototype/v1-jsx/pim.jsx` ve
+> `storefront/src/components/Pim.tsx`) placeholder'dır** — insanımsı bir karakter çiziyor
+> (cilt tonu, krem önlük). Brief uyarınca **profesyonel illüstratörle baykuş olarak yeniden
+> çizilecek**. Bu bölümdeki pose API ve animasyon kuralları (4.2–4.5) yeniden çizimde
+> **AYNI KALIR**; yalnızca alt katmanın path'leri değişir.
 
 ### 4.2 9 Pose
 
