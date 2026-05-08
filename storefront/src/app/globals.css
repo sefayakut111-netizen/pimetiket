@@ -114,3 +114,49 @@ body {
   background: var(--color-pim-mercan-tint);
   color: var(--color-lacivert);
 }
+
+/* Legal page prose styles (yasal sayfa içerikleri) */
+.legal-prose h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 32px 0 12px;
+  color: var(--color-lacivert);
+  letter-spacing: -0.01em;
+}
+.legal-prose h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 24px 0 8px;
+  color: var(--color-lacivert);
+}
+.legal-prose p {
+  font-size: 16px;
+  color: var(--color-gri-700);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.legal-prose ul {
+  list-style: disc;
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+.legal-prose ul li {
+  font-size: 16px;
+  color: var(--color-gri-700);
+  line-height: 1.65;
+  margin-bottom: 6px;
+}
+.legal-prose strong {
+  color: var(--color-lacivert);
+  font-weight: 600;
+}
+.legal-prose a {
+  color: var(--color-pim-mercan);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.legal-prose a:hover {
+  color: var(--color-pim-mercan-koyu);
+}

@@ -7,7 +7,14 @@ const FOOTER_GROUPS = [
   { t: "İletişim", links: ["WhatsApp", "Mail", "Bursa atölyesi", "Pim'le konuş"] },
 ];
 
-const LEGAL_LINKS = ["KVKK", "Gizlilik", "Kullanım", "Çerez"];
+const LEGAL_LINKS = [
+  { label: "KVKK", href: "/kvkk" },
+  { label: "Gizlilik", href: "/gizlilik" },
+  { label: "Kullanım", href: "/sartlar" },
+  { label: "Çerez", href: "/cerez" },
+  { label: "Mesafeli Satış", href: "/mesafeli-satis" },
+  { label: "Cayma Hakkı", href: "/cayma-hakki" },
+];
 
 export function Footer() {
   return (
@@ -52,10 +59,14 @@ export function Footer() {
         {/* Bottom strip */}
         <div className="pt-6 border-t border-white/10 flex justify-between items-center text-[13px] text-white/55">
           <div>© {new Date().getFullYear()} Pim Etiket — Bursa</div>
-          <div className="flex gap-5">
+          <div className="flex gap-5 flex-wrap">
             {LEGAL_LINKS.map((l) => (
-              <a key={l} href="#" className="hover:text-white transition-colors">
-                {l}
+              <a
+                key={l.href}
+                href={l.href}
+                className="hover:text-white transition-colors"
+              >
+                {l.label}
               </a>
             ))}
           </div>
