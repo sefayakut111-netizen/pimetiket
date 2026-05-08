@@ -1,14 +1,16 @@
 /**
- * PimAsset — 3 mascot varyasyonu için raster image wrapper.
+ * PimAsset — 3 mascot varyasyonu için image wrapper.
  *
- * Kaynak (renkli, transparent PNG):
- *   /pim/pim-detailed.png  → tek baykuş tam karakter (Hero, CTA)
- *   /pim/pim-icon.png      → sadece kafa (favicon, mini avatar)
- *   /pim/pim-logo.png      → mascot + "pim etiket" wordmark (topbar, footer)
+ * Kaynak (Sefa'nın illüstratör çıktıları, SVG):
+ *   /pim/pim-detailed.svg  → tek baykuş tam karakter (Hero, CTA)
+ *   /pim/pim-icon.svg      → sadece kafa (favicon, mini avatar)
+ *   /pim/pim-logo.svg      → mascot + "pim etiket" wordmark (topbar, footer)
  *
- * NOT: SVG yedekleri /pim/*.svg yolunda; ancak path-traced sırasında renkler
- * kayboldu (sadece siyah path). Renk gelene kadar PNG'leri kullanıyoruz.
- * SVG'ler ileride renkli illüstratör çıktısıyla değiştirilecek.
+ * SVG'ler şu an path-traced sırasında siyah olarak gelmiş; Sefa renk
+ * kodlarını sonra düzeltecek. Renkli versiyon production'a aynı yolla
+ * gidecek (PimAsset değişmez).
+ *
+ * PNG/JPG yedekleri yine /pim/* altında duruyor.
  */
 
 import { cn } from "@/lib/cn";
@@ -19,9 +21,9 @@ const SOURCES: Record<
   PimVariant,
   { src: string; aspect: number }
 > = {
-  detailed: { src: "/pim/pim-detailed.png", aspect: 1 },
-  icon: { src: "/pim/pim-icon.png", aspect: 1 },
-  logo: { src: "/pim/pim-logo.png", aspect: 1920 / 500 }, // ~3.84:1
+  detailed: { src: "/pim/pim-detailed.svg", aspect: 1 },
+  icon: { src: "/pim/pim-icon.svg", aspect: 1 },
+  logo: { src: "/pim/pim-logo.svg", aspect: 1920 / 500 }, // ~3.84:1
 };
 
 interface PimAssetProps {
