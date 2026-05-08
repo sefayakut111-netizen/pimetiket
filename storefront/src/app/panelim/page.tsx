@@ -5,11 +5,18 @@
  * Mock data — gerçek bağlantı I adımında.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill } from "@/components/ui";
 import { cn } from "@/lib/cn";
+
+export const metadata: Metadata = {
+  title: "Panelim",
+  description: "Siparişlerin, prova durumun, AI kontrol sonuçların.",
+  robots: { index: false, follow: true },
+};
 
 const PHASES = [
   "Konfigüre",

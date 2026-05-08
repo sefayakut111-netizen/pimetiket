@@ -1,7 +1,9 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
 
 export const metadata = {
-  title: "Kullanım Şartları — Pim Etiket",
+  title: "Kullanım Şartları",
+  description: "Pim Etiket platformunu kullanmaya ilişkin genel şartlar ve koşullar.",
+  alternates: { canonical: "/sartlar" },
 };
 
 export default function SartlarPage() {

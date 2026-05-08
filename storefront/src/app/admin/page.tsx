@@ -4,10 +4,15 @@
  * Operatör/admin ana panel. Mock data.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
+
+export const metadata: Metadata = {
+  title: "Operatör — Dashboard",
+};
 
 const KPIS = [
   { label: "Bugünkü siparişler", value: "12", sub: "↑ 3 dünden", accent: "text-pim-mercan" },

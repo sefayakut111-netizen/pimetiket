@@ -1,7 +1,10 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
 
 export const metadata = {
-  title: "Mesafeli Satış Sözleşmesi — Pim Etiket",
+  title: "Mesafeli Satış Sözleşmesi",
+  description:
+    "Pim Etiket üzerinden verilen siparişler için Mesafeli Satış Sözleşmesi.",
+  alternates: { canonical: "/mesafeli-satis" },
 };
 
 export default function MesafeliSatisPage() {

@@ -5,9 +5,17 @@
  * NOT: WhatsApp/e-posta/adres/harita coords placeholder — Sefa düzenleyecek.
  */
 
+import type { Metadata } from "next";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
+
+export const metadata: Metadata = {
+  title: "İletişim",
+  description:
+    "WhatsApp, e-posta ve Bursa atölye adresi. Numune, fiyat teklifi, fason iş birliği için bize ulaş.",
+  alternates: { canonical: "/iletisim" },
+};
 
 const CONTACT_METHODS = [
   {

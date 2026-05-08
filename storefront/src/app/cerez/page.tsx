@@ -1,7 +1,10 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
 
 export const metadata = {
-  title: "Çerez Politikası — Pim Etiket",
+  title: "Çerez Politikası",
+  description:
+    "Pim Etiket'te kullanılan çerezler, amaçları ve tarayıcı tercihleri.",
+  alternates: { canonical: "/cerez" },
 };
 
 export default function CerezPage() {

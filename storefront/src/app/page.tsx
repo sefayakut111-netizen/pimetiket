@@ -13,10 +13,21 @@
  *   7. Bottom CTA (lacivert dot-pattern + Pim excited)
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill, Eyebrow } from "@/components/ui";
+
+export const metadata: Metadata = {
+  // Root layout'taki default title kullanılır — template uygulanmaz.
+  title: {
+    absolute: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
+  },
+  description:
+    "1000 adetten başlayan etiket ve sticker baskı. AI dosyana bakar, 10 günde elinde. Bursa'dan, küçük markalar için.",
+  alternates: { canonical: "/" },
+};
 
 const PILLARS = [
   {
