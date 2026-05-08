@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 interface Address {
@@ -42,16 +42,19 @@ const INITIAL: Address[] = [
 ];
 
 export default function AdreslerimPage() {
+  const toast = useToast();
   const [addresses, setAddresses] = useState<Address[]>(INITIAL);
 
   const setDefault = (id: string) => {
     setAddresses((arr) =>
       arr.map((a) => ({ ...a, isDefault: a.id === id }))
     );
+    toast.success("Varsayılan adres güncellendi");
   };
 
   const remove = (id: string) => {
     setAddresses((arr) => arr.filter((a) => a.id !== id));
+    toast.success("Adres silindi");
   };
 
   return (
@@ -67,7 +70,10 @@ export default function AdreslerimPage() {
               {addresses.length} kayıtlı adres
             </p>
           </div>
-          <Button variant="primary">
+          <Button
+            variant="primary"
+            onClick={() => toast.info("Adres ekleme formu yakında (mock)")}
+          >
             <Icon.Plus size={16} /> Yeni adres ekle
           </Button>
         </div>
@@ -81,7 +87,10 @@ export default function AdreslerimPage() {
             <p className="text-base text-gri-700 mb-5">
               Sipariş verirken hızlı seçim için adres ekle.
             </p>
-            <Button variant="primary">
+            <Button
+              variant="primary"
+              onClick={() => toast.info("Adres ekleme formu yakında (mock)")}
+            >
               <Icon.Plus size={16} /> Yeni adres ekle
             </Button>
           </Card>
@@ -112,7 +121,13 @@ export default function AdreslerimPage() {
                   <div>{a.phone}</div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      toast.info(`${a.label} düzenleme formu yakında (mock)`)
+                    }
+                  >
                     Düzenle
                   </Button>
                   {!a.isDefault && (

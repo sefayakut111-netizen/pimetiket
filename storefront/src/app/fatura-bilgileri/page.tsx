@@ -7,13 +7,14 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Input, Eyebrow } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/Icon";
 
 type InvoiceType = "individual" | "corporate";
 
 export default function FaturaBilgileriPage() {
+  const toast = useToast();
   const [type, setType] = useState<InvoiceType>("individual");
   const [tc, setTc] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -158,7 +159,14 @@ export default function FaturaBilgileriPage() {
           )}
 
           <div className="mt-6 flex justify-end">
-            <Button variant="primary">Kaydet</Button>
+            <Button
+              variant="primary"
+              onClick={() =>
+                toast.success("Fatura bilgileri kaydedildi (mock)")
+              }
+            >
+              Kaydet
+            </Button>
           </div>
         </Card>
 

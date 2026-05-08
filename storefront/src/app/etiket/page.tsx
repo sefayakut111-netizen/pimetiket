@@ -28,6 +28,7 @@ import {
   Pill,
 } from "@/components/ui";
 import { deliveryEstimate } from "@/lib/pricing";
+import { useToast } from "@/components/ui";
 
 // ============================================================
 // Configuration data
@@ -136,6 +137,7 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 // ============================================================
 
 export default function EtiketPage() {
+  const toast = useToast();
   const [material, setMaterial] = useState<MaterialId>("kraft");
   const [coating, setCoating] = useState<CoatingId>("mat");
   const [custom, setCustom] = useState<CustomId>("yok");
@@ -496,6 +498,11 @@ export default function EtiketPage() {
               }
               deliveryDate={teslim}
               ctaLabel="Sepete ekle"
+              onCta={() =>
+                toast.success(
+                  "Sepete eklendi (mock — gerçek sepet F+I adımında)"
+                )
+              }
               footnote="Şimdi öderken dosya yüklemen gerekmez · 3 gün içinde yükleyebilirsin"
             />
           </div>

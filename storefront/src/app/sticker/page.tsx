@@ -21,7 +21,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { FormSection, SelectableCard, PriceCard } from "@/components/ui";
+import { FormSection, SelectableCard, PriceCard, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { deliveryEstimate } from "@/lib/pricing";
 
@@ -115,6 +115,7 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 // ============================================================
 
 export default function StickerPage() {
+  const toast = useToast();
   const [shape, setShape] = useState<ShapeId>("circle");
   const [material, setMaterial] = useState<MaterialId>("vinil");
   const [finish, setFinish] = useState<FinishId>("parlak");
@@ -333,6 +334,11 @@ export default function StickerPage() {
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
               ctaLabel="Sepete ekle"
+              onCta={() =>
+                toast.success(
+                  "Sepete eklendi (mock — gerçek sepet F+I adımında)"
+                )
+              }
             />
           </div>
         </div>

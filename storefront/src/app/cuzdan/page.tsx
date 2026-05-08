@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 interface Transaction {
@@ -43,6 +43,7 @@ const TYPE_META: Record<
 const fmt = (n: number) => Math.abs(Math.round(n)).toLocaleString("tr-TR");
 
 export default function CuzdanPage() {
+  const toast = useToast();
   const [showDeposit, setShowDeposit] = useState(false);
   const [amount, setAmount] = useState("");
 
@@ -122,7 +123,22 @@ export default function CuzdanPage() {
                       className="!h-11 !w-[200px] !bg-white/10 !text-white !ring-white/20 placeholder:!text-white/40"
                     />
                   </label>
-                  <Button variant="primary" size="lg">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => {
+                      const n = Number(amount);
+                      if (!n || n <= 0) {
+                        toast.error("Geçerli bir tutar gir");
+                        return;
+                      }
+                      toast.success(
+                        `${n.toLocaleString("tr-TR")} TL yatırma talebi alındı (mock — ödeme G adımında)`
+                      );
+                      setShowDeposit(false);
+                      setAmount("");
+                    }}
+                  >
                     Yatır <Icon.ArrowR />
                   </Button>
                   <Button

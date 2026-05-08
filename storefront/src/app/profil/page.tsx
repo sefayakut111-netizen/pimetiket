@@ -8,9 +8,10 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 
 export default function ProfilPage() {
+  const toast = useToast();
   const [name, setName] = useState("Ahmet Yılmaz");
   const [email, setEmail] = useState("ahmet@example.com");
   const [showDelete, setShowDelete] = useState(false);
@@ -59,7 +60,12 @@ export default function ProfilPage() {
             </label>
           </div>
           <div className="mt-5 flex justify-end">
-            <Button variant="primary">Kaydet</Button>
+            <Button
+              variant="primary"
+              onClick={() => toast.success("Bilgiler güncellendi (mock)")}
+            >
+              Kaydet
+            </Button>
           </div>
         </Card>
 
@@ -102,7 +108,12 @@ export default function ProfilPage() {
             </label>
           </div>
           <div className="mt-5 flex justify-end">
-            <Button variant="primary">Şifreyi güncelle</Button>
+            <Button
+              variant="primary"
+              onClick={() => toast.success("Şifre güncellendi (mock)")}
+            >
+              Şifreyi güncelle
+            </Button>
           </div>
         </Card>
 
@@ -180,6 +191,11 @@ export default function ProfilPage() {
                 <button
                   type="button"
                   disabled={confirmText !== "SIL"}
+                  onClick={() => {
+                    toast.warning("Hesap silme talebi alındı (mock — gerçek silme I adımında)");
+                    setShowDelete(false);
+                    setConfirmText("");
+                  }}
                   className="h-9 px-3.5 rounded-full bg-kirmizi text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#C73A2D]"
                 >
                   Hesabımı kalıcı olarak sil
