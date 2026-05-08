@@ -48,6 +48,10 @@ ehthumbs.db
 reference/*.zip
 reference/medusa-develop/
 
+# F adımı — eski Medusa monorepo scaffold kalıntısı (Windows lock ile silinemedi)
+# Manuel silme: Explorer'dan veya bilgisayarı yeniden başlatınca
+backend/
+
 # Misc
 *.tgz
 .coverage/
