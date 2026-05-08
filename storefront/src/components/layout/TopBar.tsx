@@ -58,11 +58,14 @@ export function TopBar() {
           </button>
           <Link
             href="/sepet"
-            aria-label="Sepet"
+            aria-label="Sepet (2 ürün)"
             className="relative p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
             <Icon.Cart size={18} />
-            <span className="absolute top-1 right-1 grid place-items-center w-4 h-4 rounded-full bg-pim-mercan text-white text-[10px] font-bold">
+            <span
+              aria-hidden="true"
+              className="absolute top-1 right-1 grid place-items-center w-4 h-4 rounded-full bg-pim-mercan text-white text-[10px] font-bold"
+            >
               2
             </span>
           </Link>

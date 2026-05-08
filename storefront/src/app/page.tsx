@@ -314,7 +314,7 @@ export default function HomePage() {
               Hâlâ kafa karışıyor mu? Pim cevap vermek için sayfanın sağ alt
               köşesinde bekliyor.
             </p>
-            <Button variant="secondary">
+            <Button variant="secondary" href="/sss">
               Tüm SSS <Icon.ChevR size={14} />
             </Button>
           </div>

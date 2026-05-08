@@ -1,13 +1,58 @@
+import Link from "next/link";
 import { PimAsset } from "@/components/PimAsset";
 
-const FOOTER_GROUPS = [
-  { t: "Ürün", links: ["Etiket", "Sticker", "Malzemeler", "Yaldız galerisi"] },
-  { t: "Şirket", links: ["Hakkımızda", "Üretim ortakları", "Kariyer", "Basın"] },
-  { t: "Destek", links: ["SSS", "Kargo", "İade", "Sözleşmeler"] },
-  { t: "İletişim", links: ["WhatsApp", "Mail", "Bursa atölyesi", "Pim'le konuş"] },
+interface FooterLink {
+  label: string;
+  href: string;
+}
+
+interface FooterGroup {
+  t: string;
+  links: FooterLink[];
+}
+
+// "todo" → henüz mevcut sayfa yok. Boş hash yerine /iletisim'e yönlendiriliyor
+// (en yakın anlamlı hedef). E.1.x sonrası uygun sayfalar açılınca href güncellenir.
+const FOOTER_GROUPS: FooterGroup[] = [
+  {
+    t: "Ürün",
+    links: [
+      { label: "Etiket", href: "/etiket" },
+      { label: "Sticker", href: "/sticker" },
+      { label: "Malzemeler", href: "/etiket" }, // todo: /malzemeler
+      { label: "Yaldız galerisi", href: "/etiket" }, // todo: /yaldiz-galerisi
+    ],
+  },
+  {
+    t: "Şirket",
+    links: [
+      { label: "Hakkımızda", href: "/hakkimizda" },
+      { label: "Üretim ortakları", href: "/hakkimizda" }, // todo: /uretim-ortaklari
+      { label: "Kariyer", href: "/iletisim" }, // todo: /kariyer
+      { label: "Basın", href: "/iletisim" }, // todo: /basin
+    ],
+  },
+  {
+    t: "Destek",
+    links: [
+      { label: "SSS", href: "/sss" },
+      { label: "Kargo", href: "/sss" }, // todo: /kargo-teslim
+      { label: "İade", href: "/cayma-hakki" },
+      { label: "Sözleşmeler", href: "/mesafeli-satis" },
+    ],
+  },
+  {
+    t: "İletişim",
+    links: [
+      { label: "WhatsApp", href: "/iletisim" },
+      { label: "Mail", href: "/iletisim" },
+      { label: "Bursa atölyesi", href: "/iletisim#harita" },
+      { label: "Pim'le konuş", href: "/iletisim" },
+    ],
+  },
 ];
 
-const LEGAL_LINKS = [
+const LEGAL_LINKS: FooterLink[] = [
   { label: "KVKK", href: "/kvkk" },
   { label: "Gizlilik", href: "/gizlilik" },
   { label: "Kullanım", href: "/sartlar" },
@@ -23,12 +68,13 @@ export function Footer() {
         <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-8 mb-12">
           {/* Brand column */}
           <div>
-            <div
+            <Link
+              href="/"
               className="mb-4 -ml-2 inline-block bg-white rounded-xl px-3 py-2"
-              title="Pim Etiket"
+              aria-label="Pim Etiket — Anasayfa"
             >
               <PimAsset variant="logo" size={220} bob={false} />
-            </div>
+            </Link>
             <p className="text-[13px] max-w-[280px] text-white/65 leading-relaxed">
               Türkiye&rsquo;nin akıllı dijital baskı atölyesi. Bursa&rsquo;dan,
               küçük markalar için.
@@ -43,13 +89,13 @@ export function Footer() {
               </div>
               <div className="flex flex-col gap-2.5">
                 {g.links.map((l) => (
-                  <a
-                    key={l}
-                    href="#"
+                  <Link
+                    key={l.label}
+                    href={l.href}
                     className="text-[13px] text-white/85 hover:text-white transition-colors"
                   >
-                    {l}
-                  </a>
+                    {l.label}
+                  </Link>
                 ))}
               </div>
             </div>
@@ -61,13 +107,13 @@ export function Footer() {
           <div>© {new Date().getFullYear()} Pim Etiket — Bursa</div>
           <div className="flex gap-5 flex-wrap">
             {LEGAL_LINKS.map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 className="hover:text-white transition-colors"
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
