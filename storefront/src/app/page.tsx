@@ -1,7 +1,8 @@
 /**
- * Pim Etiket — Geçici landing (D.4)
+ * Pim Etiket — Geçici landing (D.5)
  *
- * Hero (Pim + wordmark + CTA) + 9-pose preview + Icon lib + UI lib showcase.
+ * AppShell layout (TopBar + Footer) + Hero (Pim + wordmark + CTA)
+ * + 9-pose preview + Icon lib + UI lib showcase.
  * Gerçek anasayfa E.1 adımında design-prototype'tan taşınacak.
  */
 
@@ -29,7 +30,7 @@ const ICON_LIST = Object.entries(Icon) as [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-white animate-fade-up py-16">
+    <main className="bg-white animate-fade-up py-16">
       <div className="mx-auto px-6 max-w-3xl">
         {/* HERO */}
         <div className="text-center">
@@ -65,7 +66,7 @@ export default function Home() {
           </div>
 
           <div className="mt-20">
-            <Eyebrow>D.4 — UI primitive lib hazır</Eyebrow>
+            <Eyebrow>D.5 — AppShell + UI lib hazır</Eyebrow>
           </div>
         </div>
 

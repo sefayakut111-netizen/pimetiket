@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
+import { AppShell } from "@/components/layout/AppShell";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -23,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`${nunito.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-white text-lacivert">
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
