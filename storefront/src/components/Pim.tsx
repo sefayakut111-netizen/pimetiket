@@ -1,16 +1,24 @@
 /**
- * Pim — Etiket Profesörü mascot.
+ * Pim — Etiket Profesörü (Owl mascot).
  *
- * ⚠️ NOT: Bu SVG insanımsı bir karakter çiziyor (cilt tonu, krem önlük).
- * docs/brand/PIM_MASCOT_BRIEF.md kanonik karakter spec'i — yumurta-şekilli
- * KUŞ karakter (round glasses, açık önlük, dual cep). Profesyonel vektör
- * çizim teslim edilince bu dosyanın SVG path'leri değiştirilecek.
+ * v0.2 — humanoid placeholder'dan baykuş'a redraw (2026-05-08).
+ * Kanonik karakter spec: docs/brand/PIM_MASCOT_BRIEF.md
  *
- * KORUNACAKLAR (yeniden çizimde aynı kalacak):
- *   - PimPose union (9 pose)
- *   - Props API (pose, size, bob, className)
- *   - Animasyonlar (animate-pim-bob, animate-pim-wave-hand)
- *   - PimMini sub-component
+ * Yapı:
+ *   - Egg-shaped mercan body (head + body integrated)
+ *   - Frontal büyük gözler + lacivert yuvarlak gözlük
+ *   - Hooked turuncu gaga (üçgen değil, kıvrık)
+ *   - Ear tufts + heart-shaped face disc (lighter coral)
+ *   - 2 stilize kanat (humanoid kol yerine, pose'a göre değişir)
+ *   - 2 turuncu pençe (talons)
+ *   - Açık krem önlük, V-yaka — mercan vücut ortadan görünür
+ *   - Sol cep: rulo etiket / Sağ cep: renkli sticker'lar
+ *
+ * Pose API (DESIGN_SYSTEM.md §4): 9 pose. Vücut/yüz aynı, sadece
+ * kanat pozisyonu, mouth, brows, ve extra (magnifier/box/spark) değişir.
+ *
+ * Bu hâlâ stilize "amatör" SVG — profesyonel illüstratör vektörü
+ * teslim ettiğinde path'ler değişir, pose API ve animasyonlar kalır.
  */
 
 export type PimPose =
@@ -34,35 +42,42 @@ interface PimProps {
 interface PoseConfig {
   mouth: "smile" | "wide" | "small" | "frown" | "talk" | "neutral";
   brows: "happy" | "think" | "neutral" | "focus" | "worry";
-  arms: "wave" | "thumb" | "up" | "chin" | "magnify" | "down";
+  wings: "wave" | "up" | "chin" | "magnify" | "thumb" | "box" | "down";
   extra: "magnify" | "box" | "spark" | null;
 }
 
 const POSES: Record<PimPose, PoseConfig> = {
-  wave: { mouth: "smile", brows: "happy", arms: "wave", extra: null },
-  think: { mouth: "small", brows: "think", arms: "chin", extra: null },
-  wait: { mouth: "small", brows: "neutral", arms: "down", extra: null },
+  wave: { mouth: "smile", brows: "happy", wings: "wave", extra: null },
+  think: { mouth: "small", brows: "think", wings: "chin", extra: null },
+  wait: { mouth: "small", brows: "neutral", wings: "down", extra: null },
   inspect: {
     mouth: "small",
     brows: "focus",
-    arms: "magnify",
+    wings: "magnify",
     extra: "magnify",
   },
-  happy: { mouth: "wide", brows: "happy", arms: "thumb", extra: null },
-  sad: { mouth: "frown", brows: "worry", arms: "down", extra: null },
-  excited: { mouth: "wide", brows: "happy", arms: "up", extra: "spark" },
-  box: { mouth: "smile", brows: "happy", arms: "down", extra: "box" },
-  chat: { mouth: "talk", brows: "neutral", arms: "down", extra: null },
+  happy: { mouth: "wide", brows: "happy", wings: "thumb", extra: null },
+  sad: { mouth: "frown", brows: "worry", wings: "down", extra: null },
+  excited: { mouth: "wide", brows: "happy", wings: "up", extra: "spark" },
+  box: { mouth: "smile", brows: "happy", wings: "box", extra: "box" },
+  chat: { mouth: "talk", brows: "neutral", wings: "down", extra: null },
 };
 
-// Palette (placeholder anatomy renkleri — brief'le birlikte değişecek)
-const SKIN = "#FFCDB9";
-const SKIN_SH = "#F2A98E";
-const APRON = "#F5EBD9";
-const APRON_SH = "#E8DCC4";
+// Palette
 const CORAL = "#FF6B5B";
+const CORAL_DARK = "#E85544";
+const CORAL_LIGHT = "#FFA89E";
+const KREM = "#F5EBD9";
+const KREM_DARK = "#E8DCC4";
 const NAVY = "#1F2937";
 const ACCENT = "#FF9933";
+const ACCENT_DARK = "#E68422";
+const WHITE = "#FFFFFF";
+
+// Sticker accent (sadece sağ cepte)
+const VIOLET = "#56258C";
+const MINT = "#5CC9B5";
+const YELLOW = "#FFC845";
 
 export function Pim({
   pose = "wave",
@@ -75,346 +90,8 @@ export function Pim({
     bob ? "animate-pim-bob" : ""
   } ${className}`.trim();
 
-  const mouth = (() => {
-    switch (p.mouth) {
-      case "smile":
-        return (
-          <path
-            d="M88 122 Q100 132 112 122"
-            stroke={NAVY}
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            fill="none"
-          />
-        );
-      case "wide":
-        return (
-          <path
-            d="M86 120 Q100 137 114 120 Q100 128 86 120 Z"
-            fill={NAVY}
-          />
-        );
-      case "small":
-        return (
-          <path
-            d="M94 124 Q100 128 106 124"
-            stroke={NAVY}
-            strokeWidth="3"
-            strokeLinecap="round"
-            fill="none"
-          />
-        );
-      case "frown":
-        return (
-          <path
-            d="M90 128 Q100 120 110 128"
-            stroke={NAVY}
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            fill="none"
-          />
-        );
-      case "talk":
-        return <ellipse cx="100" cy="125" rx="6" ry="4" fill={NAVY} />;
-      default:
-        return null;
-    }
-  })();
-
-  const brows = (() => {
-    switch (p.brows) {
-      case "happy":
-        return (
-          <>
-            <path
-              d="M70 80 Q78 75 86 80"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M114 80 Q122 75 130 80"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </>
-        );
-      case "think":
-        return (
-          <>
-            <path
-              d="M70 78 L86 82"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <path
-              d="M114 82 L130 76"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </>
-        );
-      case "focus":
-        return (
-          <>
-            <path
-              d="M70 80 L86 80"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <path
-              d="M114 80 L130 80"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </>
-        );
-      case "worry":
-        return (
-          <>
-            <path
-              d="M70 82 Q78 76 86 80"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M114 80 Q122 76 130 82"
-              stroke={NAVY}
-              strokeWidth="3"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </>
-        );
-      default:
-        return (
-          <>
-            <rect x="70" y="78" width="16" height="3" rx="1.5" fill={NAVY} />
-            <rect x="114" y="78" width="16" height="3" rx="1.5" fill={NAVY} />
-          </>
-        );
-    }
-  })();
-
-  const eyes = (
-    <g>
-      <circle cx="78" cy="98" r="3.2" fill={NAVY} />
-      <circle cx="122" cy="98" r="3.2" fill={NAVY} />
-    </g>
-  );
-
-  const glasses = (
-    <g fill="none" stroke={NAVY} strokeWidth="2.4">
-      <circle cx="78" cy="98" r="14" />
-      <circle cx="122" cy="98" r="14" />
-      <path d="M92 98 L108 98" strokeLinecap="round" />
-      <path d="M64 96 L60 92" strokeLinecap="round" />
-      <path d="M136 96 L140 92" strokeLinecap="round" />
-    </g>
-  );
-
-  const arms = (() => {
-    switch (p.arms) {
-      case "wave":
-        return (
-          <g>
-            <path
-              d="M62 175 Q52 195 56 215"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <g
-              className="animate-pim-wave-hand"
-              style={{ transformOrigin: "138px 175px" }}
-            >
-              <path
-                d="M138 175 Q160 160 168 138"
-                stroke={SKIN}
-                strokeWidth="14"
-                strokeLinecap="round"
-                fill="none"
-              />
-              <circle cx="170" cy="134" r="11" fill={SKIN} />
-            </g>
-            <circle cx="56" cy="215" r="10" fill={SKIN} />
-          </g>
-        );
-      case "thumb":
-        return (
-          <g>
-            <path
-              d="M62 175 Q56 195 70 200"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M138 175 Q150 160 152 142"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <g transform="translate(150 138)">
-              <circle r="11" fill={SKIN} />
-              <rect x="-3" y="-14" width="6" height="9" rx="3" fill={SKIN} />
-            </g>
-            <circle cx="70" cy="200" r="10" fill={SKIN} />
-          </g>
-        );
-      case "up":
-        return (
-          <g>
-            <path
-              d="M62 175 Q40 150 48 130"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M138 175 Q160 150 152 130"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <circle cx="48" cy="128" r="10" fill={SKIN} />
-            <circle cx="152" cy="128" r="10" fill={SKIN} />
-          </g>
-        );
-      case "chin":
-        return (
-          <g>
-            <path
-              d="M62 175 Q56 195 70 200"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M138 175 Q120 160 110 132"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <circle cx="70" cy="200" r="10" fill={SKIN} />
-            <circle cx="108" cy="128" r="9" fill={SKIN} />
-          </g>
-        );
-      case "magnify":
-        return (
-          <g>
-            <path
-              d="M62 175 Q56 195 70 200"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M138 175 Q146 158 138 138"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <circle cx="70" cy="200" r="10" fill={SKIN} />
-            <circle cx="138" cy="138" r="10" fill={SKIN} />
-          </g>
-        );
-      default:
-        return (
-          <g>
-            <path
-              d="M62 175 Q52 200 60 220"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M138 175 Q148 200 140 220"
-              stroke={SKIN}
-              strokeWidth="14"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <circle cx="60" cy="220" r="10" fill={SKIN} />
-            <circle cx="140" cy="220" r="10" fill={SKIN} />
-          </g>
-        );
-    }
-  })();
-
-  const extra = (() => {
-    if (p.extra === "magnify") {
-      return (
-        <g transform="translate(124 110)">
-          <circle
-            r="22"
-            fill="rgba(255,255,255,0.4)"
-            stroke={NAVY}
-            strokeWidth="3"
-          />
-          <circle r="22" fill="none" stroke={NAVY} strokeWidth="3" />
-          <path
-            d="M16 16 L30 30"
-            stroke={NAVY}
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-        </g>
-      );
-    }
-    if (p.extra === "box") {
-      return (
-        <g transform="translate(45 195)">
-          <rect width="110" height="70" rx="6" fill={ACCENT} />
-          <rect y="0" width="110" height="14" fill="#E68422" />
-          <path
-            d="M0 14 L110 14"
-            stroke="#C76C12"
-            strokeWidth="1.5"
-          />
-          <rect
-            x="48"
-            y="0"
-            width="14"
-            height="70"
-            fill="#FFD9B0"
-            opacity="0.6"
-          />
-        </g>
-      );
-    }
-    if (p.extra === "spark") {
-      return (
-        <g fill={ACCENT}>
-          <path d="M30 50 L34 58 L42 60 L34 62 L30 70 L26 62 L18 60 L26 58 Z" />
-          <path d="M170 60 L173 66 L179 68 L173 70 L170 76 L167 70 L161 68 L167 66 Z" />
-        </g>
-      );
-    }
-    return null;
-  })();
-
   return (
-    <div role="img" aria-label={`Pim: ${pose}`} className={wrapClass}>
+    <div role="img" aria-label={`Pim baykuş: ${pose}`} className={wrapClass}>
       <svg
         width={size}
         height={size}
@@ -428,68 +105,622 @@ export function Pim({
             cy="50%"
             r="50%"
           >
-            <stop offset="0%" stopColor={CORAL} stopOpacity="0.55" />
-            <stop offset="100%" stopColor={CORAL} stopOpacity="0" />
+            <stop offset="0%" stopColor={CORAL_LIGHT} stopOpacity="0.7" />
+            <stop offset="100%" stopColor={CORAL_LIGHT} stopOpacity="0" />
           </radialGradient>
         </defs>
-        {/* gölge */}
-        <ellipse cx="100" cy="232" rx="56" ry="6" fill="rgba(31,41,55,0.12)" />
 
-        {/* önlük + body */}
+        {/* Yer gölgesi */}
+        <ellipse cx="100" cy="232" rx="55" ry="6" fill="rgba(31,41,55,0.12)" />
+
+        {/* Pençeler (talons) — vücut altında */}
         <g>
+          <Talon x={82} />
+          <Talon x={118} />
+        </g>
+
+        {/* Sol kanat (arka katmanda — vücudun arkasında başlar) */}
+        <Wing side="left" pose={p.wings} />
+
+        {/* Vücut + Baş (egg-shaped, tek path) */}
+        <path
+          d="M 100 38 C 62 38 38 78 38 130 C 38 188 65 218 100 218 C 135 218 162 188 162 130 C 162 78 138 38 100 38 Z"
+          fill={CORAL}
+        />
+
+        {/* Vücut altı gölge (alt kısım hafif koyu) */}
+        <path
+          d="M 50 175 Q 100 220 150 175 Q 145 215 100 218 Q 55 215 50 175 Z"
+          fill={CORAL_DARK}
+          opacity="0.4"
+        />
+
+        {/* Heart-shaped face disc (gözler etrafında) */}
+        <path
+          d="M 100 78 C 78 70 50 78 50 108 C 50 138 78 152 100 148 C 122 152 150 138 150 108 C 150 78 122 70 100 78 Z"
+          fill={CORAL_LIGHT}
+          opacity="0.55"
+        />
+
+        {/* Ear tufts (üstte 2 küçük kulak püskülü) */}
+        <path
+          d="M 65 50 L 70 28 L 80 48 Z"
+          fill={CORAL_DARK}
+        />
+        <path
+          d="M 135 50 L 130 28 L 120 48 Z"
+          fill={CORAL_DARK}
+        />
+
+        {/* Cheek blush (yanaklar) */}
+        <circle
+          cx="62"
+          cy="120"
+          r="9"
+          fill={`url(#pim-cheek-${pose})`}
+        />
+        <circle
+          cx="138"
+          cy="120"
+          r="9"
+          fill={`url(#pim-cheek-${pose})`}
+        />
+
+        {/* Brows */}
+        <Brows kind={p.brows} />
+
+        {/* Eyes (büyük frontal owl gözleri) */}
+        <g>
+          <circle cx="78" cy="105" r="13" fill={WHITE} />
+          <circle cx="78" cy="107" r="6" fill={NAVY} />
+          <circle cx="80" cy="105" r="2" fill={WHITE} />
+
+          <circle cx="122" cy="105" r="13" fill={WHITE} />
+          <circle cx="122" cy="107" r="6" fill={NAVY} />
+          <circle cx="124" cy="105" r="2" fill={WHITE} />
+        </g>
+
+        {/* Glasses (yuvarlak, kalın çerçeve) */}
+        <g fill="none" stroke={NAVY} strokeWidth="2.5">
+          <circle cx="78" cy="105" r="16" />
+          <circle cx="122" cy="105" r="16" />
+          <path d="M 94 105 L 106 105" strokeLinecap="round" />
+          <path d="M 62 102 L 56 98" strokeLinecap="round" />
+          <path d="M 138 102 L 144 98" strokeLinecap="round" />
+        </g>
+
+        {/* Hooked beak (turuncu, kıvrık üçgen) */}
+        <path
+          d="M 92 128 Q 100 132 108 128 L 100 144 Z"
+          fill={ACCENT}
+          stroke={ACCENT_DARK}
+          strokeWidth="0.6"
+        />
+        {/* Beak highlight */}
+        <path
+          d="M 96 130 Q 100 132 104 130"
+          stroke="rgba(255,255,255,0.5)"
+          strokeWidth="1"
+          fill="none"
+          strokeLinecap="round"
+        />
+
+        {/* Mouth (gaganın altında, küçük) */}
+        <Mouth kind={p.mouth} />
+
+        {/* V-chest plumage hint (göğüs tüy detayı, çok küçük) */}
+        <path
+          d="M 92 158 L 100 168 L 108 158"
+          stroke={CORAL_DARK}
+          strokeWidth="1"
+          fill="none"
+          strokeLinecap="round"
+          opacity="0.4"
+        />
+
+        {/* Apron — açık V-yaka, iki flap */}
+        <g>
+          {/* Sol flap */}
           <path
-            d="M55 190 Q55 160 78 152 L122 152 Q145 160 145 190 L145 222 Q100 232 55 222 Z"
-            fill={APRON}
+            d="M 60 138 Q 56 175 60 215 L 95 215 L 95 178 L 75 158 Z"
+            fill={KREM}
+            stroke={KREM_DARK}
+            strokeWidth="0.8"
           />
+          {/* Sağ flap */}
           <path
-            d="M82 152 L92 130 M118 152 L108 130"
-            stroke={APRON_SH}
-            strokeWidth="3"
+            d="M 140 138 Q 144 175 140 215 L 105 215 L 105 178 L 125 158 Z"
+            fill={KREM}
+            stroke={KREM_DARK}
+            strokeWidth="0.8"
+          />
+          {/* V-yaka kenar gölgeleri */}
+          <path
+            d="M 75 158 L 100 178 L 125 158"
+            stroke={KREM_DARK}
+            strokeWidth="1.2"
+            fill="none"
             strokeLinecap="round"
           />
-          <rect
-            x="80"
-            y="180"
-            width="40"
-            height="22"
-            rx="4"
-            fill={APRON_SH}
-          />
-          <rect x="62" y="170" width="22" height="14" rx="3" fill={CORAL} />
-          <circle cx="73" cy="177" r="2" fill="white" />
         </g>
 
-        {arms}
-
-        <rect x="92" y="138" width="16" height="14" fill={SKIN_SH} opacity="0.5" />
-
-        {/* head */}
+        {/* Sol cep — rulo etiket (ciddi taraf) */}
         <g>
-          <circle cx="100" cy="98" r="50" fill={SKIN} />
-          <path
-            d="M60 78 Q70 50 100 48 Q130 50 140 78 Q132 64 100 62 Q68 64 60 78 Z"
-            fill={NAVY}
+          <rect
+            x="64"
+            y="180"
+            width="26"
+            height="26"
+            rx="3"
+            fill={KREM_DARK}
           />
-          <circle cx="68" cy="115" r="9" fill={`url(#pim-cheek-${pose})`} />
-          <circle cx="132" cy="115" r="9" fill={`url(#pim-cheek-${pose})`} />
-          <ellipse cx="50" cy="100" rx="5" ry="9" fill={SKIN_SH} />
-          <ellipse cx="150" cy="100" rx="5" ry="9" fill={SKIN_SH} />
-
-          {brows}
-          {eyes}
-          {glasses}
-          {mouth}
+          {/* Rulo (cepten çıkıyor) */}
+          <ellipse cx="77" cy="178" rx="11" ry="3.5" fill={WHITE} stroke={NAVY} strokeWidth="0.7" />
+          <rect x="66" y="178" width="22" height="6" fill={WHITE} stroke={NAVY} strokeWidth="0.5" />
+          <ellipse cx="77" cy="184" rx="11" ry="3" fill={WHITE} />
+          {/* Etiket asılı */}
+          <rect x="73" y="186" width="8" height="14" fill={WHITE} stroke={NAVY} strokeWidth="0.4" />
+          <line x1="74" y1="190" x2="80" y2="190" stroke={NAVY} strokeWidth="0.4" opacity="0.6" />
+          <line x1="74" y1="193" x2="80" y2="193" stroke={NAVY} strokeWidth="0.4" opacity="0.6" />
+          <text x="77" y="197" textAnchor="middle" fontSize="3" fontFamily="Nunito" fontWeight="700" fill={CORAL}>
+            ÜRÜN
+          </text>
         </g>
 
-        {extra}
+        {/* Sağ cep — sticker karması (eğlenceli taraf) */}
+        <g>
+          <rect
+            x="110"
+            y="180"
+            width="26"
+            height="26"
+            rx="3"
+            fill={KREM_DARK}
+          />
+          {/* Sticker'lar (cepten taşıyor) */}
+          {/* Yıldız (yellow) */}
+          <path
+            d="M 116 174 L 118 178 L 122 178 L 119 181 L 120 185 L 116 183 L 112 185 L 113 181 L 110 178 L 114 178 Z"
+            fill={YELLOW}
+            stroke={NAVY}
+            strokeWidth="0.4"
+          />
+          {/* Daire (violet) — half peeled */}
+          <circle cx="125" cy="176" r="5" fill={VIOLET} stroke={NAVY} strokeWidth="0.4" />
+          <text x="125" y="178.5" textAnchor="middle" fontSize="4" fontFamily="Nunito" fontWeight="800" fill={WHITE}>
+            P
+          </text>
+          {/* Kalp/damla (mint) */}
+          <path
+            d="M 132 184 Q 136 180 134 178 Q 132 178 132 181 Q 132 178 130 178 Q 128 180 132 184 Z"
+            fill={MINT}
+            stroke={NAVY}
+            strokeWidth="0.4"
+          />
+          {/* Cepteki ek yatay sticker'lar */}
+          <rect x="113" y="190" width="20" height="3" rx="1" fill={MINT} opacity="0.7" />
+          <rect x="113" y="195" width="14" height="3" rx="1" fill={VIOLET} opacity="0.7" />
+        </g>
+
+        {/* Sağ kanat (önde — pose'a göre dinamik) */}
+        <Wing side="right" pose={p.wings} />
+
+        {/* Extra elementler (magnify glass, box, spark) */}
+        <Extra kind={p.extra} />
       </svg>
     </div>
   );
 }
 
-// ----------------------------------------------------------------
+// ============================================================
+// Sub-components: Wing, Mouth, Brows, Talon, Extra
+// ============================================================
+
+function Wing({ side, pose }: { side: "left" | "right"; pose: PoseConfig["wings"] }) {
+  const isLeft = side === "left";
+  const isRight = side === "right";
+
+  // Kanat geometrisi: yan, hafif feather hint
+  // Default duruş (yana sarkık)
+  const downLeft = (
+    <g>
+      <path
+        d="M 38 130 Q 22 145 30 180 Q 44 188 50 175 Q 50 152 45 130 Z"
+        fill={CORAL_DARK}
+      />
+      {/* Feather hint (1-2 stroke) */}
+      <path
+        d="M 36 150 Q 33 170 42 178"
+        stroke={CORAL}
+        strokeWidth="1"
+        fill="none"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+    </g>
+  );
+
+  const downRight = (
+    <g>
+      <path
+        d="M 162 130 Q 178 145 170 180 Q 156 188 150 175 Q 150 152 155 130 Z"
+        fill={CORAL_DARK}
+      />
+      <path
+        d="M 164 150 Q 167 170 158 178"
+        stroke={CORAL}
+        strokeWidth="1"
+        fill="none"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+    </g>
+  );
+
+  // wave: sağ kanat yukarı + animation
+  if (pose === "wave") {
+    if (isLeft) return downLeft;
+    return (
+      <g
+        className="animate-pim-wave-hand"
+        style={{ transformOrigin: "162px 130px" }}
+      >
+        <path
+          d="M 162 130 Q 175 105 178 75 Q 168 75 158 100 Q 152 118 155 130 Z"
+          fill={CORAL_DARK}
+        />
+        <path
+          d="M 168 90 Q 165 110 160 125"
+          stroke={CORAL}
+          strokeWidth="1"
+          fill="none"
+          strokeLinecap="round"
+          opacity="0.5"
+        />
+      </g>
+    );
+  }
+
+  // up: iki kanat tam yukarı
+  if (pose === "up") {
+    if (isLeft) {
+      return (
+        <g>
+          <path
+            d="M 38 130 Q 18 105 22 70 Q 35 70 45 95 Q 50 115 48 130 Z"
+            fill={CORAL_DARK}
+          />
+          <path
+            d="M 30 95 Q 32 115 40 128"
+            stroke={CORAL}
+            strokeWidth="1"
+            fill="none"
+            strokeLinecap="round"
+            opacity="0.5"
+          />
+        </g>
+      );
+    }
+    return (
+      <g>
+        <path
+          d="M 162 130 Q 182 105 178 70 Q 165 70 155 95 Q 150 115 152 130 Z"
+          fill={CORAL_DARK}
+        />
+        <path
+          d="M 170 95 Q 168 115 160 128"
+          stroke={CORAL}
+          strokeWidth="1"
+          fill="none"
+          strokeLinecap="round"
+          opacity="0.5"
+        />
+      </g>
+    );
+  }
+
+  // chin: sağ kanat yüze yakın (think pose)
+  if (pose === "chin") {
+    if (isLeft) return downLeft;
+    return (
+      <g>
+        <path
+          d="M 162 130 Q 158 115 130 110 Q 122 116 128 130 Q 145 138 162 130 Z"
+          fill={CORAL_DARK}
+        />
+      </g>
+    );
+  }
+
+  // magnify: sağ kanat magnifier tutar (inspect)
+  if (pose === "magnify") {
+    if (isLeft) return downLeft;
+    return (
+      <g>
+        <path
+          d="M 162 130 Q 168 110 148 100 Q 138 108 144 122 Q 152 130 162 130 Z"
+          fill={CORAL_DARK}
+        />
+      </g>
+    );
+  }
+
+  // thumb: kanatlar hafif yukarı (happy — owl thumbs up imkansız, yelpazelenmiş kanat)
+  if (pose === "thumb") {
+    if (isLeft) {
+      return (
+        <g>
+          <path
+            d="M 38 130 Q 24 115 28 95 Q 40 92 46 110 Q 50 122 48 130 Z"
+            fill={CORAL_DARK}
+          />
+        </g>
+      );
+    }
+    return (
+      <g>
+        <path
+          d="M 162 130 Q 176 115 172 95 Q 160 92 154 110 Q 150 122 152 130 Z"
+          fill={CORAL_DARK}
+        />
+      </g>
+    );
+  }
+
+  // box: kanatlar paket etrafında (öne sarmal)
+  if (pose === "box") {
+    if (isLeft) {
+      return (
+        <g>
+          <path
+            d="M 38 130 Q 30 165 50 195 Q 65 198 62 175 Q 55 152 48 130 Z"
+            fill={CORAL_DARK}
+          />
+        </g>
+      );
+    }
+    return (
+      <g>
+        <path
+          d="M 162 130 Q 170 165 150 195 Q 135 198 138 175 Q 145 152 152 130 Z"
+          fill={CORAL_DARK}
+        />
+      </g>
+    );
+  }
+
+  // down (default — wait, sad, chat)
+  return isLeft ? downLeft : downRight;
+}
+
+function Mouth({ kind }: { kind: PoseConfig["mouth"] }) {
+  switch (kind) {
+    case "smile":
+      return (
+        <path
+          d="M 92 152 Q 100 158 108 152"
+          stroke={NAVY}
+          strokeWidth="1.8"
+          fill="none"
+          strokeLinecap="round"
+        />
+      );
+    case "wide":
+      return (
+        <path
+          d="M 89 150 Q 100 165 111 150 Q 100 158 89 150 Z"
+          fill={NAVY}
+        />
+      );
+    case "small":
+      return (
+        <path
+          d="M 96 154 Q 100 157 104 154"
+          stroke={NAVY}
+          strokeWidth="1.6"
+          fill="none"
+          strokeLinecap="round"
+        />
+      );
+    case "frown":
+      return (
+        <path
+          d="M 92 158 Q 100 152 108 158"
+          stroke={NAVY}
+          strokeWidth="1.8"
+          fill="none"
+          strokeLinecap="round"
+        />
+      );
+    case "talk":
+      return <ellipse cx="100" cy="155" rx="3.5" ry="2.5" fill={NAVY} />;
+    default:
+      return null;
+  }
+}
+
+function Brows({ kind }: { kind: PoseConfig["brows"] }) {
+  switch (kind) {
+    case "happy":
+      return (
+        <>
+          <path
+            d="M 64 84 Q 74 78 88 84"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M 112 84 Q 126 78 136 84"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      );
+    case "think":
+      return (
+        <>
+          <path
+            d="M 64 82 L 88 87"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 112 87 L 136 80"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "focus":
+      return (
+        <>
+          <path
+            d="M 64 85 L 88 85"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 112 85 L 136 85"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    case "worry":
+      return (
+        <>
+          <path
+            d="M 64 88 Q 74 80 88 84"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M 112 84 Q 126 80 136 88"
+            stroke={NAVY}
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      );
+    default: // neutral
+      return (
+        <>
+          <rect x="64" y="83" width="22" height="2.6" rx="1.3" fill={NAVY} />
+          <rect x="114" y="83" width="22" height="2.6" rx="1.3" fill={NAVY} />
+        </>
+      );
+  }
+}
+
+function Talon({ x }: { x: number }) {
+  // 3-toe stilize pençe
+  const baseY = 218;
+  return (
+    <g transform={`translate(${x} ${baseY})`}>
+      {/* Bilek */}
+      <ellipse cx="0" cy="0" rx="6" ry="2" fill={ACCENT_DARK} />
+      {/* 3 parmak */}
+      <path
+        d="M -5 0 L -7 8 L -5 11"
+        stroke={ACCENT}
+        strokeWidth="2.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 0 0 L 0 10 L 0 13"
+        stroke={ACCENT}
+        strokeWidth="2.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 5 0 L 7 8 L 5 11"
+        stroke={ACCENT}
+        strokeWidth="2.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </g>
+  );
+}
+
+function Extra({ kind }: { kind: PoseConfig["extra"] }) {
+  if (kind === "magnify") {
+    return (
+      <g transform="translate(150 105)">
+        <circle r="20" fill="rgba(255,255,255,0.35)" stroke={NAVY} strokeWidth="2.5" />
+        <circle r="20" fill="none" stroke={NAVY} strokeWidth="2.5" />
+        {/* Lens parlama */}
+        <ellipse cx="-6" cy="-6" rx="6" ry="3" fill={WHITE} opacity="0.7" />
+        {/* Sap */}
+        <path
+          d="M 14 14 L 26 26"
+          stroke={NAVY}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 14 14 L 26 26"
+          stroke="#5C3A21"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+      </g>
+    );
+  }
+
+  if (kind === "box") {
+    return (
+      <g transform="translate(50 188)">
+        <rect width="100" height="50" rx="4" fill={ACCENT} />
+        <rect y="0" width="100" height="10" fill={ACCENT_DARK} />
+        <path d="M 0 10 L 100 10" stroke="#C76C12" strokeWidth="1" />
+        <rect x="44" y="0" width="12" height="50" fill="#FFD9B0" opacity="0.6" />
+        {/* Etiket */}
+        <rect x="65" y="20" width="22" height="12" rx="1" fill={WHITE} stroke={NAVY} strokeWidth="0.5" />
+        <text
+          x="76"
+          y="29"
+          textAnchor="middle"
+          fontSize="6"
+          fontFamily="Nunito"
+          fontWeight="700"
+          fill={NAVY}
+        >
+          PİM
+        </text>
+      </g>
+    );
+  }
+
+  if (kind === "spark") {
+    return (
+      <g fill={ACCENT}>
+        <path d="M 24 50 L 28 58 L 36 60 L 28 62 L 24 70 L 20 62 L 12 60 L 20 58 Z" />
+        <path d="M 176 60 L 179 66 L 185 68 L 179 70 L 176 76 L 173 70 L 167 68 L 173 66 Z" />
+        <path d="M 100 22 L 102 28 L 108 30 L 102 32 L 100 38 L 98 32 L 92 30 L 98 28 Z" opacity="0.7" />
+      </g>
+    );
+  }
+
+  return null;
+}
+
+// ============================================================
 // PimMini — sohbet ve küçük avatar yerleri için yuvarlak mask
-// ----------------------------------------------------------------
+// ============================================================
 
 interface PimMiniProps {
   pose?: PimPose;
@@ -497,7 +728,11 @@ interface PimMiniProps {
   className?: string;
 }
 
-export function PimMini({ pose = "wave", size = 36, className = "" }: PimMiniProps) {
+export function PimMini({
+  pose = "wave",
+  size = 36,
+  className = "",
+}: PimMiniProps) {
   return (
     <div
       role="img"
@@ -507,13 +742,13 @@ export function PimMini({ pose = "wave", size = 36, className = "" }: PimMiniPro
         width: size,
         height: size,
         borderRadius: "50%",
-        background: SKIN,
+        background: CORAL,
         boxShadow:
           "0 1px 3px rgba(31,41,55,0.2), inset 0 -2px 0 rgba(0,0,0,0.05)",
       }}
     >
-      <div style={{ transform: "translateY(4px) scale(1.6)" }}>
-        <Pim pose={pose} size={size * 1.5} bob={false} />
+      <div style={{ transform: "translateY(8px) scale(1.7)" }}>
+        <Pim pose={pose} size={size * 1.6} bob={false} />
       </div>
     </div>
   );
