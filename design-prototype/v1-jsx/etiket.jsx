@@ -2,6 +2,7 @@
 
 const Etiket = ({ go }) => {
   const { ChevR, Info, Sparkle, ArrowR, Calendar, Plus, Check } = window.Icon;
+  const { FormSection, SelectableCard, PriceCard } = window;
 
   const [material, setMaterial] = React.useState("kraft");
   const [coating, setCoating] = React.useState("mat");
@@ -109,7 +110,7 @@ const Etiket = ({ go }) => {
             </div>
 
             {/* Step 1 — material */}
-            <Step n={1} title="Malzeme" hint="Etiketin dokusunu ve hissini belirler.">
+            <FormSection number={1} title="Malzeme" hint="Etiketin dokusunu ve hissini belirler.">
               <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
                 {materials.map(m => (
                   <SelectableCard key={m.id} selected={material === m.id} onClick={() => setMaterial(m.id)}>
@@ -130,25 +131,25 @@ const Etiket = ({ go }) => {
                   </SelectableCard>
                 ))}
               </div>
-            </Step>
+            </FormSection>
 
             {/* Step 2 — coating */}
-            <Step n={2} title="Kaplama" hint="Yüzey parlaklığı ve dokunsal his.">
+            <FormSection number={2} title="Kaplama" hint="Yüzey parlaklığı ve dokunsal his.">
               <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
                 {coatings.map(c => (
-                  <SelectableCard key={c.id} selected={coating === c.id} onClick={() => setCoating(c.id)} compact>
+                  <SelectableCard key={c.id} selected={coating === c.id} onClick={() => setCoating(c.id)} padding={12}>
                     <div style={{fontWeight: 600, fontSize: 14}}>{c.name}</div>
                     <div className="small muted" style={{marginTop: 2}}>{c.desc}</div>
                   </SelectableCard>
                 ))}
               </div>
-            </Step>
+            </FormSection>
 
             {/* Step 3 — custom */}
-            <Step n={3} title="Özelleştirme" hint="Premium dokunuş — her adetin değil.">
+            <FormSection number={3} title="Özelleştirme" hint="Premium dokunuş — her adetin değil.">
               <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
                 {customs.map(c => (
-                  <SelectableCard key={c.id} selected={custom === c.id} onClick={() => setCustom(c.id)} compact>
+                  <SelectableCard key={c.id} selected={custom === c.id} onClick={() => setCustom(c.id)} padding={12}>
                     <div style={{fontWeight: 600, fontSize: 14}}>{c.name}</div>
                     <div className="small muted" style={{marginTop: 2}}>{c.desc}</div>
                   </SelectableCard>
@@ -173,10 +174,10 @@ const Etiket = ({ go }) => {
                   </div>
                 </div>
               )}
-            </Step>
+            </FormSection>
 
             {/* Step 4 — winding */}
-            <Step n={4} title="Sarım yönü" hint="Otomatik etiketleme makinesi varsa önemli. R harfi etiketin baskı yönünü temsil eder.">
+            <FormSection number={4} title="Sarım yönü" hint="Otomatik etiketleme makinesi varsa önemli. R harfi etiketin baskı yönünü temsil eder.">
               {/* DIŞA SARIM */}
               <div style={{display: "flex", alignItems: "center", gap: 10, marginBottom: 10}}>
                 <div className="tiny" style={{color: "var(--lacivert)", fontWeight: 700, letterSpacing: "0.1em"}}>DIŞA SARIM</div>
@@ -213,10 +214,10 @@ const Etiket = ({ go }) => {
                 <Info size={14}/>
                 <span>Emin değilsen <strong style={{color: "var(--lacivert)"}}>Sarım 1</strong>'i seç — en yaygın kullanılan yön. Pim sana yardım edebilir.</span>
               </div>
-            </Step>
+            </FormSection>
 
             {/* Step 5 — quantity / size */}
-            <Step n={5} title="Adet ve ölçü" hint="Slider'ı kaydırdıkça fiyat anında değişir.">
+            <FormSection number={5} title="Adet ve ölçü" hint="Slider'ı kaydırdıkça fiyat anında değişir.">
               <div>
                 <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12}}>
                   <div className="small" style={{fontWeight: 600}}>Adet</div>
@@ -244,93 +245,26 @@ const Etiket = ({ go }) => {
                   <input className="input" type="number" value={height} onChange={e => setHeight(+e.target.value || 0)}/>
                 </div>
               </div>
-            </Step>
+            </FormSection>
 
             {/* Price card */}
-            <div className="card" style={{padding: 24, background: "white", marginTop: 8, position: "relative", overflow: "hidden"}}>
-              <div style={{
-                position: "absolute", top: 0, left: 0, right: 0, height: 4,
-                background: "linear-gradient(90deg, var(--pim-mercan), var(--turuncu))"
-              }}/>
-
-              <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 16}}>
-                <div>
-                  <div className="tiny muted">TOPLAM</div>
-                  <div style={{fontSize: 38, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1}} key={Math.round(total)}
-                    className="count-pulse">{fmt(total)} <span style={{fontSize: 22, fontWeight: 600, color: "var(--gri-700)"}}>TL</span></div>
-                  <div className="small muted" style={{marginTop: 6}}>Birim fiyat <strong style={{color: "var(--lacivert)"}}>{fmtUnit(unit)} TL/adet</strong> · KDV dahil</div>
-                </div>
-                <div style={{textAlign: "right"}}>
-                  <div className="pill pill-yesil" style={{marginBottom: 6}}>%{Math.round((1 - tierDiscount) * 100)} adet indirimi</div>
-                </div>
-              </div>
-
-              {upsell && (
-                <button onClick={() => setQty(upsell.to)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10, width: "100%",
-                    padding: "12px 14px", borderRadius: 10,
-                    background: "var(--sari-soft)",
-                    border: "1px dashed #E0B158",
-                    color: "#7A560A",
-                    fontWeight: 600, fontSize: 14,
-                    textAlign: "left",
-                    marginBottom: 12,
-                  }}>
-                  <span style={{fontSize: 18}}>💡</span>
-                  <span style={{flex: 1}}>{upsell.msg}</span>
-                  <ArrowR size={14}/>
-                </button>
-              )}
-
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 14px", background: "var(--gri-50)",
-                borderRadius: 10, marginBottom: 16,
-              }}>
-                <Calendar size={16}/>
-                <div className="small">Tahmini teslim: <strong>{teslim}</strong></div>
-              </div>
-
-              <button className="btn btn-primary btn-lg btn-block">
-                Sepete ekle <ArrowR/>
-              </button>
-              <div className="small dim" style={{textAlign: "center", marginTop: 10}}>
-                Şimdi öderken dosya yüklemen gerekmez · 3 gün içinde yükleyebilirsin
-              </div>
-            </div>
+            <PriceCard
+              variant="quiet"
+              topLabel="TOPLAM"
+              total={total}
+              unitPrice={<>Birim fiyat <strong style={{color: "var(--lacivert)"}}>{fmtUnit(unit)} TL/adet</strong> · KDV dahil</>}
+              savingsLabel={tierDiscount < 1 ? `%${Math.round((1 - tierDiscount) * 100)} adet indirimi` : null}
+              upsell={upsell ? { msg: upsell.msg, onClick: () => setQty(upsell.to) } : null}
+              deliveryDate={teslim}
+              ctaLabel="Sepete ekle"
+              footnote="Şimdi öderken dosya yüklemen gerekmez · 3 gün içinde yükleyebilirsin"
+            />
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-const Step = ({ n, title, hint, children }) => (
-  <div className="card" style={{padding: 20}}>
-    <div style={{display: "flex", alignItems: "center", gap: 12, marginBottom: 14}}>
-      <div style={{
-        width: 28, height: 28, borderRadius: "50%",
-        background: "var(--lacivert)", color: "white",
-        display: "grid", placeItems: "center",
-        fontWeight: 700, fontSize: 13,
-      }}>{n}</div>
-      <div style={{flex: 1}}>
-        <div style={{fontWeight: 600, fontSize: 16}}>{title}</div>
-        <div className="small muted">{hint}</div>
-      </div>
-    </div>
-    {children}
-  </div>
-);
-
-const SelectableCard = ({ selected, onClick, children, compact }) => (
-  <button onClick={onClick} className={`selectable ${selected ? "is-selected" : ""}`}
-    style={{padding: compact ? 12 : 14, textAlign: "left"}}>
-    {children}
-    <div className="tick"><window.Icon.Check size={11}/></div>
-  </button>
-);
 
 const WindingIcon = ({ n }) => {
   // 1-4 dışa sarım (strip comes off front of roll)

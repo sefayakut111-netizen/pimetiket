@@ -5,6 +5,7 @@
   --pim-mercan: #FF6B5B;
   --pim-mercan-soft: #FFA89E;
   --pim-mercan-tint: #FFF1EE;
+  --pim-mercan-koyu: #E85544;
   --krem: #F5EBD9;
   --krem-soft: #FAF4E8;
   --lacivert: #1F2937;
@@ -30,14 +31,18 @@
   /* Radius */
   --r-sm: 8px;
   --r: 12px;
+  --r-md: 14px;
   --r-lg: 16px;
   --r-xl: 24px;
+  --r-2xl: 32px;
   --r-pill: 9999px;
 
   /* Shadow */
   --sh-1: 0 1px 2px rgba(31,41,55,0.04), 0 4px 12px rgba(31,41,55,0.06);
   --sh-2: 0 2px 4px rgba(31,41,55,0.04), 0 12px 24px rgba(31,41,55,0.08);
   --sh-inset: inset 0 0 0 1px rgba(31,41,55,0.06);
+  --sh-mercan: 0 6px 14px rgba(255,107,91,0.25);
+  --sh-mercan-lg: 0 8px 20px rgba(255,107,91,0.18);
 
   /* Type */
   --font: "Nunito", "Inter", system-ui, sans-serif;

@@ -5,6 +5,7 @@
 
 const Sticker = ({ go }) => {
   const { ChevR, Info, ArrowR, Calendar, Check, Sparkle } = window.Icon;
+  const { FormSection, SelectableCard, PriceCard } = window;
 
   const [shape, setShape] = React.useState("circle");
   const [material, setMaterial] = React.useState("vinil");
@@ -85,27 +86,25 @@ const Sticker = ({ go }) => {
           {/* RIGHT — config */}
           <div style={{display: "flex", flexDirection: "column", gap: 16}}>
             {/* Step: shape */}
-            <Section title="Şekil">
+            <FormSection title="Şekil">
               <div style={{display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10}}>
                 {shapes.map(s => (
-                  <button key={s.id} onClick={() => setShape(s.id)}
-                    className={`selectable ${shape === s.id ? "is-selected" : ""}`}
-                    style={{padding: 14, textAlign: "center"}}>
+                  <SelectableCard key={s.id} selected={shape === s.id} onClick={() => setShape(s.id)}
+                    style={{textAlign: "center"}}>
                     <ShapeIcon id={s.id} active={shape === s.id}/>
                     <div className="tiny" style={{marginTop: 8, color: "var(--gri-700)"}}>{s.name}</div>
-                    <div className="tick"><Check size={11}/></div>
-                  </button>
+                  </SelectableCard>
                 ))}
               </div>
-            </Section>
+            </FormSection>
 
             {/* Step: material */}
-            <Section title="Malzeme">
+            <FormSection title="Malzeme">
               <div style={{display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10}}>
                 {materials.map(m => (
-                  <button key={m.id} onClick={() => setMaterial(m.id)}
-                    className={`selectable ${material === m.id ? "is-selected" : ""}`}
-                    style={{padding: 12, textAlign: "left", display: "flex", gap: 12, alignItems: "center"}}>
+                  <SelectableCard key={m.id} selected={material === m.id} onClick={() => setMaterial(m.id)}
+                    padding={12}
+                    style={{display: "flex", gap: 12, alignItems: "center"}}>
                     <div style={{
                       width: 44, height: 44, borderRadius: 10, flexShrink: 0,
                       background: m.swatch.startsWith("linear") ? m.swatch : m.swatch,
@@ -116,34 +115,30 @@ const Sticker = ({ go }) => {
                       <div style={{fontWeight: 600, fontSize: 14}}>{m.name}</div>
                       <div className="small muted">{m.desc}</div>
                     </div>
-                    <div className="tick"><Check size={11}/></div>
-                  </button>
+                  </SelectableCard>
                 ))}
               </div>
-            </Section>
+            </FormSection>
 
             {/* Step: finish */}
-            <Section title="Yüzey">
+            <FormSection title="Yüzey">
               <div style={{display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10}}>
                 {finishes.map(f => (
-                  <button key={f.id} onClick={() => setFinish(f.id)}
-                    className={`selectable ${finish === f.id ? "is-selected" : ""}`}
-                    style={{padding: 12, textAlign: "left"}}>
+                  <SelectableCard key={f.id} selected={finish === f.id} onClick={() => setFinish(f.id)}
+                    padding={12}>
                     <div style={{fontWeight: 600, fontSize: 14}}>{f.name}</div>
                     <div className="small muted">{f.desc}</div>
-                    <div className="tick"><Check size={11}/></div>
-                  </button>
+                  </SelectableCard>
                 ))}
               </div>
-            </Section>
+            </FormSection>
 
             {/* Step: size */}
-            <Section title="Boyut">
+            <FormSection title="Boyut">
               <div style={{display: "flex", alignItems: "center", gap: 16}}>
                 {[50, 75, 100, 150].map(s => (
-                  <button key={s} onClick={() => setSize(s)}
-                    className={`selectable ${size === s ? "is-selected" : ""}`}
-                    style={{padding: 14, flex: 1, textAlign: "center"}}>
+                  <SelectableCard key={s} selected={size === s} onClick={() => setSize(s)}
+                    style={{flex: 1, textAlign: "center"}}>
                     <div style={{
                       width: s * 0.4, height: s * 0.4, maxWidth: 60, maxHeight: 60,
                       borderRadius: shape === "circle" ? "50%" : 8,
@@ -152,14 +147,13 @@ const Sticker = ({ go }) => {
                       margin: "0 auto 8px",
                     }}/>
                     <div className="small" style={{fontWeight: 600}}>{s} mm</div>
-                    <div className="tick"><Check size={11}/></div>
-                  </button>
+                  </SelectableCard>
                 ))}
               </div>
-            </Section>
+            </FormSection>
 
             {/* Step: tier cards */}
-            <Section title="Adet — kademen, fiyatın">
+            <FormSection title="Adet — kademen, fiyatın">
               <div style={{display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12}}>
                 {tiers.map((q, i) => {
                   const u = tierBase(q);
@@ -172,14 +166,14 @@ const Sticker = ({ go }) => {
                       style={{
                         position: "relative",
                         padding: "20px 16px",
-                        borderRadius: 14,
+                        borderRadius: "var(--r-md)",
                         background: selected ? "var(--krem)" : "white",
                         border: selected ? "2px solid var(--pim-mercan)" : "2px solid var(--gri-200)",
                         textAlign: "left",
                         cursor: "pointer",
                         transition: "transform 120ms, border 120ms, background 200ms",
                         transform: selected ? "translateY(-2px)" : "none",
-                        boxShadow: selected ? "0 8px 20px rgba(255,107,91,0.18)" : "none",
+                        boxShadow: selected ? "var(--sh-mercan-lg)" : "none",
                       }}>
                       {popular && !selected && (
                         <div className="pill pill-lacivert" style={{position: "absolute", top: -10, left: 16, height: 22, fontSize: 11}}>
@@ -204,70 +198,24 @@ const Sticker = ({ go }) => {
                   );
                 })}
               </div>
-            </Section>
+            </FormSection>
 
             {/* Final price card + cta */}
-            <div style={{
-              background: "linear-gradient(135deg, var(--lacivert) 0%, #2C3849 100%)",
-              color: "white",
-              borderRadius: 20,
-              padding: 24,
-              position: "relative",
-              overflow: "hidden",
-              marginTop: 8,
-            }}>
-              <div style={{
-                position: "absolute", top: -40, right: -40,
-                width: 140, height: 140, borderRadius: "50%",
-                background: "var(--pim-mercan)", opacity: 0.15,
-              }}/>
-              <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16}}>
-                <div>
-                  <div className="tiny" style={{color: "rgba(255,255,255,0.6)"}}>SEÇİMİN</div>
-                  <div style={{fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 4}} key={Math.round(total)} className="count-pulse">
-                    {fmt(total)} <span style={{fontSize: 18, opacity: 0.7}}>TL</span>
-                  </div>
-                  <div className="small" style={{color: "rgba(255,255,255,0.7)", marginTop: 4}}>
-                    {tier} adet × {fmtUnit(currentUnit)} TL · KDV dahil
-                  </div>
-                </div>
-                <div className="pill" style={{background: "var(--pim-mercan)", color: "white", height: 32, padding: "0 14px", fontSize: 13}}>
-                  %{savings} tasarruf
-                </div>
-              </div>
-
-              <div style={{
-                marginTop: 16, padding: "10px 14px",
-                background: "rgba(255,255,255,0.08)", borderRadius: 10,
-                display: "flex", alignItems: "center", gap: 10,
-                fontSize: 13,
-              }}>
-                <Calendar size={14}/>
-                Tahmini teslim: <strong>22 Mayıs 2026</strong>
-              </div>
-
-              <button className="btn btn-lg btn-block" style={{
-                marginTop: 16,
-                background: "var(--pim-mercan)", color: "white",
-              }}>
-                Sepete ekle <ArrowR/>
-              </button>
-            </div>
+            <PriceCard
+              variant="bold"
+              topLabel="SEÇİMİN"
+              total={total}
+              unitPrice={`${tier} adet × ${fmtUnit(currentUnit)} TL · KDV dahil`}
+              savingsLabel={savings > 0 ? `%${savings} tasarruf` : null}
+              deliveryDate="22 Mayıs 2026"
+              ctaLabel="Sepete ekle"
+            />
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-const Section = ({ title, children }) => (
-  <div className="card" style={{padding: 20}}>
-    <div style={{fontWeight: 600, fontSize: 15, marginBottom: 14, display: "flex", alignItems: "center", gap: 8}}>
-      {title}
-    </div>
-    {children}
-  </div>
-);
 
 const ShapeIcon = ({ id, active }) => {
   const c = active ? "#FF6B5B" : "#1F2937";
@@ -297,7 +245,7 @@ const StickerPreview = ({ shape, material, finish, size }) => {
   return (
     <div style={{
       position: "relative",
-      borderRadius: 24,
+      borderRadius: "var(--r-xl)",
       background: "linear-gradient(135deg, #FFF1EE 0%, #FFD9D2 100%)",
       padding: 32,
       minHeight: 540,
@@ -363,7 +311,7 @@ const StickerPreview = ({ shape, material, finish, size }) => {
       {/* size badge */}
       <div style={{
         position: "absolute", bottom: 20, left: 20,
-        padding: "8px 12px", background: "white", borderRadius: 10,
+        padding: "8px 12px", background: "white", borderRadius: "var(--r-sm)",
         boxShadow: "var(--sh-1)",
       }}>
         <div className="tiny muted">BOYUT</div>
@@ -372,7 +320,7 @@ const StickerPreview = ({ shape, material, finish, size }) => {
 
       <div style={{position: "absolute", bottom: 20, right: 20}}>
         <div style={{
-          background: "white", borderRadius: 14, padding: 10,
+          background: "white", borderRadius: "var(--r-md)", padding: 10,
           boxShadow: "var(--sh-2)", display: "flex", gap: 8, alignItems: "center", maxWidth: 200,
         }}>
           <window.PimMini pose="happy" size={32}/>
