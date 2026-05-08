@@ -190,11 +190,25 @@ export default function EtiketPage() {
               <div className="text-[13px] text-gri-700">
                 Seçimlerin canlı önizlemesi
               </div>
-              <div className="flex gap-2">
-                <button className="text-sm px-3 h-9 rounded-full ring-1 ring-gri-200 text-gri-700 hover:bg-gri-100">
+              <div className="flex gap-2" role="group" aria-label="Önizleme görünümü">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  aria-pressed="true"
+                  title="3D görünüm aktif (yakında değiştirilebilir)"
+                  className="text-sm px-3 h-9 rounded-full ring-1 ring-pim-mercan bg-pim-mercan-tint text-pim-mercan font-semibold cursor-not-allowed"
+                >
                   3D
                 </button>
-                <button className="text-sm px-3 h-9 rounded-full ring-1 ring-gri-200 text-gri-700 hover:bg-gri-100">
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  aria-pressed="false"
+                  title="Düz görünüm yakında"
+                  className="text-sm px-3 h-9 rounded-full ring-1 ring-gri-200 text-gri-500 cursor-not-allowed opacity-60"
+                >
                   Düz
                 </button>
               </div>
@@ -336,68 +350,74 @@ export default function EtiketPage() {
               hint="Otomatik etiketleme makinesi varsa önemli. R harfi etiketin baskı yönünü temsil eder."
             >
               {/* DIŞA SARIM */}
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
-                  DIŞA SARIM
-                </span>
-                <span className="flex-1 h-px bg-gri-200" />
-              </div>
-              <div className="grid grid-cols-4 gap-2.5 mb-4">
-                {[1, 2, 3, 4].map((n) => (
-                  <SelectableCard
-                    key={n}
-                    selected={winding === n}
-                    onClick={() => setWinding(n)}
-                    padding={10}
-                    style={{ textAlign: "center", paddingTop: 12 }}
-                  >
-                    <WindingIcon n={n} />
-                    <div
-                      className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
-                      style={{
-                        color:
-                          winding === n
-                            ? "var(--color-pim-mercan)"
-                            : "var(--color-gri-700)",
-                      }}
+              <fieldset className="border-0 p-0 m-0">
+                <legend className="flex items-center gap-2.5 mb-2.5 w-full">
+                  <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
+                    DIŞA SARIM
+                  </span>
+                  <span aria-hidden className="flex-1 h-px bg-gri-200" />
+                </legend>
+                <div className="grid grid-cols-4 gap-2.5 mb-4">
+                  {[1, 2, 3, 4].map((n) => (
+                    <SelectableCard
+                      key={n}
+                      selected={winding === n}
+                      onClick={() => setWinding(n)}
+                      padding={10}
+                      style={{ textAlign: "center", paddingTop: 12 }}
+                      aria-label={`Dışa sarım yön ${n}`}
                     >
-                      SARIM {n}
-                    </div>
-                  </SelectableCard>
-                ))}
-              </div>
+                      <WindingIcon n={n} />
+                      <div
+                        className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
+                        style={{
+                          color:
+                            winding === n
+                              ? "var(--color-pim-mercan)"
+                              : "var(--color-gri-700)",
+                        }}
+                      >
+                        SARIM {n}
+                      </div>
+                    </SelectableCard>
+                  ))}
+                </div>
+              </fieldset>
 
               {/* İÇE SARIM */}
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
-                  İÇE SARIM
-                </span>
-                <span className="flex-1 h-px bg-gri-200" />
-              </div>
-              <div className="grid grid-cols-4 gap-2.5">
-                {[5, 6, 7, 8].map((n) => (
-                  <SelectableCard
-                    key={n}
-                    selected={winding === n}
-                    onClick={() => setWinding(n)}
-                    padding={10}
-                    style={{ textAlign: "center", paddingTop: 12 }}
-                  >
-                    <WindingIcon n={n} />
-                    <div
-                      className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
-                      style={{
-                        color:
-                          winding === n
-                            ? "var(--color-pim-mercan)"
-                            : "var(--color-gri-700)",
-                      }}
+              <fieldset className="border-0 p-0 m-0">
+                <legend className="flex items-center gap-2.5 mb-2.5 w-full">
+                  <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
+                    İÇE SARIM
+                  </span>
+                  <span aria-hidden className="flex-1 h-px bg-gri-200" />
+                </legend>
+                <div className="grid grid-cols-4 gap-2.5">
+                  {[5, 6, 7, 8].map((n) => (
+                    <SelectableCard
+                      key={n}
+                      selected={winding === n}
+                      onClick={() => setWinding(n)}
+                      padding={10}
+                      style={{ textAlign: "center", paddingTop: 12 }}
+                      aria-label={`İçe sarım yön ${n}`}
                     >
-                      SARIM {n}
-                    </div>
-                  </SelectableCard>
-                ))}
-              </div>
+                      <WindingIcon n={n} />
+                      <div
+                        className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
+                        style={{
+                          color:
+                            winding === n
+                              ? "var(--color-pim-mercan)"
+                              : "var(--color-gri-700)",
+                        }}
+                      >
+                        SARIM {n}
+                      </div>
+                    </SelectableCard>
+                  ))}
+                </div>
+              </fieldset>
 
               <div className="flex items-start gap-2 mt-3.5 px-3 py-2.5 rounded-lg bg-gri-50 text-[13px] text-gri-700">
                 <Icon.Info size={14} className="shrink-0 mt-0.5" />

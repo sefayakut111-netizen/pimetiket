@@ -22,7 +22,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <TopBar />
-      <div className="flex-1">{children}</div>
+      <div id="main" tabIndex={-1} className="flex-1 outline-none">
+        {children}
+      </div>
       <Footer />
     </>
   );

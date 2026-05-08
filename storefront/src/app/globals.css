@@ -115,6 +115,30 @@ body {
   color: var(--color-lacivert);
 }
 
+/* ---------- A11y: global focus-visible (WCAG 2.4.7) ---------- */
+:focus-visible {
+  outline: 2px solid var(--color-pim-mercan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Skip-link `tabIndex=-1` ile focus alındığında çerçeve gerekmesin */
+[tabindex="-1"]:focus,
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+/* ---------- A11y: prefers-reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Legal page prose styles (yasal sayfa içerikleri) */
 .legal-prose h2 {
   font-size: 20px;

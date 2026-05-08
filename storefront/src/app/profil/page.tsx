@@ -131,10 +131,13 @@ export default function ProfilPage() {
             ].map((t) => (
               <label
                 key={t.id}
+                htmlFor={`notif-${t.id}`}
                 className="flex items-start gap-3 p-3 rounded-lg hover:bg-gri-50 cursor-pointer"
               >
                 <input
                   type="checkbox"
+                  id={`notif-${t.id}`}
+                  name={`notif-${t.id}`}
                   defaultChecked={t.default}
                   className="mt-1 accent-pim-mercan shrink-0"
                 />

@@ -106,7 +106,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="flex-1">{children}</div>
+      <div id="main" tabIndex={-1} className="flex-1 outline-none">
+        {children}
+      </div>
     </div>
   );
 }
