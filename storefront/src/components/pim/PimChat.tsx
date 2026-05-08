@@ -1,0 +1,478 @@
+"use client";
+
+/**
+ * PimChat — köşe sohbet widget'ı.
+ *
+ * Mimari:
+ *   - Floating button (sağ alt) → açılır panel (380×520)
+ *   - Vercel AI SDK useChat hook ile streaming
+ *   - Memory: localStorage (KVKK opt-in toggle)
+ *   - İlk açılışta consent prompt
+ *
+ * AppShell'de mount edilir. /admin altında render OLMAZ
+ * (AdminShell zaten ayrı).
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { PimAsset } from "@/components/PimAsset";
+import { Icon } from "@/components/Icon";
+import { cn } from "@/lib/cn";
+import { PERSONAS, type PimPersona } from "@/lib/pim/personas";
+import {
+  appendMessage,
+  isReturningUser,
+  memorySnapshotForPrompt,
+  readMemory,
+  setConsent,
+  setDisplayName,
+  type PimMemory,
+} from "@/lib/pim/memory";
+
+const QUICK_CHIPS: Array<{ id: string; label: string; prompt: string }> = [
+  {
+    id: "new-job",
+    label: "Yeni iş",
+    prompt: "Yeni bir baskı yaptırmak istiyorum.",
+  },
+  {
+    id: "reorder",
+    label: "Tekrar baskı",
+    prompt: "Önceki bastırdığım işten tekrar yapacağım.",
+  },
+  {
+    id: "issue",
+    label: "Sorun var",
+    prompt: "Siparişimle ilgili bir sorun var.",
+  },
+];
+
+export function PimChat() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [memory, setMemory] = useState<PimMemory | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [persona] = useState<PimPersona>("welcome");
+  const [unread, setUnread] = useState(0);
+
+  // Mount'ta memory'yi oku (sadece client)
+  useEffect(() => {
+    const mem = readMemory();
+    setMemory(mem);
+    setShowConsent(!mem.consent);
+  }, []);
+
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/pim/chat",
+      prepareSendMessagesRequest({ messages }) {
+        const mem = readMemory();
+        return {
+          body: {
+            messages,
+            persona,
+            memory: memorySnapshotForPrompt(mem),
+          },
+        };
+      },
+    }),
+    onFinish: ({ message }) => {
+      const mem = readMemory();
+      if (mem.consent) {
+        const text = extractText(message);
+        if (text) {
+          appendMessage({
+            role: "assistant",
+            content: text,
+            persona,
+          });
+        }
+      }
+      if (!open) setUnread((n) => n + 1);
+    },
+  });
+
+  // Açılınca unread sıfırla
+  useEffect(() => {
+    if (open) setUnread(0);
+  }, [open]);
+
+  // /admin altında render etme — AdminShell'in kendi flow'u var
+  if (pathname?.startsWith("/admin")) return null;
+
+  const personaSpec = PERSONAS[persona];
+
+  return (
+    <>
+      {/* Floating bubble (her zaman görünür) */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={open ? "Pim'i kapat" : "Pim ile konuş"}
+        aria-expanded={open}
+        className={cn(
+          "fixed bottom-5 right-5 z-50 group",
+          "transition-all duration-200 ease-out",
+          open && "scale-90 opacity-0 pointer-events-none"
+        )}
+      >
+        <span className="relative inline-flex items-center justify-center h-14 w-14 rounded-full bg-pim-mercan shadow-mercan-lg ring-4 ring-white hover:scale-105 transition-transform">
+          <span className="text-white">
+            <PimAsset variant="icon" size={36} bob={false} />
+          </span>
+          {unread > 0 && (
+            <span
+              aria-hidden
+              className="absolute -top-1 -right-1 grid place-items-center min-w-[20px] h-5 px-1 rounded-full bg-lacivert text-white text-[11px] font-bold ring-2 ring-white"
+            >
+              {unread}
+            </span>
+          )}
+        </span>
+        <span className="sr-only">Pim ile konuş</span>
+      </button>
+
+      {/* Chat panel */}
+      <div
+        role="dialog"
+        aria-modal="false"
+        aria-label="Pim ile sohbet"
+        className={cn(
+          "fixed bottom-5 right-5 z-50",
+          "w-[min(380px,calc(100vw-2.5rem))] h-[min(560px,calc(100vh-7rem))]",
+          "flex flex-col rounded-2xl bg-white shadow-2 ring-1 ring-gri-200 overflow-hidden",
+          "transition-all duration-200 ease-out origin-bottom-right",
+          open
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 translate-y-3 pointer-events-none"
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gri-200 bg-gradient-to-br from-pim-mercan-tint to-white">
+          <span className="grid place-items-center h-10 w-10 rounded-full bg-pim-mercan ring-2 ring-white shadow-1">
+            <span className="text-white">
+              <PimAsset variant="icon" size={28} bob={false} />
+            </span>
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-[15px] leading-tight">
+              {personaSpec.label}
+            </div>
+            <div className="text-[11.5px] text-gri-700 flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-yesil" />
+              {personaSpec.tagline}
+              {memory?.consent && (
+                <>
+                  <span className="text-gri-300">·</span>
+                  <span title="Pim seni hatırlıyor">🧠 hatırlıyor</span>
+                </>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Kapat"
+            className="p-1.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert"
+          >
+            <Icon.X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 bg-gri-50">
+          {showConsent ? (
+            <ConsentPanel
+              onAccept={() => {
+                const mem = setConsent(true);
+                setMemory(mem);
+                setShowConsent(false);
+              }}
+              onDecline={() => {
+                setConsent(false);
+                setShowConsent(false);
+              }}
+            />
+          ) : messages.length === 0 ? (
+            <WelcomeView
+              memory={memory}
+              onChip={(prompt) => {
+                if (memory?.consent) {
+                  appendMessage({ role: "user", content: prompt, persona });
+                }
+                sendMessage({ text: prompt });
+              }}
+              onClearHistory={() => {
+                setMessages([]);
+                setUnread(0);
+              }}
+            />
+          ) : (
+            <MessageList messages={messages} status={status} />
+          )}
+        </div>
+
+        {/* Composer */}
+        {!showConsent && (
+          <Composer
+            disabled={status === "streaming" || status === "submitted"}
+            onSend={(text) => {
+              const mem = readMemory();
+              if (mem.consent) {
+                appendMessage({ role: "user", content: text, persona });
+                // Adı düşürdüyse yakala
+                const nameMatch = text.match(/(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/);
+                if (nameMatch && !mem.displayName) {
+                  setDisplayName(nameMatch[1]);
+                }
+              }
+              sendMessage({ text });
+            }}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// Subcomponents
+// ============================================================
+
+function ConsentPanel({
+  onAccept,
+  onDecline,
+}: {
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  return (
+    <div className="rounded-xl bg-white ring-1 ring-gri-200 p-4 text-[13.5px] leading-relaxed">
+      <div className="font-semibold text-base mb-1.5">
+        Selam! Tanışalım mı?
+      </div>
+      <p className="text-gri-700 mb-3">
+        Sohbet ettiklerimizi <strong>tarayıcında</strong> tutarsam, bir
+        dahaki gelişinde nereden kaldığımızı hatırlarım. Marka adın, sevdiğin
+        malzeme — bağlam olarak akılda tutarım.
+      </p>
+      <p className="text-gri-700 mb-3">
+        Sunucuda tutmuyoruz. Dilediğin an temizleyebilirsin (profil ayarları
+        veya tarayıcı verisini silmek).
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onAccept}
+          className="flex-1 h-10 rounded-full bg-pim-mercan text-white font-semibold text-sm hover:bg-pim-mercan-koyu transition-colors"
+        >
+          Tamam, hatırla
+        </button>
+        <button
+          type="button"
+          onClick={onDecline}
+          className="px-4 h-10 rounded-full text-gri-700 font-semibold text-sm hover:bg-gri-100 transition-colors"
+        >
+          Şimdilik gerek yok
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeView({
+  memory,
+  onChip,
+  onClearHistory,
+}: {
+  memory: PimMemory | null;
+  onChip: (prompt: string) => void;
+  onClearHistory: () => void;
+}) {
+  const returning = !!memory && isReturningUser(memory);
+  const greeting = returning
+    ? memory?.displayName
+      ? `Selam ${memory.displayName}, hoş geldin tekrar.`
+      : "Selam, hoş geldin tekrar."
+    : memory?.displayName
+      ? `Selam ${memory.displayName}, hoş geldin.`
+      : "Selam, hoş geldin.";
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl bg-white ring-1 ring-gri-200 p-3.5">
+        <div className="font-semibold text-[15px] mb-0.5">{greeting}</div>
+        <div className="text-[13.5px] text-gri-700">
+          Etiket mi sticker mı bakıyoruz?
+        </div>
+      </div>
+      <div className="flex gap-1.5 flex-wrap">
+        {QUICK_CHIPS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onChip(c.prompt)}
+            className="px-3 h-8 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan hover:bg-pim-mercan-tint/40 transition-colors"
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+      {returning && (
+        <button
+          type="button"
+          onClick={onClearHistory}
+          className="text-[11.5px] text-gri-500 hover:text-pim-mercan underline-offset-2 hover:underline"
+        >
+          Yeni sohbet başlat
+        </button>
+      )}
+    </div>
+  );
+}
+
+function MessageList({
+  messages,
+  status,
+}: {
+  messages: ReturnType<typeof useChat>["messages"];
+  status: ReturnType<typeof useChat>["status"];
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, status]);
+
+  return (
+    <div className="space-y-3">
+      {messages.map((m) => {
+        const text = extractText(m);
+        if (!text) return null;
+        const isUser = m.role === "user";
+        return (
+          <div
+            key={m.id}
+            className={cn(
+              "flex",
+              isUser ? "justify-end" : "justify-start"
+            )}
+          >
+            <div
+              className={cn(
+                "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-1",
+                isUser
+                  ? "bg-pim-mercan text-white rounded-br-md"
+                  : "bg-white ring-1 ring-gri-200 text-lacivert rounded-bl-md"
+              )}
+            >
+              {text}
+            </div>
+          </div>
+        );
+      })}
+      {(status === "submitted" || status === "streaming") && (
+        <div className="flex justify-start">
+          <div className="bg-white ring-1 ring-gri-200 rounded-2xl rounded-bl-md px-3.5 py-2.5">
+            <TypingDots />
+          </div>
+        </div>
+      )}
+      <div ref={scrollRef} />
+    </div>
+  );
+}
+
+function TypingDots() {
+  return (
+    <span className="inline-flex gap-1" aria-label="Pim yazıyor">
+      <span className="w-1.5 h-1.5 rounded-full bg-gri-500 animate-pulse" />
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-gri-500 animate-pulse"
+        style={{ animationDelay: "150ms" }}
+      />
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-gri-500 animate-pulse"
+        style={{ animationDelay: "300ms" }}
+      />
+    </span>
+  );
+}
+
+function Composer({
+  onSend,
+  disabled,
+}: {
+  onSend: (text: string) => void;
+  disabled: boolean;
+}) {
+  const [text, setText] = useState("");
+  const submit = () => {
+    const trimmed = text.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
+    setText("");
+  };
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+      className="flex items-end gap-2 p-3 border-t border-gri-200 bg-white"
+    >
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        placeholder="Pim'e yaz…"
+        rows={1}
+        disabled={disabled}
+        className="flex-1 resize-none px-3.5 py-2 rounded-2xl bg-gri-50 ring-1 ring-gri-200 text-[14px] text-lacivert placeholder:text-gri-500 focus:outline-none focus:ring-pim-mercan focus:bg-white max-h-32"
+      />
+      <button
+        type="submit"
+        disabled={disabled || !text.trim()}
+        aria-label="Gönder"
+        className="grid place-items-center h-10 w-10 rounded-full bg-pim-mercan text-white shadow-mercan disabled:opacity-40 disabled:cursor-not-allowed hover:bg-pim-mercan-koyu transition-colors"
+      >
+        <Icon.ArrowR size={16} />
+      </button>
+    </form>
+  );
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+interface UIMessageLike {
+  parts?: Array<{ type?: string; text?: string }>;
+  content?: string | Array<{ type?: string; text?: string }>;
+}
+
+/** AI SDK v6 UIMessage'ten text parts'ları birleştirir. */
+function extractText(m: unknown): string {
+  if (!m || typeof m !== "object") return "";
+  const msg = m as UIMessageLike;
+  if (Array.isArray(msg.parts)) {
+    return msg.parts
+      .filter((p) => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text as string)
+      .join("");
+  }
+  if (typeof msg.content === "string") return msg.content;
+  if (Array.isArray(msg.content)) {
+    return msg.content
+      .filter((p) => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text as string)
+      .join("");
+  }
+  return "";
+}

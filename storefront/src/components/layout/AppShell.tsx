@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { AdminShell } from "./AdminShell";
+import { PimChat } from "@/components/pim/PimChat";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       <Footer />
+      <PimChat />
     </>
   );
 }
