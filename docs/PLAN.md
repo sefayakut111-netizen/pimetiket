@@ -1,7 +1,8 @@
 # Pim Etiket — Master Plan
 
-**Sürüm:** 1.0
-**Tarih:** 2026-05-08
+**Sürüm:** 2.0
+**İlk yazıldı:** 2026-05-08
+**Son güncelleme:** 2026-05-09
 **Durum:** Yaşayan doküman — her milestone sonrası güncellenir
 
 ---
@@ -17,36 +18,163 @@ Düşük MOQ + geniş malzeme + esnek süreç. Bursa'dan, küçük markalar içi
 
 ---
 
-## 🟢 Tamamlananlar
+## 🟢 Tamamlananlar (kronolojik)
 
-| Adım | Commit | Çıktı |
+| # | Adım | Commit | Tarih | Çıktı |
+|---|---|---|---|---|
+| 1 | **A** workspace + git init | `fadd580` | 05-08 | 21 design prototype dosya organize |
+| 2 | **B** design system + mascot brief | `428fb3f` | 05-08 | DESIGN_SYSTEM.md (9 bölüm) + PIM_MASCOT_BRIEF.md |
+| 3 | **C** v1-jsx mikro fix'ler | `1104621` | 05-08 | 6 fix + 5 yeni token |
+| 4 | **D** Next.js + Tailwind storefront scaffold | erken | 05-08 | Next 16 + Tailwind 4 + 10 UI primitive + AppShell |
+| 5 | **E.1** Public + Yasal sayfalar (12) | erken | 05-08 | /, /etiket, /sticker, /hakkimizda, /sss, /iletisim + 6 yasal |
+| 6 | **E.2** Auth + Customer Account (12) | erken | 05-08 | /auth, /sepet, /odeme, /panelim, /siparis/[id] vs |
+| 7 | **E.3** Admin/Operatör (5) | `32b8378` | 05-08 | /admin, /admin/siparisler/ai-qc/prova/fason |
+| 8 | **F** Medusa v2 backend scaffold | `a793def` | 05-08 | medusa/ monorepo, region TR, currency TRY |
+| 9 | **G** Custom modül schema (6) | `e34c282` | 05-08 | label-config, pricing-engine, qc-pipeline, proof, fason-routing, file-upload |
+| 10 | **🔴 fix(storefront)** broken links + FAQ + cart a11y | `8697ad7` | 05-09 | Footer link, SSS button, sepet aria |
+| 11 | **🟡 fix(consistency)** tagline + voice + i18n | `da90e6e` | 05-09 | TR→EN identifiers, OrderStatus union, lib/pricing.ts |
+| 12 | **🟠 feat(ui)** Toast primitive + CTA wiring | `a09228e` | 05-09 | ToastProvider/useToast + 7 sayfada CTA bağlandı |
+| 13 | **🟢 chore(seo)** metadata + robots + sitemap + JSON-LD | `123d150` | 05-09 | 33 route, Org+WebSite schema, OG, .env.example |
+| 14 | **🟢 chore(a11y)** skip-link + focus-visible + fieldset | `934b3be` | 05-09 | WCAG 2.4.7, sarım fieldset, TopBar fix |
+| 15 | **🟢 chore(perf)** next.config + reduced-motion + audit doc | `02b5925` | 05-09 | AVIF/WebP, poweredByHeader off, AUDIT-quality.md |
+| 16 | **feat(pim)** Faz 1 — Karşılama Pim + GPT-4o + memory | `ec39c18` | 05-09 | Floating chat, Vercel AI SDK v6, localStorage memory, KVKK opt-in, 7 persona spec |
+
+**Toplam**: 16 atomik milestone, ~30 commit, ~12.000 LOC.
+
+---
+
+## 📍 Mevcut durum (2026-05-09)
+
+**Çalışıyor**:
+- Storefront Next 16 + Tailwind 4: 33 route, 32 statik prerender + 2 dinamik (`/api/pim/chat`, `/siparis/[id]`).
+- 29 sayfa mock data ile canlı, görsel onay alındı.
+- Pim Karşılama AI (GPT-4o) — `OPENAI_API_KEY` set edilince çalışır.
+- Build: `npm run build` ✓ TS clean.
+
+**Kapı (gate)**:
+- 🔄 **Pricing module** Sefa lokal'de kodluyor → bekleniyor. Geldiğinde **Block A** açılır.
+- ⏳ Supabase yeni org/proje (Pim Etiket için) — açılmadı.
+- ⏳ ParamPOS / iyzico karar — verilmedi (H bağımlılığı).
+
+**Karar verildi**:
+- Pim brain: GPT-4o (`gpt-4o-mini` ileride cost-down).
+- Pim voice: Bursa esnaf samimiyeti, "sen", abartısız, emoji minimum.
+- Pim ekibi: 7 persona (1 aktif Karşılama + 6 placeholder).
+- Site URL: `https://pimetiket.com` canonical, env `NEXT_PUBLIC_SITE_URL`.
+- 🟢 quality polish kategorisi tamamlandı (SEO/A11y/Perf), `docs/AUDIT-quality.md`.
+
+---
+
+## 🚧 Sıradaki — 5-Blok Roadmap
+
+Bu plan eski D-L lineer sıralamayı **rework önleyecek şekilde** yeniden organize ediyor. Eski D-L detayları aşağıda referans olarak duruyor.
+
+### Block A — Pricing single-source-of-truth 🔄 **GATE**
+
+**Tetikleyici**: Sefa pricing modülünü atınca açılır.
+
+| # | İş | Çıktı |
 |---|---|---|
-| **A** | `fadd580` | Workspace + git init + 21 design prototype dosya organize edildi |
-| **B** | `428fb3f` | `DESIGN_SYSTEM.md` (9 bölüm) + `PIM_MASCOT_BRIEF.md` (kanonik karakter spec) |
-| **C** | `1104621` | v1-jsx'e 6 mikro fix: FormSection/SelectableCard/PriceCard ortak component'ler + 5 yeni tasarım token |
+| A.1 | Sefa'nın pricing modülünü oku, mantığı haritala | — |
+| A.2 | `medusa/src/modules/pricing-engine/` schema'yı modüle göre güncelle | Migration hazır |
+| A.3 | `storefront/src/lib/pricing.ts` SADECE shared module'u import etsin (configurator'da hardcoded `MAT_PRICE` kalmayacak) | Tek kaynak |
+| A.4 | `etiket/page.tsx` + `sticker/page.tsx` shared lib'i tüketsin | Yan etki yok, build temiz |
+| A.5 | Birim test: tier discount, size factor, KDV | `vitest` ilk dosya |
+
+**Süre**: 4-6 saat.
+
+---
+
+### Block B — Backend foundation
+
+| # | İş | Bağımlılık |
+|---|---|---|
+| B.1 | Supabase yeni org + proje | Sefa hesap açacak |
+| B.2 | Medusa env: `DATABASE_URL` + `JWT_SECRET` + `COOKIE_SECRET` | B.1 |
+| B.3 | `medusa db:migrate` — 6 modül + core | B.2 |
+| B.4 | Auth (email + password), OAuth Faz 4'te | B.3 |
+| B.5 | Seed data: malzeme + kaplama + örnek 3 sipariş | A.2 + B.3 |
+| B.6 | Storage (Supabase Storage veya Cloudflare R2) | B.1 |
+
+**Süre**: 1-2 gün.
+
+---
+
+### Block C — Storefront ↔ Medusa entegrasyonu (eski "I" adımı)
+
+| # | İş | Bağımlılık |
+|---|---|---|
+| C.1 | Medusa SDK kurulum + `lib/medusa/client.ts` (singleton) | B |
+| C.2 | `/auth` ↔ Medusa auth provider | B.4 |
+| C.3 | Cart store (Zustand) ↔ Medusa cart API | B.3 |
+| C.4 | `/odeme` ↔ Medusa checkout (Stripe sandbox geçici, ParamPOS Faz 4) | B.3 |
+| C.5 | `/profil`, `/cuzdan`, `/adreslerim`, `/fatura-bilgileri`, `/siparislerim` ↔ customer API | B.3 |
+| C.6 | `/admin/*` ↔ admin API | B.4 |
+| C.7 | File upload: `/etiket` configurator'a dosya alanı + Storage | B.6 |
+
+**Süre**: 3-5 gün.
+
+---
+
+### Block D — Pim Faz 2-4 (paralel akış)
+
+D.1 backend gerektirmez (configurator state client-side), B/C ile paralel ilerleyebilir. D.2-D.4 backend bağımlı.
+
+| Faz | İş | Bağımlılık | Sıra |
+|---|---|---|---|
+| **D.1** Tasarımcı Pim | Configurator handoff + brief çevirici (function calling: `set_configurator`, `set_qty`, `redirect_to_product`) | A bitmeli | A bitince başlar |
+| **D.2** Memory swap | localStorage → Supabase server-side (`pim-memory` modülü canlı) | B + C.2 | C bitince |
+| **D.3** Operatör/Kargocu/Ustabaşı Pim | Sipariş lookup, kargo takip, üretim durumu tool'ları | C bitmeli | C sonrası |
+| **D.4** Muhasebeci + Mevzuat Pim | Fatura, **Packanalyz API köprüsü** | C + Packanalyz API | post-launch |
+
+---
+
+### Block E — Polish + Deploy (eski "L" adımı)
+
+| # | İş | Bağımlılık |
+|---|---|---|
+| E.1 | Yasal sayfa GERÇEK içerik (KVKK m.10, MesafeliSatis m.5, Cayma vs.) | Sefa MERSİS/adres/avukat |
+| E.2 | OG image (1200×630), apple-icon, favicon set | Pim mascot final |
+| E.3 | Pim mascot profesyonel vektör (PIM_MASCOT_BRIEF.md) | — |
+| E.4 | Cloudflare Pages deploy + GitHub Actions CI | C bitmeli |
+| E.5 | DNS pimetiket.com | E.4 |
+| E.6 | Smoke test: 5 kritik flow | C bitmeli |
+| E.7 | UptimeRobot + Sentry + PostHog | E.4 |
+
+---
+
+## 🔁 Kritik prensipler — rework önleme
+
+1. **Pricing önce, Pim Faz 2 sonra**: Pim "2000 kraft etiket fiyatı?" diye sorulduğunda hardcoded değer değil, shared pricing lib'den çağıracak. A bitmeden D.1'e başlamayız.
+2. **Memory interface stable**: `memory.ts`'teki `readMemory/writeMemory` arayüzü değişmeden Supabase'e swap olacak. Faz 1 kodu korunur.
+3. **Mock data sadece UI'da**: Backend response'ları için typed interface'ler (`Order`, `Address`) duruyor. C bloğunda gerçek API'ya geçince TS hataları rehber.
+4. **Pim persona spec dondu**: 7 persona, brand voice, KB tek dosyada (`personas.ts`). Eklemeler system prompt'a satır eklenir.
+5. **Yasal metinler gate**: Sefa'nın domain bilgisi/MERSİS/avukat onayı bekliyor. **E.1 geç tamamlanırsa go-live geç olur** — paralel başlatılabilir.
 
 ---
 
 ## 🔵 Karar bekleyen meseleler
 
-Bu kararları **D başlamadan önce** netleştirmek **gerekmez** ama F-K arası adımlar için kritik. Şimdiden düşünmeye başla:
-
 | Konu | Seçenekler | Etkilediği adım |
 |---|---|---|
-| **Payment provider** | iyzico (kolay onboarding) / ParamPOS (Packanalyz'de var) / Stripe (TR'de KDV/E-fatura kısıtlı) | H |
-| **Backend host** | Railway ($5+/ay, sıfır ops) / Hetzner ($5/ay, Docker gerek) / Render | F, L |
-| **Storefront host** | Vercel (Next.js evi) / Cloudflare Pages (Packanalyz'de var) | E, L |
-| **E-fatura sağlayıcı** | Foriba / Logo / QNB / Mikro / İzibiz | K |
-| **Kargo default** | Yurtiçi / Aras / Sürat / MNG (hepsi entegre, ilki default) | K |
-| **Sosyal login** | MVP'de mi (Google + Apple) yoksa v1.1'e mi | E.2 |
-| **Cüzdan / kredi sistemi** | Brief'te "%2 indirim ile yatır" var — MVP'de mi yoksa v1.1'e mi | F, G |
-| **Demo hesap** | Müşteri kaydı öncesi denemek için var mı? | E.2 |
+| **Payment provider** | iyzico (kolay onboarding) / ParamPOS (Packanalyz'de var) / Stripe sandbox geçici | C.4, H |
+| **Backend host** | Railway ($5+/ay, sıfır ops) / Hetzner ($5/ay, Docker gerek) / Render | B, E.4 |
+| **Storefront host** | Cloudflare Pages (Packanalyz'de var) / Vercel (Next.js evi) | E.4 |
+| **E-fatura sağlayıcı** | Foriba / Logo / QNB / Mikro / İzibiz | post-launch |
+| **Kargo default** | Yurtiçi / Aras / Sürat / MNG | post-launch |
+| **Sosyal login** | MVP'de mi yoksa v1.1'e mi | C.2 |
+| **Pim Faz 2 visual** | 7 persona için kostüm overlay sistemi mi yoksa ayrı SVG'ler mi | D.1 |
+| **Yasal kişilik** | Pim Etiket de Sefa Yakut şahıs işletmesi mi (Packanalyz gibi) yoksa ayrı tüzel kişilik mi | E.1 |
 
 ---
 
-## 🛠️ Yol haritası — Kalan 9 adım
+---
 
-### **D** — Next.js + Tailwind storefront scaffold (~75 dk)
+## 📚 Tarihi referans: orijinal D-L roadmap (2026-05-08)
+
+> **Not**: Bu bölüm tarihi referans amaçlıdır. **Aktif plan yukarıdaki 5-blok roadmap'tir.** D-E ✅ tamamlandı, F ✅ scaffold edildi (G schema), H/I/J/K/L → 5-blok plana göre yeniden organize edildi.
+
+### **D** — Next.js + Tailwind storefront scaffold ✅ TAMAMLANDI
 
 `storefront/` klasörü altında Next.js 14 + TypeScript + Tailwind + App Router.
 
@@ -63,7 +191,7 @@ Bu kararları **D başlamadan önce** netleştirmek **gerekmez** ama F-K arası 
 
 ---
 
-### **E** — Sayfa migration (3 alt-faz, ~3 hafta)
+### **E** — Sayfa migration ✅ TAMAMLANDI
 
 v1+v2 taslaklarını **27 MVP sayfayı** Next.js + TS + Tailwind'e taşı.
 
@@ -113,7 +241,7 @@ v1+v2 taslaklarını **27 MVP sayfayı** Next.js + TS + Tailwind'e taşı.
 
 ---
 
-### **F** — Medusa v2 backend scaffold (~1 gün)
+### **F** — Medusa v2 backend scaffold ✅ scaffold edildi (Block B'de canlandırılacak)
 
 | Alt-adım | İş |
 |---|---|
@@ -131,7 +259,7 @@ v1+v2 taslaklarını **27 MVP sayfayı** Next.js + TS + Tailwind'e taşı.
 
 ---
 
-### **G** — Custom Modules (~1.5 hafta)
+### **G** — Custom Modules 🟡 schema scaffold edildi, model+service Block A+B'de doldurulacak
 
 Medusa core'a dokunmadan `backend/src/modules/` altında özelleştirme.
 
@@ -148,7 +276,7 @@ Medusa core'a dokunmadan `backend/src/modules/` altında özelleştirme.
 
 ---
 
-### **H** — Payment provider (~3-5 gün)
+### **H** — Payment provider ⏳ Block C.4 + post-launch (ParamPOS)
 
 🔵 **Karar gerekli:** iyzico mu ParamPOS mu?
 
@@ -164,7 +292,7 @@ Medusa core'a dokunmadan `backend/src/modules/` altında özelleştirme.
 
 ---
 
-### **I** — Sipariş state machine + Frontend↔Backend entegrasyonu (~2 hafta)
+### **I** — Sipariş state machine + Frontend↔Backend ⏳ Block C'ye dönüştü
 
 Brief'in 7. bölümünde **eksik kalan** kritik kısım. Bu adımdan **önce** Sefa state machine'i netleştirmeli:
 
@@ -190,7 +318,7 @@ draft → cart → payment_pending → paid → file_pending (3-gün TTL)
 
 ---
 
-### **J** — Operatör admin paneli (~5-7 gün)
+### **J** — Operatör admin paneli ⏳ Block C.6'ya dahil oldu
 
 Medusa admin v2'nin slot/widget API'siyle E.3'teki 5 admin sayfasının **gerçek backend'e bağlanması**.
 
@@ -204,7 +332,7 @@ Medusa admin v2'nin slot/widget API'siyle E.3'teki 5 admin sayfasının **gerçe
 
 ---
 
-### **K** — E-fatura + Kargo entegrasyonu (~1.5-2 hafta)
+### **K** — E-fatura + Kargo ⏳ post-launch (kargo Block D.3, e-fatura sonra)
 
 🔵 **Karar gerekli:** E-fatura sağlayıcı + kargo default
 
@@ -219,7 +347,7 @@ Medusa admin v2'nin slot/widget API'siyle E.3'teki 5 admin sayfasının **gerçe
 
 ---
 
-### **L** — Production deploy + monitoring + soft launch (~1 hafta)
+### **L** — Production deploy + soft launch ⏳ Block E'ye dönüştü
 
 | Görev |
 |---|
