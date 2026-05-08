@@ -56,8 +56,8 @@ export function TopBar() {
           >
             <Icon.Search size={18} />
           </button>
-          <button
-            type="button"
+          <Link
+            href="/sepet"
             aria-label="Sepet"
             className="relative p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
@@ -65,7 +65,7 @@ export function TopBar() {
             <span className="absolute top-1 right-1 grid place-items-center w-4 h-4 rounded-full bg-pim-mercan text-white text-[10px] font-bold">
               2
             </span>
-          </button>
+          </Link>
           <Button
             variant="secondary"
             size="sm"
