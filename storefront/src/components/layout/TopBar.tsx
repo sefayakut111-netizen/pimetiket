@@ -66,7 +66,12 @@ export function TopBar() {
               2
             </span>
           </button>
-          <Button variant="secondary" size="sm" className="ml-1.5">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="ml-1.5"
+            href="/auth"
+          >
             <Icon.User size={14} /> Giriş
           </Button>
         </div>
