@@ -15,7 +15,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Input, Eyebrow } from "@/components/ui";
+import { Button, Input, Eyebrow, useToast } from "@/components/ui";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function SifreSifirlaPage() {
   return (
@@ -27,8 +28,10 @@ export default function SifreSifirlaPage() {
 
 function SifreSifirlaInner() {
   const router = useRouter();
+  const toast = useToast();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  // Supabase token query param `code` ya da Step 2'de `recovery` flow ile gelir
+  const token = searchParams.get("token") ?? searchParams.get("code");
 
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -36,6 +39,60 @@ function SifreSifirlaInner() {
   const [emailSent, setEmailSent] = useState(false);
   const [resetDone, setResetDone] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const configured = isSupabaseConfigured();
+
+  const onRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.length < 4) return;
+    if (!configured) {
+      toast.error("Auth henüz yapılandırılmadı.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/sifre-sifirla`,
+      });
+      if (error) {
+        toast.error(`Sıfırlama linki gönderilemedi: ${error.message}`);
+      } else {
+        setEmailSent(true);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Beklenmedik hata");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!(pw.length >= 8 && pw === pw2)) return;
+    if (!configured) {
+      toast.error("Auth henüz yapılandırılmadı.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      // recovery flow: link tıklandığında Supabase otomatik session açar
+      // (recovery type), updateUser direkt çalışır
+      const { error } = await supabase.auth.updateUser({ password: pw });
+      if (error) {
+        toast.error(`Şifre güncellenemedi: ${error.message}`);
+        setLoading(false);
+        return;
+      }
+      setResetDone(true);
+      setLoading(false);
+      setTimeout(() => router.push("/auth"), 2000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Beklenmedik hata");
+      setLoading(false);
+    }
+  };
 
   // Step 2: token varsa yeni şifre belirleme
   if (token) {
@@ -63,16 +120,7 @@ function SifreSifirlaInner() {
               </div>
             ) : (
               <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!canSubmit) return;
-                  setLoading(true);
-                  setTimeout(() => {
-                    setLoading(false);
-                    setResetDone(true);
-                    setTimeout(() => router.push("/auth"), 2000);
-                  }, 600);
-                }}
+                onSubmit={onUpdatePassword}
                 className="flex flex-col gap-3.5"
               >
                 <label className="block">
@@ -164,15 +212,7 @@ function SifreSifirlaInner() {
             </div>
           ) : (
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (email.length < 4) return;
-                setLoading(true);
-                setTimeout(() => {
-                  setLoading(false);
-                  setEmailSent(true);
-                }, 600);
-              }}
+              onSubmit={onRequestReset}
               className="flex flex-col gap-3.5"
             >
               <p className="text-[14px] text-gri-700 leading-relaxed">

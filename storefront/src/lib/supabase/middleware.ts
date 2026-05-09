@@ -1,12 +1,51 @@
 /**
  * Supabase auth middleware helper — Next.js middleware.ts'ten çağrılır.
  *
- * Görev: her request'te session refresh + cookie sync. Auth flow'un
- * çalışması için kritik.
+ * Görev: her request'te session refresh + cookie sync + route protection.
+ *
+ * Korumalı rotalar:
+ *   - /panelim, /siparislerim, /siparis/*, /iadelerim, /iade-talep,
+ *     /cuzdan, /profil, /adreslerim, /fatura-bilgileri,
+ *     /bildirim-tercihleri, /odeme, /odeme-sonuc
+ *   - /admin/* (gelecekte staff role check ile)
+ *
+ * Login olmayan kullanıcı korumalı rotaya gelirse → /auth?next=<path>
+ *
+ * Login olan kullanıcı /auth veya /sifre-sifirla'ya giderse → /panelim
+ *
+ * Supabase env yoksa middleware no-op (uygulama çalışsın).
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+
+const PROTECTED_PATHS: ReadonlyArray<string> = [
+  "/panelim",
+  "/siparislerim",
+  "/siparis/",
+  "/iadelerim",
+  "/iade-talep",
+  "/cuzdan",
+  "/profil",
+  "/adreslerim",
+  "/fatura-bilgileri",
+  "/bildirim-tercihleri",
+  "/odeme",
+  "/odeme-sonuc",
+  "/admin", // staff role check ileride; şimdilik login zorunlu
+];
+
+const AUTH_PATHS: ReadonlyArray<string> = ["/auth", "/sifre-sifirla"];
+
+function isProtected(pathname: string): boolean {
+  return PROTECTED_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/") || pathname === p.replace(/\/$/, "")
+  );
+}
+
+function isAuthPath(pathname: string): boolean {
+  return AUTH_PATHS.some((p) => pathname === p);
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -42,7 +81,33 @@ export async function updateSession(request: NextRequest) {
 
   // KRİTİK: bu çağrı session refresh yapar (token rotation).
   // Atlanırsa cookie'ler senkronize olmaz.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // 1) Korumalı rota + login değil → /auth?next=<path>
+  if (!user && isProtected(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth";
+    redirectUrl.searchParams.set("next", pathname + request.nextUrl.search);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // 2) Login olan kullanıcı /auth'a giderse → /panelim
+  // (recovery flow için /sifre-sifirla'ya istisna: ?code=... parametre varsa
+  // izin ver — kullanıcı recovery linkinden geliyor olabilir)
+  if (user && isAuthPath(pathname)) {
+    const hasCode = request.nextUrl.searchParams.has("code") ||
+      request.nextUrl.searchParams.has("token");
+    if (!hasCode) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/panelim";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
 
   return supabaseResponse;
 }

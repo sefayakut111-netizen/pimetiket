@@ -17,8 +17,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow, useToast } from "@/components/ui";
@@ -26,8 +27,18 @@ import { useT } from "@/lib/i18n/context";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-64px)]" />}>
+      <AuthPageInner />
+    </Suspense>
+  );
+}
+
+function AuthPageInner() {
   const toast = useToast();
   const { t } = useT();
+  const sp = useSearchParams();
+  const next = sp.get("next") ?? "/panelim";
   const [email, setEmail] = useState("");
   const [acceptKvkk, setAcceptKvkk] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,7 +56,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
       if (error) {
@@ -71,7 +82,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
       if (error) toast.error(`Google girişi: ${error.message}`);
@@ -193,15 +204,23 @@ export default function AuthPage() {
                   href="/kvkk"
                   className="text-pim-mercan font-semibold hover:underline"
                 >
-                  {t.auth.kvkkAccept}
-                </Link>{" "}
-                ve{" "}
+                  KVKK
+                </Link>
+                ,{" "}
                 <Link
                   href="/sartlar"
                   className="text-pim-mercan font-semibold hover:underline"
                 >
-                  &nbsp;
+                  Kullanım Şartları
+                </Link>{" "}
+                ve{" "}
+                <Link
+                  href="/cerez"
+                  className="text-pim-mercan font-semibold hover:underline"
+                >
+                  Çerez Politikası
                 </Link>
+                'nı kabul ediyorum.
               </span>
             </label>
 
