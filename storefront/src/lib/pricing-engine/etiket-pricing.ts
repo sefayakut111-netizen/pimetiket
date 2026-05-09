@@ -15,11 +15,11 @@
  */
 
 import {
-  ROLL_L,
   ROLL_MARGIN_X,
-  ROLL_MARGIN_Y,
   ROLL_W_MAX,
   ROLL_W_MIN,
+  ETIKET_ROLL_L,
+  ETIKET_ROLL_MARGIN_Y,
   ETIKET_GAP_DEFAULT,
   ETIKET_TIERS,
   ETIKET_MATERIALS,
@@ -131,7 +131,7 @@ export function computeEtiketGeometry(
   gap: number = ETIKET_GAP_DEFAULT
 ): EtiketGeometry | null {
   const usableMaxW = ROLL_W_MAX - 2 * ROLL_MARGIN_X; // 520
-  const usableMaxL = ROLL_L - ROLL_MARGIN_Y; // 1470
+  const usableMaxL = ETIKET_ROLL_L - ETIKET_ROLL_MARGIN_Y; // 49950 (50m rulo)
 
   if (width > usableMaxW) return null;
   if (height > usableMaxL) return null;
@@ -157,11 +157,11 @@ export function computeEtiketGeometry(
     const etiketsOnLastRoll = qty - (rollsNeeded - 1) * perRoll;
     const lastRowsCount = Math.ceil(etiketsOnLastRoll / cols);
     const lastRollLengthMm =
-      ROLL_MARGIN_Y +
+      ETIKET_ROLL_MARGIN_Y +
       lastRowsCount * height +
       Math.max(lastRowsCount - 1, 0) * gap;
     const totalLengthMm =
-      (rollsNeeded - 1) * ROLL_L + lastRollLengthMm;
+      (rollsNeeded - 1) * ETIKET_ROLL_L + lastRollLengthMm;
     const totalArea = rollW * totalLengthMm;
     const totalM2 = totalArea / 1_000_000;
     const etiketArea = (width * height * qty) / 1_000_000;
@@ -264,7 +264,7 @@ export function adaptEtiketToGeometryResult(
       totalLengthMm: g.totalLengthMm,
       totalArea: g.totalM2 * 1_000_000,
       usableW: g.cols * g.width,
-      usableL: ROLL_L - ROLL_MARGIN_Y,
+      usableL: ETIKET_ROLL_L - ETIKET_ROLL_MARGIN_Y,
       extraSidePad: (g.rollW - g.cols * g.width - 2 * ROLL_MARGIN_X) / 2,
     },
     totalM2: g.totalM2,

@@ -117,6 +117,17 @@ export const ETIKET_MIN_QTY = 1000;
 export const ETIKET_MAX_QTY = 50000;
 export const ETIKET_GAP_DEFAULT = 6;
 
+/**
+ * Etiket rulo standart boyu (mm). Sticker'ın ROLL_L=1520 sabitinden
+ * AYRI: gerçek etiket rulolarımız 50 metre (= 50000 mm) standardında.
+ * Atölyenin rulo değişim sıklığını yansıtır (büyük partilerde gerçek
+ * rulo sayısı = ceil(totalLength / 50000)).
+ */
+export const ETIKET_ROLL_L = 50000;
+
+/** Etiket rulosu üst margin — rulo başlangıcı için boşluk (mm) */
+export const ETIKET_ROLL_MARGIN_Y = 50;
+
 export interface EtiketTier {
   qty: number;
   multiplier: number;

@@ -6,10 +6,15 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  listCustomerOrders,
+  updateCustomerOrderStatus,
+  type CustomerOrder,
+} from "@/lib/customer-order";
 
 interface Fason {
   id: string;
@@ -27,9 +32,10 @@ interface PendingOrder {
   customer: string;
   product: string;
   qty: number;
-  required: string;
 }
 
+// Fason ortakları — gerçek atölyelerimizin config'i, hardcoded.
+// Backend swap'te DB'ye taşınır (Block C).
 const FASONS: Fason[] = [
   {
     id: "f1",
@@ -73,14 +79,44 @@ const FASONS: Fason[] = [
   },
 ];
 
-const PENDING: PendingOrder[] = [
-  { id: "PE-2026-1188", customer: "Mehmet Kahveci", product: "Etiket × 2.500 Kraft + sıcak yaldız", qty: 2500, required: "foil" },
-  { id: "PE-2026-1190", customer: "Festival Co.", product: "Sticker × 1.000 Holografik", qty: 1000, required: "holographic" },
-  { id: "PE-2026-1191", customer: "Eko Atölye", product: "Etiket × 5.000 Beyaz semi-glos", qty: 5000, required: "label" },
-];
+/** CustomerOrder → bekleyen sipariş satırı (paid + qc_pending) */
+function toPendingRow(o: CustomerOrder): PendingOrder {
+  const product =
+    o.items.length === 1
+      ? `${o.items[0].title} ×${o.items[0].qty.toLocaleString("tr-TR")}`
+      : `${o.items.length} ürün`;
+  const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
+  return {
+    id: o.id,
+    customer: o.address.name,
+    product,
+    qty: totalQty,
+  };
+}
 
 export default function AdminFasonPage() {
   const [filter, setFilter] = useState<string>("all");
+  const [pending, setPending] = useState<PendingOrder[]>([]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const queue = listCustomerOrders()
+        .filter((o) => o.status === "paid" || o.status === "qc_pending")
+        .map(toPendingRow);
+      setPending(queue);
+    };
+    refresh();
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
+
+  const assignAuto = (orderId: string) => {
+    // Otomatik fason atama → şimdilik in_production'a geçir
+    // (fason id'si backend swap'te order'a yazılır)
+    updateCustomerOrderStatus(orderId, "in_production");
+    setPending((arr) => arr.filter((p) => p.id !== orderId));
+  };
 
   return (
     <main className="py-8 pb-20">
@@ -91,38 +127,56 @@ export default function AdminFasonPage() {
             Fason ortakları
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {FASONS.length} aktif ortak · {PENDING.length} sipariş atama bekliyor
+            {FASONS.length} aktif ortak · {pending.length} sipariş atama
+            bekliyor
           </p>
         </div>
 
         {/* Pending orders strip */}
-        <Card padding="p-5" className="mb-6 !bg-sari-soft !ring-sari/30">
-          <div className="flex items-center gap-3 mb-3">
-            <Icon.Bolt size={18} className="text-sari" />
-            <h2 className="font-semibold text-base text-[#7A560A]">
-              {PENDING.length} sipariş fason ataması bekliyor
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {PENDING.map((p) => (
-              <div
-                key={p.id}
-                className="bg-white rounded-lg p-3 ring-1 ring-sari/30"
-              >
-                <div className="font-mono text-[11.5px] text-gri-700 mb-1">
-                  {p.id}
+        {pending.length > 0 ? (
+          <Card padding="p-5" className="mb-6 !bg-sari-soft !ring-sari/30">
+            <div className="flex items-center gap-3 mb-3">
+              <Icon.Bolt size={18} className="text-sari" />
+              <h2 className="font-semibold text-base text-[#7A560A]">
+                {pending.length} sipariş fason ataması bekliyor
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {pending.map((p) => (
+                <div
+                  key={p.id}
+                  className="bg-white rounded-lg p-3 ring-1 ring-sari/30"
+                >
+                  <div className="font-mono text-[11.5px] text-gri-700 mb-1">
+                    {p.id}
+                  </div>
+                  <div className="font-semibold text-[13px]">
+                    {p.customer}
+                  </div>
+                  <div className="text-[12px] text-gri-700 mt-1 line-clamp-2">
+                    {p.product}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => assignAuto(p.id)}
+                    className="mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
+                  >
+                    Otomatik ata → Üretime
+                  </button>
                 </div>
-                <div className="font-semibold text-[13px]">{p.customer}</div>
-                <div className="text-[12px] text-gri-700 mt-1 line-clamp-2">
-                  {p.product}
-                </div>
-                <button className="mt-2 text-[12px] font-semibold text-pim-mercan hover:underline">
-                  Otomatik ata →
-                </button>
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <Card padding="p-5" className="mb-6 !bg-yesil-soft !ring-yesil/30">
+            <div className="flex items-center gap-3">
+              <Icon.Check size={18} className="text-yesil" />
+              <h2 className="font-semibold text-base text-yesil">
+                Atama bekleyen sipariş yok — kuyruk temiz 🎉
+              </h2>
+            </div>
+          </Card>
+        )}
 
         {/* Filter chips */}
         <div className="flex gap-2 flex-wrap mb-4">

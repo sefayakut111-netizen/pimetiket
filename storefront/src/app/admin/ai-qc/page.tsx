@@ -2,117 +2,69 @@
  * Pim Etiket — /admin/ai-qc (E.3)
  *
  * AI ön kontrolünden flag'lenen siparişlerin manuel inceleme kuyruğu.
- * Her flag için: sebep, severity, müşteriye gönderilecek mesaj, onay/red.
+ * customer-orders store'undan qc_flagged + operator_review statüsündeki
+ * siparişleri okur. Onayla → in_production, düzeltme iste → cancelled.
+ *
+ * Dosya yükleme + AI flag detayları backend swap'te (Block H/I)
+ * gerçek file upload + AI service ile gelir. Şu an UI iskelet.
  */
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  listCustomerOrders,
+  updateCustomerOrderStatus,
+  type CustomerOrder,
+} from "@/lib/customer-order";
 
-type Severity = "warning" | "fatal";
+const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
-interface Flag {
-  id: string;
-  category:
-    | "color"
-    | "resolution"
-    | "brand"
-    | "spelling"
-    | "size"
-    | "security";
-  severity: Severity;
-  message: string;
+function timeAgo(timestamp: number): string {
+  const diffMs = Date.now() - timestamp;
+  const min = Math.floor(diffMs / 60_000);
+  if (min < 1) return "Az önce";
+  if (min < 60) return `${min} dk önce`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} saat önce`;
+  const day = Math.floor(hr / 24);
+  return `${day} gün önce`;
 }
-
-interface QCItem {
-  orderId: string;
-  customer: string;
-  product: string;
-  fileName: string;
-  uploadedAt: string;
-  flags: Flag[];
-}
-
-const QUEUE: QCItem[] = [
-  {
-    orderId: "PE-2026-1188",
-    customer: "Mehmet Kahveci",
-    product: "Etiket × 2.500 (Kraft + mat selefon)",
-    fileName: "kahve_v2.pdf",
-    uploadedAt: "8 May 14:25",
-    flags: [
-      {
-        id: "f1",
-        category: "color",
-        severity: "warning",
-        message: "CMYK renk uzayı kullanılmamış (RGB tespit edildi). Baskıda renk farkı olabilir.",
-      },
-      {
-        id: "f2",
-        category: "spelling",
-        severity: "warning",
-        message: "İçerik metninde olası yazım hatası: 'kahveçi' → 'kahveci' olabilir mi?",
-      },
-    ],
-  },
-  {
-    orderId: "PE-2026-1190",
-    customer: "Festival Co.",
-    product: "Sticker × 1.000 (Holografik)",
-    fileName: "festival_logo.ai",
-    uploadedAt: "8 May 13:50",
-    flags: [
-      {
-        id: "f3",
-        category: "brand",
-        severity: "fatal",
-        message: "Tasarımda 3. taraf logosu (örn: Nike-tarzı tik) tespit edildi. Marka hakkı ihlali olabilir, üretmeden önce müşteri onayı + kanıt iste.",
-      },
-    ],
-  },
-  {
-    orderId: "PE-2026-1192",
-    customer: "Çiçekçi Atölye",
-    product: "Etiket × 1.000 (Beyaz semi-glos)",
-    fileName: "cicek_son.pdf",
-    uploadedAt: "8 May 12:18",
-    flags: [
-      {
-        id: "f4",
-        category: "resolution",
-        severity: "warning",
-        message: "DPI 192 — 300+ önerilir. Detay kaybolabilir.",
-      },
-    ],
-  },
-];
-
-const CAT_META: Record<
-  Flag["category"],
-  { label: string; icon: React.ReactNode }
-> = {
-  color: { label: "Renk", icon: <Icon.Sparkle size={14} /> },
-  resolution: { label: "Çözünürlük", icon: <Icon.Info size={14} /> },
-  brand: { label: "Marka/Telif", icon: <Icon.Star size={14} /> },
-  spelling: { label: "Yazım", icon: <Icon.Info size={14} /> },
-  size: { label: "Boyut", icon: <Icon.Box size={14} /> },
-  security: { label: "Güvenlik", icon: <Icon.Bolt size={14} /> },
-};
 
 export default function AdminAiQcPage() {
-  const [items, setItems] = useState(QUEUE);
+  const [items, setItems] = useState<CustomerOrder[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  const active = items[activeIdx];
+  const refresh = () => {
+    const queue = listCustomerOrders().filter(
+      (o) => o.status === "qc_flagged" || o.status === "operator_review"
+    );
+    setItems(queue);
+    setActiveIdx((i) => Math.max(0, Math.min(i, queue.length - 1)));
+  };
+
+  useEffect(() => {
+    refresh();
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
 
   const decide = (action: "approve" | "reject") => {
-    setItems((arr) => arr.filter((_, i) => i !== activeIdx));
-    setActiveIdx((i) => Math.max(0, Math.min(i, items.length - 2)));
-    void action;
+    const order = items[activeIdx];
+    if (!order) return;
+    if (action === "approve") {
+      updateCustomerOrderStatus(order.id, "in_production");
+    } else {
+      // Müşteriye düzeltme iste — proof_pending'e düşür ki müşteri tarafında
+      // "düzeltme bekleniyor" görünsün. Cancelled değil çünkü iptal değil.
+      updateCustomerOrderStatus(order.id, "proof_pending");
+    }
+    refresh();
   };
 
   if (items.length === 0) {
@@ -124,13 +76,19 @@ export default function AdminAiQcPage() {
             Kuyruk temiz! 🎉
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            Tüm AI flag'leri inceledin. Pim memnun. Yeni flag geldiğinde
+            Tüm AI flag&rsquo;leri inceledin. Pim memnun. Yeni flag geldiğinde
             burada görünür.
           </p>
         </div>
       </main>
     );
   }
+
+  const active = items[activeIdx];
+  const product =
+    active.items.length === 1
+      ? active.items[0].title
+      : `${active.items.length} ürün`;
 
   return (
     <main className="py-8 pb-20">
@@ -151,10 +109,10 @@ export default function AdminAiQcPage() {
           <Card padding="p-2">
             <div className="flex flex-col gap-1">
               {items.map((q, i) => {
-                const fatal = q.flags.some((f) => f.severity === "fatal");
+                const flagged = q.status === "qc_flagged";
                 return (
                   <button
-                    key={q.orderId}
+                    key={q.id}
                     type="button"
                     onClick={() => setActiveIdx(i)}
                     className={cn(
@@ -166,16 +124,16 @@ export default function AdminAiQcPage() {
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono text-[12px] opacity-80">
-                        {q.orderId}
+                        {q.id}
                       </span>
-                      {fatal && (
+                      {flagged && (
                         <span className="inline-flex items-center h-[18px] px-1.5 rounded-full bg-kirmizi text-white text-[10px] font-bold">
-                          FATAL
+                          FLAG
                         </span>
                       )}
                     </div>
                     <div className="font-semibold text-[13px] truncate">
-                      {q.customer}
+                      {q.address.name}
                     </div>
                     <div
                       className={cn(
@@ -183,7 +141,12 @@ export default function AdminAiQcPage() {
                         activeIdx === i ? "text-white/70" : "text-gri-700"
                       )}
                     >
-                      {q.flags.length} flag · {q.uploadedAt}
+                      {q.items.length === 1
+                        ? q.items[0].product === "sticker"
+                          ? "Sticker"
+                          : "Etiket"
+                        : `${q.items.length} ürün`}{" "}
+                      · {timeAgo(q.createdAt)}
                     </div>
                   </button>
                 );
@@ -197,91 +160,82 @@ export default function AdminAiQcPage() {
             <Card padding="p-6">
               <div className="flex justify-between items-start gap-4 flex-wrap">
                 <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-                    {active.orderId}
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 font-mono">
+                    {active.id}
                   </div>
                   <h2 className="text-xl font-semibold mt-1">
-                    {active.customer}
+                    {active.address.name}
                   </h2>
                   <div className="text-[13px] text-gri-700 mt-1">
-                    {active.product}
+                    {product}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
-                    Yüklenen dosya
+                    Sipariş tutarı
                   </div>
-                  <div className="font-mono text-[13px] mt-1">
-                    {active.fileName}
+                  <div className="text-xl font-bold mt-1 tabular-nums">
+                    {fmt(active.total)} TL
                   </div>
                   <div className="text-[12px] text-gri-700 mt-0.5">
-                    {active.uploadedAt}
+                    {timeAgo(active.createdAt)}
                   </div>
                 </div>
               </div>
             </Card>
 
-            {/* Preview placeholder */}
+            {/* Sipariş içeriği */}
+            <Card padding="p-6">
+              <h3 className="font-semibold text-base mb-3">
+                Sipariş içeriği
+              </h3>
+              <ul className="space-y-2.5 text-[13px]">
+                {active.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex justify-between gap-3 pb-2.5 border-b border-gri-100 last:border-0 last:pb-0"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold text-lacivert truncate">
+                        {item.title}
+                      </span>
+                      <span className="block text-[12px] text-gri-500 truncate">
+                        {item.config} · ×{item.qty.toLocaleString("tr-TR")}
+                      </span>
+                    </span>
+                    <span className="font-semibold tabular-nums shrink-0">
+                      {fmt(item.total)} TL
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            {/* Preview / file placeholder */}
             <Card padding="" className="!p-0 overflow-hidden">
               <div className="aspect-[16/9] bg-gri-100 grid place-items-center">
                 <div className="text-center px-6 py-12">
                   <Icon.Box size={48} className="text-gri-500 mx-auto mb-3" />
                   <div className="font-semibold text-lacivert mb-1">
-                    Tasarım önizlemesi
+                    Tasarım dosyası bekleniyor
                   </div>
                   <div className="text-[13px] text-gri-700 max-w-[400px] mx-auto leading-relaxed">
-                    Burada yüklenen dosyanın PDF/AI thumbnail'i gösterilir.
-                    Yakınlaştırma + bbox highlight ile flag'lenen alanlar
-                    işaretlenir.
+                    Müşteri henüz dosya yüklemedi ya da dosya yükleme akışı
+                    backend swap&rsquo;tan sonra aktif olacak. Bu siparişe
+                    ait notları aşağıdaki butonlardan yönlendir.
                   </div>
                 </div>
               </div>
             </Card>
 
-            {/* Flags */}
+            {/* Decision buttons */}
             <Card padding="p-6">
-              <h3 className="font-semibold text-lg mb-4">
-                Tespit edilen sorunlar ({active.flags.length})
-              </h3>
-              <div className="space-y-3">
-                {active.flags.map((f) => {
-                  const meta = CAT_META[f.category];
-                  return (
-                    <div
-                      key={f.id}
-                      className={cn(
-                        "p-4 rounded-lg ring-1",
-                        f.severity === "fatal"
-                          ? "bg-kirmizi/5 ring-kirmizi/30"
-                          : "bg-sari-soft ring-sari/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
-                            f.severity === "fatal"
-                              ? "bg-kirmizi text-white"
-                              : "bg-sari text-[#7A560A]"
-                          )}
-                        >
-                          {meta.icon}
-                          {f.severity === "fatal" ? "FATAL" : "WARNING"}
-                        </span>
-                        <span className="text-[13px] font-semibold text-lacivert">
-                          {meta.label}
-                        </span>
-                      </div>
-                      <p className="text-[14px] text-gri-700 leading-relaxed">
-                        {f.message}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Decision buttons */}
-              <div className="mt-6 flex flex-wrap gap-3 items-center">
+              <h3 className="font-semibold text-base mb-3">Operatör kararı</h3>
+              <p className="text-[13px] text-gri-700 mb-4 leading-relaxed">
+                Onayla → sipariş üretime alınır. Düzeltme iste → müşteriye
+                prova bekleyen statüsünde döner.
+              </p>
+              <div className="flex flex-wrap gap-3 items-center">
                 <Button
                   variant="primary"
                   size="lg"
@@ -290,10 +244,7 @@ export default function AdminAiQcPage() {
                 >
                   <Icon.Check size={16} /> Onayla → Üretime
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => decide("reject")}
-                >
+                <Button variant="secondary" onClick={() => decide("reject")}>
                   Müşteriye düzeltme iste
                 </Button>
                 <Button variant="ghost">
