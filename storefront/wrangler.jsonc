@@ -1,0 +1,34 @@
+/**
+ * Wrangler config — Cloudflare Workers (Pages) deploy
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ *
+ * Pim Etiket Next.js 16 → @opennextjs/cloudflare → CF Workers Static Assets.
+ * Build çıktısı: .open-next/worker.js + .open-next/assets/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pimetiket-storefront",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  // Static asset bundle (Next.js public/ + static chunks)
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+
+  // Observability — Workers logs (otomatik, ücretsiz)
+  "observability": {
+    "enabled": true
+  },
+
+  // Production env (default, değişiklik gerekirse environments altına eklenir)
+  // Env vars dashboard'dan veya `wrangler secret put` ile set edilir;
+  // burada hardcode YOK — secret/env ayrı.
+
+  // Build-time vars (public, derleme sırasında kullanılır)
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://pimetiket.com"
+  }
+}

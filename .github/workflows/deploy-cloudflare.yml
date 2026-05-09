@@ -1,0 +1,52 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Concurrency: aynı branch'e push'lar kuyruğa, yenisi öncekini iptal eder
+concurrency:
+  group: cf-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build (OpenNext) + Deploy to Cloudflare Workers
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: storefront
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: storefront/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with OpenNext (Cloudflare adapter)
+        env:
+          # Public env vars — build sırasında Next.js bunları statik olarak gömer.
+          # Server-only secret'lar runtime'da Cloudflare Worker env'inden okunur.
+          NEXT_PUBLIC_SITE_URL: https://pimetiket.com
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npx opennextjs-cloudflare build
+
+      - name: Deploy with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: storefront
+          command: deploy

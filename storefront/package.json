@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "check": "node scripts/health-check.mjs",
-    "migrate": "node scripts/migrate.mjs"
+    "migrate": "node scripts/migrate.mjs",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare deploy",
+    "cf:upload": "opennextjs-cloudflare upload"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.63",
@@ -26,6 +30,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.19.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -33,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.90.0"
   }
 }
