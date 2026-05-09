@@ -238,7 +238,11 @@ export default function StickerPage() {
                     style={{ textAlign: "center" }}
                     padding={12}
                   >
-                    <ShapeIcon id={s.id} active={shape === s.id} />
+                    <ShapeIcon
+                      id={s.id}
+                      active={shape === s.id}
+                      inSheet={cutMode === "tabaka"}
+                    />
                     <div className="text-[11.5px] font-bold tracking-[0.04em] text-gri-700 mt-2 leading-tight">
                       {s.name}
                     </div>
@@ -516,7 +520,19 @@ export default function StickerPage() {
 // ShapeIcon
 // ============================================================
 
-function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
+function ShapeIcon({
+  id,
+  active,
+  inSheet = false,
+}: {
+  id: ShapeId;
+  active: boolean;
+  inSheet?: boolean;
+}) {
+  if (inSheet) {
+    return <ShapeSheetIcon id={id} active={active} />;
+  }
+
   const stroke = active
     ? "var(--color-pim-mercan)"
     : "var(--color-lacivert)";
@@ -557,13 +573,16 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
         className="mx-auto"
         aria-hidden
       >
-        {/* Yıldız + dalga karışımı 12-köşeli abstract — preview clip-path ile uyumlu */}
-        <path
-          d="M18 2 L21.6 9.9 L30.96 5.04 L27.36 13.68 L36 18 L27.36 22.32 L30.96 30.96 L21.6 26.1 L18 34 L14.4 26.1 L5.04 30.96 L8.64 22.32 L0 18 L8.64 13.68 L5.04 5.04 L14.4 9.9 Z"
+        {/* Bumper / dikdörtgen oran ikon */}
+        <rect
+          x="2"
+          y="11"
+          width="32"
+          height="14"
+          rx="6"
           fill={fill}
           stroke={stroke}
-          strokeWidth="1.6"
-          strokeLinejoin="round"
+          strokeWidth="1.8"
         />
       </svg>
     );
@@ -582,6 +601,139 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
         strokeWidth="2"
         strokeDasharray="3 2"
       />
+    </svg>
+  );
+}
+
+// ShapeSheetIcon — tabaka modunda kağıt + mini grid (Sticker Mule pattern)
+function ShapeSheetIcon({ id, active }: { id: ShapeId; active: boolean }) {
+  const stroke = active
+    ? "var(--color-pim-mercan)"
+    : "var(--color-lacivert)";
+  const fill = active
+    ? "var(--color-pim-mercan-tint)"
+    : "rgba(31,41,55,0.10)";
+  const innerStroke = active
+    ? "var(--color-pim-mercan-koyu)"
+    : "var(--color-gri-700)";
+
+  return (
+    <svg
+      width="44"
+      height="48"
+      viewBox="0 0 44 48"
+      className="mx-auto"
+      aria-hidden
+    >
+      {/* Arka katman kağıtlar — depth (stack of papers) */}
+      <rect
+        x="6"
+        y="4"
+        width="34"
+        height="42"
+        rx="2"
+        fill="white"
+        stroke={stroke}
+        strokeWidth="0.7"
+        opacity="0.4"
+      />
+      <rect
+        x="3"
+        y="2"
+        width="34"
+        height="42"
+        rx="2"
+        fill="white"
+        stroke={stroke}
+        strokeWidth="0.7"
+        opacity="0.7"
+      />
+      {/* Ön kağıt */}
+      <rect
+        x="0"
+        y="0"
+        width="34"
+        height="42"
+        rx="2"
+        fill="white"
+        stroke={stroke}
+        strokeWidth="1.2"
+      />
+
+      {/* İçerik grid — id'ye göre */}
+      {id === "square" && (
+        <g>
+          {/* 3 col × 4 row mini kareler */}
+          {[0, 1, 2, 3].map((row) =>
+            [0, 1, 2].map((col) => (
+              <rect
+                key={`${row}-${col}`}
+                x={3 + col * 9.5}
+                y={3 + row * 9.5}
+                width="7.5"
+                height="7.5"
+                fill={fill}
+                stroke={innerStroke}
+                strokeWidth="0.8"
+              />
+            ))
+          )}
+        </g>
+      )}
+      {id === "circle" && (
+        <g>
+          {/* 3 col × 3 row mini daireler */}
+          {[0, 1, 2].map((row) =>
+            [0, 1, 2].map((col) => (
+              <circle
+                key={`${row}-${col}`}
+                cx={6 + col * 11}
+                cy={7 + row * 12.5}
+                r="4.5"
+                fill={fill}
+                stroke={innerStroke}
+                strokeWidth="0.8"
+              />
+            ))
+          )}
+        </g>
+      )}
+      {id === "ozel" && (
+        <g>
+          {/* 1 col × 5 row bumper / dikdörtgen */}
+          {[0, 1, 2, 3, 4].map((row) => (
+            <rect
+              key={row}
+              x="2.5"
+              y={3 + row * 7.5}
+              width="29"
+              height="5.5"
+              rx="2.5"
+              fill={fill}
+              stroke={innerStroke}
+              strokeWidth="0.8"
+            />
+          ))}
+        </g>
+      )}
+      {id === "die" && (
+        <g>
+          {/* 2 col × 3 row asimetrik kontur (Pim baykuş tasarımcı görselle uyum için)
+             — tabaka modunda die zaten gizli ama defansif fallback */}
+          {[0, 1, 2].map((row) =>
+            [0, 1].map((col) => (
+              <path
+                key={`${row}-${col}`}
+                transform={`translate(${4 + col * 14}, ${3 + row * 13})`}
+                d="M5 0 Q9 0 10 4 Q12 5 11 8 Q12 11 8 11 Q5 13 3 11 Q0 11 1 8 Q-1 5 1 4 Q3 0 5 0 Z"
+                fill={fill}
+                stroke={innerStroke}
+                strokeWidth="0.7"
+              />
+            ))
+          )}
+        </g>
+      )}
     </svg>
   );
 }
