@@ -10,7 +10,7 @@
   "name": "pimetiket-storefront",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-04-01",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "compatibility_flags": ["nodejs_compat"],
 
   // Static asset bundle (Next.js public/ + static chunks)
   "assets": {
@@ -25,10 +25,6 @@
 
   // Production env (default, değişiklik gerekirse environments altına eklenir)
   // Env vars dashboard'dan veya `wrangler secret put` ile set edilir;
-  // burada hardcode YOK — secret/env ayrı.
-
-  // Build-time vars (public, derleme sırasında kullanılır)
-  "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://pimetiket.com"
-  }
+  // server-only secret'lar Worker secret'ında, public NEXT_PUBLIC_*'lar
+  // build-time'da Next.js bundle'a derlenir (GitHub Action env).
 }
