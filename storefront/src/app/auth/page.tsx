@@ -1,55 +1,151 @@
 /**
  * Pim Etiket — /auth (E.2.1)
  *
- * Giriş + Kayıt — tek sayfa, tab pattern (useState).
- * Mock auth: form submit'te alert + redirect /panelim'e (gerçek auth I adımında).
+ * Magic link tabanlı authentication — Supabase auth.
+ * Sefa kararı: parolasız akış (Packanalyz patterniyle aynı).
  *
- * NOT: Google OAuth, email doğrulama, password reset gerçek akışları F+I
- * adımlarında. Şu an sadece UI taslağı.
+ * Akış:
+ *   1. User email girer
+ *   2. supabase.auth.signInWithOtp({ email }) → email gönderilir
+ *   3. User email'deki linke tıklar
+ *   4. /auth/callback session oluşturur, /panelim'e redirect
+ *
+ * Google OAuth alternatif: signInWithOAuth({ provider: "google" })
+ *
+ * Supabase env yoksa fallback: "Auth yapılandırılmamış" mesajı.
  */
 
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Input, Eyebrow } from "@/components/ui";
-import { cn } from "@/lib/cn";
-
-type Mode = "login" | "register";
+import { Button, Input, Eyebrow, useToast } from "@/components/ui";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function AuthPage() {
-  const router = useRouter();
-  const [mode, setMode] = useState<Mode>("login");
+  const toast = useToast();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [acceptKvkk, setAcceptKvkk] = useState(false);
-  const [acceptSatis, setAcceptSatis] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [linkSent, setLinkSent] = useState(false);
 
-  const isLogin = mode === "login";
-  const canSubmit = isLogin
-    ? email.length > 3 && password.length >= 8
-    : email.length > 3 &&
-      password.length >= 8 &&
-      name.length >= 2 &&
-      acceptKvkk &&
-      acceptSatis;
+  const configured = isSupabaseConfigured();
+  const canSubmit = email.length > 3 && email.includes("@") && acceptKvkk;
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || !configured) return;
     setLoading(true);
-    // Mock — gerçek auth I adımında
-    setTimeout(() => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        toast.error(`Giriş bağlantısı gönderilemedi: ${error.message}`);
+      } else {
+        setLinkSent(true);
+        toast.success("Giriş bağlantısı e-postana gönderildi");
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Beklenmedik hata"
+      );
+    } finally {
       setLoading(false);
-      router.push("/panelim");
-    }, 600);
+    }
   };
+
+  const onGoogleLogin = async () => {
+    if (!configured) return;
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) toast.error(`Google girişi: ${error.message}`);
+      // Başarı durumunda Supabase yönlendirme yapacak
+    } catch (err) {
+      setLoading(false);
+      toast.error(
+        err instanceof Error ? err.message : "Beklenmedik hata"
+      );
+    }
+  };
+
+  // Supabase yapılandırılmamış uyarı
+  if (!configured) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[480px] px-6">
+          <div className="text-center mb-8">
+            <Pim pose="think" size={140} />
+            <Eyebrow>Henüz aktif değil</Eyebrow>
+            <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
+              Giriş yakında açılacak
+            </h1>
+          </div>
+          <div className="bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] p-6 text-[14px] text-gri-700 leading-relaxed">
+            Auth altyapısı kurulum aşamasında. Şu an sipariş ve sepet
+            akışlarını giriş yapmadan da kullanabilirsin (cihaz bazlı
+            kayıt).
+            <div className="mt-5 flex gap-3 flex-wrap">
+              <Button variant="primary" size="sm" href="/etiket">
+                <Icon.Roll size={14} /> Etiket bastır
+              </Button>
+              <Button variant="secondary" size="sm" href="/sticker">
+                <Icon.Sticker size={14} /> Sticker bastır
+              </Button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Magic link gönderildi — kontrol et ekranı
+  if (linkSent) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[480px] px-6 text-center">
+          <Pim pose="happy" size={140} />
+          <Eyebrow>E-posta yollandı</Eyebrow>
+          <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
+            E-postanı kontrol et 📩
+          </h1>
+          <div className="bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] p-6 mt-6 text-left">
+            <p className="text-[14px] text-gri-700 leading-relaxed">
+              <strong className="text-lacivert">{email}</strong> adresine
+              giriş bağlantısı yolladım. Linke tıkla, otomatik girersin.
+            </p>
+            <p className="text-[12.5px] text-gri-500 mt-4 leading-relaxed">
+              Mail görünmüyorsa spam/gereksiz klasörünü kontrol et. Link 1
+              saat içinde geçerli.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setLinkSent(false);
+                setEmail("");
+              }}
+              className="text-[13px] text-pim-mercan font-semibold hover:underline mt-5"
+            >
+              ← Farklı e-posta dene
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
@@ -57,101 +153,21 @@ export default function AuthPage() {
         {/* Hero */}
         <div className="text-center mb-8">
           <div className="inline-block">
-            <Pim pose={isLogin ? "wave" : "happy"} size={120} />
+            <Pim pose="wave" size={120} />
           </div>
-          <Eyebrow>{isLogin ? "Tekrar hoş geldin" : "Aramıza katıl"}</Eyebrow>
+          <Eyebrow>Hesabına giriş</Eyebrow>
           <h1 className="mt-3 text-[28px] font-semibold tracking-tight leading-tight">
-            {isLogin
-              ? "Hesabına giriş yap"
-              : "5 dakikada hesap oluştur"}
+            E-postanla giriş yap
           </h1>
+          <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
+            Şifre yok — sana giriş bağlantısı yolluyoruz. Bir tıkla
+            içeridesin.
+          </p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] p-7">
-          {/* Tab switch */}
-          <div className="grid grid-cols-2 gap-1 p-1 rounded-full bg-gri-100 mb-6">
-            <button
-              type="button"
-              onClick={() => setMode("login")}
-              className={cn(
-                "h-9 rounded-full text-sm font-semibold transition-colors",
-                isLogin
-                  ? "bg-white text-lacivert shadow-1"
-                  : "text-gri-700 hover:text-lacivert"
-              )}
-            >
-              Giriş
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("register")}
-              className={cn(
-                "h-9 rounded-full text-sm font-semibold transition-colors",
-                !isLogin
-                  ? "bg-white text-lacivert shadow-1"
-                  : "text-gri-700 hover:text-lacivert"
-              )}
-            >
-              Kayıt
-            </button>
-          </div>
-
-          {/* Google placeholder */}
-          <button
-            type="button"
-            disabled
-            className="w-full h-11 rounded-full ring-1 ring-gri-200 bg-white text-sm font-semibold flex items-center justify-center gap-2 mb-3 hover:bg-gri-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Yakında — F adımı"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-              <path
-                fill="#4285F4"
-                d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
-              />
-              <path
-                fill="#34A853"
-                d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-              />
-              <path
-                fill="#EA4335"
-                d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-              />
-            </svg>
-            Google ile {isLogin ? "giriş" : "kayıt"} (yakında)
-          </button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <span className="flex-1 h-px bg-gri-200" />
-            <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-500">
-              veya email ile
-            </span>
-            <span className="flex-1 h-px bg-gri-200" />
-          </div>
-
-          {/* Form */}
-          <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
-            {!isLogin && (
-              <label className="block">
-                <span className="text-[13px] font-semibold mb-1.5 block">
-                  Ad Soyad
-                </span>
-                <Input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Sefa Yakut"
-                  autoComplete="name"
-                  required
-                />
-              </label>
-            )}
-
+          <form onSubmit={onMagicLink} className="flex flex-col gap-4">
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
                 E-posta
@@ -160,151 +176,115 @@ export default function AuthPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="merhaba@pimetiket.com"
+                placeholder="ornek@marka.com"
                 autoComplete="email"
                 required
+                disabled={loading}
               />
             </label>
 
-            <label className="block">
-              <span className="text-[13px] font-semibold mb-1.5 block flex justify-between items-baseline">
-                <span>Şifre</span>
-                {isLogin && (
-                  <Link
-                    href="/sifre-sifirla"
-                    className="text-[12.5px] font-semibold text-pim-mercan hover:underline"
-                  >
-                    Şifremi unuttum
-                  </Link>
-                )}
-              </span>
-              <div className="relative">
-                <Input
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="En az 8 karakter"
-                  autoComplete={isLogin ? "current-password" : "new-password"}
-                  minLength={8}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  aria-label={showPw ? "Şifreyi gizle" : "Şifreyi göster"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded text-gri-500 hover:text-lacivert hover:bg-gri-100"
+            <label className="flex items-start gap-2.5 text-[12.5px] text-gri-700 leading-relaxed cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptKvkk}
+                onChange={(e) => setAcceptKvkk(e.target.checked)}
+                className="mt-0.5 accent-pim-mercan shrink-0"
+              />
+              <span>
+                <Link
+                  href="/kvkk"
+                  className="text-pim-mercan font-semibold hover:underline"
                 >
-                  {showPw ? (
-                    <Icon.EyeOff size={16} />
-                  ) : (
-                    <Icon.Eye size={16} />
-                  )}
-                </button>
-              </div>
+                  KVKK aydınlatma metnini
+                </Link>{" "}
+                ve{" "}
+                <Link
+                  href="/sartlar"
+                  className="text-pim-mercan font-semibold hover:underline"
+                >
+                  Kullanım Şartları
+                </Link>
+                &rsquo;nı kabul ediyorum.
+              </span>
             </label>
 
-            {!isLogin && (
-              <div className="space-y-2 mt-1">
-                <label className="flex items-start gap-2.5 text-[13px] text-gri-700 leading-relaxed cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={acceptKvkk}
-                    onChange={(e) => setAcceptKvkk(e.target.checked)}
-                    className="mt-1 accent-pim-mercan shrink-0"
-                  />
-                  <span>
-                    <Link
-                      href="/kvkk"
-                      className="text-pim-mercan font-semibold hover:underline"
-                    >
-                      KVKK Aydınlatma Metni
-                    </Link>
-                    ,{" "}
-                    <Link
-                      href="/gizlilik"
-                      className="text-pim-mercan font-semibold hover:underline"
-                    >
-                      Gizlilik Politikası
-                    </Link>{" "}
-                    ve{" "}
-                    <Link
-                      href="/cerez"
-                      className="text-pim-mercan font-semibold hover:underline"
-                    >
-                      Çerez Politikası
-                    </Link>
-                    &rsquo;nı okudum, kabul ediyorum.
-                  </span>
-                </label>
-                <label className="flex items-start gap-2.5 text-[13px] text-gri-700 leading-relaxed cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={acceptSatis}
-                    onChange={(e) => setAcceptSatis(e.target.checked)}
-                    className="mt-1 accent-pim-mercan shrink-0"
-                  />
-                  <span>
-                    <Link
-                      href="/mesafeli-satis"
-                      className="text-pim-mercan font-semibold hover:underline"
-                    >
-                      Mesafeli Satış Sözleşmesi
-                    </Link>{" "}
-                    ve{" "}
-                    <Link
-                      href="/sartlar"
-                      className="text-pim-mercan font-semibold hover:underline"
-                    >
-                      Kullanım Şartları
-                    </Link>
-                    &rsquo;nı okudum, kabul ediyorum.
-                  </span>
-                </label>
-              </div>
-            )}
-
             <Button
+              type="submit"
               variant="primary"
               size="lg"
               block
-              type="submit"
               disabled={!canSubmit || loading}
-              className="mt-3"
             >
-              {loading
-                ? "Bekle..."
-                : isLogin
-                  ? "Giriş yap"
-                  : "Hesabımı oluştur"}{" "}
+              {loading ? "Gönderiliyor..." : "Giriş bağlantısı yolla"}{" "}
               {!loading && <Icon.ArrowR />}
             </Button>
           </form>
 
-          {/* Mode switch */}
-          <div className="mt-5 text-center text-[13px] text-gri-700">
-            {isLogin ? "Hesabın yok mu?" : "Zaten üye misin?"}{" "}
-            <button
-              type="button"
-              onClick={() => setMode(isLogin ? "register" : "login")}
-              className="text-pim-mercan font-semibold hover:underline"
-            >
-              {isLogin ? "Kayıt ol" : "Giriş yap"}
-            </button>
+          <div className="flex items-center gap-3 my-5">
+            <span className="flex-1 h-px bg-gri-200" />
+            <span className="text-[11.5px] text-gri-500 uppercase tracking-[0.04em]">
+              veya
+            </span>
+            <span className="flex-1 h-px bg-gri-200" />
           </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            block
+            onClick={onGoogleLogin}
+            disabled={loading}
+          >
+            <GoogleIcon /> Google ile devam et
+          </Button>
+
+          <p className="text-[11.5px] text-gri-500 mt-5 text-center leading-relaxed">
+            Hesabın yoksa otomatik oluşturulur. Sipariş geçmişin tüm
+            cihazlarında senkron.
+          </p>
         </div>
 
-        {/* Footnote */}
-        <p className="text-[12.5px] text-gri-500 text-center mt-6 leading-relaxed">
-          Pim Etiket olarak verilerini özenle koruyoruz. Detaylar{" "}
+        <p className="text-[13px] text-gri-700 text-center mt-6">
+          Yardım gerekirse{" "}
           <Link
-            href="/gizlilik"
+            href="/iletisim"
             className="text-pim-mercan font-semibold hover:underline"
           >
-            Gizlilik Politikası
+            bize yaz
           </Link>
-          &rsquo;nda.
+          .
         </p>
       </div>
     </main>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      aria-hidden
+      style={{ display: "inline-block", verticalAlign: "middle" }}
+    >
+      <path
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+        fill="#4285F4"
+      />
+      <path
+        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+        fill="#34A853"
+      />
+      <path
+        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+        fill="#EA4335"
+      />
+    </svg>
   );
 }

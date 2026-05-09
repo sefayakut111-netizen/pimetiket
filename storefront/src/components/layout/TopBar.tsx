@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { PimAsset } from "@/components/PimAsset";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { customerCartCount } from "@/lib/customer-cart";
+import { useUser, signOut } from "@/lib/supabase/use-user";
 
 const NAV_ITEMS = [
   { href: "/", label: "Anasayfa" },
@@ -19,7 +20,11 @@ const NAV_ITEMS = [
 
 export function TopBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [cartCount, setCartCount] = useState(0);
+  const { user, displayName } = useUser();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const refresh = () => setCartCount(customerCartCount());
@@ -31,6 +36,35 @@ export function TopBar() {
       window.removeEventListener("storage", refresh);
     };
   }, []);
+
+  // Outside click to close menu
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }
+  }, [menuOpen]);
+
+  const handleLogout = async () => {
+    await signOut();
+    setMenuOpen(false);
+    router.push("/");
+    router.refresh();
+  };
+
+  const initials = displayName
+    ? displayName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0]?.toUpperCase())
+        .join("")
+    : "";
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-white/85 border-b border-black/[0.06]">
@@ -87,14 +121,95 @@ export function TopBar() {
               </span>
             )}
           </Link>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="ml-1.5"
-            href="/auth"
-          >
-            <Icon.User size={14} /> Giriş
-          </Button>
+
+          {user ? (
+            // Logged-in: avatar + dropdown menu
+            <div className="relative ml-1.5" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="inline-flex items-center gap-2 h-9 pl-1 pr-3 rounded-full ring-1 ring-gri-200 bg-white hover:ring-pim-mercan transition-colors"
+              >
+                <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white text-[12px] font-bold">
+                  {initials || <Icon.User size={12} />}
+                </span>
+                <span className="text-[13px] font-semibold text-lacivert max-w-[100px] truncate">
+                  {displayName?.split(" ")[0] ?? "Hesabım"}
+                </span>
+                <Icon.ChevR
+                  size={12}
+                  className={cn(
+                    "transition-transform text-gri-500",
+                    menuOpen && "rotate-90"
+                  )}
+                />
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-2 ring-1 ring-gri-200 overflow-hidden z-50"
+                >
+                  <div className="px-4 py-3 border-b border-gri-100">
+                    <div className="text-[13px] font-semibold text-lacivert truncate">
+                      {displayName}
+                    </div>
+                    <div className="text-[11.5px] text-gri-500 truncate">
+                      {user.email}
+                    </div>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      href="/panelim"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      <Icon.Home size={14} /> Panelim
+                    </Link>
+                    <Link
+                      href="/siparislerim"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      <Icon.Box size={14} /> Siparişlerim
+                    </Link>
+                    <Link
+                      href="/adreslerim"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      <Icon.Truck size={14} /> Adres defteri
+                    </Link>
+                    <Link
+                      href="/cuzdan"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      <Icon.Wallet size={14} /> Cüzdan
+                    </Link>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-kirmizi hover:bg-kirmizi/5 border-t border-gri-100"
+                  >
+                    <Icon.ArrowR size={14} /> Çıkış yap
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Logged-out: Giriş button
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-1.5"
+              href="/auth"
+            >
+              <Icon.User size={14} /> Giriş
+            </Button>
+          )}
         </div>
       </div>
     </header>

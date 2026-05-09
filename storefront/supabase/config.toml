@@ -1,0 +1,48 @@
+# Pim Etiket — Supabase config
+# https://supabase.com/docs/reference/cli/config
+
+project_id = "pimetiket"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3001"
+additional_redirect_urls = [
+  "http://localhost:3001/auth/callback",
+  "https://pimetiket.com/auth/callback",
+]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false  # Magic link için confirmation kapalı
+secure_password_change = true
+
+# Magic link enable
+[auth.email.template.magic_link]
+subject = "Pim Etiket'e giriş bağlantın"
+
+# Google OAuth — Sefa kendi GCP'sinden client_id/secret ekler
+[auth.external.google]
+enabled = false  # Setup tamamlanınca true yap
+# client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+# secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
