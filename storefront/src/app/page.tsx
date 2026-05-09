@@ -1,23 +1,17 @@
 /**
  * Pim Etiket — Anasayfa (E.1.1)
  *
- * design-prototype/v1-jsx/home.jsx → Next.js 14 + Tailwind 4 + TS portu.
- *
- * Bölümler:
- *   1. Hero (2 sütun grid: H1+CTA + Pim 300px + floating pills)
- *   2. 3 Pillar cards (Bolt / Sparkle / Truck)
- *   3. Product cards (Etiket + Sticker, SVG previews)
- *   4. How it works (4-adım yatay timeline)
- *   5. Testimonials (3 müşteri kartı)
- *   6. FAQ accordion (3 soru)
- *   7. Bottom CTA (lacivert dot-pattern + Pim excited)
+ * Client component — i18n hook için. Metadata layout.tsx'te (root).
+ * Pricing engine fonksiyonları saf TS — client-side'da da çalışır.
  */
 
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill, Eyebrow } from "@/components/ui";
+import { useT } from "@/lib/i18n/context";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 
@@ -51,67 +45,11 @@ function baselineEtiketPrice(): string {
   return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
 }
 
-export const metadata: Metadata = {
-  // Root layout'taki default title kullanılır — template uygulanmaz.
-  title: {
-    absolute: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
-  },
-  description:
-    "1000 adetten başlayan etiket ve sticker baskı. AI dosyana bakar, 10 günde elinde. Bursa'dan, küçük markalar için.",
-  alternates: { canonical: "/" },
-};
+const TESTIMONIALS_BG = ["bg-krem", "bg-white", "bg-pim-mercan-tint"];
 
-const PILLARS = [
-  {
-    icon: <Icon.Bolt size={22} />,
-    t: "1000 adetten başla",
-    d: "Düşük adette de kaliteden ödün vermeden bastırırsın. Stoklamadan, esnek.",
-  },
-  {
-    icon: <Icon.Sparkle size={22} />,
-    t: "AI tasarımına bakıyor",
-    d: "Yüklediğin dosyayı saniyeler içinde kontrol eder; DPI, marka, yazım — eksik varsa söyler.",
-  },
-  {
-    icon: <Icon.Truck size={22} />,
-    t: "10 günde elinde",
-    d: "Bursa'dan kapına. Şeffaf üretim takibi, gerçek zamanlı statü ve Pim'in haberleri.",
-  },
-];
+const AVATAR_COLORS = ["#F5EBD9", "#FFCDB9", "#1F2937", "#FF9933"];
 
-const STEPS = [
-  { n: "01", t: "Konfigüre et", d: "Malzeme, kaplama, ölçü, adet — anlık fiyat." },
-  { n: "02", t: "Dosyanı yükle", d: "PDF, AI, EPS… AI saniyeler içinde kontrol eder." },
-  {
-    n: "03",
-    t: "Provayı onayla",
-    d: "Rulonun üstünde nasıl görüneceğini gör, onayla.",
-  },
-  { n: "04", t: "Teslim al", d: "Bursa'dan kapına ortalama 10 günde." },
-];
-
-const TESTIMONIALS = [
-  {
-    n: "Defne Karaca",
-    b: "Olea — Naturel sabun",
-    q: "İlk siparişte 1500 adet etiketi 9 günde elimde gördüm. Pim hata diye saydığını gerçekten yakaladı.",
-    bg: "bg-krem",
-  },
-  {
-    n: "Mert Yılmaz",
-    b: "Bulutlu Roastery",
-    q: "Mat selefon + sıcak yaldızla raf etkisi inanılmaz oldu. Online sipariş ettiğim için inanamıyorum.",
-    bg: "bg-white",
-  },
-  {
-    n: "Ezgi & Can",
-    b: "Atölye Niş",
-    q: "Sticker tarafı tam bizim için. Az adet, hızlı, harika kâğıt. Müşterilerimize hediye olarak veriyoruz.",
-    bg: "bg-pim-mercan-tint",
-  },
-];
-
-const FAQS = [
+const FAQ_QUESTIONS_TR = [
   {
     q: "Minimum kaç adet basabiliyorum?",
     a: "Etiket için 1000, sticker için 25 adetten başlıyoruz.",
@@ -126,9 +64,75 @@ const FAQS = [
   },
 ];
 
-const AVATAR_COLORS = ["#F5EBD9", "#FFCDB9", "#1F2937", "#FF9933"];
+const FAQ_QUESTIONS_EN = [
+  {
+    q: "What's the minimum order quantity?",
+    a: "1000 for labels, 25 for stickers — that's where we start.",
+  },
+  {
+    q: "I don't have a design file, what now?",
+    a: "Tell Pim — for simple designs you can customize one of our templates; for more complex work we connect you with partner studios.",
+  },
+  {
+    q: "Can I get faster than 10-day delivery?",
+    a: "Yes — the 'fast track' option brings it down to 5 days; the surcharge appears on the configurator.",
+  },
+];
+
+const TESTIMONIALS_TR = [
+  {
+    n: "Defne Karaca",
+    b: "Olea — Naturel sabun",
+    q: "İlk siparişte 1500 adet etiketi 9 günde elimde gördüm. Pim hata diye saydığını gerçekten yakaladı.",
+  },
+  {
+    n: "Mert Yılmaz",
+    b: "Bulutlu Roastery",
+    q: "Mat selefon + sıcak yaldızla raf etkisi inanılmaz oldu. Online sipariş ettiğim için inanamıyorum.",
+  },
+  {
+    n: "Ezgi & Can",
+    b: "Atölye Niş",
+    q: "Sticker tarafı tam bizim için. Az adet, hızlı, harika kâğıt. Müşterilerimize hediye olarak veriyoruz.",
+  },
+];
+
+const TESTIMONIALS_EN = [
+  {
+    n: "Defne Karaca",
+    b: "Olea — Natural soap",
+    q: "1500 labels arrived in 9 days on my first order. Pim caught a typo I had been missing.",
+  },
+  {
+    n: "Mert Yılmaz",
+    b: "Bulutlu Roastery",
+    q: "The shelf impact with matte lamination + hot foil is incredible. Hard to believe I ordered online.",
+  },
+  {
+    n: "Ezgi & Can",
+    b: "Atölye Niş",
+    q: "Stickers are perfect for us. Low volume, fast, lovely paper. We send them as gifts to our customers.",
+  },
+];
 
 export default function HomePage() {
+  const { t, locale } = useT();
+
+  const PILLARS = [
+    { icon: <Icon.Bolt size={22} />, t: t.home.pillar1Title, d: t.home.pillar1Desc },
+    { icon: <Icon.Sparkle size={22} />, t: t.home.pillar2Title, d: t.home.pillar2Desc },
+    { icon: <Icon.Truck size={22} />, t: t.home.pillar3Title, d: t.home.pillar3Desc },
+  ];
+
+  const STEPS = [
+    { n: "01", t: t.home.step1, d: t.home.step1Desc },
+    { n: "02", t: t.home.step2, d: t.home.step2Desc },
+    { n: "03", t: t.home.step3, d: t.home.step3Desc },
+    { n: "04", t: t.home.step4, d: t.home.step4Desc },
+  ];
+
+  const TESTIMONIALS = locale === "en" ? TESTIMONIALS_EN : TESTIMONIALS_TR;
+  const FAQS = locale === "en" ? FAQ_QUESTIONS_EN : FAQ_QUESTIONS_TR;
   return (
     <main className="animate-fade-up">
       {/* ============================== HERO ============================== */}
@@ -144,13 +148,12 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
           {/* LEFT — copy */}
           <div>
-            <Eyebrow>Türkiye&rsquo;nin akıllı dijital baskı atölyesi</Eyebrow>
+            <Eyebrow>{t.home.eyebrow}</Eyebrow>
             <h1 className="mt-5 text-[44px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
-              Markanın etiketi,
+              {t.home.h1Brand}
               <br />
-              fikrinin{" "}
               <span className="relative text-pim-mercan">
-                sticker&rsquo;ı
+                {t.home.h1Idea}
                 <svg
                   width="240"
                   height="14"
@@ -168,18 +171,16 @@ export default function HomePage() {
                   />
                 </svg>
               </span>
-              .
             </h1>
             <p className="mt-6 text-lg text-gri-700 max-w-[480px] leading-relaxed">
-              1000 adetten başlayan, AI&rsquo;ın elinden geçen, on günde kapına
-              gelen dijital baskı. Pim sana yardım eder.
+              {t.home.heroDescription}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button variant="primary" size="lg" href="/etiket">
-                <Icon.Roll size={18} /> Etiket bastır
+                <Icon.Roll size={18} /> {t.home.ctaEtiket}
               </Button>
               <Button variant="secondary" size="lg" href="/sticker">
-                <Icon.Sticker size={18} /> Sticker bastır
+                <Icon.Sticker size={18} /> {t.home.ctaSticker}
               </Button>
             </div>
             <div className="mt-10 flex items-center gap-6 flex-wrap">
@@ -201,7 +202,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <div className="text-[13px] text-gri-700 mt-0.5">
-                  2,400+ Türk markasının tercihi
+                  {t.home.socialProof}
                 </div>
               </div>
             </div>
@@ -226,7 +227,7 @@ export default function HomePage() {
               style={{ transform: "rotate(-12deg)" }}
             >
               <Pill variant="mercan" className="!h-8 !text-[13px] !px-3.5">
-                <Icon.Sparkle size={14} /> AI kontrol
+                <Icon.Sparkle size={14} /> {t.home.aiPill}
               </Pill>
             </div>
             {/* Truck pill (bottom-right) */}
@@ -235,7 +236,7 @@ export default function HomePage() {
               style={{ transform: "rotate(8deg)" }}
             >
               <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-white shadow-1 text-[13px] font-semibold">
-                <Icon.Truck size={14} className="text-pim-mercan" /> 10 gün teslim
+                <Icon.Truck size={14} className="text-pim-mercan" /> {t.home.deliveryPill}
               </span>
             </div>
             <div className="relative z-30">
@@ -267,19 +268,23 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <ProductCard
             kind="etiket"
-            title="Etiket"
-            sub="Rulodan etiket — kozmetik, gıda, içecek, parfüm."
-            from="1000 adetten"
+            title={t.nav.etiket}
+            sub={t.home.productEtiketSub}
+            from={`1000 ${t.home.productFrom}`}
             price={baselineEtiketPrice()}
             href="/etiket"
+            priceLabel={t.home.productPriceLabel}
+            ctaLabel={t.home.productConfigure}
           />
           <ProductCard
             kind="sticker"
-            title="Sticker"
-            sub="Tekli ya da tabakada — laptop, defter, kampanya."
-            from="25 adetten"
+            title={t.nav.sticker}
+            sub={t.home.productStickerSub}
+            from={`25 ${t.home.productFrom}`}
             price={baselineStickerPrice()}
             href="/sticker"
+            priceLabel={t.home.productPriceLabel}
+            ctaLabel={t.home.productConfigure}
           />
         </div>
       </section>
@@ -288,9 +293,9 @@ export default function HomePage() {
       <section className="py-20 bg-gri-50">
         <div className="mx-auto max-w-[1280px] px-8">
           <div className="text-center mb-12">
-            <Eyebrow>Nasıl çalışır</Eyebrow>
+            <Eyebrow>{t.home.howItWorksEyebrow}</Eyebrow>
             <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight max-w-[640px] mx-auto">
-              Konfigüre et, dosyanı yükle, onayla — gerisini bize bırak.
+              {t.home.howItWorksTitle}
             </h2>
           </div>
           <div className="relative">
@@ -318,10 +323,10 @@ export default function HomePage() {
       {/* ============================== TESTIMONIALS ============================== */}
       <section className="py-20">
         <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {TESTIMONIALS.map((t, i) => (
+          {TESTIMONIALS.map((tr, i) => (
             <article
               key={i}
-              className={`rounded-lg shadow-1 ring-1 ring-black/[0.04] p-7 ${t.bg}`}
+              className={`rounded-lg shadow-1 ring-1 ring-black/[0.04] p-7 ${TESTIMONIALS_BG[i] ?? "bg-white"}`}
             >
               <div className="flex gap-px text-sari mb-3.5">
                 {[0, 1, 2, 3, 4].map((j) => (
@@ -329,15 +334,15 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-[17px] leading-snug font-medium mb-6">
-                &ldquo;{t.q}&rdquo;
+                &ldquo;{tr.q}&rdquo;
               </p>
               <div className="flex items-center gap-3">
                 <div className="grid place-items-center w-10 h-10 rounded-full bg-lacivert text-white font-bold">
-                  {t.n[0]}
+                  {tr.n[0]}
                 </div>
                 <div>
-                  <div className="font-semibold">{t.n}</div>
-                  <div className="text-[13px] text-gri-700">{t.b}</div>
+                  <div className="font-semibold">{tr.n}</div>
+                  <div className="text-[13px] text-gri-700">{tr.b}</div>
                 </div>
               </div>
             </article>
@@ -349,16 +354,15 @@ export default function HomePage() {
       <section className="py-12">
         <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-16 items-start">
           <div>
-            <Eyebrow>Sıkça sorulanlar</Eyebrow>
+            <Eyebrow>{t.home.faqEyebrow}</Eyebrow>
             <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
-              Cevap genelde &ldquo;evet, hallederiz&rdquo;.
+              {t.home.faqTitle}
             </h2>
             <p className="mt-6 text-base text-gri-700 mb-6 leading-relaxed">
-              Hâlâ kafa karışıyor mu? Pim cevap vermek için sayfanın sağ alt
-              köşesinde bekliyor.
+              {t.home.faqHelp}
             </p>
             <Button variant="secondary" href="/sss">
-              Tüm SSS <Icon.ChevR size={14} />
+              {t.home.faqAll} <Icon.ChevR size={14} />
             </Button>
           </div>
           <div className="flex flex-col gap-4">
@@ -398,21 +402,20 @@ export default function HomePage() {
             <div className="relative grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8 items-center">
               <div>
                 <h2 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
-                  Hadi başlayalım.
+                  {t.home.bottomCtaTitle}
                 </h2>
                 <p className="mt-4 text-lg text-white/75 max-w-[520px] leading-relaxed">
-                  İlk siparişin için Pim ile bir tur at. 5 dakikada konfigüre,
-                  anında fiyat, gerisi bizden.
+                  {t.home.bottomCtaDesc}
                 </p>
                 <div className="mt-7 flex gap-3 flex-wrap">
                   <Button variant="primary" size="lg" href="/etiket">
-                    Etiket bastır <Icon.ArrowR />
+                    {t.home.bottomCtaPrimary} <Icon.ArrowR />
                   </Button>
                   <Link
                     href="/sticker"
                     className="inline-flex items-center justify-center gap-2 h-[52px] px-7 rounded-full text-white font-semibold text-base hover:bg-white/10 transition-colors"
                   >
-                    Sticker&rsquo;a göz at
+                    {t.home.bottomCtaSecondary}
                   </Link>
                 </div>
               </div>
@@ -438,6 +441,8 @@ function ProductCard({
   from,
   price,
   href,
+  priceLabel,
+  ctaLabel,
 }: {
   kind: "etiket" | "sticker";
   title: string;
@@ -445,6 +450,8 @@ function ProductCard({
   from: string;
   price: string;
   href: string;
+  priceLabel: string;
+  ctaLabel: string;
 }) {
   const isEtiket = kind === "etiket";
   return (
@@ -477,12 +484,12 @@ function ProductCard({
         <div className="flex justify-between items-center">
           <div>
             <div className="text-[11.5px] uppercase tracking-[0.04em] font-semibold text-gri-700">
-              {title} fiyatı, başlangıç
+              {title} {priceLabel}
             </div>
             <div className="font-bold text-[22px]">{price}</div>
           </div>
           <span className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold">
-            Konfigüre et <Icon.ArrowR size={16} />
+            {ctaLabel} <Icon.ArrowR size={16} />
           </span>
         </div>
       </div>

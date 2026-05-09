@@ -14,6 +14,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 import {
   listCustomerCart,
   summarizeCustomerCart,
@@ -49,6 +50,7 @@ type InvoiceType = "individual" | "corporate";
 
 export default function OdemePage() {
   const router = useRouter();
+  const { t } = useT();
   const [step, setStep] = useState<Step>(1);
   const [addressId, setAddressId] = useState("a1");
   const [invoiceType, setInvoiceType] = useState<InvoiceType>("individual");
@@ -136,18 +138,18 @@ export default function OdemePage() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-8">
         <div className="mb-7">
-          <Eyebrow>Ödeme</Eyebrow>
+          <Eyebrow>{t.checkout.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Siparişini tamamla
+            {t.checkout.title}
           </h1>
         </div>
 
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-8 max-w-[600px] mx-auto">
           {[
-            { n: 1, label: "Adres" },
-            { n: 2, label: "Fatura" },
-            { n: 3, label: "Ödeme" },
+            { n: 1, label: t.checkout.stepAddress },
+            { n: 2, label: t.checkout.stepInvoice },
+            { n: 3, label: t.checkout.stepPayment },
           ].map((s, i, arr) => (
             <div key={s.n} className="flex items-center gap-2 flex-1">
               <div className="flex flex-col items-center gap-1.5 flex-1">
@@ -191,10 +193,8 @@ export default function OdemePage() {
           <div>
             {step === 1 && (
               <Card padding="p-6">
-                <h2 className="text-xl font-semibold mb-1">Teslimat adresi</h2>
-                <p className="text-[13px] text-gri-700 mb-5">
-                  Kayıtlı bir adres seç veya yeni adres ekle.
-                </p>
+                <h2 className="text-xl font-semibold mb-1">{t.checkout.deliveryAddress}</h2>
+                <p className="text-[13px] text-gri-700 mb-5">&nbsp;</p>
                 <div className="flex flex-col gap-3">
                   {SAVED_ADDRESSES.map((a) => (
                     <button
@@ -214,7 +214,7 @@ export default function OdemePage() {
                           <div className="font-semibold text-[15px] mb-1 flex items-center gap-2">
                             {a.label}
                             <span className="inline-flex items-center h-[20px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold">
-                              Kayıtlı
+                              {t.checkout.saved}
                             </span>
                           </div>
                           <div className="text-[13px] text-gri-700 leading-relaxed">
@@ -237,12 +237,12 @@ export default function OdemePage() {
                     type="button"
                     className="text-[13px] font-semibold text-pim-mercan hover:underline self-start mt-1 inline-flex items-center gap-1"
                   >
-                    <Icon.Plus size={14} /> Yeni adres ekle
+                    <Icon.Plus size={14} /> {t.checkout.addNewAddress}
                   </button>
                 </div>
                 <div className="mt-6 flex justify-end">
                   <Button variant="primary" size="lg" onClick={goNext}>
-                    Faturaya geç <Icon.ArrowR />
+                    {t.common.next} <Icon.ArrowR />
                   </Button>
                 </div>
               </Card>
@@ -250,32 +250,30 @@ export default function OdemePage() {
 
             {step === 2 && (
               <Card padding="p-6">
-                <h2 className="text-xl font-semibold mb-1">Fatura bilgileri</h2>
-                <p className="text-[13px] text-gri-700 mb-5">
-                  Bireysel veya kurumsal fatura tercihi.
-                </p>
+                <h2 className="text-xl font-semibold mb-1">{t.checkout.invoiceInfo}</h2>
+                <p className="text-[13px] text-gri-700 mb-5">&nbsp;</p>
 
                 <div className="grid grid-cols-2 gap-3 mb-5">
-                  {(["individual", "corporate"] as InvoiceType[]).map((t) => (
+                  {(["individual", "corporate"] as InvoiceType[]).map((it) => (
                     <button
-                      key={t}
+                      key={it}
                       type="button"
-                      onClick={() => setInvoiceType(t)}
-                      aria-pressed={invoiceType === t}
+                      onClick={() => setInvoiceType(it)}
+                      aria-pressed={invoiceType === it}
                       className={cn(
                         "p-4 rounded-lg ring-[1.5px] text-left transition-all",
-                        invoiceType === t
+                        invoiceType === it
                           ? "ring-pim-mercan bg-pim-mercan-tint/40"
                           : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
                       )}
                     >
-                      <div className="font-semibold text-base capitalize mb-0.5">
-                        {t}
+                      <div className="font-semibold text-base mb-0.5">
+                        {it === "individual" ? t.checkout.individual : t.checkout.corporate}
                       </div>
                       <div className="text-[13px] text-gri-700">
-                        {t === "individual"
-                          ? "TC kimlik · e-arşiv fatura"
-                          : "VKN · e-fatura veya e-arşiv"}
+                        {it === "individual"
+                          ? t.checkout.individualDesc
+                          : t.checkout.corporateDesc}
                       </div>
                     </button>
                   ))}
@@ -284,12 +282,12 @@ export default function OdemePage() {
                 {invoiceType === "individual" ? (
                   <label className="block">
                     <span className="text-[13px] font-semibold mb-1.5 block">
-                      TC Kimlik No
+                      {t.checkout.tcKimlik}
                     </span>
                     <Input
                       value={tc}
                       onChange={(e) => setTc(e.target.value)}
-                      placeholder="11 hane"
+                      placeholder="11"
                       maxLength={11}
                       inputMode="numeric"
                     />
@@ -298,35 +296,33 @@ export default function OdemePage() {
                   <div className="space-y-3.5">
                     <label className="block">
                       <span className="text-[13px] font-semibold mb-1.5 block">
-                        Ünvan
+                        {t.checkout.companyName}
                       </span>
                       <Input
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="Şirket/işletme tam ünvanı"
                       />
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="block">
                         <span className="text-[13px] font-semibold mb-1.5 block">
-                          VKN
+                          {t.checkout.vkn}
                         </span>
                         <Input
                           value={vkn}
                           onChange={(e) => setVkn(e.target.value)}
-                          placeholder="10 hane"
+                          placeholder="10"
                           maxLength={10}
                           inputMode="numeric"
                         />
                       </label>
                       <label className="block">
                         <span className="text-[13px] font-semibold mb-1.5 block">
-                          Vergi dairesi
+                          {t.checkout.taxOffice}
                         </span>
                         <Input
                           value={taxOffice}
                           onChange={(e) => setTaxOffice(e.target.value)}
-                          placeholder="Örn: Yıldırım VD"
                         />
                       </label>
                     </div>
@@ -335,10 +331,10 @@ export default function OdemePage() {
 
                 <div className="mt-6 flex justify-between gap-3">
                   <Button variant="ghost" onClick={goPrev}>
-                    ← Geri
+                    ← {t.common.back}
                   </Button>
                   <Button variant="primary" size="lg" onClick={goNext}>
-                    Ödemeye geç <Icon.ArrowR />
+                    {t.common.next} <Icon.ArrowR />
                   </Button>
                 </div>
               </Card>
@@ -346,17 +342,16 @@ export default function OdemePage() {
 
             {step === 3 && (
               <Card padding="p-6">
-                <h2 className="text-xl font-semibold mb-1">Kart bilgileri</h2>
+                <h2 className="text-xl font-semibold mb-1">{t.checkout.cardInfo}</h2>
                 <p className="text-[13px] text-gri-700 mb-5 flex items-center gap-2">
                   <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
                     🔒 3D Secure
                   </span>
-                  Bilgilerin bankan tarafından korunur. Pim Etiket kart numarasını saklamaz.
                 </p>
 
                 <label className="block mb-3.5">
                   <span className="text-[13px] font-semibold mb-1.5 block">
-                    Kart üzerindeki isim
+                    {t.checkout.cardName}
                   </span>
                   <Input
                     value={card.name}
@@ -367,7 +362,7 @@ export default function OdemePage() {
                 </label>
                 <label className="block mb-3.5">
                   <span className="text-[13px] font-semibold mb-1.5 block">
-                    Kart numarası
+                    {t.checkout.cardNumber}
                   </span>
                   <Input
                     value={card.no}
@@ -381,21 +376,21 @@ export default function OdemePage() {
                 <div className="grid grid-cols-2 gap-3 mb-5">
                   <label className="block">
                     <span className="text-[13px] font-semibold mb-1.5 block">
-                      Son kullanma
+                      {t.checkout.expiry}
                     </span>
                     <Input
                       value={card.exp}
                       onChange={(e) =>
                         setCard({ ...card, exp: e.target.value })
                       }
-                      placeholder="AA/YY"
+                      placeholder="MM/YY"
                       autoComplete="cc-exp"
                       maxLength={5}
                     />
                   </label>
                   <label className="block">
                     <span className="text-[13px] font-semibold mb-1.5 block">
-                      CVV
+                      {t.checkout.cvv}
                     </span>
                     <Input
                       type="password"
@@ -403,7 +398,7 @@ export default function OdemePage() {
                       onChange={(e) =>
                         setCard({ ...card, cvv: e.target.value })
                       }
-                      placeholder="3 hane"
+                      placeholder="•••"
                       autoComplete="cc-csc"
                       maxLength={4}
                       inputMode="numeric"
@@ -418,21 +413,12 @@ export default function OdemePage() {
                     onChange={(e) => setAcceptSatis(e.target.checked)}
                     className="mt-1 accent-pim-mercan shrink-0"
                   />
-                  <span>
-                    <Link
-                      href="/mesafeli-satis"
-                      className="text-pim-mercan font-semibold hover:underline"
-                    >
-                      Mesafeli Satış Sözleşmesi
-                    </Link>
-                    &rsquo;ni okudum, kabul ediyorum. Kişiselleştirilmiş ürün
-                    olduğu için cayma hakkımın bulunmadığını biliyorum.
-                  </span>
+                  <span>{t.checkout.accept}</span>
                 </label>
 
                 <div className="flex justify-between gap-3">
                   <Button variant="ghost" onClick={goPrev}>
-                    ← Geri
+                    ← {t.common.back}
                   </Button>
                   <Button
                     variant="primary"
@@ -442,9 +428,7 @@ export default function OdemePage() {
                       !acceptSatis || loading || cartItems.length === 0
                     }
                   >
-                    {loading
-                      ? "İşleniyor..."
-                      : `${fmt(total)} TL'yi öde`}{" "}
+                    {loading ? t.checkout.processing : t.checkout.payNow(fmt(total))}{" "}
                     {!loading && <Icon.ArrowR />}
                   </Button>
                 </div>
@@ -479,16 +463,16 @@ export default function OdemePage() {
                   </div>
                 ))}
                 <div className="flex justify-between border-t border-gri-200 pt-3">
-                  <span className="text-gri-700">Ara toplam</span>
+                  <span className="text-gri-700">{t.cart.subtotal}</span>
                   <span className="font-semibold tabular-nums">
                     {fmt(subtotal)} TL
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gri-700">Kargo</span>
+                  <span className="text-gri-700">{t.cart.shipping}</span>
                   <span className="font-semibold tabular-nums">
                     {shipping === 0 ? (
-                      <span className="text-yesil">Ücretsiz</span>
+                      <span className="text-yesil">{t.cart.free}</span>
                     ) : (
                       `${fmt(shipping)} TL`
                     )}
@@ -496,7 +480,7 @@ export default function OdemePage() {
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
-                <span className="font-semibold">Toplam</span>
+                <span className="font-semibold">{t.cart.total}</span>
                 <span className="text-2xl font-bold tabular-nums">
                   {fmt(total)}{" "}
                   <span className="text-base font-semibold text-gri-700">
@@ -505,7 +489,7 @@ export default function OdemePage() {
                 </span>
               </div>
               <div className="text-[11.5px] text-gri-700 text-right">
-                KDV dahil
+                {t.cart.vatIncluded}
               </div>
             </Card>
           </div>

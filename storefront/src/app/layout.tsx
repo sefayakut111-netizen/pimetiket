@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui";
+import { LanguageProvider } from "@/lib/i18n/context";
 import "./globals.css";
 
 const SITE_URL =
@@ -109,7 +110,9 @@ export default function RootLayout({
           İçeriğe atla
         </a>
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          <LanguageProvider>
+            <AppShell>{children}</AppShell>
+          </LanguageProvider>
         </ToastProvider>
         <script
           type="application/ld+json"

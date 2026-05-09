@@ -11,6 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card } from "@/components/ui";
+import { useT } from "@/lib/i18n/context";
 import { getCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
@@ -25,6 +26,7 @@ export default function OdemeSonucPage() {
 
 function OdemeSonucInner() {
   const sp = useSearchParams();
+  const { t } = useT();
   const status = sp.get("status") ?? "success";
   const orderId = sp.get("order") ?? "PE-2026-XXXX";
 
@@ -64,24 +66,24 @@ function OdemeSonucInner() {
         <Pim pose="excited" size={180} />
 
         <span className="inline-flex items-center gap-1.5 mt-4 h-[26px] px-3 rounded-full bg-yesil-soft text-yesil text-[12.5px] font-semibold">
-          <Icon.Check size={12} /> Ödeme başarılı
+          <Icon.Check size={12} /> {t.orderSuccess.success}
         </span>
 
         <h1 className="mt-4 text-[32px] md:text-[44px] font-semibold tracking-tight leading-[1.1]">
-          Sipariş alındı! 🎉
+          {t.orderSuccess.orderReceived}
         </h1>
         <p className="mt-4 text-lg text-gri-700 leading-relaxed">
-          Sipariş numaran:{" "}
+          {t.orderSuccess.orderNumber}{" "}
           <strong className="text-lacivert font-mono">{orderId}</strong>
           <br />
-          Onay e-postası kayıtlı adresine gitti.
+          {t.orderSuccess.emailSent}
         </p>
 
         {order && (
           <Card padding="p-5" className="text-left mt-6">
             <div className="flex justify-between items-baseline mb-3 pb-3 border-b border-gri-200">
               <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-gri-700">
-                Sipariş özeti
+                {t.orderSuccess.summaryLabel}
               </span>
               <span className="text-xl font-bold tabular-nums">
                 {fmt(order.total)}{" "}
@@ -107,7 +109,7 @@ function OdemeSonucInner() {
             </div>
             {order.estimatedDelivery && (
               <div className="mt-4 pt-3 border-t border-gri-200 text-[12.5px] text-gri-700 flex justify-between">
-                <span>Tahmini teslim</span>
+                <span>{t.orderSuccess.estimatedDelivery}</span>
                 <span className="font-semibold text-lacivert">
                   {new Date(order.estimatedDelivery).toLocaleDateString(
                     "tr-TR",
@@ -121,7 +123,7 @@ function OdemeSonucInner() {
 
         <Card padding="p-7" className="text-left mt-8">
           <h3 className="font-semibold text-lg mb-4 text-center">
-            Sırada ne var?
+            {t.orderSuccess.nextStepsTitle}
           </h3>
           <ol className="space-y-4">
             <li className="flex gap-3.5 items-start">
@@ -130,11 +132,10 @@ function OdemeSonucInner() {
               </span>
               <div>
                 <div className="font-semibold text-base">
-                  Tasarım dosyanı yükle (3 gün içinde)
+                  {t.orderSuccess.step1Title}
                 </div>
                 <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                  Sipariş detayı sayfasından PDF/AI/EPS dosyanı yükle. AI ön
-                  kontrolü saniyeler içinde yapılır.
+                  {t.orderSuccess.step1Desc}
                 </p>
               </div>
             </li>
@@ -143,10 +144,9 @@ function OdemeSonucInner() {
                 2
               </span>
               <div>
-                <div className="font-semibold text-base">Provanı incele</div>
+                <div className="font-semibold text-base">{t.orderSuccess.step2Title}</div>
                 <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                  Operatör manuel kontrolünden sonra prova göndereceğiz.
-                  Onayladıktan sonra üretime girer.
+                  {t.orderSuccess.step2Desc}
                 </p>
               </div>
             </li>
@@ -156,11 +156,10 @@ function OdemeSonucInner() {
               </span>
               <div>
                 <div className="font-semibold text-base">
-                  Bursa&rsquo;dan kapına
+                  {t.orderSuccess.step3Title}
                 </div>
                 <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                  Ortalama 8-10 gün içinde elinde. Kargo takip linkini
-                  e-posta + SMS ile gönderirim.
+                  {t.orderSuccess.step3Desc}
                 </p>
               </div>
             </li>
@@ -169,10 +168,10 @@ function OdemeSonucInner() {
 
         <div className="mt-8 flex gap-3 justify-center flex-wrap">
           <Button variant="primary" size="lg" href={`/siparis/${orderId}`}>
-            <Icon.Box size={16} /> Sipariş detayı
+            <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
           </Button>
           <Button variant="secondary" size="lg" href="/panelim">
-            Panele git
+            {t.orderSuccess.backToPanel}
           </Button>
         </div>
 

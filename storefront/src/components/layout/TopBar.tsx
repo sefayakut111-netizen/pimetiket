@@ -5,27 +5,30 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { PimAsset } from "@/components/PimAsset";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { customerCartCount } from "@/lib/customer-cart";
 import { useUser, signOut } from "@/lib/supabase/use-user";
-
-const NAV_ITEMS = [
-  { href: "/", label: "Anasayfa" },
-  { href: "/etiket", label: "Etiket" },
-  { href: "/sticker", label: "Sticker" },
-  { href: "/galeri", label: "Galeri" },
-  { href: "/blog", label: "Blog" },
-  { href: "/panelim", label: "Panelim" },
-];
+import { useT } from "@/lib/i18n/context";
 
 export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useT();
   const [cartCount, setCartCount] = useState(0);
   const { user, displayName } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const navItems = [
+    { href: "/", label: t.nav.home },
+    { href: "/etiket", label: t.nav.etiket },
+    { href: "/sticker", label: t.nav.sticker },
+    { href: "/galeri", label: t.nav.gallery },
+    { href: "/blog", label: t.nav.blog },
+    { href: "/panelim", label: t.nav.dashboard },
+  ];
 
   useEffect(() => {
     const refresh = () => setCartCount(customerCartCount());
@@ -77,7 +80,7 @@ export function TopBar() {
 
         {/* Nav */}
         <nav className="flex-1 flex gap-1 items-center">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
@@ -98,9 +101,10 @@ export function TopBar() {
 
         {/* Actions */}
         <div className="flex gap-1 items-center">
+          <LanguageSwitcher />
           <button
             type="button"
-            aria-label="Ara"
+            aria-label={t.common.search}
             className="p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
             <Icon.Search size={18} />
@@ -108,7 +112,9 @@ export function TopBar() {
           <Link
             href="/sepet"
             aria-label={
-              cartCount > 0 ? `Sepet, ${cartCount} ürün` : "Sepet, boş"
+              cartCount > 0
+                ? `${t.nav.cart}, ${cartCount}`
+                : `${t.nav.cart}`
             }
             className="relative p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
@@ -137,7 +143,7 @@ export function TopBar() {
                   {initials || <Icon.User size={12} />}
                 </span>
                 <span className="text-[13px] font-semibold text-lacivert max-w-[100px] truncate">
-                  {displayName?.split(" ")[0] ?? "Hesabım"}
+                  {displayName?.split(" ")[0] ?? t.nav.profile}
                 </span>
                 <Icon.ChevR
                   size={12}
@@ -166,28 +172,28 @@ export function TopBar() {
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
                     >
-                      <Icon.Home size={14} /> Panelim
+                      <Icon.Home size={14} /> {t.nav.dashboard}
                     </Link>
                     <Link
                       href="/siparislerim"
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
                     >
-                      <Icon.Box size={14} /> Siparişlerim
+                      <Icon.Box size={14} /> {t.nav.orders}
                     </Link>
                     <Link
                       href="/adreslerim"
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
                     >
-                      <Icon.Truck size={14} /> Adres defteri
+                      <Icon.Truck size={14} /> {t.nav.addresses}
                     </Link>
                     <Link
                       href="/cuzdan"
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
                     >
-                      <Icon.Wallet size={14} /> Cüzdan
+                      <Icon.Wallet size={14} /> {t.nav.wallet}
                     </Link>
                   </div>
                   <button
@@ -195,7 +201,7 @@ export function TopBar() {
                     onClick={handleLogout}
                     className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-kirmizi hover:bg-kirmizi/5 border-t border-gri-100"
                   >
-                    <Icon.ArrowR size={14} /> Çıkış yap
+                    <Icon.ArrowR size={14} /> {t.nav.logout}
                   </button>
                 </div>
               )}
@@ -208,7 +214,7 @@ export function TopBar() {
               className="ml-1.5"
               href="/auth"
             >
-              <Icon.User size={14} /> Giriş
+              <Icon.User size={14} /> {t.nav.login}
             </Button>
           )}
         </div>

@@ -22,10 +22,12 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow, useToast } from "@/components/ui";
+import { useT } from "@/lib/i18n/context";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function AuthPage() {
   const toast = useToast();
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [acceptKvkk, setAcceptKvkk] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -89,21 +91,19 @@ export default function AuthPage() {
         <div className="mx-auto max-w-[480px] px-6">
           <div className="text-center mb-8">
             <Pim pose="think" size={140} />
-            <Eyebrow>Henüz aktif değil</Eyebrow>
+            <Eyebrow>{t.auth.notReady}</Eyebrow>
             <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
-              Giriş yakında açılacak
+              {t.auth.notReady}
             </h1>
           </div>
           <div className="bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] p-6 text-[14px] text-gri-700 leading-relaxed">
-            Auth altyapısı kurulum aşamasında. Şu an sipariş ve sepet
-            akışlarını giriş yapmadan da kullanabilirsin (cihaz bazlı
-            kayıt).
+            {t.auth.notReadyDesc}
             <div className="mt-5 flex gap-3 flex-wrap">
               <Button variant="primary" size="sm" href="/etiket">
-                <Icon.Roll size={14} /> Etiket bastır
+                <Icon.Roll size={14} /> {t.home.ctaEtiket}
               </Button>
               <Button variant="secondary" size="sm" href="/sticker">
-                <Icon.Sticker size={14} /> Sticker bastır
+                <Icon.Sticker size={14} /> {t.home.ctaSticker}
               </Button>
             </div>
           </div>
@@ -118,18 +118,17 @@ export default function AuthPage() {
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
         <div className="mx-auto max-w-[480px] px-6 text-center">
           <Pim pose="happy" size={140} />
-          <Eyebrow>E-posta yollandı</Eyebrow>
+          <Eyebrow>{t.auth.linkSentTitle}</Eyebrow>
           <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
-            E-postanı kontrol et 📩
+            {t.auth.linkSentTitle}
           </h1>
           <div className="bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] p-6 mt-6 text-left">
             <p className="text-[14px] text-gri-700 leading-relaxed">
-              <strong className="text-lacivert">{email}</strong> adresine
-              giriş bağlantısı yolladım. Linke tıkla, otomatik girersin.
+              <strong className="text-lacivert">{email}</strong>{" "}
+              {t.auth.linkSentDesc}
             </p>
             <p className="text-[12.5px] text-gri-500 mt-4 leading-relaxed">
-              Mail görünmüyorsa spam/gereksiz klasörünü kontrol et. Link 1
-              saat içinde geçerli.
+              {t.auth.linkSentSpam}
             </p>
             <button
               type="button"
@@ -139,7 +138,7 @@ export default function AuthPage() {
               }}
               className="text-[13px] text-pim-mercan font-semibold hover:underline mt-5"
             >
-              ← Farklı e-posta dene
+              {t.auth.linkSentDifferent}
             </button>
           </div>
         </div>
@@ -155,13 +154,12 @@ export default function AuthPage() {
           <div className="inline-block">
             <Pim pose="wave" size={120} />
           </div>
-          <Eyebrow>Hesabına giriş</Eyebrow>
+          <Eyebrow>{t.auth.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[28px] font-semibold tracking-tight leading-tight">
-            E-postanla giriş yap
+            {t.auth.title}
           </h1>
           <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
-            Şifre yok — sana giriş bağlantısı yolluyoruz. Bir tıkla
-            içeridesin.
+            {t.auth.subtitle}
           </p>
         </div>
 
@@ -170,13 +168,13 @@ export default function AuthPage() {
           <form onSubmit={onMagicLink} className="flex flex-col gap-4">
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
-                E-posta
+                {t.auth.emailLabel}
               </span>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ornek@marka.com"
+                placeholder={t.auth.emailPlaceholder}
                 autoComplete="email"
                 required
                 disabled={loading}
@@ -195,16 +193,15 @@ export default function AuthPage() {
                   href="/kvkk"
                   className="text-pim-mercan font-semibold hover:underline"
                 >
-                  KVKK aydınlatma metnini
+                  {t.auth.kvkkAccept}
                 </Link>{" "}
                 ve{" "}
                 <Link
                   href="/sartlar"
                   className="text-pim-mercan font-semibold hover:underline"
                 >
-                  Kullanım Şartları
+                  &nbsp;
                 </Link>
-                &rsquo;nı kabul ediyorum.
               </span>
             </label>
 
@@ -215,7 +212,7 @@ export default function AuthPage() {
               block
               disabled={!canSubmit || loading}
             >
-              {loading ? "Gönderiliyor..." : "Giriş bağlantısı yolla"}{" "}
+              {loading ? t.auth.sending : t.auth.sendLink}{" "}
               {!loading && <Icon.ArrowR />}
             </Button>
           </form>
@@ -223,7 +220,7 @@ export default function AuthPage() {
           <div className="flex items-center gap-3 my-5">
             <span className="flex-1 h-px bg-gri-200" />
             <span className="text-[11.5px] text-gri-500 uppercase tracking-[0.04em]">
-              veya
+              {t.auth.or}
             </span>
             <span className="flex-1 h-px bg-gri-200" />
           </div>
@@ -236,22 +233,21 @@ export default function AuthPage() {
             onClick={onGoogleLogin}
             disabled={loading}
           >
-            <GoogleIcon /> Google ile devam et
+            <GoogleIcon /> {t.auth.googleContinue}
           </Button>
 
           <p className="text-[11.5px] text-gri-500 mt-5 text-center leading-relaxed">
-            Hesabın yoksa otomatik oluşturulur. Sipariş geçmişin tüm
-            cihazlarında senkron.
+            {t.auth.autoCreateNote}
           </p>
         </div>
 
         <p className="text-[13px] text-gri-700 text-center mt-6">
-          Yardım gerekirse{" "}
+          {t.auth.helpText}{" "}
           <Link
             href="/iletisim"
             className="text-pim-mercan font-semibold hover:underline"
           >
-            bize yaz
+            {t.auth.helpLink}
           </Link>
           .
         </p>

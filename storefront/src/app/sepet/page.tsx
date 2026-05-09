@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { useT } from "@/lib/i18n/context";
 import {
   listCustomerCart,
   removeFromCustomerCart,
@@ -28,6 +29,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
 export default function SepetPage() {
   const toast = useToast();
+  const { t } = useT();
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -71,7 +73,7 @@ export default function SepetPage() {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-16">
         <div className="mx-auto max-w-[440px] px-6 text-center text-gri-500">
-          Yükleniyor…
+          {t.common.loading}
         </div>
       </main>
     );
@@ -82,20 +84,19 @@ export default function SepetPage() {
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-16">
         <div className="mx-auto max-w-[440px] px-6 text-center">
           <Pim pose="think" size={160} />
-          <Eyebrow>Sepetin boş</Eyebrow>
+          <Eyebrow>{t.cart.empty}</Eyebrow>
           <h1 className="mt-3 text-[28px] font-semibold tracking-tight">
-            Henüz bir şey eklenmemiş
+            {t.cart.empty}
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            Etiket veya sticker konfigüre etmeye başla — sepetin burada
-            görünecek.
+            {t.cart.emptyDesc}
           </p>
           <div className="mt-7 flex gap-3 justify-center flex-wrap">
             <Button variant="primary" size="lg" href="/etiket">
-              <Icon.Roll size={18} /> Etiket bastır
+              <Icon.Roll size={18} /> {t.home.ctaEtiket}
             </Button>
             <Button variant="secondary" size="lg" href="/sticker">
-              <Icon.Sticker size={18} /> Sticker bastır
+              <Icon.Sticker size={18} /> {t.home.ctaSticker}
             </Button>
           </div>
         </div>
@@ -107,9 +108,9 @@ export default function SepetPage() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-8">
         <div className="mb-7">
-          <Eyebrow>Sepetim</Eyebrow>
+          <Eyebrow>{t.cart.title}</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            {cart.length} ürün sepetinde
+            {t.cart.itemsInCart(cart.length)}
           </h1>
         </div>
 
@@ -180,7 +181,7 @@ export default function SepetPage() {
                       onClick={() => remove(item.id)}
                       className="text-[13px] text-gri-500 hover:text-kirmizi font-semibold"
                     >
-                      Kaldır
+                      {t.common.remove}
                     </button>
                   </div>
                 </div>
@@ -193,13 +194,13 @@ export default function SepetPage() {
                 href="/etiket"
                 className="text-[13px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
               >
-                ← Etiket eklemeye devam
+                ← {t.nav.etiket}
               </Link>
               <Link
                 href="/sticker"
                 className="text-[13px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
               >
-                ← Sticker eklemeye devam
+                ← {t.nav.sticker}
               </Link>
             </div>
           </div>
@@ -207,17 +208,17 @@ export default function SepetPage() {
           {/* SUMMARY */}
           <div className="lg:sticky lg:top-20">
             <Card padding="p-6">
-              <h3 className="font-semibold text-lg mb-4">Sipariş özeti</h3>
+              <h3 className="font-semibold text-lg mb-4">{t.cart.summary}</h3>
               <div className="space-y-2.5 text-[14px]">
                 <div className="flex justify-between">
-                  <span className="text-gri-700">Ara toplam</span>
+                  <span className="text-gri-700">{t.cart.subtotal}</span>
                   <span className="font-semibold">{fmt(subtotal)} TL</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gri-700">Kargo</span>
+                  <span className="text-gri-700">{t.cart.shipping}</span>
                   <span className="font-semibold">
                     {shipping === 0 ? (
-                      <span className="text-yesil">Ücretsiz 🎉</span>
+                      <span className="text-yesil">{t.cart.free}</span>
                     ) : (
                       `${fmt(shipping)} TL`
                     )}
@@ -225,25 +226,23 @@ export default function SepetPage() {
                 </div>
                 {shipping > 0 && (
                   <div className="text-[12.5px] text-gri-700 leading-relaxed bg-sari-soft text-[#7A560A] p-2.5 rounded-lg">
-                    💡 {fmt(FREE_SHIPPING_THRESHOLD)} TL üzeri alışverişlerde
-                    kargo ücretsiz — {fmt(FREE_SHIPPING_THRESHOLD - subtotal)}{" "}
-                    TL kaldı.
+                    {t.cart.freeShippingHint(fmt(FREE_SHIPPING_THRESHOLD - subtotal))}
                   </div>
                 )}
               </div>
               <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
-                <span className="font-semibold">Toplam</span>
+                <span className="font-semibold">{t.cart.total}</span>
                 <span className="text-2xl font-bold">
                   {fmt(total)}{" "}
                   <span className="text-base font-semibold text-gri-700">TL</span>
                 </span>
               </div>
               <div className="text-[11.5px] text-gri-700 text-right mt-1">
-                KDV dahil
+                {t.cart.vatIncluded}
               </div>
 
               <Button variant="primary" size="lg" block href="/odeme" className="mt-5">
-                Ödemeye geç <Icon.ArrowR />
+                {t.cart.proceedToCheckout} <Icon.ArrowR />
               </Button>
               <p className="text-[11.5px] text-gri-500 text-center mt-3 leading-relaxed">
                 Ödeme sonrası 3 gün içinde tasarım dosyalarını yüklemen yeterli.

@@ -24,6 +24,7 @@ import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { FormSection, SelectableCard, PriceCard, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 import { deliveryEstimate } from "@/lib/pricing";
 import {
   quoteCustomerSticker,
@@ -114,6 +115,7 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 export default function StickerPage() {
   const toast = useToast();
+  const { t } = useT();
   // 1. ADIM: Kesim tipi (Sefa kuralı — şekilden ÖNCE)
   const [cutMode, setCutMode] = useState<"tabaka" | "diecut">("diecut");
   // 2. ADIM: Şekil
@@ -174,10 +176,12 @@ export default function StickerPage() {
             href="/"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
-            Anasayfa
+            {t.nav.home}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">Sticker konfigüre et</span>
+          <span className="font-semibold">
+            {t.nav.sticker} {t.config.breadcrumb}
+          </span>
         </div>
       </div>
 
@@ -186,14 +190,13 @@ export default function StickerPage() {
         <div className="flex items-end gap-4 mb-7">
           <div className="flex-1">
             <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
-              <Icon.Sparkle size={12} /> 25 adetten başlar
+              <Icon.Sparkle size={12} /> {t.sticker.pillStart}
             </span>
             <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
-              Sticker&rsquo;ını konfigüre et
+              {t.sticker.pageTitle}
             </h1>
             <p className="mt-2 text-base text-gri-700 max-w-[480px] leading-relaxed">
-              Kampanya, hediye, kişisel — sticker küçük adette de tadından
-              yenmiyor.
+              {t.sticker.pageSubtitle}
             </p>
           </div>
           <Pim pose="excited" size={120} />
@@ -219,8 +222,8 @@ export default function StickerPage() {
           <div className="flex flex-col gap-4">
             {/* 1. ADIM: Kesim Tipi (Tabaka / Die Cut) — şekilden önce */}
             <FormSection
-              title="Kesim Tipi"
-              hint="tabaka mı tek tek mi"
+              title={t.sticker.cutTypeTitle}
+              hint={t.sticker.cutTypeHint}
             >
               <div className="grid grid-cols-2 gap-3">
                 <CutModeCard
@@ -237,11 +240,11 @@ export default function StickerPage() {
             </FormSection>
 
             <FormSection
-              title="Şekil"
+              title={t.sticker.shapeTitle}
               hint={
                 cutMode === "tabaka"
-                  ? "tabaka modunda kontur kesim yok"
-                  : "boyut bağımsız — özel oran ile bumper sticker yapabilirsin"
+                  ? t.sticker.shapeHintTabaka
+                  : t.sticker.shapeHintDieCut
               }
             >
               <div
@@ -319,7 +322,7 @@ export default function StickerPage() {
               )}
             </FormSection>
 
-            <FormSection title="Malzeme">
+            <FormSection title={t.config.materialTitle}>
               <div className="grid grid-cols-2 gap-2.5">
                 {MATERIALS.map((m) => (
                   <SelectableCard
@@ -346,7 +349,7 @@ export default function StickerPage() {
               </div>
             </FormSection>
 
-            <FormSection title="Yüzey">
+            <FormSection title={t.config.finishTitle}>
               <div className="grid grid-cols-3 gap-2.5">
                 {FINISHES.map((f) => (
                   <SelectableCard
@@ -364,7 +367,7 @@ export default function StickerPage() {
               </div>
             </FormSection>
 
-            <FormSection title="Boyut" hint={`min ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm · max ${STICKER_MAX_W}×${STICKER_MAX_H} mm (40×65 cm)`}>
+            <FormSection title={t.config.sizeTitle} hint={`min ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm · max ${STICKER_MAX_W}×${STICKER_MAX_H} mm (40×65 cm)`}>
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
@@ -399,7 +402,7 @@ export default function StickerPage() {
 
               {/* Hızlı boyut chip'leri */}
               <div className="flex gap-2 mt-3 flex-wrap">
-                <span className="text-[11.5px] text-gri-500 self-center mr-1">Hızlı:</span>
+                <span className="text-[11.5px] text-gri-500 self-center mr-1">{t.config.quickSize}</span>
                 {[
                   { w: 50, h: 50, label: "50×50" },
                   { w: 75, h: 75, label: "75×75" },
@@ -437,8 +440,8 @@ export default function StickerPage() {
             </FormSection>
 
             <FormSection
-              title="Adet"
-              hint={`${STICKER_MIN_QTY}'ten başla, ${STICKER_QTY_STEP} adetlik artışla seç (max ${STICKER_MAX_QTY})`}
+              title={t.config.qtyTitle}
+              hint={`${STICKER_MIN_QTY} → ${STICKER_MAX_QTY} (step ${STICKER_QTY_STEP})`}
             >
               {/* Stepper input */}
               <div className="flex items-center gap-3 flex-wrap">
@@ -492,7 +495,7 @@ export default function StickerPage() {
               {/* Preset chip'leri */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
-                  Önerilen:
+                  {t.config.suggested}
                 </span>
                 {STICKER_PRESETS.map((q) => {
                   const active = tier === q;
@@ -540,7 +543,7 @@ export default function StickerPage() {
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
               footnote="Cüzdandan ödeyince +%2 indirim · KDV dahil fiyat"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
-              ctaLabel="Sepete ekle"
+              ctaLabel={t.config.addToCart}
               onCta={() => {
                 if (!quote.ok) {
                   toast.error(quote.reason ?? "Geçersiz seçim");

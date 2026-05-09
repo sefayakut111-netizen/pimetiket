@@ -29,6 +29,7 @@ import {
 import { deliveryEstimate } from "@/lib/pricing";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 import {
   quoteCustomerEtiket,
   computeEtiketTierSavings,
@@ -137,6 +138,7 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 export default function EtiketPage() {
   const toast = useToast();
+  const { t } = useT();
   const [material, setMaterial] = useState<EtiketMaterialId>("kraft");
   const [coating, setCoating] = useState<EtiketCoatingId>("mat");
   const [custom, setCustom] = useState<EtiketCustomId>("yok");
@@ -177,10 +179,12 @@ export default function EtiketPage() {
             href="/"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
-            Anasayfa
+            {t.nav.home}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">Etiket konfigüre et</span>
+          <span className="font-semibold">
+            {t.nav.etiket} {t.config.breadcrumb}
+          </span>
         </div>
       </div>
 
@@ -229,18 +233,18 @@ export default function EtiketPage() {
           <div className="flex flex-col gap-5">
             <div>
               <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
-                Etiketini konfigüre et
+                {t.etiket.pageTitle}
               </h1>
               <p className="mt-2 text-base text-gri-700">
-                Seçimlerin sol taraftaki rulonun üstünde anında görünür.
+                {t.etiket.pageSubtitle}
               </p>
             </div>
 
             {/* Step 1 — Malzeme */}
             <FormSection
               number={1}
-              title="Malzeme"
-              hint="Etiketin dokusunu ve hissini belirler."
+              title={t.config.materialTitle}
+              hint=""
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {MATERIALS.map((m) => (
@@ -270,8 +274,8 @@ export default function EtiketPage() {
             {/* Step 2 — Kaplama */}
             <FormSection
               number={2}
-              title="Kaplama"
-              hint="Yüzey parlaklığı ve dokunsal his."
+              title={t.config.coatingTitle}
+              hint=""
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {COATINGS.map((c) => (
@@ -293,8 +297,8 @@ export default function EtiketPage() {
             {/* Step 3 — Özelleştirme */}
             <FormSection
               number={3}
-              title="Özelleştirme"
-              hint="Premium dokunuş — her adetin değil."
+              title={t.config.customizationTitle}
+              hint=""
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {CUSTOMS.map((c) => (
@@ -356,14 +360,14 @@ export default function EtiketPage() {
             {/* Step 4 — Sarım yönü */}
             <FormSection
               number={4}
-              title="Sarım yönü"
-              hint="Otomatik etiketleme makinesi varsa önemli. R harfi etiketin baskı yönünü temsil eder."
+              title={t.etiket.windingTitle}
+              hint={t.etiket.windingHint}
             >
               {/* DIŞA SARIM */}
               <fieldset className="border-0 p-0 m-0">
                 <legend className="flex items-center gap-2.5 mb-2.5 w-full">
                   <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
-                    DIŞA SARIM
+                    {t.etiket.windingOuter}
                   </span>
                   <span aria-hidden className="flex-1 h-px bg-gri-200" />
                 </legend>
@@ -398,7 +402,7 @@ export default function EtiketPage() {
               <fieldset className="border-0 p-0 m-0">
                 <legend className="flex items-center gap-2.5 mb-2.5 w-full">
                   <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
-                    İÇE SARIM
+                    {t.etiket.windingInner}
                   </span>
                   <span aria-hidden className="flex-1 h-px bg-gri-200" />
                 </legend>
@@ -442,8 +446,8 @@ export default function EtiketPage() {
             {/* Step 5 — Boyut */}
             <FormSection
               number={5}
-              title="Boyut"
-              hint="Tipik etiket 30×40 ile 100×100 mm arası. Kendi ölçüne yaz."
+              title={t.config.sizeTitle}
+              hint={t.etiket.sizeHint}
             >
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
@@ -484,7 +488,7 @@ export default function EtiketPage() {
               {/* Hızlı boyut chip'leri */}
               <div className="flex gap-2 mt-3 flex-wrap">
                 <span className="text-[11.5px] text-gri-500 self-center mr-1">
-                  Hızlı:
+                  {t.config.quickSize}
                 </span>
                 {[
                   { w: 30, h: 40, label: "30×40" },
@@ -520,8 +524,8 @@ export default function EtiketPage() {
             {/* Step 6 — Adet (serbest input + preset chip'ler) */}
             <FormSection
               number={6}
-              title="Adet"
-              hint={`${fmt(ETIKET_MIN_QTY)}'den başla, ${ETIKET_QTY_STEP} adetlik artışla seç (max ${fmt(ETIKET_MAX_QTY)})`}
+              title={t.config.qtyTitle}
+              hint={t.etiket.qtyHint}
             >
               {/* Stepper input */}
               <div className="flex items-center gap-3 flex-wrap">
@@ -575,7 +579,7 @@ export default function EtiketPage() {
               {/* Preset chip'leri */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
-                  Önerilen:
+                  {t.config.suggested}
                 </span>
                 {ETIKET_PRESETS.map((q) => {
                   const active = qty === q;
@@ -635,7 +639,7 @@ export default function EtiketPage() {
                   : null
               }
               deliveryDate={teslim}
-              ctaLabel="Sepete ekle"
+              ctaLabel={t.config.addToCart}
               onCta={() => {
                 if (!quote.ok) {
                   toast.error(quote.reason ?? "Geçersiz seçim");
