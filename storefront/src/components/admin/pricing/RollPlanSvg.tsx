@@ -49,10 +49,10 @@ export function RollPlanSvg({
   const rollsToShow = Math.min(roll.rollsNeeded, maxRollsToShow);
   const showSummary = roll.rollsNeeded > maxRollsToShow;
 
-  const PAD_X = 60;
-  const PAD_TOP = 35;
+  const PAD_X = 80; // sol etiketler ("RULO N/M" rotated) + sağ EN etiketi için
+  const PAD_TOP = 45;
   const PAD_BOTTOM = 30;
-  const ROLL_GAP = 50;
+  const ROLL_GAP = 60;
 
   const totalSvgWidth = ROLL_L + PAD_X * 2;
   const totalSvgHeight =
@@ -90,30 +90,37 @@ export function RollPlanSvg({
 
   // Top dimension label (1520mm BOY) — only on first roll
   const topLabel = (
-    <g transform={`translate(${PAD_X}, ${PAD_TOP - 14})`}>
-      <line x1="0" y1="0" x2={ROLL_L} y2="0" stroke="#9CA3AF" strokeWidth="1" />
-      <line x1="0" y1="-5" x2="0" y2="5" stroke="#9CA3AF" strokeWidth="1" />
+    <g transform={`translate(${PAD_X}, ${PAD_TOP - 16})`}>
+      <line
+        x1="0"
+        y1="0"
+        x2={ROLL_L}
+        y2="0"
+        stroke="#9CA3AF"
+        strokeWidth="1.2"
+      />
+      <line x1="0" y1="-7" x2="0" y2="7" stroke="#9CA3AF" strokeWidth="1.2" />
       <line
         x1={ROLL_L}
-        y1="-5"
+        y1="-7"
         x2={ROLL_L}
-        y2="5"
+        y2="7"
         stroke="#9CA3AF"
-        strokeWidth="1"
+        strokeWidth="1.2"
       />
       <rect
-        x={ROLL_L / 2 - 50}
-        y="-9"
-        width="100"
-        height="14"
+        x={ROLL_L / 2 - 80}
+        y="-12"
+        width="160"
+        height="22"
         fill="#FCFAF5"
       />
       <text
         x={ROLL_L / 2}
-        y="2"
+        y="4"
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="12"
+        fontSize="18"
         fill="#1F2937"
         fontWeight="700"
       >
@@ -124,11 +131,11 @@ export function RollPlanSvg({
 
   // Right en label
   const rightLabel = (
-    <g transform={`translate(${PAD_X + ROLL_L + 18}, ${PAD_TOP + rollW / 2})`}>
+    <g transform={`translate(${PAD_X + ROLL_L + 24}, ${PAD_TOP + rollW / 2})`}>
       <text
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="12"
+        fontSize="18"
         fill="#1F2937"
         fontWeight="700"
         transform="rotate(90)"
@@ -139,10 +146,10 @@ export function RollPlanSvg({
         <text
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="9"
+          fontSize="13"
           fill="#10B981"
           fontWeight="600"
-          transform={`rotate(90) translate(0, 14)`}
+          transform={`rotate(90) translate(0, 20)`}
         >
           ({ROLL_W_MAX - rollW}mm tasarruf)
         </text>
@@ -283,13 +290,17 @@ function RollGroup({
   const rollY = padTop + rollI * (rollW + rollGap);
 
   // Build sheets
+  // FILL ORDER (matches sticker-fiyatlama.html): outer = cols (en), inner = rows (boy)
+  // T1 = en-col=0, boy-row=0 (leftmost-top)
+  // T2 = en-col=0, boy-row=1 (one cell right along boy)
+  // T(rows+1) = en-col=1, boy-row=0 (next en-row down)
   const sheets: React.ReactNode[] = [];
   let localIdx = 0;
 
-  for (let yy = 0; yy < rows; yy++) {
-    for (let xx = 0; xx < cols; xx++) {
-      const sx = padX + ROLL_MARGIN_Y + xx * sheetX;
-      const sy = rollY + sidePad + yy * sheetY;
+  for (let yy = 0; yy < cols; yy++) {
+    for (let xx = 0; xx < rows; xx++) {
+      const sx = padX + ROLL_MARGIN_Y + xx * sheetX; // X axis = rulo BOY (xx iterates rows)
+      const sy = rollY + sidePad + yy * sheetY; // Y axis = rulo EN (yy iterates cols)
       const isUsed = localIdx < sheetsThisRoll;
       const isVeryLast = isLastRoll && localIdx === sheetsThisRoll - 1;
       const stickersInThisSheet = isVeryLast ? lastSheetCount : balancedPerSheet;
@@ -335,10 +346,10 @@ function RollGroup({
       />
       <text
         x={padX + ROLL_L / 2}
-        y={rollY + ROLL_MARGIN_X / 2 + 3}
+        y={rollY + ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="9"
+        fontSize="16"
         fill="#8B7B5C"
         fontWeight="700"
       >
@@ -354,10 +365,10 @@ function RollGroup({
       />
       <text
         x={padX + ROLL_L / 2}
-        y={rollY + rollW - ROLL_MARGIN_X / 2 + 3}
+        y={rollY + rollW - ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="9"
+        fontSize="16"
         fill="#8B7B5C"
         fontWeight="700"
       >
@@ -403,7 +414,7 @@ function RollGroup({
         y={rollY + rollW / 2}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="8"
+        fontSize="14"
         fill="#1F2937"
         fontWeight="700"
         transform={`rotate(-90 ${padX + ROLL_MARGIN_Y / 2} ${rollY + rollW / 2})`}
@@ -433,10 +444,10 @@ function RollGroup({
           y={rollY + rollW / 2}
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="10"
+          fontSize="22"
           fill="#8B7B5C"
           fontWeight="700"
-          opacity="0.7"
+          opacity="0.75"
         >
           {wasteEndW}mm boş
         </text>
@@ -462,11 +473,11 @@ function RollGroup({
       {endFire}
       {sheets}
       {/* Roll label rotated on left */}
-      <g transform={`translate(${padX - 16}, ${rollY + rollW / 2})`}>
+      <g transform={`translate(${padX - 22}, ${rollY + rollW / 2})`}>
         <text
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="11"
+          fontSize="18"
           fill="#4B5563"
           fontWeight="700"
           transform="rotate(-90)"
@@ -508,55 +519,58 @@ function SheetRect({
         height={height}
         fill="#FFF8F2"
         stroke="#FF6B5B"
-        strokeWidth="2.5"
-        rx="4"
+        strokeWidth="3"
+        rx="6"
       />
       <rect
-        x={x + 8}
-        y={y + 8}
-        width={width - 16}
-        height={height - 16}
+        x={x + 12}
+        y={y + 12}
+        width={width - 24}
+        height={height - 24}
         fill="rgba(255, 107, 91, 0.08)"
-        rx="2"
+        rx="3"
       />
+      {/* QTY — büyük rakam ortalanır */}
       <text
         x={x + width / 2}
-        y={y + height / 2 - 6}
+        y={y + height / 2 - 8}
         textAnchor="middle"
-        fontFamily="Bricolage Grotesque, Plus Jakarta Sans, sans-serif"
-        fontSize="32"
-        fontWeight="700"
+        fontFamily="Plus Jakarta Sans, sans-serif"
+        fontSize="64"
+        fontWeight="800"
         fill="#1F2937"
       >
         {qty}
       </text>
       <text
         x={x + width / 2}
-        y={y + height / 2 + 18}
+        y={y + height / 2 + 28}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="13"
+        fontSize="22"
         fill="#4B5563"
         fontWeight="600"
       >
         adet
       </text>
+      {/* T-label */}
       <text
-        x={x + 10}
-        y={y + 18}
+        x={x + 14}
+        y={y + 28}
         fontFamily="JetBrains Mono, monospace"
-        fontSize="11"
+        fontSize="20"
         fill="#FF6B5B"
         fontWeight="700"
       >
         {label}
       </text>
+      {/* Sheet size */}
       <text
-        x={x + width - 10}
-        y={y + height - 8}
+        x={x + width - 14}
+        y={y + height - 12}
         textAnchor="end"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="9"
+        fontSize="14"
         fill="#9CA3AF"
         fontWeight="500"
       >
@@ -586,17 +600,17 @@ function EmptySheet({
         height={height}
         fill="none"
         stroke="#C4B091"
-        strokeWidth="1.5"
-        strokeDasharray="6,4"
-        rx="4"
+        strokeWidth="1.8"
+        strokeDasharray="8,5"
+        rx="6"
         opacity="0.6"
       />
       <text
         x={x + width / 2}
-        y={y + height / 2 + 5}
+        y={y + height / 2 + 7}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="11"
+        fontSize="20"
         fill="#9CA3AF"
         opacity="0.7"
       >
