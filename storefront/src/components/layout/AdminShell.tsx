@@ -29,6 +29,7 @@ const ADMIN_NAV = [
   },
   { href: "/admin/prova", label: "Prova", icon: <Icon.Check size={16} /> },
   { href: "/admin/fason", label: "Fason", icon: <Icon.Truck size={16} /> },
+  { href: "/admin/fiyat-hesapla", label: "Fiyat", icon: <Icon.Wallet size={16} /> },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
