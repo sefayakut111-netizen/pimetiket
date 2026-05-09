@@ -32,7 +32,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -54,6 +54,11 @@ import {
   type PricingProfile,
   type ProfileInputSnapshot,
 } from "@/lib/pricing-profiles";
+import {
+  generateWorkOrderPDF,
+  nextLot,
+  peekNextLot,
+} from "@/lib/pricing-pdf";
 
 // ============================================================
 // Defaults — v0.4: overhead 15→45 (SaaS recovery), minMarkup, customerType
@@ -116,6 +121,31 @@ export default function FiyatHesaplaPage() {
 
   // Aktif profil ID
   const [activeProfileId, setActiveProfileId] = useState<string | undefined>();
+
+  // Lot rozeti — bir sonraki lot numarası
+  const [nextLotPreview, setNextLotPreview] = useState<string>("A000001");
+  useEffect(() => {
+    setNextLotPreview(peekNextLot("A"));
+  }, []);
+
+  function handleGeneratePDF() {
+    if (!result.ok) {
+      toast.error("Önce geçerli bir hesaplama yap");
+      return;
+    }
+    const lot = nextLot("A"); // atomic increment
+    setNextLotPreview(peekNextLot("A")); // refresh badge
+
+    generateWorkOrderPDF({
+      lot,
+      geometry: result.geometry,
+      cost: result.cost,
+      requestedQty: qty,
+      cut,
+      mode,
+    });
+    toast.success(`İş emri ${lot} üretildi (PDF indirildi)`);
+  }
 
   // Hesap
   const result = quoteSticker({
@@ -238,12 +268,26 @@ export default function FiyatHesaplaPage() {
               Manuel hesap + parametre tuning. Pricing-engine v0.4.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-pim-mercan text-white text-[12px] font-bold tabular-nums shadow-mercan"
+              title="Bir sonraki PDF iş emri lot numarası"
+            >
+              <Icon.Box size={12} /> Lot · {nextLotPreview}
+            </span>
             <Button variant="ghost" size="sm" onClick={copyJSON}>
               <Icon.Sparkle size={14} /> JSON kopyala
             </Button>
             <Button variant="ghost" size="sm" onClick={reset}>
               Sıfırla
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleGeneratePDF}
+              disabled={!result.ok}
+            >
+              📄 İş Emri PDF
             </Button>
           </div>
         </div>
