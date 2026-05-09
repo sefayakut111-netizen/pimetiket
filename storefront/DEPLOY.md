@@ -216,9 +216,26 @@ Vercel bir CNAME veya A record verir:
 
 ⚠️ Vercel zaten SSL veriyor; Cloudflare proxy AÇIK olursa "redirect loop" olur.
 
-#### GoDaddy / Namecheap ise:
+#### GoDaddy ise (pimetiket.com için):
 
-DNS yönetiminden A + CNAME ekle. Cloudflare nameserver'larına geçmek **istemiyorsan** doğrudan ekle.
+1. https://dcc.godaddy.com → **My Products** → `pimetiket.com` → **DNS**
+2. Mevcut **"Parking"** A kaydı varsa **sil** (`@` → `Parked` IP'si)
+3. Mevcut CNAME `www` varsa **sil** veya düzenle
+4. Yeni kayıtlar:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | `@` | `76.76.21.21` | 600 (10 dk) |
+| CNAME | `www` | `cname.vercel-dns.com.` (sondaki nokta önemli) | 600 |
+
+5. **Save**. Yayılma 5-30 dk (TTL=600 ise hızlı).
+6. GoDaddy bazen "Forwarding" feature'ı pushluyor — kapalı tut. Yoksa
+   `pimetiket.com → www.pimetiket.com` redirect'i Vercel SSL'i bozar.
+7. **DNSSEC**: GoDaddy default'ta kapalı. Açıksan kapat (Vercel ile uyumsuzluk).
+
+#### Namecheap / başka:
+
+DNS yönetiminden aynı A + CNAME kayıtlarını gir.
 
 ### 5.3 Doğrulama
 

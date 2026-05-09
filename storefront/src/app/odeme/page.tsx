@@ -443,23 +443,30 @@ export default function OdemePage() {
           return;
         }
         if (res.status === 503) {
-          // PSP yok — mock fallback
-          console.warn("[odeme] PayTR not configured, mock fallback");
-          const masked = "**** **** **** 0000";
-          const order = await createCustomerOrder({
-            items: cartItems,
-            address: addr,
-            invoice,
-            payment: { method: "card", masked },
-            subtotal,
-            shipping: effectiveShipping,
-            total: effectiveTotal,
-            estimatedDelivery: addDaysIso(
-              cartItems.some((i) => i.product === "etiket") ? 10 : 5
-            ),
-          });
-          await clearCustomerCart();
-          router.push(`/odeme-sonuc?status=success&order=${order.id}`);
+          // PSP yapılandırılmamış. SADECE dev modunda mock fallback —
+          // production'da müşterinin para vermeden sipariş açmasını
+          // engellemek için "Ödeme yakında" sayfasına yönlendir.
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[odeme] PSP not configured, dev mock fallback");
+            const masked = "**** **** **** 0000";
+            const order = await createCustomerOrder({
+              items: cartItems,
+              address: addr,
+              invoice,
+              payment: { method: "card", masked },
+              subtotal,
+              shipping: effectiveShipping,
+              total: effectiveTotal,
+              estimatedDelivery: addDaysIso(
+                cartItems.some((i) => i.product === "etiket") ? 10 : 5
+              ),
+            });
+            await clearCustomerCart();
+            router.push(`/odeme-sonuc?status=success&order=${order.id}`);
+            return;
+          }
+          // Production: ödeme aktif değil
+          router.push("/odeme-sonuc?status=fail&reason=psp_unavailable");
           return;
         }
         throw new Error(data.error ?? `payment_init_failed_${res.status}`);

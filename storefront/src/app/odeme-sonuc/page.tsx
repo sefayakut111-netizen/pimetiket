@@ -20,6 +20,10 @@ const EXTRA = {
     failTitle: "Ödeme alınamadı",
     failDesc:
       "Bankadan onay gelmedi. Kart bilgilerini kontrol edip tekrar denemen gerekiyor. Tutar hesabından çekilmedi.",
+    pspUnavailableTitle: "Ödeme henüz aktif değil",
+    pspUnavailableDesc:
+      "PayTR aktivasyonumuz tamamlanma aşamasında. Birkaç gün içinde online ödeme açılacak. Şimdiden sipariş vermek istersen WhatsApp veya iletişim formundan bize yaz — fiyatı manuel hazırlarız, havale ile başlatırız.",
+    pspWhatsApp: "WhatsApp'tan yaz",
     retry: "Tekrar dene",
     contact: "Bize yaz",
     contactFooter: (
@@ -42,6 +46,10 @@ const EXTRA = {
     failTitle: "Payment failed",
     failDesc:
       "We didn't get bank approval. Please check your card details and try again. Your account hasn't been charged.",
+    pspUnavailableTitle: "Payments not active yet",
+    pspUnavailableDesc:
+      "Our PayTR activation is in progress — online payments will open within a few days. To start your order now, message us via WhatsApp or the contact form. We'll prepare the quote manually and accept bank transfer.",
+    pspWhatsApp: "Message on WhatsApp",
     retry: "Try again",
     contact: "Contact us",
     contactFooter: (
@@ -86,23 +94,42 @@ function OdemeSonucInner() {
   }, [orderId]);
 
   if (status === "fail") {
+    const reason = sp.get("reason");
+    const isPspUnavailable = reason === "psp_unavailable";
     return (
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
         <div className="mx-auto max-w-[600px] px-6 text-center">
-          <Pim pose="sad" size={160} />
+          <Pim pose={isPspUnavailable ? "think" : "sad"} size={160} />
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            {x.failTitle}
+            {isPspUnavailable ? x.pspUnavailableTitle : x.failTitle}
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            {x.failDesc}
+            {isPspUnavailable ? x.pspUnavailableDesc : x.failDesc}
           </p>
           <div className="mt-6 flex gap-3 justify-center flex-wrap">
-            <Button variant="primary" size="lg" href="/odeme">
-              {x.retry}
-            </Button>
-            <Button variant="secondary" size="lg" href="/iletisim">
-              <Icon.ChatBubble size={16} /> {x.contact}
-            </Button>
+            {isPspUnavailable ? (
+              <>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  href="https://wa.me/905XXXXXXXXX"
+                >
+                  <Icon.ChatBubble size={16} /> {x.pspWhatsApp}
+                </Button>
+                <Button variant="secondary" size="lg" href="/iletisim">
+                  {x.contact}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="primary" size="lg" href="/odeme">
+                  {x.retry}
+                </Button>
+                <Button variant="secondary" size="lg" href="/iletisim">
+                  <Icon.ChatBubble size={16} /> {x.contact}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </main>
