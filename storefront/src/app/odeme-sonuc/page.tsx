@@ -6,11 +6,14 @@
 
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card } from "@/components/ui";
+import { getCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
+
+const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
 export default function OdemeSonucPage() {
   return (
@@ -24,6 +27,11 @@ function OdemeSonucInner() {
   const sp = useSearchParams();
   const status = sp.get("status") ?? "success";
   const orderId = sp.get("order") ?? "PE-2026-XXXX";
+
+  const [order, setOrder] = useState<CustomerOrder | null>(null);
+  useEffect(() => {
+    setOrder(getCustomerOrder(orderId));
+  }, [orderId]);
 
   if (status === "fail") {
     return (
@@ -68,6 +76,48 @@ function OdemeSonucInner() {
           <br />
           Onay e-postası kayıtlı adresine gitti.
         </p>
+
+        {order && (
+          <Card padding="p-5" className="text-left mt-6">
+            <div className="flex justify-between items-baseline mb-3 pb-3 border-b border-gri-200">
+              <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-gri-700">
+                Sipariş özeti
+              </span>
+              <span className="text-xl font-bold tabular-nums">
+                {fmt(order.total)}{" "}
+                <span className="text-[13px] font-semibold text-gri-700">TL</span>
+              </span>
+            </div>
+            <div className="space-y-2.5 text-[13px]">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex justify-between gap-3">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-lacivert">
+                      {item.title}
+                    </span>
+                    <span className="block truncate text-[12px] text-gri-500">
+                      {item.config} · ×{item.qty.toLocaleString("tr-TR")}
+                    </span>
+                  </span>
+                  <span className="font-semibold tabular-nums shrink-0">
+                    {fmt(item.total)} TL
+                  </span>
+                </div>
+              ))}
+            </div>
+            {order.estimatedDelivery && (
+              <div className="mt-4 pt-3 border-t border-gri-200 text-[12.5px] text-gri-700 flex justify-between">
+                <span>Tahmini teslim</span>
+                <span className="font-semibold text-lacivert">
+                  {new Date(order.estimatedDelivery).toLocaleDateString(
+                    "tr-TR",
+                    { day: "numeric", month: "long", year: "numeric" }
+                  )}
+                </span>
+              </div>
+            )}
+          </Card>
+        )}
 
         <Card padding="p-7" className="text-left mt-8">
           <h3 className="font-semibold text-lg mb-4 text-center">

@@ -9,12 +9,17 @@
 
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, StageDot } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  getCustomerOrder,
+  type CustomerOrder,
+} from "@/lib/customer-order";
+import type { OrderStatus } from "@/lib/order";
 
 const PHASES = [
   { id: "konfigure", label: "Konfigüre" },
@@ -28,38 +33,41 @@ const PHASES = [
   { id: "teslim", label: "Teslim edildi" },
 ] as const;
 
-// Mock — gerçek API I adımında
-const ORDER = {
-  id: "PE-2026-1182",
-  title: "Olea Doğal Sabun — etiket",
-  date: "5 Mayıs 2026",
-  status: "Prova bekleniyor",
-  phase: 5, // index in PHASES
-  qty: 2000,
-  unit: 2.13,
-  total: 4250,
-  delivery: "15 Mayıs 2026",
-  config: {
-    Malzeme: "Kraft kâğıt",
-    Kaplama: "Mat selefon",
-    Özelleştirme: "Sıcak yaldız (altın)",
-    "Sarım yönü": "Sarım 1 (dışa)",
-    Ölçü: "60 × 80 mm",
-    Adet: "2.000 adet",
-  },
-  files: [
-    { name: "Olea_v3.pdf", size: "2.4 MB", at: "5 May 14:32" },
-  ],
-  shipping: {
-    addressName: "Ahmet Yılmaz",
-    address: "[Sefa not: gerçek müşteri adresi]",
-    phone: "+90 5XX XXX XX XX",
-  },
-  payment: {
-    method: "Kredi kartı",
-    masked: "**** **** **** 4242",
-    invoiceType: "Bireysel (e-arşiv)",
-  },
+/** OrderStatus → PHASES index map */
+function statusToPhaseIndex(status: OrderStatus): number {
+  switch (status) {
+    case "paid":
+      return 1; // Ödendi
+    case "qc_pending":
+      return 3; // AI kontrol
+    case "qc_flagged":
+    case "operator_review":
+      return 4; // Operatör onayı
+    case "proof_pending":
+      return 5; // Prova bekleniyor
+    case "in_production":
+      return 6; // Üretimde
+    case "shipped":
+      return 7; // Kargoda
+    case "delivered":
+      return 8; // Teslim edildi
+    default:
+      return 1;
+  }
+}
+
+const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
+
+const INVOICE_LABEL: Record<"individual" | "corporate", string> = {
+  individual: "Bireysel (e-arşiv)",
+  corporate: "Kurumsal (e-fatura)",
+};
+
+const PAYMENT_METHOD_LABEL: Record<"card" | "wallet" | "transfer", string> = {
+  card: "Kredi kartı",
+  wallet: "Cüzdan bakiyesi",
+  transfer: "Havale / EFT",
 };
 
 export default function SiparisDetailPage({
@@ -69,6 +77,70 @@ export default function SiparisDetailPage({
 }) {
   const { id } = use(params);
   const [proofApproved, setProofApproved] = useState(false);
+  const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setOrder(getCustomerOrder(id));
+    setHydrated(true);
+  }, [id]);
+
+  // Hydration guard
+  if (!hydrated) {
+    return (
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[680px] px-6 text-center text-gri-500">
+          Yükleniyor…
+        </div>
+      </main>
+    );
+  }
+
+  // Order not found
+  if (!order) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[560px] px-6 text-center">
+          <Pim pose="think" size={140} />
+          <h1 className="mt-3 text-[26px] md:text-[32px] font-semibold tracking-tight">
+            Sipariş bulunamadı
+          </h1>
+          <p className="mt-3 text-base text-gri-700 leading-relaxed">
+            <strong className="font-mono">{id}</strong> numaralı sipariş bu
+            cihazda kayıtlı değil. Başka bir cihazdan bakmış olabilirsin.
+          </p>
+          <div className="mt-6 flex gap-3 justify-center flex-wrap">
+            <Button variant="primary" size="lg" href="/siparislerim">
+              Siparişlerime dön
+            </Button>
+            <Button variant="secondary" size="lg" href="/etiket">
+              Yeni sipariş
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Header için title üret — tek item ise onun başlığı, çoksa özet
+  const title =
+    order.items.length === 1
+      ? order.items[0].title
+      : `${order.items.length} ürünlük sipariş`;
+
+  const orderDate = new Date(order.createdAtIso).toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const deliveryDate = order.estimatedDelivery
+    ? new Date(order.estimatedDelivery).toLocaleDateString("tr-TR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "-";
+  const phaseIdx = statusToPhaseIndex(order.status);
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
@@ -97,18 +169,18 @@ export default function SiparisDetailPage({
           <div>
             <Eyebrow>Sipariş</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight">
-              {ORDER.title}
+              {title}
             </h1>
             <div className="flex items-center gap-3 mt-2 text-[13px] text-gri-700 flex-wrap">
-              <span className="font-semibold uppercase tracking-[0.04em]">
-                {id}
+              <span className="font-semibold uppercase tracking-[0.04em] font-mono">
+                {order.id}
               </span>
               <span>·</span>
-              <span>Sipariş tarihi: {ORDER.date}</span>
+              <span>Sipariş tarihi: {orderDate}</span>
               <span>·</span>
               <span>
                 Tahmini teslim:{" "}
-                <strong className="text-lacivert">{ORDER.delivery}</strong>
+                <strong className="text-lacivert">{deliveryDate}</strong>
               </span>
             </div>
           </div>
@@ -126,7 +198,7 @@ export default function SiparisDetailPage({
               <ol className="flex flex-col gap-0">
                 {PHASES.map((p, i) => {
                   const state =
-                    i < ORDER.phase ? "done" : i === ORDER.phase ? "curr" : "todo";
+                    i < phaseIdx ? "done" : i === phaseIdx ? "curr" : "todo";
                   return (
                     <li
                       key={p.id}
@@ -139,7 +211,7 @@ export default function SiparisDetailPage({
                           className="absolute left-[13px] top-8 bottom-0 w-0.5"
                           style={{
                             background:
-                              i < ORDER.phase
+                              i < phaseIdx
                                 ? "var(--color-yesil)"
                                 : "var(--color-gri-200)",
                           }}
@@ -171,7 +243,7 @@ export default function SiparisDetailPage({
             </Card>
 
             {/* Proof card — current phase'e göre */}
-            {ORDER.phase === 5 && !proofApproved && (
+            {phaseIdx === 5 && !proofApproved && (
               <div className="rounded-2xl p-6 bg-gradient-to-br from-pim-mercan-tint to-krem-soft ring-1 ring-pim-mercan-soft">
                 <div className="flex gap-4 items-start">
                   <PimMini pose="inspect" size={56} />
@@ -217,36 +289,19 @@ export default function SiparisDetailPage({
               </div>
             )}
 
-            {/* File upload card */}
+            {/* File upload card — gerçek upload H adımında */}
             <Card padding="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Yüklenen dosyalar</h2>
-                <Button variant="ghost" size="sm">
-                  <Icon.Plus size={14} /> Yeni dosya
+                <h2 className="text-xl font-semibold">Tasarım dosyası</h2>
+                <Button variant="primary" size="sm" disabled>
+                  <Icon.Plus size={14} /> Dosya yükle
                 </Button>
               </div>
-              <div className="flex flex-col gap-3">
-                {ORDER.files.map((f) => (
-                  <div
-                    key={f.name}
-                    className="flex items-center gap-4 p-4 rounded-lg bg-gri-50 ring-1 ring-gri-200"
-                  >
-                    <div className="grid place-items-center w-12 h-12 rounded-lg bg-pim-mercan-tint text-pim-mercan shrink-0">
-                      <Icon.Box size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-[15px] truncate">
-                        {f.name}
-                      </div>
-                      <div className="text-[13px] text-gri-700 mt-0.5">
-                        {f.size} · Yüklenme: {f.at}
-                      </div>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[12px] font-semibold">
-                      <Icon.Check size={11} /> AI kontrol geçti
-                    </span>
-                  </div>
-                ))}
+              <div className="rounded-lg bg-gri-50 ring-1 ring-dashed ring-gri-200 p-6 text-center text-[13px] text-gri-700 leading-relaxed">
+                Dosya yükleme akışı yakında — şimdilik
+                <strong className="text-lacivert"> destek@pimetiket.com</strong>{" "}
+                üzerinden tasarımlarını gönderebilirsin. AI ön kontrolden geçer,
+                sonra üretim hattına alınır.
               </div>
             </Card>
           </div>
@@ -256,28 +311,59 @@ export default function SiparisDetailPage({
             {/* Order summary */}
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-4">Sipariş özeti</h3>
-              <dl className="flex flex-col gap-2.5 text-[13px]">
-                {Object.entries(ORDER.config).map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="flex justify-between gap-3 py-2 border-b border-gri-100 last:border-0"
+              <ul className="flex flex-col gap-3 text-[13px]">
+                {order.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
                   >
-                    <dt className="text-gri-700">{k}</dt>
-                    <dd className="font-semibold text-right">{v}</dd>
-                  </div>
+                    <div className="flex justify-between gap-3 items-baseline">
+                      <span className="font-semibold text-lacivert text-[13.5px] truncate flex-1 min-w-0">
+                        {item.title}
+                      </span>
+                      <span className="font-semibold tabular-nums shrink-0">
+                        {fmt(item.total)} TL
+                      </span>
+                    </div>
+                    <div className="text-[12px] text-gri-500 mt-1 leading-relaxed">
+                      {item.config}
+                    </div>
+                    <div className="text-[12px] text-gri-700 mt-1 tabular-nums">
+                      {item.qty.toLocaleString("tr-TR")} adet ×{" "}
+                      {fmtUnit(item.unit)} TL
+                    </div>
+                  </li>
                 ))}
-              </dl>
-              <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
+              </ul>
+              <div className="mt-4 pt-3 border-t border-gri-200 space-y-1.5 text-[13px]">
+                <div className="flex justify-between">
+                  <span className="text-gri-700">Ara toplam</span>
+                  <span className="font-semibold tabular-nums">
+                    {fmt(order.subtotal)} TL
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gri-700">Kargo</span>
+                  <span className="font-semibold tabular-nums">
+                    {order.shipping === 0 ? (
+                      <span className="text-yesil">Ücretsiz</span>
+                    ) : (
+                      `${fmt(order.shipping)} TL`
+                    )}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t-2 border-lacivert flex justify-between items-baseline">
                 <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
                   TOPLAM
                 </span>
-                <span className="text-2xl font-bold">
-                  {ORDER.total.toLocaleString("tr-TR")}{" "}
+                <span className="text-2xl font-bold tabular-nums">
+                  {fmt(order.total)}{" "}
                   <span className="text-base text-gri-700">TL</span>
                 </span>
               </div>
               <div className="text-[11.5px] text-gri-700 text-right mt-1">
-                Birim: {ORDER.unit.toFixed(2).replace(".", ",")} TL · KDV dahil
+                KDV dahil
               </div>
             </Card>
 
@@ -287,11 +373,17 @@ export default function SiparisDetailPage({
                 <Icon.Truck size={16} /> Teslimat
               </h3>
               <div className="text-[13px] text-gri-700 space-y-1.5 leading-relaxed">
+                {order.address.label && (
+                  <div className="inline-flex items-center h-[20px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold mb-1">
+                    {order.address.label}
+                  </div>
+                )}
                 <div className="font-semibold text-lacivert">
-                  {ORDER.shipping.addressName}
+                  {order.address.name}
                 </div>
-                <div>{ORDER.shipping.address}</div>
-                <div>{ORDER.shipping.phone}</div>
+                <div>{order.address.addr}</div>
+                <div>{order.address.city}</div>
+                <div>{order.address.phone}</div>
               </div>
             </Card>
 
@@ -301,10 +393,12 @@ export default function SiparisDetailPage({
                 <Icon.Wallet size={16} /> Ödeme
               </h3>
               <div className="text-[13px] text-gri-700 space-y-1.5 leading-relaxed">
-                <div>{ORDER.payment.method}</div>
-                <div className="font-mono">{ORDER.payment.masked}</div>
+                <div>{PAYMENT_METHOD_LABEL[order.payment.method]}</div>
+                {order.payment.masked && (
+                  <div className="font-mono">{order.payment.masked}</div>
+                )}
                 <div className="text-[11.5px] text-gri-500 mt-2">
-                  Fatura: {ORDER.payment.invoiceType}
+                  Fatura: {INVOICE_LABEL[order.invoice.type]}
                 </div>
               </div>
             </Card>

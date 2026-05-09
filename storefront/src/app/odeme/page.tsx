@@ -7,13 +7,23 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  listCustomerCart,
+  summarizeCustomerCart,
+  clearCustomerCart,
+  type CustomerCartItem,
+} from "@/lib/customer-cart";
+import {
+  createCustomerOrder,
+  addDaysIso,
+} from "@/lib/customer-order";
 
 const SAVED_ADDRESSES = [
   {
@@ -50,16 +60,75 @@ export default function OdemePage() {
   const [acceptSatis, setAcceptSatis] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const total = 5300; // mock subtotal + shipping
-  const fmt = (n: number) => n.toLocaleString("tr-TR");
+  // Cart snapshot — sayfa mount'ta okunur, hydration'a kadar boş.
+  const [cartItems, setCartItems] = useState<CustomerCartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const items = listCustomerCart();
+    setCartItems(items);
+    setHydrated(true);
+    // Sepet boşsa /sepet'e yönlendir — direkt URL ile gelen kullanıcı için
+    if (items.length === 0) {
+      router.replace("/sepet");
+    }
+  }, [router]);
+
+  const summary = summarizeCustomerCart();
+  const subtotal = summary.subtotal;
+  const shipping = summary.shipping;
+  const total = summary.total;
+  const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
   const goNext = () => setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
   const goPrev = () => setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
 
   const submit = () => {
+    if (cartItems.length === 0) return;
     setLoading(true);
+
+    // Seçili adresi çöz
+    const addr =
+      SAVED_ADDRESSES.find((a) => a.id === addressId) ?? SAVED_ADDRESSES[0];
+
+    // Kart son 4 hane mask
+    const last4 = card.no.replace(/\D/g, "").slice(-4);
+    const masked = last4
+      ? `**** **** **** ${last4}`
+      : "**** **** **** ****";
+
+    // Mock 3DS gecikme — gerçek PSP H adımında
     setTimeout(() => {
-      router.push("/odeme-sonuc?status=success&order=PE-2026-1183");
+      const order = createCustomerOrder({
+        items: cartItems,
+        address: {
+          label: addr.label,
+          name: addr.name,
+          addr: addr.addr,
+          city: addr.city,
+          phone: addr.phone,
+        },
+        invoice: {
+          type: invoiceType,
+          tc: invoiceType === "individual" ? tc : undefined,
+          vkn: invoiceType === "corporate" ? vkn : undefined,
+          companyName: invoiceType === "corporate" ? companyName : undefined,
+          taxOffice: invoiceType === "corporate" ? taxOffice : undefined,
+        },
+        payment: { method: "card", masked },
+        subtotal,
+        shipping,
+        total,
+        // Etiket için 10 gün, sticker için 5 gün — karışıksa 10 gün ver
+        estimatedDelivery: addDaysIso(
+          cartItems.some((i) => i.product === "etiket") ? 10 : 5
+        ),
+      });
+
+      // Sepeti temizle
+      clearCustomerCart();
+
+      router.push(`/odeme-sonuc?status=success&order=${order.id}`);
     }, 1500);
   };
 
@@ -369,7 +438,9 @@ export default function OdemePage() {
                     variant="primary"
                     size="lg"
                     onClick={submit}
-                    disabled={!acceptSatis || loading}
+                    disabled={
+                      !acceptSatis || loading || cartItems.length === 0
+                    }
                   >
                     {loading
                       ? "İşleniyor..."
@@ -389,27 +460,45 @@ export default function OdemePage() {
                 Özet
               </h3>
               <div className="space-y-3 text-[13px]">
-                <div className="flex justify-between">
-                  <span className="text-gri-700">Olea — etiket × 2.000</span>
-                  <span className="font-semibold">4.250 TL</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gri-700">Holografik sticker × 250</span>
-                  <span className="font-semibold">1.050 TL</span>
-                </div>
+                {hydrated && cartItems.length === 0 && (
+                  <div className="text-gri-500">Sepetin boş — yönlendiriliyor…</div>
+                )}
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex justify-between gap-3">
+                    <span className="text-gri-700 leading-tight min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-lacivert text-[12.5px]">
+                        {item.title}
+                      </span>
+                      <span className="block truncate text-[12px] text-gri-500">
+                        {item.config} · ×{item.qty.toLocaleString("tr-TR")}
+                      </span>
+                    </span>
+                    <span className="font-semibold tabular-nums shrink-0">
+                      {fmt(item.total)} TL
+                    </span>
+                  </div>
+                ))}
                 <div className="flex justify-between border-t border-gri-200 pt-3">
                   <span className="text-gri-700">Ara toplam</span>
-                  <span className="font-semibold">5.300 TL</span>
+                  <span className="font-semibold tabular-nums">
+                    {fmt(subtotal)} TL
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gri-700">Kargo</span>
-                  <span className="text-yesil font-semibold">Ücretsiz</span>
+                  <span className="font-semibold tabular-nums">
+                    {shipping === 0 ? (
+                      <span className="text-yesil">Ücretsiz</span>
+                    ) : (
+                      `${fmt(shipping)} TL`
+                    )}
+                  </span>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
                 <span className="font-semibold">Toplam</span>
-                <span className="text-2xl font-bold">
-                  5.300{" "}
+                <span className="text-2xl font-bold tabular-nums">
+                  {fmt(total)}{" "}
                   <span className="text-base font-semibold text-gri-700">
                     TL
                   </span>

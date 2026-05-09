@@ -7,12 +7,15 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
-import Link from "next/link";
+import { useState, useMemo, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
+import {
+  listCustomerOrders,
+  type CustomerOrder,
+} from "@/lib/customer-order";
 
 // Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
 // olarak gösterilir, daha basit. Admin daha granuler görür.
@@ -32,15 +35,47 @@ interface Order {
   status: CustomerStatus;
 }
 
-const ALL_ORDERS: Order[] = [
-  { id: "PE-2026-1182", date: "5 May 2026", title: "Olea Doğal Sabun — etiket", qty: 2000, total: 4250, status: "qc_pending" },
-  { id: "PE-2026-1175", date: "28 Nis 2026", title: "Bulutlu Roastery — sticker", qty: 500, total: 1750, status: "in_production" },
-  { id: "PE-2026-1167", date: "21 Nis 2026", title: "Atölye Niş — Holografik tabaka", qty: 250, total: 1050, status: "shipped" },
-  { id: "PE-2026-1098", date: "15 Mar 2026", title: "Olea Doğal Sabun — etiket (yenileme)", qty: 3000, total: 5800, status: "delivered" },
-  { id: "PE-2026-1051", date: "28 Şub 2026", title: "Çiğdem Atölye — etiket", qty: 1500, total: 3120, status: "delivered" },
-  { id: "PE-2026-0997", date: "12 Şub 2026", title: "Pop-up etkinlik — sticker", qty: 1000, total: 2900, status: "delivered" },
-  { id: "PE-2026-0913", date: "20 Oca 2026", title: "İptal edilmiş test", qty: 500, total: 1500, status: "cancelled" },
-];
+/** Backend OrderStatus → customer-friendly bucket. */
+function toCustomerStatus(s: OrderStatus): CustomerStatus {
+  switch (s) {
+    case "paid":
+    case "qc_pending":
+    case "qc_flagged":
+    case "operator_review":
+    case "proof_pending":
+      return "qc_pending";
+    case "in_production":
+      return "in_production";
+    case "shipped":
+      return "shipped";
+    case "delivered":
+      return "delivered";
+    case "cancelled":
+      return "cancelled";
+  }
+}
+
+/** CustomerOrder → list view row */
+function toOrderRow(o: CustomerOrder): Order {
+  const title =
+    o.items.length === 1
+      ? o.items[0].title
+      : `${o.items.length} ürünlük sipariş`;
+  const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
+  const date = new Date(o.createdAtIso).toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return {
+    id: o.id,
+    date,
+    title,
+    qty: totalQty,
+    total: o.total,
+    status: toCustomerStatus(o.status),
+  };
+}
 
 const STATUS_META: Record<
   CustomerStatus,
@@ -90,9 +125,21 @@ const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 export default function SiparislerimPage() {
   const [filter, setFilter] = useState<CustomerStatus | "all">("all");
   const [search, setSearch] = useState("");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const refresh = () =>
+      setOrders(listCustomerOrders().map(toOrderRow));
+    refresh();
+    setHydrated(true);
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
 
   const filtered = useMemo(() => {
-    return ALL_ORDERS.filter((o) => {
+    return orders.filter((o) => {
       if (filter !== "all" && o.status !== filter) return false;
       if (search.length > 0) {
         const q = search.toLowerCase();
@@ -103,7 +150,7 @@ export default function SiparislerimPage() {
       }
       return true;
     });
-  }, [filter, search]);
+  }, [orders, filter, search]);
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
@@ -116,7 +163,7 @@ export default function SiparislerimPage() {
               Tüm siparişlerim
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              {ALL_ORDERS.length} sipariş — filtreleyerek bul, tekrar sipariş
+              {orders.length} sipariş — filtreleyerek bul, tekrar sipariş
               ver veya detayı incele.
             </p>
           </div>
@@ -162,7 +209,25 @@ export default function SiparislerimPage() {
         </Card>
 
         {/* Orders list */}
-        {filtered.length === 0 ? (
+        {hydrated && orders.length === 0 ? (
+          <Card padding="p-12" className="text-center">
+            <Icon.Box size={48} className="text-gri-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">
+              Henüz siparişin yok
+            </h3>
+            <p className="text-base text-gri-700 mb-5">
+              İlk siparişini ver — sonra burada görürsün.
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <Button variant="primary" size="lg" href="/etiket">
+                <Icon.Roll size={16} /> Etiket bastır
+              </Button>
+              <Button variant="secondary" size="lg" href="/sticker">
+                <Icon.Sticker size={16} /> Sticker bastır
+              </Button>
+            </div>
+          </Card>
+        ) : filtered.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Icon.Box size={48} className="text-gri-500 mx-auto mb-4" />
             <h3 className="text-xl font-semibold mb-2">
