@@ -105,11 +105,11 @@ export default function SepetPage() {
   }
 
   return (
-    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-8">
-        <div className="mb-7">
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        <div className="mb-5 md:mb-7">
           <Eyebrow>{t.cart.title}</Eyebrow>
-          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+          <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight">
             {t.cart.itemsInCart(cart.length)}
           </h1>
         </div>
@@ -118,19 +118,19 @@ export default function SepetPage() {
           {/* CART ITEMS */}
           <div className="flex flex-col gap-3">
             {cart.map((item) => (
-              <Card key={item.id} padding="p-5">
-                <div className="grid grid-cols-[80px_1fr_auto] gap-4 items-start">
+              <Card key={item.id} padding="p-4 sm:p-5">
+                <div className="grid grid-cols-[60px_1fr_auto] sm:grid-cols-[80px_1fr_auto] gap-3 sm:gap-4 items-start">
                   <div
-                    className={`grid place-items-center w-20 h-20 rounded-lg shrink-0 ${
+                    className={`grid place-items-center w-15 h-15 sm:w-20 sm:h-20 rounded-lg shrink-0 ${
                       item.product === "etiket"
                         ? "bg-krem"
                         : "bg-pim-mercan-tint"
                     }`}
                   >
                     {item.product === "etiket" ? (
-                      <Icon.Roll size={32} className="text-lacivert" />
+                      <Icon.Roll size={28} className="text-lacivert" />
                     ) : (
-                      <Icon.Sticker size={32} className="text-pim-mercan" />
+                      <Icon.Sticker size={28} className="text-pim-mercan" />
                     )}
                   </div>
                   <div className="min-w-0">

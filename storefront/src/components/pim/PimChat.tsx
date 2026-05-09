@@ -146,6 +146,23 @@ export function PimChat() {
     },
   });
 
+  // Mount'ta memory'deki history'yi useChat'e yükle (sayfa yenileme sonrası)
+  useEffect(() => {
+    if (!memory || !memory.consent) return;
+    if (memory.history.length === 0) return;
+    if (messages.length > 0) return; // useChat zaten dolu
+    // PimMessage → UIMessage çevirisi (parts[type=text])
+    const restored = memory.history.map((m) => ({
+      id: m.id,
+      role: m.role,
+      parts: [{ type: "text" as const, text: m.content }],
+    }));
+    // useChat type'ı UIMessage[] bekler — runtime safe cast
+    setMessages(restored as never);
+    // sendMessage'ı no-op kullanmak için referansı tüket (lint pacification yerine no-op)
+    void sendMessage;
+  }, [memory, messages.length, setMessages, sendMessage]);
+
   // Açılınca unread sıfırla
   useEffect(() => {
     if (open) setUnread(0);
@@ -302,6 +319,23 @@ export function PimChat() {
               onClearHistory={() => {
                 setMessages([]);
                 setUnread(0);
+                // Memory history sıfırla (consent korunur)
+                const mem = readMemory();
+                if (mem.consent) {
+                  mem.history = [];
+                  mem.lastConversationSummary = undefined;
+                  // writeMemory direkt çağrılamaz, appendMessage'la yapay clear
+                  // Daha temiz: storage'a manuel yaz
+                  try {
+                    localStorage.setItem(
+                      "pim:memory:v1",
+                      JSON.stringify(mem)
+                    );
+                  } catch {
+                    /* ignore */
+                  }
+                  setMemory(mem);
+                }
               }}
             />
           ) : (

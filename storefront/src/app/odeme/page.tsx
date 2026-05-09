@@ -135,11 +135,11 @@ export default function OdemePage() {
   };
 
   return (
-    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-8">
-        <div className="mb-7">
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        <div className="mb-5 md:mb-7">
           <Eyebrow>{t.checkout.eyebrow}</Eyebrow>
-          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+          <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight">
             {t.checkout.title}
           </h1>
         </div>

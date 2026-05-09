@@ -171,7 +171,7 @@ export default function StickerPage() {
     >
       {/* Breadcrumb */}
       <div className="border-b border-gri-200 bg-white/80">
-        <div className="mx-auto max-w-[1280px] px-8 py-4 flex items-center gap-2 text-[14px]">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2 text-[13px] md:text-[14px]">
           <Link
             href="/"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
@@ -179,27 +179,29 @@ export default function StickerPage() {
             {t.nav.home}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">
+          <span className="font-semibold truncate">
             {t.nav.sticker} {t.config.breadcrumb}
           </span>
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1280px] px-8 py-8 pb-20">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
         {/* Page hero */}
-        <div className="flex items-end gap-4 mb-7">
-          <div className="flex-1">
+        <div className="flex items-end gap-4 mb-6 md:mb-7">
+          <div className="flex-1 min-w-0">
             <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
               <Icon.Sparkle size={12} /> {t.sticker.pillStart}
             </span>
-            <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
+            <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
               {t.sticker.pageTitle}
             </h1>
-            <p className="mt-2 text-base text-gri-700 max-w-[480px] leading-relaxed">
+            <p className="mt-2 text-[14px] md:text-base text-gri-700 max-w-[480px] leading-relaxed">
               {t.sticker.pageSubtitle}
             </p>
           </div>
-          <Pim pose="excited" size={120} />
+          <div className="hidden md:block">
+            <Pim pose="excited" size={120} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-6 items-start">

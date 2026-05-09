@@ -174,7 +174,7 @@ export default function EtiketPage() {
     <main className="bg-gri-50 min-h-[calc(100vh-64px)] animate-fade-up">
       {/* Breadcrumb */}
       <div className="border-b border-gri-200 bg-white">
-        <div className="mx-auto max-w-[1280px] px-8 py-4 flex items-center gap-2 text-[14px]">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2 text-[13px] md:text-[14px]">
           <Link
             href="/"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
@@ -182,14 +182,14 @@ export default function EtiketPage() {
             {t.nav.home}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">
+          <span className="font-semibold truncate">
             {t.nav.etiket} {t.config.breadcrumb}
           </span>
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1280px] px-8 py-8 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-8 items-start">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6 lg:gap-8 items-start">
           {/* LEFT — sticky preview */}
           <div className="lg:sticky lg:top-20">
             <PreviewCanvas
@@ -232,10 +232,10 @@ export default function EtiketPage() {
           {/* RIGHT — config */}
           <div className="flex flex-col gap-5">
             <div>
-              <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
+              <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
                 {t.etiket.pageTitle}
               </h1>
-              <p className="mt-2 text-base text-gri-700">
+              <p className="mt-2 text-[14px] md:text-base text-gri-700">
                 {t.etiket.pageSubtitle}
               </p>
             </div>

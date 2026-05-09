@@ -136,7 +136,7 @@ export default function HomePage() {
   return (
     <main className="animate-fade-up">
       {/* ============================== HERO ============================== */}
-      <section className="relative overflow-hidden pt-16 pb-20">
+      <section className="relative overflow-hidden pt-10 md:pt-16 pb-12 md:pb-20">
         <div
           aria-hidden
           className="absolute inset-0 -z-0 pointer-events-none"
@@ -145,11 +145,11 @@ export default function HomePage() {
               "radial-gradient(900px 480px at 78% 28%, var(--color-krem) 0%, transparent 60%)",
           }}
         />
-        <div className="relative mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
+        <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-8 md:gap-14 items-center">
           {/* LEFT — copy */}
           <div>
             <Eyebrow>{t.home.eyebrow}</Eyebrow>
-            <h1 className="mt-5 text-[44px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
+            <h1 className="mt-5 text-[34px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
               {t.home.h1Brand}
               <br />
               <span className="relative text-pim-mercan">
@@ -457,10 +457,10 @@ function ProductCard({
   return (
     <Link
       href={href}
-      className="text-left bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] overflow-hidden flex hover:-translate-y-0.5 transition-transform"
+      className="text-left bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] overflow-hidden flex flex-col sm:flex-row hover:-translate-y-0.5 transition-transform"
     >
       <div
-        className={`flex-shrink-0 w-60 grid place-items-center min-h-[220px] ${
+        className={`flex-shrink-0 w-full sm:w-60 grid place-items-center min-h-[180px] sm:min-h-[220px] ${
           isEtiket ? "bg-krem" : ""
         }`}
         style={
