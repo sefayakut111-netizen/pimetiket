@@ -3,38 +3,101 @@
 /**
  * AdminShell — admin/operatör paneli için ayrı topbar.
  * Public AppShell'den ayrı: lacivert header, kompakt nav, sayaç badge'leri.
+ *
+ * Badge'ler customer-orders store'undan canlı okunur:
+ *   - Siparişler: aktif sipariş sayısı (delivered/cancelled hariç)
+ *   - AI QC: qc_flagged + operator_review toplam
+ *   - Prova: proof_pending sayısı
+ *   - Fason: paid + qc_pending sayısı (üretime atanacak)
  */
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
+import {
+  listCustomerOrders,
+  type CustomerOrder,
+} from "@/lib/customer-order";
 
-const ADMIN_NAV = [
-  { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} /> },
-  {
-    href: "/admin/siparisler",
-    label: "Siparişler",
-    icon: <Icon.Box size={16} />,
-    badge: 12,
-  },
-  {
-    href: "/admin/ai-qc",
-    label: "AI QC",
-    icon: <Icon.Sparkle size={16} />,
-    badge: 3,
-    badgeAccent: true,
-  },
-  { href: "/admin/prova", label: "Prova", icon: <Icon.Check size={16} /> },
-  { href: "/admin/fason", label: "Fason", icon: <Icon.Truck size={16} /> },
-  { href: "/admin/fiyat-hesapla", label: "Sticker", icon: <Icon.Sticker size={16} /> },
-  { href: "/admin/fiyat-hesapla-etiket", label: "Etiket", icon: <Icon.Roll size={16} /> },
-];
+interface AdminBadges {
+  active: number;
+  aiQc: number;
+  proof: number;
+  fason: number;
+}
+
+function aggregateBadges(orders: CustomerOrder[]): AdminBadges {
+  let active = 0;
+  let aiQc = 0;
+  let proof = 0;
+  let fason = 0;
+  for (const o of orders) {
+    if (o.status !== "delivered" && o.status !== "cancelled") active++;
+    if (o.status === "qc_flagged" || o.status === "operator_review") aiQc++;
+    if (o.status === "proof_pending") proof++;
+    if (o.status === "paid" || o.status === "qc_pending") fason++;
+  }
+  return { active, aiQc, proof, fason };
+}
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [badges, setBadges] = useState<AdminBadges>({
+    active: 0,
+    aiQc: 0,
+    proof: 0,
+    fason: 0,
+  });
+
+  useEffect(() => {
+    const refresh = () => setBadges(aggregateBadges(listCustomerOrders()));
+    refresh();
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
+
+  const adminNav = [
+    { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} /> },
+    {
+      href: "/admin/siparisler",
+      label: "Siparişler",
+      icon: <Icon.Box size={16} />,
+      badge: badges.active,
+    },
+    {
+      href: "/admin/ai-qc",
+      label: "AI QC",
+      icon: <Icon.Sparkle size={16} />,
+      badge: badges.aiQc,
+      badgeAccent: badges.aiQc > 0,
+    },
+    {
+      href: "/admin/prova",
+      label: "Prova",
+      icon: <Icon.Check size={16} />,
+      badge: badges.proof,
+    },
+    {
+      href: "/admin/fason",
+      label: "Fason",
+      icon: <Icon.Truck size={16} />,
+      badge: badges.fason,
+    },
+    {
+      href: "/admin/fiyat-hesapla",
+      label: "Sticker",
+      icon: <Icon.Sticker size={16} />,
+    },
+    {
+      href: "/admin/fiyat-hesapla-etiket",
+      label: "Etiket",
+      icon: <Icon.Roll size={16} />,
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-gri-50">
@@ -54,10 +117,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
           {/* Nav */}
           <nav className="flex-1 flex gap-0.5 items-center overflow-x-auto">
-            {ADMIN_NAV.map((item) => {
+            {adminNav.map((item) => {
               const active =
                 pathname === item.href ||
                 (item.href !== "/admin" && pathname.startsWith(item.href));
+              const showBadge = item.badge != null && item.badge > 0;
               return (
                 <Link
                   key={item.href}
@@ -71,10 +135,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 >
                   {item.icon}
                   {item.label}
-                  {item.badge != null && (
+                  {showBadge && (
                     <span
                       className={cn(
-                        "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ml-0.5",
+                        "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ml-0.5 tabular-nums",
                         item.badgeAccent
                           ? "bg-pim-mercan text-white"
                           : active

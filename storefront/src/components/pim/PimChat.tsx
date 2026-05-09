@@ -77,6 +77,7 @@ const QUICK_CHIPS_BY_PERSONA: Record<
 
 export function PimChat() {
   const pathname = usePathname();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [memory, setMemory] = useState<PimMemory | null>(null);
   const [showConsent, setShowConsent] = useState(false);
@@ -117,6 +118,14 @@ export function PimChat() {
         }
       }
       if (!open) setUnread((n) => n + 1);
+    },
+    onError: (error) => {
+      // Backend hatası — büyük olasılıkla OPENAI_API_KEY yok ya da
+      // OpenAI tarafında geçici sorun. Kullanıcıya genel mesaj, dev'e detay.
+      console.error("[PimChat] sendMessage error:", error);
+      toast.error(
+        "Pim şu an cevap veremiyor — lütfen biraz sonra tekrar dene"
+      );
     },
   });
 

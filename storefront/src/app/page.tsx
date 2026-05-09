@@ -22,14 +22,16 @@ import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
-// "En küçük tier × tipik boyut × sade konfigürasyon" ile gösterilir.
+// "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
+// Sticker 250 (popüler), etiket 2000 (popüler) — fixed cost yayıldığında
+// daha makul birim fiyat görünür ("ucuz baskı" mesajıyla uyumlu).
 function baselineStickerPrice(): string {
   const r = quoteCustomerSticker({
     width: 75,
     height: 75,
     material: "vinil",
     finish: "parlak",
-    qty: 50,
+    qty: 250,
   });
   if (!r.ok) return "—";
   return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
@@ -39,7 +41,7 @@ function baselineEtiketPrice(): string {
   const r = quoteCustomerEtiket({
     width: 60,
     height: 80,
-    qty: 1000,
+    qty: 2000,
     material: "kraft",
     coating: "yok",
     customization: "yok",
