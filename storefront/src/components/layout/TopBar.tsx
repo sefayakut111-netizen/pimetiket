@@ -13,6 +13,8 @@ import {
   customerCartCount,
   listCustomerCart,
   summarizeCustomerCart,
+  refreshCustomerCart,
+  ensureAuthBindings,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 import { useUser, signOut } from "@/lib/supabase/use-user";
@@ -44,6 +46,7 @@ export function TopBar() {
   ];
 
   useEffect(() => {
+    ensureAuthBindings();
     const refresh = () => {
       setCartCount(customerCartCount());
       setCartItems(listCustomerCart());
@@ -54,7 +57,7 @@ export function TopBar() {
         total: s.total,
       });
     };
-    refresh();
+    void refreshCustomerCart().then(refresh);
     window.addEventListener("pim_customer_cart_updated", refresh);
     window.addEventListener("storage", refresh);
     return () => {

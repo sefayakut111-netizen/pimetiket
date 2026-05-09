@@ -15,10 +15,12 @@ import { Button, Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listReturns,
+  refreshReturns,
   type ReturnRequest,
   type ReturnStatus,
   type ReturnReason,
 } from "@/lib/customer-return";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 import { useT } from "@/lib/i18n/context";
 
 const COPY = {
@@ -98,9 +100,12 @@ export default function IadelerimPage() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    ensureAuthBindings();
     const refresh = () => setItems(listReturns());
-    refresh();
-    setHydrated(true);
+    void refreshReturns().then(() => {
+      refresh();
+      setHydrated(true);
+    });
     window.addEventListener("pim_customer_returns_updated", refresh);
     return () =>
       window.removeEventListener("pim_customer_returns_updated", refresh);

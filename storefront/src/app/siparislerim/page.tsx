@@ -14,8 +14,10 @@ import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
 import {
   listCustomerOrders,
+  refreshCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 import { useT } from "@/lib/i18n/context";
 
 // Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
@@ -189,10 +191,13 @@ export default function SiparislerimPage() {
   }
 
   useEffect(() => {
+    ensureAuthBindings();
     const refresh = () =>
       setOrders(listCustomerOrders().map(toOrderRow));
-    refresh();
-    setHydrated(true);
+    void refreshCustomerOrders().then(() => {
+      refresh();
+      setHydrated(true);
+    });
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () =>
       window.removeEventListener("pim_customer_orders_updated", refresh);

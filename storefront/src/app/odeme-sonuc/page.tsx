@@ -12,7 +12,8 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
-import { getCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
+import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 
 const EXTRA = {
   tr: {
@@ -80,7 +81,8 @@ function OdemeSonucInner() {
 
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   useEffect(() => {
-    setOrder(getCustomerOrder(orderId));
+    ensureAuthBindings();
+    void fetchCustomerOrder(orderId).then(setOrder);
   }, [orderId]);
 
   if (status === "fail") {

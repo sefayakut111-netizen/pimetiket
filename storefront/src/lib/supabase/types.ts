@@ -709,5 +709,6 @@ export interface Database {
       review_status: ReviewStatus;
       audit_action: AuditAction;
     };
+    CompositeTypes: Record<string, never>;
   };
 }

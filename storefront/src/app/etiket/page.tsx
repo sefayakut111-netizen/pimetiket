@@ -640,7 +640,7 @@ export default function EtiketPage() {
               }
               deliveryDate={teslim}
               ctaLabel={t.config.addToCart}
-              onCta={() => {
+              onCta={async () => {
                 if (!quote.ok) {
                   toast.error(quote.reason ?? "Geçersiz seçim");
                   return;
@@ -653,7 +653,7 @@ export default function EtiketPage() {
                   CUSTOMS.find((c) => c.id === custom)?.name ?? custom;
                 const customSuffix =
                   custom === "yaldiz" ? ` (${yaldiz})` : "";
-                const result = addToCustomerCart({
+                const result = await addToCustomerCart({
                   product: "etiket",
                   title: `Etiket · ${matName} + ${coatName}`,
                   config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix} · Sarım ${winding}`,

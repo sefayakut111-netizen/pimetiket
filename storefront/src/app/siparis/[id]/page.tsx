@@ -16,9 +16,10 @@ import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Skeleton, StageDot } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
-  getCustomerOrder,
+  fetchCustomerOrder,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 
@@ -249,8 +250,11 @@ export default function SiparisDetailPage({
   };
 
   useEffect(() => {
-    setOrder(getCustomerOrder(id));
-    setHydrated(true);
+    ensureAuthBindings();
+    void fetchCustomerOrder(id).then((o) => {
+      setOrder(o);
+      setHydrated(true);
+    });
   }, [id]);
 
   // Hydration guard — skeleton loading

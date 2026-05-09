@@ -611,7 +611,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
       maximumFractionDigits: 2,
     });
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (result.product === "sticker") {
       const parts = result.size_mm.split(/[×x]/).map((s) => Number(s.trim()));
       const w = Number.isFinite(parts[0]) ? parts[0] : 0;
@@ -631,7 +631,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
         mat: "Mat",
         yok: "Kaplamasız",
       };
-      const r = addToCustomerCart({
+      const r = await addToCustomerCart({
         product: "sticker",
         title: `Sticker · ${matLabel[result.material] ?? result.material} + ${
           finLabel[result.finish] ?? result.finish
@@ -650,7 +650,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
       if (r.ok) toast.success("Sepete eklendi 🛒");
       else toast.error(r.reason);
     } else {
-      const r = addToCustomerCart({
+      const r = await addToCustomerCart({
         product: "etiket",
         title: `Etiket · ${result.material}${
           result.coating !== "Kaplama yok" ? ` + ${result.coating}` : ""

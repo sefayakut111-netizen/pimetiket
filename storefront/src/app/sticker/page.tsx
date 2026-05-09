@@ -546,7 +546,7 @@ export default function StickerPage() {
               footnote="Cüzdandan ödeyince +%2 indirim · KDV dahil fiyat"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
               ctaLabel={t.config.addToCart}
-              onCta={() => {
+              onCta={async () => {
                 if (!quote.ok) {
                   toast.error(quote.reason ?? "Geçersiz seçim");
                   return;
@@ -564,7 +564,7 @@ export default function StickerPage() {
                       ? " · Yumuşatılmış köşe"
                       : " · Düz köşe"
                     : "";
-                const result = addToCustomerCart({
+                const result = await addToCustomerCart({
                   product: "sticker",
                   title: `Sticker · ${matName} + ${finName}`,
                   config: `${shapeName} · ${width}×${height}mm · ${cutLabel}${cornerLabel}`,

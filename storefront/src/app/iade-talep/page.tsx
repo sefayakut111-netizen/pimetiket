@@ -19,9 +19,11 @@ import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listCustomerOrders,
+  refreshCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
 import { createReturn, type ReturnReason } from "@/lib/customer-return";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 import { useT } from "@/lib/i18n/context";
 
 const REASON_OPTIONS: ReturnReason[] = [
@@ -152,15 +154,17 @@ export default function IadeTalepPage() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Sadece teslim/üretim sonrası iade — kargoda olanlar dahil
-    const eligible = listCustomerOrders().filter(
-      (o) =>
-        o.status === "delivered" ||
-        o.status === "shipped" ||
-        o.status === "in_production"
-    );
-    setOrders(eligible);
-    setHydrated(true);
+    ensureAuthBindings();
+    void refreshCustomerOrders().then(() => {
+      const eligible = listCustomerOrders().filter(
+        (o) =>
+          o.status === "delivered" ||
+          o.status === "shipped" ||
+          o.status === "in_production"
+      );
+      setOrders(eligible);
+      setHydrated(true);
+    });
   }, []);
 
   const selectedOrder = orders.find((o) => o.id === orderId);
@@ -178,7 +182,7 @@ export default function IadeTalepPage() {
     if (!canSubmit || !selectedOrder) return;
     setLoading(true);
     try {
-      const created = createReturn({
+      const created = await createReturn({
         orderId,
         customerName: selectedOrder.address.name,
         customerEmail: "musteri@ornek.com", // auth gelene kadar

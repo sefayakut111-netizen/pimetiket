@@ -21,6 +21,8 @@ import {
   removeFromCustomerCart,
   updateCustomerCartQty,
   summarizeCustomerCart,
+  refreshCustomerCart,
+  ensureAuthBindings,
   FREE_SHIPPING_THRESHOLD,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
@@ -65,8 +67,11 @@ export default function SepetPage() {
   }, []);
 
   useEffect(() => {
-    refresh();
-    setHydrated(true);
+    ensureAuthBindings();
+    void refreshCustomerCart().then(() => {
+      refresh();
+      setHydrated(true);
+    });
     const handler = () => refresh();
     window.addEventListener("pim_customer_cart_updated", handler);
     window.addEventListener("storage", handler);
@@ -87,11 +92,11 @@ export default function SepetPage() {
     const minQty = item.product === "sticker" ? 50 : 1000;
     const step = item.product === "sticker" ? 50 : 500;
     const next = Math.max(minQty, item.qty + delta * step);
-    updateCustomerCartQty(item.id, next);
+    void updateCustomerCartQty(item.id, next);
   };
 
   const remove = (id: string) => {
-    removeFromCustomerCart(id);
+    void removeFromCustomerCart(id);
     toast.info(x.toastRemoved);
   };
 

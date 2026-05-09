@@ -20,8 +20,10 @@ import { Button, Card, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listCustomerOrders,
+  refreshCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 
@@ -285,9 +287,12 @@ export default function PanelimPage() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    ensureAuthBindings();
     const refresh = () => setOrders(listCustomerOrders());
-    refresh();
-    setHydrated(true);
+    void refreshCustomerOrders().then(() => {
+      refresh();
+      setHydrated(true);
+    });
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () =>
       window.removeEventListener("pim_customer_orders_updated", refresh);

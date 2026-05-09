@@ -26,6 +26,8 @@ import {
   listCustomerCart,
   summarizeCustomerCart,
   clearCustomerCart,
+  refreshCustomerCart,
+  ensureAuthBindings,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 import {
@@ -92,13 +94,15 @@ export default function OdemePage() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const items = listCustomerCart();
-    setCartItems(items);
-    setHydrated(true);
-    // Sepet boşsa /sepet'e yönlendir — direkt URL ile gelen kullanıcı için
-    if (items.length === 0) {
-      router.replace("/sepet");
-    }
+    ensureAuthBindings();
+    void refreshCustomerCart().then(() => {
+      const items = listCustomerCart();
+      setCartItems(items);
+      setHydrated(true);
+      if (items.length === 0) {
+        router.replace("/sepet");
+      }
+    });
   }, [router]);
 
   const summary = summarizeCustomerCart();
@@ -110,7 +114,7 @@ export default function OdemePage() {
   const goNext = () => setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
   const goPrev = () => setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
 
-  const submit = () => {
+  const submit = async () => {
     if (cartItems.length === 0) return;
     setLoading(true);
 
@@ -124,9 +128,11 @@ export default function OdemePage() {
       ? `**** **** **** ${last4}`
       : "**** **** **** ****";
 
-    // Mock 3DS gecikme — gerçek PSP H adımında
-    setTimeout(() => {
-      const order = createCustomerOrder({
+    // Mock 3DS gecikme — gerçek PSP P0-3 adımında
+    await new Promise((r) => setTimeout(r, 1500));
+
+    try {
+      const order = await createCustomerOrder({
         items: cartItems,
         address: {
           label: addr.label,
@@ -153,10 +159,14 @@ export default function OdemePage() {
       });
 
       // Sepeti temizle
-      clearCustomerCart();
+      await clearCustomerCart();
 
       router.push(`/odeme-sonuc?status=success&order=${order.id}`);
-    }, 1500);
+    } catch (err) {
+      setLoading(false);
+      console.error("[odeme] order create failed:", err);
+      router.push("/odeme-sonuc?status=fail");
+    }
   };
 
   return (
