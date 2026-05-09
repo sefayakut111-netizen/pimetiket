@@ -108,3 +108,72 @@ export const GROUP_DISCOUNT_TIERS: GroupDiscountTier[] = [
 
 export const LOT_PREFIX_STICKER = "A";
 export const LOT_PREFIX_ETIKET = "B";
+
+// ============================================================
+// ETİKET — rulo etiket parametreleri (Yön 3)
+// ============================================================
+
+export const ETIKET_MIN_QTY = 1000;
+export const ETIKET_MAX_QTY = 50000;
+export const ETIKET_GAP_DEFAULT = 6;
+
+export interface EtiketTier {
+  qty: number;
+  multiplier: number;
+  label: string;
+}
+
+/** Etiket tier'ları — 5000 referans (sticker'da 250 referans) */
+export const ETIKET_TIERS: EtiketTier[] = [
+  { qty: 1000, multiplier: 1.10, label: "+%10 zam" },
+  { qty: 2000, multiplier: 1.05, label: "+%5 zam" },
+  { qty: 5000, multiplier: 1.00, label: "referans" },
+  { qty: 10000, multiplier: 0.95, label: "−%5 indirim" },
+  { qty: 20000, multiplier: 0.90, label: "−%10 indirim" },
+  { qty: 50000, multiplier: 0.82, label: "−%18 indirim" },
+];
+
+/** Etiket malzemesi — fason rate multiplier */
+export interface EtiketMaterial {
+  id: string;
+  name: string;
+  desc: string;
+  swatch: string;
+  multiplier: number;
+}
+
+export const ETIKET_MATERIALS: EtiketMaterial[] = [
+  { id: "kraft", name: "Kraft", desc: "Doğal, dokunsal", swatch: "#C9A47A", multiplier: 1.0 },
+  { id: "beyaz", name: "Beyaz semi-glos", desc: "Klasik, parlak", swatch: "#F8F8F4", multiplier: 1.10 },
+  { id: "ultra", name: "Ultra clear", desc: "Şeffaf cam etkisi", swatch: "linear-gradient(135deg,#E0F2FE,#FFFFFF)", multiplier: 1.35 },
+  { id: "metalik", name: "Metalik", desc: "Folyo gümüş", swatch: "linear-gradient(135deg,#C0C7CD,#EFF2F6,#B2BAC2)", multiplier: 1.60 },
+];
+
+export interface EtiketCoating {
+  id: string;
+  name: string;
+  desc: string;
+  multiplier: number;
+}
+
+export const ETIKET_COATINGS: EtiketCoating[] = [
+  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın", multiplier: 1.0 },
+  { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", multiplier: 1.15 },
+  { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", multiplier: 1.15 },
+  { id: "soft", name: "Soft touch", desc: "Velvet his", multiplier: 1.30 },
+];
+
+export interface EtiketCustomization {
+  id: string;
+  name: string;
+  desc: string;
+  multiplier: number;
+}
+
+/** Sefa: "özelleştirme % olarak ana ürüne eklenir" */
+export const ETIKET_CUSTOMIZATIONS: EtiketCustomization[] = [
+  { id: "yok", name: "Eklenti yok", desc: "Sade ve hızlı", multiplier: 1.0 },
+  { id: "emboss", name: "Kabartma (emboss)", desc: "Logo / metin kabartması", multiplier: 1.30 },
+  { id: "yaldiz", name: "Sıcak yaldız", desc: "Folyo baskı, premium parıltı", multiplier: 1.50 },
+  { id: "spotuv", name: "Spot UV", desc: "Parlak nokta vurgu", multiplier: 1.25 },
+];

@@ -1,0 +1,1027 @@
+/**
+ * Pim Etiket — /admin/fiyat-hesapla-etiket
+ *
+ * Rulo etiket için manuel fiyat hesabı (Yön 3).
+ *
+ * Sticker sayfasından farklılaşma:
+ *   - Tabaka YOK, doğrudan rulo
+ *   - Min 1000 adet (max 50000)
+ *   - Tier 1K/2K/5K/10K/20K/50K
+ *   - Malzeme + Kaplama + Özelleştirme % multiplier'lar
+ *   - Lot prefix B
+ *   - PDF iş emri (B serisi)
+ */
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Icon } from "@/components/Icon";
+import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { cn } from "@/lib/cn";
+import {
+  ETIKET_TIERS,
+  ETIKET_MATERIALS,
+  ETIKET_COATINGS,
+  ETIKET_CUSTOMIZATIONS,
+  quoteEtiket,
+  findEtiketTier,
+  type ProductionMode,
+} from "@/lib/pricing-engine";
+import {
+  generateWorkOrderPDF,
+  nextLot,
+  peekNextLot,
+} from "@/lib/pricing-pdf";
+
+// ============================================================
+// Defaults
+// ============================================================
+
+const DEFAULTS = {
+  mode: "fason" as ProductionMode,
+  width: 60,
+  height: 80,
+  qty: 5000,
+  materialId: "kraft",
+  coatingId: "mat",
+  customizationId: "yok",
+  // Production
+  fasonRate: 120,
+  paper: 45,
+  ink: 25,
+  coating: 15,
+  labor: 35,
+  overhead: 45,
+  depreciation: 10,
+  // Operation
+  setup: 100, // etiket setup biraz daha pahalı
+  packaging: 25, // rulo paketleme zarftan ağır
+  cargo: 100,
+  feePct: 2.5,
+  // Margin
+  marginPct: 75,
+  vatPct: 20,
+  minMarkupFraction: 0.10,
+};
+
+const fmt = (n: number, dec = 0) =>
+  n.toLocaleString("tr-TR", {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  });
+
+// ============================================================
+// Page
+// ============================================================
+
+export default function EtiketFiyatHesaplaPage() {
+  const toast = useToast();
+
+  // State
+  const [mode, setMode] = useState<ProductionMode>(DEFAULTS.mode);
+  const [width, setWidth] = useState(DEFAULTS.width);
+  const [height, setHeight] = useState(DEFAULTS.height);
+  const [qty, setQty] = useState(DEFAULTS.qty);
+  const [materialId, setMaterialId] = useState(DEFAULTS.materialId);
+  const [coatingId, setCoatingId] = useState(DEFAULTS.coatingId);
+  const [customizationId, setCustomizationId] = useState(DEFAULTS.customizationId);
+
+  // Production
+  const [fasonRate, setFasonRate] = useState(DEFAULTS.fasonRate);
+  const [paper, setPaper] = useState(DEFAULTS.paper);
+  const [ink, setInk] = useState(DEFAULTS.ink);
+  const [coating, setCoating] = useState(DEFAULTS.coating);
+  const [labor, setLabor] = useState(DEFAULTS.labor);
+  const [overhead, setOverhead] = useState(DEFAULTS.overhead);
+  const [depreciation, setDepreciation] = useState(DEFAULTS.depreciation);
+
+  // Operation
+  const [setup, setSetup] = useState(DEFAULTS.setup);
+  const [packaging, setPackaging] = useState(DEFAULTS.packaging);
+  const [cargo, setCargo] = useState(DEFAULTS.cargo);
+  const [feePct, setFeePct] = useState(DEFAULTS.feePct);
+
+  // Margin
+  const [marginPct, setMarginPct] = useState(DEFAULTS.marginPct);
+  const [vatPct, setVatPct] = useState(DEFAULTS.vatPct);
+  const [minMarkupFraction, setMinMarkupFraction] = useState(DEFAULTS.minMarkupFraction);
+
+  // Lot rozet
+  const [nextLotPreview, setNextLotPreview] = useState("B000001");
+  useEffect(() => {
+    setNextLotPreview(peekNextLot("B"));
+  }, []);
+
+  // Quote
+  const result = quoteEtiket({
+    width,
+    height,
+    qty,
+    materialId,
+    coatingId,
+    customizationId,
+    production:
+      mode === "fason"
+        ? { mode: "fason", rate: fasonRate }
+        : {
+            mode: "uretim",
+            paper,
+            ink,
+            coating,
+            labor,
+            overhead,
+            depreciation,
+          },
+    operation: { setup, packaging, cargo, feePct },
+    margin: { marginPct, vatPct, minMarkupFraction },
+  });
+
+  const tier = findEtiketTier(qty);
+
+  function reset() {
+    setMode(DEFAULTS.mode);
+    setWidth(DEFAULTS.width);
+    setHeight(DEFAULTS.height);
+    setQty(DEFAULTS.qty);
+    setMaterialId(DEFAULTS.materialId);
+    setCoatingId(DEFAULTS.coatingId);
+    setCustomizationId(DEFAULTS.customizationId);
+    setFasonRate(DEFAULTS.fasonRate);
+    setPaper(DEFAULTS.paper);
+    setInk(DEFAULTS.ink);
+    setCoating(DEFAULTS.coating);
+    setLabor(DEFAULTS.labor);
+    setOverhead(DEFAULTS.overhead);
+    setDepreciation(DEFAULTS.depreciation);
+    setSetup(DEFAULTS.setup);
+    setPackaging(DEFAULTS.packaging);
+    setCargo(DEFAULTS.cargo);
+    setFeePct(DEFAULTS.feePct);
+    setMarginPct(DEFAULTS.marginPct);
+    setVatPct(DEFAULTS.vatPct);
+    setMinMarkupFraction(DEFAULTS.minMarkupFraction);
+    toast.success("Varsayılan değerlere dönüldü");
+  }
+
+  function handleGeneratePDF() {
+    if (!result.ok) {
+      toast.error("Önce geçerli bir hesaplama yap");
+      return;
+    }
+    const lot = nextLot("B"); // B serisi etiket
+    setNextLotPreview(peekNextLot("B"));
+
+    // Etiket geometry → GeometryResult adapter (PDF için)
+    const eg = result.geometry;
+    const fakeGeom = {
+      fit: {
+        mode: "small" as const,
+        cols: eg.cols,
+        rows: eg.rowsPerRoll,
+        perSheet: eg.perRoll,
+        sheetsNeeded: eg.rollsNeeded,
+        sheetW: eg.rollW,
+        sheetH: eg.totalLengthMm / Math.max(eg.rollsNeeded, 1),
+        stickerW: eg.width,
+        stickerH: eg.height,
+        usedW: eg.cols * eg.width + (eg.cols - 1) * eg.gap,
+        usedH: eg.rowsPerRoll * eg.height + (eg.rowsPerRoll - 1) * eg.gap,
+        gap: eg.gap,
+        rotated: false,
+        forcedDieCut: false,
+        producedQty: eg.qty,
+        overrun: 0,
+      },
+      roll: {
+        rollW: eg.rollW,
+        cols: eg.cols,
+        rows: eg.rowsPerRoll,
+        sheetsPerRoll: eg.perRoll,
+        rollsNeeded: eg.rollsNeeded,
+        sheetsOnLastRoll: eg.etiketsOnLastRoll,
+        lastRowsCount: eg.lastRowsCount,
+        lastRollLengthMm: eg.lastRollLengthMm,
+        totalLengthMm: eg.totalLengthMm,
+        totalArea: eg.totalM2 * 1_000_000,
+        usableW: eg.cols * eg.width,
+        usableL: 1470,
+        extraSidePad: 0,
+      },
+      totalM2: eg.totalM2,
+      stickerArea: eg.etiketArea,
+      wastePct: eg.wastePct,
+      effectiveCut: "diecut" as const,
+    };
+
+    generateWorkOrderPDF({
+      lot,
+      geometry: fakeGeom,
+      cost: result.cost,
+      requestedQty: qty,
+      cut: "diecut",
+      mode,
+    });
+    toast.success(`Etiket iş emri ${lot} üretildi`);
+  }
+
+  return (
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
+      <div className="mx-auto max-w-[1280px] px-6">
+        {/* Header */}
+        <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
+          <div>
+            <Eyebrow>Operatör</Eyebrow>
+            <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+              Etiket Fiyat Hesapla
+            </h1>
+            <p className="mt-2 text-base text-gri-700">
+              Rulo etiket — tabaka yok, min 1000 adet · Pricing-engine v0.4
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <span
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-pim-mercan text-white text-[12px] font-bold tabular-nums shadow-mercan"
+              title="Bir sonraki PDF iş emri lot numarası (B serisi etiket)"
+            >
+              <Icon.Box size={12} /> Lot · {nextLotPreview}
+            </span>
+            <Button variant="ghost" size="sm" onClick={reset}>
+              Sıfırla
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleGeneratePDF}
+              disabled={!result.ok}
+            >
+              📄 İş Emri PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* 2-col layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-6 items-start">
+          {/* LEFT — Input */}
+          <div className="space-y-4">
+            <Card padding="p-5">
+              <h2 className="text-[15px] font-semibold mb-4">Sipariş</h2>
+
+              <Field label="Üretim Modu" hint="tedarik senaryosu">
+                <SegmentToggle
+                  options={[
+                    { value: "fason", label: "Fason", sub: "Dış Tedarik" },
+                    { value: "uretim", label: "Üretim", sub: "Kendi Makina" },
+                  ]}
+                  value={mode}
+                  onChange={(v) => setMode(v as ProductionMode)}
+                />
+              </Field>
+
+              <Field label="Etiket Boyutu" hint="milimetre">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <NumInput
+                    value={width}
+                    onChange={setWidth}
+                    suffix="mm · GEN."
+                    min={5}
+                    max={520}
+                  />
+                  <span className="text-gri-500 font-medium">×</span>
+                  <NumInput
+                    value={height}
+                    onChange={setHeight}
+                    suffix="mm · YÜK."
+                    min={5}
+                    max={1470}
+                  />
+                </div>
+              </Field>
+
+              <Field label="Adet Kademesi" hint="referans 5000">
+                <TierGrid value={qty} onChange={setQty} />
+              </Field>
+            </Card>
+
+            {/* Malzeme + Kaplama + Özelleştirme */}
+            <Card padding="p-5">
+              <SectionTitle accent="lacivert">
+                Etiket Özellikleri
+              </SectionTitle>
+
+              <Field label="Malzeme" hint="ana fason rate'e × multiplier">
+                <SwatchSelect
+                  options={ETIKET_MATERIALS.map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                    desc: m.desc,
+                    swatch: m.swatch,
+                    label: `×${m.multiplier.toFixed(2)}`,
+                  }))}
+                  value={materialId}
+                  onChange={setMaterialId}
+                />
+              </Field>
+
+              <Field label="Kaplama" hint="× multiplier">
+                <PlainSelect
+                  options={ETIKET_COATINGS.map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    desc: c.desc,
+                    label: `×${c.multiplier.toFixed(2)}`,
+                  }))}
+                  value={coatingId}
+                  onChange={setCoatingId}
+                />
+              </Field>
+
+              <Field label="Özelleştirme" hint="% multiplier (Sefa kuralı)">
+                <PlainSelect
+                  options={ETIKET_CUSTOMIZATIONS.map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    desc: c.desc,
+                    label: `×${c.multiplier.toFixed(2)}`,
+                  }))}
+                  value={customizationId}
+                  onChange={setCustomizationId}
+                />
+              </Field>
+            </Card>
+
+            {mode === "fason" && (
+              <Card padding="p-5">
+                <SectionTitle accent="mercan">① Üretim · Fason</SectionTitle>
+                <Field label="Fason Birim Maliyet" hint="m² başına (ana)">
+                  <NumInput
+                    value={fasonRate}
+                    onChange={setFasonRate}
+                    suffix="TL / m²"
+                    step={5}
+                  />
+                </Field>
+                {result.ok && (
+                  <div className="mt-2 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] tabular-nums">
+                    Efektif rate: <strong>{result.effectiveRate.toFixed(2)} TL/m²</strong>
+                    {" "}· (×{result.multipliers.material.toFixed(2)} mat × {result.multipliers.coating.toFixed(2)} kap × {result.multipliers.customization.toFixed(2)} öz)
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {mode === "uretim" && (
+              <Card padding="p-5">
+                <SectionTitle accent="mercan">
+                  ① Üretim · Kendi Makina
+                </SectionTitle>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Kağıt / Folio">
+                    <NumInput value={paper} onChange={setPaper} suffix="TL/m²" />
+                  </Field>
+                  <Field label="Mürekkep">
+                    <NumInput value={ink} onChange={setInk} suffix="TL/m²" />
+                  </Field>
+                  <Field label="Kaplama">
+                    <NumInput value={coating} onChange={setCoating} suffix="TL/m²" />
+                  </Field>
+                  <Field label="İşçilik">
+                    <NumInput value={labor} onChange={setLabor} suffix="TL/m²" />
+                  </Field>
+                  <Field label="Genel Gider">
+                    <NumInput value={overhead} onChange={setOverhead} suffix="TL/m²" />
+                  </Field>
+                  <Field label="Amortisman">
+                    <NumInput value={depreciation} onChange={setDepreciation} suffix="TL/m²" />
+                  </Field>
+                </div>
+              </Card>
+            )}
+
+            <Card padding="p-5">
+              <SectionTitle accent="turuncu">② Operasyon</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Hazırlık" hint="tek seferlik">
+                  <NumInput value={setup} onChange={setSetup} suffix="TL" step={10} />
+                </Field>
+                <Field label="Paketleme" hint="rulo başına">
+                  <NumInput value={packaging} onChange={setPackaging} suffix="TL/rulo" step={5} />
+                </Field>
+                <Field label="Kargo" hint="yurtiçi">
+                  <NumInput value={cargo} onChange={setCargo} suffix="TL" step={10} />
+                </Field>
+                <Field label="İşlem Ücreti" hint="ödeme komisyonu">
+                  <NumInput value={feePct} onChange={setFeePct} suffix="%" step={0.5} />
+                </Field>
+              </div>
+            </Card>
+
+            <Card padding="p-5">
+              <SectionTitle accent="yesil">③ Kar & Vergi</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Kar Marjı (markup)">
+                  <NumInput value={marginPct} onChange={setMarginPct} suffix="%" step={5} />
+                </Field>
+                <Field label="KDV">
+                  <NumInput value={vatPct} onChange={setVatPct} suffix="%" step={1} />
+                </Field>
+                <Field label="Min Markup Floor" hint="zarar koruma">
+                  <NumInput
+                    value={minMarkupFraction * 100}
+                    onChange={(v) => setMinMarkupFraction(v / 100)}
+                    suffix="%"
+                    step={5}
+                  />
+                </Field>
+              </div>
+            </Card>
+          </div>
+
+          {/* RIGHT — Output */}
+          <div className="space-y-4">
+            {result.ok ? (
+              <>
+                {/* Price hero */}
+                <Card
+                  padding="p-7"
+                  className="!bg-gradient-to-br !from-lacivert !to-[#111827] !text-white relative overflow-hidden"
+                >
+                  <div
+                    aria-hidden
+                    className="absolute -top-24 -right-24 w-[280px] h-[280px] rounded-full bg-pim-mercan/20 blur-2xl"
+                  />
+                  <div className="relative grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
+                        Müşteri Satış Fiyatı (KDV Dahil)
+                      </div>
+                      <div className="text-[44px] md:text-[52px] font-bold leading-none tracking-tight tabular-nums">
+                        {fmt(Math.round(result.cost.total))}{" "}
+                        <span className="text-pim-mercan text-[36px] font-semibold">
+                          TL
+                        </span>
+                      </div>
+                      <div className="mt-2 text-[13px] text-white/70">
+                        {qty.toLocaleString("tr-TR")} adet · {result.geometry.rollsNeeded} rulo · {result.geometry.totalM2.toFixed(3)} m²
+                      </div>
+                    </div>
+                    <div className="md:text-right">
+                      <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
+                        Birim Fiyat / KDV Dahil
+                      </div>
+                      <div className="text-[28px] md:text-[32px] font-semibold tracking-tight tabular-nums">
+                        <span className="text-pim-mercan text-[22px] mr-1">₺</span>
+                        {fmt(result.cost.unitPrice, 2)}
+                      </div>
+                      <div className="mt-2 text-[13px] text-white/70 md:text-right">
+                        / adet · Tier {tier.qty.toLocaleString("tr-TR")} ({tier.label})
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* VAT line */}
+                  <div className="relative mt-6 pt-5 border-t border-white/15 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <VatCell label="Maliyet" value={`${fmt(result.cost.baseCost)} TL`} />
+                    <VatCell
+                      label="Net Kar (Sefa)"
+                      value={`${fmt(result.cost.actualProfit)} TL`}
+                      subtitle={`%${result.cost.actualMarkupPct.toFixed(0)} markup`}
+                      warning={!!result.cost.marginWarning}
+                    />
+                    <VatCell label="PSP Komisyon" value={`${fmt(result.cost.processingFee)} TL`} />
+                    <VatCell label="KDV" value={`${fmt(result.cost.vatAmount)} TL`} />
+                  </div>
+
+                  {result.cost.marginWarning && (
+                    <div className="relative mt-4 px-3 py-2.5 rounded-lg bg-kirmizi/15 ring-2 ring-kirmizi/50 text-[12.5px]">
+                      <div className="font-bold text-kirmizi mb-1">
+                        ⚠️ DÜŞÜK MARJ UYARISI
+                      </div>
+                      <div className="text-white/90 tabular-nums">
+                        Intended <strong>%{result.cost.marginWarning.intendedMarkupPct}</strong> →
+                        actual <strong className="text-kirmizi">%{result.cost.marginWarning.actualMarkupPct.toFixed(0)}</strong>
+                        {" "}(<strong>%{result.cost.marginWarning.erosionPct.toFixed(0)} erosion</strong>)
+                      </div>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Stats */}
+                <Card padding="p-5">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
+                    <span>Üretim Özeti — Rulo</span>
+                    <span className="text-[10px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
+                      die-cut rulo
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <StatCell label="Etiket/Rulo" value={result.geometry.perRoll.toString()} />
+                    <StatCell label="Toplam Rulo" value={result.geometry.rollsNeeded.toString()} />
+                    <StatCell
+                      label="Harcanan Alan"
+                      value={result.geometry.totalM2.toFixed(3)}
+                      unit="m²"
+                      accent
+                    />
+                    <StatCell
+                      label="Fire"
+                      value={`%${result.geometry.wastePct.toFixed(1)}`}
+                    />
+                  </div>
+                  <div className="mt-3 text-[11px] text-gri-500 tabular-nums">
+                    Rulo eni: {result.geometry.rollW} mm · Grid {result.geometry.cols} kolon ×{" "}
+                    {result.geometry.rowsPerRoll} satır/rulo · gap {result.geometry.gap}mm
+                    {" · son rulo: "}
+                    {result.geometry.etiketsOnLastRoll}/{result.geometry.perRoll}
+                  </div>
+                </Card>
+
+                {/* Cost breakdown */}
+                <Card padding="p-0">
+                  <div className="px-5 py-4 border-b border-gri-200 bg-gri-50">
+                    <h3 className="text-[15px] font-semibold">Maliyet Detayı</h3>
+                  </div>
+                  <div className="px-5 divide-y divide-gri-100">
+                    {result.cost.productionItems.map((item, i) => (
+                      <BreakdownRow key={`prod-${i}`} item={item} />
+                    ))}
+                    <BreakdownRow
+                      item={{
+                        name: "Üretim Ara Toplam",
+                        formula: "①",
+                        amount: result.cost.productionCost,
+                      }}
+                      subtotal
+                    />
+                    {result.cost.operationItems.map((item, i) => (
+                      <BreakdownRow key={`op-${i}`} item={item} />
+                    ))}
+                    <BreakdownRow
+                      item={{
+                        name: "Operasyon Ara Toplam",
+                        formula: "②",
+                        amount: result.cost.operationCost,
+                      }}
+                      subtotal
+                    />
+                    <BreakdownRow
+                      item={{
+                        name: "Toplam Maliyet",
+                        formula: "① + ②",
+                        amount: result.cost.baseCost,
+                      }}
+                      highlight
+                    />
+                    <BreakdownRow
+                      item={{
+                        name: "Kar Marjı (intended)",
+                        formula: "baseCost × marj%",
+                        amount: result.cost.intendedProfit,
+                      }}
+                    />
+                    <BreakdownRow
+                      item={{
+                        name: "PSP Komisyonu (gross-up)",
+                        formula: "ödeme komisyonu",
+                        amount: result.cost.processingFee,
+                      }}
+                    />
+                    {Math.abs(result.cost.tierMultiplier - 1) > 0.001 && (
+                      <BreakdownRow
+                        item={{
+                          name: result.cost.tierMultiplier > 1 ? "Tier Zam" : "Tier İndirim",
+                          formula: `× ${result.cost.tierMultiplier.toFixed(2)}`,
+                          amount: result.cost.tierAdjustment,
+                        }}
+                        negative={result.cost.tierAdjustment < 0}
+                      />
+                    )}
+                    <BreakdownRow
+                      item={{
+                        name: "KDV",
+                        formula: `subtotal × kdv%`,
+                        amount: result.cost.vatAmount,
+                      }}
+                    />
+                    <BreakdownRow
+                      item={{
+                        name: "Müşteri Satış Fiyatı",
+                        formula: "KDV dahil",
+                        amount: result.cost.total,
+                      }}
+                      total
+                    />
+                  </div>
+                </Card>
+              </>
+            ) : (
+              <Card padding="p-8" className="text-center">
+                <Icon.Info size={32} className="mx-auto text-gri-500 mb-2" />
+                <p className="text-base text-gri-700">{result.reason}</p>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ============================================================
+// Subcomponents (sticker page'tan kopya, lokal scope)
+// ============================================================
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 last:mb-0">
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.02em]">
+          {label}
+        </span>
+        {hint && <span className="text-[11px] text-gri-500">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({
+  children,
+  accent,
+}: {
+  children: React.ReactNode;
+  accent: "mercan" | "turuncu" | "yesil" | "lacivert";
+}) {
+  const dot = {
+    mercan: "bg-pim-mercan",
+    turuncu: "bg-turuncu",
+    yesil: "bg-yesil",
+    lacivert: "bg-lacivert",
+  }[accent];
+  return (
+    <div className="flex items-center gap-2 mb-4 text-[11.5px] font-bold uppercase tracking-[0.1em] text-gri-700">
+      <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", dot)} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function NumInput({
+  value,
+  onChange,
+  suffix,
+  step = 1,
+  min = 0,
+  max,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  suffix?: string;
+  step?: number;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className="flex items-center bg-gri-50 ring-1 ring-gri-200 rounded-lg px-3 h-11 focus-within:ring-pim-mercan focus-within:bg-white transition-shadow">
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        min={min}
+        max={max}
+        step={step}
+        className="flex-1 bg-transparent border-none outline-none text-[14px] font-semibold tabular-nums text-lacivert"
+      />
+      {suffix && (
+        <span className="text-[12px] text-gri-500 font-medium tabular-nums">
+          {suffix}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function SegmentToggle({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{ value: string; label: string; sub?: string }>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-1 p-1 bg-gri-50 ring-1 ring-gri-200 rounded-xl">
+      {options.map((opt) => {
+        const selected = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            aria-pressed={selected}
+            className={cn(
+              "py-2.5 rounded-lg text-[13px] font-semibold transition-colors text-center",
+              selected
+                ? "bg-lacivert text-white shadow-1"
+                : "text-gri-700 hover:bg-white"
+            )}
+          >
+            <div>{opt.label}</div>
+            {opt.sub && (
+              <div
+                className={cn(
+                  "text-[10px] uppercase tracking-[0.04em] mt-0.5",
+                  selected ? "text-white/70" : "text-gri-500"
+                )}
+              >
+                {opt.sub}
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TierGrid({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {ETIKET_TIERS.map((tier) => {
+        const selected = value === tier.qty;
+        const isRef = tier.multiplier === 1;
+        const isInd = tier.multiplier < 1;
+        const isZam = tier.multiplier > 1;
+        return (
+          <button
+            key={tier.qty}
+            type="button"
+            onClick={() => onChange(tier.qty)}
+            aria-pressed={selected}
+            className={cn(
+              "py-3 rounded-lg ring-[1.5px] text-center transition-all",
+              selected
+                ? "ring-lacivert bg-lacivert text-white shadow-1"
+                : "ring-gri-200 bg-white text-lacivert hover:ring-pim-mercan-soft hover:-translate-y-0.5"
+            )}
+          >
+            <div className="text-[16px] font-bold tracking-tight tabular-nums">
+              {tier.qty >= 1000 ? `${tier.qty / 1000}K` : tier.qty}
+            </div>
+            <div
+              className={cn(
+                "text-[10px] font-bold tabular-nums mt-0.5",
+                selected
+                  ? "text-white/85"
+                  : isZam
+                    ? "text-pim-mercan"
+                    : isInd
+                      ? "text-yesil"
+                      : "text-gri-500"
+              )}
+            >
+              {isRef ? "referans" : tier.label.replace("zam", "").replace("indirim", "").trim()}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface SwatchOption {
+  id: string;
+  name: string;
+  desc: string;
+  swatch: string;
+  label: string;
+}
+
+function SwatchSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: SwatchOption[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map((opt) => {
+        const selected = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            aria-pressed={selected}
+            className={cn(
+              "p-2.5 rounded-lg ring-[1.5px] text-left transition-all flex gap-2.5 items-center",
+              selected
+                ? "ring-lacivert bg-lacivert text-white"
+                : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+            )}
+          >
+            <div
+              className="w-9 h-9 rounded-lg shrink-0 ring-1 ring-black/[0.08]"
+              style={{ background: opt.swatch }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-[12.5px]">{opt.name}</div>
+              <div
+                className={cn(
+                  "text-[10px] tabular-nums",
+                  selected ? "text-white/70" : "text-gri-500"
+                )}
+              >
+                {opt.label}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface PlainOption {
+  id: string;
+  name: string;
+  desc: string;
+  label: string;
+}
+
+function PlainSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: PlainOption[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map((opt) => {
+        const selected = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            aria-pressed={selected}
+            className={cn(
+              "p-2.5 rounded-lg ring-[1.5px] text-left transition-all",
+              selected
+                ? "ring-lacivert bg-lacivert text-white"
+                : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+            )}
+          >
+            <div className="font-semibold text-[12.5px]">{opt.name}</div>
+            <div
+              className={cn(
+                "text-[10px] tabular-nums",
+                selected ? "text-white/70" : "text-gri-500"
+              )}
+            >
+              {opt.label}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function VatCell({
+  label,
+  value,
+  subtitle,
+  warning,
+}: {
+  label: string;
+  value: string;
+  subtitle?: string;
+  warning?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.1em] text-white/50 font-semibold mb-1">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "text-[14px] font-semibold tabular-nums",
+          warning && "text-pim-mercan"
+        )}
+      >
+        {value}
+      </div>
+      {subtitle && (
+        <div
+          className={cn(
+            "text-[10px] mt-0.5 tabular-nums",
+            warning ? "text-pim-mercan/80" : "text-white/50"
+          )}
+        >
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCell({
+  label,
+  value,
+  unit,
+  accent,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className={cn("rounded-lg p-3", accent ? "bg-pim-mercan-tint/60" : "bg-gri-50")}>
+      <div
+        className={cn(
+          "text-[10px] uppercase tracking-[0.08em] font-bold mb-1",
+          accent ? "text-pim-mercan-koyu" : "text-gri-700"
+        )}
+      >
+        {label}
+      </div>
+      <div className="text-[20px] font-bold tracking-tight tabular-nums">
+        {value}
+        {unit && <span className="text-[12px] text-gri-500 ml-1 font-medium">{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+function BreakdownRow({
+  item,
+  subtotal,
+  highlight,
+  total,
+  negative,
+}: {
+  item: { name: string; formula: string; amount: number };
+  subtotal?: boolean;
+  highlight?: boolean;
+  total?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "py-3 grid grid-cols-[1fr_auto_auto] items-center gap-3",
+        subtotal && "bg-gri-50/50",
+        highlight && "bg-lacivert/5",
+        total && "bg-pim-mercan-tint/50"
+      )}
+    >
+      <div>
+        <div
+          className={cn(
+            "text-[13px]",
+            (highlight || total) && "font-semibold",
+            subtotal && "font-medium"
+          )}
+        >
+          {item.name}
+        </div>
+        <div className="text-[10px] text-gri-500 tabular-nums mt-0.5">
+          {item.formula}
+        </div>
+      </div>
+      <div />
+      <div
+        className={cn(
+          "text-right tabular-nums font-semibold text-[13px]",
+          negative && "text-yesil",
+          total && "text-pim-mercan-koyu text-[16px] font-bold"
+        )}
+      >
+        {negative ? "−" : ""}
+        {fmt(Math.abs(item.amount))} TL
+      </div>
+    </div>
+  );
+}
