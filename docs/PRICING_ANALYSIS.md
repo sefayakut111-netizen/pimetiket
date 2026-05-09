@@ -479,71 +479,66 @@ Bu **checkout aşamasında** uygulanır, quote aşamasında değil — çünkü 
 
 ---
 
-## 7. Eksikler / sorulması gerekenler (Sefa'ya)
+## 7. Soru durumu — Sefa'nın PRICING_SPEC.md ile yanıtladığı / hâlâ açık
 
-### 7.1 Soru 1: Lot prefix — A mı B mi sticker?
+> Sefa kanonik özet (`PRICING_SPEC.md`) yazınca aşağıdaki soruların çoğu cevaplandı.
 
-Sefa'nın HTML'inde `A` sticker olarak hard-coded. Mesajda **"rulo etiket A, sticker B"** yazmış. Çelişki var. Hangisi doğru?
+### 7.1 ✅ Soru 1: Lot prefix
 
-### 7.2 Soru 2: Lot ne zaman atansın?
+**Cevap**: A=sticker, B=etiket. Ben yanlış aktarmıştım — Sefa'nın spec'i net.
 
-(a) Hesaplama yapınca (mevcut HTML davranışı)
-(b) Sipariş onaylanınca
-(c) Üretime gönderilince (önerim)
+### 7.2 ⚠️ Soru 2: Lot ne zaman atansın?
 
-Müşteri tüm hesaplamaları lot tüketmesin, **sadece sipariş kesinleşince**.
+**Mevcut HTML**: PDF basıldığında lot artar (browser-side localStorage).
+**Production'da önerim**: hesaplama → SADECE saved record olarak DB'ye düşer ama lot atanmaz; lot **sipariş onaylanıp üretim sırasına girince** atanır. Spec açıkça söylemiyor — bu bir uygulama detayı, server-side'a geçerken karar veririm. Risk yok, sonradan değiştirilebilir.
 
-### 7.3 Soru 3: Fason rate, üretim parametre değişikliği yetkisi kim?
+### 7.3 ⚠️ Soru 3: Parametre değişikliği yetkisi
 
-Sadece Sefa mı, operatör de mi? Audit log gerekli mi?
+Spec'te yok. **Önerim**: tek admin (Sefa), audit log var. Servis arayüzünde `updated_by` alanı zaten var.
 
-### 7.4 Soru 4: Pricing motoru nereye deploy edilecek?
+### 7.4 ✅ Soru 4: Pricing motoru nerede
 
-(a) Medusa modülü içinde (mevcut plan)
-(b) Ayrı bir mikroservis (overhead)
-(c) Edge function (Supabase Edge ile, Packanalyz'de var)
+**Cevap**: Medusa modülü içinde (`medusa/src/modules/pricing-engine/`). Spec teyit ediyor: "Backend: Medusa.js v2".
 
-Önerim: (a) — basit kalsın.
+### 7.5 ⏸️ Soru 5: Etiket özelleştirme %
 
-### 7.5 Soru 5: Etiket için özelleştirme % oranları
+**Bekliyor**: Sefa spec'in §13'te "**Etiket modu (rulo etiket) — sticker'dan ayrı kalkülatör**" yazmış. Etiket modülü ayrı gelecek, sticker bittikten sonra. Şimdi sorun yok. Sticker'da özelleştirme yok.
 
-Mevcut etiket configurator'ında `CUSTOM_PRICE` mutlak değer (TL/m²). Sefa "% olarak eklenecek" demiş. Çevirme yapacak mıyız?
+### 7.6 ⏸️ Soru 6: Etiket MOQ ve tier referans
 
-Örnek: yaldız şu an `0.9 TL/m²` mutlak. Yeni mantıkta `+%30 base m² fiyatına` olur. Sefa'dan oranlar lazım:
-- Emboss: %?
-- Yaldız: %?
-- Spot UV: %?
-- Soft touch: %?
-- Mat selefon: %?
-- Parlak selefon: %?
+**Bekliyor**: Etiket modülüyle gelecek. Sticker'da kademeler net (25/50/100/250/500/1000).
 
-### 7.6 Soru 6: Etiket için MOQ sticker'dan farklı
+### 7.7 ⏸️ Soru 7: Otomasyon mail adresleri
 
-Sticker 25 adetten başlıyor, etiket 1000. Tier butonları storefront'ta zaten var ama Sefa'nın tier mantığı (referans + çarpan) ile ayarlamamız gerek. Hangi tier referans alınsın?
+**Bekliyor**: Spec §13/5 "Operatör onay akışı — dosya yükleme, AI ön-kontrol, 3 gün timer, cüzdan iadesi" → bu pricing değil **qc-pipeline modülü** işi. Pricing'in çalışması için gerekli değil.
 
-Sticker: 250 referans (%100), altı zam, üstü indirim.
-Etiket: 5000? 10000? Hangi tier %100?
+### 7.8 ✅ Soru 8: AI QC modeli
 
-### 7.7 Soru 7: Otomasyon — mail yönlendirme adresleri
+**Spec teyidi**: "AI: OpenAI GPT-4o" (Pim agent için zaten karar verildi). QC için ayrı bir karar verilecek (vision destekli + ucuz Gemini Flash, ya da GPT-4o vision aynı). Bu pricing scope-out.
 
-> "AI grafik onayı verdi → baskı birimi mail
->  AI eksiklik buldu → grafik sorumlusu mail"
+---
 
-Gerekli mail adresleri:
-- Rulo etiket baskı birimi: `?@?`
-- Sticker baskı birimi: `?@?`
-- Grafik sorumlusu: `?@?`
-- (genel: `?@?`)
+## 7.x Yeni öğrenilenler (PRICING_SPEC.md'den)
 
-Bu üretim aşamasında belli olur, **şimdi env placeholder yeter**.
+Sefa'nın spec'i iki kritik nokta daha netleştirdi:
 
-### 7.8 Soru 8: AI dijital onay hangi modeli kullanacak?
+### A. UI iki versiyonlu olacak (§13/2)
 
-Pim Etiket'te zaten **OpenAI GPT-4o** kullanıyoruz (Pim agent için). QC için aynısı mı (vision desteği var), yoksa Gemini Flash mi? Maliyet farkı var:
-- GPT-4o vision: ~$5 per million tokens
-- Gemini 2.5 Flash: ~$0.30 per million
+- **Operatör versiyonu** (mevcut HTML'in evrimi): tüm cost breakdown, m², fire, tabaka detayı görünür
+- **Müşteri-yüzü versiyonu**: sadece "boyut + adet + KDV dahil fiyat" görünür, fire/m²/cost gizli
 
-Önerim: **Gemini Flash** — Sefa Packanalyz'da kullanıyor, expertise var, ucuz.
+Bu **§4.3 bizim sisteme entegrasyon** kısmıyla zaten uyumlu. Storefront `/sticker` ve admin `/admin/fiyat-hesapla` farklı UI'lar, ortak API.
+
+### B. Sticker'a özelleştirme YOK (§5'in mevcut hali)
+
+- Sticker düz baskı, malzeme seçimi yok (varsayılan tek malzeme)
+- Etikette malzeme/kaplama/yaldız/emboss var → bunlar **etiket modülünde** gelecek
+
+Bu Block A scope'unu **sadeleştiriyor**: sticker pricing'i port ederken malzeme/customization katmanı yok, **direkt fason rate / üretim 6 kalem**'e bağlanıyoruz. Etiket için ayrı motor gelince genişletiriz.
+
+### C. PDF sepet-bazlı henüz yok (§13/1)
+
+Mevcut PDF tek tasarım için. Sepet toplu iş emri istense de **bu ileri aşama** — Block A'da scope-out.
 
 ---
 
