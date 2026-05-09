@@ -36,6 +36,7 @@ import {
   type StickerFinish,
   type CustomerStickerTier,
 } from "@/lib/sticker-customer-pricing";
+import { addToCustomerCart } from "@/lib/customer-cart";
 
 // ============================================================
 // Configuration data
@@ -503,11 +504,46 @@ export default function StickerPage() {
               footnote="Cüzdandan ödeyince +%2 indirim · KDV dahil fiyat"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
               ctaLabel="Sepete ekle"
-              onCta={() =>
-                toast.success(
-                  "Sepete eklendi (mock — gerçek sepet F+I adımında)"
-                )
-              }
+              onCta={() => {
+                if (!quote.ok) {
+                  toast.error(quote.reason ?? "Geçersiz seçim");
+                  return;
+                }
+                const matName =
+                  MATERIALS.find((m) => m.id === material)?.name ?? material;
+                const finName =
+                  FINISHES.find((f) => f.id === finish)?.name ?? finish;
+                const shapeName =
+                  SHAPES.find((s) => s.id === shape)?.name ?? shape;
+                const cutLabel = cutMode === "tabaka" ? "Tabaka" : "Die-cut";
+                const cornerLabel =
+                  shape === "square" || shape === "ozel"
+                    ? softCorners
+                      ? " · Yumuşatılmış köşe"
+                      : " · Düz köşe"
+                    : "";
+                const result = addToCustomerCart({
+                  product: "sticker",
+                  title: `Sticker · ${matName} + ${finName}`,
+                  config: `${shapeName} · ${width}×${height}mm · ${cutLabel}${cornerLabel}`,
+                  width,
+                  height,
+                  qty: tier,
+                  unit: parseFloat(currentUnit.toFixed(2)),
+                  total: Math.round(total),
+                  shape,
+                  cut: cutMode,
+                  softCorners,
+                  material,
+                  finish,
+                  hediyeAdet: overrunCount,
+                });
+                if (!result.ok) {
+                  toast.error(result.reason);
+                  return;
+                }
+                toast.success("Sepete eklendi 🛒 — sepete gitmek için üst menü");
+              }}
             />
           </div>
         </div>

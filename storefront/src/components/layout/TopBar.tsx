@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { PimAsset } from "@/components/PimAsset";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { customerCartCount } from "@/lib/customer-cart";
 
 const NAV_ITEMS = [
   { href: "/", label: "Anasayfa" },
@@ -17,6 +19,18 @@ const NAV_ITEMS = [
 
 export function TopBar() {
   const pathname = usePathname();
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setCartCount(customerCartCount());
+    refresh();
+    window.addEventListener("pim_customer_cart_updated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("pim_customer_cart_updated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-white/85 border-b border-black/[0.06]">
@@ -58,17 +72,20 @@ export function TopBar() {
           </button>
           <Link
             href="/sepet"
-            aria-label="Sepet"
+            aria-label={
+              cartCount > 0 ? `Sepet, ${cartCount} ürün` : "Sepet, boş"
+            }
             className="relative p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
           >
             <Icon.Cart size={18} />
-            {/* TODO: I adımında dinamik sepet adedi bağlandığında count > 0 koşulu + aria-label="Sepet, N ürün" */}
-            <span
-              aria-hidden="true"
-              className="absolute top-1 right-1 grid place-items-center w-4 h-4 rounded-full bg-pim-mercan text-white text-[10px] font-bold"
-            >
-              2
-            </span>
+            {cartCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute top-1 right-1 grid place-items-center w-4 h-4 rounded-full bg-pim-mercan text-white text-[10px] font-bold tabular-nums"
+              >
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
           </Link>
           <Button
             variant="secondary"

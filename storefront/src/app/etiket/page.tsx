@@ -36,6 +36,7 @@ import {
   type EtiketCoatingId,
   type EtiketCustomId,
 } from "@/lib/etiket-customer-pricing";
+import { addToCustomerCart } from "@/lib/customer-cart";
 
 // ============================================================
 // Configuration data
@@ -518,11 +519,39 @@ export default function EtiketPage() {
               }
               deliveryDate={teslim}
               ctaLabel="Sepete ekle"
-              onCta={() =>
-                toast.success(
-                  "Sepete eklendi (mock — gerçek sepet F+I adımında)"
-                )
-              }
+              onCta={() => {
+                if (!quote.ok) {
+                  toast.error(quote.reason ?? "Geçersiz seçim");
+                  return;
+                }
+                const matName =
+                  MATERIALS.find((m) => m.id === material)?.name ?? material;
+                const coatName =
+                  COATINGS.find((c) => c.id === coating)?.name ?? coating;
+                const custName =
+                  CUSTOMS.find((c) => c.id === custom)?.name ?? custom;
+                const customSuffix =
+                  custom === "yaldiz" ? ` (${yaldiz})` : "";
+                const result = addToCustomerCart({
+                  product: "etiket",
+                  title: `Etiket · ${matName} + ${coatName}`,
+                  config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix} · Sarım ${winding}`,
+                  width,
+                  height,
+                  qty,
+                  unit: parseFloat(unit.toFixed(2)),
+                  total: Math.round(total),
+                  materialId: material,
+                  coatingId: coating,
+                  customizationId: custom,
+                  winding,
+                });
+                if (!result.ok) {
+                  toast.error(result.reason);
+                  return;
+                }
+                toast.success("Sepete eklendi 🛒 — sepete gitmek için üst menü");
+              }}
               footnote="Cüzdandan ödeyince +%2 indirim · 3 gün içinde dosya yükleyebilirsin · KDV dahil"
             />
           </div>
