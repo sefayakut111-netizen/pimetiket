@@ -49,9 +49,10 @@ interface ChatRequestBody {
 
 const stickerTool = tool({
   description:
-    "Sticker fiyatı hesapla. Kare sticker (W=H), customer-side default'lar (vinil/parlak vs özel material/finish). Min 50 adet, max 1000.",
+    "Sticker fiyatı hesapla. Serbest W×H boyut (kare veya dikdörtgen). Min 25×25mm, max 400×650mm. Min 50 adet, max 1000.",
   inputSchema: z.object({
-    size: z.number().min(5).max(220).describe("Kare sticker boyutu mm"),
+    width: z.number().min(25).max(400).describe("Sticker genişliği mm"),
+    height: z.number().min(25).max(650).describe("Sticker yüksekliği mm"),
     qty: z
       .number()
       .min(50)
@@ -66,9 +67,10 @@ const stickerTool = tool({
       .default("parlak")
       .describe("Yüzey kaplaması"),
   }),
-  execute: async ({ size, qty, material, finish }) => {
+  execute: async ({ width, height, qty, material, finish }) => {
     const result = quoteCustomerSticker({
-      size,
+      width,
+      height,
       material,
       finish,
       qty,
@@ -83,7 +85,7 @@ const stickerTool = tool({
     return {
       success: true,
       product: "sticker",
-      size_mm: size,
+      size_mm: `${width}×${height}`,
       qty,
       material,
       finish,

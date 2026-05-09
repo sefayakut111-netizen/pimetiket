@@ -28,6 +28,9 @@ import {
   quoteCustomerSticker,
   computeTierSavings,
   CUSTOMER_STICKER_TIERS,
+  STICKER_MIN_DIM,
+  STICKER_MAX_W,
+  STICKER_MAX_H,
   type StickerMaterial,
   type StickerFinish,
   type CustomerStickerTier,
@@ -71,7 +74,6 @@ const FINISHES = [
 ] as const;
 
 const TIERS = CUSTOMER_STICKER_TIERS; // 50/100/250/500/1000 — engine uyumlu
-const SIZES = [50, 75, 100, 150] as const;
 
 // ============================================================
 // Pricing — v0.4: shared pricing-engine wrapper kullanıyor
@@ -94,11 +96,13 @@ export default function StickerPage() {
   const [material, setMaterial] = useState<StickerMaterial>("vinil");
   const [finish, setFinish] = useState<StickerFinish>("parlak");
   const [tier, setTier] = useState<CustomerStickerTier>(250);
-  const [size, setSize] = useState<number>(75);
+  const [width, setWidth] = useState<number>(75);
+  const [height, setHeight] = useState<number>(75);
 
   // Engine ile canlı quote
   const quote = quoteCustomerSticker({
-    size,
+    width,
+    height,
     material,
     finish,
     qty: tier,
@@ -107,7 +111,8 @@ export default function StickerPage() {
   const total = quote.ok ? quote.total : 0;
   const currentUnit = quote.ok ? quote.unitPrice : 0;
   const overrunCount = quote.ok ? quote.overrunCount : 0;
-  const savings = computeTierSavings({ size, material, finish }, 50, tier);
+  const savings = computeTierSavings({ width, height, material, finish }, 50, tier);
+  const sizeError = !quote.ok ? quote.reason : null;
 
   return (
     <main
@@ -156,7 +161,8 @@ export default function StickerPage() {
               shape={shape}
               material={material}
               finish={finish}
-              size={size}
+              width={width}
+              height={height}
             />
             <div className="text-[13px] text-gri-700 text-center mt-3">
               Anlık önizleme — her seçim canlı
@@ -228,36 +234,84 @@ export default function StickerPage() {
               </div>
             </FormSection>
 
-            <FormSection title="Boyut">
-              <div className="grid grid-cols-4 gap-3">
-                {SIZES.map((s) => (
-                  <SelectableCard
-                    key={s}
-                    selected={size === s}
-                    onClick={() => setSize(s)}
-                    style={{ textAlign: "center" }}
-                  >
-                    <div
-                      className="mx-auto mb-2"
-                      style={{
-                        width: Math.min(s * 0.4, 60),
-                        height: Math.min(s * 0.4, 60),
-                        borderRadius: shape === "circle" ? "50%" : 8,
-                        background: "var(--color-pim-mercan-tint)",
-                        border: "1.5px dashed var(--color-pim-mercan-soft)",
-                      }}
-                    />
-                    <div className="text-[13px] font-semibold">{s} mm</div>
-                  </SelectableCard>
-                ))}
+            <FormSection title="Boyut" hint={`min ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm · max ${STICKER_MAX_W}×${STICKER_MAX_H} mm (40×65 cm)`}>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
+                    Genişlik (mm)
+                  </span>
+                  <input
+                    type="number"
+                    value={width}
+                    onChange={(e) => setWidth(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_W, Number(e.target.value) || STICKER_MIN_DIM)))}
+                    min={STICKER_MIN_DIM}
+                    max={STICKER_MAX_W}
+                    step={1}
+                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
+                  />
+                </label>
+                <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
+                    Yükseklik (mm)
+                  </span>
+                  <input
+                    type="number"
+                    value={height}
+                    onChange={(e) => setHeight(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_H, Number(e.target.value) || STICKER_MIN_DIM)))}
+                    min={STICKER_MIN_DIM}
+                    max={STICKER_MAX_H}
+                    step={1}
+                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
+                  />
+                </label>
               </div>
+
+              {/* Hızlı boyut chip'leri */}
+              <div className="flex gap-2 mt-3 flex-wrap">
+                <span className="text-[11.5px] text-gri-500 self-center mr-1">Hızlı:</span>
+                {[
+                  { w: 50, h: 50, label: "50×50" },
+                  { w: 75, h: 75, label: "75×75" },
+                  { w: 100, h: 100, label: "100×100" },
+                  { w: 60, h: 80, label: "60×80" },
+                  { w: 100, h: 50, label: "100×50" },
+                ].map((preset) => {
+                  const active = width === preset.w && height === preset.h;
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        setWidth(preset.w);
+                        setHeight(preset.h);
+                      }}
+                      className={cn(
+                        "px-3 h-8 rounded-full text-[12px] font-semibold transition-colors",
+                        active
+                          ? "bg-pim-mercan text-white"
+                          : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {sizeError && (
+                <div className="mt-3 px-3 py-2 rounded-lg bg-kirmizi/10 text-kirmizi text-[12.5px] font-semibold">
+                  ⚠️ {sizeError}
+                </div>
+              )}
             </FormSection>
 
             <FormSection title="Adet — kademen, fiyatın">
               <div className="grid grid-cols-3 gap-3">
                 {TIERS.map((q) => {
                   const tierQuote = quoteCustomerSticker({
-                    size,
+                    width,
+                    height,
                     material,
                     finish,
                     qty: q,
@@ -265,7 +319,7 @@ export default function StickerPage() {
                   const u = tierQuote.ok ? tierQuote.unitPrice : 0;
                   const t = tierQuote.ok ? tierQuote.total : 0;
                   const sav = computeTierSavings(
-                    { size, material, finish },
+                    { width, height, material, finish },
                     50,
                     q
                   );
@@ -427,10 +481,17 @@ interface PreviewProps {
   shape: ShapeId;
   material: StickerMaterial;
   finish: StickerFinish;
-  size: number;
+  width: number;
+  height: number;
 }
 
-function StickerPreview({ shape, material, finish, size }: PreviewProps) {
+function StickerPreview({ shape, material, finish, width, height }: PreviewProps) {
+  // Maks 360px hedef, en uzun kenara göre ölçekle
+  const maxDim = Math.max(width, height);
+  const scale = Math.min(360 / maxDim, 2.4);
+  const widthPx = width * scale;
+  const heightPx = height * scale;
+  const minDim = Math.min(width, height);
   const matBg: Record<StickerMaterial, string> = {
     vinil: "white",
     transparan: "rgba(255,255,255,0.5)",
@@ -452,8 +513,6 @@ function StickerPreview({ shape, material, finish, size }: PreviewProps) {
     shape === "die"
       ? "polygon(20% 0, 80% 5%, 100% 30%, 95% 75%, 70% 100%, 25% 95%, 0 65%, 5% 25%)"
       : "none";
-
-  const px = size * 2.4;
 
   return (
     <div
@@ -487,8 +546,8 @@ function StickerPreview({ shape, material, finish, size }: PreviewProps) {
         <div
           className="relative grid place-items-center p-1"
           style={{
-            width: px,
-            height: px,
+            width: widthPx,
+            height: heightPx,
             background: matBg[material],
             borderRadius: radius,
             clipPath: dieClip,
@@ -522,7 +581,7 @@ function StickerPreview({ shape, material, finish, size }: PreviewProps) {
             <div className="text-center">
               <div
                 style={{
-                  fontSize: px * 0.16,
+                  fontSize: minDim * scale * 0.16,
                   fontWeight: 800,
                   color: "#FF6B5B",
                   letterSpacing: "-0.02em",
@@ -533,7 +592,7 @@ function StickerPreview({ shape, material, finish, size }: PreviewProps) {
               </div>
               <div
                 style={{
-                  fontSize: px * 0.07,
+                  fontSize: minDim * scale * 0.07,
                   fontWeight: 700,
                   color: "#1F2937",
                   marginTop: 8,
@@ -565,7 +624,7 @@ function StickerPreview({ shape, material, finish, size }: PreviewProps) {
           BOYUT
         </div>
         <div className="font-semibold text-sm">
-          {size} × {size} mm
+          {width} × {height} mm
         </div>
       </div>
 

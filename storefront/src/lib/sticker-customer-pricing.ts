@@ -48,7 +48,10 @@ export const FINISH_MULT: Record<StickerFinish, number> = {
 };
 
 export interface CustomerQuoteInput {
-  size: number; // mm — kare sticker, W=H=size
+  /** Sticker genişliği mm. Min 25, max 400 (BIG_SHEET_W). */
+  width: number;
+  /** Sticker yüksekliği mm. Min 25, max 650 (BIG_SHEET_H). */
+  height: number;
   material: StickerMaterial;
   finish: StickerFinish;
   qty: number;
@@ -57,6 +60,11 @@ export interface CustomerQuoteInput {
   /** Kesim tipi — default die-cut (customer-friendly) */
   cut?: CutType;
 }
+
+/** Sticker boyut sınırları (customer-facing) */
+export const STICKER_MIN_DIM = 25;
+export const STICKER_MAX_W = 400;
+export const STICKER_MAX_H = 650;
 
 /** Customer-friendly quote sonucu — operasyonel detay yok */
 export interface CustomerQuoteSuccess {
@@ -106,8 +114,8 @@ export function quoteCustomerSticker(
   const surchargeMultiplier = matMult * finMult;
 
   const result: QuoteResult = quoteSticker({
-    width: input.size,
-    height: input.size,
+    width: input.width,
+    height: input.height,
     cut: input.cut ?? "diecut",
     qty: input.qty,
     production: {

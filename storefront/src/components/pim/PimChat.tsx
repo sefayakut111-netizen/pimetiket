@@ -452,7 +452,8 @@ function MessageList({
 interface ToolResultStickerSuccess {
   success: true;
   product: "sticker";
-  size_mm: number;
+  /** "WxH" formatı, örn "75×75" */
+  size_mm: string;
   qty: number;
   material: string;
   finish: string;
@@ -536,7 +537,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
         <div className="text-[11.5px] text-white/80 mt-2 leading-snug">
           {isSticker ? (
             <>
-              {result.size_mm}×{result.size_mm} mm · {result.material} ·{" "}
+              {result.size_mm} mm · {result.material} ·{" "}
               {result.finish}
               {result.hediye_adet > 0 && (
                 <>
