@@ -1,31 +1,18 @@
 /**
  * POST /api/payment/refund
  *
- * Admin tarafı (service_role gerekir). Sipariş veya iade üzerinden
- * tetiklenir.
+ * Admin tarafı refund. PayTR /odeme/iade endpoint'ini çağırır.
  *
  * Body:
- *   { orderId: string, amount?: number, reason?: string,
- *     returnId?: string }
+ *   { orderId, amount?, reason?, returnId? }
  *
- * Akış:
- *   1. Auth check + admin role check (TODO: P1 staff RBAC; şimdilik
- *      service_role secret header kontrolü ile)
- *   2. payments tablosundan başarılı charge'ı bul (order_id ile)
- *   3. iyzico refundPayment çağır
- *   4. payments tablosuna refund kaydı INSERT
- *   5. (Opsiyonel) returns.refund_payment_id bağla
- *   6. order_events: 'refunded' event log
- *
- * Tutar opsiyonel — verilmezse full refund (charge.amount).
- *
- * GÜVENLIK: bu endpoint internal — UI'dan direkt çağrılmaz, admin
- * panelinden çağrılır + service_role check yapılır.
+ * NOT: PayTR refund 30 gün içinde yapılabilir (banka kuralı).
+ * Daha eskiyse manuel banka transferi gerekir.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { refundPayment, isIyzicoConfigured } from "@/lib/payment/iyzico";
+import { refundPayment, isPayTrConfigured } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const RefundBodySchema = z.object({
@@ -34,12 +21,6 @@ const RefundBodySchema = z.object({
   reason: z.string().max(500).optional(),
   returnId: z.string().uuid().optional(),
 });
-
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "127.0.0.1";
-}
 
 interface PaymentRow {
   id: string;
@@ -53,23 +34,20 @@ interface PaymentRow {
 }
 
 export async function POST(req: NextRequest) {
-  // 1) Admin guard — header'da SUPABASE_SERVICE_ROLE_KEY ile match
-  // (geçici çözüm; staff RBAC P1'de gelecek)
+  // Admin guard (geçici — staff RBAC P1)
   const adminSecret = req.headers.get("x-admin-secret");
   const expected = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!expected || adminSecret !== expected) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // 2) Iyzico configured?
-  if (!isIyzicoConfigured()) {
+  if (!isPayTrConfigured()) {
     return NextResponse.json(
       { error: "payment_provider_not_configured" },
       { status: 503 }
     );
   }
 
-  // 3) Body validate
   let body: z.infer<typeof RefundBodySchema>;
   try {
     body = RefundBodySchema.parse(await req.json());
@@ -83,7 +61,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4) Başarılı charge'ı bul
+  // Başarılı charge'ı bul (PayTR'de psp_transaction_id = merchant_oid)
   const admin = createAdminClient();
   const { data: charges, error: chargeErr } = await admin
     .from("payments")
@@ -91,6 +69,7 @@ export async function POST(req: NextRequest) {
     .eq("order_id", body.orderId)
     .eq("action", "charge")
     .eq("status", "success")
+    .eq("psp_provider", "paytr")
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -101,10 +80,13 @@ export async function POST(req: NextRequest) {
 
   const charge = (charges as unknown as PaymentRow[])?.[0];
   if (!charge) {
-    return NextResponse.json({ error: "no_charge_to_refund" }, { status: 404 });
+    return NextResponse.json(
+      { error: "no_charge_to_refund" },
+      { status: 404 }
+    );
   }
 
-  // 5) Refund tutarı (default: tam tutar)
+  // Refund tutarı
   const refundAmount = body.amount ?? charge.amount;
   if (refundAmount > charge.amount) {
     return NextResponse.json(
@@ -113,7 +95,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 6) Daha önce iade yapıldı mı? (toplam refund + bu request > charge?)
+  // Daha önce yapılmış iade var mı?
   const { data: existingRefunds } = await admin
     .from("payments")
     .select("amount")
@@ -141,35 +123,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 7) iyzico refund çağır
-  let result;
-  try {
-    result = await refundPayment({
-      locale: "tr",
-      conversationId: `refund:${body.orderId}:${Date.now()}`,
-      paymentTransactionId: charge.psp_transaction_id,
-      price: refundAmount.toFixed(2),
-      ip: getClientIp(req),
-      currency: "TRY",
-    });
-  } catch (err) {
-    console.error("[payment/refund] iyzico error:", err);
-    return NextResponse.json({ error: "iyzico_refund_failed" }, { status: 502 });
-  }
+  // PayTR refund
+  const result = await refundPayment({
+    merchantOid: charge.psp_transaction_id,
+    returnAmountTL: refundAmount,
+  });
 
-  if (result.status !== "success") {
-    console.error("[payment/refund] iyzico fail:", result.errorMessage);
+  if (!result.ok) {
+    console.error("[payment/refund] PayTR refund failed:", result);
     return NextResponse.json(
       {
-        error: "iyzico_refund_rejected",
-        code: result.errorCode,
-        message: result.errorMessage,
+        error: "paytr_refund_rejected",
+        reason: result.reason,
+        code: result.errCode,
       },
       { status: 400 }
     );
   }
 
-  // 8) payments INSERT (refund kaydı)
+  // payments INSERT — refund kaydı
   const isPartial = refundAmount < charge.amount;
   const action = isPartial ? "partial_refund" : "refund";
   const { data: refundRow, error: insertErr } = await admin
@@ -177,14 +149,14 @@ export async function POST(req: NextRequest) {
     .insert([
       {
         order_id: body.orderId,
-        psp_provider: "iyzico",
-        psp_transaction_id: result.paymentTransactionId,
+        psp_provider: "paytr",
+        psp_transaction_id: charge.psp_transaction_id,
         action,
         amount: refundAmount,
         currency: "TRY",
         status: "success",
-        idempotency_key: `refund:${body.orderId}:${result.paymentTransactionId}`,
-        psp_raw: result as never,
+        idempotency_key: `refund:${body.orderId}:${Date.now()}`,
+        psp_raw: { refund_amount: refundAmount, reason: body.reason } as never,
         completed_at: new Date().toISOString(),
       },
     ] as never)
@@ -193,18 +165,16 @@ export async function POST(req: NextRequest) {
 
   if (insertErr) {
     console.error("[payment/refund] payments insert error:", insertErr);
-    // iyzico iade yaptı ama DB log düşmedi — manuel düzeltilmeli
     return NextResponse.json(
       {
-        error: "iyzico_ok_but_db_failed",
-        warning: "iyzico'da iade yapıldı ama DB kaydı düşmedi, manuel kontrol gerek",
-        iyzicoTransactionId: result.paymentTransactionId,
+        error: "paytr_ok_but_db_failed",
+        warning: "PayTR'de iade yapıldı ama DB kaydı düşmedi",
       },
       { status: 500 }
     );
   }
 
-  // 9) returns.refund_payment_id bağla (varsa)
+  // returns.refund_payment_id bağla (varsa)
   if (body.returnId && refundRow) {
     await admin
       .from("returns")
@@ -216,7 +186,7 @@ export async function POST(req: NextRequest) {
       .eq("id", body.returnId);
   }
 
-  // 10) order_events log
+  // order_events log
   await admin.from("order_events").insert([
     {
       order_id: body.orderId,
@@ -224,12 +194,13 @@ export async function POST(req: NextRequest) {
       status_after: null,
       actor_role: "admin",
       summary: isPartial
-        ? `${refundAmount.toFixed(2)} TL kısmi iade yapıldı.`
-        : `Tam iade yapıldı (${refundAmount.toFixed(2)} TL).`,
+        ? `${refundAmount.toFixed(2)} TL kısmi iade yapıldı (PayTR).`
+        : `Tam iade yapıldı (${refundAmount.toFixed(2)} TL, PayTR).`,
       detail: {
         refundAmount,
         reason: body.reason ?? null,
-        iyzicoPaymentTransactionId: result.paymentTransactionId,
+        provider: "paytr",
+        merchantOid: charge.psp_transaction_id,
       },
     },
   ] as never);
@@ -238,6 +209,6 @@ export async function POST(req: NextRequest) {
     ok: true,
     refundAmount,
     action,
-    paymentTransactionId: result.paymentTransactionId,
+    provider: "paytr",
   });
 }

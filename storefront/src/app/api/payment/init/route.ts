@@ -1,36 +1,34 @@
 /**
  * POST /api/payment/init
  *
- * Müşteri /odeme sayfasında "Güvenli ödemeye geç" tıkladığında çağrılır.
+ * Müşteri /odeme'de "Güvenli ödemeye geç" tıkladığında çağrılır.
  *
  * Akış:
  *   1. Auth kontrolü (login zorunlu)
- *   2. Body validation (cart items + address + invoice)
- *   3. (Opsiyonel) kupon validate + cüzdan düşümü
- *   4. iyzico CheckoutForm Initialize → token + paymentPageUrl
- *   5. payments tablosuna pending kayıt (idempotency_key ile)
- *   6. JSON: { paymentPageUrl, conversationId, token }
+ *   2. Body validation (cart + address + invoice + totals)
+ *   3. Server-side recalc (subtotal/total tutarsızlık kontrolü)
+ *   4. Cüzdan + kart hibrit (kart tutarı = total - wallet)
+ *   5. PayTR get-token → token + iframe URL
+ *   6. payment_intents tablosuna snapshot kaydet
+ *   7. JSON: { paymentPageUrl, merchantOid }
  *
- * Müşteri paymentPageUrl'e yönlenir (redirect veya iframe).
- * iyzico 3DS yapar, callback /api/payment/callback'e POST atar.
+ * PayTR iyzico'dan farkı:
+ *   - merchantOid alfanumerik max 64 char (UUID dash'leri kaldırılır)
+ *   - Sepet base64 JSON, format: [["başlık", "199.99", 1], ...]
+ *   - Tutar kuruş cinsinden (199.99 → 19999)
+ *   - HMAC-SHA256 imza
+ *   - Callback POST'a "OK" string yanıtı zorunlu
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  createCheckoutForm,
-  fmtPrice,
-  isIyzicoConfigured,
-  validateBasketTotals,
-  CORPORATE_PLACEHOLDER_TC,
-} from "@/lib/payment/iyzico";
+  createCheckoutToken,
+  buildBasket,
+  isPayTrConfigured,
+} from "@/lib/payment/paytr";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type {
-  IyzicoBasketItem,
-  IyzicoBuyer,
-  IyzicoAddress,
-} from "@/lib/payment/iyzico-types";
 
 // ============================================================
 // Validation
@@ -47,18 +45,15 @@ const CartItemSchema = z.object({
   unit: z.number().nonnegative(),
   total: z.number().nonnegative(),
   meta: z.record(z.string(), z.unknown()).optional(),
-  // Pre-purchase upload bağlantısı — callback'te promote edilir
   designTempId: z.string().uuid().optional(),
   designPreviewUrl: z.string().optional(),
   designFileName: z.string().optional(),
-  // Sticker-specific (snapshot için)
   shape: z.string().optional(),
   cut: z.string().optional(),
   softCorners: z.boolean().optional(),
   material: z.string().optional(),
   finish: z.string().optional(),
   hediyeAdet: z.number().optional(),
-  // Etiket-specific
   materialId: z.string().optional(),
   coatingId: z.string().optional(),
   customizationId: z.string().optional(),
@@ -89,7 +84,6 @@ const InitBodySchema = z.object({
   shipping: z.number().nonnegative(),
   total: z.number().positive(),
   couponCode: z.string().optional(),
-  /** Cüzdan kullanılacak tutar (TL). Total'dan düşülür, kalan kart ile alınır */
   walletAmount: z.number().nonnegative().optional(),
 });
 
@@ -105,11 +99,17 @@ function getClientIp(req: NextRequest): string {
   return "127.0.0.1";
 }
 
-function generateConversationId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `conv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+/**
+ * PayTR merchant_oid formatı: alfanumerik, max 64 char.
+ * UUID v4 dash'leri kaldırıp 32 char hex döner.
+ */
+function generateMerchantOid(): string {
+  const uuid =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}${Math.random()}`;
+  // PE prefix + UUID hex (dash'siz). Total ~34 char, PayTR limit 64.
+  return `PE${uuid.replace(/-/g, "")}`;
 }
 
 // ============================================================
@@ -117,8 +117,8 @@ function generateConversationId(): string {
 // ============================================================
 
 export async function POST(req: NextRequest) {
-  // 1) Iyzico configured?
-  if (!isIyzicoConfigured()) {
+  // 1) PayTR yapılandırılmış mı?
+  if (!isPayTrConfigured()) {
     return NextResponse.json(
       { error: "payment_provider_not_configured" },
       { status: 503 }
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4) Total tutarlılık kontrolü (server-side recalc)
+  // 4) Server-side recalc
   const calcSubtotal = body.items.reduce((s, i) => s + i.total, 0);
   if (Math.abs(calcSubtotal - body.subtotal) > 0.5) {
     return NextResponse.json(
@@ -165,19 +165,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5) Cüzdan ile ödenecek tutar (varsa) — total'dan düşülür
+  // 5) Cüzdan + kart
   const walletAmount = body.walletAmount ?? 0;
-  const cardAmount = body.total - walletAmount;
-  if (cardAmount < 0) {
-    return NextResponse.json(
-      { error: "wallet_exceeds_total" },
-      { status: 400 }
-    );
-  }
-  // Eğer kartla ödenecek tutar yoksa (cüzdan tüm sepeti karşılıyorsa)
-  // iyzico'ya gitmeye gerek yok — direkt order create + wallet debit.
-  // Bu akış /api/payment/wallet-only endpoint'inde (P0-3.8); şimdilik
-  // tutar 0'a düşmesin diye min 1 TL şartı (iyzico zaten reddeder).
+  const cardAmount = Math.max(0, body.total - walletAmount);
+
   if (cardAmount < 1) {
     return NextResponse.json(
       { error: "use_wallet_only_endpoint" },
@@ -185,123 +176,64 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 6) iyzico basket items
-  // KRİTİK: items[].price toplamı paidPrice'a EŞIT olmalı. Kargo ve cüzdan
-  // farkını items üzerinde dağıtırız (basit yaklaşım: ilk item'a ekle).
-  let runningRemainder = cardAmount;
-  const basketItems: IyzicoBasketItem[] = body.items.map((it, idx) => {
-    const isLast = idx === body.items.length - 1;
-    let itemPrice: number;
-    if (isLast) {
-      itemPrice = parseFloat(runningRemainder.toFixed(2));
-    } else {
-      // Proportional pay: cardAmount oranında
-      const ratio = it.total / body.subtotal;
-      itemPrice = parseFloat((cardAmount * ratio).toFixed(2));
-      runningRemainder -= itemPrice;
-    }
-    return {
-      id: it.id,
-      name: it.title,
-      category1: it.product === "sticker" ? "Sticker" : "Etiket",
-      itemType: "PHYSICAL",
-      price: fmtPrice(itemPrice),
-    };
-  });
+  // 6) PayTR sepeti — kart kısmı için
+  // Cüzdan ile ödenen kısım sepet'ten düşülmeli (orantılı dağıtım).
+  // Basit yaklaşım: items[].total'ı orantılı küçült.
+  const ratio = cardAmount / body.total; // 0-1
+  const cardItems = body.items.map((i) => ({
+    title: i.title,
+    qty: i.qty,
+    total: parseFloat((i.total * ratio).toFixed(2)),
+  }));
 
-  if (!validateBasketTotals(basketItems, fmtPrice(cardAmount))) {
-    return NextResponse.json(
-      { error: "basket_totals_mismatch" },
-      { status: 500 }
+  // Toplam denetim — round'lama farkı varsa son item'a ekle
+  const cardSum = cardItems.reduce((s, i) => s + i.total, 0);
+  const diff = parseFloat((cardAmount - cardSum).toFixed(2));
+  if (Math.abs(diff) >= 0.01 && cardItems.length > 0) {
+    cardItems[cardItems.length - 1].total += diff;
+    cardItems[cardItems.length - 1].total = parseFloat(
+      cardItems[cardItems.length - 1].total.toFixed(2)
     );
   }
 
-  // 7) iyzico buyer
-  const tc =
-    body.invoice.type === "individual" && body.invoice.tc
-      ? body.invoice.tc
-      : CORPORATE_PLACEHOLDER_TC;
+  const basket = buildBasket(cardItems);
 
-  const nameParts = body.address.name.trim().split(/\s+/);
-  const firstName = nameParts[0] ?? "Müşteri";
-  const lastName = nameParts.slice(1).join(" ") || "—";
-
-  const buyer: IyzicoBuyer = {
-    id: user.id,
-    name: firstName,
-    surname: lastName,
-    gsmNumber: body.address.phone.replace(/\s+/g, "") || undefined,
-    email: user.email ?? "no-reply@pimetiket.com",
-    identityNumber: tc,
-    registrationAddress: body.address.addr,
-    ip: getClientIp(req),
-    city: body.address.city,
-    country: "Turkey",
-  };
-
-  const shippingAddress: IyzicoAddress = {
-    contactName: body.address.name,
-    city: body.address.city,
-    country: "Turkey",
-    address: body.address.addr,
-  };
-
-  const billingAddress: IyzicoAddress = {
-    contactName:
-      body.invoice.type === "corporate"
-        ? body.invoice.companyName ?? body.address.name
-        : body.address.name,
-    city: body.address.city,
-    country: "Turkey",
-    address: body.address.addr,
-  };
-
-  // 8) Conversation ID + idempotency
-  const conversationId = generateConversationId();
-  const idempotencyKey = `init:${user.id}:${conversationId}`;
-
-  // 9) iyzico initialize
+  // 7) merchantOid + URL'ler
+  const merchantOid = generateMerchantOid();
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  let init;
-  try {
-    init = await createCheckoutForm({
-      locale: "tr",
-      conversationId,
-      price: fmtPrice(cardAmount),
-      paidPrice: fmtPrice(cardAmount),
-      currency: "TRY",
-      basketId: conversationId,
-      paymentGroup: "PRODUCT",
-      callbackUrl: `${siteUrl}/api/payment/callback`,
-      enabledInstallments: [1, 2, 3, 6, 9, 12],
-      buyer,
-      shippingAddress,
-      billingAddress,
-      basketItems,
-    });
-  } catch (err) {
-    console.error("[payment/init] iyzico error:", err);
+  // 8) PayTR get-token
+  const result = await createCheckoutToken({
+    merchantOid,
+    email: user.email ?? "no-reply@pimetiket.com",
+    amountTL: cardAmount,
+    basket,
+    userIp: getClientIp(req),
+    userName: body.address.name,
+    userAddress: body.address.addr.slice(0, 400),
+    userPhone: body.address.phone,
+    okUrl: `${siteUrl}/api/payment/callback?return=ok&oid=${merchantOid}`,
+    failUrl: `${siteUrl}/api/payment/callback?return=fail&oid=${merchantOid}`,
+    timeoutLimit: 30,
+    currency: "TL",
+    maxInstallment: 12,
+    noInstallment: 0,
+  });
+
+  if (!result.ok) {
+    console.error("[payment/init] PayTR token failed:", result.reason);
     return NextResponse.json(
-      { error: "iyzico_call_failed" },
+      {
+        error: "paytr_token_failed",
+        reason: result.reason,
+        code: result.errCode,
+      },
       { status: 502 }
     );
   }
 
-  if (init.status !== "success") {
-    console.error("[payment/init] iyzico failed:", init.errorMessage);
-    return NextResponse.json(
-      {
-        error: "iyzico_initialize_failed",
-        code: init.errorCode,
-        message: init.errorMessage,
-      },
-      { status: 400 }
-    );
-  }
-
-  // 10) DB'ye payment_intent kaydı (snapshot)
+  // 9) payment_intents snapshot
   const admin = createAdminClient();
   const snapshot = {
     items: body.items,
@@ -314,9 +246,9 @@ export async function POST(req: NextRequest) {
   };
   const { error: insertErr } = await admin.from("payment_intents").insert([
     {
-      id: conversationId,
+      id: merchantOid,
       user_id: user.id,
-      iyzico_token: init.token,
+      iyzico_token: result.token, // legacy alan adı, PayTR token saklıyoruz
       card_amount: cardAmount,
       wallet_amount: walletAmount,
       snapshot,
@@ -325,21 +257,15 @@ export async function POST(req: NextRequest) {
 
   if (insertErr) {
     console.error("[payment/init] intent insert error:", insertErr);
-    // iyzico session açıldı ama intent kaydedilmedi — callback'te
-    // sipariş açılamayacak. User'a hata dön.
     return NextResponse.json(
       { error: "intent_save_failed" },
       { status: 500 }
     );
   }
 
-  // idempotency_key ileride duplicate iyzico initialize engelleme için
-  // (aynı body 2x post atılırsa). Şimdilik conversationId ile yeterli.
-  void idempotencyKey;
-
   return NextResponse.json({
-    paymentPageUrl: init.paymentPageUrl,
-    token: init.token,
-    conversationId,
+    paymentPageUrl: result.iframeUrl,
+    token: result.token,
+    merchantOid,
   });
 }

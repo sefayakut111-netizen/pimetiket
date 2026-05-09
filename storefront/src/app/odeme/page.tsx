@@ -14,7 +14,7 @@
  *   3. Fatura: 3 mod (none/individual/corporate)
  *      - Default: "Fatura istemiyorum (fiş)"
  *      - Kurumsal user (profilde VKN varsa) → otomatik corporate seçili
- *   4. "Ödemeye geç" → /api/payment/init → iyzico iframe
+ *   4. "Ödemeye geç" → /api/payment/init → PayTR iframe
  */
 
 "use client";
@@ -444,7 +444,7 @@ export default function OdemePage() {
         }
         if (res.status === 503) {
           // PSP yok — mock fallback
-          console.warn("[odeme] iyzico not configured, mock fallback");
+          console.warn("[odeme] PayTR not configured, mock fallback");
           const masked = "**** **** **** 0000";
           const order = await createCustomerOrder({
             items: cartItems,
@@ -1016,7 +1016,7 @@ export default function OdemePage() {
                   🔒 3D Secure
                 </span>
                 <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold">
-                  iyzico ile güvenli
+                  PayTR ile güvenli
                 </span>
               </div>
             </Card>

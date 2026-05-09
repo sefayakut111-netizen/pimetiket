@@ -12,7 +12,7 @@
 
 ```
 1. Production Supabase projesi (dev'den ayrı)         15 dk
-2. Production iyzico key (sandbox'tan ayrı)            5 dk + iyzico onayı
+2. Production PayTR ayarları (test_mode=0)             10 dk + IP whitelist
 3. Resend domain DKIM doğrulama                       30 dk + DNS yayılma
 4. Hosting platformu seçimi + deploy                  20 dk
 5. Domain DNS bağlama                                 10 dk + propagation
@@ -73,31 +73,38 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ... (prod, ASLA client'a sızdırma)
 
 ---
 
-## 2. Production iyzico Key
+## 2. Production PayTR Ayarları
 
-⚠️ **iyzico Production aktivasyonu 1-3 iş günü sürer**. Erkenden başla.
+PayTR mağaza paneli zaten açıkmış olmalı (SETUP.md §2). Burada production'a geçiş ayarları.
 
-### 2.1 Aktivasyon başvurusu
+### 2.1 Test mode kapat
 
-1. https://merchant.iyzipay.com (sandbox değil, production!)
-2. Eğer hesabın yoksa: yeni kayıt + KYC (vergi levhası, IBAN, imza sirküleri yükle)
-3. Aktivasyon onayı bekle — email gelir
-4. **API & Anahtarlarım**: production key oluştur
+`PAYTR_TEST_MODE=0` set et. **Önemli**: 1 olarak unutursan canlı tahsilat olmaz.
 
-### 2.2 Production env
+### 2.2 Bildirim URL'i — production
 
-```env
-IYZICO_API_KEY=prod-...
-IYZICO_SECRET_KEY=prod-...
-IYZICO_BASE_URL=https://api.iyzipay.com    # SANDBOX URL DEĞİL!
+Mağaza paneli → **API & Çoklu Mağaza** → **Bildirim URL**:
+
+```
+https://pimetiket.com/api/payment/callback
 ```
 
-⚠️ **Sandbox URL'si production env'de yanlış sonuç verir** (auth fail). Doğru URL: `api.iyzipay.com` (https://api.iyzipay.com)
+⚠️ HTTPS zorunlu, HTTP olmaz. PayTR `merchant_oid + status + total_amount + hash` POST atar; bizim sunucu **MUTLAKA "OK" string** dönmelidir, yoksa retry yapar.
 
-### 2.3 Callback URL whitelist
+### 2.3 IP whitelist (önerilen)
 
-iyzico Merchant Panel → Ayarlar → API URL whitelist'e ekle:
-- `https://pimetiket.com/api/payment/callback`
+PayTR → API & Çoklu Mağaza → **Onaylı IP'ler** alanına Vercel IP'lerini ekle. Vercel: tüm trafik için 76.76.21.0/24 vs vardır; alternatif "boş bırak" — herkesten kabul eder.
+
+### 2.4 Production env
+
+```env
+PAYTR_MERCHANT_ID=<sayısal id>
+PAYTR_MERCHANT_KEY=<32 char>
+PAYTR_MERCHANT_SALT=<16 char>
+PAYTR_TEST_MODE=0       # canlı tahsilat
+```
+
+⚠️ **MERCHANT_KEY + SALT prodüksiyon = sandbox aynı**. Sadece TEST_MODE değişir.
 
 ---
 
@@ -156,9 +163,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://<prod-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 OPENAI_API_KEY=sk-proj-...
-IYZICO_API_KEY=prod-...
-IYZICO_SECRET_KEY=prod-...
-IYZICO_BASE_URL=https://api.iyzipay.com
+PAYTR_MERCHANT_ID=...
+PAYTR_MERCHANT_KEY=...
+PAYTR_MERCHANT_SALT=...
+PAYTR_TEST_MODE=0
 RESEND_API_KEY=re_prod_...
 RESEND_FROM_EMAIL=Pim Etiket <merhaba@pimetiket.com>
 NETGSM_USERCODE=...
@@ -176,15 +184,15 @@ NETGSM_HEADER=PIMETIKET
 
 ### Yöntem B: Cloudflare Pages
 
-⚠️ **Risk**: `iyzipay` paketi Node-only API'ler kullanıyor. Cloudflare Workers Edge runtime → uyumsuz. **Adapter** kullanmadan çalışmaz.
+PayTR'ye geçtiğimiz için artık mümkün — PayTR REST API çağrıları Edge runtime ile uyumlu (sadece `crypto.createHmac` kullanıyoruz). Yine de Supabase SSR + middleware Edge runtime'da edge-case'lere düşebilir.
 
 Cloudflare Pages istersen:
 
 1. `@cloudflare/next-on-pages` adapter kur
-2. iyzipay route'larını `runtime: "nodejs"` ile değil, dış proxy ile çağır
+2. Tüm route'larda `runtime: "edge"` set et (mevcut middleware Edge uyumlu)
 3. Deploy: `npx wrangler pages deploy .vercel/output/static`
 
-**Bu yol zorlu**. Vercel'i tercih et.
+**Sefa Packanalyz'de Cloudflare deneyimi var** — yine de Vercel daha az sürtünme verir. Karar senin.
 
 ---
 
@@ -257,7 +265,7 @@ Beklenen output:
 ✓ NEXT_PUBLIC_SITE_URL              https://pimetiket.com
 ✓ Supabase ping                     reachable
 ✓ Migration tables                  16/16 tablo bulundu
-✓ iyzico ping                       reachable (api.iyzipay.com)
+○ PAYTR_MERCHANT_ID                 set
 ✓ Resend API                        reachable + auth ok
 ```
 
@@ -268,7 +276,7 @@ Beklenen output:
 3. **Tasarım yükle** (DesignDropZone): bir PDF/PNG
 4. **Sepete ekle** → mockup'ta tasarımın görünmeli
 5. **Ödemeye geç**: adres gir, fatura "Fatura istemiyorum" seç (ya da gerçek TC)
-6. **iyzico iframe**: ⚠️ **gerçek kart kullanma**, sandbox key'le test ediyorsan test kart `5528790000000008`
+6. **PayTR iframe**: ⚠️ **gerçek kart kullanma**, test mode'daysan PayTR test kartı `4355 0843 5508 4358` (CVV 000, MM/YY 12/30, 3DS SMS 1234)
 7. **Mail kutusu**: order confirmation maili gelmeli (5 dk içinde)
 8. **`/siparis/<id>`**: order detail görünmeli, AI ön-kontrol "qc_passed" veya "qc_warned"
 
@@ -312,14 +320,14 @@ dist/
 ### "Auth redirect URL mismatch"
 Supabase Site URL hâlâ localhost. §6'ya bak.
 
-### "iyzico API request not authorized"
-Production key'i sandbox URL'inde kullanıyorsun (veya tersi). `IYZICO_BASE_URL` doğru mu?
+### "PayTR Hash hatası" / token alınamıyor
+`PAYTR_MERCHANT_KEY` veya `SALT` yanlış (boşluk olabilir). Mağaza panelinden tekrar kopyala.
+
+### Sipariş açılmıyor (PayTR ödeme başarılı ama /siparis/[id] yok)
+PayTR mağaza panelinde **Bildirim URL** set edilmemiş (`https://pimetiket.com/api/payment/callback`). Set edip Vercel logs'tan POST geldiğini doğrula.
 
 ### "Resend 401: from address not verified"
 DNS DKIM kayıtları yayılmadı veya yanlış. Resend domain dashboard "Verify" yeşil mi?
-
-### Vercel build "Module not found: iyzipay/lib/resources"
-`next.config.ts` `serverExternalPackages: ["iyzipay"]` var mı? Olmalı.
 
 ### "404 on /api/payment/init"
 Vercel build'de **API routes** dahil mi? `Functions` dashboard'unda görmelisin.
@@ -334,7 +342,7 @@ Vercel build'de **API routes** dahil mi? `Functions` dashboard'unda görmelisin.
 - Vercel: https://vercel.com/help (chat var, Pro plan'da öncelik)
 - Supabase: https://supabase.com/dashboard → Support
 - Resend: support@resend.com
-- iyzico: 0850 222 3 499 (mesai içi)
+- PayTR: 0850 222 7 728 (mesai içi) · destek@paytr.com
 
 ---
 
@@ -346,7 +354,9 @@ Vercel build'de **API routes** dahil mi? `Functions` dashboard'unda görmelisin.
 [ ] Sticker: 25 adetten siparişe kadar uçtan uca akış
 [ ] Etiket: 1000 adetten siparişe kadar uçtan uca akış
 [ ] Tasarım upload: temp → mockup → siparişle promote
-[ ] iyzico: sandbox kart ile test sipariş
+[ ] PayTR: test kart `4355 0843 5508 4358` ile test sipariş (test_mode=1)
+[ ] PayTR Bildirim URL panelden set edildi
+[ ] Production'a alırken PAYTR_TEST_MODE=0 yapıldı
 [ ] Mail: order_confirmation Inbox'a düşer (Spam değil)
 [ ] /admin/audit-log: ödeme + dosya event'leri görünür
 [ ] Mobile (telefon): hamburger menu, mockup, ödeme akışı OK

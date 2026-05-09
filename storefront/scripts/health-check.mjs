@@ -9,7 +9,7 @@
  *   - Supabase URL ping atılabiliyor mu
  *   - Supabase auth API ulaşılabilir mi
  *   - Migration tabloları DB'de var mı (15 tablo bekleniyor)
- *   - iyzico endpoint reachable mi
+ *   - PayTR yapılandırılmış mı (3 env değişkeni)
  *   - Resend API reachable mi
  *
  * Env gizli değer içerir, sadece "set/not set" gösterir, asla print etmez.
@@ -105,8 +105,8 @@ function checkEnvVar(name, required = true) {
   // Sadece SITE_URL public değeri için ufak istisna
   if (name === "NEXT_PUBLIC_SITE_URL") {
     add(name, "ok", value);
-  } else if (name === "IYZICO_BASE_URL") {
-    add(name, "ok", value);
+  } else if (name === "PAYTR_TEST_MODE") {
+    add(name, "ok", value === "0" ? "PRODUCTION" : "sandbox");
   } else if (name === "RESEND_FROM_EMAIL") {
     // Bilgilendirme amaçlı domain göster
     add(name, "ok", value.replace(/<.*>/, "<...>"));
@@ -255,10 +255,11 @@ const supaUrl = checkEnvVar("NEXT_PUBLIC_SUPABASE_URL");
 const anonKey = checkEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 const serviceKey = checkEnvVar("SUPABASE_SERVICE_ROLE_KEY");
 
-// iyzico
-checkEnvVar("IYZICO_API_KEY", false);
-checkEnvVar("IYZICO_SECRET_KEY", false);
-checkEnvVar("IYZICO_BASE_URL", false);
+// PayTR
+checkEnvVar("PAYTR_MERCHANT_ID", false);
+checkEnvVar("PAYTR_MERCHANT_KEY", false);
+checkEnvVar("PAYTR_MERCHANT_SALT", false);
+checkEnvVar("PAYTR_TEST_MODE", false);
 
 // Resend
 checkEnvVar("RESEND_API_KEY", false);
@@ -288,24 +289,17 @@ if (isProdSiteUrl) {
   console.log();
   console.log(`${COLORS.gray}── Production sanity ──${COLORS.reset}`);
 
-  // iyzico: prod URL'de prod key olmalı
-  if (env.IYZICO_BASE_URL?.includes("sandbox")) {
-    add(
-      "iyzico URL/key match",
-      "fail",
-      "PROD site + SANDBOX iyzico — yanlış"
-    );
-  } else if (
-    env.IYZICO_API_KEY?.startsWith("sandbox-") &&
-    !env.IYZICO_BASE_URL?.includes("sandbox")
-  ) {
-    add(
-      "iyzico URL/key match",
-      "fail",
-      "PROD URL ama SANDBOX key (sandbox- prefix)"
-    );
-  } else if (env.IYZICO_BASE_URL && env.IYZICO_API_KEY) {
-    add("iyzico URL/key match", "ok", "production tutarlı");
+  // PayTR: prod site'ta TEST_MODE=1 ciddi sorun
+  if (env.PAYTR_MERCHANT_ID) {
+    if (env.PAYTR_TEST_MODE === "1" || env.PAYTR_TEST_MODE === undefined) {
+      add(
+        "PayTR test mode",
+        "fail",
+        "PROD URL'de TEST_MODE=1 — gerçek tahsilat YAPILMAZ. PAYTR_TEST_MODE=0 yap."
+      );
+    } else if (env.PAYTR_TEST_MODE === "0") {
+      add("PayTR test mode", "ok", "production (TEST_MODE=0)");
+    }
   }
 
   // Resend FROM domain prod URL ile uyuşuyor mu?
@@ -362,9 +356,9 @@ if (supaUrl) {
   await checkMigrationTables(supaUrl, serviceKey);
 }
 
-if (env.IYZICO_BASE_URL) {
-  // iyzico /payment/iyzipos endpoint HEAD reddedebilir, ama TCP ping yeterli
-  await ping(env.IYZICO_BASE_URL, "iyzico ping");
+if (env.PAYTR_MERCHANT_ID) {
+  // PayTR get-token endpoint reachable mi
+  await ping("https://www.paytr.com", "PayTR ping");
 }
 
 if (env.RESEND_API_KEY) {

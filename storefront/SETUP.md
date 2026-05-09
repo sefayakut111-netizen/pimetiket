@@ -107,43 +107,58 @@ Migration 006 sadece policy yazar — bucket'ları **manuel** açman lazım.
 
 ---
 
-## 2. iyzico Sandbox (15 dk)
+## 2. PayTR (15 dk)
 
-### 2.1 Hesap aç
+### 2.1 Mağaza başvurusu
 
-1. https://merchant.iyzipay.com/auth/register → kayıt
-2. **Sandbox** ortamı: https://sandbox-merchant.iyzipay.com → giriş yap
+1. https://www.paytr.com/magaza/basvuru-formu → başvur
+2. Vergi levhası + IBAN + imza sirküleri (PDF) yükle
+3. Onay 1-2 iş günü sürer
 
-### 2.2 API anahtarı
+### 2.2 Mağaza bilgileri
 
-`API & Anahtarlarım → Yeni anahtar oluştur` → aktivasyonu sağla.
-
-```env
-IYZICO_API_KEY=sandbox-...
-IYZICO_SECRET_KEY=sandbox-...
-IYZICO_BASE_URL=https://sandbox-api.iyzipay.com
-```
-
-### 2.3 Test kartlar
-
-| Kart | Banka | Sonuç |
-|------|-------|-------|
-| `5528790000000008` | Halkbank | Başarılı 3DS |
-| `5168880000000002` | Garanti | Failure |
-
-CVV: `123` · MM/YY: `12/30` · 3DS şifre: `123456`
-
-Tam liste: https://dev.iyzipay.com/tr/test-kartlari
-
-### 2.4 Production'a geçince
+Mağaza yönetim paneli → **Mağaza Bilgileri**:
 
 ```env
-IYZICO_API_KEY=prod-...   # gerçek anahtarlar
-IYZICO_SECRET_KEY=prod-...
-IYZICO_BASE_URL=https://api.iyzipay.com
+PAYTR_MERCHANT_ID=        # Mağaza ID (sayısal)
+PAYTR_MERCHANT_KEY=       # Mağaza Anahtarı (32 char)
+PAYTR_MERCHANT_SALT=      # Mağaza Salt (16 char)
+PAYTR_TEST_MODE=1         # 1=sandbox, 0=production
 ```
 
-⚠️ Production'da iyzico **manuel onay** gerektirir (1-3 iş günü).
+### 2.3 Bildirim URL'i (callback)
+
+⚠️ KRİTİK — yapılmazsa ödeme sonrası sipariş açılmaz.
+
+Mağaza paneli → **API & Çoklu Mağaza** → **Bildirim URL** ekle:
+
+| Ortam | URL |
+|-------|-----|
+| Local dev | `https://your-tunnel.ngrok.io/api/payment/callback` (ngrok) |
+| Production | `https://pimetiket.com/api/payment/callback` |
+
+Local dev'de PayTR'nin sunucundan localhost'a ulaşamadığı için **ngrok** veya benzeri bir tünel gerek.
+
+### 2.4 Test kartlar
+
+PayTR test mode'da gerçek tahsilat yapılmaz.
+
+| Kart | Sonuç |
+|------|-------|
+| `4355 0843 5508 4358` | 3DS başarılı |
+| `4546 7110 8132 1396` | 3DS başarısız |
+
+CVV: `000` · MM/YY: `12/30` · 3DS SMS: `1234`
+
+Tam liste: https://dev.paytr.com/test-kartlari
+
+### 2.5 Production'a geçince
+
+```env
+PAYTR_TEST_MODE=0     # canlı tahsilat
+```
+
+⚠️ Production'a geçmeden önce mağaza panelinde **canlı IP whitelist** ayarla — yoksa fail dönebilir.
 
 ---
 
@@ -224,8 +239,9 @@ Output:
 ✓ Supabase ping                     200 OK
 ✓ Supabase auth API                 reachable
 ✓ Migration tables                  15/15 tablo bulundu
-○ IYZICO_API_KEY                    set
-✓ iyzico ping                       reachable (sandbox)
+○ PAYTR_MERCHANT_ID                 set
+○ PAYTR_MERCHANT_KEY                set
+○ PAYTR_MERCHANT_SALT               set
 ○ RESEND_API_KEY                    set
 ✓ Resend ping                       reachable
 ○ NETGSM_USERCODE                   not set (optional)
@@ -252,8 +268,8 @@ http://localhost:3000 → kontrol akışı:
 1. **`/auth`** → e-posta gir → mail gelir → link tıkla → `/panelim`'e döner
 2. **`/sticker`** → konfigüre → "Sepete ekle" → cart_items DB'de oluşur
 3. **`/sepet`** → "Ödemeye geç" → `/odeme`
-4. **`/odeme`** → step 1-3 doldur → "Ödemeye geç" → iyzico hosted form açılır
-5. **iyzico'da**: `5528790000000008` / `123` / `12/30` / `123456`
+4. **`/odeme`** → adres + fatura + ödeme → "Ödemeye geç" → PayTR iframe açılır
+5. **PayTR test kart**: `4355 0843 5508 4358` / `000` / `12/30` / 3DS SMS `1234`
 6. **`/odeme-sonuc`** → "Sipariş alındı" → mail kutusuna gelir
 7. **`/siparis/<id>`** → tasarım dosyası yükle (PDF) → AI 1.5sn sonra "qc_passed"
 8. **`/admin/audit-log`** → ödeme + dosya yükleme event'lerini gör
@@ -268,8 +284,11 @@ RLS policy çalışmadı. `001_initial_schema.sql` tam çalıştırılmadı — 
 ### "violates foreign key constraint orders_user_id_fkey"
 `profiles` satırı yok. `Authentication → Users`'a bak — user var mı? `handle_new_user()` trigger'ı çalışmıyor olabilir, migration 001'i tekrar çalıştır.
 
-### iyzico "API request not authorized"
-`IYZICO_API_KEY` yanlış environment'tan kopyalanmış. **Sandbox** key başka, **Production** key başka. Doğru ortamı seç.
+### PayTR "Hash hatası" / token alınamıyor
+`PAYTR_MERCHANT_KEY` veya `SALT` yanlış kopyalanmış (özellikle başında/sonunda boşluk). Mağaza panelinden tekrar kopyala. Test mode'daysan `PAYTR_TEST_MODE=1` set olduğundan emin ol.
+
+### PayTR callback gelmiyor (sipariş açılmıyor)
+**Bildirim URL** mağaza panelinde set değil. PayTR sadece bu URL'e POST atar — yoksa ödeme başarılı olsa bile `payment_intents` consumed olmaz. Local dev için ngrok tüneli gerekir.
 
 ### Resend "from address not verified"
 Domain doğrulanmamış. Geçici çözüm: `RESEND_FROM_EMAIL=onboarding@resend.dev`. Kalıcı: DNS DKIM/SPF kayıtları doğru girildiğinden emin ol.
@@ -277,15 +296,12 @@ Domain doğrulanmamış. Geçici çözüm: `RESEND_FROM_EMAIL=onboarding@resend.
 ### Storage upload "Unauthorized"
 Bucket policy migration 006 çalıştırıldı mı? `Storage → designs → Policies` kontrol et — 3 policy görünmeli (upload, read, delete).
 
-### "Module not found: Can't resolve iyzipay/lib/resources"
-Turbopack iyzipay'i bundle edemiyor. `next.config.ts`'de `serverExternalPackages: ["iyzipay"]` olduğundan emin ol.
-
 ---
 
 ## 📚 Kaynaklar
 
 - **Supabase**: https://supabase.com/docs (Auth + Database + Storage rehberleri)
-- **iyzico**: https://dev.iyzipay.com (Checkout Form rehberi)
+- **PayTR**: https://dev.paytr.com (iFrame API + IPN rehberi)
 - **Resend**: https://resend.com/docs
 - **Netgsm**: https://www.netgsm.com.tr/dokuman
 
@@ -295,7 +311,7 @@ Turbopack iyzipay'i bundle edemiyor. `next.config.ts`'de `serverExternalPackages
 
 Health check tamamen yeşilse:
 
-- DB → Auth → Cart → Order → iyzico → Mail → Storage → AI ön-kontrol — **uçtan uca çalışıyor**
+- DB → Auth → Cart → Order → PayTR → Mail → Storage → AI ön-kontrol — **uçtan uca çalışıyor**
 - Backend P1 (admin CRUD endpoint'leri, e-Fatura, kargo API) için hazırsın
 - Production deploy: Cloudflare Pages veya Vercel — `vercel deploy` yeterli (env'ler dashboard'a girilir)
 
