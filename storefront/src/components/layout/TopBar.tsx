@@ -14,8 +14,9 @@ const NAV_ITEMS = [
   { href: "/", label: "Anasayfa" },
   { href: "/etiket", label: "Etiket" },
   { href: "/sticker", label: "Sticker" },
+  { href: "/galeri", label: "Galeri" },
+  { href: "/blog", label: "Blog" },
   { href: "/panelim", label: "Panelim" },
-  { href: "/hakkimizda", label: "Hakkımızda" },
 ];
 
 export function TopBar() {

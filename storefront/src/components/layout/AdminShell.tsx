@@ -88,14 +88,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
       badge: badges.fason,
     },
     {
-      href: "/admin/fiyat-hesapla",
-      label: "Sticker",
-      icon: <Icon.Sticker size={16} />,
+      href: "/admin/iadeler",
+      label: "İade",
+      icon: <Icon.Info size={16} />,
     },
     {
-      href: "/admin/fiyat-hesapla-etiket",
-      label: "Etiket",
-      icon: <Icon.Roll size={16} />,
+      href: "/admin/musteriler",
+      label: "Müşteri",
+      icon: <Icon.User size={16} />,
+    },
+    {
+      href: "/admin/raporlar",
+      label: "Rapor",
+      icon: <Icon.Star size={16} />,
     },
   ];
 

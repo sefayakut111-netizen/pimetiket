@@ -242,35 +242,70 @@ export default function SiparisDetailPage({
               </ol>
             </Card>
 
-            {/* Proof card — current phase'e göre */}
+            {/* Proof canvas — current phase'e göre */}
             {phaseIdx === 5 && !proofApproved && (
-              <div className="rounded-2xl p-6 bg-gradient-to-br from-pim-mercan-tint to-krem-soft ring-1 ring-pim-mercan-soft">
-                <div className="flex gap-4 items-start">
-                  <PimMini pose="inspect" size={56} />
-                  <div className="flex-1">
-                    <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
-                      Aksiyon gerekli
-                    </div>
-                    <h3 className="font-semibold text-xl mt-1.5">
-                      Provanı incele ve onayla
-                    </h3>
-                    <p className="text-base text-gri-700 mt-2 leading-relaxed">
-                      AI ön kontrolünden geçti, operatörümüz baktı —
-                      tasarımının matbaa öncesi nasıl görüneceğini hazırladık.
-                      Onayladığında üretime giriyor.
-                    </p>
-                    <div className="mt-4 flex gap-2 flex-wrap">
-                      <Button
-                        variant="primary"
-                        onClick={() => setProofApproved(true)}
-                      >
-                        <Icon.Check size={14} /> Provayı onayla
-                      </Button>
-                      <Button variant="secondary">Değişiklik iste</Button>
+              <Card padding="" className="!p-0 overflow-hidden">
+                <div className="bg-gradient-to-br from-pim-mercan-tint to-krem-soft p-6 border-b border-gri-200">
+                  <div className="flex gap-4 items-start">
+                    <PimMini pose="inspect" size={56} />
+                    <div className="flex-1">
+                      <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
+                        Aksiyon gerekli
+                      </div>
+                      <h3 className="font-semibold text-xl mt-1.5">
+                        Provanı incele ve onayla
+                      </h3>
+                      <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
+                        AI ön kontrolünden geçti, operatörümüz baktı —
+                        tasarımının matbaa öncesi nasıl görüneceğini hazırladık.
+                        Yakınlaştır, kontrol et, onayla.
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
+                {/* Mock proof canvas */}
+                <div className="bg-gri-100 p-8 grid place-items-center min-h-[280px]">
+                  <div className="bg-white rounded-lg shadow-2 p-6 max-w-[360px] w-full">
+                    <div className="aspect-[4/5] bg-krem rounded-md grid place-items-center mb-3">
+                      <div className="text-center">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-lacivert/60 mb-1">
+                          {order.items[0]?.title.split("·")[0].trim() ?? "Ürün"}
+                        </div>
+                        <div className="text-[22px] font-bold text-lacivert">
+                          {order.address.name.split(" ")[0]}
+                        </div>
+                        <div className="text-[10px] text-gri-700 mt-1">
+                          DOĞAL · ORGANİK · 100ml
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-gri-500">
+                      <span>Boyut: {order.items[0]?.width}×{order.items[0]?.height}mm</span>
+                      <span>%100 önizleme</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 border-t border-gri-200 bg-white">
+                  <p className="text-[13px] text-gri-700 leading-relaxed mb-4">
+                    <strong className="text-lacivert">Renk uyarısı:</strong>{" "}
+                    Ekrandaki renkler matbaa baskısından küçük ölçüde farklı
+                    çıkabilir. CMYK kalibrasyonu fason ortakla aynı.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="primary"
+                      onClick={() => setProofApproved(true)}
+                      className="!bg-yesil hover:!bg-[#22a862]"
+                    >
+                      <Icon.Check size={14} /> Provayı onayla
+                    </Button>
+                    <Button variant="secondary">Değişiklik iste</Button>
+                    <Button variant="ghost">
+                      <Icon.Box size={14} /> PDF indir
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             )}
             {proofApproved && (
               <div className="rounded-2xl p-6 bg-yesil-soft ring-1 ring-yesil/30 flex gap-4 items-center">
@@ -289,21 +324,8 @@ export default function SiparisDetailPage({
               </div>
             )}
 
-            {/* File upload card — gerçek upload H adımında */}
-            <Card padding="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Tasarım dosyası</h2>
-                <Button variant="primary" size="sm" disabled>
-                  <Icon.Plus size={14} /> Dosya yükle
-                </Button>
-              </div>
-              <div className="rounded-lg bg-gri-50 ring-1 ring-dashed ring-gri-200 p-6 text-center text-[13px] text-gri-700 leading-relaxed">
-                Dosya yükleme akışı yakında — şimdilik
-                <strong className="text-lacivert"> destek@pimetiket.com</strong>{" "}
-                üzerinden tasarımlarını gönderebilirsin. AI ön kontrolden geçer,
-                sonra üretim hattına alınır.
-              </div>
-            </Card>
+            {/* File upload card */}
+            <DesignUploadCard orderId={order.id} />
           </div>
 
           {/* SIDE — özet bilgileri */}
@@ -422,5 +444,213 @@ export default function SiparisDetailPage({
         </div>
       </div>
     </main>
+  );
+}
+
+// ============================================================
+// DesignUploadCard — sipariş detayında tasarım upload UI
+// ============================================================
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  uploadedAt: number;
+  /** AI flagleri — mock */
+  flags: Array<{ kind: "ok" | "warning" | "error"; message: string }>;
+}
+
+const STORAGE_KEY_FILES = "pim_design_files_v1";
+
+function loadFiles(orderId: string): UploadedFile[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const all = JSON.parse(
+      localStorage.getItem(STORAGE_KEY_FILES) ?? "{}"
+    ) as Record<string, UploadedFile[]>;
+    return all[orderId] ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFiles(orderId: string, files: UploadedFile[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    const all = JSON.parse(
+      localStorage.getItem(STORAGE_KEY_FILES) ?? "{}"
+    ) as Record<string, UploadedFile[]>;
+    all[orderId] = files;
+    localStorage.setItem(STORAGE_KEY_FILES, JSON.stringify(all));
+  } catch {
+    // ignore
+  }
+}
+
+function DesignUploadCard({ orderId }: { orderId: string }) {
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  useEffect(() => {
+    setFiles(loadFiles(orderId));
+    setHydrated(true);
+  }, [orderId]);
+
+  const handleMockUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAnalyzing(true);
+    setTimeout(() => {
+      const flagSet: UploadedFile["flags"] = [
+        { kind: "ok", message: "Çözünürlük 320 DPI — baskı için yeterli" },
+        { kind: "ok", message: "CMYK renk uzayı tespit edildi" },
+      ];
+      if (Math.random() < 0.3) {
+        flagSet.push({
+          kind: "warning",
+          message: "Kenar boşluğu 2mm'in altında — kesim kayması riskli",
+        });
+      }
+      const fresh: UploadedFile = {
+        name: file.name,
+        size: file.size,
+        uploadedAt: Date.now(),
+        flags: flagSet,
+      };
+      const next = [fresh, ...files];
+      setFiles(next);
+      saveFiles(orderId, next);
+      setAnalyzing(false);
+    }, 1500);
+    event.target.value = "";
+  };
+
+  const handleRemove = (name: string) => {
+    if (!confirm("Bu dosya silinsin mi?")) return;
+    const next = files.filter((f) => f.name !== name);
+    setFiles(next);
+    saveFiles(orderId, next);
+  };
+
+  if (!hydrated) return null;
+
+  return (
+    <Card padding="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Tasarım dosyası</h2>
+        <label className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold cursor-pointer hover:bg-pim-mercan-koyu transition-colors">
+          <Icon.Plus size={14} />
+          {analyzing ? "Yükleniyor..." : "Dosya yükle"}
+          <input
+            type="file"
+            className="hidden"
+            accept=".pdf,.ai,.eps,.psd,.png,.jpg,.svg"
+            onChange={handleMockUpload}
+            disabled={analyzing}
+          />
+        </label>
+      </div>
+
+      {files.length === 0 ? (
+        <div className="rounded-lg bg-gri-50 ring-1 ring-dashed ring-gri-200 p-8 text-center">
+          <Icon.Box size={36} className="text-gri-500 mx-auto mb-3" />
+          <h3 className="font-semibold text-lacivert mb-1">
+            Henüz tasarım yüklemedin
+          </h3>
+          <p className="text-[13px] text-gri-700 max-w-[400px] mx-auto leading-relaxed">
+            PDF, AI, EPS, PSD, PNG, JPG, SVG kabul ederim. Yükledikten sonra
+            Pim AI saniyeler içinde DPI / CMYK / boşluk kontrolü yapar.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {files.map((f) => {
+            const date = new Date(f.uploadedAt).toLocaleString("tr-TR", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            const sizeKb = (f.size / 1024).toFixed(1);
+            const hasError = f.flags.some((fl) => fl.kind === "error");
+            const hasWarning = f.flags.some((fl) => fl.kind === "warning");
+            return (
+              <div
+                key={f.name}
+                className="flex items-start gap-3 p-4 rounded-lg bg-gri-50 ring-1 ring-gri-200"
+              >
+                <div className="grid place-items-center w-11 h-11 rounded-lg bg-pim-mercan-tint text-pim-mercan shrink-0">
+                  <Icon.Box size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-[14px] truncate">
+                      {f.name}
+                    </span>
+                    {hasError ? (
+                      <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi/10 text-kirmizi text-[11px] font-bold">
+                        AI flag
+                      </span>
+                    ) : hasWarning ? (
+                      <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari-soft text-[#7A560A] text-[11px] font-bold">
+                        Uyarı
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-yesil-soft text-yesil text-[11px] font-bold">
+                        AI geçti
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[12px] text-gri-700 mt-0.5">
+                    {sizeKb} KB · {date}
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {f.flags.map((fl, i) => (
+                      <div
+                        key={i}
+                        className="text-[12px] flex items-start gap-1.5"
+                      >
+                        <span
+                          className={cn(
+                            fl.kind === "ok" && "text-yesil",
+                            fl.kind === "warning" && "text-[#7A560A]",
+                            fl.kind === "error" && "text-kirmizi"
+                          )}
+                        >
+                          {fl.kind === "ok"
+                            ? "✓"
+                            : fl.kind === "warning"
+                              ? "⚠"
+                              : "✗"}
+                        </span>
+                        <span className="text-gri-700 leading-relaxed">
+                          {fl.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(f.name)}
+                  className="text-gri-500 hover:text-kirmizi text-[12px] font-semibold shrink-0"
+                  aria-label="Kaldır"
+                >
+                  Kaldır
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-4 flex items-center gap-2 text-[11.5px] text-gri-500">
+        <Icon.Info size={12} />
+        <span>
+          Mock yükleme — gerçek dosya storage Faz 2&rsquo;de Supabase Storage
+          ile aktif olacak.
+        </span>
+      </div>
+    </Card>
   );
 }

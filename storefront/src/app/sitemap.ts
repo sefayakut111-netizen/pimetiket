@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
+import { BLOG_POSTS } from "@/lib/blog-posts";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
 interface RouteEntry {
   path: string;
@@ -10,26 +11,44 @@ interface RouteEntry {
 }
 
 const PUBLIC_ROUTES: RouteEntry[] = [
+  // Ana
   { path: "", changeFrequency: "weekly", priority: 1.0 },
   { path: "/etiket", changeFrequency: "weekly", priority: 0.9 },
   { path: "/sticker", changeFrequency: "weekly", priority: 0.9 },
+
+  // SEO + içerik
+  { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/galeri", changeFrequency: "monthly", priority: 0.7 },
   { path: "/hakkimizda", changeFrequency: "monthly", priority: 0.7 },
   { path: "/sss", changeFrequency: "monthly", priority: 0.7 },
   { path: "/iletisim", changeFrequency: "monthly", priority: 0.6 },
+
+  // Yasal
   { path: "/kvkk", changeFrequency: "yearly", priority: 0.3 },
   { path: "/gizlilik", changeFrequency: "yearly", priority: 0.3 },
   { path: "/sartlar", changeFrequency: "yearly", priority: 0.3 },
   { path: "/cerez", changeFrequency: "yearly", priority: 0.3 },
   { path: "/mesafeli-satis", changeFrequency: "yearly", priority: 0.3 },
   { path: "/cayma-hakki", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/iade-degisim-politikasi", changeFrequency: "yearly", priority: 0.4 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
-  return PUBLIC_ROUTES.map(({ path, changeFrequency, priority }) => ({
+  const staticEntries = PUBLIC_ROUTES.map(({ path, changeFrequency, priority }) => ({
     url: `${SITE_URL}${path}`,
     lastModified,
     changeFrequency,
     priority,
   }));
+
+  // Blog yazıları dinamik
+  const blogEntries = BLOG_POSTS.map((p) => ({
+    url: `${SITE_URL}/blog/${p.slug}`,
+    lastModified: new Date(p.publishedAt),
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticEntries, ...blogEntries];
 }
