@@ -20,6 +20,13 @@ import {
   type CustomerOrder,
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE,
+  STORAGE_BUCKET,
+} from "@/lib/storage/design-files";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 
@@ -671,6 +678,36 @@ function saveFiles(orderId: string, files: UploadedFile[]): void {
   }
 }
 
+interface DbFileRow {
+  id: string;
+  storage_path: string;
+  original_name: string;
+  size_bytes: number;
+  mime_type: string;
+  status: string;
+  ai_check: { flags?: Array<{ kind: string; message: string }> } | null;
+  uploaded_at: string;
+}
+
+function dbRowToUploaded(r: DbFileRow): UploadedFile & { id: string; status: string } {
+  const flagsRaw = r.ai_check?.flags ?? [];
+  const flags = flagsRaw.map((f) => ({
+    kind: (f.kind === "warning" ? "warning" : f.kind === "error" ? "error" : "ok") as
+      | "ok"
+      | "warning"
+      | "error",
+    message: f.message,
+  }));
+  return {
+    id: r.id,
+    name: r.original_name,
+    size: r.size_bytes,
+    uploadedAt: new Date(r.uploaded_at).getTime(),
+    flags,
+    status: r.status,
+  };
+}
+
 function DesignUploadCard({
   orderId,
   c,
@@ -678,18 +715,119 @@ function DesignUploadCard({
   orderId: string;
   c: typeof COPY.tr | typeof COPY.en;
 }) {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [files, setFiles] = useState<Array<UploadedFile & { id?: string; status?: string }>>([]);
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
+  // Auth mode: DB; Guest mode: localStorage
+  const refreshDb = async () => {
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase
+      .from("design_files")
+      .select("*")
+      .eq("order_id", orderId)
+      .neq("status", "superseded")
+      .order("uploaded_at", { ascending: false });
+    if (error) {
+      console.error("[design] list error:", error);
+      return;
+    }
+    setFiles((data as unknown as DbFileRow[]).map(dbRowToUploaded));
+  };
+
   useEffect(() => {
-    setFiles(loadFiles(orderId));
-    setHydrated(true);
+    if (isLoggedInSync()) {
+      void refreshDb().finally(() => setHydrated(true));
+      // Polling — AI check tamamlanınca status değişecek
+      const interval = setInterval(() => {
+        if (files.some((f) => f.status === "analyzing")) {
+          void refreshDb();
+        }
+      }, 3000);
+      return () => clearInterval(interval);
+    } else {
+      setFiles(loadFiles(orderId));
+      setHydrated(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
-  const handleMockUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRealUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
+
+    if (!isLoggedInSync()) {
+      // Guest mode → mock akışına düş (geriye uyumlu)
+      handleMockUpload(file);
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`Dosya çok büyük (max ${MAX_FILE_SIZE / 1024 / 1024} MB)`);
+      return;
+    }
+    if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
+      alert(`Bu dosya formatı desteklenmiyor: ${file.type || "bilinmiyor"}`);
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      // 1) /api/design/upload-init
+      const initRes = await fetch("/api/design/upload-init", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          originalName: file.name,
+          sizeBytes: file.size,
+          mimeType: file.type,
+        }),
+      });
+      if (!initRes.ok) {
+        const err = await initRes.json().catch(() => ({}));
+        throw new Error(err.error ?? `init_failed_${initRes.status}`);
+      }
+      const init = (await initRes.json()) as {
+        uploadUrl: string;
+        token: string;
+        storagePath: string;
+        fileId: string;
+      };
+
+      // 2) PUT signed URL'e (Supabase Storage)
+      const supabase = createSupabaseClient();
+      const { error: uploadErr } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .uploadToSignedUrl(init.storagePath, init.token, file);
+      if (uploadErr) {
+        throw new Error(`upload_failed: ${uploadErr.message}`);
+      }
+
+      // 3) /api/design/upload-complete (AI ön-kontrol tetikle)
+      const compRes = await fetch("/api/design/upload-complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fileId: init.fileId }),
+      });
+      if (!compRes.ok) {
+        const err = await compRes.json().catch(() => ({}));
+        throw new Error(err.error ?? `complete_failed_${compRes.status}`);
+      }
+
+      await refreshDb();
+    } catch (err) {
+      console.error("[design] upload error:", err);
+      alert(err instanceof Error ? err.message : "Yükleme başarısız");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleMockUpload = (file: File) => {
     setAnalyzing(true);
     setTimeout(() => {
       const flagSet: UploadedFile["flags"] = [
@@ -710,17 +848,29 @@ function DesignUploadCard({
       };
       const next = [fresh, ...files];
       setFiles(next);
-      saveFiles(orderId, next);
+      saveFiles(orderId, next as UploadedFile[]);
       setAnalyzing(false);
     }, 1500);
-    event.target.value = "";
   };
 
-  const handleRemove = (name: string) => {
+  const handleRemove = async (file: UploadedFile & { id?: string }) => {
     if (!confirm(c.confirmRemove)) return;
-    const next = files.filter((f) => f.name !== name);
-    setFiles(next);
-    saveFiles(orderId, next);
+    if (isLoggedInSync() && file.id) {
+      const supabase = createSupabaseClient();
+      const { error } = await supabase
+        .from("design_files")
+        .delete()
+        .eq("id", file.id);
+      if (error) {
+        alert(`Silinemedi: ${error.message}`);
+        return;
+      }
+      await refreshDb();
+    } else {
+      const next = files.filter((f) => f.name !== file.name);
+      setFiles(next);
+      saveFiles(orderId, next as UploadedFile[]);
+    }
   };
 
   if (!hydrated) return null;
@@ -735,8 +885,8 @@ function DesignUploadCard({
           <input
             type="file"
             className="hidden"
-            accept=".pdf,.ai,.eps,.psd,.png,.jpg,.svg"
-            onChange={handleMockUpload}
+            accept=".pdf,.ai,.eps,.psd,.png,.jpg,.jpeg,.svg"
+            onChange={handleRealUpload}
             disabled={analyzing}
           />
         </label>
@@ -822,7 +972,7 @@ function DesignUploadCard({
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleRemove(f.name)}
+                  onClick={() => handleRemove(f)}
                   className="text-gri-500 hover:text-kirmizi text-[12px] font-semibold shrink-0"
                   aria-label={c.remove}
                 >
