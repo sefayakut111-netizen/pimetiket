@@ -25,8 +25,8 @@ import { getDefaultInput } from "./pricing-profiles";
 // Customer-facing types
 // ============================================================
 
-export type StickerMaterial = "vinil" | "transparan" | "holo" | "kraft";
-export type StickerFinish = "parlak" | "mat" | "glitter";
+export type StickerMaterial = "vinil" | "transparan" | "holo" | "simli";
+export type StickerFinish = "parlak" | "mat";
 
 /** Customer-facing tier'lar — engine tier'larıyla uyumlu */
 export const CUSTOMER_STICKER_TIERS = [50, 100, 250, 500, 1000] as const;
@@ -37,14 +37,13 @@ export const MATERIAL_MULT: Record<StickerMaterial, number> = {
   vinil: 1.0,
   transparan: 1.1,
   holo: 1.4,
-  kraft: 0.95,
+  simli: 1.3, // glitter base — premium ama holo'dan az
 };
 
 /** Finish → fason rate multiplier (gizli surcharge) */
 export const FINISH_MULT: Record<StickerFinish, number> = {
   parlak: 1.0,
   mat: 1.05,
-  glitter: 1.25,
 };
 
 export interface CustomerQuoteInput {

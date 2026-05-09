@@ -59,13 +59,13 @@ const stickerTool = tool({
       .max(1000)
       .describe("Sipariş adedi (50/100/250/500/1000 önerilen)"),
     material: z
-      .enum(["vinil", "transparan", "holo", "kraft"])
+      .enum(["vinil", "transparan", "holo", "simli"])
       .default("vinil")
-      .describe("Sticker malzemesi"),
+      .describe("Sticker malzemesi (vinil/transparan/holografik/simli)"),
     finish: z
-      .enum(["parlak", "mat", "glitter"])
+      .enum(["parlak", "mat"])
       .default("parlak")
-      .describe("Yüzey kaplaması"),
+      .describe("Yüzey kaplaması (parlak/mat)"),
   }),
   execute: async ({ width, height, qty, material, finish }) => {
     const result = quoteCustomerSticker({

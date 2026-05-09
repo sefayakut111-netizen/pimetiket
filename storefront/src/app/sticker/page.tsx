@@ -20,6 +20,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Pim, PimMini } from "@/components/Pim";
+import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { FormSection, SelectableCard, PriceCard, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -61,17 +62,22 @@ const MATERIALS = [
   {
     id: "holo",
     name: "Holografik",
-    desc: "Festival için",
+    desc: "Yansımalı, festival",
     swatch:
       "linear-gradient(135deg,#FFB7E5 0%, #B7E8FF 50%, #FFE8B7 100%)",
   },
-  { id: "kraft", name: "Kraft", desc: "Doğal, mat", swatch: "#C9A47A" },
+  {
+    id: "simli",
+    name: "Simli",
+    desc: "Parıltı taneli zemin",
+    swatch:
+      "radial-gradient(circle at 30% 30%, #FFE8B7 1.5px, transparent 2.5px), radial-gradient(circle at 70% 60%, #FFB7E5 1.5px, transparent 2.5px), radial-gradient(circle at 50% 80%, #B7E8FF 1px, transparent 2px), linear-gradient(135deg,#F5EBD9,#FFFFFF)",
+  },
 ] as const;
 
 const FINISHES = [
   { id: "parlak", name: "Parlak", desc: "Canlı renkler" },
   { id: "mat", name: "Mat", desc: "Yansımasız" },
-  { id: "glitter", name: "Simli", desc: "Parıltı katmanı" },
 ] as const;
 
 const TIERS = CUSTOMER_STICKER_TIERS; // 50/100/250/500/1000 — engine uyumlu
@@ -651,14 +657,15 @@ function StickerPreview({
     transparan: "rgba(255,255,255,0.5)",
     holo:
       "linear-gradient(135deg,#FFB7E5 0%, #B7E8FF 35%, #FFE8B7 65%, #B7FFD9 100%)",
-    kraft: "#D9B889",
+    simli:
+      // Glitter base — beyaz zemin + parıltı taneleri (multi-radial)
+      "radial-gradient(circle at 20% 30%, #FFE8B7 1.5px, transparent 2.5px), radial-gradient(circle at 50% 50%, #FFB7E5 1.5px, transparent 2.5px), radial-gradient(circle at 80% 70%, #B7E8FF 1.5px, transparent 2.5px), radial-gradient(circle at 30% 80%, #FFD3CB 1px, transparent 2px), white",
   };
 
   const finishOverlay: Record<StickerFinish, string> = {
     parlak:
       "radial-gradient(80% 60% at 30% 20%, rgba(255,255,255,0.7) 0%, transparent 60%)",
     mat: "transparent",
-    glitter: "radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1.5px)",
   };
 
   const radius =
@@ -749,37 +756,19 @@ function StickerPreview({
                   : "none",
             }}
           >
-            <div className="text-center">
-              <div
-                style={{
-                  fontSize: minDim * scale * 0.16,
-                  fontWeight: 800,
-                  color: "#FF6B5B",
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1,
-                }}
-              >
-                PİM
-              </div>
-              <div
-                style={{
-                  fontSize: minDim * scale * 0.07,
-                  fontWeight: 700,
-                  color: "#1F2937",
-                  marginTop: 8,
-                  letterSpacing: "0.15em",
-                }}
-              >
-                2026
-              </div>
-            </div>
+            {/* Pim baykuş silhuet — Sticker Mule horse mascot pattern */}
+            <PimAsset
+              variant="detailed"
+              size={Math.min(minDim * scale * 0.7, 220)}
+              bob={false}
+              ariaLabel="Pim baykuş — sticker örneği"
+            />
           </div>
           <div
             aria-hidden
             className="absolute inset-0 pointer-events-none"
             style={{
               background: finishOverlay[finish],
-              backgroundSize: finish === "glitter" ? "8px 8px" : "auto",
               borderRadius: radius,
               clipPath: customClip,
               mixBlendMode: "screen",
