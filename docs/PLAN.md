@@ -38,8 +38,12 @@ Düşük MOQ + geniş malzeme + esnek süreç. Bursa'dan, küçük markalar içi
 | 14 | **🟢 chore(a11y)** skip-link + focus-visible + fieldset | `934b3be` | 05-09 | WCAG 2.4.7, sarım fieldset, TopBar fix |
 | 15 | **🟢 chore(perf)** next.config + reduced-motion + audit doc | `02b5925` | 05-09 | AVIF/WebP, poweredByHeader off, AUDIT-quality.md |
 | 16 | **feat(pim)** Faz 1 — Karşılama Pim + GPT-4o + memory | `ec39c18` | 05-09 | Floating chat, Vercel AI SDK v6, localStorage memory, KVKK opt-in, 7 persona spec |
+| 17 | **docs(plan)** v2 — 5-blok roadmap | `1fbbd04` | 05-09 | 16 milestone tablosu + Block A-E + kritik prensipler |
+| 18 | **docs(pricing)** Sefa'nın modülü analizi | `8b91a8b` | 05-09 | sticker-fiyatlama.html v0.3 incelendi, 8 soru + entegrasyon planı |
+| 19 | **feat(pricing)** TS port (geometri + cost + cart) | `2095b17` | 05-09 | Saf fonksiyon port (~820 LOC) + 46 Jest senaryo + PRICING_SPEC.md |
+| 20 | **docs(manual-order)** feature spec | (bu) | 05-09 | Manuel sipariş hazırlama Block C.8 olarak eklendi, MANUAL_ORDER_FEATURE.md |
 
-**Toplam**: 16 atomik milestone, ~30 commit, ~12.000 LOC.
+**Toplam**: 20 atomik milestone, ~33 commit, ~15.000 LOC.
 
 ---
 
@@ -111,8 +115,9 @@ Bu plan eski D-L lineer sıralamayı **rework önleyecek şekilde** yeniden orga
 | C.5 | `/profil`, `/cuzdan`, `/adreslerim`, `/fatura-bilgileri`, `/siparislerim` ↔ customer API | B.3 |
 | C.6 | `/admin/*` ↔ admin API | B.4 |
 | C.7 | File upload: `/etiket` configurator'a dosya alanı + Storage | B.6 |
+| C.8 | **Manuel sipariş hazırlama** — `/admin/manuel-siparis` + token-bazlı `/sepet/[token]` müşteri linki + 3 kanal paylaşım (kopyala/WhatsApp/email). Detay: [MANUAL_ORDER_FEATURE.md](./MANUAL_ORDER_FEATURE.md) | A + B + C.4 |
 
-**Süre**: 3-5 gün.
+**Süre**: 3-5 gün (C.8 dahil 5-6 gün).
 
 ---
 
