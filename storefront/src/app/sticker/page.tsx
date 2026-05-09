@@ -212,24 +212,22 @@ export default function StickerPage() {
                 </div>
               )}
 
-              {/* Kesim tipi — kare ve özel için alt-toggle */}
+              {/* Köşe seçeneği — kare ve özel için alt-toggle */}
               {(shape === "square" || shape === "ozel") && (
                 <div className="mt-3">
                   <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
-                    Kesim Tipi
+                    Köşe Seçeneği
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <CutStyleCard
-                      kind="straight"
+                    <CornerStyleCard
+                      kind="sharp"
                       selected={!softCorners}
                       onClick={() => setSoftCorners(false)}
-                      shapeKind={shape === "square" ? "square" : "ozel"}
                     />
-                    <CutStyleCard
+                    <CornerStyleCard
                       kind="soft"
                       selected={softCorners}
                       onClick={() => setSoftCorners(true)}
-                      shapeKind={shape === "square" ? "square" : "ozel"}
                     />
                   </div>
                 </div>
@@ -547,39 +545,24 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
 }
 
 // ============================================================
-// CutStyleCard — Kare/Özel için Düz vs Yumuşak kesim segmented
+// CornerStyleCard — Kare/Özel için Düz vs Yumuşatılmış köşe ikonu
+// Dikdörtgen göstermez, sadece köşenin yakın çekimini.
 // ============================================================
 
-type CutKind = "straight" | "soft";
+type CornerKind = "sharp" | "soft";
 
-function CutStyleCard({
+function CornerStyleCard({
   kind,
   selected,
   onClick,
-  shapeKind,
 }: {
-  kind: CutKind;
+  kind: CornerKind;
   selected: boolean;
   onClick: () => void;
-  shapeKind: "square" | "ozel";
 }) {
   const stroke = selected
     ? "var(--color-pim-mercan)"
     : "var(--color-lacivert)";
-  const fill = selected
-    ? "var(--color-pim-mercan-tint)"
-    : "rgba(31,41,55,0.06)";
-
-  // Kare için: keskin köşe vs yuvarlak köşe
-  // Özel için: dikdörtgen vs pill
-  const radius =
-    shapeKind === "square"
-      ? kind === "straight"
-        ? 1
-        : 6
-      : kind === "straight"
-        ? 4 // hafif yuvarlak
-        : 16; // pill
 
   return (
     <button
@@ -594,30 +577,35 @@ function CutStyleCard({
       )}
     >
       <div className="flex items-center gap-3">
-        <svg width="36" height="28" viewBox="0 0 36 28" aria-hidden>
-          <rect
-            x="3"
-            y="3"
-            width="30"
-            height="22"
-            rx={radius}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth="1.6"
-          />
+        {/* Sadece köşe — L şeklinde 90° dönüş; düz vs yumuşatılmış */}
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden>
+          {kind === "sharp" ? (
+            // Keskin 90° köşe
+            <path
+              d="M 4 28 L 4 4 L 28 4"
+              fill="none"
+              stroke={stroke}
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          ) : (
+            // Yumuşatılmış köşe (Q ile yarıçaplı)
+            <path
+              d="M 4 28 L 4 12 Q 4 4 12 4 L 28 4"
+              fill="none"
+              stroke={stroke}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
         </svg>
         <div>
           <div className="font-bold text-[12.5px]">
-            {kind === "straight" ? "Düz kesim" : "Yumuşak kesim"}
+            {kind === "sharp" ? "Düz köşe" : "Yumuşatılmış köşe"}
           </div>
           <div className="text-[10.5px] text-gri-700 leading-tight">
-            {shapeKind === "square"
-              ? kind === "straight"
-                ? "Keskin köşe"
-                : "Yuvarlak köşe"
-              : kind === "straight"
-                ? "Dikdörtgen forma yakın"
-                : "Pill / bumper"}
+            {kind === "sharp" ? "Keskin köşe" : "Yuvarlatılmış köşe"}
           </div>
         </div>
       </div>
