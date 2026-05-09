@@ -59,6 +59,12 @@ import {
   nextLot,
   peekNextLot,
 } from "@/lib/pricing-pdf";
+import { addToCart, type CartItem } from "@/lib/pricing-cart";
+import { CartPanel } from "@/components/admin/pricing/CartPanel";
+import {
+  reconstructGeometryFromCart,
+  reconstructCostFromCart,
+} from "@/lib/cart-pdf-helpers";
 
 // ============================================================
 // Defaults — v0.4: overhead 15→45 (SaaS recovery), minMarkup, customerType
@@ -145,6 +151,67 @@ export default function FiyatHesaplaPage() {
       mode,
     });
     toast.success(`İş emri ${lot} üretildi (PDF indirildi)`);
+  }
+
+  function handleAddToCart() {
+    if (!result.ok) {
+      toast.error("Önce geçerli bir hesaplama yap");
+      return;
+    }
+    const r = addToCart({
+      product: "sticker",
+      width,
+      height,
+      requestedQty: qty,
+      producedQty: result.geometry.fit.producedQty,
+      preGroupSubtotal: result.cost.subtotal,
+      vatPct,
+      tierMultiplier: result.cost.tierMultiplier,
+      preGroupTotal: result.cost.total,
+      mode,
+      cut,
+      layoutMode: result.geometry.fit.mode,
+      rollsNeeded: result.geometry.roll.rollsNeeded,
+      totalM2: result.geometry.totalM2,
+      baseCost: result.cost.baseCost,
+      intendedProfit: result.cost.intendedProfit,
+      actualProfit: result.cost.actualProfit,
+      vatAmount: result.cost.vatAmount,
+      total: result.cost.total,
+      unitPrice: result.cost.unitPrice,
+    });
+    if (!r.ok) {
+      toast.error(r.reason);
+      return;
+    }
+    toast.success(`${r.item.name} sepete eklendi`);
+  }
+
+  function handleCartPDF(items: CartItem[]) {
+    // Her item için ayrı PDF üret (toplu olarak — her biri kendi lot'uyla)
+    items.forEach((item, idx) => {
+      // Item product'a göre lot prefix
+      const lot = nextLot(item.product === "sticker" ? "A" : "B");
+      // Synthetic geometry+cost reconstruction
+      // Bu birleşik PDF değil — her item ayrı PDF iner
+      // İleride combined PDF için ayrı helper yazılabilir
+      setTimeout(() => {
+        const fakeGeom = reconstructGeometryFromCart(item);
+        const fakeCost = reconstructCostFromCart(item);
+        generateWorkOrderPDF({
+          lot,
+          geometry: fakeGeom,
+          cost: fakeCost,
+          requestedQty: item.requestedQty,
+          cut: item.cut ?? "diecut",
+          mode: item.mode,
+          product: item.product,
+          customerName: item.name,
+        });
+      }, idx * 200); // çoklu indirme browser handle etsin
+    });
+    setNextLotPreview(peekNextLot("A"));
+    toast.success(`${items.length} adet PDF iş emri üretiliyor`);
   }
 
   // Hesap
@@ -280,6 +347,14 @@ export default function FiyatHesaplaPage() {
             </Button>
             <Button variant="ghost" size="sm" onClick={reset}>
               Sıfırla
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleAddToCart}
+              disabled={!result.ok}
+            >
+              🛒 Sepete Ekle
             </Button>
             <Button
               variant="primary"
@@ -541,6 +616,11 @@ export default function FiyatHesaplaPage() {
               </Card>
             )}
           </div>
+        </div>
+
+        {/* Sepet panel — full width, 2-col grid'in dışında */}
+        <div className="mt-6">
+          <CartPanel onGeneratePDF={handleCartPDF} />
         </div>
       </div>
     </main>

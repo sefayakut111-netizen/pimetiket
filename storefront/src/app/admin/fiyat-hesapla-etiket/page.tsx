@@ -35,6 +35,12 @@ import {
 } from "@/lib/pricing-pdf";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
 import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
+import { addToCart, type CartItem } from "@/lib/pricing-cart";
+import { CartPanel } from "@/components/admin/pricing/CartPanel";
+import {
+  reconstructGeometryFromCart,
+  reconstructCostFromCart,
+} from "@/lib/cart-pdf-helpers";
 
 // ============================================================
 // Defaults
@@ -238,6 +244,63 @@ export default function EtiketFiyatHesaplaPage() {
     toast.success(`Etiket iş emri ${lot} üretildi`);
   }
 
+  function handleAddToCart() {
+    if (!result.ok) {
+      toast.error("Önce geçerli bir hesaplama yap");
+      return;
+    }
+    const r = addToCart({
+      product: "etiket",
+      width,
+      height,
+      requestedQty: qty,
+      producedQty: result.geometry.qty,
+      preGroupSubtotal: result.cost.subtotal,
+      vatPct,
+      tierMultiplier: result.cost.tierMultiplier,
+      preGroupTotal: result.cost.total,
+      mode,
+      materialId,
+      coatingId,
+      customizationId,
+      rollsNeeded: result.geometry.rollsNeeded,
+      totalM2: result.geometry.totalM2,
+      baseCost: result.cost.baseCost,
+      intendedProfit: result.cost.intendedProfit,
+      actualProfit: result.cost.actualProfit,
+      vatAmount: result.cost.vatAmount,
+      total: result.cost.total,
+      unitPrice: result.cost.unitPrice,
+    });
+    if (!r.ok) {
+      toast.error(r.reason);
+      return;
+    }
+    toast.success(`${r.item.name} sepete eklendi`);
+  }
+
+  function handleCartPDF(items: CartItem[]) {
+    items.forEach((item, idx) => {
+      const lot = nextLot(item.product === "sticker" ? "A" : "B");
+      setTimeout(() => {
+        const fakeGeom = reconstructGeometryFromCart(item);
+        const fakeCost = reconstructCostFromCart(item);
+        generateWorkOrderPDF({
+          lot,
+          geometry: fakeGeom,
+          cost: fakeCost,
+          requestedQty: item.requestedQty,
+          cut: item.cut ?? "diecut",
+          mode: item.mode,
+          product: item.product,
+          customerName: item.name,
+        });
+      }, idx * 200);
+    });
+    setNextLotPreview(peekNextLot("B"));
+    toast.success(`${items.length} adet PDF iş emri üretiliyor`);
+  }
+
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-6">
@@ -261,6 +324,14 @@ export default function EtiketFiyatHesaplaPage() {
             </span>
             <Button variant="ghost" size="sm" onClick={reset}>
               Sıfırla
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleAddToCart}
+              disabled={!result.ok}
+            >
+              🛒 Sepete Ekle
             </Button>
             <Button
               variant="primary"
@@ -709,6 +780,11 @@ export default function EtiketFiyatHesaplaPage() {
               </Card>
             )}
           </div>
+        </div>
+
+        {/* Sepet panel — full width */}
+        <div className="mt-6">
+          <CartPanel onGeneratePDF={handleCartPDF} />
         </div>
       </div>
     </main>

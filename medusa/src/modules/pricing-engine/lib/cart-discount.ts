@@ -24,7 +24,13 @@ import { GROUP_DISCOUNT_TIERS } from "./constants";
 export interface CartLineInput {
   /** Sepet line ID (UI tracking için) */
   id: string;
-  /** Sticker boyutları (mm) */
+  /**
+   * Ürün tipi — sticker ve etiket farklı grup'lara girer (50x50 sticker
+   * ≠ 50x50 etiket çünkü plate paylaşımı yok).
+   * v0.5: opsiyonel (default "sticker"). Backward-compat.
+   */
+  product?: "sticker" | "etiket";
+  /** Boyut (mm) */
   width: number;
   height: number;
   /** Müşteri talep adedi */
@@ -97,8 +103,12 @@ export function getGroupDiscount(count: number): number {
   return 0;
 }
 
-function groupKeyFor(width: number, height: number): string {
-  return `${width}x${height}`;
+function groupKeyFor(
+  width: number,
+  height: number,
+  product: "sticker" | "etiket" = "sticker"
+): string {
+  return `${product}:${width}x${height}`;
 }
 
 // ============================================================
@@ -123,7 +133,7 @@ export function computeCart(items: CartLineInput[]): CartResult {
   // 1. Boyut bazlı grupla
   const groups: Record<string, CartGroup> = {};
   for (const item of items) {
-    const key = groupKeyFor(item.width, item.height);
+    const key = groupKeyFor(item.width, item.height, item.product ?? "sticker");
     if (!groups[key]) {
       groups[key] = {
         width: item.width,
@@ -151,7 +161,7 @@ export function computeCart(items: CartLineInput[]): CartResult {
   const enriched: CartLineResult[] = [];
 
   for (const item of items) {
-    const key = groupKeyFor(item.width, item.height);
+    const key = groupKeyFor(item.width, item.height, item.product ?? "sticker");
     const group = groups[key];
     const discountPct = group.discountPct;
 
