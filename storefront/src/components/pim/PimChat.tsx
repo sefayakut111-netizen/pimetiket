@@ -19,6 +19,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
+import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ACTIVE_PERSONAS, PERSONAS, type PimPersona } from "@/lib/pim/personas";
 import {
@@ -30,6 +31,7 @@ import {
   setDisplayName,
   type PimMemory,
 } from "@/lib/pim/memory";
+import { addToCustomerCart } from "@/lib/customer-cart";
 
 const QUICK_CHIPS_BY_PERSONA: Record<
   string,
@@ -122,6 +124,26 @@ export function PimChat() {
   useEffect(() => {
     if (open) setUnread(0);
   }, [open]);
+
+  // Pathname'e göre default persona'yı hizala — sohbet henüz başlamadıysa.
+  // /sticker ve /etiket → Tasarımcı Pim; ana flow → Hoş Geldin Pim.
+  useEffect(() => {
+    if (!pathname) return;
+    if (messages.length > 0) return; // user zaten konuşuyor — bozma
+    if (
+      pathname.startsWith("/sticker") ||
+      pathname.startsWith("/etiket")
+    ) {
+      setPersona((p) => (p === "designer" ? p : "designer"));
+    } else if (
+      pathname === "/" ||
+      pathname.startsWith("/sepet") ||
+      pathname.startsWith("/odeme") ||
+      pathname.startsWith("/siparis")
+    ) {
+      setPersona((p) => (p === "welcome" ? p : "welcome"));
+    }
+  }, [pathname, messages.length]);
 
   // /admin altında render etme — AdminShell'in kendi flow'u var
   if (pathname?.startsWith("/admin")) return null;
@@ -493,6 +515,8 @@ type ToolResultData =
   | ToolResultError;
 
 function ToolResultCard({ result }: { result: ToolResultData }) {
+  const toast = useToast();
+
   if (!result.success) {
     return (
       <div className="max-w-[85%] rounded-xl bg-kirmizi/10 ring-1 ring-kirmizi/30 px-3.5 py-2.5 text-[12.5px] text-kirmizi">
@@ -512,6 +536,68 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     });
+
+  const handleAddToCart = () => {
+    if (result.product === "sticker") {
+      const parts = result.size_mm.split(/[×x]/).map((s) => Number(s.trim()));
+      const w = Number.isFinite(parts[0]) ? parts[0] : 0;
+      const h = Number.isFinite(parts[1]) ? parts[1] : 0;
+      if (w === 0 || h === 0) {
+        toast.error("Boyut çözümlenemedi — konfigüratörden ekle");
+        return;
+      }
+      const matLabel: Record<string, string> = {
+        vinil: "Vinil",
+        transparan: "Transparan",
+        holo: "Holografik",
+        simli: "Simli",
+      };
+      const finLabel: Record<string, string> = {
+        parlak: "Parlak",
+        mat: "Mat",
+        yok: "Kaplamasız",
+      };
+      const r = addToCustomerCart({
+        product: "sticker",
+        title: `Sticker · ${matLabel[result.material] ?? result.material} + ${
+          finLabel[result.finish] ?? result.finish
+        }`,
+        config: `${w}×${h}mm · ${result.qty.toLocaleString(
+          "tr-TR"
+        )} adet · Pim ile fiyatlandı`,
+        width: w,
+        height: h,
+        qty: result.qty,
+        unit: result.unit_price_kdv_dahil,
+        total: Math.round(result.total_kdv_dahil),
+        cut: "diecut",
+        hediyeAdet: result.hediye_adet,
+      });
+      if (r.ok) toast.success("Sepete eklendi 🛒");
+      else toast.error(r.reason);
+    } else {
+      const r = addToCustomerCart({
+        product: "etiket",
+        title: `Etiket · ${result.material}${
+          result.coating !== "Kaplama yok" ? ` + ${result.coating}` : ""
+        }`,
+        config: `${result.width_mm}×${result.height_mm}mm · ${result.qty.toLocaleString(
+          "tr-TR"
+        )} adet${
+          result.customization !== "Eklenti yok"
+            ? ` · ${result.customization}`
+            : ""
+        } · Pim ile fiyatlandı`,
+        width: result.width_mm,
+        height: result.height_mm,
+        qty: result.qty,
+        unit: result.unit_price_kdv_dahil,
+        total: Math.round(result.total_kdv_dahil),
+      });
+      if (r.ok) toast.success("Sepete eklendi 🛒");
+      else toast.error(r.reason);
+    }
+  };
 
   return (
     <div className="max-w-[90%] w-full rounded-2xl bg-gradient-to-br from-lacivert to-[#111827] text-white p-4 shadow-2 relative overflow-hidden">
@@ -565,12 +651,21 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
           <span className="text-[10.5px] text-yesil bg-yesil-soft/20 px-2 py-1 rounded-full font-semibold">
             💳 Cüzdandan: −{fmtTL(result.cuzdan_indirim_2pct)} TL (%2)
           </span>
-          <a
-            href={result.configurator_url}
-            className="text-[11px] font-semibold text-pim-mercan hover:text-white transition-colors"
-          >
-            Configurator'da düzenle →
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-pim-mercan hover:bg-pim-mercan-koyu text-white text-[11.5px] font-semibold transition-colors"
+            >
+              <Icon.Cart size={11} /> Sepete ekle
+            </button>
+            <a
+              href={result.configurator_url}
+              className="text-[11px] font-semibold text-pim-mercan hover:text-white transition-colors"
+            >
+              Düzenle →
+            </a>
+          </div>
         </div>
       </div>
     </div>
