@@ -9,8 +9,107 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
+import { useT } from "@/lib/i18n/context";
+
+const COPY = {
+  tr: {
+    eyebrow: "Hesabım",
+    title: "Profil ayarları",
+    personalTitle: "Kişisel bilgiler",
+    personalDesc: "Sipariş ve fatura bilgileriyle eşleşmesi önemli.",
+    fullName: "Ad Soyad",
+    email: "E-posta",
+    verified: "Doğrulandı",
+    save: "Kaydet",
+    saved: "Bilgiler güncellendi (mock)",
+    pwTitle: "Şifre değiştir",
+    pwDesc: "Güvenlik için 3-6 ayda bir değiştirmeni öneririz.",
+    pwCurrent: "Mevcut şifre",
+    pwNew: "Yeni şifre",
+    pwNewPh: "En az 8 karakter",
+    pwRepeat: "Yeni şifreyi tekrarla",
+    pwRepeatPh: "Yeniden gir",
+    pwUpdate: "Şifreyi güncelle",
+    pwUpdated: "Şifre güncellendi (mock)",
+    notifTitle: "Bildirim tercihleri",
+    notifDesc: "Hangi durumlarda haber vereyim?",
+    notifs: [
+      { id: "order", label: "Sipariş güncellemeleri", default: true, desc: "AI kontrol, prova, kargo" },
+      { id: "promo", label: "Kampanya ve indirimler", default: false, desc: "Ayda en fazla 2 e-posta" },
+      { id: "product", label: "Yeni özellikler", default: true, desc: "Yeni malzeme/yaldız çıktığında" },
+    ],
+    dangerTitle: "Tehlikeli alan",
+    dangerDesc: (
+      <>
+        Hesabını silersen tüm sipariş geçmişi, kayıtlı tasarımlar ve cüzdan
+        bakiyesi <strong>kalıcı olarak silinir</strong>. KVKK kapsamında
+        verilerin yasal saklama süresi sonunda yok edilir.
+      </>
+    ),
+    deleteCta: "Hesabımı silmek istiyorum →",
+    confirmInstr: (
+      <>
+        Onaylamak için aşağıya <strong className="font-mono">SIL</strong> yaz:
+      </>
+    ),
+    confirmKeyword: "SIL",
+    cancel: "Vazgeç",
+    confirmDelete: "Hesabımı kalıcı olarak sil",
+    deleteSubmitted:
+      "Hesap silme talebi alındı (mock — gerçek silme I adımında)",
+  },
+  en: {
+    eyebrow: "My account",
+    title: "Profile settings",
+    personalTitle: "Personal info",
+    personalDesc: "Should match your order and invoice details.",
+    fullName: "Full name",
+    email: "Email",
+    verified: "Verified",
+    save: "Save",
+    saved: "Info updated (mock)",
+    pwTitle: "Change password",
+    pwDesc: "We recommend changing it every 3-6 months for security.",
+    pwCurrent: "Current password",
+    pwNew: "New password",
+    pwNewPh: "At least 8 characters",
+    pwRepeat: "Repeat new password",
+    pwRepeatPh: "Re-enter",
+    pwUpdate: "Update password",
+    pwUpdated: "Password updated (mock)",
+    notifTitle: "Notification preferences",
+    notifDesc: "When should I let you know?",
+    notifs: [
+      { id: "order", label: "Order updates", default: true, desc: "AI check, proof, shipping" },
+      { id: "promo", label: "Campaigns & discounts", default: false, desc: "At most 2 emails per month" },
+      { id: "product", label: "New features", default: true, desc: "When a new material/foil ships" },
+    ],
+    dangerTitle: "Danger zone",
+    dangerDesc: (
+      <>
+        Deleting your account <strong>permanently removes</strong> all order
+        history, saved designs, and wallet balance. Under KVKK, data is
+        destroyed at the end of its legal retention period.
+      </>
+    ),
+    deleteCta: "I want to delete my account →",
+    confirmInstr: (
+      <>
+        To confirm, type <strong className="font-mono">DELETE</strong> below:
+      </>
+    ),
+    confirmKeyword: "DELETE",
+    cancel: "Cancel",
+    confirmDelete: "Delete my account permanently",
+    deleteSubmitted:
+      "Account deletion request received (mock — real deletion in step I)",
+  },
+};
 
 export default function ProfilPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const toast = useToast();
   const [name, setName] = useState("Ahmet Yılmaz");
   const [email, setEmail] = useState("ahmet@example.com");
@@ -21,22 +120,20 @@ export default function ProfilPage() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[800px] px-8">
         <div className="mb-7">
-          <Eyebrow>Hesabım</Eyebrow>
+          <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Profil ayarları
+            {c.title}
           </h1>
         </div>
 
         {/* Personal */}
         <Card padding="p-6" className="mb-4">
-          <h2 className="text-xl font-semibold mb-1">Kişisel bilgiler</h2>
-          <p className="text-[13px] text-gri-700 mb-5">
-            Sipariş ve fatura bilgileriyle eşleşmesi önemli.
-          </p>
+          <h2 className="text-xl font-semibold mb-1">{c.personalTitle}</h2>
+          <p className="text-[13px] text-gri-700 mb-5">{c.personalDesc}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
-                Ad Soyad
+                {c.fullName}
               </span>
               <Input
                 value={name}
@@ -46,7 +143,7 @@ export default function ProfilPage() {
             </label>
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
-                E-posta
+                {c.email}
               </span>
               <Input
                 type="email"
@@ -55,30 +152,25 @@ export default function ProfilPage() {
                 autoComplete="email"
               />
               <span className="inline-flex items-center gap-1 mt-1.5 text-[12px] text-yesil font-semibold">
-                <Icon.Check size={12} /> Doğrulandı
+                <Icon.Check size={12} /> {c.verified}
               </span>
             </label>
           </div>
           <div className="mt-5 flex justify-end">
-            <Button
-              variant="primary"
-              onClick={() => toast.success("Bilgiler güncellendi (mock)")}
-            >
-              Kaydet
+            <Button variant="primary" onClick={() => toast.success(c.saved)}>
+              {c.save}
             </Button>
           </div>
         </Card>
 
         {/* Password */}
         <Card padding="p-6" className="mb-4">
-          <h2 className="text-xl font-semibold mb-1">Şifre değiştir</h2>
-          <p className="text-[13px] text-gri-700 mb-5">
-            Güvenlik için 3-6 ayda bir değiştirmeni öneririz.
-          </p>
+          <h2 className="text-xl font-semibold mb-1">{c.pwTitle}</h2>
+          <p className="text-[13px] text-gri-700 mb-5">{c.pwDesc}</p>
           <div className="space-y-3.5">
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
-                Mevcut şifre
+                {c.pwCurrent}
               </span>
               <Input
                 type="password"
@@ -88,21 +180,21 @@ export default function ProfilPage() {
             </label>
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
-                Yeni şifre
+                {c.pwNew}
               </span>
               <Input
                 type="password"
-                placeholder="En az 8 karakter"
+                placeholder={c.pwNewPh}
                 autoComplete="new-password"
               />
             </label>
             <label className="block">
               <span className="text-[13px] font-semibold mb-1.5 block">
-                Yeni şifreyi tekrarla
+                {c.pwRepeat}
               </span>
               <Input
                 type="password"
-                placeholder="Yeniden gir"
+                placeholder={c.pwRepeatPh}
                 autoComplete="new-password"
               />
             </label>
@@ -110,40 +202,36 @@ export default function ProfilPage() {
           <div className="mt-5 flex justify-end">
             <Button
               variant="primary"
-              onClick={() => toast.success("Şifre güncellendi (mock)")}
+              onClick={() => toast.success(c.pwUpdated)}
             >
-              Şifreyi güncelle
+              {c.pwUpdate}
             </Button>
           </div>
         </Card>
 
         {/* Notifications */}
         <Card padding="p-6" className="mb-4">
-          <h2 className="text-xl font-semibold mb-1">Bildirim tercihleri</h2>
-          <p className="text-[13px] text-gri-700 mb-5">
-            Hangi durumlarda haber vereyim?
-          </p>
+          <h2 className="text-xl font-semibold mb-1">{c.notifTitle}</h2>
+          <p className="text-[13px] text-gri-700 mb-5">{c.notifDesc}</p>
           <div className="space-y-3">
-            {[
-              { id: "order", label: "Sipariş güncellemeleri", default: true, desc: "AI kontrol, prova, kargo" },
-              { id: "promo", label: "Kampanya ve indirimler", default: false, desc: "Ayda en fazla 2 e-posta" },
-              { id: "product", label: "Yeni özellikler", default: true, desc: "Yeni malzeme/yaldız çıktığında" },
-            ].map((t) => (
+            {c.notifs.map((row) => (
               <label
-                key={t.id}
-                htmlFor={`notif-${t.id}`}
+                key={row.id}
+                htmlFor={`notif-${row.id}`}
                 className="flex items-start gap-3 p-3 rounded-lg hover:bg-gri-50 cursor-pointer"
               >
                 <input
                   type="checkbox"
-                  id={`notif-${t.id}`}
-                  name={`notif-${t.id}`}
-                  defaultChecked={t.default}
+                  id={`notif-${row.id}`}
+                  name={`notif-${row.id}`}
+                  defaultChecked={row.default}
                   className="mt-1 accent-pim-mercan shrink-0"
                 />
                 <div className="flex-1">
-                  <div className="font-semibold text-[15px]">{t.label}</div>
-                  <div className="text-[13px] text-gri-700 mt-0.5">{t.desc}</div>
+                  <div className="font-semibold text-[15px]">{row.label}</div>
+                  <div className="text-[13px] text-gri-700 mt-0.5">
+                    {row.desc}
+                  </div>
                 </div>
               </label>
             ))}
@@ -153,12 +241,10 @@ export default function ProfilPage() {
         {/* Danger zone */}
         <Card padding="p-6" className="ring-1 ring-kirmizi/20">
           <h2 className="text-xl font-semibold mb-1 text-kirmizi">
-            Tehlikeli alan
+            {c.dangerTitle}
           </h2>
           <p className="text-[13px] text-gri-700 mb-5 leading-relaxed">
-            Hesabını silersen tüm sipariş geçmişi, kayıtlı tasarımlar ve
-            cüzdan bakiyesi <strong>kalıcı olarak silinir</strong>.
-            KVKK kapsamında verilerin yasal saklama süresi sonunda yok edilir.
+            {c.dangerDesc}
           </p>
           {!showDelete ? (
             <button
@@ -166,18 +252,17 @@ export default function ProfilPage() {
               onClick={() => setShowDelete(true)}
               className="text-[13px] font-semibold text-kirmizi hover:underline"
             >
-              Hesabımı silmek istiyorum →
+              {c.deleteCta}
             </button>
           ) : (
             <div className="bg-kirmizi/5 ring-1 ring-kirmizi/20 rounded-lg p-4">
               <div className="text-[13px] mb-3 leading-relaxed">
-                Onaylamak için aşağıya{" "}
-                <strong className="font-mono">SIL</strong> yaz:
+                {c.confirmInstr}
               </div>
               <Input
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                placeholder="SIL"
+                placeholder={c.confirmKeyword}
                 className="!ring-kirmizi/30"
               />
               <div className="flex gap-2 mt-3 justify-end">
@@ -189,19 +274,19 @@ export default function ProfilPage() {
                     setConfirmText("");
                   }}
                 >
-                  Vazgeç
+                  {c.cancel}
                 </Button>
                 <button
                   type="button"
-                  disabled={confirmText !== "SIL"}
+                  disabled={confirmText !== c.confirmKeyword}
                   onClick={() => {
-                    toast.warning("Hesap silme talebi alındı (mock — gerçek silme I adımında)");
+                    toast.warning(c.deleteSubmitted);
                     setShowDelete(false);
                     setConfirmText("");
                   }}
                   className="h-9 px-3.5 rounded-full bg-kirmizi text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#C73A2D]"
                 >
-                  Hesabımı kalıcı olarak sil
+                  {c.confirmDelete}
                 </button>
               </div>
             </div>

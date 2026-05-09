@@ -25,11 +25,38 @@ import {
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 
-const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+const EXTRA = {
+  tr: {
+    toastRemoved: "Sepetten çıkarıldı",
+    decreaseQty: "Adet azalt",
+    increaseQty: "Adet artır",
+    giftSticker: (n: number) => `+${n} hediye sticker`,
+    unitPrice: (unit: string) => `× ${unit} TL`,
+    currency: "TL",
+    postPayHint:
+      "Ödeme sonrası 3 gün içinde tasarım dosyalarını yüklemen yeterli.",
+    locale: "tr-TR",
+    decimal: (n: number) => n.toFixed(2).replace(".", ","),
+  },
+  en: {
+    toastRemoved: "Removed from cart",
+    decreaseQty: "Decrease quantity",
+    increaseQty: "Increase quantity",
+    giftSticker: (n: number) => `+${n} gift stickers`,
+    unitPrice: (unit: string) => `× ${unit} TRY`,
+    currency: "TRY",
+    postPayHint:
+      "Upload your design files within 3 days after payment — that's all.",
+    locale: "en-US",
+    decimal: (n: number) => n.toFixed(2),
+  },
+};
 
 export default function SepetPage() {
   const toast = useToast();
-  const { t } = useT();
+  const { t, locale } = useT();
+  const x = locale === "en" ? EXTRA.en : EXTRA.tr;
+  const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -65,7 +92,7 @@ export default function SepetPage() {
 
   const remove = (id: string) => {
     removeFromCustomerCart(id);
-    toast.info("Sepetten çıkarıldı");
+    toast.info(x.toastRemoved);
   };
 
   // Hydration guard — SSR vs CSR farklı olmasın (skeleton loading)
@@ -152,7 +179,7 @@ export default function SepetPage() {
                     </div>
                     {item.hediyeAdet && item.hediyeAdet > 0 && (
                       <div className="inline-flex items-center gap-1 mt-1.5 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
-                        +{item.hediyeAdet} hediye sticker
+                        {x.giftSticker(item.hediyeAdet)}
                       </div>
                     )}
                     <div className="flex items-center gap-3 mt-3">
@@ -161,7 +188,7 @@ export default function SepetPage() {
                           type="button"
                           onClick={() => updateQty(item, -1)}
                           className="w-8 h-8 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-l-full"
-                          aria-label="Adet azalt"
+                          aria-label={x.decreaseQty}
                         >
                           −
                         </button>
@@ -172,19 +199,19 @@ export default function SepetPage() {
                           type="button"
                           onClick={() => updateQty(item, 1)}
                           className="w-8 h-8 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-r-full"
-                          aria-label="Adet artır"
+                          aria-label={x.increaseQty}
                         >
                           +
                         </button>
                       </div>
                       <span className="text-[13px] text-gri-700">
-                        × {item.unit.toFixed(2).replace(".", ",")} TL
+                        {x.unitPrice(x.decimal(item.unit))}
                       </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end justify-between min-h-[80px]">
                     <div className="text-xl font-bold">
-                      {fmt(item.total)} TL
+                      {fmt(item.total)} {x.currency}
                     </div>
                     <button
                       type="button"
@@ -222,7 +249,9 @@ export default function SepetPage() {
               <div className="space-y-2.5 text-[14px]">
                 <div className="flex justify-between">
                   <span className="text-gri-700">{t.cart.subtotal}</span>
-                  <span className="font-semibold">{fmt(subtotal)} TL</span>
+                  <span className="font-semibold">
+                    {fmt(subtotal)} {x.currency}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gri-700">{t.cart.shipping}</span>
@@ -230,7 +259,7 @@ export default function SepetPage() {
                     {shipping === 0 ? (
                       <span className="text-yesil">{t.cart.free}</span>
                     ) : (
-                      `${fmt(shipping)} TL`
+                      `${fmt(shipping)} ${x.currency}`
                     )}
                   </span>
                 </div>
@@ -244,7 +273,9 @@ export default function SepetPage() {
                 <span className="font-semibold">{t.cart.total}</span>
                 <span className="text-2xl font-bold">
                   {fmt(total)}{" "}
-                  <span className="text-base font-semibold text-gri-700">TL</span>
+                  <span className="text-base font-semibold text-gri-700">
+                    {x.currency}
+                  </span>
                 </span>
               </div>
               <div className="text-[11.5px] text-gri-700 text-right mt-1">
@@ -255,7 +286,7 @@ export default function SepetPage() {
                 {t.cart.proceedToCheckout} <Icon.ArrowR />
               </Button>
               <p className="text-[11.5px] text-gri-500 text-center mt-3 leading-relaxed">
-                Ödeme sonrası 3 gün içinde tasarım dosyalarını yüklemen yeterli.
+                {x.postPayHint}
               </p>
             </Card>
           </div>

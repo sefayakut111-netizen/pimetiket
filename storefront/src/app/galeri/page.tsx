@@ -5,18 +5,13 @@
  * Gerçek görseller backend swap'te admin upload ile gelecek.
  */
 
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Pill } from "@/components/ui";
-
-export const metadata: Metadata = {
-  title: "Galeri — Pim Etiket'le bastıran markalar",
-  description:
-    "Bursa atölyemizden çıkan müşteri işleri. Sticker'dan etikete, küçük markaların raf hikayeleri.",
-  alternates: { canonical: "/galeri" },
-};
+import { useT } from "@/lib/i18n/context";
 
 interface ShowcaseItem {
   brand: string;
@@ -26,88 +21,212 @@ interface ShowcaseItem {
   bg: string;
 }
 
-const SHOWCASE: ShowcaseItem[] = [
-  {
-    brand: "Olea",
-    product: "etiket",
-    description: "Doğal sabun serisi — kraft + mat selefon + sıcak yaldız",
-    config: "60×80mm · 2.000 adet",
-    bg: "bg-krem",
+const COPY = {
+  tr: {
+    eyebrow: "Müşteri showcase",
+    title: "Pim Etiket'le bastıran markalar",
+    intro:
+      "Küçük markalar, büyük hikayeler. Atölyemizden çıkan işlerin bir kısmı — izniyle paylaştığımız müşteri çalışmaları.",
+    statTotal: "Toplam baskı",
+    statTotalSub: "adet etiket + sticker",
+    statBrand: "Mutlu marka",
+    statBrandSub: "küçük marka",
+    statCity: "Şehir",
+    statCitySub: "Türkiye geneli",
+    productSticker: "Sticker",
+    productEtiket: "Etiket",
+    ctaTitle: "Sıradaki sen ol",
+    ctaDesc:
+      "İlk siparişinde de aynı kalite, aynı hız. Konfigüre et, dosyanı yükle, 5-10 günde elinde.",
+    ctaPrimary: "Etiket bastır",
+    ctaSecondary: "Sticker bastır",
+    permission: (
+      <>
+        Müşteri görselleri yazılı izinle paylaşılır. Markan burada görünsün
+        istersen{" "}
+        <Link href="/iletisim" className="text-pim-mercan hover:underline">
+          bize yaz
+        </Link>
+        .
+      </>
+    ),
+    items: [
+      {
+        brand: "Olea",
+        product: "etiket",
+        description:
+          "Doğal sabun serisi — kraft + mat selefon + sıcak yaldız",
+        config: "60×80mm · 2.000 adet",
+        bg: "bg-krem",
+      },
+      {
+        brand: "Bulutlu Roastery",
+        product: "etiket",
+        description:
+          "Tek origin kahve etiketleri — beyaz semi-glos + parlak selefon",
+        config: "70×100mm · 5.000 adet",
+        bg: "bg-[#FFE7D6]",
+      },
+      {
+        brand: "Atölye Niş",
+        product: "sticker",
+        description: "Etkinlik hediye sticker'ları — holografik vinil",
+        config: "75×75mm · 250 adet",
+        bg: "bg-pim-mercan-tint",
+      },
+      {
+        brand: "Çiğdem Atölye",
+        product: "etiket",
+        description: "Tekstil koleksiyonu — ultra clear + spot UV",
+        config: "40×60mm · 3.000 adet",
+        bg: "bg-yesil-soft",
+      },
+      {
+        brand: "Pop-up Etkinlik",
+        product: "sticker",
+        description: "Kampanya sticker'ı — vinil + kontur kesim, kalp formu",
+        config: "60×60mm · 1.000 adet",
+        bg: "bg-sari-soft",
+      },
+      {
+        brand: "Zeytin & Co.",
+        product: "etiket",
+        description: "Premium zeytinyağı şişesi — metalik gümüş + emboss",
+        config: "55×85mm · 1.500 adet",
+        bg: "bg-gri-100",
+      },
+      {
+        brand: "Festival Co.",
+        product: "sticker",
+        description: "Festival giriş sticker'ları — simli vinil",
+        config: "50×50mm · 1.000 adet",
+        bg: "bg-pim-mercan-tint",
+      },
+      {
+        brand: "Yeşil Yaprak",
+        product: "etiket",
+        description: "Bitki çayı seti — kraft + soft touch",
+        config: "50×70mm · 5.000 adet",
+        bg: "bg-krem-soft",
+      },
+    ] as ShowcaseItem[],
   },
-  {
-    brand: "Bulutlu Roastery",
-    product: "etiket",
-    description: "Tek origin kahve etiketleri — beyaz semi-glos + parlak selefon",
-    config: "70×100mm · 5.000 adet",
-    bg: "bg-[#FFE7D6]",
+  en: {
+    eyebrow: "Customer showcase",
+    title: "Brands that print with Pim Etiket",
+    intro:
+      "Small brands, big stories. A glimpse of work from our workshop — customer projects we share with their permission.",
+    statTotal: "Total prints",
+    statTotalSub: "labels + stickers",
+    statBrand: "Happy brands",
+    statBrandSub: "small brands",
+    statCity: "Cities",
+    statCitySub: "across Turkey",
+    productSticker: "Sticker",
+    productEtiket: "Label",
+    ctaTitle: "Be the next one",
+    ctaDesc:
+      "Same quality, same speed on your first order. Configure, upload, in your hands in 5-10 days.",
+    ctaPrimary: "Print labels",
+    ctaSecondary: "Print stickers",
+    permission: (
+      <>
+        Customer photos are shared only with written consent. Want your brand
+        here?{" "}
+        <Link href="/iletisim" className="text-pim-mercan hover:underline">
+          Reach out
+        </Link>
+        .
+      </>
+    ),
+    items: [
+      {
+        brand: "Olea",
+        product: "etiket",
+        description:
+          "Natural soap line — kraft + matte lamination + hot foil stamp",
+        config: "60×80mm · 2,000 pcs",
+        bg: "bg-krem",
+      },
+      {
+        brand: "Bulutlu Roastery",
+        product: "etiket",
+        description:
+          "Single-origin coffee labels — white semi-gloss + glossy lamination",
+        config: "70×100mm · 5,000 pcs",
+        bg: "bg-[#FFE7D6]",
+      },
+      {
+        brand: "Atölye Niş",
+        product: "sticker",
+        description: "Event giveaway stickers — holographic vinyl",
+        config: "75×75mm · 250 pcs",
+        bg: "bg-pim-mercan-tint",
+      },
+      {
+        brand: "Çiğdem Atölye",
+        product: "etiket",
+        description: "Textile collection — ultra clear + spot UV",
+        config: "40×60mm · 3,000 pcs",
+        bg: "bg-yesil-soft",
+      },
+      {
+        brand: "Pop-up Etkinlik",
+        product: "sticker",
+        description: "Campaign sticker — vinyl + contour cut, heart shape",
+        config: "60×60mm · 1,000 pcs",
+        bg: "bg-sari-soft",
+      },
+      {
+        brand: "Zeytin & Co.",
+        product: "etiket",
+        description: "Premium olive oil bottle — metallic silver + embossed",
+        config: "55×85mm · 1,500 pcs",
+        bg: "bg-gri-100",
+      },
+      {
+        brand: "Festival Co.",
+        product: "sticker",
+        description: "Festival entry stickers — glitter vinyl",
+        config: "50×50mm · 1,000 pcs",
+        bg: "bg-pim-mercan-tint",
+      },
+      {
+        brand: "Yeşil Yaprak",
+        product: "etiket",
+        description: "Herbal tea set — kraft + soft touch",
+        config: "50×70mm · 5,000 pcs",
+        bg: "bg-krem-soft",
+      },
+    ] as ShowcaseItem[],
   },
-  {
-    brand: "Atölye Niş",
-    product: "sticker",
-    description: "Etkinlik hediye sticker'ları — holografik vinil",
-    config: "75×75mm · 250 adet",
-    bg: "bg-pim-mercan-tint",
-  },
-  {
-    brand: "Çiğdem Atölye",
-    product: "etiket",
-    description: "Tekstil koleksiyonu — ultra clear + spot UV",
-    config: "40×60mm · 3.000 adet",
-    bg: "bg-yesil-soft",
-  },
-  {
-    brand: "Pop-up Etkinlik",
-    product: "sticker",
-    description: "Kampanya sticker'ı — vinil + kontur kesim, kalp formu",
-    config: "60×60mm · 1.000 adet",
-    bg: "bg-sari-soft",
-  },
-  {
-    brand: "Zeytin & Co.",
-    product: "etiket",
-    description: "Premium zeytinyağı şişesi — metalik gümüş + emboss",
-    config: "55×85mm · 1.500 adet",
-    bg: "bg-gri-100",
-  },
-  {
-    brand: "Festival Co.",
-    product: "sticker",
-    description: "Festival giriş sticker'ları — simli vinil",
-    config: "50×50mm · 1.000 adet",
-    bg: "bg-pim-mercan-tint",
-  },
-  {
-    brand: "Yeşil Yaprak",
-    product: "etiket",
-    description: "Bitki çayı seti — kraft + soft touch",
-    config: "50×70mm · 5.000 adet",
-    bg: "bg-krem-soft",
-  },
-];
+};
 
 export default function GaleriPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-6">
         {/* Hero */}
         <div className="text-center mb-10">
           <Pim pose="excited" size={140} />
-          <Eyebrow>Müşteri showcase</Eyebrow>
+          <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[32px] md:text-[44px] font-semibold tracking-tight leading-tight">
-            Pim Etiket&rsquo;le bastıran markalar
+            {c.title}
           </h1>
           <p className="mt-3 text-base text-gri-700 max-w-[560px] mx-auto leading-relaxed">
-            Küçük markalar, büyük hikayeler. Atölyemizden çıkan işlerin bir
-            kısmı — izniyle paylaştığımız müşteri çalışmaları.
+            {c.intro}
           </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-10 max-w-[680px] mx-auto">
           {[
-            { label: "Toplam baskı", value: "1.2M+", sub: "adet etiket + sticker" },
-            { label: "Mutlu marka", value: "2400+", sub: "küçük marka" },
-            { label: "Şehir", value: "67", sub: "Türkiye geneli" },
+            { label: c.statTotal, value: "1.2M+", sub: c.statTotalSub },
+            { label: c.statBrand, value: "2400+", sub: c.statBrandSub },
+            { label: c.statCity, value: "67", sub: c.statCitySub },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
@@ -123,8 +242,12 @@ export default function GaleriPage() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SHOWCASE.map((s, i) => (
-            <Card key={`${s.brand}-${i}`} padding="" className="!p-0 overflow-hidden hover:-translate-y-0.5 transition-transform">
+          {c.items.map((s, i) => (
+            <Card
+              key={`${s.brand}-${i}`}
+              padding=""
+              className="!p-0 overflow-hidden hover:-translate-y-0.5 transition-transform"
+            >
               <div
                 className={`${s.bg} grid place-items-center min-h-[200px] p-6 relative`}
               >
@@ -140,7 +263,7 @@ export default function GaleriPage() {
                   variant={s.product === "sticker" ? "mercan" : "krem"}
                   className="absolute top-3 right-3"
                 >
-                  {s.product === "sticker" ? "Sticker" : "Etiket"}
+                  {s.product === "sticker" ? c.productSticker : c.productEtiket}
                 </Pill>
               </div>
               <div className="p-5">
@@ -160,30 +283,28 @@ export default function GaleriPage() {
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
             <div>
               <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-2">
-                Sıradaki sen ol
+                {c.ctaTitle}
               </h2>
               <p className="text-[14px] text-white/75 leading-relaxed max-w-[480px]">
-                İlk siparişinde de aynı kalite, aynı hız. Konfigüre et, dosyanı
-                yükle, 5-10 günde elinde.
+                {c.ctaDesc}
               </p>
             </div>
             <div className="flex gap-3 flex-wrap">
               <Button variant="primary" size="lg" href="/etiket">
-                <Icon.Roll size={18} /> Etiket bastır
+                <Icon.Roll size={18} /> {c.ctaPrimary}
               </Button>
               <Link
                 href="/sticker"
                 className="inline-flex items-center justify-center gap-2 h-[52px] px-7 rounded-full text-white font-semibold border border-white/30 hover:bg-white/10 transition-colors"
               >
-                Sticker bastır
+                {c.ctaSecondary}
               </Link>
             </div>
           </div>
         </Card>
 
         <p className="mt-6 text-[12px] text-gri-500 text-center max-w-[640px] mx-auto leading-relaxed">
-          Müşteri görselleri yazılı izinle paylaşılır. Markan burada görünsün
-          istersen <Link href="/iletisim" className="text-pim-mercan hover:underline">bize yaz</Link>.
+          {c.permission}
         </p>
       </div>
     </main>

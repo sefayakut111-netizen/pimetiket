@@ -14,7 +14,52 @@ import { Button, Card } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { getCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 
-const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+const EXTRA = {
+  tr: {
+    failTitle: "Ödeme alınamadı",
+    failDesc:
+      "Bankadan onay gelmedi. Kart bilgilerini kontrol edip tekrar denemen gerekiyor. Tutar hesabından çekilmedi.",
+    retry: "Tekrar dene",
+    contact: "Bize yaz",
+    contactFooter: (
+      <>
+        Soru olursa{" "}
+        <a
+          href="/iletisim"
+          className="text-pim-mercan font-semibold hover:underline"
+        >
+          bize yaz
+        </a>{" "}
+        veya sağ alt köşedeki Pim&rsquo;e sor.
+      </>
+    ),
+    times: "×",
+    currency: "TL",
+    locale: "tr-TR",
+  },
+  en: {
+    failTitle: "Payment failed",
+    failDesc:
+      "We didn't get bank approval. Please check your card details and try again. Your account hasn't been charged.",
+    retry: "Try again",
+    contact: "Contact us",
+    contactFooter: (
+      <>
+        Got a question?{" "}
+        <a
+          href="/iletisim"
+          className="text-pim-mercan font-semibold hover:underline"
+        >
+          Reach out
+        </a>{" "}
+        or chat with Pim at the bottom-right.
+      </>
+    ),
+    times: "×",
+    currency: "TRY",
+    locale: "en-US",
+  },
+};
 
 export default function OdemeSonucPage() {
   return (
@@ -26,7 +71,10 @@ export default function OdemeSonucPage() {
 
 function OdemeSonucInner() {
   const sp = useSearchParams();
-  const { t } = useT();
+  const { t, locale } = useT();
+  const x = locale === "en" ? EXTRA.en : EXTRA.tr;
+  const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
+
   const status = sp.get("status") ?? "success";
   const orderId = sp.get("order") ?? "PE-2026-XXXX";
 
@@ -41,18 +89,17 @@ function OdemeSonucInner() {
         <div className="mx-auto max-w-[600px] px-6 text-center">
           <Pim pose="sad" size={160} />
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Ödeme alınamadı
+            {x.failTitle}
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            Bankadan onay gelmedi. Kart bilgilerini kontrol edip tekrar
-            denemen gerekiyor. Tutar hesabından çekilmedi.
+            {x.failDesc}
           </p>
           <div className="mt-6 flex gap-3 justify-center flex-wrap">
             <Button variant="primary" size="lg" href="/odeme">
-              Tekrar dene
+              {x.retry}
             </Button>
             <Button variant="secondary" size="lg" href="/iletisim">
-              <Icon.ChatBubble size={16} /> Bize yaz
+              <Icon.ChatBubble size={16} /> {x.contact}
             </Button>
           </div>
         </div>
@@ -87,7 +134,9 @@ function OdemeSonucInner() {
               </span>
               <span className="text-xl font-bold tabular-nums">
                 {fmt(order.total)}{" "}
-                <span className="text-[13px] font-semibold text-gri-700">TL</span>
+                <span className="text-[13px] font-semibold text-gri-700">
+                  {x.currency}
+                </span>
               </span>
             </div>
             <div className="space-y-2.5 text-[13px]">
@@ -98,11 +147,12 @@ function OdemeSonucInner() {
                       {item.title}
                     </span>
                     <span className="block truncate text-[12px] text-gri-500">
-                      {item.config} · ×{item.qty.toLocaleString("tr-TR")}
+                      {item.config} · {x.times}
+                      {item.qty.toLocaleString(x.locale)}
                     </span>
                   </span>
                   <span className="font-semibold tabular-nums shrink-0">
-                    {fmt(item.total)} TL
+                    {fmt(item.total)} {x.currency}
                   </span>
                 </div>
               ))}
@@ -112,7 +162,7 @@ function OdemeSonucInner() {
                 <span>{t.orderSuccess.estimatedDelivery}</span>
                 <span className="font-semibold text-lacivert">
                   {new Date(order.estimatedDelivery).toLocaleDateString(
-                    "tr-TR",
+                    x.locale,
                     { day: "numeric", month: "long", year: "numeric" }
                   )}
                 </span>
@@ -176,14 +226,7 @@ function OdemeSonucInner() {
         </div>
 
         <p className="mt-8 text-[13px] text-gri-500 leading-relaxed">
-          Soru olursa{" "}
-          <a
-            href="/iletisim"
-            className="text-pim-mercan font-semibold hover:underline"
-          >
-            bize yaz
-          </a>{" "}
-          veya sağ alt köşedeki Pim&rsquo;e sor.
+          {x.contactFooter}
         </p>
       </div>
     </main>

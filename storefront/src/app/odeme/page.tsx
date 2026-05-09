@@ -55,9 +55,27 @@ const SAVED_ADDRESSES = [
 type Step = 1 | 2 | 3;
 type InvoiceType = "individual" | "corporate";
 
+const EXTRA = {
+  tr: {
+    summary: "Özet",
+    cartEmptyRedirect: "Sepetin boş — yönlendiriliyor…",
+    times: "×",
+    currency: "TL",
+    locale: "tr-TR",
+  },
+  en: {
+    summary: "Summary",
+    cartEmptyRedirect: "Cart is empty — redirecting…",
+    times: "×",
+    currency: "TRY",
+    locale: "en-US",
+  },
+};
+
 export default function OdemePage() {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
+  const x = locale === "en" ? EXTRA.en : EXTRA.tr;
   const [step, setStep] = useState<Step>(1);
   const [addressId, setAddressId] = useState("a1");
   const [invoiceType, setInvoiceType] = useState<InvoiceType>("individual");
@@ -87,7 +105,7 @@ export default function OdemePage() {
   const subtotal = summary.subtotal;
   const shipping = summary.shipping;
   const total = summary.total;
-  const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+  const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
 
   const goNext = () => setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
   const goPrev = () => setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
@@ -454,11 +472,11 @@ export default function OdemePage() {
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-4 flex items-center gap-2">
                 <Pim pose="happy" size={32} bob={false} />
-                Özet
+                {x.summary}
               </h3>
               <div className="space-y-3 text-[13px]">
                 {hydrated && cartItems.length === 0 && (
-                  <div className="text-gri-500">Sepetin boş — yönlendiriliyor…</div>
+                  <div className="text-gri-500">{x.cartEmptyRedirect}</div>
                 )}
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex justify-between gap-3">
@@ -467,18 +485,19 @@ export default function OdemePage() {
                         {item.title}
                       </span>
                       <span className="block truncate text-[12px] text-gri-500">
-                        {item.config} · ×{item.qty.toLocaleString("tr-TR")}
+                        {item.config} · {x.times}
+                        {item.qty.toLocaleString(x.locale)}
                       </span>
                     </span>
                     <span className="font-semibold tabular-nums shrink-0">
-                      {fmt(item.total)} TL
+                      {fmt(item.total)} {x.currency}
                     </span>
                   </div>
                 ))}
                 <div className="flex justify-between border-t border-gri-200 pt-3">
                   <span className="text-gri-700">{t.cart.subtotal}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(subtotal)} TL
+                    {fmt(subtotal)} {x.currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -487,7 +506,7 @@ export default function OdemePage() {
                     {shipping === 0 ? (
                       <span className="text-yesil">{t.cart.free}</span>
                     ) : (
-                      `${fmt(shipping)} TL`
+                      `${fmt(shipping)} ${x.currency}`
                     )}
                   </span>
                 </div>
@@ -497,7 +516,7 @@ export default function OdemePage() {
                 <span className="text-2xl font-bold tabular-nums">
                   {fmt(total)}{" "}
                   <span className="text-base font-semibold text-gri-700">
-                    TL
+                    {x.currency}
                   </span>
                 </span>
               </div>

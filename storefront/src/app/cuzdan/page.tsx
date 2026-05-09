@@ -11,6 +11,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 
 interface Transaction {
   id: string;
@@ -20,7 +21,78 @@ interface Transaction {
   amount: number;
 }
 
-const TRANSACTIONS: Transaction[] = [
+const COPY = {
+  tr: {
+    eyebrow: "Hesabım",
+    title: "Cüzdanım",
+    currentBalance: "Mevcut bakiye",
+    walletDiscount: "Cüzdandan ödeyince +%2 indirim",
+    totalIn: "Toplam yatırılan",
+    totalOut: "Toplam harcanan",
+    deposit: "Para yatır",
+    depositAmountLabel: "Yatırılacak tutar (TL)",
+    confirmDeposit: "Yatır",
+    cancelDeposit: "Vazgeç",
+    quickDeposit: "Hızlı yatırma:",
+    txTitle: "İşlem geçmişi",
+    txCount: (n: number) => `${n} işlem`,
+    pimAdvTitle: "Cüzdandan ödemenin avantajı",
+    pimAdv: (
+      <>
+        Sipariş esnasında cüzdandan ödemeyi seçersen{" "}
+        <strong className="text-yesil">+%2 indirim</strong> kazanırsın. Bakiyen
+        yetmezse kart ile fark tamamlanır.
+      </>
+    ),
+    invalidAmount: "Geçerli bir tutar gir",
+    depositReceived: (n: string) =>
+      `${n} TL yatırma talebi alındı (mock — ödeme G adımında)`,
+    typeLabel: {
+      deposit: "Yatırma",
+      purchase: "Sipariş",
+      refund: "İade",
+      bonus: "Bonus",
+    } as Record<Transaction["type"], string>,
+    locale: "tr-TR",
+    currency: "TL",
+  },
+  en: {
+    eyebrow: "My account",
+    title: "My wallet",
+    currentBalance: "Current balance",
+    walletDiscount: "Pay from wallet to earn +2%",
+    totalIn: "Total deposited",
+    totalOut: "Total spent",
+    deposit: "Deposit",
+    depositAmountLabel: "Deposit amount (TRY)",
+    confirmDeposit: "Deposit",
+    cancelDeposit: "Cancel",
+    quickDeposit: "Quick deposit:",
+    txTitle: "Transaction history",
+    txCount: (n: number) => `${n} transaction${n === 1 ? "" : "s"}`,
+    pimAdvTitle: "Why pay from wallet",
+    pimAdv: (
+      <>
+        Choose wallet at checkout and earn{" "}
+        <strong className="text-yesil">+2% off</strong>. If your balance is too
+        low, the difference is charged to your card.
+      </>
+    ),
+    invalidAmount: "Please enter a valid amount",
+    depositReceived: (n: string) =>
+      `${n} TRY deposit request received (mock — payment in step G)`,
+    typeLabel: {
+      deposit: "Deposit",
+      purchase: "Order",
+      refund: "Refund",
+      bonus: "Bonus",
+    } as Record<Transaction["type"], string>,
+    locale: "en-US",
+    currency: "TRY",
+  },
+};
+
+const TRANSACTIONS_TR: Transaction[] = [
   { id: "t9", date: "8 May 2026", type: "refund", desc: "İade bonusu — PE-1175 hatalı kargo", amount: 120 },
   { id: "t8", date: "5 May 2026", type: "purchase", desc: "Sipariş PE-2026-1182", amount: -4250 },
   { id: "t7", date: "2 May 2026", type: "purchase", desc: "Sipariş PE-2026-1175", amount: -1750 },
@@ -30,19 +102,33 @@ const TRANSACTIONS: Transaction[] = [
   { id: "t3", date: "20 Nis 2026", type: "deposit", desc: "Cüzdana yatırma — kredi kartı", amount: 3000 },
 ];
 
-const TYPE_META: Record<
-  Transaction["type"],
-  { label: string; color: string; bg: string }
-> = {
-  deposit: { label: "Yatırma", color: "text-yesil", bg: "bg-yesil-soft" },
-  purchase: { label: "Sipariş", color: "text-lacivert", bg: "bg-gri-100" },
-  refund: { label: "İade", color: "text-yesil", bg: "bg-yesil-soft" },
-  bonus: { label: "Bonus", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-};
-
-const fmt = (n: number) => Math.abs(Math.round(n)).toLocaleString("tr-TR");
+const TRANSACTIONS_EN: Transaction[] = [
+  { id: "t9", date: "May 8, 2026", type: "refund", desc: "Refund bonus — PE-1175 shipping issue", amount: 120 },
+  { id: "t8", date: "May 5, 2026", type: "purchase", desc: "Order PE-2026-1182", amount: -4250 },
+  { id: "t7", date: "May 2, 2026", type: "purchase", desc: "Order PE-2026-1175", amount: -1750 },
+  { id: "t6", date: "Apr 28, 2026", type: "deposit", desc: "Wallet top-up — credit card", amount: 5000 },
+  { id: "t5", date: "Apr 21, 2026", type: "purchase", desc: "Order PE-2026-1167", amount: -1050 },
+  { id: "t4", date: "Apr 20, 2026", type: "bonus", desc: "Welcome bonus", amount: 100 },
+  { id: "t3", date: "Apr 20, 2026", type: "deposit", desc: "Wallet top-up — credit card", amount: 3000 },
+];
 
 export default function CuzdanPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+  const TRANSACTIONS = locale === "en" ? TRANSACTIONS_EN : TRANSACTIONS_TR;
+
+  const fmt = (n: number) => Math.abs(Math.round(n)).toLocaleString(c.locale);
+
+  const TYPE_META: Record<
+    Transaction["type"],
+    { label: string; color: string; bg: string }
+  > = {
+    deposit: { label: c.typeLabel.deposit, color: "text-yesil", bg: "bg-yesil-soft" },
+    purchase: { label: c.typeLabel.purchase, color: "text-lacivert", bg: "bg-gri-100" },
+    refund: { label: c.typeLabel.refund, color: "text-yesil", bg: "bg-yesil-soft" },
+    bonus: { label: c.typeLabel.bonus, color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  };
+
   const toast = useToast();
   const [showDeposit, setShowDeposit] = useState(false);
   const [amount, setAmount] = useState("");
@@ -60,9 +146,9 @@ export default function CuzdanPage() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[1100px] px-8">
         <div className="mb-7">
-          <Eyebrow>Hesabım</Eyebrow>
+          <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Cüzdanım
+            {c.title}
           </h1>
         </div>
 
@@ -75,28 +161,34 @@ export default function CuzdanPage() {
           <div className="relative">
             <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
               <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">
-                Mevcut bakiye
+                {c.currentBalance}
               </div>
               <span className="inline-flex items-center gap-1.5 h-[26px] px-3 rounded-full bg-yesil-soft text-yesil text-[12px] font-semibold">
-                Cüzdandan ödeyince +%2 indirim
+                {c.walletDiscount}
               </span>
             </div>
             <div className="text-[44px] md:text-[56px] font-bold tracking-[-0.02em] leading-none">
               {fmt(balance)}{" "}
-              <span className="text-2xl font-semibold opacity-70">TL</span>
+              <span className="text-2xl font-semibold opacity-70">
+                {c.currency}
+              </span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 max-w-[400px]">
               <div className="bg-white/10 rounded-lg p-3">
                 <div className="text-[11.5px] uppercase tracking-[0.04em] text-white/60 font-semibold">
-                  Toplam yatırılan
+                  {c.totalIn}
                 </div>
-                <div className="text-lg font-bold mt-1">+{fmt(totalIn)} TL</div>
+                <div className="text-lg font-bold mt-1">
+                  +{fmt(totalIn)} {c.currency}
+                </div>
               </div>
               <div className="bg-white/10 rounded-lg p-3">
                 <div className="text-[11.5px] uppercase tracking-[0.04em] text-white/60 font-semibold">
-                  Toplam harcanan
+                  {c.totalOut}
                 </div>
-                <div className="text-lg font-bold mt-1">−{fmt(totalOut)} TL</div>
+                <div className="text-lg font-bold mt-1">
+                  −{fmt(totalOut)} {c.currency}
+                </div>
               </div>
             </div>
 
@@ -107,13 +199,13 @@ export default function CuzdanPage() {
                   size="lg"
                   onClick={() => setShowDeposit(true)}
                 >
-                  <Icon.Plus size={16} /> Para yatır
+                  <Icon.Plus size={16} /> {c.deposit}
                 </Button>
               ) : (
                 <div className="flex gap-2 items-end flex-wrap">
                   <label className="block">
                     <span className="text-[12px] font-semibold mb-1.5 block text-white/80">
-                      Yatırılacak tutar (TL)
+                      {c.depositAmountLabel}
                     </span>
                     <Input
                       type="number"
@@ -129,17 +221,17 @@ export default function CuzdanPage() {
                     onClick={() => {
                       const n = Number(amount);
                       if (!n || n <= 0) {
-                        toast.error("Geçerli bir tutar gir");
+                        toast.error(c.invalidAmount);
                         return;
                       }
                       toast.success(
-                        `${n.toLocaleString("tr-TR")} TL yatırma talebi alındı (mock — ödeme G adımında)`
+                        c.depositReceived(n.toLocaleString(c.locale))
                       );
                       setShowDeposit(false);
                       setAmount("");
                     }}
                   >
-                    Yatır <Icon.ArrowR />
+                    {c.confirmDeposit} <Icon.ArrowR />
                   </Button>
                   <Button
                     variant="ghost"
@@ -150,7 +242,7 @@ export default function CuzdanPage() {
                     }}
                     className="!text-white/70 hover:!bg-white/10"
                   >
-                    Vazgeç
+                    {c.cancelDeposit}
                   </Button>
                 </div>
               )}
@@ -162,7 +254,7 @@ export default function CuzdanPage() {
         {!showDeposit && (
           <div className="flex gap-2 flex-wrap mb-6">
             <span className="text-[13px] font-semibold text-gri-700 self-center mr-2">
-              Hızlı yatırma:
+              {c.quickDeposit}
             </span>
             {[500, 1000, 2500, 5000].map((n) => (
               <button
@@ -174,7 +266,7 @@ export default function CuzdanPage() {
                 }}
                 className="px-4 py-2 rounded-full bg-white ring-1 ring-gri-200 text-[13px] font-semibold hover:ring-pim-mercan hover:text-pim-mercan transition-colors"
               >
-                {n.toLocaleString("tr-TR")} TL
+                {n.toLocaleString(c.locale)} {c.currency}
               </button>
             ))}
           </div>
@@ -183,9 +275,9 @@ export default function CuzdanPage() {
         {/* Transactions */}
         <Card padding="p-0">
           <div className="px-6 py-4 border-b border-gri-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">İşlem geçmişi</h2>
+            <h2 className="text-lg font-semibold">{c.txTitle}</h2>
             <span className="text-[13px] text-gri-700">
-              {TRANSACTIONS.length} işlem
+              {c.txCount(TRANSACTIONS.length)}
             </span>
           </div>
           <div className="divide-y divide-gri-100">
@@ -220,7 +312,7 @@ export default function CuzdanPage() {
                     )}
                   >
                     {t.amount > 0 ? "+" : "−"}
-                    {fmt(t.amount)} TL
+                    {fmt(t.amount)} {c.currency}
                   </div>
                 </div>
               );
@@ -233,13 +325,9 @@ export default function CuzdanPage() {
           <div className="flex gap-4 items-center">
             <Pim pose="happy" size={80} bob={false} />
             <div className="flex-1">
-              <h3 className="font-bold text-base">
-                Cüzdandan ödemenin avantajı
-              </h3>
+              <h3 className="font-bold text-base">{c.pimAdvTitle}</h3>
               <p className="text-[13px] text-gri-700 mt-1 leading-relaxed">
-                Sipariş esnasında cüzdandan ödemeyi seçersen{" "}
-                <strong className="text-yesil">+%2 indirim</strong>{" "}
-                kazanırsın. Bakiyen yetmezse kart ile fark tamamlanır.
+                {c.pimAdv}
               </p>
             </div>
           </div>

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 
 interface Address {
   id: string;
@@ -41,7 +42,46 @@ const INITIAL: Address[] = [
   },
 ];
 
+const COPY = {
+  tr: {
+    eyebrow: "Hesabım",
+    title: "Adres defterim",
+    summary: (n: number) => `${n} kayıtlı adres`,
+    addNew: "Yeni adres ekle",
+    addFormSoon: "Adres ekleme formu yakında (mock)",
+    editFormSoon: (label: string) => `${label} düzenleme formu yakında (mock)`,
+    defaultUpdated: "Varsayılan adres güncellendi",
+    addressDeleted: "Adres silindi",
+    emptyTitle: "Henüz adres yok",
+    emptyDesc: "Sipariş verirken hızlı seçim için adres ekle.",
+    defaultBadge: "Varsayılan",
+    edit: "Düzenle",
+    setDefault: "Varsayılan yap",
+    deleteRow: "Sil",
+  },
+  en: {
+    eyebrow: "My account",
+    title: "Address book",
+    summary: (n: number) =>
+      `${n} saved address${n === 1 ? "" : "es"}`,
+    addNew: "Add new address",
+    addFormSoon: "Address form coming soon (mock)",
+    editFormSoon: (label: string) => `Edit form for ${label} coming soon (mock)`,
+    defaultUpdated: "Default address updated",
+    addressDeleted: "Address deleted",
+    emptyTitle: "No address yet",
+    emptyDesc: "Add an address for quick selection at checkout.",
+    defaultBadge: "Default",
+    edit: "Edit",
+    setDefault: "Set as default",
+    deleteRow: "Delete",
+  },
+};
+
 export default function AdreslerimPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const toast = useToast();
   const [addresses, setAddresses] = useState<Address[]>(INITIAL);
 
@@ -49,12 +89,12 @@ export default function AdreslerimPage() {
     setAddresses((arr) =>
       arr.map((a) => ({ ...a, isDefault: a.id === id }))
     );
-    toast.success("Varsayılan adres güncellendi");
+    toast.success(c.defaultUpdated);
   };
 
   const remove = (id: string) => {
     setAddresses((arr) => arr.filter((a) => a.id !== id));
-    toast.success("Adres silindi");
+    toast.success(c.addressDeleted);
   };
 
   return (
@@ -62,36 +102,26 @@ export default function AdreslerimPage() {
       <div className="mx-auto max-w-[900px] px-8">
         <div className="flex items-end justify-between gap-4 mb-7 flex-wrap">
           <div>
-            <Eyebrow>Hesabım</Eyebrow>
+            <Eyebrow>{c.eyebrow}</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Adres defterim
+              {c.title}
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              {addresses.length} kayıtlı adres
+              {c.summary(addresses.length)}
             </p>
           </div>
-          <Button
-            variant="primary"
-            onClick={() => toast.info("Adres ekleme formu yakında (mock)")}
-          >
-            <Icon.Plus size={16} /> Yeni adres ekle
+          <Button variant="primary" onClick={() => toast.info(c.addFormSoon)}>
+            <Icon.Plus size={16} /> {c.addNew}
           </Button>
         </div>
 
         {addresses.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Icon.Truck size={48} className="text-gri-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              Henüz adres yok
-            </h3>
-            <p className="text-base text-gri-700 mb-5">
-              Sipariş verirken hızlı seçim için adres ekle.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => toast.info("Adres ekleme formu yakında (mock)")}
-            >
-              <Icon.Plus size={16} /> Yeni adres ekle
+            <h3 className="text-xl font-semibold mb-2">{c.emptyTitle}</h3>
+            <p className="text-base text-gri-700 mb-5">{c.emptyDesc}</p>
+            <Button variant="primary" onClick={() => toast.info(c.addFormSoon)}>
+              <Icon.Plus size={16} /> {c.addNew}
             </Button>
           </Card>
         ) : (
@@ -100,16 +130,14 @@ export default function AdreslerimPage() {
               <Card
                 key={a.id}
                 padding="p-5"
-                className={cn(
-                  a.isDefault && "ring-2 !ring-pim-mercan"
-                )}
+                className={cn(a.isDefault && "ring-2 !ring-pim-mercan")}
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-base">{a.label}</h3>
                     {a.isDefault && (
                       <span className="inline-flex items-center h-[20px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11px] font-semibold">
-                        Varsayılan
+                        {c.defaultBadge}
                       </span>
                     )}
                   </div>
@@ -124,11 +152,9 @@ export default function AdreslerimPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      toast.info(`${a.label} düzenleme formu yakında (mock)`)
-                    }
+                    onClick={() => toast.info(c.editFormSoon(a.label))}
                   >
-                    Düzenle
+                    {c.edit}
                   </Button>
                   {!a.isDefault && (
                     <button
@@ -136,7 +162,7 @@ export default function AdreslerimPage() {
                       onClick={() => setDefault(a.id)}
                       className="text-[13px] font-semibold text-pim-mercan hover:underline px-3"
                     >
-                      Varsayılan yap
+                      {c.setDefault}
                     </button>
                   )}
                   {!a.isDefault && (
@@ -145,7 +171,7 @@ export default function AdreslerimPage() {
                       onClick={() => remove(a.id)}
                       className="text-[13px] font-semibold text-gri-500 hover:text-kirmizi px-3 ml-auto"
                     >
-                      Sil
+                      {c.deleteRow}
                     </button>
                   )}
                 </div>
