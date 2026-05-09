@@ -18,7 +18,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pim, PimMini } from "@/components/Pim";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
@@ -138,6 +138,25 @@ export default function StickerPage() {
   const [height, setHeight] = useState<number>(75);
   // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
   const [design, setDesign] = useState<DesignTempState | null>(null);
+
+  // /tasarımlarım'dan "Yeniden bastır" tıklandıysa sessionStorage'dan al
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("reprint") !== "1") return;
+    try {
+      const raw = sessionStorage.getItem("pim_reprint_design");
+      if (raw) {
+        const parsed = JSON.parse(raw) as DesignTempState;
+        setDesign(parsed);
+        sessionStorage.removeItem("pim_reprint_design");
+        toast.info("Tasarımın hazır — boyut/adet seç, sepete ekle");
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Tabaka modunda kontur kesim seçili kalmasın — kareye düş
   if (cutMode === "tabaka" && shape === "die") {

@@ -264,6 +264,13 @@ export function TopBar() {
                       <Icon.Box size={14} /> {t.nav.orders}
                     </Link>
                     <Link
+                      href="/tasarimlarim"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      <Icon.Sparkle size={14} /> Tasarımlarım
+                    </Link>
+                    <Link
                       href="/adreslerim"
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
