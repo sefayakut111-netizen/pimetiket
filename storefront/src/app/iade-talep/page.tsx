@@ -15,17 +15,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
-import {
-  createReturn,
-  RETURN_REASON_LABEL,
-  type ReturnReason,
-} from "@/lib/customer-return";
+import { createReturn, type ReturnReason } from "@/lib/customer-return";
+import { useT } from "@/lib/i18n/context";
 
 const REASON_OPTIONS: ReturnReason[] = [
   "uretim_hatasi",
@@ -35,7 +32,115 @@ const REASON_OPTIONS: ReturnReason[] = [
   "diger",
 ];
 
+const COPY = {
+  tr: {
+    breadPanel: "Panelim",
+    breadReturns: "İadelerim",
+    breadNew: "Yeni iade talebi",
+    eyebrow: "İade talebi",
+    titleEmpty: "İade için uygun sipariş yok",
+    descEmpty:
+      "İade sadece üretime alınmış, kargoya verilmiş veya teslim edilmiş siparişler için açıktır. Henüz uygun siparişin görünmüyor.",
+    backToOrders: "Siparişlerime bak",
+    contactUs: "Bize yaz",
+    title: "Sipariş iade talebi oluştur",
+    intro: (
+      <>
+        Üretim hatası, kargo hasarı, yanlış ürün gibi durumlarda iade talebi
+        açabilirsin. <strong>Kişiselleştirilmiş ürünlerde</strong> cayma hakkı
+        yok (TKHK m.15/b), ama üretim hatası bizim sorumluluğumuz.
+      </>
+    ),
+    step1: "1. Sipariş",
+    step2: "2. Sebep",
+    step3: "3. Açıklama (en az 20 karakter)",
+    step4: "4. Görseller (opsiyonel ama önerilir)",
+    descriptionPh:
+      "Sorunu kısa anlat: ne bekliyordun, ne aldın? Boyut, renk, kargo durumu… Pim mümkün olduğunca hızlı çözer.",
+    photoIntro:
+      "Üretim hatası / kargo hasarı için fotoğraf çok yardımcı olur. Aldığın ürünü ve problemi gösteren 1-3 foto yükle.",
+    addMock: "Foto ekle (mock)",
+    photoMockNote: (
+      <>Gerçek dosya yükleme akışı Faz 2&rsquo;de aktif olacak.</>
+    ),
+    cancel: "İptal",
+    submit: "İade talebi gönder",
+    submitting: "Gönderiliyor...",
+    loading: "Yükleniyor…",
+    multiOrder: (n: number) => `${n} ürünlük sipariş`,
+    pcs: "adet",
+    currency: "TL",
+    remove: "Kaldır",
+    mockAdded: (file: string) =>
+      `${file} eklendi (mock — gerçek upload Faz 2)`,
+    requestCreated: (id: string) =>
+      `İade talebi oluşturuldu: ${id.slice(0, 8)}…`,
+    unexpectedErr: "Beklenmedik hata",
+    reasonLabel: {
+      yanlis_urun: "Yanlış ürün geldi",
+      uretim_hatasi: "Üretim hatası (renk/baskı bozuk)",
+      kargo_hasari: "Kargo hasarı",
+      kalite_problemi: "Kalite problemi",
+      diger: "Diğer",
+    } as Record<ReturnReason, string>,
+    locale: "tr-TR",
+  },
+  en: {
+    breadPanel: "Dashboard",
+    breadReturns: "My returns",
+    breadNew: "New return request",
+    eyebrow: "Return request",
+    titleEmpty: "No eligible order for return",
+    descEmpty:
+      "Returns are only available for orders that are in production, in transit, or delivered. You don't have an eligible order yet.",
+    backToOrders: "View my orders",
+    contactUs: "Contact us",
+    title: "Open a return request",
+    intro: (
+      <>
+        You can open a return request for production errors, shipping damage,
+        or wrong items. <strong>Personalized products</strong> have no
+        cancellation right (Turkish Consumer Law art.15/b), but production
+        errors are our responsibility.
+      </>
+    ),
+    step1: "1. Order",
+    step2: "2. Reason",
+    step3: "3. Description (at least 20 characters)",
+    step4: "4. Photos (optional but recommended)",
+    descriptionPh:
+      "Briefly describe the issue: what did you expect, what did you get? Size, color, shipping condition… Pim will resolve it as fast as possible.",
+    photoIntro:
+      "For production errors / shipping damage, photos help a lot. Upload 1-3 photos showing the product and the issue.",
+    addMock: "Add photo (mock)",
+    photoMockNote: <>Real file upload will be active in Phase 2.</>,
+    cancel: "Cancel",
+    submit: "Submit return request",
+    submitting: "Submitting...",
+    loading: "Loading…",
+    multiOrder: (n: number) => `Order with ${n} items`,
+    pcs: "units",
+    currency: "TRY",
+    remove: "Remove",
+    mockAdded: (file: string) =>
+      `${file} added (mock — real upload in Phase 2)`,
+    requestCreated: (id: string) => `Return request created: ${id.slice(0, 8)}…`,
+    unexpectedErr: "Unexpected error",
+    reasonLabel: {
+      yanlis_urun: "Wrong product received",
+      uretim_hatasi: "Production error (color/print)",
+      kargo_hasari: "Shipping damage",
+      kalite_problemi: "Quality issue",
+      diger: "Other",
+    } as Record<ReturnReason, string>,
+    locale: "en-US",
+  },
+};
+
 export default function IadeTalepPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const router = useRouter();
   const toast = useToast();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -65,7 +170,7 @@ export default function IadeTalepPage() {
   const onAddMockFile = () => {
     const fileName = `foto_${Date.now() % 10000}.jpg`;
     setAttachments((arr) => [...arr, fileName]);
-    toast.info(`${fileName} eklendi (mock — gerçek upload Faz 2)`);
+    toast.info(c.mockAdded(fileName));
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -81,12 +186,12 @@ export default function IadeTalepPage() {
         description: description.trim(),
         attachments,
       });
-      toast.success(`İade talebi oluşturuldu: ${created.id.slice(0, 8)}…`);
+      toast.success(c.requestCreated(created.id));
       setTimeout(() => {
         router.push("/iadelerim");
       }, 800);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Beklenmedik hata");
+      toast.error(err instanceof Error ? err.message : c.unexpectedErr);
       setLoading(false);
     }
   };
@@ -95,7 +200,7 @@ export default function IadeTalepPage() {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
         <div className="mx-auto max-w-[480px] px-6 text-center text-gri-500">
-          Yükleniyor…
+          {c.loading}
         </div>
       </main>
     );
@@ -106,21 +211,19 @@ export default function IadeTalepPage() {
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
         <div className="mx-auto max-w-[520px] px-6 text-center">
           <Pim pose="think" size={140} />
-          <Eyebrow>İade talebi</Eyebrow>
+          <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[26px] md:text-[32px] font-semibold tracking-tight">
-            İade için uygun sipariş yok
+            {c.titleEmpty}
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            İade sadece üretime alınmış, kargoya verilmiş veya teslim
-            edilmiş siparişler için açıktır. Henüz uygun siparişin
-            görünmüyor.
+            {c.descEmpty}
           </p>
           <div className="mt-6 flex gap-3 justify-center flex-wrap">
             <Button variant="primary" size="lg" href="/siparislerim">
-              Siparişlerime bak
+              {c.backToOrders}
             </Button>
             <Button variant="secondary" size="lg" href="/iletisim">
-              <Icon.ChatBubble size={16} /> Bize yaz
+              <Icon.ChatBubble size={16} /> {c.contactUs}
             </Button>
           </div>
         </div>
@@ -137,28 +240,26 @@ export default function IadeTalepPage() {
             href="/panelim"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert"
           >
-            Panelim
+            {c.breadPanel}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
           <Link
             href="/iadelerim"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert"
           >
-            İadelerim
+            {c.breadReturns}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">Yeni iade talebi</span>
+          <span className="font-semibold">{c.breadNew}</span>
         </div>
 
         <div className="mb-6">
-          <Eyebrow>İade talebi</Eyebrow>
+          <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Sipariş iade talebi oluştur
+            {c.title}
           </h1>
           <p className="mt-2 text-base text-gri-700 leading-relaxed">
-            Üretim hatası, kargo hasarı, yanlış ürün gibi durumlarda iade
-            talebi açabilirsin. <strong>Kişiselleştirilmiş ürünlerde</strong>{" "}
-            cayma hakkı yok (TKHK m.15/b), ama üretim hatası bizim sorumluluğumuz.
+            {c.intro}
           </p>
         </div>
 
@@ -166,7 +267,7 @@ export default function IadeTalepPage() {
           {/* Step 1 — Sipariş seç */}
           <Card padding="p-6" className="mb-4">
             <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-3">
-              1. Sipariş
+              {c.step1}
             </div>
             <div className="flex flex-col gap-2">
               {orders.map((o) => {
@@ -174,7 +275,7 @@ export default function IadeTalepPage() {
                 const title =
                   o.items.length === 1
                     ? o.items[0].title
-                    : `${o.items.length} ürünlük sipariş`;
+                    : c.multiOrder(o.items.length);
                 return (
                   <button
                     key={o.id}
@@ -197,8 +298,9 @@ export default function IadeTalepPage() {
                           {title}
                         </div>
                         <div className="text-[12.5px] text-gri-500 mt-0.5">
-                          {totalQty.toLocaleString("tr-TR")} adet ·{" "}
-                          {Math.round(o.total).toLocaleString("tr-TR")} TL
+                          {totalQty.toLocaleString(c.locale)} {c.pcs} ·{" "}
+                          {Math.round(o.total).toLocaleString(c.locale)}{" "}
+                          {c.currency}
                         </div>
                       </div>
                       {orderId === o.id && (
@@ -216,7 +318,7 @@ export default function IadeTalepPage() {
           {/* Step 2 — Sebep */}
           <Card padding="p-6" className="mb-4">
             <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-3">
-              2. Sebep
+              {c.step2}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {REASON_OPTIONS.map((r) => (
@@ -232,7 +334,7 @@ export default function IadeTalepPage() {
                       : "ring-gri-200 bg-white hover:ring-pim-mercan-soft text-gri-700"
                   )}
                 >
-                  {RETURN_REASON_LABEL[r]}
+                  {c.reasonLabel[r]}
                 </button>
               ))}
             </div>
@@ -242,12 +344,12 @@ export default function IadeTalepPage() {
           <Card padding="p-6" className="mb-4">
             <label className="block">
               <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-3">
-                3. Açıklama (en az 20 karakter)
+                {c.step3}
               </div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Sorunu kısa anlat: ne bekliyordun, ne aldın? Boyut, renk, kargo durumu… Pim mümkün olduğunca hızlı çözer."
+                placeholder={c.descriptionPh}
                 rows={5}
                 className="block w-full px-3.5 py-2.5 rounded-[12px] bg-white text-[14px] text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow resize-none"
               />
@@ -260,11 +362,10 @@ export default function IadeTalepPage() {
           {/* Step 4 — Foto (mock) */}
           <Card padding="p-6" className="mb-4">
             <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-3">
-              4. Görseller (opsiyonel ama önerilir)
+              {c.step4}
             </div>
             <p className="text-[13px] text-gri-700 mb-3 leading-relaxed">
-              Üretim hatası / kargo hasarı için fotoğraf çok yardımcı olur.
-              Aldığın ürünü ve problemi gösteren 1-3 foto yükle.
+              {c.photoIntro}
             </p>
             <div className="flex gap-2 flex-wrap mb-3">
               {attachments.map((f) => (
@@ -279,7 +380,7 @@ export default function IadeTalepPage() {
                       setAttachments((arr) => arr.filter((x) => x !== f))
                     }
                     className="ml-1 hover:text-pim-mercan-koyu"
-                    aria-label="Kaldır"
+                    aria-label={c.remove}
                   >
                     ×
                   </button>
@@ -293,10 +394,10 @@ export default function IadeTalepPage() {
               onClick={onAddMockFile}
               disabled={attachments.length >= 3}
             >
-              <Icon.Plus size={14} /> Foto ekle (mock)
+              <Icon.Plus size={14} /> {c.addMock}
             </Button>
             <div className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
-              Gerçek dosya yükleme akışı Faz 2&rsquo;de aktif olacak.
+              {c.photoMockNote}
             </div>
           </Card>
 
@@ -307,7 +408,7 @@ export default function IadeTalepPage() {
               variant="ghost"
               onClick={() => router.back()}
             >
-              İptal
+              {c.cancel}
             </Button>
             <Button
               type="submit"
@@ -315,7 +416,7 @@ export default function IadeTalepPage() {
               size="lg"
               disabled={!canSubmit}
             >
-              {loading ? "Gönderiliyor..." : "İade talebi gönder"}{" "}
+              {loading ? c.submitting : c.submit}{" "}
               {!loading && <Icon.ArrowR />}
             </Button>
           </div>

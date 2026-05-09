@@ -15,8 +15,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 
 const STORAGE_KEY = "pim_notification_prefs_v1";
 
@@ -50,6 +51,117 @@ const DEFAULTS: Prefs = {
   },
 };
 
+const COPY = {
+  tr: {
+    breadPanel: "Panelim",
+    breadCurrent: "Bildirim tercihleri",
+    eyebrow: "Hesap ayarları",
+    title: "Bildirim tercihleri",
+    intro:
+      "Pim'den ne zaman email/SMS almak istediğini sen belirle. Sipariş güncellemeleri zorunlu (yasal), diğer her şey kapatılabilir.",
+    loading: "Yükleniyor…",
+    prefSaved: "Tercih güncellendi",
+    emailTitle: "E-posta bildirimleri",
+    emailSub: "Mail ile gönderilir",
+    smsTitle: "SMS bildirimleri",
+    smsSub: "Acil + zamana duyarlı durumlar için",
+    requiredBadge: "Zorunlu",
+    footerTitle: "Tercihler hemen uygulanır",
+    footerDesc:
+      "İstediğin zaman kapatabilir/açabilirsin. Email gönderim altyapısı Faz 2'de Resend ile aktif olacak; şimdilik tercihler kayıtlı tutuluyor.",
+    emailRows: {
+      orderUpdates: {
+        label: "Sipariş güncellemeleri",
+        desc: "Ödeme alındı, üretime girdi, kargoya verildi.",
+      },
+      proofReady: {
+        label: "Prova hazır",
+        desc: "Provayı incele ve onayla emaili.",
+      },
+      shippingUpdates: {
+        label: "Kargo bildirimi",
+        desc: "Kargo takip linki + tahmini teslim.",
+      },
+      marketing: {
+        label: "Kampanya ve duyurular",
+        desc: "Yeni malzeme, indirim, etkinlikler. Ayda 1-2 email.",
+      },
+      blog: {
+        label: "Blog yazıları",
+        desc: "Yeni rehber yayınlandığında özet email.",
+      },
+    },
+    smsRows: {
+      urgentOrder: {
+        label: "Acil sipariş bildirimi",
+        desc: "Üretimde sorun, geç teslim riski gibi durumlar.",
+      },
+      proofReady: {
+        label: "Prova bekliyor SMS",
+        desc: "Email yetmez, kısa süre içinde onay gerekiyorsa.",
+      },
+      delivery: {
+        label: "Kargo teslimat günü",
+        desc: "Kargo gelmeden önce bilgi notu.",
+      },
+    },
+  },
+  en: {
+    breadPanel: "Dashboard",
+    breadCurrent: "Notification preferences",
+    eyebrow: "Account settings",
+    title: "Notification preferences",
+    intro:
+      "Decide when Pim should email or text you. Order updates are mandatory (legal); everything else can be turned off.",
+    loading: "Loading…",
+    prefSaved: "Preference updated",
+    emailTitle: "Email notifications",
+    emailSub: "Sent via email",
+    smsTitle: "SMS notifications",
+    smsSub: "For urgent + time-sensitive cases",
+    requiredBadge: "Required",
+    footerTitle: "Preferences apply immediately",
+    footerDesc:
+      "You can turn them off/on anytime. Email delivery infrastructure will go live in Phase 2 with Resend; for now your preferences are stored locally.",
+    emailRows: {
+      orderUpdates: {
+        label: "Order updates",
+        desc: "Payment received, in production, shipped.",
+      },
+      proofReady: {
+        label: "Proof ready",
+        desc: "Email asking you to review and approve the proof.",
+      },
+      shippingUpdates: {
+        label: "Shipping updates",
+        desc: "Tracking link + estimated delivery.",
+      },
+      marketing: {
+        label: "Campaigns & announcements",
+        desc: "New materials, discounts, events. 1-2 emails per month.",
+      },
+      blog: {
+        label: "Blog posts",
+        desc: "Short summary email when a new guide is published.",
+      },
+    },
+    smsRows: {
+      urgentOrder: {
+        label: "Urgent order alerts",
+        desc: "Production issues, late-delivery risks.",
+      },
+      proofReady: {
+        label: "Proof waiting SMS",
+        desc: "When email is not enough and approval is needed soon.",
+      },
+      delivery: {
+        label: "Delivery day notice",
+        desc: "Heads-up before the courier arrives.",
+      },
+    },
+  },
+};
+
 function loadPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULTS;
   try {
@@ -71,6 +183,9 @@ function savePrefs(p: Prefs): void {
 }
 
 export default function BildirimTercihleriPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const toast = useToast();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULTS);
   const [hydrated, setHydrated] = useState(false);
@@ -87,7 +202,7 @@ export default function BildirimTercihleriPage() {
     };
     setPrefs(next);
     savePrefs(next);
-    toast.success("Tercih güncellendi");
+    toast.success(c.prefSaved);
   };
 
   const toggleSms = (key: keyof Prefs["sms"]) => {
@@ -97,13 +212,13 @@ export default function BildirimTercihleriPage() {
     };
     setPrefs(next);
     savePrefs(next);
-    toast.success("Tercih güncellendi");
+    toast.success(c.prefSaved);
   };
 
   if (!hydrated) {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
-        <div className="text-center text-gri-500">Yükleniyor…</div>
+        <div className="text-center text-gri-500">{c.loading}</div>
       </main>
     );
   }
@@ -117,20 +232,19 @@ export default function BildirimTercihleriPage() {
             href="/panelim"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert"
           >
-            Panelim
+            {c.breadPanel}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">Bildirim tercihleri</span>
+          <span className="font-semibold">{c.breadCurrent}</span>
         </div>
 
         <div className="mb-6">
-          <Eyebrow>Hesap ayarları</Eyebrow>
+          <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Bildirim tercihleri
+            {c.title}
           </h1>
           <p className="mt-2 text-base text-gri-700 leading-relaxed">
-            Pim&rsquo;den ne zaman email/SMS almak istediğini sen belirle.
-            Sipariş güncellemeleri zorunlu (yasal), diğer her şey kapatılabilir.
+            {c.intro}
           </p>
         </div>
 
@@ -141,40 +255,41 @@ export default function BildirimTercihleriPage() {
               <Icon.ChatBubble size={18} />
             </div>
             <div>
-              <h2 className="font-semibold text-lg">E-posta bildirimleri</h2>
-              <p className="text-[12px] text-gri-700">Mail ile gönderilir</p>
+              <h2 className="font-semibold text-lg">{c.emailTitle}</h2>
+              <p className="text-[12px] text-gri-700">{c.emailSub}</p>
             </div>
           </div>
 
           <div className="space-y-1">
             <ToggleRow
-              label="Sipariş güncellemeleri"
-              description="Ödeme alındı, üretime girdi, kargoya verildi."
+              label={c.emailRows.orderUpdates.label}
+              description={c.emailRows.orderUpdates.desc}
               required
+              requiredLabel={c.requiredBadge}
               checked={prefs.email.orderUpdates}
               onChange={() => toggleEmail("orderUpdates")}
             />
             <ToggleRow
-              label="Prova hazır"
-              description="Provayı incele ve onayla emaili."
+              label={c.emailRows.proofReady.label}
+              description={c.emailRows.proofReady.desc}
               checked={prefs.email.proofReady}
               onChange={() => toggleEmail("proofReady")}
             />
             <ToggleRow
-              label="Kargo bildirimi"
-              description="Kargo takip linki + tahmini teslim."
+              label={c.emailRows.shippingUpdates.label}
+              description={c.emailRows.shippingUpdates.desc}
               checked={prefs.email.shippingUpdates}
               onChange={() => toggleEmail("shippingUpdates")}
             />
             <ToggleRow
-              label="Kampanya ve duyurular"
-              description="Yeni malzeme, indirim, etkinlikler. Ayda 1-2 email."
+              label={c.emailRows.marketing.label}
+              description={c.emailRows.marketing.desc}
               checked={prefs.email.marketing}
               onChange={() => toggleEmail("marketing")}
             />
             <ToggleRow
-              label="Blog yazıları"
-              description="Yeni rehber yayınlandığında özet email."
+              label={c.emailRows.blog.label}
+              description={c.emailRows.blog.desc}
               checked={prefs.email.blog}
               onChange={() => toggleEmail("blog")}
             />
@@ -188,29 +303,27 @@ export default function BildirimTercihleriPage() {
               <Icon.Bolt size={18} />
             </div>
             <div>
-              <h2 className="font-semibold text-lg">SMS bildirimleri</h2>
-              <p className="text-[12px] text-gri-700">
-                Acil + zamana duyarlı durumlar için
-              </p>
+              <h2 className="font-semibold text-lg">{c.smsTitle}</h2>
+              <p className="text-[12px] text-gri-700">{c.smsSub}</p>
             </div>
           </div>
 
           <div className="space-y-1">
             <ToggleRow
-              label="Acil sipariş bildirimi"
-              description="Üretimde sorun, geç teslim riski gibi durumlar."
+              label={c.smsRows.urgentOrder.label}
+              description={c.smsRows.urgentOrder.desc}
               checked={prefs.sms.urgentOrder}
               onChange={() => toggleSms("urgentOrder")}
             />
             <ToggleRow
-              label="Prova bekliyor SMS"
-              description="Email yetmez, kısa süre içinde onay gerekiyorsa."
+              label={c.smsRows.proofReady.label}
+              description={c.smsRows.proofReady.desc}
               checked={prefs.sms.proofReady}
               onChange={() => toggleSms("proofReady")}
             />
             <ToggleRow
-              label="Kargo teslimat günü"
-              description="Kargo gelmeden önce bilgi notu."
+              label={c.smsRows.delivery.label}
+              description={c.smsRows.delivery.desc}
               checked={prefs.sms.delivery}
               onChange={() => toggleSms("delivery")}
             />
@@ -222,13 +335,9 @@ export default function BildirimTercihleriPage() {
           <div className="flex gap-4 items-start">
             <Pim pose="happy" size={48} bob={false} />
             <div>
-              <h3 className="font-semibold text-base mb-1">
-                Tercihler hemen uygulanır
-              </h3>
+              <h3 className="font-semibold text-base mb-1">{c.footerTitle}</h3>
               <p className="text-[13px] text-gri-700 leading-relaxed">
-                İstediğin zaman kapatabilir/açabilirsin. Email gönderim
-                altyapısı Faz 2&rsquo;de Resend ile aktif olacak; şimdilik
-                tercihler kayıtlı tutuluyor.
+                {c.footerDesc}
               </p>
             </div>
           </div>
@@ -242,12 +351,14 @@ function ToggleRow({
   label,
   description,
   required,
+  requiredLabel,
   checked,
   onChange,
 }: {
   label: string;
   description: string;
   required?: boolean;
+  requiredLabel?: string;
   checked: boolean;
   onChange: () => void;
 }) {
@@ -263,7 +374,7 @@ function ToggleRow({
           <span className="font-semibold text-[14.5px]">{label}</span>
           {required && (
             <span className="inline-flex items-center h-[20px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold">
-              Zorunlu
+              {requiredLabel ?? "Required"}
             </span>
           )}
         </div>

@@ -16,6 +16,7 @@ import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { useT } from "@/lib/i18n/context";
 
 // Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
 // olarak gösterilir, daha basit. Admin daha granuler görür.
@@ -34,6 +35,65 @@ interface Order {
   total: number;
   status: CustomerStatus;
 }
+
+const COPY = {
+  tr: {
+    eyebrow: "Hesabım",
+    title: "Tüm siparişlerim",
+    subtitle: (n: number) =>
+      `${n} sipariş — filtreleyerek bul, tekrar sipariş ver veya detayı incele.`,
+    newOrder: "Yeni sipariş",
+    searchPlaceholder: "Sipariş ID veya isim ara…",
+    filterAll: "Tümü",
+    statusQcPending: "Kontrolde",
+    statusInProduction: "Üretimde",
+    statusShipped: "Kargoda",
+    statusDelivered: "Teslim edildi",
+    statusCancelled: "İptal",
+    emptyTitle: "Henüz siparişin yok",
+    emptyDesc: "İlk siparişini ver — sonra burada görürsün.",
+    printEtiket: "Etiket bastır",
+    printSticker: "Sticker bastır",
+    noResultsTitle: "Sonuç bulunamadı",
+    noResultsDesc: "Filtreyi gevşetmeyi veya arama metnini değiştirmeyi dene.",
+    resetFilter: "Filtreyi sıfırla",
+    multiOrder: (n: number) => `${n} ürünlük sipariş`,
+    pcs: "adet",
+    currency: "TL",
+    reorder: "Tekrar sipariş",
+    detail: "Detay",
+    locale: "tr-TR",
+    dateFmt: { day: "numeric", month: "short", year: "numeric" } as const,
+  },
+  en: {
+    eyebrow: "My account",
+    title: "All my orders",
+    subtitle: (n: number) =>
+      `${n} order${n === 1 ? "" : "s"} — filter to find, reorder or view details.`,
+    newOrder: "New order",
+    searchPlaceholder: "Search order ID or name…",
+    filterAll: "All",
+    statusQcPending: "In review",
+    statusInProduction: "In production",
+    statusShipped: "In transit",
+    statusDelivered: "Delivered",
+    statusCancelled: "Cancelled",
+    emptyTitle: "No orders yet",
+    emptyDesc: "Place your first order — it will show up here.",
+    printEtiket: "Print labels",
+    printSticker: "Print stickers",
+    noResultsTitle: "No results",
+    noResultsDesc: "Try loosening the filter or changing the search text.",
+    resetFilter: "Reset filter",
+    multiOrder: (n: number) => `Order with ${n} items`,
+    pcs: "units",
+    currency: "TRY",
+    reorder: "Reorder",
+    detail: "Details",
+    locale: "en-US",
+    dateFmt: { day: "numeric", month: "short", year: "numeric" } as const,
+  },
+};
 
 /** Backend OrderStatus → customer-friendly bucket. */
 function toCustomerStatus(s: OrderStatus): CustomerStatus {
@@ -55,78 +115,78 @@ function toCustomerStatus(s: OrderStatus): CustomerStatus {
   }
 }
 
-/** CustomerOrder → list view row */
-function toOrderRow(o: CustomerOrder): Order {
-  const title =
-    o.items.length === 1
-      ? o.items[0].title
-      : `${o.items.length} ürünlük sipariş`;
-  const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
-  const date = new Date(o.createdAtIso).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  return {
-    id: o.id,
-    date,
-    title,
-    qty: totalQty,
-    total: o.total,
-    status: toCustomerStatus(o.status),
-  };
-}
-
-const STATUS_META: Record<
-  CustomerStatus,
-  { label: string; color: string; bg: string }
-> = {
-  qc_pending: {
-    label: "Kontrolde",
-    color: "text-sari",
-    bg: "bg-sari-soft",
-  },
-  in_production: {
-    label: "Üretimde",
-    color: "text-pim-mercan",
-    bg: "bg-pim-mercan-tint",
-  },
-  shipped: {
-    label: "Kargoda",
-    color: "text-lacivert",
-    bg: "bg-gri-100",
-  },
-  delivered: {
-    label: "Teslim edildi",
-    color: "text-yesil",
-    bg: "bg-yesil-soft",
-  },
-  cancelled: {
-    label: "İptal",
-    color: "text-kirmizi",
-    bg: "bg-gri-100",
-  },
-};
-
-const FILTER_OPTIONS: { id: CustomerStatus | "all"; label: string }[] = [
-  { id: "all", label: "Tümü" },
-  { id: "qc_pending", label: "Kontrolde" },
-  { id: "in_production", label: "Üretimde" },
-  { id: "shipped", label: "Kargoda" },
-  { id: "delivered", label: "Teslim edildi" },
-  { id: "cancelled", label: "İptal" },
-];
-
 // Type re-export — gelecek import'lar için (lib/order.ts kanonik)
 export type { OrderStatus };
 
-const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
-
 export default function SiparislerimPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const [filter, setFilter] = useState<CustomerStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [hydrated, setHydrated] = useState(false);
+
+  const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
+
+  const STATUS_META: Record<
+    CustomerStatus,
+    { label: string; color: string; bg: string }
+  > = {
+    qc_pending: {
+      label: c.statusQcPending,
+      color: "text-sari",
+      bg: "bg-sari-soft",
+    },
+    in_production: {
+      label: c.statusInProduction,
+      color: "text-pim-mercan",
+      bg: "bg-pim-mercan-tint",
+    },
+    shipped: {
+      label: c.statusShipped,
+      color: "text-lacivert",
+      bg: "bg-gri-100",
+    },
+    delivered: {
+      label: c.statusDelivered,
+      color: "text-yesil",
+      bg: "bg-yesil-soft",
+    },
+    cancelled: {
+      label: c.statusCancelled,
+      color: "text-kirmizi",
+      bg: "bg-gri-100",
+    },
+  };
+
+  const FILTER_OPTIONS: { id: CustomerStatus | "all"; label: string }[] = [
+    { id: "all", label: c.filterAll },
+    { id: "qc_pending", label: c.statusQcPending },
+    { id: "in_production", label: c.statusInProduction },
+    { id: "shipped", label: c.statusShipped },
+    { id: "delivered", label: c.statusDelivered },
+    { id: "cancelled", label: c.statusCancelled },
+  ];
+
+  /** CustomerOrder → list view row */
+  function toOrderRow(o: CustomerOrder): Order {
+    const title =
+      o.items.length === 1 ? o.items[0].title : c.multiOrder(o.items.length);
+    const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
+    const date = new Date(o.createdAtIso).toLocaleDateString(
+      c.locale,
+      c.dateFmt
+    );
+    return {
+      id: o.id,
+      date,
+      title,
+      qty: totalQty,
+      total: o.total,
+      status: toCustomerStatus(o.status),
+    };
+  }
 
   useEffect(() => {
     const refresh = () =>
@@ -136,7 +196,8 @@ export default function SiparislerimPage() {
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () =>
       window.removeEventListener("pim_customer_orders_updated", refresh);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   const filtered = useMemo(() => {
     return orders.filter((o) => {
@@ -158,17 +219,16 @@ export default function SiparislerimPage() {
         {/* Header */}
         <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
           <div>
-            <Eyebrow>Hesabım</Eyebrow>
+            <Eyebrow>{c.eyebrow}</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Tüm siparişlerim
+              {c.title}
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              {orders.length} sipariş — filtreleyerek bul, tekrar sipariş
-              ver veya detayı incele.
+              {c.subtitle(orders.length)}
             </p>
           </div>
           <Button variant="primary" size="lg" href="/etiket">
-            <Icon.Plus size={16} /> Yeni sipariş
+            <Icon.Plus size={16} /> {c.newOrder}
           </Button>
         </div>
 
@@ -196,7 +256,7 @@ export default function SiparislerimPage() {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Sipariş ID veya isim ara…"
+                  placeholder={c.searchPlaceholder}
                   className="!h-11 !pl-10"
                 />
                 <Icon.Search
@@ -212,30 +272,22 @@ export default function SiparislerimPage() {
         {hydrated && orders.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Icon.Box size={48} className="text-gri-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              Henüz siparişin yok
-            </h3>
-            <p className="text-base text-gri-700 mb-5">
-              İlk siparişini ver — sonra burada görürsün.
-            </p>
+            <h3 className="text-xl font-semibold mb-2">{c.emptyTitle}</h3>
+            <p className="text-base text-gri-700 mb-5">{c.emptyDesc}</p>
             <div className="flex gap-3 justify-center flex-wrap">
               <Button variant="primary" size="lg" href="/etiket">
-                <Icon.Roll size={16} /> Etiket bastır
+                <Icon.Roll size={16} /> {c.printEtiket}
               </Button>
               <Button variant="secondary" size="lg" href="/sticker">
-                <Icon.Sticker size={16} /> Sticker bastır
+                <Icon.Sticker size={16} /> {c.printSticker}
               </Button>
             </div>
           </Card>
         ) : filtered.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Icon.Box size={48} className="text-gri-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              Sonuç bulunamadı
-            </h3>
-            <p className="text-base text-gri-700 mb-5">
-              Filtreyi gevşetmeyi veya arama metnini değiştirmeyi dene.
-            </p>
+            <h3 className="text-xl font-semibold mb-2">{c.noResultsTitle}</h3>
+            <p className="text-base text-gri-700 mb-5">{c.noResultsDesc}</p>
             <Button
               variant="secondary"
               onClick={() => {
@@ -243,7 +295,7 @@ export default function SiparislerimPage() {
                 setSearch("");
               }}
             >
-              Filtreyi sıfırla
+              {c.resetFilter}
             </Button>
           </Card>
         ) : (
@@ -286,13 +338,13 @@ export default function SiparislerimPage() {
                         {o.title}
                       </div>
                       <div className="text-[13px] text-gri-700">
-                        {fmt(o.qty)} adet · {fmt(o.total)} TL
+                        {fmt(o.qty)} {c.pcs} · {fmt(o.total)} {c.currency}
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       {o.status === "delivered" && (
                         <Button variant="secondary" size="sm" href="/etiket">
-                          Tekrar sipariş
+                          {c.reorder}
                         </Button>
                       )}
                       <Button
@@ -300,7 +352,7 @@ export default function SiparislerimPage() {
                         size="sm"
                         href={`/siparis/${o.id}`}
                       >
-                        Detay <Icon.ChevR size={12} />
+                        {c.detail} <Icon.ChevR size={12} />
                       </Button>
                     </div>
                   </div>

@@ -46,12 +46,6 @@ const COPY = {
     pimRole1Desc: "boyut, renk, fiyat hesabı",
     pimRole2Name: "Kargocu Pim",
     pimRole2Desc: "sipariş ve kargo takibi",
-    pimRole3Name: "Muhasebeci Pim",
-    pimRole3Desc: "fatura işleri (yakında)",
-    pimRole4Name: "Operatör Pim",
-    pimRole4Desc: "sorun çözüm (yakında)",
-    pimRole5Name: "Mevzuat Pim",
-    pimRole5Desc: "etiket denetimi (yakında)",
     pimWho3:
       "Hangisi lazımsa o gelir. Sen sadece sor, gerisini biz halletmeye çalışırız.",
     valuesEyebrow: "Değerlerimiz",
@@ -115,12 +109,6 @@ const COPY = {
     pimRole1Desc: "sizing, colors, pricing",
     pimRole2Name: "Shipper Pim",
     pimRole2Desc: "order and shipment tracking",
-    pimRole3Name: "Accountant Pim",
-    pimRole3Desc: "invoicing (coming soon)",
-    pimRole4Name: "Operator Pim",
-    pimRole4Desc: "issue resolution (coming soon)",
-    pimRole5Name: "Compliance Pim",
-    pimRole5Desc: "label review (coming soon)",
     pimWho3:
       "Whichever one you need shows up. Just ask, we'll handle the rest.",
     valuesEyebrow: "Values",
@@ -251,9 +239,6 @@ export default function HakkimizdaPage() {
                 {[
                   { name: c.pimRole1Name, desc: c.pimRole1Desc },
                   { name: c.pimRole2Name, desc: c.pimRole2Desc },
-                  { name: c.pimRole3Name, desc: c.pimRole3Desc },
-                  { name: c.pimRole4Name, desc: c.pimRole4Desc },
-                  { name: c.pimRole5Name, desc: c.pimRole5Desc },
                 ].map((r) => (
                   <li key={r.name} className="flex items-start gap-2">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-pim-mercan mt-2.5 shrink-0" />

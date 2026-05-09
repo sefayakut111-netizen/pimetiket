@@ -23,17 +23,178 @@ import {
   type CustomerOrder,
 } from "@/lib/customer-order";
 import type { OrderStatus } from "@/lib/order";
+import { useT } from "@/lib/i18n/context";
 
-const PHASES = [
-  "Konfigüre",
-  "Ödendi",
-  "Yüklendi",
-  "AI kontrol",
-  "Onay",
-  "Üretim",
-  "Kargo",
-  "Teslim",
-];
+const COPY = {
+  tr: {
+    phases: [
+      "Konfigüre",
+      "Ödendi",
+      "Yüklendi",
+      "AI kontrol",
+      "Onay",
+      "Üretim",
+      "Kargo",
+      "Teslim",
+    ],
+    statusInControl: "Kontrolde",
+    statusProofPending: "Onay bekliyor",
+    statusInProduction: "Üretimde",
+    statusShipped: "Kargoda",
+    statusDelivered: "Teslim edildi",
+    statusCancelled: "İptal",
+    helloShort: "Hoş geldin",
+    helloWith: (name: string) => `Hoş geldin, ${name} 👋`,
+    helloEmpty: "Hoş geldin 👋",
+    activeNone: "Henüz aktif siparişin yok. Pim seninle bir tur atmak için sabırsızlanıyor.",
+    activeSummary: (active: number, prod: number, shipped: number) => {
+      const parts: string[] = [`${active} aktif siparişin var.`];
+      if (prod > 0) parts.push(`${prod} tanesi üretimde.`);
+      if (shipped > 0) parts.push(`${shipped} tanesi kargoda.`);
+      return parts.join(" ");
+    },
+    statActive: "Aktif sipariş",
+    statActiveSubReady: "Yeni sipariş için hazır",
+    statActiveSubBusy: (prod: number, shipped: number) =>
+      `${prod} üretimde, ${shipped} kargoda`,
+    statWallet: "Cüzdan bakiyen",
+    statWalletSub: "Cüzdan açılışı yakında",
+    statPrintedYear: (year: number) => `${year} basıldı`,
+    statPrintedSub: "adet etiket + sticker",
+    qaNewEtiket: "Yeni etiket",
+    qaNewEtiketDesc: "1000 adetten başla",
+    qaNewSticker: "Yeni sticker",
+    qaNewStickerDesc: "25 adetten başla",
+    qaReorder: "Tekrar sipariş",
+    qaReorderEtiket: (label: string) => `Son etiket: ${label}`,
+    qaReorderSticker: (label: string) => `Son sticker: ${label}`,
+    qaReorderSoon: "Yakında öneri",
+    qaReorderRepeat: "Tekrarla",
+    activeOrdersTitle: "Aktif siparişler",
+    seeAll: "Tümünü gör",
+    activeEmptyTitle: "Aktif sipariş yok",
+    activeEmptyDesc:
+      "Yeni bir etiket veya sticker konfigüre etmeye başla — sipariş verdiğinde burada görünecek.",
+    printEtiket: "Etiket bastır",
+    printSticker: "Sticker bastır",
+    multiOrder: (n: number) => `${n} ürünlük sipariş`,
+    mixed: "Karışık",
+    pcs: "adet",
+    detail: "Detay",
+    detailArrow: "Detay →",
+    aiForYou: "SANA ÖZEL",
+    aiUpsell: (qty: string) => (
+      <>
+        Son etiket siparişin <strong>{qty} adet</strong>&rsquo;ti — stokun
+        azalmış olabilir, yeniden bastıralım mı?
+      </>
+    ),
+    reprint: "Yeniden bastır",
+    walletTitle: "Cüzdan",
+    walletDiscount: (
+      <>
+        Cüzdandan ödeyince <strong className="text-yesil">+%2 indirim</strong>{" "}
+        kazanırsın
+      </>
+    ),
+    walletDeposit: "Yatır",
+    walletNote: "Cüzdan akışı yakında — sadakat puanı ve özel ödemeler için.",
+    profileSettings: { t: "Profil ayarları", d: "Ad, e-posta, şifre" },
+    addressBook: { t: "Adres defterim", d: "Teslim ve fatura adresleri" },
+    invoiceInfo: { t: "Fatura bilgileri", d: "TC/VKN, e-fatura tercihi" },
+    helpCenter: { t: "Yardım merkezi", d: "Pim ile sohbet" },
+    pimChatTitle: "Pim'le konuş",
+    pimChatSub: "Sağ alttaki balonla sohbet aç",
+    pimChatDesc:
+      "Soru, sipariş takibi, fiyat hesabı — Pim her zaman sayfanın sağ alt köşesinde. Tıkla, konuş.",
+    locale: "tr-TR",
+  },
+  en: {
+    phases: [
+      "Configure",
+      "Paid",
+      "Uploaded",
+      "AI check",
+      "Approval",
+      "Production",
+      "Shipping",
+      "Delivered",
+    ],
+    statusInControl: "In review",
+    statusProofPending: "Awaiting approval",
+    statusInProduction: "In production",
+    statusShipped: "In transit",
+    statusDelivered: "Delivered",
+    statusCancelled: "Cancelled",
+    helloShort: "Welcome",
+    helloWith: (name: string) => `Welcome back, ${name} 👋`,
+    helloEmpty: "Welcome 👋",
+    activeNone:
+      "No active orders yet. Pim is excited to take you on a tour.",
+    activeSummary: (active: number, prod: number, shipped: number) => {
+      const parts: string[] = [`You have ${active} active order${active === 1 ? "" : "s"}.`];
+      if (prod > 0) parts.push(`${prod} in production.`);
+      if (shipped > 0) parts.push(`${shipped} in transit.`);
+      return parts.join(" ");
+    },
+    statActive: "Active orders",
+    statActiveSubReady: "Ready for a new order",
+    statActiveSubBusy: (prod: number, shipped: number) =>
+      `${prod} producing, ${shipped} shipping`,
+    statWallet: "Wallet balance",
+    statWalletSub: "Wallet launching soon",
+    statPrintedYear: (year: number) => `Printed in ${year}`,
+    statPrintedSub: "labels + stickers",
+    qaNewEtiket: "New label",
+    qaNewEtiketDesc: "Start at 1000 units",
+    qaNewSticker: "New sticker",
+    qaNewStickerDesc: "Start at 25 units",
+    qaReorder: "Reorder",
+    qaReorderEtiket: (label: string) => `Last label: ${label}`,
+    qaReorderSticker: (label: string) => `Last sticker: ${label}`,
+    qaReorderSoon: "Suggestions soon",
+    qaReorderRepeat: "Repeat",
+    activeOrdersTitle: "Active orders",
+    seeAll: "See all",
+    activeEmptyTitle: "No active orders",
+    activeEmptyDesc:
+      "Start configuring a label or sticker — once you place an order, it will appear here.",
+    printEtiket: "Print labels",
+    printSticker: "Print stickers",
+    multiOrder: (n: number) => `Order with ${n} items`,
+    mixed: "Mixed",
+    pcs: "units",
+    detail: "Details",
+    detailArrow: "Details →",
+    aiForYou: "JUST FOR YOU",
+    aiUpsell: (qty: string) => (
+      <>
+        Your last label order was <strong>{qty} units</strong> — stock may be
+        running low, want to reprint?
+      </>
+    ),
+    reprint: "Reprint",
+    walletTitle: "Wallet",
+    walletDiscount: (
+      <>
+        Pay from wallet to earn{" "}
+        <strong className="text-yesil">+2% discount</strong>
+      </>
+    ),
+    walletDeposit: "Deposit",
+    walletNote:
+      "Wallet flow coming soon — for loyalty points and special payments.",
+    profileSettings: { t: "Profile settings", d: "Name, email, password" },
+    addressBook: { t: "Address book", d: "Shipping & invoice addresses" },
+    invoiceInfo: { t: "Invoice info", d: "TC/VAT, e-invoice preference" },
+    helpCenter: { t: "Help center", d: "Chat with Pim" },
+    pimChatTitle: "Talk to Pim",
+    pimChatSub: "Open the chat from the bubble at the bottom-right",
+    pimChatDesc:
+      "Questions, order tracking, price quotes — Pim is always at the bottom-right of the page. Click and chat.",
+    locale: "en-US",
+  },
+};
 
 /** OrderStatus → PHASES index (8 faz, 0-7) */
 function statusToPhaseIndex(status: OrderStatus): number {
@@ -58,7 +219,10 @@ function statusToPhaseIndex(status: OrderStatus): number {
   }
 }
 
-function statusMeta(status: OrderStatus): {
+function statusMeta(
+  status: OrderStatus,
+  c: typeof COPY.tr
+): {
   label: string;
   color: string;
   soft: string;
@@ -70,42 +234,42 @@ function statusMeta(status: OrderStatus): {
     case "qc_flagged":
     case "operator_review":
       return {
-        label: "Kontrolde",
+        label: c.statusInControl,
         color: "var(--color-sari)",
         soft: "var(--color-sari-soft)",
         pim: "inspect",
       };
     case "proof_pending":
       return {
-        label: "Onay bekliyor",
+        label: c.statusProofPending,
         color: "var(--color-sari)",
         soft: "var(--color-sari-soft)",
         pim: "inspect",
       };
     case "in_production":
       return {
-        label: "Üretimde",
+        label: c.statusInProduction,
         color: "var(--color-pim-mercan)",
         soft: "var(--color-pim-mercan-tint)",
         pim: "happy",
       };
     case "shipped":
       return {
-        label: "Kargoda",
+        label: c.statusShipped,
         color: "var(--color-lacivert)",
         soft: "var(--color-gri-100)",
         pim: "box",
       };
     case "delivered":
       return {
-        label: "Teslim edildi",
+        label: c.statusDelivered,
         color: "var(--color-yesil)",
         soft: "var(--color-yesil-soft)",
         pim: "wave",
       };
     case "cancelled":
       return {
-        label: "İptal",
+        label: c.statusCancelled,
         color: "var(--color-kirmizi)",
         soft: "var(--color-gri-100)",
         pim: "inspect",
@@ -113,16 +277,10 @@ function statusMeta(status: OrderStatus): {
   }
 }
 
-const PROFILE_LINKS = [
-  { t: "Profil ayarları", d: "Ad, e-posta, şifre", href: "/profil" },
-  { t: "Adres defterim", d: "Teslim ve fatura adresleri", href: "/adreslerim" },
-  { t: "Fatura bilgileri", d: "TC/VKN, e-fatura tercihi", href: "/fatura-bilgileri" },
-  { t: "Yardım merkezi", d: "Pim ile sohbet", href: "/sss" },
-];
-
-const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
-
 export default function PanelimPage() {
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -134,6 +292,15 @@ export default function PanelimPage() {
     return () =>
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
+
+  const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
+
+  const PROFILE_LINKS = [
+    { ...c.profileSettings, href: "/profil" },
+    { ...c.addressBook, href: "/adreslerim" },
+    { ...c.invoiceInfo, href: "/fatura-bilgileri" },
+    { ...c.helpCenter, href: "/sss" },
+  ];
 
   // Aktif siparişler (delivered + cancelled hariç) — ilk 3
   const activeOrders = orders
@@ -175,7 +342,7 @@ export default function PanelimPage() {
 
   const today = new Date();
   const dateLabel = today
-    .toLocaleDateString("tr-TR", {
+    .toLocaleDateString(c.locale, {
       day: "numeric",
       month: "long",
       weekday: "long",
@@ -194,39 +361,39 @@ export default function PanelimPage() {
             {dateLabel}
           </div>
           <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight mt-2 mb-1.5">
-            {customerName ? `Hoş geldin, ${customerName} 👋` : "Hoş geldin 👋"}
+            {customerName ? c.helloWith(customerName) : c.helloEmpty}
           </h1>
           <p className="text-base text-gri-700">
             {!hydrated
               ? "..."
               : activeCount === 0
-                ? "Henüz aktif siparişin yok. Pim seninle bir tur atmak için sabırsızlanıyor."
-                : `${activeCount} aktif siparişin var. ${inProductionCount > 0 ? `${inProductionCount} tanesi üretimde.` : ""} ${shippedCount > 0 ? `${shippedCount} tanesi kargoda.` : ""}`.trim()}
+                ? c.activeNone
+                : c.activeSummary(activeCount, inProductionCount, shippedCount)}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7 max-w-[720px]">
             <Stat
-              label="Aktif sipariş"
+              label={c.statActive}
               value={hydrated ? activeCount.toString() : "—"}
               sub={
                 inProductionCount + shippedCount > 0
-                  ? `${inProductionCount} üretimde, ${shippedCount} kargoda`
-                  : "Yeni sipariş için hazır"
+                  ? c.statActiveSubBusy(inProductionCount, shippedCount)
+                  : c.statActiveSubReady
               }
               icon={<Icon.Box size={18} />}
               accent="text-pim-mercan"
             />
             <Stat
-              label="Cüzdan bakiyen"
+              label={c.statWallet}
               value="0 TL"
-              sub="Cüzdan açılışı yakında"
+              sub={c.statWalletSub}
               icon={<Icon.Wallet size={18} />}
               accent="text-yesil"
             />
             <Stat
-              label={`${thisYear} basıldı`}
+              label={c.statPrintedYear(thisYear)}
               value={hydrated ? fmt(thisYearTotalQty) : "—"}
-              sub="adet etiket + sticker"
+              sub={c.statPrintedSub}
               icon={<Icon.Sparkle size={18} />}
               accent="text-turuncu"
             />
@@ -237,26 +404,35 @@ export default function PanelimPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           <QuickAction
             icon={<Icon.Roll size={20} />}
-            title="Yeni etiket"
-            desc="1000 adetten başla"
+            title={c.qaNewEtiket}
+            desc={c.qaNewEtiketDesc}
             href="/etiket"
             primary
           />
           <QuickAction
             icon={<Icon.Sticker size={20} />}
-            title="Yeni sticker"
-            desc="25 adetten başla"
+            title={c.qaNewSticker}
+            desc={c.qaNewStickerDesc}
             href="/sticker"
           />
           <QuickAction
             icon={<Icon.Bolt size={20} />}
-            title="Tekrar sipariş"
+            title={c.qaReorder}
             desc={
               lastEtiketItem
-                ? `Son etiket: ${lastEtiketItem.title.split("·").slice(1).join("·").trim() || "Tekrarla"}`
+                ? c.qaReorderEtiket(
+                    lastEtiketItem.title.split("·").slice(1).join("·").trim() ||
+                      c.qaReorderRepeat
+                  )
                 : lastStickerItem
-                  ? `Son sticker: ${lastStickerItem.title.split("·").slice(1).join("·").trim() || "Tekrarla"}`
-                  : "Yakında öneri"
+                  ? c.qaReorderSticker(
+                      lastStickerItem.title
+                        .split("·")
+                        .slice(1)
+                        .join("·")
+                        .trim() || c.qaReorderRepeat
+                    )
+                  : c.qaReorderSoon
             }
             href={lastEtiketItem ? "/etiket" : "/sticker"}
           />
@@ -269,13 +445,13 @@ export default function PanelimPage() {
             <section>
               <div className="flex justify-between items-center mb-3.5">
                 <h2 className="text-[24px] font-semibold tracking-tight">
-                  Aktif siparişler
+                  {c.activeOrdersTitle}
                 </h2>
                 <Link
                   href="/siparislerim"
                   className="text-[13px] font-semibold text-gri-700 hover:text-pim-mercan inline-flex items-center gap-1"
                 >
-                  Tümünü gör <Icon.ChevR size={12} />
+                  {c.seeAll} <Icon.ChevR size={12} />
                 </Link>
               </div>
 
@@ -288,35 +464,34 @@ export default function PanelimPage() {
                 <Card padding="p-8" className="text-center">
                   <Pim pose="think" size={120} />
                   <h3 className="mt-3 text-lg font-semibold">
-                    Aktif sipariş yok
+                    {c.activeEmptyTitle}
                   </h3>
                   <p className="mt-2 text-[13px] text-gri-700 max-w-[380px] mx-auto leading-relaxed">
-                    Yeni bir etiket veya sticker konfigüre etmeye başla —
-                    sipariş verdiğinde burada görünecek.
+                    {c.activeEmptyDesc}
                   </p>
                   <div className="mt-5 flex gap-2 justify-center">
                     <Button variant="primary" size="sm" href="/etiket">
-                      <Icon.Roll size={14} /> Etiket bastır
+                      <Icon.Roll size={14} /> {c.printEtiket}
                     </Button>
                     <Button variant="secondary" size="sm" href="/sticker">
-                      <Icon.Sticker size={14} /> Sticker bastır
+                      <Icon.Sticker size={14} /> {c.printSticker}
                     </Button>
                   </div>
                 </Card>
               ) : (
                 <div className="flex flex-col gap-3">
                   {activeOrders.map((o) => {
-                    const meta = statusMeta(o.status);
+                    const meta = statusMeta(o.status, c);
                     const phase = statusToPhaseIndex(o.status);
                     const title =
                       o.items.length === 1
                         ? o.items[0].title
-                        : `${o.items.length} ürünlük sipariş`;
+                        : c.multiOrder(o.items.length);
                     const totalQty = o.items.reduce((s, i) => s + i.qty, 0);
                     const matSummary =
                       o.items.length === 1
                         ? o.items[0].config.split("·").slice(-2).join("·").trim()
-                        : "Karışık";
+                        : c.mixed;
                     return (
                       <Card key={o.id} padding="p-5">
                         <div className="flex gap-4 items-start">
@@ -349,12 +524,12 @@ export default function PanelimPage() {
                               {title}
                             </div>
                             <div className="text-[13px] text-gri-700 tabular-nums">
-                              {fmt(totalQty)} adet · {matSummary}
+                              {fmt(totalQty)} {c.pcs} · {matSummary}
                             </div>
 
                             {/* Phase mini timeline */}
                             <div className="flex items-center gap-1 mt-3.5">
-                              {PHASES.map((_, i) => (
+                              {c.phases.map((_, i) => (
                                 <div
                                   key={i}
                                   className="flex-1 flex items-center gap-1"
@@ -374,7 +549,7 @@ export default function PanelimPage() {
                                           : "none",
                                     }}
                                   />
-                                  {i < PHASES.length - 1 && (
+                                  {i < c.phases.length - 1 && (
                                     <span
                                       className="flex-1 h-0.5"
                                       style={{
@@ -390,13 +565,13 @@ export default function PanelimPage() {
                             </div>
                             <div className="flex justify-between mt-1.5">
                               <span className="text-[11.5px] text-gri-700 font-semibold uppercase tracking-[0.04em]">
-                                {PHASES[phase]}
+                                {c.phases[phase]}
                               </span>
                               <span
                                 className="text-[11.5px] font-bold uppercase tracking-[0.04em]"
                                 style={{ color: meta.color }}
                               >
-                                Detay →
+                                {c.detailArrow}
                               </span>
                             </div>
                           </div>
@@ -406,7 +581,7 @@ export default function PanelimPage() {
                             href={`/siparis/${o.id}`}
                             className="shrink-0"
                           >
-                            Detay <Icon.ChevR size={12} />
+                            {c.detail} <Icon.ChevR size={12} />
                           </Button>
                         </div>
                       </Card>
@@ -422,14 +597,10 @@ export default function PanelimPage() {
                 <PimMini pose="think" size={56} />
                 <div className="flex-1">
                   <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">
-                    SANA ÖZEL
+                    {c.aiForYou}
                   </div>
                   <div className="font-semibold text-[15px] mt-1 leading-snug">
-                    Son etiket siparişin{" "}
-                    <strong>
-                      {lastEtiketQty.toLocaleString("tr-TR")} adet
-                    </strong>
-                    &rsquo;ti — stokun azalmış olabilir, yeniden bastıralım mı?
+                    {c.aiUpsell(lastEtiketQty.toLocaleString(c.locale))}
                   </div>
                 </div>
                 <Button
@@ -438,7 +609,7 @@ export default function PanelimPage() {
                   href="/etiket"
                   className="!bg-white !text-lacivert !ring-0 shrink-0"
                 >
-                  Yeniden bastır <Icon.ArrowR size={14} />
+                  {c.reprint} <Icon.ArrowR size={14} />
                 </Button>
               </div>
             )}
@@ -449,7 +620,7 @@ export default function PanelimPage() {
             {/* Wallet */}
             <Card padding="p-5">
               <div className="flex justify-between items-center mb-3.5">
-                <h3 className="text-base font-semibold m-0">Cüzdan</h3>
+                <h3 className="text-base font-semibold m-0">{c.walletTitle}</h3>
                 <Icon.Wallet size={18} />
               </div>
               <div className="text-[28px] font-bold tracking-tight tabular-nums">
@@ -459,8 +630,7 @@ export default function PanelimPage() {
                 </span>
               </div>
               <div className="text-[13px] text-gri-700 mt-1">
-                Cüzdandan ödeyince{" "}
-                <strong className="text-yesil">+%2 indirim</strong> kazanırsın
+                {c.walletDiscount}
               </div>
               <div className="flex gap-2 mt-3.5">
                 <Button
@@ -469,7 +639,7 @@ export default function PanelimPage() {
                   href="/cuzdan"
                   className="flex-1"
                 >
-                  <Icon.Plus size={14} /> Yatır
+                  <Icon.Plus size={14} /> {c.walletDeposit}
                 </Button>
                 <Button
                   variant="secondary"
@@ -477,11 +647,11 @@ export default function PanelimPage() {
                   href="/cuzdan"
                   className="flex-1"
                 >
-                  Detay
+                  {c.detail}
                 </Button>
               </div>
               <div className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
-                Cüzdan akışı yakında — sadakat puanı ve özel ödemeler için.
+                {c.walletNote}
               </div>
             </Card>
 
@@ -512,15 +682,14 @@ export default function PanelimPage() {
               <div className="flex gap-3 items-center mb-2.5">
                 <PimMini pose="chat" size={40} />
                 <div>
-                  <div className="font-bold">Pim&rsquo;le konuş</div>
+                  <div className="font-bold">{c.pimChatTitle}</div>
                   <div className="text-[11.5px] text-gri-700">
-                    Sağ alttaki balonla sohbet aç
+                    {c.pimChatSub}
                   </div>
                 </div>
               </div>
               <p className="text-[12px] text-gri-700 leading-relaxed">
-                Soru, sipariş takibi, fiyat hesabı — Pim her zaman sayfanın
-                sağ alt köşesinde. Tıkla, konuş.
+                {c.pimChatDesc}
               </p>
             </Card>
           </div>

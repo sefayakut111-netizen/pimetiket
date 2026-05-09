@@ -20,55 +20,207 @@ import {
   type CustomerOrder,
 } from "@/lib/customer-order";
 import type { OrderStatus } from "@/lib/order";
+import { useT } from "@/lib/i18n/context";
 
-const PHASES = [
-  { id: "konfigure", label: "Konfigüre" },
-  { id: "odeme", label: "Ödendi" },
-  { id: "dosya", label: "Dosya yüklendi" },
-  { id: "ai", label: "AI kontrol" },
-  { id: "operator", label: "Operatör onayı" },
-  { id: "prova", label: "Prova bekleniyor" },
-  { id: "uretim", label: "Üretimde" },
-  { id: "kargo", label: "Kargoda" },
-  { id: "teslim", label: "Teslim edildi" },
-] as const;
+const COPY = {
+  tr: {
+    breadPanel: "Panelim",
+    breadOrders: "Siparişlerim",
+    notFoundTitle: "Sipariş bulunamadı",
+    notFoundDesc: (id: string) => (
+      <>
+        <strong className="font-mono">{id}</strong> numaralı sipariş bu cihazda
+        kayıtlı değil. Başka bir cihazdan bakmış olabilirsin.
+      </>
+    ),
+    backToOrders: "Siparişlerime dön",
+    newOrder: "Yeni sipariş",
+    eyebrow: "Sipariş",
+    orderDate: "Sipariş tarihi",
+    estDelivery: "Tahmini teslim",
+    reorder: "Tekrar sipariş",
+    journeyTitle: "Sipariş yolculuğu",
+    nextStepHint: "Sıradaki adım — Pim sana ne yapacağını söylüyor.",
+    multiOrder: (n: number) => `${n} ürünlük sipariş`,
+    proofActionRequired: "Aksiyon gerekli",
+    proofTitle: "Provanı incele ve onayla",
+    proofDesc:
+      "AI ön kontrolünden geçti, operatörümüz baktı — tasarımının matbaa öncesi nasıl görüneceğini hazırladık. Yakınlaştır, kontrol et, onayla.",
+    proofMockChips: "DOĞAL · ORGANİK · 100ml",
+    proofPreviewSize: "%100 önizleme",
+    proofColorWarn: "Renk uyarısı:",
+    proofColorWarnText:
+      "Ekrandaki renkler matbaa baskısından küçük ölçüde farklı çıkabilir. CMYK kalibrasyonu fason ortakla aynı.",
+    proofApprove: "Provayı onayla",
+    proofRequestChange: "Değişiklik iste",
+    proofDownloadPdf: "PDF indir",
+    proofApprovedTitle: "Prova onayın alındı 🎉",
+    proofApprovedDesc:
+      "Sipariş üretime gönderildi. Yaklaşık 5 gün içinde kargoya verilir.",
+    summaryTitle: "Sipariş özeti",
+    pcs: "adet",
+    subtotal: "Ara toplam",
+    shipping: "Kargo",
+    free: "Ücretsiz",
+    total: "TOPLAM",
+    vatIncluded: "KDV dahil",
+    deliveryTitle: "Teslimat",
+    paymentTitle: "Ödeme",
+    invoice: "Fatura",
+    pimAskTitle: "Pim'e sor",
+    pimAskSub: "Bu sipariş hakkında soru?",
+    openChat: "Sohbeti aç →",
+    designTitle: "Tasarım dosyası",
+    uploadCta: "Dosya yükle",
+    uploading: "Yükleniyor...",
+    designEmptyTitle: "Henüz tasarım yüklemedin",
+    designEmptyDesc:
+      "PDF, AI, EPS, PSD, PNG, JPG, SVG kabul ederim. Yükledikten sonra Pim AI saniyeler içinde DPI / CMYK / boşluk kontrolü yapar.",
+    aiFlagBadge: "AI flag",
+    warnBadge: "Uyarı",
+    aiPassBadge: "AI geçti",
+    remove: "Kaldır",
+    confirmRemove: "Bu dosya silinsin mi?",
+    mockUploadNote: (
+      <>
+        Mock yükleme — gerçek dosya storage Faz 2&rsquo;de Supabase Storage ile
+        aktif olacak.
+      </>
+    ),
+    flagDpiOk: "Çözünürlük 320 DPI — baskı için yeterli",
+    flagCmykOk: "CMYK renk uzayı tespit edildi",
+    flagMarginWarn: "Kenar boşluğu 2mm'in altında — kesim kayması riskli",
+    locale: "tr-TR",
+    currency: "TL",
+    invoiceIndividual: "Bireysel (e-arşiv)",
+    invoiceCorporate: "Kurumsal (e-fatura)",
+    payCard: "Kredi kartı",
+    payWallet: "Cüzdan bakiyesi",
+    payTransfer: "Havale / EFT",
+    phases: [
+      { id: "konfigure", label: "Konfigüre" },
+      { id: "odeme", label: "Ödendi" },
+      { id: "dosya", label: "Dosya yüklendi" },
+      { id: "ai", label: "AI kontrol" },
+      { id: "operator", label: "Operatör onayı" },
+      { id: "prova", label: "Prova bekleniyor" },
+      { id: "uretim", label: "Üretimde" },
+      { id: "kargo", label: "Kargoda" },
+      { id: "teslim", label: "Teslim edildi" },
+    ],
+  },
+  en: {
+    breadPanel: "Dashboard",
+    breadOrders: "My orders",
+    notFoundTitle: "Order not found",
+    notFoundDesc: (id: string) => (
+      <>
+        Order <strong className="font-mono">{id}</strong> isn&rsquo;t saved on
+        this device. You may have viewed it from another device.
+      </>
+    ),
+    backToOrders: "Back to orders",
+    newOrder: "New order",
+    eyebrow: "Order",
+    orderDate: "Order date",
+    estDelivery: "Estimated delivery",
+    reorder: "Reorder",
+    journeyTitle: "Order journey",
+    nextStepHint: "Next step — Pim tells you what to do.",
+    multiOrder: (n: number) => `Order with ${n} items`,
+    proofActionRequired: "Action required",
+    proofTitle: "Review and approve your proof",
+    proofDesc:
+      "Passed AI pre-check, our operator reviewed it — we prepared a preview of how your design will look before printing. Zoom in, check, and approve.",
+    proofMockChips: "NATURAL · ORGANIC · 100ml",
+    proofPreviewSize: "100% preview",
+    proofColorWarn: "Color note:",
+    proofColorWarnText:
+      "On-screen colors may vary slightly from the printed result. CMYK calibration matches our partner.",
+    proofApprove: "Approve proof",
+    proofRequestChange: "Request changes",
+    proofDownloadPdf: "Download PDF",
+    proofApprovedTitle: "Proof approved 🎉",
+    proofApprovedDesc:
+      "Order sent to production. It will be shipped within ~5 days.",
+    summaryTitle: "Order summary",
+    pcs: "units",
+    subtotal: "Subtotal",
+    shipping: "Shipping",
+    free: "Free",
+    total: "TOTAL",
+    vatIncluded: "VAT included",
+    deliveryTitle: "Delivery",
+    paymentTitle: "Payment",
+    invoice: "Invoice",
+    pimAskTitle: "Ask Pim",
+    pimAskSub: "Question about this order?",
+    openChat: "Open chat →",
+    designTitle: "Design file",
+    uploadCta: "Upload file",
+    uploading: "Uploading...",
+    designEmptyTitle: "No design uploaded yet",
+    designEmptyDesc:
+      "Accepts PDF, AI, EPS, PSD, PNG, JPG, SVG. Once uploaded, Pim AI runs DPI / CMYK / margin checks in seconds.",
+    aiFlagBadge: "AI flag",
+    warnBadge: "Warning",
+    aiPassBadge: "AI passed",
+    remove: "Remove",
+    confirmRemove: "Delete this file?",
+    mockUploadNote: (
+      <>
+        Mock upload — real file storage will be active in Phase 2 with Supabase
+        Storage.
+      </>
+    ),
+    flagDpiOk: "Resolution 320 DPI — sufficient for print",
+    flagCmykOk: "CMYK color space detected",
+    flagMarginWarn: "Margin under 2mm — cut shift risk",
+    locale: "en-US",
+    currency: "TRY",
+    invoiceIndividual: "Individual (e-archive)",
+    invoiceCorporate: "Corporate (e-invoice)",
+    payCard: "Credit card",
+    payWallet: "Wallet balance",
+    payTransfer: "Bank transfer",
+    phases: [
+      { id: "konfigure", label: "Configure" },
+      { id: "odeme", label: "Paid" },
+      { id: "dosya", label: "File uploaded" },
+      { id: "ai", label: "AI check" },
+      { id: "operator", label: "Operator approval" },
+      { id: "prova", label: "Awaiting proof" },
+      { id: "uretim", label: "In production" },
+      { id: "kargo", label: "In transit" },
+      { id: "teslim", label: "Delivered" },
+    ],
+  },
+};
 
 /** OrderStatus → PHASES index map */
 function statusToPhaseIndex(status: OrderStatus): number {
   switch (status) {
     case "paid":
-      return 1; // Ödendi
+      return 1;
     case "qc_pending":
-      return 3; // AI kontrol
+      return 3;
     case "qc_flagged":
     case "operator_review":
-      return 4; // Operatör onayı
+      return 4;
     case "proof_pending":
-      return 5; // Prova bekleniyor
+      return 5;
     case "in_production":
-      return 6; // Üretimde
+      return 6;
     case "shipped":
-      return 7; // Kargoda
+      return 7;
     case "delivered":
-      return 8; // Teslim edildi
+      return 8;
     default:
       return 1;
   }
 }
 
-const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
-
-const INVOICE_LABEL: Record<"individual" | "corporate", string> = {
-  individual: "Bireysel (e-arşiv)",
-  corporate: "Kurumsal (e-fatura)",
-};
-
-const PAYMENT_METHOD_LABEL: Record<"card" | "wallet" | "transfer", string> = {
-  card: "Kredi kartı",
-  wallet: "Cüzdan bakiyesi",
-  transfer: "Havale / EFT",
-};
 
 export default function SiparisDetailPage({
   params,
@@ -76,9 +228,25 @@ export default function SiparisDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { locale } = useT();
+  const c = locale === "en" ? COPY.en : COPY.tr;
+
   const [proofApproved, setProofApproved] = useState(false);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
+
+  const INVOICE_LABEL: Record<"individual" | "corporate", string> = {
+    individual: c.invoiceIndividual,
+    corporate: c.invoiceCorporate,
+  };
+
+  const PAYMENT_METHOD_LABEL: Record<"card" | "wallet" | "transfer", string> = {
+    card: c.payCard,
+    wallet: c.payWallet,
+    transfer: c.payTransfer,
+  };
 
   useEffect(() => {
     setOrder(getCustomerOrder(id));
@@ -117,18 +285,17 @@ export default function SiparisDetailPage({
         <div className="mx-auto max-w-[560px] px-6 text-center">
           <Pim pose="think" size={140} />
           <h1 className="mt-3 text-[26px] md:text-[32px] font-semibold tracking-tight">
-            Sipariş bulunamadı
+            {c.notFoundTitle}
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            <strong className="font-mono">{id}</strong> numaralı sipariş bu
-            cihazda kayıtlı değil. Başka bir cihazdan bakmış olabilirsin.
+            {c.notFoundDesc(id)}
           </p>
           <div className="mt-6 flex gap-3 justify-center flex-wrap">
             <Button variant="primary" size="lg" href="/siparislerim">
-              Siparişlerime dön
+              {c.backToOrders}
             </Button>
             <Button variant="secondary" size="lg" href="/etiket">
-              Yeni sipariş
+              {c.newOrder}
             </Button>
           </div>
         </div>
@@ -140,15 +307,15 @@ export default function SiparisDetailPage({
   const title =
     order.items.length === 1
       ? order.items[0].title
-      : `${order.items.length} ürünlük sipariş`;
+      : c.multiOrder(order.items.length);
 
-  const orderDate = new Date(order.createdAtIso).toLocaleDateString("tr-TR", {
+  const orderDate = new Date(order.createdAtIso).toLocaleDateString(c.locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
   const deliveryDate = order.estimatedDelivery
-    ? new Date(order.estimatedDelivery).toLocaleDateString("tr-TR", {
+    ? new Date(order.estimatedDelivery).toLocaleDateString(c.locale, {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -165,14 +332,14 @@ export default function SiparisDetailPage({
             href="/panelim"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert"
           >
-            Panelim
+            {c.breadPanel}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
           <Link
             href="/siparislerim"
             className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert"
           >
-            Siparişlerim
+            {c.breadOrders}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
           <span className="font-semibold">{id}</span>
@@ -181,7 +348,7 @@ export default function SiparisDetailPage({
         {/* Header */}
         <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
           <div>
-            <Eyebrow>Sipariş</Eyebrow>
+            <Eyebrow>{c.eyebrow}</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight">
               {title}
             </h1>
@@ -190,16 +357,18 @@ export default function SiparisDetailPage({
                 {order.id}
               </span>
               <span>·</span>
-              <span>Sipariş tarihi: {orderDate}</span>
+              <span>
+                {c.orderDate}: {orderDate}
+              </span>
               <span>·</span>
               <span>
-                Tahmini teslim:{" "}
+                {c.estDelivery}:{" "}
                 <strong className="text-lacivert">{deliveryDate}</strong>
               </span>
             </div>
           </div>
           <Button variant="secondary" href="/etiket">
-            <Icon.Bolt size={14} /> Tekrar sipariş
+            <Icon.Bolt size={14} /> {c.reorder}
           </Button>
         </div>
 
@@ -208,9 +377,9 @@ export default function SiparisDetailPage({
           <div className="flex flex-col gap-6">
             {/* Vertical timeline */}
             <Card padding="p-6">
-              <h2 className="text-xl font-semibold mb-5">Sipariş yolculuğu</h2>
+              <h2 className="text-xl font-semibold mb-5">{c.journeyTitle}</h2>
               <ol className="flex flex-col gap-0">
-                {PHASES.map((p, i) => {
+                {c.phases.map((p, i) => {
                   const state =
                     i < phaseIdx ? "done" : i === phaseIdx ? "curr" : "todo";
                   return (
@@ -219,7 +388,7 @@ export default function SiparisDetailPage({
                       className="flex gap-4 relative pb-5 last:pb-0"
                     >
                       {/* Vertical line */}
-                      {i < PHASES.length - 1 && (
+                      {i < c.phases.length - 1 && (
                         <span
                           aria-hidden
                           className="absolute left-[13px] top-8 bottom-0 w-0.5"
@@ -246,7 +415,7 @@ export default function SiparisDetailPage({
                         </div>
                         {state === "curr" && (
                           <div className="text-[13px] text-gri-700 mt-0.5">
-                            Sıradaki adım — Pim sana ne yapacağını söylüyor.
+                            {c.nextStepHint}
                           </div>
                         )}
                       </div>
@@ -264,15 +433,13 @@ export default function SiparisDetailPage({
                     <PimMini pose="inspect" size={56} />
                     <div className="flex-1">
                       <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
-                        Aksiyon gerekli
+                        {c.proofActionRequired}
                       </div>
                       <h3 className="font-semibold text-xl mt-1.5">
-                        Provanı incele ve onayla
+                        {c.proofTitle}
                       </h3>
                       <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
-                        AI ön kontrolünden geçti, operatörümüz baktı —
-                        tasarımının matbaa öncesi nasıl görüneceğini hazırladık.
-                        Yakınlaştır, kontrol et, onayla.
+                        {c.proofDesc}
                       </p>
                     </div>
                   </div>
@@ -283,27 +450,28 @@ export default function SiparisDetailPage({
                     <div className="aspect-[4/5] bg-krem rounded-md grid place-items-center mb-3">
                       <div className="text-center">
                         <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-lacivert/60 mb-1">
-                          {order.items[0]?.title.split("·")[0].trim() ?? "Ürün"}
+                          {order.items[0]?.title.split("·")[0].trim() ?? "—"}
                         </div>
                         <div className="text-[22px] font-bold text-lacivert">
                           {order.address.name.split(" ")[0]}
                         </div>
                         <div className="text-[10px] text-gri-700 mt-1">
-                          DOĞAL · ORGANİK · 100ml
+                          {c.proofMockChips}
                         </div>
                       </div>
                     </div>
                     <div className="flex justify-between text-[11px] text-gri-500">
-                      <span>Boyut: {order.items[0]?.width}×{order.items[0]?.height}mm</span>
-                      <span>%100 önizleme</span>
+                      <span>
+                        {order.items[0]?.width}×{order.items[0]?.height}mm
+                      </span>
+                      <span>{c.proofPreviewSize}</span>
                     </div>
                   </div>
                 </div>
                 <div className="p-6 border-t border-gri-200 bg-white">
                   <p className="text-[13px] text-gri-700 leading-relaxed mb-4">
-                    <strong className="text-lacivert">Renk uyarısı:</strong>{" "}
-                    Ekrandaki renkler matbaa baskısından küçük ölçüde farklı
-                    çıkabilir. CMYK kalibrasyonu fason ortakla aynı.
+                    <strong className="text-lacivert">{c.proofColorWarn}</strong>{" "}
+                    {c.proofColorWarnText}
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <Button
@@ -311,11 +479,11 @@ export default function SiparisDetailPage({
                       onClick={() => setProofApproved(true)}
                       className="!bg-yesil hover:!bg-[#22a862]"
                     >
-                      <Icon.Check size={14} /> Provayı onayla
+                      <Icon.Check size={14} /> {c.proofApprove}
                     </Button>
-                    <Button variant="secondary">Değişiklik iste</Button>
+                    <Button variant="secondary">{c.proofRequestChange}</Button>
                     <Button variant="ghost">
-                      <Icon.Box size={14} /> PDF indir
+                      <Icon.Box size={14} /> {c.proofDownloadPdf}
                     </Button>
                   </div>
                 </div>
@@ -328,25 +496,24 @@ export default function SiparisDetailPage({
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-base">
-                    Prova onayın alındı 🎉
+                    {c.proofApprovedTitle}
                   </h3>
                   <p className="text-[13px] text-gri-700 mt-0.5">
-                    Sipariş üretime gönderildi. Yaklaşık 5 gün içinde kargoya
-                    verilir.
+                    {c.proofApprovedDesc}
                   </p>
                 </div>
               </div>
             )}
 
             {/* File upload card */}
-            <DesignUploadCard orderId={order.id} />
+            <DesignUploadCard orderId={order.id} c={c} />
           </div>
 
           {/* SIDE — özet bilgileri */}
           <div className="flex flex-col gap-4">
             {/* Order summary */}
             <Card padding="p-6">
-              <h3 className="font-semibold text-base mb-4">Sipariş özeti</h3>
+              <h3 className="font-semibold text-base mb-4">{c.summaryTitle}</h3>
               <ul className="flex flex-col gap-3 text-[13px]">
                 {order.items.map((item) => (
                   <li
@@ -358,55 +525,55 @@ export default function SiparisDetailPage({
                         {item.title}
                       </span>
                       <span className="font-semibold tabular-nums shrink-0">
-                        {fmt(item.total)} TL
+                        {fmt(item.total)} {c.currency}
                       </span>
                     </div>
                     <div className="text-[12px] text-gri-500 mt-1 leading-relaxed">
                       {item.config}
                     </div>
                     <div className="text-[12px] text-gri-700 mt-1 tabular-nums">
-                      {item.qty.toLocaleString("tr-TR")} adet ×{" "}
-                      {fmtUnit(item.unit)} TL
+                      {item.qty.toLocaleString(c.locale)} {c.pcs} ×{" "}
+                      {fmtUnit(item.unit)} {c.currency}
                     </div>
                   </li>
                 ))}
               </ul>
               <div className="mt-4 pt-3 border-t border-gri-200 space-y-1.5 text-[13px]">
                 <div className="flex justify-between">
-                  <span className="text-gri-700">Ara toplam</span>
+                  <span className="text-gri-700">{c.subtotal}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(order.subtotal)} TL
+                    {fmt(order.subtotal)} {c.currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gri-700">Kargo</span>
+                  <span className="text-gri-700">{c.shipping}</span>
                   <span className="font-semibold tabular-nums">
                     {order.shipping === 0 ? (
-                      <span className="text-yesil">Ücretsiz</span>
+                      <span className="text-yesil">{c.free}</span>
                     ) : (
-                      `${fmt(order.shipping)} TL`
+                      `${fmt(order.shipping)} ${c.currency}`
                     )}
                   </span>
                 </div>
               </div>
               <div className="mt-3 pt-3 border-t-2 border-lacivert flex justify-between items-baseline">
                 <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-                  TOPLAM
+                  {c.total}
                 </span>
                 <span className="text-2xl font-bold tabular-nums">
                   {fmt(order.total)}{" "}
-                  <span className="text-base text-gri-700">TL</span>
+                  <span className="text-base text-gri-700">{c.currency}</span>
                 </span>
               </div>
               <div className="text-[11.5px] text-gri-700 text-right mt-1">
-                KDV dahil
+                {c.vatIncluded}
               </div>
             </Card>
 
             {/* Shipping */}
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-                <Icon.Truck size={16} /> Teslimat
+                <Icon.Truck size={16} /> {c.deliveryTitle}
               </h3>
               <div className="text-[13px] text-gri-700 space-y-1.5 leading-relaxed">
                 {order.address.label && (
@@ -426,7 +593,7 @@ export default function SiparisDetailPage({
             {/* Payment */}
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-                <Icon.Wallet size={16} /> Ödeme
+                <Icon.Wallet size={16} /> {c.paymentTitle}
               </h3>
               <div className="text-[13px] text-gri-700 space-y-1.5 leading-relaxed">
                 <div>{PAYMENT_METHOD_LABEL[order.payment.method]}</div>
@@ -434,7 +601,7 @@ export default function SiparisDetailPage({
                   <div className="font-mono">{order.payment.masked}</div>
                 )}
                 <div className="text-[11.5px] text-gri-500 mt-2">
-                  Fatura: {INVOICE_LABEL[order.invoice.type]}
+                  {c.invoice}: {INVOICE_LABEL[order.invoice.type]}
                 </div>
               </div>
             </Card>
@@ -444,12 +611,12 @@ export default function SiparisDetailPage({
               <div className="flex gap-3 items-center">
                 <Pim pose="chat" size={64} bob={false} />
                 <div>
-                  <div className="font-bold text-sm">Pim&rsquo;e sor</div>
+                  <div className="font-bold text-sm">{c.pimAskTitle}</div>
                   <div className="text-[11.5px] text-gri-700 mt-0.5">
-                    Bu sipariş hakkında soru?
+                    {c.pimAskSub}
                   </div>
                   <button className="text-[12.5px] font-semibold text-pim-mercan mt-2 hover:underline">
-                    Sohbeti aç →
+                    {c.openChat}
                   </button>
                 </div>
               </div>
@@ -500,7 +667,13 @@ function saveFiles(orderId: string, files: UploadedFile[]): void {
   }
 }
 
-function DesignUploadCard({ orderId }: { orderId: string }) {
+function DesignUploadCard({
+  orderId,
+  c,
+}: {
+  orderId: string;
+  c: typeof COPY.tr | typeof COPY.en;
+}) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -516,13 +689,13 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
     setAnalyzing(true);
     setTimeout(() => {
       const flagSet: UploadedFile["flags"] = [
-        { kind: "ok", message: "Çözünürlük 320 DPI — baskı için yeterli" },
-        { kind: "ok", message: "CMYK renk uzayı tespit edildi" },
+        { kind: "ok", message: c.flagDpiOk },
+        { kind: "ok", message: c.flagCmykOk },
       ];
       if (Math.random() < 0.3) {
         flagSet.push({
           kind: "warning",
-          message: "Kenar boşluğu 2mm'in altında — kesim kayması riskli",
+          message: c.flagMarginWarn,
         });
       }
       const fresh: UploadedFile = {
@@ -540,7 +713,7 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
   };
 
   const handleRemove = (name: string) => {
-    if (!confirm("Bu dosya silinsin mi?")) return;
+    if (!confirm(c.confirmRemove)) return;
     const next = files.filter((f) => f.name !== name);
     setFiles(next);
     saveFiles(orderId, next);
@@ -551,10 +724,10 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
   return (
     <Card padding="p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Tasarım dosyası</h2>
+        <h2 className="text-xl font-semibold">{c.designTitle}</h2>
         <label className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold cursor-pointer hover:bg-pim-mercan-koyu transition-colors">
           <Icon.Plus size={14} />
-          {analyzing ? "Yükleniyor..." : "Dosya yükle"}
+          {analyzing ? c.uploading : c.uploadCta}
           <input
             type="file"
             className="hidden"
@@ -569,17 +742,16 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
         <div className="rounded-lg bg-gri-50 ring-1 ring-dashed ring-gri-200 p-8 text-center">
           <Icon.Box size={36} className="text-gri-500 mx-auto mb-3" />
           <h3 className="font-semibold text-lacivert mb-1">
-            Henüz tasarım yüklemedin
+            {c.designEmptyTitle}
           </h3>
           <p className="text-[13px] text-gri-700 max-w-[400px] mx-auto leading-relaxed">
-            PDF, AI, EPS, PSD, PNG, JPG, SVG kabul ederim. Yükledikten sonra
-            Pim AI saniyeler içinde DPI / CMYK / boşluk kontrolü yapar.
+            {c.designEmptyDesc}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {files.map((f) => {
-            const date = new Date(f.uploadedAt).toLocaleString("tr-TR", {
+            const date = new Date(f.uploadedAt).toLocaleString(c.locale, {
               day: "numeric",
               month: "short",
               hour: "2-digit",
@@ -603,15 +775,15 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
                     </span>
                     {hasError ? (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi/10 text-kirmizi text-[11px] font-bold">
-                        AI flag
+                        {c.aiFlagBadge}
                       </span>
                     ) : hasWarning ? (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari-soft text-[#7A560A] text-[11px] font-bold">
-                        Uyarı
+                        {c.warnBadge}
                       </span>
                     ) : (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-yesil-soft text-yesil text-[11px] font-bold">
-                        AI geçti
+                        {c.aiPassBadge}
                       </span>
                     )}
                   </div>
@@ -648,9 +820,9 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
                   type="button"
                   onClick={() => handleRemove(f.name)}
                   className="text-gri-500 hover:text-kirmizi text-[12px] font-semibold shrink-0"
-                  aria-label="Kaldır"
+                  aria-label={c.remove}
                 >
-                  Kaldır
+                  {c.remove}
                 </button>
               </div>
             );
@@ -660,10 +832,7 @@ function DesignUploadCard({ orderId }: { orderId: string }) {
 
       <div className="mt-4 flex items-center gap-2 text-[11.5px] text-gri-500">
         <Icon.Info size={12} />
-        <span>
-          Mock yükleme — gerçek dosya storage Faz 2&rsquo;de Supabase Storage
-          ile aktif olacak.
-        </span>
+        <span>{c.mockUploadNote}</span>
       </div>
     </Card>
   );
