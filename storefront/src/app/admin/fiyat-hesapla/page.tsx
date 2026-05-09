@@ -65,6 +65,8 @@ import {
   reconstructGeometryFromCart,
   reconstructCostFromCart,
 } from "@/lib/cart-pdf-helpers";
+import { StatsModal } from "@/components/admin/pricing/StatsModal";
+import { recordStat } from "@/lib/pricing-stats";
 
 // ============================================================
 // Defaults — v0.4: overhead 15→45 (SaaS recovery), minMarkup, customerType
@@ -130,6 +132,7 @@ export default function FiyatHesaplaPage() {
 
   // Lot rozeti — bir sonraki lot numarası
   const [nextLotPreview, setNextLotPreview] = useState<string>("A000001");
+  const [statsOpen, setStatsOpen] = useState(false);
   useEffect(() => {
     setNextLotPreview(peekNextLot("A"));
   }, []);
@@ -150,6 +153,30 @@ export default function FiyatHesaplaPage() {
       cut,
       mode,
     });
+
+    // İstatistik kaydı
+    recordStat({
+      lot,
+      product: "sticker",
+      mode,
+      cut,
+      width,
+      height,
+      requestedQty: qty,
+      producedQty: result.geometry.fit.producedQty,
+      overrunCount: result.geometry.fit.producedQty - qty,
+      rollsNeeded: result.geometry.roll.rollsNeeded,
+      totalM2: result.geometry.totalM2,
+      wastePct: result.geometry.wastePct,
+      baseCost: result.cost.baseCost,
+      intendedProfit: result.cost.intendedProfit,
+      actualProfit: result.cost.actualProfit,
+      vatAmount: result.cost.vatAmount,
+      total: result.cost.total,
+      unitPrice: result.cost.unitPrice,
+      tierMultiplier: result.cost.tierMultiplier,
+    });
+
     toast.success(`İş emri ${lot} üretildi (PDF indirildi)`);
   }
 
@@ -342,6 +369,9 @@ export default function FiyatHesaplaPage() {
             >
               <Icon.Box size={12} /> Lot · {nextLotPreview}
             </span>
+            <Button variant="ghost" size="sm" onClick={() => setStatsOpen(true)}>
+              📊 İstatistik
+            </Button>
             <Button variant="ghost" size="sm" onClick={copyJSON}>
               <Icon.Sparkle size={14} /> JSON kopyala
             </Button>
@@ -623,6 +653,8 @@ export default function FiyatHesaplaPage() {
           <CartPanel onGeneratePDF={handleCartPDF} />
         </div>
       </div>
+
+      <StatsModal open={statsOpen} onClose={() => setStatsOpen(false)} />
     </main>
   );
 }

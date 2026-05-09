@@ -41,6 +41,8 @@ import {
   reconstructGeometryFromCart,
   reconstructCostFromCart,
 } from "@/lib/cart-pdf-helpers";
+import { StatsModal } from "@/components/admin/pricing/StatsModal";
+import { recordStat } from "@/lib/pricing-stats";
 
 // ============================================================
 // Defaults
@@ -117,6 +119,7 @@ export default function EtiketFiyatHesaplaPage() {
 
   // Lot rozet
   const [nextLotPreview, setNextLotPreview] = useState("B000001");
+  const [statsOpen, setStatsOpen] = useState(false);
   useEffect(() => {
     setNextLotPreview(peekNextLot("B"));
   }, []);
@@ -241,6 +244,32 @@ export default function EtiketFiyatHesaplaPage() {
         customization: custName,
       },
     });
+
+    // İstatistik kaydı
+    recordStat({
+      lot,
+      product: "etiket",
+      mode,
+      materialId,
+      coatingId,
+      customizationId,
+      width,
+      height,
+      requestedQty: qty,
+      producedQty: result.geometry.qty,
+      overrunCount: 0,
+      rollsNeeded: result.geometry.rollsNeeded,
+      totalM2: result.geometry.totalM2,
+      wastePct: result.geometry.wastePct,
+      baseCost: result.cost.baseCost,
+      intendedProfit: result.cost.intendedProfit,
+      actualProfit: result.cost.actualProfit,
+      vatAmount: result.cost.vatAmount,
+      total: result.cost.total,
+      unitPrice: result.cost.unitPrice,
+      tierMultiplier: result.cost.tierMultiplier,
+    });
+
     toast.success(`Etiket iş emri ${lot} üretildi`);
   }
 
@@ -322,6 +351,9 @@ export default function EtiketFiyatHesaplaPage() {
             >
               <Icon.Box size={12} /> Lot · {nextLotPreview}
             </span>
+            <Button variant="ghost" size="sm" onClick={() => setStatsOpen(true)}>
+              📊 İstatistik
+            </Button>
             <Button variant="ghost" size="sm" onClick={reset}>
               Sıfırla
             </Button>
@@ -787,6 +819,8 @@ export default function EtiketFiyatHesaplaPage() {
           <CartPanel onGeneratePDF={handleCartPDF} />
         </div>
       </div>
+
+      <StatsModal open={statsOpen} onClose={() => setStatsOpen(false)} />
     </main>
   );
 }
