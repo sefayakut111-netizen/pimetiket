@@ -25,6 +25,7 @@ import {
   ETIKET_CUSTOMIZATIONS,
   quoteEtiket,
   findEtiketTier,
+  adaptEtiketToGeometryResult,
   type ProductionMode,
 } from "@/lib/pricing-engine";
 import {
@@ -32,6 +33,8 @@ import {
   nextLot,
   peekNextLot,
 } from "@/lib/pricing-pdf";
+import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
+import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
 
 // ============================================================
 // Defaults
@@ -516,6 +519,75 @@ export default function EtiketFiyatHesaplaPage() {
                   )}
                 </Card>
 
+                {/* Rulo Plan Card (SVG) — sticker'daki RollPlanSvg adapter ile */}
+                <Card padding="p-0" className="overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gri-200 bg-gri-50 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <span className="inline-block text-[10px] tracking-[0.18em] uppercase text-pim-mercan font-bold mb-1">
+                        üretim katmanı
+                      </span>
+                      <h3 className="text-[18px] font-semibold tracking-tight">
+                        Rulo Üretim Planı
+                      </h3>
+                      <p className="text-[12px] text-gri-700 mt-0.5">
+                        Dinamik en (250-600mm) · 40mm kesim markası · 50mm başlangıç · etiket gap {result.geometry.gap}mm
+                      </p>
+                    </div>
+                    <div className="flex gap-5 shrink-0">
+                      <div className="text-right">
+                        <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+                          Rulo
+                        </div>
+                        <div className="text-[20px] font-bold tracking-tight tabular-nums">
+                          {result.geometry.rollsNeeded}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+                          Etiket/Rulo
+                        </div>
+                        <div className="text-[20px] font-bold tracking-tight tabular-nums">
+                          {result.geometry.etiketsOnLastRoll}/{result.geometry.perRoll}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+                          Verimlilik
+                        </div>
+                        <div className="text-[20px] font-bold tracking-tight tabular-nums">
+                          %{(
+                            (result.geometry.qty /
+                              (result.geometry.rollsNeeded * result.geometry.perRoll)) *
+                            100
+                          ).toFixed(0)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gri-50 p-6 flex justify-center min-h-[200px]">
+                    <RollPlanSvg geometry={adaptEtiketToGeometryResult(result.geometry)} />
+                  </div>
+                  <div className="px-5 py-3 text-[11px] text-gri-500 bg-gri-50 border-t border-dashed border-gri-200 flex flex-wrap justify-between gap-2 tabular-nums">
+                    <span>
+                      ⚙ {result.geometry.rollsNeeded === 1 ? "Tek rulo" : `${result.geometry.rollsNeeded} rulo`}
+                      {" · "}
+                      son: {result.geometry.etiketsOnLastRoll}/{result.geometry.perRoll}
+                      {" · "}
+                      {result.geometry.totalM2.toFixed(3)} m²
+                      {" · "}
+                      {result.geometry.rollW}mm en
+                      {result.geometry.rollW < 600 && (
+                        <span className="text-yesil ml-1">
+                          ({600 - result.geometry.rollW}mm tasarruf)
+                        </span>
+                      )}
+                    </span>
+                    <span>
+                      {result.geometry.cols}×{result.geometry.rowsPerRoll} grid · etiket {result.geometry.width}×{result.geometry.height}mm
+                    </span>
+                  </div>
+                </Card>
+
                 {/* Stats */}
                 <Card padding="p-5">
                   <div className="text-[11px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
@@ -538,6 +610,12 @@ export default function EtiketFiyatHesaplaPage() {
                       value={`%${result.geometry.wastePct.toFixed(1)}`}
                     />
                   </div>
+
+                  {/* Mini bar */}
+                  <div className="mt-3" title="Rulo doluluk dağılımı">
+                    <RollMiniBar geometry={adaptEtiketToGeometryResult(result.geometry)} />
+                  </div>
+
                   <div className="mt-3 text-[11px] text-gri-500 tabular-nums">
                     Rulo eni: {result.geometry.rollW} mm · Grid {result.geometry.cols} kolon ×{" "}
                     {result.geometry.rowsPerRoll} satır/rulo · gap {result.geometry.gap}mm

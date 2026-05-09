@@ -225,7 +225,9 @@ export function findEtiketTier(qty: number): EtiketTier {
  * EtiketGeometry'i sticker engine'in beklediği GeometryResult'a çevirir.
  * Cost engine değiştirilmeden reuse edilir.
  */
-function adaptToGeometryResult(g: EtiketGeometry): GeometryResult {
+export function adaptEtiketToGeometryResult(
+  g: EtiketGeometry
+): GeometryResult {
   // Etiket için "tabaka" konsepti = "rulo".
   // perSheet = perRoll, sheetsNeeded = rollsNeeded
   return {
@@ -373,7 +375,7 @@ export function quoteEtiket(input: EtiketQuoteInput): EtiketQuoteResult {
   }
 
   // Synthetic GeometryResult ile cost engine'i çağır
-  const geometryAdapter = adaptToGeometryResult(g);
+  const geometryAdapter = adaptEtiketToGeometryResult(g);
   const tier = findEtiketTier(input.qty);
 
   // Etiket tier'ı StickerTier yapısına benzer (qty/multiplier/label)
