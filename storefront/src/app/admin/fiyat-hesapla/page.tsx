@@ -47,35 +47,19 @@ import {
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
 import { SheetPreviewSvg } from "@/components/admin/pricing/SheetPreviewSvg";
 import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
+import { ProfileBar } from "@/components/admin/pricing/ProfileBar";
+import {
+  getDefaultInput,
+  type CustomerType,
+  type PricingProfile,
+  type ProfileInputSnapshot,
+} from "@/lib/pricing-profiles";
 
 // ============================================================
-// Defaults — sticker-fiyatlama.html v0.3 ile aynı
+// Defaults — v0.4: overhead 15→45 (SaaS recovery), minMarkup, customerType
 // ============================================================
 
-const DEFAULTS = {
-  mode: "fason" as ProductionMode,
-  cut: "tabaka" as CutType,
-  width: 50,
-  height: 50,
-  qty: 250,
-  // Fason
-  fasonRate: 120,
-  // Üretim 6 kalem
-  paper: 45,
-  ink: 25,
-  coating: 15,
-  labor: 35,
-  overhead: 15,
-  depreciation: 10,
-  // Operasyon
-  setup: 50,
-  packaging: 15,
-  cargo: 80,
-  feePct: 2.5,
-  // Kar + KDV
-  marginPct: 75,
-  vatPct: 20,
-};
+const DEFAULTS: ProfileInputSnapshot = getDefaultInput();
 
 // ============================================================
 // Helpers
@@ -122,6 +106,17 @@ export default function FiyatHesaplaPage() {
   const [marginPct, setMarginPct] = useState<number>(DEFAULTS.marginPct);
   const [vatPct, setVatPct] = useState<number>(DEFAULTS.vatPct);
 
+  // v0.4: Min markup floor + customer type
+  const [minMarkupFraction, setMinMarkupFraction] = useState<number>(
+    DEFAULTS.minMarkupFraction
+  );
+  const [customerType, setCustomerType] = useState<CustomerType>(
+    DEFAULTS.customerType
+  );
+
+  // Aktif profil ID
+  const [activeProfileId, setActiveProfileId] = useState<string | undefined>();
+
   // Hesap
   const result = quoteSticker({
     width,
@@ -141,8 +136,58 @@ export default function FiyatHesaplaPage() {
             depreciation,
           },
     operation: { setup, packaging, cargo, feePct },
-    margin: { marginPct, vatPct },
+    margin: { marginPct, vatPct, minMarkupFraction },
   });
+
+  // Profile snapshot — current state'i serialize et
+  const currentInput: ProfileInputSnapshot = {
+    mode,
+    cut,
+    width,
+    height,
+    qty,
+    fasonRate,
+    paper,
+    ink,
+    coating,
+    labor,
+    overhead,
+    depreciation,
+    setup,
+    packaging,
+    cargo,
+    feePct,
+    marginPct,
+    vatPct,
+    minMarkupFraction,
+    customerType,
+  };
+
+  function loadProfile(p: PricingProfile) {
+    const i = p.input;
+    setMode(i.mode);
+    setCut(i.cut);
+    setWidth(i.width);
+    setHeight(i.height);
+    setQty(i.qty);
+    setFasonRate(i.fasonRate);
+    setPaper(i.paper);
+    setInk(i.ink);
+    setCoating(i.coating);
+    setLabor(i.labor);
+    setOverhead(i.overhead);
+    setDepreciation(i.depreciation);
+    setSetup(i.setup);
+    setPackaging(i.packaging);
+    setCargo(i.cargo);
+    setFeePct(i.feePct);
+    setMarginPct(i.marginPct);
+    setVatPct(i.vatPct);
+    setMinMarkupFraction(i.minMarkupFraction);
+    setCustomerType(i.customerType);
+    setActiveProfileId(p.id);
+    toast.success(`"${p.name}" profili yüklendi`);
+  }
 
   const tier = findTier(qty);
 
@@ -165,29 +210,14 @@ export default function FiyatHesaplaPage() {
     setFeePct(DEFAULTS.feePct);
     setMarginPct(DEFAULTS.marginPct);
     setVatPct(DEFAULTS.vatPct);
+    setMinMarkupFraction(DEFAULTS.minMarkupFraction);
+    setCustomerType(DEFAULTS.customerType);
+    setActiveProfileId(undefined);
     toast.success("Varsayılan değerlere dönüldü");
   }
 
   function copyJSON() {
-    const payload = {
-      input: {
-        mode,
-        cut,
-        width,
-        height,
-        qty,
-        ...(mode === "fason"
-          ? { fasonRate }
-          : { paper, ink, coating, labor, overhead, depreciation }),
-        setup,
-        packaging,
-        cargo,
-        feePct,
-        marginPct,
-        vatPct,
-      },
-      result,
-    };
+    const payload = { input: currentInput, result };
     navigator.clipboard
       .writeText(JSON.stringify(payload, null, 2))
       .then(() => toast.success("JSON kopyalandı"))
@@ -198,14 +228,14 @@ export default function FiyatHesaplaPage() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-6">
         {/* Header */}
-        <div className="flex items-end justify-between flex-wrap gap-4 mb-7">
+        <div className="flex items-end justify-between flex-wrap gap-4 mb-5">
           <div>
             <Eyebrow>Operatör</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
               Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              Manuel hesap + parametre tuning. Pricing-engine v0.3.
+              Manuel hesap + parametre tuning. Pricing-engine v0.4.
             </p>
           </div>
           <div className="flex gap-2">
@@ -217,6 +247,14 @@ export default function FiyatHesaplaPage() {
             </Button>
           </div>
         </div>
+
+        {/* Profile bar */}
+        <ProfileBar
+          currentInput={currentInput}
+          activeProfileId={activeProfileId}
+          onLoadProfile={loadProfile}
+          onClearActive={() => setActiveProfileId(undefined)}
+        />
 
         {/* 2-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-6 items-start">
@@ -388,7 +426,7 @@ export default function FiyatHesaplaPage() {
             <Card padding="p-5">
               <SectionTitle accent="yesil">③ Kar &amp; Vergi</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Kar Marjı">
+                <Field label="Kar Marjı (markup)" hint="cost-plus">
                   <NumInput
                     value={marginPct}
                     onChange={setMarginPct}
@@ -403,6 +441,26 @@ export default function FiyatHesaplaPage() {
                     suffix="%"
                     step={1}
                   />
+                </Field>
+                <Field label="Min Markup Floor" hint="zarar koruma">
+                  <NumInput
+                    value={minMarkupFraction * 100}
+                    onChange={(v) => setMinMarkupFraction(v / 100)}
+                    suffix="%"
+                    step={5}
+                  />
+                </Field>
+                <Field label="Müşteri Tipi" hint="bilgi (Block C entegrasyon)">
+                  <select
+                    value={customerType}
+                    onChange={(e) => setCustomerType(e.target.value as CustomerType)}
+                    className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
+                  >
+                    <option value="standart">Standart</option>
+                    <option value="duzenli">Düzenli</option>
+                    <option value="sadik">Sadık</option>
+                    <option value="sozlesmeli">Sözleşmeli</option>
+                  </select>
                 </Field>
               </div>
             </Card>
@@ -732,16 +790,49 @@ function PriceHero({
         </div>
       </div>
 
-      {/* VAT line */}
-      <div className="relative mt-6 pt-5 border-t border-white/15 grid grid-cols-3 gap-4">
+      {/* VAT line — v0.4: actual profit eklendi */}
+      <div className="relative mt-6 pt-5 border-t border-white/15 grid grid-cols-2 md:grid-cols-4 gap-4">
         <VatCell label="Maliyet" value={`${fmt(cost.baseCost)} TL`} />
-        <VatCell label="Kar (KDV Hariç)" value={`${fmt(cost.profit)} TL`} />
+        <VatCell
+          label="Net Kar (Sefa)"
+          value={`${fmt(cost.actualProfit)} TL`}
+          subtitle={`%${cost.actualMarkupPct.toFixed(0)} markup`}
+          warning={cost.actualMarkupPct < cost.intendedProfit / cost.baseCost * 100 * 0.7}
+        />
+        <VatCell label="PSP Komisyon" value={`${fmt(cost.processingFee)} TL`} />
         <VatCell label="KDV" value={`${fmt(cost.vatAmount)} TL`} />
       </div>
 
+      {/* Margin warning (v0.4 — Fix #7 min margin guard) */}
+      {cost.marginWarning && (
+        <div className="relative mt-4 px-3 py-2.5 rounded-lg bg-kirmizi/15 ring-2 ring-kirmizi/50 text-[12.5px] leading-relaxed">
+          <div className="font-bold text-kirmizi mb-1">
+            ⚠️ DÜŞÜK MARJ UYARISI
+          </div>
+          <div className="text-white/90 tabular-nums">
+            Intended markup <strong>%{cost.marginWarning.intendedMarkupPct}</strong> →{" "}
+            actual <strong className="text-kirmizi">%{cost.marginWarning.actualMarkupPct.toFixed(0)}</strong>
+            {" "}(<strong>%{cost.marginWarning.erosionPct.toFixed(0)} erosion</strong>).
+            Min markup floor: %{cost.marginWarning.floor}. Tier discount kâr ediyor.
+          </div>
+        </div>
+      )}
+
+      {/* Tier erosion info — warning yoksa bilgilendirme */}
+      {!cost.marginWarning && Math.abs(cost.tierMultiplier - 1) > 0.001 && (
+        <div className="relative mt-3 px-3 py-2 rounded-lg bg-white/10 text-[11.5px] flex justify-between items-center tabular-nums">
+          <span className="text-white/70">
+            Intended markup: <strong className="text-white">%{((cost.intendedProfit / cost.baseCost) * 100).toFixed(0)}</strong>
+            {" "}→ tier {cost.tierMultiplier.toFixed(2)}× sonrası actual: <strong className={cn(
+              cost.actualMarkupPct < (cost.intendedProfit / cost.baseCost) * 100 * 0.7 ? "text-pim-mercan" : "text-yesil"
+            )}>%{cost.actualMarkupPct.toFixed(0)}</strong>
+          </span>
+        </div>
+      )}
+
       {/* Tolerance strip */}
       {geometry.fit.producedQty > qty && (
-        <div className="relative mt-4 px-3 py-2 rounded-lg bg-pim-mercan/10 ring-1 ring-pim-mercan/30 text-[12px] flex justify-between items-center">
+        <div className="relative mt-3 px-3 py-2 rounded-lg bg-pim-mercan/10 ring-1 ring-pim-mercan/30 text-[12px] flex justify-between items-center">
           <span>
             📐 <strong className="text-pim-mercan">Üretim:</strong>{" "}
             <strong>{geometry.fit.producedQty}</strong> · {qty} faturalanır ·{" "}
@@ -758,13 +849,40 @@ function PriceHero({
   );
 }
 
-function VatCell({ label, value }: { label: string; value: string }) {
+function VatCell({
+  label,
+  value,
+  subtitle,
+  warning,
+}: {
+  label: string;
+  value: string;
+  subtitle?: string;
+  warning?: boolean;
+}) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-[0.1em] text-white/50 font-semibold mb-1">
         {label}
       </div>
-      <div className="text-[14px] font-semibold tabular-nums">{value}</div>
+      <div
+        className={cn(
+          "text-[14px] font-semibold tabular-nums",
+          warning && "text-pim-mercan"
+        )}
+      >
+        {value}
+      </div>
+      {subtitle && (
+        <div
+          className={cn(
+            "text-[10px] mt-0.5 tabular-nums",
+            warning ? "text-pim-mercan/80" : "text-white/50"
+          )}
+        >
+          {subtitle}
+        </div>
+      )}
     </div>
   );
 }

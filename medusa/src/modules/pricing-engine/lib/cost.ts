@@ -4,18 +4,23 @@
  * Kaynak: docs/PRICING_SPEC.md §4-5
  * Modül: sticker-fiyatlama.html v0.3 — `compute()`
  *
+ * v0.4 finans denetim düzeltmeleri (PRICING_FINANCE_REVIEW.md):
+ *   #2 PSP fee gross-up (komisyon müşteri toplamına bindirilir)
+ *   #3 actualMarkupPct (tier sonrası gerçek markup, intended ile karşılaştırma)
+ *   #5 Big mode kargo formula (desi-bazlı: 1.5x + her koli %30)
+ *   #7 Min margin guard (profit < baseCost × minMarginPct → warning)
+ *
  * Akış:
  *   baseCost = production + operation
- *   + kar (×margin%)
- *   + işlem ücreti (×opFee%)
- *   = preTierSubtotal
- *   × tier çarpanı
- *   = subtotal
- *   + KDV
- *   = total
+ *   intendedProfit = baseCost × markup%
+ *   subtotalPure = baseCost + intendedProfit (tier öncesi pure)
+ *   tieredPure = subtotalPure × tierMult
+ *   subtotal = tieredPure / (1 - feePct/100)   ← FEE GROSS-UP
+ *   processingFee = subtotal - tieredPure
+ *   vatAmount = subtotal × vat%
+ *   total = subtotal + vatAmount
  *
- * Müşteri-yüzü dönüşler: subtotal, vatAmount, total, unitPrice.
- * Operatör-yüzü dönüşler: tüm productionItems, operationItems, profit, breakdown.
+ * Sefa cebine net giren = tieredPure (fee tamamen recovered, tier hâlâ ezdiriyor).
  */
 
 import { STICKER_TIERS, type StickerTier } from "./constants";
@@ -29,48 +34,46 @@ export type ProductionMode = "fason" | "uretim";
 
 export interface FasonRates {
   mode: "fason";
-  /** Fason birim maliyet TL/m² */
   rate: number;
 }
 
 export interface UretimRates {
   mode: "uretim";
-  paper: number; // Kağıt/Folio TL/m²
-  ink: number; // Mürekkep TL/m²
-  coating: number; // Kaplama TL/m²
-  labor: number; // İşçilik TL/m²
-  overhead: number; // Genel gider TL/m²
-  depreciation: number; // Amortisman TL/m²
+  paper: number;
+  ink: number;
+  coating: number;
+  labor: number;
+  overhead: number;
+  depreciation: number;
 }
 
 export type ProductionRates = FasonRates | UretimRates;
 
 export interface OperationRates {
-  /** Hazırlık tek seferlik TL */
   setup: number;
-  /** Paketleme TL/zarf (büyük tabakada × 2) */
   packaging: number;
-  /** Kargo TL */
   cargo: number;
-  /** İşlem ücreti % (ödeme komisyonu) */
   feePct: number;
 }
 
 export interface MarginConfig {
-  /** Kar marjı % (üretim+operasyon üstüne) */
+  /** Markup % (cost-plus) — UI'da "Kar Marjı" olarak gösteriliyor */
   marginPct: number;
   /** KDV % */
   vatPct: number;
+  /**
+   * Min markup floor — actualMarkup bu değerin altına düşerse marginWarning üretilir.
+   * 0-1 arası fraction (default 0.10 = %10). Override yapılabilir.
+   */
+  minMarkupFraction?: number;
 }
 
 export interface CostInput {
   geometry: GeometryResult;
-  /** Müşteri talep ettiği adet (üretilen değil) */
   requestedQty: number;
   production: ProductionRates;
   operation: OperationRates;
   margin: MarginConfig;
-  /** Adet kademesinden seçilen tier */
   tier: StickerTier;
 }
 
@@ -89,45 +92,58 @@ export interface CostResult {
   operationItems: CostBreakdownItem[];
   operationCost: number;
 
-  // Toplam maliyet (production + operation)
+  // Toplam maliyet
   baseCost: number;
 
-  // Kar
+  // Intended kâr (markup × baseCost — tier öncesi)
+  intendedProfit: number;
+  /** @deprecated v0.4'ten önce "profit" deniyordu, şimdi intendedProfit. Geriye uyum için. */
   profit: number;
 
-  // İşlem ücreti
+  // PSP komisyonu (gross-up sonrası, customer matrahına dahil)
   processingFee: number;
 
-  // Tier öncesi ara toplam (KDV hariç)
-  preTierSubtotal: number;
-
-  // Tier ayarı (pozitif=zam, negatif=indirim)
+  // Tier
+  preTierSubtotal: number; // pure (cost + intendedProfit), fee öncesi
   tierAdjustment: number;
   tierMultiplier: number;
 
-  // Tier sonrası ara toplam (KDV hariç)
+  // Müşteri-yüzü amount (KDV hariç matrah, fee dahil)
   subtotal: number;
-
-  // KDV
   vatAmount: number;
-
-  // Müşteri-yüzü TOPLAM (KDV dahil)
   total: number;
-
-  // Birim fiyat (KDV dahil)
   unitPrice: number;
 
-  // Zarf/koli sayısı (paketleme için)
   envelopeCount: number;
+
+  // ===== v0.4 yeni alanlar =====
+
+  /**
+   * Tier sonrası Sefa cebine net giren kâr (intendedProfit'tan farklı olabilir).
+   * Fee gross-up ile fee tamamen recovered, sadece tier eziyor.
+   * actualProfit = tieredPure - baseCost
+   */
+  actualProfit: number;
+
+  /** Gerçek markup yüzdesi (actualProfit / baseCost × 100). marginPct'den düşük olabilir. */
+  actualMarkupPct: number;
+
+  /**
+   * Min margin guard — actualMarkup minMarkupFraction'dan düşükse warning.
+   * undefined = ihlal yok.
+   */
+  marginWarning?: {
+    intendedMarkupPct: number;
+    actualMarkupPct: number;
+    floor: number;
+    erosionPct: number; // intended → actual erosion %
+  };
 }
 
 // ============================================================
-// Hesap
+// Production items
 // ============================================================
 
-/**
- * Üretim modu için kalemleri hesaplar.
- */
 function computeProductionItems(
   totalM2: number,
   rates: ProductionRates
@@ -146,7 +162,6 @@ function computeProductionItems(
     };
   }
 
-  // Üretim modu — 6 kalem
   const breakdown: Array<[string, number]> = [
     ["Kağıt / Folio", rates.paper],
     ["Mürekkep", rates.ink],
@@ -172,19 +187,25 @@ function computeProductionItems(
   return { items, total };
 }
 
-/**
- * Operasyon kalemleri.
- *
- * Büyük tabakada paketleme × 2 (büyük koli), kargo formula değişir
- * (ama mevcut HTML'de kargo değeri sabit, formula label "desi/m³ hesaplı").
- */
+// ============================================================
+// Operation items — v0.4: big mode cargo formula
+// ============================================================
+
 function computeOperationItems(
   envelopeCount: number,
   isBigMode: boolean,
   rates: OperationRates
 ): { items: CostBreakdownItem[]; total: number } {
+  // Paketleme: büyük tabakada × 2 (büyük koli)
   const packagingPerUnit = isBigMode ? rates.packaging * 2 : rates.packaging;
   const packagingTotal = packagingPerUnit * envelopeCount;
+
+  // Kargo: büyük tabakada desi-bazlı (baseline ×1.5 + her ek koli için ×0.3)
+  // Küçük zarf: yurtiçi sabit fiyat
+  const cargoMultiplier = isBigMode
+    ? 1.5 + Math.max(envelopeCount - 1, 0) * 0.3
+    : 1.0;
+  const cargoTotal = rates.cargo * cargoMultiplier;
 
   const items: CostBreakdownItem[] = [
     {
@@ -199,48 +220,75 @@ function computeOperationItems(
     },
     {
       name: "Kargo",
-      formula: isBigMode ? "desi/m³ hesaplı" : "yurtiçi",
-      amount: rates.cargo,
+      formula: isBigMode
+        ? `${envelopeCount} koli · desi/m³ (×${cargoMultiplier.toFixed(2)})`
+        : "yurtiçi",
+      amount: cargoTotal,
     },
   ];
 
-  const total = rates.setup + packagingTotal + rates.cargo;
-  return { items, total };
+  return { items, total: rates.setup + packagingTotal + cargoTotal };
 }
 
-/**
- * Tam maliyet+fiyat hesabı.
- *
- * Adet kademesi (tier) öncesi: production + operation + margin + processingFee
- * Sonra: × tier çarpanı + KDV
- */
+// ============================================================
+// Main compute — v0.4 fee gross-up + actual margin tracking
+// ============================================================
+
 export function computeCost(input: CostInput): CostResult {
   const { geometry, requestedQty, production, operation, margin, tier } = input;
   const { totalM2, fit } = geometry;
   const isBigMode = fit.mode === "big";
   const envelopeCount = fit.sheetsNeeded;
 
-  // Üretim
+  // 1. Üretim + operasyon → baseCost
   const prod = computeProductionItems(totalM2, production);
-
-  // Operasyon
   const op = computeOperationItems(envelopeCount, isBigMode, operation);
-
-  // Base + kar + fee
   const baseCost = prod.total + op.total;
-  const profit = baseCost * (margin.marginPct / 100);
-  const subtotalBeforeFee = baseCost + profit;
-  const processingFee = subtotalBeforeFee * (operation.feePct / 100);
-  const preTierSubtotal = subtotalBeforeFee + processingFee;
 
-  // Tier ayarı (referans tier 1.00, üstü/altı çarpan)
-  const tierAdjustment = preTierSubtotal * (tier.multiplier - 1);
-  const subtotal = preTierSubtotal * tier.multiplier;
+  // 2. Intended kâr (markup × baseCost)
+  const intendedProfit = baseCost * (margin.marginPct / 100);
 
-  // KDV
+  // 3. Pure subtotal (KDV ve fee öncesi)
+  const subtotalPure = baseCost + intendedProfit;
+
+  // 4. Tier ayarı (preTier'a uygulanır)
+  const tieredPure = subtotalPure * tier.multiplier;
+  const tierAdjustment = subtotalPure * (tier.multiplier - 1);
+
+  // 5. PSP fee GROSS-UP — komisyon müşteri toplamına bindirilir
+  // Müşterinin ödediği matrah (subtotal) = tieredPure / (1 - feePct/100)
+  // Çünkü PSP, müşteri ödediği subtotal'dan feePct% keser → Sefa tieredPure alır.
+  const feeFraction = operation.feePct / 100;
+  const subtotal =
+    feeFraction < 1 ? tieredPure / (1 - feeFraction) : tieredPure;
+  const processingFee = subtotal - tieredPure;
+
+  // 6. KDV grossed-up matrah üzerinden
   const vatAmount = subtotal * (margin.vatPct / 100);
   const total = subtotal + vatAmount;
   const unitPrice = total / requestedQty;
+
+  // 7. Actual kâr (tier sonrası, fee gross-up zaten recovered)
+  // Sefa cebine giren = tieredPure (fee tarafından alınmadı çünkü grossed-up)
+  const actualProfit = tieredPure - baseCost;
+  const actualMarkupPct = baseCost > 0 ? (actualProfit / baseCost) * 100 : 0;
+
+  // 8. Min margin guard
+  const minMarkupFraction = margin.minMarkupFraction ?? 0.10;
+  const floor = baseCost * minMarkupFraction;
+  let marginWarning: CostResult["marginWarning"];
+  if (actualProfit < floor) {
+    const intendedMarkup = margin.marginPct;
+    const erosion = intendedMarkup > 0
+      ? ((intendedMarkup - actualMarkupPct) / intendedMarkup) * 100
+      : 0;
+    marginWarning = {
+      intendedMarkupPct: intendedMarkup,
+      actualMarkupPct,
+      floor: minMarkupFraction * 100,
+      erosionPct: erosion,
+    };
+  }
 
   return {
     productionItems: prod.items,
@@ -248,9 +296,10 @@ export function computeCost(input: CostInput): CostResult {
     operationItems: op.items,
     operationCost: op.total,
     baseCost,
-    profit,
+    intendedProfit,
+    profit: intendedProfit, // legacy alias
     processingFee,
-    preTierSubtotal,
+    preTierSubtotal: subtotalPure,
     tierAdjustment,
     tierMultiplier: tier.multiplier,
     subtotal,
@@ -258,23 +307,20 @@ export function computeCost(input: CostInput): CostResult {
     total,
     unitPrice,
     envelopeCount,
+    actualProfit,
+    actualMarkupPct,
+    marginWarning,
   };
 }
 
 // ============================================================
-// Tier yardımcısı
+// Tier finder
 // ============================================================
 
-/**
- * Adet için en yakın tier'ı bulur (exact match veya en yakın).
- * UI'da kullanıcı tier butonuna basar — bu yardımcı API/programatik kullanım için.
- */
 export function findTier(qty: number): StickerTier {
-  // Exact match
   const exact = STICKER_TIERS.find((t) => t.qty === qty);
   if (exact) return exact;
 
-  // En yakın (hem alt hem üst tier'ı düşün, yakın olanı seç)
   let closest = STICKER_TIERS[0];
   let minDistance = Math.abs(qty - closest.qty);
 

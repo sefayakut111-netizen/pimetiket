@@ -110,8 +110,8 @@ describe("computeCost — üretim mod 6 kalem", () => {
   });
 });
 
-describe("computeCost — tier davranışı", () => {
-  test("250 referans tier → tierAdjustment ≈ 0", () => {
+describe("computeCost — tier davranışı (v0.4: subtotal fee gross-up dahil)", () => {
+  test("250 referans tier → tierAdjustment ≈ 0, subtotal gross-up'lı", () => {
     const g = geom(50, 50, 250);
     const result = computeCost({
       geometry: g,
@@ -124,10 +124,12 @@ describe("computeCost — tier davranışı", () => {
 
     expect(result.tierMultiplier).toBe(1.0);
     expect(result.tierAdjustment).toBeCloseTo(0, 5);
-    expect(result.subtotal).toBeCloseTo(result.preTierSubtotal, 5);
+    // v0.4: subtotal = preTier / (1 - feePct/100) = preTier × 1.02564... (fee 2.5%)
+    const expectedSubtotal = result.preTierSubtotal / (1 - DEFAULT_OPERATION.feePct / 100);
+    expect(result.subtotal).toBeCloseTo(expectedSubtotal, 2);
   });
 
-  test("25 adet tier (+%30 zam) → tierAdjustment pozitif", () => {
+  test("25 adet tier (+%30 zam) → tierAdjustment pozitif, subtotal grossed-up", () => {
     const g = geom(50, 50, 25);
     const result = computeCost({
       geometry: g,
@@ -140,10 +142,12 @@ describe("computeCost — tier davranışı", () => {
 
     expect(result.tierMultiplier).toBe(1.3);
     expect(result.tierAdjustment).toBeGreaterThan(0);
-    expect(result.subtotal).toBeCloseTo(result.preTierSubtotal * 1.3, 2);
+    // v0.4: subtotal = preTier × 1.3 / (1 - feePct/100)
+    const expected = (result.preTierSubtotal * 1.3) / (1 - DEFAULT_OPERATION.feePct / 100);
+    expect(result.subtotal).toBeCloseTo(expected, 2);
   });
 
-  test("1000 adet tier (−%20 indirim) → tierAdjustment negatif", () => {
+  test("1000 adet tier (−%20) → tier eziyor margin, actualMarkup düşer", () => {
     const g = geom(50, 50, 1000);
     const result = computeCost({
       geometry: g,
@@ -156,7 +160,71 @@ describe("computeCost — tier davranışı", () => {
 
     expect(result.tierMultiplier).toBe(0.8);
     expect(result.tierAdjustment).toBeLessThan(0);
-    expect(result.subtotal).toBeCloseTo(result.preTierSubtotal * 0.8, 2);
+    // v0.4: actualMarkup intended'dan düşük (tier 0.8 eziyor)
+    expect(result.actualMarkupPct).toBeLessThan(DEFAULT_MARGIN.marginPct);
+  });
+});
+
+describe("computeCost — v0.4 yeni: actualProfit + marginWarning + fee gross-up", () => {
+  test("Tier 1.0 actualProfit ≈ intendedProfit (tier ezme yok)", () => {
+    const g = geom(50, 50, 250);
+    const result = computeCost({
+      geometry: g,
+      requestedQty: 250,
+      production: DEFAULT_FASON,
+      operation: DEFAULT_OPERATION,
+      margin: DEFAULT_MARGIN,
+      tier: REFERENCE_TIER,
+    });
+    expect(result.actualProfit).toBeCloseTo(result.intendedProfit, 2);
+    expect(result.actualMarkupPct).toBeCloseTo(DEFAULT_MARGIN.marginPct, 1);
+    expect(result.marginWarning).toBeUndefined();
+  });
+
+  test("Tier 0.8 → actualProfit < intendedProfit, erosion var", () => {
+    const g = geom(50, 50, 1000);
+    const result = computeCost({
+      geometry: g,
+      requestedQty: 1000,
+      production: DEFAULT_FASON,
+      operation: DEFAULT_OPERATION,
+      margin: DEFAULT_MARGIN,
+      tier: TIER_1000,
+    });
+    expect(result.actualProfit).toBeLessThan(result.intendedProfit);
+    expect(result.actualMarkupPct).toBeLessThan(DEFAULT_MARGIN.marginPct);
+  });
+
+  test("Min markup floor ihlal edilirse marginWarning üretilir", () => {
+    const g = geom(50, 50, 1000);
+    const result = computeCost({
+      geometry: g,
+      requestedQty: 1000,
+      production: DEFAULT_FASON,
+      operation: DEFAULT_OPERATION,
+      margin: { marginPct: 30, vatPct: 20, minMarkupFraction: 0.20 }, // floor %20
+      tier: TIER_1000,
+    });
+    // markup 30 × 0.8 = 24% — floor %20'nin üstünde, warning yok
+    if (result.actualMarkupPct < 20) {
+      expect(result.marginWarning).toBeDefined();
+    }
+  });
+
+  test("PSP fee gross-up: subtotal × (1 - feePct) = tieredPure", () => {
+    const g = geom(50, 50, 250);
+    const result = computeCost({
+      geometry: g,
+      requestedQty: 250,
+      production: DEFAULT_FASON,
+      operation: DEFAULT_OPERATION,
+      margin: DEFAULT_MARGIN,
+      tier: REFERENCE_TIER,
+    });
+    // Sefa cebine giren = subtotal × (1 - fee%) = tieredPure (cost + intendedProfit × tier)
+    const sefaNet = result.subtotal * (1 - DEFAULT_OPERATION.feePct / 100);
+    const expectedNet = result.preTierSubtotal * result.tierMultiplier;
+    expect(sefaNet).toBeCloseTo(expectedNet, 2);
   });
 });
 

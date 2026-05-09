@@ -3,17 +3,10 @@
  *
  * Kaynak: docs/PRICING_SPEC.md §6
  *
- * Senaryolar:
- *   - Boş sepet → 0 / 0 / 0
- *   - 1 tasarım (yalnız) → indirim 0
- *   - 2 aynı boyut → -%3 her birine
- *   - 3 aynı boyut → -%5
- *   - 6+ aynı boyut → -%8
- *   - 10+ aynı boyut → -%10 (max, daha artmaz)
- *   - 15 aynı boyut → -%10 (cap)
- *   - Karışık: 6 × 50×50 + 3 × 70×70 + 2 × 100×100 + 1 × 25×80
- *     → 4 grup, ayrı oranlar
- *   - Toplam indirim doğrulama
+ * v0.4: API değişti — preGroupTotal (KDV dahil) → preGroupSubtotal (KDV hariç)
+ * Bkz: PRICING_FINANCE_REVIEW.md §1 — KDV mevzuatı m.25/a uyumu
+ *
+ * Senaryolar v0.4'e göre güncellendi.
  */
 
 import { computeCart, getGroupDiscount } from "../lib/cart-discount";
@@ -25,15 +18,17 @@ function makeLine(
   n: number,
   width: number,
   height: number,
-  preGroupTotal: number,
-  qty = 250
+  preGroupSubtotal: number,
+  qty = 250,
+  vatPct = 20
 ): CartLineInput {
   return {
     id: lineId(n),
     width,
     height,
     requestedQty: qty,
-    preGroupTotal,
+    preGroupSubtotal,
+    vatPct,
   };
 }
 
@@ -58,35 +53,41 @@ describe("computeCart — boş ve tek line", () => {
     expect(result.totalStickers).toBe(0);
   });
 
-  test("1 tasarım → indirim 0, finalTotal = preGroupTotal", () => {
+  // v0.4: preGroupSubtotal=1000 (matrah), VAT 20% → preGroupTotal=1200
+  test("1 tasarım → indirim 0, finalSubtotal = preGroupSubtotal", () => {
     const result = computeCart([makeLine(1, 50, 50, 1000)]);
     expect(result.items).toHaveLength(1);
     expect(result.items[0].groupDiscountPct).toBe(0);
-    expect(result.items[0].finalTotal).toBe(1000);
-    expect(result.total).toBe(1000);
+    expect(result.items[0].finalSubtotal).toBe(1000);
+    expect(result.items[0].finalVat).toBe(200); // 1000 × 20%
+    expect(result.items[0].finalTotal).toBe(1200);
+    expect(result.total).toBe(1200);
   });
 });
 
-describe("computeCart — aynı boyut grubu indirimi", () => {
-  test("2 aynı boyut (50×50) → her ikisi -%3", () => {
-    const lines = [
-      makeLine(1, 50, 50, 1000),
-      makeLine(2, 50, 50, 1000),
-    ];
+describe("computeCart — aynı boyut grubu indirimi (v0.4: KDV ÖNCESİ)", () => {
+  // v0.4: indirim matraha (1000) uygulanır, VAT discounted matrah üzerinden
+  test("2 aynı boyut (50×50, 1000 TL matrah) → -%3 matrahta", () => {
+    const lines = [makeLine(1, 50, 50, 1000), makeLine(2, 50, 50, 1000)];
     const result = computeCart(lines);
 
     expect(result.items).toHaveLength(2);
     for (const item of result.items) {
       expect(item.groupDiscountPct).toBe(0.03);
-      expect(item.groupDiscountAmount).toBe(30);
-      expect(item.finalTotal).toBe(970);
+      expect(item.groupDiscountAmount).toBe(30); // matrah × 3%
+      expect(item.finalSubtotal).toBe(970);
+      expect(item.finalVat).toBe(194); // 970 × 20%
+      expect(item.finalTotal).toBe(1164); // 970 + 194
     }
-    expect(result.subtotal).toBe(2000);
+    // Aggregate
+    expect(result.subtotalBeforeDiscount).toBe(2000);
     expect(result.groupDiscountTotal).toBe(60);
-    expect(result.total).toBe(1940);
+    expect(result.subtotalAfterDiscount).toBe(1940);
+    expect(result.vatTotal).toBe(388); // 1940 × 20%
+    expect(result.total).toBe(2328); // 1940 + 388
   });
 
-  test("6 aynı boyut → her birine -%8", () => {
+  test("6 aynı boyut → her birine -%8 matrahta", () => {
     const lines = Array.from({ length: 6 }, (_, i) =>
       makeLine(i, 50, 50, 1000)
     );
@@ -94,9 +95,10 @@ describe("computeCart — aynı boyut grubu indirimi", () => {
 
     for (const item of result.items) {
       expect(item.groupDiscountPct).toBe(0.08);
-      expect(item.finalTotal).toBe(920);
+      expect(item.finalSubtotal).toBe(920);
+      expect(item.finalTotal).toBe(1104); // 920 × 1.20
     }
-    expect(result.total).toBe(5520);
+    expect(result.total).toBe(6624); // 6 × 1104
   });
 
   test("10 aynı boyut → -%10", () => {
@@ -106,55 +108,50 @@ describe("computeCart — aynı boyut grubu indirimi", () => {
     const result = computeCart(lines);
 
     for (const item of result.items) {
-      expect(item.groupDiscountPct).toBe(0.10);
-      expect(item.finalTotal).toBe(900);
+      expect(item.groupDiscountPct).toBe(0.1);
+      expect(item.finalSubtotal).toBe(900);
+      expect(item.finalTotal).toBe(1080);
     }
-    expect(result.total).toBe(9000);
+    expect(result.total).toBe(10800); // 10 × 1080
   });
 
-  test("15 aynı boyut → -%10 cap, daha artmaz", () => {
+  test("15 aynı boyut → -%10 cap", () => {
     const lines = Array.from({ length: 15 }, (_, i) =>
       makeLine(i, 50, 50, 1000)
     );
     const result = computeCart(lines);
 
     for (const item of result.items) {
-      expect(item.groupDiscountPct).toBe(0.10);
+      expect(item.groupDiscountPct).toBe(0.1);
     }
-    expect(result.total).toBe(13500);
+    expect(result.total).toBe(16200); // 15 × 1080
   });
 });
 
-describe("computeCart — karışık gruplar", () => {
-  test("4 farklı boyut grubu, ayrı oranlar", () => {
+describe("computeCart — karışık gruplar (v0.4)", () => {
+  test("4 farklı boyut grubu, KDV öncesi indirim", () => {
     const lines = [
-      // 50×50 grubu — 6 tasarım → -%8
       ...Array.from({ length: 6 }, (_, i) => makeLine(i, 50, 50, 1000)),
-      // 70×70 grubu — 3 tasarım → -%5
       ...Array.from({ length: 3 }, (_, i) => makeLine(i + 100, 70, 70, 2000)),
-      // 100×100 grubu — 2 tasarım → -%3
       ...Array.from({ length: 2 }, (_, i) => makeLine(i + 200, 100, 100, 5000)),
-      // 25×80 grubu — 1 tasarım → 0
       makeLine(300, 25, 80, 500),
     ];
 
     const result = computeCart(lines);
 
     expect(Object.keys(result.groups)).toHaveLength(4);
-
-    // Subtotal: 6×1000 + 3×2000 + 2×5000 + 1×500 = 6000 + 6000 + 10000 + 500 = 22500
-    expect(result.subtotal).toBe(22500);
-
-    // İndirim:
+    expect(result.subtotalBeforeDiscount).toBe(22500); // 6000+6000+10000+500
+    // İndirim matraha:
     //   50×50: 6×1000×0.08 = 480
     //   70×70: 3×2000×0.05 = 300
     //   100×100: 2×5000×0.03 = 300
-    //   25×80: 1×500×0 = 0
-    //   Toplam: 1080
+    //   25×80: 0
+    //   Total: 1080
     expect(result.groupDiscountTotal).toBe(1080);
-    expect(result.total).toBe(21420);
+    expect(result.subtotalAfterDiscount).toBe(21420);
+    expect(result.vatTotal).toBe(4284); // 21420 × 20%
+    expect(result.total).toBe(25704); // 21420 × 1.20
 
-    // Her line'da grup bilgisi doğru atanmış
     for (const item of result.items) {
       const sameGroupCount = result.items.filter(
         (i) => i.width === item.width && i.height === item.height
