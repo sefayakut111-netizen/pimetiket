@@ -276,6 +276,80 @@ for (const c of checks) row(c.label, c.status, c.detail);
 checks.length = 0;
 
 // ============================================================
+// Production sanity checks
+// ============================================================
+
+const isProdSiteUrl =
+  env.NEXT_PUBLIC_SITE_URL?.startsWith("https://") &&
+  !env.NEXT_PUBLIC_SITE_URL.includes("localhost") &&
+  !env.NEXT_PUBLIC_SITE_URL.includes("127.0.0.1");
+
+if (isProdSiteUrl) {
+  console.log();
+  console.log(`${COLORS.gray}── Production sanity ──${COLORS.reset}`);
+
+  // iyzico: prod URL'de prod key olmalı
+  if (env.IYZICO_BASE_URL?.includes("sandbox")) {
+    add(
+      "iyzico URL/key match",
+      "fail",
+      "PROD site + SANDBOX iyzico — yanlış"
+    );
+  } else if (
+    env.IYZICO_API_KEY?.startsWith("sandbox-") &&
+    !env.IYZICO_BASE_URL?.includes("sandbox")
+  ) {
+    add(
+      "iyzico URL/key match",
+      "fail",
+      "PROD URL ama SANDBOX key (sandbox- prefix)"
+    );
+  } else if (env.IYZICO_BASE_URL && env.IYZICO_API_KEY) {
+    add("iyzico URL/key match", "ok", "production tutarlı");
+  }
+
+  // Resend FROM domain prod URL ile uyuşuyor mu?
+  if (env.RESEND_FROM_EMAIL && env.NEXT_PUBLIC_SITE_URL) {
+    try {
+      const siteHost = new URL(env.NEXT_PUBLIC_SITE_URL).hostname.replace(
+        /^www\./,
+        ""
+      );
+      const fromMatch = env.RESEND_FROM_EMAIL.match(/<([^>]+)>/);
+      const fromAddr = fromMatch ? fromMatch[1] : env.RESEND_FROM_EMAIL;
+      const fromDomain = fromAddr.split("@")[1]?.replace(/^www\./, "");
+      if (fromDomain === siteHost) {
+        add("Resend FROM domain", "ok", `${fromDomain} = ${siteHost}`);
+      } else {
+        add(
+          "Resend FROM domain",
+          "warn",
+          `${fromDomain} ≠ ${siteHost} (DKIM çalışmaz)`
+        );
+      }
+    } catch {
+      // ignore parse hatası
+    }
+  }
+
+  // Supabase URL gerçek prod proje mi
+  if (env.NEXT_PUBLIC_SUPABASE_URL?.includes(".supabase.co")) {
+    add("Supabase prod URL", "ok", "supabase.co host");
+  }
+
+  for (const c of checks) row(c.label, c.status, c.detail);
+  checks.length = 0;
+} else if (env.NEXT_PUBLIC_SITE_URL) {
+  console.log();
+  console.log(
+    `${COLORS.gray}── Dev mode — production sanity atlandı ──${COLORS.reset}`
+  );
+  console.log(
+    `${COLORS.gray}   Production'a deploy etmeden önce NEXT_PUBLIC_SITE_URL'i https:// yap${COLORS.reset}`
+  );
+}
+
+// ============================================================
 // Network checks
 // ============================================================
 

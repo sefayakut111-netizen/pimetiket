@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 interface RouteEntry {
   path: string;
