@@ -18,12 +18,15 @@ import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui";
 import {
   listCustomerOrders,
   refreshCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { reorderFromOrder } from "@/lib/customer-reorder";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 
@@ -285,6 +288,9 @@ export default function PanelimPage() {
 
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const router = useRouter();
+  const toast = useToast();
 
   useEffect(() => {
     ensureAuthBindings();
@@ -297,6 +303,24 @@ export default function PanelimPage() {
     return () =>
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
+
+  const handleQuickReorder = async (order: CustomerOrder) => {
+    setReordering(true);
+    try {
+      const r = await reorderFromOrder(order);
+      if (r.ok) {
+        toast.success(`${r.added} ürün sepete eklendi`);
+        router.push("/sepet");
+      } else {
+        toast.error(r.reason ?? "Sepete eklenemedi");
+      }
+    } catch (err) {
+      console.error("[panelim/reorder] failed:", err);
+      toast.error("Bir şeyler ters gitti, tekrar dene");
+    } finally {
+      setReordering(false);
+    }
+  };
 
   const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
 
@@ -344,6 +368,9 @@ export default function PanelimPage() {
   const lastStickerItem = lastStickerOrder?.items.find(
     (i) => i.product === "sticker"
   );
+
+  // Quick reorder: en son sipariş (etiket varsa o, yoksa sticker)
+  const lastReorderTarget = lastEtiketOrder ?? lastStickerOrder ?? null;
 
   const today = new Date();
   const dateLabel = today
@@ -439,7 +466,13 @@ export default function PanelimPage() {
                     )
                   : c.qaReorderSoon
             }
-            href={lastEtiketItem ? "/etiket" : "/sticker"}
+            onClick={
+              lastReorderTarget
+                ? () => handleQuickReorder(lastReorderTarget)
+                : undefined
+            }
+            href={lastReorderTarget ? undefined : "/etiket"}
+            disabled={reordering}
           />
         </div>
 
@@ -743,27 +776,33 @@ function QuickAction({
   desc,
   href,
   primary,
+  onClick,
+  disabled,
 }: {
   icon: React.ReactNode;
   title: string;
   desc: string;
-  href: string;
+  href?: string;
   primary?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "rounded-lg p-4 flex items-center gap-3.5 ring-1 transition-transform hover:-translate-y-0.5 shadow-1",
-        primary
-          ? "bg-lacivert text-white ring-lacivert"
-          : "bg-white text-lacivert ring-gri-200"
-      )}
-    >
+  const className = cn(
+    "rounded-lg p-4 flex items-center gap-3.5 ring-1 transition-transform hover:-translate-y-0.5 shadow-1 text-left w-full",
+    primary
+      ? "bg-lacivert text-white ring-lacivert"
+      : "bg-white text-lacivert ring-gri-200",
+    disabled && "opacity-60 cursor-wait"
+  );
+
+  const content = (
+    <>
       <div
         className={cn(
           "grid place-items-center w-11 h-11 rounded-xl shrink-0",
-          primary ? "bg-pim-mercan text-white" : "bg-pim-mercan-tint text-pim-mercan"
+          primary
+            ? "bg-pim-mercan text-white"
+            : "bg-pim-mercan-tint text-pim-mercan"
         )}
       >
         {icon}
@@ -773,6 +812,25 @@ function QuickAction({
         <div className="text-[13px] opacity-70 mt-0.5">{desc}</div>
       </div>
       <Icon.ArrowR size={16} />
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={className}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={href ?? "#"} className={className}>
+      {content}
     </Link>
   );
 }

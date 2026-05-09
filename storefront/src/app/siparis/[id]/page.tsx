@@ -10,16 +10,18 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Skeleton, StageDot } from "@/components/ui";
+import { Button, Card, Eyebrow, Skeleton, StageDot, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   fetchCustomerOrder,
   type CustomerOrder,
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 import {
@@ -256,6 +258,10 @@ export default function SiparisDetailPage({
     transfer: c.payTransfer,
   };
 
+  const router = useRouter();
+  const toast = useToast();
+  const [reordering, setReordering] = useState(false);
+
   useEffect(() => {
     ensureAuthBindings();
     void fetchCustomerOrder(id).then((o) => {
@@ -263,6 +269,31 @@ export default function SiparisDetailPage({
       setHydrated(true);
     });
   }, [id]);
+
+  const handleReorder = async () => {
+    if (!order) return;
+    setReordering(true);
+    try {
+      const r = await reorderFromOrder(order);
+      if (r.ok) {
+        if (r.skipped > 0) {
+          toast.info(
+            `${r.added} ürün sepete eklendi · ${r.skipped} atlandı`
+          );
+        } else {
+          toast.success(`${r.added} ürün sepete eklendi`);
+        }
+        router.push("/sepet");
+      } else {
+        toast.error(r.reason ?? "Sepete eklenemedi");
+      }
+    } catch (err) {
+      console.error("[reorder] failed:", err);
+      toast.error("Bir şeyler ters gitti, tekrar dene");
+    } finally {
+      setReordering(false);
+    }
+  };
 
   // Hydration guard — skeleton loading
   if (!hydrated) {
@@ -378,8 +409,13 @@ export default function SiparisDetailPage({
               </span>
             </div>
           </div>
-          <Button variant="secondary" href="/etiket">
-            <Icon.Bolt size={14} /> {c.reorder}
+          <Button
+            variant="secondary"
+            onClick={handleReorder}
+            disabled={reordering}
+          >
+            <Icon.Bolt size={14} />{" "}
+            {reordering ? "Ekleniyor..." : c.reorder}
           </Button>
         </div>
 
