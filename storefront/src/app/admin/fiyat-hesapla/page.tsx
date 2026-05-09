@@ -34,7 +34,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   STICKER_TIERS,
@@ -44,6 +44,9 @@ import {
   quoteSticker,
   findTier,
 } from "@/lib/pricing-engine";
+import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
+import { SheetPreviewSvg } from "@/components/admin/pricing/SheetPreviewSvg";
+import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
 
 // ============================================================
 // Defaults — sticker-fiyatlama.html v0.3 ile aynı
@@ -410,9 +413,20 @@ export default function FiyatHesaplaPage() {
             {/* Price hero */}
             <PriceHero result={result} qty={qty} tier={tier} />
 
-            {/* Stats */}
             {result.ok ? (
-              <StatsGrid result={result} />
+              <>
+                {/* Rulo plan SVG (full width) */}
+                <RollPlanCard result={result} />
+
+                {/* Tabaka detay + Üretim özeti (2-col) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <SheetPreviewCard result={result} />
+                  <UretimOzetiCard result={result} />
+                </div>
+
+                {/* Cost breakdown */}
+                <CostBreakdown result={result} />
+              </>
             ) : (
               <Card padding="p-8" className="text-center">
                 <Icon.Info size={32} className="mx-auto text-gri-500 mb-2" />
@@ -424,9 +438,6 @@ export default function FiyatHesaplaPage() {
                 )}
               </Card>
             )}
-
-            {/* Cost breakdown */}
-            {result.ok && <CostBreakdown result={result} />}
           </div>
         </div>
       </div>
@@ -758,7 +769,113 @@ function VatCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatsGrid({ result }: { result: ReturnType<typeof quoteSticker> }) {
+function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
+  if (!result.ok) return null;
+  const { geometry } = result;
+  const { fit, roll } = geometry;
+  const efficiency =
+    (fit.sheetsNeeded / (roll.rollsNeeded * roll.sheetsPerRoll)) * 100;
+
+  return (
+    <Card padding="p-0" className="overflow-hidden">
+      {/* Head — title + inline stats */}
+      <div className="px-5 py-4 border-b border-gri-200 bg-gri-50 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="inline-block text-[10px] tracking-[0.18em] uppercase text-pim-mercan font-bold mb-1">
+            üretim katmanı
+          </span>
+          <h3 className="text-[18px] font-semibold tracking-tight">
+            Rulo Üretim Planı
+          </h3>
+          <p className="text-[12px] text-gri-700 mt-0.5">
+            Dinamik en (250-600mm) · 40mm kesim markası · 50mm başlangıç
+          </p>
+        </div>
+        <div className="flex gap-5 shrink-0">
+          <RpStat label="Rulo" value={roll.rollsNeeded.toString()} />
+          <RpStat
+            label="Tabaka/Rulo"
+            value={`${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
+          />
+          <RpStat label="Verimlilik" value={`%${efficiency.toFixed(0)}`} />
+        </div>
+      </div>
+
+      {/* SVG body */}
+      <div className="bg-gri-50 p-6 flex justify-center min-h-[200px]">
+        <RollPlanSvg geometry={geometry} />
+      </div>
+
+      {/* Foot */}
+      <div className="px-5 py-3 text-[11px] text-gri-500 bg-gri-50 border-t border-dashed border-gri-200 flex flex-wrap justify-between gap-2 tabular-nums">
+        <span>
+          ⚙ {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
+          {roll.rollsNeeded === 1
+            ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka`
+            : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}{" "}
+          · {geometry.totalM2.toFixed(3)} m² · {roll.rollW}mm en
+          {roll.rollW < 600 && (
+            <span className="text-yesil ml-1">
+              ({600 - roll.rollW}mm tasarruf)
+            </span>
+          )}
+        </span>
+        <span>
+          {fit.cols}×{fit.rows} grid ·{" "}
+          {fit.mode === "big" ? "40×65 büyük tabaka" : "23×31 küçük tabaka"}
+        </span>
+      </div>
+    </Card>
+  );
+}
+
+function RpStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-right">
+      <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+        {label}
+      </div>
+      <div className="text-[20px] font-bold tracking-tight tabular-nums">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SheetPreviewCard({
+  result,
+}: {
+  result: ReturnType<typeof quoteSticker>;
+}) {
+  if (!result.ok) return null;
+  const { geometry } = result;
+  const { fit } = geometry;
+
+  return (
+    <Card padding="p-5">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
+        <span>{fit.sheetW / 10}×{fit.sheetH / 10} cm Tabaka Görünümü</span>
+        <span className="text-[10px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
+          {fit.perSheet} ad/tabaka
+        </span>
+      </div>
+      <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-4 flex items-center justify-center min-h-[260px]">
+        <SheetPreviewSvg geometry={geometry} />
+      </div>
+      {fit.rotated && (
+        <div className="mt-2 text-[11px] text-gri-500 text-center tabular-nums">
+          ⟳ sticker 90° döndürüldü ({fit.stickerW}×{fit.stickerH}mm)
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function UretimOzetiCard({
+  result,
+}: {
+  result: ReturnType<typeof quoteSticker>;
+}) {
   if (!result.ok) return null;
   const { geometry } = result;
   const { fit, roll } = geometry;
@@ -769,21 +886,19 @@ function StatsGrid({ result }: { result: ReturnType<typeof quoteSticker> }) {
         <span>Üretim Özeti</span>
         <span
           className={cn(
-            "text-[10px] tabular-nums px-2 py-0.5 rounded-full",
+            "text-[10px] tabular-nums px-2 py-0.5 rounded-full font-semibold",
             fit.mode === "big"
               ? "bg-pim-mercan text-white"
               : "bg-krem text-lacivert"
           )}
         >
-          {fit.mode === "big" ? "büyük tabaka · die-cut" : "küçük tabaka"}
+          {fit.mode === "big" ? "büyük tabaka · die-cut" : "tabaka"}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCell
-          label="Adet/Tabaka"
-          value={fit.perSheet.toString()}
-        />
+      {/* 4 stat */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCell label="Adet/Tabaka" value={fit.perSheet.toString()} />
         <StatCell label="Toplam Tabaka" value={fit.sheetsNeeded.toString()} />
         <StatCell
           label="Harcanan Alan"
@@ -794,53 +909,27 @@ function StatsGrid({ result }: { result: ReturnType<typeof quoteSticker> }) {
         <StatCell label="Toplam Rulo" value={roll.rollsNeeded.toString()} />
       </div>
 
-      {/* Roll plan summary */}
-      <div className="mt-4 p-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[11.5px] text-gri-700 grid grid-cols-3 gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.08em] text-gri-500 mb-0.5 font-bold">
-            Rulo Eni
-          </div>
-          <div className="font-semibold tabular-nums">
-            {roll.rollW} mm
-            {roll.rollW < 600 && (
-              <span className="text-yesil text-[10px] ml-1">
-                ({600 - roll.rollW}mm tasarruf)
-              </span>
-            )}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.08em] text-gri-500 mb-0.5 font-bold">
-            Tabaka/Rulo
-          </div>
-          <div className="font-semibold tabular-nums">
-            {roll.sheetsOnLastRoll}/{roll.sheetsPerRoll}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.08em] text-gri-500 mb-0.5 font-bold">
-            Verimlilik
-          </div>
-          <div className="font-semibold tabular-nums">
-            %{((fit.sheetsNeeded / (roll.rollsNeeded * roll.sheetsPerRoll)) * 100).toFixed(0)}
-          </div>
-        </div>
+      {/* Mini bar */}
+      <div className="mt-3" title="60cm rulo eninde dolu / fire dağılımı">
+        <RollMiniBar geometry={geometry} />
       </div>
 
       {/* Waste */}
       <div className="mt-3 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] flex justify-between items-center border-l-[3px] border-pim-mercan">
         <span>
-          🔥 <strong className="text-pim-mercan-koyu">%{geometry.wastePct.toFixed(1)} fire</strong>
+          <strong className="text-pim-mercan-koyu">
+            %{geometry.wastePct.toFixed(1)} fire
+          </strong>
         </span>
-        <span className="text-gri-700 tabular-nums">
+        <span className="text-gri-700 tabular-nums text-[11px]">
           {geometry.stickerArea.toFixed(3)} m² sticker / {geometry.totalM2.toFixed(3)} m² rulo
         </span>
       </div>
 
       {/* Layout details */}
-      <div className="mt-3 text-[11px] text-gri-500 tabular-nums">
-        Tabaka: {fit.sheetW}×{fit.sheetH} mm · Grid: {fit.cols}×{fit.rows} · Gap:{" "}
-        {fit.gap} mm{fit.rotated && " · 90° döndürüldü"}
+      <div className="mt-3 text-[10.5px] text-gri-500 tabular-nums">
+        Tabaka: {fit.sheetW}×{fit.sheetH}mm · Grid: {fit.cols}×{fit.rows} · Gap:{" "}
+        {fit.gap}mm
         {fit.forcedDieCut && " · zorla die-cut"}
       </div>
     </Card>
