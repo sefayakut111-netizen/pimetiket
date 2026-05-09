@@ -22,7 +22,14 @@ import { useState } from "react";
 import { Pim, PimMini } from "@/components/Pim";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
-import { FormSection, SelectableCard, PriceCard, useToast } from "@/components/ui";
+import {
+  FormSection,
+  SelectableCard,
+  PriceCard,
+  useToast,
+  DesignDropZone,
+  type DesignTempState,
+} from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import { deliveryEstimate } from "@/lib/pricing";
@@ -128,6 +135,8 @@ export default function StickerPage() {
   const [tier, setTier] = useState<number>(250);
   const [width, setWidth] = useState<number>(75);
   const [height, setHeight] = useState<number>(75);
+  // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
+  const [design, setDesign] = useState<DesignTempState | null>(null);
 
   // Tabaka modunda kontur kesim seçili kalmasın — kareye düş
   if (cutMode === "tabaka" && shape === "die") {
@@ -214,9 +223,16 @@ export default function StickerPage() {
               finish={finish}
               width={width}
               height={height}
+              designUrl={design?.previewUrl ?? null}
             />
             <div className="text-[13px] text-gri-700 text-center mt-3">
-              Anlık önizleme — her seçim canlı
+              {design
+                ? "✓ Senin tasarımın önizlemede"
+                : "Anlık önizleme — her seçim canlı"}
+            </div>
+            {/* Design upload zone */}
+            <div className="mt-4">
+              <DesignDropZone value={design} onChange={setDesign} />
             </div>
           </div>
 
@@ -579,12 +595,21 @@ export default function StickerPage() {
                   material,
                   finish,
                   hediyeAdet: overrunCount,
+                  designTempId: design?.tempId,
+                  designPreviewUrl: design?.previewUrl,
+                  designFileName: design?.fileName,
                 });
                 if (!result.ok) {
                   toast.error(result.reason);
                   return;
                 }
-                toast.success("Sepete eklendi 🛒 — sepete gitmek için üst menü");
+                // Tasarım state'ini sıfırla — yeni eklemede temiz başla
+                setDesign(null);
+                toast.success(
+                  design
+                    ? "Sepete eklendi 🛒 — tasarımın bağlandı"
+                    : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
+                );
               }}
             />
           </div>
@@ -1076,6 +1101,8 @@ interface PreviewProps {
   finish: StickerFinish;
   width: number;
   height: number;
+  /** Müşterinin yüklediği tasarım dosyası — preview için signed URL */
+  designUrl?: string | null;
 }
 
 function StickerPreview({
@@ -1085,6 +1112,7 @@ function StickerPreview({
   finish,
   width,
   height,
+  designUrl,
 }: PreviewProps) {
   // Maks 360px hedef, en uzun kenara göre ölçekle
   const maxDim = Math.max(width, height);
@@ -1154,7 +1182,8 @@ function StickerPreview({
         style={{ transform: "translate(-50%, -50%) rotate(-6deg)" }}
       >
         {shape === "die" ? (
-          // Kontur kesim: sticker baykus siluetinde, beyaz halo
+          // Kontur kesim: tasarım varsa onu göster (kontur müşteri tasarımına
+          // göre kesilecek), yoksa Pim silüet placeholder
           <div
             className="relative grid place-items-center"
             style={{
@@ -1162,12 +1191,25 @@ function StickerPreview({
                 "drop-shadow(0 0 4px white) drop-shadow(0 0 4px white) drop-shadow(0 8px 24px rgba(31,41,55,0.25)) drop-shadow(0 4px 8px rgba(31,41,55,0.12))",
             }}
           >
-            <PimAsset
-              variant="detailed"
-              size={Math.min(minDim * scale * 1.2, 360)}
-              bob={false}
-              ariaLabel="Pim baykuş — kontur kesim sticker"
-            />
+            {designUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={designUrl}
+                alt="Senin tasarımın — kontur kesim önizleme"
+                style={{
+                  maxWidth: Math.min(minDim * scale * 1.2, 360),
+                  maxHeight: Math.min(minDim * scale * 1.2, 360),
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              <PimAsset
+                variant="detailed"
+                size={Math.min(minDim * scale * 1.2, 360)}
+                bob={false}
+                ariaLabel="Pim baykuş — kontur kesim sticker örneği"
+              />
+            )}
             {(material === "holo" || material === "simli") && (
               <div
                 aria-hidden
@@ -1191,6 +1233,7 @@ function StickerPreview({
               clipPath: customClip,
               boxShadow:
                 "0 16px 40px rgba(31,41,55,0.18), 0 4px 8px rgba(31,41,55,0.1)",
+              overflow: "hidden",
             }}
           >
             <div
@@ -1200,24 +1243,37 @@ function StickerPreview({
                 height: "94%",
                 borderRadius: shape === "circle" ? "50%" : radius,
                 background:
-                  material === "transparan"
+                  material === "transparan" && !designUrl
                     ? "transparent"
-                    : material === "holo"
+                    : material === "holo" && !designUrl
                       ? "rgba(255,255,255,0.2)"
                       : "transparent",
                 border:
-                  material === "transparan"
+                  material === "transparan" && !designUrl
                     ? "2px dashed rgba(31,41,55,0.3)"
                     : "none",
+                overflow: "hidden",
               }}
             >
-              {/* Pim baykuş silhuet — Sticker Mule horse mascot pattern */}
-              <PimAsset
-                variant="detailed"
-                size={Math.min(minDim * scale * 0.7, 220)}
-                bob={false}
-                ariaLabel="Pim baykuş — sticker örneği"
-              />
+              {designUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={designUrl}
+                  alt="Senin tasarımın — önizleme"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <PimAsset
+                  variant="detailed"
+                  size={Math.min(minDim * scale * 0.7, 220)}
+                  bob={false}
+                  ariaLabel="Pim baykuş — sticker örneği"
+                />
+              )}
             </div>
             <div
               aria-hidden

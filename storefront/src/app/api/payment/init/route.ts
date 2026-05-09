@@ -47,6 +47,22 @@ const CartItemSchema = z.object({
   unit: z.number().nonnegative(),
   total: z.number().nonnegative(),
   meta: z.record(z.string(), z.unknown()).optional(),
+  // Pre-purchase upload bağlantısı — callback'te promote edilir
+  designTempId: z.string().uuid().optional(),
+  designPreviewUrl: z.string().optional(),
+  designFileName: z.string().optional(),
+  // Sticker-specific (snapshot için)
+  shape: z.string().optional(),
+  cut: z.string().optional(),
+  softCorners: z.boolean().optional(),
+  material: z.string().optional(),
+  finish: z.string().optional(),
+  hediyeAdet: z.number().optional(),
+  // Etiket-specific
+  materialId: z.string().optional(),
+  coatingId: z.string().optional(),
+  customizationId: z.string().optional(),
+  winding: z.number().optional(),
 });
 
 const AddressSchema = z.object({

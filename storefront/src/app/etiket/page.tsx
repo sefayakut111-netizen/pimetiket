@@ -25,6 +25,8 @@ import {
   SelectableCard,
   PriceCard,
   Pill,
+  DesignDropZone,
+  type DesignTempState,
 } from "@/components/ui";
 import { deliveryEstimate } from "@/lib/pricing";
 import { useToast } from "@/components/ui";
@@ -147,6 +149,8 @@ export default function EtiketPage() {
   const [qty, setQty] = useState<number>(2000);
   const [width, setWidth] = useState<number>(60);
   const [height, setHeight] = useState<number>(80);
+  // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
+  const [design, setDesign] = useState<DesignTempState | null>(null);
 
   // Engine ile canlı quote
   const quote = quoteCustomerEtiket({
@@ -199,6 +203,7 @@ export default function EtiketPage() {
               yaldiz={yaldiz}
               width={width}
               height={height}
+              designUrl={design?.previewUrl ?? null}
             />
             <div className="flex justify-between items-center mt-4 px-2">
               <div className="text-[13px] text-gri-700">
@@ -226,6 +231,10 @@ export default function EtiketPage() {
                   Düz
                 </button>
               </div>
+            </div>
+            {/* Design upload zone */}
+            <div className="mt-4">
+              <DesignDropZone value={design} onChange={setDesign} />
             </div>
           </div>
 
@@ -666,12 +675,20 @@ export default function EtiketPage() {
                   coatingId: coating,
                   customizationId: custom,
                   winding,
+                  designTempId: design?.tempId,
+                  designPreviewUrl: design?.previewUrl,
+                  designFileName: design?.fileName,
                 });
                 if (!result.ok) {
                   toast.error(result.reason);
                   return;
                 }
-                toast.success("Sepete eklendi 🛒 — sepete gitmek için üst menü");
+                setDesign(null);
+                toast.success(
+                  design
+                    ? "Sepete eklendi 🛒 — tasarımın bağlandı"
+                    : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
+                );
               }}
               footnote="Cüzdandan ödeyince +%2 indirim · 3 gün içinde dosya yükleyebilirsin · KDV dahil"
             />
@@ -850,6 +867,8 @@ interface PreviewCanvasProps {
   yaldiz: YaldizId;
   width: number;
   height: number;
+  /** Müşterinin yüklediği tasarım dosyası — preview için signed URL */
+  designUrl?: string | null;
 }
 
 const MAT_BG: Record<MaterialId, string> = {
@@ -887,6 +906,7 @@ function PreviewCanvas({
   yaldiz,
   width,
   height,
+  designUrl,
 }: PreviewCanvasProps) {
   const matBg = MAT_BG[material];
   const sheen = SHEEN[coating];
@@ -993,52 +1013,67 @@ function PreviewCanvas({
                 material === "ultra"
                   ? "1px dashed rgba(31,41,55,0.4)"
                   : "none",
+              overflow: "hidden",
             }}
           >
-            <div className="text-center px-1">
-              <div
+            {designUrl ? (
+              // Müşterinin yüklediği tasarım — etiket üzerinde göster
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={designUrl}
+                alt="Senin tasarımın — etiket önizleme"
                 style={{
-                  fontWeight: 800,
-                  fontSize,
-                  background:
-                    custom === "yaldiz" ? yaldizGrad : "transparent",
-                  color:
-                    custom === "yaldiz"
-                      ? "transparent"
-                      : "#1F2937",
-                  WebkitBackgroundClip:
-                    custom === "yaldiz" ? "text" : "initial",
-                  backgroundClip: custom === "yaldiz" ? "text" : "initial",
-                  letterSpacing: "0.05em",
-                  textShadow:
-                    custom === "emboss"
-                      ? "0 1px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.15)"
-                      : "none",
-                  filter: custom === "spotuv" ? "contrast(1.2)" : "none",
-                }}
-              >
-                OLEA
-              </div>
-              <div
-                style={{
-                  fontSize: 9,
-                  color: "#FF6B5B",
-                  fontWeight: 600,
-                  marginTop: 2,
-                  letterSpacing: "0.1em",
-                }}
-              >
-                DOĞAL SABUN
-              </div>
-              <div
-                style={{
-                  height: 1,
-                  background: "rgba(31,41,55,0.2)",
-                  margin: "6px 12px",
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
                 }}
               />
-              <div style={{ fontSize: 7, color: "#4B5563" }}>100ml</div>
-            </div>
+            ) : (
+              <div className="text-center px-1">
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize,
+                    background:
+                      custom === "yaldiz" ? yaldizGrad : "transparent",
+                    color:
+                      custom === "yaldiz"
+                        ? "transparent"
+                        : "#1F2937",
+                    WebkitBackgroundClip:
+                      custom === "yaldiz" ? "text" : "initial",
+                    backgroundClip: custom === "yaldiz" ? "text" : "initial",
+                    letterSpacing: "0.05em",
+                    textShadow:
+                      custom === "emboss"
+                        ? "0 1px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.15)"
+                        : "none",
+                    filter: custom === "spotuv" ? "contrast(1.2)" : "none",
+                  }}
+                >
+                  OLEA
+                </div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: "#FF6B5B",
+                    fontWeight: 600,
+                    marginTop: 2,
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  DOĞAL SABUN
+                </div>
+                <div
+                  style={{
+                    height: 1,
+                    background: "rgba(31,41,55,0.2)",
+                    margin: "6px 12px",
+                  }}
+                />
+                <div style={{ fontSize: 7, color: "#4B5563" }}>100ml</div>
+              </div>
+            )}
           </div>
         </div>
       </div>

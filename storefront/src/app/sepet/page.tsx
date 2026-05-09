@@ -163,13 +163,22 @@ export default function SepetPage() {
               <Card key={item.id} padding="p-4 sm:p-5">
                 <div className="grid grid-cols-[60px_1fr_auto] sm:grid-cols-[80px_1fr_auto] gap-3 sm:gap-4 items-start">
                   <div
-                    className={`grid place-items-center w-15 h-15 sm:w-20 sm:h-20 rounded-lg shrink-0 ${
-                      item.product === "etiket"
-                        ? "bg-krem"
-                        : "bg-pim-mercan-tint"
+                    className={`grid place-items-center w-15 h-15 sm:w-20 sm:h-20 rounded-lg shrink-0 overflow-hidden ${
+                      item.designPreviewUrl
+                        ? "bg-white ring-1 ring-gri-200"
+                        : item.product === "etiket"
+                          ? "bg-krem"
+                          : "bg-pim-mercan-tint"
                     }`}
                   >
-                    {item.product === "etiket" ? (
+                    {item.designPreviewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.designPreviewUrl}
+                        alt={item.designFileName ?? "Tasarım"}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : item.product === "etiket" ? (
                       <Icon.Roll size={28} className="text-lacivert" />
                     ) : (
                       <Icon.Sticker size={28} className="text-pim-mercan" />
@@ -182,6 +191,11 @@ export default function SepetPage() {
                     <div className="text-[13px] text-gri-700 mt-1 leading-relaxed">
                       {item.config}
                     </div>
+                    {item.designFileName && (
+                      <div className="inline-flex items-center gap-1 mt-1.5 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
+                        ✓ Tasarım yüklendi
+                      </div>
+                    )}
                     {item.hediyeAdet && item.hediyeAdet > 0 && (
                       <div className="inline-flex items-center gap-1 mt-1.5 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
                         {x.giftSticker(item.hediyeAdet)}

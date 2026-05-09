@@ -205,7 +205,7 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["addresses"]["Insert"]>;
       };
 
-      // ---------- cart_items (mig 001) ----------
+      // ---------- cart_items (mig 001 + 008) ----------
       cart_items: {
         Row: {
           id: string;
@@ -228,6 +228,7 @@ export interface Database {
           coating_id: string | null;
           customization_id: string | null;
           winding: number | null;
+          design_temp_id: string | null;
           added_at: string;
         };
         Insert: {
@@ -251,9 +252,41 @@ export interface Database {
           coating_id?: string | null;
           customization_id?: string | null;
           winding?: number | null;
+          design_temp_id?: string | null;
           added_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["cart_items"]["Insert"]>;
+      };
+
+      // ---------- design_temp_uploads (mig 008) ----------
+      design_temp_uploads: {
+        Row: {
+          id: string;
+          user_id: string;
+          storage_path: string;
+          original_name: string;
+          size_bytes: number;
+          mime_type: string;
+          sha256: string | null;
+          promoted_to: string | null;
+          created_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          storage_path: string;
+          original_name: string;
+          size_bytes: number;
+          mime_type: string;
+          sha256?: string | null;
+          promoted_to?: string | null;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["design_temp_uploads"]["Insert"]
+        >;
       };
 
       // ---------- orders (mig 001) ----------

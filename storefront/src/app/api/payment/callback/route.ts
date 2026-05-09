@@ -28,6 +28,7 @@ import {
   isIyzicoConfigured,
 } from "@/lib/payment/iyzico";
 import { sendOrderConfirmation } from "@/lib/mail/notifications";
+import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 
 interface IntentRow {
   id: string;
@@ -47,6 +48,19 @@ interface IntentRow {
       unit: number;
       total: number;
       meta?: Record<string, unknown>;
+      // Pre-purchase tasarım — promote edilecek
+      designTempId?: string;
+      // Sticker/etiket-specific configurator state
+      shape?: string;
+      cut?: string;
+      softCorners?: boolean;
+      material?: string;
+      finish?: string;
+      hediyeAdet?: number;
+      materialId?: string;
+      coatingId?: string;
+      customizationId?: string;
+      winding?: number;
     }>;
     address: {
       label?: string | null;
@@ -240,7 +254,22 @@ async function handleCallback(req: NextRequest): Promise<NextResponse> {
     qty: i.qty,
     unit: i.unit,
     total: i.total,
-    meta: i.meta ?? {},
+    // Tüm config + designTempId snapshot'ı meta'ya koy. Promote akışı
+    // designTempId'yi okuyacak; geriye dönük query'ler de buradan çeker.
+    meta: {
+      ...(i.meta ?? {}),
+      designTempId: i.designTempId,
+      shape: i.shape,
+      cut: i.cut,
+      softCorners: i.softCorners,
+      material: i.material,
+      finish: i.finish,
+      hediyeAdet: i.hediyeAdet,
+      materialId: i.materialId,
+      coatingId: i.coatingId,
+      customizationId: i.customizationId,
+      winding: i.winding,
+    },
   }));
 
   const estimatedDelivery = addDaysIso(
@@ -278,7 +307,7 @@ async function handleCallback(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // order_items batch insert
+  // order_items batch insert (return id'ler — promote için lazım)
   const itemRows = items.map((i) => ({
     order_id: orderId,
     product: i.product,
@@ -291,13 +320,42 @@ async function handleCallback(req: NextRequest): Promise<NextResponse> {
     total: i.total,
     meta: i.meta,
   }));
-  const { error: itemsErr } = await admin
+  const { data: insertedItems, error: itemsErr } = await admin
     .from("order_items")
-    .insert(itemRows as never);
+    .insert(itemRows as never)
+    .select("id, product, meta");
   if (itemsErr) {
     console.error("[payment/callback] order_items error:", itemsErr);
     // Order silmeye çalış (cleanup) — ama callback ikinci kez gelirse
     // duplicate olur. Şimdilik log + devam.
+  }
+
+  // Pre-purchase yüklenmiş tasarımları promote et — temp/<userId> →
+  // <orderId>/, design_files INSERT, AI ön-kontrol başlat.
+  const orderItemsForPromote = (
+    (insertedItems as unknown as Array<{
+      id: string;
+      product: "sticker" | "etiket";
+      meta: Record<string, unknown>;
+    }>) ?? []
+  ).filter((i) => (i.meta as { designTempId?: string })?.designTempId);
+
+  if (orderItemsForPromote.length > 0) {
+    try {
+      const promoted = await promoteOrderDesigns({
+        admin,
+        orderId,
+        userId: intent.user_id,
+        orderItems: orderItemsForPromote,
+      });
+      console.log(
+        `[payment/callback] ${promoted}/${orderItemsForPromote.length} tasarım promote edildi`
+      );
+    } catch (err) {
+      console.error("[payment/callback] promote failed:", err);
+      // Sipariş zaten oluştu — promote başarısız olsa bile devam.
+      // Müşteri /siparis/[id] sayfasından manuel yükleyebilir.
+    }
   }
 
   // İlk event (created + paid)

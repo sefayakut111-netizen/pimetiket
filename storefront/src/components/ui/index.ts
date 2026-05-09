@@ -21,3 +21,5 @@ export { ToastProvider, useToast } from "./Toast";
 export type { ToastVariant } from "./Toast";
 export { Skeleton } from "./Skeleton";
 export { ValidatedInput } from "./ValidatedInput";
+export { DesignDropZone } from "./DesignDropZone";
+export type { DesignTempState } from "./DesignDropZone";

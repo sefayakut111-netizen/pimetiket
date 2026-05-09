@@ -67,6 +67,14 @@ export interface CustomerCartItem {
   /** Etiket sarım yönü 1-8 */
   winding?: number;
 
+  // Pre-purchase tasarım — sepete eklemeden önce yüklenmiş tasarım dosyası
+  // (design_temp_uploads.id). Ödeme sonrası design_files'a promote edilir.
+  designTempId?: string;
+  /** Mockup için signed URL — guest mode'da blob, auth'da Supabase 1h URL */
+  designPreviewUrl?: string;
+  /** Tasarım dosya adı — sepet kartında "marka-logo.pdf" göstermek için */
+  designFileName?: string;
+
   /** Eklendi tarih (timestamp ms) */
   addedAt: number;
 }
@@ -165,6 +173,7 @@ interface DbRow {
   coating_id: string | null;
   customization_id: string | null;
   winding: number | null;
+  design_temp_id: string | null;
   added_at: string;
 }
 
@@ -189,6 +198,7 @@ function rowToItem(r: DbRow): CustomerCartItem {
     coatingId: r.coating_id ?? undefined,
     customizationId: r.customization_id ?? undefined,
     winding: r.winding ?? undefined,
+    designTempId: r.design_temp_id ?? undefined,
     addedAt: new Date(r.added_at).getTime(),
   };
 }
@@ -219,6 +229,7 @@ function itemToInsert(
     coating_id: it.coatingId ?? null,
     customization_id: it.customizationId ?? null,
     winding: it.winding ?? null,
+    design_temp_id: it.designTempId ?? null,
   };
 }
 
