@@ -29,6 +29,13 @@ import {
 } from "@/components/ui";
 import { deliveryEstimate } from "@/lib/pricing";
 import { useToast } from "@/components/ui";
+import {
+  quoteCustomerEtiket,
+  computeEtiketTierSavings,
+  type EtiketMaterialId,
+  type EtiketCoatingId,
+  type EtiketCustomId,
+} from "@/lib/etiket-customer-pricing";
 
 // ============================================================
 // Configuration data
@@ -91,37 +98,13 @@ const YALDIZLAR = [
 type YaldizId = (typeof YALDIZLAR)[number]["id"];
 
 // ============================================================
-// Pricing & helpers
+// Pricing — v0.4: shared pricing-engine wrapper
+// (KDV mevzuat uyumlu, PSP fee gross-up'lı, tier erosion düzgün hesap)
+// Önceki hardcoded MAT_PRICE / COAT_PRICE / CUSTOM_PRICE / tierDiscount
+// kaldırıldı — quoteCustomerEtiket() admin'deki shared lib ile aynı motor
 // ============================================================
 
-const MAT_PRICE: Record<MaterialId, number> = {
-  kraft: 1.6,
-  beyaz: 1.4,
-  ultra: 2.1,
-  metalik: 2.6,
-};
-const COAT_PRICE: Record<CoatingId, number> = {
-  mat: 0.4,
-  parlak: 0.35,
-  soft: 0.55,
-  yok: 0,
-};
-const CUSTOM_PRICE: Record<CustomId, number> = {
-  yok: 0,
-  emboss: 0.6,
-  yaldiz: 0.9,
-  spotuv: 0.5,
-};
-
-function tierDiscountForQty(qty: number) {
-  if (qty >= 20000) return 0.78;
-  if (qty >= 10000) return 0.84;
-  if (qty >= 5000) return 0.9;
-  if (qty >= 2000) return 0.96;
-  return 1;
-}
-
-function upsellFor(qty: number) {
+function upsellFor(qty: number): { msg: string; to: number } | null {
   if (qty < 2000) return { msg: "+1000 adet ekle, %4 daha tasarruf", to: 2000 };
   if (qty < 5000) return { msg: "5000'e çık, %6 daha tasarruf", to: 5000 };
   if (qty < 10000) return { msg: "10000'e çık, %6 daha tasarruf", to: 10000 };
@@ -138,22 +121,33 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 export default function EtiketPage() {
   const toast = useToast();
-  const [material, setMaterial] = useState<MaterialId>("kraft");
-  const [coating, setCoating] = useState<CoatingId>("mat");
-  const [custom, setCustom] = useState<CustomId>("yok");
+  const [material, setMaterial] = useState<EtiketMaterialId>("kraft");
+  const [coating, setCoating] = useState<EtiketCoatingId>("mat");
+  const [custom, setCustom] = useState<EtiketCustomId>("yok");
   const [yaldiz, setYaldiz] = useState<YaldizId>("altin");
   const [winding, setWinding] = useState<number>(1);
   const [qty, setQty] = useState<number>(2000);
   const [width, setWidth] = useState<number>(60);
   const [height, setHeight] = useState<number>(80);
 
-  const sizeFactor = (width * height) / (60 * 80);
-  const tierDiscount = tierDiscountForQty(qty);
-  const unit =
-    (MAT_PRICE[material] + COAT_PRICE[coating] + CUSTOM_PRICE[custom]) *
-    sizeFactor *
-    tierDiscount;
-  const total = unit * qty;
+  // Engine ile canlı quote
+  const quote = quoteCustomerEtiket({
+    width,
+    height,
+    qty,
+    material,
+    coating,
+    customization: custom,
+  });
+
+  const total = quote.ok ? quote.total : 0;
+  const unit = quote.ok ? quote.unitPrice : 0;
+  const rollsNeeded = quote.ok ? quote.rollsNeeded : 0;
+
+  // Tier savings (1000 base ile karşılaştır)
+  const tierSavings = quote.ok
+    ? computeEtiketTierSavings({ width, height, material, coating, customization: custom }, 1000, qty)
+    : 0;
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });
   const upsell = upsellFor(qty);
@@ -504,12 +498,18 @@ export default function EtiketPage() {
                     {fmtUnit(unit)} TL/adet
                   </strong>{" "}
                   · KDV dahil
+                  {rollsNeeded > 0 && (
+                    <>
+                      {" "}
+                      <span className="text-gri-500">
+                        · {rollsNeeded} rulo
+                      </span>
+                    </>
+                  )}
                 </>
               }
               savingsLabel={
-                tierDiscount < 1
-                  ? `%${Math.round((1 - tierDiscount) * 100)} adet indirimi`
-                  : null
+                tierSavings > 0 ? `%${tierSavings} adet indirimi` : null
               }
               upsell={
                 upsell
@@ -523,7 +523,7 @@ export default function EtiketPage() {
                   "Sepete eklendi (mock — gerçek sepet F+I adımında)"
                 )
               }
-              footnote="Şimdi öderken dosya yüklemen gerekmez · 3 gün içinde yükleyebilirsin"
+              footnote="Cüzdandan ödeyince +%2 indirim · 3 gün içinde dosya yükleyebilirsin · KDV dahil"
             />
           </div>
         </div>
