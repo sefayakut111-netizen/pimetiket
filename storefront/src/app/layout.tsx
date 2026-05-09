@@ -3,6 +3,8 @@ import { Nunito } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui";
 import { LanguageProvider } from "@/lib/i18n/context";
+import { CookieConsent } from "@/components/CookieConsent";
+import { Analytics } from "@/components/Analytics";
 import "./globals.css";
 
 const SITE_URL =
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s · Pim Etiket",
   },
   description:
-    "1000 adetten başlayan, AI destekli dijital baskı. Bursa'dan, küçük markalar için.",
+    "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — Bursa atölyesinden, herkes için.",
   applicationName: "Pim Etiket",
   authors: [{ name: "Pim Etiket" }],
   generator: "Next.js",
@@ -42,13 +44,13 @@ export const metadata: Metadata = {
     siteName: "Pim Etiket",
     title: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
     description:
-      "1000 adetten başlayan, AI destekli dijital baskı. Bursa'dan, küçük markalar için.",
+      "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — Bursa atölyesinden, herkes için.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Pim Etiket",
     description:
-      "1000 adetten başlayan, AI destekli dijital baskı. Bursa'dan.",
+      "Etiket 1.000'den, sticker 25'ten. Bursa atölyesinden dijital baskı.",
   },
   robots: {
     index: true,
@@ -73,7 +75,7 @@ const ORGANIZATION_LD = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
-    "Türkiye'nin akıllı dijital baskı atölyesi — etiket ve sticker baskı.",
+    "Bursa atölyesinden dijital baskı — etiket ve sticker.",
   address: {
     "@type": "PostalAddress",
     addressLocality: "Bursa",
@@ -112,6 +114,8 @@ export default function RootLayout({
         <ToastProvider>
           <LanguageProvider>
             <AppShell>{children}</AppShell>
+            <CookieConsent />
+            <Analytics />
           </LanguageProvider>
         </ToastProvider>
         <script

@@ -1,4 +1,5 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import { ManageCookiesButton } from "@/components/ManageCookiesButton";
 
 export const metadata = {
   title: "Çerez Politikası",
@@ -11,9 +12,18 @@ export default function CerezPage() {
   return (
     <LegalLayout
       title="Çerez Politikası"
-      lastUpdated="8 Mayıs 2026"
+      lastUpdated="10 Mayıs 2026"
       currentPath="/cerez"
     >
+      <div className="not-prose mb-6 p-4 rounded-lg bg-pim-mercan-tint/40 ring-1 ring-pim-mercan-soft">
+        <p className="text-[14px] text-lacivert mb-3">
+          Mevcut tercihlerini gözden geçirmek veya değiştirmek istersen:
+        </p>
+        <ManageCookiesButton className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full bg-pim-mercan text-white text-[14px] font-semibold hover:bg-pim-mercan-koyu transition-colors">
+          🍪 Çerez tercihlerimi yönet
+        </ManageCookiesButton>
+      </div>
+
       <p>
         Pim Etiket olarak, sitemizin işlevselliğini sağlamak, deneyiminizi
         iyileştirmek ve site kullanım istatistiklerini analiz etmek için
