@@ -22,15 +22,38 @@ const COPY = {
     h1Line2: "küçük markalar için.",
     intro:
       "Pim Etiket'i kurarken aklımızda tek bir soru vardı: küçük markalar, hayalindeki kalitede etiket bastırmak için neden binlerce adet stoklamak zorunda olsun? Cevabımız bu site.",
-    storyEyebrow: "Hikayemiz",
-    story1Note: "[Sefa not: bu metni kendi hikayene göre düzenle]",
-    story1: " — Pim Etiket, Bursa'da bir atölyede doğdu. Sektörde yıllarını vermiş baskı ustalarıyla, küçük markaların etiket ihtiyaçlarına basit bir cevap aradık. Online konfigürasyon, AI destekli kalite kontrolü ve fason üretim ortaklarıyla esnek bir vitrin kurduk.",
+    storyEyebrow: "Pim Etiket nereden geliyor?",
+    storyTitle: "Geleneksel ticaretin yapay zeka çağına ayak uyduruşu.",
+    story1: "75 yıldır ticaretle uğraşan bir ailenin ferdiyiz. Yolumuz kırtasiyecilikten başladı — defterler, kâğıtlar, mürekkepler. Sonra matbaacılığa uzandı; baskı makinelerinin sesi, kâğıdın kokusu kuşaklar boyu evimizin parçası oldu. Daha sonra ambalaj sektörüne geçtik — markaların raflara çıkış hikâyelerine yakından şahit olduk.",
     story2:
-      "İlk müşterilerimiz Bursa'daki butik üreticiler oldu — sabun atölyeleri, kavurucular, butik gıda. Onlar bize öğretti: \"hızlı ve doğru\" yetmez, \"esnek ve dürüst\" lazım. Şimdi tüm Türkiye'ye aynı vaatle hizmet ediyoruz.",
-    story3pre: "Üretimimizi, sektörde yıllarını vermiş ",
-    story3bold: "fason baskı ortaklarımızla",
-    story3post:
-      " yapıyoruz. Onlar makineyi tanır, biz dijital süreci yönetiriz — müşteri kazanır.",
+      "Pim Etiket bu uzun hikâyenin son halkası. Ama bu kez bir farkla: teknolojinin yardımıyla.",
+    storyWhy: "Neden böyle bir sistem?",
+    story3:
+      "Sektörün içinden gözlemledik: küçük markalar, büyük markaların kullandığı imkânlardan uzak kalıyor. Düşük adetlerde fiyatlar uçuyor, süreçler karmaşıklaşıyor, \"sadece etiket bastırmak\" bile bir maraton oluyordu.",
+    story4pre: "Mühendislik eğitiminin getirdiği bakış açısı şunu söyledi: otomasyon ve yapay zeka gelecek değil, bugün. Doğru kullanıldığında bu teknolojiler, küçük markalara da büyüklerin gücünü verebilir. Biz de o değişime \"mecburen\" değil, ",
+    story4bold: "öngörerek",
+    story4post: " katıldık.",
+    storyPromise: "Sana ne vaat ediyoruz?",
+    story5:
+      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok, \"5 iş günü\" diyince 10. günü beklemek yok.",
+    story6: "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 75 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası.",
+    pimWhoEyebrow: "Pim kim?",
+    pimWhoTitle: "Selam, ben Pim. Bu işin baykuşuyum.",
+    pimWho1:
+      "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse fason atölyeyi kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — baykuşum, saymıyoruz.",
+    pimWho2: "Tek başıma değilim aslında. Ekibim var, bütün soruları paylaşıyoruz:",
+    pimRole1Name: "Tasarımcı Pim",
+    pimRole1Desc: "boyut, renk, fiyat hesabı",
+    pimRole2Name: "Kargocu Pim",
+    pimRole2Desc: "sipariş ve kargo takibi",
+    pimRole3Name: "Muhasebeci Pim",
+    pimRole3Desc: "fatura işleri (yakında)",
+    pimRole4Name: "Operatör Pim",
+    pimRole4Desc: "sorun çözüm (yakında)",
+    pimRole5Name: "Mevzuat Pim",
+    pimRole5Desc: "etiket denetimi (yakında)",
+    pimWho3:
+      "Hangisi lazımsa o gelir. Sen sadece sor, gerisini biz halletmeye çalışırız.",
     valuesEyebrow: "Değerlerimiz",
     valuesTitle: "Pim'in altında saklanan dört söz.",
     val1Title: "Düşük adetten esnek",
@@ -65,16 +88,41 @@ const COPY = {
     h1Line2: "for small brands.",
     intro:
       "When we founded Pim Etiket we had only one question in mind: why should small brands stock thousands of units to print quality labels for their dream products? This site is our answer.",
-    storyEyebrow: "Our story",
-    story1Note: "[Sefa note: edit this with your own story]",
+    storyEyebrow: "Where Pim Etiket comes from",
+    storyTitle: "Traditional trade adapting to the AI era.",
     story1:
-      " — Pim Etiket was born in a Bursa workshop. With print masters who'd spent years in the trade, we looked for a simple answer to small brands' label needs: online configuration, AI-assisted QC, and a flexible storefront powered by contract-print partners.",
+      "We come from a family with 75 years of trading experience. Our path started in stationery — notebooks, papers, inks. Then it moved into printing; the sound of press machines and the smell of paper became part of our home for generations. Then we entered the packaging industry — we witnessed brands' shelf-arrival stories firsthand.",
     story2:
-      "Our first customers were boutique makers in Bursa — soap workshops, coffee roasters, artisan food brands. They taught us: \"fast and accurate\" isn't enough — you need \"flexible and honest.\" Today we serve all of Turkey with the same promise.",
-    story3pre: "We do our production with ",
-    story3bold: "experienced contract-print partners",
-    story3post:
-      ". They know the machines, we run the digital workflow — and the customer wins.",
+      "Pim Etiket is the latest chapter in that long story. But this time with a difference: with technology's help.",
+    storyWhy: "Why a system like this?",
+    story3:
+      "We observed it from inside the industry: small brands stay distant from the resources big brands use. Prices skyrocket at low quantities, processes get complicated, even \"just printing labels\" turns into a marathon.",
+    story4pre:
+      "An engineering perspective taught us one thing: automation and AI aren't the future, they're today. Used right, these technologies can give small brands the power of the big ones. So we joined that shift not \"out of necessity\" but ",
+    story4bold: "by foresight",
+    story4post: ".",
+    storyPromise: "What we promise you",
+    story5:
+      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses, no \"5 business days\" turning into ten.",
+    story6:
+      "Thank you for walking with us on this journey. 75 years of trading experience + the AI era — Pim Etiket is where these two meet.",
+    pimWhoEyebrow: "Who's Pim?",
+    pimWhoTitle: "Hi, I'm Pim. The owl behind this whole thing.",
+    pimWho1:
+      "When things get tangled, just call me — I quote prices, track orders, chase the contract workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm an owl, I don't count.",
+    pimWho2: "I'm not alone, by the way. I've got a team — we share the workload:",
+    pimRole1Name: "Designer Pim",
+    pimRole1Desc: "sizing, colors, pricing",
+    pimRole2Name: "Shipper Pim",
+    pimRole2Desc: "order and shipment tracking",
+    pimRole3Name: "Accountant Pim",
+    pimRole3Desc: "invoicing (coming soon)",
+    pimRole4Name: "Operator Pim",
+    pimRole4Desc: "issue resolution (coming soon)",
+    pimRole5Name: "Compliance Pim",
+    pimRole5Desc: "label review (coming soon)",
+    pimWho3:
+      "Whichever one you need shows up. Just ask, we'll handle the rest.",
     valuesEyebrow: "Values",
     valuesTitle: "The four promises behind Pim.",
     val1Title: "Flexible from low quantity",
@@ -149,17 +197,77 @@ export default function HakkimizdaPage() {
       <section className="py-10 md:py-12">
         <div className="mx-auto max-w-[800px] px-4 md:px-8">
           <Eyebrow>{c.storyEyebrow}</Eyebrow>
-          <div className="mt-4 space-y-5 text-base text-gri-700 leading-[1.7]">
+          <h2 className="mt-3 text-[24px] md:text-[32px] font-semibold tracking-tight leading-tight">
+            {c.storyTitle}
+          </h2>
+          <div className="mt-5 space-y-5 text-[15px] md:text-base text-gri-700 leading-[1.7]">
+            <p>{c.story1}</p>
             <p>
-              <strong className="text-lacivert">{c.story1Note}</strong>
-              {c.story1}
+              <strong className="text-lacivert">{c.story2}</strong>
             </p>
-            <p>{c.story2}</p>
+          </div>
+
+          <h3 className="mt-10 text-[20px] md:text-[24px] font-semibold tracking-tight leading-tight">
+            {c.storyWhy}
+          </h3>
+          <div className="mt-4 space-y-5 text-[15px] md:text-base text-gri-700 leading-[1.7]">
+            <p>{c.story3}</p>
             <p>
-              {c.story3pre}
-              <strong className="text-lacivert">{c.story3bold}</strong>
-              {c.story3post}
+              {c.story4pre}
+              <strong className="text-lacivert">{c.story4bold}</strong>
+              {c.story4post}
             </p>
+          </div>
+
+          <h3 className="mt-10 text-[20px] md:text-[24px] font-semibold tracking-tight leading-tight">
+            {c.storyPromise}
+          </h3>
+          <div className="mt-4 space-y-5 text-[15px] md:text-base text-gri-700 leading-[1.7]">
+            <p>{c.story5}</p>
+            <p className="text-lacivert font-medium">{c.story6}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* PIM KİM? */}
+      <section className="py-10 md:py-14 bg-pim-mercan-tint/30">
+        <div className="mx-auto max-w-[800px] px-4 md:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 md:gap-8 items-start">
+            <div className="shrink-0 mx-auto md:mx-0">
+              <Pim pose="wave" size={140} />
+            </div>
+            <div>
+              <Eyebrow>{c.pimWhoEyebrow}</Eyebrow>
+              <h2 className="mt-3 text-[22px] md:text-[28px] font-semibold tracking-tight leading-tight">
+                {c.pimWhoTitle}
+              </h2>
+              <p className="mt-4 text-[15px] md:text-base text-gri-700 leading-[1.7]">
+                {c.pimWho1}
+              </p>
+              <p className="mt-4 text-[15px] md:text-base text-gri-700 leading-[1.7]">
+                {c.pimWho2}
+              </p>
+              <ul className="mt-4 space-y-2 text-[15px] md:text-base text-gri-700">
+                {[
+                  { name: c.pimRole1Name, desc: c.pimRole1Desc },
+                  { name: c.pimRole2Name, desc: c.pimRole2Desc },
+                  { name: c.pimRole3Name, desc: c.pimRole3Desc },
+                  { name: c.pimRole4Name, desc: c.pimRole4Desc },
+                  { name: c.pimRole5Name, desc: c.pimRole5Desc },
+                ].map((r) => (
+                  <li key={r.name} className="flex items-start gap-2">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-pim-mercan mt-2.5 shrink-0" />
+                    <span>
+                      <strong className="text-lacivert">{r.name}</strong>
+                      <span className="text-gri-700"> — {r.desc}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-5 text-[15px] md:text-base text-gri-700 leading-[1.7] italic">
+                {c.pimWho3}
+              </p>
+            </div>
           </div>
         </div>
       </section>
