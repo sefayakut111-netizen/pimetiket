@@ -27,6 +27,7 @@ import {
   retrieveCheckoutForm,
   isIyzicoConfigured,
 } from "@/lib/payment/iyzico";
+import { sendOrderConfirmation } from "@/lib/mail/notifications";
 
 interface IntentRow {
   id: string;
@@ -359,7 +360,15 @@ async function handleCallback(req: NextRequest): Promise<NextResponse> {
     } as never)
     .eq("id", intent.id);
 
-  // 12) Redirect → başarı sayfası
+  // 12) Sipariş onay maili — async, redirect bekletmesin
+  void sendOrderConfirmation({
+    userId: intent.user_id,
+    orderId,
+  }).catch((err) =>
+    console.error("[payment/callback] order confirmation mail failed:", err)
+  );
+
+  // 13) Redirect → başarı sayfası
   return NextResponse.redirect(
     `${siteUrl}/odeme-sonuc?status=success&order=${orderId}`,
     303
