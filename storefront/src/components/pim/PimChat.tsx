@@ -403,26 +403,33 @@ function MessageList({
     <div className="space-y-3">
       {messages.map((m) => {
         const text = extractText(m);
-        if (!text) return null;
+        const toolResults = extractToolResults(m);
         const isUser = m.role === "user";
+        const hasContent = text || toolResults.length > 0;
+        if (!hasContent) return null;
         return (
           <div
             key={m.id}
             className={cn(
-              "flex",
-              isUser ? "justify-end" : "justify-start"
+              "flex flex-col gap-2",
+              isUser ? "items-end" : "items-start"
             )}
           >
-            <div
-              className={cn(
-                "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-1",
-                isUser
-                  ? "bg-pim-mercan text-white rounded-br-md"
-                  : "bg-white ring-1 ring-gri-200 text-lacivert rounded-bl-md"
-              )}
-            >
-              {text}
-            </div>
+            {text && (
+              <div
+                className={cn(
+                  "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-1",
+                  isUser
+                    ? "bg-pim-mercan text-white rounded-br-md"
+                    : "bg-white ring-1 ring-gri-200 text-lacivert rounded-bl-md"
+                )}
+              >
+                {text}
+              </div>
+            )}
+            {toolResults.map((tr, i) => (
+              <ToolResultCard key={`${m.id}-tool-${i}`} result={tr} />
+            ))}
           </div>
         );
       })}
@@ -436,6 +443,172 @@ function MessageList({
       <div ref={scrollRef} />
     </div>
   );
+}
+
+// ============================================================
+// Tool result card — quote_sticker / quote_etiket sonucu
+// ============================================================
+
+interface ToolResultStickerSuccess {
+  success: true;
+  product: "sticker";
+  size_mm: number;
+  qty: number;
+  material: string;
+  finish: string;
+  total_kdv_dahil: number;
+  unit_price_kdv_dahil: number;
+  hediye_adet: number;
+  cuzdan_indirim_2pct: number;
+  configurator_url: string;
+}
+
+interface ToolResultEtiketSuccess {
+  success: true;
+  product: "etiket";
+  width_mm: number;
+  height_mm: number;
+  qty: number;
+  material: string;
+  coating: string;
+  customization: string;
+  total_kdv_dahil: number;
+  unit_price_kdv_dahil: number;
+  rolls_needed: number;
+  total_m2: number;
+  cuzdan_indirim_2pct: number;
+  configurator_url: string;
+}
+
+interface ToolResultError {
+  success: false;
+  reason: string;
+  bigEtiketRedirect?: boolean;
+}
+
+type ToolResultData =
+  | ToolResultStickerSuccess
+  | ToolResultEtiketSuccess
+  | ToolResultError;
+
+function ToolResultCard({ result }: { result: ToolResultData }) {
+  if (!result.success) {
+    return (
+      <div className="max-w-[85%] rounded-xl bg-kirmizi/10 ring-1 ring-kirmizi/30 px-3.5 py-2.5 text-[12.5px] text-kirmizi">
+        ⚠️ {result.reason}
+        {result.bigEtiketRedirect && (
+          <div className="text-[11px] text-kirmizi/70 mt-1">
+            Büyük etiket servisi yakında.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const isSticker = result.product === "sticker";
+  const fmtTL = (n: number) =>
+    n.toLocaleString("tr-TR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+
+  return (
+    <div className="max-w-[90%] w-full rounded-2xl bg-gradient-to-br from-lacivert to-[#111827] text-white p-4 shadow-2 relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute -top-12 -right-12 w-[120px] h-[120px] rounded-full bg-pim-mercan/30 blur-2xl"
+      />
+      <div className="relative">
+        <div className="text-[10px] uppercase tracking-[0.12em] text-white/50 font-bold mb-1">
+          {isSticker ? "Sticker Fiyat" : "Etiket Fiyat"} · KDV Dahil
+        </div>
+        <div className="text-[28px] font-bold tracking-tight tabular-nums leading-none">
+          {fmtTL(result.total_kdv_dahil)}{" "}
+          <span className="text-pim-mercan text-[20px] font-semibold">TL</span>
+        </div>
+        <div className="text-[11.5px] text-white/70 mt-1.5 tabular-nums">
+          {result.qty.toLocaleString("tr-TR")} adet ×{" "}
+          <strong className="text-white">
+            {fmtTL(result.unit_price_kdv_dahil)} TL/adet
+          </strong>
+        </div>
+
+        <div className="text-[11.5px] text-white/80 mt-2 leading-snug">
+          {isSticker ? (
+            <>
+              {result.size_mm}×{result.size_mm} mm · {result.material} ·{" "}
+              {result.finish}
+              {result.hediye_adet > 0 && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <span className="text-yesil">
+                    +{result.hediye_adet} hediye
+                  </span>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {result.width_mm}×{result.height_mm} mm · {result.material}
+              {result.coating !== "Kaplama yok" && ` · ${result.coating}`}
+              {result.customization !== "Eklenti yok" &&
+                ` · ${result.customization}`}
+              {" · "}
+              {result.rolls_needed} rulo
+            </>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[10.5px] text-yesil bg-yesil-soft/20 px-2 py-1 rounded-full font-semibold">
+            💳 Cüzdandan: −{fmtTL(result.cuzdan_indirim_2pct)} TL (%2)
+          </span>
+          <a
+            href={result.configurator_url}
+            className="text-[11px] font-semibold text-pim-mercan hover:text-white transition-colors"
+          >
+            Configurator'da düzenle →
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+interface UIMessageWithParts {
+  parts?: Array<{
+    type?: string;
+    output?: unknown;
+    state?: string;
+    [k: string]: unknown;
+  }>;
+}
+
+/**
+ * Tool result part'ları çıkarır. AI SDK v6'da part type'ı "tool-{name}"
+ * formatında ve `output` field'ında structured data var.
+ */
+function extractToolResults(m: unknown): ToolResultData[] {
+  if (!m || typeof m !== "object") return [];
+  const msg = m as UIMessageWithParts;
+  if (!Array.isArray(msg.parts)) return [];
+
+  const results: ToolResultData[] = [];
+  for (const part of msg.parts) {
+    if (
+      part.type?.startsWith("tool-") &&
+      part.state === "output-available" &&
+      part.output
+    ) {
+      results.push(part.output as ToolResultData);
+    }
+  }
+  return results;
 }
 
 function TypingDots() {
