@@ -20,7 +20,7 @@ import { DefaultChatTransport } from "ai";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
-import { PERSONAS, type PimPersona } from "@/lib/pim/personas";
+import { ACTIVE_PERSONAS, PERSONAS, type PimPersona } from "@/lib/pim/personas";
 import {
   appendMessage,
   isReturningUser,
@@ -31,30 +31,54 @@ import {
   type PimMemory,
 } from "@/lib/pim/memory";
 
-const QUICK_CHIPS: Array<{ id: string; label: string; prompt: string }> = [
-  {
-    id: "new-job",
-    label: "Yeni iş",
-    prompt: "Yeni bir baskı yaptırmak istiyorum.",
-  },
-  {
-    id: "reorder",
-    label: "Tekrar baskı",
-    prompt: "Önceki bastırdığım işten tekrar yapacağım.",
-  },
-  {
-    id: "issue",
-    label: "Sorun var",
-    prompt: "Siparişimle ilgili bir sorun var.",
-  },
-];
+const QUICK_CHIPS_BY_PERSONA: Record<
+  string,
+  Array<{ id: string; label: string; prompt: string }>
+> = {
+  welcome: [
+    {
+      id: "new-job",
+      label: "Yeni iş",
+      prompt: "Yeni bir baskı yaptırmak istiyorum.",
+    },
+    {
+      id: "reorder",
+      label: "Tekrar baskı",
+      prompt: "Önceki bastırdığım işten tekrar yapacağım.",
+    },
+    {
+      id: "issue",
+      label: "Sorun var",
+      prompt: "Siparişimle ilgili bir sorun var.",
+    },
+  ],
+  designer: [
+    {
+      id: "etiket-quote",
+      label: "Etiket fiyatı",
+      prompt:
+        "60×80 mm 5000 adet kraft etiket için fiyat çıkar lütfen, kaplama sade.",
+    },
+    {
+      id: "sticker-quote",
+      label: "Sticker fiyatı",
+      prompt: "75×75 mm vinil parlak sticker, 250 adet, fiyat söyler misin?",
+    },
+    {
+      id: "brief",
+      label: "Brief'ten fiyat",
+      prompt:
+        "Doğal sabunum için etiket lazım, marka adı OLEA, 60×80mm civarı, 2000 adet, kraft + soft touch olsun.",
+    },
+  ],
+};
 
 export function PimChat() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [memory, setMemory] = useState<PimMemory | null>(null);
   const [showConsent, setShowConsent] = useState(false);
-  const [persona] = useState<PimPersona>("welcome");
+  const [persona, setPersona] = useState<PimPersona>("welcome");
   const [unread, setUnread] = useState(0);
 
   // Mount'ta memory'yi oku (sadece client)
@@ -157,9 +181,23 @@ export function PimChat() {
             </span>
           </span>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-[15px] leading-tight">
-              {personaSpec.label}
-            </div>
+            {/* Persona seçici dropdown */}
+            <select
+              value={persona}
+              onChange={(e) => {
+                const next = e.target.value as PimPersona;
+                setPersona(next);
+                setMessages([]); // persona değişince yeni başlangıç
+              }}
+              className="font-semibold text-[15px] leading-tight bg-transparent border-none outline-none cursor-pointer hover:text-pim-mercan-koyu"
+              aria-label="Hangi Pim ile konuşuyorsun"
+            >
+              {ACTIVE_PERSONAS.map((id) => (
+                <option key={id} value={id}>
+                  {PERSONAS[id].label}
+                </option>
+              ))}
+            </select>
             <div className="text-[11.5px] text-gri-700 flex items-center gap-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-yesil" />
               {personaSpec.tagline}
@@ -197,6 +235,7 @@ export function PimChat() {
             />
           ) : messages.length === 0 ? (
             <WelcomeView
+              persona={persona}
               memory={memory}
               onChip={(prompt) => {
                 if (memory?.consent) {
@@ -283,33 +322,48 @@ function ConsentPanel({
 }
 
 function WelcomeView({
+  persona,
   memory,
   onChip,
   onClearHistory,
 }: {
+  persona: PimPersona;
   memory: PimMemory | null;
   onChip: (prompt: string) => void;
   onClearHistory: () => void;
 }) {
   const returning = !!memory && isReturningUser(memory);
-  const greeting = returning
-    ? memory?.displayName
-      ? `Selam ${memory.displayName}, hoş geldin tekrar.`
-      : "Selam, hoş geldin tekrar."
-    : memory?.displayName
-      ? `Selam ${memory.displayName}, hoş geldin.`
-      : "Selam, hoş geldin.";
+  const baseName = memory?.displayName;
+
+  let greeting: string;
+  let subtext: string;
+
+  if (persona === "designer") {
+    greeting = baseName
+      ? `Selam ${baseName}, Tasarımcı Pim devraldım.`
+      : "Selam, Tasarımcı Pim devraldım.";
+    subtext = "Etiket / sticker boyutu + adet söyle, fiyat çıkarayım.";
+  } else {
+    greeting = returning
+      ? baseName
+        ? `Selam ${baseName}, hoş geldin tekrar.`
+        : "Selam, hoş geldin tekrar."
+      : baseName
+        ? `Selam ${baseName}, hoş geldin.`
+        : "Selam, hoş geldin.";
+    subtext = "Etiket mi sticker mı bakıyoruz?";
+  }
+
+  const chips = QUICK_CHIPS_BY_PERSONA[persona] ?? QUICK_CHIPS_BY_PERSONA.welcome;
 
   return (
     <div className="space-y-3">
       <div className="rounded-xl bg-white ring-1 ring-gri-200 p-3.5">
         <div className="font-semibold text-[15px] mb-0.5">{greeting}</div>
-        <div className="text-[13.5px] text-gri-700">
-          Etiket mi sticker mı bakıyoruz?
-        </div>
+        <div className="text-[13.5px] text-gri-700">{subtext}</div>
       </div>
       <div className="flex gap-1.5 flex-wrap">
-        {QUICK_CHIPS.map((c) => (
+        {chips.map((c) => (
           <button
             key={c.id}
             type="button"
