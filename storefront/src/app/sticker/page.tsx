@@ -24,6 +24,14 @@ import { Icon } from "@/components/Icon";
 import { FormSection, SelectableCard, PriceCard, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { deliveryEstimate } from "@/lib/pricing";
+import {
+  quoteCustomerSticker,
+  computeTierSavings,
+  CUSTOMER_STICKER_TIERS,
+  type StickerMaterial,
+  type StickerFinish,
+  type CustomerStickerTier,
+} from "@/lib/sticker-customer-pricing";
 
 // ============================================================
 // Configuration data
@@ -56,56 +64,22 @@ const MATERIALS = [
   { id: "kraft", name: "Kraft", desc: "Doğal, mat", swatch: "#C9A47A" },
 ] as const;
 
-type MaterialId = (typeof MATERIALS)[number]["id"];
-
 const FINISHES = [
   { id: "parlak", name: "Parlak", desc: "Canlı renkler" },
   { id: "mat", name: "Mat", desc: "Yansımasız" },
   { id: "glitter", name: "Simli", desc: "Parıltı katmanı" },
 ] as const;
 
-type FinishId = (typeof FINISHES)[number]["id"];
-
-const TIERS = [50, 100, 250, 500, 1000, 2500] as const;
+const TIERS = CUSTOMER_STICKER_TIERS; // 50/100/250/500/1000 — engine uyumlu
 const SIZES = [50, 75, 100, 150] as const;
 
 // ============================================================
-// Pricing
+// Pricing — v0.4: shared pricing-engine wrapper kullanıyor
+// (KDV mevzuat uyumlu, PSP fee gross-up'lı, tier erosion düzgün hesap)
 // ============================================================
-
-const MAT_MULT: Record<MaterialId, number> = {
-  vinil: 1,
-  transparan: 1.1,
-  holo: 1.4,
-  kraft: 0.95,
-};
-const FIN_MULT: Record<FinishId, number> = {
-  parlak: 1,
-  mat: 1.05,
-  glitter: 1.25,
-};
-
-function tierBase(
-  q: number,
-  material: MaterialId,
-  finish: FinishId,
-  size: number
-) {
-  const u =
-    q <= 50
-      ? 7.0
-      : q <= 100
-        ? 5.5
-        : q <= 250
-          ? 4.2
-          : q <= 500
-            ? 3.5
-            : q <= 1000
-              ? 2.9
-              : 2.4;
-  const sizeMult = (size / 75) ** 1.4;
-  return u * MAT_MULT[material] * FIN_MULT[finish] * sizeMult;
-}
+//
+// Önceki hardcoded `tierBase()` formülü (v0.3) kaldırıldı.
+// Yeni: quoteCustomerSticker() — admin'deki shared lib ile aynı motor.
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
@@ -117,15 +91,23 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 export default function StickerPage() {
   const toast = useToast();
   const [shape, setShape] = useState<ShapeId>("circle");
-  const [material, setMaterial] = useState<MaterialId>("vinil");
-  const [finish, setFinish] = useState<FinishId>("parlak");
-  const [tier, setTier] = useState<number>(250);
+  const [material, setMaterial] = useState<StickerMaterial>("vinil");
+  const [finish, setFinish] = useState<StickerFinish>("parlak");
+  const [tier, setTier] = useState<CustomerStickerTier>(250);
   const [size, setSize] = useState<number>(75);
 
-  const baseUnit = tierBase(50, material, finish, size);
-  const currentUnit = tierBase(tier, material, finish, size);
-  const total = currentUnit * tier;
-  const savings = Math.round((1 - currentUnit / baseUnit) * 100);
+  // Engine ile canlı quote
+  const quote = quoteCustomerSticker({
+    size,
+    material,
+    finish,
+    qty: tier,
+  });
+
+  const total = quote.ok ? quote.total : 0;
+  const currentUnit = quote.ok ? quote.unitPrice : 0;
+  const overrunCount = quote.ok ? quote.overrunCount : 0;
+  const savings = computeTierSavings({ size, material, finish }, 50, tier);
 
   return (
     <main
@@ -274,9 +256,19 @@ export default function StickerPage() {
             <FormSection title="Adet — kademen, fiyatın">
               <div className="grid grid-cols-3 gap-3">
                 {TIERS.map((q) => {
-                  const u = tierBase(q, material, finish, size);
-                  const t = u * q;
-                  const sav = Math.round((1 - u / baseUnit) * 100);
+                  const tierQuote = quoteCustomerSticker({
+                    size,
+                    material,
+                    finish,
+                    qty: q,
+                  });
+                  const u = tierQuote.ok ? tierQuote.unitPrice : 0;
+                  const t = tierQuote.ok ? tierQuote.total : 0;
+                  const sav = computeTierSavings(
+                    { size, material, finish },
+                    50,
+                    q
+                  );
                   const popular = q === 250;
                   const selected = tier === q;
                   return (
@@ -330,8 +322,21 @@ export default function StickerPage() {
               variant="bold"
               topLabel="SEÇİMİN"
               total={total}
-              unitPrice={`${tier} adet × ${fmtUnit(currentUnit)} TL · KDV dahil`}
+              unitPrice={
+                <>
+                  {tier} adet × {fmtUnit(currentUnit)} TL · KDV dahil
+                  {overrunCount > 0 && (
+                    <>
+                      {" "}
+                      <span className="text-yesil">
+                        · +{overrunCount} hediye
+                      </span>
+                    </>
+                  )}
+                </>
+              }
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
+              footnote="Cüzdandan ödeyince +%2 indirim · KDV dahil fiyat"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
               ctaLabel="Sepete ekle"
               onCta={() =>
@@ -420,13 +425,13 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
 
 interface PreviewProps {
   shape: ShapeId;
-  material: MaterialId;
-  finish: FinishId;
+  material: StickerMaterial;
+  finish: StickerFinish;
   size: number;
 }
 
 function StickerPreview({ shape, material, finish, size }: PreviewProps) {
-  const matBg: Record<MaterialId, string> = {
+  const matBg: Record<StickerMaterial, string> = {
     vinil: "white",
     transparan: "rgba(255,255,255,0.5)",
     holo:
@@ -434,7 +439,7 @@ function StickerPreview({ shape, material, finish, size }: PreviewProps) {
     kraft: "#D9B889",
   };
 
-  const finishOverlay: Record<FinishId, string> = {
+  const finishOverlay: Record<StickerFinish, string> = {
     parlak:
       "radial-gradient(80% 60% at 30% 20%, rgba(255,255,255,0.7) 0%, transparent 60%)",
     mat: "transparent",
