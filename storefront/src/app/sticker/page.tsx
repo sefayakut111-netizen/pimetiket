@@ -32,9 +32,11 @@ import {
   STICKER_MIN_DIM,
   STICKER_MAX_W,
   STICKER_MAX_H,
+  STICKER_MIN_QTY,
+  STICKER_MAX_QTY,
+  STICKER_QTY_STEP,
   type StickerMaterial,
   type StickerFinish,
-  type CustomerStickerTier,
 } from "@/lib/sticker-customer-pricing";
 import { addToCustomerCart } from "@/lib/customer-cart";
 
@@ -83,7 +85,17 @@ const FINISHES = [
   { id: "yok", name: "Kaplamasız", desc: "Yalın yüzey" },
 ] as const;
 
-const TIERS = CUSTOMER_STICKER_TIERS; // 50/100/250/500/1000 — engine uyumlu
+/** Sticker preset chip'leri — serbest qty seçim yanında one-click presets */
+const STICKER_PRESETS = CUSTOMER_STICKER_TIERS; // [25, 50, 100, 250, 500, 1000]
+/** En çok seçilen preset — "Popüler" rozeti gösterilir */
+const STICKER_POPULAR_PRESET = 250;
+
+/** Qty'i step'e snap'le (25'in katı), min/max'a clamp et */
+function snapStickerQty(n: number): number {
+  if (!Number.isFinite(n)) return STICKER_MIN_QTY;
+  const stepped = Math.round(n / STICKER_QTY_STEP) * STICKER_QTY_STEP;
+  return Math.min(STICKER_MAX_QTY, Math.max(STICKER_MIN_QTY, stepped));
+}
 
 // ============================================================
 // Pricing — v0.4: shared pricing-engine wrapper kullanıyor
@@ -109,7 +121,9 @@ export default function StickerPage() {
   const [softCorners, setSoftCorners] = useState<boolean>(false);
   const [material, setMaterial] = useState<StickerMaterial>("vinil");
   const [finish, setFinish] = useState<StickerFinish>("parlak");
-  const [tier, setTier] = useState<CustomerStickerTier>(250);
+  // Müşteri serbest qty seçer — 25'er artış, 25-1000 aralık.
+  // findTier en yakın STICKER_TIERS multiplier'ını otomatik uygular.
+  const [tier, setTier] = useState<number>(250);
   const [width, setWidth] = useState<number>(75);
   const [height, setHeight] = useState<number>(75);
 
@@ -137,7 +151,12 @@ export default function StickerPage() {
   const total = quote.ok ? quote.total : 0;
   const currentUnit = quote.ok ? quote.unitPrice : 0;
   const overrunCount = quote.ok ? quote.overrunCount : 0;
-  const savings = computeTierSavings({ width, height, material, finish }, 50, tier);
+  // Tasarruf hesabı: en küçük tier (25) baseline alınır
+  const savings = computeTierSavings(
+    { width, height, material, finish },
+    STICKER_MIN_QTY,
+    tier
+  );
   const sizeError = !quote.ok ? quote.reason : null;
 
   return (
@@ -167,7 +186,7 @@ export default function StickerPage() {
         <div className="flex items-end gap-4 mb-7">
           <div className="flex-1">
             <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
-              <Icon.Sparkle size={12} /> 50 adetten başlar
+              <Icon.Sparkle size={12} /> 25 adetten başlar
             </span>
             <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
               Sticker&rsquo;ını konfigüre et
@@ -417,65 +436,83 @@ export default function StickerPage() {
               )}
             </FormSection>
 
-            <FormSection title="Adet — kademen, fiyatın">
-              <div className="grid grid-cols-3 gap-3">
-                {TIERS.map((q) => {
-                  const tierQuote = quoteCustomerSticker({
-                    width,
-                    height,
-                    material,
-                    finish,
-                    qty: q,
-                  });
-                  const u = tierQuote.ok ? tierQuote.unitPrice : 0;
-                  const t = tierQuote.ok ? tierQuote.total : 0;
-                  const sav = computeTierSavings(
-                    { width, height, material, finish },
-                    50,
-                    q
-                  );
-                  const popular = q === 250;
-                  const selected = tier === q;
+            <FormSection
+              title="Adet"
+              hint={`${STICKER_MIN_QTY}'ten başla, ${STICKER_QTY_STEP} adetlik artışla seç (max ${STICKER_MAX_QTY})`}
+            >
+              {/* Stepper input */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setTier((v) => snapStickerQty(v - STICKER_QTY_STEP))}
+                    disabled={tier <= STICKER_MIN_QTY}
+                    aria-label={`${STICKER_QTY_STEP} adet azalt`}
+                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    value={tier}
+                    onChange={(e) => setTier(snapStickerQty(Number(e.target.value)))}
+                    min={STICKER_MIN_QTY}
+                    max={STICKER_MAX_QTY}
+                    step={STICKER_QTY_STEP}
+                    aria-label="Sticker adedi"
+                    className="w-24 h-12 text-center text-[18px] font-bold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTier((v) => snapStickerQty(v + STICKER_QTY_STEP))}
+                    disabled={tier >= STICKER_MAX_QTY}
+                    aria-label={`${STICKER_QTY_STEP} adet artır`}
+                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="text-[13px] text-gri-700 leading-tight">
+                  <div className="tabular-nums">
+                    <strong className="text-lacivert text-[15px]">
+                      {fmt(total)} TL
+                    </strong>{" "}
+                    <span className="text-gri-500">
+                      · {fmtUnit(currentUnit)} TL/adet
+                    </span>
+                  </div>
+                  {savings > 0 && (
+                    <div className="inline-flex items-center h-[20px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-1">
+                      %{savings} tasarruf 🎯
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Preset chip'leri */}
+              <div className="flex gap-2 mt-4 flex-wrap items-center">
+                <span className="text-[11.5px] text-gri-500 mr-1">
+                  Önerilen:
+                </span>
+                {STICKER_PRESETS.map((q) => {
+                  const active = tier === q;
+                  const popular = q === STICKER_POPULAR_PRESET;
                   return (
                     <button
                       key={q}
                       type="button"
                       onClick={() => setTier(q)}
-                      aria-pressed={selected}
+                      aria-pressed={active}
                       className={cn(
-                        "relative px-4 py-5 rounded-[14px] text-left cursor-pointer",
-                        "transition-[transform,box-shadow,background] duration-200",
-                        selected
-                          ? "bg-krem ring-2 ring-pim-mercan -translate-y-0.5 shadow-mercan-lg"
-                          : "bg-white ring-2 ring-gri-200 hover:ring-pim-mercan-soft"
+                        "relative px-3 h-9 rounded-full text-[13px] font-semibold transition-colors tabular-nums",
+                        active
+                          ? "bg-pim-mercan text-white"
+                          : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
                       )}
                     >
-                      {popular && !selected && (
-                        <span className="absolute -top-2.5 left-4 inline-flex items-center h-[22px] px-2.5 rounded-full bg-lacivert text-white text-[11px] font-semibold">
-                          Popüler
-                        </span>
-                      )}
-                      {selected && (
-                        <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 h-[22px] px-2.5 rounded-full bg-pim-mercan text-white text-[11px] font-semibold">
-                          <Icon.Check size={10} /> Seçildi
-                        </span>
-                      )}
-                      <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-                        ADET
-                      </div>
-                      <div className="text-[28px] font-bold leading-none">
-                        {q}
-                      </div>
-                      <div className="text-[22px] font-bold mt-3.5 text-lacivert">
-                        {fmt(t)} TL
-                      </div>
-                      <div className="text-[13px] text-gri-700 mt-0.5">
-                        {fmtUnit(u)} TL/adet
-                      </div>
-                      {sav > 0 && (
-                        <div className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-2.5">
-                          %{sav} tasarruf 🎯
-                        </div>
+                      {q}
+                      {popular && !active && (
+                        <span className="ml-1 text-pim-mercan">⭐</span>
                       )}
                     </button>
                   );

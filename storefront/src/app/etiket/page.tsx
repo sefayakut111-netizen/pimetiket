@@ -33,6 +33,9 @@ import {
   quoteCustomerEtiket,
   computeEtiketTierSavings,
   CUSTOMER_ETIKET_TIERS,
+  ETIKET_MIN_QTY,
+  ETIKET_MAX_QTY,
+  ETIKET_QTY_STEP,
   type EtiketMaterialId,
   type EtiketCoatingId,
   type EtiketCustomId,
@@ -106,6 +109,17 @@ type YaldizId = (typeof YALDIZLAR)[number]["id"];
 // kaldırıldı — quoteCustomerEtiket() admin'deki shared lib ile aynı motor
 // ============================================================
 
+/** Etiket preset chip'leri */
+const ETIKET_PRESETS = CUSTOMER_ETIKET_TIERS; // [1K, 2K, 5K, 10K, 20K, 50K]
+const ETIKET_POPULAR_PRESET = 5000;
+
+/** Qty'i step'e snap'le (500'ün katı), min/max'a clamp et */
+function snapEtiketQty(n: number): number {
+  if (!Number.isFinite(n)) return ETIKET_MIN_QTY;
+  const stepped = Math.round(n / ETIKET_QTY_STEP) * ETIKET_QTY_STEP;
+  return Math.min(ETIKET_MAX_QTY, Math.max(ETIKET_MIN_QTY, stepped));
+}
+
 function upsellFor(qty: number): { msg: string; to: number } | null {
   if (qty < 2000) return { msg: "+1000 adet ekle, %4 daha tasarruf", to: 2000 };
   if (qty < 5000) return { msg: "5000'e çık, %6 daha tasarruf", to: 5000 };
@@ -146,9 +160,9 @@ export default function EtiketPage() {
   const unit = quote.ok ? quote.unitPrice : 0;
   const rollsNeeded = quote.ok ? quote.rollsNeeded : 0;
 
-  // Tier savings (1000 base ile karşılaştır)
+  // Tier savings — 1K (min) baseline ile karşılaştır
   const tierSavings = quote.ok
-    ? computeEtiketTierSavings({ width, height, material, coating, customization: custom }, 1000, qty)
+    ? computeEtiketTierSavings({ width, height, material, coating, customization: custom }, ETIKET_MIN_QTY, qty)
     : 0;
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });
@@ -503,77 +517,86 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Step 6 — Adet (tier grid) */}
+            {/* Step 6 — Adet (serbest input + preset chip'ler) */}
             <FormSection
               number={6}
-              title="Adet — kademen, fiyatın"
-              hint="Adet arttıkça birim fiyat düşer. Aktif kademe vurguda."
+              title="Adet"
+              hint={`${fmt(ETIKET_MIN_QTY)}'den başla, ${ETIKET_QTY_STEP} adetlik artışla seç (max ${fmt(ETIKET_MAX_QTY)})`}
             >
-              <div className="grid grid-cols-3 gap-3">
-                {CUSTOMER_ETIKET_TIERS.map((q) => {
-                  const tierQuote = quoteCustomerEtiket({
-                    width,
-                    height,
-                    qty: q,
-                    material,
-                    coating,
-                    customization: custom,
-                  });
-                  const u = tierQuote.ok ? tierQuote.unitPrice : 0;
-                  const t = tierQuote.ok ? tierQuote.total : 0;
-                  const sav = computeEtiketTierSavings(
-                    {
-                      width,
-                      height,
-                      material,
-                      coating,
-                      customization: custom,
-                    },
-                    1000,
-                    q
-                  );
-                  const popular = q === 5000;
-                  const selected = qty === q;
+              {/* Stepper input */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setQty((v) => snapEtiketQty(v - ETIKET_QTY_STEP))}
+                    disabled={qty <= ETIKET_MIN_QTY}
+                    aria-label={`${ETIKET_QTY_STEP} adet azalt`}
+                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    value={qty}
+                    onChange={(e) => setQty(snapEtiketQty(Number(e.target.value)))}
+                    min={ETIKET_MIN_QTY}
+                    max={ETIKET_MAX_QTY}
+                    step={ETIKET_QTY_STEP}
+                    aria-label="Etiket adedi"
+                    className="w-28 h-12 text-center text-[18px] font-bold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setQty((v) => snapEtiketQty(v + ETIKET_QTY_STEP))}
+                    disabled={qty >= ETIKET_MAX_QTY}
+                    aria-label={`${ETIKET_QTY_STEP} adet artır`}
+                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="text-[13px] text-gri-700 leading-tight">
+                  <div className="tabular-nums">
+                    <strong className="text-lacivert text-[15px]">
+                      {fmt(total)} TL
+                    </strong>{" "}
+                    <span className="text-gri-500">
+                      · {fmtUnit(unit)} TL/adet
+                    </span>
+                  </div>
+                  {tierSavings > 0 && (
+                    <div className="inline-flex items-center h-[20px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-1">
+                      %{tierSavings} tasarruf 🎯
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Preset chip'leri */}
+              <div className="flex gap-2 mt-4 flex-wrap items-center">
+                <span className="text-[11.5px] text-gri-500 mr-1">
+                  Önerilen:
+                </span>
+                {ETIKET_PRESETS.map((q) => {
+                  const active = qty === q;
+                  const popular = q === ETIKET_POPULAR_PRESET;
+                  const label = q >= 1000 ? `${q / 1000}K` : `${q}`;
                   return (
                     <button
                       key={q}
                       type="button"
                       onClick={() => setQty(q)}
-                      aria-pressed={selected}
+                      aria-pressed={active}
                       className={cn(
-                        "relative px-4 py-5 rounded-[14px] text-left cursor-pointer",
-                        "transition-[transform,box-shadow,background] duration-200",
-                        selected
-                          ? "bg-krem ring-2 ring-pim-mercan -translate-y-0.5 shadow-mercan-lg"
-                          : "bg-white ring-2 ring-gri-200 hover:ring-pim-mercan-soft"
+                        "relative px-3 h-9 rounded-full text-[13px] font-semibold transition-colors tabular-nums",
+                        active
+                          ? "bg-pim-mercan text-white"
+                          : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
                       )}
                     >
-                      {popular && !selected && (
-                        <span className="absolute -top-2.5 left-4 inline-flex items-center h-[22px] px-2.5 rounded-full bg-lacivert text-white text-[11px] font-semibold">
-                          Popüler
-                        </span>
-                      )}
-                      {selected && (
-                        <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 h-[22px] px-2.5 rounded-full bg-pim-mercan text-white text-[11px] font-semibold">
-                          <Icon.Check size={10} /> Seçildi
-                        </span>
-                      )}
-                      <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-                        ADET
-                      </div>
-                      <div className="text-[24px] font-bold leading-none tabular-nums">
-                        {q >= 1000 ? `${q / 1000}K` : q}
-                      </div>
-                      <div className="text-[18px] font-bold mt-3.5 text-lacivert tabular-nums">
-                        {fmt(t)} TL
-                      </div>
-                      <div className="text-[12.5px] text-gri-700 mt-0.5 tabular-nums">
-                        {fmtUnit(u)} TL/adet
-                      </div>
-                      {sav > 0 && (
-                        <div className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-2.5">
-                          %{sav} tasarruf 🎯
-                        </div>
+                      {label}
+                      {popular && !active && (
+                        <span className="ml-1 text-pim-mercan">⭐</span>
                       )}
                     </button>
                   );

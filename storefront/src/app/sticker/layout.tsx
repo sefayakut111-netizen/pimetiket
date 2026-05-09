@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "Sticker konfigüre et",
   description:
-    "50 adetten başlayan tekli ya da tabakada sticker baskı. Anlık fiyat, hızlı teslim.",
+    "25 adetten başlayan tekli ya da tabakada sticker baskı. 25'er adet artışla, anlık fiyat, hızlı teslim.",
   alternates: { canonical: "/sticker" },
 };
 

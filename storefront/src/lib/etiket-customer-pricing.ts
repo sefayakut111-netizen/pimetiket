@@ -18,9 +18,16 @@ export type EtiketMaterialId = "kraft" | "beyaz" | "ultra" | "metalik";
 export type EtiketCoatingId = "yok" | "mat" | "parlak" | "soft";
 export type EtiketCustomId = "yok" | "emboss" | "yaldiz" | "spotuv";
 
-/** Customer-facing tier'lar — ETIKET_TIERS ile uyumlu */
+/** Customer-facing tier preset'leri — chip'ler için kullanılır.
+ * Müşteri serbest qty seçer (500'er artış); engine en yakın tier
+ * zammını otomatik uygular (findEtiketTier). */
 export const CUSTOMER_ETIKET_TIERS = [1000, 2000, 5000, 10000, 20000, 50000] as const;
 export type CustomerEtiketTier = (typeof CUSTOMER_ETIKET_TIERS)[number];
+
+/** Etiket qty sınırları — UI input için */
+export const ETIKET_MIN_QTY = 1000;
+export const ETIKET_MAX_QTY = 50000;
+export const ETIKET_QTY_STEP = 500;
 
 export interface CustomerEtiketQuoteInput {
   width: number; // mm

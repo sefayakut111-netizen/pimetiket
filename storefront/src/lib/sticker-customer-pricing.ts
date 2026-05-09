@@ -28,9 +28,16 @@ import { getDefaultInput } from "./pricing-profiles";
 export type StickerMaterial = "vinil" | "transparan" | "holo" | "simli";
 export type StickerFinish = "parlak" | "mat" | "yok";
 
-/** Customer-facing tier'lar — engine tier'larıyla uyumlu */
-export const CUSTOMER_STICKER_TIERS = [50, 100, 250, 500, 1000] as const;
+/** Customer-facing tier preset'leri — chip'ler için kullanılır.
+ * Müşteri serbest qty seçer (25'er artış); engine en yakın tier
+ * zammını otomatik uygular (findTier). */
+export const CUSTOMER_STICKER_TIERS = [25, 50, 100, 250, 500, 1000] as const;
 export type CustomerStickerTier = (typeof CUSTOMER_STICKER_TIERS)[number];
+
+/** Sticker qty sınırları — UI input için */
+export const STICKER_MIN_QTY = 25;
+export const STICKER_MAX_QTY = 1000;
+export const STICKER_QTY_STEP = 25;
 
 /** Material → fason rate multiplier (gizli surcharge) */
 export const MATERIAL_MULT: Record<StickerMaterial, number> = {
@@ -170,16 +177,17 @@ export function quoteCustomerSticker(
 }
 
 /**
- * Tier savings hesabı — bir tier'ın en küçük tier'a göre %tasarrufu.
- * Aynı material+finish+size ile.
+ * Tier savings hesabı — bir qty'nin baseQty'a göre %tasarrufu.
+ * Aynı material+finish+size ile. Müşteri serbest qty seçebildiği
+ * için number kabul eder (preset literal union şart değil).
  */
 export function computeTierSavings(
   input: Omit<CustomerQuoteInput, "qty">,
-  baseTier: CustomerStickerTier,
-  targetTier: CustomerStickerTier
+  baseQty: number,
+  targetQty: number
 ): number {
-  const base = quoteCustomerSticker({ ...input, qty: baseTier });
-  const target = quoteCustomerSticker({ ...input, qty: targetTier });
+  const base = quoteCustomerSticker({ ...input, qty: baseQty });
+  const target = quoteCustomerSticker({ ...input, qty: targetQty });
 
   if (!base.ok || !target.ok || base.unitPrice === 0) return 0;
   return Math.round((1 - target.unitPrice / base.unitPrice) * 100);

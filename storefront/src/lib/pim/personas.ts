@@ -54,7 +54,7 @@ const KNOWLEDGE_BASE = `
 PİM ETİKET HAKKINDA:
 - Bursa atölyesi. Dijital baskı (etiket + sticker), küçük markalara.
 - Etiket: 1000 adetten başlar, rulo halinde. Malzemeler: kraft, beyaz semi-glos, ultra clear, metalik. Kaplama: mat selefon, parlak selefon, soft touch, kaplamasız.
-- Sticker: 50 adetten başlar, tekli (die-cut) ya da tabakada (sheet labels). Malzeme: vinil, transparan, holografik, simli. Yüzey: parlak, mat, kaplamasız.
+- Sticker: 25 adetten başlar, 25'er adet artışla seçim (max 1000). Tekli (die-cut) ya da tabakada (sheet labels). Malzeme: vinil, transparan, holografik, simli. Yüzey: parlak, mat, kaplamasız.
 - Özelleştirme: kabartma (emboss), sıcak yaldız (8 renk), spot UV.
 - Teslim: standart 7-10 gün, hızlı (acele) seçenek var.
 - Cüzdandan ödeyince +%2 indirim.
@@ -133,7 +133,7 @@ GÖREVİN:
 
 KARARLAR:
 - Sticker boyutu: kare verilir (W=H). Eğer dikdörtgen istiyorsa /etiket'e yönlendir.
-- Etiket min 1000 adet, sticker min 50 adet (engine sınırı).
+- Etiket min 1000 adet (500'er artış), sticker min 25 adet (25'er artış).
 - Etiket boyut 5×5'ten 400×650'a kadar. Daha büyüğüne "büyük etiket servisi yakında" de.
 - Sticker malzeme/yüzey customer'da var (vinil/transparan/holo/kraft + parlak/mat/glitter); bilmiyorsa "vinil parlak" default ver.
 - Etiket malzeme: kraft/beyaz/ultra/metalik. Kaplama: yok/mat/parlak/soft. Özelleştirme: yok/emboss/yaldız/spotUV.

@@ -49,15 +49,15 @@ interface ChatRequestBody {
 
 const stickerTool = tool({
   description:
-    "Sticker fiyatı hesapla. Serbest W×H boyut (kare veya dikdörtgen). Min 25×25mm, max 400×650mm. Min 50 adet, max 1000.",
+    "Sticker fiyatı hesapla. Serbest W×H boyut (kare veya dikdörtgen). Min 25×25mm, max 400×650mm. Min 25 adet, max 1000 (25'er artış).",
   inputSchema: z.object({
     width: z.number().min(25).max(400).describe("Sticker genişliği mm"),
     height: z.number().min(25).max(650).describe("Sticker yüksekliği mm"),
     qty: z
       .number()
-      .min(50)
+      .min(25)
       .max(1000)
-      .describe("Sipariş adedi (50/100/250/500/1000 önerilen)"),
+      .describe("Sipariş adedi (25'er artış: 25/50/75/100/250/500/1000…)"),
     material: z
       .enum(["vinil", "transparan", "holo", "simli"])
       .default("vinil")

@@ -26,6 +26,7 @@ import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 // Sticker 250 (popüler), etiket 2000 (popüler) — fixed cost yayıldığında
 // daha makul birim fiyat görünür ("ucuz baskı" mesajıyla uyumlu).
 function baselineStickerPrice(): string {
+  // 250 adet (popüler tier) baseline — fixed cost yayılınca makul birim
   const r = quoteCustomerSticker({
     width: 75,
     height: 75,
@@ -113,7 +114,7 @@ const TESTIMONIALS = [
 const FAQS = [
   {
     q: "Minimum kaç adet basabiliyorum?",
-    a: "Etiket için 1000, sticker için 50 adetten başlıyoruz.",
+    a: "Etiket için 1000, sticker için 25 adetten başlıyoruz.",
   },
   {
     q: "Tasarım dosyam yok, ne yapacağım?",
@@ -276,7 +277,7 @@ export default function HomePage() {
             kind="sticker"
             title="Sticker"
             sub="Tekli ya da tabakada — laptop, defter, kampanya."
-            from="50 adetten"
+            from="25 adetten"
             price={baselineStickerPrice()}
             href="/sticker"
           />
