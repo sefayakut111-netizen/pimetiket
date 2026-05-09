@@ -54,7 +54,7 @@ const KNOWLEDGE_BASE = `
 PİM ETİKET HAKKINDA:
 - Bursa atölyesi. Dijital baskı (etiket + sticker), küçük markalara.
 - Etiket: 1000 adetten başlar, rulo halinde. Malzemeler: kraft, beyaz semi-glos, ultra clear, metalik. Kaplama: mat selefon, parlak selefon, soft touch, kaplamasız.
-- Sticker: 25 adetten başlar, tekli ya da tabakada.
+- Sticker: 50 adetten başlar, tekli (die-cut) ya da tabakada (sheet labels). Malzeme: vinil, transparan, holografik, simli. Yüzey: parlak, mat, kaplamasız.
 - Özelleştirme: kabartma (emboss), sıcak yaldız (8 renk), spot UV.
 - Teslim: standart 7-10 gün, hızlı (acele) seçenek var.
 - Cüzdandan ödeyince +%2 indirim.

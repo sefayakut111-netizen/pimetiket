@@ -3,7 +3,7 @@
  *
  * Sticker'dan farkları:
  *   - Tabaka YOK — etiketler doğrudan rulo halinde teslim
- *   - Min 1000 adet (sticker 25)
+ *   - Min 1000 adet (sticker 50)
  *   - Max 50000 adet (sticker 1000)
  *   - Tier'lar: 1K/2K/5K/10K/20K/50K (ETIKET_TIERS)
  *   - Malzeme + Kaplama + Özelleştirme: % multiplier'lar fason

@@ -82,7 +82,7 @@ const TESTIMONIALS = [
 const FAQS = [
   {
     q: "Minimum kaç adet basabiliyorum?",
-    a: "Etiket için 1000, sticker için 25 adetten başlıyoruz.",
+    a: "Etiket için 1000, sticker için 50 adetten başlıyoruz.",
   },
   {
     q: "Tasarım dosyam yok, ne yapacağım?",
@@ -245,7 +245,7 @@ export default function HomePage() {
             kind="sticker"
             title="Sticker"
             sub="Tekli ya da tabakada — laptop, defter, kampanya."
-            from="25 adetten"
+            from="50 adetten"
             price="3.50 TL/adet"
             href="/sticker"
           />

@@ -27,7 +27,7 @@ const FAQS: Record<Category, { q: string; a: string }[]> = {
   siparis: [
     {
       q: "Minimum kaç adet basabiliyorum?",
-      a: "Etiket için 1000, sticker için 25 adetten başlıyoruz. Düşük adetlerde de kaliteden ödün vermeden bastırırız.",
+      a: "Etiket için 1000, sticker için 50 adetten başlıyoruz. Düşük adetlerde de kaliteden ödün vermeden bastırırız.",
     },
     {
       q: "Tasarım dosyam yok, ne yapacağım?",

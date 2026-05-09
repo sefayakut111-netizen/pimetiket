@@ -23,15 +23,16 @@ import { Icon } from "@/components/Icon";
 import {
   FormSection,
   SelectableCard,
-  QtySlider,
   PriceCard,
   Pill,
 } from "@/components/ui";
 import { deliveryEstimate } from "@/lib/pricing";
 import { useToast } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import {
   quoteCustomerEtiket,
   computeEtiketTierSavings,
+  CUSTOMER_ETIKET_TIERS,
   type EtiketMaterialId,
   type EtiketCoatingId,
   type EtiketCustomId,
@@ -424,66 +425,159 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Step 5 — Adet ve ölçü */}
+            {/* Step 5 — Boyut */}
             <FormSection
               number={5}
-              title="Adet ve ölçü"
-              hint="Slider'ı kaydırdıkça fiyat anında değişir."
+              title="Boyut"
+              hint="Tipik etiket 30×40 ile 100×100 mm arası. Kendi ölçüne yaz."
             >
-              <div>
-                <div className="flex justify-between items-baseline mb-3">
-                  <span className="text-[13px] font-semibold">Adet</span>
-                  <span className="text-[22px] font-bold">
-                    {fmt(qty)}{" "}
-                    <span className="text-[13px] font-normal text-gri-700">
-                      adet
-                    </span>
-                  </span>
-                </div>
-                <QtySlider
-                  value={qty}
-                  min={1000}
-                  max={50000}
-                  step={1000}
-                  onChange={setQty}
-                />
-                <div className="flex justify-between mt-1.5">
-                  {[1000, 5000, 10000, 20000, 50000].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setQty(t)}
-                      className="text-[13px] text-gri-500 hover:text-pim-mercan p-0 font-medium"
-                    >
-                      {`${t / 1000}K`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-5">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
-                  <span className="text-[13px] font-semibold mb-1.5 block">
+                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                     Genişlik (mm)
                   </span>
                   <input
                     type="number"
                     value={width}
-                    onChange={(e) => setWidth(Number(e.target.value) || 0)}
-                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow"
+                    onChange={(e) =>
+                      setWidth(Math.max(5, Number(e.target.value) || 5))
+                    }
+                    min={5}
+                    max={520}
+                    step={1}
+                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
                   />
                 </label>
+                <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
                 <label className="block">
-                  <span className="text-[13px] font-semibold mb-1.5 block">
+                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                     Yükseklik (mm)
                   </span>
                   <input
                     type="number"
                     value={height}
-                    onChange={(e) => setHeight(Number(e.target.value) || 0)}
-                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow"
+                    onChange={(e) =>
+                      setHeight(Math.max(5, Number(e.target.value) || 5))
+                    }
+                    min={5}
+                    max={1470}
+                    step={1}
+                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
                   />
                 </label>
+              </div>
+
+              {/* Hızlı boyut chip'leri */}
+              <div className="flex gap-2 mt-3 flex-wrap">
+                <span className="text-[11.5px] text-gri-500 self-center mr-1">
+                  Hızlı:
+                </span>
+                {[
+                  { w: 30, h: 40, label: "30×40" },
+                  { w: 40, h: 40, label: "40×40" },
+                  { w: 60, h: 80, label: "60×80" },
+                  { w: 70, h: 100, label: "70×100" },
+                  { w: 100, h: 50, label: "100×50" },
+                ].map((preset) => {
+                  const active =
+                    width === preset.w && height === preset.h;
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        setWidth(preset.w);
+                        setHeight(preset.h);
+                      }}
+                      className={cn(
+                        "px-3 h-8 rounded-full text-[12px] font-semibold transition-colors",
+                        active
+                          ? "bg-pim-mercan text-white"
+                          : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </FormSection>
+
+            {/* Step 6 — Adet (tier grid) */}
+            <FormSection
+              number={6}
+              title="Adet — kademen, fiyatın"
+              hint="Adet arttıkça birim fiyat düşer. Aktif kademe vurguda."
+            >
+              <div className="grid grid-cols-3 gap-3">
+                {CUSTOMER_ETIKET_TIERS.map((q) => {
+                  const tierQuote = quoteCustomerEtiket({
+                    width,
+                    height,
+                    qty: q,
+                    material,
+                    coating,
+                    customization: custom,
+                  });
+                  const u = tierQuote.ok ? tierQuote.unitPrice : 0;
+                  const t = tierQuote.ok ? tierQuote.total : 0;
+                  const sav = computeEtiketTierSavings(
+                    {
+                      width,
+                      height,
+                      material,
+                      coating,
+                      customization: custom,
+                    },
+                    1000,
+                    q
+                  );
+                  const popular = q === 5000;
+                  const selected = qty === q;
+                  return (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setQty(q)}
+                      aria-pressed={selected}
+                      className={cn(
+                        "relative px-4 py-5 rounded-[14px] text-left cursor-pointer",
+                        "transition-[transform,box-shadow,background] duration-200",
+                        selected
+                          ? "bg-krem ring-2 ring-pim-mercan -translate-y-0.5 shadow-mercan-lg"
+                          : "bg-white ring-2 ring-gri-200 hover:ring-pim-mercan-soft"
+                      )}
+                    >
+                      {popular && !selected && (
+                        <span className="absolute -top-2.5 left-4 inline-flex items-center h-[22px] px-2.5 rounded-full bg-lacivert text-white text-[11px] font-semibold">
+                          Popüler
+                        </span>
+                      )}
+                      {selected && (
+                        <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 h-[22px] px-2.5 rounded-full bg-pim-mercan text-white text-[11px] font-semibold">
+                          <Icon.Check size={10} /> Seçildi
+                        </span>
+                      )}
+                      <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+                        ADET
+                      </div>
+                      <div className="text-[24px] font-bold leading-none tabular-nums">
+                        {q >= 1000 ? `${q / 1000}K` : q}
+                      </div>
+                      <div className="text-[18px] font-bold mt-3.5 text-lacivert tabular-nums">
+                        {fmt(t)} TL
+                      </div>
+                      <div className="text-[12.5px] text-gri-700 mt-0.5 tabular-nums">
+                        {fmtUnit(u)} TL/adet
+                      </div>
+                      {sav > 0 && (
+                        <div className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-2.5">
+                          %{sav} tasarruf 🎯
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </FormSection>
 

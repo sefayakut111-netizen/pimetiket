@@ -148,7 +148,7 @@ export default function PanelimPage() {
           <QuickAction
             icon={<Icon.Sticker size={20} />}
             title="Yeni sticker"
-            desc="25 adetten başla"
+            desc="50 adetten başla"
             href="/sticker"
           />
           <QuickAction

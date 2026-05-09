@@ -167,7 +167,7 @@ export default function StickerPage() {
         <div className="flex items-end gap-4 mb-7">
           <div className="flex-1">
             <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
-              <Icon.Sparkle size={12} /> 25 adetten başlar
+              <Icon.Sparkle size={12} /> 50 adetten başlar
             </span>
             <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
               Sticker&rsquo;ını konfigüre et
