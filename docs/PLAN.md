@@ -41,9 +41,61 @@ Düşük MOQ + geniş malzeme + esnek süreç. Bursa'dan, küçük markalar içi
 | 17 | **docs(plan)** v2 — 5-blok roadmap | `1fbbd04` | 05-09 | 16 milestone tablosu + Block A-E + kritik prensipler |
 | 18 | **docs(pricing)** Sefa'nın modülü analizi | `8b91a8b` | 05-09 | sticker-fiyatlama.html v0.3 incelendi, 8 soru + entegrasyon planı |
 | 19 | **feat(pricing)** TS port (geometri + cost + cart) | `2095b17` | 05-09 | Saf fonksiyon port (~820 LOC) + 46 Jest senaryo + PRICING_SPEC.md |
-| 20 | **docs(manual-order)** feature spec | (bu) | 05-09 | Manuel sipariş hazırlama Block C.8 olarak eklendi, MANUAL_ORDER_FEATURE.md |
+| 20 | **docs(manual-order)** feature spec | `de0fdfb` | 05-09 | Manuel sipariş hazırlama Block C.8 olarak eklendi, MANUAL_ORDER_FEATURE.md |
+| 21 | **feat(admin)** /admin/fiyat-hesapla | `7655abf` | 05-09 | Operatör manuel fiyat hesap aracı + parametre tuning, lib storefront'a kopyalandı, ~700 LOC |
+| 22 | **feat(admin)** SVG görselleştirme | `a17b031` | 05-09 | RollPlanSvg + SheetPreviewSvg + RollMiniBar (~1.030 LOC), kesim markası/başlangıç/fire pattern'ler |
+| 23 | **fix(pricing)** rulo plan layout + fontlar | `5fa8996` | 05-09 | Outer/inner loop swap (cols/rows) → tabakalar artık rulodan taşmıyor, 11 font 1.5-2× büyütüldü |
 
-**Toplam**: 20 atomik milestone, ~33 commit, ~15.000 LOC.
+**Toplam**: 23 atomik milestone, ~36 commit, ~17.000 LOC.
+
+---
+
+## 📅 Session 2026-05-09 — Günün özeti
+
+**12 commit, ~7.000+ LOC, 7 doc**. Üç ana iş bloğu:
+
+### 1. Quality polish (a09228e → 02b5925) — 4 commit
+- 🟠 Toast primitive + 7 sayfada CTA wiring
+- 🟢 SEO: metadata template, robots, sitemap, Org+WebSite JSON-LD, 33 route
+- 🟢 A11y: skip-link, focus-visible global, fieldset semantics, TopBar sepet aria
+- 🟢 Perf: next.config tuning + reduced-motion + AUDIT-quality.md
+
+### 2. Pim AI Agent Faz 1 (ec39c18) — 1 commit
+- Karşılama Pim + GPT-4o + Vercel AI SDK v6
+- localStorage memory (KVKK opt-in) + 7 persona spec
+- Floating chat (sağ alt mercan buton) + consent panel + welcome chip'ler
+- Medusa pim-memory module scaffold (5 model)
+- `OPENAI_API_KEY` set edildiğinde anında çalışır
+
+### 3. Pricing engine entegrasyonu (1fbbd04 → 5fa8996) — 7 commit
+- PLAN v2: 5-blok roadmap (eski D-L → A/B/C/D/E)
+- Sefa'nın `sticker-fiyatlama.html` v0.3 (4315 LOC) analizi → PRICING_ANALYSIS.md
+- Saf fonksiyon TS port: geometri + cost + cart-discount (~820 LOC) + 46 Jest senaryo + PRICING_SPEC.md (kanonik referans)
+- Manuel sipariş feature spec (Block C.8) → MANUAL_ORDER_FEATURE.md
+- `/admin/fiyat-hesapla` admin sayfası: input formu + price hero + cost breakdown
+- 3 SVG görselleştirme: RollPlanSvg + SheetPreviewSvg + RollMiniBar
+- Layout bug fix (cols/rows loop swap) + font'ların 1.5-2× büyütülmesi
+
+### 🟢 Çalışan canlı
+- 34 route storefront (33 statik + 1 dynamic)
+- TS clean
+- Admin'de "Fiyat" sekmesi → manuel fiyat hesap + SVG görselleştirme
+
+### 🔄 Sıradaki — beklenenler
+- Sefa: `OPENAI_API_KEY` set et → Pim canlı
+- Sefa: Supabase yeni org/proje aç → Block B açılır
+- Sefa: Pricing parametre tuning kararları → Block A.4-A.5 (DB models, service)
+- Block A.6-A.7 (storefront configurator'larını shared lib'e bağlama) — istendiğinde yapılır
+
+### 📂 Doc inventory (8 dosya)
+1. **PLAN.md** — master plan, 23 milestone, 5-blok roadmap
+2. **DESIGN_SYSTEM.md** — design tokens (B'den beri)
+3. **AUDIT-quality.md** — SEO/A11y/Perf audit özeti
+4. **PIM_AGENT.md** — AI agent vizyonu + 4 faz roadmap
+5. **PRICING_SPEC.md** — Sefa'nın kanonik pricing spec'i
+6. **PRICING_ANALYSIS.md** — entegrasyon planı + 11 mimari uyarı
+7. **MANUAL_ORDER_FEATURE.md** — Block C.8 spec
+8. **PIM_MASCOT_BRIEF.md** — maskot kanonik karakter spec'i (B'den beri)
 
 ---
 
