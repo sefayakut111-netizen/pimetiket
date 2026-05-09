@@ -6,17 +6,21 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
+import {
+  listCustomerOrders,
+  updateCustomerOrderStatus,
+  type CustomerOrder,
+} from "@/lib/customer-order";
 
-// Admin view: 7 görünür alt-state (paid/qc_flagged/operator_review/
-// proof_pending/in_production/shipped/delivered). Müşteri "qc_pending"
-// ve "cancelled" admin'de daha granuler ayrılmış halde gözükür.
-type AdminVisibleStatus = Exclude<OrderStatus, "qc_pending" | "cancelled">;
+// Admin tüm 9 OrderStatus'u görür (müşteri view'inde paid/qc_pending
+// "Kontrolde" tek başlığa indirgeniyor; admin granuler kalıyor).
+type AdminStatus = OrderStatus;
 
 interface AdminOrder {
   id: string;
@@ -24,34 +28,26 @@ interface AdminOrder {
   product: string;
   qty: number;
   total: number;
-  status: AdminVisibleStatus;
+  status: AdminStatus;
   date: string;
   fason?: string;
 }
 
-const ORDERS: AdminOrder[] = [
-  { id: "PE-2026-1188", customer: "Mehmet Kahveci", product: "Etiket × 2.500", qty: 2500, total: 5680, status: "qc_flagged", date: "8 May 14:25" },
-  { id: "PE-2026-1187", customer: "Pop-up Etk.", product: "Sticker × 500", qty: 500, total: 1750, status: "operator_review", date: "8 May 14:18" },
-  { id: "PE-2026-1186", customer: "Olea Sabun", product: "Etiket × 2.000", qty: 2000, total: 4250, status: "in_production", date: "8 May 13:30", fason: "Bursa-1" },
-  { id: "PE-2026-1185", customer: "Atölye Niş", product: "Sticker × 250", qty: 250, total: 1050, status: "shipped", date: "8 May 11:15", fason: "Bursa-2" },
-  { id: "PE-2026-1184", customer: "Bulutlu Roastery", product: "Etiket × 1.500", qty: 1500, total: 3120, status: "proof_pending", date: "8 May 09:42" },
-  { id: "PE-2026-1183", customer: "Yeşil Yaprak", product: "Sticker × 1.000", qty: 1000, total: 2900, status: "paid", date: "8 May 08:55" },
-  { id: "PE-2026-1182", customer: "Olea Sabun (#2)", product: "Etiket × 2.000", qty: 2000, total: 4250, status: "proof_pending", date: "7 May 19:20" },
-  { id: "PE-2026-1181", customer: "Çiğdem Atölye", product: "Etiket × 3.000", qty: 3000, total: 5800, status: "delivered", date: "7 May 16:08", fason: "Bursa-1" },
-];
-
-const STATUS_META: Record<AdminVisibleStatus, { label: string; color: string; bg: string }> = {
+const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: string }> = {
   paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_flagged: { label: "AI flag", color: "text-sari", bg: "bg-sari-soft" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   proof_pending: { label: "Prova bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
   shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
   delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft" },
+  cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100" },
 };
 
-const FILTERS: { id: AdminVisibleStatus | "all"; label: string }[] = [
+const FILTERS: { id: AdminStatus | "all"; label: string }[] = [
   { id: "all", label: "Tümü" },
+  { id: "paid", label: "Yeni" },
   { id: "qc_flagged", label: "AI flag (acil)" },
   { id: "operator_review", label: "Operatör" },
   { id: "proof_pending", label: "Prova" },
@@ -59,14 +55,67 @@ const FILTERS: { id: AdminVisibleStatus | "all"; label: string }[] = [
   { id: "shipped", label: "Kargo" },
 ];
 
+/** Tüm AdminStatus'lar — durum güncelleme dropdown'u için */
+const ALL_STATUSES: AdminStatus[] = [
+  "paid",
+  "qc_pending",
+  "qc_flagged",
+  "operator_review",
+  "proof_pending",
+  "in_production",
+  "shipped",
+  "delivered",
+  "cancelled",
+];
+
+/** CustomerOrder → AdminOrder row */
+function toAdminOrderRow(o: CustomerOrder): AdminOrder {
+  const product =
+    o.items.length === 1
+      ? `${o.items[0].product === "sticker" ? "Sticker" : "Etiket"} × ${o.items[0].qty.toLocaleString("tr-TR")}`
+      : `${o.items.length} ürün`;
+  const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
+  const date = new Date(o.createdAtIso).toLocaleString("tr-TR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return {
+    id: o.id,
+    customer: o.address.name,
+    product,
+    qty: totalQty,
+    total: o.total,
+    status: o.status,
+    date,
+  };
+}
+
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
 export default function AdminSiparislerPage() {
-  const [filter, setFilter] = useState<AdminVisibleStatus | "all">("all");
+  const [filter, setFilter] = useState<AdminStatus | "all">("all");
   const [search, setSearch] = useState("");
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+
+  useEffect(() => {
+    const refresh = () =>
+      setOrders(listCustomerOrders().map(toAdminOrderRow));
+    refresh();
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
+
+  const handleStatusChange = (id: string, status: AdminStatus) => {
+    updateCustomerOrderStatus(id, status);
+    // Event listener refresh yapacak — manuel da tetikle (storage event gelmeden)
+    setOrders(listCustomerOrders().map(toAdminOrderRow));
+  };
 
   const filtered = useMemo(() => {
-    return ORDERS.filter((o) => {
+    return orders.filter((o) => {
       if (filter !== "all" && o.status !== filter) return false;
       if (search.length > 0) {
         const q = search.toLowerCase();
@@ -78,7 +127,7 @@ export default function AdminSiparislerPage() {
       }
       return true;
     });
-  }, [filter, search]);
+  }, [orders, filter, search]);
 
   return (
     <main className="py-8 pb-20">
@@ -88,7 +137,7 @@ export default function AdminSiparislerPage() {
             Sipariş yönetimi
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {ORDERS.length} aktif sipariş — filtrele ve durum güncelle
+            {orders.length} sipariş — filtrele ve durum güncelle
           </p>
         </div>
 
@@ -147,10 +196,10 @@ export default function AdminSiparislerPage() {
                   Durum
                 </th>
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
-                  Fason
+                  Tarih
                 </th>
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
-                  Tarih
+                  Durum güncelle
                 </th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -160,9 +209,15 @@ export default function AdminSiparislerPage() {
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
                     <Icon.Box size={48} className="text-gri-500 mx-auto mb-3" />
-                    <div className="font-semibold mb-1">Sonuç yok</div>
+                    <div className="font-semibold mb-1">
+                      {orders.length === 0
+                        ? "Henüz sipariş yok"
+                        : "Sonuç yok"}
+                    </div>
                     <div className="text-gri-700">
-                      Filtreyi gevşet veya aramayı temizle.
+                      {orders.length === 0
+                        ? "Müşteriler sipariş verdikçe burada görünecek."
+                        : "Filtreyi gevşet veya aramayı temizle."}
                     </div>
                   </td>
                 </tr>
@@ -192,11 +247,27 @@ export default function AdminSiparislerPage() {
                           {s.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gri-700">
-                        {o.fason ?? "—"}
-                      </td>
                       <td className="px-4 py-3 text-gri-700 text-[12.5px]">
                         {o.date}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={o.status}
+                          onChange={(e) =>
+                            handleStatusChange(
+                              o.id,
+                              e.target.value as AdminStatus
+                            )
+                          }
+                          aria-label={`${o.id} statüsü güncelle`}
+                          className="h-8 px-2 pr-7 rounded-lg ring-1 ring-gri-200 bg-white text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan focus:ring-pim-mercan focus:outline-none"
+                        >
+                          {ALL_STATUSES.map((st) => (
+                            <option key={st} value={st}>
+                              {STATUS_META[st].label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link

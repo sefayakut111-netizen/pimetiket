@@ -18,6 +18,35 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill, Eyebrow } from "@/components/ui";
+import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
+import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
+
+// Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
+// "En küçük tier × tipik boyut × sade konfigürasyon" ile gösterilir.
+function baselineStickerPrice(): string {
+  const r = quoteCustomerSticker({
+    width: 75,
+    height: 75,
+    material: "vinil",
+    finish: "parlak",
+    qty: 50,
+  });
+  if (!r.ok) return "—";
+  return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
+}
+
+function baselineEtiketPrice(): string {
+  const r = quoteCustomerEtiket({
+    width: 60,
+    height: 80,
+    qty: 1000,
+    material: "kraft",
+    coating: "yok",
+    customization: "yok",
+  });
+  if (!r.ok) return "—";
+  return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
+}
 
 export const metadata: Metadata = {
   // Root layout'taki default title kullanılır — template uygulanmaz.
@@ -238,7 +267,7 @@ export default function HomePage() {
             title="Etiket"
             sub="Rulodan etiket — kozmetik, gıda, içecek, parfüm."
             from="1000 adetten"
-            price="2.13 TL/adet"
+            price={baselineEtiketPrice()}
             href="/etiket"
           />
           <ProductCard
@@ -246,7 +275,7 @@ export default function HomePage() {
             title="Sticker"
             sub="Tekli ya da tabakada — laptop, defter, kampanya."
             from="50 adetten"
-            price="3.50 TL/adet"
+            price={baselineStickerPrice()}
             href="/sticker"
           />
         </div>
