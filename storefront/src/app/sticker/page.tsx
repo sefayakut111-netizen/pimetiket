@@ -94,6 +94,7 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 export default function StickerPage() {
   const toast = useToast();
   const [shape, setShape] = useState<ShapeId>("circle");
+  const [softCorners, setSoftCorners] = useState<boolean>(false);
   const [material, setMaterial] = useState<StickerMaterial>("vinil");
   const [finish, setFinish] = useState<StickerFinish>("parlak");
   const [tier, setTier] = useState<CustomerStickerTier>(250);
@@ -160,6 +161,7 @@ export default function StickerPage() {
           <div className="lg:sticky lg:top-20">
             <StickerPreview
               shape={shape}
+              softCorners={softCorners}
               material={material}
               finish={finish}
               width={width}
@@ -198,6 +200,45 @@ export default function StickerPage() {
                   Tasarım dosyanı yüklediğinde kontur otomatik çıkarılır.
                   Yıldız, dalga, harf — istediğin form. Boyut alanı tasarımın{" "}
                   <strong>çevreleyen kutusu</strong> olur.
+                </div>
+              )}
+
+              {/* Köşeleri yumuşat — sadece kare ve özel için */}
+              {(shape === "square" || shape === "ozel") && (
+                <label className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-gri-50 ring-1 ring-gri-200 cursor-pointer hover:ring-pim-mercan transition-shadow">
+                  <input
+                    type="checkbox"
+                    checked={softCorners}
+                    onChange={(e) => setSoftCorners(e.target.checked)}
+                    className="w-4 h-4 accent-pim-mercan cursor-pointer"
+                  />
+                  <span className="text-[13px] font-semibold flex-1">
+                    Köşeleri yumuşat
+                  </span>
+                  <span className="text-[11px] text-gri-500">
+                    {shape === "square"
+                      ? "kare → soft kare"
+                      : "kontur daha organik"}
+                  </span>
+                </label>
+              )}
+
+              {/* Şekil örnekleri — kontur kesim ve özel için ne mümkün */}
+              {(shape === "die" || shape === "ozel") && (
+                <div className="mt-3 px-3.5 py-3 rounded-lg bg-krem-soft ring-1 ring-krem-deep">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
+                    {shape === "die" ? "Kontur kesim" : "Özel geometri"} ile mümkün olanlar
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <ShapeExampleIcon kind="heart" />
+                    <ShapeExampleIcon kind="star" />
+                    <ShapeExampleIcon kind="wave" />
+                    <ShapeExampleIcon kind="leaf" />
+                    <ShapeExampleIcon kind="speech" />
+                    <span className="text-[11.5px] text-gri-700 ml-1">
+                      ve dahası — kalp, yıldız, dalga, yaprak, balon …
+                    </span>
+                  </div>
                 </div>
               )}
             </FormSection>
@@ -506,18 +547,99 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
 }
 
 // ============================================================
+// ShapeExampleIcon — kontur kesim / özel için ipucu mini ikonlar
+// ============================================================
+
+type ExampleKind = "heart" | "star" | "wave" | "leaf" | "speech";
+
+function ShapeExampleIcon({ kind }: { kind: ExampleKind }) {
+  const fill = "var(--color-pim-mercan-tint)";
+  const stroke = "var(--color-pim-mercan)";
+  const labels: Record<ExampleKind, string> = {
+    heart: "Kalp",
+    star: "Yıldız",
+    wave: "Dalga",
+    leaf: "Yaprak",
+    speech: "Balon",
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
+        {kind === "heart" && (
+          <path
+            d="M14 24 C14 24 4 17 4 11 C4 7 7 4 10.5 4 C12.5 4 14 5.5 14 7 C14 5.5 15.5 4 17.5 4 C21 4 24 7 24 11 C24 17 14 24 14 24 Z"
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        )}
+        {kind === "star" && (
+          <path
+            d="M14 2 L17.2 10.4 L26 11 L19 16.8 L21.2 25 L14 20.4 L6.8 25 L9 16.8 L2 11 L10.8 10.4 Z"
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        )}
+        {kind === "wave" && (
+          <path
+            d="M2 10 Q7 4 12 10 T22 10 T26 12 L26 22 Q22 26 18 22 T10 22 T2 22 Z"
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        )}
+        {kind === "leaf" && (
+          <path
+            d="M4 24 C4 12 12 4 24 4 C24 16 16 24 4 24 Z M4 24 L24 4"
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        )}
+        {kind === "speech" && (
+          <path
+            d="M4 6 L24 6 Q26 6 26 8 L26 18 Q26 20 24 20 L14 20 L8 25 L9 20 L4 20 Q2 20 2 18 L2 8 Q2 6 4 6 Z"
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+      <span className="text-[9.5px] font-semibold text-gri-700 uppercase tracking-[0.04em]">
+        {labels[kind]}
+      </span>
+    </div>
+  );
+}
+
+// ============================================================
 // StickerPreview
 // ============================================================
 
 interface PreviewProps {
   shape: ShapeId;
+  softCorners: boolean;
   material: StickerMaterial;
   finish: StickerFinish;
   width: number;
   height: number;
 }
 
-function StickerPreview({ shape, material, finish, width, height }: PreviewProps) {
+function StickerPreview({
+  shape,
+  softCorners,
+  material,
+  finish,
+  width,
+  height,
+}: PreviewProps) {
   // Maks 360px hedef, en uzun kenara göre ölçekle
   const maxDim = Math.max(width, height);
   const scale = Math.min(360 / maxDim, 2.4);
@@ -544,15 +666,23 @@ function StickerPreview({ shape, material, finish, width, height }: PreviewProps
       ? "50%"
       : shape === "rounded"
         ? 24
-        : shape === "die" || shape === "ozel"
+        : shape === "die"
           ? 0
-          : 4;
+          : shape === "square"
+            ? softCorners
+              ? 16 // soft kare
+              : 4
+            : 0; // ozel: clipPath kullanılacak
+
   const customClip =
     shape === "die"
       ? "polygon(20% 0, 80% 5%, 100% 30%, 95% 75%, 70% 100%, 25% 95%, 0 65%, 5% 25%)"
       : shape === "ozel"
-        ? // Yıldız + dalga karışımı 12-köşeli abstract custom
-          "polygon(50% 0%, 60% 22%, 86% 14%, 76% 38%, 100% 50%, 76% 62%, 86% 86%, 60% 78%, 50% 100%, 40% 78%, 14% 86%, 24% 62%, 0% 50%, 24% 38%, 14% 14%, 40% 22%)"
+        ? softCorners
+          ? // Soft pill / bumper organik blob (yumuşak)
+            "polygon(15% 0%, 85% 0%, 95% 8%, 100% 30%, 100% 70%, 95% 92%, 85% 100%, 15% 100%, 5% 92%, 0% 70%, 0% 30%, 5% 8%)"
+          : // Bumper benzeri organik blob (köşeli)
+            "polygon(20% 0%, 80% 3%, 95% 18%, 100% 50%, 95% 82%, 80% 97%, 20% 100%, 5% 82%, 0% 50%, 5% 18%)"
         : "none";
 
   return (
