@@ -13,7 +13,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, StageDot } from "@/components/ui";
+import { Button, Card, Eyebrow, Skeleton, StageDot } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   getCustomerOrder,
@@ -85,12 +85,26 @@ export default function SiparisDetailPage({
     setHydrated(true);
   }, [id]);
 
-  // Hydration guard
+  // Hydration guard — skeleton loading
   if (!hydrated) {
     return (
-      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
-        <div className="mx-auto max-w-[680px] px-6 text-center text-gri-500">
-          Yükleniyor…
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <div className="mb-6 space-y-3">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+            <div className="flex flex-col gap-6">
+              <Skeleton.Card />
+              <Skeleton.Card />
+            </div>
+            <div className="flex flex-col gap-4">
+              <Skeleton.Card />
+              <Skeleton.Card />
+            </div>
+          </div>
         </div>
       </main>
     );

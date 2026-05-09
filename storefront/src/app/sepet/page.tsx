@@ -14,7 +14,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import {
   listCustomerCart,
@@ -68,12 +68,22 @@ export default function SepetPage() {
     toast.info("Sepetten çıkarıldı");
   };
 
-  // Hydration guard — SSR vs CSR farklı olmasın
+  // Hydration guard — SSR vs CSR farklı olmasın (skeleton loading)
   if (!hydrated) {
     return (
-      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-16">
-        <div className="mx-auto max-w-[440px] px-6 text-center text-gri-500">
-          {t.common.loading}
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <div className="mb-5 md:mb-7 space-y-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-48" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
+            <div className="flex flex-col gap-3">
+              <Skeleton.OrderRow />
+              <Skeleton.OrderRow />
+            </div>
+            <Skeleton.Card className="lg:sticky lg:top-20" />
+          </div>
         </div>
       </main>
     );

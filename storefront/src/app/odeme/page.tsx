@@ -12,9 +12,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, ValidatedInput } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import {
+  validateTcKimlik,
+  validateVkn,
+  validateCardNumber,
+  validateCardExpiry,
+  validateCvv,
+} from "@/lib/validation";
 import {
   listCustomerCart,
   summarizeCustomerCart,
@@ -284,9 +291,11 @@ export default function OdemePage() {
                     <span className="text-[13px] font-semibold mb-1.5 block">
                       {t.checkout.tcKimlik}
                     </span>
-                    <Input
+                    <ValidatedInput
+                      id="tc"
                       value={tc}
-                      onChange={(e) => setTc(e.target.value)}
+                      onChange={setTc}
+                      validate={validateTcKimlik}
                       placeholder="11"
                       maxLength={11}
                       inputMode="numeric"
@@ -308,9 +317,11 @@ export default function OdemePage() {
                         <span className="text-[13px] font-semibold mb-1.5 block">
                           {t.checkout.vkn}
                         </span>
-                        <Input
+                        <ValidatedInput
+                          id="vkn"
                           value={vkn}
-                          onChange={(e) => setVkn(e.target.value)}
+                          onChange={setVkn}
+                          validate={validateVkn}
                           placeholder="10"
                           maxLength={10}
                           inputMode="numeric"
@@ -364,9 +375,11 @@ export default function OdemePage() {
                   <span className="text-[13px] font-semibold mb-1.5 block">
                     {t.checkout.cardNumber}
                   </span>
-                  <Input
+                  <ValidatedInput
+                    id="card-no"
                     value={card.no}
-                    onChange={(e) => setCard({ ...card, no: e.target.value })}
+                    onChange={(v) => setCard({ ...card, no: v })}
+                    validate={validateCardNumber}
                     placeholder="0000 0000 0000 0000"
                     inputMode="numeric"
                     autoComplete="cc-number"
@@ -378,11 +391,11 @@ export default function OdemePage() {
                     <span className="text-[13px] font-semibold mb-1.5 block">
                       {t.checkout.expiry}
                     </span>
-                    <Input
+                    <ValidatedInput
+                      id="card-exp"
                       value={card.exp}
-                      onChange={(e) =>
-                        setCard({ ...card, exp: e.target.value })
-                      }
+                      onChange={(v) => setCard({ ...card, exp: v })}
+                      validate={validateCardExpiry}
                       placeholder="MM/YY"
                       autoComplete="cc-exp"
                       maxLength={5}
@@ -392,12 +405,12 @@ export default function OdemePage() {
                     <span className="text-[13px] font-semibold mb-1.5 block">
                       {t.checkout.cvv}
                     </span>
-                    <Input
+                    <ValidatedInput
+                      id="card-cvv"
                       type="password"
                       value={card.cvv}
-                      onChange={(e) =>
-                        setCard({ ...card, cvv: e.target.value })
-                      }
+                      onChange={(v) => setCard({ ...card, cvv: v })}
+                      validate={validateCvv}
                       placeholder="•••"
                       autoComplete="cc-csc"
                       maxLength={4}

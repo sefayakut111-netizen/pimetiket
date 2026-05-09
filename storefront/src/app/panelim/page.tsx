@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listCustomerOrders,
@@ -280,9 +280,10 @@ export default function PanelimPage() {
               </div>
 
               {!hydrated ? (
-                <Card padding="p-6" className="text-center text-gri-500">
-                  Yükleniyor…
-                </Card>
+                <div className="space-y-3">
+                  <Skeleton.OrderRow />
+                  <Skeleton.OrderRow />
+                </div>
               ) : activeOrders.length === 0 ? (
                 <Card padding="p-8" className="text-center">
                   <Pim pose="think" size={120} />
