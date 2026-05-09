@@ -41,13 +41,12 @@ import {
 // Configuration data
 // ============================================================
 
-// Sıra: Kare → Özel → Yuvarlak → Kontur kesim
-// "Yumuşak köşe" şekli kaldırıldı — köşe yumuşatma kare/özel için
-// alt-segmented control olarak geliyor (Düz vs Yumuşak kesim).
+// Sıra: Kare → Yuvarlak → Özel oran → Kontur kesim
+// Tabaka modunda Kontur kesim GÖSTERİLMEZ (tabakada özel kontur yok).
 const SHAPES = [
   { id: "square", name: "Kare", desc: "Köşeli kenar" },
-  { id: "ozel", name: "Özel geometri", desc: "Dikdörtgen / bumper" },
   { id: "circle", name: "Yuvarlak", desc: "Daire / oval" },
+  { id: "ozel", name: "Özel oran", desc: "Dikdörtgen / bumper" },
   { id: "die", name: "Kontur kesim", desc: "Pim baykuş silueti gibi" },
 ] as const;
 
@@ -102,6 +101,9 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 export default function StickerPage() {
   const toast = useToast();
+  // 1. ADIM: Kesim tipi (Sefa kuralı — şekilden ÖNCE)
+  const [cutMode, setCutMode] = useState<"tabaka" | "diecut">("diecut");
+  // 2. ADIM: Şekil
   const [shape, setShape] = useState<ShapeId>("square");
   const [softCorners, setSoftCorners] = useState<boolean>(false);
   const [material, setMaterial] = useState<StickerMaterial>("vinil");
@@ -110,6 +112,17 @@ export default function StickerPage() {
   const [width, setWidth] = useState<number>(75);
   const [height, setHeight] = useState<number>(75);
 
+  // Tabaka modunda kontur kesim seçili kalmasın — kareye düş
+  if (cutMode === "tabaka" && shape === "die") {
+    setShape("square");
+  }
+
+  // Tabaka modunda kontur kesim gizli
+  const visibleShapes =
+    cutMode === "tabaka"
+      ? SHAPES.filter((s) => s.id !== "die")
+      : SHAPES;
+
   // Engine ile canlı quote
   const quote = quoteCustomerSticker({
     width,
@@ -117,6 +130,7 @@ export default function StickerPage() {
     material,
     finish,
     qty: tier,
+    cut: cutMode,
   });
 
   const total = quote.ok ? quote.total : 0;
@@ -183,12 +197,40 @@ export default function StickerPage() {
 
           {/* RIGHT — config */}
           <div className="flex flex-col gap-4">
+            {/* 1. ADIM: Kesim Tipi (Tabaka / Die Cut) — şekilden önce */}
+            <FormSection
+              title="Kesim Tipi"
+              hint="tabaka mı tek tek mi"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <CutModeCard
+                  kind="tabaka"
+                  selected={cutMode === "tabaka"}
+                  onClick={() => setCutMode("tabaka")}
+                />
+                <CutModeCard
+                  kind="diecut"
+                  selected={cutMode === "diecut"}
+                  onClick={() => setCutMode("diecut")}
+                />
+              </div>
+            </FormSection>
+
             <FormSection
               title="Şekil"
-              hint="boyut bağımsız — 50×50 mm tasarım yıldız da olabilir"
+              hint={
+                cutMode === "tabaka"
+                  ? "tabaka modunda kontur kesim yok"
+                  : "boyut bağımsız — özel oran ile bumper sticker yapabilirsin"
+              }
             >
-              <div className="grid grid-cols-4 gap-2.5">
-                {SHAPES.map((s) => (
+              <div
+                className={cn(
+                  "grid gap-2.5",
+                  cutMode === "tabaka" ? "grid-cols-3" : "grid-cols-4"
+                )}
+              >
+                {visibleShapes.map((s) => (
                   <SelectableCard
                     key={s.id}
                     selected={shape === s.id}
@@ -205,10 +247,10 @@ export default function StickerPage() {
               </div>
               {shape === "ozel" && (
                 <div className="mt-3 px-3.5 py-2.5 rounded-lg bg-pim-mercan-tint/40 ring-1 ring-pim-mercan-soft text-[12.5px] text-lacivert leading-relaxed">
-                  <strong className="text-pim-mercan-koyu">Özel geometri:</strong>{" "}
-                  Tasarım dosyanı yüklediğinde kontur otomatik çıkarılır.
-                  Yıldız, dalga, harf — istediğin form. Boyut alanı tasarımın{" "}
-                  <strong>çevreleyen kutusu</strong> olur.
+                  <strong className="text-pim-mercan-koyu">Özel oran:</strong>{" "}
+                  Standart kare/yuvarlak yerine kendi oranını seç (60×80,
+                  100×40, 25×255 mm). Köşe seçeneğiyle{" "}
+                  <strong>bumper sticker / pill</strong> formuna ulaş.
                 </div>
               )}
 
@@ -233,11 +275,11 @@ export default function StickerPage() {
                 </div>
               )}
 
-              {/* Şekil örnekleri — kontur kesim ve özel için ne mümkün */}
-              {(shape === "die" || shape === "ozel") && (
+              {/* Şekil örnekleri — sadece kontur kesim için (özel oran düz dikdörtgen) */}
+              {shape === "die" && (
                 <div className="mt-3 px-3.5 py-3 rounded-lg bg-krem-soft ring-1 ring-krem-deep">
                   <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
-                    {shape === "die" ? "Kontur kesim" : "Özel geometri"} ile mümkün olanlar
+                    Kontur kesim ile mümkün olanlar
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <ShapeExampleIcon kind="heart" />
@@ -541,6 +583,113 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
         strokeDasharray="3 2"
       />
     </svg>
+  );
+}
+
+// ============================================================
+// CutModeCard — Tabaka vs Die Cut seçimi (1. adım)
+// ============================================================
+
+function CutModeCard({
+  kind,
+  selected,
+  onClick,
+}: {
+  kind: "tabaka" | "diecut";
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const stroke = selected
+    ? "var(--color-pim-mercan)"
+    : "var(--color-lacivert)";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "p-4 rounded-xl ring-[1.5px] text-left transition-all relative",
+        selected
+          ? "ring-pim-mercan bg-pim-mercan-tint/40 shadow-1 -translate-y-0.5"
+          : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden className="shrink-0">
+          {kind === "tabaka" ? (
+            // 4 sticker tabaka içinde — yarım kesim
+            <g>
+              <rect
+                x="3"
+                y="3"
+                width="50"
+                height="50"
+                rx="3"
+                fill="white"
+                stroke={stroke}
+                strokeWidth="1.5"
+                strokeDasharray="3 2"
+              />
+              {/* 4 sticker grid'i */}
+              {[
+                [10, 10],
+                [30, 10],
+                [10, 30],
+                [30, 30],
+              ].map(([x, y]) => (
+                <rect
+                  key={`${x}-${y}`}
+                  x={x}
+                  y={y}
+                  width="16"
+                  height="16"
+                  rx="2"
+                  fill={selected ? "var(--color-pim-mercan-tint)" : "rgba(31,41,55,0.08)"}
+                  stroke={stroke}
+                  strokeWidth="1.6"
+                />
+              ))}
+            </g>
+          ) : (
+            // Tek tek sticker, ayrılmış
+            <g>
+              {[
+                [4, 4, "rgba(31,41,55,0.06)"],
+                [22, 12, "rgba(31,41,55,0.06)"],
+                [10, 26, "rgba(31,41,55,0.06)"],
+                [30, 32, "rgba(31,41,55,0.06)"],
+              ].map(([x, y, c], i) => (
+                <rect
+                  key={i}
+                  x={x as number}
+                  y={y as number}
+                  width="20"
+                  height="20"
+                  rx="4"
+                  fill={selected ? "var(--color-pim-mercan-tint)" : (c as string)}
+                  stroke={stroke}
+                  strokeWidth="1.6"
+                />
+              ))}
+            </g>
+          )}
+        </svg>
+        <div className="min-w-0">
+          <div className="font-bold text-[14px] mb-0.5">
+            {kind === "tabaka" ? "Tabaka" : "Die Cut"}
+          </div>
+          <div className="text-[11.5px] text-gri-700 leading-snug">
+            {kind === "tabaka"
+              ? "Yarım kesim — sticker'lar bir sayfada, müşteri ayırarak çıkarır."
+              : "Tam kesim — her sticker tek tek hazır."}
+          </div>
+          <div className="text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
+            {kind === "tabaka" ? "6 mm gap · ekonomik" : "50 mm gap · profesyonel"}
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
 
