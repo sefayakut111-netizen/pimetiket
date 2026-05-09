@@ -122,50 +122,100 @@ export default function OdemePage() {
     const addr =
       SAVED_ADDRESSES.find((a) => a.id === addressId) ?? SAVED_ADDRESSES[0];
 
-    // Kart son 4 hane mask
-    const last4 = card.no.replace(/\D/g, "").slice(-4);
-    const masked = last4
-      ? `**** **** **** ${last4}`
-      : "**** **** **** ****";
-
-    // Mock 3DS gecikme — gerçek PSP P0-3 adımında
-    await new Promise((r) => setTimeout(r, 1500));
-
     try {
-      const order = await createCustomerOrder({
-        items: cartItems,
-        address: {
-          label: addr.label,
-          name: addr.name,
-          addr: addr.addr,
-          city: addr.city,
-          phone: addr.phone,
-        },
-        invoice: {
-          type: invoiceType,
-          tc: invoiceType === "individual" ? tc : undefined,
-          vkn: invoiceType === "corporate" ? vkn : undefined,
-          companyName: invoiceType === "corporate" ? companyName : undefined,
-          taxOffice: invoiceType === "corporate" ? taxOffice : undefined,
-        },
-        payment: { method: "card", masked },
-        subtotal,
-        shipping,
-        total,
-        // Etiket için 10 gün, sticker için 5 gün — karışıksa 10 gün ver
-        estimatedDelivery: addDaysIso(
-          cartItems.some((i) => i.product === "etiket") ? 10 : 5
-        ),
+      // /api/payment/init → iyzico CheckoutForm Initialize
+      const res = await fetch("/api/payment/init", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          items: cartItems,
+          address: {
+            label: addr.label,
+            name: addr.name,
+            addr: addr.addr,
+            city: addr.city,
+            phone: addr.phone,
+          },
+          invoice: {
+            type: invoiceType,
+            tc: invoiceType === "individual" ? tc : undefined,
+            vkn: invoiceType === "corporate" ? vkn : undefined,
+            companyName: invoiceType === "corporate" ? companyName : undefined,
+            taxOffice: invoiceType === "corporate" ? taxOffice : undefined,
+          },
+          subtotal,
+          shipping,
+          total,
+        }),
       });
 
-      // Sepeti temizle
-      await clearCustomerCart();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          // Auth yok → /auth?next=/odeme
+          router.push(
+            `/auth?next=${encodeURIComponent("/odeme")}`
+          );
+          return;
+        }
+        if (res.status === 503) {
+          // PSP yapılandırılmamış → mock akışa düş (dev/demo)
+          console.warn(
+            "[odeme] iyzico not configured, falling back to mock order"
+          );
+          const last4 = "0000";
+          const masked = `**** **** **** ${last4}`;
+          const order = await createCustomerOrder({
+            items: cartItems,
+            address: {
+              label: addr.label,
+              name: addr.name,
+              addr: addr.addr,
+              city: addr.city,
+              phone: addr.phone,
+            },
+            invoice: {
+              type: invoiceType,
+              tc: invoiceType === "individual" ? tc : undefined,
+              vkn: invoiceType === "corporate" ? vkn : undefined,
+              companyName:
+                invoiceType === "corporate" ? companyName : undefined,
+              taxOffice: invoiceType === "corporate" ? taxOffice : undefined,
+            },
+            payment: { method: "card", masked },
+            subtotal,
+            shipping,
+            total,
+            estimatedDelivery: addDaysIso(
+              cartItems.some((i) => i.product === "etiket") ? 10 : 5
+            ),
+          });
+          await clearCustomerCart();
+          router.push(`/odeme-sonuc?status=success&order=${order.id}`);
+          return;
+        }
+        throw new Error(
+          data.error ?? `payment_init_failed_${res.status}`
+        );
+      }
 
-      router.push(`/odeme-sonuc?status=success&order=${order.id}`);
+      const { paymentPageUrl } = await res.json();
+      if (!paymentPageUrl) {
+        throw new Error("missing_payment_page_url");
+      }
+
+      // iyzico hosted form'a yönlendir — 3DS akışı orada tamamlanır,
+      // dönüş /api/payment/callback'e POST atılır, sonra
+      // /odeme-sonuc'a redirect olur.
+      window.location.href = paymentPageUrl;
     } catch (err) {
       setLoading(false);
-      console.error("[odeme] order create failed:", err);
-      router.push("/odeme-sonuc?status=fail");
+      console.error("[odeme] payment init failed:", err);
+      router.push(
+        `/odeme-sonuc?status=fail&reason=${encodeURIComponent(
+          err instanceof Error ? err.message : "unknown"
+        )}`
+      );
     }
   };
 

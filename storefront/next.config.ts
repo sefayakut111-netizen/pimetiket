@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
 
   // React 19 strict-mode hata avlama.
   reactStrictMode: true,
+
+  // iyzipay paketi `fs.readdirSync` ile resource'ları dinamik yüklüyor
+  // (eski CommonJS pattern). Turbopack bunu derleyemiyor → external mark
+  // edip runtime'da çözmesini sağla.
+  serverExternalPackages: ["iyzipay"],
 };
 
 export default nextConfig;
