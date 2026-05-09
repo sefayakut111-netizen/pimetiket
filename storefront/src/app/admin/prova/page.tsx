@@ -1,89 +1,81 @@
 /**
  * Pim Etiket — /admin/prova (E.3)
  *
- * Prova üretimi: müşteri tasarımını render edip onaylanacak prova oluştur.
+ * Prova üretimi: müşteri tasarımını render edip onay bekleyen siparişler.
+ * customer-orders store'undan proof_pending statüsündeki siparişleri okur.
+ *
+ * Operatör aksiyonları:
+ *   - "Üretime al" → in_production (müşteri provayı onayladı varsayımı)
+ *   - "Hatırlat" → toast (gerçek SMS/email backend swap'te)
+ *   - "İptal et" → cancelled
  */
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  listCustomerOrders,
+  updateCustomerOrderStatus,
+  type CustomerOrder,
+} from "@/lib/customer-order";
 
-interface ProvaItem {
-  orderId: string;
-  customer: string;
-  product: string;
-  config: string;
-  status: "to_prepare" | "ready_to_send" | "awaiting_customer" | "changes_requested";
-  uploadedAt: string;
+const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+
+function timeAgo(timestamp: number): string {
+  const diffMs = Date.now() - timestamp;
+  const min = Math.floor(diffMs / 60_000);
+  if (min < 1) return "Az önce";
+  if (min < 60) return `${min} dk önce`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} saat önce`;
+  const day = Math.floor(hr / 24);
+  return `${day} gün önce`;
 }
 
-const PROVA: ProvaItem[] = [
-  {
-    orderId: "PE-2026-1186",
-    customer: "Olea Sabun",
-    product: "Etiket × 2.000",
-    config: "Kraft + mat selefon + sıcak yaldız (altın) · 60×80mm",
-    status: "to_prepare",
-    uploadedAt: "8 May 13:30",
-  },
-  {
-    orderId: "PE-2026-1184",
-    customer: "Bulutlu Roastery",
-    product: "Etiket × 1.500",
-    config: "Beyaz semi-glos + parlak selefon · 50×70mm",
-    status: "awaiting_customer",
-    uploadedAt: "8 May 09:42",
-  },
-  {
-    orderId: "PE-2026-1182",
-    customer: "Olea Sabun (#2)",
-    product: "Etiket × 2.000",
-    config: "Kraft + mat selefon + emboss · 60×80mm",
-    status: "awaiting_customer",
-    uploadedAt: "7 May 19:20",
-  },
-  {
-    orderId: "PE-2026-1179",
-    customer: "Atölye Niş",
-    product: "Sticker × 1.000",
-    config: "Holografik + glitter · Yuvarlak 75mm",
-    status: "changes_requested",
-    uploadedAt: "7 May 14:18",
-  },
-];
-
-const STATUS_META: Record<
-  ProvaItem["status"],
-  { label: string; bg: string; color: string }
-> = {
-  to_prepare: {
-    label: "Sen hazırlayacaksın",
-    bg: "bg-pim-mercan-tint",
-    color: "text-pim-mercan",
-  },
-  ready_to_send: {
-    label: "Göndermeye hazır",
-    bg: "bg-yesil-soft",
-    color: "text-yesil",
-  },
-  awaiting_customer: {
-    label: "Müşteri onayı bekleniyor",
-    bg: "bg-sari-soft",
-    color: "text-[#7A560A]",
-  },
-  changes_requested: {
-    label: "Değişiklik istendi",
-    bg: "bg-kirmizi/10",
-    color: "text-kirmizi",
-  },
-};
-
 export default function AdminProvaPage() {
-  const [items] = useState(PROVA);
+  const toast = useToast();
+  const [items, setItems] = useState<CustomerOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const all = listCustomerOrders();
+      setAllOrders(all);
+      setItems(all.filter((o) => o.status === "proof_pending"));
+    };
+    refresh();
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
+
+  // KPI hesapları — admin'in genel görüşü
+  const inReview = allOrders.filter(
+    (o) => o.status === "operator_review"
+  ).length;
+  const proofPending = items.length;
+  const inProduction = allOrders.filter(
+    (o) => o.status === "in_production"
+  ).length;
+  const flagged = allOrders.filter((o) => o.status === "qc_flagged").length;
+
+  const handleApprove = (order: CustomerOrder) => {
+    updateCustomerOrderStatus(order.id, "in_production");
+    toast.success(`${order.id} → Üretime alındı`);
+  };
+
+  const handleReminder = (order: CustomerOrder) => {
+    toast.info(`${order.id} müşterisine hatırlatma yollandı (mock)`);
+  };
+
+  const handleCancel = (order: CustomerOrder) => {
+    updateCustomerOrderStatus(order.id, "cancelled");
+    toast.info(`${order.id} iptal edildi`);
+  };
 
   return (
     <main className="py-8 pb-20">
@@ -94,7 +86,9 @@ export default function AdminProvaPage() {
             Prova kuyruğu
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {items.length} sipariş prova aşamasında — hazırla, gönder, onay bekle.
+            {items.length === 0
+              ? "Prova bekleyen sipariş yok."
+              : `${items.length} sipariş müşteri onayı bekliyor.`}
           </p>
         </div>
 
@@ -102,10 +96,30 @@ export default function AdminProvaPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {(
             [
-              { label: "Hazırlanacak", count: 1, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-              { label: "Hazır, gönderilecek", count: 0, accent: "text-yesil", bg: "bg-yesil-soft" },
-              { label: "Onay bekliyor", count: 2, accent: "text-[#7A560A]", bg: "bg-sari-soft" },
-              { label: "Değişiklik istendi", count: 1, accent: "text-kirmizi", bg: "bg-kirmizi/10" },
+              {
+                label: "Operatör inceliyor",
+                count: inReview,
+                accent: "text-pim-mercan",
+                bg: "bg-pim-mercan-tint",
+              },
+              {
+                label: "Onay bekliyor",
+                count: proofPending,
+                accent: "text-[#7A560A]",
+                bg: "bg-sari-soft",
+              },
+              {
+                label: "Üretimde",
+                count: inProduction,
+                accent: "text-yesil",
+                bg: "bg-yesil-soft",
+              },
+              {
+                label: "AI flag",
+                count: flagged,
+                accent: "text-kirmizi",
+                bg: "bg-kirmizi/10",
+              },
             ]
           ).map((k) => (
             <Card key={k.label} padding="p-4">
@@ -123,7 +137,7 @@ export default function AdminProvaPage() {
                   <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
                     {k.label}
                   </div>
-                  <div className={cn("text-2xl font-bold", k.accent)}>
+                  <div className={cn("text-2xl font-bold tabular-nums", k.accent)}>
                     {k.count}
                   </div>
                 </div>
@@ -133,71 +147,94 @@ export default function AdminProvaPage() {
         </div>
 
         {/* List */}
-        <div className="flex flex-col gap-3">
-          {items.map((p) => {
-            const s = STATUS_META[p.status];
-            return (
-              <Card key={p.orderId} padding="p-5">
-                <div className="grid grid-cols-1 md:grid-cols-[80px_1fr_auto] gap-4 items-start">
-                  {/* Mock thumb */}
-                  <div className="grid place-items-center w-20 h-20 rounded-lg bg-krem">
-                    <Icon.Roll size={32} className="text-lacivert" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2.5 mb-1 flex-wrap">
-                      <span className="font-mono text-[12.5px] text-gri-700">
-                        {p.orderId}
-                      </span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
-                          s.bg,
-                          s.color
-                        )}
+        {items.length === 0 ? (
+          <Card padding="p-10" className="text-center">
+            <Pim pose="happy" size={120} />
+            <h3 className="mt-4 text-xl font-semibold">
+              Prova kuyruğu temiz 🎉
+            </h3>
+            <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
+              Müşteri onayı bekleyen prova yok. Yeni siparişler operatör
+              incelemesinden geçince burada görünür.
+            </p>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {items.map((p) => {
+              const product =
+                p.items.length === 1
+                  ? p.items[0].title
+                  : `${p.items.length} ürün`;
+              const config = p.items
+                .map((i) => i.config)
+                .join(" · ")
+                .slice(0, 100);
+              const isEtiket = p.items.some((i) => i.product === "etiket");
+              return (
+                <Card key={p.id} padding="p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-[80px_1fr_auto] gap-4 items-start">
+                    {/* Thumb */}
+                    <div
+                      className={cn(
+                        "grid place-items-center w-20 h-20 rounded-lg shrink-0",
+                        isEtiket ? "bg-krem" : "bg-pim-mercan-tint"
+                      )}
+                    >
+                      {isEtiket ? (
+                        <Icon.Roll size={32} className="text-lacivert" />
+                      ) : (
+                        <Icon.Sticker size={32} className="text-pim-mercan" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                        <span className="font-mono text-[12.5px] text-gri-700">
+                          {p.id}
+                        </span>
+                        <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-sari-soft text-[#7A560A] text-[11.5px] font-semibold">
+                          Onay bekliyor
+                        </span>
+                      </div>
+                      <div className="font-semibold text-base">
+                        {p.address.name}
+                      </div>
+                      <div className="text-[13px] text-gri-700 mt-0.5">
+                        {product}{" "}
+                        <span className="text-gri-500">· {config}</span>
+                      </div>
+                      <div className="text-[12px] text-gri-500 mt-1 tabular-nums">
+                        Sipariş: {timeAgo(p.createdAt)} · {fmt(p.total)} TL
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleApprove(p)}
                       >
-                        {s.label}
-                      </span>
-                    </div>
-                    <div className="font-semibold text-base">{p.customer}</div>
-                    <div className="text-[13px] text-gri-700 mt-0.5">
-                      {p.product} · <span className="text-gri-500">{p.config}</span>
-                    </div>
-                    <div className="text-[12px] text-gri-500 mt-1">
-                      Dosya yüklenme: {p.uploadedAt}
+                        <Icon.Check size={12} /> Üretime al
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleReminder(p)}
+                      >
+                        Hatırlat
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCancel(p)}
+                      >
+                        İptal et
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    {p.status === "to_prepare" && (
-                      <Button variant="primary" size="sm">
-                        Prova oluştur <Icon.ArrowR size={12} />
-                      </Button>
-                    )}
-                    {p.status === "ready_to_send" && (
-                      <Button variant="primary" size="sm">
-                        Müşteriye gönder
-                      </Button>
-                    )}
-                    {p.status === "awaiting_customer" && (
-                      <>
-                        <Button variant="secondary" size="sm">
-                          Hatırlat
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          İptal et
-                        </Button>
-                      </>
-                    )}
-                    {p.status === "changes_requested" && (
-                      <Button variant="primary" size="sm">
-                        Yeni prova hazırla
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* Pim helper */}
         <Card padding="p-5" className="mt-6 !bg-krem">
@@ -211,7 +248,8 @@ export default function AdminProvaPage() {
                 Provayı PDF olarak gönderdiğinde renk kalibrasyonu için CMYK
                 profilini ekle. Müşteriler genellikle ekrandaki rengi gerçek
                 baskıyla aynı sanır — bu yüzden prova sayfasında uyarı kutusu
-                otomatik gösterilir.
+                otomatik gösterilir. Dosya yükleme + render akışı backend
+                swap&rsquo;tan sonra aktif olacak.
               </p>
             </div>
           </div>

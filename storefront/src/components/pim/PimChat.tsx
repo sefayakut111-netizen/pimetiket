@@ -73,6 +73,23 @@ const QUICK_CHIPS_BY_PERSONA: Record<
         "Doğal sabunum için etiket lazım, marka adı OLEA, 60×80mm civarı, 2000 adet, kraft + soft touch olsun.",
     },
   ],
+  shipper: [
+    {
+      id: "where",
+      label: "Siparişim nerede?",
+      prompt: "Siparişim ne durumda?",
+    },
+    {
+      id: "delivery-est",
+      label: "Ne zaman gelir?",
+      prompt: "Tahmini teslim tarihi ne olur?",
+    },
+    {
+      id: "complaint",
+      label: "Kargo geç kaldı",
+      prompt: "Kargom geç kaldı, ne oluyor?",
+    },
+  ],
 };
 
 export function PimChat() {
@@ -135,7 +152,9 @@ export function PimChat() {
   }, [open]);
 
   // Pathname'e göre default persona'yı hizala — sohbet henüz başlamadıysa.
-  // /sticker ve /etiket → Tasarımcı Pim; ana flow → Hoş Geldin Pim.
+  // /sticker, /etiket → Tasarımcı Pim
+  // /siparis/*, /siparislerim, /odeme-sonuc, /panelim → Kargocu Pim
+  // /, /sepet, /odeme → Hoş Geldin Pim
   useEffect(() => {
     if (!pathname) return;
     if (messages.length > 0) return; // user zaten konuşuyor — bozma
@@ -145,10 +164,16 @@ export function PimChat() {
     ) {
       setPersona((p) => (p === "designer" ? p : "designer"));
     } else if (
+      pathname.startsWith("/siparis") ||
+      pathname.startsWith("/siparislerim") ||
+      pathname.startsWith("/odeme-sonuc") ||
+      pathname.startsWith("/panelim")
+    ) {
+      setPersona((p) => (p === "shipper" ? p : "shipper"));
+    } else if (
       pathname === "/" ||
       pathname.startsWith("/sepet") ||
-      pathname.startsWith("/odeme") ||
-      pathname.startsWith("/siparis")
+      pathname === "/odeme"
     ) {
       setPersona((p) => (p === "welcome" ? p : "welcome"));
     }
@@ -374,6 +399,12 @@ function WelcomeView({
       ? `Selam ${baseName}, Tasarımcı Pim devraldım.`
       : "Selam, Tasarımcı Pim devraldım.";
     subtext = "Etiket / sticker boyutu + adet söyle, fiyat çıkarayım.";
+  } else if (persona === "shipper") {
+    greeting = baseName
+      ? `Selam ${baseName}, Kargocu Pim devraldım.`
+      : "Selam, Kargocu Pim devraldım.";
+    subtext =
+      "Sipariş id'sini söyle (PE-2026-XXXX) ya da chip'lerden seç.";
   } else {
     greeting = returning
       ? baseName

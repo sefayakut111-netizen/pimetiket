@@ -1,22 +1,28 @@
 /**
  * Pim Etiket — /panelim (E.2.2)
  *
- * Customer dashboard. v1-jsx/dashboard.jsx port.
- * Mock data — gerçek bağlantı I adımında.
+ * Customer dashboard. customer-orders store'undan canlı veri okur:
+ *   - Aktif siparişler (delivered/cancelled hariç) ilk 3
+ *   - "Bu yıl basıldı" toplamı qty üzerinden
+ *   - Quick re-order: en son etiket/sticker siparişi
+ *
+ * Cüzdan + tasarım kütüphanesi şu an placeholder (auth + storage backend
+ * swap'tan sonra aktif).
  */
 
-import type { Metadata } from "next";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Pill } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
-
-export const metadata: Metadata = {
-  title: "Panelim",
-  description: "Siparişlerin, prova durumun, AI kontrol sonuçların.",
-  robots: { index: false, follow: true },
-};
+import {
+  listCustomerOrders,
+  type CustomerOrder,
+} from "@/lib/customer-order";
+import type { OrderStatus } from "@/lib/order";
 
 const PHASES = [
   "Konfigüre",
@@ -29,61 +35,83 @@ const PHASES = [
   "Teslim",
 ];
 
-const ORDERS = [
-  {
-    id: "PE-2026-1182",
-    title: "Olea Doğal Sabun — etiket",
-    qty: 2000,
-    mat: "Kraft + mat selefon",
-    status: "Kontrolde",
-    color: "var(--color-sari)",
-    soft: "var(--color-sari-soft)",
-    phase: 4,
-    days: 3,
-    action: "Provayı incele",
-    pim: "inspect" as const,
-  },
-  {
-    id: "PE-2026-1175",
-    title: "Bulutlu Roastery — sticker",
-    qty: 500,
-    mat: "Vinil + parlak",
-    status: "Üretimde",
-    color: "var(--color-pim-mercan)",
-    soft: "var(--color-pim-mercan-tint)",
-    phase: 6,
-    days: 5,
-    action: "Detay",
-    pim: "happy" as const,
-  },
-  {
-    id: "PE-2026-1167",
-    title: "Atölye Niş — Holografik tabaka",
-    qty: 250,
-    mat: "Holografik + glitter",
-    status: "Kargoda",
-    color: "var(--color-lacivert)",
-    soft: "var(--color-gri-100)",
-    phase: 7,
-    days: 1,
-    action: "Takip et",
-    pim: "box" as const,
-  },
-];
+/** OrderStatus → PHASES index (8 faz, 0-7) */
+function statusToPhaseIndex(status: OrderStatus): number {
+  switch (status) {
+    case "paid":
+      return 1;
+    case "qc_pending":
+      return 3;
+    case "qc_flagged":
+    case "operator_review":
+      return 4;
+    case "proof_pending":
+      return 4;
+    case "in_production":
+      return 5;
+    case "shipped":
+      return 6;
+    case "delivered":
+      return 7;
+    default:
+      return 0;
+  }
+}
 
-const TRANSACTIONS = [
-  { d: "2 May", t: "Sipariş PE-1175", a: -1750 },
-  { d: "28 Nis", t: "İade bonusu", a: 120 },
-  { d: "15 Nis", t: "Cüzdana yatırma", a: 5000 },
-];
-
-const DESIGNS = [
-  { name: "Olea_v3.pdf", note: "Kullanıldı 2x", c: "bg-krem" },
-  { name: "Bulutlu_logo.ai", note: "Kullanıldı 1x", c: "bg-[#FFE7D6]" },
-  { name: "Niş_holo_2026.pdf", note: "Yeni", c: "bg-pim-mercan-tint" },
-  { name: "Olea_kapak.pdf", note: "Taslak", c: "bg-yesil-soft" },
-  { name: "Defterler_v1.eps", note: "Kullanıldı 4x", c: "bg-gri-100" },
-];
+function statusMeta(status: OrderStatus): {
+  label: string;
+  color: string;
+  soft: string;
+  pim: "inspect" | "happy" | "box" | "wave";
+} {
+  switch (status) {
+    case "paid":
+    case "qc_pending":
+    case "qc_flagged":
+    case "operator_review":
+      return {
+        label: "Kontrolde",
+        color: "var(--color-sari)",
+        soft: "var(--color-sari-soft)",
+        pim: "inspect",
+      };
+    case "proof_pending":
+      return {
+        label: "Onay bekliyor",
+        color: "var(--color-sari)",
+        soft: "var(--color-sari-soft)",
+        pim: "inspect",
+      };
+    case "in_production":
+      return {
+        label: "Üretimde",
+        color: "var(--color-pim-mercan)",
+        soft: "var(--color-pim-mercan-tint)",
+        pim: "happy",
+      };
+    case "shipped":
+      return {
+        label: "Kargoda",
+        color: "var(--color-lacivert)",
+        soft: "var(--color-gri-100)",
+        pim: "box",
+      };
+    case "delivered":
+      return {
+        label: "Teslim edildi",
+        color: "var(--color-yesil)",
+        soft: "var(--color-yesil-soft)",
+        pim: "wave",
+      };
+    case "cancelled":
+      return {
+        label: "İptal",
+        color: "var(--color-kirmizi)",
+        soft: "var(--color-gri-100)",
+        pim: "inspect",
+      };
+  }
+}
 
 const PROFILE_LINKS = [
   { t: "Profil ayarları", d: "Ad, e-posta, şifre", href: "/profil" },
@@ -92,7 +120,68 @@ const PROFILE_LINKS = [
   { t: "Yardım merkezi", d: "Pim ile sohbet", href: "/sss" },
 ];
 
+const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+
 export default function PanelimPage() {
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => setOrders(listCustomerOrders());
+    refresh();
+    setHydrated(true);
+    window.addEventListener("pim_customer_orders_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_orders_updated", refresh);
+  }, []);
+
+  // Aktif siparişler (delivered + cancelled hariç) — ilk 3
+  const activeOrders = orders
+    .filter((o) => o.status !== "delivered" && o.status !== "cancelled")
+    .slice(0, 3);
+
+  // Stat hesapları
+  const activeCount = orders.filter(
+    (o) => o.status !== "delivered" && o.status !== "cancelled"
+  ).length;
+  const inProductionCount = orders.filter(
+    (o) => o.status === "in_production"
+  ).length;
+  const shippedCount = orders.filter((o) => o.status === "shipped").length;
+  const thisYear = new Date().getFullYear();
+  const thisYearTotalQty = orders
+    .filter((o) => new Date(o.createdAtIso).getFullYear() === thisYear)
+    .reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0);
+
+  // Selam — son müşteri adı (auth gelince kullanıcı profilden)
+  const customerName =
+    orders.length > 0 ? orders[0].address.name.split(" ")[0] : null;
+
+  // Tekrar sipariş için en son etiket / sticker item'ı
+  const lastEtiketOrder = orders.find((o) =>
+    o.items.some((i) => i.product === "etiket")
+  );
+  const lastEtiketItem = lastEtiketOrder?.items.find(
+    (i) => i.product === "etiket"
+  );
+  const lastEtiketQty = lastEtiketItem?.qty ?? 0;
+
+  const lastStickerOrder = orders.find((o) =>
+    o.items.some((i) => i.product === "sticker")
+  );
+  const lastStickerItem = lastStickerOrder?.items.find(
+    (i) => i.product === "sticker"
+  );
+
+  const today = new Date();
+  const dateLabel = today
+    .toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "long",
+      weekday: "long",
+    })
+    .toUpperCase();
+
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-8">
@@ -102,33 +191,41 @@ export default function PanelimPage() {
             <Pim pose="wave" size={160} />
           </div>
           <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-            8 MAYIS, CUMA
+            {dateLabel}
           </div>
           <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight mt-2 mb-1.5">
-            Hoş geldin, Ahmet 👋
+            {customerName ? `Hoş geldin, ${customerName} 👋` : "Hoş geldin 👋"}
           </h1>
           <p className="text-base text-gri-700">
-            Bugün üç siparişin yolda. Olea provasını bekliyorum, hazır olunca bakalım.
+            {!hydrated
+              ? "..."
+              : activeCount === 0
+                ? "Henüz aktif siparişin yok. Pim seninle bir tur atmak için sabırsızlanıyor."
+                : `${activeCount} aktif siparişin var. ${inProductionCount > 0 ? `${inProductionCount} tanesi üretimde.` : ""} ${shippedCount > 0 ? `${shippedCount} tanesi kargoda.` : ""}`.trim()}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7 max-w-[720px]">
             <Stat
               label="Aktif sipariş"
-              value="3"
-              sub="2 üretimde, 1 kargoda"
+              value={hydrated ? activeCount.toString() : "—"}
+              sub={
+                inProductionCount + shippedCount > 0
+                  ? `${inProductionCount} üretimde, ${shippedCount} kargoda`
+                  : "Yeni sipariş için hazır"
+              }
               icon={<Icon.Box size={18} />}
               accent="text-pim-mercan"
             />
             <Stat
               label="Cüzdan bakiyen"
-              value="2.480 TL"
-              sub="Son işlem: 6 gün önce"
+              value="0 TL"
+              sub="Cüzdan açılışı yakında"
               icon={<Icon.Wallet size={18} />}
               accent="text-yesil"
             />
             <Stat
-              label="Bu yıl basıldı"
-              value="14.250"
+              label={`${thisYear} basıldı`}
+              value={hydrated ? fmt(thisYearTotalQty) : "—"}
               sub="adet etiket + sticker"
               icon={<Icon.Sparkle size={18} />}
               accent="text-turuncu"
@@ -154,8 +251,14 @@ export default function PanelimPage() {
           <QuickAction
             icon={<Icon.Bolt size={20} />}
             title="Tekrar sipariş"
-            desc="Olea — 2000 adet"
-            href="/etiket"
+            desc={
+              lastEtiketItem
+                ? `Son etiket: ${lastEtiketItem.title.split("·").slice(1).join("·").trim() || "Tekrarla"}`
+                : lastStickerItem
+                  ? `Son sticker: ${lastStickerItem.title.split("·").slice(1).join("·").trim() || "Tekrarla"}`
+                  : "Yakında öneri"
+            }
+            href={lastEtiketItem ? "/etiket" : "/sticker"}
           />
         </div>
 
@@ -175,206 +278,169 @@ export default function PanelimPage() {
                   Tümünü gör <Icon.ChevR size={12} />
                 </Link>
               </div>
-              <div className="flex flex-col gap-3">
-                {ORDERS.map((o) => (
-                  <Card key={o.id} padding="p-5">
-                    <div className="flex gap-4 items-start">
-                      <div
-                        className="grid place-items-center w-14 h-14 rounded-xl shrink-0"
-                        style={{ background: o.soft }}
-                      >
-                        <PimMini pose={o.pim} size={48} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2.5 mb-1">
-                          <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-                            {o.id}
-                          </span>
-                          <span
-                            className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full text-[12px] font-semibold"
-                            style={{ background: o.soft, color: o.color }}
-                          >
-                            <span
-                              className="w-1.5 h-1.5 rounded-full"
-                              style={{ background: o.color }}
-                            />
-                            {o.status}
-                          </span>
-                        </div>
-                        <div className="font-semibold text-base mb-0.5">
-                          {o.title}
-                        </div>
-                        <div className="text-[13px] text-gri-700">
-                          {o.qty} adet · {o.mat}
-                        </div>
 
-                        {/* Phase mini timeline */}
-                        <div className="flex items-center gap-1 mt-3.5">
-                          {PHASES.map((_, i) => (
-                            <div
-                              key={i}
-                              className="flex-1 flex items-center gap-1"
-                            >
-                              <span
-                                className="w-2 h-2 rounded-full shrink-0"
-                                style={{
-                                  background:
-                                    i < o.phase
-                                      ? "var(--color-yesil)"
-                                      : i === o.phase
-                                        ? o.color
-                                        : "var(--color-gri-200)",
-                                  boxShadow:
-                                    i === o.phase
-                                      ? `0 0 0 3px ${o.soft}`
-                                      : "none",
-                                }}
-                              />
-                              {i < PHASES.length - 1 && (
-                                <span
-                                  className="flex-1 h-0.5"
-                                  style={{
-                                    background:
-                                      i < o.phase
-                                        ? "var(--color-yesil)"
-                                        : "var(--color-gri-200)",
-                                  }}
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-between mt-1.5">
-                          <span className="text-[11.5px] text-gri-700 font-semibold uppercase tracking-[0.04em]">
-                            {PHASES[o.phase]}
-                          </span>
-                          <span
-                            className="text-[11.5px] font-bold uppercase tracking-[0.04em]"
-                            style={{ color: o.color }}
+              {!hydrated ? (
+                <Card padding="p-6" className="text-center text-gri-500">
+                  Yükleniyor…
+                </Card>
+              ) : activeOrders.length === 0 ? (
+                <Card padding="p-8" className="text-center">
+                  <Pim pose="think" size={120} />
+                  <h3 className="mt-3 text-lg font-semibold">
+                    Aktif sipariş yok
+                  </h3>
+                  <p className="mt-2 text-[13px] text-gri-700 max-w-[380px] mx-auto leading-relaxed">
+                    Yeni bir etiket veya sticker konfigüre etmeye başla —
+                    sipariş verdiğinde burada görünecek.
+                  </p>
+                  <div className="mt-5 flex gap-2 justify-center">
+                    <Button variant="primary" size="sm" href="/etiket">
+                      <Icon.Roll size={14} /> Etiket bastır
+                    </Button>
+                    <Button variant="secondary" size="sm" href="/sticker">
+                      <Icon.Sticker size={14} /> Sticker bastır
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {activeOrders.map((o) => {
+                    const meta = statusMeta(o.status);
+                    const phase = statusToPhaseIndex(o.status);
+                    const title =
+                      o.items.length === 1
+                        ? o.items[0].title
+                        : `${o.items.length} ürünlük sipariş`;
+                    const totalQty = o.items.reduce((s, i) => s + i.qty, 0);
+                    const matSummary =
+                      o.items.length === 1
+                        ? o.items[0].config.split("·").slice(-2).join("·").trim()
+                        : "Karışık";
+                    return (
+                      <Card key={o.id} padding="p-5">
+                        <div className="flex gap-4 items-start">
+                          <div
+                            className="grid place-items-center w-14 h-14 rounded-xl shrink-0"
+                            style={{ background: meta.soft }}
                           >
-                            {o.phase >= 4
-                              ? `${o.days} gün kaldı`
-                              : "Devam ediyor"}
-                          </span>
+                            <PimMini pose={meta.pim} size={48} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5 mb-1">
+                              <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 font-mono">
+                                {o.id}
+                              </span>
+                              <span
+                                className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full text-[12px] font-semibold"
+                                style={{
+                                  background: meta.soft,
+                                  color: meta.color,
+                                }}
+                              >
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ background: meta.color }}
+                                />
+                                {meta.label}
+                              </span>
+                            </div>
+                            <div className="font-semibold text-base mb-0.5 truncate">
+                              {title}
+                            </div>
+                            <div className="text-[13px] text-gri-700 tabular-nums">
+                              {fmt(totalQty)} adet · {matSummary}
+                            </div>
+
+                            {/* Phase mini timeline */}
+                            <div className="flex items-center gap-1 mt-3.5">
+                              {PHASES.map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="flex-1 flex items-center gap-1"
+                                >
+                                  <span
+                                    className="w-2 h-2 rounded-full shrink-0"
+                                    style={{
+                                      background:
+                                        i < phase
+                                          ? "var(--color-yesil)"
+                                          : i === phase
+                                            ? meta.color
+                                            : "var(--color-gri-200)",
+                                      boxShadow:
+                                        i === phase
+                                          ? `0 0 0 3px ${meta.soft}`
+                                          : "none",
+                                    }}
+                                  />
+                                  {i < PHASES.length - 1 && (
+                                    <span
+                                      className="flex-1 h-0.5"
+                                      style={{
+                                        background:
+                                          i < phase
+                                            ? "var(--color-yesil)"
+                                            : "var(--color-gri-200)",
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-between mt-1.5">
+                              <span className="text-[11.5px] text-gri-700 font-semibold uppercase tracking-[0.04em]">
+                                {PHASES[phase]}
+                              </span>
+                              <span
+                                className="text-[11.5px] font-bold uppercase tracking-[0.04em]"
+                                style={{ color: meta.color }}
+                              >
+                                Detay →
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            href={`/siparis/${o.id}`}
+                            className="shrink-0"
+                          >
+                            Detay <Icon.ChevR size={12} />
+                          </Button>
                         </div>
-                      </div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        href={`/siparis/${o.id}`}
-                        className="shrink-0"
-                      >
-                        {o.action} <Icon.ChevR size={12} />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
-            {/* AI suggestion */}
-            <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-[#2C3849] text-white flex gap-5 items-center">
-              <PimMini pose="think" size={56} />
-              <div className="flex-1">
-                <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">
-                  SANA ÖZEL
+            {/* AI suggestion — son etiket varsa upsell */}
+            {hydrated && lastEtiketItem && (
+              <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-[#2C3849] text-white flex gap-5 items-center">
+                <PimMini pose="think" size={56} />
+                <div className="flex-1">
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">
+                    SANA ÖZEL
+                  </div>
+                  <div className="font-semibold text-[15px] mt-1 leading-snug">
+                    Son etiket siparişin{" "}
+                    <strong>
+                      {lastEtiketQty.toLocaleString("tr-TR")} adet
+                    </strong>
+                    &rsquo;ti — stokun azalmış olabilir, yeniden bastıralım mı?
+                  </div>
                 </div>
-                <div className="font-semibold text-[15px] mt-1 leading-snug">
-                  Geçen ay 5.000 etiket bastın — stokun azalmış olabilir, tekrar sipariş?
-                </div>
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                href="/etiket"
-                className="!bg-white !text-lacivert !ring-0 shrink-0"
-              >
-                Yeniden bastır <Icon.ArrowR size={14} />
-              </Button>
-            </div>
-
-            {/* Design library */}
-            <section>
-              <div className="flex justify-between items-center mb-3.5">
-                <h2 className="text-[24px] font-semibold tracking-tight">
-                  Tasarım kütüphanen
-                </h2>
-                <Button variant="ghost" size="sm">
-                  <Icon.Plus size={14} /> Yeni yükle
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  href="/etiket"
+                  className="!bg-white !text-lacivert !ring-0 shrink-0"
+                >
+                  Yeniden bastır <Icon.ArrowR size={14} />
                 </Button>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
-                {DESIGNS.map((f) => (
-                  <Card
-                    key={f.name}
-                    padding=""
-                    className="w-[180px] shrink-0 overflow-hidden p-0!"
-                  >
-                    <div
-                      className={cn(
-                        "h-32 grid place-items-center",
-                        f.c
-                      )}
-                    >
-                      <svg width="64" height="80" viewBox="0 0 64 80" aria-hidden>
-                        <rect
-                          x="6"
-                          y="2"
-                          width="52"
-                          height="74"
-                          rx="4"
-                          fill="white"
-                          stroke="#1F2937"
-                          strokeWidth="1"
-                        />
-                        <rect
-                          x="14"
-                          y="14"
-                          width="36"
-                          height="6"
-                          rx="1"
-                          fill="#FF6B5B"
-                        />
-                        <rect
-                          x="14"
-                          y="26"
-                          width="28"
-                          height="3"
-                          rx="1"
-                          fill="#1F2937"
-                          opacity="0.4"
-                        />
-                        <rect
-                          x="14"
-                          y="34"
-                          width="32"
-                          height="3"
-                          rx="1"
-                          fill="#1F2937"
-                          opacity="0.4"
-                        />
-                        <rect
-                          x="14"
-                          y="48"
-                          width="36"
-                          height="20"
-                          rx="2"
-                          fill="#F5EBD9"
-                        />
-                      </svg>
-                    </div>
-                    <div className="p-3">
-                      <div className="font-semibold text-[13px] truncate">
-                        {f.name}
-                      </div>
-                      <div className="text-[11.5px] text-gri-700 mt-0.5">
-                        {f.note}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </section>
+            )}
           </div>
 
           {/* SIDE */}
@@ -385,43 +451,36 @@ export default function PanelimPage() {
                 <h3 className="text-base font-semibold m-0">Cüzdan</h3>
                 <Icon.Wallet size={18} />
               </div>
-              <div className="text-[28px] font-bold tracking-tight">
-                2.480{" "}
-                <span className="text-base font-semibold text-gri-700">TL</span>
+              <div className="text-[28px] font-bold tracking-tight tabular-nums">
+                0{" "}
+                <span className="text-base font-semibold text-gri-700">
+                  TL
+                </span>
               </div>
               <div className="text-[13px] text-gri-700 mt-1">
                 Cüzdandan ödeyince{" "}
                 <strong className="text-yesil">+%2 indirim</strong> kazanırsın
               </div>
               <div className="flex gap-2 mt-3.5">
-                <Button variant="primary" size="sm" href="/cuzdan" className="flex-1">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  href="/cuzdan"
+                  className="flex-1"
+                >
                   <Icon.Plus size={14} /> Yatır
                 </Button>
-                <Button variant="secondary" size="sm" href="/cuzdan" className="flex-1">
-                  Geçmiş
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  href="/cuzdan"
+                  className="flex-1"
+                >
+                  Detay
                 </Button>
               </div>
-              <div className="border-t border-gri-200 mt-4 pt-3.5 flex flex-col gap-2">
-                {TRANSACTIONS.map((tr, i) => (
-                  <div
-                    key={i}
-                    className="flex justify-between items-center text-[13px]"
-                  >
-                    <div>
-                      <div className="font-medium">{tr.t}</div>
-                      <div className="text-[11.5px] text-gri-700">{tr.d}</div>
-                    </div>
-                    <div
-                      className={cn(
-                        "font-semibold",
-                        tr.a > 0 ? "text-yesil" : "text-lacivert"
-                      )}
-                    >
-                      {tr.a > 0 ? "+" : ""}
-                      {tr.a.toLocaleString("tr-TR")} TL
-                    </div>
-                  </div>
-                ))}
+              <div className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
+                Cüzdan akışı yakında — sadakat puanı ve özel ödemeler için.
               </div>
             </Card>
 
@@ -454,18 +513,14 @@ export default function PanelimPage() {
                 <div>
                   <div className="font-bold">Pim&rsquo;le konuş</div>
                   <div className="text-[11.5px] text-gri-700">
-                    Etiket Profesörü · şu an çevrimiçi
+                    Sağ alttaki balonla sohbet aç
                   </div>
                 </div>
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                block
-                className="!bg-lacivert hover:!bg-lacivert-soft"
-              >
-                Sohbeti aç
-              </Button>
+              <p className="text-[12px] text-gri-700 leading-relaxed">
+                Soru, sipariş takibi, fiyat hesabı — Pim her zaman sayfanın
+                sağ alt köşesinde. Tıkla, konuş.
+              </p>
             </Card>
           </div>
         </div>
@@ -499,7 +554,7 @@ function Stat({
         </div>
         <div className={accent}>{icon}</div>
       </div>
-      <div className="text-[28px] font-bold tracking-tight mt-1.5 leading-none">
+      <div className="text-[28px] font-bold tracking-tight mt-1.5 leading-none tabular-nums">
         {value}
       </div>
       <div className="text-[11.5px] text-gri-700 mt-1.5">{sub}</div>
