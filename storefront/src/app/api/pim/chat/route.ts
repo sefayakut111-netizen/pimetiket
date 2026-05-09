@@ -63,9 +63,9 @@ const stickerTool = tool({
       .default("vinil")
       .describe("Sticker malzemesi (vinil/transparan/holografik/simli)"),
     finish: z
-      .enum(["parlak", "mat"])
+      .enum(["parlak", "mat", "yok"])
       .default("parlak")
-      .describe("Yüzey kaplaması (parlak/mat)"),
+      .describe("Yüzey kaplaması (parlak / mat / yok=kaplamasız)"),
   }),
   execute: async ({ width, height, qty, material, finish }) => {
     const result = quoteCustomerSticker({

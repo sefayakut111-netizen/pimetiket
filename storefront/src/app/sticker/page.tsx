@@ -41,12 +41,14 @@ import {
 // Configuration data
 // ============================================================
 
+// Sıra: Kare → Özel → Yuvarlak → Kontur kesim
+// "Yumuşak köşe" şekli kaldırıldı — köşe yumuşatma kare/özel için
+// alt-segmented control olarak geliyor (Düz vs Yumuşak kesim).
 const SHAPES = [
-  { id: "circle", name: "Yuvarlak", desc: "Daire / oval" },
   { id: "square", name: "Kare", desc: "Köşeli kenar" },
-  { id: "rounded", name: "Yumuşak köşe", desc: "Köşeler yuvarlak" },
-  { id: "die", name: "Kontur kesim", desc: "Tasarımı takip eden kesim" },
-  { id: "ozel", name: "Özel geometri", desc: "Tasarımına göre" },
+  { id: "ozel", name: "Özel geometri", desc: "Dikdörtgen / bumper" },
+  { id: "circle", name: "Yuvarlak", desc: "Daire / oval" },
+  { id: "die", name: "Kontur kesim", desc: "Pim baykuş silueti gibi" },
 ] as const;
 
 type ShapeId = (typeof SHAPES)[number]["id"];
@@ -78,6 +80,7 @@ const MATERIALS = [
 const FINISHES = [
   { id: "parlak", name: "Parlak", desc: "Canlı renkler" },
   { id: "mat", name: "Mat", desc: "Yansımasız" },
+  { id: "yok", name: "Kaplamasız", desc: "Yalın yüzey" },
 ] as const;
 
 const TIERS = CUSTOMER_STICKER_TIERS; // 50/100/250/500/1000 — engine uyumlu
@@ -99,7 +102,7 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 export default function StickerPage() {
   const toast = useToast();
-  const [shape, setShape] = useState<ShapeId>("circle");
+  const [shape, setShape] = useState<ShapeId>("square");
   const [softCorners, setSoftCorners] = useState<boolean>(false);
   const [material, setMaterial] = useState<StickerMaterial>("vinil");
   const [finish, setFinish] = useState<StickerFinish>("parlak");
@@ -184,17 +187,17 @@ export default function StickerPage() {
               title="Şekil"
               hint="boyut bağımsız — 50×50 mm tasarım yıldız da olabilir"
             >
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-4 gap-2.5">
                 {SHAPES.map((s) => (
                   <SelectableCard
                     key={s.id}
                     selected={shape === s.id}
                     onClick={() => setShape(s.id)}
                     style={{ textAlign: "center" }}
-                    padding={10}
+                    padding={12}
                   >
                     <ShapeIcon id={s.id} active={shape === s.id} />
-                    <div className="text-[11px] font-bold tracking-[0.04em] text-gri-700 mt-2 leading-tight">
+                    <div className="text-[11.5px] font-bold tracking-[0.04em] text-gri-700 mt-2 leading-tight">
                       {s.name}
                     </div>
                   </SelectableCard>
@@ -209,24 +212,27 @@ export default function StickerPage() {
                 </div>
               )}
 
-              {/* Köşeleri yumuşat — sadece kare ve özel için */}
+              {/* Kesim tipi — kare ve özel için alt-toggle */}
               {(shape === "square" || shape === "ozel") && (
-                <label className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-gri-50 ring-1 ring-gri-200 cursor-pointer hover:ring-pim-mercan transition-shadow">
-                  <input
-                    type="checkbox"
-                    checked={softCorners}
-                    onChange={(e) => setSoftCorners(e.target.checked)}
-                    className="w-4 h-4 accent-pim-mercan cursor-pointer"
-                  />
-                  <span className="text-[13px] font-semibold flex-1">
-                    Köşeleri yumuşat
-                  </span>
-                  <span className="text-[11px] text-gri-500">
-                    {shape === "square"
-                      ? "kare → soft kare"
-                      : "kontur daha organik"}
-                  </span>
-                </label>
+                <div className="mt-3">
+                  <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
+                    Kesim Tipi
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <CutStyleCard
+                      kind="straight"
+                      selected={!softCorners}
+                      onClick={() => setSoftCorners(false)}
+                      shapeKind={shape === "square" ? "square" : "ozel"}
+                    />
+                    <CutStyleCard
+                      kind="soft"
+                      selected={softCorners}
+                      onClick={() => setSoftCorners(true)}
+                      shapeKind={shape === "square" ? "square" : "ozel"}
+                    />
+                  </div>
+                </div>
               )}
 
               {/* Şekil örnekleri — kontur kesim ve özel için ne mümkün */}
@@ -502,18 +508,6 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
         <rect x="4" y="4" width="28" height="28" fill={fill} stroke={stroke} strokeWidth="2" />
       </svg>
     );
-  if (id === "rounded")
-    return (
-      <svg
-        width="36"
-        height="36"
-        viewBox="0 0 36 36"
-        className="mx-auto"
-        aria-hidden
-      >
-        <rect x="4" y="4" width="28" height="28" rx="8" fill={fill} stroke={stroke} strokeWidth="2" />
-      </svg>
-    );
   if (id === "ozel")
     return (
       <svg
@@ -549,6 +543,85 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
         strokeDasharray="3 2"
       />
     </svg>
+  );
+}
+
+// ============================================================
+// CutStyleCard — Kare/Özel için Düz vs Yumuşak kesim segmented
+// ============================================================
+
+type CutKind = "straight" | "soft";
+
+function CutStyleCard({
+  kind,
+  selected,
+  onClick,
+  shapeKind,
+}: {
+  kind: CutKind;
+  selected: boolean;
+  onClick: () => void;
+  shapeKind: "square" | "ozel";
+}) {
+  const stroke = selected
+    ? "var(--color-pim-mercan)"
+    : "var(--color-lacivert)";
+  const fill = selected
+    ? "var(--color-pim-mercan-tint)"
+    : "rgba(31,41,55,0.06)";
+
+  // Kare için: keskin köşe vs yuvarlak köşe
+  // Özel için: dikdörtgen vs pill
+  const radius =
+    shapeKind === "square"
+      ? kind === "straight"
+        ? 1
+        : 6
+      : kind === "straight"
+        ? 4 // hafif yuvarlak
+        : 16; // pill
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "p-3 rounded-lg ring-[1.5px] text-left transition-all",
+        selected
+          ? "ring-pim-mercan bg-pim-mercan-tint/40"
+          : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <svg width="36" height="28" viewBox="0 0 36 28" aria-hidden>
+          <rect
+            x="3"
+            y="3"
+            width="30"
+            height="22"
+            rx={radius}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth="1.6"
+          />
+        </svg>
+        <div>
+          <div className="font-bold text-[12.5px]">
+            {kind === "straight" ? "Düz kesim" : "Yumuşak kesim"}
+          </div>
+          <div className="text-[10.5px] text-gri-700 leading-tight">
+            {shapeKind === "square"
+              ? kind === "straight"
+                ? "Keskin köşe"
+                : "Yuvarlak köşe"
+              : kind === "straight"
+                ? "Dikdörtgen forma yakın"
+                : "Pill / bumper"}
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -666,31 +739,23 @@ function StickerPreview({
     parlak:
       "radial-gradient(80% 60% at 30% 20%, rgba(255,255,255,0.7) 0%, transparent 60%)",
     mat: "transparent",
+    yok: "transparent",
   };
 
   const radius =
     shape === "circle"
       ? "50%"
-      : shape === "rounded"
-        ? 24
-        : shape === "die"
-          ? 0
-          : shape === "square"
-            ? softCorners
-              ? 16 // soft kare
-              : 4
-            : 0; // ozel: clipPath kullanılacak
-
-  const customClip =
-    shape === "die"
-      ? "polygon(20% 0, 80% 5%, 100% 30%, 95% 75%, 70% 100%, 25% 95%, 0 65%, 5% 25%)"
-      : shape === "ozel"
+      : shape === "square"
         ? softCorners
-          ? // Soft pill / bumper organik blob (yumuşak)
-            "polygon(15% 0%, 85% 0%, 95% 8%, 100% 30%, 100% 70%, 95% 92%, 85% 100%, 15% 100%, 5% 92%, 0% 70%, 0% 30%, 5% 8%)"
-          : // Bumper benzeri organik blob (köşeli)
-            "polygon(20% 0%, 80% 3%, 95% 18%, 100% 50%, 95% 82%, 80% 97%, 20% 100%, 5% 82%, 0% 50%, 5% 18%)"
-        : "none";
+          ? 16 // soft kare
+          : 4
+        : shape === "ozel"
+          ? softCorners
+            ? 36 // bumper sticker (pill-leaning)
+            : 12 // dikdörtgen, hafif yumuşak
+          : 0; // die — radius kullanılmıyor, Pim silüet render
+
+  const customClip = "none";
 
   return (
     <div
@@ -721,61 +786,85 @@ function StickerPreview({
         className="absolute top-1/2 left-1/2"
         style={{ transform: "translate(-50%, -50%) rotate(-6deg)" }}
       >
-        <div
-          className="relative grid place-items-center p-1"
-          style={{
-            width: widthPx,
-            height: heightPx,
-            background: matBg[material],
-            borderRadius: radius,
-            clipPath: customClip,
-            boxShadow:
-              "0 16px 40px rgba(31,41,55,0.18), 0 4px 8px rgba(31,41,55,0.1)",
-          }}
-        >
+        {shape === "die" ? (
+          // Kontur kesim: sticker baykus siluetinde, beyaz halo
           <div
-            className="grid place-items-center"
+            className="relative grid place-items-center"
             style={{
-              width: "94%",
-              height: "94%",
-              borderRadius:
-                shape === "circle"
-                  ? "50%"
-                  : shape === "rounded"
-                    ? 20
-                    : 0,
-              background:
-                material === "transparan"
-                  ? "transparent"
-                  : material === "holo"
-                    ? "rgba(255,255,255,0.2)"
-                    : "transparent",
-              border:
-                material === "transparan"
-                  ? "2px dashed rgba(31,41,55,0.3)"
-                  : "none",
+              filter:
+                "drop-shadow(0 0 4px white) drop-shadow(0 0 4px white) drop-shadow(0 8px 24px rgba(31,41,55,0.25)) drop-shadow(0 4px 8px rgba(31,41,55,0.12))",
             }}
           >
-            {/* Pim baykuş silhuet — Sticker Mule horse mascot pattern */}
             <PimAsset
               variant="detailed"
-              size={Math.min(minDim * scale * 0.7, 220)}
+              size={Math.min(minDim * scale * 1.2, 360)}
               bob={false}
-              ariaLabel="Pim baykuş — sticker örneği"
+              ariaLabel="Pim baykuş — kontur kesim sticker"
             />
+            {(material === "holo" || material === "simli") && (
+              <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: matBg[material],
+                  mixBlendMode: "color",
+                  opacity: 0.6,
+                }}
+              />
+            )}
           </div>
+        ) : (
           <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none"
+            className="relative grid place-items-center p-1"
             style={{
-              background: finishOverlay[finish],
+              width: widthPx,
+              height: heightPx,
+              background: matBg[material],
               borderRadius: radius,
               clipPath: customClip,
-              mixBlendMode: "screen",
-              opacity: finish === "mat" ? 0 : 1,
+              boxShadow:
+                "0 16px 40px rgba(31,41,55,0.18), 0 4px 8px rgba(31,41,55,0.1)",
             }}
-          />
-        </div>
+          >
+            <div
+              className="grid place-items-center"
+              style={{
+                width: "94%",
+                height: "94%",
+                borderRadius: shape === "circle" ? "50%" : radius,
+                background:
+                  material === "transparan"
+                    ? "transparent"
+                    : material === "holo"
+                      ? "rgba(255,255,255,0.2)"
+                      : "transparent",
+                border:
+                  material === "transparan"
+                    ? "2px dashed rgba(31,41,55,0.3)"
+                    : "none",
+              }}
+            >
+              {/* Pim baykuş silhuet — Sticker Mule horse mascot pattern */}
+              <PimAsset
+                variant="detailed"
+                size={Math.min(minDim * scale * 0.7, 220)}
+                bob={false}
+                ariaLabel="Pim baykuş — sticker örneği"
+              />
+            </div>
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: finishOverlay[finish],
+                borderRadius: radius,
+                clipPath: customClip,
+                mixBlendMode: "screen",
+                opacity: finish === "mat" || finish === "yok" ? 0 : 1,
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Size badge */}

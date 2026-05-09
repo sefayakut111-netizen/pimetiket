@@ -26,7 +26,7 @@ import { getDefaultInput } from "./pricing-profiles";
 // ============================================================
 
 export type StickerMaterial = "vinil" | "transparan" | "holo" | "simli";
-export type StickerFinish = "parlak" | "mat";
+export type StickerFinish = "parlak" | "mat" | "yok";
 
 /** Customer-facing tier'lar — engine tier'larıyla uyumlu */
 export const CUSTOMER_STICKER_TIERS = [50, 100, 250, 500, 1000] as const;
@@ -44,6 +44,7 @@ export const MATERIAL_MULT: Record<StickerMaterial, number> = {
 export const FINISH_MULT: Record<StickerFinish, number> = {
   parlak: 1.0,
   mat: 1.05,
+  yok: 0.95, // Kaplamasız — küçük indirim, kaplama maliyeti yok
 };
 
 export interface CustomerQuoteInput {
