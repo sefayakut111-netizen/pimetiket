@@ -213,6 +213,11 @@ export default function EtiketFiyatHesaplaPage() {
       effectiveCut: "diecut" as const,
     };
 
+    // Malzeme/kaplama/özelleştirme isimlerini PDF'e geç
+    const matName = ETIKET_MATERIALS.find((m) => m.id === materialId)?.name;
+    const coatName = ETIKET_COATINGS.find((c) => c.id === coatingId)?.name;
+    const custName = ETIKET_CUSTOMIZATIONS.find((c) => c.id === customizationId)?.name;
+
     generateWorkOrderPDF({
       lot,
       geometry: fakeGeom,
@@ -220,6 +225,12 @@ export default function EtiketFiyatHesaplaPage() {
       requestedQty: qty,
       cut: "diecut",
       mode,
+      product: "etiket",
+      etiketDetails: {
+        material: matName,
+        coating: coatName,
+        customization: custName,
+      },
     });
     toast.success(`Etiket iş emri ${lot} üretildi`);
   }

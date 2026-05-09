@@ -40,6 +40,8 @@ const M = 15; // margin
 // Public API
 // ============================================================
 
+export type WorkOrderProduct = "sticker" | "etiket";
+
 export interface WorkOrderInput {
   lot: string;
   geometry: GeometryResult;
@@ -47,10 +49,17 @@ export interface WorkOrderInput {
   requestedQty: number;
   cut: "tabaka" | "diecut";
   mode: ProductionMode;
+  /** Ürün tipi — sticker veya etiket (rulo). Default: "sticker" */
+  product?: WorkOrderProduct;
+  /** Etiket için: malzeme + kaplama + özelleştirme bilgisi (gösterim için) */
+  etiketDetails?: {
+    material?: string;
+    coating?: string;
+    customization?: string;
+  };
   customerName?: string;
   customerNotes?: string;
   termin?: string;
-  /** PDF sürüm/audit info */
   pricingVersion?: string;
 }
 
@@ -76,6 +85,8 @@ export function generateWorkOrderPDF(input: WorkOrderInput): void {
 
 function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
   const { lot, geometry, cost, requestedQty, cut, mode, customerName } = input;
+  const product: WorkOrderProduct = input.product ?? "sticker";
+  const isEtiket = product === "etiket";
   const fit = geometry.fit;
   const roll = geometry.roll;
 
@@ -131,20 +142,42 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
   const künye: Array<[string, string]> = [
     ["Lot Numarası", lot],
     ["Tarih", `${dateStr}  ${timeStr}`],
-    ["Ürün Tipi", "Sticker (Dijital Baskı)"],
-    ["Üretim Modu", mode === "fason" ? "Fason" : "Kendi Üretim"],
-    ["Kesim Tipi", cut === "tabaka" ? "Tabaka (Yarım Kesim)" : "Die Cut (Tam Kesim)"],
-    ["Müşteri Sipariş Adedi", `${TL(requestedQty)} adet`],
     [
-      "Üretilecek Adet",
-      `${TL(fit.producedQty)} adet${
-        fit.producedQty > requestedQty
-          ? ` (+${fit.producedQty - requestedQty} fire/hediye payı)`
-          : ""
-      }`,
+      "Ürün Tipi",
+      isEtiket
+        ? "Etiket (Rulo / Dijital Baskı)"
+        : "Sticker (Dijital Baskı)",
     ],
-    ["Termin Süresi", input.termin ?? "5 iş günü (varsayılan)"],
+    ["Üretim Modu", mode === "fason" ? "Fason" : "Kendi Üretim"],
   ];
+
+  // Kesim tipi sadece sticker'da anlamlı (etikette her zaman die-cut rulo)
+  if (!isEtiket) {
+    künye.push([
+      "Kesim Tipi",
+      cut === "tabaka" ? "Tabaka (Yarım Kesim)" : "Die Cut (Tam Kesim)",
+    ]);
+  } else {
+    künye.push(["Kesim Tipi", "Rulo (Die-Cut)"]);
+    // Etiket detayları (varsa)
+    if (input.etiketDetails) {
+      const ed = input.etiketDetails;
+      if (ed.material) künye.push(["Malzeme", ed.material]);
+      if (ed.coating) künye.push(["Kaplama", ed.coating]);
+      if (ed.customization) künye.push(["Özelleştirme", ed.customization]);
+    }
+  }
+
+  künye.push(["Müşteri Sipariş Adedi", `${TL(requestedQty)} adet`]);
+  künye.push([
+    "Üretilecek Adet",
+    `${TL(fit.producedQty)} adet${
+      fit.producedQty > requestedQty
+        ? ` (+${fit.producedQty - requestedQty} fire/hediye payı)`
+        : ""
+    }`,
+  ]);
+  künye.push(["Termin Süresi", input.termin ?? "5 iş günü (varsayılan)"]);
 
   if (customerName) {
     künye.unshift(["Müşteri", customerName]);
@@ -170,31 +203,51 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.line(M, y + 2, M + 50, y + 2);
 
   y += 12;
-  const teknik: Array<[string, string]> = [
-    [
-      "Sticker Boyutu",
-      `${fit.stickerW} × ${fit.stickerH} mm${fit.rotated ? " (90° döndürülmüş)" : ""}`,
-    ],
-    ["Boşluk (Gap)", `${fit.gap} mm`],
-    ["Tabaka Boyutu", `${fit.sheetW} × ${fit.sheetH} mm`],
-    [
-      "Tabaka Başına Adet",
-      `${fit.perSheet} adet`,
-    ],
-    ["Toplam Tabaka", `${fit.sheetsNeeded} adet`],
-    [
-      "Rulo Sayısı",
-      `${roll.rollsNeeded} rulo (${roll.rollW} × ${ROLL_L} mm${
-        roll.rollW < 600 ? `, ${600 - roll.rollW}mm tasarruf` : ""
-      })`,
-    ],
-    [
-      "Rulo Verimliliği",
-      `%${((fit.sheetsNeeded / (roll.rollsNeeded * roll.sheetsPerRoll)) * 100).toFixed(0)}`,
-    ],
-    ["Toplam Malzeme", `${geometry.totalM2.toFixed(3)} m²`],
-    ["Fire Oranı", `%${geometry.wastePct.toFixed(1)}`],
-  ];
+  const teknik: Array<[string, string]> = isEtiket
+    ? [
+        // Etiket — rulo bazlı, tabaka kavramı yok
+        [
+          "Etiket Boyutu",
+          `${fit.stickerW} × ${fit.stickerH} mm`,
+        ],
+        ["Boşluk (Gap)", `${fit.gap} mm`],
+        ["Etiket / Rulo (max)", `${fit.perSheet} adet`],
+        [
+          "Toplam Rulo",
+          `${roll.rollsNeeded} rulo (${roll.rollW} × ${ROLL_L} mm${
+            roll.rollW < 600 ? `, ${600 - roll.rollW}mm tasarruf` : ""
+          })`,
+        ],
+        [
+          "Son Rulo",
+          `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} etiket`,
+        ],
+        ["Toplam Malzeme", `${geometry.totalM2.toFixed(3)} m²`],
+        ["Fire Oranı", `%${geometry.wastePct.toFixed(1)}`],
+      ]
+    : [
+        // Sticker — tabaka bazlı
+        [
+          "Sticker Boyutu",
+          `${fit.stickerW} × ${fit.stickerH} mm${fit.rotated ? " (90° döndürülmüş)" : ""}`,
+        ],
+        ["Boşluk (Gap)", `${fit.gap} mm`],
+        ["Tabaka Boyutu", `${fit.sheetW} × ${fit.sheetH} mm`],
+        ["Tabaka Başına Adet", `${fit.perSheet} adet`],
+        ["Toplam Tabaka", `${fit.sheetsNeeded} adet`],
+        [
+          "Rulo Sayısı",
+          `${roll.rollsNeeded} rulo (${roll.rollW} × ${ROLL_L} mm${
+            roll.rollW < 600 ? `, ${600 - roll.rollW}mm tasarruf` : ""
+          })`,
+        ],
+        [
+          "Rulo Verimliliği",
+          `%${((fit.sheetsNeeded / (roll.rollsNeeded * roll.sheetsPerRoll)) * 100).toFixed(0)}`,
+        ],
+        ["Toplam Malzeme", `${geometry.totalM2.toFixed(3)} m²`],
+        ["Fire Oranı", `%${geometry.wastePct.toFixed(1)}`],
+      ];
 
   pdf.setFontSize(9);
   teknik.forEach(([k, v]) => {
@@ -236,6 +289,8 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
 
 function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
   const { lot, geometry } = input;
+  const product: WorkOrderProduct = input.product ?? "sticker";
+  const isEtiket = product === "etiket";
   const { fit, roll } = geometry;
   const dist = computeSheetDistribution(geometry);
 
@@ -265,7 +320,9 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(75, 85, 99);
   pdf.text(
-    `${roll.rollsNeeded} rulo · ${roll.rollW} × ${ROLL_L} mm · ${fit.sheetsNeeded} tabaka · ${geometry.totalM2.toFixed(3)} m² · %${geometry.wastePct.toFixed(1)} fire`,
+    isEtiket
+      ? `${roll.rollsNeeded} rulo · ${roll.rollW} × ${ROLL_L} mm · ${geometry.totalM2.toFixed(3)} m² · %${geometry.wastePct.toFixed(1)} fire`
+      : `${roll.rollsNeeded} rulo · ${roll.rollW} × ${ROLL_L} mm · ${fit.sheetsNeeded} tabaka · ${geometry.totalM2.toFixed(3)} m² · %${geometry.wastePct.toFixed(1)} fire`,
     M,
     y
   );
@@ -349,20 +406,22 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
     pdf.setFont("helvetica", "italic");
     pdf.setTextColor(120, 113, 108);
     pdf.text(
-      `+ ${roll.rollsNeeded - 1} rulo aynı plan ile (son rulo: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka)`,
+      isEtiket
+        ? `+ ${roll.rollsNeeded - 1} rulo aynı plan ile (son rulo: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} etiket)`
+        : `+ ${roll.rollsNeeded - 1} rulo aynı plan ile (son rulo: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka)`,
       M,
       y
     );
     y += 8;
   }
 
-  // Tabaka detayı (tek tabaka örneği)
+  // Tabaka/etiket detayı
   y += 6;
   pdf.setTextColor(31, 41, 55);
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
-  pdf.text("TABAKA DETAYI", M, y);
-  pdf.line(M, y + 2, M + 35, y + 2);
+  pdf.text(isEtiket ? "ETİKET GRİDİ (Rulo İçinden)" : "TABAKA DETAYI", M, y);
+  pdf.line(M, y + 2, M + (isEtiket ? 60 : 35), y + 2);
 
   y += 10;
   // Sheet outline (mm bazında, 80mm yükseklik için ölçekle)
@@ -422,7 +481,9 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(75, 85, 99);
   pdf.text(
-    `${fit.sheetW}×${fit.sheetH}mm tabaka · ${fit.cols}×${fit.rows} grid · ${fit.perSheet} ad/tabaka · gap ${fit.gap}mm`,
+    isEtiket
+      ? `Rulo eni ${fit.sheetW}mm · ${fit.cols}×${fit.rows} grid · ${fit.perSheet} etiket/rulo · gap ${fit.gap}mm`
+      : `${fit.sheetW}×${fit.sheetH}mm tabaka · ${fit.cols}×${fit.rows} grid · ${fit.perSheet} ad/tabaka · gap ${fit.gap}mm`,
     M,
     y
   );
