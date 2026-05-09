@@ -6,17 +6,25 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import {
+  listMyWalletTransactions,
+  summarizeWallet,
+  type WalletTransaction,
+  type WalletTxKind,
+} from "@/lib/customer-wallet";
+import { ensureAuthBindings } from "@/lib/customer-cart";
+import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 
 interface Transaction {
   id: string;
   date: string;
-  type: "deposit" | "purchase" | "refund" | "bonus";
+  type: WalletTxKind;
   desc: string;
   amount: number;
 }
@@ -112,10 +120,23 @@ const TRANSACTIONS_EN: Transaction[] = [
   { id: "t3", date: "Apr 20, 2026", type: "deposit", desc: "Wallet top-up — credit card", amount: 3000 },
 ];
 
+function dbTxToTransaction(t: WalletTransaction, locale: string): Transaction {
+  return {
+    id: t.id,
+    date: new Date(t.createdAt).toLocaleDateString(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+    type: t.kind,
+    desc: t.description,
+    amount: t.amount,
+  };
+}
+
 export default function CuzdanPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
-  const TRANSACTIONS = locale === "en" ? TRANSACTIONS_EN : TRANSACTIONS_TR;
 
   const fmt = (n: number) => Math.abs(Math.round(n)).toLocaleString(c.locale);
 
@@ -132,6 +153,25 @@ export default function CuzdanPage() {
   const toast = useToast();
   const [showDeposit, setShowDeposit] = useState(false);
   const [amount, setAmount] = useState("");
+  const [TRANSACTIONS, setTransactions] = useState<Transaction[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    ensureAuthBindings();
+    void (async () => {
+      const fromDb = await listMyWalletTransactions();
+      if (fromDb.length > 0) {
+        setTransactions(fromDb.map((t) => dbTxToTransaction(t, c.locale)));
+      } else if (!isLoggedInSync()) {
+        // Guest mode → demo data
+        setTransactions(locale === "en" ? TRANSACTIONS_EN : TRANSACTIONS_TR);
+      } else {
+        // Logged in but DB boş → boş geçmiş
+        setTransactions([]);
+      }
+      setHydrated(true);
+    })();
+  }, [locale, c.locale]);
 
   const balance = TRANSACTIONS.reduce((sum, t) => sum + t.amount, 0);
   const totalIn = TRANSACTIONS.filter((t) => t.amount > 0).reduce(

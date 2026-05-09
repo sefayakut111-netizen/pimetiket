@@ -6,13 +6,21 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import {
+  listMyAddresses,
+  setDefaultAddress as dbSetDefault,
+  deleteMyAddress as dbDelete,
+  type CustomerAddress,
+} from "@/lib/customer-profile";
+import { ensureAuthBindings } from "@/lib/customer-cart";
+import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 
-interface Address {
+type Address = {
   id: string;
   label: string;
   name: string;
@@ -20,9 +28,10 @@ interface Address {
   city: string;
   phone: string;
   isDefault?: boolean;
-}
+};
 
-const INITIAL: Address[] = [
+// Guest mode için demo data — auth gelince DB'den çekilir
+const DEMO: Address[] = [
   {
     id: "a1",
     label: "Atölye",
@@ -41,6 +50,18 @@ const INITIAL: Address[] = [
     phone: "+90 5XX XXX XX XX",
   },
 ];
+
+function dbToAddress(a: CustomerAddress): Address {
+  return {
+    id: a.id,
+    label: a.label ?? "Adres",
+    name: a.name,
+    addr: a.addr,
+    city: a.city,
+    phone: a.phone,
+    isDefault: a.isDefault,
+  };
+}
 
 const COPY = {
   tr: {
@@ -83,16 +104,49 @@ export default function AdreslerimPage() {
   const c = locale === "en" ? COPY.en : COPY.tr;
 
   const toast = useToast();
-  const [addresses, setAddresses] = useState<Address[]>(INITIAL);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
-  const setDefault = (id: string) => {
+  useEffect(() => {
+    ensureAuthBindings();
+    void (async () => {
+      const fromDb = await listMyAddresses();
+      if (fromDb.length > 0) {
+        setAddresses(fromDb.map(dbToAddress));
+      } else if (!isLoggedInSync()) {
+        // Guest mode → demo data göster
+        setAddresses(DEMO);
+      }
+      setHydrated(true);
+    })();
+  }, []);
+
+  const setDefault = async (id: string) => {
+    if (isLoggedInSync()) {
+      const r = await dbSetDefault(id);
+      if (r.ok) {
+        setAddresses((arr) =>
+          arr.map((a) => ({ ...a, isDefault: a.id === id }))
+        );
+        toast.success(c.defaultUpdated);
+      }
+      return;
+    }
     setAddresses((arr) =>
       arr.map((a) => ({ ...a, isDefault: a.id === id }))
     );
     toast.success(c.defaultUpdated);
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
+    if (isLoggedInSync()) {
+      const r = await dbDelete(id);
+      if (r.ok) {
+        setAddresses((arr) => arr.filter((a) => a.id !== id));
+        toast.success(c.addressDeleted);
+      }
+      return;
+    }
     setAddresses((arr) => arr.filter((a) => a.id !== id));
     toast.success(c.addressDeleted);
   };

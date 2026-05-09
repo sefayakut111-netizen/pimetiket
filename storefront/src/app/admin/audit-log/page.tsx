@@ -14,10 +14,12 @@ import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listAuditEntries,
+  refreshAuditLog,
   ACTION_LABEL,
   type AuditEntry,
   type AuditAction,
 } from "@/lib/audit-log";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 
 const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
   "order.cancel": "text-kirmizi bg-kirmizi/10",
@@ -58,8 +60,9 @@ export default function AdminAuditLogPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    ensureAuthBindings();
     const refresh = () => setEntries(listAuditEntries());
-    refresh();
+    void refreshAuditLog().then(refresh);
     window.addEventListener("pim_audit_log_updated", refresh);
     return () =>
       window.removeEventListener("pim_audit_log_updated", refresh);

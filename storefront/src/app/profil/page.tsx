@@ -6,10 +6,15 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
+import {
+  getMyProfile,
+  updateMyProfile,
+} from "@/lib/customer-profile";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 
 const COPY = {
   tr: {
@@ -113,8 +118,38 @@ export default function ProfilPage() {
   const toast = useToast();
   const [name, setName] = useState("Ahmet Yılmaz");
   const [email, setEmail] = useState("ahmet@example.com");
+  const [phone, setPhone] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+
+  useEffect(() => {
+    ensureAuthBindings();
+    void getMyProfile().then((p) => {
+      if (!p) return;
+      setName(p.displayName ?? "");
+      setPhone(p.phone ?? "");
+      setEmailVerified(Boolean(p.emailVerifiedAt));
+    });
+    // Email auth user'dan al — async
+    import("@/lib/supabase/auth-bridge").then(({ getCurrentUser }) =>
+      getCurrentUser().then((u) => {
+        if (u?.email) setEmail(u.email);
+      })
+    );
+  }, []);
+
+  const onSavePersonal = async () => {
+    setSavingProfile(true);
+    const r = await updateMyProfile({
+      displayName: name.trim(),
+      phone: phone.trim() || null,
+    });
+    setSavingProfile(false);
+    if (r.ok) toast.success(c.saved);
+    else toast.error(r.reason);
+  };
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
@@ -150,15 +185,22 @@ export default function ProfilPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                readOnly
               />
-              <span className="inline-flex items-center gap-1 mt-1.5 text-[12px] text-yesil font-semibold">
-                <Icon.Check size={12} /> {c.verified}
-              </span>
+              {emailVerified && (
+                <span className="inline-flex items-center gap-1 mt-1.5 text-[12px] text-yesil font-semibold">
+                  <Icon.Check size={12} /> {c.verified}
+                </span>
+              )}
             </label>
           </div>
           <div className="mt-5 flex justify-end">
-            <Button variant="primary" onClick={() => toast.success(c.saved)}>
-              {c.save}
+            <Button
+              variant="primary"
+              onClick={onSavePersonal}
+              disabled={savingProfile}
+            >
+              {savingProfile ? "..." : c.save}
             </Button>
           </div>
         </Card>

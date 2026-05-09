@@ -6,11 +6,16 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/Icon";
 import { useT } from "@/lib/i18n/context";
+import {
+  getMyProfile,
+  updateMyInvoiceInfo,
+} from "@/lib/customer-profile";
+import { ensureAuthBindings } from "@/lib/customer-cart";
 
 type InvoiceType = "individual" | "corporate";
 
@@ -92,6 +97,35 @@ export default function FaturaBilgileriPage() {
   const [invoiceFormat, setEFaturaTercih] = useState<"earchive" | "einvoice">(
     "earchive"
   );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    ensureAuthBindings();
+    void getMyProfile().then((p) => {
+      if (!p) return;
+      if (p.invoiceType) setType(p.invoiceType);
+      if (p.tc) setTc(p.tc);
+      if (p.vkn) setVkn(p.vkn);
+      if (p.companyName) setCompanyName(p.companyName);
+      if (p.taxOffice) setTaxOffice(p.taxOffice);
+      if (p.invoiceFormat) setEFaturaTercih(p.invoiceFormat);
+    });
+  }, []);
+
+  const onSave = async () => {
+    setSaving(true);
+    const r = await updateMyInvoiceInfo({
+      type,
+      tc: type === "individual" ? tc.trim() : null,
+      vkn: type === "corporate" ? vkn.trim() : null,
+      companyName: type === "corporate" ? companyName.trim() : null,
+      taxOffice: type === "corporate" ? taxOffice.trim() : null,
+      invoiceFormat,
+    });
+    setSaving(false);
+    if (r.ok) toast.success(c.saved);
+    else toast.error(r.reason);
+  };
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
@@ -220,8 +254,8 @@ export default function FaturaBilgileriPage() {
           )}
 
           <div className="mt-6 flex justify-end">
-            <Button variant="primary" onClick={() => toast.success(c.saved)}>
-              {c.save}
+            <Button variant="primary" onClick={onSave} disabled={saving}>
+              {saving ? "..." : c.save}
             </Button>
           </div>
         </Card>
