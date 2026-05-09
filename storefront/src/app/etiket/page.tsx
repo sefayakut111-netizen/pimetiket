@@ -25,6 +25,7 @@ import {
   SelectableCard,
   PriceCard,
   Pill,
+  QtySlider,
   DesignDropZone,
   type DesignTempState,
 } from "@/components/ui";
@@ -536,15 +537,53 @@ export default function EtiketPage() {
               title={t.config.qtyTitle}
               hint={t.etiket.qtyHint}
             >
-              {/* Stepper input */}
-              <div className="flex items-center gap-3 flex-wrap">
+              {/* Slider — ana giriş yöntemi */}
+              <div className="px-1">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
+                    {qty.toLocaleString("tr-TR")}
+                    <span className="text-[14px] font-medium text-gri-700 ml-1">
+                      adet
+                    </span>
+                  </span>
+                  <div className="text-right tabular-nums">
+                    <div className="text-[18px] font-bold text-pim-mercan leading-none">
+                      {fmt(total)} TL
+                    </div>
+                    <div className="text-[12px] text-gri-500 mt-0.5">
+                      {fmtUnit(unit)} TL/adet
+                    </div>
+                  </div>
+                </div>
+                <QtySlider
+                  value={qty}
+                  min={ETIKET_MIN_QTY}
+                  max={ETIKET_MAX_QTY}
+                  step={ETIKET_QTY_STEP}
+                  onChange={(v) => setQty(snapEtiketQty(v))}
+                  ariaLabel="Etiket adedi (slider)"
+                />
+                <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
+                  <span>{(ETIKET_MIN_QTY / 1000).toFixed(0)}K</span>
+                  <span>{(ETIKET_MAX_QTY / 1000).toFixed(0)}K</span>
+                </div>
+                {tierSavings > 0 && (
+                  <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mt-2">
+                    %{tierSavings} tasarruf 🎯 — bir önceki tier'dan ucuz
+                  </div>
+                )}
+              </div>
+
+              {/* İnce ayar: stepper + serbest input */}
+              <div className="flex items-center gap-3 flex-wrap mt-4">
+                <span className="text-[11.5px] text-gri-500">İnce ayar:</span>
                 <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setQty((v) => snapEtiketQty(v - ETIKET_QTY_STEP))}
                     disabled={qty <= ETIKET_MIN_QTY}
                     aria-label={`${ETIKET_QTY_STEP} adet azalt`}
-                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     −
                   </button>
@@ -556,36 +595,21 @@ export default function EtiketPage() {
                     max={ETIKET_MAX_QTY}
                     step={ETIKET_QTY_STEP}
                     aria-label="Etiket adedi"
-                    className="w-28 h-12 text-center text-[18px] font-bold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
+                    className="w-24 h-9 text-center text-[14px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
                   />
                   <button
                     type="button"
                     onClick={() => setQty((v) => snapEtiketQty(v + ETIKET_QTY_STEP))}
                     disabled={qty >= ETIKET_MAX_QTY}
                     aria-label={`${ETIKET_QTY_STEP} adet artır`}
-                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     +
                   </button>
                 </div>
-                <div className="text-[13px] text-gri-700 leading-tight">
-                  <div className="tabular-nums">
-                    <strong className="text-lacivert text-[15px]">
-                      {fmt(total)} TL
-                    </strong>{" "}
-                    <span className="text-gri-500">
-                      · {fmtUnit(unit)} TL/adet
-                    </span>
-                  </div>
-                  {tierSavings > 0 && (
-                    <div className="inline-flex items-center h-[20px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-1">
-                      %{tierSavings} tasarruf 🎯
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* Preset chip'leri */}
+              {/* Preset chip'leri — popüler nokta atışı */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
@@ -601,7 +625,7 @@ export default function EtiketPage() {
                       onClick={() => setQty(q)}
                       aria-pressed={active}
                       className={cn(
-                        "relative px-3 h-9 rounded-full text-[13px] font-semibold transition-colors tabular-nums",
+                        "relative px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
                         active
                           ? "bg-pim-mercan text-white"
                           : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"

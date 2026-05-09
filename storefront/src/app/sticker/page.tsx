@@ -26,6 +26,7 @@ import {
   FormSection,
   SelectableCard,
   PriceCard,
+  QtySlider,
   useToast,
   DesignDropZone,
   type DesignTempState,
@@ -461,15 +462,53 @@ export default function StickerPage() {
               title={t.config.qtyTitle}
               hint={`${STICKER_MIN_QTY} → ${STICKER_MAX_QTY} (step ${STICKER_QTY_STEP})`}
             >
-              {/* Stepper input */}
-              <div className="flex items-center gap-3 flex-wrap">
+              {/* Slider — Sefa onayladı, ana giriş yöntemi */}
+              <div className="px-1">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
+                    {tier.toLocaleString("tr-TR")}
+                    <span className="text-[14px] font-medium text-gri-700 ml-1">
+                      adet
+                    </span>
+                  </span>
+                  <div className="text-right tabular-nums">
+                    <div className="text-[18px] font-bold text-pim-mercan leading-none">
+                      {fmt(total)} TL
+                    </div>
+                    <div className="text-[12px] text-gri-500 mt-0.5">
+                      {fmtUnit(currentUnit)} TL/adet
+                    </div>
+                  </div>
+                </div>
+                <QtySlider
+                  value={tier}
+                  min={STICKER_MIN_QTY}
+                  max={STICKER_MAX_QTY}
+                  step={STICKER_QTY_STEP}
+                  onChange={(v) => setTier(snapStickerQty(v))}
+                  ariaLabel="Sticker adedi (slider)"
+                />
+                <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
+                  <span>{STICKER_MIN_QTY}</span>
+                  <span>{STICKER_MAX_QTY}</span>
+                </div>
+                {savings > 0 && (
+                  <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mt-2">
+                    %{savings} tasarruf 🎯 — bir önceki tier'dan ucuz
+                  </div>
+                )}
+              </div>
+
+              {/* İnce ayar: stepper + serbest input — slider'la aynı state */}
+              <div className="flex items-center gap-3 flex-wrap mt-4">
+                <span className="text-[11.5px] text-gri-500">İnce ayar:</span>
                 <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setTier((v) => snapStickerQty(v - STICKER_QTY_STEP))}
                     disabled={tier <= STICKER_MIN_QTY}
                     aria-label={`${STICKER_QTY_STEP} adet azalt`}
-                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     −
                   </button>
@@ -481,36 +520,21 @@ export default function StickerPage() {
                     max={STICKER_MAX_QTY}
                     step={STICKER_QTY_STEP}
                     aria-label="Sticker adedi"
-                    className="w-24 h-12 text-center text-[18px] font-bold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
+                    className="w-20 h-9 text-center text-[14px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
                   />
                   <button
                     type="button"
                     onClick={() => setTier((v) => snapStickerQty(v + STICKER_QTY_STEP))}
                     disabled={tier >= STICKER_MAX_QTY}
                     aria-label={`${STICKER_QTY_STEP} adet artır`}
-                    className="w-11 h-12 grid place-items-center text-xl font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     +
                   </button>
                 </div>
-                <div className="text-[13px] text-gri-700 leading-tight">
-                  <div className="tabular-nums">
-                    <strong className="text-lacivert text-[15px]">
-                      {fmt(total)} TL
-                    </strong>{" "}
-                    <span className="text-gri-500">
-                      · {fmtUnit(currentUnit)} TL/adet
-                    </span>
-                  </div>
-                  {savings > 0 && (
-                    <div className="inline-flex items-center h-[20px] px-2 rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold mt-1">
-                      %{savings} tasarruf 🎯
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* Preset chip'leri */}
+              {/* Preset chip'leri — popüler nokta atışı */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
@@ -525,7 +549,7 @@ export default function StickerPage() {
                       onClick={() => setTier(q)}
                       aria-pressed={active}
                       className={cn(
-                        "relative px-3 h-9 rounded-full text-[13px] font-semibold transition-colors tabular-nums",
+                        "relative px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
                         active
                           ? "bg-pim-mercan text-white"
                           : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
