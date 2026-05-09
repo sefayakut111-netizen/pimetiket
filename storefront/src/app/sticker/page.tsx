@@ -41,10 +41,11 @@ import {
 // ============================================================
 
 const SHAPES = [
-  { id: "circle", name: "Yuvarlak" },
-  { id: "square", name: "Kare" },
-  { id: "rounded", name: "Yumuşak köşe" },
-  { id: "die", name: "Kontur kesim" },
+  { id: "circle", name: "Yuvarlak", desc: "Daire / oval" },
+  { id: "square", name: "Kare", desc: "Köşeli kenar" },
+  { id: "rounded", name: "Yumuşak köşe", desc: "Köşeler yuvarlak" },
+  { id: "die", name: "Kontur kesim", desc: "Tasarımı takip eden kesim" },
+  { id: "ozel", name: "Özel geometri", desc: "Tasarımına göre" },
 ] as const;
 
 type ShapeId = (typeof SHAPES)[number]["id"];
@@ -171,22 +172,34 @@ export default function StickerPage() {
 
           {/* RIGHT — config */}
           <div className="flex flex-col gap-4">
-            <FormSection title="Şekil">
-              <div className="grid grid-cols-4 gap-2.5">
+            <FormSection
+              title="Şekil"
+              hint="boyut bağımsız — 50×50 mm tasarım yıldız da olabilir"
+            >
+              <div className="grid grid-cols-5 gap-2">
                 {SHAPES.map((s) => (
                   <SelectableCard
                     key={s.id}
                     selected={shape === s.id}
                     onClick={() => setShape(s.id)}
                     style={{ textAlign: "center" }}
+                    padding={10}
                   >
                     <ShapeIcon id={s.id} active={shape === s.id} />
-                    <div className="text-[11.5px] font-bold tracking-[0.04em] text-gri-700 mt-2">
+                    <div className="text-[11px] font-bold tracking-[0.04em] text-gri-700 mt-2 leading-tight">
                       {s.name}
                     </div>
                   </SelectableCard>
                 ))}
               </div>
+              {shape === "ozel" && (
+                <div className="mt-3 px-3.5 py-2.5 rounded-lg bg-pim-mercan-tint/40 ring-1 ring-pim-mercan-soft text-[12.5px] text-lacivert leading-relaxed">
+                  <strong className="text-pim-mercan-koyu">Özel geometri:</strong>{" "}
+                  Tasarım dosyanı yüklediğinde kontur otomatik çıkarılır.
+                  Yıldız, dalga, harf — istediğin form. Boyut alanı tasarımın{" "}
+                  <strong>çevreleyen kutusu</strong> olur.
+                </div>
+              )}
             </FormSection>
 
             <FormSection title="Malzeme">
@@ -454,6 +467,25 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
         <rect x="4" y="4" width="28" height="28" rx="8" fill={fill} stroke={stroke} strokeWidth="2" />
       </svg>
     );
+  if (id === "ozel")
+    return (
+      <svg
+        width="36"
+        height="36"
+        viewBox="0 0 36 36"
+        className="mx-auto"
+        aria-hidden
+      >
+        {/* Yıldız + dalga karışımı 12-köşeli abstract — preview clip-path ile uyumlu */}
+        <path
+          d="M18 2 L21.6 9.9 L30.96 5.04 L27.36 13.68 L36 18 L27.36 22.32 L30.96 30.96 L21.6 26.1 L18 34 L14.4 26.1 L5.04 30.96 L8.64 22.32 L0 18 L8.64 13.68 L5.04 5.04 L14.4 9.9 Z"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
   return (
     <svg
       width="36"
@@ -508,11 +540,20 @@ function StickerPreview({ shape, material, finish, width, height }: PreviewProps
   };
 
   const radius =
-    shape === "circle" ? "50%" : shape === "rounded" ? 24 : shape === "die" ? 0 : 4;
-  const dieClip =
+    shape === "circle"
+      ? "50%"
+      : shape === "rounded"
+        ? 24
+        : shape === "die" || shape === "ozel"
+          ? 0
+          : 4;
+  const customClip =
     shape === "die"
       ? "polygon(20% 0, 80% 5%, 100% 30%, 95% 75%, 70% 100%, 25% 95%, 0 65%, 5% 25%)"
-      : "none";
+      : shape === "ozel"
+        ? // Yıldız + dalga karışımı 12-köşeli abstract custom
+          "polygon(50% 0%, 60% 22%, 86% 14%, 76% 38%, 100% 50%, 76% 62%, 86% 86%, 60% 78%, 50% 100%, 40% 78%, 14% 86%, 24% 62%, 0% 50%, 24% 38%, 14% 14%, 40% 22%)"
+        : "none";
 
   return (
     <div
@@ -550,7 +591,7 @@ function StickerPreview({ shape, material, finish, width, height }: PreviewProps
             height: heightPx,
             background: matBg[material],
             borderRadius: radius,
-            clipPath: dieClip,
+            clipPath: customClip,
             boxShadow:
               "0 16px 40px rgba(31,41,55,0.18), 0 4px 8px rgba(31,41,55,0.1)",
           }}
@@ -610,7 +651,7 @@ function StickerPreview({ shape, material, finish, width, height }: PreviewProps
               background: finishOverlay[finish],
               backgroundSize: finish === "glitter" ? "8px 8px" : "auto",
               borderRadius: radius,
-              clipPath: dieClip,
+              clipPath: customClip,
               mixBlendMode: "screen",
               opacity: finish === "mat" ? 0 : 1,
             }}
