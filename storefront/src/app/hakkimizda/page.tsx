@@ -19,9 +19,9 @@ const COPY = {
   tr: {
     eyebrow: "Hakkımızda",
     h1Line1: "Bursa'dan,",
-    h1Line2: "küçük markalar için.",
+    h1Line2: "herkes için.",
     intro:
-      "Pim Etiket'i kurarken aklımızda tek bir soru vardı: küçük markalar, hayalindeki kalitede etiket bastırmak için neden binlerce adet stoklamak zorunda olsun? Cevabımız bu site.",
+      "Pim Etiket'i kurarken aklımızda tek bir soru vardı: hayalindeki kalitede etiket bastırmak için neden binlerce adet stoklamak zorunda olsun? Bu site, o sorunun cevabı — küçük marka için de kurumsal alıcı için de aynı kapı.",
     storyEyebrow: "Pim Etiket nereden geliyor?",
     storyTitle: "Geleneksel ticaretin yapay zeka çağına ayak uyduruşu.",
     story1: "75 yıldır ticaretle uğraşan bir ailenin ferdiyiz. Yolumuz kırtasiyecilikten başladı — defterler, kâğıtlar, mürekkepler. Sonra matbaacılığa uzandı; baskı makinelerinin sesi, kâğıdın kokusu kuşaklar boyu evimizin parçası oldu. Daha sonra ambalaj sektörüne geçtik — markaların raflara çıkış hikâyelerine yakından şahit olduk.",
@@ -29,8 +29,8 @@ const COPY = {
       "Pim Etiket bu uzun hikâyenin son halkası. Ama bu kez bir farkla: teknolojinin yardımıyla.",
     storyWhy: "Neden böyle bir sistem?",
     story3:
-      "Sektörün içinden gözlemledik: küçük markalar, büyük markaların kullandığı imkânlardan uzak kalıyor. Düşük adetlerde fiyatlar uçuyor, süreçler karmaşıklaşıyor, \"sadece etiket bastırmak\" bile bir maraton oluyordu.",
-    story4pre: "Mühendislik eğitiminin getirdiği bakış açısı şunu söyledi: otomasyon ve yapay zeka gelecek değil, bugün. Doğru kullanıldığında bu teknolojiler, küçük markalara da büyüklerin gücünü verebilir. Biz de o değişime \"mecburen\" değil, ",
+      "Sektörün içinden gözlemledik: ister küçük marka olsun ister büyük alıcı, baskı süreci bir maraton olabiliyordu. Düşük adetlerde fiyatlar uçuyor, büyük adetlerde formaliteler uzuyor; ortada herkesin işini hızla halleden bir yer eksikti.",
+    story4pre: "Mühendislik eğitiminin getirdiği bakış açısı şunu söyledi: otomasyon ve yapay zeka gelecek değil, bugün. Doğru kullanıldığında bu teknolojiler oyun alanını eşitliyor — küçük marka da kurumsal alıcı da aynı hızda iş çıkarabiliyor. Biz de o değişime \"mecburen\" değil, ",
     story4bold: "öngörerek",
     story4post: " katıldık.",
     storyPromise: "Sana ne vaat ediyoruz?",
@@ -42,10 +42,12 @@ const COPY = {
     pimWho1:
       "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse fason atölyeyi kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — baykuşum, saymıyoruz.",
     pimWho2: "Tek başıma değilim aslında. Ekibim var, bütün soruları paylaşıyoruz:",
-    pimRole1Name: "Tasarımcı Pim",
-    pimRole1Desc: "boyut, renk, fiyat hesabı",
-    pimRole2Name: "Kargocu Pim",
-    pimRole2Desc: "sipariş ve kargo takibi",
+    pimRole1Name: "Karşılayıcı Pim",
+    pimRole1Desc: "ilk soruyu yanıtlar, doğru kişiye yönlendirir",
+    pimRole2Name: "Tasarımcı Pim",
+    pimRole2Desc: "boyut, renk, fiyat hesabı",
+    pimRole3Name: "Kargocu Pim",
+    pimRole3Desc: "sipariş ve kargo takibi",
     pimWho3:
       "Hangisi lazımsa o gelir. Sen sadece sor, gerisini biz halletmeye çalışırız.",
     valuesEyebrow: "Değerlerimiz",
@@ -53,9 +55,9 @@ const COPY = {
     val1Title: "Düşük adetten esnek",
     val1Desc:
       "Stoklamadan, az miktarda da kaliteden ödün vermeden bastırırsın. 1000 etiketten başlıyoruz.",
-    val2Title: "AI'lı akıllı süreç",
+    val2Title: "AI dosyana bakar",
     val2Desc:
-      "Pim, dosyanı saniyeler içinde inceler — eksiği varsa söyler. Operatörün gözüyle uzaklaşırsın.",
+      "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler. Pre-press hatası elinde patlamaz.",
     val3Title: "Bursa'dan kapına",
     val3Desc:
       "10 günde elinde. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
@@ -67,21 +69,21 @@ const COPY = {
     founderNote:
       "[Sefa not: kısa bir biyografi + neden bu işi kurduğun + LinkedIn linki]",
     founderText:
-      " — Pim Etiket'i kurarken hedefim, sektörün online'a geçişinde küçük markaları kimsenin geride bırakmaması idi. Sen de bizimle çalışmak istersen WhatsApp'tan veya ",
+      " — Pim Etiket'i kurarken hedefim, sektörün online'a geçişinde herkesin — küçük marka veya kurumsal — adil bir başlangıca sahip olması idi. Sen de bizimle çalışmak istersen WhatsApp'tan veya ",
     founderLink: "iletişim",
     founderEnd: " sayfasından bana ulaşabilirsin.",
     ctaTitle: "Bizimle çalışmaya hazır mısın?",
     ctaDesc:
-      "İlk siparişin için Pim ile bir tur at. 5 dakikada konfigüre, anında fiyat, gerisi bizden.",
+      "Konfigüre et, fiyatını gör, sepete ekle. Pim sayfanın sağ alt köşesinde — takıldığın yerde sor.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
   },
   en: {
     eyebrow: "About us",
     h1Line1: "From Bursa,",
-    h1Line2: "for small brands.",
+    h1Line2: "for everyone.",
     intro:
-      "When we founded Pim Etiket we had only one question in mind: why should small brands stock thousands of units to print quality labels for their dream products? This site is our answer.",
+      "When we founded Pim Etiket we had only one question in mind: why should anyone — small brand or large — stock thousands of units just to print quality labels? This site is our answer. Same door for solo founders and corporate buyers.",
     storyEyebrow: "Where Pim Etiket comes from",
     storyTitle: "Traditional trade adapting to the AI era.",
     story1:
@@ -90,9 +92,9 @@ const COPY = {
       "Pim Etiket is the latest chapter in that long story. But this time with a difference: with technology's help.",
     storyWhy: "Why a system like this?",
     story3:
-      "We observed it from inside the industry: small brands stay distant from the resources big brands use. Prices skyrocket at low quantities, processes get complicated, even \"just printing labels\" turns into a marathon.",
+      "We saw it from inside the industry: whether you're a small brand or a corporate buyer, printing could turn into a marathon. Prices skyrocket at low volumes, paperwork drags at high volumes — the middle ground, where everyone could simply print, was missing.",
     story4pre:
-      "An engineering perspective taught us one thing: automation and AI aren't the future, they're today. Used right, these technologies can give small brands the power of the big ones. So we joined that shift not \"out of necessity\" but ",
+      "An engineering perspective taught us one thing: automation and AI aren't the future, they're today. Used right, these technologies level the field — small brand or large, everyone gets the same speed. So we joined that shift not \"out of necessity\" but ",
     story4bold: "by foresight",
     story4post: ".",
     storyPromise: "What we promise you",
@@ -105,10 +107,12 @@ const COPY = {
     pimWho1:
       "When things get tangled, just call me — I quote prices, track orders, chase the contract workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm an owl, I don't count.",
     pimWho2: "I'm not alone, by the way. I've got a team — we share the workload:",
-    pimRole1Name: "Designer Pim",
-    pimRole1Desc: "sizing, colors, pricing",
-    pimRole2Name: "Shipper Pim",
-    pimRole2Desc: "order and shipment tracking",
+    pimRole1Name: "Welcome Pim",
+    pimRole1Desc: "answers the first question, points to the right person",
+    pimRole2Name: "Designer Pim",
+    pimRole2Desc: "sizing, colors, pricing",
+    pimRole3Name: "Shipper Pim",
+    pimRole3Desc: "order and shipment tracking",
     pimWho3:
       "Whichever one you need shows up. Just ask, we'll handle the rest.",
     valuesEyebrow: "Values",
@@ -116,9 +120,9 @@ const COPY = {
     val1Title: "Flexible from low quantity",
     val1Desc:
       "Print without stocking, no quality compromise even at low volumes. We start from 1000 labels.",
-    val2Title: "AI-driven smart workflow",
+    val2Title: "AI checks your file",
     val2Desc:
-      "Pim reviews your file in seconds — flags what's missing. Like having an experienced operator.",
+      "DPI, CMYK, bleed — anything missing, we flag it before production. Pre-press errors don't blow up in your hand.",
     val3Title: "From Bursa to your door",
     val3Desc:
       "In your hands within 10 days. Transparent production tracking, real-time status, Pim's updates.",
@@ -129,12 +133,12 @@ const COPY = {
     founderTitle: "Hi, I'm Sefa.",
     founderNote: "[Sefa note: short bio + why you started + LinkedIn]",
     founderText:
-      " — When I founded Pim Etiket, my goal was to make sure no small brand was left behind as the industry moved online. If you want to work with us, you can reach me via WhatsApp or the ",
+      " — When I founded Pim Etiket, my goal was simple: make sure everyone — small brand or corporate buyer — gets a fair start as the industry moves online. If you want to work with us, reach me via WhatsApp or the ",
     founderLink: "contact",
     founderEnd: " page.",
     ctaTitle: "Ready to work with us?",
     ctaDesc:
-      "Take a quick tour with Pim for your first order. 5-minute config, instant pricing, the rest is on us.",
+      "Configure, see the price, add to cart. Pim is in the bottom-right — ask if you get stuck.",
     ctaEtiket: "Print labels",
     ctaSticker: "Print stickers",
   },
@@ -239,6 +243,7 @@ export default function HakkimizdaPage() {
                 {[
                   { name: c.pimRole1Name, desc: c.pimRole1Desc },
                   { name: c.pimRole2Name, desc: c.pimRole2Desc },
+                  { name: c.pimRole3Name, desc: c.pimRole3Desc },
                 ].map((r) => (
                   <li key={r.name} className="flex items-start gap-2">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-pim-mercan mt-2.5 shrink-0" />

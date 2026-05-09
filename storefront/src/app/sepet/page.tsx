@@ -149,11 +149,16 @@ export default function SepetPage() {
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        <div className="mb-5 md:mb-7">
-          <Eyebrow>{t.cart.title}</Eyebrow>
-          <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight">
-            {t.cart.itemsInCart(cart.length)}
-          </h1>
+        <div className="mb-5 md:mb-7 flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <Eyebrow>{t.cart.title}</Eyebrow>
+            <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight">
+              {t.cart.itemsInCart(cart.length)}
+            </h1>
+          </div>
+          <div className="hidden md:block">
+            <Pim pose="happy" size={80} bob={false} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">

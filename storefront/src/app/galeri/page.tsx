@@ -12,6 +12,10 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Pill } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
+import {
+  GalleryMockup,
+  type MockupVariant,
+} from "@/components/GalleryMockup";
 
 interface ShowcaseItem {
   brand: string;
@@ -19,6 +23,12 @@ interface ShowcaseItem {
   description: string;
   config: string;
   bg: string;
+  /** Hangi mockup template'i — şişe / kahve / laptop / vb */
+  mockup: MockupVariant;
+  /** Etiket renk paleti (mockup içinde) */
+  labelBg?: string;
+  labelColor?: string;
+  sceneBg?: string;
 }
 
 const COPY = {
@@ -58,6 +68,10 @@ const COPY = {
           "Doğal sabun serisi — kraft + mat selefon + sıcak yaldız",
         config: "60×80mm · 2.000 adet",
         bg: "bg-krem",
+        mockup: "bottle",
+        labelBg: "#F5EBD9",
+        labelColor: "#3D2E1A",
+        sceneBg: "linear-gradient(135deg,#FFF5EB 0%,#F5DBC4 100%)",
       },
       {
         brand: "Bulutlu Roastery",
@@ -66,6 +80,10 @@ const COPY = {
           "Tek origin kahve etiketleri — beyaz semi-glos + parlak selefon",
         config: "70×100mm · 5.000 adet",
         bg: "bg-[#FFE7D6]",
+        mockup: "coffee",
+        labelBg: "#FFF8F0",
+        labelColor: "#3F2E26",
+        sceneBg: "linear-gradient(135deg,#FFE7D6 0%,#E8C9A0 100%)",
       },
       {
         brand: "Atölye Niş",
@@ -73,6 +91,10 @@ const COPY = {
         description: "Etkinlik hediye sticker'ları — holografik vinil",
         config: "75×75mm · 250 adet",
         bg: "bg-pim-mercan-tint",
+        mockup: "round",
+        labelBg: "#FFFFFF",
+        labelColor: "#1F2335",
+        sceneBg: "linear-gradient(135deg,#FFE3D2 0%,#FFB7E5 100%)",
       },
       {
         brand: "Çiğdem Atölye",
@@ -80,6 +102,10 @@ const COPY = {
         description: "Tekstil koleksiyonu — ultra clear + spot UV",
         config: "40×60mm · 3.000 adet",
         bg: "bg-yesil-soft",
+        mockup: "tube",
+        labelBg: "#FFF5EB",
+        labelColor: "#1F2335",
+        sceneBg: "linear-gradient(135deg,#D6F0D0 0%,#B7E8D9 100%)",
       },
       {
         brand: "Pop-up Etkinlik",
@@ -87,6 +113,10 @@ const COPY = {
         description: "Kampanya sticker'ı — vinil + kontur kesim, kalp formu",
         config: "60×60mm · 1.000 adet",
         bg: "bg-sari-soft",
+        mockup: "laptop",
+        labelBg: "#FFE3D2",
+        labelColor: "#1F2335",
+        sceneBg: "linear-gradient(135deg,#FFF6CC 0%,#FFE08A 100%)",
       },
       {
         brand: "Zeytin & Co.",
@@ -94,6 +124,10 @@ const COPY = {
         description: "Premium zeytinyağı şişesi — metalik gümüş + emboss",
         config: "55×85mm · 1.500 adet",
         bg: "bg-gri-100",
+        mockup: "olive",
+        labelBg: "#1F2335",
+        labelColor: "#E5E9EE",
+        sceneBg: "linear-gradient(135deg,#E5E9EE 0%,#9BA4AD 100%)",
       },
       {
         brand: "Festival Co.",
@@ -101,6 +135,10 @@ const COPY = {
         description: "Festival giriş sticker'ları — simli vinil",
         config: "50×50mm · 1.000 adet",
         bg: "bg-pim-mercan-tint",
+        mockup: "round",
+        labelBg: "#1F2335",
+        labelColor: "#FFE08A",
+        sceneBg: "linear-gradient(135deg,#FFB7E5 0%,#B7E8FF 50%,#FFE8B7 100%)",
       },
       {
         brand: "Yeşil Yaprak",
@@ -108,6 +146,10 @@ const COPY = {
         description: "Bitki çayı seti — kraft + soft touch",
         config: "50×70mm · 5.000 adet",
         bg: "bg-krem-soft",
+        mockup: "tea",
+        labelBg: "#FFF5EB",
+        labelColor: "#1F4A2F",
+        sceneBg: "linear-gradient(135deg,#FFF5EB 0%,#D6F0D0 100%)",
       },
     ] as ShowcaseItem[],
   },
@@ -147,6 +189,10 @@ const COPY = {
           "Natural soap line — kraft + matte lamination + hot foil stamp",
         config: "60×80mm · 2,000 pcs",
         bg: "bg-krem",
+        mockup: "bottle",
+        labelBg: "#F5EBD9",
+        labelColor: "#3D2E1A",
+        sceneBg: "linear-gradient(135deg,#FFF5EB 0%,#F5DBC4 100%)",
       },
       {
         brand: "Bulutlu Roastery",
@@ -155,6 +201,10 @@ const COPY = {
           "Single-origin coffee labels — white semi-gloss + glossy lamination",
         config: "70×100mm · 5,000 pcs",
         bg: "bg-[#FFE7D6]",
+        mockup: "coffee",
+        labelBg: "#FFF8F0",
+        labelColor: "#3F2E26",
+        sceneBg: "linear-gradient(135deg,#FFE7D6 0%,#E8C9A0 100%)",
       },
       {
         brand: "Atölye Niş",
@@ -162,6 +212,10 @@ const COPY = {
         description: "Event giveaway stickers — holographic vinyl",
         config: "75×75mm · 250 pcs",
         bg: "bg-pim-mercan-tint",
+        mockup: "round",
+        labelBg: "#FFFFFF",
+        labelColor: "#1F2335",
+        sceneBg: "linear-gradient(135deg,#FFE3D2 0%,#FFB7E5 100%)",
       },
       {
         brand: "Çiğdem Atölye",
@@ -169,6 +223,10 @@ const COPY = {
         description: "Textile collection — ultra clear + spot UV",
         config: "40×60mm · 3,000 pcs",
         bg: "bg-yesil-soft",
+        mockup: "tube",
+        labelBg: "#FFF5EB",
+        labelColor: "#1F2335",
+        sceneBg: "linear-gradient(135deg,#D6F0D0 0%,#B7E8D9 100%)",
       },
       {
         brand: "Pop-up Etkinlik",
@@ -176,6 +234,10 @@ const COPY = {
         description: "Campaign sticker — vinyl + contour cut, heart shape",
         config: "60×60mm · 1,000 pcs",
         bg: "bg-sari-soft",
+        mockup: "laptop",
+        labelBg: "#FFE3D2",
+        labelColor: "#1F2335",
+        sceneBg: "linear-gradient(135deg,#FFF6CC 0%,#FFE08A 100%)",
       },
       {
         brand: "Zeytin & Co.",
@@ -183,6 +245,10 @@ const COPY = {
         description: "Premium olive oil bottle — metallic silver + embossed",
         config: "55×85mm · 1,500 pcs",
         bg: "bg-gri-100",
+        mockup: "olive",
+        labelBg: "#1F2335",
+        labelColor: "#E5E9EE",
+        sceneBg: "linear-gradient(135deg,#E5E9EE 0%,#9BA4AD 100%)",
       },
       {
         brand: "Festival Co.",
@@ -190,6 +256,10 @@ const COPY = {
         description: "Festival entry stickers — glitter vinyl",
         config: "50×50mm · 1,000 pcs",
         bg: "bg-pim-mercan-tint",
+        mockup: "round",
+        labelBg: "#1F2335",
+        labelColor: "#FFE08A",
+        sceneBg: "linear-gradient(135deg,#FFB7E5 0%,#B7E8FF 50%,#FFE8B7 100%)",
       },
       {
         brand: "Yeşil Yaprak",
@@ -197,6 +267,10 @@ const COPY = {
         description: "Herbal tea set — kraft + soft touch",
         config: "50×70mm · 5,000 pcs",
         bg: "bg-krem-soft",
+        mockup: "tea",
+        labelBg: "#FFF5EB",
+        labelColor: "#1F4A2F",
+        sceneBg: "linear-gradient(135deg,#FFF5EB 0%,#D6F0D0 100%)",
       },
     ] as ShowcaseItem[],
   },
@@ -248,17 +322,14 @@ export default function GaleriPage() {
               padding=""
               className="!p-0 overflow-hidden hover:-translate-y-0.5 transition-transform"
             >
-              <div
-                className={`${s.bg} grid place-items-center min-h-[200px] p-6 relative`}
-              >
-                <div className="text-center">
-                  <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-lacivert/60 mb-2">
-                    {s.brand}
-                  </div>
-                  <div className="text-2xl font-bold text-lacivert">
-                    {s.brand}
-                  </div>
-                </div>
+              <div className="relative min-h-[260px] p-4">
+                <GalleryMockup
+                  variant={s.mockup}
+                  brandName={s.brand}
+                  labelBg={s.labelBg}
+                  labelColor={s.labelColor}
+                  sceneBg={s.sceneBg}
+                />
                 <Pill
                   variant={s.product === "sticker" ? "mercan" : "krem"}
                   className="absolute top-3 right-3"

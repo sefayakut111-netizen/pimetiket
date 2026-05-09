@@ -61,8 +61,8 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
       a: "Tasarımın matbaa öncesi nasıl görüneceğini panel ekranında 3D-ish önizlemeyle gösteriyoruz. Onayladıktan sonra üretime giriyor.",
     },
     {
-      q: "AI'lı kalite kontrolü ne yapıyor?",
-      a: "Pim, dosyandaki çözünürlük, renk uzayı, yazım hataları, marka uyumsuzlukları gibi tipik baskı sorunlarını saniyeler içinde tespit eder. Operatör son kontrolü yapar, gerekirse seninle iletişime geçer.",
+      q: "AI dosya kontrolü ne yapıyor?",
+      a: "Pim dosyana bakar — DPI, CMYK, kenar boşluğu (bleed) eksikse üretime gitmeden söyler. Sonra operatörümüz son göz atar, gerekirse seninle iletişime geçer.",
     },
   ],
   kargo: [

@@ -209,7 +209,7 @@ export default function DemoPage() {
             <Pim pose="happy" size={64} bob={false} />
             <div className="flex-1">
               <h3 className="font-bold text-base mb-2">
-                Önerilen tur — 5 dakikada her şeye bak
+                Önerilen tur — sırayla bak, takıldığın yerde sor
               </h3>
               <ol className="space-y-2 text-[13.5px] text-gri-700 leading-relaxed list-decimal list-inside">
                 <li>

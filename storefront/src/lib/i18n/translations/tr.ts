@@ -39,25 +39,25 @@ export const tr: TranslationDict = {
     returns: "İadelerim",
   },
   home: {
-    eyebrow: "Türkiye'nin akıllı dijital baskı atölyesi",
+    eyebrow: "Bursa atölyesinden dijital baskı",
     h1Brand: "Markanın etiketi,",
     h1Idea: "fikrinin sticker'ı.",
     heroDescription:
-      "1000 adetten başlayan, AI'ın elinden geçen, on günde kapına gelen dijital baskı. Pim sana yardım eder.",
+      "Etiket 1.000 adetten, sticker 25'ten. AI dosyana bakar, eksiği söyler — Bursa'dan kapına 10 günde.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
-    socialProof: "2,400+ Türk markasının tercihi",
-    aiPill: "AI kontrol",
+    socialProof: "Türkiye'den markaların tercihi",
+    aiPill: "AI dosya kontrolü",
     deliveryPill: "10 gün teslim",
-    pillar1Title: "1000 adetten başla",
+    pillar1Title: "Etiket 1.000'den, sticker 25'ten",
     pillar1Desc:
-      "Düşük adette de kaliteden ödün vermeden bastırırsın. Stoklamadan, esnek.",
-    pillar2Title: "AI tasarımına bakıyor",
+      "Az adetten esnek başlangıç. Stoklamana gerek yok — ihtiyacına göre bas.",
+    pillar2Title: "AI dosyana bakar",
     pillar2Desc:
-      "Yüklediğin dosyayı saniyeler içinde kontrol eder; DPI, marka, yazım — eksik varsa söyler.",
+      "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler.",
     pillar3Title: "10 günde elinde",
     pillar3Desc:
-      "Bursa'dan kapına. Şeffaf üretim takibi, gerçek zamanlı statü ve Pim'in haberleri.",
+      "Bursa'dan kapına. Şeffaf üretim takibi ve Pim'in haberleri.",
     productEtiketSub: "Rulodan etiket — kozmetik, gıda, içecek, parfüm.",
     productStickerSub: "Tekli ya da tabakada — laptop, defter, kampanya.",
     productPriceLabel: "fiyatı, başlangıç",
@@ -69,7 +69,7 @@ export const tr: TranslationDict = {
     step1: "Konfigüre et",
     step1Desc: "Malzeme, kaplama, ölçü, adet — anlık fiyat.",
     step2: "Dosyanı yükle",
-    step2Desc: "PDF, AI, EPS… AI saniyeler içinde kontrol eder.",
+    step2Desc: "PDF, AI, EPS… AI dosyana bakar; DPI/CMYK/bleed eksikse söyler.",
     step3: "Provayı onayla",
     step3Desc: "Rulonun üstünde nasıl görüneceğini gör, onayla.",
     step4: "Teslim al",
@@ -81,7 +81,7 @@ export const tr: TranslationDict = {
     faqAll: "Tüm SSS",
     bottomCtaTitle: "Hadi başlayalım.",
     bottomCtaDesc:
-      "İlk siparişin için Pim ile bir tur at. 5 dakikada konfigüre, anında fiyat, gerisi bizden.",
+      "Konfigüre et, fiyatını gör, sepete ekle. Pim sayfanın sağ alt köşesinde — takıldığın yerde sor.",
     bottomCtaPrimary: "Etiket bastır",
     bottomCtaSecondary: "Sticker'a göz at",
   },
@@ -107,7 +107,7 @@ export const tr: TranslationDict = {
   sticker: {
     pageTitle: "Sticker'ını konfigüre et",
     pageSubtitle:
-      "Kampanya, hediye, kişisel — sticker küçük adette de tadından yenmiyor.",
+      "Kampanya, hediye, kişisel — 25 adetten başla, 25'er artır.",
     pillStart: "25 adetten başlar",
     cutTypeTitle: "Kesim Tipi",
     cutTypeHint: "tabaka mı tek tek mi",
@@ -132,7 +132,7 @@ export const tr: TranslationDict = {
   },
   etiket: {
     pageTitle: "Etiketini konfigüre et",
-    pageSubtitle: "Seçimlerin sol taraftaki rulonun üstünde anında görünür.",
+    pageSubtitle: "Seçimlerin sol taraftaki rulonun üstünde canlı görünür.",
     sizeHint: "Tipik etiket 30×40 ile 100×100 mm arası. Kendi ölçüne yaz.",
     qtyHint: "1.000'den başla, 500 adetlik artışla seç (max 50.000)",
     windingTitle: "Sarım yönü",

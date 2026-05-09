@@ -83,17 +83,17 @@ const TESTIMONIALS_TR = [
   {
     n: "Defne Karaca",
     b: "Olea — Naturel sabun",
-    q: "İlk siparişte 1500 adet etiketi 9 günde elimde gördüm. Pim hata diye saydığını gerçekten yakaladı.",
+    q: "İlk siparişte 1500 adet etiket 9 günde elimde oldu. Pim bir tipoyu yakaladı, üretime gitmeden düzelttim.",
   },
   {
     n: "Mert Yılmaz",
     b: "Bulutlu Roastery",
-    q: "Mat selefon + sıcak yaldızla raf etkisi inanılmaz oldu. Online sipariş ettiğim için inanamıyorum.",
+    q: "Mat selefon + sıcak yaldız raf etkisi için yeterli oldu. Online sipariş süreci de yormadı.",
   },
   {
     n: "Ezgi & Can",
     b: "Atölye Niş",
-    q: "Sticker tarafı tam bizim için. Az adet, hızlı, harika kâğıt. Müşterilerimize hediye olarak veriyoruz.",
+    q: "Sticker tarafı bizim ihtiyacımıza uygun. Az adet, hızlı, kâğıdı sağlam. Müşterilerimize hediye olarak veriyoruz.",
   },
 ];
 
@@ -106,12 +106,12 @@ const TESTIMONIALS_EN = [
   {
     n: "Mert Yılmaz",
     b: "Bulutlu Roastery",
-    q: "The shelf impact with matte lamination + hot foil is incredible. Hard to believe I ordered online.",
+    q: "Matte lamination + hot foil gave us the shelf presence we needed. Ordering online didn't slow us down.",
   },
   {
     n: "Ezgi & Can",
     b: "Atölye Niş",
-    q: "Stickers are perfect for us. Low volume, fast, lovely paper. We send them as gifts to our customers.",
+    q: "Stickers fit our needs — low volume, fast, solid paper. We give them to our customers as a small gift.",
   },
 ];
 

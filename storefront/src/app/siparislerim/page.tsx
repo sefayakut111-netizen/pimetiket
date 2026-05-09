@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Icon } from "@/components/Icon";
+import { Pim } from "@/components/Pim";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
@@ -276,9 +277,11 @@ export default function SiparislerimPage() {
         {/* Orders list */}
         {hydrated && orders.length === 0 ? (
           <Card padding="p-12" className="text-center">
-            <Icon.Box size={48} className="text-gri-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">{c.emptyTitle}</h3>
-            <p className="text-base text-gri-700 mb-5">{c.emptyDesc}</p>
+            <Pim pose="think" size={140} />
+            <h3 className="mt-4 text-xl font-semibold mb-2">{c.emptyTitle}</h3>
+            <p className="text-base text-gri-700 mb-5 max-w-[480px] mx-auto leading-relaxed">
+              {c.emptyDesc}
+            </p>
             <div className="flex gap-3 justify-center flex-wrap">
               <Button variant="primary" size="lg" href="/etiket">
                 <Icon.Roll size={16} /> {c.printEtiket}
@@ -290,8 +293,8 @@ export default function SiparislerimPage() {
           </Card>
         ) : filtered.length === 0 ? (
           <Card padding="p-12" className="text-center">
-            <Icon.Box size={48} className="text-gri-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">{c.noResultsTitle}</h3>
+            <Pim pose="think" size={120} />
+            <h3 className="mt-4 text-xl font-semibold mb-2">{c.noResultsTitle}</h3>
             <p className="text-base text-gri-700 mb-5">{c.noResultsDesc}</p>
             <Button
               variant="secondary"

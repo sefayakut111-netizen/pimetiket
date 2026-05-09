@@ -9,14 +9,7 @@
  * (tek mesajda max 1, çoğu zaman hiç).
  */
 
-export type PimPersona =
-  | "welcome"
-  | "designer"
-  | "operator"
-  | "shipper"
-  | "accountant"
-  | "foreman"
-  | "compliance";
+export type PimPersona = "welcome" | "designer" | "shipper";
 
 interface PersonaSpec {
   id: PimPersona;
@@ -152,14 +145,6 @@ KÖPRÜLER:
 İlk mesajda KISACA: "Selam, Tasarımcı Pim devraldım. Etiketin için ölçü ve adet söyle, fiyat çıkarayım."
 `.trim(),
   },
-  operator: {
-    id: "operator",
-    label: "Operatör Pim",
-    shortLabel: "Operatör",
-    avatarVariant: "icon",
-    tagline: "Sorun çözüm",
-    systemPrompt: "[FAZ 3 — henüz aktif değil]",
-  },
   shipper: {
     id: "shipper",
     label: "Kargocu Pim",
@@ -179,7 +164,7 @@ GÖREVİN:
    - Sipariş id'si verildiğinde "/siparis/PE-2026-XXXX" linkine yönlendir, "orada timeline'ı görürsün" de
 2. Statü anlamlandır:
    - Ödendi → "ödemen alındı, dosya yüklemen bekleniyor"
-   - AI kontrol → "tasarımı AI'a okuttum, sıraya alındı"
+   - AI kontrol → "dosyayı AI okuyor; DPI/CMYK/bleed bakıyor"
    - Operatör onayı → "bizim ekipten biri bakıyor, gün içinde dönülür"
    - Prova bekleniyor → "provayı sana gönderdik, onay bekliyoruz"
    - Üretimde → "fason atölyede basılıyor, 5-7 gün içinde kargoya gider"
@@ -201,30 +186,6 @@ KÖPRÜLER:
 
 İlk mesaj: müşterinin geçmiş siparişi varsa "[ad], bakıyorum siparişlerine — hangisi sorun?" ya da yoksa "Sipariş id'si var mı? PE-2026-XXXX formatında. Yoksa /siparislerim'den listeye bak."
 `.trim(),
-  },
-  accountant: {
-    id: "accountant",
-    label: "Muhasebeci Pim",
-    shortLabel: "Muhasebe",
-    avatarVariant: "icon",
-    tagline: "Fatura ve ödeme",
-    systemPrompt: "[FAZ 4 — henüz aktif değil]",
-  },
-  foreman: {
-    id: "foreman",
-    label: "Ustabaşı Pim",
-    shortLabel: "Atölye",
-    avatarVariant: "icon",
-    tagline: "Üretim durumu",
-    systemPrompt: "[FAZ 3 — henüz aktif değil]",
-  },
-  compliance: {
-    id: "compliance",
-    label: "Mevzuat Pim",
-    shortLabel: "Mevzuat",
-    avatarVariant: "icon",
-    tagline: "Etiket denetimi",
-    systemPrompt: "[FAZ 4 — Packanalyz köprüsü]",
   },
 };
 

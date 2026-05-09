@@ -39,25 +39,25 @@ export const en: TranslationDict = {
     returns: "My returns",
   },
   home: {
-    eyebrow: "Türkiye's smart digital print workshop",
+    eyebrow: "Digital printing from our Bursa workshop",
     h1Brand: "Your brand's label,",
     h1Idea: "your idea's sticker.",
     heroDescription:
-      "Digital printing starting from 1000 units, AI-checked, at your door in ten days. Pim helps you along the way.",
+      "Labels from 1,000, stickers from 25. AI checks your file and tells you what's missing — Bursa to your door in 10 days.",
     ctaEtiket: "Print labels",
     ctaSticker: "Print stickers",
-    socialProof: "Trusted by 2,400+ Turkish brands",
-    aiPill: "AI check",
+    socialProof: "Trusted by brands across Türkiye",
+    aiPill: "AI file check",
     deliveryPill: "10-day delivery",
-    pillar1Title: "Start from 1000 units",
+    pillar1Title: "Labels from 1,000, stickers from 25",
     pillar1Desc:
-      "Print without compromising on quality even at low volumes. No stocking, fully flexible.",
-    pillar2Title: "AI checks your design",
+      "Flexible start at low volumes. No stocking — print what you need.",
+    pillar2Title: "AI checks your file",
     pillar2Desc:
-      "Your file is reviewed in seconds — DPI, brand consistency, typos. We flag what's missing.",
+      "DPI, CMYK, bleed — if anything's missing, we flag it before production.",
     pillar3Title: "10 days to your door",
     pillar3Desc:
-      "From Bursa to your doorstep. Transparent production tracking, real-time status, and updates from Pim.",
+      "Bursa to your doorstep. Transparent production tracking and updates from Pim.",
     productEtiketSub: "Roll labels — cosmetics, food, beverages, perfume.",
     productStickerSub: "Single die-cut or sheet labels — laptop, notebook, campaign.",
     productPriceLabel: "price, starting from",
@@ -68,7 +68,7 @@ export const en: TranslationDict = {
     step1: "Configure",
     step1Desc: "Material, finish, size, quantity — instant pricing.",
     step2: "Upload your file",
-    step2Desc: "PDF, AI, EPS… AI checks in seconds.",
+    step2Desc: "PDF, AI, EPS… AI checks your file and flags missing DPI/CMYK/bleed.",
     step3: "Approve the proof",
     step3Desc: "See how it'll look on the roll, then approve.",
     step4: "Receive",
@@ -80,7 +80,7 @@ export const en: TranslationDict = {
     faqAll: "All FAQ",
     bottomCtaTitle: "Let's get started.",
     bottomCtaDesc:
-      "Take a quick tour with Pim for your first order. 5-minute config, instant pricing, the rest is on us.",
+      "Configure, see the price, add to cart. Pim is in the bottom-right — ask if you get stuck.",
     bottomCtaPrimary: "Print labels",
     bottomCtaSecondary: "Browse stickers",
   },
@@ -106,7 +106,7 @@ export const en: TranslationDict = {
   sticker: {
     pageTitle: "Configure your sticker",
     pageSubtitle:
-      "Campaign, gift, personal — stickers taste great even at small volumes.",
+      "Campaign, gift, personal — start from 25, increase by 25.",
     pillStart: "Starts from 25 units",
     cutTypeTitle: "Cut Type",
     cutTypeHint: "sheet or individually cut",
