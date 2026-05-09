@@ -34,6 +34,14 @@ import {
   createCustomerOrder,
   addDaysIso,
 } from "@/lib/customer-order";
+import {
+  validateCoupon,
+  type CouponValidateResult,
+} from "@/lib/customer-coupon";
+import {
+  listMyWalletTransactions,
+  summarizeWallet,
+} from "@/lib/customer-wallet";
 
 const SAVED_ADDRESSES = [
   {
@@ -89,6 +97,17 @@ export default function OdemePage() {
   const [acceptSatis, setAcceptSatis] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Kupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponResult, setCouponResult] = useState<CouponValidateResult | null>(
+    null
+  );
+  const [couponChecking, setCouponChecking] = useState(false);
+
+  // Cüzdan state
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+
   // Cart snapshot — sayfa mount'ta okunur, hydration'a kadar boş.
   const [cartItems, setCartItems] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -103,6 +122,11 @@ export default function OdemePage() {
         router.replace("/sepet");
       }
     });
+    // Cüzdan bakiyesi
+    void listMyWalletTransactions().then((txs) => {
+      const s = summarizeWallet(txs);
+      setWalletBalance(Math.max(0, s.balance));
+    });
   }, [router]);
 
   const summary = summarizeCustomerCart();
@@ -113,6 +137,34 @@ export default function OdemePage() {
 
   const goNext = () => setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
   const goPrev = () => setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
+
+  // Kupon kontrol — input'u butonla validate et
+  const onCheckCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponChecking(true);
+    const r = await validateCoupon(code, subtotal);
+    setCouponResult(r);
+    setCouponChecking(false);
+  };
+
+  // İndirim sonrası hesaplanan toplam (UI display için)
+  const couponDiscount =
+    couponResult?.ok && couponResult.kind !== "free_ship"
+      ? couponResult.discount
+      : 0;
+  const couponFreeShip = couponResult?.ok && couponResult.kind === "free_ship";
+  const effectiveShipping = couponFreeShip ? 0 : shipping;
+  const effectiveTotal = subtotal - couponDiscount + effectiveShipping;
+
+  // Cüzdan ile ödenecek tutar — bakiye sınırlı, total'ı geçmez,
+  // min 1 TL kart kalsın diye total - 1'i geçmez (full wallet için ayrı endpoint)
+  const walletApplied = useWallet
+    ? Math.min(walletBalance, Math.max(0, effectiveTotal - 1))
+    : 0;
+  const cardAmount = Math.max(0, effectiveTotal - walletApplied);
+  // Cüzdan +%2 indirim — gelecek faz, şimdilik hesapsız
+  void cardAmount;
 
   const submit = async () => {
     if (cartItems.length === 0) return;
@@ -144,8 +196,10 @@ export default function OdemePage() {
             taxOffice: invoiceType === "corporate" ? taxOffice : undefined,
           },
           subtotal,
-          shipping,
-          total,
+          shipping: effectiveShipping,
+          total: effectiveTotal,
+          couponCode: couponResult?.ok ? couponCode.trim() : undefined,
+          walletAmount: walletApplied,
         }),
       });
 
@@ -430,11 +484,121 @@ export default function OdemePage() {
             )}
 
             {step === 3 && (
+              <>
+              {/* Kupon */}
+              <Card padding="p-5" className="mb-4">
+                <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                  <Icon.Sparkle size={16} className="text-pim-mercan" />
+                  Kupon kodun var mı?
+                </h3>
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponResult(null);
+                    }}
+                    placeholder="ÖRN: HOSGELDIN10"
+                    className="flex-1 uppercase tracking-wider"
+                    disabled={couponChecking || couponResult?.ok === true}
+                  />
+                  {couponResult?.ok ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setCouponCode("");
+                        setCouponResult(null);
+                      }}
+                    >
+                      Kaldır
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={onCheckCoupon}
+                      disabled={couponChecking || couponCode.trim().length < 2}
+                    >
+                      {couponChecking ? "..." : "Uygula"}
+                    </Button>
+                  )}
+                </div>
+                {couponResult && (
+                  <div className="mt-3 text-[13px] leading-relaxed">
+                    {couponResult.ok ? (
+                      <span className="text-yesil font-semibold flex items-center gap-1.5">
+                        <Icon.Check size={14} />
+                        {couponResult.kind === "free_ship"
+                          ? "Kargo ücretsiz!"
+                          : `İndirim: ${Math.round(
+                              couponResult.discount
+                            ).toLocaleString("tr-TR")} TL`}
+                      </span>
+                    ) : (
+                      <span className="text-kirmizi">
+                        {couponResult.reason === "invalid_or_expired"
+                          ? "Bu kupon kodu geçersiz veya süresi dolmuş."
+                          : couponResult.reason === "min_subtotal"
+                            ? `Min sepet tutarı ${couponResult.minSubtotal} TL — bu indirimden faydalanmıyor.`
+                            : couponResult.reason === "user_limit_reached"
+                              ? "Bu kuponu zaten kullandın."
+                              : couponResult.reason === "total_limit_reached"
+                                ? "Bu kuponun kullanım limiti doldu."
+                                : "Kupon uygulanamadı, tekrar dene."}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Card>
+
+              {/* Cüzdan — bakiye varsa */}
+              {walletBalance > 0 && (
+                <Card padding="p-5" className="mb-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useWallet}
+                      onChange={(e) => setUseWallet(e.target.checked)}
+                      className="mt-1 accent-pim-mercan shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-base font-semibold flex items-center gap-2">
+                          <Icon.Wallet size={16} className="text-yesil" />
+                          Cüzdan bakiyesini kullan
+                        </h3>
+                        <span className="text-[13px] font-semibold text-yesil">
+                          Bakiye: {fmt(walletBalance)} {x.currency}
+                        </span>
+                      </div>
+                      {useWallet && walletApplied > 0 && (
+                        <p className="text-[13px] text-gri-700 mt-2 leading-relaxed">
+                          <strong>{fmt(walletApplied)} {x.currency}</strong>{" "}
+                          cüzdandan,{" "}
+                          <strong>{fmt(effectiveTotal - walletApplied)} {x.currency}</strong>{" "}
+                          karttan tahsil edilir.
+                        </p>
+                      )}
+                      {useWallet && walletApplied === 0 && (
+                        <p className="text-[13px] text-gri-500 mt-2">
+                          Tutar düşük — cüzdan kullanılamıyor.
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                </Card>
+              )}
+
+              {/* Ödeme bilgilendirme */}
               <Card padding="p-6">
                 <h2 className="text-xl font-semibold mb-1">{t.checkout.cardInfo}</h2>
                 <p className="text-[13px] text-gri-700 mb-5 flex items-center gap-2">
                   <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
                     🔒 3D Secure
+                  </span>
+                  <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold">
+                    iyzico ile güvenli
                   </span>
                 </p>
 
@@ -519,11 +683,14 @@ export default function OdemePage() {
                       !acceptSatis || loading || cartItems.length === 0
                     }
                   >
-                    {loading ? t.checkout.processing : t.checkout.payNow(fmt(total))}{" "}
+                    {loading
+                      ? t.checkout.processing
+                      : t.checkout.payNow(fmt(effectiveTotal))}{" "}
                     {!loading && <Icon.ArrowR />}
                   </Button>
                 </div>
               </Card>
+              </>
             )}
           </div>
 
@@ -560,26 +727,53 @@ export default function OdemePage() {
                     {fmt(subtotal)} {x.currency}
                   </span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-yesil">
+                    <span className="font-semibold">
+                      Kupon: {couponCode}
+                    </span>
+                    <span className="font-semibold tabular-nums">
+                      −{fmt(couponDiscount)} {x.currency}
+                    </span>
+                  </div>
+                )}
+                {walletApplied > 0 && (
+                  <div className="flex justify-between text-yesil">
+                    <span className="font-semibold inline-flex items-center gap-1">
+                      <Icon.Wallet size={12} /> Cüzdan
+                    </span>
+                    <span className="font-semibold tabular-nums">
+                      −{fmt(walletApplied)} {x.currency}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gri-700">{t.cart.shipping}</span>
                   <span className="font-semibold tabular-nums">
-                    {shipping === 0 ? (
+                    {effectiveShipping === 0 ? (
                       <span className="text-yesil">{t.cart.free}</span>
                     ) : (
-                      `${fmt(shipping)} ${x.currency}`
+                      `${fmt(effectiveShipping)} ${x.currency}`
                     )}
                   </span>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
-                <span className="font-semibold">{t.cart.total}</span>
+                <span className="font-semibold">
+                  {walletApplied > 0 ? "Karta" : t.cart.total}
+                </span>
                 <span className="text-2xl font-bold tabular-nums">
-                  {fmt(total)}{" "}
+                  {fmt(effectiveTotal - walletApplied)}{" "}
                   <span className="text-base font-semibold text-gri-700">
                     {x.currency}
                   </span>
                 </span>
               </div>
+              {walletApplied > 0 && (
+                <div className="text-[11.5px] text-gri-700 text-right mt-1">
+                  Toplam: {fmt(effectiveTotal)} {x.currency}
+                </div>
+              )}
               <div className="text-[11.5px] text-gri-700 text-right">
                 {t.cart.vatIncluded}
               </div>
