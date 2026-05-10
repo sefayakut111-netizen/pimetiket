@@ -138,13 +138,42 @@ function AuthInner() {
           toast.error(`Üyelik hatası: ${error.message}`);
         }
       } else {
-        // Email confirmation gerekiyorsa user.confirmation_sent_at vardır,
-        // session null olur. Otomatik signin'se session vardır.
+        // Email confirmation gerekiyorsa session null olur. Resend gelene
+        // kadar otomatik onay endpoint'iyle kullanıcıyı geçir.
         if (data.session) {
+          // Email confirmation kapalı veya zaten confirmed
           toast.success("Hoş geldin!");
           router.push(next);
           router.refresh();
         } else {
+          // Mail bekliyor — auto-confirm endpoint'iyle bypass
+          try {
+            const confirmRes = await fetch("/api/auth/auto-confirm", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
+            });
+            if (confirmRes.ok) {
+              // Otomatik onay başarılı → şifreyle hemen login ol
+              const { error: signInErr } =
+                await supabase.auth.signInWithPassword({ email, password });
+              if (!signInErr) {
+                toast.success("Hesabın hazır, hoş geldin!");
+                router.push(next);
+                router.refresh();
+                return;
+              }
+              // Login fail → success ekranı göster, kullanıcı manuel girsin
+              toast.info("Hesabın açıldı, lütfen giriş yap");
+              setMode("login");
+              setPassword("");
+              setPasswordConfirm("");
+              return;
+            }
+          } catch (e) {
+            console.error("[auth] auto-confirm error:", e);
+          }
+          // Fallback: success ekranı (mail bekleme görünümü)
           setSignupSuccess(true);
         }
       }

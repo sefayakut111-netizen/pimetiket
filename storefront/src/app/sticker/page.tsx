@@ -26,6 +26,7 @@ import {
   productSchema,
   breadcrumbSchema,
 } from "@/components/SchemaJsonLd";
+import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { Icon } from "@/components/Icon";
 import {
   FormSection,
@@ -678,6 +679,7 @@ export default function StickerPage() {
           </div>
         </div>
       </div>
+      <ProductReviews productType="sticker" limit={6} />
     </main>
   );
 }

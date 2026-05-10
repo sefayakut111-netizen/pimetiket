@@ -1,8 +1,14 @@
 /**
  * Pim Etiket — /admin/yorumlar
  *
- * Müşteri yorumları moderasyon: pending → approved/rejected.
- * localStorage demo; backend swap'te `reviews` tablosuna geçer.
+ * Müşteri yorumları moderasyon: pending → published / rejected / hidden.
+ * Supabase reviews tablosundan okur (servisrole endpoint).
+ *
+ * Status mapping:
+ *   - pending: müşteri yazdı, admin onay bekliyor
+ *   - published: onaylandı, public görünür
+ *   - rejected: reddedildi (görünmez, kayıt kalır)
+ *   - hidden: yayından kaldırıldı (sonradan)
  */
 
 "use client";
@@ -10,162 +16,135 @@
 import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
-const STORAGE_KEY = "pim_reviews_v1";
+type ReviewStatus = "pending" | "published" | "rejected" | "hidden";
 
-type ReviewStatus = "pending" | "approved" | "rejected";
-
-interface Review {
+interface DbReview {
   id: string;
-  customerName: string;
-  orderId: string;
-  rating: number; // 1-5
-  comment: string;
+  user_id: string | null;
+  order_id: string | null;
+  rating: number;
+  title: string | null;
+  body: string | null;
   status: ReviewStatus;
-  createdAt: number;
-  /** Anasayfada paylaşılsın mı (kullanıcı tercihi + admin onay) */
-  showOnHomepage?: boolean;
-  /** Admin elle "öne çıkar" işaretler — anasayfada önce gösterilir */
-  featured?: boolean;
+  show_on_homepage: boolean | null;
+  featured: boolean | null;
+  display_name: string | null;
+  product_type: string | null;
+  helpful_count: number | null;
+  created_at: string;
+  moderation_note: string | null;
 }
 
-const SAMPLE_REVIEWS: Review[] = [
-  {
-    id: "r1",
-    customerName: "Defne Karaca",
-    orderId: "PE-2026-3201",
-    rating: 5,
-    comment:
-      "Kraft etiketleri zamanında geldi. Mat selefon kaplama temiz, baskıda renk kayması yok. Tasarımda küçük bir tipo vardı, dosya kontrolde uyarı geldi, düzeltip tekrar yükledim — sorunsuz çıktı.",
-    status: "pending",
-    createdAt: Date.now() - 86400_000,
+const STATUS_LABEL: Record<
+  ReviewStatus,
+  { label: string; color: string; bg: string }
+> = {
+  pending: {
+    label: "Beklemede",
+    color: "text-[#7A560A]",
+    bg: "bg-sari-soft",
   },
-  {
-    id: "r2",
-    customerName: "Mert Yılmaz",
-    orderId: "PE-2026-3105",
-    rating: 4,
-    comment:
-      "Holografik sticker rengi beklediğim gibi çıktı. Kargo 2 gün geç geldi (Yurtiçi), ürünlerle ilgili sorun yok. Bir sonrakinde Aras tercih edeceğim.",
-    status: "pending",
-    createdAt: Date.now() - 2 * 86400_000,
+  published: { label: "Yayında", color: "text-yesil", bg: "bg-yesil-soft" },
+  rejected: {
+    label: "Reddedildi",
+    color: "text-kirmizi",
+    bg: "bg-kirmizi/10",
   },
-  {
-    id: "r3",
-    customerName: "Ezgi Kaplan",
-    orderId: "PE-2026-2998",
-    rating: 5,
-    comment:
-      "İkinci siparişim. İlkinde olduğu gibi ölçü ve renk birebir tutuyor. Tekrar baskı için /tasarımlarım'dan tek tıkla yeniden sipariş açabildim, çok pratik.",
-    status: "approved",
-    createdAt: Date.now() - 5 * 86400_000,
-  },
-  {
-    id: "r4",
-    customerName: "Burak Aydın",
-    orderId: "PE-2026-2876",
-    rating: 4,
-    comment:
-      "Beyaz semi-glos etiket — yağa dayanıklı yazıyordu, denedim, ürün test ettiğim zeytinyağı şişesinde 2 hafta sorun yok. Ufak bir not: prova ekranında renk biraz daha açık görünüyor, gerçeği gelene kadar tedirgin oldum.",
-    status: "approved",
-    createdAt: Date.now() - 9 * 86400_000,
-  },
-  {
-    id: "r5",
-    customerName: "Ayşegül Demir",
-    orderId: "PE-2026-2734",
-    rating: 5,
-    comment:
-      "Soft touch kaplama harikaya yakın :) — kraft + soft touch markamızı bir tık üst segmente taşıdı diyebilirim. 60×80mm 5000 adet, fiyat-performans iyi.",
-    status: "approved",
-    createdAt: Date.now() - 12 * 86400_000,
-  },
-];
-
-function loadReviews(): Review[] {
-  if (typeof window === "undefined") return SAMPLE_REVIEWS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE_REVIEWS));
-      return SAMPLE_REVIEWS;
-    }
-    return JSON.parse(raw) as Review[];
-  } catch {
-    return SAMPLE_REVIEWS;
-  }
-}
-
-function saveReviews(reviews: Review[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
-}
+  hidden: { label: "Yayından kaldırıldı", color: "text-gri-500", bg: "bg-gri-100" },
+};
 
 export default function AdminYorumlarPage() {
   const toast = useToast();
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<DbReview[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ReviewStatus | "all">("pending");
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const fetchReviews = async () => {
+    try {
+      const res = await fetch("/api/admin/reviews", { cache: "no-store" });
+      if (!res.ok) {
+        toast.error("Yorumlar yüklenemedi");
+        setReviews([]);
+        return;
+      }
+      const json = (await res.json()) as { reviews: DbReview[] };
+      setReviews(json.reviews ?? []);
+    } catch (e) {
+      console.error("[admin/yorumlar] fetch error:", e);
+      toast.error("Bağlantı hatası");
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setReviews(loadReviews());
+    void fetchReviews();
   }, []);
 
-  const persist = (next: Review[]) => {
-    setReviews(next);
-    saveReviews(next);
-  };
+  const updateReview = async (
+    id: string,
+    patch: {
+      status?: ReviewStatus;
+      featured?: boolean;
+      showOnHomepage?: boolean;
+    }
+  ) => {
+    setUpdating(id);
+    try {
+      const res = await fetch(`/api/admin/reviews/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Güncelleme başarısız");
+        return;
+      }
+      const json = (await res.json()) as { review: DbReview };
+      setReviews((arr) =>
+        arr.map((r) => (r.id === id ? json.review : r))
+      );
 
-  const updateStatus = (id: string, status: ReviewStatus) => {
-    const next = reviews.map((r) =>
-      r.id === id
-        ? {
-            ...r,
-            status,
-            // Onaylanırken default: anasayfada da paylaşılsın
-            showOnHomepage: status === "approved" ? r.showOnHomepage ?? true : r.showOnHomepage,
-          }
-        : r
-    );
-    persist(next);
-    toast.success(
-      status === "approved" ? "Yorum onaylandı" : "Yorum reddedildi"
-    );
-  };
-
-  const toggleFeatured = (id: string) => {
-    const next = reviews.map((r) =>
-      r.id === id ? { ...r, featured: !r.featured } : r
-    );
-    persist(next);
-    const r = next.find((x) => x.id === id);
-    toast.success(r?.featured ? "Öne çıkarıldı" : "Öne çıkarma kaldırıldı");
-  };
-
-  const toggleHomepage = (id: string) => {
-    const next = reviews.map((r) =>
-      r.id === id ? { ...r, showOnHomepage: !r.showOnHomepage } : r
-    );
-    persist(next);
-    const r = next.find((x) => x.id === id);
-    toast.success(
-      r?.showOnHomepage
-        ? "Anasayfada gösterilecek"
-        : "Anasayfadan kaldırıldı (ürün sayfasında kalır)"
-    );
+      // User feedback
+      if (patch.status === "published") toast.success("Yorum yayınlandı");
+      else if (patch.status === "rejected") toast.success("Yorum reddedildi");
+      else if (patch.status === "hidden") toast.success("Yayından kaldırıldı");
+      else if (patch.featured !== undefined)
+        toast.success(
+          patch.featured ? "Öne çıkarıldı" : "Öne çıkarma kaldırıldı"
+        );
+      else if (patch.showOnHomepage !== undefined)
+        toast.success(
+          patch.showOnHomepage
+            ? "Anasayfada gösterilecek"
+            : "Anasayfadan kaldırıldı"
+        );
+    } catch (e) {
+      console.error("[admin/yorumlar] update error:", e);
+      toast.error("Bağlantı hatası");
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const filtered =
     filter === "all" ? reviews : reviews.filter((r) => r.status === filter);
 
   const pending = reviews.filter((r) => r.status === "pending").length;
-  const approved = reviews.filter((r) => r.status === "approved").length;
+  const published = reviews.filter((r) => r.status === "published").length;
+  const rejected = reviews.filter((r) => r.status === "rejected").length;
+  const hidden = reviews.filter((r) => r.status === "hidden").length;
   const avgRating =
-    reviews.filter((r) => r.status === "approved").length > 0
+    published > 0
       ? reviews
-          .filter((r) => r.status === "approved")
-          .reduce((s, r) => s + r.rating, 0) / approved
+          .filter((r) => r.status === "published")
+          .reduce((s, r) => s + r.rating, 0) / published
       : 0;
 
   return (
@@ -177,8 +156,8 @@ export default function AdminYorumlarPage() {
             Yorumlar
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {pending} beklemede · {approved} onaylı · ortalama{" "}
-            {avgRating.toFixed(1)}/5
+            {pending} beklemede · {published} yayında · ortalama{" "}
+            {avgRating > 0 ? `${avgRating.toFixed(1)}/5` : "—"}
           </p>
         </div>
 
@@ -189,11 +168,9 @@ export default function AdminYorumlarPage() {
               [
                 { id: "all", label: `Tümü (${reviews.length})` },
                 { id: "pending", label: `Beklemede (${pending})` },
-                { id: "approved", label: `Onaylı (${approved})` },
-                {
-                  id: "rejected",
-                  label: `Reddedilen (${reviews.filter((r) => r.status === "rejected").length})`,
-                },
+                { id: "published", label: `Yayında (${published})` },
+                { id: "rejected", label: `Reddedilen (${rejected})` },
+                { id: "hidden", label: `Yayından kalktı (${hidden})` },
               ] as const
             ).map((f) => (
               <button
@@ -213,54 +190,65 @@ export default function AdminYorumlarPage() {
           </div>
         </Card>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <Card padding="p-12" className="text-center">
+            <div className="text-gri-500 text-[14px]">Yükleniyor…</div>
+          </Card>
+        ) : filtered.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Pim pose="happy" size={140} />
-            <h3 className="mt-4 text-xl font-semibold">Sonuç yok</h3>
+            <h3 className="mt-4 text-xl font-semibold">
+              {filter === "pending" ? "Bekleyen yorum yok 🎉" : "Sonuç yok"}
+            </h3>
             <p className="mt-2 text-base text-gri-700">
-              Bu filtrede yorum yok.
+              {filter === "pending"
+                ? "Tüm yorumlar incelendi. Yeni geldikçe burada görünür."
+                : "Bu filtrede yorum yok."}
             </p>
           </Card>
         ) : (
           <div className="flex flex-col gap-3">
             {filtered.map((r) => {
-              const date = new Date(r.createdAt).toLocaleDateString("tr-TR", {
+              const meta = STATUS_LABEL[r.status];
+              const date = new Date(r.created_at).toLocaleDateString("tr-TR", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               });
+              const name = r.display_name ?? "Anonim";
+              const isUpdating = updating === r.id;
               return (
                 <Card key={r.id} padding="p-5">
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2.5 mb-2 flex-wrap">
                         <span className="font-semibold text-base text-lacivert">
-                          {r.customerName}
+                          {name}
                         </span>
-                        <span className="font-mono text-[11.5px] text-gri-500">
-                          · {r.orderId}
-                        </span>
+                        {r.order_id && (
+                          <span className="font-mono text-[11.5px] text-gri-500">
+                            · {r.order_id}
+                          </span>
+                        )}
+                        {r.product_type && (
+                          <span className="text-[11.5px] text-gri-500">
+                            · {r.product_type}
+                          </span>
+                        )}
                         <span className="text-[11.5px] text-gri-500">
                           · {date}
                         </span>
                         <span
                           className={cn(
                             "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
-                            r.status === "approved"
-                              ? "bg-yesil-soft text-yesil"
-                              : r.status === "rejected"
-                                ? "bg-kirmizi/10 text-kirmizi"
-                                : "bg-sari-soft text-[#7A560A]"
+                            meta.bg,
+                            meta.color
                           )}
                         >
-                          {r.status === "approved"
-                            ? "Onaylı"
-                            : r.status === "rejected"
-                              ? "Reddedildi"
-                              : "Beklemede"}
+                          {meta.label}
                         </span>
                       </div>
-                      <div className="flex gap-px text-sari mb-2">
+                      <div className="flex gap-px text-sari mb-2 items-center">
                         {[0, 1, 2, 3, 4].map((i) => (
                           <Icon.Star
                             key={i}
@@ -274,35 +262,55 @@ export default function AdminYorumlarPage() {
                           {r.rating}/5
                         </span>
                       </div>
+                      {r.title && (
+                        <p className="text-[14px] font-semibold text-lacivert mb-1">
+                          {r.title}
+                        </p>
+                      )}
                       <p className="text-[14px] text-gri-700 leading-relaxed">
-                        &ldquo;{r.comment}&rdquo;
+                        {r.body ? `"${r.body}"` : "(Yazılı yorum yok)"}
                       </p>
+                      {r.moderation_note && (
+                        <p className="mt-2 text-[12px] text-gri-500 italic">
+                          Mod notu: {r.moderation_note}
+                        </p>
+                      )}
                     </div>
+
+                    {/* Actions */}
                     {r.status === "pending" ? (
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => updateStatus(r.id, "approved")}
-                          className="!bg-yesil hover:!bg-[#22a862]"
+                      <div className="flex flex-col gap-2 shrink-0 min-w-[160px]">
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            updateReview(r.id, { status: "published" })
+                          }
+                          className="h-9 px-3 rounded-lg text-[12.5px] font-semibold bg-yesil text-white hover:bg-[#22a862] flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <Icon.Check size={12} /> Onayla
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => updateStatus(r.id, "rejected")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            updateReview(r.id, { status: "rejected" })
+                          }
+                          className="h-9 px-3 rounded-lg text-[12.5px] font-semibold bg-white ring-1 ring-gri-200 hover:ring-kirmizi hover:text-kirmizi flex items-center justify-center disabled:opacity-50"
                         >
                           Reddet
-                        </Button>
+                        </button>
                       </div>
-                    ) : r.status === "approved" ? (
+                    ) : r.status === "published" ? (
                       <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
                         <button
                           type="button"
-                          onClick={() => toggleFeatured(r.id)}
+                          disabled={isUpdating}
+                          onClick={() =>
+                            updateReview(r.id, { featured: !r.featured })
+                          }
                           className={cn(
-                            "h-9 px-3 rounded-lg text-[12.5px] font-semibold ring-1 transition-colors flex items-center justify-center gap-1.5",
+                            "h-9 px-3 rounded-lg text-[12.5px] font-semibold ring-1 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50",
                             r.featured
                               ? "bg-pim-mercan text-white ring-pim-mercan"
                               : "bg-white text-gri-700 ring-gri-200 hover:ring-pim-mercan hover:text-pim-mercan"
@@ -313,26 +321,49 @@ export default function AdminYorumlarPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => toggleHomepage(r.id)}
+                          disabled={isUpdating}
+                          onClick={() =>
+                            updateReview(r.id, {
+                              showOnHomepage: !r.show_on_homepage,
+                            })
+                          }
                           className={cn(
-                            "h-9 px-3 rounded-lg text-[12.5px] font-semibold ring-1 transition-colors flex items-center justify-center gap-1.5",
-                            r.showOnHomepage !== false
+                            "h-9 px-3 rounded-lg text-[12.5px] font-semibold ring-1 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50",
+                            r.show_on_homepage
                               ? "bg-yesil-soft text-yesil ring-yesil/30"
                               : "bg-gri-100 text-gri-700 ring-gri-200"
                           )}
                         >
                           <Icon.Home size={12} />
-                          {r.showOnHomepage !== false ? "Anasayfada ✓" : "Sadece ürün sayfası"}
+                          {r.show_on_homepage
+                            ? "Anasayfada ✓"
+                            : "Sadece ürün sayfası"}
                         </button>
                         <button
                           type="button"
-                          onClick={() => updateStatus(r.id, "rejected")}
-                          className="h-8 text-[11.5px] text-gri-500 hover:text-kirmizi"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            updateReview(r.id, { status: "hidden" })
+                          }
+                          className="h-8 text-[11.5px] text-gri-500 hover:text-kirmizi disabled:opacity-50"
                         >
                           Yayından kaldır
                         </button>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="flex flex-col gap-2 shrink-0 min-w-[160px]">
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            updateReview(r.id, { status: "published" })
+                          }
+                          className="h-9 px-3 rounded-lg text-[12.5px] font-semibold bg-white ring-1 ring-gri-200 hover:ring-yesil hover:text-yesil flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          <Icon.Check size={12} /> Yayına geri al
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
