@@ -49,7 +49,21 @@ function AuthPageInner() {
 
   const onMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || !configured) return;
+    // Validation feedback — silent fail değil, açık mesaj
+    if (!email || !email.includes("@")) {
+      toast.error("Geçerli bir e-posta gir");
+      return;
+    }
+    if (!acceptKvkk) {
+      toast.error("Önce KVKK ve Şartlar'ı işaretle");
+      return;
+    }
+    if (!configured) {
+      toast.error(
+        "Auth altyapısı henüz yapılandırılmadı, birazdan tekrar dene"
+      );
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();

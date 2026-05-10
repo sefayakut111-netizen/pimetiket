@@ -114,7 +114,7 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
       role="status"
       aria-live="polite"
       aria-atomic="false"
-      className="fixed top-20 right-4 z-[100] flex flex-col gap-2 pointer-events-none"
+      className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-[100] flex flex-col-reverse gap-2 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-[380px]"
     >
       {items.map((t) => (
         <ToastCard key={t.id} item={t} />

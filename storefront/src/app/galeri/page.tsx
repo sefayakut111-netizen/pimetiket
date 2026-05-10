@@ -295,24 +295,7 @@ export default function GaleriPage() {
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-10 max-w-[680px] mx-auto">
-          {[
-            { label: c.statTotal, value: "1.2M+", sub: c.statTotalSub },
-            { label: c.statBrand, value: "2400+", sub: c.statBrandSub },
-            { label: c.statCity, value: "67", sub: c.statCitySub },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
-                {s.label}
-              </div>
-              <div className="text-[28px] md:text-[36px] font-bold tracking-tight text-pim-mercan tabular-nums leading-tight mt-1">
-                {s.value}
-              </div>
-              <div className="text-[11.5px] text-gri-500">{s.sub}</div>
-            </div>
-          ))}
-        </div>
+        {/* Stats — UX audit P1-11: gerçek metrikler birikene kadar gizlendi */}
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

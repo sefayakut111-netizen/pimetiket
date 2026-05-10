@@ -20,7 +20,7 @@ const COPY = {
     intro:
       "Aklındakini en hızlı şekilde çözmek için 3 farklı kanal ve sağ alt köşede bekleyen Pim — istediğin yere yaz.",
     waTitle: "Pim Sohbet",
-    waDesc: "Sağ alt köşedeki Pim'e tıkla, GPT-4 destekli AI hemen yanıtlar.",
+    waDesc: "Sağ alt köşedeki Pim'e tıkla, yapay zeka destekli sohbet hemen yanıtlar.",
     waCta: "Pim'e yaz",
     emailTitle: "E-posta",
     emailDesc: "Detaylı sorular, teklif istekleri, B2B partnership için.",
@@ -57,7 +57,7 @@ const COPY = {
       "Three different channels and Pim waiting in the bottom-right corner — pick whichever you prefer.",
     waTitle: "Pim Chat",
     waDesc:
-      "Click Pim in the bottom-right corner — GPT-4 powered AI replies instantly.",
+      "Click Pim in the bottom-right corner — AI-powered chat replies instantly.",
     waCta: "Chat with Pim",
     emailTitle: "Email",
     emailDesc: "Detailed questions, RFQs, B2B partnerships.",

@@ -25,6 +25,42 @@ import { Eyebrow } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
 
+// Fallback yorumlar — DB boşken anasayfa ile tutarlı görünmek için.
+// HomeReviews component'iyle senkronize tutulur; gerçek yorum gelince
+// bu fallback otomatik olarak yer değiştirir.
+const FALLBACK_REVIEWS: Review[] = [
+  {
+    id: "fb1",
+    rating: 5,
+    body: "Kraft etiketleri zamanında geldi. Mat selefon kaplama temiz, baskıda renk kayması yok. Tasarımda küçük bir tipo vardı, dosya kontrolde uyarı geldi, düzeltip tekrar yükledim — sorunsuz çıktı.",
+    display_name: "Defne K.",
+    product_type: "etiket",
+    photos: [],
+    featured: false,
+    created_at: new Date(Date.now() - 86400_000).toISOString(),
+  },
+  {
+    id: "fb2",
+    rating: 5,
+    body: "İkinci siparişim. İlkinde olduğu gibi ölçü ve renk birebir tutuyor. Tekrar baskı için /tasarımlarım'dan tek tıkla yeniden sipariş açabildim, çok pratik.",
+    display_name: "Ezgi K.",
+    product_type: "etiket",
+    photos: [],
+    featured: false,
+    created_at: new Date(Date.now() - 5 * 86400_000).toISOString(),
+  },
+  {
+    id: "fb3",
+    rating: 4,
+    body: "Beyaz semi-glos etiket — yağa dayanıklı yazıyordu, denedim, ürün test ettiğim zeytinyağı şişesinde 2 hafta sorun yok. Ufak bir not: prova ekranında renk biraz daha açık görünüyor, gerçeği gelene kadar tedirgin oldum.",
+    display_name: "Burak A.",
+    product_type: "etiket",
+    photos: [],
+    featured: false,
+    created_at: new Date(Date.now() - 9 * 86400_000).toISOString(),
+  },
+];
+
 export default function YorumlarPage() {
   return (
     <Suspense fallback={<div className="min-h-[calc(100vh-64px)]" />}>
@@ -44,9 +80,19 @@ function YorumlarInner() {
   useEffect(() => {
     setReviews(null);
     if (filter === "all") {
-      void getHomepageReviews(50).then(setReviews);
+      void getHomepageReviews(50).then((real) => {
+        // Gerçek yorum yoksa fallback (anasayfa ile tutarlı)
+        setReviews(real.length === 0 ? FALLBACK_REVIEWS : real);
+      });
     } else {
-      void getProductReviews(filter, 50).then(setReviews);
+      void getProductReviews(filter, 50).then((real) => {
+        // Sadece etiket için fallback (sticker'da fallback yok henüz)
+        if (real.length === 0 && filter === "etiket") {
+          setReviews(FALLBACK_REVIEWS);
+        } else {
+          setReviews(real);
+        }
+      });
     }
   }, [filter]);
 

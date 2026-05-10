@@ -42,8 +42,8 @@ export function Footer() {
       t: t.footer.groupSupport,
       links: [
         { label: "SSS", href: "/sss" },
-        { label: t.nav.returns, href: "/iade-talep" },
-        { label: "İade-değişim", href: "/iade-degisim-politikasi" },
+        { label: "İade talebi oluştur", href: "/iade-talep" },
+        { label: "İade-değişim politikası", href: "/iade-degisim-politikasi" },
       ],
     },
     {
