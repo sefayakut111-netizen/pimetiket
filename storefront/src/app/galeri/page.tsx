@@ -284,7 +284,7 @@ export default function GaleriPage() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-6">
         {/* Hero */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <Pim pose="excited" size={140} />
           <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[32px] md:text-[44px] font-semibold tracking-tight leading-tight">
@@ -295,7 +295,25 @@ export default function GaleriPage() {
           </p>
         </div>
 
-        {/* Stats — UX audit P1-11: gerçek metrikler birikene kadar gizlendi */}
+        {/* Demo disclaimer — gerçek müşteri görselleri gelene kadar */}
+        <div className="rounded-2xl bg-pim-mercan-tint ring-1 ring-pim-mercan/20 px-5 py-4 mb-8 max-w-[820px] mx-auto flex items-start gap-3">
+          <Icon.Info size={16} className="text-pim-mercan mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <div className="font-semibold text-[13.5px] text-pim-mercan mb-0.5">
+              Aşağıdaki görseller konsept tasarımlardır
+            </div>
+            <p className="text-[12.5px] text-pim-mercan/85 leading-relaxed">
+              Pim Etiket henüz yeni — ilk siparişler tamamlanıp müşteriler yazılı izin verdikçe gerçek baskı görselleri buraya gelecek.{" "}
+              <Link
+                href="/iletisim"
+                className="font-semibold underline underline-offset-2"
+              >
+                Markan ilk olsun istersen yaz
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -313,6 +331,9 @@ export default function GaleriPage() {
                   labelColor={s.labelColor}
                   sceneBg={s.sceneBg}
                 />
+                <span className="absolute top-3 left-3 inline-flex items-center px-2 h-[20px] rounded-full bg-white/90 text-gri-700 text-[10px] font-bold uppercase tracking-[0.04em] ring-1 ring-gri-200">
+                  Konsept
+                </span>
                 <Pill
                   variant={s.product === "sticker" ? "mercan" : "krem"}
                   className="absolute top-3 right-3"

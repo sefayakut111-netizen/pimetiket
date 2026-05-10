@@ -14,12 +14,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card, Button, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import {
-  createCustomerOrder,
-  generateOrderId,
-  addDaysIso,
-} from "@/lib/customer-order";
-import type { CustomerCartItem } from "@/lib/customer-cart";
+import { addDaysIso } from "@/lib/customer-order";
 
 type ProductType = "etiket" | "sticker";
 type InvoiceType = "individual" | "corporate";
@@ -93,9 +88,7 @@ export default function AdminCreateOrderPage() {
     }
     setLoading(true);
     try {
-      const itemId = `manual-${Date.now()}`;
-      const item: CustomerCartItem = {
-        id: itemId,
+      const itemPayload = {
         product,
         title: title.trim(),
         config: `${width}×${height}mm · ${qtyNum.toLocaleString("tr-TR")} adet`,
@@ -104,47 +97,57 @@ export default function AdminCreateOrderPage() {
         qty: qtyNum,
         unit: unitNum,
         total: subtotal,
-        addedAt: Date.now(),
+        meta: notes ? { notes: notes.trim() } : {},
       };
 
-      const created = await createCustomerOrder({
-        items: [item],
-        address: {
-          name: name.trim(),
-          phone: phone.trim(),
-          addr: address.trim(),
-          city: city.trim(),
-          label: "Manuel giriş",
-        },
-        invoice: {
-          type: invoiceType,
-          tc: invoiceType === "individual" ? tc.trim() : undefined,
-          vkn: invoiceType === "corporate" ? vkn.trim() : undefined,
-          companyName:
-            invoiceType === "corporate" ? companyName.trim() : undefined,
-          taxOffice:
-            invoiceType === "corporate" ? taxOffice.trim() : undefined,
-        },
-        payment: {
-          method: payment === "transfer" ? "transfer" : "card",
-          masked:
-            payment === "cash"
-              ? "Nakit"
-              : payment === "card_in_person"
-                ? "Kart (elden)"
-                : undefined,
-        },
-        subtotal,
-        shipping,
-        total,
-        estimatedDelivery: addDaysIso(product === "sticker" ? 7 : 12),
+      const res = await fetch("/api/admin/orders/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subtotal,
+          shipping,
+          total,
+          address: {
+            name: name.trim(),
+            phone: phone.trim(),
+            addr: address.trim(),
+            city: city.trim(),
+            label: "Manuel giriş",
+          },
+          invoice: {
+            type: invoiceType,
+            tc: invoiceType === "individual" ? tc.trim() : undefined,
+            vkn: invoiceType === "corporate" ? vkn.trim() : undefined,
+            companyName:
+              invoiceType === "corporate" ? companyName.trim() : undefined,
+            taxOffice:
+              invoiceType === "corporate" ? taxOffice.trim() : undefined,
+          },
+          payment: {
+            method: payment === "transfer" ? "transfer" : "card",
+            masked:
+              payment === "cash"
+                ? "Nakit"
+                : payment === "card_in_person"
+                  ? "Kart (elden)"
+                  : undefined,
+          },
+          estimatedDelivery: addDaysIso(product === "sticker" ? 7 : 12),
+          items: [itemPayload],
+        }),
       });
 
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Sipariş kaydedilemedi");
+        return;
+      }
+      const json = (await res.json()) as { orderId: string };
+
       toast.success(
-        `Sipariş oluşturuldu — ${created.id} · ${total.toLocaleString("tr-TR")} TL`
+        `Sipariş oluşturuldu — ${json.orderId} · ${total.toLocaleString("tr-TR")} TL`
       );
-      // Dashboard'a dön ki yeni sipariş görsünsün
-      router.push("/admin");
+      router.push(`/admin/siparisler/${json.orderId}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sipariş kaydedilemedi");
     } finally {

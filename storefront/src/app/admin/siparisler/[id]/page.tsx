@@ -77,17 +77,114 @@ export default function AdminOrderDetailPage({
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [proofUploading, setProofUploading] = useState(false);
+
+  const handleProofUpload = async (file: File) => {
+    if (!order) return;
+    setProofUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/admin/orders/${order.id}/upload-proof`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Yükleme başarısız");
+        return;
+      }
+      toast.success(
+        "Prova yüklendi — müşteri onay bekliyor (proof_pending)"
+      );
+      setOrder({ ...order, status: "proof_pending" });
+    } catch (e) {
+      console.error("[proof-upload]", e);
+      toast.error("Bağlantı hatası");
+    } finally {
+      setProofUploading(false);
+    }
+  };
 
   useEffect(() => {
-    const refresh = () => {
+    const refresh = async () => {
+      // 1) Önce yerel cache (localStorage / customer-order)
       const found = listCustomerOrders().find((o) => o.id === id);
-      setOrder(found ?? null);
-      setLoading(false);
+      if (found) {
+        setOrder(found);
+        setLoading(false);
+        return;
+      }
+      // 2) DB'den admin endpoint ile çek (manuel sipariş veya başka müşterinin)
+      try {
+        const res = await fetch(`/api/admin/orders/${id}`);
+        if (res.ok) {
+          const json = (await res.json()) as {
+            order: {
+              id: string;
+              status: OrderStatus;
+              subtotal: number;
+              shipping: number;
+              total: number;
+              address: CustomerOrder["address"];
+              invoice: CustomerOrder["invoice"];
+              payment: CustomerOrder["payment"];
+              estimated_delivery: string | null;
+              created_at: string;
+            };
+            items: Array<{
+              id: string;
+              product: "etiket" | "sticker";
+              title: string;
+              config: string;
+              width: number;
+              height: number;
+              qty: number;
+              unit: number;
+              total: number;
+              meta: Record<string, unknown>;
+            }>;
+          };
+          const ts = new Date(json.order.created_at).getTime();
+          setOrder({
+            id: json.order.id,
+            status: json.order.status,
+            subtotal: Number(json.order.subtotal),
+            shipping: Number(json.order.shipping),
+            total: Number(json.order.total),
+            address: json.order.address,
+            invoice: json.order.invoice,
+            payment: json.order.payment,
+            estimatedDelivery: json.order.estimated_delivery ?? undefined,
+            createdAt: ts,
+            createdAtIso: json.order.created_at,
+            items: json.items.map((i) => ({
+              id: i.id,
+              product: i.product,
+              title: i.title,
+              config: i.config,
+              width: Number(i.width),
+              height: Number(i.height),
+              qty: i.qty,
+              unit: Number(i.unit),
+              total: Number(i.total),
+              addedAt: ts,
+            })),
+          });
+        } else {
+          setOrder(null);
+        }
+      } catch (e) {
+        console.error("[admin/orders GET]", e);
+        setOrder(null);
+      } finally {
+        setLoading(false);
+      }
     };
-    refresh();
-    window.addEventListener("pim_customer_orders_updated", refresh);
+    void refresh();
+    window.addEventListener("pim_customer_orders_updated", () => void refresh());
     return () =>
-      window.removeEventListener("pim_customer_orders_updated", refresh);
+      window.removeEventListener("pim_customer_orders_updated", () => void refresh());
   }, [id]);
 
   const handleStatusChange = async (newStatus: OrderStatus) => {
@@ -260,6 +357,73 @@ export default function AdminOrderDetailPage({
                 ))}
               </div>
             </Card>
+
+            {/* Prova upload — operator_review ve qc_passed durumları için */}
+            {(order.status === "operator_review" ||
+              order.status === "qc_pending" ||
+              order.status === "paid") && (
+              <Card padding="p-5">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan shrink-0">
+                    <Icon.Sparkle size={18} />
+                  </span>
+                  <div className="flex-1">
+                    <h2 className="text-[15px] font-semibold">
+                      Prova hazırla & yükle
+                    </h2>
+                    <p className="text-[12px] text-gri-700 mt-0.5">
+                      Müşteriye gösterilecek mockup'ı yükle (PDF, PNG veya JPG).
+                      Yükledikten sonra sipariş{" "}
+                      <strong>prova bekleme</strong> durumuna geçer.
+                    </p>
+                  </div>
+                </div>
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg"
+                    disabled={proofUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (file) void handleProofUpload(file);
+                    }}
+                    className="block w-full text-[13px] file:mr-3 file:px-3 file:h-9 file:rounded-lg file:border-0 file:bg-pim-mercan file:text-white file:font-semibold file:cursor-pointer file:hover:bg-pim-mercan/90 disabled:opacity-50"
+                  />
+                </label>
+                {proofUploading && (
+                  <p className="text-[12px] text-pim-mercan mt-2">
+                    Yükleniyor…
+                  </p>
+                )}
+                <p className="text-[11px] text-gri-500 mt-3 leading-relaxed">
+                  Maksimum 30 MB · Müşteri /siparis/{order.id} sayfasında onay
+                  butonu görür.
+                </p>
+              </Card>
+            )}
+
+            {order.status === "proof_pending" && (
+              <Card
+                padding="p-5"
+                className="!bg-sari-soft !ring-sari/30"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-sari/20 text-[#7A560A] shrink-0">
+                    <Icon.Info size={18} />
+                  </span>
+                  <div className="flex-1">
+                    <h2 className="text-[14px] font-semibold text-[#7A560A]">
+                      Prova yüklendi — müşteri onayı bekleniyor
+                    </h2>
+                    <p className="text-[12.5px] text-[#7A560A]/85 mt-1 leading-relaxed">
+                      Müşteri /siparis/{order.id} sayfasından "Provayı onayla"
+                      veya "Değişiklik iste" butonuna basacak.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Müşteri */}
             <Card padding="p-5">
