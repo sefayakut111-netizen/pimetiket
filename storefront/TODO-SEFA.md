@@ -1,119 +1,146 @@
-# Sefa — Bekleyen İşler
+# Pim Etiket — Çalışma Planı
 
-Bu dosya Sefa'nın elinde tamamlanmayı bekleyen işlerin listesidir. Tarih sırasıyla.
-
----
-
-## ⏰ Bu hafta (10–17 Mayıs 2026)
-
-### 1. Telefon numarası
-- **Durum**: Henüz alınmadı, hafta içinde aktive edilecek
-- **Yapılacaklar**:
-  - [ ] Numara satın al (sabit veya GSM)
-  - [ ] Bana numarayı yaz, şu yerlere ekleyeceğim:
-    - `/iletisim` sayfası (şu an "Pim Sohbet + Email" var, bir de Telefon kartı eklenecek)
-    - `/mesafeli-satis` sayfası (taraflar bölümü)
-    - `/kvkk` sayfası (veri sorumlusu iletişim)
-    - `/on-bilgilendirme` sayfası (satıcı bilgileri)
-    - Footer yasal kişi bilgisi
-  - [ ] WhatsApp Business hesabı kurulması (telefon aktive olunca)
-
-### 2. Şirket adresi (yakın zamanda değişecek)
-- **Durum**: Mevcut adres (Yaşamkent Mah. 3250 Cad. No: 6 A/B Çankaya/Ankara) değişecek
-- **Yapılacaklar**:
-  - [ ] Yeni iş yeri adresi netleşince bana yaz
-  - [ ] Yasal sayfalarda adres "yakında güncellenecek" notu var; gerçek adresle değişmeli:
-    - `/mesafeli-satis` — SATICI tebligat adresi
-    - `/kvkk` — Veri Sorumlusu adresi
-    - `/on-bilgilendirme` — Satıcı adresi
-    - Footer bottom strip
-  - [ ] Adres değişiminden sonra **vergi dairesi de değişebilir** — yeni vergi levhasını paylaş
-  - [ ] PayTR mağaza panelinde de güncelle (müşteri ekran görür)
-
-### 3. PayTR başvurusu
-- **Durum**: Site PayTR site denetimine hazır (10 Mayıs 2026)
-- **Yapılacaklar**:
-  - [ ] 4 evrak topla:
-    - [ ] Vergi levhası (✅ elinde mevcut: 2025_SEFA_Vergi_Levhası_05_05_2025_17_31_32.pdf)
-    - [ ] Şirket yetkilisi kimlik fotokopisi
-    - [ ] İmza sirküleri (Limited şirket için noterden)
-    - [ ] Banka hesap teyit belgesi (firma adına IBAN, online şubeden indir)
-  - [ ] https://www.paytr.com/uye-isyeri-olun → ön başvuru formu doldur
-    - Yetkili: Sefa Yakut
-    - E-posta: info@pimetiket.com
-    - Şirket: SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ
-    - Ana faaliyet: 464903 - Kırtasiye Ürünleri Toptan Ticareti
-  - [ ] PayTR onay mailinden evrakları yükle
-  - [ ] 1-3 iş günü içinde onay
-  - [ ] Onay sonrası bana 3 key ver:
-    - PAYTR_MERCHANT_ID
-    - PAYTR_MERCHANT_KEY
-    - PAYTR_MERCHANT_SALT
-  - [ ] PayTR mağaza panelinde **Bildirim URL** kaydet:
-    - `https://pimetiket.com/api/payment/callback`
+> **Sefa kararı (10 Mayıs 2026):** Mali işler (PayTR, Resend mail, sanal POS) **1 hafta ertelendi**. Bu hafta tek odak: **mevcut sistemdeki eksikleri tespit + iyileştirme + UX cila**.
 
 ---
 
-## 📅 Önümüzdeki hafta (17–24 Mayıs)
+## 🎯 Bu hafta — ODAK HAFTASI (10–17 Mayıs)
 
-### 4. MERSİS Numarası
-- **Durum**: Limited şirketin için MERSİS varsa eklenmeli
-- **Yapılacaklar**:
-  - [ ] https://mersis.gtb.gov.tr → şirket adıyla sorgula
-  - [ ] Numarayı bana yaz, footer + yasal sayfalara ekleyeceğim
+**Hedef:** Site canlıda, otomasyon kurulu — şimdi her köşesini gez, polish et, kullanıcıyı şaşırtacak küçük detayları temizle.
 
-### 5. Resend Domain Setup (mail gönderimi)
-- **Durum**: Site şu an mail göndermiyor. Sipariş onayı / iade güncellemeleri için gerekli.
-- **Yapılacaklar**:
-  - [ ] https://resend.com → hesap aç (yoksa)
-  - [ ] Domain: `pimetiket.com` ekle
-  - [ ] Resend'in verdiği DKIM/SPF/DMARC TXT kayıtlarını GoDaddy'ye yaz (ben API ile yapabilirim)
-  - [ ] API key üret → bana ver, Vercel env'e eklerim
-  - [ ] Test mail at, info@ adresine ulaştığını doğrula
+### A. Mali işler — DOKUNMA, ERTELENDİ
+- ❌ PayTR başvurusu (sonraki hafta)
+- ❌ Resend mail kurulumu (sonraki hafta)
+- ❌ Telefon hattı (sonraki hafta)
+- ❌ Yeni adres güncellemesi (sonraki hafta — Sefa elinde değil)
 
-### 6. Atölye / üretim partneri netleştirme
-- **Durum**: Şu an "Bursa & İstanbul fason atölyeler" diye yazılı
-- **Yapılacaklar**:
-  - [ ] Hangi şehir(ler)deki fason atölyelerle çalışılacağı netleşince güncelle
-  - [ ] Müşteri ziyareti kabul ediliyorsa adres + saatler
+### B. Bu hafta yapılacaklar (önem sırası)
+
+#### 1. Sistem audit — sayfa sayfa gez (1-2 saat)
+- [ ] Anasayfa açılışı → bot tıklamaları, UX akışı
+- [ ] /etiket konfigüratörü → tüm seçenekler çalışıyor mu, fiyat doğru mu
+- [ ] /sticker → aynı (Sefa içerik düzeltmesi yapacak)
+- [ ] /sepet → guest mode + login mode farkı
+- [ ] /panelim → veriler doğru mu (mock vs gerçek)
+- [ ] /siparislerim → liste ve detay
+- [ ] /admin → her sekme tıklanabilir mi
+- [ ] Mobile responsive kontrol (tüm sayfalar)
+- [ ] **Dark mode** — şu an sadece light, gerek var mı?
+- [ ] 404 / 500 sayfaları custom mu?
+- [ ] Loading state'leri var mı her yerde?
+
+#### 2. UX/UI cila (4-6 saat ben + Sefa)
+- [ ] Topbar'da arama ikonu var ama search yok — ya çalıştır ya kaldır
+- [ ] Footer'da newsletter "mock" — Sefa Resend gelince aktive
+- [ ] Galeri sayfası 7 mockup — daha gerçek görseller eklenebilir mi?
+- [ ] Blog 5 makale var — yeni makaleler için CMS?
+- [ ] Pim chat widget'ın mobile davranışı (pozisyon, boyut)
+- [ ] Çerez bannerı animasyonu, gözardı edilmiyor mu?
+
+#### 3. AI Pim chat geliştirme (2-3 saat)
+- [ ] Mevcut welcome/designer/shipper test et — gerçek müşteri sorularıyla
+- [ ] Eksik persona var mı? (örn: "iadeci Pim", "yardımcı Pim")
+- [ ] Designer tool calling sticker boyutunda kıvrak mı?
+- [ ] Memory snapshot — kullanıcı adı kayıtlı mı, sohbetten sohbete kalıyor mu
+- [ ] Pim'in cevapları bazen uzun — daha kısa system prompt ekle?
+
+#### 4. Performans + SEO (1-2 saat)
+- [ ] Lighthouse skoru ölç (mobile + desktop)
+- [ ] Images Vercel optimization aktif mi? (next/image kullanılıyor mu her yerde)
+- [ ] Sitemap.xml gerçekten doğru tüm sayfaları içeriyor mu
+- [ ] Open Graph + Twitter card meta tag kontrolü (link paylaşımı önizleme)
+- [ ] Türkçe SEO için Schema.org markup (Product, Organization, BreadcrumbList)
+- [ ] Search Console'a kayıt + sitemap submit (yapılmadıysa)
+
+#### 5. Yasal sayfalar son kontrol (1 saat)
+- [ ] /kvkk → Limited şirket bilgileri doğru
+- [ ] /mesafeli-satis → adres "yakında" notu görünüyor
+- [ ] /on-bilgilendirme → temiz
+- [ ] /cerez bannerı KVKK 4-kategori gösteriyor mu
+- [ ] /iletisim → telefon olmadığı için Pim Sohbet + Mail vurgu doğru
+- [ ] Footer altında ödeme rozetleri görünüyor mu
+
+#### 6. Database hijyen (1 saat)
+- [ ] Supabase Studio aç → 16 tablo doğru mu
+- [ ] RLS policy'ler aktif mi, "Try" et
+- [ ] Storage bucket'lar gerçekten kullanılıyor mu (henüz boş)
+- [ ] Auth signup test et (gerçek e-posta ile)
+- [ ] Magic link mail geldiğinde Spam'a düşüyor mu? (Resend olmadığı için Supabase default)
+
+#### 7. Güvenlik kontrol (30 dk)
+- [ ] CSP header'lar production'da aktif mi
+- [ ] HTTPS strict (HSTS) çalışıyor mu
+- [ ] Sensitive secret'lar GitHub'a sızdırılmamış mı (`.env*` gitignore'da)
+- [ ] Vercel env'lerde tüm değerler ayarlı
+
+#### 8. Backup + disaster recovery (1 saat)
+- [ ] Supabase Pro upgrade düşün → Point-in-Time Recovery (free tier'da yok)
+- [ ] DB schema dump'ı al (bundled-schema.sql zaten var)
+- [ ] Vercel deploy history kalıcı, rollback edilebilir → OK
+- [ ] GoDaddy DNS yedek (ekran görüntüsü)
+
+#### 9. Gözden kaçan iyileştirmeler
+- [ ] WhatsApp Business yokken "Pim Sohbet" CTA'sı gerçekten kullanılıyor mu? Trafik takibi
+- [ ] Müşteri "İletişim" sayfasına gidip telefonsuz görünce ne hissediyor?
+- [ ] Tasarımcı Pim fiyat verince "/etiket'e git" linki tıklanabilir
+- [ ] Sticker hediye adet sistemi çalışıyor (ama Sefa sticker'a dokunmamamı söyledi, sadece test)
+- [ ] Cüzdan bakiyesi mock mu gerçek mi
+- [ ] Hediye kontör sayacı görünüyor mu yeni kullanıcıda
 
 ---
 
-## 🔮 Daha sonra (geleceğe atılan)
+## 📅 Sonraki hafta (17–24 Mayıs) — Mali Hafta
 
-### 7. WhatsApp Business
-- Telefon hattı aktive olunca WA Business kurulacak
-- `/iletisim` sayfasına ek kart, footer'a ikon
-- PayTR site denetiminde olumlu
+Bu kısım odak haftası bittikten sonra. Şimdi TANIMLAMAK için yazıyorum, çalışma için DEĞİL.
 
-### 8. Hukuki metin avukat onayı
-- KVKK, Gizlilik, Mesafeli Satış, Şartlar — şu an taslak
-- Avukat 2-3 saatte gözden geçirir, son rötuşları yapar
-- Yapıldığında "son güncelleme: ..." tarihi yenilenir
+### 1. Telefon
+- Numara satın al + bana yaz, 5 yere ekleyeceğim
 
-### 9. Sentry hata takibi
-- SENTRY_DSN env eklenince aktif olur
-- Production crash'leri otomatik raporlanır
-- Free tier yeterli (5K event/ay)
+### 2. Yeni iş yeri adresi
+- Netleşince yasal sayfalarda + Footer'da güncelle
 
-### 10. PostHog analytics
-- NEXT_PUBLIC_POSTHOG_KEY env
-- KVKK çerez izni gated (zaten kurulu)
+### 3. PayTR sanal POS
+- 4 evrak (vergi levhası ✓, kimlik, imza sirküleri, banka belgesi)
+- Ticaret Sicil Gazetesi (LTD ŞTİ için)
+- paytr.com/uye-isyeri-olun
+- 3 key Vercel env'e
+- Site canlı ödeme alır
 
-### 11. Cloudflare Pages migration (opsiyonel)
-- Vercel free tier yetersiz olursa
-- Packanalyz ile aynı stack
-- Sefa kararı
+### 4. Resend mail
+- Resend hesabı (yoksa)
+- Domain doğrulama (DKIM/SPF)
+- Sipariş onay maili çalışır
+
+### 5. MERSİS
+- Sorgula + footer'a ekle
 
 ---
 
-## ✅ Tamamlanmış (10 Mayıs 2026 itibariyle)
+## 🔮 Daha sonra (mali hafta sonrası)
+
+- Sentry hata takibi
+- PostHog/GA4 analytics
+- Avukat onayı (yasal metinler)
+- WhatsApp Business
+- Cloudflare Pages migration (opsiyonel)
+- Üretim partneri netleştirme (atölye adresi)
+
+---
+
+## ✅ 10 Mayıs itibariyle tamamlanmış altyapı
 
 - ✅ pimetiket.com canlı (Vercel + GoDaddy DNS)
 - ✅ Supabase DB + Auth + 3 Storage bucket
 - ✅ AI sohbet (GPT-4o + GPT-4o-mini, persona routing)
-- ✅ KVKK + Mesafeli + Ön Bilgilendirme + Çerez sayfaları
+- ✅ KVKK + Mesafeli + Ön Bilgilendirme + Çerez sayfaları (LTD ŞTİ bilgileri)
 - ✅ Footer ödeme rozetleri (Visa/MC/Troy/AmEx + 3DS + SSL + KVKK)
 - ✅ GitHub auto-deploy (push → 40sn deploy)
 - ✅ Google Workspace mail (info@pimetiket.com)
-- ✅ Site denetimi için tüm placeholder içerikler dolduruldu
+- ✅ Tüm yasal sayfalar Limited Şirket bilgileri ile dolu
+- ✅ Mevcut adres "yakında güncellenecek" notu PayTR site denetimi için yeterli
+
+---
+
+## 📌 Bu hafta için kişisel hatırlatma
+
+> Mali işler bir hafta gözden uzak. Sanal POS başvurusuna **bakma bile**. Onun yerine her sayfada gez, mantıksız bir şey gör → bana yaz, çözeyim. Her gün 1-2 saat odaklı sayfada gezme + ben düzeltirim, hafta sonu sistem 2 katı keskin olur.
