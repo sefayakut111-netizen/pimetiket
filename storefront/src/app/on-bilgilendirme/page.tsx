@@ -38,7 +38,7 @@ export default function OnBilgilendirmePage() {
         </li>
         <li>
           <strong>E-posta:</strong>{" "}
-          <a href="mailto:merhaba@pimetiket.com">merhaba@pimetiket.com</a>
+          <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
         </li>
         <li>
           <strong>Web sitesi:</strong>{" "}
@@ -179,7 +179,7 @@ export default function OnBilgilendirmePage() {
       </p>
       <p>
         Şikayetlerinizi öncelikle{" "}
-        <a href="mailto:merhaba@pimetiket.com">merhaba@pimetiket.com</a>{" "}
+        <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>{" "}
         adresine veya <a href="/iletisim">/iletisim</a> sayfasındaki kanallarımıza
         iletebilirsiniz; tarafımıza ulaşan başvurular en geç 15 gün içinde
         yanıtlanır.

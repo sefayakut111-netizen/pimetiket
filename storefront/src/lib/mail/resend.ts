@@ -3,7 +3,7 @@
  *
  * .env:
  *   RESEND_API_KEY=re_...
- *   RESEND_FROM_EMAIL=Pim Etiket <merhaba@pimetiket.com>
+ *   RESEND_FROM_EMAIL=Pim Etiket <info@pimetiket.com>
  *
  * KRİTİK: Bu modül SADECE server-side import edilmelidir
  * (route handler / Server Action / Edge fn). Client'a sızdırılmaz.
@@ -33,7 +33,7 @@ export function isResendConfigured(): boolean {
 
 export function getDefaultFrom(): string {
   return (
-    process.env.RESEND_FROM_EMAIL ?? "Pim Etiket <merhaba@pimetiket.com>"
+    process.env.RESEND_FROM_EMAIL ?? "Pim Etiket <info@pimetiket.com>"
   );
 }
 

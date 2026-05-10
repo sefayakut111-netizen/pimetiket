@@ -72,7 +72,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...   ← server-only, ASLA NEXT_PUBLIC_ ile başla
 
 ```
 RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=Pim Etiket <merhaba@pimetiket.com>
+RESEND_FROM_EMAIL=Pim Etiket <info@pimetiket.com>
 ```
 
 ### 2.2 Domain ekle
@@ -116,7 +116,7 @@ SUPABASE_SERVICE_ROLE_KEY=<service-key>
 OPENAI_API_KEY=sk-proj-...
 
 RESEND_API_KEY=re_prod_...
-RESEND_FROM_EMAIL=Pim Etiket <merhaba@pimetiket.com>
+RESEND_FROM_EMAIL=Pim Etiket <info@pimetiket.com>
 
 # (PayTR — onay gelince ekle, şimdilik boş bırak)
 # PAYTR_MERCHANT_ID=

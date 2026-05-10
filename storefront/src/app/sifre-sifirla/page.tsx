@@ -227,7 +227,7 @@ function SifreSifirlaInner() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="merhaba@pimetiket.com"
+                  placeholder="ornek@mail.com"
                   autoComplete="email"
                   required
                 />

@@ -182,7 +182,7 @@ PAYTR_TEST_MODE=0     # canlı tahsilat
 
 ```env
 RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=Pim Etiket <merhaba@pimetiket.com>
+RESEND_FROM_EMAIL=Pim Etiket <info@pimetiket.com>
 ```
 
 ### 3.4 Domain doğrulanmadıysa

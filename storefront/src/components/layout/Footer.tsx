@@ -198,10 +198,10 @@ export function Footer() {
             </span>
             <br />
             <a
-              href="mailto:merhaba@pimetiket.com"
+              href="mailto:info@pimetiket.com"
               className="hover:text-white transition-colors"
             >
-              merhaba@pimetiket.com
+              info@pimetiket.com
             </a>
             <br />
             <Link
