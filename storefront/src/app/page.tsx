@@ -167,8 +167,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* RIGHT — Pim with floating pills + decorative cards */}
-          <div className="relative flex justify-center items-center min-h-[380px]">
+          {/* RIGHT — Pim + ürün önizlemeleri (sticker/etiket mockup) */}
+          <div className="relative flex justify-center items-center min-h-[420px]">
             {/* Decorative card behind */}
             <div
               aria-hidden
@@ -180,24 +180,83 @@ export default function HomePage() {
               className="absolute w-[280px] h-[280px] bg-pim-mercan-tint rounded-[28px] -z-10"
               style={{ transform: "rotate(6deg) translate(40px, 40px)" }}
             />
-            {/* AI pill (top-left) */}
+
+            {/* Floating mini etiket — sol üst */}
             <div
-              className="absolute top-8 left-5 z-20"
-              style={{ transform: "rotate(-12deg)" }}
+              aria-hidden
+              className="absolute top-2 left-0 z-20 hidden sm:block"
+              style={{ transform: "rotate(-10deg)" }}
             >
-              <Pill variant="mercan" className="!h-8 !text-[13px] !px-3.5">
+              <div className="w-[72px] h-[96px] rounded-md shadow-2 bg-gradient-to-br from-krem to-[#F5DBC4] ring-1 ring-[#3D2E1A]/10 p-2 flex flex-col items-center justify-center text-[#3D2E1A]">
+                <div className="text-[7px] font-bold tracking-[0.1em] opacity-70">
+                  ZEYTİNYAĞI
+                </div>
+                <div className="text-[14px] font-bold mt-1">Olea</div>
+                <div className="w-8 h-px bg-[#3D2E1A]/30 my-1.5" />
+                <div className="text-[6px] tracking-[0.05em] opacity-60">
+                  100 ml · CMYK
+                </div>
+              </div>
+            </div>
+
+            {/* Floating mini sticker — sağ orta */}
+            <div
+              aria-hidden
+              className="absolute top-12 right-2 z-20 hidden sm:block"
+              style={{ transform: "rotate(8deg)" }}
+            >
+              <div className="w-[72px] h-[72px] rounded-full shadow-2 bg-pim-mercan grid place-items-center ring-2 ring-white">
+                <div className="text-white text-center">
+                  <div className="text-[8px] font-bold tracking-[0.08em]">
+                    SHIP
+                  </div>
+                  <div className="text-[14px] font-bold leading-none">PIM</div>
+                  <div className="text-[7px] mt-0.5 opacity-80">DIE-CUT</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating mini rulo — sol alt */}
+            <div
+              aria-hidden
+              className="absolute bottom-8 left-2 z-20 hidden sm:block"
+              style={{ transform: "rotate(-5deg)" }}
+            >
+              <div className="w-[80px] h-[28px] rounded-full bg-white shadow-2 ring-1 ring-gri-200 flex items-center px-2 gap-1 overflow-hidden">
+                <div className="w-3 h-3 rounded-full bg-gri-200 shrink-0" />
+                <div className="flex-1 flex gap-0.5 items-center overflow-hidden">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="w-2 h-3.5 rounded-[1px] bg-pim-mercan/80 shrink-0"
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-gri-500 text-center mt-1">
+                Rulo etiket
+              </div>
+            </div>
+
+            {/* AI pill (üstte ortalı) */}
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 z-20"
+            >
+              <Pill variant="mercan" className="!h-8 !text-[13px] !px-3.5 shadow-2">
                 <Icon.Sparkle size={14} /> {t.home.aiPill}
               </Pill>
             </div>
-            {/* Truck pill (bottom-right) */}
+
+            {/* Truck pill (sağ alt) */}
             <div
-              className="absolute bottom-16 right-0 z-20"
-              style={{ transform: "rotate(8deg)" }}
+              className="absolute bottom-4 right-2 z-20"
+              style={{ transform: "rotate(4deg)" }}
             >
-              <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-white shadow-1 text-[13px] font-semibold">
+              <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-white shadow-2 text-[13px] font-semibold">
                 <Icon.Truck size={14} className="text-pim-mercan" /> {t.home.deliveryPill}
               </span>
             </div>
+
             <div className="relative z-30">
               <Pim pose="wave" size={300} />
             </div>
@@ -318,6 +377,58 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ============================== TRUST STRIP ============================== */}
+      <section className="py-10 bg-white border-y border-gri-100">
+        <div className="mx-auto max-w-[1280px] px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 text-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan">
+                <Icon.Check size={18} />
+              </div>
+              <div className="text-[13px] font-semibold text-lacivert">
+                3D Secure ödeme
+              </div>
+              <div className="text-[11.5px] text-gri-500">
+                BDDK lisanslı altyapı
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="grid place-items-center w-10 h-10 rounded-xl bg-yesil-soft text-yesil">
+                <Icon.Truck size={18} />
+              </div>
+              <div className="text-[13px] font-semibold text-lacivert">
+                Hızlı kargo
+              </div>
+              <div className="text-[11.5px] text-gri-500">
+                1.500 TL üzeri ücretsiz
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="grid place-items-center w-10 h-10 rounded-xl bg-krem text-lacivert">
+                <Icon.Sparkle size={18} />
+              </div>
+              <div className="text-[13px] font-semibold text-lacivert">
+                AI dosya kontrolü
+              </div>
+              <div className="text-[11.5px] text-gri-500">
+                Üretime gitmeden uyarı
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan">
+                <Icon.Star size={18} />
+              </div>
+              <div className="text-[13px] font-semibold text-lacivert">
+                KVKK uyumlu
+              </div>
+              <div className="text-[11.5px] text-gri-500">
+                Verilerin güvende
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ============================== BOTTOM CTA ============================== */}
       <section className="py-20">
         <div className="mx-auto max-w-[1280px] px-8">
@@ -349,6 +460,21 @@ export default function HomePage() {
                   >
                     {t.home.bottomCtaSecondary} <Icon.ArrowR size={16} />
                   </Link>
+                </div>
+                {/* CTA alt mikrocopy — friction azaltır */}
+                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-white/60">
+                  <span className="flex items-center gap-1.5">
+                    <Icon.Check size={12} className="text-yesil" /> Konfigüre
+                    et, anlık fiyat çıkar
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Icon.Check size={12} className="text-yesil" /> Ödemeden
+                    önce dosya kontrol
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Icon.Check size={12} className="text-yesil" /> Onaylamadan
+                    üretime başlamayız
+                  </span>
                 </div>
               </div>
               <div className="flex justify-center">

@@ -191,16 +191,24 @@ export function Footer() {
             {" · "}
             Doğanbey VD / 7580607612
             <span className="text-white/40">
-              {" · "}Ünvan/adres/telefon: yakında güncellenecek
+              {" · "}Adres: yakında güncellenecek
             </span>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 flex-wrap shrink-0">
             <a
               href="mailto:info@pimetiket.com"
-              className="hover:text-white transition-colors whitespace-nowrap"
+              className="hover:text-white transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
             >
+              <span className="inline-block w-1 h-1 rounded-full bg-yesil animate-pulse" />
               info@pimetiket.com
             </a>
+            <span className="text-white/20">·</span>
+            <span
+              className="text-white/40 whitespace-nowrap inline-flex items-center gap-1.5"
+              title="Telefon hattı yakında aktifleşecek"
+            >
+              📞 Telefon: yakında
+            </span>
             <span className="text-white/20">·</span>
             <Link
               href="/iletisim"
