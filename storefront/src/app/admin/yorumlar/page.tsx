@@ -25,6 +25,10 @@ interface Review {
   comment: string;
   status: ReviewStatus;
   createdAt: number;
+  /** Anasayfada paylaşılsın mı (kullanıcı tercihi + admin onay) */
+  showOnHomepage?: boolean;
+  /** Admin elle "öne çıkar" işaretler — anasayfada önce gösterilir */
+  featured?: boolean;
 }
 
 const SAMPLE_REVIEWS: Review[] = [
@@ -114,10 +118,41 @@ export default function AdminYorumlarPage() {
   };
 
   const updateStatus = (id: string, status: ReviewStatus) => {
-    const next = reviews.map((r) => (r.id === id ? { ...r, status } : r));
+    const next = reviews.map((r) =>
+      r.id === id
+        ? {
+            ...r,
+            status,
+            // Onaylanırken default: anasayfada da paylaşılsın
+            showOnHomepage: status === "approved" ? r.showOnHomepage ?? true : r.showOnHomepage,
+          }
+        : r
+    );
     persist(next);
     toast.success(
       status === "approved" ? "Yorum onaylandı" : "Yorum reddedildi"
+    );
+  };
+
+  const toggleFeatured = (id: string) => {
+    const next = reviews.map((r) =>
+      r.id === id ? { ...r, featured: !r.featured } : r
+    );
+    persist(next);
+    const r = next.find((x) => x.id === id);
+    toast.success(r?.featured ? "Öne çıkarıldı" : "Öne çıkarma kaldırıldı");
+  };
+
+  const toggleHomepage = (id: string) => {
+    const next = reviews.map((r) =>
+      r.id === id ? { ...r, showOnHomepage: !r.showOnHomepage } : r
+    );
+    persist(next);
+    const r = next.find((x) => x.id === id);
+    toast.success(
+      r?.showOnHomepage
+        ? "Anasayfada gösterilecek"
+        : "Anasayfadan kaldırıldı (ürün sayfasında kalır)"
     );
   };
 
@@ -243,7 +278,7 @@ export default function AdminYorumlarPage() {
                         &ldquo;{r.comment}&rdquo;
                       </p>
                     </div>
-                    {r.status === "pending" && (
+                    {r.status === "pending" ? (
                       <div className="flex flex-col gap-2 shrink-0">
                         <Button
                           variant="primary"
@@ -261,7 +296,43 @@ export default function AdminYorumlarPage() {
                           Reddet
                         </Button>
                       </div>
-                    )}
+                    ) : r.status === "approved" ? (
+                      <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
+                        <button
+                          type="button"
+                          onClick={() => toggleFeatured(r.id)}
+                          className={cn(
+                            "h-9 px-3 rounded-lg text-[12.5px] font-semibold ring-1 transition-colors flex items-center justify-center gap-1.5",
+                            r.featured
+                              ? "bg-pim-mercan text-white ring-pim-mercan"
+                              : "bg-white text-gri-700 ring-gri-200 hover:ring-pim-mercan hover:text-pim-mercan"
+                          )}
+                        >
+                          <Icon.Sparkle size={12} />
+                          {r.featured ? "Öne çıkan ✓" : "Öne çıkar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleHomepage(r.id)}
+                          className={cn(
+                            "h-9 px-3 rounded-lg text-[12.5px] font-semibold ring-1 transition-colors flex items-center justify-center gap-1.5",
+                            r.showOnHomepage !== false
+                              ? "bg-yesil-soft text-yesil ring-yesil/30"
+                              : "bg-gri-100 text-gri-700 ring-gri-200"
+                          )}
+                        >
+                          <Icon.Home size={12} />
+                          {r.showOnHomepage !== false ? "Anasayfada ✓" : "Sadece ürün sayfası"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateStatus(r.id, "rejected")}
+                          className="h-8 text-[11.5px] text-gri-500 hover:text-kirmizi"
+                        >
+                          Yayından kaldır
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </Card>
               );
