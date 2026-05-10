@@ -21,7 +21,7 @@ import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { ACTIVE_PERSONAS, PERSONAS, type PimPersona } from "@/lib/pim/personas";
+import type { PimPersona } from "@/lib/pim/personas";
 import {
   appendMessage,
   isReturningUser,
@@ -33,64 +33,9 @@ import {
 } from "@/lib/pim/memory";
 import { addToCustomerCart } from "@/lib/customer-cart";
 
-const QUICK_CHIPS_BY_PERSONA: Record<
-  string,
-  Array<{ id: string; label: string; prompt: string }>
-> = {
-  welcome: [
-    {
-      id: "new-job",
-      label: "Yeni iş",
-      prompt: "Yeni bir baskı yaptırmak istiyorum.",
-    },
-    {
-      id: "reorder",
-      label: "Tekrar baskı",
-      prompt: "Önceki bastırdığım işten tekrar yapacağım.",
-    },
-    {
-      id: "issue",
-      label: "Sorun var",
-      prompt: "Siparişimle ilgili bir sorun var.",
-    },
-  ],
-  designer: [
-    {
-      id: "etiket-quote",
-      label: "Etiket fiyatı",
-      prompt:
-        "60×80 mm 5000 adet kraft etiket için fiyat çıkar lütfen, kaplama sade.",
-    },
-    {
-      id: "sticker-quote",
-      label: "Sticker fiyatı",
-      prompt: "75×75 mm vinil parlak sticker, 250 adet, fiyat söyler misin?",
-    },
-    {
-      id: "brief",
-      label: "Brief'ten fiyat",
-      prompt:
-        "Doğal sabunum için etiket lazım, marka adı OLEA, 60×80mm civarı, 2000 adet, kraft + soft touch olsun.",
-    },
-  ],
-  shipper: [
-    {
-      id: "where",
-      label: "Siparişim nerede?",
-      prompt: "Siparişim ne durumda?",
-    },
-    {
-      id: "delivery-est",
-      label: "Ne zaman gelir?",
-      prompt: "Tahmini teslim tarihi ne olur?",
-    },
-    {
-      id: "complaint",
-      label: "Kargo geç kaldı",
-      prompt: "Kargom geç kaldı, ne oluyor?",
-    },
-  ],
-};
+// Sefa kararı (UX audit): kullanıcı persona seçmez, hazır cevap chip'i
+// önerilmez. Pim akıllı bir sistem — pathname + soru içeriğine göre
+// otomatik doğru tonda yanıt verir. Chip'ler bot hissi yaratıyordu.
 
 export function PimChat() {
   const pathname = usePathname();
@@ -208,8 +153,6 @@ export function PimChat() {
   // /admin altında render etme — AdminShell'in kendi flow'u var
   if (pathname?.startsWith("/admin")) return null;
 
-  const personaSpec = PERSONAS[persona];
-
   return (
     <>
       {/* Floating bubble (her zaman görünür) */}
@@ -264,26 +207,12 @@ export function PimChat() {
             </span>
           </span>
           <div className="flex-1 min-w-0">
-            {/* Persona seçici dropdown */}
-            <select
-              value={persona}
-              onChange={(e) => {
-                const next = e.target.value as PimPersona;
-                setPersona(next);
-                setMessages([]); // persona değişince yeni başlangıç
-              }}
-              className="font-semibold text-[15px] leading-tight bg-transparent border-none outline-none cursor-pointer hover:text-pim-mercan-koyu"
-              aria-label="Hangi Pim ile konuşuyorsun"
-            >
-              {ACTIVE_PERSONAS.map((id) => (
-                <option key={id} value={id}>
-                  {PERSONAS[id].label}
-                </option>
-              ))}
-            </select>
+            <div className="font-semibold text-[15px] leading-tight text-lacivert">
+              Pim
+            </div>
             <div className="text-[11.5px] text-gri-700 flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-yesil" />
-              {personaSpec.tagline}
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-yesil animate-pulse" />
+              <span>Akıllı asistan</span>
               {memory?.consent && (
                 <>
                   <span className="text-gri-300">·</span>
@@ -320,12 +249,6 @@ export function PimChat() {
             <WelcomeView
               persona={persona}
               memory={memory}
-              onChip={(prompt) => {
-                if (memory?.consent) {
-                  appendMessage({ role: "user", content: prompt, persona });
-                }
-                sendMessage({ text: prompt });
-              }}
               onClearHistory={() => {
                 setMessages([]);
                 setUnread(0);
@@ -424,12 +347,10 @@ function ConsentPanel({
 function WelcomeView({
   persona,
   memory,
-  onChip,
   onClearHistory,
 }: {
   persona: PimPersona;
   memory: PimMemory | null;
-  onChip: (prompt: string) => void;
   onClearHistory: () => void;
 }) {
   const returning = !!memory && isReturningUser(memory);
@@ -438,47 +359,42 @@ function WelcomeView({
   let greeting: string;
   let subtext: string;
 
+  // Persona pathname-based otomatik seçilir; UI'ya yansımaz, sadece
+  // greeting tonunu şekillendirir. Sefa: "Pim akıllı sistem, sistem
+  // ne sunacağını kendi belirler."
   if (persona === "designer") {
     greeting = baseName
-      ? `Selam ${baseName}, Tasarımcı Pim devraldım.`
-      : "Selam, Tasarımcı Pim devraldım.";
-    subtext = "Etiket / sticker boyutu + adet söyle, fiyat çıkarayım.";
+      ? `Selam ${baseName} 👋`
+      : "Selam 👋";
+    subtext = "Konfigüre ettiğin ürün için soru sorabilirsin — fiyat, malzeme, teslim süresi, ne istersen.";
   } else if (persona === "shipper") {
     greeting = baseName
-      ? `Selam ${baseName}, Kargocu Pim devraldım.`
-      : "Selam, Kargocu Pim devraldım.";
+      ? `Selam ${baseName} 👋`
+      : "Selam 👋";
     subtext =
-      "Sipariş id'sini söyle (PE-2026-XXXX) ya da chip'lerden seç.";
+      "Siparişin hakkında ne sormak istersen sor — durumu, kargo, teslim tarihi.";
   } else {
     greeting = returning
       ? baseName
-        ? `Selam ${baseName}, hoş geldin tekrar.`
-        : "Selam, hoş geldin tekrar."
+        ? `Selam ${baseName}, tekrar hoş geldin.`
+        : "Selam, tekrar hoş geldin."
       : baseName
-        ? `Selam ${baseName}, hoş geldin.`
-        : "Selam, hoş geldin.";
-    subtext = "Etiket mi sticker mı bakıyoruz?";
+        ? `Selam ${baseName} 👋`
+        : "Selam 👋";
+    subtext = "Sana nasıl yardım edebilirim?";
   }
-
-  const chips = QUICK_CHIPS_BY_PERSONA[persona] ?? QUICK_CHIPS_BY_PERSONA.welcome;
 
   return (
     <div className="space-y-3">
       <div className="rounded-xl bg-white ring-1 ring-gri-200 p-3.5">
-        <div className="font-semibold text-[15px] mb-0.5">{greeting}</div>
-        <div className="text-[13.5px] text-gri-700">{subtext}</div>
-      </div>
-      <div className="flex gap-1.5 flex-wrap">
-        {chips.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => onChip(c.prompt)}
-            className="px-3 h-8 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan hover:bg-pim-mercan-tint/40 transition-colors"
-          >
-            {c.label}
-          </button>
-        ))}
+        <div className="font-semibold text-[15px] mb-1">{greeting}</div>
+        <div className="text-[13.5px] text-gri-700 leading-relaxed">
+          {subtext}
+        </div>
+        <div className="text-[12px] text-gri-500 mt-2 leading-relaxed">
+          Aklındaki neyse yaz — fiyat, sipariş, malzeme, teslim. Akıllı sistem
+          olduğum için bağlamı anlayıp doğru cevabı veririm.
+        </div>
       </div>
       {returning && (
         <button
@@ -731,10 +647,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
           )}
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-[10.5px] text-yesil bg-yesil-soft/20 px-2 py-1 rounded-full font-semibold">
-            💳 Cüzdandan: −{fmtTL(result.cuzdan_indirim_2pct)} TL (%2)
-          </span>
+        <div className="mt-3 flex items-center justify-end gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <button
               type="button"

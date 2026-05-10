@@ -43,21 +43,21 @@ export const tr: TranslationDict = {
     h1Brand: "Markanın etiketi,",
     h1Idea: "fikrinin sticker'ı.",
     heroDescription:
-      "Etiket 1.000 adetten, sticker 25'ten. AI dosyana bakar, eksiği söyler — kapına ortalama 10 günde.",
+      "Etiket 1.000 adetten, sticker 25 adetten. AI dosyana bakar, eksiği söyler. Etiket 8-12 iş gününde, sticker 5-7 iş gününde kapına teslim.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
     socialProof: "Türkiye'den markaların tercihi",
     aiPill: "AI dosya kontrolü",
-    deliveryPill: "10 gün teslim",
+    deliveryPill: "Hızlı teslim",
     pillar1Title: "Etiket 1.000'den, sticker 25'ten",
     pillar1Desc:
       "Az adetten esnek başlangıç. Stoklamana gerek yok — ihtiyacına göre bas.",
     pillar2Title: "AI dosyana bakar",
     pillar2Desc:
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler.",
-    pillar3Title: "10 günde elinde",
+    pillar3Title: "Hızlı teslim",
     pillar3Desc:
-      "Şeffaf üretim takibi ve Pim'in anlık haberleri.",
+      "Etiket 8-12 iş günü, sticker 5-7 iş günü. Şeffaf üretim takibi.",
     productEtiketSub: "Rulodan etiket — kozmetik, gıda, içecek, parfüm.",
     productStickerSub: "Tekli ya da tabakada — laptop, defter, kampanya.",
     productPriceLabel: "fiyatı, başlangıç",
@@ -73,7 +73,7 @@ export const tr: TranslationDict = {
     step3: "Provayı onayla",
     step3Desc: "Rulonun üstünde nasıl görüneceğini gör, onayla.",
     step4: "Teslim al",
-    step4Desc: "Kapına ortalama 10 günde.",
+    step4Desc: "Etiket 8-12, sticker 5-7 iş gününde kapında.",
     faqEyebrow: "Sıkça sorulanlar",
     faqTitle: 'Cevap genelde "evet, hallederiz".',
     faqHelp:
@@ -96,7 +96,7 @@ export const tr: TranslationDict = {
     addToCart: "Sepete ekle",
     cartAdded: "Sepete eklendi 🛒 — sepete gitmek için üst menü",
     deliveryEstimate: "Tahmini teslim",
-    walletDiscount: "Cüzdandan ödeyince +%2 indirim",
+    walletDiscount: "Şeffaf fiyat — sürpriz ek yok",
     livePreview: "Anlık önizleme — her seçim canlı",
     quickSize: "Hızlı:",
     suggested: "Önerilen:",

@@ -602,7 +602,7 @@ export default function StickerPage() {
                 </>
               }
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
-              footnote="Cüzdandan ödeyince +%2 indirim · KDV dahil fiyat"
+              footnote="KDV dahil fiyat · Şeffaf, sürpriz ücret yok"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
               ctaLabel={t.config.addToCart}
               onCta={async () => {

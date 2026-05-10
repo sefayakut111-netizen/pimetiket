@@ -143,15 +143,15 @@ export default function HomePage() {
                 <Icon.Sticker size={18} /> {t.home.ctaSticker}
               </Button>
             </div>
-            <div className="mt-10 flex items-center gap-3 flex-wrap text-[13px] text-gri-700">
-              <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-yesil-soft text-yesil text-[12px] font-semibold">
-                <Icon.Check size={12} /> Düşük adetten esnek
+            <div className="mt-10 flex items-center gap-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-yesil-soft text-yesil text-[14px] font-semibold">
+                <Icon.Check size={15} /> Düşük adetten esnek
               </span>
-              <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-pim-mercan-tint text-pim-mercan text-[12px] font-semibold">
-                <Icon.Sparkle size={12} /> AI dosya kontrolü
+              <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-pim-mercan-tint text-pim-mercan text-[14px] font-semibold">
+                <Icon.Sparkle size={15} /> AI dosya kontrolü
               </span>
-              <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-krem text-lacivert text-[12px] font-semibold">
-                <Icon.Truck size={12} /> Türkiye geneli teslimat
+              <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-krem text-lacivert text-[14px] font-semibold">
+                <Icon.Truck size={15} /> Türkiye geneli teslimat
               </span>
             </div>
           </div>

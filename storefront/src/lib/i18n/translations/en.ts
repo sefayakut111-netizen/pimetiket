@@ -43,21 +43,21 @@ export const en: TranslationDict = {
     h1Brand: "Your brand's label,",
     h1Idea: "your idea's sticker.",
     heroDescription:
-      "Labels from 1,000, stickers from 25. AI checks your file and tells you what's missing — at your door in about 10 days.",
+      "Labels from 1,000, stickers from 25. AI checks your file and tells you what's missing. Labels in 8-12 business days, stickers in 5-7.",
     ctaEtiket: "Print labels",
     ctaSticker: "Print stickers",
     socialProof: "Trusted by brands across Türkiye",
     aiPill: "AI file check",
-    deliveryPill: "10-day delivery",
+    deliveryPill: "Fast delivery",
     pillar1Title: "Labels from 1,000, stickers from 25",
     pillar1Desc:
       "Flexible start at low volumes. No stocking — print what you need.",
     pillar2Title: "AI checks your file",
     pillar2Desc:
       "DPI, CMYK, bleed — if anything's missing, we flag it before production.",
-    pillar3Title: "10 days to your door",
+    pillar3Title: "Fast delivery",
     pillar3Desc:
-      "Transparent production tracking and live updates from Pim.",
+      "Labels 8-12 business days, stickers 5-7. Transparent production tracking.",
     productEtiketSub: "Roll labels — cosmetics, food, beverages, perfume.",
     productStickerSub: "Single die-cut or sheet labels — laptop, notebook, campaign.",
     productPriceLabel: "price, starting from",
@@ -72,7 +72,7 @@ export const en: TranslationDict = {
     step3: "Approve the proof",
     step3Desc: "See how it'll look on the roll, then approve.",
     step4: "Receive",
-    step4Desc: "At your door in about 10 days.",
+    step4Desc: "Labels 8-12, stickers 5-7 business days to your door.",
     faqEyebrow: "Frequently asked",
     faqTitle: 'Answer is usually "yes, we got you".',
     faqHelp:
@@ -95,7 +95,7 @@ export const en: TranslationDict = {
     addToCart: "Add to cart",
     cartAdded: "Added to cart 🛒 — open the cart from the top menu",
     deliveryEstimate: "Estimated delivery",
-    walletDiscount: "+2% extra discount when paying from wallet",
+    walletDiscount: "Transparent pricing — no surprise fees",
     livePreview: "Live preview — every choice updates instantly",
     quickSize: "Quick:",
     suggested: "Suggested:",

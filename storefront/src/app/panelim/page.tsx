@@ -655,43 +655,8 @@ export default function PanelimPage() {
 
           {/* SIDE */}
           <div className="flex flex-col gap-4">
-            {/* Wallet */}
-            <Card padding="p-5">
-              <div className="flex justify-between items-center mb-3.5">
-                <h3 className="text-base font-semibold m-0">{c.walletTitle}</h3>
-                <Icon.Wallet size={18} />
-              </div>
-              <div className="text-[28px] font-bold tracking-tight tabular-nums">
-                0{" "}
-                <span className="text-base font-semibold text-gri-700">
-                  TL
-                </span>
-              </div>
-              <div className="text-[13px] text-gri-700 mt-1">
-                {c.walletDiscount}
-              </div>
-              <div className="flex gap-2 mt-3.5">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  href="/cuzdan"
-                  className="flex-1"
-                >
-                  <Icon.Plus size={14} /> {c.walletDeposit}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  href="/cuzdan"
-                  className="flex-1"
-                >
-                  {c.detail}
-                </Button>
-              </div>
-              <div className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
-                {c.walletNote}
-              </div>
-            </Card>
+            {/* Cüzdan card kaldırıldı (Sefa: "cüzdan diye bir şey yok").
+                Cüzdan özelliği canlıya alınınca burası geri açılır. */}
 
             {/* Profile shortcuts */}
             <Card padding="p-2">

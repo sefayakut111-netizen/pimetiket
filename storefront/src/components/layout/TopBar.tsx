@@ -272,13 +272,8 @@ export function TopBar() {
                     >
                       <Icon.Truck size={14} /> {t.nav.addresses}
                     </Link>
-                    <Link
-                      href="/cuzdan"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
-                    >
-                      <Icon.Wallet size={14} /> {t.nav.wallet}
-                    </Link>
+                    {/* Cüzdan menüsü kaldırıldı (Sefa: "cüzdan diye bir şey yok").
+                        Cüzdan özelliği canlıya alınınca burası geri açılır. */}
                   </div>
                   <button
                     type="button"

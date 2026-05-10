@@ -734,7 +734,7 @@ export default function EtiketPage() {
                     : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
                 );
               }}
-              footnote="Cüzdandan ödeyince +%2 indirim · 3 gün içinde dosya yükleyebilirsin · KDV dahil"
+              footnote="3 gün içinde dosya yükleyebilirsin · KDV dahil · Hızlı ve şeffaf"
             />
           </div>
         </div>

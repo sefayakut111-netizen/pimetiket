@@ -96,40 +96,34 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-lacivert text-white/85 pt-16 pb-8 mt-20">
-      <div className="mx-auto max-w-[1280px] px-8">
-        {/* Newsletter strip */}
-        <div className="mb-12 grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-8 items-center pb-12 border-b border-white/10">
+    <footer className="bg-lacivert text-white/85 pt-14 pb-6 mt-20">
+      <div className="mx-auto max-w-[1280px] px-6 md:px-8">
+        {/* Newsletter — compact strip */}
+        <div className="mb-10 pb-8 border-b border-white/10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
           <div>
-            <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan mb-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan mb-1.5">
               {t.footer.newsletterEyebrow}
             </div>
-            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight leading-tight mb-2">
+            <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-1">
               {t.footer.newsletterTitle}
             </h3>
-            <p className="text-[14px] text-white/65 leading-relaxed max-w-[420px]">
+            <p className="text-[13px] text-white/60 leading-relaxed">
               {t.footer.newsletterDesc}
             </p>
           </div>
           {subscribed ? (
-            <div className="bg-white/10 rounded-2xl p-5 text-center">
-              <div className="text-2xl mb-2">📩</div>
-              <div className="font-semibold text-white">
-                {t.footer.newsletterSuccess}
-              </div>
-              <p className="text-[13px] text-white/65 mt-1">
-                {t.footer.newsletterSuccessDesc}
-              </p>
+            <div className="inline-flex items-center gap-2.5 bg-yesil-soft/15 ring-1 ring-yesil/30 rounded-full px-4 h-11 text-yesil-soft text-[13px] font-semibold">
+              📩 {t.footer.newsletterSuccess}
             </div>
           ) : (
-            <form onSubmit={onSubscribe} className="flex gap-2">
+            <form onSubmit={onSubscribe} className="flex gap-2 min-w-[280px] md:min-w-[380px]">
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.footer.newsletterPlaceholder}
                 disabled={loading}
-                className="!bg-white/15 !text-white placeholder:!text-white/65 !ring-white/30 focus:!ring-pim-mercan"
+                className="!bg-white/15 !text-white placeholder:!text-white/60 !ring-white/25 focus:!ring-pim-mercan flex-1"
               />
               <Button
                 type="submit"
@@ -142,17 +136,18 @@ export function Footer() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-8 mb-12">
+        {/* Brand + 4 nav columns */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-10">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
             <Link
               href="/"
-              className="mb-4 -ml-2 inline-block bg-white rounded-xl px-3 py-2"
+              className="inline-flex items-center bg-white rounded-xl px-3 py-2 mb-3"
               aria-label="Pim Etiket — Anasayfa"
             >
-              <PimAsset variant="logo" size={220} bob={false} />
+              <PimAsset variant="logo" size={160} bob={false} />
             </Link>
-            <p className="text-[13px] max-w-[280px] text-white/65 leading-relaxed">
+            <p className="text-[12.5px] text-white/55 leading-relaxed max-w-[260px]">
               {t.footer.tagline}
             </p>
           </div>
@@ -160,15 +155,15 @@ export function Footer() {
           {/* Link columns */}
           {FOOTER_GROUPS.map((g) => (
             <div key={g.t}>
-              <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] mb-3.5 text-white/50">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-white/45">
                 {g.t}
               </div>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-2">
                 {g.links.map((l) => (
                   <Link
                     key={l.label}
                     href={l.href}
-                    className="text-[13px] text-white/85 hover:text-white transition-colors"
+                    className="text-[13px] text-white/80 hover:text-white transition-colors"
                   >
                     {l.label}
                   </Link>
@@ -178,49 +173,44 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Payment + security badges (PayTR site denetimi gereksinimi) */}
+        {/* Trust strip — payment + security */}
         <PaymentBadges />
 
-        {/* Yasal kişi bilgileri — TKHK/ETICARET şeffaflık şartı */}
-        <div className="border-t border-white/10 pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-[12px] text-white/55 leading-relaxed">
+        {/* Compact legal entity row */}
+        <div className="border-t border-white/10 pt-5 mt-6 flex flex-col md:flex-row md:items-start md:justify-between gap-3 text-[12px] text-white/55 leading-relaxed">
           <div>
             <strong className="text-white/75">
               Sefa Yakut Kırtasiye Baskı Ticaret Ltd. Şti.
             </strong>
-            <br />
-            Vergi Dairesi: Doğanbey · Vergi No: 7580607612
-            <br />
-            <span className="text-white/45 italic">
-              Ünvan, adres ve telefon: yakında güncellenecek
+            {" · "}
+            Doğanbey VD / 7580607612
+            <span className="text-white/40">
+              {" · "}Ünvan/adres/telefon: yakında güncellenecek
             </span>
-            {/* Sefa not: ünvan değişikliği sürecinde (mevcut tam ünvan vergi
-                levhasında "Sefa Yakut Etiketbox Kırtasiye Baskı Tic. Ltd. Şti.").
-                Yeni ünvan + adres + telefon aktive olunca güncellenecek.
-                Bkz: TODO-SEFA.md */}
           </div>
-          <div>
+          <div className="flex items-center gap-3 shrink-0">
             <a
               href="mailto:info@pimetiket.com"
-              className="hover:text-white transition-colors"
+              className="hover:text-white transition-colors whitespace-nowrap"
             >
               info@pimetiket.com
             </a>
-            <br />
+            <span className="text-white/20">·</span>
             <Link
               href="/iletisim"
-              className="hover:text-white transition-colors"
+              className="hover:text-white transition-colors whitespace-nowrap"
             >
-              /iletisim — şikayet ve müşteri hizmetleri
+              Müşteri hizmetleri
             </Link>
           </div>
         </div>
 
-        {/* Bottom strip */}
-        <div className="pt-6 mt-6 border-t border-white/10 flex justify-between items-center text-[13px] text-white/55 flex-wrap gap-4">
-          <div className="flex items-center gap-2">
+        {/* Bottom strip — © + legal links */}
+        <div className="pt-5 mt-5 border-t border-white/10 flex flex-col md:flex-row md:justify-between md:items-center text-[12px] text-white/45 gap-3">
+          <div>
             © {new Date().getFullYear()} {t.footer.copyright}
           </div>
-          <div className="flex gap-x-5 gap-y-2 flex-wrap">
+          <div className="flex gap-x-4 gap-y-1.5 flex-wrap">
             {LEGAL_LINKS.map((l) => (
               <Link
                 key={l.href}
