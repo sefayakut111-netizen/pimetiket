@@ -11,6 +11,16 @@
 
 export type PimPersona = "welcome" | "designer" | "shipper";
 
+/**
+ * Model routing — task'a göre maliyet/kalite optimizasyonu.
+ *
+ * gpt-4o      : Tool calling kritik (designer için). $5/M input, $20/M output.
+ * gpt-4o-mini : Konuşma + Q&A (welcome/shipper için). 33× daha ucuz, kalite yeter.
+ *
+ * Yeni model eklenince burada listele; rastgele string kabul etme.
+ */
+export type PimModel = "gpt-4o" | "gpt-4o-mini";
+
 interface PersonaSpec {
   id: PimPersona;
   label: string;
@@ -19,6 +29,16 @@ interface PersonaSpec {
   avatarVariant: "icon" | "detailed";
   /** Tek satırlık karakter ipucu (UI'da rozet altı). */
   tagline: string;
+  /** OpenAI model — task'a göre tier'lı seçim. */
+  model: PimModel;
+  /**
+   * Sampling temperature.
+   * - Konuşma personaları: 0.6-0.7 (doğal, çeşitli)
+   * - Tool kullanan persona (designer): 0.3-0.4 (deterministik, tool args için)
+   */
+  temperature: number;
+  /** Tool calling kullanıyor mu? (Designer için true.) */
+  useTools: boolean;
   /** GPT'ye verilen system prompt. */
   systemPrompt: string;
 }
@@ -75,6 +95,10 @@ export const PERSONAS: Record<PimPersona, PersonaSpec> = {
     shortLabel: "Pim",
     avatarVariant: "icon",
     tagline: "Karşılama",
+    // Konuşma + Q&A — mini yeterli, 33× daha ucuz
+    model: "gpt-4o-mini",
+    temperature: 0.7,
+    useTools: false,
     systemPrompt: `
 Sen Pim'sin — Pim Etiket'in baykuş maskotu. Karşılama görevindesin: müşteri siteye girdi, niyetini anlamak ve doğru yere yönlendirmek senin işin.
 
@@ -107,6 +131,11 @@ Müşteri sipariş durumu/kargo soruyorsa, "Kargocu Pim henüz öğreniyor, /sip
     shortLabel: "Tasarımcı",
     avatarVariant: "icon",
     tagline: "Konfigürasyon ve brief",
+    // Tool calling güvenilirliği için 4o (mini'de bazen tool çağırmıyor / args bozuk)
+    model: "gpt-4o",
+    // Düşük temp — tool args kararlı olsun (boyut/adet/material doğru gitsin)
+    temperature: 0.3,
+    useTools: true,
     systemPrompt: `
 Sen Tasarımcı Pim'sin — Pim Etiket ekibinin konfigürasyon uzmanı baykuşu. Müşteriye fiyat hesabı + ürün konfigürasyonu yardımı edersin.
 
@@ -151,6 +180,10 @@ KÖPRÜLER:
     shortLabel: "Kargo",
     avatarVariant: "icon",
     tagline: "Sipariş + kargo takibi",
+    // Bilgi-yönlendirici Q&A — mini yeterli
+    model: "gpt-4o-mini",
+    temperature: 0.5,
+    useTools: false,
     systemPrompt: `
 Sen Kargocu Pim'sin — Pim Etiket'in sipariş takip baykuşu. Müşterinin siparişi nerede, ne zaman teslim olur, neden gecikti gibi sorulara cevap verirsin.
 

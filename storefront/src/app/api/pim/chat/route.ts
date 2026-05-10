@@ -220,23 +220,26 @@ export async function POST(req: Request) {
     });
   }
 
+  // Persona-specific routing: model + temperature + tool kullanımı
+  // Maliyet optimizasyonu — welcome/shipper mini'de, designer tools için 4o'da.
+  const personaConfig = PERSONAS[persona];
+
   const memory = body.memory ?? {};
   const systemPrompt = buildSystemPromptWithMemory(persona, memory);
   const modelMessages = await convertToModelMessages(body.messages);
 
-  // Designer için tool'ları aktive et
-  const tools = persona === "designer"
+  // Tool'lar sadece useTools=true persona'larda aktif (şu an: designer)
+  const tools = personaConfig.useTools
     ? { quote_sticker: stickerTool, quote_etiket: etiketTool }
     : undefined;
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: openai(personaConfig.model),
     system: systemPrompt,
     messages: modelMessages,
     tools,
-    // Designer'a tool kullanmasına teşvik
-    toolChoice: persona === "designer" ? "auto" : undefined,
-    temperature: 0.7,
+    toolChoice: personaConfig.useTools ? "auto" : undefined,
+    temperature: personaConfig.temperature,
     maxRetries: 2,
     stopWhen: ({ steps }) => steps.length >= 5,
   });
