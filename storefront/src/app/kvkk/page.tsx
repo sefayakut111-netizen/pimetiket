@@ -24,7 +24,7 @@ export default function KvkkPage() {
       <h2>1. Veri Sorumlusu</h2>
       <p>
         <strong>
-          SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ
+          SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ
         </strong>{" "}
         (&ldquo;Pim Etiket&rdquo;)
         <br />
@@ -34,12 +34,16 @@ export default function KvkkPage() {
         <br />
         Tebligat Adresi:{" "}
         <em>
-          (Yeni iş yeri kayıt değişikliği sürecinde — adres güncellenecektir)
+          (İş yeri kayıt değişikliği sürecinde — adres yakında güncellenecek)
         </em>
         <br />
         E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
         <br />
         Web: <a href="https://pimetiket.com">pimetiket.com</a>
+      </p>
+      <p className="text-[12.5px] text-gri-700 italic">
+        Not: Şirket ünvanı resmî değişiklik sürecindedir. Vergi numarası ve
+        vergi dairesi sabittir.
       </p>
 
       <h2>2. İşlenen Kişisel Veri Kategorileri</h2>

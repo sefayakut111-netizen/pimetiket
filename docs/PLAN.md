@@ -221,7 +221,7 @@ D.1 backend gerektirmez (configurator state client-side), B/C ile paralel ilerle
 | **Kargo default** | Yurtiçi / Aras / MNG (3'üyle anlaşmalı) ✅ | post-launch |
 | **Sosyal login** | MVP'de mi yoksa v1.1'e mi | C.2 |
 | **Pim Faz 2 visual** | 7 persona için kostüm overlay sistemi mi yoksa ayrı SVG'ler mi | D.1 |
-| **Yasal kişilik** | ✅ Limited Şirket (SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİC. LTD. ŞTİ.) | E.1 |
+| **Yasal kişilik** | ✅ Limited Şirket (Sefa Yakut Kırtasiye Baskı Tic. Ltd. Şti. — ünvan değişikliği sürecinde) | E.1 |
 
 ---
 

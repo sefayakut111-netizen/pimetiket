@@ -5,7 +5,9 @@ Düşük MOQ + geniş malzeme yelpazesi + AI destekli akıllı süreç.
 Üretim fason ortaklarda; biz vitrin + operasyon + müşteri yönetimi sunarız.
 
 **Canlı:** [pimetiket.com](https://pimetiket.com)
-**Sahibi:** SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ
+**Sahibi:** Sefa Yakut Kırtasiye Baskı Ticaret Ltd. Şti.
+**Vergi Dairesi / No:** Doğanbey / 7580607612
+**Not:** Şirket ünvanı resmî değişiklik sürecindedir.
 
 ---
 

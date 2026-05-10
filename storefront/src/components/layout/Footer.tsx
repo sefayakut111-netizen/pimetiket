@@ -185,16 +185,18 @@ export function Footer() {
         <div className="border-t border-white/10 pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-[12px] text-white/55 leading-relaxed">
           <div>
             <strong className="text-white/75">
-              Sefa Yakut Etiketbox Kırtasiye Baskı Ticaret Ltd. Şti.
+              Sefa Yakut Kırtasiye Baskı Ticaret Ltd. Şti.
             </strong>
             <br />
             Vergi Dairesi: Doğanbey · Vergi No: 7580607612
             <br />
             <span className="text-white/45 italic">
-              Adres ve telefon: yakında güncellenecek
+              Ünvan, adres ve telefon: yakında güncellenecek
             </span>
-            {/* Sefa not: MERSİS varsa, yeni iş yeri adresi netleşince ve
-                telefon hattı aktive olunca buraya eklenecek. Bkz: TODO-SEFA.md */}
+            {/* Sefa not: ünvan değişikliği sürecinde (mevcut tam ünvan vergi
+                levhasında "Sefa Yakut Etiketbox Kırtasiye Baskı Tic. Ltd. Şti.").
+                Yeni ünvan + adres + telefon aktive olunca güncellenecek.
+                Bkz: TODO-SEFA.md */}
           </div>
           <div>
             <a

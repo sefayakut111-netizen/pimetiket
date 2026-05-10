@@ -99,8 +99,14 @@ Bu kısım odak haftası bittikten sonra. Şimdi TANIMLAMAK için yazıyorum, ç
 ### 2. Yeni iş yeri adresi
 - Netleşince yasal sayfalarda + Footer'da güncelle
 
-### 3. PayTR sanal POS
-- 4 evrak (vergi levhası ✓, kimlik, imza sirküleri, banka belgesi)
+### 3. Şirket ünvan değişikliği (varsa)
+- Yeni resmi ünvan netleşince bana yaz, yasal sayfaları + footer + README'yi
+  yeni ünvan ile değiştireyim
+- Yeni vergi levhası al, paylaş
+
+### 4. PayTR sanal POS
+- 4 evrak (vergi levhası ✓ — yeni ünvan değişince güncellenecek,
+  kimlik, imza sirküleri, banka belgesi)
 - Ticaret Sicil Gazetesi (LTD ŞTİ için)
 - paytr.com/uye-isyeri-olun
 - 3 key Vercel env'e

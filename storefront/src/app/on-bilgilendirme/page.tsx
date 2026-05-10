@@ -27,8 +27,8 @@ export default function OnBilgilendirmePage() {
       <h2>1. Satıcı Bilgileri</h2>
       <ul>
         <li>
-          <strong>Ünvan:</strong> SEFA YAKUT ETİKETBOX KIRTASİYE BASKI
-          TİCARET LİMİTED ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
+          <strong>Ünvan:</strong> SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED
+          ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
         </li>
         <li>
           <strong>Vergi Dairesi / No:</strong> Doğanbey Vergi Dairesi /
@@ -41,7 +41,7 @@ export default function OnBilgilendirmePage() {
         <li>
           <strong>Adres:</strong>{" "}
           <em>
-            (İş yeri kayıt değişikliği sürecinde — yakında güncellenecek)
+            (İş yeri kayıt değişikliği sürecinde — adres yakında güncellenecek)
           </em>
         </li>
         <li>
@@ -57,6 +57,10 @@ export default function OnBilgilendirmePage() {
           <a href="/iletisim">/iletisim</a>
         </li>
       </ul>
+      <p className="text-[12.5px] text-gri-700 italic">
+        Not: Şirket ünvanı resmî değişiklik sürecindedir. Vergi numarası ve
+        vergi dairesi sabittir; bağlayıcı kimlik vergi numarasıdır.
+      </p>
 
       <h2>2. Sözleşme Konusu Mal/Hizmet ve Temel Nitelikleri</h2>
       <p>
