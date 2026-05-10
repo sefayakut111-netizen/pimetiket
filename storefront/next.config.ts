@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-// Cloudflare bindings'i `next dev` sırasında getCloudflareContext() ile
-// erişilebilir kıl (lokal test için). Production'da Workers runtime
-// otomatik enjeksiyon yapar.
-initOpenNextCloudflareForDev();
+// Cloudflare bindings'i `next dev` sırasında ihtiyaç olunca aktive et.
+// Vercel build'inde gereksiz, geçici olarak kapatıldı (deploy stack: Vercel).
+// Cloudflare'e migrate olunca tekrar aç:
+//   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+//   if (process.env.NODE_ENV === "development") initOpenNextCloudflareForDev();
 
 const isProd = process.env.NODE_ENV === "production";
 
