@@ -2,7 +2,7 @@
  * Pim Etiket — /auth (E.2.1)
  *
  * Magic link tabanlı authentication — Supabase auth.
- * Sefa kararı: parolasız akış (Packanalyz patterniyle aynı).
+ * Sefa kararı: parolasız akış (UX kolaylık + güvenlik).
  *
  * Akış:
  *   1. User email girer

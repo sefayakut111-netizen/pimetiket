@@ -192,7 +192,7 @@ Cloudflare Pages istersen:
 2. Tüm route'larda `runtime: "edge"` set et (mevcut middleware Edge uyumlu)
 3. Deploy: `npx wrangler pages deploy .vercel/output/static`
 
-**Sefa Packanalyz'de Cloudflare deneyimi var** — yine de Vercel daha az sürtünme verir. Karar senin.
+**Cloudflare Pages alternatifi**: Vercel free tier'ı zorlanırsa migration mümkün. Şu an Vercel canlıda, post-launch karar verilecek.
 
 ---
 

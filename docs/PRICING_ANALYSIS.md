@@ -233,7 +233,7 @@ finalPerM2 = basePerM2 × customMult
 
 Bunlar **qc-pipeline + workflow modülü** işi, pricing engine değil. Pricing engine sadece "fiyat" tarafıyla ilgilenir, sipariş akışı **G modülünün sorumluluğu**.
 
-Mail yönlendirme için Resend (Sefa zaten Packanalyz'de kullanıyor) veya benzer.
+Mail yönlendirme için Resend transactional servisi.
 
 ---
 

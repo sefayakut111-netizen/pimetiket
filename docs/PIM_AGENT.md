@@ -17,7 +17,7 @@ Pim Etiket'in baykuş maskotu Pim, sadece bir görsel değil — **A'dan Z'ye s�
 | **Kargocu Pim** | Sipariş takibi | Faz 3 |
 | **Ustabaşı Pim** | Üretim durumu, prova | Faz 3 |
 | **Muhasebeci Pim** | Fatura, ödeme, iade | Faz 4 |
-| **Mevzuat Pim** | Packanalyz köprüsü, etiket denetimi | Faz 4+ |
+| **Mevzuat Pim** | Etiket içerik mevzuatı denetimi (3rd-party uzmanlık köprüsü) | Faz 4+ |
 
 Brand voice: **Bursa esnaf samimiyeti** — sıcak ama mesafeli, "sen", abartısız, eğlenceli ama profesyonel. Emoji minimum.
 
@@ -133,8 +133,8 @@ I adımı backend bağlandıktan sonra:
 
 ## Faz 4 — Muhasebeci + Mevzuat
 
-- Fatura/iade Medusa entegrasyonu
-- **Packanalyz API köprüsü**: müşteri etiket dosyası yükler → Pim Etiket pre-press kontrol + Packanalyz mevzuat kontrol → birleşik rapor
+- Fatura/iade entegrasyonu
+- **Mevzuat denetim köprüsü** (3rd-party servis): müşteri etiket dosyası yükler → Pim Etiket pre-press kontrol + harici mevzuat kontrol → birleşik rapor
 
 ---
 

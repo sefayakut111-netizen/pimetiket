@@ -91,7 +91,7 @@ Photoshop varsayılan RGB. Matbaa CMYK basar. RGB → CMYK dönüşümünde öze
 Etiket basıldıktan sonra "kahveçi" yerine "kahveci" yazılması gerektiğini fark etmek 1000 etiketi çöpe atmak demek. Pim'in dil modeli marka adı + ürün metni + içindekiler kontrolü yapıyor.
 
 **Pim'in YAPMADIĞI:**
-- Mevzuat denetimi (besin değeri, alerjen, üretici bilgisi vb) — bu Packanalyz'in işi
+- Mevzuat denetimi (besin değeri, alerjen, üretici bilgisi vb) — ayrı bir uzmanlık alanı, etiket içerik mevzuatı için bağımsız hizmetler kullanılmalı
 - Tasarım önerisi — biz baskı yaparız, tasarım danışmanlığı yapmayız
 - Renk düzeltme — flag ederiz, sen düzeltirsin
 

@@ -182,7 +182,7 @@ D.1 backend gerektirmez (configurator state client-side), B/C ile paralel ilerle
 | **D.1** Tasarımcı Pim | Configurator handoff + brief çevirici (function calling: `set_configurator`, `set_qty`, `redirect_to_product`) | A bitmeli | A bitince başlar |
 | **D.2** Memory swap | localStorage → Supabase server-side (`pim-memory` modülü canlı) | B + C.2 | C bitince |
 | **D.3** Operatör/Kargocu/Ustabaşı Pim | Sipariş lookup, kargo takip, üretim durumu tool'ları | C bitmeli | C sonrası |
-| **D.4** Muhasebeci + Mevzuat Pim | Fatura, **Packanalyz API köprüsü** | C + Packanalyz API | post-launch |
+| **D.4** Muhasebeci + Mevzuat Pim | Fatura, mevzuat denetim köprüsü (3rd-party API) | C + 3rd-party API | post-launch |
 
 ---
 
@@ -214,14 +214,14 @@ D.1 backend gerektirmez (configurator state client-side), B/C ile paralel ilerle
 
 | Konu | Seçenekler | Etkilediği adım |
 |---|---|---|
-| **Payment provider** | iyzico (kolay onboarding) / ParamPOS (Packanalyz'de var) / Stripe sandbox geçici | C.4, H |
-| **Backend host** | Railway ($5+/ay, sıfır ops) / Hetzner ($5/ay, Docker gerek) / Render | B, E.4 |
-| **Storefront host** | Cloudflare Pages (Packanalyz'de var) / Vercel (Next.js evi) | E.4 |
+| **Payment provider** | ✅ PayTR (seçildi, onay bekliyor) | C.4, H |
+| **Backend host** | Supabase (BaaS — DB+Auth+Storage tek pakette) ✅ | B, E.4 |
+| **Storefront host** | ✅ Vercel (seçildi, canlı) | E.4 |
 | **E-fatura sağlayıcı** | Foriba / Logo / QNB / Mikro / İzibiz | post-launch |
-| **Kargo default** | Yurtiçi / Aras / Sürat / MNG | post-launch |
+| **Kargo default** | Yurtiçi / Aras / MNG (3'üyle anlaşmalı) ✅ | post-launch |
 | **Sosyal login** | MVP'de mi yoksa v1.1'e mi | C.2 |
 | **Pim Faz 2 visual** | 7 persona için kostüm overlay sistemi mi yoksa ayrı SVG'ler mi | D.1 |
-| **Yasal kişilik** | Pim Etiket de Sefa Yakut şahıs işletmesi mi (Packanalyz gibi) yoksa ayrı tüzel kişilik mi | E.1 |
+| **Yasal kişilik** | ✅ Limited Şirket (SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİC. LTD. ŞTİ.) | E.1 |
 
 ---
 
@@ -262,7 +262,7 @@ v1+v2 taslaklarını **27 MVP sayfayı** Next.js + TS + Tailwind'e taşı.
 | 4 | Hakkımızda | `/hakkimizda` | 🟢 Düşük |
 | 5 | SSS | `/sss` | 🟡 Orta — kategorize accordion |
 | 6 | İletişim | `/iletisim` | 🟢 Düşük — WhatsApp, mail, atölye, harita iframe |
-| 38-43 | Yasal 6 sayfa | `/mesafeli-satis`, `/cayma-hakki`, `/kvkk`, `/gizlilik`, `/cerez`, `/sartlar` | 🟡 Orta — Packanalyz'deki yasal şablonları yeniden kullan, AVUKAT İNCELEMESİ ŞART |
+| 38-43 | Yasal 6 sayfa | `/mesafeli-satis`, `/cayma-hakki`, `/kvkk`, `/gizlilik`, `/cerez`, `/sartlar` | 🟡 Orta — TGK + 6502 + KVKK uyumlu standart taslak, AVUKAT İNCELEMESİ ŞART |
 
 #### E.2 — Auth + Customer Account (12 sayfa, ~5 gün)
 
@@ -302,7 +302,7 @@ v1+v2 taslaklarını **27 MVP sayfayı** Next.js + TS + Tailwind'e taşı.
 
 | Alt-adım | İş |
 |---|---|
-| F.1 | Yeni Supabase org/proje (Pim Etiket için ayrı, Packanalyz'le karıştırma) |
+| F.1 | Yeni Supabase org/proje (Pim Etiket için ayrı org/proje — proje izolasyonu önemli) |
 | F.2 | `npx create-medusa-app@latest backend --skip-db --skip-onboard` |
 | F.3 | `.env`'e Supabase pooler + direct connection string |
 | F.4 | Migrate, admin user create, dev sunucu localhost:9000 |
@@ -437,7 +437,7 @@ Medusa admin v2'nin slot/widget API'siyle E.3'teki 5 admin sayfasının **gerçe
 | L | 1 hafta | Production canlı + soft launch |
 | **Toplam** | **~11-12 hafta (3 ay)** | İlk müşteriye satış yapılabilir |
 
-> Sefa'nın Packanalyz tempolu çalışması (9 günde MVP) ile **6-8 haftaya** düşebilir.
+> Hızlı tempolu çalışma + AI desteğiyle **6-8 haftaya** düşebilir (gerçekleşen: 2 günde canlı, 10 Mayıs 2026).
 
 ---
 
