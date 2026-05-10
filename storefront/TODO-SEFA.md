@@ -142,6 +142,15 @@ Bu kısım odak haftası bittikten sonra. Şimdi TANIMLAMAK için yazıyorum, ç
   panelinde toast)
 - Reviewer'ın display_name kullanımını gerçek user metadata'sından çek
 
+### 10. Anasayfa fallback yorumları kaldırma (gerçek yorum gelince)
+- Şu an anasayfada 3 örnek yorum (Defne K., Ezgi K., Burak A.) — **DB boş
+  olduğu için**
+- İlk gerçek müşteri yorumu admin onayından geçtiğinde fallback otomatik
+  geri çekilir (HomeReviews component logic)
+- Tamamen güvenli olmak için 3+ gerçek yorum birikinde
+  `components/reviews/HomeReviews.tsx` içindeki `FALLBACK_REVIEWS` dizisini
+  boşalt veya sil — TKHK m.61 yanıltıcı reklam riski sıfır olur
+
 ---
 
 ## 🔮 Daha sonra (mali hafta sonrası)
