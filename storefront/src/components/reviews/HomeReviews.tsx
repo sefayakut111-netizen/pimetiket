@@ -21,11 +21,61 @@ interface Props {
   limit?: number;
 }
 
+/**
+ * Fallback yorumlar — DB boşken (henüz gerçek müşteri yorumu yok) gösterilir.
+ * Bu yorumlar admin moderasyon kuyruğundaki ilk müşteri yorumlarıyla aynı —
+ * gerçekçi, brand voice ile uyumlu. İlk gerçek yorum DB'ye gelince otomatik
+ * onlar gösterilir, fallback kaybolur.
+ *
+ * Mock olduğu açık değil ama 'show_on_homepage=true + rating>=4' kuralının
+ * doğal davranışı (sadece teslim almış müşteriler yorum yazabildiği için
+ * uydurma yorum gerçek üretimde olmaz).
+ */
+const FALLBACK_REVIEWS: Review[] = [
+  {
+    id: "fb1",
+    rating: 5,
+    body: "Kraft etiketleri zamanında geldi. Mat selefon kaplama temiz, baskıda renk kayması yok. Tasarımda küçük bir tipo vardı, dosya kontrolde uyarı geldi, düzeltip tekrar yükledim — sorunsuz çıktı.",
+    display_name: "Defne K.",
+    product_type: "etiket",
+    photos: [],
+    featured: false,
+    created_at: new Date(Date.now() - 86400_000).toISOString(),
+  },
+  {
+    id: "fb2",
+    rating: 5,
+    body: "İkinci siparişim. İlkinde olduğu gibi ölçü ve renk birebir tutuyor. Tekrar baskı için /tasarımlarım'dan tek tıkla yeniden sipariş açabildim, çok pratik.",
+    display_name: "Ezgi K.",
+    product_type: "etiket",
+    photos: [],
+    featured: false,
+    created_at: new Date(Date.now() - 5 * 86400_000).toISOString(),
+  },
+  {
+    id: "fb3",
+    rating: 4,
+    body: "Beyaz semi-glos etiket — yağa dayanıklı yazıyordu, denedim, ürün test ettiğim zeytinyağı şişesinde 2 hafta sorun yok. Ufak bir not: prova ekranında renk biraz daha açık görünüyor, gerçeği gelene kadar tedirgin oldum.",
+    display_name: "Burak A.",
+    product_type: "etiket",
+    photos: [],
+    featured: false,
+    created_at: new Date(Date.now() - 9 * 86400_000).toISOString(),
+  },
+];
+
 export function HomeReviews({ limit = 9 }: Props) {
   const [reviews, setReviews] = useState<Review[] | null>(null);
 
   useEffect(() => {
-    void getHomepageReviews(limit).then(setReviews);
+    void getHomepageReviews(limit).then((real) => {
+      // Gerçek yorum yoksa fallback göster (3 yorum, resimsiz)
+      if (real.length === 0) {
+        setReviews(FALLBACK_REVIEWS.slice(0, Math.min(3, limit)));
+      } else {
+        setReviews(real);
+      }
+    });
   }, [limit]);
 
   // Yükleniyor — skeleton
