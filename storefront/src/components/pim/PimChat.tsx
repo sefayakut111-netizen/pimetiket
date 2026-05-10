@@ -196,6 +196,15 @@ export function PimChat() {
     }
   }, [pathname, messages.length]);
 
+  // Custom event listener — başka komponentler "pim-chat-open" event'i
+  // dispatch ederse chat'i programmatik açabilir.
+  // Kullanım: window.dispatchEvent(new CustomEvent('pim-chat-open'))
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("pim-chat-open", handler);
+    return () => window.removeEventListener("pim-chat-open", handler);
+  }, []);
+
   // /admin altında render etme — AdminShell'in kendi flow'u var
   if (pathname?.startsWith("/admin")) return null;
 
@@ -205,12 +214,13 @@ export function PimChat() {
     <>
       {/* Floating bubble (her zaman görünür) */}
       <button
+        id="pim-chat"
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Pim'i kapat" : "Pim ile konuş"}
         aria-expanded={open}
         className={cn(
-          "fixed bottom-5 right-5 z-50 group",
+          "fixed bottom-5 right-5 z-50 group scroll-mt-20",
           "transition-all duration-200 ease-out",
           open && "scale-90 opacity-0 pointer-events-none"
         )}

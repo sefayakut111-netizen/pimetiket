@@ -46,10 +46,6 @@ function baselineEtiketPrice(): string {
   return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
 }
 
-const TESTIMONIALS_BG = ["bg-krem", "bg-white", "bg-pim-mercan-tint"];
-
-const AVATAR_COLORS = ["#F5EBD9", "#FFCDB9", "#1F2937", "#FF9933"];
-
 const FAQ_QUESTIONS_TR = [
   {
     q: "Minimum kaç adet basabiliyorum?",
@@ -80,42 +76,6 @@ const FAQ_QUESTIONS_EN = [
   },
 ];
 
-const TESTIMONIALS_TR = [
-  {
-    n: "Defne Karaca",
-    b: "Olea — Naturel sabun",
-    q: "İlk siparişte 1500 adet etiket 9 günde elimde oldu. Pim bir tipoyu yakaladı, üretime gitmeden düzelttim.",
-  },
-  {
-    n: "Mert Yılmaz",
-    b: "Bulutlu Roastery",
-    q: "Mat selefon + sıcak yaldız raf etkisi için yeterli oldu. Online sipariş süreci de yormadı.",
-  },
-  {
-    n: "Ezgi & Can",
-    b: "Atölye Niş",
-    q: "Sticker tarafı bizim ihtiyacımıza uygun. Az adet, hızlı, kâğıdı sağlam. Müşterilerimize hediye olarak veriyoruz.",
-  },
-];
-
-const TESTIMONIALS_EN = [
-  {
-    n: "Defne Karaca",
-    b: "Olea — Natural soap",
-    q: "1500 labels arrived in 9 days on my first order. Pim caught a typo I had been missing.",
-  },
-  {
-    n: "Mert Yılmaz",
-    b: "Bulutlu Roastery",
-    q: "Matte lamination + hot foil gave us the shelf presence we needed. Ordering online didn't slow us down.",
-  },
-  {
-    n: "Ezgi & Can",
-    b: "Atölye Niş",
-    q: "Stickers fit our needs — low volume, fast, solid paper. We give them to our customers as a small gift.",
-  },
-];
-
 export default function HomePage() {
   const { t, locale } = useT();
 
@@ -132,7 +92,6 @@ export default function HomePage() {
     { n: "04", t: t.home.step4, d: t.home.step4Desc },
   ];
 
-  const TESTIMONIALS = locale === "en" ? TESTIMONIALS_EN : TESTIMONIALS_TR;
   const FAQS = locale === "en" ? FAQ_QUESTIONS_EN : FAQ_QUESTIONS_TR;
   return (
     <main className="animate-fade-up">
@@ -184,28 +143,16 @@ export default function HomePage() {
                 <Icon.Sticker size={18} /> {t.home.ctaSticker}
               </Button>
             </div>
-            <div className="mt-10 flex items-center gap-6 flex-wrap">
-              <div className="flex">
-                {AVATAR_COLORS.map((c, i) => (
-                  <div
-                    key={i}
-                    className={`w-8 h-8 rounded-full border-2 border-white ${
-                      i ? "-ml-2.5" : ""
-                    }`}
-                    style={{ background: c }}
-                  />
-                ))}
-              </div>
-              <div>
-                <div className="flex gap-px text-sari">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <Icon.Star key={i} size={14} />
-                  ))}
-                </div>
-                <div className="text-[13px] text-gri-700 mt-0.5">
-                  {t.home.socialProof}
-                </div>
-              </div>
+            <div className="mt-10 flex items-center gap-3 flex-wrap text-[13px] text-gri-700">
+              <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-yesil-soft text-yesil text-[12px] font-semibold">
+                <Icon.Check size={12} /> Düşük adetten esnek
+              </span>
+              <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-pim-mercan-tint text-pim-mercan text-[12px] font-semibold">
+                <Icon.Sparkle size={12} /> AI dosya kontrolü
+              </span>
+              <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-krem text-lacivert text-[12px] font-semibold">
+                <Icon.Truck size={12} /> Türkiye geneli teslimat
+              </span>
             </div>
           </div>
 
@@ -318,36 +265,6 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ============================== TESTIMONIALS ============================== */}
-      <section className="py-20">
-        <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {TESTIMONIALS.map((tr, i) => (
-            <article
-              key={i}
-              className={`rounded-lg shadow-1 ring-1 ring-black/[0.04] p-7 ${TESTIMONIALS_BG[i] ?? "bg-white"}`}
-            >
-              <div className="flex gap-px text-sari mb-3.5">
-                {[0, 1, 2, 3, 4].map((j) => (
-                  <Icon.Star key={j} size={14} />
-                ))}
-              </div>
-              <p className="text-[17px] leading-snug font-medium mb-6">
-                &ldquo;{tr.q}&rdquo;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="grid place-items-center w-10 h-10 rounded-full bg-lacivert text-white font-bold">
-                  {tr.n[0]}
-                </div>
-                <div>
-                  <div className="font-semibold">{tr.n}</div>
-                  <div className="text-[13px] text-gri-700">{tr.b}</div>
-                </div>
-              </div>
-            </article>
-          ))}
         </div>
       </section>
 

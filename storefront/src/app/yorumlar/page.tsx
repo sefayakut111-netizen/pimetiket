@@ -105,7 +105,7 @@ function YorumlarInner() {
       </section>
 
       {/* Filter pills */}
-      <section className="py-6 sticky top-16 bg-gri-50/95 backdrop-blur z-30 border-b border-gri-100">
+      <section className="py-6 sticky top-16 bg-gri-50/95 backdrop-blur z-20 border-b border-gri-100">
         <div className="mx-auto max-w-[1100px] px-4 md:px-8 flex gap-2 flex-wrap">
           {filterPills.map((p) => (
             <button

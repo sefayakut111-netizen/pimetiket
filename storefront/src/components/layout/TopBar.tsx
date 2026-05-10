@@ -176,13 +176,8 @@ export function TopBar() {
           <div className="hidden sm:block">
             <LanguageSwitcher />
           </div>
-          <button
-            type="button"
-            aria-label={t.common.search}
-            className="hidden sm:inline-flex p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
-          >
-            <Icon.Search size={18} />
-          </button>
+          {/* Arama butonu — özellik gelene kadar gizlendi (UX audit P0).
+              Geri eklemek için: className "hidden" yerine "hidden sm:inline-flex". */}
           <div className="relative group">
             <Link
               href="/sepet"

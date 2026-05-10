@@ -74,26 +74,9 @@ function AuthPageInner() {
     }
   };
 
-  const onGoogleLogin = async () => {
-    if (!configured) return;
-    setLoading(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-        },
-      });
-      if (error) toast.error(`Google girişi: ${error.message}`);
-      // Başarı durumunda Supabase yönlendirme yapacak
-    } catch (err) {
-      setLoading(false);
-      toast.error(
-        err instanceof Error ? err.message : "Beklenmedik hata"
-      );
-    }
-  };
+  // Google OAuth — Supabase provider aktive olunca buraya handler eklenir.
+  // (Eski onGoogleLogin temizlendi; UX audit P1 — provider config olmadan
+  // butonun çalışmadığı görüldü.)
 
   // Supabase yapılandırılmamış uyarı
   if (!configured) {
@@ -236,24 +219,23 @@ function AuthPageInner() {
             </Button>
           </form>
 
-          <div className="flex items-center gap-3 my-5">
-            <span className="flex-1 h-px bg-gri-200" />
-            <span className="text-[11.5px] text-gri-500 uppercase tracking-[0.04em]">
-              {t.auth.or}
-            </span>
-            <span className="flex-1 h-px bg-gri-200" />
-          </div>
+          {/* Google OAuth — Supabase'de provider aktive edilince geri ekle.
+              UX audit P1: provider config olmadan tıklayan kullanıcı hata
+              alır. Resend mail aktif olunca + Google Cloud OAuth client kurulunca
+              bu blok geri açılır.
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            block
-            onClick={onGoogleLogin}
-            disabled={loading}
-          >
-            <GoogleIcon /> {t.auth.googleContinue}
-          </Button>
+              <div className="flex items-center gap-3 my-5">
+                <span className="flex-1 h-px bg-gri-200" />
+                <span className="text-[11.5px] text-gri-500 uppercase tracking-[0.04em]">
+                  {t.auth.or}
+                </span>
+                <span className="flex-1 h-px bg-gri-200" />
+              </div>
+              <Button type="button" variant="secondary" size="lg" block
+                onClick={onGoogleLogin} disabled={loading}>
+                <GoogleIcon /> {t.auth.googleContinue}
+              </Button>
+          */}
 
           <p className="text-[11.5px] text-gri-500 mt-5 text-center leading-relaxed">
             {t.auth.autoCreateNote}

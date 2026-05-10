@@ -92,14 +92,18 @@ export default function IletisimPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
 
+  const openPimChat = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("pim-chat-open"));
+  };
+
   const CONTACT_METHODS = [
     {
       icon: <Icon.ChatBubble size={20} />,
       title: c.waTitle,
       desc: c.waDesc,
       cta: c.waCta,
-      // Pim chat widget her sayfada açık — kullanıcı tıklayınca odaklanır
-      href: "#pim-chat",
+      onClick: openPimChat,
       accent: "bg-pim-mercan-tint text-pim-mercan",
     },
     {
@@ -163,18 +167,28 @@ export default function IletisimPage() {
                 <p className="text-[15px] md:text-base text-gri-700 leading-relaxed mb-4">
                   {m.desc}
                 </p>
-                <a
-                  href={m.href}
-                  target={m.href.startsWith("http") ? "_blank" : undefined}
-                  rel={
-                    m.href.startsWith("http")
-                      ? "noopener noreferrer"
-                      : undefined
-                  }
-                  className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold hover:underline"
-                >
-                  {m.cta} <Icon.ArrowR size={14} />
-                </a>
+                {m.onClick ? (
+                  <button
+                    type="button"
+                    onClick={m.onClick}
+                    className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold hover:underline"
+                  >
+                    {m.cta} <Icon.ArrowR size={14} />
+                  </button>
+                ) : (
+                  <a
+                    href={m.href}
+                    target={m.href?.startsWith("http") ? "_blank" : undefined}
+                    rel={
+                      m.href?.startsWith("http")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                    className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold hover:underline"
+                  >
+                    {m.cta} <Icon.ArrowR size={14} />
+                  </a>
+                )}
               </Card>
             ))}
           </div>

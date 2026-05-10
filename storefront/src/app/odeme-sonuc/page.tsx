@@ -22,8 +22,8 @@ const EXTRA = {
       "Bankadan onay gelmedi. Kart bilgilerini kontrol edip tekrar denemen gerekiyor. Tutar hesabından çekilmedi.",
     pspUnavailableTitle: "Ödeme henüz aktif değil",
     pspUnavailableDesc:
-      "PayTR aktivasyonumuz tamamlanma aşamasında. Birkaç gün içinde online ödeme açılacak. Şimdiden sipariş vermek istersen WhatsApp veya iletişim formundan bize yaz — fiyatı manuel hazırlarız, havale ile başlatırız.",
-    pspWhatsApp: "WhatsApp'tan yaz",
+      "PayTR aktivasyonumuz tamamlanma aşamasında. Birkaç gün içinde online ödeme açılacak. Şimdiden sipariş vermek istersen e-posta veya iletişim formundan bize yaz — fiyatı manuel hazırlarız, havale ile başlatırız.",
+    pspWhatsApp: "E-posta gönder",
     retry: "Tekrar dene",
     contact: "Bize yaz",
     contactFooter: (
@@ -48,8 +48,8 @@ const EXTRA = {
       "We didn't get bank approval. Please check your card details and try again. Your account hasn't been charged.",
     pspUnavailableTitle: "Payments not active yet",
     pspUnavailableDesc:
-      "Our PayTR activation is in progress — online payments will open within a few days. To start your order now, message us via WhatsApp or the contact form. We'll prepare the quote manually and accept bank transfer.",
-    pspWhatsApp: "Message on WhatsApp",
+      "Our PayTR activation is in progress — online payments will open within a few days. To start your order now, message us via email or the contact form. We'll prepare the quote manually and accept bank transfer.",
+    pspWhatsApp: "Send email",
     retry: "Try again",
     contact: "Contact us",
     contactFooter: (
@@ -112,7 +112,7 @@ function OdemeSonucInner() {
                 <Button
                   variant="primary"
                   size="lg"
-                  href="https://wa.me/905XXXXXXXXX"
+                  href="mailto:info@pimetiket.com?subject=Sipariş%20için%20iletişim"
                 >
                   <Icon.ChatBubble size={16} /> {x.pspWhatsApp}
                 </Button>

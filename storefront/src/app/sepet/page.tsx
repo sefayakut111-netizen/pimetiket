@@ -126,7 +126,7 @@ export default function SepetPage() {
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-16">
         <div className="mx-auto max-w-[440px] px-6 text-center">
           <Pim pose="think" size={160} />
-          <Eyebrow>{t.cart.empty}</Eyebrow>
+          <Eyebrow>Sepet</Eyebrow>
           <h1 className="mt-3 text-[28px] font-semibold tracking-tight">
             {t.cart.empty}
           </h1>
