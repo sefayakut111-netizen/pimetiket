@@ -261,6 +261,48 @@ export default function SiparisDetailPage({
   const router = useRouter();
   const toast = useToast();
   const [reordering, setReordering] = useState(false);
+  const [proofResponding, setProofResponding] = useState(false);
+
+  const respondToProof = async (action: "approve" | "request_change") => {
+    if (proofResponding) return;
+    setProofResponding(true);
+    try {
+      let note: string | null = null;
+      if (action === "request_change") {
+        note = prompt(
+          "Hangi değişikliği istiyorsun? (Opsiyonel, kısa not):"
+        );
+        if (note === null) {
+          // İptal
+          setProofResponding(false);
+          return;
+        }
+      }
+      const res = await fetch(`/api/orders/${id}/proof-respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "İşlem başarısız");
+        return;
+      }
+      if (action === "approve") {
+        setProofApproved(true);
+        toast.success("Provayı onayladın — sipariş üretime gönderildi 🎉");
+      } else {
+        toast.success("Değişiklik talebin operatöre iletildi");
+      }
+      // Order'ı yenile
+      void fetchCustomerOrder(id).then((o) => o && setOrder(o));
+    } catch (e) {
+      console.error("[proof-respond]", e);
+      toast.error("Bağlantı hatası");
+    } finally {
+      setProofResponding(false);
+    }
+  };
 
   useEffect(() => {
     ensureAuthBindings();
@@ -523,14 +565,18 @@ export default function SiparisDetailPage({
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="primary"
-                      onClick={() => setProofApproved(true)}
+                      onClick={() => void respondToProof("approve")}
+                      disabled={proofResponding}
                       className="!bg-yesil hover:!bg-[#22a862]"
                     >
                       <Icon.Check size={14} /> {c.proofApprove}
                     </Button>
-                    <Button variant="secondary">{c.proofRequestChange}</Button>
-                    <Button variant="ghost">
-                      <Icon.Box size={14} /> {c.proofDownloadPdf}
+                    <Button
+                      variant="secondary"
+                      onClick={() => void respondToProof("request_change")}
+                      disabled={proofResponding}
+                    >
+                      {c.proofRequestChange}
                     </Button>
                   </div>
                 </div>

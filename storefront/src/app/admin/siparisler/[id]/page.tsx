@@ -90,7 +90,7 @@ export default function AdminOrderDetailPage({
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, [id]);
 
-  const handleStatusChange = (newStatus: OrderStatus) => {
+  const handleStatusChange = async (newStatus: OrderStatus) => {
     if (!order) return;
     if (newStatus === order.status) return;
     if (
@@ -100,9 +100,39 @@ export default function AdminOrderDetailPage({
       return;
     }
     setUpdating(true);
-    updateCustomerOrderStatus(order.id, newStatus);
-    toast.success(`Durum güncellendi → ${STATUS_META[newStatus].label}`);
-    setTimeout(() => setUpdating(false), 300);
+    try {
+      // Önce gerçek DB endpoint'i dene
+      const res = await fetch(`/api/admin/orders/${order.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast.success(`Durum güncellendi → ${STATUS_META[newStatus].label}`);
+        // Order'ı yenile (yerel customer-order cache de senkron etmek için)
+        const found = listCustomerOrders().find((o) => o.id === order.id);
+        if (found) {
+          setOrder({ ...found, status: newStatus });
+        } else {
+          setOrder({ ...order, status: newStatus });
+        }
+      } else {
+        // DB'de bulamadıysa (localStorage-only mock order) → eski yola dön
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        if (j.error === "Sipariş bulunamadı") {
+          updateCustomerOrderStatus(order.id, newStatus);
+          toast.success(`Durum güncellendi → ${STATUS_META[newStatus].label}`);
+          setOrder({ ...order, status: newStatus });
+        } else {
+          toast.error(j.error ?? "Güncelleme başarısız");
+        }
+      }
+    } catch (e) {
+      console.error("[status]", e);
+      toast.error("Bağlantı hatası");
+    } finally {
+      setUpdating(false);
+    }
   };
 
   if (loading) {
