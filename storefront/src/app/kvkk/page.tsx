@@ -23,9 +23,15 @@ export default function KvkkPage() {
 
       <h2>1. Veri Sorumlusu</h2>
       <p>
-        <strong>Sefa Yakut / Pim Etiket</strong>
+        <strong>Sefa Yakut Şahıs İşletmesi</strong> (&ldquo;Pim Etiket&rdquo;)
         <br />
-        [Sefa not: yasal ünvan, MERSİS no, vergi no, tebligat adresi]
+        Vergi Dairesi / No: Alemdağ Vergi Dairesi / 9290558622
+        <br />
+        Tebligat Adresi: Yamanevler Mah., Ümraniye / İstanbul, Türkiye
+        <br />
+        E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
+        <br />
+        Web: <a href="https://pimetiket.com">pimetiket.com</a>
       </p>
 
       <h2>2. İşlenen Kişisel Veri Kategorileri</h2>

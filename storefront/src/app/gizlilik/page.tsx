@@ -57,20 +57,36 @@ export default function GizlilikPage() {
       </p>
       <ul>
         <li>
-          <strong>Ödeme aracı kuruluşu</strong>: [Sefa not: iyzico/ParamPOS]
+          <strong>Ödeme aracı kuruluşu</strong>: PayTR Ödeme Hizmetleri A.Ş.
+          (BDDK lisanslı, PCI-DSS sertifikalı). Kart bilgilerin doğrudan
+          PayTR&rsquo;ye iletilir; Pim Etiket bu verileri saklamaz, görmez.
         </li>
         <li>
-          <strong>Kargo firması</strong>: [Sefa not]
+          <strong>Kargo firmaları</strong>: Yurtiçi Kargo, Aras Kargo, MNG
+          Kargo. Sipariş kargoya verildiğinde ad-soyad, teslimat adresi ve
+          telefon bilgileri seçilen kargo firması ile paylaşılır.
         </li>
         <li>
-          <strong>e-Fatura sağlayıcısı</strong>: [Sefa not]
+          <strong>Veritabanı & Auth altyapısı</strong>: Supabase (AWS Frankfurt
+          eu-central-1 — KVKK ile uyumlu AB veri merkezi).
         </li>
         <li>
-          <strong>Web analitik</strong>: PostHog veya Google Analytics 4
-          (anonim bot)
+          <strong>Hosting altyapısı</strong>: Vercel (CDN ve fonksiyon
+          işleme; AB ve global edge node&rsquo;lar).
         </li>
         <li>
-          <strong>E-posta gönderim</strong>: [Sefa not: Resend/Mailgun]
+          <strong>E-posta gönderim</strong>: Google Workspace (info@pimetiket.com
+          gelen kutusu) ve Resend (transactional sipariş/iade bildirimi —
+          aktivasyon sürüyor).
+        </li>
+        <li>
+          <strong>Yapay zeka asistanı</strong>: OpenAI API (Pim sohbet için
+          GPT-4o / GPT-4o-mini). Sohbet içerikleri OpenAI&rsquo;ye iletilir
+          ancak model eğitiminde kullanılmaz (API tier kuralı).
+        </li>
+        <li>
+          <strong>Web analitik</strong>: Google Analytics 4 ve/veya PostHog —
+          yalnızca KVKK çerez izni verildiğinde aktive edilir.
         </li>
       </ul>
 

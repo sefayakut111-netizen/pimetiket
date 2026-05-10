@@ -67,9 +67,9 @@ const COPY = {
     founderEyebrow: "Kurucu",
     founderTitle: "Merhaba, ben Sefa.",
     founderNote:
-      "[Sefa not: kısa bir biyografi + neden bu işi kurduğun + LinkedIn linki]",
+      "Mühendislik geçmişimle 75 yıllık aile ticaret birikimini birleştirerek Pim Etiket'i hayata geçirdim.",
     founderText:
-      " — Pim Etiket'i kurarken hedefim, sektörün online'a geçişinde herkesin — küçük marka veya kurumsal — adil bir başlangıca sahip olması idi. Sen de bizimle çalışmak istersen WhatsApp'tan veya ",
+      " — Pim Etiket'i kurarken hedefim, sektörün online'a geçişinde herkesin — küçük marka veya kurumsal — adil bir başlangıca sahip olması idi. Sen de bizimle çalışmak istersen ",
     founderLink: "iletişim",
     founderEnd: " sayfasından bana ulaşabilirsin.",
     ctaTitle: "Bizimle çalışmaya hazır mısın?",
@@ -131,9 +131,10 @@ const COPY = {
       "The instant price you see in the configurator stays the same in the cart. No hidden fees.",
     founderEyebrow: "Founder",
     founderTitle: "Hi, I'm Sefa.",
-    founderNote: "[Sefa note: short bio + why you started + LinkedIn]",
+    founderNote:
+      "I built Pim Etiket combining my engineering background with 75 years of family trading experience.",
     founderText:
-      " — When I founded Pim Etiket, my goal was simple: make sure everyone — small brand or corporate buyer — gets a fair start as the industry moves online. If you want to work with us, reach me via WhatsApp or the ",
+      " — When I founded Pim Etiket, my goal was simple: make sure everyone — small brand or corporate buyer — gets a fair start as the industry moves online. If you want to work with us, reach out via the ",
     founderLink: "contact",
     founderEnd: " page.",
     ctaTitle: "Ready to work with us?",

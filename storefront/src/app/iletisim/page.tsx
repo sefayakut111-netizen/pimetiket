@@ -19,29 +19,30 @@ const COPY = {
     h1Line2: "cevap hızlı gelir.",
     intro:
       "Aklındakini en hızlı şekilde çözmek için 3 farklı kanal ve sağ alt köşede bekleyen Pim — istediğin yere yaz.",
-    waTitle: "WhatsApp",
-    waDesc: "En hızlı yanıt için — mesai içinde 15 dakika içinde döneriz.",
-    waCta: "Sohbeti aç",
+    waTitle: "Pim Sohbet",
+    waDesc: "Sağ alt köşedeki Pim'e tıkla, GPT-4 destekli AI hemen yanıtlar.",
+    waCta: "Pim'e yaz",
     emailTitle: "E-posta",
-    emailDesc: "Detaylı sorular, teklif istekleri, ihale.",
-    workshopTitle: "Bursa Atölye",
+    emailDesc: "Detaylı sorular, teklif istekleri, B2B partnership için.",
+    workshopTitle: "Atölye Ziyareti",
     workshopDesc: "Numune almak veya tanışmak için randevulu ziyaret.",
-    workshopCta: "Konum & yol tarifi",
-    bursaEyebrow: "Bursa atölyesi",
+    workshopCta: "Bilgi al",
+    bursaEyebrow: "Pim Etiket atölyesi",
     bursaTitle1: "Numune almak için",
-    bursaTitle2: "bize uğra.",
-    addressLabel: "Adres",
-    addressNote: "[Sefa not: atölye adresi]",
-    hoursLabel: "Açılış saatleri",
+    bursaTitle2: "iletişime geç.",
+    addressLabel: "Üretim",
+    addressNote:
+      "Bursa & İstanbul — anlaşmalı dijital baskı atölyelerinde fason üretim",
+    hoursLabel: "Yanıt saatleri",
     hoursMonFri: "Pazartesi – Cuma · 09:00 – 18:00",
-    hoursSat: "Cumartesi · 10:00 – 14:00 (randevulu)",
+    hoursSat: "Cumartesi · 10:00 – 14:00 (acele siparişler)",
     appointmentLabel: "Randevu",
     appointmentText:
-      "Ziyaret öncesi WhatsApp'tan haber ver, hazır olalım.",
-    waButton: "WhatsApp'tan yaz",
-    mapSoonTitle: "Harita yakında",
+      "Ziyaret etmek istersen önce e-posta yaz, atölye konumu ve uygunluk bilgisini paylaşalım.",
+    waButton: "E-posta gönder",
+    mapSoonTitle: "Atölye konumu",
     mapSoonDesc:
-      "Atölye adresi ve Google Maps embed'i Sefa tarafından eklenecek.",
+      "Pim Etiket fason üretim modeliyle çalışır. Spesifik atölye konumu randevu sırasında paylaşılır.",
     faqEyebrow: "Önce SSS'ye bakmak istersen",
     faqTitle: "Cevabın hazır olabilir.",
     faqOrder: "Sipariş aşaması",
@@ -54,30 +55,31 @@ const COPY = {
     h1Line2: "we respond fast.",
     intro:
       "Three different channels and Pim waiting in the bottom-right corner — pick whichever you prefer.",
-    waTitle: "WhatsApp",
+    waTitle: "Pim Chat",
     waDesc:
-      "Fastest response — we usually reply within 15 minutes during work hours.",
-    waCta: "Open chat",
+      "Click Pim in the bottom-right corner — GPT-4 powered AI replies instantly.",
+    waCta: "Chat with Pim",
     emailTitle: "Email",
-    emailDesc: "Detailed questions, RFQs, partnerships.",
-    workshopTitle: "Bursa workshop",
-    workshopDesc: "Visit by appointment to see samples or just say hi.",
-    workshopCta: "Location & directions",
-    bursaEyebrow: "Bursa workshop",
-    bursaTitle1: "Drop by for samples",
+    emailDesc: "Detailed questions, RFQs, B2B partnerships.",
+    workshopTitle: "Workshop visit",
+    workshopDesc: "Visit by appointment to see samples or get to know us.",
+    workshopCta: "Get info",
+    bursaEyebrow: "Pim Etiket workshop",
+    bursaTitle1: "Drop a line for samples",
     bursaTitle2: "or to get to know us.",
-    addressLabel: "Address",
-    addressNote: "[Sefa note: workshop address]",
-    hoursLabel: "Opening hours",
+    addressLabel: "Production",
+    addressNote:
+      "Bursa & Istanbul — partner digital print workshops (fason model)",
+    hoursLabel: "Response hours",
     hoursMonFri: "Monday – Friday · 09:00 – 18:00",
-    hoursSat: "Saturday · 10:00 – 14:00 (by appointment)",
+    hoursSat: "Saturday · 10:00 – 14:00 (rush orders)",
     appointmentLabel: "Appointment",
     appointmentText:
-      "Let us know via WhatsApp before visiting so we can be ready.",
-    waButton: "Message on WhatsApp",
-    mapSoonTitle: "Map coming soon",
+      "If you'd like to visit, drop us an email first — we'll share the workshop location and availability.",
+    waButton: "Send email",
+    mapSoonTitle: "Workshop location",
     mapSoonDesc:
-      "Workshop address and Google Maps embed will be added by Sefa.",
+      "Pim Etiket runs on a fason production model. The specific workshop location is shared during appointment booking.",
     faqEyebrow: "Want to check the FAQ first?",
     faqTitle: "Your answer might already be there.",
     faqOrder: "Ordering",
@@ -96,9 +98,9 @@ export default function IletisimPage() {
       title: c.waTitle,
       desc: c.waDesc,
       cta: c.waCta,
-      href: "https://wa.me/905XXXXXXXXX",
-      accent: "bg-yesil-soft text-yesil",
-      note: "[Sefa not: WhatsApp Business numarası]",
+      // Pim chat widget her sayfada açık — kullanıcı tıklayınca odaklanır
+      href: "#pim-chat",
+      accent: "bg-pim-mercan-tint text-pim-mercan",
     },
     {
       icon: <Icon.Sparkle size={20} />,
@@ -106,8 +108,7 @@ export default function IletisimPage() {
       desc: c.emailDesc,
       cta: "info@pimetiket.com",
       href: "mailto:info@pimetiket.com",
-      accent: "bg-pim-mercan-tint text-pim-mercan",
-      note: "[Sefa not: gerçek e-posta adresi]",
+      accent: "bg-yesil-soft text-yesil",
     },
     {
       icon: <Icon.Truck size={20} />,
@@ -116,7 +117,6 @@ export default function IletisimPage() {
       cta: c.workshopCta,
       href: "#harita",
       accent: "bg-krem text-lacivert",
-      note: "[Sefa not: gerçek atölye adresi]",
     },
   ];
 
@@ -175,9 +175,6 @@ export default function IletisimPage() {
                 >
                   {m.cta} <Icon.ArrowR size={14} />
                 </a>
-                <div className="mt-3 text-[11.5px] text-gri-500 italic">
-                  {m.note}
-                </div>
               </Card>
             ))}
           </div>
@@ -204,8 +201,6 @@ export default function IletisimPage() {
                   </div>
                   <div className="leading-relaxed">
                     {c.addressNote}
-                    <br />
-                    Bursa
                   </div>
                 </div>
                 <div>
@@ -229,7 +224,7 @@ export default function IletisimPage() {
               </div>
 
               <div className="mt-8">
-                <Button variant="primary" href="https://wa.me/905XXXXXXXXX">
+                <Button variant="primary" href="mailto:info@pimetiket.com">
                   <Icon.ChatBubble size={16} /> {c.waButton}
                 </Button>
               </div>

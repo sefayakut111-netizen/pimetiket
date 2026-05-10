@@ -72,7 +72,7 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "Hangi kargo firmasıyla gönderiyorsunuz?",
-      a: "[Sefa not: Yurtiçi/Aras/Sürat kararı]",
+      a: "Anlaşmalı kargo firmalarımız: Yurtiçi Kargo, Aras Kargo ve MNG Kargo. Sipariş hazırlandığında en hızlı seçenek otomatik atanır; takip numaran panelinde görünür.",
     },
     {
       q: "Teslimat süresi nedir?",
@@ -90,7 +90,7 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "Taksit yapabiliyor muyum?",
-      a: "[Sefa not: bankalarla anlaşma sonrası güncelle]",
+      a: "Ödeme altyapımız PayTR. Taksit imkânı bankana ve kart tipine bağlı olarak ödeme adımında otomatik gösterilir; biz ek komisyon eklemiyoruz.",
     },
     {
       q: "Fatura kesiyor musunuz?",
@@ -157,7 +157,7 @@ const FAQS_EN: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "Which courier do you use?",
-      a: "[Sefa note: Yurtiçi/Aras/Sürat decision pending]",
+      a: "We work with Yurtiçi Kargo, Aras Kargo, and MNG Kargo. The fastest option is auto-assigned when your order ships; tracking number appears on your dashboard.",
     },
     {
       q: "What's the delivery time?",
@@ -175,7 +175,7 @@ const FAQS_EN: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "Can I pay in installments?",
-      a: "[Sefa note: update after bank agreements]",
+      a: "Our payment infrastructure is PayTR. Installment options depend on your bank and card type and are shown automatically during checkout; we don't add any extra commission.",
     },
     {
       q: "Do you issue invoices?",

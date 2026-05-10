@@ -24,14 +24,15 @@ export default function MesafeliSatisPage() {
 
       <h2>1. Taraflar</h2>
       <p>
-        <strong>SATICI:</strong> Sefa Yakut / Pim Etiket — [Sefa not: ünvan
-        netleşince güncelle]
+        <strong>SATICI:</strong> Sefa Yakut Şahıs İşletmesi (&ldquo;Pim Etiket&rdquo;)
         <br />
-        Adres: [Sefa not: tebligat adresi]
+        Vergi Dairesi / No: Alemdağ Vergi Dairesi / 9290558622
         <br />
-        Telefon / E-posta: [Sefa not]
+        Tebligat Adresi: Yamanevler Mah., Ümraniye / İstanbul, Türkiye
         <br />
-        MERSİS: [Sefa not]
+        E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
+        <br />
+        Web: <a href="https://pimetiket.com">pimetiket.com</a>
       </p>
       <p>
         <strong>ALICI:</strong> Sipariş aşamasında verdiği ad-soyad, adres,
@@ -94,9 +95,11 @@ export default function MesafeliSatisPage() {
 
       <h2>6. Teslimat</h2>
       <p>
-        Ürünler [Sefa not: kargo firması adı] aracılığıyla
-        ALICI&rsquo;nın sipariş aşamasında belirttiği teslimat adresine
-        gönderilir. Kargo süresi takip numarası ile ALICI tarafından izlenir.
+        Ürünler Pim Etiket&rsquo;in anlaşmalı kargo firmaları (Yurtiçi Kargo,
+        Aras Kargo, MNG Kargo) aracılığıyla ALICI&rsquo;nın sipariş aşamasında
+        belirttiği teslimat adresine gönderilir. Kargo süresi takip numarası
+        ile ALICI tarafından izlenir; takip linki sipariş paneline ve
+        e-postaya iletilir.
       </p>
 
       <h2>7. Cayma Hakkı</h2>
