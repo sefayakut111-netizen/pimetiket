@@ -11,6 +11,7 @@ import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { AdminShell } from "./AdminShell";
 import { PimChat } from "@/components/pim/PimChat";
+import { ReviewRequestBanner } from "@/components/reviews/ReviewRequestBanner";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -23,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <TopBar />
+      <ReviewRequestBanner />
       <div id="main" tabIndex={-1} className="flex-1 outline-none">
         {children}
       </div>

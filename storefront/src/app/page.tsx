@@ -14,6 +14,7 @@ import { Button, Card, Pill, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
+import { HomeReviews } from "@/components/reviews/HomeReviews";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
@@ -349,6 +350,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ============================== REVIEWS ============================== */}
+      <HomeReviews limit={9} />
 
       {/* ============================== FAQ ============================== */}
       <section className="py-12">

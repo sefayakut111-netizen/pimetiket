@@ -45,6 +45,7 @@ import {
   type EtiketCustomId,
 } from "@/lib/etiket-customer-pricing";
 import { addToCustomerCart } from "@/lib/customer-cart";
+import { ProductReviews } from "@/components/reviews/ProductReviews";
 
 // ============================================================
 // Configuration data
@@ -738,6 +739,7 @@ export default function EtiketPage() {
           </div>
         </div>
       </div>
+      <ProductReviews productType="etiket" limit={6} />
     </main>
   );
 }

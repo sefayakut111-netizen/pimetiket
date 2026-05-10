@@ -32,6 +32,7 @@ const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/bildirim-tercihleri",
   "/odeme",
   "/odeme-sonuc",
+  "/yorum-yaz",
   "/admin", // staff role check ileride; şimdilik login zorunlu
 ];
 
