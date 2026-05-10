@@ -113,7 +113,7 @@ export function TopBar() {
     : "";
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-white/85 border-b border-black/[0.06]">
+    <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 supports-[backdrop-filter]:bg-white/70 border-b border-black/[0.06]">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 h-16 flex items-center gap-3 md:gap-8">
         {/* Hamburger (mobile only) */}
         <button
@@ -161,7 +161,7 @@ export function TopBar() {
                 className={cn(
                   "px-3.5 py-2 rounded-full text-[14.5px] font-medium transition-colors",
                   active
-                    ? "bg-lacivert text-white"
+                    ? "bg-pim-mercan-tint text-pim-mercan"
                     : "text-gri-700 hover:bg-gri-100 hover:text-lacivert"
                 )}
               >

@@ -239,9 +239,19 @@ export default function SepetPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => remove(item.id)}
-                      className="text-[13px] text-gri-500 hover:text-kirmizi font-semibold"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `"${item.title}" sepetten çıkarılsın mı?`
+                          )
+                        ) {
+                          remove(item.id);
+                        }
+                      }}
+                      aria-label={`${item.title} sepetten kaldır`}
+                      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-gri-500 hover:text-kirmizi hover:bg-kirmizi/5 font-semibold transition-colors"
                     >
+                      <Icon.X size={13} />
                       {t.common.remove}
                     </button>
                   </div>

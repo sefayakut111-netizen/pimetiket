@@ -129,7 +129,7 @@ export function Footer() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.footer.newsletterPlaceholder}
                 disabled={loading}
-                className="!bg-white/10 !text-white placeholder:!text-white/40 !ring-white/20 focus:!ring-pim-mercan"
+                className="!bg-white/15 !text-white placeholder:!text-white/65 !ring-white/30 focus:!ring-pim-mercan"
               />
               <Button
                 type="submit"

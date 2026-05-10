@@ -212,7 +212,7 @@ export const tr: TranslationDict = {
     subtitle:
       "Şifre yok — sana giriş bağlantısı yolluyoruz. Bir tıkla içeridesin.",
     emailLabel: "E-posta",
-    emailPlaceholder: "ornek@marka.com",
+    emailPlaceholder: "örnek@marka.com",
     kvkkAccept:
       "KVKK aydınlatma metnini ve Kullanım Şartları'nı kabul ediyorum.",
     sendLink: "Giriş bağlantısı yolla",
@@ -238,8 +238,8 @@ export const tr: TranslationDict = {
     newsletterEyebrow: "Pim'in defteri",
     newsletterTitle: "Etiket rehberini ilk sen oku",
     newsletterDesc:
-      "Ayda 1-2 mail. Yeni malzeme, baskı ipuçları, küçük marka hikayeleri. Spam yok, satış baskısı yok.",
-    newsletterPlaceholder: "ornek@marka.com",
+      "Ayda 1–2 e-posta. Spam yok, satış baskısı yok.",
+    newsletterPlaceholder: "örnek@marka.com",
     newsletterSubscribe: "Abone ol",
     newsletterSuccess: "Listeye eklendin",
     newsletterSuccessDesc: "İlk yazıyı yakında alacaksın.",

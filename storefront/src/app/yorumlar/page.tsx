@@ -175,8 +175,8 @@ function YorumlarInner() {
       <section className="py-10 md:py-12">
         <div className="mx-auto max-w-[1100px] px-4 md:px-8">
           {reviews === null && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-up">
+              {[1, 2, 3].map((i) => (
                 <div
                   key={i}
                   className="bg-white rounded-2xl p-6 ring-1 ring-gri-200 h-44 animate-pulse"

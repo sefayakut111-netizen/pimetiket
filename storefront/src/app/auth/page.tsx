@@ -260,7 +260,7 @@ function AuthPageInner() {
           {t.auth.helpText}{" "}
           <Link
             href="/iletisim"
-            className="text-pim-mercan font-semibold hover:underline"
+            className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
           >
             {t.auth.helpLink}
           </Link>

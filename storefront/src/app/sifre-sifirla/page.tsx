@@ -76,7 +76,7 @@ function SifreSifirlaInner() {
         {!hasRecoveryToken && (
           <p className="mt-6 text-[12px] text-gri-500">
             Otomatik olarak{" "}
-            <Link href="/auth" className="text-pim-mercan font-semibold hover:underline">
+            <Link href="/auth" className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1">
               giriş sayfasına
             </Link>{" "}
             yönlendiriliyorsun…

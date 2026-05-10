@@ -334,9 +334,9 @@ export default function HomePage() {
                   </Button>
                   <Link
                     href="/sticker"
-                    className="inline-flex items-center justify-center gap-2 h-[52px] px-7 rounded-full text-white font-semibold text-base hover:bg-white/10 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 h-[52px] px-7 rounded-full text-white font-semibold text-base ring-1 ring-white/30 hover:bg-white/10 hover:ring-white/60 transition-all"
                   >
-                    {t.home.bottomCtaSecondary}
+                    {t.home.bottomCtaSecondary} <Icon.ArrowR size={16} />
                   </Link>
                 </div>
               </div>

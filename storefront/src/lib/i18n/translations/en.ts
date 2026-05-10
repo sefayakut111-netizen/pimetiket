@@ -239,7 +239,7 @@ export const en: TranslationDict = {
     newsletterEyebrow: "Pim's notebook",
     newsletterTitle: "Read the print guide first",
     newsletterDesc:
-      "1–2 emails per month. New materials, print tips, small brand stories. No spam, no sales pressure.",
+      "1–2 emails per month. No spam, no sales pressure.",
     newsletterPlaceholder: "you@brand.com",
     newsletterSubscribe: "Subscribe",
     newsletterSuccess: "You're on the list",

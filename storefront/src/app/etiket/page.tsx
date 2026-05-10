@@ -86,7 +86,7 @@ const COATINGS = [
 type CoatingId = (typeof COATINGS)[number]["id"];
 
 const CUSTOMS = [
-  { id: "yok", name: "Eklenti yok", desc: "Sade ve hızlı" },
+  { id: "yok", name: "Özelleştirme yok", desc: "Sade baskı (emboss/yaldız/spot UV yok)" },
   { id: "emboss", name: "Kabartma (emboss)", desc: "Logo / metin kabartması" },
   { id: "yaldiz", name: "Sıcak yaldız", desc: "Folyo baskı, premium parıltı" },
   { id: "spotuv", name: "Spot UV", desc: "Parlak nokta vurgu" },

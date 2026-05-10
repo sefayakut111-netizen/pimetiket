@@ -183,7 +183,7 @@ export interface EtiketCustomization {
 
 /** Sefa: "özelleştirme % olarak ana ürüne eklenir" */
 export const ETIKET_CUSTOMIZATIONS: EtiketCustomization[] = [
-  { id: "yok", name: "Eklenti yok", desc: "Sade ve hızlı", multiplier: 1.0 },
+  { id: "yok", name: "Özelleştirme yok", desc: "Sade baskı (emboss/yaldız/spot UV yok)", multiplier: 1.0 },
   { id: "emboss", name: "Kabartma (emboss)", desc: "Logo / metin kabartması", multiplier: 1.30 },
   { id: "yaldiz", name: "Sıcak yaldız", desc: "Folyo baskı, premium parıltı", multiplier: 1.50 },
   { id: "spotuv", name: "Spot UV", desc: "Parlak nokta vurgu", multiplier: 1.25 },
