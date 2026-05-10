@@ -18,6 +18,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { VIEW_MODE_COOKIE, parseViewMode } from "@/lib/view-mode";
 
 const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/panelim",
@@ -97,7 +98,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // 1b) /admin için role check — admin/staff dışı kullanıcı 404 görür
+  // 1b) /admin için role check + view_mode (impersonation)
+  // - admin/staff dışı kullanıcı asla giremez
+  // - admin/staff ama cookie pim_view_mode=customer ise → "müşteri görünümünde"
+  //   sayar, /admin'i bloke et (cookie'yi silmek için /'a redirect değil — banner
+  //   "Admin'e dön" butonu cookie'yi siler)
   if (user && pathname.startsWith("/admin")) {
     try {
       const { data: profile } = await supabase
@@ -110,6 +115,16 @@ export async function updateSession(request: NextRequest) {
         // Yetkili değil — anasayfaya yönlendir (404 yerine zarif düşüş)
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/";
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+      // Admin ama "müşteri görünümü" cookie aktif → /admin'i bloke et
+      const viewMode = parseViewMode(
+        request.cookies.get(VIEW_MODE_COOKIE)?.value
+      );
+      if (viewMode === "customer") {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/panelim";
         redirectUrl.search = "";
         return NextResponse.redirect(redirectUrl);
       }

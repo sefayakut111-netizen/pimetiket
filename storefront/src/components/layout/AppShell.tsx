@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { AdminShell } from "./AdminShell";
+import { ViewModeBanner } from "./ViewModeBanner";
 import { PimChat } from "@/components/pim/PimChat";
 import { ReviewRequestBanner } from "@/components/reviews/ReviewRequestBanner";
 
@@ -23,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <ViewModeBanner />
       <TopBar />
       <ReviewRequestBanner />
       <div id="main" tabIndex={-1} className="flex-1 outline-none">

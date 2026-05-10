@@ -12,7 +12,7 @@
  */
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
@@ -45,12 +45,32 @@ function aggregateBadges(orders: CustomerOrder[]): AdminBadges {
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [badges, setBadges] = useState<AdminBadges>({
     active: 0,
     aiQc: 0,
     proof: 0,
     fason: 0,
   });
+  const [switching, setSwitching] = useState(false);
+
+  const switchToCustomer = async () => {
+    if (switching) return;
+    setSwitching(true);
+    try {
+      const res = await fetch("/api/view-mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "customer" }),
+      });
+      if (res.ok) {
+        router.push("/panelim");
+        router.refresh();
+      }
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   useEffect(() => {
     const refresh = () => setBadges(aggregateBadges(listCustomerOrders()));
@@ -161,12 +181,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
           {/* Right side */}
           <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/"
-              className="text-[12.5px] text-white/70 hover:text-white hidden md:inline"
+            <button
+              type="button"
+              onClick={switchToCustomer}
+              disabled={switching}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white text-[12.5px] font-semibold transition-colors disabled:opacity-50"
+              title="Müşteri olarak gör — analiz/test için"
             >
-              ↗ Müşteri görünümü
-            </Link>
+              {switching ? "…" : "↗ Müşteri görünümü"}
+            </button>
             <span className="hidden sm:inline-flex items-center gap-2 text-[13px]">
               <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan font-bold text-[12px]">
                 S
