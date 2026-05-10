@@ -12,8 +12,10 @@ import { Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 const LEGAL_LINKS = [
+  { href: "/on-bilgilendirme", label: "Ön Bilgilendirme Formu" },
   { href: "/mesafeli-satis", label: "Mesafeli Satış Sözleşmesi" },
   { href: "/cayma-hakki", label: "Cayma Hakkı" },
+  { href: "/iade-degisim-politikasi", label: "İade & Değişim Politikası" },
   { href: "/kvkk", label: "KVKK Aydınlatma Metni" },
   { href: "/gizlilik", label: "Gizlilik Politikası" },
   { href: "/cerez", label: "Çerez Politikası" },

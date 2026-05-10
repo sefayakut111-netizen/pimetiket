@@ -6,6 +6,7 @@ import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { Input, Button, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
+import { PaymentBadges } from "@/components/layout/PaymentBadges";
 
 interface FooterLink {
   label: string;
@@ -61,8 +62,10 @@ export function Footer() {
     { label: "Gizlilik", href: "/gizlilik" },
     { label: "Kullanım", href: "/sartlar" },
     { label: "Çerez", href: "/cerez" },
+    { label: "Ön Bilgilendirme", href: "/on-bilgilendirme" },
     { label: "Mesafeli Satış", href: "/mesafeli-satis" },
     { label: "Cayma Hakkı", href: "/cayma-hakki" },
+    { label: "İade & Değişim", href: "/iade-degisim-politikasi" },
   ];
 
   const onSubscribe = (e: React.FormEvent) => {
@@ -175,8 +178,43 @@ export function Footer() {
           ))}
         </div>
 
+        {/* Payment + security badges (PayTR site denetimi gereksinimi) */}
+        <PaymentBadges />
+
+        {/* Yasal kişi bilgileri — TKHK/ETICARET şeffaflık şartı */}
+        <div className="border-t border-white/10 pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-[12px] text-white/55 leading-relaxed">
+          <div>
+            <strong className="text-white/75">Sefa Yakut</strong>{" "}
+            (Pim Etiket Şahıs İşletmesi)
+            <br />
+            Vergi Dairesi: Alemdağ · Vergi No: 9290558622
+            {/* Sefa not: MERSIS numaran varsa buraya ekle (şahıs işletmesinde
+                opsiyonel; e-Ticaret Bilgi Sistemi başvurusu yaptıysan vardır).
+                Yoksa bu satırı silebilirsin. */}
+          </div>
+          <div>
+            <span>
+              Yamanevler Mah., Ümraniye / İstanbul · Türkiye
+            </span>
+            <br />
+            <a
+              href="mailto:merhaba@pimetiket.com"
+              className="hover:text-white transition-colors"
+            >
+              merhaba@pimetiket.com
+            </a>
+            <br />
+            <Link
+              href="/iletisim"
+              className="hover:text-white transition-colors"
+            >
+              /iletisim — şikayet ve müşteri hizmetleri
+            </Link>
+          </div>
+        </div>
+
         {/* Bottom strip */}
-        <div className="pt-6 border-t border-white/10 flex justify-between items-center text-[13px] text-white/55 flex-wrap gap-4">
+        <div className="pt-6 mt-6 border-t border-white/10 flex justify-between items-center text-[13px] text-white/55 flex-wrap gap-4">
           <div className="flex items-center gap-2">
             © {new Date().getFullYear()} {t.footer.copyright}
           </div>
