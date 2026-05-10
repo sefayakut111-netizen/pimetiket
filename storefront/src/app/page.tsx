@@ -147,12 +147,12 @@ export default function HomePage() {
               <Icon.User size={13} className="text-gri-500" />
               <span>İlk siparişin için</span>
               <Link
-                href="/auth"
+                href="/auth?mode=signup"
                 className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
               >
                 ücretsiz hesap aç
               </Link>
-              <span className="text-gri-500">— şifresiz, 30 saniye</span>
+              <span className="text-gri-500">— 30 saniye</span>
             </div>
             <div className="mt-10 flex items-center gap-2.5 flex-wrap">
               <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-yesil-soft text-yesil text-[14px] font-semibold">

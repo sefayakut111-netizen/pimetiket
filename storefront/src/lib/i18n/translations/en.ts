@@ -207,20 +207,18 @@ export const en: TranslationDict = {
     backToPanel: "Go to panel",
   },
   auth: {
-    eyebrow: "Sign in / Sign up",
-    title: "Create account or sign in",
-    subtitle:
-      "No password. Type your email: if you have an account you sign in, if not we create one — one click and you're in.",
+    eyebrow: "Sign in",
+    title: "Welcome back",
+    subtitle: "Sign in with your email and password.",
     emailLabel: "Email",
     emailPlaceholder: "you@brand.com",
     kvkkAccept:
       "I accept the KVKK privacy notice and the Terms of Service.",
-    sendLink: "Send link",
+    sendLink: "Sign in",
     sending: "Sending...",
     or: "or",
     googleContinue: "Continue with Google",
-    autoCreateNote:
-      "✨ First time? Just enter your email — your account is created automatically, no extra step. Order history syncs across devices.",
+    autoCreateNote: "Order history syncs across devices.",
     helpText: "Need help?",
     helpLink: "contact us",
     linkSentTitle: "Check your inbox 📩",

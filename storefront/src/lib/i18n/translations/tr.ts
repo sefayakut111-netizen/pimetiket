@@ -207,20 +207,20 @@ export const tr: TranslationDict = {
     backToPanel: "Panele git",
   },
   auth: {
-    eyebrow: "Giriş / Üye Ol",
-    title: "Hesabını aç ya da giriş yap",
+    eyebrow: "Giriş",
+    title: "Hoş geldin tekrar",
     subtitle:
-      "Şifre yok. E-postanı yaz: hesabın varsa giriş, yoksa hesap otomatik açılır — tek tıkla içeridesin.",
+      "E-posta ve şifrenle hızlıca giriş yap.",
     emailLabel: "E-posta",
     emailPlaceholder: "örnek@marka.com",
     kvkkAccept:
       "KVKK aydınlatma metnini ve Kullanım Şartları'nı kabul ediyorum.",
-    sendLink: "Bağlantı yolla",
+    sendLink: "Giriş yap",
     sending: "Gönderiliyor...",
     or: "veya",
     googleContinue: "Google ile devam et",
     autoCreateNote:
-      "✨ İlk kez mi? E-postanı yaz — hesabın otomatik açılır, ekstra adım yok. Sipariş geçmişin tüm cihazlarda senkron.",
+      "Sipariş geçmişin tüm cihazlarda senkron.",
     helpText: "Yardım gerekirse",
     helpLink: "bize yaz",
     linkSentTitle: "E-postanı kontrol et 📩",
