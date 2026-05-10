@@ -97,6 +97,31 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // 1b) /admin için role check — admin/staff dışı kullanıcı 404 görür
+  if (user && pathname.startsWith("/admin")) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      const role = (profile as { role?: string } | null)?.role;
+      if (role !== "admin" && role !== "staff") {
+        // Yetkili değil — anasayfaya yönlendir (404 yerine zarif düşüş)
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/";
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+    } catch {
+      // DB hatası olursa güvenli taraf — admin'e izin verme
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
   // 2) Login olan kullanıcı /auth'a giderse → /panelim
   // (recovery flow için /sifre-sifirla'ya istisna: ?code=... parametre varsa
   // izin ver — kullanıcı recovery linkinden geliyor olabilir)
