@@ -27,14 +27,22 @@ export default function OnBilgilendirmePage() {
       <h2>1. Satıcı Bilgileri</h2>
       <ul>
         <li>
-          <strong>Ünvan:</strong> Sefa Yakut Şahıs İşletmesi (Pim Etiket)
+          <strong>Ünvan:</strong> SEFA YAKUT ETİKETBOX KIRTASİYE BASKI
+          TİCARET LİMİTED ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
         </li>
         <li>
-          <strong>Vergi Dairesi / No:</strong> Alemdağ Vergi Dairesi /
-          9290558622
+          <strong>Vergi Dairesi / No:</strong> Doğanbey Vergi Dairesi /
+          7580607612
         </li>
         <li>
-          <strong>Adres:</strong> Yamanevler Mah., Ümraniye / İstanbul
+          <strong>Ana Faaliyet:</strong> 464903 — Kırtasiye Ürünleri Toptan
+          Ticareti
+        </li>
+        <li>
+          <strong>Adres:</strong>{" "}
+          <em>
+            (İş yeri kayıt değişikliği sürecinde — yakında güncellenecek)
+          </em>
         </li>
         <li>
           <strong>E-posta:</strong>{" "}

@@ -24,11 +24,17 @@ export default function MesafeliSatisPage() {
 
       <h2>1. Taraflar</h2>
       <p>
-        <strong>SATICI:</strong> Sefa Yakut Şahıs İşletmesi (&ldquo;Pim Etiket&rdquo;)
+        <strong>SATICI:</strong> SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET
+        LİMİTED ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
         <br />
-        Vergi Dairesi / No: Alemdağ Vergi Dairesi / 9290558622
+        Vergi Dairesi / No: Doğanbey Vergi Dairesi / 7580607612
         <br />
-        Tebligat Adresi: Yamanevler Mah., Ümraniye / İstanbul, Türkiye
+        Ana Faaliyet: 464903 — Kırtasiye Ürünleri Toptan Ticareti
+        <br />
+        Tebligat Adresi:{" "}
+        <em>
+          (İş yeri kayıt değişikliği sürecinde — adres güncellenecektir)
+        </em>
         <br />
         E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
         <br />

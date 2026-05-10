@@ -184,19 +184,19 @@ export function Footer() {
         {/* Yasal kişi bilgileri — TKHK/ETICARET şeffaflık şartı */}
         <div className="border-t border-white/10 pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-[12px] text-white/55 leading-relaxed">
           <div>
-            <strong className="text-white/75">Sefa Yakut</strong>{" "}
-            (Pim Etiket Şahıs İşletmesi)
+            <strong className="text-white/75">
+              Sefa Yakut Etiketbox Kırtasiye Baskı Ticaret Ltd. Şti.
+            </strong>
             <br />
-            Vergi Dairesi: Alemdağ · Vergi No: 9290558622
-            {/* Sefa not: MERSIS numaran varsa buraya ekle (şahıs işletmesinde
-                opsiyonel; e-Ticaret Bilgi Sistemi başvurusu yaptıysan vardır).
-                Yoksa bu satırı silebilirsin. */}
+            Vergi Dairesi: Doğanbey · Vergi No: 7580607612
+            <br />
+            <span className="text-white/45 italic">
+              Adres ve telefon: yakında güncellenecek
+            </span>
+            {/* Sefa not: MERSİS varsa, yeni iş yeri adresi netleşince ve
+                telefon hattı aktive olunca buraya eklenecek. Bkz: TODO-SEFA.md */}
           </div>
           <div>
-            <span>
-              Yamanevler Mah., Ümraniye / İstanbul · Türkiye
-            </span>
-            <br />
             <a
               href="mailto:info@pimetiket.com"
               className="hover:text-white transition-colors"
