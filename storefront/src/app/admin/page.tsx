@@ -422,18 +422,15 @@ export default function AdminDashboardPage() {
   return (
     <main className="py-8 pb-20 bg-gri-50 min-h-[calc(100vh-56px)]">
       <div className="mx-auto max-w-[1320px] px-6">
-        {/* Header */}
-        <div className="mb-6 flex items-end justify-between flex-wrap gap-3">
+        {/* Header — sidebar topbar zaten "Operatör paneli" gösteriyor, burada özet */}
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>
             <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               {dateLabel}
             </div>
-            <h1 className="mt-2 text-[28px] md:text-[34px] font-semibold tracking-tight">
-              Operatör paneli
-            </h1>
-            <p className="mt-1 text-[14.5px] text-gri-700">
+            <p className="mt-1 text-[13.5px] text-gri-700 flex items-center gap-1.5">
               Tüm metrikler — son güncelleme {updateAgoLabel}
-              <span className="inline-flex w-1.5 h-1.5 rounded-full bg-yesil ml-2 animate-pulse" />
+              <span className="inline-flex w-1.5 h-1.5 rounded-full bg-yesil animate-pulse" />
             </p>
           </div>
 

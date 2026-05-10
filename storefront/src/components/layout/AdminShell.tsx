@@ -1,19 +1,33 @@
 "use client";
 
 /**
- * AdminShell — admin/operatör paneli için ayrı topbar.
- * Public AppShell'den ayrı: lacivert header, kompakt nav, sayaç badge'leri.
+ * AdminShell — admin paneli için kalıcı sol sidebar + üst ince çubuk.
  *
- * Badge'ler customer-orders store'undan canlı okunur:
- *   - Siparişler: aktif sipariş sayısı (delivered/cancelled hariç)
- *   - AI QC: qc_flagged + operator_review toplam
- *   - Prova: proof_pending sayısı
- *   - Fason: paid + qc_pending sayısı (üretime atanacak)
+ * Layout:
+ *   ┌──────────────────────────────────────┐
+ *   │ Sidebar │ Topbar (sayfa başlığı...)   │
+ *   │  Brand  │─────────────────────────────│
+ *   │  Nav 1  │                             │
+ *   │  Nav 2  │  Main content (children)    │
+ *   │   ...   │                             │
+ *   │  User   │                             │
+ *   └──────────────────────────────────────┘
+ *
+ * - Desktop (lg+): sidebar 248px sabit, sol tarafta görünür
+ * - Mobile: sidebar drawer olarak hamburger ile açılır
+ *
+ * Sidebar gruplandı:
+ *   - Operasyon (Dashboard / Sipariş / Manuel ekle / AI QC / Prova / Fason)
+ *   - Müşteri (Müşteri / Yorum / İade)
+ *   - Yönetim (Kupon / Çalışan / Fiyat hesapla)
+ *   - Sistem (Rapor / Audit / Ayarlar)
+ *
+ * Badge'ler: aktif sipariş, AI QC kuyruğu, prova bekleyen, fason
  */
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
@@ -43,6 +57,47 @@ function aggregateBadges(orders: CustomerOrder[]): AdminBadges {
   return { active, aiQc, proof, fason };
 }
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  badge?: number;
+  badgeAccent?: boolean;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+// Sayfa başlığı çıkarımı (path → human title)
+const PATH_TITLES: Record<string, string> = {
+  "/admin": "Operatör paneli",
+  "/admin/siparisler": "Siparişler",
+  "/admin/siparis-ekle": "Manuel sipariş ekle",
+  "/admin/ai-qc": "AI QC kuyruğu",
+  "/admin/prova": "Prova akışı",
+  "/admin/fason": "Fason atama",
+  "/admin/musteriler": "Müşteriler",
+  "/admin/yorumlar": "Yorumlar",
+  "/admin/iadeler": "İade talepleri",
+  "/admin/kuponlar": "Kuponlar",
+  "/admin/calisanlar": "Çalışanlar",
+  "/admin/fiyat-hesapla": "Fiyat hesapla — sticker",
+  "/admin/fiyat-hesapla-etiket": "Fiyat hesapla — etiket",
+  "/admin/raporlar": "Raporlar",
+  "/admin/audit-log": "Denetim kaydı",
+  "/admin/ayarlar": "Ayarlar",
+};
+
+function getPageTitle(pathname: string): string {
+  if (PATH_TITLES[pathname]) return PATH_TITLES[pathname];
+  // /admin/foo/bar → "foo / bar"
+  const segs = pathname.split("/").filter(Boolean).slice(1);
+  if (segs.length === 0) return "Operatör paneli";
+  return segs.join(" / ").replace(/-/g, " ");
+}
+
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -53,6 +108,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     fason: 0,
   });
   const [switching, setSwitching] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const switchToCustomer = async () => {
     if (switching) return;
@@ -80,128 +136,290 @@ export function AdminShell({ children }: { children: ReactNode }) {
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
 
-  const adminNav = [
-    { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} /> },
-    {
-      href: "/admin/siparisler",
-      label: "Siparişler",
-      icon: <Icon.Box size={16} />,
-      badge: badges.active,
-    },
-    {
-      href: "/admin/ai-qc",
-      label: "AI QC",
-      icon: <Icon.Sparkle size={16} />,
-      badge: badges.aiQc,
-      badgeAccent: badges.aiQc > 0,
-    },
-    {
-      href: "/admin/prova",
-      label: "Prova",
-      icon: <Icon.Check size={16} />,
-      badge: badges.proof,
-    },
-    {
-      href: "/admin/fason",
-      label: "Fason",
-      icon: <Icon.Truck size={16} />,
-      badge: badges.fason,
-    },
-    {
-      href: "/admin/iadeler",
-      label: "İade",
-      icon: <Icon.Info size={16} />,
-    },
-    {
-      href: "/admin/musteriler",
-      label: "Müşteri",
-      icon: <Icon.User size={16} />,
-    },
-    {
-      href: "/admin/raporlar",
-      label: "Rapor",
-      icon: <Icon.Star size={16} />,
-    },
-  ];
+  // Pathname değişince mobile drawer kapansın
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
+  // Drawer açıkken body scroll kilitle (mobile)
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [drawerOpen]);
+
+  const navGroups: NavGroup[] = useMemo(
+    () => [
+      {
+        label: "Operasyon",
+        items: [
+          { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} /> },
+          {
+            href: "/admin/siparisler",
+            label: "Siparişler",
+            icon: <Icon.Box size={16} />,
+            badge: badges.active,
+          },
+          {
+            href: "/admin/siparis-ekle",
+            label: "Manuel sipariş",
+            icon: <Icon.Plus size={16} />,
+          },
+          {
+            href: "/admin/ai-qc",
+            label: "AI QC",
+            icon: <Icon.Sparkle size={16} />,
+            badge: badges.aiQc,
+            badgeAccent: badges.aiQc > 0,
+          },
+          {
+            href: "/admin/prova",
+            label: "Prova",
+            icon: <Icon.Check size={16} />,
+            badge: badges.proof,
+          },
+          {
+            href: "/admin/fason",
+            label: "Fason",
+            icon: <Icon.Truck size={16} />,
+            badge: badges.fason,
+          },
+        ],
+      },
+      {
+        label: "Müşteri",
+        items: [
+          {
+            href: "/admin/musteriler",
+            label: "Müşteriler",
+            icon: <Icon.Users size={16} />,
+          },
+          {
+            href: "/admin/yorumlar",
+            label: "Yorumlar",
+            icon: <Icon.Star size={16} />,
+          },
+          {
+            href: "/admin/iadeler",
+            label: "İadeler",
+            icon: <Icon.Info size={16} />,
+          },
+        ],
+      },
+      {
+        label: "Yönetim",
+        items: [
+          {
+            href: "/admin/kuponlar",
+            label: "Kuponlar",
+            icon: <Icon.Tag size={16} />,
+          },
+          {
+            href: "/admin/calisanlar",
+            label: "Çalışanlar",
+            icon: <Icon.User size={16} />,
+          },
+          {
+            href: "/admin/fiyat-hesapla",
+            label: "Fiyat hesapla",
+            icon: <Icon.Bolt size={16} />,
+          },
+        ],
+      },
+      {
+        label: "Sistem",
+        items: [
+          {
+            href: "/admin/raporlar",
+            label: "Raporlar",
+            icon: <Icon.Doc size={16} />,
+          },
+          {
+            href: "/admin/audit-log",
+            label: "Denetim kaydı",
+            icon: <Icon.Refresh size={16} />,
+          },
+          {
+            href: "/admin/ayarlar",
+            label: "Ayarlar",
+            icon: <Icon.Cog size={16} />,
+          },
+        ],
+      },
+    ],
+    [badges]
+  );
+
+  const pageTitle = getPageTitle(pathname);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gri-50">
-      {/* Admin TopBar */}
-      <header className="sticky top-0 z-50 bg-lacivert text-white shadow-1">
-        <div className="mx-auto max-w-[1280px] px-6 h-14 flex items-center gap-5">
-          {/* Brand + admin label */}
+    <div className="min-h-screen bg-gri-50">
+      {/* Mobile backdrop */}
+      {drawerOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      {/* Sidebar — desktop sabit, mobile drawer */}
+      <aside
+        className={cn(
+          "fixed top-0 left-0 z-50 h-screen w-[248px] bg-lacivert text-white flex flex-col transition-transform duration-200",
+          "lg:translate-x-0",
+          drawerOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
+        {/* Brand */}
+        <div className="h-14 px-5 flex items-center gap-2.5 border-b border-white/10 shrink-0">
           <Link
             href="/admin"
-            className="flex items-center gap-2.5 font-semibold text-[15px] shrink-0"
+            className="flex items-center gap-2.5 font-semibold text-[15px]"
           >
             <span className="bg-white rounded p-0.5">
-              <PimAsset variant="icon" size={28} bob={false} />
+              <PimAsset variant="icon" size={26} bob={false} />
             </span>
-            <span className="hidden sm:inline">Admin Panel</span>
+            <span>Admin Panel</span>
           </Link>
+          {/* Mobile close button */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            className="lg:hidden ml-auto text-white/70 hover:text-white"
+            aria-label="Menüyü kapat"
+          >
+            <Icon.X size={18} />
+          </button>
+        </div>
 
-          {/* Nav */}
-          <nav className="flex-1 flex gap-0.5 items-center overflow-x-auto">
-            {adminNav.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== "/admin" && pathname.startsWith(item.href));
-              const showBadge = item.badge != null && item.badge > 0;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-full text-[13px] font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors",
-                    active
-                      ? "bg-white text-lacivert"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  {item.icon}
-                  {item.label}
-                  {showBadge && (
-                    <span
-                      className={cn(
-                        "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ml-0.5 tabular-nums",
-                        item.badgeAccent
-                          ? "bg-pim-mercan text-white"
-                          : active
-                            ? "bg-lacivert text-white"
-                            : "bg-white/15 text-white"
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Nav (scrollable) */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-white/50">
+                {group.label}
+              </div>
+              <ul className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active =
+                    pathname === item.href ||
+                    (item.href !== "/admin" &&
+                      pathname.startsWith(item.href + "/"));
+                  const showBadge = item.badge != null && item.badge > 0;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13.5px] font-medium transition-colors",
+                          active
+                            ? "bg-white text-lacivert font-semibold"
+                            : "text-white/80 hover:bg-white/10 hover:text-white"
+                        )}
+                      >
+                        <span className="shrink-0">{item.icon}</span>
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {showBadge && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold tabular-nums shrink-0",
+                              item.badgeAccent
+                                ? "bg-pim-mercan text-white"
+                                : active
+                                  ? "bg-lacivert/10 text-lacivert"
+                                  : "bg-white/15 text-white"
+                            )}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {/* User panel + view-mode toggle */}
+        <div className="border-t border-white/10 p-3 shrink-0 space-y-2">
+          <button
+            type="button"
+            onClick={switchToCustomer}
+            disabled={switching}
+            className="w-full flex items-center gap-2 h-9 px-3 rounded-lg bg-pim-mercan hover:bg-pim-mercan/90 text-white text-[12.5px] font-semibold transition-colors disabled:opacity-50"
+            title="Müşteri olarak gör — analiz/test için"
+          >
+            <Icon.Eye size={14} />
+            {switching ? "…" : "Müşteri görünümü"}
+            <Icon.ArrowR size={14} className="ml-auto opacity-70" />
+          </button>
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/5">
+            <span className="grid place-items-center w-8 h-8 rounded-full bg-pim-mercan font-bold text-[13px] shrink-0">
+              S
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold truncate">Sefa</div>
+              <div className="text-[10.5px] text-white/60 truncate">
+                Admin · pimetiket.com
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main column — desktop'ta sidebar genişliği kadar margin */}
+      <div className="lg:ml-[248px] flex flex-col min-h-screen">
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 bg-white border-b border-gri-200 h-14 px-4 lg:px-6 flex items-center gap-3 shadow-1">
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="lg:hidden p-2 -ml-2 rounded-lg text-gri-700 hover:bg-gri-100"
+            aria-label="Menüyü aç"
+          >
+            <Icon.Menu size={20} />
+          </button>
+
+          {/* Page title */}
+          <h1 className="font-semibold text-[15.5px] text-lacivert truncate">
+            {pageTitle}
+          </h1>
 
           {/* Right side */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/"
+              target="_blank"
+              className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-full ring-1 ring-gri-200 text-[12.5px] font-semibold text-gri-700 hover:bg-gri-50"
+              title="Yeni sekmede ana siteyi aç"
+            >
+              <Icon.ArrowR size={12} className="rotate-[-45deg]" /> Site
+            </Link>
             <button
               type="button"
               onClick={switchToCustomer}
               disabled={switching}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white text-[12.5px] font-semibold transition-colors disabled:opacity-50"
-              title="Müşteri olarak gör — analiz/test için"
+              className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-pim-mercan-tint text-pim-mercan text-[12.5px] font-semibold hover:bg-pim-mercan/15 transition-colors disabled:opacity-50"
             >
-              {switching ? "…" : "↗ Müşteri görünümü"}
+              <Icon.Eye size={12} />
+              {switching ? "…" : "Müşteri görünümü"}
             </button>
-            <span className="hidden sm:inline-flex items-center gap-2 text-[13px]">
-              <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan font-bold text-[12px]">
-                S
-              </span>
-              <span className="font-semibold">Sefa</span>
-            </span>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div id="main" tabIndex={-1} className="flex-1 outline-none">
-        {children}
+        {/* Main content */}
+        <main id="main" tabIndex={-1} className="flex-1 outline-none">
+          {children}
+        </main>
       </div>
     </div>
   );
