@@ -39,8 +39,8 @@ interface PendingOrder {
 const FASONS: Fason[] = [
   {
     id: "f1",
-    name: "Bursa-1 Atölye",
-    city: "Bursa / Yıldırım",
+    name: "İstanbul-1 Atölye",
+    city: "İstanbul / İkitelli",
     capacity: 50000,
     load: 32000,
     speciality: ["label", "foil", "emboss"],
@@ -49,8 +49,8 @@ const FASONS: Fason[] = [
   },
   {
     id: "f2",
-    name: "Bursa-2 Atölye",
-    city: "Bursa / Osmangazi",
+    name: "İstanbul-2 Atölye",
+    city: "İstanbul / Beylikdüzü",
     capacity: 30000,
     load: 18500,
     speciality: ["sticker", "holographic"],
@@ -59,8 +59,8 @@ const FASONS: Fason[] = [
   },
   {
     id: "f3",
-    name: "İstanbul-1",
-    city: "İstanbul / Beylikdüzü",
+    name: "Ankara-1",
+    city: "Ankara / Ostim",
     capacity: 80000,
     load: 71000,
     speciality: ["label", "metallic"],

@@ -26,8 +26,8 @@ export default function GizlilikPage() {
       <p>İki kategori veri toplarız:</p>
       <ul>
         <li>
-          <strong>Sizin verdiğiniz</strong>: hesap kaydı, sipariş, iletişim
-          formu doldururken paylaştığınız bilgiler
+          <strong>Senin verdiğin</strong>: hesap kaydı, sipariş, iletişim
+          formu doldururken paylaştığın bilgiler
         </li>
         <li>
           <strong>Otomatik toplanan</strong>: IP adresi, tarayıcı, cihaz tipi,

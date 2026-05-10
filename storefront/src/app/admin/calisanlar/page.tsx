@@ -79,7 +79,7 @@ export default function AdminCalisanlarPage() {
   const onInvite = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail.includes("@") || !inviteName.trim()) {
-      toast.error("Email ve isim gerekli");
+      toast.error("E-posta ve isim gerekli");
       return;
     }
     setStaff((arr) => [
@@ -93,7 +93,7 @@ export default function AdminCalisanlarPage() {
         lastLoginAt: null,
       },
     ]);
-    toast.success(`${inviteEmail} davet edildi (mock — Faz 2'de email)`);
+    toast.success(`${inviteEmail} davet edildi (mock — Faz 2'de e-posta)`);
     setInviteEmail("");
     setInviteName("");
     setInviteRole("operator");
@@ -261,7 +261,7 @@ export default function AdminCalisanlarPage() {
         <div className="mt-6 flex items-center gap-3 text-[12px] text-gri-500">
           <Icon.Info size={14} />
           <span>
-            Davet emaili Faz 2&rsquo;de Resend ile gönderilir. Şimdilik
+            Davet e-postası Faz 2&rsquo;de Resend ile gönderilir. Şimdilik
             mock — backend swap sonrası gerçek invite linki çıkacak.
           </span>
         </div>

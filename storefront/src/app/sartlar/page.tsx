@@ -33,13 +33,13 @@ export default function SartlarPage() {
           Site&rsquo;de hesap açmak için 18 yaşını doldurmuş olmanız gerekir
         </li>
         <li>
-          Verdiğiniz bilgilerin doğru ve güncel olduğunu beyan edersiniz
+          Verdiğin bilgilerin doğru ve güncel olduğunu beyan edersin
         </li>
         <li>
-          Hesap güvenliği (şifre koruması) sizin sorumluluğunuzdadır
+          Hesap güvenliği (şifre koruması) senin sorumluluğundadır
         </li>
         <li>
-          Hesabınız üzerinden gerçekleştirilen işlemlerden siz sorumlusunuz
+          Hesabın üzerinden gerçekleştirilen işlemlerden sen sorumlusun
         </li>
       </ul>
 
@@ -133,15 +133,17 @@ export default function SartlarPage() {
       <h2>8. Yetkili Mahkeme ve Hukuk</h2>
       <p>
         İşbu şartlar Türkiye Cumhuriyeti hukukuna tabidir. Doğacak
-        uyuşmazlıklarda, tüketici işlemleri için Tüketici Hakem Heyetleri
-        ve Tüketici Mahkemeleri; ticari uyuşmazlıklarda Bursa Mahkemeleri ve
-        İcra Daireleri yetkilidir.
+        uyuşmazlıklarda, tüketici işlemleri için Gümrük ve Ticaret
+        Bakanlığı'nca belirlenen parasal sınırlar dahilinde Tüketici Hakem
+        Heyetleri ve Tüketici Mahkemeleri; ticari uyuşmazlıklarda
+        SATICI'nın merkezinin bulunduğu yer (Ankara) Mahkemeleri ve İcra
+        Daireleri yetkilidir.
       </p>
 
       <h2>9. İletişim</h2>
       <p>
-        İşbu şartlarla ilgili sorularınız için{" "}
-        <a href="/iletisim">iletişim</a> sayfasını kullanabilirsiniz.
+        İşbu şartlarla ilgili sorularını{" "}
+        <a href="/iletisim">iletişim</a> sayfasından iletebilirsin.
       </p>
     </LegalLayout>
   );

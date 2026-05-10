@@ -55,7 +55,7 @@ const SECTIONS = [
   {
     icon: <Icon.User size={18} />,
     title: "Müşteri profili",
-    description: `"${DEMO_CUSTOMER_NAME}" · Bursa/Yıldırım · TC ile fatura. Tüm siparişler bu adres üzerine.`,
+    description: `"${DEMO_CUSTOMER_NAME}" · İstanbul/Kadıköy · TC ile fatura. Tüm siparişler bu adres üzerine.`,
     href: "/admin/musteriler",
   },
   {

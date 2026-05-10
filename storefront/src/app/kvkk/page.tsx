@@ -16,9 +16,9 @@ export default function KvkkPage() {
     >
       <p>
         6698 sayılı Kişisel Verilerin Korunması Kanunu (&ldquo;KVKK&rdquo;)
-        kapsamında veri sorumlusu sıfatıyla, kişisel verilerinizin işlenme
-        amaçları, hukuki dayanakları, paylaşılma esasları ve haklarınız
-        hakkında sizleri aydınlatmak istiyoruz.
+        kapsamında veri sorumlusu sıfatıyla, kişisel verilerinin işlenme
+        amaçları, hukuki dayanakları, paylaşılma esasları ve hakların
+        hakkında seni aydınlatmak istiyoruz.
       </p>
 
       <h2>1. Veri Sorumlusu</h2>

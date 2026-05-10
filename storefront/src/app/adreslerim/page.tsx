@@ -34,10 +34,10 @@ type Address = {
 const DEMO: Address[] = [
   {
     id: "a1",
-    label: "Atölye",
+    label: "Ofis",
     name: "Ahmet Yılmaz",
-    addr: "Yıldırım Mh. 15. Cd. No:3 D:2",
-    city: "Bursa / Yıldırım",
+    addr: "Caferağa Mh. Mühürdar Cd. No:3 D:2",
+    city: "İstanbul / Kadıköy",
     phone: "+90 5XX XXX XX XX",
     isDefault: true,
   },
@@ -45,8 +45,8 @@ const DEMO: Address[] = [
     id: "a2",
     label: "Ev",
     name: "Ahmet Yılmaz",
-    addr: "Çekirge Cd. No:42 D:7",
-    city: "Bursa / Osmangazi",
+    addr: "Bahçelievler Mh. Tuna Cd. No:42 D:7",
+    city: "Ankara / Çankaya",
     phone: "+90 5XX XXX XX XX",
   },
 ];

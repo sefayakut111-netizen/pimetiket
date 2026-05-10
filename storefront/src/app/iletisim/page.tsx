@@ -32,7 +32,7 @@ const COPY = {
     bursaTitle2: "iletişime geç.",
     addressLabel: "Üretim",
     addressNote:
-      "Bursa & İstanbul — anlaşmalı dijital baskı atölyelerinde fason üretim",
+      "İstanbul & Ankara — anlaşmalı dijital baskı atölyelerinde fason üretim",
     hoursLabel: "Yanıt saatleri",
     hoursMonFri: "Pazartesi – Cuma · 09:00 – 18:00",
     hoursSat: "Cumartesi · 10:00 – 14:00 (acele siparişler)",
@@ -69,7 +69,7 @@ const COPY = {
     bursaTitle2: "or to get to know us.",
     addressLabel: "Production",
     addressNote:
-      "Bursa & Istanbul — partner digital print workshops (fason model)",
+      "Istanbul & Ankara — partner digital print workshops (fason model)",
     hoursLabel: "Response hours",
     hoursMonFri: "Monday – Friday · 09:00 – 18:00",
     hoursSat: "Saturday · 10:00 – 14:00 (rush orders)",

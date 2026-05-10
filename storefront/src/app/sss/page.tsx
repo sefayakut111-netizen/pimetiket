@@ -54,7 +54,7 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
   uretim: [
     {
       q: "Üretim ne kadar sürer?",
-      a: "Bursa'daki fason ortaklarımızda üretim 6-9 gün arası sürer. Hızlı şerit opsiyonu ile 3-5 güne düşürebiliyoruz (ek ücret).",
+      a: "İstanbul ve Ankara fason ortaklarımızda etiket üretimi 6-9 gün, sticker 3-5 gün. Hızlı şerit opsiyonu ile etiketi 3-5 güne düşürebiliyoruz (ek ücret).",
     },
     {
       q: "Provayı nasıl onaylıyorum?",
@@ -76,7 +76,7 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "Teslimat süresi nedir?",
-      a: "Üretim + kargo dahil ortalama 10 gün. Bursa içi 8 gün, uzak iller 11-12 gün.",
+      a: "Üretim + kargo dahil etiket için 8-12 iş günü, sticker için 5-7 iş günü. İstanbul ve Ankara içi 1-2 gün daha hızlı, uzak iller 1-2 gün daha geç olabilir.",
     },
     {
       q: "Kargo takip linkim olacak mı?",
@@ -139,7 +139,7 @@ const FAQS_EN: Record<Category, { q: string; a: string }[]> = {
   uretim: [
     {
       q: "How long does production take?",
-      a: "Production at our Bursa contract partners takes 6-9 days. The fast-track option brings it down to 3-5 days (surcharge applies).",
+      a: "Labels take 6-9 days at our Istanbul and Ankara fason partners; stickers 3-5 days. The fast-track option brings labels down to 3-5 days (surcharge applies).",
     },
     {
       q: "How do I approve the proof?",
@@ -161,7 +161,7 @@ const FAQS_EN: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "What's the delivery time?",
-      a: "Average 10 days including production + shipping. 8 days within Bursa, 11-12 days for distant cities.",
+      a: "8-12 business days for labels, 5-7 for stickers (production + shipping). 1-2 days faster within Istanbul/Ankara, 1-2 days slower for distant cities.",
     },
     {
       q: "Will I get a tracking link?",

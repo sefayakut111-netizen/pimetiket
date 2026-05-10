@@ -34,7 +34,7 @@ const SAMPLE_REVIEWS: Review[] = [
     orderId: "PE-2026-3201",
     rating: 5,
     comment:
-      "Kraft etiketler harika geldi. Mat selefon pürüzsüz, baskı net. Pim'in AI flag'i bir tipo yakaladı, düzelttim, ekstra puan.",
+      "Kraft etiketleri zamanında geldi. Mat selefon kaplama temiz, baskıda renk kayması yok. Tasarımda küçük bir tipo vardı, dosya kontrolde uyarı geldi, düzeltip tekrar yükledim — sorunsuz çıktı.",
     status: "pending",
     createdAt: Date.now() - 86400_000,
   },
@@ -44,7 +44,7 @@ const SAMPLE_REVIEWS: Review[] = [
     orderId: "PE-2026-3105",
     rating: 4,
     comment:
-      "Holografik sticker'lar ışık altında inanılmaz. Kargolama biraz geç oldu ama ürünler tam istediğim gibi.",
+      "Holografik sticker rengi beklediğim gibi çıktı. Kargo 2 gün geç geldi (Yurtiçi), ürünlerle ilgili sorun yok. Bir sonrakinde Aras tercih edeceğim.",
     status: "pending",
     createdAt: Date.now() - 2 * 86400_000,
   },
@@ -53,9 +53,30 @@ const SAMPLE_REVIEWS: Review[] = [
     customerName: "Ezgi Kaplan",
     orderId: "PE-2026-2998",
     rating: 5,
-    comment: "5 yıldız az gelir.",
+    comment:
+      "İkinci siparişim. İlkinde olduğu gibi ölçü ve renk birebir tutuyor. Tekrar baskı için /tasarımlarım'dan tek tıkla yeniden sipariş açabildim, çok pratik.",
     status: "approved",
     createdAt: Date.now() - 5 * 86400_000,
+  },
+  {
+    id: "r4",
+    customerName: "Burak Aydın",
+    orderId: "PE-2026-2876",
+    rating: 4,
+    comment:
+      "Beyaz semi-glos etiket — yağa dayanıklı yazıyordu, denedim, ürün test ettiğim zeytinyağı şişesinde 2 hafta sorun yok. Ufak bir not: prova ekranında renk biraz daha açık görünüyor, gerçeği gelene kadar tedirgin oldum.",
+    status: "approved",
+    createdAt: Date.now() - 9 * 86400_000,
+  },
+  {
+    id: "r5",
+    customerName: "Ayşegül Demir",
+    orderId: "PE-2026-2734",
+    rating: 5,
+    comment:
+      "Soft touch kaplama harikaya yakın :) — kraft + soft touch markamızı bir tık üst segmente taşıdı diyebilirim. 60×80mm 5000 adet, fiyat-performans iyi.",
+    status: "approved",
+    createdAt: Date.now() - 12 * 86400_000,
   },
 ];
 

@@ -35,8 +35,8 @@ const STORAGE_KEYS = {
 const ADDRESS = {
   label: "Atölye",
   name: DEMO_CUSTOMER_NAME,
-  addr: "Yıldırım Mh. Pir Reis Sk. No:12 D:3",
-  city: "Bursa / Yıldırım",
+  addr: "Caferağa Mh. Mühürdar Cd. No:12 D:3",
+  city: "İstanbul / Kadıköy",
   phone: DEMO_CUSTOMER_PHONE,
 };
 

@@ -58,17 +58,17 @@ const COPY = {
     eyebrow: "Hesap ayarları",
     title: "Bildirim tercihleri",
     intro:
-      "Pim'den ne zaman email/SMS almak istediğini sen belirle. Sipariş güncellemeleri zorunlu (yasal), diğer her şey kapatılabilir.",
+      "Pim'den ne zaman e-posta veya SMS almak istediğini sen belirle. Sipariş güncellemeleri zorunlu (yasal), diğer her şey kapatılabilir.",
     loading: "Yükleniyor…",
     prefSaved: "Tercih güncellendi",
     emailTitle: "E-posta bildirimleri",
-    emailSub: "Mail ile gönderilir",
+    emailSub: "E-posta ile gönderilir",
     smsTitle: "SMS bildirimleri",
     smsSub: "Acil + zamana duyarlı durumlar için",
     requiredBadge: "Zorunlu",
     footerTitle: "Tercihler hemen uygulanır",
     footerDesc:
-      "İstediğin zaman kapatabilir/açabilirsin. Email gönderim altyapısı Faz 2'de Resend ile aktif olacak; şimdilik tercihler kayıtlı tutuluyor.",
+      "İstediğin zaman kapatabilir/açabilirsin. E-posta gönderim altyapısı Faz 2'de Resend ile aktif olacak; şimdilik tercihler kayıtlı tutuluyor.",
     emailRows: {
       orderUpdates: {
         label: "Sipariş güncellemeleri",
@@ -76,7 +76,7 @@ const COPY = {
       },
       proofReady: {
         label: "Prova hazır",
-        desc: "Provayı incele ve onayla emaili.",
+        desc: "Provayı incele ve onayla e-postası.",
       },
       shippingUpdates: {
         label: "Kargo bildirimi",
@@ -84,11 +84,11 @@ const COPY = {
       },
       marketing: {
         label: "Kampanya ve duyurular",
-        desc: "Yeni malzeme, indirim, etkinlikler. Ayda 1-2 email.",
+        desc: "Yeni malzeme, indirim, etkinlikler. Ayda 1-2 e-posta.",
       },
       blog: {
         label: "Blog yazıları",
-        desc: "Yeni rehber yayınlandığında özet email.",
+        desc: "Yeni rehber yayınlandığında özet e-posta.",
       },
     },
     smsRows: {
@@ -98,7 +98,7 @@ const COPY = {
       },
       proofReady: {
         label: "Prova bekliyor SMS",
-        desc: "Email yetmez, kısa süre içinde onay gerekiyorsa.",
+        desc: "E-posta yetmez, kısa süre içinde onay gerekiyorsa.",
       },
       delivery: {
         label: "Kargo teslimat günü",

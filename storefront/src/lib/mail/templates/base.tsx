@@ -100,7 +100,7 @@ export function BaseLayout({
           >
             <Text style={{ margin: 0 }}>
               <strong style={{ color: COLORS.lacivert }}>Pim Etiket</strong>
-              {" — "}Bursa atölyesinden dijital baskı ve tasarım.
+              {" — "}AI destekli dijital baskı atölyesi.
             </Text>
             <Text style={{ margin: "8px 0 0" }}>
               <Link

@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s · Pim Etiket",
   },
   description:
-    "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — Bursa atölyesinden, herkes için.",
+    "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
   applicationName: "Pim Etiket",
   authors: [{ name: "Pim Etiket" }],
   generator: "Next.js",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     "dijital baskı",
     "rulo etiket",
     "ürün etiketi",
-    "Bursa baskı",
+    "İstanbul Ankara baskı",
     "küçük marka etiket",
   ],
   openGraph: {
@@ -44,13 +44,13 @@ export const metadata: Metadata = {
     siteName: "Pim Etiket",
     title: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
     description:
-      "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — Bursa atölyesinden, herkes için.",
+      "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Pim Etiket",
     description:
-      "Etiket 1.000'den, sticker 25'ten. Bursa atölyesinden dijital baskı.",
+      "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı atölyesi.",
   },
   robots: {
     index: true,
@@ -75,10 +75,10 @@ const ORGANIZATION_LD = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
-    "Bursa atölyesinden dijital baskı — etiket ve sticker.",
+    "AI destekli dijital baskı — etiket ve sticker. İstanbul ve Ankara fason ortakları üzerinden Türkiye geneli teslimat.",
   address: {
     "@type": "PostalAddress",
-    addressLocality: "Bursa",
+    addressRegion: "Ankara",
     addressCountry: "TR",
   },
   sameAs: [],

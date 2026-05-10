@@ -39,11 +39,11 @@ export const tr: TranslationDict = {
     returns: "İadelerim",
   },
   home: {
-    eyebrow: "Bursa atölyesinden dijital baskı",
+    eyebrow: "Akıllı dijital baskı atölyesi",
     h1Brand: "Markanın etiketi,",
     h1Idea: "fikrinin sticker'ı.",
     heroDescription:
-      "Etiket 1.000 adetten, sticker 25'ten. AI dosyana bakar, eksiği söyler — Bursa'dan kapına 10 günde.",
+      "Etiket 1.000 adetten, sticker 25'ten. AI dosyana bakar, eksiği söyler — kapına ortalama 10 günde.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
     socialProof: "Türkiye'den markaların tercihi",
@@ -57,7 +57,7 @@ export const tr: TranslationDict = {
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler.",
     pillar3Title: "10 günde elinde",
     pillar3Desc:
-      "Bursa'dan kapına. Şeffaf üretim takibi ve Pim'in haberleri.",
+      "Şeffaf üretim takibi ve Pim'in anlık haberleri.",
     productEtiketSub: "Rulodan etiket — kozmetik, gıda, içecek, parfüm.",
     productStickerSub: "Tekli ya da tabakada — laptop, defter, kampanya.",
     productPriceLabel: "fiyatı, başlangıç",
@@ -73,7 +73,7 @@ export const tr: TranslationDict = {
     step3: "Provayı onayla",
     step3Desc: "Rulonun üstünde nasıl görüneceğini gör, onayla.",
     step4: "Teslim al",
-    step4Desc: "Bursa'dan kapına ortalama 10 günde.",
+    step4Desc: "Kapına ortalama 10 günde.",
     faqEyebrow: "Sıkça sorulanlar",
     faqTitle: 'Cevap genelde "evet, hallederiz".',
     faqHelp:
@@ -200,9 +200,9 @@ export const tr: TranslationDict = {
     step2Title: "Provanı incele",
     step2Desc:
       "Operatör manuel kontrolünden sonra prova göndereceğiz. Onayladıktan sonra üretime girer.",
-    step3Title: "Bursa'dan kapına",
+    step3Title: "Kapına teslim",
     step3Desc:
-      "Ortalama 8-10 gün içinde elinde. Kargo takip linkini e-posta + SMS ile gönderirim.",
+      "Etiket 8-12 iş günü, sticker 5-7 iş günü. Kargo takip linkini e-posta + SMS ile gönderirim.",
     orderDetail: "Sipariş detayı",
     backToPanel: "Panele git",
   },
@@ -226,7 +226,7 @@ export const tr: TranslationDict = {
     linkSentTitle: "E-postanı kontrol et 📩",
     linkSentDesc: "adresine giriş bağlantısı yolladım. Linke tıkla, otomatik girersin.",
     linkSentSpam:
-      "Mail görünmüyorsa spam/gereksiz klasörünü kontrol et. Link 1 saat içinde geçerli.",
+      "E-posta görünmüyorsa Spam/Gereksiz klasörünü kontrol et — gönderim altyapımız henüz domain doğrulamasında, ilk sefer Spam'a düşebilir. Link 1 saat içinde geçerli.",
     linkSentDifferent: "← Farklı e-posta dene",
     notReady: "Giriş yakında açılacak",
     notReadyDesc:
@@ -234,7 +234,7 @@ export const tr: TranslationDict = {
   },
   footer: {
     tagline:
-      "Türkiye'nin akıllı dijital baskı atölyesi. Bursa'dan, küçük markalar için.",
+      "Akıllı dijital baskı — küçük markalar ve büyük ekipler için.",
     newsletterEyebrow: "Pim'in defteri",
     newsletterTitle: "Etiket rehberini ilk sen oku",
     newsletterDesc:
@@ -247,6 +247,6 @@ export const tr: TranslationDict = {
     groupCompany: "Şirket",
     groupSupport: "Destek",
     groupAccount: "Hesabım",
-    copyright: "Pim Etiket — Bursa",
+    copyright: "Pim Etiket — İstanbul & Ankara",
   },
 };

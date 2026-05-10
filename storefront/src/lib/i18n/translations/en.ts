@@ -39,11 +39,11 @@ export const en: TranslationDict = {
     returns: "My returns",
   },
   home: {
-    eyebrow: "Digital printing from our Bursa workshop",
+    eyebrow: "Smart digital print workshop",
     h1Brand: "Your brand's label,",
     h1Idea: "your idea's sticker.",
     heroDescription:
-      "Labels from 1,000, stickers from 25. AI checks your file and tells you what's missing — Bursa to your door in 10 days.",
+      "Labels from 1,000, stickers from 25. AI checks your file and tells you what's missing — at your door in about 10 days.",
     ctaEtiket: "Print labels",
     ctaSticker: "Print stickers",
     socialProof: "Trusted by brands across Türkiye",
@@ -57,7 +57,7 @@ export const en: TranslationDict = {
       "DPI, CMYK, bleed — if anything's missing, we flag it before production.",
     pillar3Title: "10 days to your door",
     pillar3Desc:
-      "Bursa to your doorstep. Transparent production tracking and updates from Pim.",
+      "Transparent production tracking and live updates from Pim.",
     productEtiketSub: "Roll labels — cosmetics, food, beverages, perfume.",
     productStickerSub: "Single die-cut or sheet labels — laptop, notebook, campaign.",
     productPriceLabel: "price, starting from",
@@ -72,7 +72,7 @@ export const en: TranslationDict = {
     step3: "Approve the proof",
     step3Desc: "See how it'll look on the roll, then approve.",
     step4: "Receive",
-    step4Desc: "From Bursa to your door in about 10 days.",
+    step4Desc: "At your door in about 10 days.",
     faqEyebrow: "Frequently asked",
     faqTitle: 'Answer is usually "yes, we got you".',
     faqHelp:
@@ -200,9 +200,9 @@ export const en: TranslationDict = {
     step2Title: "Review your proof",
     step2Desc:
       "After operator manual check, we'll send a proof. Once approved, it goes to production.",
-    step3Title: "From Bursa to your door",
+    step3Title: "Door delivery",
     step3Desc:
-      "Average 8–10 days. I'll send the cargo tracking link by email + SMS.",
+      "Labels 8–12 business days, stickers 5–7. I'll send the cargo tracking link by email + SMS.",
     orderDetail: "Order detail",
     backToPanel: "Go to panel",
   },
@@ -227,7 +227,7 @@ export const en: TranslationDict = {
     linkSentDesc:
       "I sent a sign-in link to. Click it to sign in automatically.",
     linkSentSpam:
-      "Don't see it? Check your spam folder. Link is valid for 1 hour.",
+      "Don't see it? Check your spam folder — our sending domain is still being verified, the first email may land in spam. Link is valid for 1 hour.",
     linkSentDifferent: "← Try a different email",
     notReady: "Sign-in coming soon",
     notReadyDesc:
@@ -235,7 +235,7 @@ export const en: TranslationDict = {
   },
   footer: {
     tagline:
-      "Türkiye's smart digital print workshop. From Bursa, for small brands.",
+      "Smart digital printing — for small brands and growing teams.",
     newsletterEyebrow: "Pim's notebook",
     newsletterTitle: "Read the print guide first",
     newsletterDesc:
@@ -248,6 +248,6 @@ export const en: TranslationDict = {
     groupCompany: "Company",
     groupSupport: "Support",
     groupAccount: "My account",
-    copyright: "Pim Etiket — Bursa",
+    copyright: "Pim Etiket — İstanbul & Ankara",
   },
 };

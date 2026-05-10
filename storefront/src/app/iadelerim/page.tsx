@@ -30,7 +30,7 @@ const COPY = {
     summaryEmpty: "Henüz iade talebin yok.",
     summary: (n: number) => `${n} iade talebin var.`,
     newRequest: "Yeni iade talebi",
-    happyTitle: "İyiyiz işler iyi gidiyor 🎉",
+    happyTitle: "Henüz iade yok — işler yolunda",
     happyDesc:
       "Henüz iade talebin yok. Üretim hatası, kargo hasarı veya yanlış ürün durumunda buradan talep oluşturabilirsin.",
     pimNote: "Pim notu: ",
@@ -60,7 +60,7 @@ const COPY = {
     summary: (n: number) =>
       `You have ${n} return request${n === 1 ? "" : "s"}.`,
     newRequest: "New return request",
-    happyTitle: "All good, things are running smoothly 🎉",
+    happyTitle: "No returns yet — orders running smoothly",
     happyDesc:
       "No return requests yet. If you receive a production error, shipping damage, or wrong item, you can open a request here.",
     pimNote: "Pim's note: ",

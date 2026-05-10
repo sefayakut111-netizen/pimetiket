@@ -35,7 +35,7 @@ export const BLOG_POSTS: BlogPost[] = [
 
 **Ultra clear** — şeffaf cam etkisi. Şişeler, parfümler, lüks içeçekler için. Etiketin kendisi görünmez, sadece basılan içerik dururmuş gibi durur. Beyaz mürekkep alt katman gerektirir, dolayısıyla biraz daha pahalı.
 
-**Metalik** — folyo gümüş, premium dokunuş. Şarap, viski, lüks parfüm. Pahalıdır ama küçük adetlerde bile inanılmaz raf etkisi yaratır.
+**Metalik** — folyo gümüş, premium dokunuş. Şarap, viski, lüks parfüm. Pahalıdır ama küçük adetlerde bile rafta gözle görülür bir fark yaratır.
 
 Hangi malzemenin sana uygun olduğunu bilmiyorsan Pim'e bir 60 saniyelik soru-cevap yap. Konfigüratörde her birinin canlı önizlemesi var.`,
   },
@@ -57,7 +57,7 @@ Hangi malzemenin sana uygun olduğunu bilmiyorsan Pim'e bir 60 saniyelik soru-ce
 
 **Teslim süresi:**
 - Sticker Mule: 7-12 gün (üretim + uluslararası kargo + gümrük)
-- Pim Etiket: 5-7 gün, Bursa'dan kapına
+- Pim Etiket: 5-7 iş günü, kapına teslim (Türkiye geneli)
 
 **Kalite:**
 - İkisi de dijital UV baskı, kraft dosyalardan kontur kesim. Vinil + holografik + glitter birebir aynı malzeme grubu.
@@ -112,12 +112,12 @@ Soru olursa Pim chat'ten yaz.`,
     publishedAt: "2026-04-28",
     readMinutes: 4,
     coverColor: "bg-krem-soft",
-    body: `Pim Etiket bir tabela atölyesi değil, bir akıllı baskı pazarı. Kendi atölyemiz yok ama 4 fason ortağımızla çalışıyoruz: Bursa-1, Bursa-2, İstanbul-1, İzmir-1.
+    body: `Pim Etiket bir tabela atölyesi değil, bir akıllı baskı pazarı. Kendi atölyemiz yok ama anlaşmalı fason ortaklarımızla çalışıyoruz — İstanbul ve Ankara merkezli dijital baskı atölyeleri.
 
 **Neden bu model?**
 - Kapasite esnek: ay başında 5K etiket, ay sonunda 20K — fason rotation ile sığdırıyoruz
 - Sermaye az: makineye yatırım yapmak yerine fason ortağa iş veriyoruz
-- Coğrafi avantaj: İstanbul müşterisini İstanbul atölyesine, Ege müşterisini İzmir'e gönderiyoruz, kargo süresi düşüyor
+- Coğrafi avantaj: müşteri konumuna göre en yakın atölyeye yönlendiriyoruz, kargo süresi düşüyor
 - Risk düşük: bir atölyede arıza olsa diğerine yönlendiriyoruz
 
 **Kalite kontrolü nasıl?**

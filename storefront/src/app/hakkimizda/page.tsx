@@ -1,9 +1,8 @@
 /**
  * Pim Etiket — /hakkimizda (E.1.4)
  *
- * Pim hikayesi, Bursa atölyesi, kurucu, değerler.
- * NOT: İçerik şu an placeholder — Sefa nihai metni yazacak.
- * Yapı/component'ler hazır.
+ * Pim hikayesi, fason model, kurucu, değerler.
+ * Yapı/component'ler hazır; içerik Sefa onayı + güncellemeleriyle.
  *
  * Client component (i18n hook için). Metadata layout.tsx'te.
  */
@@ -18,7 +17,7 @@ import { useT } from "@/lib/i18n/context";
 const COPY = {
   tr: {
     eyebrow: "Hakkımızda",
-    h1Line1: "Bursa'dan,",
+    h1Line1: "Türkiye'den,",
     h1Line2: "herkes için.",
     intro:
       "Pim Etiket'i kurarken aklımızda tek bir soru vardı: hayalindeki kalitede etiket bastırmak için neden binlerce adet stoklamak zorunda olsun? Bu site, o sorunun cevabı — küçük marka için de kurumsal alıcı için de aynı kapı.",
@@ -58,9 +57,9 @@ const COPY = {
     val2Title: "AI dosyana bakar",
     val2Desc:
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler. Pre-press hatası elinde patlamaz.",
-    val3Title: "Bursa'dan kapına",
+    val3Title: "Kapına teslim",
     val3Desc:
-      "10 günde elinde. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
+      "Etiket 8-12 iş günü, sticker 5-7. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
     val4Title: "Açık ve dürüst fiyat",
     val4Desc:
       "Konfigüratörde gördüğün anlık fiyat sepete düştüğünde aynı kalır. Sürpriz ek yok.",
@@ -80,7 +79,7 @@ const COPY = {
   },
   en: {
     eyebrow: "About us",
-    h1Line1: "From Bursa,",
+    h1Line1: "From Türkiye,",
     h1Line2: "for everyone.",
     intro:
       "When we founded Pim Etiket we had only one question in mind: why should anyone — small brand or large — stock thousands of units just to print quality labels? This site is our answer. Same door for solo founders and corporate buyers.",
@@ -123,9 +122,9 @@ const COPY = {
     val2Title: "AI checks your file",
     val2Desc:
       "DPI, CMYK, bleed — anything missing, we flag it before production. Pre-press errors don't blow up in your hand.",
-    val3Title: "From Bursa to your door",
+    val3Title: "Door delivery",
     val3Desc:
-      "In your hands within 10 days. Transparent production tracking, real-time status, Pim's updates.",
+      "Labels 8-12 business days, stickers 5-7. Transparent production tracking, real-time status, Pim's updates.",
     val4Title: "Clear and honest pricing",
     val4Desc:
       "The instant price you see in the configurator stays the same in the cart. No hidden fees.",

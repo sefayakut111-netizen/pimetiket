@@ -47,7 +47,7 @@ const COPY = {
     productEtiket: "Etiket",
     ctaTitle: "Sıradaki sen ol",
     ctaDesc:
-      "İlk siparişinde de aynı kalite, aynı hız. Konfigüre et, dosyanı yükle, 5-10 günde elinde.",
+      "İlk siparişinde de aynı kalite, aynı hız. Konfigüre et, dosyanı yükle, 10 günde elinde.",
     ctaPrimary: "Etiket bastır",
     ctaSecondary: "Sticker bastır",
     permission: (

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "İletişim",
   description:
-    "WhatsApp, e-posta ve Bursa atölye adresi. Numune, fiyat teklifi, fason iş birliği için bize ulaş.",
+    "Pim Sohbet (AI), e-posta ve fason atölyelerimiz. Numune, fiyat teklifi, iş birliği için bize ulaş.",
   alternates: { canonical: "/iletisim" },
 };
 
