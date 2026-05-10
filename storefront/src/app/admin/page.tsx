@@ -46,24 +46,68 @@ import {
   formatShortDate,
 } from "@/lib/admin-analytics";
 
-type TimeRange = "today" | "7d" | "30d";
+type TimeRange = "today" | "7d" | "mtd" | "30d";
 
 const RANGE_LABEL: Record<TimeRange, string> = {
   today: "Bugün",
   "7d": "7 gün",
+  mtd: "Bu ay",
   "30d": "30 gün",
 };
 
-function getRangeWindow(range: TimeRange): { start: number; prevStart: number; days: number } {
+interface RangeWindow {
+  start: number;
+  /** Önceki periyot başlangıcı (kıyas için) */
+  prevStart: number;
+  /** Önceki periyot bitişi (default: start) — MTD için ayrı */
+  prevEnd: number;
+  /** Chart için günlük serisinin gün sayısı */
+  days: number;
+}
+
+function getRangeWindow(range: TimeRange): RangeWindow {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
   if (range === "today") {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    return { start: startOfDay.getTime(), prevStart: startOfDay.getTime() - day, days: 1 };
+    return {
+      start: startOfDay.getTime(),
+      prevStart: startOfDay.getTime() - day,
+      prevEnd: startOfDay.getTime(),
+      days: 1,
+    };
   }
-  if (range === "7d") return { start: now - 7 * day, prevStart: now - 14 * day, days: 7 };
-  return { start: now - 30 * day, prevStart: now - 60 * day, days: 30 };
+  if (range === "7d") {
+    return {
+      start: now - 7 * day,
+      prevStart: now - 14 * day,
+      prevEnd: now - 7 * day,
+      days: 7,
+    };
+  }
+  if (range === "mtd") {
+    // Bu ayın 1'i 00:00 → şu an
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+    const startOfPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1, 0, 0, 0, 0);
+    const elapsedMs = now - startOfMonth.getTime();
+    const elapsedDays = Math.max(1, Math.ceil(elapsedMs / day));
+    // Önceki ayın aynı süresi (1'den elapsedDays'e kadar)
+    const prevEnd = startOfPrevMonth.getTime() + elapsedMs;
+    return {
+      start: startOfMonth.getTime(),
+      prevStart: startOfPrevMonth.getTime(),
+      prevEnd,
+      days: elapsedDays,
+    };
+  }
+  return {
+    start: now - 30 * day,
+    prevStart: now - 60 * day,
+    prevEnd: now - 30 * day,
+    days: 30,
+  };
 }
 
 interface AlertItem {
@@ -158,11 +202,35 @@ function formatChange(curr: number, prev: number): { label: string; trend: "up" 
   };
 }
 
+interface CustomerStats {
+  total: number;
+  weekNew: number;
+  monthNew: number;
+  todayNew: number;
+}
+
+interface FunnelMetric {
+  avgSeconds: number;
+  sampleCount: number;
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}sn`;
+  const min = seconds / 60;
+  if (min < 60) return `${Math.round(min)}dk`;
+  const hr = min / 60;
+  if (hr < 48) return `${hr.toFixed(1)}sa`;
+  const day = hr / 24;
+  return `${day.toFixed(1)}g`;
+}
+
 export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [range, setRange] = useState<TimeRange>("7d");
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+  const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
+  const [funnelMetrics, setFunnelMetrics] = useState<Record<string, FunnelMetric>>({});
 
   useEffect(() => {
     const refresh = () => {
@@ -171,6 +239,22 @@ export default function AdminDashboardPage() {
     };
     refresh();
     setNow(new Date());
+    // Müşteri istatistiklerini çek (auth.users + profiles)
+    fetch("/api/admin/customer-stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: CustomerStats | null) => data && setCustomerStats(data))
+      .catch(() => {
+        /* silently — endpoint yoksa eski davranış */
+      });
+    // Funnel ortalama bekleme süreleri
+    fetch("/api/admin/funnel-metrics")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { metrics?: Record<string, FunnelMetric> } | null) => {
+        if (data?.metrics) setFunnelMetrics(data.metrics);
+      })
+      .catch(() => {
+        /* silently */
+      });
     const w = globalThis.window;
     w.addEventListener("pim_customer_orders_updated", refresh);
     // 30 saniyede bir auto refresh ("last update X sn önce" göstergesini canlı tutar)
@@ -191,9 +275,9 @@ export default function AdminDashboardPage() {
   const inPrevRange = useMemo(
     () =>
       orders.filter(
-        (o) => o.createdAt >= rangeWindow.prevStart && o.createdAt < rangeWindow.start
+        (o) => o.createdAt >= rangeWindow.prevStart && o.createdAt < rangeWindow.prevEnd
       ),
-    [orders, rangeWindow.start, rangeWindow.prevStart]
+    [orders, rangeWindow.prevStart, rangeWindow.prevEnd]
   );
 
   // KPI hesaplamaları
@@ -320,9 +404,9 @@ export default function AdminDashboardPage() {
 
   // Quick actions
   const QUICK_ACTIONS = [
-    { href: "/admin/siparisler", label: "Tüm siparişler", desc: `${orders.length} kayıt`, icon: <Icon.Box size={18} /> },
+    { href: "/admin/siparis-ekle", label: "Manuel sipariş", desc: "Telefon / WhatsApp", icon: <Icon.Plus size={18} />, accent: true },
     { href: "/admin/fiyat-hesapla", label: "Hızlı teklif", desc: "Etiket/sticker", icon: <Icon.Bolt size={18} /> },
-    { href: "/admin/kuponlar", label: "Kupon ekle", desc: "İndirim kodu", icon: <Icon.Plus size={18} /> },
+    { href: "/admin/kuponlar", label: "Kupon ekle", desc: "İndirim kodu", icon: <Icon.Sparkle size={18} /> },
     { href: "/admin/yorumlar", label: "Yorum onayı", desc: "Bekleyen review", icon: <Icon.Star size={18} /> },
   ];
 
@@ -498,11 +582,21 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
               {funnel.map((step, i) => {
                 const intensity = step.count / maxFunnel;
+                const metric = funnelMetrics[step.status];
+                const hasMetric = metric && metric.sampleCount > 0;
+                // Bekleme süresi yüksek mi? 24+ saat bekleyen aşamalar uyarı
+                const slowWarning =
+                  hasMetric && metric.avgSeconds > 24 * 3600;
                 return (
                   <Link
                     key={step.status}
                     href={step.href}
-                    className="group bg-white ring-1 ring-gri-200 rounded-xl p-3 hover:ring-pim-mercan transition-all hover:-translate-y-0.5"
+                    className={cn(
+                      "group bg-white ring-1 rounded-xl p-3 transition-all hover:-translate-y-0.5",
+                      slowWarning
+                        ? "ring-sari/40 hover:ring-sari"
+                        : "ring-gri-200 hover:ring-pim-mercan"
+                    )}
                   >
                     <div className="text-[10.5px] font-semibold text-gri-700 uppercase tracking-[0.03em] flex items-center gap-1">
                       <span className="grid place-items-center w-4 h-4 rounded-full bg-gri-100 text-[9px] font-bold">
@@ -525,6 +619,23 @@ export default function AdminDashboardPage() {
                         )}
                         style={{ width: `${Math.max(intensity * 100, 4)}%` }}
                       />
+                    </div>
+                    {/* Ortalama bekleme — sample varsa göster */}
+                    <div
+                      className={cn(
+                        "mt-1.5 text-[10.5px] tabular-nums flex items-center gap-1",
+                        slowWarning
+                          ? "text-sari font-semibold"
+                          : "text-gri-500"
+                      )}
+                      title={
+                        hasMetric
+                          ? `${metric.sampleCount} sipariş örnekleminden ortalama`
+                          : "Henüz veri yok"
+                      }
+                    >
+                      <span className="opacity-70">⏱</span>
+                      {hasMetric ? formatDuration(metric.avgSeconds) : "—"}
                     </div>
                   </Link>
                 );
@@ -581,16 +692,74 @@ export default function AdminDashboardPage() {
 
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-              Tekrar müşteri
+              {customerStats ? "Yeni kayıt (7g)" : "Tekrar müşteri"}
             </div>
             <div className="text-[22px] font-bold mt-1 tabular-nums text-pim-mercan">
-              {tops.filter((t) => t.orderCount > 1).length}
+              {customerStats !== null
+                ? customerStats.weekNew
+                : tops.filter((t) => t.orderCount > 1).length}
             </div>
             <div className="text-[11px] text-gri-700 mt-1">
-              2+ sipariş veren
+              {customerStats !== null
+                ? `${customerStats.total} toplam kullanıcı`
+                : "2+ sipariş veren"}
             </div>
           </Card>
         </div>
+
+        {/* Müşteri kayıt istatistikleri (varsa) */}
+        {customerStats !== null && customerStats.total > 0 && (
+          <Card padding="p-5" className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-[15px] font-semibold">Üyelik istatistikleri</h2>
+                <p className="text-[12px] text-gri-700">
+                  Hesap açan ziyaretçiler — sipariş vermeden önce
+                </p>
+              </div>
+              <Link
+                href="/admin/musteriler"
+                className="text-[12.5px] font-semibold text-pim-mercan hover:underline"
+              >
+                Müşteri listesi →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-gri-50 ring-1 ring-gri-200 p-3.5">
+                <div className="text-[10.5px] font-semibold uppercase text-gri-700 tracking-[0.04em]">
+                  Bugün
+                </div>
+                <div className="text-[24px] font-bold tabular-nums mt-0.5 text-yesil">
+                  +{customerStats.todayNew}
+                </div>
+              </div>
+              <div className="rounded-lg bg-gri-50 ring-1 ring-gri-200 p-3.5">
+                <div className="text-[10.5px] font-semibold uppercase text-gri-700 tracking-[0.04em]">
+                  7 gün
+                </div>
+                <div className="text-[24px] font-bold tabular-nums mt-0.5 text-pim-mercan">
+                  +{customerStats.weekNew}
+                </div>
+              </div>
+              <div className="rounded-lg bg-gri-50 ring-1 ring-gri-200 p-3.5">
+                <div className="text-[10.5px] font-semibold uppercase text-gri-700 tracking-[0.04em]">
+                  Bu ay
+                </div>
+                <div className="text-[24px] font-bold tabular-nums mt-0.5 text-lacivert">
+                  +{customerStats.monthNew}
+                </div>
+              </div>
+              <div className="rounded-lg bg-pim-mercan-tint p-3.5">
+                <div className="text-[10.5px] font-semibold uppercase text-pim-mercan tracking-[0.04em]">
+                  Toplam
+                </div>
+                <div className="text-[24px] font-bold tabular-nums mt-0.5 text-pim-mercan">
+                  {customerStats.total}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* AI insights + Quick actions */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 mb-6">
@@ -633,16 +802,33 @@ export default function AdminDashboardPage() {
               <Link
                 key={q.href}
                 href={q.href}
-                className="bg-white ring-1 ring-gri-200 rounded-xl p-4 hover:ring-pim-mercan hover:-translate-y-0.5 transition-all flex items-center gap-3 shadow-1"
+                className={cn(
+                  "rounded-xl p-4 hover:-translate-y-0.5 transition-all flex items-center gap-3 shadow-1 ring-1",
+                  q.accent
+                    ? "bg-pim-mercan text-white ring-pim-mercan hover:bg-pim-mercan/90"
+                    : "bg-white text-lacivert ring-gri-200 hover:ring-pim-mercan"
+                )}
               >
-                <span className="grid place-items-center w-9 h-9 rounded-xl bg-pim-mercan-tint text-pim-mercan shrink-0">
+                <span
+                  className={cn(
+                    "grid place-items-center w-9 h-9 rounded-xl shrink-0",
+                    q.accent
+                      ? "bg-white/20 text-white"
+                      : "bg-pim-mercan-tint text-pim-mercan"
+                  )}
+                >
                   {q.icon}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-[12.5px] text-lacivert truncate">
+                  <div className="font-semibold text-[12.5px] truncate">
                     {q.label}
                   </div>
-                  <div className="text-[10.5px] text-gri-700 truncate">
+                  <div
+                    className={cn(
+                      "text-[10.5px] truncate",
+                      q.accent ? "opacity-80" : "text-gri-700"
+                    )}
+                  >
                     {q.desc}
                   </div>
                 </div>
@@ -706,24 +892,35 @@ export default function AdminDashboardPage() {
               </div>
             ) : (
               <ul className="divide-y divide-gri-100">
-                {tops.map((c, i) => (
-                  <li key={i} className="px-5 py-3 flex items-center gap-3">
-                    <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan-tint text-pim-mercan text-[12px] font-bold shrink-0">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-[13px] truncate">
-                        {c.name}
+                {tops.map((c, i) => {
+                  const isVip = c.orderCount >= 3;
+                  return (
+                    <li key={i} className="px-5 py-3 flex items-center gap-3">
+                      <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan-tint text-pim-mercan text-[12px] font-bold shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-[13px] truncate flex items-center gap-1.5">
+                          {c.name}
+                          {isVip && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 h-[16px] rounded-full bg-sari-soft text-sari text-[9.5px] font-bold uppercase tracking-[0.04em] shrink-0"
+                              title={`VIP — ${c.orderCount} sipariş`}
+                            >
+                              <Icon.Star size={9} /> VIP
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-gri-500 truncate tabular-nums">
+                          {c.orderCount} sipariş · {timeAgo(c.lastOrderAt)}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-gri-500 truncate tabular-nums">
-                        {c.orderCount} sipariş · {timeAgo(c.lastOrderAt)}
-                      </div>
-                    </div>
-                    <span className="text-[13px] font-bold text-yesil tabular-nums shrink-0">
-                      {formatCurrency(c.totalRevenue)}
-                    </span>
-                  </li>
-                ))}
+                      <span className="text-[13px] font-bold text-yesil tabular-nums shrink-0">
+                        {formatCurrency(c.totalRevenue)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
