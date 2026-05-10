@@ -271,7 +271,7 @@ export default function AdminSiparislerPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link
-                          href={`/siparis/${o.id}`}
+                          href={`/admin/siparisler/${o.id}`}
                           className="text-pim-mercan font-semibold hover:underline"
                         >
                           Detay →

@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Button, Card, Eyebrow, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listReturns,
@@ -114,8 +114,9 @@ export default function IadelerimPage() {
   if (!hydrated) {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
-        <div className="mx-auto max-w-[480px] px-6 text-center text-gri-500">
-          {c.loading}
+        <div className="mx-auto max-w-[760px] px-6 space-y-3">
+          <Skeleton.OrderRow />
+          <Skeleton.OrderRow />
         </div>
       </main>
     );

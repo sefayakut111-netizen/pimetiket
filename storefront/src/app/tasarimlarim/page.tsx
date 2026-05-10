@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Button, Card, Eyebrow, Skeleton } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import {
   listMyDesigns,
@@ -183,8 +183,12 @@ export default function TasarimlarimPage() {
   if (!hydrated) {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
-        <div className="mx-auto max-w-[1080px] px-6 text-center text-gri-500">
-          {c.loading}
+        <div className="mx-auto max-w-[1080px] px-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square rounded-2xl" />
+            ))}
+          </div>
         </div>
       </main>
     );

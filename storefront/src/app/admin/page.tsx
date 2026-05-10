@@ -1003,7 +1003,7 @@ export default function AdminDashboardPage() {
                 return (
                   <Link
                     key={o.id}
-                    href={`/siparis/${o.id}`}
+                    href={`/admin/siparisler/${o.id}`}
                     className="px-5 py-3 flex items-center gap-3 hover:bg-gri-50 transition-colors"
                   >
                     <span

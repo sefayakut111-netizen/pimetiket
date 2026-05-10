@@ -75,12 +75,12 @@ export function Footer() {
       return;
     }
     setLoading(true);
-    // Mock subscribe — Faz 2'de Resend list
+    // Şu an mail altyapısı (Resend) bağlı değil — local olarak topla, sonra
+    // Resend gelince batch import edeceğiz.
     setTimeout(() => {
       setLoading(false);
       setSubscribed(true);
-      toast.success("Listeye eklendi 📩");
-      // Mock storage
+      toast.success("Aldım! Mail altyapısı aktif olunca ulaşacağım 📩");
       try {
         const stored = JSON.parse(
           localStorage.getItem("pim_newsletter_v1") ?? "[]"
@@ -101,14 +101,20 @@ export function Footer() {
         {/* Newsletter — compact strip */}
         <div className="mb-10 pb-8 border-b border-white/10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan mb-1.5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan mb-1.5 inline-flex items-center gap-1.5">
               {t.footer.newsletterEyebrow}
+              <span className="inline-flex items-center px-1.5 h-[16px] rounded-full bg-white/10 text-white/70 text-[9px] font-bold tracking-[0.04em]">
+                YAKINDA
+              </span>
             </div>
             <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-1">
               {t.footer.newsletterTitle}
             </h3>
             <p className="text-[13px] text-white/60 leading-relaxed">
-              {t.footer.newsletterDesc}
+              {t.footer.newsletterDesc}{" "}
+              <span className="text-white/45">
+                Mail altyapısı yakında, kayıt edersen ulaşırım.
+              </span>
             </p>
           </div>
           {subscribed ? (

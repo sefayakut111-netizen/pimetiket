@@ -10,7 +10,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { Pim } from "@/components/Pim";
-import { Button, Card, Input, Eyebrow } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
 import {
@@ -275,7 +275,13 @@ export default function SiparislerimPage() {
         </Card>
 
         {/* Orders list */}
-        {hydrated && orders.length === 0 ? (
+        {!hydrated ? (
+          <div className="space-y-3">
+            <Skeleton.OrderRow />
+            <Skeleton.OrderRow />
+            <Skeleton.OrderRow />
+          </div>
+        ) : orders.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Pim pose="think" size={140} />
             <h3 className="mt-4 text-xl font-semibold mb-2">{c.emptyTitle}</h3>

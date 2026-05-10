@@ -20,7 +20,6 @@ interface SiteSettings {
   vatPct: number;
   shippingFee: number;
   freeShippingThreshold: number;
-  walletDiscountPct: number;
   defaultStickerDelivery: number;
   defaultEtiketDelivery: number;
   fastTrackEnabled: boolean;
@@ -34,13 +33,12 @@ const DEFAULTS: SiteSettings = {
   vatPct: 20,
   shippingFee: 49,
   freeShippingThreshold: 1500,
-  walletDiscountPct: 2,
-  defaultStickerDelivery: 5,
-  defaultEtiketDelivery: 10,
+  defaultStickerDelivery: 7, // 5-7 iş günü
+  defaultEtiketDelivery: 12, // 8-12 iş günü
   fastTrackEnabled: true,
-  emailFrom: "destek@pimetiket.com",
-  contactPhone: "+90 (224) 000 00 00",
-  contactWhatsapp: "+90 (5XX) 000 00 00",
+  emailFrom: "info@pimetiket.com",
+  contactPhone: "", // Henüz hat yok — Sefa açacak
+  contactWhatsapp: "", // Henüz aktif değil
   holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim",
 };
 
@@ -127,12 +125,6 @@ export default function AdminAyarlarPage() {
                 onChange={(v) => update("vatPct", v)}
                 hint="Standart 20%, kategoriye göre 1/8/10 olabilir"
               />
-              <NumberField
-                label="Cüzdan indirimi (%)"
-                value={settings.walletDiscountPct}
-                onChange={(v) => update("walletDiscountPct", v)}
-                hint="Cüzdandan ödeyene ek indirim"
-              />
             </div>
           </Card>
 
@@ -197,11 +189,13 @@ export default function AdminAyarlarPage() {
                   label="Telefon"
                   value={settings.contactPhone}
                   onChange={(v) => update("contactPhone", v)}
+                  placeholder="Hat henüz aktif değil"
                 />
                 <TextField
                   label="WhatsApp"
                   value={settings.contactWhatsapp}
                   onChange={(v) => update("contactWhatsapp", v)}
+                  placeholder="Aktif olunca ekle"
                 />
               </div>
             </div>
@@ -284,15 +278,21 @@ function TextField({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
       <span className="text-[13px] font-semibold mb-1.5 block">{label}</span>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
     </label>
   );
 }

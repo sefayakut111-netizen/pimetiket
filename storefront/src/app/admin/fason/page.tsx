@@ -127,9 +127,23 @@ export default function AdminFasonPage() {
             Fason ortakları
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {FASONS.length} aktif ortak · {pending.length} sipariş atama
-            bekliyor
+            {FASONS.length} ortak · {pending.length} sipariş atama bekliyor
           </p>
+        </div>
+
+        {/* Demo data uyarısı */}
+        <div className="mb-6 rounded-xl bg-pim-mercan-tint ring-1 ring-pim-mercan/20 px-5 py-3.5 flex items-start gap-3">
+          <Icon.Info size={16} className="text-pim-mercan mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <div className="font-semibold text-[13.5px] text-pim-mercan mb-0.5">
+              Demo veri — fason ortaklar henüz hardcoded
+            </div>
+            <p className="text-[12.5px] text-pim-mercan/85 leading-relaxed">
+              Aşağıdaki 4 atölye + kapasite/load değerleri örnek. Gerçek fason
+              ortakları belirlenince DB&apos;ye taşınacak (capacity, load,
+              speciality, rating).
+            </p>
+          </div>
         </div>
 
         {/* Pending orders strip */}
