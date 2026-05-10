@@ -112,13 +112,35 @@ Bu kısım odak haftası bittikten sonra. Şimdi TANIMLAMAK için yazıyorum, ç
 - 3 key Vercel env'e
 - Site canlı ödeme alır
 
-### 4. Resend mail
+### 5. Resend mail
 - Resend hesabı (yoksa)
-- Domain doğrulama (DKIM/SPF)
-- Sipariş onay maili çalışır
+- Domain doğrulama (DKIM/SPF/DMARC) — GoDaddy DNS API ile ben yazarım
+- API key Vercel env'e
+- Test mail at, info@'a ulaştığını doğrula
+- Sonra **Yorum mail otomasyonu** aktifleşir (Madde 7'deki Aşama 2)
 
-### 5. MERSİS
+### 6. MERSİS
 - Sorgula + footer'a ekle
+
+### 7. Yorum sistemi — Aşama 2 (Resend gelince)
+- pg_cron job veya Supabase Edge Function: kargo teslim sonrası 24 saat
+  bekle, sonra Resend ile yorum talebi maili at
+- Mail template: Pim wave + brand voice + 1-tıkla "Yorum yaz" butonu
+- Token-based yorum sayfası (login olmadan, mail linkinden gelirse)
+- Email open/click tracking (Resend dashboard)
+- 30 gün dolan `review_requests` için cron: status='expired'
+
+### 8. Yorum sistemi — Sticker entegrasyonu (Sefa onayıyla)
+- `/sticker` sayfasının sonuna `<ProductReviews productType="sticker" />`
+  mount et (etiket'e zaten mount edildi)
+- Sefa "sticker dokunma" demişti, sadece bu küçük ekleme — onayla yaparım
+
+### 9. Yorum sistemi — DB integration (mock → real)
+- `/admin/yorumlar` şu an localStorage mock data ile çalışıyor
+- Supabase reviews tablosundan gerçek query'ye geçir
+- Real-time update (Supabase Realtime ile yeni yorum geldiğinde admin
+  panelinde toast)
+- Reviewer'ın display_name kullanımını gerçek user metadata'sından çek
 
 ---
 
@@ -130,6 +152,17 @@ Bu kısım odak haftası bittikten sonra. Şimdi TANIMLAMAK için yazıyorum, ç
 - WhatsApp Business
 - Cloudflare Pages migration (opsiyonel)
 - Üretim partneri netleştirme (atölye adresi)
+- **Yorum hediye sistemi** — yorum yazana cüzdana 50 TL puan kredisi
+  (cüzdan aktif olunca)
+- **Yorum analytics** — admin panelinde KPI dashboard:
+  - Teslim → yorum oranı (hedef %30+)
+  - Mail open/click rate
+  - Banner CTR
+  - Average rating trend
+- **Yorum filtreleri** — `/yorumlar` sayfasında yıldız bazlı filtre, foto
+  varlığı filtresi
+- **Yorumlara cevap** — admin yoruma cevap yazabilir (özellikle 1-2 yıldız
+  için empati + çözüm)
 
 ---
 
