@@ -13,6 +13,7 @@ import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import { SchemaJsonLd, faqSchema } from "@/components/SchemaJsonLd";
 
 type Category = "siparis" | "uretim" | "kargo" | "odeme" | "iade";
 
@@ -240,8 +241,18 @@ export default function SssPage() {
   const [active, setActive] = useState<Category>("siparis");
   const items = FAQS[active];
 
+  // Tüm FAQ'leri tek liste yapıp JSON-LD'ye çevir (Google Rich Snippet için)
+  const allFaqs: { q: string; a: string }[] = [
+    ...FAQS.siparis,
+    ...FAQS.uretim,
+    ...FAQS.kargo,
+    ...FAQS.odeme,
+    ...FAQS.iade,
+  ];
+
   return (
     <main className="animate-fade-up">
+      <SchemaJsonLd data={faqSchema(allFaqs)} />
       {/* HERO */}
       <section className="pt-10 md:pt-16 pb-8 md:pb-12">
         <div className="mx-auto max-w-[800px] px-4 md:px-8 text-center">

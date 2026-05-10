@@ -19,6 +19,7 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   // SEO + içerik
   { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
   { path: "/galeri", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/yorumlar", changeFrequency: "weekly", priority: 0.7 },
   { path: "/hakkimizda", changeFrequency: "monthly", priority: 0.7 },
   { path: "/sss", changeFrequency: "monthly", priority: 0.7 },
   { path: "/iletisim", changeFrequency: "monthly", priority: 0.6 },
@@ -29,6 +30,7 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   { path: "/sartlar", changeFrequency: "yearly", priority: 0.3 },
   { path: "/cerez", changeFrequency: "yearly", priority: 0.3 },
   { path: "/mesafeli-satis", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/on-bilgilendirme", changeFrequency: "yearly", priority: 0.3 },
   { path: "/cayma-hakki", changeFrequency: "yearly", priority: 0.3 },
   { path: "/iade-degisim-politikasi", changeFrequency: "yearly", priority: 0.4 },
 ];

@@ -21,6 +21,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Pim, PimMini } from "@/components/Pim";
 import { PimAsset } from "@/components/PimAsset";
+import {
+  SchemaJsonLd,
+  productSchema,
+  breadcrumbSchema,
+} from "@/components/SchemaJsonLd";
 import { Icon } from "@/components/Icon";
 import {
   FormSection,
@@ -198,6 +203,21 @@ export default function StickerPage() {
           "linear-gradient(180deg, #FFF6F2 0%, #FFFFFF 30%, #FFFFFF 100%)",
       }}
     >
+      <SchemaJsonLd
+        data={[
+          productSchema({
+            name: "Sticker — özel baskı",
+            description:
+              "Die-cut veya tabaka. Vinil/transparan/holo/simli. Laptop, defter, kampanya için. AI dosya kontrolü ile 5-7 iş günü teslim. 25 adetten başlar.",
+            category: "Sticker",
+            priceFrom: 113,
+          }),
+          breadcrumbSchema([
+            { label: "Anasayfa", url: "/" },
+            { label: "Sticker", url: "/sticker" },
+          ]),
+        ]}
+      />
       {/* Breadcrumb */}
       <div className="border-b border-gri-200 bg-white/80">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2 text-[13px] md:text-[14px]">

@@ -21,6 +21,11 @@ import { useEffect, useState } from "react";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import {
+  SchemaJsonLd,
+  productSchema,
+  breadcrumbSchema,
+} from "@/components/SchemaJsonLd";
+import {
   FormSection,
   SelectableCard,
   PriceCard,
@@ -197,6 +202,21 @@ export default function EtiketPage() {
 
   return (
     <main className="bg-gri-50 min-h-[calc(100vh-64px)] animate-fade-up">
+      <SchemaJsonLd
+        data={[
+          productSchema({
+            name: "Rulodan etiket — özel baskı",
+            description:
+              "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/transparent. AI dosya kontrolü ile 8-12 iş günü teslim. 1.000 adetten başlar.",
+            category: "Etiket / Label",
+            priceFrom: 850,
+          }),
+          breadcrumbSchema([
+            { label: "Anasayfa", url: "/" },
+            { label: "Etiket", url: "/etiket" },
+          ]),
+        ]}
+      />
       {/* Breadcrumb */}
       <div className="border-b border-gri-200 bg-white">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2 text-[13px] md:text-[14px]">

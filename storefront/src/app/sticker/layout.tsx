@@ -2,10 +2,22 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Sticker konfigüre et",
+  title: "Sticker bastır — die-cut, holo, transparan",
   description:
-    "25 adetten başlayan tekli ya da tabakada sticker baskı. 25'er adet artışla, anlık fiyat, hızlı teslim.",
+    "25 adetten başlayan tekli die-cut veya tabakada sticker baskı. Vinil/holo/transparan/simli. AI dosya kontrolü ile 5-7 iş günü teslim.",
   alternates: { canonical: "/sticker" },
+  openGraph: {
+    title: "Sticker bastır — Pim Etiket",
+    description:
+      "Die-cut, tabaka, vinil, holo, transparan. 25 adetten, 5-7 iş günü.",
+    type: "website",
+    url: "/sticker",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sticker bastır — Pim Etiket",
+    description: "25 adetten, 5-7 iş günü teslim. AI dosya kontrolü.",
+  },
 };
 
 export default function StickerLayout({ children }: { children: ReactNode }) {
