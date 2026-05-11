@@ -163,10 +163,50 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    updatePayload.tracking_company = company.trim();
-    updatePayload.tracking_number = number.trim();
-    if (typeof trackUrl === "string") {
-      updatePayload.tracking_url = trackUrl.trim();
+    const companyTrim = company.trim();
+    const numberTrim = number.trim();
+    if (companyTrim.length === 0 || companyTrim.length > 64) {
+      return NextResponse.json(
+        { error: "Kargo firması 1-64 karakter olmalı" },
+        { status: 400 }
+      );
+    }
+    if (numberTrim.length === 0 || numberTrim.length > 64) {
+      return NextResponse.json(
+        { error: "Takip numarası 1-64 karakter olmalı" },
+        { status: 400 }
+      );
+    }
+    updatePayload.tracking_company = companyTrim;
+    updatePayload.tracking_number = numberTrim;
+
+    // Tracking URL — yalnızca https:// kabul edilir.
+    // Mail template'inde escape() HTML entity yapar ama `javascript:` /
+    // `data:` şeması href'te tıklanabilir kalır. URL parse + scheme
+    // allowlist + uzunluk limiti uygula.
+    if (typeof trackUrl === "string" && trackUrl.trim().length > 0) {
+      const raw = trackUrl.trim();
+      if (raw.length > 512) {
+        return NextResponse.json(
+          { error: "Takip linki çok uzun (max 512)" },
+          { status: 400 }
+        );
+      }
+      try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== "https:") {
+          return NextResponse.json(
+            { error: "Takip linki sadece https:// olabilir" },
+            { status: 400 }
+          );
+        }
+        updatePayload.tracking_url = parsed.toString();
+      } catch {
+        return NextResponse.json(
+          { error: "Takip linki geçerli bir URL değil" },
+          { status: 400 }
+        );
+      }
     }
   }
 

@@ -23,3 +23,4 @@ export { Skeleton } from "./Skeleton";
 export { ValidatedInput } from "./ValidatedInput";
 export { DesignDropZone } from "./DesignDropZone";
 export type { DesignTempState } from "./DesignDropZone";
+export { Modal } from "./Modal";

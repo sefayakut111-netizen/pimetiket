@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { assertCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -25,21 +26,9 @@ interface CancelledOrder {
 }
 
 export async function GET(req: Request) {
-  // Vercel Cron auth
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    console.error("[cron/auto-refund] CRON_SECRET env var eksik");
-    return NextResponse.json(
-      { error: "Sunucu yapılandırması eksik" },
-      { status: 500 }
-    );
-  }
-
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Vercel Cron auth — timing-safe
+  const authFail = assertCronAuth(req);
+  if (authFail) return authFail;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -21,6 +21,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { renderMailTemplate } from "@/lib/mail/templates";
+import { assertCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -44,19 +45,8 @@ function backoffMinutes(attempts: number): number {
 }
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret) {
-    console.error("[cron/process-mail-outbox] CRON_SECRET eksik");
-    return NextResponse.json(
-      { error: "Sunucu yapılandırması eksik" },
-      { status: 500 }
-    );
-  }
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authFail = assertCronAuth(req);
+  if (authFail) return authFail;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -136,15 +126,24 @@ export async function GET(req: Request) {
 
     // ----- Resend gönderim (aktif olduğunda) -----
     try {
-      // İşlemekte olduğumuzu işaretle (duplicate önleme)
-      await admin
+      // Atomic claim: status pending/failed ise sending'e çevir.
+      // 2 paralel cron instance aynı satırı çekerse, ikincisi
+      // 0 satır günceller ve atlanır → duplicate mail gönderilmez.
+      const { data: claimed, error: claimErr } = await admin
         .from("fason_mail_outbox")
         .update({
           status: "sending",
           attempts: row.attempts + 1,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", row.id);
+        .eq("id", row.id)
+        .in("status", ["pending", "failed"])
+        .select("id")
+        .maybeSingle();
+      if (claimErr || !claimed) {
+        // Başka worker zaten claim etti → atla
+        continue;
+      }
 
       const resp = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -197,7 +196,9 @@ export async function GET(req: Request) {
       await admin
         .from("fason_mail_outbox")
         .update({
-          status: willRetry ? "failed" : "failed",
+          // willRetry false → terminal state (max attempt). UI'da filter
+          // edilebilsin diye "failed" kalır; next_retry_at null sinyal.
+          status: "failed",
           last_error: errMsg.slice(0, 500),
           next_retry_at: nextRetry,
           updated_at: new Date().toISOString(),

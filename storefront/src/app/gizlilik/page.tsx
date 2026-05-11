@@ -51,12 +51,13 @@ export default function GizlilikPage() {
         <a href="/cerez">Çerez Politikası</a>nda yer alır.
       </p>
 
-      <h2>4. Fason Üretim Ortaklarımız</h2>
+      <h2 id="4-uretim-ortaklarimiz">4. Baskı Üretim Ortaklarımız</h2>
       <p>
-        Pim Etiket <strong>fason üretim modeliyle</strong> çalışır &mdash;
-        yani sipariş ettiğin ürünlerin baskı işlemini İstanbul ve
-        Ankara&rsquo;daki anlaşmalı baskı atölyeleri yapar. Bu fason
-        ortaklarımıza şu verilerin aktarılır:
+        Pim Etiket <strong>anlaşmalı baskı atölyeleriyle</strong> çalışır
+        (sektörde &ldquo;fason üretim&rdquo; olarak bilinen model)
+        &mdash; sipariş ettiğin ürünlerin baskı işlemini İstanbul ve
+        Ankara&rsquo;daki üretim ortaklarımız yapar. Bu ortaklarımıza şu
+        verilerin aktarılır:
       </p>
       <div className="overflow-x-auto my-4">
         <table className="w-full text-[13px] border-collapse">
@@ -91,9 +92,9 @@ export default function GizlilikPage() {
       </p>
       <ul>
         <li>
-          Fason ortaklarımız sadece <strong>senin siparişin</strong> için
-          bu verileri kullanabilir. Başka müşteriye ürettiremez, sosyal
-          medyada yayımlayamaz, portfolyo olarak gösteremez.
+          Üretim ortaklarımız sadece <strong>senin siparişin</strong>{" "}
+          için bu verileri kullanabilir. Başka müşteriye ürettiremez,
+          sosyal medyada yayımlayamaz, portfolyo olarak gösteremez.
         </li>
         <li>
           <strong>Üretim bittikten en geç 30 gün sonra</strong> elindeki
@@ -101,22 +102,22 @@ export default function GizlilikPage() {
         </li>
         <li>
           <strong>
-            Tasarım dosyalarınız şifreli ve süre sınırlı bağlantılar (signed
+            Tasarım dosyaların şifreli ve süre sınırlı bağlantılar (signed
             URL) ile gönderilir.
           </strong>{" "}
           İlgili sipariş bittiğinde bu bağlantı kendiliğinden geçersiz olur.
         </li>
         <li>
-          Tüm fason&rsquo;larımızla <strong>veri işleyici sözleşmemiz</strong>{" "}
-          vardır; ihlal halinde Pim Etiket sorumlu kılınır ve
-          fason&rsquo;a rücu eder.
+          Tüm üretim ortaklarımızla{" "}
+          <strong>veri işleyici sözleşmemiz</strong> vardır; ihlal halinde
+          Pim Etiket sorumlu kılınır ve ortağa rücu eder.
         </li>
       </ul>
       <p>
-        Fason ortağımıza aktarılan verilerinin durumu hakkında bilgi
+        Üretim ortağımıza aktarılan verilerinin durumu hakkında bilgi
         almak veya başvuru yapmak için{" "}
         <a href="/iletisim">iletişim sayfası</a> üzerinden bize
-        ulaşabilirsin. Doğrudan fason&rsquo;a yapılan başvurular bize
+        ulaşabilirsin. Doğrudan üretim ortağına yapılan başvurular bize
         iletilir.
       </p>
 

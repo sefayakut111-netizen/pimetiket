@@ -10,22 +10,13 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { assertCronAuth } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET eksik" },
-      { status: 500 }
-    );
-  }
-
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authFail = assertCronAuth(req);
+  if (authFail) return authFail;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

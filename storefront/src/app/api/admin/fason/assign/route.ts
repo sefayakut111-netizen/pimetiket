@@ -3,12 +3,15 @@
  *
  * Sefa "Fason'a gönder" butonuna basınca çağrılır.
  *
- * Atomik işlem:
- *   1. order_assignments INSERT (status=assigned)
- *   2. fason_access_token üret (form için)
- *   3. fason_mail_outbox INSERT (Resend gelince gönderilecek)
- *   4. order_events 'fason_assigned' log
- *   5. orders.status → 'in_production' (artık üretimde sayılır)
+ * Migration 024 ile **atomik RPC** kullanıyor:
+ *   fn_assign_order_to_fason → assignment + token + outbox + event + status
+ *   tek transaction içinde. Hata durumunda PostgreSQL otomatik rollback.
+ *
+ * Endpoint sorumlulukları:
+ *   - Auth (admin/staff)
+ *   - RPC çağır
+ *   - Hata kodlarını insan diline çevir
+ *   - audit_log yaz (RPC dışında, asıl iş başarılıysa)
  *
  * Body: { orderId, fasonPartnerId, estimatedDelivery, notes? }
  */
@@ -24,6 +27,23 @@ interface BodyShape {
   estimatedDelivery?: unknown;
   notes?: unknown;
 }
+
+interface RpcRow {
+  assignment_id: string;
+  fason_token: string;
+  order_status_before: string;
+  order_status_after: string;
+}
+
+const HUMAN_ERRORS: Record<string, { msg: string; status: number }> = {
+  order_not_found: { msg: "Sipariş bulunamadı", status: 404 },
+  fason_not_found: { msg: "Fason bulunamadı", status: 404 },
+  fason_inactive: { msg: "Fason aktif değil", status: 400 },
+  fason_no_contract: {
+    msg: "Bu fason için veri işleyici sözleşmesi imzalanmamış. Sözleşme olmadan atama yapılamaz (KVKK m.12).",
+    status: 400,
+  },
+};
 
 export async function POST(req: Request) {
   let body: BodyShape;
@@ -74,124 +94,67 @@ export async function POST(req: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1) Order var mı + status uygun mu
-  const { data: orderData, error: orderErr } = await admin
-    .from("orders")
-    .select("id, status, user_id")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (orderErr || !orderData) {
-    return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
-  }
-  const order = orderData as { id: string; status: string; user_id: string | null };
+  // Atomik RPC — Migration 024
+  const { data, error } = await admin.rpc(
+    "fn_assign_order_to_fason" as never,
+    {
+      p_order_id: orderId,
+      p_fason_partner_id: fasonPartnerId,
+      p_admin_user_id: user.id,
+      p_estimated_delivery: estimatedDelivery,
+      p_notes: notes,
+      p_token_days: 14,
+    } as never
+  );
 
-  // 2) Fason var mı + active + contract signed
-  const { data: fasonData, error: fasonErr } = await admin
-    .from("fason_partners")
-    .select("id, name, active, contract_signed_at, contact_email")
-    .eq("id", fasonPartnerId)
-    .maybeSingle();
-  if (fasonErr || !fasonData) {
-    return NextResponse.json({ error: "Fason bulunamadı" }, { status: 404 });
-  }
-  const fason = fasonData as {
-    id: string;
-    name: string;
-    active: boolean;
-    contract_signed_at: string | null;
-    contact_email: string;
-  };
-  if (!fason.active) {
-    return NextResponse.json({ error: "Fason aktif değil" }, { status: 400 });
-  }
-  if (!fason.contract_signed_at) {
+  if (error) {
+    // PostgreSQL exception mesajı içinde sentinel string ara
+    const msg = error.message ?? "";
+    for (const [key, meta] of Object.entries(HUMAN_ERRORS)) {
+      if (msg.includes(key)) {
+        return NextResponse.json({ error: meta.msg }, { status: meta.status });
+      }
+    }
+    // Partial unique index ihlali — aynı sipariş zaten atanmış
+    if (error.code === "23505") {
+      return NextResponse.json(
+        { error: "Bu sipariş zaten bir fasona atanmış" },
+        { status: 409 }
+      );
+    }
+    if (msg.startsWith("order_status_locked:")) {
+      const status = msg.split(":")[1] ?? "unknown";
+      return NextResponse.json(
+        { error: `Bu sipariş durumunda atama yapılamaz (${status})` },
+        { status: 400 }
+      );
+    }
+    console.error("[fason/assign] RPC error:", error);
     return NextResponse.json(
-      {
-        error:
-          "Bu fason için veri işleyici sözleşmesi imzalanmamış. Sözleşme olmadan atama yapılamaz (KVKK m.12).",
-      },
-      { status: 400 }
-    );
-  }
-
-  // 3) order_assignments INSERT
-  const { data: assignment, error: assignErr } = await admin
-    .from("order_assignments")
-    .insert({
-      order_id: orderId,
-      fason_partner_id: fasonPartnerId,
-      status: "assigned",
-      assigned_by: user.id,
-      estimated_delivery: estimatedDelivery,
-      notes,
-    })
-    .select("id")
-    .single();
-  if (assignErr || !assignment) {
-    console.error("[fason/assign] insert error:", assignErr);
-    return NextResponse.json(
-      {
-        error:
-          assignErr?.code === "23505"
-            ? "Bu sipariş zaten bir fasona atanmış"
-            : "Atama oluşturulamadı",
-      },
+      { error: "Atama oluşturulamadı" },
       { status: 500 }
     );
   }
-  const assignmentId = (assignment as { id: string }).id;
 
-  // 4) fason_access_token üret (form için)
-  const { data: tokenData } = await admin.rpc(
-    "fn_generate_fason_token" as never,
-    {
-      p_assignment_id: assignmentId,
-      p_fason_partner_id: fasonPartnerId,
-      p_days: 14, // teslim + buffer
-    } as never
-  );
-  const fasonToken = tokenData as string | null;
+  const rows = (data as RpcRow[] | null) ?? [];
+  const row = rows[0];
+  if (!row) {
+    return NextResponse.json(
+      { error: "RPC sonucu beklenmedik" },
+      { status: 500 }
+    );
+  }
 
-  // 5) Mail outbox'a koy (Resend gelince gönderilecek)
-  await admin.from("fason_mail_outbox").insert({
-    assignment_id: assignmentId,
-    template_key: "fason_new_assignment",
-    to_email: fason.contact_email,
-    subject: `Yeni iş — Sipariş ${orderId} · teslim ${estimatedDelivery ?? "yakında"}`,
-    payload: {
-      order_id: orderId,
-      fason_name: fason.name,
-      estimated_delivery: estimatedDelivery,
-      notes,
-      fason_token: fasonToken,
-    },
-    status: "pending",
-    next_retry_at: new Date().toISOString(),
-  });
+  // Fason adı (mail göndermeden önce alındı — UI'da göstermek için bir
+  // ekstra select; idempotent)
+  const { data: fasonRow } = await admin
+    .from("fason_partners")
+    .select("name")
+    .eq("id", fasonPartnerId)
+    .maybeSingle();
+  const fasonName = (fasonRow as { name?: string } | null)?.name ?? "";
 
-  // 6) order_events log
-  await admin.from("order_events").insert({
-    order_id: orderId,
-    event_type: "fason_assigned",
-    status_after: order.status,
-    actor_id: user.id,
-    actor_role: role,
-    summary: `Fason atandı: ${fason.name}`,
-    detail: {
-      assignment_id: assignmentId,
-      fason_id: fasonPartnerId,
-      fason_name: fason.name,
-      estimated_delivery: estimatedDelivery,
-    },
-  });
-
-  // 7) Order status → in_production
-  await admin
-    .from("orders")
-    .update({ status: "in_production" })
-    .eq("id", orderId);
-
-  // 8) Audit log
+  // Audit log (RPC dışı — asıl iş başarılı)
   await logServerAudit(admin, {
     actorId: user.id,
     actorEmail: user.email ?? null,
@@ -199,13 +162,15 @@ export async function POST(req: Request) {
     action: "order.status_change",
     targetType: "order",
     targetId: orderId,
-    summary: `Sipariş ${orderId} fason'a atandı: ${fason.name} (→ in_production)`,
+    summary: `Sipariş ${orderId} fason'a atandı: ${fasonName} (${row.order_status_before} → ${row.order_status_after})`,
     detail: {
       kind: "fason_assigned",
-      assignment_id: assignmentId,
+      assignment_id: row.assignment_id,
       fason_id: fasonPartnerId,
-      fason_name: fason.name,
+      fason_name: fasonName,
       estimated_delivery: estimatedDelivery,
+      status_before: row.order_status_before,
+      status_after: row.order_status_after,
     },
     ipAddress: req.headers.get("x-forwarded-for"),
     userAgent: req.headers.get("user-agent"),
@@ -213,8 +178,10 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    assignmentId,
-    fasonToken, // Sefa'nın admin'de görüp manuel paylaşabilmesi için
-    fasonName: fason.name,
+    assignmentId: row.assignment_id,
+    fasonToken: row.fason_token,
+    fasonName,
+    orderStatusBefore: row.order_status_before,
+    orderStatusAfter: row.order_status_after,
   });
 }

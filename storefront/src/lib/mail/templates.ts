@@ -156,7 +156,17 @@ function renderCustomerShipped(input: MailTemplateInput): MailRendered {
   const orderId = escape(p.order_id);
   const carrier = escape(p.carrier ?? "Kargo");
   const trackingNo = escape(p.tracking_no ?? "");
-  const trackingUrl = typeof p.tracking_url === "string" ? p.tracking_url : "";
+  // Defansif: yalnızca https:// URL'lere href ver. Endpoint zaten
+  // doğruluyor, mail template ikinci katman güvence.
+  let trackingUrl = "";
+  if (typeof p.tracking_url === "string") {
+    try {
+      const u = new URL(p.tracking_url);
+      if (u.protocol === "https:") trackingUrl = u.toString();
+    } catch {
+      /* invalid URL, link gösterilmez */
+    }
+  }
 
   const subject = `Kargoya verildi — ${orderId}`;
 

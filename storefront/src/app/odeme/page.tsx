@@ -140,7 +140,7 @@ const COPY = {
     acceptCopyright:
       "Yüklediğim tasarımın telif sahibi benim veya kullanma yetkim var. Başkasının fikri mülkiyetini ihlal etmediğimi taahhüt ediyorum.",
     fasonDisclaimer:
-      "Pim Etiket fason üretim modeliyle çalışır. Tasarımın ve kargo bilgilerin anlaşmalı baskı atölyemize aktarılır; sadece bu sipariş için kullanılır, 30 gün sonra imha edilir.",
+      "Pim Etiket anlaşmalı baskı atölyemizle çalışır. Tasarımın ve kargo bilgilerin yalnızca bu sipariş için atölyeye iletilir, 30 gün sonra imha edilir.",
     fasonDisclaimerLink: "Detay",
     proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} TL`,
     processing: "Yönlendiriliyor...",
@@ -212,7 +212,7 @@ const COPY = {
     acceptCopyright:
       "I own or have rights to use the design I'm uploading. I confirm I'm not infringing on anyone else's intellectual property.",
     fasonDisclaimer:
-      "Pim Etiket operates with contracted print partners. Your design and shipping info are transferred to our partner workshop; used only for this order, destroyed within 30 days.",
+      "Pim Etiket works with a contracted print workshop. Your design and shipping info are sent to the workshop only for this order, destroyed within 30 days.",
     fasonDisclaimerLink: "Details",
     proceed: (amount: string) => `Pay securely — ${amount} TRY`,
     processing: "Redirecting...",

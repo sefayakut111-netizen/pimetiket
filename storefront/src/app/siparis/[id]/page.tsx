@@ -60,7 +60,7 @@ const COPY = {
     proofPreviewSize: "%100 önizleme",
     proofColorWarn: "Renk uyarısı:",
     proofColorWarnText:
-      "Ekrandaki renkler matbaa baskısından küçük ölçüde farklı çıkabilir. CMYK kalibrasyonu fason ortakla aynı.",
+      "Ekrandaki renkler matbaa baskısından küçük ölçüde farklı çıkabilir. CMYK kalibrasyonu üretim ortağımızla aynı.",
     proofApprove: "Provayı onayla",
     proofRequestChange: "Değişiklik iste",
     proofDownloadPdf: "PDF indir",
@@ -69,7 +69,7 @@ const COPY = {
       "Sipariş üretime gönderildi. Yaklaşık 5 gün içinde kargoya verilir.",
     fasonInfoTitle: "Atölyemize iletildi",
     fasonInfoDesc:
-      "Tasarımın ve teslimat bilgilerin Pim Etiket fason baskı ortağımıza aktarıldı. Sadece bu sipariş için kullanılır, üretim sonrası 30 gün içinde imha edilir.",
+      "Tasarımın ve teslimat bilgilerin Pim Etiket anlaşmalı baskı atölyemize aktarıldı. Sadece bu sipariş için kullanılır, üretim sonrası 30 gün içinde imha edilir.",
     fasonInfoLink: "Üretim ortakları nasıl çalışıyor? →",
     summaryTitle: "Sipariş özeti",
     pcs: "adet",
@@ -622,7 +622,7 @@ export default function SiparisDetailPage({
                     {c.fasonInfoDesc}
                   </p>
                   <Link
-                    href="/gizlilik#4-fason-uretim-ortaklarimiz"
+                    href="/gizlilik#4-uretim-ortaklarimiz"
                     className="inline-block mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
                   >
                     {c.fasonInfoLink}

@@ -576,8 +576,8 @@ export default function PanelimPage() {
                               </span>
                               {o.status === "in_production" && (
                                 <span
-                                  className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold"
-                                  title="Tasarımın baskı ortağımıza iletildi · 30 gün sonra imha"
+                                  className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold ml-auto"
+                                  title="Tasarımın baskı atölyemize iletildi · 30 gün sonra imha"
                                 >
                                   🏭 Atölyemize iletildi
                                 </span>

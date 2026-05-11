@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Input } from "@/components/ui";
+import { Button, Card, Eyebrow, Input, Modal } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 // ============================================================
@@ -520,6 +520,15 @@ function AddPartnerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const nameId = `fason-name-${Math.random().toString(36).slice(2, 7)}`;
+  const emailId = `fason-email-${Math.random().toString(36).slice(2, 7)}`;
+  const personId = `fason-person-${Math.random().toString(36).slice(2, 7)}`;
+  const waId = `fason-wa-${Math.random().toString(36).slice(2, 7)}`;
+  const specId = `fason-spec-${Math.random().toString(36).slice(2, 7)}`;
+  const leadId = `fason-lead-${Math.random().toString(36).slice(2, 7)}`;
+  const contractId = `fason-contract-${Math.random().toString(36).slice(2, 7)}`;
+  const notesId = `fason-notes-${Math.random().toString(36).slice(2, 7)}`;
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -570,132 +579,132 @@ function AddPartnerModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <Card padding="p-6" className="max-w-[520px] w-full max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4">Yeni fason ortağı</h3>
-
-        <div className="space-y-3">
-          <label className="block">
-            <span className="text-[12.5px] font-semibold mb-1 block">
-              Ad / unvan *
-            </span>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Örn: İstanbul İkitelli Etiket Atölyesi"
-            />
+    <Modal open={true} onClose={onClose} title="Yeni fason ortağı">
+      <div className="space-y-3">
+        <div>
+          <label htmlFor={nameId} className="text-[12.5px] font-semibold mb-1 block">
+            Ad / unvan *
           </label>
-          <label className="block">
-            <span className="text-[12.5px] font-semibold mb-1 block">
-              E-posta *
-            </span>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="atolye@ornek.com"
-            />
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[12.5px] font-semibold mb-1 block">
-                İletişim kişisi
-              </span>
-              <Input
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="Ahmet Yılmaz"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[12.5px] font-semibold mb-1 block">
-                WhatsApp
-              </span>
-              <Input
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="+90 5XX XXX XX XX"
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-[12.5px] font-semibold mb-1 block">
-              Uzmanlık (virgülle ayır)
-            </span>
-            <Input
-              value={specInput}
-              onChange={(e) => setSpecInput(e.target.value)}
-              placeholder="etiket, sticker, yaldız"
-            />
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[12.5px] font-semibold mb-1 block">
-                Tipik teslim (gün)
-              </span>
-              <Input
-                type="number"
-                value={String(leadDays)}
-                onChange={(e) =>
-                  setLeadDays(Math.max(1, Math.min(60, Number(e.target.value) || 7)))
-                }
-                min={1}
-                max={60}
-              />
-            </label>
-            <label className="block">
-              <span className="text-[12.5px] font-semibold mb-1 block">
-                Sözleşme tarihi
-              </span>
-              <Input
-                type="date"
-                value={contractSignedAt}
-                onChange={(e) => setContractSignedAt(e.target.value)}
-              />
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-[12.5px] font-semibold mb-1 block">
-              Notlar
-            </span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ek bilgi, kapasite, özel anlaşmalar…"
-              rows={3}
-              className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 focus:ring-2 focus:ring-pim-mercan outline-none text-[13px] resize-y"
-            />
-          </label>
+          <Input
+            id={nameId}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Örn: İstanbul İkitelli Etiket Atölyesi"
+            autoComplete="organization"
+          />
         </div>
-
-        {error && (
-          <div className="mt-3 px-3 py-2 rounded-lg bg-kirmizi-soft text-kirmizi text-[12.5px]">
-            {error}
+        <div>
+          <label htmlFor={emailId} className="text-[12.5px] font-semibold mb-1 block">
+            E-posta *
+          </label>
+          <Input
+            id={emailId}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="atolye@ornek.com"
+            autoComplete="email"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor={personId} className="text-[12.5px] font-semibold mb-1 block">
+              İletişim kişisi
+            </label>
+            <Input
+              id={personId}
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              placeholder="Ahmet Yılmaz"
+              autoComplete="name"
+            />
           </div>
-        )}
-
-        <div className="mt-5 flex items-center justify-between gap-2">
-          <p className="text-[11.5px] text-gri-700">
-            * Sözleşmesiz partner&apos;a atama bloklanır.
-          </p>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>
-              İptal
-            </Button>
-            <Button
-              variant="primary"
-              onClick={submit}
-              disabled={submitting}
-            >
-              {submitting ? "Kaydediliyor…" : "Kaydet"}
-            </Button>
+          <div>
+            <label htmlFor={waId} className="text-[12.5px] font-semibold mb-1 block">
+              WhatsApp
+            </label>
+            <Input
+              id={waId}
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder="+90 5XX XXX XX XX"
+              autoComplete="tel"
+            />
           </div>
         </div>
-      </Card>
-    </div>
+        <div>
+          <label htmlFor={specId} className="text-[12.5px] font-semibold mb-1 block">
+            Uzmanlık (virgülle ayır)
+          </label>
+          <Input
+            id={specId}
+            value={specInput}
+            onChange={(e) => setSpecInput(e.target.value)}
+            placeholder="etiket, sticker, yaldız"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor={leadId} className="text-[12.5px] font-semibold mb-1 block">
+              Tipik teslim (gün)
+            </label>
+            <Input
+              id={leadId}
+              type="number"
+              value={String(leadDays)}
+              onChange={(e) =>
+                setLeadDays(Math.max(1, Math.min(60, Number(e.target.value) || 7)))
+              }
+              min={1}
+              max={60}
+            />
+          </div>
+          <div>
+            <label htmlFor={contractId} className="text-[12.5px] font-semibold mb-1 block">
+              Sözleşme tarihi
+            </label>
+            <Input
+              id={contractId}
+              type="date"
+              value={contractSignedAt}
+              onChange={(e) => setContractSignedAt(e.target.value)}
+            />
+          </div>
+        </div>
+        <div>
+          <label htmlFor={notesId} className="text-[12.5px] font-semibold mb-1 block">
+            Notlar
+          </label>
+          <textarea
+            id={notesId}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ek bilgi, kapasite, özel anlaşmalar…"
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 focus:ring-2 focus:ring-pim-mercan outline-none text-[13px] resize-y"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-3 px-3 py-2 rounded-lg bg-kirmizi-soft text-kirmizi text-[12.5px]">
+          {error}
+        </div>
+      )}
+
+      <div className="mt-5 flex items-center justify-between gap-2">
+        <p className="text-[11.5px] text-gri-700">
+          * Sözleşmesiz partner&apos;a atama bloklanır.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            İptal
+          </Button>
+          <Button variant="primary" onClick={submit} disabled={submitting}>
+            {submitting ? "Kaydediliyor…" : "Kaydet"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

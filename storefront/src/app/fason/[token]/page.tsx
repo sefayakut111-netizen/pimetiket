@@ -18,6 +18,8 @@ import { use, useEffect, useState } from "react";
 import {
   FASON_ACTION_LABELS,
   ISSUE_CATEGORIES,
+  getAssignmentStatusLabel,
+  type AssignmentStatus,
   type IssueCategory,
 } from "@/lib/fason/status-labels";
 
@@ -161,6 +163,10 @@ export default function FasonOrderPage({
 
   const item = info.items[0];
   const status = info.assignment.status;
+  const statusLabel = getAssignmentStatusLabel(
+    status as AssignmentStatus,
+    "fason"
+  ).label;
   const acknowledged = !!info.assignment.acknowledged_at;
 
   return (
@@ -242,7 +248,7 @@ export default function FasonOrderPage({
             href={info.downloadUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full text-center bg-pim-mercan hover:bg-[#E63E40] text-white font-bold text-[17px] py-4 rounded-xl transition-colors min-h-[56px]"
+            className="block w-full text-center bg-pim-mercan hover:bg-pim-mercan-koyu text-white font-bold text-[17px] py-4 rounded-xl transition-colors min-h-[56px]"
           >
             Dosyayı indir
           </a>
@@ -259,7 +265,7 @@ export default function FasonOrderPage({
             </h2>
             <p className="text-[13px] text-gri-700 mb-4">
               Şu anki durum:{" "}
-              <strong className="text-pim-mercan">{status}</strong>
+              <strong className="text-pim-mercan">{statusLabel}</strong>
             </p>
 
             <div className="space-y-2.5">
