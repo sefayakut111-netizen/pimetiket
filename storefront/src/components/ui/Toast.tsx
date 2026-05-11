@@ -46,7 +46,7 @@ const ToastCtx = createContext<ToastCtxValue | null>(null);
 
 const VARIANT_CLASS: Record<ToastVariant, string> = {
   success: "bg-yesil-soft text-yesil ring-yesil/30",
-  warning: "bg-sari-soft text-[#7A560A] ring-sari/30",
+  warning: "bg-sari-soft text-sari-koyu ring-sari/30",
   error: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",
   info: "bg-gri-100 text-gri-700 ring-gri-200",
 };

@@ -412,7 +412,7 @@ export default function PanelimPage() {
             </span>
             {loyalty?.vipSince && (
               <span
-                className="inline-flex items-center gap-1.5 px-3 h-[28px] rounded-full bg-gradient-to-r from-sari to-[#FFC53D] text-[#7A560A] text-[12.5px] font-bold uppercase tracking-[0.06em] shadow-1"
+                className="inline-flex items-center gap-1.5 px-3 h-[28px] rounded-full bg-gradient-to-r from-sari to-[#FFC53D] text-sari-koyu text-[12.5px] font-bold uppercase tracking-[0.06em] shadow-1"
                 title={`VIP üye — ${new Date(loyalty.vipSince).toLocaleDateString("tr-TR")} tarihinden`}
               >
                 <Icon.Star size={13} /> VIP

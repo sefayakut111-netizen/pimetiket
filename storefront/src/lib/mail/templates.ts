@@ -101,7 +101,7 @@ function renderFasonNewAssignment(input: MailTemplateInput): MailRendered {
     Sözleşmesel yükümlülüklerinizi hatırlatırız.
   `;
 
-  const text = `Yeni iş — Sipariş ${orderId}\n\nMerhaba ${fasonName},\n\nPim Etiket üzerinden size yeni bir baskı işi atandı.\n\nSipariş No: ${orderId}\nHedef teslim: ${estimated}\nNotlar: ${notes}\n\nDetaylar: ${link}\n\nBağlantı 14 gün geçerli.\n\nKVKK m.12 — veri işleyici yükümlülükleriniz devam etmektedir.`;
+  const text = `Yeni iş — Sipariş ${orderId}\n\nMerhaba ${fasonName},\n\nPim Etiket üzerinden size yeni bir baskı işi atandı.\n\nSipariş No: ${orderId}\nHedef teslim: ${estimated}\nNotlar: ${notes}\n\nDetaylar: ${link}\n\nBağlantı 14 gün geçerli.\n\nKVKK m.12 — veri işleyici sözleşmemizdeki yükümlülükler aynen geçerli.`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }
@@ -118,7 +118,7 @@ function renderCustomerInProduction(input: MailTemplateInput): MailRendered {
   const subject = `Siparişin üretime girdi — ${orderId}`;
 
   const body = `
-    <h1 style="font-size: 18px; margin: 0 0 12px;">İyi haber${customerName ? ` ${customerName}` : ""}!</h1>
+    <h1 style="font-size: 18px; margin: 0 0 12px;">${customerName ? `${customerName}, siparişin` : "Siparişin"} üretime girdi</h1>
     <p style="font-size: 14px; line-height: 1.6; color: #292524;">
       <strong>${orderId}</strong> numaralı siparişin baskı atölyemize iletildi
       ve üretim aşamasına geçti. Hedef teslim tarihi: <strong>${estimated}</strong>.

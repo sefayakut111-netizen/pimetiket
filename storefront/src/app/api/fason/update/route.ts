@@ -15,6 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logOrderEvent } from "@/lib/order-events-server";
 
 export const dynamic = "force-dynamic";
 
@@ -235,10 +236,10 @@ export async function POST(req: Request) {
   });
 
   // order_events log
-  await admin.from("order_events").insert({
-    order_id: validation.order_id,
-    event_type: ACTION_TO_EVENT[action],
-    actor_role: "fason",
+  await logOrderEvent(admin, {
+    orderId: validation.order_id,
+    eventType: ACTION_TO_EVENT[action],
+    actorRole: "fason",
     summary: `Fason durum güncelledi: ${action}`,
     detail: {
       assignment_id: validation.assignment_id,
@@ -260,11 +261,11 @@ export async function POST(req: Request) {
       .from("orders")
       .update({ status: "shipped" })
       .eq("id", validation.order_id);
-    await admin.from("order_events").insert({
-      order_id: validation.order_id,
-      event_type: "shipped",
-      status_after: "shipped",
-      actor_role: "system",
+    await logOrderEvent(admin, {
+      orderId: validation.order_id,
+      eventType: "shipped",
+      statusAfter: "shipped",
+      actorRole: "system",
       summary: "Sipariş kargoya verildi",
       detail: { via: "fason_form" },
     });

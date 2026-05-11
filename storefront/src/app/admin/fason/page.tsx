@@ -19,6 +19,10 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Input, Modal } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  getAdminPillClasses,
+  type AssignmentStatus,
+} from "@/lib/fason/status-labels";
 
 // ============================================================
 // Types
@@ -50,22 +54,8 @@ interface AssignmentRow {
   actual_delivery: string | null;
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  assigned: { label: "Atandı", color: "bg-gri-200 text-gri-700" },
-  sent: { label: "Mail iletildi", color: "bg-pim-mercan-tint text-pim-mercan" },
-  acknowledged: {
-    label: "Fason gördü",
-    color: "bg-pim-mercan-tint text-pim-mercan",
-  },
-  in_production: {
-    label: "Üretimde",
-    color: "bg-sari-soft text-[#7A560A]",
-  },
-  ready: { label: "Hazır", color: "bg-yesil-soft text-yesil" },
-  shipped: { label: "Kargoda", color: "bg-yesil-soft text-yesil" },
-  issue: { label: "Sorun", color: "bg-kirmizi-soft text-kirmizi" },
-  cancelled: { label: "İptal", color: "bg-gri-100 text-gri-700" },
-};
+// Status etiketleri tek kaynaktan (src/lib/fason/status-labels.ts):
+// getAdminPillClasses(status) — label + Tailwind chip className döner.
 
 // ============================================================
 // Page
@@ -295,10 +285,9 @@ export default function AdminFasonPage() {
               {selected && history.length > 0 && (
                 <ul className="space-y-2">
                   {history.slice(0, 15).map((a) => {
-                    const meta = STATUS_LABEL[a.status] ?? {
-                      label: a.status,
-                      color: "bg-gri-100 text-gri-700",
-                    };
+                    const meta = getAdminPillClasses(
+                      a.status as AssignmentStatus
+                    );
                     return (
                       <li
                         key={a.id}
@@ -313,7 +302,7 @@ export default function AdminFasonPage() {
                         <span
                           className={cn(
                             "inline-flex items-center h-[20px] px-2 rounded-full text-[10.5px] font-semibold shrink-0",
-                            meta.color
+                            meta.className
                           )}
                         >
                           {meta.label}
@@ -435,7 +424,7 @@ function PartnerCard({
       : scorePct >= 75
         ? "bg-yesil-soft text-yesil"
         : scorePct >= 50
-          ? "bg-sari-soft text-[#7A560A]"
+          ? "bg-sari-soft text-sari-koyu"
           : "bg-kirmizi-soft text-kirmizi";
 
   return (

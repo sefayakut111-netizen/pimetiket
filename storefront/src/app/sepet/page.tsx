@@ -298,7 +298,7 @@ export default function SepetPage() {
                   </span>
                 </div>
                 {shipping > 0 && (
-                  <div className="text-[12.5px] text-gri-700 leading-relaxed bg-sari-soft text-[#7A560A] p-2.5 rounded-lg">
+                  <div className="text-[12.5px] text-gri-700 leading-relaxed bg-sari-soft text-sari-koyu p-2.5 rounded-lg">
                     {t.cart.freeShippingHint(fmt(FREE_SHIPPING_THRESHOLD - subtotal))}
                   </div>
                 )}

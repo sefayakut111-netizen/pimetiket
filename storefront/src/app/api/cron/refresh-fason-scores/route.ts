@@ -43,10 +43,24 @@ export async function GET(req: Request) {
     new_score: number;
   }>) ?? [];
 
+  // Outbox payload TTL — KVKK saklama minimizasyonu (Migration 025)
+  // Aynı daily cron'a piggy-back: 30 günden eski sent/failed kayıtların
+  // payload jsonb'ini NULL'lar (order_id + fason_token gibi PII içerir).
+  let outboxCleaned: number | null = null;
+  try {
+    const { data: cleaned } = await admin.rpc(
+      "fn_cleanup_outbox_payload" as never
+    );
+    outboxCleaned = (cleaned as number) ?? null;
+  } catch (err) {
+    console.error("[cron/refresh-fason-scores] outbox cleanup error:", err);
+  }
+
   return NextResponse.json({
     ok: true,
     updated: updates.length,
     scores: updates,
+    outbox_payload_cleaned: outboxCleaned,
     timestamp: new Date().toISOString(),
   });
 }

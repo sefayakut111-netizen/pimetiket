@@ -77,9 +77,13 @@ export default function FasonOrderPage({
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
 
-  // Load info
+  // Load info — AbortController ile race condition koruması
   useEffect(() => {
-    fetch(`/api/fason/info/${token}`, { cache: "no-store" })
+    const controller = new AbortController();
+    fetch(`/api/fason/info/${token}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
       .then(async (r) => {
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
@@ -95,10 +99,13 @@ export default function FasonOrderPage({
           setView("ready");
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        // AbortError → component unmount, sessizce geç
+        if (err?.name === "AbortError") return;
         setError("Bağlantı hatası");
         setView("error");
       });
+    return () => controller.abort();
   }, [token]);
 
   const doAction = async (
@@ -154,7 +161,7 @@ export default function FasonOrderPage({
             {error ?? "Link süresi dolmuş veya geçersiz olabilir."}
           </p>
           <p className="text-[13px] text-gri-500">
-            Sefa&apos;ya yaz: info@pimetiket.com
+            Bize yaz: info@pimetiket.com
           </p>
         </div>
       </main>
@@ -365,10 +372,14 @@ export default function FasonOrderPage({
               </div>
 
               <div>
-                <label className="block text-[14px] font-semibold text-lacivert mb-2">
+                <label
+                  htmlFor="fason-issue-desc"
+                  className="block text-[14px] font-semibold text-lacivert mb-2"
+                >
                   Açıklama:
                 </label>
                 <textarea
+                  id="fason-issue-desc"
                   value={issueDescription}
                   onChange={(e) => setIssueDescription(e.target.value)}
                   rows={4}
@@ -399,7 +410,7 @@ export default function FasonOrderPage({
                   }
                   className="flex-1 bg-kirmizi text-white font-bold py-4 rounded-xl min-h-[56px] disabled:opacity-50"
                 >
-                  Sefa&apos;ya bildir
+                  Ekibimize bildir
                 </button>
               </div>
             </div>
@@ -418,10 +429,14 @@ export default function FasonOrderPage({
 
             <div className="space-y-3">
               <div>
-                <label className="block text-[14px] font-semibold text-lacivert mb-2">
+                <label
+                  htmlFor="fason-tr-company"
+                  className="block text-[14px] font-semibold text-lacivert mb-2"
+                >
                   Kargo firması:
                 </label>
                 <select
+                  id="fason-tr-company"
                   value={trackingCompany}
                   onChange={(e) => setTrackingCompany(e.target.value)}
                   className="w-full p-4 text-[16px] border-2 border-gri-200 rounded-xl focus:border-pim-mercan focus:outline-none"
@@ -437,10 +452,14 @@ export default function FasonOrderPage({
               </div>
 
               <div>
-                <label className="block text-[14px] font-semibold text-lacivert mb-2">
+                <label
+                  htmlFor="fason-tr-number"
+                  className="block text-[14px] font-semibold text-lacivert mb-2"
+                >
                   Takip numarası:
                 </label>
                 <input
+                  id="fason-tr-number"
                   type="text"
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value.trim())}
@@ -450,10 +469,14 @@ export default function FasonOrderPage({
               </div>
 
               <div>
-                <label className="block text-[14px] font-semibold text-lacivert mb-2">
+                <label
+                  htmlFor="fason-tr-url"
+                  className="block text-[14px] font-semibold text-lacivert mb-2"
+                >
                   Takip linki <span className="text-gri-500">(varsa)</span>:
                 </label>
                 <input
+                  id="fason-tr-url"
                   type="url"
                   value={trackingUrl}
                   onChange={(e) => setTrackingUrl(e.target.value.trim())}
@@ -500,14 +523,14 @@ export default function FasonOrderPage({
               Tamam, kargo kaydı yapıldı
             </h2>
             <p className="text-[15px] text-yesil/80">
-              Sefa müşteriye kargo bilgisini yollayacak. Eline sağlık!
+              Müşteriye kargo bilgisini biz iletiyoruz. Eline sağlık!
             </p>
           </section>
         )}
 
         {/* Footer info */}
         <footer className="text-center text-[12px] text-gri-500 py-4">
-          Sorun olursa Sefa&apos;ya yaz: info@pimetiket.com
+          Sorun olursa bize yaz: info@pimetiket.com
           <br />
           Bu sayfa sadece sana özel — başkasıyla paylaşma.
         </footer>

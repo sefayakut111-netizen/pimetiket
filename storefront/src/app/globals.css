@@ -29,8 +29,10 @@
   --color-yesil: #2bb673;
   --color-yesil-soft: #e6f6ee;
   --color-kirmizi: #e04b3c;
+  --color-kirmizi-soft: #fbe9e6;
   --color-sari: #f0b22f;
   --color-sari-soft: #fcf4e1;
+  --color-sari-koyu: #7a560a;
 
   /* ---------- Typography ---------- */
   --font-sans: var(--font-nunito), "Inter", system-ui, sans-serif;

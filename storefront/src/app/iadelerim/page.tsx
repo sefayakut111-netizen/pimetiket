@@ -86,7 +86,7 @@ const COPY = {
 };
 
 const STATUS_META: Record<ReturnStatus, { color: string; bg: string }> = {
-  pending: { color: "text-[#7A560A]", bg: "bg-sari-soft" },
+  pending: { color: "text-sari-koyu", bg: "bg-sari-soft" },
   approved: { color: "text-yesil", bg: "bg-yesil-soft" },
   rejected: { color: "text-kirmizi", bg: "bg-kirmizi/10" },
   refunded: { color: "text-yesil", bg: "bg-yesil-soft" },

@@ -209,7 +209,7 @@ function ProfileAgeBadge({ profile }: { profile: PricingProfile }) {
   const age = getProfileAge(profile);
   const colors = {
     fresh: "bg-yesil-soft text-yesil",
-    stale: "bg-sari-soft text-[#7A560A]",
+    stale: "bg-sari-soft text-sari-koyu",
     ancient: "bg-kirmizi/10 text-kirmizi",
   };
   return (

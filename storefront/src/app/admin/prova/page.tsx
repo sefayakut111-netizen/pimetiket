@@ -105,7 +105,7 @@ export default function AdminProvaPage() {
               {
                 label: "Onay bekliyor",
                 count: proofPending,
-                accent: "text-[#7A560A]",
+                accent: "text-sari-koyu",
                 bg: "bg-sari-soft",
               },
               {
@@ -191,7 +191,7 @@ export default function AdminProvaPage() {
                         <span className="font-mono text-[12.5px] text-gri-700">
                           {p.id}
                         </span>
-                        <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-sari-soft text-[#7A560A] text-[11.5px] font-semibold">
+                        <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-sari-soft text-sari-koyu text-[11.5px] font-semibold">
                           Onay bekliyor
                         </span>
                       </div>

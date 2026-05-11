@@ -103,7 +103,7 @@ export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
           </ul>
 
           {shipping > 0 && (
-            <div className="px-3 py-2 bg-sari-soft text-[#7A560A] text-[11.5px] leading-tight">
+            <div className="px-3 py-2 bg-sari-soft text-sari-koyu text-[11.5px] leading-tight">
               💡 {fmt(FREE_SHIPPING_THRESHOLD - subtotal)} TL
             </div>
           )}

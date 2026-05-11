@@ -99,7 +99,7 @@ function statusLabel(
     case "qc_warned":
       return {
         label: c.statusWarned,
-        color: "text-[#7A560A]",
+        color: "text-sari-koyu",
         bg: "bg-sari-soft",
       };
     case "qc_failed":

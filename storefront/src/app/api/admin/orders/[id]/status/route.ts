@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
+import { logOrderEvent } from "@/lib/order-events-server";
 
 interface BodyShape {
   status?: unknown;
@@ -108,17 +109,15 @@ export async function POST(
     return NextResponse.json({ error: "Güncelleme başarısız" }, { status: 500 });
   }
 
-  await admin.from("order_events").insert([
-    {
-      order_id: orderId,
-      event_type: "status_changed",
-      status_after: status,
-      actor_id: user.id,
-      actor_role: role,
-      summary: `Status: ${existing.status} → ${status}${note ? " · " + note : ""}`,
-      detail: { from: existing.status, to: status, note },
-    },
-  ]);
+  await logOrderEvent(admin, {
+    orderId,
+    eventType: "status_changed",
+    statusAfter: status,
+    actorId: user.id,
+    actorRole: role === "admin" ? "admin" : "staff",
+    summary: `Status: ${existing.status} → ${status}${note ? " · " + note : ""}`,
+    detail: { from: existing.status, to: status, note },
+  });
 
   await logServerAudit(admin, {
     actorId: user.id,

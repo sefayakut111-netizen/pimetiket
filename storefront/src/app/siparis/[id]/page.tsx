@@ -1047,7 +1047,7 @@ function DesignUploadCard({
                         {c.aiFlagBadge}
                       </span>
                     ) : hasWarning ? (
-                      <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari-soft text-[#7A560A] text-[11px] font-bold">
+                      <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari-soft text-sari-koyu text-[11px] font-bold">
                         {c.warnBadge}
                       </span>
                     ) : (
@@ -1068,7 +1068,7 @@ function DesignUploadCard({
                         <span
                           className={cn(
                             fl.kind === "ok" && "text-yesil",
-                            fl.kind === "warning" && "text-[#7A560A]",
+                            fl.kind === "warning" && "text-sari-koyu",
                             fl.kind === "error" && "text-kirmizi"
                           )}
                         >

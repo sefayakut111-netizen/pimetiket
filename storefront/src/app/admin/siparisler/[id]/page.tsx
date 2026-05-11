@@ -483,14 +483,14 @@ export default function AdminOrderDetailPage({
                 className="!bg-sari-soft !ring-sari/30"
               >
                 <div className="flex items-start gap-3">
-                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-sari/20 text-[#7A560A] shrink-0">
+                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-sari/20 text-sari-koyu shrink-0">
                     <Icon.Info size={18} />
                   </span>
                   <div className="flex-1">
-                    <h2 className="text-[14px] font-semibold text-[#7A560A]">
+                    <h2 className="text-[14px] font-semibold text-sari-koyu">
                       Prova yüklendi — müşteri onayı bekleniyor
                     </h2>
-                    <p className="text-[12.5px] text-[#7A560A]/85 mt-1 leading-relaxed">
+                    <p className="text-[12.5px] text-sari-koyu/85 mt-1 leading-relaxed">
                       Müşteri /siparis/{order.id} sayfasından "Provayı onayla"
                       veya "Değişiklik iste" butonuna basacak.
                     </p>

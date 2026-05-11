@@ -44,7 +44,7 @@ const STATUS_LABEL: Record<
 > = {
   pending: {
     label: "Beklemede",
-    color: "text-[#7A560A]",
+    color: "text-sari-koyu",
     bg: "bg-sari-soft",
   },
   published: { label: "Yayında", color: "text-yesil", bg: "bg-yesil-soft" },

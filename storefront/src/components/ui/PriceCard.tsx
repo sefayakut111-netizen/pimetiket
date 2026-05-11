@@ -149,7 +149,7 @@ export function PriceCard({
           className={cn(
             "flex items-center gap-2.5 w-full px-3.5 py-3 mb-3",
             "rounded-lg bg-sari-soft border border-dashed border-[#E0B158]",
-            "text-left text-[14px] font-semibold text-[#7A560A]"
+            "text-left text-[14px] font-semibold text-sari-koyu"
           )}
         >
           <span className="text-lg">💡</span>

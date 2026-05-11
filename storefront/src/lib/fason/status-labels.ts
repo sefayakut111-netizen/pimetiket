@@ -7,6 +7,11 @@
  *   - Fason'a 3 buton, kendi statüsü.
  *
  * Her assignment_status için 3 etiket: customer / admin / fason.
+ *
+ * **Konsolidasyon (Denetim P1):** /admin/fason ve /admin/siparisler
+ * eskiden lokal `STATUS_LABEL` map'leri tutuyordu — DRY ihlali. Artık
+ * `getAdminPillClasses()` helper'ı tek kaynaktan Tailwind chip
+ * sınıflarını döner.
  */
 
 export type AssignmentStatus =
@@ -147,7 +152,7 @@ const STATUS_MAP: Record<
   issue: {
     customer: {
       label: "Üretim hatta küçük bir gecikme",
-      hint: "Sefa hallediyor",
+      hint: "Hemen bakıyoruz",
       color: "text-sari",
       bg: "bg-sari-soft",
     },
@@ -211,3 +216,23 @@ export const ISSUE_CATEGORIES = [
   { id: "diger", label: "Diğer (açıklama yazacağım)" },
 ] as const;
 export type IssueCategory = (typeof ISSUE_CATEGORIES)[number]["id"];
+
+/**
+ * Admin tablosu/atama geçmişi gibi yerlerde kullanılan kompakt chip
+ * sınıfı dönerü. Tailwind ile `inline-flex ...` chip'te kullanılır.
+ *
+ * Audience hep `"admin"` — özel UI bileşenleri için.
+ */
+export function getAdminPillClasses(status: AssignmentStatus): {
+  label: string;
+  className: string;
+} {
+  const meta = STATUS_MAP[status]?.admin;
+  if (!meta) {
+    return { label: status, className: "bg-gri-100 text-gri-700" };
+  }
+  return {
+    label: meta.label,
+    className: `${meta.bg} ${meta.color}`,
+  };
+}

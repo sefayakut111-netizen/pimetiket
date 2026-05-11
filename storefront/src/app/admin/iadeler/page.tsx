@@ -30,7 +30,7 @@ const STATUS_FILTERS: { id: ReturnStatus | "all"; label: string }[] = [
 ];
 
 const STATUS_META: Record<ReturnStatus, { color: string; bg: string }> = {
-  pending: { color: "text-[#7A560A]", bg: "bg-sari-soft" },
+  pending: { color: "text-sari-koyu", bg: "bg-sari-soft" },
   approved: { color: "text-yesil", bg: "bg-yesil-soft" },
   rejected: { color: "text-kirmizi", bg: "bg-kirmizi/10" },
   refunded: { color: "text-yesil", bg: "bg-yesil-soft" },
@@ -119,7 +119,7 @@ export default function AdminIadelerPage() {
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "İncelemede", value: pending, accent: "text-[#7A560A]", bg: "bg-sari-soft" },
+            { label: "İncelemede", value: pending, accent: "text-sari-koyu", bg: "bg-sari-soft" },
             { label: "Onaylı", value: approved, accent: "text-yesil", bg: "bg-yesil-soft" },
             { label: "İade tamamlandı", value: refunded, accent: "text-yesil", bg: "bg-yesil-soft" },
             { label: "Toplam iade tutarı", value: `${Math.round(totalRefund).toLocaleString("tr-TR")} TL`, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
