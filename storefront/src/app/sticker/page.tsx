@@ -32,11 +32,15 @@ import {
   FormSection,
   SelectableCard,
   PriceCard,
-  QtySlider,
   useToast,
   DesignDropZone,
   type DesignTempState,
 } from "@/components/ui";
+import {
+  MultiDesignUploader,
+  type PendingDesign,
+} from "@/components/sticker/MultiDesignUploader";
+import { TabakaPreview } from "@/components/sticker/TabakaPreview";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import { deliveryEstimate } from "@/lib/pricing";
@@ -144,6 +148,10 @@ export default function StickerPage() {
   const [height, setHeight] = useState<number>(75);
   // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
   const [design, setDesign] = useState<DesignTempState | null>(null);
+  // Sefa Madde 9 (11 May): müşteri çoklu tasarım yükleyebilir.
+  // designCount × tier adet = toplam sticker. Tasarımlar local-preview.
+  const [designCount, setDesignCount] = useState<number>(1);
+  const [designs, setDesigns] = useState<PendingDesign[]>([]);
 
   // /tasarımlarım'dan "Yeniden bastır" tıklandıysa sessionStorage'dan al
   useEffect(() => {
@@ -175,7 +183,7 @@ export default function StickerPage() {
       ? SHAPES.filter((s) => s.id !== "die")
       : SHAPES;
 
-  // Engine ile canlı quote
+  // Engine ile canlı quote — tek tasarım için fiyat
   const quote = quoteCustomerSticker({
     width,
     height,
@@ -185,9 +193,12 @@ export default function StickerPage() {
     cut: cutMode,
   });
 
-  const total = quote.ok ? quote.total : 0;
+  // Sefa Madde 9: toplam fiyat = quote × designCount (her tasarım için ayrı baskı)
+  const perDesignTotal = quote.ok ? quote.total : 0;
+  const total = perDesignTotal * designCount;
   const currentUnit = quote.ok ? quote.unitPrice : 0;
   const overrunCount = quote.ok ? quote.overrunCount : 0;
+  const totalStickerCount = tier * designCount;
   // Tasarruf hesabı: en küçük tier (25) baseline alınır
   const savings = computeTierSavings(
     { width, height, material, finish },
@@ -511,81 +522,33 @@ export default function StickerPage() {
 
             <FormSection
               title={t.config.qtyTitle}
-              hint={`${STICKER_MIN_QTY} → ${STICKER_MAX_QTY} (step ${STICKER_QTY_STEP})`}
+              hint="Her tasarımdan kaç adet"
             >
-              {/* Slider — Sefa onayladı, ana giriş yöntemi */}
-              <div className="px-1">
-                <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
-                    {tier.toLocaleString("tr-TR")}
-                    <span className="text-[14px] font-medium text-gri-700 ml-1">
-                      adet
-                    </span>
+              {/* Sefa kuralı (Madde 9): adetsel artış YOK, sadece preset chip.
+                  Slider + ince ayar input KALDIRILDI. */}
+              <div className="flex items-baseline justify-between mb-3">
+                <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
+                  {tier.toLocaleString("tr-TR")}
+                  <span className="text-[14px] font-medium text-gri-700 ml-1">
+                    adet
                   </span>
-                  <div className="text-right tabular-nums">
-                    <div className="text-[18px] font-bold text-pim-mercan leading-none">
-                      {fmt(total)} TL
-                    </div>
-                    <div className="text-[12px] text-gri-500 mt-0.5">
-                      {fmtUnit(currentUnit)} TL/adet
-                    </div>
+                </span>
+                <div className="text-right tabular-nums">
+                  <div className="text-[18px] font-bold text-pim-mercan leading-none">
+                    {fmt(total)} TL
+                  </div>
+                  <div className="text-[12px] text-gri-500 mt-0.5">
+                    {fmtUnit(currentUnit)} TL/adet
                   </div>
                 </div>
-                <QtySlider
-                  value={tier}
-                  min={STICKER_MIN_QTY}
-                  max={STICKER_MAX_QTY}
-                  step={STICKER_QTY_STEP}
-                  onChange={(v) => setTier(snapStickerQty(v))}
-                  ariaLabel="Sticker adedi (slider)"
-                />
-                <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
-                  <span>{STICKER_MIN_QTY}</span>
-                  <span>{STICKER_MAX_QTY}</span>
-                </div>
-                {savings > 0 && (
-                  <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mt-2">
-                    %{savings} tasarruf 🎯 — bir önceki tier'dan ucuz
-                  </div>
-                )}
               </div>
-
-              {/* İnce ayar: stepper + serbest input — slider'la aynı state */}
-              <div className="flex items-center gap-3 flex-wrap mt-4">
-                <span className="text-[11.5px] text-gri-500">İnce ayar:</span>
-                <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setTier((v) => snapStickerQty(v - STICKER_QTY_STEP))}
-                    disabled={tier <= STICKER_MIN_QTY}
-                    aria-label={`${STICKER_QTY_STEP} adet azalt`}
-                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    value={tier}
-                    onChange={(e) => setTier(snapStickerQty(Number(e.target.value)))}
-                    min={STICKER_MIN_QTY}
-                    max={STICKER_MAX_QTY}
-                    step={STICKER_QTY_STEP}
-                    aria-label="Sticker adedi"
-                    className="w-20 h-9 text-center text-[14px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setTier((v) => snapStickerQty(v + STICKER_QTY_STEP))}
-                    disabled={tier >= STICKER_MAX_QTY}
-                    aria-label={`${STICKER_QTY_STEP} adet artır`}
-                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    +
-                  </button>
+              {savings > 0 && (
+                <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mb-3">
+                  %{savings} tasarruf 🎯 — bir önceki tier&apos;dan ucuz
                 </div>
-              </div>
+              )}
 
-              {/* Preset chip'leri — popüler nokta atışı */}
+              {/* Preset chip'leri — TEK seçim yöntemi */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
@@ -616,18 +579,59 @@ export default function StickerPage() {
               </div>
             </FormSection>
 
+            {/* Çoklu tasarım yükleyici + designCount input (Sefa Madde 9) */}
+            <FormSection
+              title="Tasarımlar"
+              hint="Her tasarımdan aynı adet basılır, hep aynı boyut/malzeme"
+            >
+              <MultiDesignUploader
+                designCount={designCount}
+                onDesignCountChange={setDesignCount}
+                designs={designs}
+                onDesignsChange={setDesigns}
+                qtyPerDesign={tier}
+              />
+            </FormSection>
+
+            {/* Tabaka önizleme (Sefa Madde 10) — tabaka modunda */}
+            {cutMode === "tabaka" && quote.ok && (
+              <FormSection
+                title="Tabaka yerleşimi"
+                hint="Tabaka üzerinde sticker'lar nasıl dizilir"
+              >
+                <TabakaPreview
+                  width={width}
+                  height={height}
+                  cut={cutMode}
+                  qty={tier}
+                />
+              </FormSection>
+            )}
+
             <PriceCard
               variant="bold"
               topLabel="SEÇİMİN"
               total={total}
               unitPrice={
                 <>
-                  {tier} adet × {fmtUnit(currentUnit)} TL · KDV dahil
+                  {designCount > 1 ? (
+                    <>
+                      {designCount} tasarım × {tier} adet ={" "}
+                      <strong className="text-white">
+                        {totalStickerCount.toLocaleString("tr-TR")}
+                      </strong>{" "}
+                      sticker · {fmtUnit(currentUnit)} TL/adet · KDV dahil
+                    </>
+                  ) : (
+                    <>
+                      {tier} adet × {fmtUnit(currentUnit)} TL · KDV dahil
+                    </>
+                  )}
                 </>
               }
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
               footnote="KDV dahil fiyat · Şeffaf, sürpriz ücret yok"
-              deliveryDate={deliveryEstimate({ kind: "sticker", qty: tier })}
+              deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={t.config.addToCart}
               onCta={async () => {
                 if (!quote.ok) {
@@ -647,13 +651,16 @@ export default function StickerPage() {
                       ? " · Yumuşatılmış köşe"
                       : " · Düz köşe"
                     : "";
+                // Çoklu tasarım için title'da designCount belirt
+                const titleSuffix =
+                  designCount > 1 ? ` (${designCount} tasarım)` : "";
                 const result = await addToCustomerCart({
                   product: "sticker",
-                  title: `Sticker · ${matName} + ${finName}`,
+                  title: `Sticker · ${matName} + ${finName}${titleSuffix}`,
                   config: `${shapeName} · ${width}×${height}mm · ${cutLabel}${cornerLabel}`,
                   width,
                   height,
-                  qty: tier,
+                  qty: totalStickerCount, // tier × designCount
                   unit: parseFloat(currentUnit.toFixed(2)),
                   total: Math.round(total),
                   shape,
@@ -661,7 +668,7 @@ export default function StickerPage() {
                   softCorners,
                   material,
                   finish,
-                  hediyeAdet: overrunCount,
+                  hediyeAdet: overrunCount * designCount,
                   designTempId: design?.tempId,
                   designPreviewUrl: design?.previewUrl,
                   designFileName: design?.fileName,
@@ -672,10 +679,18 @@ export default function StickerPage() {
                 }
                 // Tasarım state'ini sıfırla — yeni eklemede temiz başla
                 setDesign(null);
+                // Çoklu tasarım kullanıldıysa local preview'ları temizle
+                if (designs.length > 0) {
+                  designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
+                  setDesigns([]);
+                  setDesignCount(1);
+                }
                 toast.success(
-                  design
-                    ? "Sepete eklendi 🛒 — tasarımın bağlandı"
-                    : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
+                  designs.length > 0
+                    ? `Sepete eklendi 🛒 — ${designs.length} tasarımı sipariş detayında yükleyeceksin`
+                    : design
+                      ? "Sepete eklendi 🛒 — tasarımın bağlandı"
+                      : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
                 );
               }}
             />
