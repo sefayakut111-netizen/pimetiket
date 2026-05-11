@@ -62,7 +62,7 @@ const SECTIONS = [
     icon: <Icon.ChatBubble size={18} />,
     title: "Pim chat hazır",
     description:
-      "Sayfaya göre auto-persona: /sticker'da Tasarımcı Pim, /siparis'te Kargocu Pim, ana sayfada Hoş Geldin Pim.",
+      "Pim açıldığı sayfanın bağlamını kendi anlar — etikette fiyat, siparişte takip, ana sayfada genel sohbet.",
     href: "/sticker",
   },
 ];

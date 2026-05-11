@@ -330,7 +330,7 @@ export default function PanelimPage() {
       }
     } catch (err) {
       console.error("[panelim/reorder] failed:", err);
-      toast.error("Bir şeyler ters gitti, tekrar dene");
+      toast.error("Tekrar sipariş açılamadı — sayfayı yenileyip tekrar dene.");
     } finally {
       setReordering(false);
     }

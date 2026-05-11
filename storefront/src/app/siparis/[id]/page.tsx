@@ -337,7 +337,7 @@ export default function SiparisDetailPage({
       }
     } catch (err) {
       console.error("[reorder] failed:", err);
-      toast.error("Bir şeyler ters gitti, tekrar dene");
+      toast.error("Tekrar sipariş açılamadı — sayfayı yenileyip tekrar dene.");
     } finally {
       setReordering(false);
     }

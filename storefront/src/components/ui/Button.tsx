@@ -36,8 +36,10 @@ const VARIANT_CLASS: Record<Variant, string> = {
   ghost: "bg-transparent text-lacivert hover:bg-gri-100",
 };
 
+// Sefa kuralı + WCAG 2.5.5 (44×44 px target): sm yükseklik 40 px,
+// padding 4 ile dengelendi. md/lg değişmedi.
 const SIZE_CLASS: Record<Size, string> = {
-  sm: "h-9 px-3.5 text-sm",
+  sm: "h-10 px-4 text-sm",
   md: "h-11 px-5 text-[15px]",
   lg: "h-[52px] px-7 text-base",
 };

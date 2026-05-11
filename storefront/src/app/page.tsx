@@ -270,7 +270,7 @@ export default function HomePage() {
 
       {/* ============================== 3 PILLAR ============================== */}
       <section className="pt-8 pb-16">
-        <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           {PILLARS.map((p, i) => (
             <Card key={i} padding="p-7">
               <div className="grid place-items-center w-11 h-11 rounded-xl bg-pim-mercan-tint text-pim-mercan mb-4">
@@ -290,7 +290,7 @@ export default function HomePage() {
 
       {/* ============================== PRODUCT CARDS ============================== */}
       <section className="py-12">
-        <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <ProductCard
             kind="etiket"
             title={t.nav.etiket}
@@ -316,7 +316,7 @@ export default function HomePage() {
 
       {/* ============================== HOW IT WORKS ============================== */}
       <section className="py-20 bg-gri-50">
-        <div className="mx-auto max-w-[1280px] px-8">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <div className="text-center mb-12">
             <Eyebrow>{t.home.howItWorksEyebrow}</Eyebrow>
             <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight max-w-[640px] mx-auto">
@@ -350,7 +350,7 @@ export default function HomePage() {
 
       {/* ============================== FAQ ============================== */}
       <section className="py-12">
-        <div className="mx-auto max-w-[1280px] px-8 grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-16 items-start">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-16 items-start">
           <div>
             <Eyebrow>{t.home.faqEyebrow}</Eyebrow>
             <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
@@ -386,7 +386,7 @@ export default function HomePage() {
 
       {/* ============================== TRUST STRIP ============================== */}
       <section className="py-10 bg-white border-y border-gri-100">
-        <div className="mx-auto max-w-[1280px] px-8">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 text-center">
             <div className="flex flex-col items-center gap-1.5">
               <div className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan">
@@ -438,7 +438,7 @@ export default function HomePage() {
 
       {/* ============================== BOTTOM CTA ============================== */}
       <section className="py-20">
-        <div className="mx-auto max-w-[1280px] px-8">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <div className="relative overflow-hidden bg-lacivert text-white rounded-[32px] px-8 md:px-14 py-16">
             <div
               aria-hidden

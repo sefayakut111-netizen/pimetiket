@@ -145,7 +145,7 @@ export default function YorumYazPage() {
     setSubmitting(false);
 
     if (result.ok) {
-      toast.success("Yorumun alındı, ekibimiz inceleyecek 🌟");
+      toast.success("Yorumun alındı, ekip inceleyecek.");
       setTimeout(() => router.push("/panelim"), 1500);
     } else {
       toast.error(result.error);
@@ -241,7 +241,7 @@ export default function YorumYazPage() {
               </div>
               {rating > 0 && (
                 <p className="mt-2 text-[12.5px] text-gri-500">
-                  {rating === 5 && "Mükemmel — bu duyguyu hisset!"}
+                  {rating === 5 && "5 üzerinden 5 — yorumun bizi mutlu eder."}
                   {rating === 4 && "Memnunum, küçük dokunuşlar olur."}
                   {rating === 3 && "Ortalama — neden 5 değildi söyle."}
                   {rating === 2 && "Beklenti karşılanmamış — anlat."}
