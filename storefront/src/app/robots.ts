@@ -22,6 +22,7 @@ export default function robots(): MetadataRoute.Robots {
           "/odeme-sonuc",
           "/sifre-sifirla",
           "/auth",
+          "/fason/",
         ],
       },
     ],

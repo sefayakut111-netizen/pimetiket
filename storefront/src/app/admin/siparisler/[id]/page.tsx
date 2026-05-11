@@ -79,6 +79,80 @@ export default function AdminOrderDetailPage({
   const [updating, setUpdating] = useState(false);
   const [proofUploading, setProofUploading] = useState(false);
 
+  // Fason atama state
+  const [fasonSuggestions, setFasonSuggestions] = useState<
+    Array<{
+      fason_id: string;
+      fason_name: string;
+      cached_score: number | null;
+      active_count: number;
+      reason: string;
+    }>
+  >([]);
+  const [selectedFasonId, setSelectedFasonId] = useState<string>("");
+  const [fasonDeliveryDate, setFasonDeliveryDate] = useState<string>("");
+  const [fasonNotes, setFasonNotes] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [assignmentInfo, setAssignmentInfo] = useState<{
+    assignmentId: string;
+    fasonToken: string;
+    fasonName: string;
+  } | null>(null);
+
+  const loadFasonSuggestions = async (specialty: "etiket" | "sticker" | null) => {
+    try {
+      const qs = specialty ? `?specialty=${specialty}` : "";
+      const res = await fetch(`/api/admin/fason/suggest${qs}`);
+      if (res.ok) {
+        const json = (await res.json()) as {
+          suggestions: typeof fasonSuggestions;
+        };
+        setFasonSuggestions(json.suggestions);
+        // Otomatik en yüksek skorlu fason'u seç
+        if (json.suggestions.length > 0 && !selectedFasonId) {
+          setSelectedFasonId(json.suggestions[0].fason_id);
+        }
+      }
+    } catch (e) {
+      console.error("[fason/suggest]", e);
+    }
+  };
+
+  const handleFasonAssign = async () => {
+    if (!order || !selectedFasonId) return;
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/admin/fason/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          fasonPartnerId: selectedFasonId,
+          estimatedDelivery: fasonDeliveryDate || null,
+          notes: fasonNotes.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Atama başarısız");
+        return;
+      }
+      const json = (await res.json()) as {
+        assignmentId: string;
+        fasonToken: string;
+        fasonName: string;
+      };
+      setAssignmentInfo(json);
+      toast.success(`${json.fasonName}'a atama yapıldı`);
+      setOrder({ ...order, status: "in_production" });
+    } catch (e) {
+      console.error("[fason/assign]", e);
+      toast.error("Bağlantı hatası");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   const handleProofUpload = async (file: File) => {
     if (!order) return;
     setProofUploading(true);
@@ -421,6 +495,178 @@ export default function AdminOrderDetailPage({
                       veya "Değişiklik iste" butonuna basacak.
                     </p>
                   </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Fason atama — sipariş prova_pending'ten sonra (müşteri onayladıktan sonra)
+                veya operator_review (manuel) durumunda gösterilir */}
+            {(order.status === "operator_review" ||
+              order.status === "in_production") &&
+              !assignmentInfo && (
+                <Card padding="p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <span className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan shrink-0">
+                      <Icon.Truck size={18} />
+                    </span>
+                    <div className="flex-1">
+                      <h2 className="text-[15px] font-semibold">
+                        Fason'a gönder
+                      </h2>
+                      <p className="text-[12px] text-gri-700 mt-0.5">
+                        Sistem performans skoru + uygunluğa göre öneriyor. Tek
+                        tıkla atama yapabilirsin.
+                      </p>
+                    </div>
+                  </div>
+
+                  {fasonSuggestions.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const specialty =
+                          order.items[0]?.product === "etiket"
+                            ? "etiket"
+                            : "sticker";
+                        void loadFasonSuggestions(specialty);
+                      }}
+                      className="w-full h-10 rounded-lg bg-pim-mercan-tint text-pim-mercan text-[13px] font-semibold hover:bg-pim-mercan/15"
+                    >
+                      Önerilen fasonları getir
+                    </button>
+                  ) : (
+                    <>
+                      <div className="space-y-2 mb-4">
+                        {fasonSuggestions.map((f) => {
+                          const isSelected = selectedFasonId === f.fason_id;
+                          const scoreColor =
+                            f.cached_score === null
+                              ? "text-gri-500"
+                              : f.cached_score >= 0.9
+                                ? "text-yesil"
+                                : f.cached_score >= 0.7
+                                  ? "text-pim-mercan"
+                                  : "text-kirmizi";
+                          return (
+                            <label
+                              key={f.fason_id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg ring-1 cursor-pointer transition-colors",
+                                isSelected
+                                  ? "ring-pim-mercan bg-pim-mercan-tint"
+                                  : "ring-gri-200 bg-white hover:ring-pim-mercan/40"
+                              )}
+                            >
+                              <input
+                                type="radio"
+                                name="fason"
+                                value={f.fason_id}
+                                checked={isSelected}
+                                onChange={() => setSelectedFasonId(f.fason_id)}
+                                className="accent-pim-mercan"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-[13.5px]">
+                                  {f.fason_name}
+                                </div>
+                                <div className="text-[11px] text-gri-700">
+                                  {f.reason} · {f.active_count} aktif iş
+                                </div>
+                              </div>
+                              <span
+                                className={cn(
+                                  "text-[13px] font-bold tabular-nums",
+                                  scoreColor
+                                )}
+                              >
+                                {f.cached_score !== null
+                                  ? `${(f.cached_score * 100).toFixed(0)}%`
+                                  : "—"}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <label className="block">
+                          <span className="text-[12px] font-semibold text-gri-700 mb-1 block">
+                            Teslim tarihi
+                          </span>
+                          <input
+                            type="date"
+                            value={fasonDeliveryDate}
+                            onChange={(e) =>
+                              setFasonDeliveryDate(e.target.value)
+                            }
+                            className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 text-[13px] focus:ring-2 focus:ring-pim-mercan/40 focus:outline-none"
+                          />
+                        </label>
+                      </div>
+
+                      <label className="block mb-4">
+                        <span className="text-[12px] font-semibold text-gri-700 mb-1 block">
+                          Not (opsiyonel)
+                        </span>
+                        <textarea
+                          value={fasonNotes}
+                          onChange={(e) => setFasonNotes(e.target.value)}
+                          rows={2}
+                          placeholder="Özel istek, dikkat edilecek nokta..."
+                          className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 text-[13px] focus:ring-2 focus:ring-pim-mercan/40 focus:outline-none resize-none"
+                        />
+                      </label>
+
+                      <Button
+                        variant="primary"
+                        block
+                        onClick={() => void handleFasonAssign()}
+                        disabled={assigning || !selectedFasonId}
+                      >
+                        {assigning
+                          ? "Atanıyor..."
+                          : "Fason'a gönder"}
+                      </Button>
+                    </>
+                  )}
+                </Card>
+              )}
+
+            {assignmentInfo && (
+              <Card padding="p-5" className="!bg-yesil-soft !ring-yesil/30">
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-yesil/20 text-yesil shrink-0">
+                    <Icon.Check size={18} />
+                  </span>
+                  <div className="flex-1">
+                    <h2 className="text-[15px] font-semibold text-yesil">
+                      Fason'a atandı: {assignmentInfo.fasonName}
+                    </h2>
+                    <p className="text-[12px] text-yesil/85 mt-0.5">
+                      Mail kuyruğa alındı (Resend gelince gönderilecek). Şimdilik
+                      aşağıdaki linki manuel paylaşabilirsin:
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-stretch gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-white ring-1 ring-yesil/30 font-mono text-[12px] text-lacivert overflow-x-auto whitespace-nowrap">
+                    {typeof window !== "undefined"
+                      ? `${window.location.origin}/fason/${assignmentInfo.fasonToken}`
+                      : `/fason/${assignmentInfo.fasonToken}`}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof navigator !== "undefined") {
+                        const link = `${window.location.origin}/fason/${assignmentInfo.fasonToken}`;
+                        void navigator.clipboard.writeText(link);
+                        toast.success("Link kopyalandı");
+                      }
+                    }}
+                    className="px-3 rounded-lg bg-yesil text-white text-[12px] font-semibold hover:bg-yesil/90"
+                  >
+                    Kopyala
+                  </button>
                 </div>
               </Card>
             )}

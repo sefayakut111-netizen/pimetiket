@@ -17,9 +17,16 @@ import { ReviewRequestBanner } from "@/components/reviews/ReviewRequestBanner";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
+  const isFason = pathname?.startsWith("/fason/") ?? false;
 
   if (isAdmin) {
     return <AdminShell>{children}</AdminShell>;
+  }
+
+  // Fason web form'u tamamen ayrı layout (TopBar/Footer/Pim YOK)
+  // Sadece sipariş güncelleme arayüzü — operasyonel sayfa.
+  if (isFason) {
+    return <>{children}</>;
   }
 
   return (
