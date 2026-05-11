@@ -156,6 +156,34 @@ export function Footer() {
             <p className="text-[12.5px] text-white/55 leading-relaxed max-w-[260px]">
               {t.footer.tagline}
             </p>
+            {/* Sosyal medya */}
+            <div className="mt-4 flex items-center gap-2">
+              <a
+                href="https://instagram.com/pimetiket"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Pim Etiket Instagram"
+                title="Instagram"
+                className="grid place-items-center w-9 h-9 rounded-full bg-white/10 hover:bg-pim-mercan transition-colors text-white"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                </svg>
+              </a>
+              {/* Yakında: TikTok, YouTube — Sefa hesap açtıkça eklenir */}
+            </div>
           </div>
 
           {/* Link columns */}

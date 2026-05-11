@@ -137,6 +137,8 @@ const COPY = {
 
     // Action
     accept: "Mesafeli Satış Sözleşmesi'ni okudum, kabul ediyorum.",
+    acceptCopyright:
+      "Yüklediğim tasarımın telif sahibi benim veya kullanma yetkim var. Başkasının fikri mülkiyetini ihlal etmediğimi taahhüt ediyorum.",
     proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} TL`,
     processing: "Yönlendiriliyor...",
     cartItems: "Sepetinde",
@@ -204,6 +206,8 @@ const COPY = {
     vatIncluded: "VAT included",
 
     accept: "I've read and accept the Distance Sales Contract.",
+    acceptCopyright:
+      "I own or have rights to use the design I'm uploading. I confirm I'm not infringing on anyone else's intellectual property.",
     proceed: (amount: string) => `Pay securely — ${amount} TRY`,
     processing: "Redirecting...",
     cartItems: "In your cart",
@@ -257,6 +261,7 @@ export default function OdemePage() {
 
   // Submit
   const [acceptSatis, setAcceptSatis] = useState(false);
+  const [acceptCopyright, setAcceptCopyright] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // ============================================================
@@ -340,6 +345,7 @@ export default function OdemePage() {
     !loading &&
     cartItems.length > 0 &&
     acceptSatis &&
+    acceptCopyright &&
     (selectedAddress !== undefined || isNewAddressFilled(newAddr)) &&
     isInvoiceComplete(invoiceMode, tc, vkn, companyName, taxOffice);
 
@@ -928,6 +934,17 @@ export default function OdemePage() {
                     {c.accept}
                   </Link>
                 </span>
+              </label>
+
+              {/* Telif taahhüdü */}
+              <label className="flex items-start gap-2.5 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3">
+                <input
+                  type="checkbox"
+                  checked={acceptCopyright}
+                  onChange={(e) => setAcceptCopyright(e.target.checked)}
+                  className="mt-1 accent-pim-mercan shrink-0"
+                />
+                <span>{c.acceptCopyright}</span>
               </label>
 
               <Button

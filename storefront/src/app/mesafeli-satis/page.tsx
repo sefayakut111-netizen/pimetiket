@@ -133,21 +133,48 @@ export default function MesafeliSatisPage() {
         ürün ücretsiz yeniden üretilir veya ödenen tutar iade edilir.
       </p>
 
-      <h2>9. Mücbir Sebep</h2>
+      <h2>9. Telif Hakları ve Fikri Mülkiyet</h2>
+      <p>
+        ALICI, yüklediği tasarım dosyalarının (PDF, AI, EPS, PNG, JPG vb.)
+        telif sahibi olduğunu veya bu dosyaları üretimde kullanma yetkisinin
+        bulunduğunu taahhüt eder. Üçüncü kişilere ait fikri ve sınai mülkiyet
+        haklarını (telif, marka, patent, tasarım) ihlal eden içerikler için
+        SATICI <strong>hiçbir sorumluluk kabul etmez</strong>.
+      </p>
+      <p>
+        Bu tür ihlaller nedeniyle SATICI&rsquo;ya gelen üçüncü kişi
+        taleplerinden, hukuki süreçlerden ve maddi-manevi zararlardan
+        tamamen ALICI sorumludur. SATICI, açık bir ihlal tespit etmesi
+        halinde siparişi reddetme veya iptal etme hakkını saklı tutar; bu
+        durumda ödenen tutar 7 iş günü içinde iade edilir.
+      </p>
+      <p>
+        ALICI tarafından yüklenen tasarımlar yalnızca sipariş edilen
+        ürünün üretiminde kullanılır. SATICI bu dosyaları üçüncü kişilerle
+        paylaşmaz, başka müşterilere ürettirmez ve kendi pazarlama
+        materyallerinde ALICI&rsquo;nın yazılı izni olmadan kullanmaz.
+      </p>
+      <p>
+        Pim Etiket&rsquo;in marka ismi, logosu, &ldquo;Pim&rdquo; karakteri
+        ve site içeriği SATICI&rsquo;nın fikri mülkiyetidir; ALICI tarafından
+        çoğaltılamaz, ticari amaçla kullanılamaz.
+      </p>
+
+      <h2>10. Mücbir Sebep</h2>
       <p>
         Doğal afet, savaş, grev, kamu otoritesi kararları, kargo firması
         kaynaklı gecikmeler gibi tarafların kontrolü dışındaki olaylar
         nedeniyle gecikme yaşandığında SATICI sorumlu tutulamaz.
       </p>
 
-      <h2>10. Yetkili Mahkeme</h2>
+      <h2>11. Yetkili Mahkeme</h2>
       <p>
         İşbu Sözleşme&rsquo;den doğacak uyuşmazlıklarda, Gümrük ve Ticaret
         Bakanlığı&rsquo;nın belirlediği parasal sınırlar çerçevesinde
         Tüketici Hakem Heyetleri ve Tüketici Mahkemeleri yetkilidir.
       </p>
 
-      <h2>11. Yürürlük</h2>
+      <h2>12. Yürürlük</h2>
       <p>
         ALICI&rsquo;nın elektronik ortamda &ldquo;Sözleşmeyi okudum,
         anladım, kabul ediyorum&rdquo; kutusunu işaretleyip ödeme adımını

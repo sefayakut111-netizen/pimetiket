@@ -10,6 +10,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
@@ -22,7 +23,8 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // TODO Faz 4: Sentry.captureException(error)
+    // Sentry'ye gönder (DSN yoksa no-op)
+    Sentry.captureException(error);
     console.error("[Pim Etiket] Unhandled error:", error);
   }, [error]);
 
