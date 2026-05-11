@@ -104,7 +104,8 @@ export default function KvkkPage() {
       <ul>
         <li>
           <strong>Fason üretim ortakları</strong>: ad-soyad, teslim adresi,
-          sipariş detayları (üretim için zorunlu)
+          telefon, sipariş detayları ve tasarım dosyası (üretim için zorunlu —
+          aşağıda detaylı açıklama)
         </li>
         <li>
           <strong>Kargo firması</strong>: ad-soyad, telefon, teslim adresi
@@ -124,6 +125,53 @@ export default function KvkkPage() {
       <p>
         Verileriniz <strong>3. kişilerle reklam/pazarlama amacıyla
         satılmaz veya paylaşılmaz</strong>.
+      </p>
+
+      <h3 className="text-base font-semibold mt-5">
+        5.1 Üretim Ortakları (Fason İşletmeler)
+      </h3>
+      <p>
+        Sipariş ettiğin baskı ürününün üretimi için anlaşmalı{" "}
+        <strong>fason üretim ortaklarımıza</strong> aşağıdaki verilerin
+        aktarılır:
+      </p>
+      <ul>
+        <li>Ad soyad (kargo etiketi için)</li>
+        <li>Teslimat adresi ve telefon (kargo için)</li>
+        <li>Sipariş detayları (ölçü, malzeme, adet, kesim tipi)</li>
+        <li>Yüklediğin tasarım dosyası (üretim için)</li>
+      </ul>
+      <p>
+        <strong>Aktarım amacı:</strong> Sipariş edilen ürünün üretiminin
+        gerçekleştirilmesi ve kargolanması (KVKK m.5/2-c &mdash;
+        &ldquo;sözleşmenin ifası&rdquo;).
+      </p>
+      <p>
+        <strong>Yasal dayanak:</strong> KVKK m.8/2-a uyarınca, sözleşmenin
+        ifası için zorunlu olduğunda açık rıza aranmaksızın aktarım yapılır.
+      </p>
+      <p>
+        <strong>Veri işleyen statüsü:</strong> Fason ortaklarımız KVKK
+        m.3/1-ı uyarınca &ldquo;veri işleyen&rdquo; sıfatına sahiptir;
+        bizimle imzalı veri işleyici sözleşmesi olmadan veri aktarımı
+        yapılmaz.
+      </p>
+      <p>
+        <strong>Sözleşmesel güvenceler:</strong> Tüm fason ortaklarımızla:
+      </p>
+      <ul>
+        <li>Sadece ilgili sipariş için kullanım taahhüdü</li>
+        <li>Üretim sonrası en fazla 30 gün içinde imha yükümlülüğü</li>
+        <li>Başkasına aktarım yasağı</li>
+        <li>Çalışan gizlilik taahhütleri</li>
+        <li>Veri ihlali halinde 24 saat içinde bildirim</li>
+      </ul>
+      <p>
+        yükümlülüklerini içeren bağlayıcı sözleşmeler imzalanmıştır.
+      </p>
+      <p>
+        <strong>Yurt dışı aktarım YAPILMAZ.</strong> Tüm fason ortaklarımız
+        Türkiye sınırları içinde faaliyet gösterir.
       </p>
 
       <h2>6. Saklama Süreleri</h2>

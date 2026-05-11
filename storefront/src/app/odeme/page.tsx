@@ -139,6 +139,9 @@ const COPY = {
     accept: "Mesafeli Satış Sözleşmesi'ni okudum, kabul ediyorum.",
     acceptCopyright:
       "Yüklediğim tasarımın telif sahibi benim veya kullanma yetkim var. Başkasının fikri mülkiyetini ihlal etmediğimi taahhüt ediyorum.",
+    fasonDisclaimer:
+      "Pim Etiket fason üretim modeliyle çalışır. Tasarımın ve kargo bilgilerin anlaşmalı baskı atölyemize aktarılır; sadece bu sipariş için kullanılır, 30 gün sonra imha edilir.",
+    fasonDisclaimerLink: "Detay",
     proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} TL`,
     processing: "Yönlendiriliyor...",
     cartItems: "Sepetinde",
@@ -208,6 +211,9 @@ const COPY = {
     accept: "I've read and accept the Distance Sales Contract.",
     acceptCopyright:
       "I own or have rights to use the design I'm uploading. I confirm I'm not infringing on anyone else's intellectual property.",
+    fasonDisclaimer:
+      "Pim Etiket operates with contracted print partners. Your design and shipping info are transferred to our partner workshop; used only for this order, destroyed within 30 days.",
+    fasonDisclaimerLink: "Details",
     proceed: (amount: string) => `Pay securely — ${amount} TRY`,
     processing: "Redirecting...",
     cartItems: "In your cart",
@@ -935,6 +941,21 @@ export default function OdemePage() {
                   </Link>
                 </span>
               </label>
+
+              {/* Fason üretim disclaimer (KVKK m.5/2-c bilgilendirme) */}
+              <div className="mt-3 px-3 py-2.5 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[12px] text-gri-700 leading-relaxed flex items-start gap-2">
+                <span aria-hidden="true">🏭</span>
+                <span>
+                  {c.fasonDisclaimer}{" "}
+                  <Link
+                    href="/gizlilik"
+                    target="_blank"
+                    className="font-semibold text-pim-mercan hover:underline"
+                  >
+                    {c.fasonDisclaimerLink} →
+                  </Link>
+                </span>
+              </div>
 
               {/* Telif taahhüdü */}
               <label className="flex items-start gap-2.5 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3">

@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/refresh-fason-scores",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/process-mail-outbox",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

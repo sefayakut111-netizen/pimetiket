@@ -51,9 +51,78 @@ export default function GizlilikPage() {
         <a href="/cerez">Çerez Politikası</a>nda yer alır.
       </p>
 
-      <h2>4. Üçüncü Taraf Hizmetler</h2>
+      <h2>4. Fason Üretim Ortaklarımız</h2>
       <p>
-        Aşağıdaki hizmetler kullanıcı bilgileriniz işleyebilir:
+        Pim Etiket <strong>fason üretim modeliyle</strong> çalışır &mdash;
+        yani sipariş ettiğin ürünlerin baskı işlemini İstanbul ve
+        Ankara&rsquo;daki anlaşmalı baskı atölyeleri yapar. Bu fason
+        ortaklarımıza şu verilerin aktarılır:
+      </p>
+      <div className="overflow-x-auto my-4">
+        <table className="w-full text-[13px] border-collapse">
+          <thead>
+            <tr className="border-b-2 border-gri-300">
+              <th className="text-left py-2 pr-4 font-semibold">Veri</th>
+              <th className="text-left py-2 font-semibold">Neden</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Ad soyad</td>
+              <td className="py-2">Kargo etiketinde gerekli</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Adres + telefon</td>
+              <td className="py-2">Kargo teslimatı için zorunlu</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Tasarım dosyası</td>
+              <td className="py-2">Üretimde kullanılır</td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4">Sipariş detayları</td>
+              <td className="py-2">Ürünü doğru üretmek için</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Önemli güvenceler:</strong>
+      </p>
+      <ul>
+        <li>
+          Fason ortaklarımız sadece <strong>senin siparişin</strong> için
+          bu verileri kullanabilir. Başka müşteriye ürettiremez, sosyal
+          medyada yayımlayamaz, portfolyo olarak gösteremez.
+        </li>
+        <li>
+          <strong>Üretim bittikten en geç 30 gün sonra</strong> elindeki
+          tüm verileri ve tasarım dosyasını silmek/imha etmek zorundadır.
+        </li>
+        <li>
+          <strong>
+            Tasarım dosyalarınız şifreli ve süre sınırlı bağlantılar (signed
+            URL) ile gönderilir.
+          </strong>{" "}
+          İlgili sipariş bittiğinde bu bağlantı kendiliğinden geçersiz olur.
+        </li>
+        <li>
+          Tüm fason&rsquo;larımızla <strong>veri işleyici sözleşmemiz</strong>{" "}
+          vardır; ihlal halinde Pim Etiket sorumlu kılınır ve
+          fason&rsquo;a rücu eder.
+        </li>
+      </ul>
+      <p>
+        Fason ortağımıza aktarılan verilerinin durumu hakkında bilgi
+        almak veya başvuru yapmak için{" "}
+        <a href="/iletisim">iletişim sayfası</a> üzerinden bize
+        ulaşabilirsin. Doğrudan fason&rsquo;a yapılan başvurular bize
+        iletilir.
+      </p>
+
+      <h2>5. Diğer Üçüncü Taraf Hizmetler</h2>
+      <p>
+        Aşağıdaki hizmetler kullanıcı bilgilerini işleyebilir:
       </p>
       <ul>
         <li>
@@ -90,7 +159,7 @@ export default function GizlilikPage() {
         </li>
       </ul>
 
-      <h2>5. Güvenlik</h2>
+      <h2>6. Güvenlik</h2>
       <p>
         Verileriniz endüstri standardı önlemlerle korunur:
       </p>
@@ -102,14 +171,14 @@ export default function GizlilikPage() {
         <li>Düzenli yedekleme ve felaket kurtarma planı</li>
       </ul>
 
-      <h2>6. Çocukların Gizliliği</h2>
+      <h2>7. Çocukların Gizliliği</h2>
       <p>
         Pim Etiket 18 yaş altı kişilere yönelik bir hizmet sunmaz. 18 yaş
         altı bir kişiden bilerek veri toplanmaz; fark ettiğimizde derhal
         sileriz.
       </p>
 
-      <h2>7. Politika Değişiklikleri</h2>
+      <h2>8. Politika Değişiklikleri</h2>
       <p>
         İşbu politika güncellenebilir; önemli değişiklikler için kayıtlı
         kullanıcılarımıza e-posta ile bildirim gönderilir. Sayfanın üst
@@ -117,7 +186,7 @@ export default function GizlilikPage() {
         takip edebilirsiniz.
       </p>
 
-      <h2>8. İletişim</h2>
+      <h2>9. İletişim</h2>
       <p>
         Gizlilik politikamızla ilgili sorularınız için{" "}
         <a href="/iletisim">iletişim</a> sayfası üzerinden bize ulaşabilirsiniz.
