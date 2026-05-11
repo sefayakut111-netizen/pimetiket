@@ -296,6 +296,21 @@ export default function OdemePage() {
         setTaxOffice(p.taxOffice ?? "");
       }
     });
+
+    // Tekrar baskı kuponu — sessionStorage'da pending varsa otomatik field'a koy
+    if (typeof window !== "undefined") {
+      try {
+        const pending = window.sessionStorage.getItem("pim_pending_coupon");
+        if (pending) {
+          const parsed = JSON.parse(pending) as { code?: string };
+          if (parsed.code) {
+            setCouponCode(parsed.code);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
   }, [router]);
 
   // ============================================================

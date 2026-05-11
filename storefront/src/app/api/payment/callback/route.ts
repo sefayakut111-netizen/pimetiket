@@ -335,6 +335,25 @@ export async function POST(req: NextRequest) {
 
   // (11) Cüzdan akışı KALDIRILDI — Migration 015
 
+  // (11b) Referans tamamlama — bu kullanıcının ilk siparişi mi?
+  // Eğer referred_by_user_id varsa ve bu ilk siparişiyse, referrer'a kupon ver
+  try {
+    const { count: priorOrders } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", intent.user_id)
+      .neq("id", orderId);
+    if (priorOrders === 0 || priorOrders === null) {
+      // İlk sipariş — referral tamamla
+      await admin.rpc("fn_complete_referral" as never, {
+        p_referred_user_id: intent.user_id,
+      } as never);
+    }
+  } catch (err) {
+    console.error("[payment/callback] referral completion error:", err);
+    // referral hatası ödemeyi etkilemez
+  }
+
   // 12) Cart temizle
   await admin.from("cart_items").delete().eq("user_id", intent.user_id);
 

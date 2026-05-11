@@ -42,6 +42,7 @@ function AuthInner() {
   const sp = useSearchParams();
   const next = sp.get("next") ?? "/panelim";
   const initialMode = (sp.get("mode") === "signup" ? "signup" : "login") as AuthMode;
+  const referralCode = sp.get("ref")?.toUpperCase() ?? null;
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
@@ -126,6 +127,10 @@ function AuthInner() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          // Referans kodu varsa raw_user_meta_data'ya koy — handle_new_user trigger uygular
+          ...(referralCode && {
+            data: { referral_code: referralCode },
+          }),
         },
       });
       if (error) {
@@ -269,6 +274,13 @@ function AuthInner() {
               ? "E-posta ve şifrenle hızlıca giriş yap."
               : "30 saniyelik form, sonra sipariş geçmeye hazırsın."}
           </p>
+          {mode === "signup" && referralCode && (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-yesil-soft ring-1 ring-yesil/30 text-[12.5px] font-semibold text-yesil">
+              <Icon.Check size={12} /> Referans kodu uygulandı:{" "}
+              <code className="font-mono font-bold">{referralCode}</code> — ilk
+              siparişinde %10 indirim
+            </div>
+          )}
         </div>
 
         {/* Mode toggle */}

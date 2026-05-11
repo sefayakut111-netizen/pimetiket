@@ -259,6 +259,33 @@ function statusMeta(
   }
 }
 
+interface LoyaltyCoupon {
+  id: string;
+  code: string;
+  kind: "percent" | "fixed" | "free_ship";
+  value: number;
+  max_discount: number | null;
+  min_subtotal: number | null;
+  expires_at: string;
+  description: string | null;
+}
+
+interface LoyaltyInvited {
+  id: string;
+  referred_user_id: string;
+  status: "pending" | "completed" | "expired";
+  created_at: string;
+  completed_at: string | null;
+}
+
+interface LoyaltyData {
+  vipSince: string | null;
+  referralCode: string | null;
+  orderCount: number;
+  invited: LoyaltyInvited[];
+  availableCoupons: LoyaltyCoupon[];
+}
+
 export default function PanelimPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
@@ -266,6 +293,7 @@ export default function PanelimPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const router = useRouter();
   const toast = useToast();
 
@@ -277,6 +305,15 @@ export default function PanelimPage() {
       setHydrated(true);
     });
     window.addEventListener("pim_customer_orders_updated", refresh);
+
+    // Loyalty data fetch
+    fetch("/api/loyalty/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: LoyaltyData | null) => data && setLoyalty(data))
+      .catch(() => {
+        /* silent */
+      });
+
     return () =>
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
@@ -369,8 +406,18 @@ export default function PanelimPage() {
           <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
             {dateLabel}
           </div>
-          <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight mt-2 mb-1.5">
-            {customerName ? c.helloWith(customerName) : c.helloEmpty}
+          <h1 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight mt-2 mb-1.5 flex items-center gap-3 flex-wrap">
+            <span>
+              {customerName ? c.helloWith(customerName) : c.helloEmpty}
+            </span>
+            {loyalty?.vipSince && (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 h-[28px] rounded-full bg-gradient-to-r from-sari to-[#FFC53D] text-[#7A560A] text-[12.5px] font-bold uppercase tracking-[0.06em] shadow-1"
+                title={`VIP üye — ${new Date(loyalty.vipSince).toLocaleDateString("tr-TR")} tarihinden`}
+              >
+                <Icon.Star size={13} /> VIP
+              </span>
+            )}
           </h1>
           <p className="text-base text-gri-700">
             {!hydrated
@@ -625,8 +672,110 @@ export default function PanelimPage() {
 
           {/* SIDE */}
           <div className="flex flex-col gap-4">
-            {/* Cüzdan card kaldırıldı (Sefa: "cüzdan diye bir şey yok").
-                Cüzdan özelliği canlıya alınınca burası geri açılır. */}
+            {/* Sadakat kuponları — aktif kupon varsa göster */}
+            {loyalty && loyalty.availableCoupons.length > 0 && (
+              <Card padding="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="grid place-items-center w-8 h-8 rounded-xl bg-yesil-soft text-yesil shrink-0">
+                    <Icon.Sparkle size={16} />
+                  </span>
+                  <h3 className="font-semibold text-[15px]">
+                    Aktif kuponların ({loyalty.availableCoupons.length})
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {loyalty.availableCoupons.slice(0, 4).map((c2) => {
+                    const valueText =
+                      c2.kind === "percent"
+                        ? `%${c2.value}`
+                        : c2.kind === "fixed"
+                          ? `${c2.value} TL`
+                          : "Ücretsiz kargo";
+                    return (
+                      <div
+                        key={c2.id}
+                        className="rounded-lg ring-1 ring-yesil/30 bg-yesil-soft px-3 py-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <code className="font-mono text-[12.5px] font-bold text-yesil">
+                            {c2.code}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof navigator !== "undefined") {
+                                void navigator.clipboard.writeText(c2.code);
+                                toast.success("Kupon kodu kopyalandı");
+                              }
+                            }}
+                            className="text-[11px] text-yesil font-semibold hover:underline"
+                          >
+                            kopyala
+                          </button>
+                        </div>
+                        <div className="text-[11.5px] text-gri-700 mt-0.5 leading-snug">
+                          <strong>{valueText} indirim</strong>
+                          {c2.min_subtotal && c2.min_subtotal > 0
+                            ? ` · min ${c2.min_subtotal} TL`
+                            : ""}
+                        </div>
+                        {c2.description && (
+                          <div className="text-[10.5px] text-gri-500 mt-0.5 leading-snug">
+                            {c2.description}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Referans kodu */}
+            {loyalty?.referralCode && (
+              <Card padding="p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="grid place-items-center w-8 h-8 rounded-xl bg-pim-mercan-tint text-pim-mercan shrink-0">
+                    <Icon.User size={16} />
+                  </span>
+                  <h3 className="font-semibold text-[15px]">
+                    Arkadaşını davet et
+                  </h3>
+                </div>
+                <p className="text-[12px] text-gri-700 leading-relaxed mb-3">
+                  Senin kodunla kayıt olan herkes ilk siparişinde{" "}
+                  <strong className="text-pim-mercan">%10 indirim</strong>{" "}
+                  kazanır. İlk siparişini verince sen de %10 kupon alırsın.
+                </p>
+                <div className="flex items-stretch gap-2">
+                  <div className="flex-1 px-3 py-2 rounded-lg bg-gri-50 ring-1 ring-gri-200 font-mono text-[13px] font-bold text-lacivert truncate">
+                    {loyalty.referralCode}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof navigator !== "undefined") {
+                        void navigator.clipboard.writeText(
+                          `${window.location.origin}/auth?mode=signup&ref=${loyalty.referralCode}`
+                        );
+                        toast.success("Davet linki kopyalandı");
+                      }
+                    }}
+                    className="px-3 rounded-lg bg-pim-mercan text-white text-[12.5px] font-semibold hover:bg-pim-mercan/90"
+                  >
+                    Linki kopyala
+                  </button>
+                </div>
+                {loyalty.invited.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gri-100 text-[11.5px] text-gri-700">
+                    {loyalty.invited.filter((i) => i.status === "completed").length}{" "}
+                    arkadaş ilk siparişini verdi ·{" "}
+                    {loyalty.invited.filter((i) => i.status === "pending").length}{" "}
+                    bekliyor
+                  </div>
+                )}
+              </Card>
+            )}
 
             {/* Profile shortcuts */}
             <Card padding="p-2">

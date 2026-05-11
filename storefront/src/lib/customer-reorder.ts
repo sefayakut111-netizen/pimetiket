@@ -42,6 +42,34 @@ export async function reorderFromOrder(
   let skipped = 0;
   let lastReason: string | undefined;
 
+  // Tekrar baskı kuponu oluştur (fire-and-forget, sessionStorage'a yazsın)
+  void fetch("/api/loyalty/reprint-coupon", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sourceOrderId: order.id }),
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data: { code: string; value: number } | null) => {
+      if (data && typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(
+            "pim_pending_coupon",
+            JSON.stringify({
+              code: data.code,
+              value: data.value,
+              source: "reprint",
+              sourceOrderId: order.id,
+            })
+          );
+        } catch {
+          /* sessionStorage dolu olabilir, görmezden gel */
+        }
+      }
+    })
+    .catch(() => {
+      /* anonim kullanıcı olabilir, sessizce geç */
+    });
+
   for (const item of order.items) {
     // CustomerCartItem shape — id + addedAt drop edilir (yeni id verilir)
     const payload: Omit<CustomerCartItem, "id" | "addedAt"> = {
