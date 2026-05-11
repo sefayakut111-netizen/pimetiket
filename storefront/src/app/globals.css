@@ -103,6 +103,24 @@
   }
 }
 
+/* Hero arka planında uçuşan etiket/sticker örnekleri için (Madde 6) */
+@keyframes floatBob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+  50% {
+    transform: translateY(-12px) rotate(calc(var(--rot, 0deg) + 2deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Motion-reduce kullanıcılar için durdur */
+  [style*="floatBob"] {
+    animation: none !important;
+  }
+}
+
 @keyframes shimmer {
   0% {
     background-position: 200% 0;

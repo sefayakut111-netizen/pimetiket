@@ -15,6 +15,8 @@ import { useT } from "@/lib/i18n/context";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
+import { UseCaseSelector } from "@/components/home/UseCaseSelector";
+import { FloatingStickers } from "@/components/home/FloatingStickers";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
@@ -99,12 +101,14 @@ export default function HomePage() {
       <section className="relative overflow-hidden pt-10 md:pt-16 pb-12 md:pb-20">
         <div
           aria-hidden
-          className="absolute inset-0 -z-0 pointer-events-none"
+          className="absolute inset-0 -z-10 pointer-events-none"
           style={{
             background:
               "radial-gradient(900px 480px at 78% 28%, var(--color-krem) 0%, transparent 60%)",
           }}
         />
+        {/* Uçuşan dijital etiket/sticker örnekleri (Madde 6) */}
+        <FloatingStickers />
         <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-8 md:gap-14 items-center">
           {/* LEFT — copy */}
           <div>
@@ -280,6 +284,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ============================== USE CASE SELECTOR ============================== */}
+      <UseCaseSelector />
 
       {/* ============================== PRODUCT CARDS ============================== */}
       <section className="py-12">
