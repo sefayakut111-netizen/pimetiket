@@ -2,9 +2,11 @@
  * Pim Etiket — /admin/ayarlar
  *
  * Site geneli ayarlar: KDV oranı, kargo eşiği/ücreti, tatil günleri,
- * email gönderici, Pim chat varsayılan persona, vb.
+ * email gönderici, sadakat çek miktarları.
  *
- * localStorage'da saklanır; backend swap'te `site_settings` tablosuna geçer.
+ * Hibrit (11 May):
+ *   - DB alanları (kargo + sadakat) → /api/admin/settings → site_settings
+ *   - Diğer alanlar (KDV, holidays, mail vs) → localStorage backup
  */
 
 "use client";
@@ -20,6 +22,9 @@ interface SiteSettings {
   vatPct: number;
   shippingFee: number;
   freeShippingThreshold: number;
+  welcomeCreditTry: number;
+  referralCreditTry: number;
+  minSubtotalForCredit: number;
   defaultStickerDelivery: number;
   defaultEtiketDelivery: number;
   fastTrackEnabled: boolean;
@@ -32,7 +37,10 @@ interface SiteSettings {
 const DEFAULTS: SiteSettings = {
   vatPct: 20,
   shippingFee: 49,
-  freeShippingThreshold: 1500,
+  freeShippingThreshold: 1000,
+  welcomeCreditTry: 250,
+  referralCreditTry: 250,
+  minSubtotalForCredit: 500,
   defaultStickerDelivery: 7, // 5-7 iş günü
   defaultEtiketDelivery: 12, // 8-12 iş günü
   fastTrackEnabled: true,
@@ -42,18 +50,18 @@ const DEFAULTS: SiteSettings = {
   holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim",
 };
 
-function loadSettings(): SiteSettings {
-  if (typeof window === "undefined") return DEFAULTS;
+function loadLocalSettings(): Partial<SiteSettings> {
+  if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<SiteSettings>) };
+    if (!raw) return {};
+    return JSON.parse(raw) as Partial<SiteSettings>;
   } catch {
-    return DEFAULTS;
+    return {};
   }
 }
 
-function saveSettings(s: SiteSettings): void {
+function saveLocalSettings(s: SiteSettings): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 }
@@ -65,8 +73,34 @@ export default function AdminAyarlarPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setSettings(loadSettings());
+    const local = loadLocalSettings();
+    setSettings({ ...DEFAULTS, ...local });
     setHydrated(true);
+
+    // DB'den canlı değerleri çek — kargo + sadakat fields override eder
+    void fetch("/api/admin/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json?.settings) return;
+        const s = json.settings;
+        setSettings((prev) => ({
+          ...prev,
+          shippingFee: Number(s.shipping_fee_try ?? prev.shippingFee),
+          freeShippingThreshold: Number(
+            s.free_shipping_threshold ?? prev.freeShippingThreshold
+          ),
+          welcomeCreditTry: Number(s.welcome_credit_try ?? prev.welcomeCreditTry),
+          referralCreditTry: Number(
+            s.referral_credit_try ?? prev.referralCreditTry
+          ),
+          minSubtotalForCredit: Number(
+            s.min_subtotal_for_credit ?? prev.minSubtotalForCredit
+          ),
+        }));
+      })
+      .catch(() => {
+        /* silent — local defaults kullanılır */
+      });
   }, []);
 
   const update = <K extends keyof SiteSettings>(
@@ -76,21 +110,43 @@ export default function AdminAyarlarPage() {
     setSettings((s) => ({ ...s, [key]: value }));
   };
 
-  const onSave = (e: React.FormEvent) => {
+  const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      saveSettings(settings);
-      toast.success("Ayarlar kaydedildi");
+    try {
+      // 1. Local'e tamamını yaz (UI persist için)
+      saveLocalSettings(settings);
+      // 2. DB'ye sadece kargo + sadakat alanları (Migration 029'da var)
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          shipping_fee_try: settings.shippingFee,
+          free_shipping_threshold: settings.freeShippingThreshold,
+          welcome_credit_try: settings.welcomeCreditTry,
+          referral_credit_try: settings.referralCreditTry,
+          min_subtotal_for_credit: settings.minSubtotalForCredit,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error(j.error ?? "DB ayarları kaydedilemedi (local yine de yazıldı)");
+      } else {
+        toast.success("Ayarlar kaydedildi");
+      }
+    } catch (err) {
+      console.error("[admin/ayarlar save]", err);
+      toast.error("Kaydetme başarısız");
+    } finally {
       setSaving(false);
-    }, 400);
+    }
   };
 
   const onReset = () => {
     if (!confirm("Tüm ayarlar varsayılana sıfırlansın mı?")) return;
     setSettings(DEFAULTS);
-    saveSettings(DEFAULTS);
-    toast.info("Varsayılana döndü");
+    saveLocalSettings(DEFAULTS);
+    toast.info("Varsayılana döndü (kaydetmek için butona bas)");
   };
 
   if (!hydrated) {
@@ -143,6 +199,36 @@ export default function AdminAyarlarPage() {
                 value={settings.freeShippingThreshold}
                 onChange={(v) => update("freeShippingThreshold", v)}
                 hint="Bu tutar üstünde kargo ücretsiz"
+              />
+            </div>
+          </Card>
+
+          {/* Sadakat / hediye çekleri */}
+          <Card padding="p-6">
+            <h2 className="text-lg font-semibold mb-4">Sadakat çekleri</h2>
+            <p className="text-[12.5px] text-gri-700 mb-4 leading-relaxed">
+              Yeni üyeye verilen hoşgeldin çeki ve davet edene/davet edilen
+              kişiye verilen referans hediyesi. Çek kullanımı için min sepet
+              tutarı zorunlu.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <NumberField
+                label="Hoşgeldin çeki (TL)"
+                value={settings.welcomeCreditTry}
+                onChange={(v) => update("welcomeCreditTry", v)}
+                hint="Yeni üye ilk siparişte"
+              />
+              <NumberField
+                label="Referans çeki (TL)"
+                value={settings.referralCreditTry}
+                onChange={(v) => update("referralCreditTry", v)}
+                hint="Davet eden + davet edilen"
+              />
+              <NumberField
+                label="Min sepet (TL)"
+                value={settings.minSubtotalForCredit}
+                onChange={(v) => update("minSubtotalForCredit", v)}
+                hint="Çek kullanım eşiği"
               />
             </div>
           </Card>
