@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/process-mail-outbox",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/purge-expired-designs",
+      "schedule": "0 4 * * *"
     }
   ]
 }
