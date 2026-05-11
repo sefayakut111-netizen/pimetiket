@@ -57,3 +57,10 @@ TODO-GECE.md
 TODO-YARIN.md
 *.PRIVATE.md
 strategy/
+
+# Local-only ops scripts (hardcoded credentials — asla commit ETME)
+scripts/push-migrations.mjs
+scripts/push-migrations.ps1
+scripts/verify-migrations.mjs
+scripts/combine-migrations.mjs
+ALL_MIGRATIONS_022_032.sql
