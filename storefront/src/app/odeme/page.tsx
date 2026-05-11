@@ -425,6 +425,8 @@ export default function OdemePage() {
           shipping: effectiveShipping,
           total: effectiveTotal,
           couponCode: couponResult?.ok ? couponCode.trim() : undefined,
+          // FSEK m.66 telif ispatı — server-side audit log (Sefa 12 May)
+          acceptCopyright: acceptCopyright as true,
         }),
       });
 

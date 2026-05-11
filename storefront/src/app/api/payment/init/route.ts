@@ -84,6 +84,13 @@ const InitBodySchema = z.object({
   shipping: z.number().nonnegative(),
   total: z.number().positive(),
   couponCode: z.string().optional(),
+  // FSEK m.66 telif ihlali davası ispatı için zorunlu (Sefa kuralı 12 May).
+  // Müşteri /odeme'deki "tasarımım telif sahibim ben" checkbox'ını
+  // işaretlemeden submit edemez (client-side guard). Server-side burada
+  // mecburi olarak kontrol edilir + IP + zaman damgası audit log'a yazılır.
+  acceptCopyright: z.literal(true, {
+    message: "Telif taahhüdü onayı zorunludur",
+  }),
 });
 
 // ============================================================
@@ -220,6 +227,7 @@ export async function POST(req: NextRequest) {
 
   // 9) payment_intents snapshot
   const admin = createAdminClient();
+  const copyrightAcceptedAt = new Date().toISOString();
   const snapshot = {
     items: body.items,
     address: body.address,
@@ -228,6 +236,12 @@ export async function POST(req: NextRequest) {
     shipping: body.shipping,
     total: body.total,
     couponCode: body.couponCode ?? null,
+    // FSEK m.66 telif ispatı — snapshot içinde de saklanır
+    copyright_accepted: true,
+    copyright_accepted_at: copyrightAcceptedAt,
+    copyright_accept_ip: getClientIp(req),
+    copyright_accept_ua:
+      req.headers.get("user-agent")?.slice(0, 500) ?? null,
   };
   const { error: insertErr } = await admin.from("payment_intents").insert([
     {
@@ -247,6 +261,30 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+
+  // FSEK m.66 telif ispatı — order_events'a değil, audit_log'a yaz
+  // (henüz order yok — payment_intent var). Callback'te order oluşunca
+  // bu kayıt order_events'a kopyalanır.
+  await admin.from("audit_log").insert([
+    {
+      actor_id: user.id,
+      actor_email: user.email ?? null,
+      actor_role: "customer",
+      action: "settings.update", // generic — yeni enum eklemeden
+      target_type: "payment_intent",
+      target_id: merchantOid,
+      summary: `Telif taahhüt onayı verildi · payment_intent ${merchantOid}`,
+      detail: {
+        kind: "copyright_accepted",
+        merchant_oid: merchantOid,
+        accepted_at: copyrightAcceptedAt,
+        ip: getClientIp(req),
+        user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
+      },
+      ip_address: getClientIp(req),
+      user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
+    },
+  ] as never);
 
   return NextResponse.json({
     paymentPageUrl: result.iframeUrl,

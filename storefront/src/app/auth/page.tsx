@@ -423,7 +423,7 @@ function AuthInner() {
                     className="text-pim-mercan font-semibold hover:underline"
                     target="_blank"
                   >
-                    KVKK
+                    KVKK Aydınlatma Metni
                   </Link>
                   ,{" "}
                   <Link
@@ -442,6 +442,21 @@ function AuthInner() {
                     Çerez Politikası
                   </Link>
                   &rsquo;nı okudum, kabul ediyorum.
+                  {" "}
+                  <strong>Pim asistanını kullandığımda sohbet
+                  içeriklerimin OpenAI (ABD) üzerinden işlenebileceğini,
+                  ödeme bilgilerimin PayTR&rsquo;ye, e-posta bildirimlerinin
+                  Resend (ABD) ile gönderilebileceğini ve verilerimin
+                  Supabase Frankfurt&rsquo;ta saklanabileceğini KVKK m.9
+                  kapsamında kabul ediyorum.</strong> Detayları{" "}
+                  <Link
+                    href="/kvkk#5-aktarim"
+                    className="text-pim-mercan font-semibold hover:underline"
+                    target="_blank"
+                  >
+                    KVKK Bölüm 5.2-5.5
+                  </Link>
+                  &rsquo;te okuyabilirim.
                 </span>
               </label>
             )}

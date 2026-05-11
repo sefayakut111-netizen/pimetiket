@@ -54,11 +54,9 @@ interface ManualOrderBody {
   items: ManualOrderItem[];
 }
 
-function generateOrderId(): string {
-  const year = new Date().getFullYear();
-  const seq = Math.floor(1000 + Math.random() * 9000);
-  return `PE-${year}-${seq}`;
-}
+// Sefa kuralı (12 May): orderId 8-char nanoid — tek kaynak
+// src/lib/customer-order.ts. Duplicate logic kaldırıldı.
+import { generateOrderId } from "@/lib/customer-order";
 
 export async function POST(req: Request) {
   // Auth check

@@ -79,11 +79,9 @@ interface IntentRow {
   status: string;
 }
 
-function generateOrderId(): string {
-  const year = new Date().getFullYear();
-  const seq = Math.floor(1000 + Math.random() * 9000);
-  return `PE-${year}-${seq}`;
-}
+// Sefa kuralı (12 May): orderId 8-char nanoid (~218 trilyon kombinasyon).
+// Tek kaynak: src/lib/customer-order.ts. Duplicate logic kaldırıldı.
+import { generateOrderId } from "@/lib/customer-order";
 
 function addDaysIso(days: number): string {
   const d = new Date();
@@ -194,13 +192,15 @@ export async function POST(req: NextRequest) {
     return new NextResponse("OK");
   }
 
-  // 6) Sipariş oluştur
-  const orderId = generateOrderId();
+  // 6) ATOMIC FINALIZE (Migration 033 — Sefa kuralı 12 May P0)
+  // Tüm 5 işlem (intent consume + orders + order_items +
+  // order_events + payments) tek RPC içinde transaction.
+  // Hata olursa otomatik ROLLBACK. Duplicate IPN → existing order_id.
   const installmentCount = parseInt(data.installment_count ?? "1", 10) || 1;
   const cardPan = data.card_pan ?? "****";
   const masked = `**** **** **** ${cardPan.slice(-4).padStart(4, "*")}`;
 
-  const items = intent.snapshot.items.map((i) => ({
+  const itemsPayload = intent.snapshot.items.map((i) => ({
     product: i.product,
     title: i.title,
     config: i.config,
@@ -228,54 +228,57 @@ export async function POST(req: NextRequest) {
   const estimatedDelivery = addDaysIso(
     intent.snapshot.items.some((i) => i.product === "etiket") ? 10 : 5
   );
+  const candidateOrderId = generateOrderId();
+  const paymentMeta = {
+    method: "card",
+    masked,
+    installment: installmentCount,
+    provider: "paytr",
+    cardPan,
+    paymentType: data.payment_type,
+    merchantOid,
+  };
 
-  const { error: orderInsertErr } = await admin.from("orders").insert([
+  const { data: rpcData, error: rpcErr } = await admin.rpc(
+    "fn_finalize_paid_order" as never,
     {
-      id: orderId,
-      user_id: intent.user_id,
-      status: "paid",
-      subtotal: intent.snapshot.subtotal,
-      shipping: intent.snapshot.shipping,
-      total: intent.snapshot.total,
-      address: intent.snapshot.address,
-      invoice: intent.snapshot.invoice,
-      payment: {
-        method: "card",
-        masked,
-        installment: installmentCount,
-        provider: "paytr",
-      },
-      estimated_delivery: estimatedDelivery,
-    },
-  ] as never);
+      p_merchant_oid: merchantOid,
+      p_order_id: candidateOrderId,
+      p_items: itemsPayload,
+      p_payment_meta: paymentMeta,
+      p_estimated_delivery: estimatedDelivery,
+    } as never
+  );
 
-  if (orderInsertErr) {
-    console.error("[payment/callback] orders insert error:", orderInsertErr);
+  if (rpcErr) {
+    console.error("[payment/callback] finalize RPC error:", rpcErr);
     return new NextResponse("OK"); // PayTR retry yapmasın
   }
 
-  // 7) order_items
-  const itemRows = items.map((i) => ({
-    order_id: orderId,
-    product: i.product,
-    title: i.title,
-    config: i.config,
-    width: i.width,
-    height: i.height,
-    qty: i.qty,
-    unit: i.unit,
-    total: i.total,
-    meta: i.meta,
-  }));
-  const { data: insertedItems, error: itemsErr } = await admin
-    .from("order_items")
-    .insert(itemRows as never)
-    .select("id, product, meta");
-  if (itemsErr) {
-    console.error("[payment/callback] order_items error:", itemsErr);
+  const rpcRow = (rpcData as Array<{
+    order_id: string;
+    was_duplicate: boolean;
+  }>)?.[0];
+  const orderId = rpcRow?.order_id ?? candidateOrderId;
+  const wasDuplicate = rpcRow?.was_duplicate ?? false;
+
+  // Duplicate IPN: var olan order'ı PayTR'a yine "OK" döneriz,
+  // promote/referral'i tekrar çalıştırmıyoruz.
+  if (wasDuplicate) {
+    console.log(
+      `[payment/callback] duplicate IPN ${merchantOid} → existing ${orderId}`
+    );
+    return new NextResponse("OK");
   }
 
-  // 8) Pre-purchase tasarım promote
+  // 7) Pre-purchase tasarım promote (RPC dışı — Storage işlemleri
+  // PostgreSQL içinden yapılmıyor). Hata olursa order kaydı kalır;
+  // kullanıcı /siparis/[id]'den yeniden upload edebilir.
+  const { data: insertedItems } = await admin
+    .from("order_items")
+    .select("id, product, meta")
+    .eq("order_id", orderId);
+
   const orderItemsForPromote = (
     (insertedItems as unknown as Array<{
       id: string;
@@ -296,42 +299,6 @@ export async function POST(req: NextRequest) {
       console.error("[payment/callback] promote failed:", err);
     }
   }
-
-  // 9) order_events 'paid' log
-  await admin.from("order_events").insert([
-    {
-      order_id: orderId,
-      event_type: "paid",
-      status_after: "paid",
-      actor_id: intent.user_id,
-      actor_role: "customer",
-      summary: "Ödeme alındı (PayTR).",
-      detail: {
-        merchantOid,
-        installment: installmentCount,
-        cardPan,
-        paymentType: data.payment_type,
-      },
-    },
-  ] as never);
-
-  // 10) payments başarı kaydı
-  await admin.from("payments").insert([
-    {
-      order_id: orderId,
-      psp_provider: "paytr",
-      psp_transaction_id: merchantOid,
-      action: "charge",
-      amount: intent.card_amount,
-      currency: "TRY",
-      status: "success",
-      idempotency_key: `success:${merchantOid}`,
-      psp_raw: data as never,
-      card_masked: masked,
-      installment: installmentCount,
-      completed_at: new Date().toISOString(),
-    },
-  ] as never);
 
   // (11) Cüzdan akışı KALDIRILDI — Migration 015
 
@@ -357,13 +324,12 @@ export async function POST(req: NextRequest) {
   // 12) Cart temizle
   await admin.from("cart_items").delete().eq("user_id", intent.user_id);
 
-  // 13) Intent consume
+  // 13) Intent order_id set (status='consumed' zaten RPC içinde set
+  // edildi — bu sadece GET endpoint redirect'i için order_id alanı).
   await admin
     .from("payment_intents")
     .update({
-      status: "consumed",
       order_id: orderId,
-      consumed_at: new Date().toISOString(),
     } as never)
     .eq("id", merchantOid);
 

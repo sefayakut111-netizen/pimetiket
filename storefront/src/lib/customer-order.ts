@@ -83,11 +83,38 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
-/** PE-2026-XXXX formatında sipariş id üret. */
+// Sefa kuralı (12 May P0 audit): orderId 4-haneli random çakışma riski
+// (doğum günü paradoksu ~110 sipariş sonra %50). nanoid 8-char (URL-safe
+// alfabe) ile 218 trilyon kombinasyon — DB unique constraint zaten korur
+// ama çakışma matematiksel olarak imkansız.
+//
+// Format: PE-2026-Xa3Bc7Pq (62^8 = 218 trilyon).
+const NANOID_ALPHABET =
+  "0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
+// (I, O, l, o, 0 dahil değil — okuma/söyleme kolaylığı için ambiguity önlendi)
+
+function nanoidLike8(): string {
+  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    let out = "";
+    for (let i = 0; i < 8; i++) {
+      out += NANOID_ALPHABET[bytes[i] % NANOID_ALPHABET.length];
+    }
+    return out;
+  }
+  // Fallback (server-side Node 18+'da crypto var, bu dal nadir)
+  let out = "";
+  for (let i = 0; i < 8; i++) {
+    out += NANOID_ALPHABET[Math.floor(Math.random() * NANOID_ALPHABET.length)];
+  }
+  return out;
+}
+
+/** PE-{YIL}-{8 char nanoid} formatında sipariş id üret. */
 export function generateOrderId(): string {
   const year = new Date().getFullYear();
-  const seq = Math.floor(1000 + Math.random() * 9000);
-  return `PE-${year}-${seq}`;
+  return `PE-${year}-${nanoidLike8()}`;
 }
 
 /** Bugünden N gün sonrası ISO date (sadece tarih). */

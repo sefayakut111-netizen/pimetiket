@@ -174,6 +174,112 @@ export default function KvkkPage() {
         Türkiye sınırları içinde faaliyet gösterir.
       </p>
 
+      <h3 className="text-base font-semibold mt-5">
+        5.2 Ödeme Altyapısı (PayTR Ödeme Hizmetleri A.Ş.)
+      </h3>
+      <p>
+        Ödeme bilgilerin (kart maskeli, fatura için TC veya VKN, fatura
+        adresi) BDDK lisanslı, PCI-DSS sertifikalı PayTR Ödeme Hizmetleri
+        A.Ş. üzerinden işlenir. Kart numarası Pim Etiket sunucularında
+        saklanmaz, görmez. 3D Secure süreci tamamen PayTR tarafında
+        yürütülür.
+      </p>
+      <ul>
+        <li>
+          <strong>Yer:</strong> Türkiye (PayTR Ödeme Hizmetleri A.Ş.)
+        </li>
+        <li>
+          <strong>Hukuki sebep:</strong> KVKK m.5/2-c (sözleşmenin ifası
+          için zorunlu) + 6493 Sayılı Ödeme Hizmetleri Kanunu
+        </li>
+        <li>
+          <strong>Saklama:</strong> VUK kapsamında 10 yıl (fatura
+          eşleştirmesi için)
+        </li>
+      </ul>
+
+      <h3 className="text-base font-semibold mt-5">
+        5.3 AI Sohbet Asistanı &ldquo;Pim&rdquo; (OpenAI &mdash; Yurt Dışı)
+      </h3>
+      <p>
+        Site genelinde sağ altta açtığın <strong>Pim sohbet asistanı</strong>{" "}
+        OpenAI Inc. (Amerika Birleşik Devletleri) altyapısını kullanır.
+        Sohbet içerikleri (yazdığın mesajlar, kullanım bağlamı) işlenmek
+        üzere ABD&rsquo;deki sunuculara aktarılır.
+      </p>
+      <ul>
+        <li>
+          <strong>Yer:</strong> ABD (OpenAI LLC)
+        </li>
+        <li>
+          <strong>Hukuki sebep:</strong> KVKK m.9 &mdash; yurt dışı
+          aktarım, <strong>açık rızana</strong> dayanır. Sohbeti
+          başlatman bu rızayı verdiğin anlamına gelir.
+        </li>
+        <li>
+          <strong>Saklama:</strong> 6 ay sonra anonimleştirilir, 24 ay
+          sonra silinir
+        </li>
+        <li>
+          <strong>Garanti:</strong> OpenAI API tier sözleşmesi uyarınca
+          sohbet içerikleri{" "}
+          <strong>model eğitiminde kullanılmaz</strong>.
+        </li>
+        <li>
+          <strong>İstemiyorsan:</strong> Pim sohbeti açma. Sipariş süreci
+          Pim olmadan da tamamen çalışır.
+        </li>
+      </ul>
+
+      <h3 className="text-base font-semibold mt-5">
+        5.4 E-posta Bildirim Altyapısı (Resend &mdash; Yurt Dışı)
+      </h3>
+      <p>
+        Sipariş bildirim, prova hazır, kargo bilgisi gibi e-postaları{" "}
+        <strong>Resend Inc. (ABD)</strong> altyapısı üzerinden iletiriz.
+        E-postan ve adın bu hizmete aktarılır.
+      </p>
+      <ul>
+        <li>
+          <strong>Yer:</strong> ABD (Resend Inc.)
+        </li>
+        <li>
+          <strong>Hukuki sebep:</strong> Sipariş bildirimleri için KVKK
+          m.5/2-c (sözleşmenin ifası &mdash; zorunlu). Pazarlama
+          bültenleri için <strong>ayrı açık rıza</strong> alınır.
+        </li>
+        <li>
+          <strong>Bültenleri istemiyorsan:</strong> profil ayarlarından
+          istediğin an kapatabilirsin.
+        </li>
+      </ul>
+
+      <h3 className="text-base font-semibold mt-5">
+        5.5 Bulut Barındırma (Supabase &mdash; Frankfurt / Vercel &mdash; ABD)
+      </h3>
+      <p>
+        Site veritabanı, dosya depolama ve oturum yönetimi <strong>
+        Supabase&rsquo;in Frankfurt (Almanya, eu-central-1) sunucularında
+        </strong>{" "}
+        tutulur &mdash; KVKK ile uyumlu AB veri merkezi.
+        Web sunucu (HTML/JS gönderimi) ise <strong>Vercel&rsquo;in
+        global edge ağında</strong> çalışır (ABD merkezli).
+      </p>
+      <ul>
+        <li>
+          <strong>Kalıcı veri:</strong> Frankfurt (AB), KVKK m.9 standart
+          sözleşme uyumlu
+        </li>
+        <li>
+          <strong>Geçici/cache veri:</strong> Vercel edge node&rsquo;ları
+          (kişisel veri uzun süre tutulmaz, sayfa cache amaçlı)
+        </li>
+        <li>
+          <strong>Hukuki sebep:</strong> KVKK m.5/2-c (sözleşmenin ifası)
+          + meşru menfaat (site güvenliği, performans)
+        </li>
+      </ul>
+
       <h2>6. Saklama Süreleri</h2>
       <p>
         Verini ne kadar tutuyoruz, neden tutuyoruz, ne zaman ne oluyor &mdash;

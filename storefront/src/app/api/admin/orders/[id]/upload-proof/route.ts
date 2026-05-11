@@ -110,6 +110,26 @@ export async function POST(
     return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
   }
 
+  // Sefa kuralı (12 May P0 audit): teslim/kargo/iptal sipariş'e prova
+  // yüklenmemeli. Aksi halde sipariş kötü duruma döner + 36h auto-refund
+  // cron iptal başlatabilir.
+  const ALLOWED_STATUSES = [
+    "paid",
+    "qc_pending",
+    "qc_flagged",
+    "operator_review",
+    "proof_pending",
+  ];
+  const currentStatus = (existing as { status: string }).status;
+  if (!ALLOWED_STATUSES.includes(currentStatus)) {
+    return NextResponse.json(
+      {
+        error: `${currentStatus} durumundaki siparişe prova yüklenemez. (İzinli: ${ALLOWED_STATUSES.join(", ")})`,
+      },
+      { status: 409 }
+    );
+  }
+
   // Storage'a yükle
   const ext = getExtension(file.type);
   const ts = Date.now();
