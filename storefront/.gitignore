@@ -44,3 +44,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI çalışma / strateji dökümanları — public repo'ya KOYMA
+# Bu dosyalar mimari kararları, bilinen sorunları, bütçe/ölçek hedeflerini
+# içerir; rakip rekabet istihbaratı için değerli. Local'de tutulur, gerekirse
+# private gist veya cloud drive'a yedeklenir.
+TECHNICAL-SUMMARY.md
+SESSION-LOG-*.md
+*.PRIVATE.md
+strategy/

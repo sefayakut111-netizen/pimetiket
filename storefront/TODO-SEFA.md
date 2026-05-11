@@ -14,78 +14,75 @@
 - ❌ Telefon hattı (sonraki hafta)
 - ❌ Yeni adres güncellemesi (sonraki hafta — Sefa elinde değil)
 
-### B. Bu hafta yapılacaklar (önem sırası)
+### B. Bu hafta yapılacaklar (10 Mayıs — bugün maraton)
 
-#### 1. Sistem audit — sayfa sayfa gez (1-2 saat)
-- [ ] Anasayfa açılışı → bot tıklamaları, UX akışı
-- [ ] /etiket konfigüratörü → tüm seçenekler çalışıyor mu, fiyat doğru mu
-- [ ] /sticker → aynı (Sefa içerik düzeltmesi yapacak)
-- [ ] /sepet → guest mode + login mode farkı
-- [ ] /panelim → veriler doğru mu (mock vs gerçek)
-- [ ] /siparislerim → liste ve detay
-- [ ] /admin → her sekme tıklanabilir mi
-- [ ] Mobile responsive kontrol (tüm sayfalar)
-- [ ] **Dark mode** — şu an sadece light, gerek var mı?
-- [ ] 404 / 500 sayfaları custom mu?
-- [ ] Loading state'leri var mı her yerde?
+> **10 Mayıs durumu:** ~80 madde + 12 commit + 4 yeni migration tamamlandı.
+> Bkz: `SESSION-LOG-2026-05-10.md` (local, gitignored).
 
-#### 2. UX/UI cila (4-6 saat ben + Sefa)
-- [ ] Topbar'da arama ikonu var ama search yok — ya çalıştır ya kaldır
-- [ ] Footer'da newsletter "mock" — Sefa Resend gelince aktive
-- [ ] Galeri sayfası 7 mockup — daha gerçek görseller eklenebilir mi?
-- [ ] Blog 5 makale var — yeni makaleler için CMS?
-- [ ] Pim chat widget'ın mobile davranışı (pozisyon, boyut)
-- [ ] Çerez bannerı animasyonu, gözardı edilmiyor mu?
+#### 1. ✅ Sistem audit + UX/UI cila (10 May)
+- [x] Admin role sistemi + view-mode toggle (Migration 011)
+- [x] Dashboard 1.0 → 2.0 → 3.0 → Sidebar layout (4 iterasyon)
+- [x] /admin/siparisler/[id] yeni sayfa (status update + prova upload UI)
+- [x] /admin/siparis-ekle manuel sipariş formu (Migration 013 ile DB'ye yazar)
+- [x] Skeleton loading: siparislerim, iadelerim, tasarimlarim
+- [x] Footer newsletter "YAKINDA" rozeti + telefon yakında
+- [x] Galeri "KONSEPT" disclaimer (TKHK riski sıfır)
+- [x] Hero görsel + 3 floating ürün önizleme
+- [x] Trust strip 4 sütun (3D Secure / kargo / AI / KVKK)
+- [x] Hakkımızda persona temizliği (3 alt → 3 yetenek)
+- [x] Mobile responsive audit (büyük sorun yok)
+- [ ] **Dark mode** — şu an sadece light, gerek var mı? (ertelendi)
+- [ ] 404 / 500 sayfaları custom mu? (kontrol bekliyor)
 
-#### 3. AI Pim chat geliştirme (2-3 saat)
-- [ ] Mevcut welcome/designer/shipper test et — gerçek müşteri sorularıyla
-- [ ] Eksik persona var mı? (örn: "iadeci Pim", "yardımcı Pim")
-- [ ] Designer tool calling sticker boyutunda kıvrak mı?
-- [ ] Memory snapshot — kullanıcı adı kayıtlı mı, sohbetten sohbete kalıyor mu
-- [ ] Pim'in cevapları bazen uzun — daha kısa system prompt ekle?
+#### 2. ✅ AI Pim chat geliştirme (10 May)
+- [x] Persona dropdown UI'dan KALDIRILDI (Sefa kararı: tek akıllı sistem)
+- [x] KNOWLEDGE_BASE temizlik: cüzdan +%2 kaldırıldı, teslim 8-12/5-7
+- [x] Welcome Pim 5 use case sistem prompt'u
+- [x] "Tasarımcı Pim/Kargocu Pim bahsetme" kuralı
+- [x] Hazır cevap chip ÖNERME kuralı
+- [x] Memory snapshot zaten çalışıyor (localStorage + KVKK consent)
+- [ ] Persona test — gerçek müşteri sorularıyla (sen test edeceksin)
 
-#### 4. Performans + SEO (1-2 saat)
-- [ ] Lighthouse skoru ölç (mobile + desktop)
-- [ ] Images Vercel optimization aktif mi? (next/image kullanılıyor mu her yerde)
-- [ ] Sitemap.xml gerçekten doğru tüm sayfaları içeriyor mu
-- [ ] Open Graph + Twitter card meta tag kontrolü (link paylaşımı önizleme)
-- [ ] Türkçe SEO için Schema.org markup (Product, Organization, BreadcrumbList)
-- [ ] Search Console'a kayıt + sitemap submit (yapılmadıysa)
+#### 3. ✅ Performans + SEO (10 May)
+- [x] Schema.org JSON-LD: SchemaJsonLd kit + 5 helper (FAQ/Product/Breadcrumb/Article/LocalBusiness)
+- [x] /sss FAQ schema, /etiket + /sticker Product+Breadcrumb
+- [x] Sitemap audit: /yorumlar + /on-bilgilendirme eklendi
+- [x] Open Graph + Twitter card: /etiket + /sticker zenginleştirildi
+- [x] next/image audit: hiç raw `<img>` yok ✓
+- [ ] **Lighthouse skoru ölç** — Chrome DevTools (sen yapacaksın)
+- [ ] Search Console'a kayıt + sitemap submit (sen yapacaksın)
 
-#### 5. Yasal sayfalar son kontrol (1 saat)
-- [ ] /kvkk → Limited şirket bilgileri doğru
-- [ ] /mesafeli-satis → adres "yakında" notu görünüyor
-- [ ] /on-bilgilendirme → temiz
-- [ ] /cerez bannerı KVKK 4-kategori gösteriyor mu
-- [ ] /iletisim → telefon olmadığı için Pim Sohbet + Mail vurgu doğru
-- [ ] Footer altında ödeme rozetleri görünüyor mu
+#### 4. ✅ Yorum sistemi DB integration (10 May)
+- [x] Anasayfa fake yorumlar KALDIRILDI (Defne/Ezgi/Burak silindi)
+- [x] /sticker sayfasına ProductReviews mount
+- [x] /admin/yorumlar Supabase reviews tablosuna bağlandı
+- [x] Yeni endpoint: GET /api/admin/reviews, PATCH /api/admin/reviews/[id]
 
-#### 6. Database hijyen (1 saat)
-- [ ] Supabase Studio aç → 16 tablo doğru mu
-- [ ] RLS policy'ler aktif mi, "Try" et
-- [ ] Storage bucket'lar gerçekten kullanılıyor mu (henüz boş)
-- [ ] Auth signup test et (gerçek e-posta ile)
-- [ ] Magic link mail geldiğinde Spam'a düşüyor mu? (Resend olmadığı için Supabase default)
+#### 5. ✅ Operasyonel pipeline (10 May)
+- [x] Manuel sipariş gerçek DB (Migration 013 + fn_create_manual_order RPC)
+- [x] Operatör prova upload UI (Migration 014 + designs/proofs/ path)
+- [x] Müşteri prova onay/reddet endpoint (/api/orders/[id]/proof-respond)
+- [x] Admin status update + audit log (/api/admin/orders/[id]/status)
+- [x] Auto-confirm endpoint (Resend gelene kadar geçici)
 
-#### 7. Güvenlik kontrol (30 dk)
-- [ ] CSP header'lar production'da aktif mi
-- [ ] HTTPS strict (HSTS) çalışıyor mu
-- [ ] Sensitive secret'lar GitHub'a sızdırılmamış mı (`.env*` gitignore'da)
-- [ ] Vercel env'lerde tüm değerler ayarlı
+#### 6. ✅ Güvenlik audit (10 May)
+- [x] 18 tablo RLS aktif + ≥1 policy
+- [x] CSP production'da aktif
+- [x] HSTS + X-Frame + Permissions-Policy comprehensive
+- [x] Service role key Vercel env'de
+- [ ] **Admin şifre değiştir** (`adminadmin` çok zayıf — sen yapacaksın)
 
-#### 8. Backup + disaster recovery (1 saat)
+#### 7. ⚠️ Backup + disaster recovery (ertelendi)
 - [ ] Supabase Pro upgrade düşün → Point-in-Time Recovery (free tier'da yok)
 - [ ] DB schema dump'ı al (bundled-schema.sql zaten var)
-- [ ] Vercel deploy history kalıcı, rollback edilebilir → OK
-- [ ] GoDaddy DNS yedek (ekran görüntüsü)
+- [x] Vercel deploy history kalıcı, rollback edilebilir → OK
+- [ ] GoDaddy DNS yedek (ekran görüntüsü — sen yapacaksın)
 
-#### 9. Gözden kaçan iyileştirmeler
-- [ ] WhatsApp Business yokken "Pim Sohbet" CTA'sı gerçekten kullanılıyor mu? Trafik takibi
-- [ ] Müşteri "İletişim" sayfasına gidip telefonsuz görünce ne hissediyor?
-- [ ] Tasarımcı Pim fiyat verince "/etiket'e git" linki tıklanabilir
-- [ ] Sticker hediye adet sistemi çalışıyor (ama Sefa sticker'a dokunmamamı söyledi, sadece test)
-- [ ] Cüzdan bakiyesi mock mu gerçek mi
-- [ ] Hediye kontör sayacı görünüyor mu yeni kullanıcıda
+#### 8. ⚠️ Yasal sayfalar son kontrol (ertelendi)
+- [x] CookieConsent + 4 kategori (zaten vardı)
+- [x] /iletisim telefonsuz, 3 kanal (Pim/E-posta/Atölye)
+- [ ] Avukat onayı — yasal metinler (Sefa avukatı)
+- [ ] VERBİS muafiyet sorgusu (Sefa)
 
 ---
 
@@ -130,26 +127,21 @@ Bu kısım odak haftası bittikten sonra. Şimdi TANIMLAMAK için yazıyorum, ç
 - Email open/click tracking (Resend dashboard)
 - 30 gün dolan `review_requests` için cron: status='expired'
 
-### 8. Yorum sistemi — Sticker entegrasyonu (Sefa onayıyla)
+### 8. ✅ Yorum sistemi — Sticker entegrasyonu (10 May)
 - `/sticker` sayfasının sonuna `<ProductReviews productType="sticker" />`
-  mount et (etiket'e zaten mount edildi)
-- Sefa "sticker dokunma" demişti, sadece bu küçük ekleme — onayla yaparım
+  mount edildi
 
-### 9. Yorum sistemi — DB integration (mock → real)
-- `/admin/yorumlar` şu an localStorage mock data ile çalışıyor
-- Supabase reviews tablosundan gerçek query'ye geçir
-- Real-time update (Supabase Realtime ile yeni yorum geldiğinde admin
-  panelinde toast)
-- Reviewer'ın display_name kullanımını gerçek user metadata'sından çek
+### 9. ✅ Yorum sistemi — DB integration (10 May)
+- `/admin/yorumlar` Supabase reviews tablosuna bağlandı
+- Yeni endpoint: `GET /api/admin/reviews`, `PATCH /api/admin/reviews/[id]`
+- Status mapping: pending/published/rejected/hidden (4 enum)
+- Real-time hala yok (Faz 4)
 
-### 10. Anasayfa fallback yorumları kaldırma (gerçek yorum gelince)
-- Şu an anasayfada 3 örnek yorum (Defne K., Ezgi K., Burak A.) — **DB boş
-  olduğu için**
-- İlk gerçek müşteri yorumu admin onayından geçtiğinde fallback otomatik
-  geri çekilir (HomeReviews component logic)
-- Tamamen güvenli olmak için 3+ gerçek yorum birikinde
-  `components/reviews/HomeReviews.tsx` içindeki `FALLBACK_REVIEWS` dizisini
-  boşalt veya sil — TKHK m.61 yanıltıcı reklam riski sıfır olur
+### 10. ✅ Anasayfa fallback yorumları kaldırıldı (10 May)
+- HomeReviews.tsx'ten FALLBACK_REVIEWS dizisi silindi
+- /yorumlar fallback'leri silindi
+- TKHK m.61 yanıltıcı reklam riski SIFIR
+- DB boş ise "İlk yorumu sen yaz" empty state
 
 ---
 
