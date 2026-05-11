@@ -87,6 +87,8 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/fiyat-hesapla-etiket": "Fiyat hesapla — etiket",
   "/admin/raporlar": "Raporlar",
   "/admin/audit-log": "Denetim kaydı",
+  "/admin/kvkk-talepleri": "KVKK talepleri",
+  "/admin/yedekler": "Yedekler",
   "/admin/ayarlar": "Ayarlar",
 };
 
@@ -243,6 +245,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/audit-log",
             label: "Denetim kaydı",
             icon: <Icon.Refresh size={16} />,
+          },
+          {
+            href: "/admin/kvkk-talepleri",
+            label: "KVKK talepleri",
+            icon: <Icon.Info size={16} />,
+          },
+          {
+            href: "/admin/yedekler",
+            label: "Yedekler",
+            icon: <Icon.Box size={16} />,
           },
           {
             href: "/admin/ayarlar",

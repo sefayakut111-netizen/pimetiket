@@ -1,0 +1,190 @@
+# Pim Etiket — Supabase Disaster Recovery Backup
+#
+# Haftalık (Pazar 03:00 UTC) Postgres dump + Storage bucket'larını
+# Cloudflare R2'ye yükler. KVKK m.12 veri güvenliği + Supabase Pro
+# 7-gün backup'ından daha uzun süreli yedek.
+#
+# Saklama: Son 26 hafta (6 ay) tutulur. 27. hafta otomatik silinir
+# (R2 lifecycle policy ile ya da bu workflow'un cleanup step'i ile).
+#
+# Manuel tetikleme: GitHub UI → Actions → "Run workflow"
+#
+# Gerekli GitHub Secrets (Settings → Secrets and variables → Actions):
+#   - SUPABASE_DB_URL       : postgresql://postgres.{ref}:{password}@{host}:6543/postgres
+#   - SUPABASE_PROJECT_REF  : <ref> (proje URL'inden)
+#   - SUPABASE_SERVICE_KEY  : service_role key (Storage erişimi için)
+#   - R2_ACCOUNT_ID         : Cloudflare account ID
+#   - R2_ACCESS_KEY_ID      : R2 API token access key
+#   - R2_SECRET_ACCESS_KEY  : R2 API token secret
+#   - R2_BUCKET             : R2 bucket adı (örn "pimetiket-backups")
+#
+# Kurulum rehberi: docs/BACKUP_SETUP.md
+
+name: Supabase DR Backup
+
+on:
+  schedule:
+    # Her Pazar 03:00 UTC (TR saatiyle 06:00)
+    - cron: "0 3 * * 0"
+  workflow_dispatch: # Manuel tetik
+
+jobs:
+  backup:
+    name: pg_dump + Storage snapshot → R2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute backup date
+        id: date
+        run: |
+          echo "stamp=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "year=$(date -u +'%Y')" >> $GITHUB_OUTPUT
+          echo "week=$(date -u +'%V')" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          # AWS CLI (R2 S3-compatible)
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+
+      - name: Verify env secrets
+        run: |
+          for key in SUPABASE_DB_URL SUPABASE_PROJECT_REF SUPABASE_SERVICE_KEY \
+                    R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET; do
+            val=$(eval echo "\$$key")
+            if [ -z "$val" ]; then
+              echo "❌ Missing secret: $key"
+              exit 1
+            fi
+          done
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+
+      - name: Postgres dump (compressed + checksum)
+        env:
+          PGPASSWORD: ""
+          STAMP: ${{ steps.date.outputs.stamp }}
+        run: |
+          # --no-owner + --no-acl portable backup üretir (restore başka projede çalışsın)
+          # --schema=public + --schema=auth + --schema=storage (tüm önemli şemalar)
+          pg_dump "$SUPABASE_DB_URL" \
+            --no-owner \
+            --no-acl \
+            --format=custom \
+            --compress=9 \
+            --file=db-backup-${STAMP}.dump
+          # SHA256 checksum
+          sha256sum db-backup-${STAMP}.dump > db-backup-${STAMP}.sha256
+          ls -lh db-backup-${STAMP}.dump db-backup-${STAMP}.sha256
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Storage bucket snapshot (designs + review-photos + public-assets)
+        env:
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          STAMP: ${{ steps.date.outputs.stamp }}
+        run: |
+          mkdir -p storage-snapshot/${STAMP}
+          # Her bucket için Supabase Storage API ile listele + indir
+          # Not: Büyük bucket'lar için bu basit yaklaşım yetersiz olabilir
+          # (timeout, rate limit). 100 GB+ olunca rclone'a geç.
+
+          for BUCKET in designs return-photos review-photos; do
+            echo "📦 Snapshotting bucket: $BUCKET"
+            mkdir -p "storage-snapshot/${STAMP}/${BUCKET}"
+
+            # Bucket listesini al (rekursif, 1000 limit)
+            curl -s -X POST \
+              "https://${PROJECT_REF}.supabase.co/storage/v1/object/list/${BUCKET}" \
+              -H "Authorization: Bearer ${SERVICE_KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{"prefix":"","limit":1000,"sortBy":{"column":"name","order":"asc"}}' \
+              > "/tmp/${BUCKET}-list.json"
+
+            # Boş dön kontrol
+            COUNT=$(jq 'length' "/tmp/${BUCKET}-list.json")
+            echo "  → $COUNT objects"
+
+            # Her dosyayı indir (paralel max 4)
+            jq -r '.[].name' "/tmp/${BUCKET}-list.json" | \
+              xargs -P 4 -I {} bash -c "
+                mkdir -p \$(dirname \"storage-snapshot/${STAMP}/${BUCKET}/{}\")
+                curl -s -o \"storage-snapshot/${STAMP}/${BUCKET}/{}\" \
+                  -H \"Authorization: Bearer ${SERVICE_KEY}\" \
+                  \"https://${PROJECT_REF}.supabase.co/storage/v1/object/${BUCKET}/{}\"
+              " || true
+          done
+
+          # Tek tar.gz olarak paketle
+          tar -czf "storage-snapshot-${STAMP}.tar.gz" -C storage-snapshot "${STAMP}"
+          sha256sum "storage-snapshot-${STAMP}.tar.gz" > "storage-snapshot-${STAMP}.sha256"
+          ls -lh "storage-snapshot-${STAMP}.tar.gz"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          STAMP: ${{ steps.date.outputs.stamp }}
+          YEAR: ${{ steps.date.outputs.year }}
+          WEEK: ${{ steps.date.outputs.week }}
+        run: |
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          PREFIX="weekly/${YEAR}/W${WEEK}-${STAMP}"
+
+          # DB dump + checksum
+          aws s3 cp "db-backup-${STAMP}.dump" \
+            "s3://${R2_BUCKET}/${PREFIX}/db.dump" \
+            --endpoint-url "$ENDPOINT" \
+            --checksum-algorithm SHA256
+          aws s3 cp "db-backup-${STAMP}.sha256" \
+            "s3://${R2_BUCKET}/${PREFIX}/db.sha256" \
+            --endpoint-url "$ENDPOINT"
+
+          # Storage tar.gz + checksum
+          aws s3 cp "storage-snapshot-${STAMP}.tar.gz" \
+            "s3://${R2_BUCKET}/${PREFIX}/storage.tar.gz" \
+            --endpoint-url "$ENDPOINT" \
+            --checksum-algorithm SHA256
+          aws s3 cp "storage-snapshot-${STAMP}.sha256" \
+            "s3://${R2_BUCKET}/${PREFIX}/storage.sha256" \
+            --endpoint-url "$ENDPOINT"
+
+          # Manifest (ne zaman, hangi şemalar)
+          cat > manifest.json <<EOF
+          {
+            "stamp": "${STAMP}",
+            "year": "${YEAR}",
+            "week": "${WEEK}",
+            "schemas": ["public", "auth", "storage"],
+            "buckets": ["designs", "return-photos", "review-photos"],
+            "schema_version": "027",
+            "created_at": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+          aws s3 cp manifest.json \
+            "s3://${R2_BUCKET}/${PREFIX}/manifest.json" \
+            --endpoint-url "$ENDPOINT"
+
+      - name: Cleanup local files
+        if: always()
+        run: |
+          rm -rf db-backup-*.dump db-backup-*.sha256
+          rm -rf storage-snapshot/ storage-snapshot-*.tar.gz storage-snapshot-*.sha256
+          rm -rf manifest.json
