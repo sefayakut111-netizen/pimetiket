@@ -41,20 +41,20 @@ export default function IadeDegisimPolitikasiPage() {
           </h2>
           <ul className="space-y-2 text-[14px] text-lacivert leading-relaxed">
             <li>
-              <strong>Kişiselleştirilmiş ürünlerde</strong> 14 gün cayma hakkı
-              YOKTUR (TKHK m.15/b).
+              <strong>Kişiye özel basılan ürünlerde</strong> 14 gün cayma
+              hakkı YOKTUR (TKHK m.15/1-b). Bu iş modelimizin tamamı için
+              geçerlidir — tasarımınla, ölçünle, adetinle özel basılmıştır.
             </li>
             <li>
-              <strong>Üretim hatası</strong> bizim sorumluluğumuz — ücretsiz
-              yenileme veya iade.
+              <strong>İade yapılacak haller:</strong> ürün teknik özelliklere
+              uymuyorsa (üretim hatası, yanlış malzeme/boyut, kargo hasarı).
+              Bu hallerde ücretsiz yenileme veya tam iade.
             </li>
             <li>
-              <strong>Kargo hasarı</strong> kargo şirketinin sorumluluğu, biz
-              de takip ederiz.
-            </li>
-            <li>
-              <strong>Yanlış ürün</strong> geldiyse (boyut/malzeme bizim
-              hatamızla) ücretsiz değişim.
+              <strong>Matbu (jenerik / stok) ürün</strong> satışında 14 gün
+              cayma hakkı geçerlidir (TKHK m.15 istisnası dışı). Şu an stok
+              satışı yapmıyoruz; ileride yapılırsa o ürün sayfasında ayrı
+              olarak işaretlenir.
             </li>
           </ul>
         </Card>
@@ -62,16 +62,23 @@ export default function IadeDegisimPolitikasiPage() {
         <div className="bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] p-7 space-y-7 text-[15px] text-gri-700 leading-relaxed">
           <Section title="1. Cayma hakkı neden yok?">
             <p>
-              Tüketicinin Korunması Hakkında Kanun (TKHK) m.15/b uyarınca,
-              tüketicinin istekleri veya açıkça onun kişisel ihtiyaçları
-              doğrultusunda hazırlanan ürünlerde 14 gün cayma hakkı
-              kullanılamaz.
+              Tüketicinin Korunması Hakkında Kanun (TKHK){" "}
+              <strong>m.15/1-b</strong> uyarınca, tüketicinin istekleri veya
+              açıkça onun kişisel ihtiyaçları doğrultusunda hazırlanan
+              ürünlerde 14 gün cayma hakkı kullanılamaz.
             </p>
             <p>
               Pim Etiket&rsquo;te bastığın her sipariş senin marka adınla,
               senin tasarımınla, senin ölçü ve adetinle üretilir. Bu yüzden
-              başka müşteriye satılamaz. Bu sebeple cayma hakkı yasal olarak
-              saklı değildir.
+              başka müşteriye satılamaz. Yasal olarak cayma hakkı saklı
+              değildir &mdash; ancak{" "}
+              <strong>iade hakkın 2. bölümde anlattığımız ayıplı mal
+              kapsamında devam eder</strong> (TKHK m.8-10).
+            </p>
+            <p className="text-[13.5px] text-gri-700 italic">
+              Not: İlerleyen dönemde stoktan satılan jenerik (matbu) ürünler
+              eklenirse, o ürünler için standart 14 gün cayma hakkı geçerli
+              olur ve ürün sayfasında ayrı işaretlenir.
             </p>
           </Section>
 
