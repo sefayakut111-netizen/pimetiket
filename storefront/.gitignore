@@ -51,5 +51,6 @@ next-env.d.ts
 # private gist veya cloud drive'a yedeklenir.
 TECHNICAL-SUMMARY.md
 SESSION-LOG-*.md
+EXECUTION-PLAN.md
 *.PRIVATE.md
 strategy/

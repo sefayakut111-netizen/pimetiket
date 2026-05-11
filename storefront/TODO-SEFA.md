@@ -1,5 +1,9 @@
 # Pim Etiket — Çalışma Planı
 
+> **Master plan:** `C:\Users\msı\Desktop\PIMETIKET-TODO list.md` v1.3 (11 May)
+> **Aktif execution:** `EXECUTION-PLAN.md` (gitignored — proje root'ta)
+> **4 Aşama:** Bu hafta P0 / Mali pencere açılınca / Launch ilk hafta / Launch +2-4 hafta
+
 > **Sefa kararı (10 Mayıs 2026):** Mali işler (PayTR, Resend mail, sanal POS) **1 hafta ertelendi**. Bu hafta tek odak: **mevcut sistemdeki eksikleri tespit + iyileştirme + UX cila**.
 
 ---
