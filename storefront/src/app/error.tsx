@@ -4,16 +4,19 @@
  * Bu dosya beklenmedik runtime hataları yakalar. Pim "şaşırmış" hâliyle
  * "ay ay" mesajı + tekrar dene + anasayfa CTA + iletişim linki.
  *
- * Production'da Sentry entegrasyonu sırasında error.digest log'lanır.
+ * Production'da error.digest Sentry'ye gönderilir; ref UI'da gösterilir
+ * (Sefa destek için kullanabilir).
  */
 
 "use client";
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
+import { useT } from "@/lib/i18n/context";
 
 export default function GlobalError({
   error,
@@ -22,6 +25,9 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { locale } = useT();
+  const isEn = locale === "en";
+
   useEffect(() => {
     // Sentry'ye gönder (DSN yoksa no-op)
     Sentry.captureException(error);
@@ -35,13 +41,14 @@ export default function GlobalError({
           <Pim pose="sad" size={160} />
         </div>
 
-        <Eyebrow>Bir şeyler ters gitti</Eyebrow>
+        <Eyebrow>{isEn ? "Something went wrong" : "Bir şeyler ters gitti"}</Eyebrow>
         <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight">
-          Pim de şaşırdı
+          {isEn ? "Pim is puzzled too" : "Pim de şaşırdı"}
         </h1>
         <p className="mt-3 text-base text-gri-700 leading-relaxed max-w-[440px] mx-auto">
-          Beklenmedik bir hata oldu. Tekrar denersen büyük olasılıkla
-          düzelir. Devam ederse Pim&rsquo;e haber ver — düzeltelim.
+          {isEn
+            ? "An unexpected error occurred. Try again — it usually clears up. If it persists, Pim is waiting in the bottom-right."
+            : "Beklenmedik bir hata oldu. Tekrar denersen büyük olasılıkla düzelir. Devam ederse Pim sağ altta seni bekliyor."}
         </p>
 
         {error.digest && (
@@ -53,14 +60,29 @@ export default function GlobalError({
 
         <div className="mt-7 flex gap-3 justify-center flex-wrap">
           <Button variant="primary" size="lg" onClick={reset}>
-            Tekrar dene
+            <Icon.ArrowR size={14} /> {isEn ? "Try again" : "Tekrar dene"}
           </Button>
           <Button variant="secondary" size="lg" href="/">
-            <Icon.Home size={16} /> Anasayfa
+            <Icon.Home size={16} /> {isEn ? "Home" : "Anasayfa"}
           </Button>
           <Button variant="ghost" size="lg" href="/iletisim">
-            <Icon.ChatBubble size={16} /> Bize yaz
+            <Icon.ChatBubble size={16} /> {isEn ? "Contact" : "Bize yaz"}
           </Button>
+        </div>
+
+        <div className="mt-10 pt-8 border-t border-gri-200">
+          <p className="text-[13px] text-gri-700 leading-relaxed">
+            {isEn
+              ? "If this keeps happening with a specific action, sharing the ref above on "
+              : "Belirli bir adımda hep oluyorsa, yukarıdaki ref'i "}
+            <Link
+              href="/iletisim"
+              className="text-pim-mercan font-semibold hover:underline"
+            >
+              {isEn ? "the contact page" : "iletişim sayfasında"}
+            </Link>
+            {isEn ? " helps us fix it fast." : " bize iletirsen hızlı çözeriz."}
+          </p>
         </div>
 
         {/* Dev-only: error mesajını göster */}

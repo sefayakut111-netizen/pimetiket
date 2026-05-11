@@ -557,7 +557,7 @@ export default function PanelimPage() {
                             <PimMini pose={meta.pim} size={48} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2.5 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 font-mono">
                                 {o.id}
                               </span>
@@ -574,6 +574,14 @@ export default function PanelimPage() {
                                 />
                                 {meta.label}
                               </span>
+                              {o.status === "in_production" && (
+                                <span
+                                  className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold"
+                                  title="Tasarımın baskı ortağımıza iletildi · 30 gün sonra imha"
+                                >
+                                  🏭 Atölyemize iletildi
+                                </span>
+                              )}
                             </div>
                             <div className="font-semibold text-base mb-0.5 truncate">
                               {title}

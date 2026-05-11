@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { logServerAudit } from "@/lib/audit-log-server";
 
 interface BodyShape {
   status?: unknown;
@@ -118,6 +119,19 @@ export async function POST(
       detail: { from: existing.status, to: status, note },
     },
   ]);
+
+  await logServerAudit(admin, {
+    actorId: user.id,
+    actorEmail: user.email ?? null,
+    actorRole: role === "admin" ? "admin" : "staff",
+    action: status === "cancelled" ? "order.cancel" : "order.status_change",
+    targetType: "order",
+    targetId: orderId,
+    summary: `Sipariş ${orderId}: ${existing.status} → ${status}${note ? " · " + note : ""}`,
+    detail: { from: existing.status, to: status, note },
+    ipAddress: req.headers.get("x-forwarded-for"),
+    userAgent: req.headers.get("user-agent"),
+  });
 
   return NextResponse.json({
     ok: true,

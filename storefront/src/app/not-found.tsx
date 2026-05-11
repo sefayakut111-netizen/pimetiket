@@ -56,10 +56,31 @@ export default function NotFoundPage() {
         </div>
 
         <div className="mt-10 pt-8 border-t border-gri-200">
-          <p className="text-[13px] text-gri-700 leading-relaxed">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-3">
+            {isEn ? "Or maybe one of these" : "Belki bunlar"}
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {[
+              { href: "/galeri", label: isEn ? "Gallery" : "Galeri" },
+              { href: "/sss", label: isEn ? "FAQ" : "Sık sorulanlar" },
+              { href: "/blog", label: "Blog" },
+              { href: "/hakkimizda", label: isEn ? "About" : "Hakkımızda" },
+              { href: "/yorumlar", label: isEn ? "Reviews" : "Yorumlar" },
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="inline-flex items-center h-[30px] px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan transition-colors"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+
+          <p className="text-[13px] text-gri-700 leading-relaxed mt-6">
             {isEn
-              ? "Need help? Pim is in the bottom-right corner of every page, or "
-              : "Yardım gerekirse Pim sağ alt köşede bekliyor, ya da "}
+              ? "Or just chat — Pim is in the bottom-right corner, or "
+              : "Veya konuş — Pim sağ alt köşede bekliyor, ya da "}
             <Link
               href="/iletisim"
               className="text-pim-mercan font-semibold hover:underline"

@@ -55,7 +55,15 @@ export function useUser(): UseUserResult {
 
 /** Çıkış helper'ı — TopBar'daki dropdown'dan çağrılır */
 export async function signOut(): Promise<void> {
-  if (!isSupabaseConfigured()) return;
+  if (!isSupabaseConfigured()) {
+    // Supabase yapılandırılmamış olsa bile local cache temizliği yapılsın
+    const { clearUserCaches } = await import("@/lib/cache-invalidate");
+    clearUserCaches();
+    return;
+  }
   const supabase = createClient();
   await supabase.auth.signOut();
+  // Sepet/sipariş/Pim hafıza/audit fallback cache'lerini temizle
+  const { clearUserCaches } = await import("@/lib/cache-invalidate");
+  clearUserCaches();
 }

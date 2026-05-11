@@ -67,6 +67,10 @@ const COPY = {
     proofApprovedTitle: "Prova onayın alındı 🎉",
     proofApprovedDesc:
       "Sipariş üretime gönderildi. Yaklaşık 5 gün içinde kargoya verilir.",
+    fasonInfoTitle: "Atölyemize iletildi",
+    fasonInfoDesc:
+      "Tasarımın ve teslimat bilgilerin Pim Etiket fason baskı ortağımıza aktarıldı. Sadece bu sipariş için kullanılır, üretim sonrası 30 gün içinde imha edilir.",
+    fasonInfoLink: "Üretim ortakları nasıl çalışıyor? →",
     summaryTitle: "Sipariş özeti",
     pcs: "adet",
     subtotal: "Ara toplam",
@@ -152,6 +156,10 @@ const COPY = {
     proofApprovedTitle: "Proof approved 🎉",
     proofApprovedDesc:
       "Order sent to production. It will be shipped within ~5 days.",
+    fasonInfoTitle: "Sent to our workshop",
+    fasonInfoDesc:
+      "Your design and shipping info have been transferred to our contracted print partner. Used only for this order, destroyed within 30 days after production.",
+    fasonInfoLink: "How our production partners work →",
     summaryTitle: "Order summary",
     pcs: "units",
     subtotal: "Subtotal",
@@ -591,6 +599,34 @@ export default function SiparisDetailPage({
                   <p className="text-[13px] text-gri-700 mt-0.5">
                     {c.proofApprovedDesc}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Üretim ortağı bilgilendirmesi — in_production / shipped / delivered */}
+            {(order.status === "in_production" ||
+              order.status === "shipped" ||
+              order.status === "delivered") && (
+              <div className="rounded-2xl p-5 bg-pim-mercan-tint/40 ring-1 ring-pim-mercan/20 flex gap-3 items-start">
+                <span
+                  className="grid place-items-center w-10 h-10 rounded-xl bg-white text-xl shrink-0"
+                  aria-hidden="true"
+                >
+                  🏭
+                </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[14.5px] text-lacivert">
+                    {c.fasonInfoTitle}
+                  </h3>
+                  <p className="text-[12.5px] text-gri-700 mt-1 leading-relaxed">
+                    {c.fasonInfoDesc}
+                  </p>
+                  <Link
+                    href="/gizlilik#4-fason-uretim-ortaklarimiz"
+                    className="inline-block mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
+                  >
+                    {c.fasonInfoLink}
+                  </Link>
                 </div>
               </div>
             )}

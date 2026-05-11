@@ -1,206 +1,233 @@
 /**
- * Pim Etiket — /admin/fason (E.3)
+ * Pim Etiket — /admin/fason
  *
- * Fason ortakları yönetimi + sipariş atama.
+ * Fason ortaklar yönetimi (gerçek DB — fason_partners + v_fason_performance).
+ *
+ * Yapı:
+ *   1. Üst — KPI strip (toplam ortak, aktif, ortalama skor, sözleşmesiz)
+ *   2. Sol — partner kartları (skor, uzmanlık, sözleşme durumu)
+ *   3. Sağ — seçili partnerin son atamaları
+ *   4. Modal — yeni fason ekle
+ *
+ * Hardcoded demo data KALDIRILDI. Migration 018 + 021 ile besleniyor.
  */
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Button, Card, Eyebrow, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import {
-  listCustomerOrders,
-  updateCustomerOrderStatus,
-  type CustomerOrder,
-} from "@/lib/customer-order";
 
-interface Fason {
+// ============================================================
+// Types
+// ============================================================
+
+interface FasonPartner {
   id: string;
   name: string;
-  city: string;
-  capacity: number;
-  load: number;
-  speciality: string[];
-  rating: number;
-  totalOrders: number;
+  contact_email: string;
+  contact_whatsapp: string | null;
+  contact_person: string | null;
+  specialties: string[];
+  default_lead_days: number;
+  cached_score: number | null;
+  score_updated_at: string | null;
+  active: boolean;
+  contract_signed_at: string | null;
+  notes: string | null;
+  created_at: string;
 }
 
-interface PendingOrder {
+interface AssignmentRow {
   id: string;
-  customer: string;
-  product: string;
-  qty: number;
+  order_id: string;
+  fason_partner_id: string;
+  status: string;
+  assigned_at: string;
+  estimated_delivery: string | null;
+  actual_delivery: string | null;
 }
 
-// Fason ortakları — gerçek atölyelerimizin config'i, hardcoded.
-// Backend swap'te DB'ye taşınır (Block C).
-const FASONS: Fason[] = [
-  {
-    id: "f1",
-    name: "İstanbul-1 Atölye",
-    city: "İstanbul / İkitelli",
-    capacity: 50000,
-    load: 32000,
-    speciality: ["label", "foil", "emboss"],
-    rating: 4.8,
-    totalOrders: 312,
+const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  assigned: { label: "Atandı", color: "bg-gri-200 text-gri-700" },
+  sent: { label: "Mail iletildi", color: "bg-pim-mercan-tint text-pim-mercan" },
+  acknowledged: {
+    label: "Fason gördü",
+    color: "bg-pim-mercan-tint text-pim-mercan",
   },
-  {
-    id: "f2",
-    name: "İstanbul-2 Atölye",
-    city: "İstanbul / Beylikdüzü",
-    capacity: 30000,
-    load: 18500,
-    speciality: ["sticker", "holographic"],
-    rating: 4.6,
-    totalOrders: 187,
+  in_production: {
+    label: "Üretimde",
+    color: "bg-sari-soft text-[#7A560A]",
   },
-  {
-    id: "f3",
-    name: "Ankara-1",
-    city: "Ankara / Ostim",
-    capacity: 80000,
-    load: 71000,
-    speciality: ["label", "metallic"],
-    rating: 4.5,
-    totalOrders: 524,
-  },
-  {
-    id: "f4",
-    name: "İzmir-1",
-    city: "İzmir / Çiğli",
-    capacity: 40000,
-    load: 12000,
-    speciality: ["sticker", "label"],
-    rating: 4.9,
-    totalOrders: 98,
-  },
-];
+  ready: { label: "Hazır", color: "bg-yesil-soft text-yesil" },
+  shipped: { label: "Kargoda", color: "bg-yesil-soft text-yesil" },
+  issue: { label: "Sorun", color: "bg-kirmizi-soft text-kirmizi" },
+  cancelled: { label: "İptal", color: "bg-gri-100 text-gri-700" },
+};
 
-/** CustomerOrder → bekleyen sipariş satırı (paid + qc_pending) */
-function toPendingRow(o: CustomerOrder): PendingOrder {
-  const product =
-    o.items.length === 1
-      ? `${o.items[0].title} ×${o.items[0].qty.toLocaleString("tr-TR")}`
-      : `${o.items.length} ürün`;
-  const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
-  return {
-    id: o.id,
-    customer: o.address.name,
-    product,
-    qty: totalQty,
-  };
-}
+// ============================================================
+// Page
+// ============================================================
 
 export default function AdminFasonPage() {
-  const [filter, setFilter] = useState<string>("all");
-  const [pending, setPending] = useState<PendingOrder[]>([]);
+  const [partners, setPartners] = useState<FasonPartner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<FasonPartner | null>(null);
+  const [history, setHistory] = useState<AssignmentRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter, setFilter] = useState<"all" | "active" | "no_contract">(
+    "active"
+  );
 
-  useEffect(() => {
-    const refresh = () => {
-      const queue = listCustomerOrders()
-        .filter((o) => o.status === "paid" || o.status === "qc_pending")
-        .map(toPendingRow);
-      setPending(queue);
-    };
-    refresh();
-    window.addEventListener("pim_customer_orders_updated", refresh);
-    return () =>
-      window.removeEventListener("pim_customer_orders_updated", refresh);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/fason/partners");
+      const json = (await res.json()) as { partners?: FasonPartner[]; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "list_failed");
+      setPartners(json.partners ?? []);
+    } catch (err) {
+      console.error("[admin/fason] list error:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const assignAuto = (orderId: string) => {
-    // Otomatik fason atama → şimdilik in_production'a geçir
-    // (fason id'si backend swap'te order'a yazılır)
-    updateCustomerOrderStatus(orderId, "in_production");
-    setPending((arr) => arr.filter((p) => p.id !== orderId));
-  };
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const loadHistory = useCallback(async (partnerId: string) => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/assignments?partnerId=${encodeURIComponent(partnerId)}`
+      );
+      const json = (await res.json()) as { assignments?: AssignmentRow[] };
+      setHistory(json.assignments ?? []);
+    } catch (err) {
+      console.error("[admin/fason] history error:", err);
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selected) void loadHistory(selected.id);
+  }, [selected, loadHistory]);
+
+  // ============================================================
+  // Computed
+  // ============================================================
+
+  const filtered = useMemo(() => {
+    if (filter === "all") return partners;
+    if (filter === "active") return partners.filter((p) => p.active);
+    if (filter === "no_contract")
+      return partners.filter((p) => !p.contract_signed_at);
+    return partners;
+  }, [partners, filter]);
+
+  const stats = useMemo(() => {
+    const total = partners.length;
+    const active = partners.filter((p) => p.active).length;
+    const withScore = partners.filter((p) => p.cached_score != null);
+    const avgScore =
+      withScore.length === 0
+        ? null
+        : withScore.reduce((s, p) => s + (p.cached_score ?? 0), 0) /
+          withScore.length;
+    const noContract = partners.filter((p) => !p.contract_signed_at).length;
+    return { total, active, avgScore, noContract };
+  }, [partners]);
+
+  // ============================================================
+  // Render
+  // ============================================================
 
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-6">
-        <div className="mb-6">
-          <Eyebrow>Fason yönetimi</Eyebrow>
-          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Fason ortakları
-          </h1>
-          <p className="mt-1.5 text-base text-gri-700">
-            {FASONS.length} ortak · {pending.length} sipariş atama bekliyor
-          </p>
-        </div>
-
-        {/* Demo data uyarısı */}
-        <div className="mb-6 rounded-xl bg-pim-mercan-tint ring-1 ring-pim-mercan/20 px-5 py-3.5 flex items-start gap-3">
-          <Icon.Info size={16} className="text-pim-mercan mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <div className="font-semibold text-[13.5px] text-pim-mercan mb-0.5">
-              Demo veri — fason ortaklar henüz hardcoded
-            </div>
-            <p className="text-[12.5px] text-pim-mercan/85 leading-relaxed">
-              Aşağıdaki 4 atölye + kapasite/load değerleri örnek. Gerçek fason
-              ortakları belirlenince DB&apos;ye taşınacak (capacity, load,
-              speciality, rating).
+        <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <Eyebrow>Fason yönetimi</Eyebrow>
+            <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+              Üretim ortakları
+            </h1>
+            <p className="mt-1.5 text-base text-gri-700">
+              {stats.total} ortak · {stats.active} aktif
+              {stats.noContract > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-kirmizi font-semibold">
+                    {stats.noContract} sözleşmesiz
+                  </span>
+                </>
+              )}
             </p>
           </div>
+          <Button variant="primary" onClick={() => setShowAdd(true)}>
+            <Icon.Plus size={14} /> Yeni fason ekle
+          </Button>
         </div>
 
-        {/* Pending orders strip */}
-        {pending.length > 0 ? (
-          <Card padding="p-5" className="mb-6 !bg-sari-soft !ring-sari/30">
-            <div className="flex items-center gap-3 mb-3">
-              <Icon.Bolt size={18} className="text-sari" />
-              <h2 className="font-semibold text-base text-[#7A560A]">
-                {pending.length} sipariş fason ataması bekliyor
-              </h2>
+        {/* KPI strip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <KpiCard
+            label="Toplam ortak"
+            value={stats.total.toString()}
+            tone="neutral"
+          />
+          <KpiCard
+            label="Aktif"
+            value={stats.active.toString()}
+            tone="success"
+          />
+          <KpiCard
+            label="Ortalama skor"
+            value={
+              stats.avgScore == null
+                ? "—"
+                : (stats.avgScore * 100).toFixed(0) + " / 100"
+            }
+            tone="brand"
+          />
+          <KpiCard
+            label="Sözleşmesiz"
+            value={stats.noContract.toString()}
+            tone={stats.noContract > 0 ? "danger" : "success"}
+          />
+        </div>
+
+        {/* Sözleşmesiz uyarı */}
+        {stats.noContract > 0 && (
+          <div className="mb-6 rounded-xl bg-kirmizi-soft ring-1 ring-kirmizi/30 px-5 py-3.5 flex items-start gap-3">
+            <Icon.AlertCircle size={16} className="text-kirmizi mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="font-semibold text-[13.5px] text-kirmizi mb-0.5">
+                {stats.noContract} ortakla veri işleyici sözleşmesi imzalanmamış
+              </div>
+              <p className="text-[12.5px] text-gri-700 leading-relaxed">
+                KVKK m.12 uyarınca veri işleyici sözleşmesi olmadan
+                aktarım yapamayız. Atama denemeleri bloklanır.
+              </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {pending.map((p) => (
-                <div
-                  key={p.id}
-                  className="bg-white rounded-lg p-3 ring-1 ring-sari/30"
-                >
-                  <div className="font-mono text-[11.5px] text-gri-700 mb-1">
-                    {p.id}
-                  </div>
-                  <div className="font-semibold text-[13px]">
-                    {p.customer}
-                  </div>
-                  <div className="text-[12px] text-gri-700 mt-1 line-clamp-2">
-                    {p.product}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => assignAuto(p.id)}
-                    className="mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
-                  >
-                    Otomatik ata → Üretime
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : (
-          <Card padding="p-5" className="mb-6 !bg-yesil-soft !ring-yesil/30">
-            <div className="flex items-center gap-3">
-              <Icon.Check size={18} className="text-yesil" />
-              <h2 className="font-semibold text-base text-yesil">
-                Atama bekleyen sipariş yok — kuyruk temiz 🎉
-              </h2>
-            </div>
-          </Card>
+          </div>
         )}
 
         {/* Filter chips */}
         <div className="flex gap-2 flex-wrap mb-4">
-          {[
-            { id: "all", label: "Tümü" },
-            { id: "label", label: "Etiket" },
-            { id: "sticker", label: "Sticker" },
-            { id: "foil", label: "Yaldız" },
-            { id: "holographic", label: "Holografik" },
-          ].map((f) => (
+          {(
+            [
+              { id: "active" as const, label: "Aktif" },
+              { id: "all" as const, label: "Tümü" },
+              { id: "no_contract" as const, label: "Sözleşmesiz" },
+            ]
+          ).map((f) => (
             <button
               key={f.id}
               type="button"
@@ -215,98 +242,460 @@ export default function AdminFasonPage() {
               {f.label}
             </button>
           ))}
-          <Button variant="primary" size="sm" className="ml-auto">
-            <Icon.Plus size={14} /> Yeni fason ekle
-          </Button>
         </div>
 
-        {/* Fason cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {FASONS.filter((f) => filter === "all" || f.speciality.includes(filter)).map((f) => {
-            const utilization = (f.load / f.capacity) * 100;
-            const utilColor =
-              utilization > 85
-                ? "bg-kirmizi"
-                : utilization > 65
-                  ? "bg-sari"
-                  : "bg-yesil";
-            return (
-              <Card key={f.id} padding="p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg">{f.name}</h3>
-                    <div className="text-[13px] text-gri-700 mt-0.5">
-                      {f.city}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-sari font-semibold text-[13px]">
-                    <Icon.Star size={14} />
-                    {f.rating}
-                  </div>
-                </div>
-
-                {/* Speciality */}
-                <div className="flex gap-1.5 flex-wrap mb-4">
-                  {f.speciality.map((s) => (
-                    <span
-                      key={s}
-                      className="inline-flex items-center h-[22px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11px] font-semibold capitalize"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Capacity bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-[12px] text-gri-700 mb-1.5">
-                    <span>Kapasite kullanımı</span>
-                    <span className="font-semibold">
-                      {f.load.toLocaleString("tr-TR")} /{" "}
-                      {f.capacity.toLocaleString("tr-TR")} adet
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gri-100 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all",
-                        utilColor
-                      )}
-                      style={{ width: `${utilization}%` }}
-                    />
-                  </div>
-                  <div
-                    className={cn(
-                      "text-[11.5px] mt-1.5 font-semibold",
-                      utilization > 85
-                        ? "text-kirmizi"
-                        : utilization > 65
-                          ? "text-sari"
-                          : "text-yesil"
-                    )}
-                  >
-                    %{Math.round(utilization)} dolu
-                    {utilization > 85 && " — yeni iş atama önerilmez"}
-                    {utilization < 50 && " — boşta, atama uygun"}
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="flex items-center gap-4 text-[12px] text-gri-700 pt-3 border-t border-gri-100">
-                  <span>
-                    <strong className="text-lacivert">{f.totalOrders}</strong>{" "}
-                    sipariş
-                  </span>
-                  <span>·</span>
-                  <Button variant="ghost" size="sm" className="ml-auto">
-                    Detay <Icon.ChevR size={12} />
-                  </Button>
-                </div>
+        {/* Grid: partners (sol) + history (sağ) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
+          {/* Partners */}
+          <div className="space-y-3">
+            {loading && (
+              <Card padding="p-6" className="text-center text-gri-700">
+                Yükleniyor…
               </Card>
-            );
-          })}
+            )}
+            {!loading && filtered.length === 0 && (
+              <Card padding="p-8" className="text-center">
+                <div className="text-gri-700 mb-3">
+                  Bu filtreye uyan fason ortak yok.
+                </div>
+                <Button variant="secondary" onClick={() => setShowAdd(true)}>
+                  <Icon.Plus size={14} /> İlk fason&apos;u ekle
+                </Button>
+              </Card>
+            )}
+            {filtered.map((p) => (
+              <PartnerCard
+                key={p.id}
+                partner={p}
+                isSelected={selected?.id === p.id}
+                onSelect={() => setSelected(p)}
+              />
+            ))}
+          </div>
+
+          {/* History panel */}
+          <div className="lg:sticky lg:top-20">
+            <Card padding="p-5">
+              <h3 className="font-semibold text-base mb-3">
+                {selected ? selected.name : "Atama geçmişi"}
+              </h3>
+              {!selected && (
+                <p className="text-[13px] text-gri-700">
+                  Detay görmek için bir ortak seç.
+                </p>
+              )}
+              {selected && historyLoading && (
+                <p className="text-[13px] text-gri-700">Yükleniyor…</p>
+              )}
+              {selected && !historyLoading && history.length === 0 && (
+                <p className="text-[13px] text-gri-700">
+                  Henüz atama yok.
+                </p>
+              )}
+              {selected && history.length > 0 && (
+                <ul className="space-y-2">
+                  {history.slice(0, 15).map((a) => {
+                    const meta = STATUS_LABEL[a.status] ?? {
+                      label: a.status,
+                      color: "bg-gri-100 text-gri-700",
+                    };
+                    return (
+                      <li
+                        key={a.id}
+                        className="flex items-center justify-between gap-3 text-[12.5px] border-b border-gri-100 pb-2 last:border-0 last:pb-0"
+                      >
+                        <Link
+                          href={`/admin/siparisler/${a.order_id}`}
+                          className="font-mono text-[11.5px] text-pim-mercan hover:underline truncate"
+                        >
+                          {a.order_id}
+                        </Link>
+                        <span
+                          className={cn(
+                            "inline-flex items-center h-[20px] px-2 rounded-full text-[10.5px] font-semibold shrink-0",
+                            meta.color
+                          )}
+                        >
+                          {meta.label}
+                        </span>
+                        <span className="text-gri-500 shrink-0 tabular-nums">
+                          {new Date(a.assigned_at).toLocaleDateString("tr-TR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {selected && (
+                <div className="mt-4 pt-3 border-t border-gri-100 space-y-1.5 text-[12px] text-gri-700">
+                  <div>
+                    📧{" "}
+                    <a
+                      href={`mailto:${selected.contact_email}`}
+                      className="text-pim-mercan hover:underline"
+                    >
+                      {selected.contact_email}
+                    </a>
+                  </div>
+                  {selected.contact_whatsapp && (
+                    <div>📱 {selected.contact_whatsapp}</div>
+                  )}
+                  {selected.contact_person && (
+                    <div>👤 {selected.contact_person}</div>
+                  )}
+                  <div>
+                    📑 Sözleşme:{" "}
+                    {selected.contract_signed_at ? (
+                      <span className="text-yesil font-semibold">
+                        {new Date(selected.contract_signed_at).toLocaleDateString(
+                          "tr-TR"
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-kirmizi font-semibold">
+                        İmzasız
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
+
+      {/* Add modal */}
+      {showAdd && (
+        <AddPartnerModal
+          onClose={() => setShowAdd(false)}
+          onSaved={() => {
+            setShowAdd(false);
+            void refresh();
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+// ============================================================
+// KpiCard
+// ============================================================
+
+function KpiCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "neutral" | "success" | "danger" | "brand";
+}) {
+  const toneClass = {
+    neutral: "bg-white ring-gri-200",
+    success: "bg-yesil-soft ring-yesil/30",
+    danger: "bg-kirmizi-soft ring-kirmizi/30",
+    brand: "bg-pim-mercan-tint ring-pim-mercan/30",
+  }[tone];
+  return (
+    <Card
+      padding="p-4"
+      className={cn("!ring-1", toneClass)}
+    >
+      <div className="text-[11.5px] text-gri-700 font-semibold mb-1">
+        {label}
+      </div>
+      <div className="text-[20px] font-bold tabular-nums">{value}</div>
+    </Card>
+  );
+}
+
+// ============================================================
+// PartnerCard
+// ============================================================
+
+function PartnerCard({
+  partner,
+  isSelected,
+  onSelect,
+}: {
+  partner: FasonPartner;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const scorePct =
+    partner.cached_score == null ? null : Math.round(partner.cached_score * 100);
+
+  const scoreColor =
+    scorePct == null
+      ? "bg-gri-100 text-gri-700"
+      : scorePct >= 75
+        ? "bg-yesil-soft text-yesil"
+        : scorePct >= 50
+          ? "bg-sari-soft text-[#7A560A]"
+          : "bg-kirmizi-soft text-kirmizi";
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "block w-full text-left transition-all",
+        isSelected ? "ring-2 ring-pim-mercan" : ""
+      )}
+    >
+      <Card padding="p-5" className={isSelected ? "!ring-pim-mercan" : ""}>
+        <div className="flex items-start justify-between gap-3 mb-2.5">
+          <div className="min-w-0">
+            <h3 className="font-semibold text-base truncate">{partner.name}</h3>
+            <div className="text-[12px] text-gri-700 mt-0.5 truncate">
+              {partner.contact_email}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {scorePct != null && (
+              <span
+                className={cn(
+                  "inline-flex items-center h-[24px] px-2.5 rounded-full text-[11.5px] font-semibold tabular-nums",
+                  scoreColor
+                )}
+              >
+                {scorePct} / 100
+              </span>
+            )}
+            {!partner.active && (
+              <span className="inline-flex items-center h-[24px] px-2.5 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold">
+                Pasif
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Specialties */}
+        {partner.specialties.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap mb-3">
+            {partner.specialties.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center h-[20px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold capitalize"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 text-[12px] text-gri-700 pt-3 border-t border-gri-100">
+          <span>
+            ⏱ Tipik teslim:{" "}
+            <strong className="text-lacivert">{partner.default_lead_days}</strong>{" "}
+            gün
+          </span>
+          {partner.contract_signed_at ? (
+            <span className="text-yesil font-semibold ml-auto">
+              ✓ Sözleşmeli
+            </span>
+          ) : (
+            <span className="text-kirmizi font-semibold ml-auto">
+              ⚠ Sözleşmesiz
+            </span>
+          )}
+        </div>
+      </Card>
+    </button>
+  );
+}
+
+// ============================================================
+// AddPartnerModal
+// ============================================================
+
+function AddPartnerModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
+  const [specInput, setSpecInput] = useState("");
+  const [leadDays, setLeadDays] = useState(7);
+  const [contractSignedAt, setContractSignedAt] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    if (!name.trim() || !email.trim().includes("@")) {
+      setError("Ad ve e-posta zorunlu.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/fason/partners", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          contact_email: email.trim().toLowerCase(),
+          contact_whatsapp: whatsapp.trim() || null,
+          contact_person: contactPerson.trim() || null,
+          specialties: specInput
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean),
+          default_lead_days: leadDays,
+          contract_signed_at: contractSignedAt || null,
+          notes: notes.trim() || null,
+        }),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(json.error ?? "Eklenemedi");
+        return;
+      }
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Hata oluştu");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <Card padding="p-6" className="max-w-[520px] w-full max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold mb-4">Yeni fason ortağı</h3>
+
+        <div className="space-y-3">
+          <label className="block">
+            <span className="text-[12.5px] font-semibold mb-1 block">
+              Ad / unvan *
+            </span>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Örn: İstanbul İkitelli Etiket Atölyesi"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[12.5px] font-semibold mb-1 block">
+              E-posta *
+            </span>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="atolye@ornek.com"
+            />
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[12.5px] font-semibold mb-1 block">
+                İletişim kişisi
+              </span>
+              <Input
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                placeholder="Ahmet Yılmaz"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[12.5px] font-semibold mb-1 block">
+                WhatsApp
+              </span>
+              <Input
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="+90 5XX XXX XX XX"
+              />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-[12.5px] font-semibold mb-1 block">
+              Uzmanlık (virgülle ayır)
+            </span>
+            <Input
+              value={specInput}
+              onChange={(e) => setSpecInput(e.target.value)}
+              placeholder="etiket, sticker, yaldız"
+            />
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[12.5px] font-semibold mb-1 block">
+                Tipik teslim (gün)
+              </span>
+              <Input
+                type="number"
+                value={String(leadDays)}
+                onChange={(e) =>
+                  setLeadDays(Math.max(1, Math.min(60, Number(e.target.value) || 7)))
+                }
+                min={1}
+                max={60}
+              />
+            </label>
+            <label className="block">
+              <span className="text-[12.5px] font-semibold mb-1 block">
+                Sözleşme tarihi
+              </span>
+              <Input
+                type="date"
+                value={contractSignedAt}
+                onChange={(e) => setContractSignedAt(e.target.value)}
+              />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-[12.5px] font-semibold mb-1 block">
+              Notlar
+            </span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ek bilgi, kapasite, özel anlaşmalar…"
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 focus:ring-2 focus:ring-pim-mercan outline-none text-[13px] resize-y"
+            />
+          </label>
+        </div>
+
+        {error && (
+          <div className="mt-3 px-3 py-2 rounded-lg bg-kirmizi-soft text-kirmizi text-[12.5px]">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-5 flex items-center justify-between gap-2">
+          <p className="text-[11.5px] text-gri-700">
+            * Sözleşmesiz partner&apos;a atama bloklanır.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              İptal
+            </Button>
+            <Button
+              variant="primary"
+              onClick={submit}
+              disabled={submitting}
+            >
+              {submitting ? "Kaydediliyor…" : "Kaydet"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }

@@ -16,6 +16,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { logServerAudit } from "@/lib/audit-log-server";
 
 interface BodyShape {
   orderId?: unknown;
@@ -189,6 +190,26 @@ export async function POST(req: Request) {
     .from("orders")
     .update({ status: "in_production" })
     .eq("id", orderId);
+
+  // 8) Audit log
+  await logServerAudit(admin, {
+    actorId: user.id,
+    actorEmail: user.email ?? null,
+    actorRole: role === "admin" ? "admin" : "staff",
+    action: "order.status_change",
+    targetType: "order",
+    targetId: orderId,
+    summary: `Sipariş ${orderId} fason'a atandı: ${fason.name} (→ in_production)`,
+    detail: {
+      kind: "fason_assigned",
+      assignment_id: assignmentId,
+      fason_id: fasonPartnerId,
+      fason_name: fason.name,
+      estimated_delivery: estimatedDelivery,
+    },
+    ipAddress: req.headers.get("x-forwarded-for"),
+    userAgent: req.headers.get("user-agent"),
+  });
 
   return NextResponse.json({
     ok: true,

@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { logServerAudit } from "@/lib/audit-log-server";
 
 interface BodyShape {
   status?: unknown;
@@ -103,6 +104,33 @@ export async function PATCH(
       { error: error.message },
       { status: 500 }
     );
+  }
+
+  // Audit log — sadece status değişiklikleri için
+  if (update.status) {
+    const auditAction =
+      update.status === "published"
+        ? ("review.approve" as const)
+        : update.status === "rejected"
+          ? ("review.reject" as const)
+          : null;
+    if (auditAction) {
+      await logServerAudit(admin, {
+        actorId: user.id,
+        actorEmail: user.email ?? null,
+        actorRole: role === "admin" ? "admin" : "staff",
+        action: auditAction,
+        targetType: "review",
+        targetId: id,
+        summary: `Yorum ${update.status === "published" ? "yayınlandı" : "reddedildi"} (#${id.slice(0, 8)})`,
+        detail: {
+          status: update.status,
+          note: typeof body.moderationNote === "string" ? body.moderationNote : null,
+        },
+        ipAddress: req.headers.get("x-forwarded-for"),
+        userAgent: req.headers.get("user-agent"),
+      });
+    }
   }
 
   return NextResponse.json({ review: data });
