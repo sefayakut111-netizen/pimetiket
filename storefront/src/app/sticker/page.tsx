@@ -1220,6 +1220,29 @@ function StickerPreview({
     yok: "transparent",
   };
 
+  // Sefa kuralı (11 May): Kontur kesim modunda PNG yüklenince, malzeme
+  // özelliğini ifade eden BELİRGİN kontur. Multi-stack drop-shadow ile
+  // PNG'nin alpha siluetini takip eden halo.
+  //   - vinil    : kalın beyaz outline (klasik die-cut görüntüsü)
+  //   - transparan: checker pattern bg + ince dark shadow
+  //   - holo     : holografik gradient renkli halo
+  //   - simli    : beyaz outline + sıcak sim parıltısı
+  const dieFilterByMaterial: Record<StickerMaterial, string> = {
+    vinil:
+      "drop-shadow(0 0 6px white) drop-shadow(0 0 6px white) drop-shadow(0 0 6px white) drop-shadow(0 8px 24px rgba(31,41,55,0.25)) drop-shadow(0 4px 8px rgba(31,41,55,0.12))",
+    transparan:
+      "drop-shadow(0 4px 12px rgba(31,41,55,0.2)) drop-shadow(0 2px 4px rgba(31,41,55,0.1))",
+    holo:
+      "drop-shadow(0 0 4px #FFB7E5) drop-shadow(0 0 4px #B7E8FF) drop-shadow(0 0 4px #FFE8B7) drop-shadow(0 0 6px white) drop-shadow(0 8px 16px rgba(31,41,55,0.2))",
+    simli:
+      "drop-shadow(0 0 6px white) drop-shadow(0 0 6px white) drop-shadow(0 0 10px rgba(255,232,183,0.7)) drop-shadow(0 0 14px rgba(255,183,229,0.5)) drop-shadow(0 8px 16px rgba(31,41,55,0.2))",
+  };
+
+  // Transparan malzeme için checker pattern — şeffaf zemini ifade eden
+  // Figma/Photoshop standart transparent-layer görüntüsü
+  const transparentCheckerBg =
+    "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%), white";
+
   const radius =
     shape === "circle"
       ? "50%"
@@ -1266,44 +1289,70 @@ function StickerPreview({
       >
         {shape === "die" ? (
           // Kontur kesim: tasarım varsa onu göster (kontur müşteri tasarımına
-          // göre kesilecek), yoksa Pim silüet placeholder
-          <div
-            className="relative grid place-items-center"
-            style={{
-              filter:
-                "drop-shadow(0 0 4px white) drop-shadow(0 0 4px white) drop-shadow(0 8px 24px rgba(31,41,55,0.25)) drop-shadow(0 4px 8px rgba(31,41,55,0.12))",
-            }}
-          >
-            {designUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={designUrl}
-                alt="Senin tasarımın — kontur kesim önizleme"
-                style={{
-                  maxWidth: Math.min(minDim * scale * 1.2, 360),
-                  maxHeight: Math.min(minDim * scale * 1.2, 360),
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
-              <PimAsset
-                variant="detailed"
-                size={Math.min(minDim * scale * 1.2, 360)}
-                bob={false}
-                ariaLabel="Pim baykuş — kontur kesim sticker örneği"
-              />
-            )}
-            {(material === "holo" || material === "simli") && (
+          // göre kesilecek), yoksa Pim silüet placeholder.
+          // Sefa kuralı: malzeme-bazlı belirgin kontur (dieFilterByMaterial).
+          <div className="relative grid place-items-center">
+            {/* Transparan malzeme + tasarım yüklü: checker pattern arkaplan
+                (şeffaf zemini görsel olarak ifade eder). Diğer
+                malzemelerde checker yok. */}
+            {material === "transparan" && designUrl && (
               <div
                 aria-hidden
-                className="absolute inset-0 pointer-events-none"
+                className="absolute inset-0 rounded-2xl pointer-events-none"
                 style={{
-                  background: matBg[material],
-                  mixBlendMode: "color",
-                  opacity: 0.6,
+                  background: transparentCheckerBg,
+                  backgroundSize:
+                    "16px 16px, 16px 16px, 16px 16px, 16px 16px",
+                  backgroundPosition:
+                    "0 0, 0 8px, 8px -8px, -8px 0px",
+                  opacity: 0.5,
+                  margin: -8,
                 }}
               />
             )}
+            <div
+              className="relative grid place-items-center"
+              style={{
+                filter: designUrl
+                  ? dieFilterByMaterial[material]
+                  : // Tasarım yokken Pim için klasik halo
+                    "drop-shadow(0 0 4px white) drop-shadow(0 0 4px white) drop-shadow(0 8px 24px rgba(31,41,55,0.25))",
+              }}
+            >
+              {designUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={designUrl}
+                  alt="Senin tasarımın — kontur kesim önizleme"
+                  style={{
+                    maxWidth: Math.min(minDim * scale * 1.2, 360),
+                    maxHeight: Math.min(minDim * scale * 1.2, 360),
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <PimAsset
+                  variant="detailed"
+                  size={Math.min(minDim * scale * 1.2, 360)}
+                  bob={false}
+                  ariaLabel="Pim baykuş — kontur kesim sticker örneği"
+                />
+              )}
+              {/* Holografik / simli renk overlay — tasarım siluetinin
+                  üstüne malzeme tonu yansıtır (kontur drop-shadow zaten
+                  malzemeyi ifade ediyor, bu içeride ton verir) */}
+              {(material === "holo" || material === "simli") && (
+                <div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: matBg[material],
+                    mixBlendMode: "color",
+                    opacity: 0.6,
+                  }}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <div

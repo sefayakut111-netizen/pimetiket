@@ -988,14 +988,32 @@ function PreviewCanvas({
   const sheen = SHEEN[coating];
   const yaldizGrad = YALDIZ_GRAD[yaldiz];
 
+  // Sefa kuralı (11 May): malzeme özelliği belirginleşsin.
+  //   - ultra clear + tasarım yüklü → checker pattern (şeffaf zemini
+  //     görsel olarak ifade eden Figma/Photoshop standardı)
+  //   - metalik → metalik gradient (mevcut)
+  //   - kraft → kraft kahverengi (mevcut)
+  //   - beyaz → düz beyaz (mevcut)
+  const ultraCheckerBg =
+    "linear-gradient(45deg, #dfe5ea 25%, transparent 25%), linear-gradient(-45deg, #dfe5ea 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #dfe5ea 75%), linear-gradient(-45deg, transparent 75%, #dfe5ea 75%), white";
   const labelBg =
     material === "ultra"
-      ? "rgba(255,255,255,0.5)"
+      ? designUrl
+        ? ultraCheckerBg
+        : "rgba(255,255,255,0.5)"
       : material === "metalik"
         ? "linear-gradient(135deg,#E5E9EE,#FFFFFF,#C7CFD8)"
         : material === "kraft"
           ? "#E8C99B"
           : "white";
+  const labelBgSize =
+    material === "ultra" && designUrl
+      ? "10px 10px, 10px 10px, 10px 10px, 10px 10px, auto"
+      : "auto";
+  const labelBgPos =
+    material === "ultra" && designUrl
+      ? "0 0, 0 5px, 5px -5px, -5px 0px, 0 0"
+      : "0 0";
 
   const fontSize = Math.min(width, height) * 0.22;
 
@@ -1083,11 +1101,16 @@ function PreviewCanvas({
               width: width * 1.4,
               height: height * 1.4,
               background: labelBg,
+              backgroundSize: labelBgSize,
+              backgroundPosition: labelBgPos,
               borderRadius: 6,
-              boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+              boxShadow:
+                material === "metalik"
+                  ? "0 2px 8px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(255,255,255,0.6)"
+                  : "0 2px 6px rgba(0,0,0,0.12)",
               border:
                 material === "ultra"
-                  ? "1px dashed rgba(31,41,55,0.4)"
+                  ? "1.5px dashed rgba(31,41,55,0.35)"
                   : "none",
               overflow: "hidden",
             }}
