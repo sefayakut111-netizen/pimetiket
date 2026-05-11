@@ -62,8 +62,6 @@ export interface CustomerQuoteInput {
   material: StickerMaterial;
   finish: StickerFinish;
   qty: number;
-  /** Müşteri cüzdandan ödüyor mu — +%2 indirim */
-  walletPayment?: boolean;
   /** Kesim tipi — default die-cut (customer-friendly) */
   cut?: CutType;
 }
@@ -76,15 +74,10 @@ export const STICKER_MAX_H = 650;
 /** Customer-friendly quote sonucu — operasyonel detay yok */
 export interface CustomerQuoteSuccess {
   ok: true;
-  /** KDV dahil müşteri fiyatı (cüzdan indirimi öncesi) */
+  /** KDV dahil müşteri fiyatı */
   total: number;
-  /** Birim fiyat (KDV dahil, cüzdan indirimi öncesi) */
+  /** Birim fiyat (KDV dahil) */
   unitPrice: number;
-  /** Eğer cüzdan ödeme: indirim TL */
-  walletDiscount: number;
-  /** Cüzdan indirimi sonrası nihai */
-  totalAfterWallet: number;
-  unitAfterWallet: number;
   /** Hediye sticker — engine producedQty - requestedQty */
   overrunCount: number;
   /** Tier multiplier kullanıldı (display için) */
@@ -153,11 +146,6 @@ export function quoteCustomerSticker(
 
   const { cost, geometry } = result;
 
-  // Cüzdan +%2 indirimi (PRICING_FINANCE_REVIEW.md #13)
-  const walletDiscount = input.walletPayment ? cost.total * 0.02 : 0;
-  const totalAfterWallet = cost.total - walletDiscount;
-  const unitAfterWallet = totalAfterWallet / input.qty;
-
   const overrunCount = Math.max(
     geometry.fit.producedQty - input.qty,
     0
@@ -167,9 +155,6 @@ export function quoteCustomerSticker(
     ok: true,
     total: cost.total,
     unitPrice: cost.unitPrice,
-    walletDiscount,
-    totalAfterWallet,
-    unitAfterWallet,
     overrunCount,
     tierMultiplier: cost.tierMultiplier,
     surchargeMultiplier,

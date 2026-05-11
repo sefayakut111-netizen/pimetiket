@@ -482,7 +482,6 @@ interface ToolResultStickerSuccess {
   total_kdv_dahil: number;
   unit_price_kdv_dahil: number;
   hediye_adet: number;
-  cuzdan_indirim_2pct: number;
   configurator_url: string;
 }
 
@@ -499,7 +498,6 @@ interface ToolResultEtiketSuccess {
   unit_price_kdv_dahil: number;
   rolls_needed: number;
   total_m2: number;
-  cuzdan_indirim_2pct: number;
   configurator_url: string;
 }
 

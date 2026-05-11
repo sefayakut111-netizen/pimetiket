@@ -36,17 +36,12 @@ export interface CustomerEtiketQuoteInput {
   material: EtiketMaterialId;
   coating: EtiketCoatingId;
   customization: EtiketCustomId;
-  /** Müşteri cüzdandan ödüyor mu — +%2 indirim */
-  walletPayment?: boolean;
 }
 
 export interface CustomerEtiketQuoteSuccess {
   ok: true;
   total: number; // KDV dahil
   unitPrice: number;
-  walletDiscount: number;
-  totalAfterWallet: number;
-  unitAfterWallet: number;
   rollsNeeded: number;
   effectiveRate: number; // gizli — UI'da gösterilmez
   multipliers: {
@@ -101,17 +96,10 @@ export function quoteCustomerEtiket(
 
   const { cost, geometry, effectiveRate, multipliers } = result;
 
-  const walletDiscount = input.walletPayment ? cost.total * 0.02 : 0;
-  const totalAfterWallet = cost.total - walletDiscount;
-  const unitAfterWallet = totalAfterWallet / input.qty;
-
   return {
     ok: true,
     total: cost.total,
     unitPrice: cost.unitPrice,
-    walletDiscount,
-    totalAfterWallet,
-    unitAfterWallet,
     rollsNeeded: geometry.rollsNeeded,
     effectiveRate,
     multipliers,

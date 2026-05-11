@@ -154,7 +154,7 @@ export default function HakkimizdaPage() {
     { icon: <Icon.Bolt size={22} />, t: c.val1Title, d: c.val1Desc },
     { icon: <Icon.Sparkle size={22} />, t: c.val2Title, d: c.val2Desc },
     { icon: <Icon.Truck size={22} />, t: c.val3Title, d: c.val3Desc },
-    { icon: <Icon.Wallet size={22} />, t: c.val4Title, d: c.val4Desc },
+    { icon: <Icon.Check size={22} />, t: c.val4Title, d: c.val4Desc },
   ];
 
   return (

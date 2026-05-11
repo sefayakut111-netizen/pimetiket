@@ -272,8 +272,7 @@ export function TopBar() {
                     >
                       <Icon.Truck size={14} /> {t.nav.addresses}
                     </Link>
-                    {/* Cüzdan menüsü kaldırıldı (Sefa: "cüzdan diye bir şey yok").
-                        Cüzdan özelliği canlıya alınınca burası geri açılır. */}
+                    {/* Cüzdan özelliği KALDIRILDI (Migration 015, 10 May 2026) */}
                   </div>
                   <button
                     type="button"

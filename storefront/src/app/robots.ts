@@ -13,7 +13,6 @@ export default function robots(): MetadataRoute.Robots {
           "/admin/",
           "/panelim",
           "/profil",
-          "/cuzdan",
           "/adreslerim",
           "/fatura-bilgileri",
           "/siparislerim",

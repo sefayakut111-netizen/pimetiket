@@ -488,9 +488,7 @@ export default function AdminOrderDetailPage({
                   value={
                     order.payment.method === "card"
                       ? "Kart"
-                      : order.payment.method === "wallet"
-                        ? "Cüzdan"
-                        : "Havale / EFT"
+                      : "Havale / EFT"
                   }
                 />
                 {order.payment.masked && (

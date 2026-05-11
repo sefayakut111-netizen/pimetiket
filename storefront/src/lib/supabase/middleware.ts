@@ -5,7 +5,7 @@
  *
  * Korumalı rotalar:
  *   - /panelim, /siparislerim, /siparis/*, /iadelerim, /iade-talep,
- *     /cuzdan, /profil, /adreslerim, /fatura-bilgileri,
+ *     /profil, /adreslerim, /fatura-bilgileri,
  *     /bildirim-tercihleri, /odeme, /odeme-sonuc
  *   - /admin/* (gelecekte staff role check ile)
  *
@@ -26,7 +26,6 @@ const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/siparis/",
   "/iadelerim",
   "/iade-talep",
-  "/cuzdan",
   "/profil",
   "/adreslerim",
   "/fatura-bilgileri",

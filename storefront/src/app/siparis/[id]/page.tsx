@@ -105,7 +105,6 @@ const COPY = {
     invoiceIndividual: "Bireysel (e-arşiv)",
     invoiceCorporate: "Kurumsal (e-fatura)",
     payCard: "Kredi kartı",
-    payWallet: "Cüzdan bakiyesi",
     payTransfer: "Havale / EFT",
     phases: [
       { id: "konfigure", label: "Konfigüre" },
@@ -191,7 +190,6 @@ const COPY = {
     invoiceIndividual: "Individual (e-archive)",
     invoiceCorporate: "Corporate (e-invoice)",
     payCard: "Credit card",
-    payWallet: "Wallet balance",
     payTransfer: "Bank transfer",
     phases: [
       { id: "konfigure", label: "Configure" },
@@ -252,9 +250,8 @@ export default function SiparisDetailPage({
     corporate: c.invoiceCorporate,
   };
 
-  const PAYMENT_METHOD_LABEL: Record<"card" | "wallet" | "transfer", string> = {
+  const PAYMENT_METHOD_LABEL: Record<"card" | "transfer", string> = {
     card: c.payCard,
-    wallet: c.payWallet,
     transfer: c.payTransfer,
   };
 
@@ -686,7 +683,7 @@ export default function SiparisDetailPage({
             {/* Payment */}
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-                <Icon.Wallet size={16} /> {c.paymentTitle}
+                <Icon.Check size={16} /> {c.paymentTitle}
               </h3>
               <div className="text-[13px] text-gri-700 space-y-1.5 leading-relaxed">
                 <div>{PAYMENT_METHOD_LABEL[order.payment.method]}</div>

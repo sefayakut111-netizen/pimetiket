@@ -6,8 +6,8 @@
  *   - "Bu yıl basıldı" toplamı qty üzerinden
  *   - Quick re-order: en son etiket/sticker siparişi
  *
- * Cüzdan + tasarım kütüphanesi şu an placeholder (auth + storage backend
- * swap'tan sonra aktif).
+ * Cüzdan KALDIRILDI (Migration 015, 10 May 2026). Tasarım kütüphanesi
+ * /tasarimlarim sayfasında — auth + storage canlı.
  */
 
 "use client";
@@ -62,8 +62,6 @@ const COPY = {
     statActiveSubReady: "Yeni sipariş için hazır",
     statActiveSubBusy: (prod: number, shipped: number) =>
       `${prod} üretimde, ${shipped} kargoda`,
-    statWallet: "Cüzdan bakiyen",
-    statWalletSub: "Cüzdan açılışı yakında",
     statPrintedYear: (year: number) => `${year} basıldı`,
     statPrintedSub: "adet etiket + sticker",
     qaNewEtiket: "Yeni etiket",
@@ -95,15 +93,6 @@ const COPY = {
       </>
     ),
     reprint: "Yeniden bastır",
-    walletTitle: "Cüzdan",
-    walletDiscount: (
-      <>
-        Cüzdandan ödeyince <strong className="text-yesil">+%2 indirim</strong>{" "}
-        kazanırsın
-      </>
-    ),
-    walletDeposit: "Yatır",
-    walletNote: "Cüzdan akışı yakında — sadakat puanı ve özel ödemeler için.",
     profileSettings: { t: "Profil ayarları", d: "Ad, e-posta, şifre" },
     addressBook: { t: "Adres defterim", d: "Teslim ve fatura adresleri" },
     invoiceInfo: { t: "Fatura bilgileri", d: "TC/VKN, e-fatura tercihi" },
@@ -146,8 +135,6 @@ const COPY = {
     statActiveSubReady: "Ready for a new order",
     statActiveSubBusy: (prod: number, shipped: number) =>
       `${prod} producing, ${shipped} shipping`,
-    statWallet: "Wallet balance",
-    statWalletSub: "Wallet launching soon",
     statPrintedYear: (year: number) => `Printed in ${year}`,
     statPrintedSub: "labels + stickers",
     qaNewEtiket: "New label",
@@ -179,16 +166,6 @@ const COPY = {
       </>
     ),
     reprint: "Reprint",
-    walletTitle: "Wallet",
-    walletDiscount: (
-      <>
-        Pay from wallet to earn{" "}
-        <strong className="text-yesil">+2% discount</strong>
-      </>
-    ),
-    walletDeposit: "Deposit",
-    walletNote:
-      "Wallet flow coming soon — for loyalty points and special payments.",
     profileSettings: { t: "Profile settings", d: "Name, email, password" },
     addressBook: { t: "Address book", d: "Shipping & invoice addresses" },
     invoiceInfo: { t: "Invoice info", d: "TC/VAT, e-invoice preference" },
@@ -403,7 +380,7 @@ export default function PanelimPage() {
                 : c.activeSummary(activeCount, inProductionCount, shippedCount)}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7 max-w-[720px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-7 max-w-[520px]">
             <Stat
               label={c.statActive}
               value={hydrated ? activeCount.toString() : "—"}
@@ -414,13 +391,6 @@ export default function PanelimPage() {
               }
               icon={<Icon.Box size={18} />}
               accent="text-pim-mercan"
-            />
-            <Stat
-              label={c.statWallet}
-              value="0 TL"
-              sub={c.statWalletSub}
-              icon={<Icon.Wallet size={18} />}
-              accent="text-yesil"
             />
             <Stat
               label={c.statPrintedYear(thisYear)}

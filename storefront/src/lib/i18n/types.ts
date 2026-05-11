@@ -61,7 +61,6 @@ export type TranslationDict = {
     profile: string;
     orders: string;
     addresses: string;
-    wallet: string;
     notifications: string;
     returns: string;
   };
@@ -118,7 +117,6 @@ export type TranslationDict = {
     addToCart: string;
     cartAdded: string;
     deliveryEstimate: string;
-    walletDiscount: string;
     livePreview: string;
     quickSize: string;
     suggested: string;

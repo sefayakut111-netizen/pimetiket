@@ -7,7 +7,7 @@
  *   1. Auth kontrolü (login zorunlu)
  *   2. Body validation (cart + address + invoice + totals)
  *   3. Server-side recalc (subtotal/total tutarsızlık kontrolü)
- *   4. Cüzdan + kart hibrit (kart tutarı = total - wallet)
+ *   4. Tüm tutar kart üzerinden (cüzdan kaldırıldı — Migration 015)
  *   5. PayTR get-token → token + iframe URL
  *   6. payment_intents tablosuna snapshot kaydet
  *   7. JSON: { paymentPageUrl, merchantOid }
@@ -84,7 +84,6 @@ const InitBodySchema = z.object({
   shipping: z.number().nonnegative(),
   total: z.number().positive(),
   couponCode: z.string().optional(),
-  walletAmount: z.number().nonnegative().optional(),
 });
 
 // ============================================================
@@ -165,36 +164,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5) Cüzdan + kart
-  const walletAmount = body.walletAmount ?? 0;
-  const cardAmount = Math.max(0, body.total - walletAmount);
+  // 5) Tüm tutar kart ile (cüzdan kaldırıldı — Migration 015)
+  const cardAmount = body.total;
 
   if (cardAmount < 1) {
     return NextResponse.json(
-      { error: "use_wallet_only_endpoint" },
+      { error: "amount_too_low" },
       { status: 400 }
     );
   }
 
-  // 6) PayTR sepeti — kart kısmı için
-  // Cüzdan ile ödenen kısım sepet'ten düşülmeli (orantılı dağıtım).
-  // Basit yaklaşım: items[].total'ı orantılı küçült.
-  const ratio = cardAmount / body.total; // 0-1
+  // 6) PayTR sepeti
   const cardItems = body.items.map((i) => ({
     title: i.title,
     qty: i.qty,
-    total: parseFloat((i.total * ratio).toFixed(2)),
+    total: i.total,
   }));
-
-  // Toplam denetim — round'lama farkı varsa son item'a ekle
-  const cardSum = cardItems.reduce((s, i) => s + i.total, 0);
-  const diff = parseFloat((cardAmount - cardSum).toFixed(2));
-  if (Math.abs(diff) >= 0.01 && cardItems.length > 0) {
-    cardItems[cardItems.length - 1].total += diff;
-    cardItems[cardItems.length - 1].total = parseFloat(
-      cardItems[cardItems.length - 1].total.toFixed(2)
-    );
-  }
 
   const basket = buildBasket(cardItems);
 
@@ -250,7 +235,7 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       iyzico_token: result.token, // legacy alan adı, PayTR token saklıyoruz
       card_amount: cardAmount,
-      wallet_amount: walletAmount,
+      wallet_amount: 0, // legacy column (Migration 015 sonrası kullanılmıyor)
       snapshot,
     },
   ] as never);

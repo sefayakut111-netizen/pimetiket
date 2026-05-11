@@ -51,10 +51,6 @@ import {
   type CouponValidateResult,
 } from "@/lib/customer-coupon";
 import {
-  listMyWalletTransactions,
-  summarizeWallet,
-} from "@/lib/customer-wallet";
-import {
   listMyAddresses,
   getMyProfile,
   type CustomerAddress,
@@ -129,17 +125,9 @@ const COPY = {
     couponTotalLimit: "Bu kuponun kullanım limiti doldu.",
     couponDefault: "Kupon uygulanamadı, tekrar dene.",
 
-    // Wallet
-    walletTitle: "Cüzdan bakiyesini kullan",
-    walletBalance: "Bakiye",
-    walletWillUse: (a: string, b: string) =>
-      `${a} TL cüzdandan, ${b} TL karttan tahsil edilir.`,
-    walletTooLow: "Tutar düşük — cüzdan kullanılamıyor.",
-
     // Summary
     subtotal: "Ara toplam",
     couponLabel: (code: string) => `Kupon: ${code}`,
-    walletLine: "Cüzdan",
     shipping: "Kargo",
     free: "Ücretsiz",
     total: "TOPLAM",
@@ -150,7 +138,6 @@ const COPY = {
     // Action
     accept: "Mesafeli Satış Sözleşmesi'ni okudum, kabul ediyorum.",
     proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} TL`,
-    proceedFull: "Cüzdan ile öde",
     processing: "Yönlendiriliyor...",
     cartItems: "Sepetinde",
   },
@@ -207,15 +194,8 @@ const COPY = {
     couponTotalLimit: "Coupon usage limit reached.",
     couponDefault: "Coupon couldn't be applied, try again.",
 
-    walletTitle: "Use wallet balance",
-    walletBalance: "Balance",
-    walletWillUse: (a: string, b: string) =>
-      `${a} TRY from wallet, ${b} TRY from card.`,
-    walletTooLow: "Amount too low — wallet not usable.",
-
     subtotal: "Subtotal",
     couponLabel: (code: string) => `Coupon: ${code}`,
-    walletLine: "Wallet",
     shipping: "Shipping",
     free: "Free",
     total: "TOTAL",
@@ -225,7 +205,6 @@ const COPY = {
 
     accept: "I've read and accept the Distance Sales Contract.",
     proceed: (amount: string) => `Pay securely — ${amount} TRY`,
-    proceedFull: "Pay with wallet",
     processing: "Redirecting...",
     cartItems: "In your cart",
   },
@@ -276,10 +255,6 @@ export default function OdemePage() {
   );
   const [couponChecking, setCouponChecking] = useState(false);
 
-  // Wallet
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [useWallet, setUseWallet] = useState(false);
-
   // Submit
   const [acceptSatis, setAcceptSatis] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -308,12 +283,6 @@ export default function OdemePage() {
       const def = list.find((a) => a.isDefault) ?? list[0];
       if (def) setSelectedAddressId(def.id);
       else setShowNewAddressForm(true); // 0 adres → inline form
-    });
-
-    // Cüzdan
-    void listMyWalletTransactions().then((txs) => {
-      const s = summarizeWallet(txs);
-      setWalletBalance(Math.max(0, s.balance));
     });
 
     // Profil — kurumsal kullanıcıyı otomatik tespit
@@ -347,10 +316,7 @@ export default function OdemePage() {
   const effectiveShipping = couponFreeShip ? 0 : shipping;
   const effectiveTotal = subtotal - couponDiscount + effectiveShipping;
 
-  const walletApplied = useWallet
-    ? Math.min(walletBalance, Math.max(0, effectiveTotal - 1))
-    : 0;
-  const cardAmount = Math.max(0, effectiveTotal - walletApplied);
+  const cardAmount = effectiveTotal;
 
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
 
@@ -432,7 +398,6 @@ export default function OdemePage() {
           shipping: effectiveShipping,
           total: effectiveTotal,
           couponCode: couponResult?.ok ? couponCode.trim() : undefined,
-          walletAmount: walletApplied,
         }),
       });
 
@@ -847,43 +812,6 @@ export default function OdemePage() {
               )}
             </Card>
 
-            {/* ================ WALLET ================ */}
-            {walletBalance > 0 && (
-              <Card padding="p-5">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useWallet}
-                    onChange={(e) => setUseWallet(e.target.checked)}
-                    className="mt-1 accent-pim-mercan shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <h3 className="text-base font-semibold flex items-center gap-2">
-                        <Icon.Wallet size={16} className="text-yesil" />
-                        {c.walletTitle}
-                      </h3>
-                      <span className="text-[13px] font-semibold text-yesil">
-                        {c.walletBalance}: {fmt(walletBalance)} {c.currency}
-                      </span>
-                    </div>
-                    {useWallet && walletApplied > 0 && (
-                      <p className="text-[13px] text-gri-700 mt-2 leading-relaxed">
-                        {c.walletWillUse(
-                          fmt(walletApplied),
-                          fmt(effectiveTotal - walletApplied)
-                        )}
-                      </p>
-                    )}
-                    {useWallet && walletApplied === 0 && (
-                      <p className="text-[13px] text-gri-500 mt-2">
-                        {c.walletTooLow}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              </Card>
-            )}
           </div>
 
           {/* SAĞ — sticky özet */}
@@ -943,16 +871,6 @@ export default function OdemePage() {
                     </span>
                   </div>
                 )}
-                {walletApplied > 0 && (
-                  <div className="flex justify-between text-yesil">
-                    <span className="font-semibold inline-flex items-center gap-1">
-                      <Icon.Wallet size={12} /> {c.walletLine}
-                    </span>
-                    <span className="font-semibold tabular-nums">
-                      −{fmt(walletApplied)} {c.currency}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between">
                   <span className="text-gri-700">{c.shipping}</span>
                   <span className="font-semibold tabular-nums">
@@ -966,9 +884,7 @@ export default function OdemePage() {
               </div>
 
               <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
-                <span className="font-semibold">
-                  {walletApplied > 0 ? c.cardLabel : c.total}
-                </span>
+                <span className="font-semibold">{c.total}</span>
                 <span className="text-2xl font-bold tabular-nums">
                   {fmt(cardAmount)}{" "}
                   <span className="text-base font-semibold text-gri-700">
@@ -976,11 +892,6 @@ export default function OdemePage() {
                   </span>
                 </span>
               </div>
-              {walletApplied > 0 && (
-                <div className="text-[11.5px] text-gri-700 text-right mt-1">
-                  {c.fullTotal} {fmt(effectiveTotal)} {c.currency}
-                </div>
-              )}
               <div className="text-[11.5px] text-gri-700 text-right">
                 {c.vatIncluded}
               </div>

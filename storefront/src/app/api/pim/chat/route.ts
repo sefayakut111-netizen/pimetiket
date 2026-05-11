@@ -93,9 +93,6 @@ const stickerTool = tool({
       unit_price_kdv_dahil: parseFloat(result.unitPrice.toFixed(2)),
       hediye_adet: result.overrunCount,
       tier_multiplier: result.tierMultiplier,
-      cuzdan_indirim_2pct: parseFloat(
-        (result.total * 0.02).toFixed(2)
-      ),
       configurator_url: "/sticker",
     };
   },
@@ -177,9 +174,6 @@ const etiketTool = tool({
       unit_price_kdv_dahil: parseFloat(result.cost.unitPrice.toFixed(2)),
       rolls_needed: result.geometry.rollsNeeded,
       total_m2: parseFloat(result.geometry.totalM2.toFixed(3)),
-      cuzdan_indirim_2pct: parseFloat(
-        (result.cost.total * 0.02).toFixed(2)
-      ),
       configurator_url: "/etiket",
     };
   },

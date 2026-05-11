@@ -156,8 +156,8 @@ export default function IadeDegisimPolitikasiPage() {
                 Ürün eline ulaşır, kontrolden geçer, para iadesi başlatılır.
               </li>
               <li>
-                İade <strong>cüzdana</strong> 1 günde,{" "}
-                <strong>karta</strong> 7-14 iş günü (banka süresi).
+                İade <strong>karta</strong> 7-14 iş günü içinde yapılır
+                (banka süresi).
               </li>
             </ol>
           </Section>
@@ -166,8 +166,7 @@ export default function IadeDegisimPolitikasiPage() {
             <p>
               Üretim hatası / yanlış ürün / kargo hasarı durumlarında
               <strong className="text-lacivert"> ödediğin tüm tutar</strong>{" "}
-              (KDV dahil + kargo) iade edilir. Cüzdana iade alırsan +%2 bonus
-              uygulanır.
+              (KDV dahil + kargo) iade edilir.
             </p>
           </Section>
 

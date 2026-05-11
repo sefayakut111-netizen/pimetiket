@@ -88,7 +88,7 @@ export default function AdminIadelerPage() {
     updateReturnStatus(
       r.id,
       "refunded",
-      `${parsed.toLocaleString("tr-TR")} TL cüzdana / karta iade edildi.`,
+      `${parsed.toLocaleString("tr-TR")} TL karta iade edildi.`,
       parsed
     );
     toast.success(`${parsed.toLocaleString("tr-TR")} TL iade edildi`);
@@ -280,7 +280,7 @@ export default function AdminIadelerPage() {
                         size="sm"
                         onClick={() => handleRefund(r)}
                       >
-                        <Icon.Wallet size={12} /> İade et
+                        <Icon.Check size={12} /> İade et
                       </Button>
                     )}
                   </div>

@@ -333,17 +333,7 @@ export async function POST(req: NextRequest) {
     },
   ] as never);
 
-  // 11) Cüzdan ile ödenen kısım
-  if (intent.wallet_amount > 0) {
-    await admin.from("wallet_transactions").insert([
-      {
-        user_id: intent.user_id,
-        amount: -Math.abs(intent.wallet_amount),
-        description: `Sipariş ${orderId} (cüzdan kısmı)`,
-        order_id: orderId,
-      },
-    ] as never);
-  }
+  // (11) Cüzdan akışı KALDIRILDI — Migration 015
 
   // 12) Cart temizle
   await admin.from("cart_items").delete().eq("user_id", intent.user_id);

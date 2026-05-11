@@ -11,7 +11,7 @@
  *   - addresses: kullanıcı adres defteri
  *   - cart_items: aktif sepet
  *   - orders, order_items
- *   - wallet_transactions
+ *   - (wallet_transactions silindi — Migration 015)
  *
  * Tablolar (mig 002):
  *   - profiles enrichment (invoice fields + locale + email_verified_at)
@@ -123,7 +123,7 @@ export type PspProvider =
   | "iyzico"
   | "parampos"
   | "stripe"
-  | "wallet"
+  | "paytr"
   | "transfer";
 
 export type PaymentAction =
@@ -353,28 +353,7 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["order_items"]["Insert"]>;
       };
 
-      // ---------- wallet_transactions (mig 001) ----------
-      wallet_transactions: {
-        Row: {
-          id: string;
-          user_id: string;
-          amount: number;
-          description: string;
-          order_id: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          amount: number;
-          description: string;
-          order_id?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<
-          Database["public"]["Tables"]["wallet_transactions"]["Insert"]
-        >;
-      };
+      // (wallet_transactions silindi — Migration 015, Sefa kararı)
 
       // ---------- order_events (mig 002) ----------
       order_events: {

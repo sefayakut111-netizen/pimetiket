@@ -43,7 +43,7 @@ export interface CustomerOrderInvoice {
 }
 
 export interface CustomerOrderPayment {
-  method: "card" | "wallet" | "transfer";
+  method: "card" | "transfer";
   /** Maskelenmiş kart no — son 4 hane */
   masked?: string;
 }

@@ -46,8 +46,8 @@ const COPY = {
     dangerTitle: "Tehlikeli alan",
     dangerDesc: (
       <>
-        Hesabını silersen tüm sipariş geçmişi, kayıtlı tasarımlar ve cüzdan
-        bakiyesi <strong>kalıcı olarak silinir</strong>. KVKK kapsamında
+        Hesabını silersen tüm sipariş geçmişi ve kayıtlı tasarımlar
+        <strong> kalıcı olarak silinir</strong>. KVKK kapsamında
         verilerin yasal saklama süresi sonunda yok edilir.
       </>
     ),
@@ -93,8 +93,8 @@ const COPY = {
     dangerDesc: (
       <>
         Deleting your account <strong>permanently removes</strong> all order
-        history, saved designs, and wallet balance. Under KVKK, data is
-        destroyed at the end of its legal retention period.
+        history and saved designs. Under KVKK, data is destroyed at the end
+        of its legal retention period.
       </>
     ),
     deleteCta: "I want to delete my account →",
