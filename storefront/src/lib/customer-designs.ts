@@ -160,3 +160,73 @@ export async function listMyDesigns(): Promise<CustomerDesign[]> {
     };
   });
 }
+
+/**
+ * Bir siparişin TÜM versiyonlarını listele (superseded dahil).
+ * `/siparis/[id]` sayfasında "Tasarımın geçmişi" accordion'da kullanılır.
+ *
+ * @returns Versiyona göre artan sıra (V1, V2, V3...)
+ */
+export async function listOrderDesignHistory(
+  orderId: string
+): Promise<CustomerDesign[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const supabase = createClient();
+
+  const { data: files, error } = await supabase
+    .from("design_files")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("order_id", orderId)
+    .order("version", { ascending: true })
+    .order("uploaded_at", { ascending: true })
+    .limit(50);
+
+  if (error) {
+    console.error("[customer-designs] history error:", error);
+    return [];
+  }
+  if (!files || files.length === 0) return [];
+
+  const dbFiles = files as unknown as DesignFileDbRow[];
+
+  // Signed URL'ler — preview için 1 saat
+  const signed = await Promise.all(
+    dbFiles.map(async (f) => {
+      const { data } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(f.storage_path, 3600);
+      return data?.signedUrl ?? null;
+    })
+  );
+
+  return dbFiles.map((f, idx) => {
+    const flags = (f.ai_check?.flags ?? []).map((fl) => ({
+      kind: (fl.kind === "warning"
+        ? "warning"
+        : fl.kind === "error"
+          ? "error"
+          : "ok") as "ok" | "warning" | "error",
+      message: fl.message,
+    }));
+    return {
+      id: f.id,
+      orderId: f.order_id,
+      orderItemId: f.order_item_id,
+      storagePath: f.storage_path,
+      originalName: f.original_name,
+      sizeBytes: f.size_bytes,
+      mimeType: f.mime_type,
+      version: f.version,
+      status: f.status,
+      aiCheckFlags: flags,
+      previewUrl: signed[idx],
+      uploadedAt: f.uploaded_at,
+      product: null,
+      productTitle: null,
+      productConfig: null,
+    };
+  });
+}

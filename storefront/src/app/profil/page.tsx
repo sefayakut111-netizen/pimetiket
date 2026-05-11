@@ -43,12 +43,21 @@ const COPY = {
       { id: "promo", label: "Kampanya ve indirimler", default: false, desc: "Ayda en fazla 2 e-posta" },
       { id: "product", label: "Yeni özellikler", default: true, desc: "Yeni malzeme/yaldız çıktığında" },
     ],
-    dangerTitle: "Tehlikeli alan",
+    dangerTitle: "Hesap silme ve veri hakların",
     dangerDesc: (
       <>
-        Hesabını silersen tüm sipariş geçmişi ve kayıtlı tasarımlar
-        <strong> kalıcı olarak silinir</strong>. KVKK kapsamında
-        verilerin yasal saklama süresi sonunda yok edilir.
+        Hesabını silersen siparişlerin, adreslerin ve kayıtlı tasarımların
+        <strong> 48 saat içinde kaldırılır</strong>. Fatura kayıtların
+        yasa gereği (VUK + TTK 10 yıl) kilitli arşivde durur; pazarlama
+        veya analiz için kullanılmaz, süre dolunca otomatik silinir.
+        Detaylı veri hakların için{" "}
+        <a
+          href="/ayarlar/verilerim"
+          className="text-pim-mercan font-semibold hover:underline"
+        >
+          Verilerim sayfasına
+        </a>{" "}
+        bak.
       </>
     ),
     deleteCta: "Hesabımı silmek istiyorum →",
@@ -89,12 +98,21 @@ const COPY = {
       { id: "promo", label: "Campaigns & discounts", default: false, desc: "At most 2 emails per month" },
       { id: "product", label: "New features", default: true, desc: "When a new material/foil ships" },
     ],
-    dangerTitle: "Danger zone",
+    dangerTitle: "Account deletion & data rights",
     dangerDesc: (
       <>
-        Deleting your account <strong>permanently removes</strong> all order
-        history and saved designs. Under KVKK, data is destroyed at the end
-        of its legal retention period.
+        Deleting your account <strong>removes orders, addresses and saved
+        designs within 48 hours</strong>. Invoice records remain in a
+        locked archive for 10 years (Turkish VUK + TTK requirement); they
+        are never used for marketing or analytics and are auto-purged
+        when the period ends. For detailed data rights, see{" "}
+        <a
+          href="/ayarlar/verilerim"
+          className="text-pim-mercan font-semibold hover:underline"
+        >
+          My data
+        </a>
+        .
       </>
     ),
     deleteCta: "I want to delete my account →",

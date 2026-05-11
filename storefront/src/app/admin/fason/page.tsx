@@ -196,7 +196,7 @@ export default function AdminFasonPage() {
         {/* Sözleşmesiz uyarı */}
         {stats.noContract > 0 && (
           <div className="mb-6 rounded-xl bg-kirmizi-soft ring-1 ring-kirmizi/30 px-5 py-3.5 flex items-start gap-3">
-            <Icon.AlertCircle size={16} className="text-kirmizi mt-0.5 shrink-0" />
+            <Icon.Info size={16} className="text-kirmizi mt-0.5 shrink-0" />
             <div className="flex-1">
               <div className="font-semibold text-[13.5px] text-kirmizi mb-0.5">
                 {stats.noContract} ortakla veri işleyici sözleşmesi imzalanmamış

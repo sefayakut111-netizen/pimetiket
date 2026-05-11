@@ -31,6 +31,7 @@ import {
 } from "@/lib/storage/design-files";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
+import { OrderDesignHistory } from "@/components/design/OrderDesignHistory";
 
 const COPY = {
   tr: {
@@ -633,6 +634,9 @@ export default function SiparisDetailPage({
 
             {/* File upload card */}
             <DesignUploadCard orderId={order.id} c={c} />
+
+            {/* Tasarım versiyon geçmişi — 2+ versiyon varsa otomatik gösterir */}
+            <OrderDesignHistory orderId={order.id} />
           </div>
 
           {/* SIDE — özet bilgileri */}

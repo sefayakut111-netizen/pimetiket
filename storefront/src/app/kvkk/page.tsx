@@ -175,11 +175,153 @@ export default function KvkkPage() {
       </p>
 
       <h2>6. Saklama Süreleri</h2>
+      <p>
+        Verini ne kadar tutuyoruz, neden tutuyoruz, ne zaman ne oluyor &mdash;
+        hepsi açık. Aşağıdaki süreler hukuki dayanak ve iş gerekçelerimizle
+        belirlenmiştir.
+      </p>
+      <div className="overflow-x-auto my-4">
+        <table className="w-full text-[13px] border-collapse">
+          <thead>
+            <tr className="border-b-2 border-gri-300">
+              <th className="text-left py-2 pr-4 font-semibold">Veri</th>
+              <th className="text-left py-2 pr-4 font-semibold">Süre</th>
+              <th className="text-left py-2 font-semibold">Yasal/iş dayanağı</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Sipariş ve fatura kayıtları</td>
+              <td className="py-2 pr-4 font-semibold">10 yıl</td>
+              <td className="py-2 text-gri-700">TTK m.82 + VUK m.253</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Müşteri hesabı + adres defteri</td>
+              <td className="py-2 pr-4 font-semibold">Hesap aktif olduğu sürece</td>
+              <td className="py-2 text-gri-700">KVKK m.5/2-c (sözleşme)</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">
+                <strong>Tasarım dosyaları</strong> (yüklediğin PDF/PNG)
+              </td>
+              <td className="py-2 pr-4 font-semibold">
+                Son baskıdan 24 ay sonra silinir
+              </td>
+              <td className="py-2 text-gri-700">
+                KVKK m.5/2-c &mdash; sözleşmenin devamı (tekrar baskı için)
+              </td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">
+                Tasarım kimlik özeti (SHA-256 hash)
+              </td>
+              <td className="py-2 pr-4 font-semibold">10 yıl</td>
+              <td className="py-2 text-gri-700">
+                FSEK m.66 &mdash; telif ihlali davası kanıtı
+              </td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">
+                Versiyon geçmişi (V1, V2&hellip;)
+              </td>
+              <td className="py-2 pr-4 font-semibold">
+                Son onaylı versiyon hariç 18 ay
+              </td>
+              <td className="py-2 text-gri-700">KVKK m.4 orantılılık</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Pim asistanı sohbet geçmişi</td>
+              <td className="py-2 pr-4 font-semibold">
+                6 ay anonimleştir, 24 ay sonra sil
+              </td>
+              <td className="py-2 text-gri-700">KVKK m.4 + m.7</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">Audit log (admin işlemleri)</td>
+              <td className="py-2 pr-4 font-semibold">10 yıl</td>
+              <td className="py-2 text-gri-700">KVKK m.12 (immutable)</td>
+            </tr>
+            <tr className="border-b border-gri-200">
+              <td className="py-2 pr-4">İade ve fatura iptali kayıtları</td>
+              <td className="py-2 pr-4 font-semibold">10 yıl</td>
+              <td className="py-2 text-gri-700">VUK + TBK m.231</td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4">Pazarlama izin kaydı</td>
+              <td className="py-2 pr-4 font-semibold">İzin geri alınana kadar</td>
+              <td className="py-2 text-gri-700">Açık rıza (KVKK m.5/1)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="text-base font-semibold mt-5">
+        6.1 Tasarım dosyası saklama — neden 24 ay?
+      </h3>
+      <p>
+        Tasarım dosyaların bizim için sözleşmenin devamı için zorunlu:
+        <strong> &ldquo;Geçen yıl bastığım etiketten 5000 daha bas&rdquo;</strong>
+        {" "}dediğinde dosyanın elimizde olması lazım. Bu yüzden son
+        siparişinden itibaren 24 ay saklarız. Tekrar baskı verirsen sayaç
+        sıfırlanır, yeniden 24 ay sayılır.
+      </p>
+      <p className="text-[12.5px] text-gri-700 italic">
+        Örnek: 2026-01 baskı yaptın &rarr; 2028-01&apos;e kadar dosya
+        durur. Eğer 2027-06&apos;da tekrar baskı verirsen &rarr; 2029-06&apos;ya
+        kadar uzar.
+      </p>
+
+      <h3 className="text-base font-semibold mt-5">
+        6.2 Silme vs anonimleştirme farkı
+      </h3>
       <ul>
-        <li>Sipariş ve fatura kayıtları: yasal asgari 10 yıl (VUK)</li>
-        <li>Müşteri hesabı (aktif): hesap silinmedikçe</li>
-        <li>Hesap silindikten sonra: yasal yükümlülük süresi kadar</li>
-        <li>Tasarım dosyaları: sipariş tamamlandıktan 90 gün sonra silinir</li>
+        <li>
+          <strong>Silme:</strong> Veri ortadan kaldırılır, geri gelmez.
+        </li>
+        <li>
+          <strong>Anonimleştirme:</strong> Kim olduğun bilgisi kopartılır;
+          veri kalır ama artık seninle eşleşmez (KVKK m.28/1-b). İstatistik
+          ve sistem iyileştirme için kullanılabilir, üzerinden seni bulamayız.
+        </li>
+      </ul>
+
+      <h3 className="text-base font-semibold mt-5">
+        6.3 Soğuk depoya taşıma
+      </h3>
+      <p>
+        Aktif olarak işlem görmeyen tasarım dosyaları (12 ay+) erişimi
+        yavaş ama güvenli arşive taşınır. Sen istediğinde birkaç saniye
+        içinde geri çağrılır. Süre saymaz, devam eder.
+      </p>
+
+      <h3 className="text-base font-semibold mt-5">
+        6.4 Hesap silme talebi
+      </h3>
+      <p>
+        Hesabını silmek istediğinde:
+      </p>
+      <ul>
+        <li>
+          E-posta doğrulamasıyla talep onaylanır.
+        </li>
+        <li>
+          <strong>48 saat geri alma süresi</strong> başlar &mdash; bu zaman
+          içinde vazgeçebilirsin.
+        </li>
+        <li>
+          Süre dolduğunda aktif veriler (sipariş geçmişi, tasarımlar,
+          adresler, Pim sohbet) silinir.
+        </li>
+        <li>
+          <strong>Fatura kayıtların VUK gereği 10 yıl kilitli arşivde</strong>{" "}
+          durur &mdash; pazarlama, analiz veya AI eğitimi için kullanılmaz,
+          süre dolunca otomatik silinir.
+        </li>
+        <li>
+          Üretim ortağımıza önceden aktarılmış dosyalar en geç 30 gün
+          içinde fason tarafından imha edilir (veri işleyici sözleşmesi
+          gereği).
+        </li>
       </ul>
 
       <h2>7. Haklarınız (KVKK m.11)</h2>
