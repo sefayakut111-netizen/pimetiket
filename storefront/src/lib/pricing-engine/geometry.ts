@@ -23,6 +23,7 @@ import {
   ROLL_W_MIN,
   SMALL_SHEET_H,
   SMALL_SHEET_W,
+  snapSizeUp,
 } from "./constants";
 
 // ============================================================
@@ -325,9 +326,15 @@ export function computeGeometry(args: {
   cut: CutType;
   qty: number;
 }): GeometryResult | null {
+  // Sefa kuralı 11 May: ölçüler 5 mm katlarına yukarı yuvarlanır.
+  // Müşteri 38×48 girse de hesaplama 40×50 üzerinden yapılır.
+  // UI'da bu yuvarlanmış değer "hesaplama: 40×50 mm" olarak gösterilmeli.
+  const snapW = snapSizeUp(args.width);
+  const snapH = snapSizeUp(args.height);
+
   const fit = findOptimalSheet({
-    width: args.width,
-    height: args.height,
+    width: snapW,
+    height: snapH,
     requestedCut: args.cut,
     targetQty: args.qty,
   });
@@ -338,7 +345,7 @@ export function computeGeometry(args: {
   if (!roll) return null;
 
   const totalM2 = (roll.rollW * roll.totalLengthMm) / 1_000_000;
-  const stickerArea = (args.width * args.height * fit.producedQty) / 1_000_000;
+  const stickerArea = (snapW * snapH * fit.producedQty) / 1_000_000;
   const wastePct =
     totalM2 > 0 ? ((totalM2 - stickerArea) / totalM2) * 100 : 0;
 

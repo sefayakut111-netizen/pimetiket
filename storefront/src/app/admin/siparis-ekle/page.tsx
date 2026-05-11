@@ -60,7 +60,7 @@ export default function AdminCreateOrderPage() {
   const qtyNum = Number(qty) || 0;
   const unitNum = Number(unit) || 0;
   const subtotal = qtyNum * unitNum;
-  const shipping = subtotal >= 1500 || subtotal === 0 ? 0 : 49;
+  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 49;
   const total = subtotal + shipping;
 
   const validate = (): string | null => {

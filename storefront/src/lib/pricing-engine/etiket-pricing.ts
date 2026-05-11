@@ -25,6 +25,7 @@ import {
   ETIKET_MATERIALS,
   ETIKET_COATINGS,
   ETIKET_CUSTOMIZATIONS,
+  snapSizeUp,
   type EtiketTier,
 } from "./constants";
 import type { GeometryResult, CutType } from "./geometry";
@@ -130,6 +131,11 @@ export function computeEtiketGeometry(
   qty: number,
   gap: number = ETIKET_GAP_DEFAULT
 ): EtiketGeometry | null {
+  // Sefa kuralı 11 May: ölçüler 5 mm katlarına yukarı yuvarlanır.
+  // 38×48 → 40×50. UI tarafı "hesaplanan: 40×50 mm" göstermeli.
+  width = snapSizeUp(width);
+  height = snapSizeUp(height);
+
   const usableMaxW = ROLL_W_MAX - 2 * ROLL_MARGIN_X; // 520
   const usableMaxL = ETIKET_ROLL_L - ETIKET_ROLL_MARGIN_Y; // 49950 (50m rulo)
 

@@ -87,8 +87,10 @@ export interface CustomerCartSummary {
   itemCount: number;
 }
 
-// Kargo eşiği — 1500 TL üzeri ücretsiz
-export const FREE_SHIPPING_THRESHOLD = 1500;
+// Kargo eşiği — 1000 TL üzeri ücretsiz (Sefa kararı 11 May)
+// Bu sabit varsayılan; admin /admin/ayarlar üzerinden site_settings
+// tablosundan güncelleyebilir (Migration 029).
+export const FREE_SHIPPING_THRESHOLD = 1000;
 export const SHIPPING_FEE = 49;
 
 // ============================================================

@@ -47,8 +47,25 @@ export const BIG_SHEET_H = 650;
 // Üretim toleransları
 // ============================================================
 
-/** Adet en fazla %3 aşılabilir (eksik üretim olmaz, fazla = hediye) */
+/** Adet en fazla %3 aşılabilir (eksik üretim olmaz, fazla = depo etiketi).
+ *  Müşteri yüzüne "+hediye" olarak GÖSTERİLMEZ (Sefa kuralı 11 May). */
 export const QTY_TOLERANCE = 0.03;
+
+/**
+ * Ölçü yuvarlama adımı (mm).
+ *
+ * Sefa iş kuralı (11 May): "Müşteri 38x48 mm girdiğinde hesaplama
+ * 40x50'ye yukarı yuvarlanır — her mm'de hesaplama yapma, 5 mm
+ * katlarında yap." Bu hem hesaplama tutarlılığı hem matbaa kesim
+ * paterni için doğru.
+ */
+export const SIZE_SNAP_STEP_MM = 5;
+
+/** Tek bir ölçüyü 5 mm katına yukarı yuvarlar. */
+export function snapSizeUp(mm: number): number {
+  if (!Number.isFinite(mm) || mm <= 0) return 0;
+  return Math.ceil(mm / SIZE_SNAP_STEP_MM) * SIZE_SNAP_STEP_MM;
+}
 
 /** Tabaka modunda sticker'lar arası boşluk (yarım kesim) */
 export const GAP_TABAKA = 6;

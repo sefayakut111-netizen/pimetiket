@@ -4,14 +4,19 @@
  * Anonim kullanıcı için localStorage backend. Auth + Supabase
  * geldiğinde aynı interface ile server-side memory'ye geçecek.
  *
+ * **Sefa kuralı (11 May):** Pim "Beni hatırla / hatırlama" sormaz.
+ * Yapay zeka sessizce localStorage'a yazar — KVKK m.5/2-c sözleşmenin
+ * ifası kapsamında, ekstra açık rıza gerekmez. Kullanıcı dilediği an
+ * /ayarlar/verilerim → "Pim sohbet geçmişim" granular silme ile siler.
+ *
  * Saklanan data:
  *   - userId (UUID, ilk kullanımda generate)
  *   - displayName (varsa)
- *   - consent (Pim hatırlama izni — KVKK opt-in)
  *   - facts (key-value, AI çıkardı)
  *   - conversation history (son N mesaj)
  *
- * KVKK: kullanıcı dilediği an "Pim hafızamı temizle" ile siler.
+ * KVKK aydınlatma metni /kvkk Bölüm 6'da "Pim asistanı sohbet geçmişi"
+ * kategorisinde listeli (6 ay anonim, 24 ay sil).
  */
 
 import type { PimPersona } from "./personas";
@@ -38,7 +43,11 @@ export interface PimMessage {
 
 export interface PimMemory {
   userId: string;
-  /** KVKK opt-in: Pim hatırlama izni var mı. */
+  /**
+   * KVKK m.5/2-c kapsamında hizmetin parçası — varsayılan TRUE.
+   * Kullanıcı /ayarlar/verilerim'den granular silebilir. Legacy alan,
+   * geriye uyumluluk için tutulur.
+   */
   consent: boolean;
   consentAt?: number;
   displayName?: string;
@@ -63,7 +72,10 @@ function generateUserId(): string {
 function emptyMemory(): PimMemory {
   return {
     userId: generateUserId(),
-    consent: false,
+    // KVKK m.5/2-c hizmetin parçası — varsayılan açık. Silmek için
+    // /ayarlar/verilerim'den "Pim sohbet geçmişim" granular delete.
+    consent: true,
+    consentAt: Date.now(),
     facts: [],
     history: [],
   };
@@ -83,11 +95,12 @@ export function readMemory(): PimMemory {
       return fresh;
     }
     const parsed = JSON.parse(raw) as PimMemory;
-    // Defensive defaults
+    // Defensive defaults — legacy consent=false eski kullanıcı için
+    // sessizce true'ya geç (KVKK m.5/2-c). Açık rıza istenmiyor.
     return {
       userId: parsed.userId ?? generateUserId(),
-      consent: !!parsed.consent,
-      consentAt: parsed.consentAt,
+      consent: parsed.consent !== false ? true : true,
+      consentAt: parsed.consentAt ?? Date.now(),
       displayName: parsed.displayName,
       facts: Array.isArray(parsed.facts) ? parsed.facts : [],
       history: Array.isArray(parsed.history) ? parsed.history : [],

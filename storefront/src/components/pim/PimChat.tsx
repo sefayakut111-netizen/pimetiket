@@ -27,7 +27,6 @@ import {
   isReturningUser,
   memorySnapshotForPrompt,
   readMemory,
-  setConsent,
   setDisplayName,
   type PimMemory,
 } from "@/lib/pim/memory";
@@ -42,15 +41,14 @@ export function PimChat() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [memory, setMemory] = useState<PimMemory | null>(null);
-  const [showConsent, setShowConsent] = useState(false);
   const [persona, setPersona] = useState<PimPersona>("welcome");
   const [unread, setUnread] = useState(0);
 
-  // Mount'ta memory'yi oku (sadece client)
+  // Mount'ta memory'yi oku (sadece client). Sefa kuralı: "beni hatırla"
+  // sorusu sormayız, KVKK m.5/2-c hizmetin parçası varsayılan açık.
   useEffect(() => {
     const mem = readMemory();
     setMemory(mem);
-    setShowConsent(!mem.consent);
   }, []);
 
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -68,16 +66,14 @@ export function PimChat() {
       },
     }),
     onFinish: ({ message }) => {
-      const mem = readMemory();
-      if (mem.consent) {
-        const text = extractText(message);
-        if (text) {
-          appendMessage({
-            role: "assistant",
-            content: text,
-            persona,
-          });
-        }
+      // Sefa kuralı: opt-in YOK, KVKK m.5/2-c hizmetin parçası
+      const text = extractText(message);
+      if (text) {
+        appendMessage({
+          role: "assistant",
+          content: text,
+          persona,
+        });
       }
       if (!open) setUnread((n) => n + 1);
     },
@@ -93,7 +89,7 @@ export function PimChat() {
 
   // Mount'ta memory'deki history'yi useChat'e yükle (sayfa yenileme sonrası)
   useEffect(() => {
-    if (!memory || !memory.consent) return;
+    if (!memory) return;
     if (memory.history.length === 0) return;
     if (messages.length > 0) return; // useChat zaten dolu
     // PimMessage → UIMessage çevirisi (parts[type=text])
@@ -213,12 +209,6 @@ export function PimChat() {
             <div className="text-[11.5px] text-gri-700 flex items-center gap-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-yesil animate-pulse" />
               <span>Akıllı asistan</span>
-              {memory?.consent && (
-                <>
-                  <span className="text-gri-300">·</span>
-                  <span title="Pim seni hatırlıyor">🧠 hatırlıyor</span>
-                </>
-              )}
             </div>
           </div>
           <button
@@ -233,42 +223,26 @@ export function PimChat() {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 bg-gri-50">
-          {showConsent ? (
-            <ConsentPanel
-              onAccept={() => {
-                const mem = setConsent(true);
-                setMemory(mem);
-                setShowConsent(false);
-              }}
-              onDecline={() => {
-                setConsent(false);
-                setShowConsent(false);
-              }}
-            />
-          ) : messages.length === 0 ? (
+          {messages.length === 0 ? (
             <WelcomeView
               persona={persona}
               memory={memory}
               onClearHistory={() => {
                 setMessages([]);
                 setUnread(0);
-                // Memory history sıfırla (consent korunur)
+                // Memory history sıfırla
                 const mem = readMemory();
-                if (mem.consent) {
-                  mem.history = [];
-                  mem.lastConversationSummary = undefined;
-                  // writeMemory direkt çağrılamaz, appendMessage'la yapay clear
-                  // Daha temiz: storage'a manuel yaz
-                  try {
-                    localStorage.setItem(
-                      "pim:memory:v1",
-                      JSON.stringify(mem)
-                    );
-                  } catch {
-                    /* ignore */
-                  }
-                  setMemory(mem);
+                mem.history = [];
+                mem.lastConversationSummary = undefined;
+                try {
+                  localStorage.setItem(
+                    "pim:memory:v1",
+                    JSON.stringify(mem)
+                  );
+                } catch {
+                  /* ignore */
                 }
+                setMemory(mem);
               }}
             />
           ) : (
@@ -277,23 +251,19 @@ export function PimChat() {
         </div>
 
         {/* Composer */}
-        {!showConsent && (
-          <Composer
-            disabled={status === "streaming" || status === "submitted"}
-            onSend={(text) => {
-              const mem = readMemory();
-              if (mem.consent) {
-                appendMessage({ role: "user", content: text, persona });
-                // Adı düşürdüyse yakala
-                const nameMatch = text.match(/(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/);
-                if (nameMatch && !mem.displayName) {
-                  setDisplayName(nameMatch[1]);
-                }
-              }
-              sendMessage({ text });
-            }}
-          />
-        )}
+        <Composer
+          disabled={status === "streaming" || status === "submitted"}
+          onSend={(text) => {
+            appendMessage({ role: "user", content: text, persona });
+            // Adı düşürdüyse yakala
+            const nameMatch = text.match(/(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/);
+            const mem = readMemory();
+            if (nameMatch && !mem.displayName) {
+              setDisplayName(nameMatch[1]);
+            }
+            sendMessage({ text });
+          }}
+        />
       </div>
     </>
   );
@@ -302,47 +272,6 @@ export function PimChat() {
 // ============================================================
 // Subcomponents
 // ============================================================
-
-function ConsentPanel({
-  onAccept,
-  onDecline,
-}: {
-  onAccept: () => void;
-  onDecline: () => void;
-}) {
-  return (
-    <div className="rounded-xl bg-white ring-1 ring-gri-200 p-4 text-[13.5px] leading-relaxed">
-      <div className="font-semibold text-base mb-1.5">
-        Selam! Tanışalım mı?
-      </div>
-      <p className="text-gri-700 mb-3">
-        Sohbet ettiklerimizi <strong>tarayıcında</strong> tutarsam, bir
-        dahaki gelişinde nereden kaldığımızı hatırlarım. Marka adın, sevdiğin
-        malzeme — bağlam olarak akılda tutarım.
-      </p>
-      <p className="text-gri-700 mb-3">
-        Sunucuda tutmuyoruz. Dilediğin an temizleyebilirsin (profil ayarları
-        veya tarayıcı verisini silmek).
-      </p>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onAccept}
-          className="flex-1 h-10 rounded-full bg-pim-mercan text-white font-semibold text-sm hover:bg-pim-mercan-koyu transition-colors"
-        >
-          Tamam, hatırla
-        </button>
-        <button
-          type="button"
-          onClick={onDecline}
-          className="px-4 h-10 rounded-full text-gri-700 font-semibold text-sm hover:bg-gri-100 transition-colors"
-        >
-          Şimdilik gerek yok
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function WelcomeView({
   persona,
@@ -623,15 +552,8 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
             <>
               {result.size_mm} mm · {result.material} ·{" "}
               {result.finish}
-              {result.hediye_adet > 0 && (
-                <>
-                  {" "}
-                  ·{" "}
-                  <span className="text-yesil">
-                    +{result.hediye_adet} hediye
-                  </span>
-                </>
-              )}
+              {/* +hediye Pim'de gizli (Sefa kuralı 11 May) — overrun
+                  adet backend'de fire payı olarak depo edilir */}
             </>
           ) : (
             <>

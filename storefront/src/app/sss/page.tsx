@@ -69,7 +69,7 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
   kargo: [
     {
       q: "Kargo ücreti var mı?",
-      a: "1.500 TL üzeri alışverişlerde kargo ücretsiz, altında 49 TL. Bu eşik admin ayarlarından güncellenebiliyor.",
+      a: "1.000 TL üzeri alışverişlerde kargo ücretsiz, altında sabit ücret. Tutar admin ayarlarından güncellenebiliyor.",
     },
     {
       q: "Hangi kargo firmasıyla gönderiyorsunuz?",
