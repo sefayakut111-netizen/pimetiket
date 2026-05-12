@@ -54,7 +54,7 @@ export function PriceCard({
       <div
         className={cn(
           "relative overflow-hidden rounded-xl mt-2 p-6",
-          "bg-gradient-to-br from-lacivert to-[#2C3849] text-white",
+          "bg-gradient-to-br from-lacivert to-lacivert-soft text-white",
           className
         )}
       >
@@ -148,7 +148,7 @@ export function PriceCard({
           onClick={upsell.onClick}
           className={cn(
             "flex items-center gap-2.5 w-full px-3.5 py-3 mb-3",
-            "rounded-lg bg-sari-soft border border-dashed border-[#E0B158]",
+            "rounded-lg bg-sari-soft border border-dashed border-sari",
             "text-left text-[14px] font-semibold text-sari-koyu"
           )}
         >

@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, useToast, Skeleton } from "@/components/ui";
 
 const STORAGE_KEY = "pim_site_settings_v1";
 
@@ -152,7 +152,11 @@ export default function AdminAyarlarPage() {
   if (!hydrated) {
     return (
       <main className="py-12">
-        <div className="text-center text-gri-500">Yükleniyor…</div>
+        <div className="mx-auto max-w-[760px] px-6 space-y-3">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton.Card />
+          <Skeleton.Card />
+        </div>
       </main>
     );
   }

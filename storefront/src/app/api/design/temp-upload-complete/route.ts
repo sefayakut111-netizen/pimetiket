@@ -19,6 +19,7 @@ import {
   MAX_FILE_SIZE,
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
+import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 
 const CompleteBodySchema = z.object({
   fileId: z.string().uuid(),
@@ -61,6 +62,69 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // Magic-byte check (audit P0 12 May) — ilk 512 byte'ı in, iddia ile
+  // gerçek MIME'i compare et. .exe / .zip / fake header gelmesin diye.
+  try {
+    const { data: head, error: dlErr } = await admin.storage
+      .from(STORAGE_BUCKET)
+      .download(body.storagePath);
+    if (dlErr || !head) {
+      console.error("[design/temp-complete] head download error:", dlErr);
+      await admin.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
+      return NextResponse.json(
+        { error: "magic_byte_check_failed", detail: dlErr?.message },
+        { status: 500 }
+      );
+    }
+    // İlk 512 byte yeterli — Blob slice + arrayBuffer ile bandwidth tasarrufu
+    const slice = await head.slice(0, 512).arrayBuffer();
+    const buf = new Uint8Array(slice);
+    const magic = detectMimeFromMagicBytes(buf, body.mimeType);
+    if (!magic.matchesClaim) {
+      // Quarantine: dosyayı sil, audit log yaz
+      console.warn(
+        `[design/temp-complete] MIME spoof: user=${user.id} ` +
+          `claimed=${body.mimeType} detected=${magic.detected ?? "unknown"} ` +
+          `label=${magic.label}`
+      );
+      await admin.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
+      // audit_log varsa yaz — yoksa silent
+      await admin.from("audit_log").insert([
+        {
+          actor_id: user.id,
+          actor_role: "customer",
+          kind: "mime_spoof_blocked",
+          detail: {
+            claimedMime: body.mimeType,
+            detectedMime: magic.detected,
+            detectedLabel: magic.label,
+            originalName: body.originalName,
+            sizeBytes: body.sizeBytes,
+            storagePath: body.storagePath,
+          },
+        },
+      ] as never);
+      return NextResponse.json(
+        {
+          error: "mime_mismatch",
+          detail:
+            "Dosya tipi belirtilenden farklı. Lütfen orijinal PDF/PNG/AI/JPG yükle.",
+          claimed: body.mimeType,
+          detected: magic.detected,
+        },
+        { status: 400 }
+      );
+    }
+  } catch (e) {
+    console.error("[design/temp-complete] magic-byte exception:", e);
+    // Fail-CLOSED: hata olursa kabul etme
+    await admin.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
+    return NextResponse.json(
+      { error: "magic_byte_check_exception" },
+      { status: 500 }
+    );
+  }
 
   // design_temp_uploads INSERT
   const { data: row, error: insertErr } = await admin

@@ -573,7 +573,7 @@ export default function SiparisDetailPage({
                       variant="primary"
                       onClick={() => void respondToProof("approve")}
                       disabled={proofResponding}
-                      className="!bg-yesil hover:!bg-[#22a862]"
+                      className="!bg-yesil hover:!bg-yesil-koyu"
                     >
                       <Icon.Check size={14} /> {c.proofApprove}
                     </Button>

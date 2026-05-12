@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { refundPayment, isPayTrConfigured } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 const RefundBodySchema = z.object({
   orderId: z.string().min(1),
@@ -34,10 +35,12 @@ interface PaymentRow {
 }
 
 export async function POST(req: NextRequest) {
-  // Admin guard (geçici — staff RBAC P1)
-  const adminSecret = req.headers.get("x-admin-secret");
-  const expected = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!expected || adminSecret !== expected) {
+  // Admin/staff guard — cookie-based session (12 May P0 audit fix):
+  // önceden x-admin-secret header'da service_role taşınıyordu; logs/proxy/
+  // shell history'den sızma riski vardı. Şu an sadece auth.users + profiles.role
+  // üzerinden RBAC kontrolü yapılıyor.
+  const auth = await assertAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -192,7 +195,8 @@ export async function POST(req: NextRequest) {
       order_id: body.orderId,
       event_type: "refunded",
       status_after: null,
-      actor_role: "admin",
+      actor_id: auth.user.id,
+      actor_role: auth.role,
       summary: isPartial
         ? `${refundAmount.toFixed(2)} TL kısmi iade yapıldı (PayTR).`
         : `Tam iade yapıldı (${refundAmount.toFixed(2)} TL, PayTR).`,
@@ -201,6 +205,7 @@ export async function POST(req: NextRequest) {
         reason: body.reason ?? null,
         provider: "paytr",
         merchantOid: charge.psp_transaction_id,
+        actorEmail: auth.user.email ?? null,
       },
     },
   ] as never);

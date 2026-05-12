@@ -892,7 +892,7 @@ function PriceHero({
 }) {
   if (!result.ok) {
     return (
-      <Card padding="p-7" className="!bg-gradient-to-br !from-lacivert !to-[#111827] !text-white">
+      <Card padding="p-7" className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white">
         <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
           Müşteri Satış Fiyatı (KDV Dahil)
         </div>
@@ -911,7 +911,7 @@ function PriceHero({
   return (
     <Card
       padding="p-7"
-      className="!bg-gradient-to-br !from-lacivert !to-[#111827] !text-white relative overflow-hidden"
+      className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white relative overflow-hidden"
     >
       <div
         aria-hidden

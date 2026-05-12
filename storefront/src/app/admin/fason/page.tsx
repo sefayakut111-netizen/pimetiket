@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Input, Modal } from "@/components/ui";
+import { Button, Card, Eyebrow, Input, Modal, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   getAdminPillClasses,
@@ -238,11 +238,7 @@ export default function AdminFasonPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
           {/* Partners */}
           <div className="space-y-3">
-            {loading && (
-              <Card padding="p-6" className="text-center text-gri-700">
-                Yükleniyor…
-              </Card>
-            )}
+            {loading && <Skeleton.AdminTable rows={4} />}
             {!loading && filtered.length === 0 && (
               <Card padding="p-8" className="text-center">
                 <div className="text-gri-700 mb-3">
@@ -275,7 +271,11 @@ export default function AdminFasonPage() {
                 </p>
               )}
               {selected && historyLoading && (
-                <p className="text-[13px] text-gri-700">Yükleniyor…</p>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
               )}
               {selected && !historyLoading && history.length === 0 && (
                 <p className="text-[13px] text-gri-700">

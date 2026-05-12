@@ -27,6 +27,7 @@ export function Footer() {
         { label: t.nav.etiket, href: "/etiket" },
         { label: t.nav.sticker, href: "/sticker" },
         { label: t.nav.gallery, href: "/galeri" },
+        { label: "Ücretsiz şablonlar", href: "/sablonlar" },
         { label: t.nav.blog, href: "/blog" },
       ],
     },

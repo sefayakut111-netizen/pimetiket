@@ -79,6 +79,9 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/prova": "Prova akışı",
   "/admin/fason": "Fason atama",
   "/admin/musteriler": "Müşteriler",
+  "/admin/finans": "Finans — Mali tablo",
+  "/admin/tasarimlar": "Tasarım kütüphanesi",
+  "/admin/aboneler": "Email aboneleri",
   "/admin/yorumlar": "Yorumlar",
   "/admin/iadeler": "İade talepleri",
   "/admin/kuponlar": "Kuponlar",
@@ -213,6 +216,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
             icon: <Icon.Info size={16} />,
           },
           {
+            href: "/admin/tasarimlar",
+            label: "Tasarımlar",
+            icon: <Icon.Doc size={16} />,
+          },
+          {
+            href: "/admin/aboneler",
+            label: "Aboneler",
+            icon: <Icon.ChatBubble size={16} />,
+          },
+          {
             href: "/admin/galeri",
             label: "Galeri",
             icon: <Icon.Sparkle size={16} />,
@@ -222,6 +235,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {
         label: "Yönetim",
         items: [
+          {
+            href: "/admin/finans",
+            label: "Finans",
+            icon: <Icon.Wallet size={16} />,
+          },
           {
             href: "/admin/kuponlar",
             label: "Kuponlar",

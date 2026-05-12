@@ -15,7 +15,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { Card, Button, Eyebrow, useToast } from "@/components/ui";
+import { Card, Button, Eyebrow, useToast, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   listCustomerOrders,
@@ -309,8 +309,11 @@ export default function AdminOrderDetailPage({
   if (loading) {
     return (
       <main className="py-12">
-        <div className="mx-auto max-w-[640px] px-6 text-center text-gri-500">
-          Yükleniyor…
+        <div className="mx-auto max-w-[960px] px-6 space-y-4">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton.KpiStrip />
+          <Skeleton.Card />
+          <Skeleton.Card />
         </div>
       </main>
     );

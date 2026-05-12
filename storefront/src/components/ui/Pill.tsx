@@ -17,7 +17,7 @@ interface PillProps extends HTMLAttributes<HTMLSpanElement> {
 const VARIANT_CLASS: Record<PillVariant, string> = {
   mercan: "bg-pim-mercan-tint text-pim-mercan",
   yesil: "bg-yesil-soft text-yesil",
-  sari: "bg-sari-soft text-[#B07A0E]",
+  sari: "bg-sari-soft text-sari-koyu",
   gri: "bg-gri-100 text-gri-700",
   lacivert: "bg-lacivert text-white",
   krem: "bg-krem text-lacivert",

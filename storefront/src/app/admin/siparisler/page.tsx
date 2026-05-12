@@ -2,14 +2,22 @@
  * Pim Etiket — /admin/siparisler (E.3)
  *
  * Tüm siparişler — tablo görünümü, filtre, search, durum güncelleme.
+ *
+ * Yeni (13 May): Bulk işlemler + saved views.
+ *   - Checkbox kolonu + master select all
+ *   - Sticky bulk action bar (toplu durum değiştir, toplu manuel iptal)
+ *   - 3 hazır saved view chip: "Bugün gelenler", "36h+ prova", "Üretime
+ *     atanmamış" — tek tıkla filtre + sort kombinasyonu
+ *   - URL ?status=paid → mount'ta filter otomatik
  */
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { Card, Input } from "@/components/ui";
+import { Card, Input, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
 import {
@@ -18,8 +26,6 @@ import {
   type CustomerOrder,
 } from "@/lib/customer-order";
 
-// Admin tüm 9 OrderStatus'u görür (müşteri view'inde paid/qc_pending
-// "Kontrolde" tek başlığa indirgeniyor; admin granuler kalıyor).
 type AdminStatus = OrderStatus;
 
 interface AdminOrder {
@@ -30,6 +36,8 @@ interface AdminOrder {
   total: number;
   status: AdminStatus;
   date: string;
+  /** Ham createdAt ms — saved view filtreleri için */
+  createdAt: number;
   fason?: string;
 }
 
@@ -68,6 +76,59 @@ const ALL_STATUSES: AdminStatus[] = [
   "cancelled",
 ];
 
+// ============================================================
+// Saved views
+// ============================================================
+const DAY = 24 * 60 * 60 * 1000;
+
+interface SavedView {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  /** Filtre fonksiyonu — orders array'i alır, filtreler döndürür */
+  apply: (orders: AdminOrder[]) => AdminOrder[];
+}
+
+const SAVED_VIEWS: SavedView[] = [
+  {
+    id: "today",
+    label: "Bugün gelenler",
+    emoji: "📅",
+    description: "Son 24 saat içinde açılan siparişler",
+    apply: (orders) => {
+      const cutoff = Date.now() - DAY;
+      return orders.filter((o) => o.createdAt > cutoff);
+    },
+  },
+  {
+    id: "stuck-proof",
+    label: "36h+ prova",
+    emoji: "⏰",
+    description: "36 saatten uzun prova bekleyen — hatırlatma zamanı",
+    apply: (orders) => {
+      const cutoff = Date.now() - 1.5 * DAY;
+      return orders.filter(
+        (o) => o.status === "proof_pending" && o.createdAt < cutoff
+      );
+    },
+  },
+  {
+    id: "unassigned",
+    label: "Üretime atanmamış",
+    emoji: "🏭",
+    description: "Ödeme alındı ama henüz fason atanmadı",
+    apply: (orders) => orders.filter((o) => o.status === "paid"),
+  },
+  {
+    id: "high-value",
+    label: "Yüksek tutar",
+    emoji: "💰",
+    description: "5.000 TL ve üstü — özel ilgi",
+    apply: (orders) => orders.filter((o) => o.total >= 5000),
+  },
+];
+
 /** CustomerOrder → AdminOrder row */
 function toAdminOrderRow(o: CustomerOrder): AdminOrder {
   const product =
@@ -89,15 +150,30 @@ function toAdminOrderRow(o: CustomerOrder): AdminOrder {
     total: o.total,
     status: o.status,
     date,
+    createdAt: o.createdAt,
   };
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
 export default function AdminSiparislerPage() {
-  const [filter, setFilter] = useState<AdminStatus | "all">("all");
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <AdminSiparislerPageInner />
+    </Suspense>
+  );
+}
+
+function AdminSiparislerPageInner() {
+  const searchParams = useSearchParams();
+  const initialFilter = (searchParams.get("status") as AdminStatus | null) ?? "all";
+
+  const [filter, setFilter] = useState<AdminStatus | "all">(initialFilter);
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeView, setActiveView] = useState<string | null>(null);
+  const [bulkStatus, setBulkStatus] = useState<AdminStatus | "">("");
 
   useEffect(() => {
     const refresh = () =>
@@ -108,14 +184,25 @@ export default function AdminSiparislerPage() {
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
 
-  const handleStatusChange = (id: string, status: AdminStatus) => {
-    updateCustomerOrderStatus(id, status);
-    // Event listener refresh yapacak — manuel da tetikle (storage event gelmeden)
-    setOrders(listCustomerOrders().map(toAdminOrderRow));
-  };
+  const handleStatusChange = useCallback(
+    (id: string, status: AdminStatus) => {
+      updateCustomerOrderStatus(id, status);
+      setOrders(listCustomerOrders().map(toAdminOrderRow));
+    },
+    []
+  );
 
+  /** Filtreli + aranmış + saved view uygulanmış siparişler */
   const filtered = useMemo(() => {
-    return orders.filter((o) => {
+    let base = orders;
+
+    // Saved view en geniş — diğer filtreler bunun üzerinde kısar
+    if (activeView) {
+      const view = SAVED_VIEWS.find((v) => v.id === activeView);
+      if (view) base = view.apply(base);
+    }
+
+    return base.filter((o) => {
       if (filter !== "all" && o.status !== filter) return false;
       if (search.length > 0) {
         const q = search.toLowerCase();
@@ -127,7 +214,68 @@ export default function AdminSiparislerPage() {
       }
       return true;
     });
-  }, [orders, filter, search]);
+  }, [orders, filter, search, activeView]);
+
+  // Selection helpers
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((o) => selected.has(o.id));
+  const someFilteredSelected =
+    filtered.some((o) => selected.has(o.id)) && !allFilteredSelected;
+
+  const toggleAll = useCallback(() => {
+    if (allFilteredSelected) {
+      const next = new Set(selected);
+      filtered.forEach((o) => next.delete(o.id));
+      setSelected(next);
+    } else {
+      const next = new Set(selected);
+      filtered.forEach((o) => next.add(o.id));
+      setSelected(next);
+    }
+  }, [allFilteredSelected, filtered, selected]);
+
+  const toggleOne = useCallback(
+    (id: string) => {
+      const next = new Set(selected);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      setSelected(next);
+    },
+    [selected]
+  );
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  /** Toplu durum güncelle */
+  const applyBulkStatus = useCallback(() => {
+    if (!bulkStatus || selected.size === 0) return;
+    const targetLabel = STATUS_META[bulkStatus].label;
+    if (
+      !confirm(
+        `${selected.size} siparişin durumu "${targetLabel}" olarak güncellensin mi?`
+      )
+    ) {
+      return;
+    }
+    const count = selected.size;
+    selected.forEach((id) => {
+      updateCustomerOrderStatus(id, bulkStatus);
+    });
+    setOrders(listCustomerOrders().map(toAdminOrderRow));
+    clearSelection();
+    setBulkStatus("");
+    // PostHog: bulk update event
+    void import("@/lib/analytics/posthog-events")
+      .then(({ track }) => {
+        track("admin_bulk_status_changed", {
+          count,
+          new_status: bulkStatus,
+        });
+      })
+      .catch(() => {
+        /* silent */
+      });
+  }, [bulkStatus, selected, clearSelection]);
 
   return (
     <main className="py-8 pb-20">
@@ -139,6 +287,41 @@ export default function AdminSiparislerPage() {
           <p className="mt-1.5 text-base text-gri-700">
             {orders.length} sipariş — filtrele ve durum güncelle
           </p>
+        </div>
+
+        {/* Saved views chips */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-[0.04em] text-gri-500 font-semibold mr-1">
+            Hızlı görünüm:
+          </span>
+          {SAVED_VIEWS.map((v) => {
+            const isActive = activeView === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActiveView(isActive ? null : v.id)}
+                title={v.description}
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-semibold transition-colors ring-1",
+                  isActive
+                    ? "bg-pim-mercan text-white ring-pim-mercan"
+                    : "bg-white text-gri-700 ring-gri-200 hover:ring-pim-mercan hover:text-pim-mercan"
+                )}
+              >
+                <span>{v.emoji}</span> {v.label}
+              </button>
+            );
+          })}
+          {activeView && (
+            <button
+              type="button"
+              onClick={() => setActiveView(null)}
+              className="text-[12px] font-semibold text-pim-mercan hover:underline"
+            >
+              Görünümü temizle
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -175,11 +358,78 @@ export default function AdminSiparislerPage() {
           </div>
         </Card>
 
+        {/* Bulk action bar — sticky when items selected */}
+        {selected.size > 0 && (
+          <div className="sticky top-4 z-10 mb-4 rounded-xl bg-lacivert text-white shadow-2 px-4 py-3 flex items-center gap-3 flex-wrap">
+            <span className="font-semibold text-[13.5px]">
+              {selected.size} sipariş seçildi
+            </span>
+            <span className="text-white/50">·</span>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="bulkStatus"
+                className="text-[12px] text-white/80"
+              >
+                Durum:
+              </label>
+              <select
+                id="bulkStatus"
+                value={bulkStatus}
+                onChange={(e) =>
+                  setBulkStatus(e.target.value as AdminStatus | "")
+                }
+                className="h-9 px-2 pr-7 rounded-lg ring-1 ring-white/20 bg-white/10 text-[13px] font-semibold text-white focus:ring-white focus:outline-none"
+              >
+                <option value="" className="text-lacivert">
+                  Seç…
+                </option>
+                {ALL_STATUSES.map((st) => (
+                  <option
+                    key={st}
+                    value={st}
+                    className="text-lacivert"
+                  >
+                    {STATUS_META[st].label}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={applyBulkStatus}
+                disabled={!bulkStatus}
+              >
+                Uygula
+              </Button>
+            </div>
+            <span className="ml-auto" />
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-[12.5px] font-semibold text-white/80 hover:text-white"
+            >
+              Seçimi temizle
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <Card padding="p-0" className="overflow-x-auto">
           <table className="w-full text-[13px] text-left">
             <thead className="border-b border-gri-200 bg-gri-50">
               <tr>
+                <th className="px-3 py-3 w-[40px]">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someFilteredSelected;
+                    }}
+                    onChange={toggleAll}
+                    aria-label="Tümünü seç"
+                    className="h-4 w-4 accent-pim-mercan cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
                   Sipariş
                 </th>
@@ -207,7 +457,7 @@ export default function AdminSiparislerPage() {
             <tbody className="divide-y divide-gri-100">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center">
+                  <td colSpan={9} className="px-4 py-12 text-center">
                     <Icon.Box size={48} className="text-gri-500 mx-auto mb-3" />
                     <div className="font-semibold mb-1">
                       {orders.length === 0
@@ -224,8 +474,24 @@ export default function AdminSiparislerPage() {
               ) : (
                 filtered.map((o) => {
                   const s = STATUS_META[o.status];
+                  const isSelected = selected.has(o.id);
                   return (
-                    <tr key={o.id} className="hover:bg-gri-50">
+                    <tr
+                      key={o.id}
+                      className={cn(
+                        "hover:bg-gri-50",
+                        isSelected && "bg-pim-mercan-tint/40"
+                      )}
+                    >
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleOne(o.id)}
+                          aria-label={`${o.id} seç`}
+                          className="h-4 w-4 accent-pim-mercan cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3 font-mono text-[12.5px]">
                         {o.id}
                       </td>
@@ -284,6 +550,15 @@ export default function AdminSiparislerPage() {
             </tbody>
           </table>
         </Card>
+
+        {filtered.length > 0 && (
+          <p className="mt-3 text-[12px] text-gri-500 text-right">
+            {filtered.length} sipariş · Toplam{" "}
+            <span className="font-semibold text-lacivert">
+              {fmt(filtered.reduce((s, o) => s + o.total, 0))} TL
+            </span>
+          </p>
+        )}
       </div>
     </main>
   );

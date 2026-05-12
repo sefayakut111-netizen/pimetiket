@@ -344,7 +344,7 @@ export default function ProfilPage() {
                     setShowDelete(false);
                     setConfirmText("");
                   }}
-                  className="h-9 px-3.5 rounded-full bg-kirmizi text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#C73A2D]"
+                  className="h-9 px-3.5 rounded-full bg-kirmizi text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-kirmizi-koyu"
                 >
                   {c.confirmDelete}
                 </button>

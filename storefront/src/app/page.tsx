@@ -16,6 +16,7 @@ import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
 import { UseCaseSelector } from "@/components/home/UseCaseSelector";
+import { QuickReorderWidget } from "@/components/home/QuickReorderWidget";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
@@ -189,12 +190,12 @@ export default function HomePage() {
               className="absolute top-2 left-0 z-20 hidden sm:block"
               style={{ transform: "rotate(-10deg)" }}
             >
-              <div className="w-[72px] h-[96px] rounded-md shadow-2 bg-gradient-to-br from-krem to-[#F5DBC4] ring-1 ring-[#3D2E1A]/10 p-2 flex flex-col items-center justify-center text-[#3D2E1A]">
+              <div className="w-[72px] h-[96px] rounded-md shadow-2 bg-gradient-to-br from-krem to-krem-koyu ring-1 ring-kahve/10 p-2 flex flex-col items-center justify-center text-kahve">
                 <div className="text-[7px] font-bold tracking-[0.1em] opacity-70">
                   ZEYTİNYAĞI
                 </div>
                 <div className="text-[14px] font-bold mt-1">Olea</div>
-                <div className="w-8 h-px bg-[#3D2E1A]/30 my-1.5" />
+                <div className="w-8 h-px bg-kahve/30 my-1.5" />
                 <div className="text-[6px] tracking-[0.05em] opacity-60">
                   100 ml · CMYK
                 </div>
@@ -265,6 +266,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Quick reorder — sadece login + sipariş geçmişi varsa görünür */}
+      <QuickReorderWidget />
 
       {/* ============================== 3 PILLAR ============================== */}
       <section className="pt-8 pb-16">

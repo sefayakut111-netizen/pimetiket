@@ -226,49 +226,57 @@ export default function AdminMusterilerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gri-100">
-                {filtered.map((c) => (
-                  <tr key={c.key} className="hover:bg-gri-50">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-lacivert">
-                        {c.name}
-                      </div>
-                      <div className="text-[12px] text-gri-500">
-                        {c.phone}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gri-700">{c.city}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      <span className="font-semibold">{c.orderCount}</span>
-                      {c.activeOrders > 0 && (
-                        <span className="ml-1.5 inline-flex items-center h-[20px] px-1.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10px] font-bold">
-                          {c.activeOrders} aktif
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                      {fmt(c.totalRevenue)} TL
-                    </td>
-                    <td className="px-4 py-3 text-right text-gri-700 tabular-nums">
-                      {fmt(c.avgOrder)} TL
-                    </td>
-                    <td className="px-4 py-3 text-[12.5px] text-gri-700">
-                      <Link
-                        href={`/siparis/${c.lastOrderId}`}
-                        className="font-mono text-pim-mercan hover:underline"
-                      >
-                        {c.lastOrderId}
-                      </Link>
-                      <div className="text-[11px] text-gri-500 mt-0.5">
-                        {timeAgo(c.lastOrderAt)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm">
-                        Detay <Icon.ChevR size={12} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((c) => {
+                  const detailHref = `/admin/musteriler/${encodeURIComponent(c.key)}`;
+                  return (
+                    <tr key={c.key} className="hover:bg-gri-50">
+                      <td className="px-4 py-3">
+                        <Link
+                          href={detailHref}
+                          className="font-semibold text-lacivert hover:text-pim-mercan"
+                        >
+                          {c.name}
+                        </Link>
+                        <div className="text-[12px] text-gri-500">
+                          {c.phone}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gri-700">{c.city}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <span className="font-semibold">{c.orderCount}</span>
+                        {c.activeOrders > 0 && (
+                          <span className="ml-1.5 inline-flex items-center h-[20px] px-1.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10px] font-bold">
+                            {c.activeOrders} aktif
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                        {fmt(c.totalRevenue)} TL
+                      </td>
+                      <td className="px-4 py-3 text-right text-gri-700 tabular-nums">
+                        {fmt(c.avgOrder)} TL
+                      </td>
+                      <td className="px-4 py-3 text-[12.5px] text-gri-700">
+                        <Link
+                          href={`/admin/siparisler/${c.lastOrderId}`}
+                          className="font-mono text-pim-mercan hover:underline"
+                        >
+                          {c.lastOrderId}
+                        </Link>
+                        <div className="text-[11px] text-gri-500 mt-0.5">
+                          {timeAgo(c.lastOrderAt)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href={detailHref}>
+                          <Button variant="ghost" size="sm">
+                            Detay <Icon.ChevR size={12} />
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </Card>

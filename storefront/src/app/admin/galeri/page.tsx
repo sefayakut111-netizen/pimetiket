@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Input, Modal, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, Input, Modal, useToast, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 interface GalleryItem {
@@ -148,9 +148,11 @@ export default function AdminGaleriPage() {
         </Card>
 
         {loading && (
-          <Card padding="p-8" className="text-center text-gri-700">
-            Yükleniyor…
-          </Card>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <Skeleton key={i} className="aspect-[4/3] rounded-xl" />
+            ))}
+          </div>
         )}
 
         {!loading && items.length === 0 && (

@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Card, Eyebrow, Button } from "@/components/ui";
+import { Card, Eyebrow, Button, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 interface BackupItem {
@@ -181,8 +181,8 @@ export default function AdminYedeklerPage() {
           </div>
 
           {loading && (
-            <div className="p-8 text-center text-[13px] text-gri-700">
-              Yükleniyor…
+            <div className="p-4">
+              <Skeleton.AdminTable rows={4} />
             </div>
           )}
 

@@ -1,0 +1,338 @@
+/**
+ * Pim Etiket — /admin/tasarimlar
+ *
+ * Tasarım kütüphanesi — admin/staff için tüm müşteri yüklemeleri.
+ *
+ * İçerik:
+ *   - Status filtreleri (uploaded / qc_passed / qc_warned / qc_failed / approved)
+ *   - Grid: 4 sütun thumbnail kart
+ *   - Her kart: önizleme, müşteri, sipariş, ürün, AI flag rozeti, tarih
+ *   - Karta tıklayınca sipariş detayına gider
+ *   - Search: orderId / müşteri / dosya adı
+ *
+ * Veri kaynağı: GET /api/admin/designs (RLS: admin/staff role)
+ */
+
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Icon } from "@/components/Icon";
+import { Pim } from "@/components/Pim";
+import { Card, Input, Eyebrow } from "@/components/ui";
+import { cn } from "@/lib/cn";
+import type { AdminDesignRow } from "@/app/api/admin/designs/route";
+
+type StatusFilter =
+  | "all"
+  | "uploaded"
+  | "qc_passed"
+  | "qc_warned"
+  | "qc_failed"
+  | "approved";
+
+const STATUS_LABEL: Record<
+  Exclude<StatusFilter, "all">,
+  { label: string; color: string; bg: string }
+> = {
+  uploaded: {
+    label: "Yüklendi",
+    color: "text-lacivert",
+    bg: "bg-gri-100",
+  },
+  qc_passed: {
+    label: "AI ✓",
+    color: "text-yesil",
+    bg: "bg-yesil-soft",
+  },
+  qc_warned: {
+    label: "Uyarı",
+    color: "text-sari",
+    bg: "bg-sari-soft",
+  },
+  qc_failed: {
+    label: "Sorunlu",
+    color: "text-kirmizi",
+    bg: "bg-gri-100",
+  },
+  approved: {
+    label: "Onaylı",
+    color: "text-yesil",
+    bg: "bg-yesil-soft",
+  },
+};
+
+const FILTERS: { id: StatusFilter; label: string }[] = [
+  { id: "all", label: "Tümü" },
+  { id: "uploaded", label: "Yüklendi" },
+  { id: "qc_passed", label: "AI ✓" },
+  { id: "qc_warned", label: "Uyarı" },
+  { id: "qc_failed", label: "Sorunlu" },
+  { id: "approved", label: "Onaylı" },
+];
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString("tr-TR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function AdminTasarimlarPage() {
+  const [designs, setDesigns] = useState<AdminDesignRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const url =
+      filter === "all"
+        ? "/api/admin/designs"
+        : `/api/admin/designs?status=${filter}`;
+    setLoading(true);
+    setError(null);
+    fetch(url)
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          throw new Error(body?.error ?? `HTTP ${r.status}`);
+        }
+        return r.json() as Promise<{
+          designs: AdminDesignRow[];
+          total: number;
+        }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setDesigns(data.designs);
+        setLoading(false);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setError(e.message);
+        setDesigns([]);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter]);
+
+  const filtered = useMemo(() => {
+    if (!search) return designs;
+    const q = search.toLowerCase();
+    return designs.filter(
+      (d) =>
+        d.orderId.toLowerCase().includes(q) ||
+        d.customerName.toLowerCase().includes(q) ||
+        d.originalName.toLowerCase().includes(q) ||
+        (d.productTitle?.toLowerCase().includes(q) ?? false)
+    );
+  }, [designs, search]);
+
+  // KPI: AI ✓ ratio (qc_passed / total qc_*)
+  const qcDone = designs.filter(
+    (d) => d.status !== "uploaded" && d.status !== "approved"
+  );
+  const passRate =
+    qcDone.length > 0
+      ? (designs.filter((d) => d.status === "qc_passed").length /
+          qcDone.length) *
+        100
+      : 0;
+
+  return (
+    <main className="py-8 pb-20">
+      <div className="mx-auto max-w-[1320px] px-6">
+        {/* Header */}
+        <div className="mb-6">
+          <Eyebrow>Kütüphane</Eyebrow>
+          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+            Tasarımlar
+          </h1>
+          <p className="mt-1.5 text-base text-gri-700">
+            {designs.length} aktif tasarım dosyası ·{" "}
+            {qcDone.length > 0
+              ? `AI ✓ oranı: %${passRate.toFixed(0)}`
+              : "AI kontrolü bekliyor"}
+          </p>
+        </div>
+
+        {/* Filtre + arama */}
+        <Card padding="p-4" className="mb-5">
+          <div className="flex flex-wrap gap-2 items-center">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-[13px] font-semibold transition-colors",
+                  filter === f.id
+                    ? "bg-lacivert text-white"
+                    : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+            <div className="ml-auto w-full sm:w-auto sm:min-w-[280px] relative">
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Sipariş, müşteri, dosya ara…"
+                className="!h-11 !pl-10"
+              />
+              <Icon.Search
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gri-500"
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Sonuç */}
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div
+                key={i}
+                className="rounded-xl bg-gri-100 aspect-[3/4] animate-pulse"
+              />
+            ))}
+          </div>
+        ) : error ? (
+          <Card padding="p-10" className="text-center">
+            <Icon.Info size={32} className="text-kirmizi mx-auto mb-2" />
+            <h3 className="text-lg font-semibold">Liste yüklenemedi</h3>
+            <p className="text-[13px] text-gri-700 mt-1">{error}</p>
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card padding="p-12" className="text-center">
+            <Pim pose="think" size={120} />
+            <h3 className="mt-4 text-xl font-semibold">
+              {designs.length === 0
+                ? "Henüz tasarım yok"
+                : "Bu aramada sonuç yok"}
+            </h3>
+            <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
+              {designs.length === 0
+                ? "Müşteriler dosya yükledikçe burada görünecek."
+                : "Filtreyi gevşet veya aramayı temizle."}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filtered.map((d) => {
+              const meta = d.status in STATUS_LABEL
+                ? STATUS_LABEL[d.status as keyof typeof STATUS_LABEL]
+                : { label: d.status, color: "text-gri-700", bg: "bg-gri-100" };
+              const errFlags = d.aiCheckFlags.filter(
+                (f) => f.kind === "error"
+              ).length;
+              const warnFlags = d.aiCheckFlags.filter(
+                (f) => f.kind === "warning"
+              ).length;
+              const isImage = d.mimeType.startsWith("image/");
+              return (
+                <Link
+                  key={d.id}
+                  href={`/admin/siparisler/${d.orderId}`}
+                  className="group rounded-xl bg-white ring-1 ring-gri-200 overflow-hidden hover:-translate-y-0.5 hover:ring-pim-mercan transition-all"
+                >
+                  {/* Preview */}
+                  <div className="aspect-[4/3] bg-gri-50 relative overflow-hidden grid place-items-center">
+                    {d.previewUrl && isImage ? (
+                      <Image
+                        src={d.previewUrl}
+                        alt={d.originalName}
+                        fill
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-contain"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-gri-500">
+                        <Icon.Doc size={32} />
+                        <span className="text-[10.5px] uppercase tracking-[0.04em] font-semibold">
+                          {d.mimeType.split("/")[1] || "dosya"}
+                        </span>
+                      </div>
+                    )}
+                    {/* Status badge */}
+                    <span
+                      className={cn(
+                        "absolute top-2 left-2 inline-flex items-center h-[20px] px-2 rounded-full text-[10.5px] font-bold",
+                        meta.bg,
+                        meta.color
+                      )}
+                    >
+                      {meta.label}
+                    </span>
+                    {(errFlags > 0 || warnFlags > 0) && (
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        {errFlags > 0 && (
+                          <span
+                            className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi text-white text-[10px] font-bold"
+                            title={`${errFlags} hata`}
+                          >
+                            ✕ {errFlags}
+                          </span>
+                        )}
+                        {warnFlags > 0 && (
+                          <span
+                            className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari text-white text-[10px] font-bold"
+                            title={`${warnFlags} uyarı`}
+                          >
+                            ! {warnFlags}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Meta */}
+                  <div className="p-3">
+                    <div
+                      className="text-[12.5px] font-semibold text-lacivert truncate group-hover:text-pim-mercan"
+                      title={d.originalName}
+                    >
+                      {d.originalName}
+                    </div>
+                    <div className="text-[11px] text-gri-500 mt-0.5 truncate">
+                      {d.customerName}
+                    </div>
+                    <div className="text-[11px] text-gri-700 mt-1.5 flex items-center justify-between">
+                      <span className="font-mono">{d.orderId}</span>
+                      <span>{formatSize(d.sizeBytes)}</span>
+                    </div>
+                    {d.productConfig && (
+                      <div className="text-[10.5px] text-gri-500 mt-0.5 truncate">
+                        {d.productConfig}
+                      </div>
+                    )}
+                    <div className="text-[10.5px] text-gri-500 mt-1.5">
+                      {formatDate(d.uploadedAt)} · v{d.version}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

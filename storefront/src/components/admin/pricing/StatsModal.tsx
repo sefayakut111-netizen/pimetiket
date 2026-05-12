@@ -397,7 +397,7 @@ function HeroStat({
       className={cn(
         "rounded-xl p-4 ring-1",
         isHero
-          ? "bg-gradient-to-br from-lacivert to-[#111827] text-white ring-transparent"
+          ? "bg-gradient-to-br from-lacivert to-lacivert-koyu text-white ring-transparent"
           : "bg-white ring-gri-200"
       )}
     >

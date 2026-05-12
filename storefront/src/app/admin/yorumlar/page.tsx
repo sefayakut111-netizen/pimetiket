@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Card, Eyebrow, useToast } from "@/components/ui";
+import { Card, Eyebrow, useToast, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 type ReviewStatus = "pending" | "published" | "rejected" | "hidden";
@@ -191,9 +191,7 @@ export default function AdminYorumlarPage() {
         </Card>
 
         {loading ? (
-          <Card padding="p-12" className="text-center">
-            <div className="text-gri-500 text-[14px]">Yükleniyor…</div>
-          </Card>
+          <Skeleton.AdminTable rows={6} />
         ) : filtered.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Pim pose="happy" size={140} />
@@ -286,7 +284,7 @@ export default function AdminYorumlarPage() {
                           onClick={() =>
                             updateReview(r.id, { status: "published" })
                           }
-                          className="h-9 px-3 rounded-lg text-[12.5px] font-semibold bg-yesil text-white hover:bg-[#22a862] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          className="h-9 px-3 rounded-lg text-[12.5px] font-semibold bg-yesil text-white hover:bg-yesil-koyu flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <Icon.Check size={12} /> Onayla
                         </button>

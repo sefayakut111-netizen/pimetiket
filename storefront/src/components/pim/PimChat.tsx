@@ -527,7 +527,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
   };
 
   return (
-    <div className="max-w-[90%] w-full rounded-2xl bg-gradient-to-br from-lacivert to-[#111827] text-white p-4 shadow-2 relative overflow-hidden">
+    <div className="max-w-[90%] w-full rounded-2xl bg-gradient-to-br from-lacivert to-lacivert-koyu text-white p-4 shadow-2 relative overflow-hidden">
       <div
         aria-hidden
         className="absolute -top-12 -right-12 w-[120px] h-[120px] rounded-full bg-pim-mercan/30 blur-2xl"

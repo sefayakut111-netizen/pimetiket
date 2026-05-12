@@ -412,7 +412,7 @@ export default function PanelimPage() {
             </span>
             {loyalty?.vipSince && (
               <span
-                className="inline-flex items-center gap-1.5 px-3 h-[28px] rounded-full bg-gradient-to-r from-sari to-[#FFC53D] text-sari-koyu text-[12.5px] font-bold uppercase tracking-[0.06em] shadow-1"
+                className="inline-flex items-center gap-1.5 px-3 h-[28px] rounded-full bg-gradient-to-r from-sari to-turuncu text-sari-koyu text-[12.5px] font-bold uppercase tracking-[0.06em] shadow-1"
                 title={`VIP üye — ${new Date(loyalty.vipSince).toLocaleDateString("tr-TR")} tarihinden`}
               >
                 <Icon.Star size={13} /> VIP
@@ -656,7 +656,7 @@ export default function PanelimPage() {
 
             {/* AI suggestion — son etiket varsa upsell */}
             {hydrated && lastEtiketItem && (
-              <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-[#2C3849] text-white flex gap-5 items-center">
+              <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-lacivert-soft text-white flex gap-5 items-center">
                 <PimMini pose="think" size={56} />
                 <div className="flex-1">
                   <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">

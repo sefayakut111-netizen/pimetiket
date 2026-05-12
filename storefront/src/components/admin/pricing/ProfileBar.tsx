@@ -423,7 +423,7 @@ function ManageProfilesModal({
                             onDelete(p.id);
                             setConfirmDeleteId(null);
                           }}
-                          className="text-[11px] font-bold text-white bg-kirmizi px-2 py-1 rounded hover:bg-[#C73A2D]"
+                          className="text-[11px] font-bold text-white bg-kirmizi px-2 py-1 rounded hover:bg-kirmizi-koyu"
                         >
                           Sil onayla
                         </button>

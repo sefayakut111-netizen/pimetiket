@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Modal, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, Modal, useToast, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 interface KvkkAdminRow {
@@ -195,8 +195,8 @@ export default function AdminKvkkTalepleriPage() {
         {/* Liste */}
         <Card padding="p-0" className="overflow-x-auto">
           {loading && (
-            <div className="p-8 text-center text-[13px] text-gri-700">
-              Yükleniyor…
+            <div className="p-4">
+              <Skeleton.AdminTable rows={5} />
             </div>
           )}
 

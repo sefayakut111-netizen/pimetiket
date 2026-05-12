@@ -15,6 +15,7 @@
   --color-krem-soft: #faf4e8;
   --color-lacivert: #1f2937;
   --color-lacivert-soft: #374151;
+  --color-lacivert-koyu: #111827;
   --color-turuncu: #ff9933;
 
   /* ---------- Neutrals (gri scale) ---------- */
@@ -28,8 +29,12 @@
   /* ---------- Status ---------- */
   --color-yesil: #2bb673;
   --color-yesil-soft: #e6f6ee;
+  --color-yesil-koyu: #22a862;
   --color-kirmizi: #e04b3c;
   --color-kirmizi-soft: #fbe9e6;
+  --color-kirmizi-koyu: #c73a2d;
+  --color-krem-koyu: #f5dbc4;
+  --color-kahve: #3d2e1a;
   --color-sari: #f0b22f;
   --color-sari-soft: #fcf4e1;
   --color-sari-koyu: #7a560a;

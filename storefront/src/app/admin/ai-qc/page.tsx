@@ -240,7 +240,7 @@ export default function AdminAiQcPage() {
                   variant="primary"
                   size="lg"
                   onClick={() => decide("approve")}
-                  className="!bg-yesil hover:!bg-[#22a862]"
+                  className="!bg-yesil hover:!bg-yesil-koyu"
                 >
                   <Icon.Check size={16} /> Onayla → Üretime
                 </Button>

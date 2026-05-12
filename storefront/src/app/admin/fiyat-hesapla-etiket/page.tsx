@@ -560,7 +560,7 @@ export default function EtiketFiyatHesaplaPage() {
                 {/* Price hero */}
                 <Card
                   padding="p-7"
-                  className="!bg-gradient-to-br !from-lacivert !to-[#111827] !text-white relative overflow-hidden"
+                  className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white relative overflow-hidden"
                 >
                   <div
                     aria-hidden

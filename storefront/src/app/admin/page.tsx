@@ -163,6 +163,114 @@ function detectAlerts(orders: CustomerOrder[]): AlertItem[] {
   return alerts;
 }
 
+// ============================================================
+// "Bugün ne yapmalıyım" — günün iş kuyruğu
+// Alert strip = SLA patlamak üzere / Bugün widgetı = rutin iş listesi
+// ============================================================
+interface TodoItem {
+  id: string;
+  /** Sıra: küçük olan üstte. AI flag (1) > Operatör (2) > Prova geç yanıt (3)
+   * > Fason atama (4) > Kargoya verilecek (5) > Yorum onayı (6) */
+  priority: number;
+  emoji: string;
+  title: string;
+  count: number;
+  hint: string;
+  href: string;
+  urgent: boolean;
+}
+
+function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const items: TodoItem[] = [];
+
+  const aiFlag = orders.filter((o) => o.status === "qc_flagged").length;
+  if (aiFlag > 0) {
+    items.push({
+      id: "ai-flag",
+      priority: 1,
+      emoji: "🤖",
+      title: "AI flag — manuel kontrol",
+      count: aiFlag,
+      hint: "AI tasarımı sorunlu buldu, sen karar ver",
+      href: "/admin/ai-qc",
+      urgent: aiFlag > 3,
+    });
+  }
+
+  const operatorReview = orders.filter(
+    (o) => o.status === "operator_review"
+  ).length;
+  if (operatorReview > 0) {
+    items.push({
+      id: "operator-review",
+      priority: 2,
+      emoji: "👀",
+      title: "Operatör incelemesi",
+      count: operatorReview,
+      hint: "Tasarımı incele, prova hazırla",
+      href: "/admin/siparisler?status=operator_review",
+      urgent: false,
+    });
+  }
+
+  const stuckProof = orders.filter(
+    (o) => o.status === "proof_pending" && now - o.createdAt > 1.5 * day
+  ).length;
+  if (stuckProof > 0) {
+    items.push({
+      id: "stuck-proof",
+      priority: 3,
+      emoji: "⏰",
+      title: "36+ saattir prova yanıtı yok",
+      count: stuckProof,
+      hint: "WhatsApp ile hatırlat",
+      href: "/admin/prova",
+      urgent: true,
+    });
+  }
+
+  const unassigned = orders.filter((o) => o.status === "paid").length;
+  if (unassigned > 0) {
+    items.push({
+      id: "unassigned",
+      priority: 4,
+      emoji: "🏭",
+      title: "Üretime atanacak",
+      count: unassigned,
+      hint: "Fason ata + teslim tarihi belirle",
+      href: "/admin/fason",
+      urgent: unassigned >= 5,
+    });
+  }
+
+  // Bugün kargoya verilecek: in_production + estimatedDelivery=bugün veya geçmiş
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const todayTs = today.getTime();
+  const toShip = orders.filter(
+    (o) =>
+      o.status === "in_production" &&
+      o.estimatedDelivery &&
+      new Date(o.estimatedDelivery).getTime() <= todayTs
+  ).length;
+  if (toShip > 0) {
+    items.push({
+      id: "to-ship",
+      priority: 5,
+      emoji: "📦",
+      title: "Bugün kargoya verilecek",
+      count: toShip,
+      hint: "Üretim tamamsa kargo tetikle",
+      href: "/admin/siparisler?status=in_production",
+      urgent: toShip > 0,
+    });
+  }
+
+  return items.sort((a, b) => a.priority - b.priority);
+}
+
 const STATUS_LABEL: Record<OrderStatus, { label: string; color: string; bg: string; hex: string }> = {
   paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF8585" },
@@ -296,6 +404,7 @@ export default function AdminDashboardPage() {
   const revenueChange = formatChange(revenue, prevRevenue);
 
   const alerts = useMemo(() => detectAlerts(orders), [orders]);
+  const todoList = useMemo(() => buildTodoList(orders), [orders]);
 
   // Chart datası — daima rangeWindow.days kullan
   const dailySeries = useMemo(
@@ -486,6 +595,87 @@ export default function AdminDashboardPage() {
               </Link>
             ))}
           </div>
+        )}
+
+        {/* "Bugün ne yapmalıyım" — günün iş kuyruğu */}
+        {todoList.length > 0 && (
+          <Card padding="p-0" className="mb-6 ring-1 ring-pim-mercan/15">
+            <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between bg-pim-mercan-tint">
+              <div className="flex items-center gap-2">
+                <span className="text-[18px]">☀️</span>
+                <div>
+                  <h2 className="text-[15px] font-semibold text-pim-mercan">
+                    Bugün ne yapmalıyım?
+                  </h2>
+                  <p className="text-[11.5px] text-pim-mercan/80">
+                    {todoList.length} sıradaki iş — sırayla bitirince hat boş
+                  </p>
+                </div>
+              </div>
+              <span className="text-[12px] font-bold tabular-nums text-pim-mercan bg-white rounded-full h-7 min-w-7 px-2.5 grid place-items-center">
+                {todoList.reduce((s, t) => s + t.count, 0)}
+              </span>
+            </div>
+            <div className="divide-y divide-gri-100">
+              {todoList.map((t) => (
+                <Link
+                  key={t.id}
+                  href={t.href}
+                  className={cn(
+                    "px-5 py-3.5 flex items-center gap-3 hover:bg-gri-50 transition-colors",
+                    t.urgent && "bg-sari-soft/40"
+                  )}
+                >
+                  <span className="text-[22px] shrink-0">{t.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-[13.5px] text-lacivert">
+                        {t.title}
+                      </span>
+                      {t.urgent && (
+                        <span className="inline-flex items-center h-[18px] px-1.5 rounded-full bg-kirmizi text-white text-[9.5px] font-bold uppercase tracking-[0.05em]">
+                          Acil
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11.5px] text-gri-700 mt-0.5">
+                      {t.hint}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "text-[20px] font-bold tabular-nums leading-none",
+                        t.urgent ? "text-kirmizi" : "text-pim-mercan"
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                    <Icon.ChevR
+                      size={14}
+                      className="text-gri-500 group-hover:text-pim-mercan"
+                    />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {todoList.length === 0 && orders.length > 0 && (
+          <Card padding="p-5" className="mb-6 bg-yesil-soft ring-yesil/20">
+            <div className="flex items-center gap-3">
+              <span className="text-[28px]">🎉</span>
+              <div>
+                <h2 className="text-[15px] font-semibold text-lacivert">
+                  Hat boş — tüm acil işler tamam
+                </h2>
+                <p className="text-[12.5px] text-gri-700 mt-0.5">
+                  Yeni sipariş geldikçe burada gözükecek. Bir kahve hak ettin.
+                </p>
+              </div>
+            </div>
+          </Card>
         )}
 
         {/* KPI grid 6 cards */}

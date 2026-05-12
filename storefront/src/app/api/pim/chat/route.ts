@@ -17,6 +17,8 @@ import {
   PERSONAS,
   type PimPersona,
 } from "@/lib/pim/personas";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import {
   quoteSticker,
   findTier,
@@ -193,6 +195,43 @@ export async function POST(req: Request) {
         error: "OPENAI_API_KEY env eksik. .env.local'e ekle.",
       }),
       { status: 500, headers: { "content-type": "application/json" } }
+    );
+  }
+
+  // Rate limit (audit P0 12 May): kullanıcı id varsa öncelikli, yoksa IP.
+  // Anonim guest agresif spam yapamasın diye dakikada 12 mesaj limit.
+  // Upstash env varsa cluster-safe, yoksa in-memory fallback (cold start
+  // sayacı sıfırlar — küçük leak ama maliyet kontrolü için yeterli).
+  let limitKey = `chat:ip:${getClientIp(req)}`;
+  try {
+    const supa = await createServerClient();
+    const {
+      data: { user },
+    } = await supa.auth.getUser();
+    if (user?.id) limitKey = `chat:user:${user.id}`;
+  } catch {
+    /* anonim olarak devam */
+  }
+  const limit = await rateLimit({
+    key: limitKey,
+    limit: 12,
+    windowMs: 60_000,
+  });
+  if (!limit.success) {
+    return new Response(
+      JSON.stringify({
+        error: "rate_limit_exceeded",
+        detail: "Dakikada en fazla 12 mesaj. Lütfen biraz bekle.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "content-type": "application/json",
+          "retry-after": String(limit.retryAfter),
+          "x-ratelimit-limit": String(limit.limit),
+          "x-ratelimit-remaining": String(limit.remaining),
+        },
+      }
     );
   }
 

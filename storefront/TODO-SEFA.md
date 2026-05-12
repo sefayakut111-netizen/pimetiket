@@ -18,6 +18,18 @@
 - ❌ Telefon hattı (sonraki hafta)
 - ❌ Yeni adres güncellemesi (sonraki hafta — Sefa elinde değil)
 
+### ⏳ HAFTAYA BEKLENİYOR — Madde 5 (TKHK m.5 yasal zorunluluk)
+
+**Sefa kararı 12 May:** Bu üç bilgi haftaya bekleniyor, geldikçe Claude basacak:
+
+- [ ] **MERSİS no** — mersis.gtb.gov.tr şirket adı/vergi no ile sorgu → 16 haneli numara
+- [ ] **Sabit telefon** — Türk Telekom/Vodafone (~50-80 TL/ay) veya kurumsal cep numarası
+- [ ] **İş yeri adresi** — kira sözleşmesi netleşince ya da geçici adres kararı
+
+**Etkilenen 5 sayfa:** Footer + /mesafeli-satis + /kvkk + /iletisim + /sartlar.
+**Süre:** Sefa bilgi verince Claude 15 dk'da tamam eder.
+**Aciliyet:** PayTR başvurusu öncesinde **zorunlu** (sözleşme sakat olmasın).
+
 ### B. Bu hafta yapılacaklar (10 Mayıs — bugün maraton)
 
 > **10 Mayıs durumu:** ~80 madde + 12 commit + 4 yeni migration tamamlandı.
