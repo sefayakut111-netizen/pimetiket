@@ -295,8 +295,40 @@ export default function SepetPage() {
                   </span>
                 </div>
                 {shipping > 0 && (
-                  <div className="text-[12.5px] text-gri-700 leading-relaxed bg-sari-soft text-sari-koyu p-2.5 rounded-lg">
-                    {t.cart.freeShippingHint(fmt(FREE_SHIPPING_THRESHOLD - subtotal))}
+                  <div className="bg-sari-soft text-sari-koyu p-3 rounded-lg">
+                    <div className="text-[12.5px] leading-relaxed font-semibold mb-1.5">
+                      🚚{" "}
+                      {t.cart.freeShippingHint(
+                        fmt(FREE_SHIPPING_THRESHOLD - subtotal)
+                      )}
+                    </div>
+                    <div
+                      className="h-1.5 rounded-full bg-white/60 overflow-hidden"
+                      role="progressbar"
+                      aria-valuenow={Math.min(
+                        100,
+                        Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100)
+                      )}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="Kargo bedava eşiğine ilerleme"
+                    >
+                      <div
+                        className="h-full bg-sari rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-1 flex justify-between text-[10.5px] tabular-nums">
+                      <span>{fmt(subtotal)} TL</span>
+                      <span>{fmt(FREE_SHIPPING_THRESHOLD)} TL</span>
+                    </div>
+                  </div>
+                )}
+                {shipping === 0 && subtotal > 0 && (
+                  <div className="bg-yesil-soft text-yesil p-2.5 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5">
+                    🎉 Kargo bedava — eşiği geçtin!
                   </div>
                 )}
               </div>

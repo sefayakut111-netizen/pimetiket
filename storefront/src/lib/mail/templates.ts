@@ -278,12 +278,197 @@ function renderAutoRefundStaleProof(input: MailTemplateInput): MailRendered {
 // ============================================================
 // Router
 // ============================================================
+// ============================================================
+// lead_welcome — şablon listesi signup welcome maili
+// ============================================================
+function renderLeadWelcome(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const downloadUrl = (() => {
+    const raw = typeof p.download_url === "string" ? p.download_url : "";
+    if (!raw) return "";
+    try {
+      const u = new URL(raw);
+      if (u.protocol === "https:") return u.toString();
+    } catch {
+      /* invalid */
+    }
+    return "";
+  })();
+  const interests = Array.isArray(p.interests)
+    ? (p.interests as unknown[]).map(String).slice(0, 5).join(", ")
+    : "";
+
+  const subject = "Şablon paketin hazır — Pim Etiket";
+
+  const body = `
+    <h1 style="font-size: 20px; margin: 0 0 12px;">Hoş geldin! 👋</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Pim Etiket şablon kütüphanesine kaydolduğun için teşekkürler.
+      ${interests ? `İlgilendiğin alanlar: <strong>${escape(interests)}</strong>.` : ""}
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      ${
+        downloadUrl
+          ? `Tüm şablonları içeren ZIP aşağıdaki butonda. Canva, Illustrator,
+             Figma — istediğin araçta aç, düzenle, hadi başla.`
+          : `Şablonlar son rötuşlardan geçiyor — hazır olur olmaz tek tıkla
+             indirme linki sana mail olarak gelecek. <em>24 saat içinde</em>.`
+      }
+    </p>
+
+    ${
+      downloadUrl
+        ? `<div style="margin: 24px 0; text-align: center;">
+            <a href="${downloadUrl}" style="display: inline-block; background: #ff6b5b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+              ✨ Şablon paketini indir
+            </a>
+          </div>`
+        : ""
+    }
+
+    <p style="font-size: 13px; line-height: 1.6; color: #57534e;">
+      Hazır tasarımını Pim Etiket'te bastırmak istersen, sticker ya da
+      etiket sayfasından konfigürasyonu seçip dosyanı yükleyebilirsin —
+      Pim AI dosyanı kontrol eder, prova hazırlanır, 5-7 gün içinde
+      kapına gelir.
+    </p>
+
+    <div style="margin: 24px 0; display: flex; gap: 12px;">
+      <a href="${SITE_URL}/etiket" style="display: inline-block; background: #ffffff; color: #1e293b; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px solid #e7e5e4;">
+        Etiket yapılandır
+      </a>
+      <a href="${SITE_URL}/sticker" style="display: inline-block; background: #ffffff; color: #1e293b; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px solid #e7e5e4;">
+        Sticker yapılandır
+      </a>
+    </div>
+  `;
+
+  const footer = `
+    Yeni şablon eklendikçe sana haber veririz, spam atmayız.
+    Aboneliği iptal etmek için <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
+    KVKK aydınlatma: <a href="${SITE_URL}/kvkk">pimetiket.com/kvkk</a>.
+  `;
+
+  const text = `Hoş geldin!\n\nPim Etiket şablon kütüphanesine kaydoldun.${downloadUrl ? `\n\nZIP indir: ${downloadUrl}` : "\n\nŞablonlar hazır olunca mail atacağız (24 saat içinde)."}\n\nEtiket yapılandır: ${SITE_URL}/etiket\nSticker yapılandır: ${SITE_URL}/sticker`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
+// customer_abandoned_cart — sepete eklediniz, 24+ saat oldu
+// ============================================================
+function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const itemCount = Number(p.item_count ?? 0);
+  const total = Number(p.total ?? 0);
+  const customerName = escape(p.customer_name ?? "");
+  const couponCode = escape(p.coupon_code ?? "");
+
+  const subject = couponCode
+    ? `Sepetin seni bekliyor — %10 indirim kodun da hazır 🎁`
+    : `Sepetinde ${itemCount} ürün hâlâ bekliyor`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı 👀</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Birkaç gün önce sepete ${itemCount} ürün eklemiştin ama ödeme tamamlanmadı.
+      Toplam tutarın: <strong>${total.toLocaleString("tr-TR")} TL</strong>.
+    </p>
+
+    ${
+      couponCode
+        ? `<div style="margin: 20px 0; padding: 16px; background: #fff1ee; border-radius: 12px; text-align: center;">
+            <div style="font-size: 12px; color: #ff6b5b; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Sana özel</div>
+            <div style="font-size: 24px; font-weight: 700; color: #1e293b; margin-top: 4px;">%10 indirim</div>
+            <div style="font-size: 14px; color: #57534e; margin-top: 4px;">Kupon: <strong style="font-family: monospace;">${couponCode}</strong></div>
+            <div style="font-size: 11px; color: #78716c; margin-top: 6px;">7 gün geçerli</div>
+          </div>`
+        : ""
+    }
+
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Tasarım hâlâ sepete bağlı, fiyat değişmedi. Bir tıkla kaldığın yerden
+      devam edebilirsin.
+    </p>
+
+    <div style="margin: 24px 0; text-align: center;">
+      <a href="${SITE_URL}/sepet" style="display: inline-block; background: #ff6b5b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+        Sepete dön & tamamla →
+      </a>
+    </div>
+
+    <p style="font-size: 12px; line-height: 1.6; color: #78716c;">
+      Vazgeçtiysen sorun değil — daha sonra başka bir tasarım için tekrar
+      görüşelim. Beklemekten zarar gelmez, dosyan güvende.
+    </p>
+  `;
+
+  const footer = `
+    Bu mail, açık bir sipariş için hatırlatma olarak gönderildi.
+    Hatırlatma almak istemiyorsan <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
+  `;
+
+  const text = `${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı.\n\nSepette ${itemCount} ürün, toplam ${total.toLocaleString("tr-TR")} TL.${couponCode ? `\n\n%10 indirim kodu: ${couponCode} (7 gün geçerli)` : ""}\n\nSepete dön: ${SITE_URL}/sepet`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
+// customer_review_request — teslim sonrası 7 gün, yorum iste
+// ============================================================
+function renderCustomerReviewRequest(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const orderId = escape(p.order_id);
+  const customerName = escape(p.customer_name ?? "");
+  const reviewToken = escape(p.review_token ?? "");
+  const productName = escape(p.product_name ?? "siparişin");
+
+  const reviewLink = reviewToken
+    ? `${SITE_URL}/yorum-yaz/${reviewToken}`
+    : `${SITE_URL}/siparislerim`;
+
+  const subject = `${customerName ? `${customerName}, deneyimini` : "Deneyimini"} paylaşır mısın? 🌟`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">Etiketin elinde — şimdi?</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Geçen hafta teslim aldığın <strong>${productName}</strong>
+      (${orderId}) nasıl oldu? Yorumun bizim için kıymetli,
+      bir sonraki müşterimizin kararına yardımcı olur.
+    </p>
+
+    <div style="margin: 24px 0; text-align: center;">
+      <a href="${reviewLink}" style="display: inline-block; background: #ff6b5b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+        ⭐ Yorum yaz · 30 saniye
+      </a>
+    </div>
+
+    <p style="font-size: 13px; line-height: 1.6; color: #57534e;">
+      Bir şey eksik kaldıysa veya bir sorun varsa, lütfen ${escape(
+        "info@pimetiket.com"
+      )} adresine yazarak bize bildir — düzeltmek için elimizden geleni yaparız.
+    </p>
+  `;
+
+  const footer = `
+    Bu mail teslim aldığın sipariş için gönderildi.
+    Yorum istemeyi kapatmak için <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
+  `;
+
+  const text = `${customerName ? `${customerName}, deneyimini` : "Deneyimini"} paylaşır mısın?\n\n${productName} (${orderId}) için yorum yaz: ${reviewLink}\n\nSorun varsa: info@pimetiket.com`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
 const RENDERERS: Record<string, (input: MailTemplateInput) => MailRendered> = {
   fason_new_assignment: renderFasonNewAssignment,
   customer_in_production: renderCustomerInProduction,
   customer_shipped: renderCustomerShipped,
   customer_delivered: renderCustomerDelivered,
   auto_refund_stale_proof: renderAutoRefundStaleProof,
+  lead_welcome: renderLeadWelcome,
+  customer_abandoned_cart: renderCustomerAbandonedCart,
+  customer_review_request: renderCustomerReviewRequest,
 };
 
 export function renderMailTemplate(

@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/purge-expired-designs",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/detect-abandoned-carts",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/request-reviews",
+      "schedule": "0 11 * * *"
     }
   ]
 }
