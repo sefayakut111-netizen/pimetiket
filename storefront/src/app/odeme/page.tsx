@@ -284,6 +284,18 @@ export default function OdemePage() {
       setHydrated(true);
       if (items.length === 0) {
         router.replace("/sepet");
+      } else {
+        // PostHog: begin_checkout event
+        void import("@/lib/analytics/posthog-events")
+          .then(({ track }) => {
+            track("begin_checkout", {
+              item_count: items.length,
+              total: items.reduce((s, i) => s + i.total, 0),
+            });
+          })
+          .catch(() => {
+            /* silent */
+          });
       }
     });
 

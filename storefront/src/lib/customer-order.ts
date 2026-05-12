@@ -364,6 +364,7 @@ export async function createCustomerOrder(
   payload: Omit<CustomerOrder, "id" | "status" | "createdAt" | "createdAtIso">
 ): Promise<CustomerOrder> {
   const user = await getCurrentUser();
+  let result: CustomerOrder;
 
   if (user) {
     const created = await dbCreate(user.id, payload);
@@ -372,25 +373,42 @@ export async function createCustomerOrder(
     }
     cache = [created, ...cache];
     notifyChange();
-    return created;
+    result = created;
+  } else {
+    // Guest mode → localStorage
+    const now = Date.now();
+    const order: CustomerOrder = {
+      id: generateOrderId(),
+      status: "paid",
+      createdAt: now,
+      createdAtIso: new Date(now).toISOString(),
+      ...payload,
+    };
+    const orders = readLocal();
+    orders.unshift(order);
+    if (orders.length > MAX_ORDERS) orders.length = MAX_ORDERS;
+    writeLocal(orders);
+    cache = orders;
+    notifyChange();
+    result = order;
   }
 
-  // Guest mode → localStorage
-  const now = Date.now();
-  const order: CustomerOrder = {
-    id: generateOrderId(),
-    status: "paid",
-    createdAt: now,
-    createdAtIso: new Date(now).toISOString(),
-    ...payload,
-  };
-  const orders = readLocal();
-  orders.unshift(order);
-  if (orders.length > MAX_ORDERS) orders.length = MAX_ORDERS;
-  writeLocal(orders);
-  cache = orders;
-  notifyChange();
-  return order;
+  // PostHog purchase event — consent yoksa no-op
+  try {
+    const { track } = await import("@/lib/analytics/posthog-events");
+    track("purchase", {
+      order_id: result.id,
+      total: result.total,
+      subtotal: result.subtotal,
+      shipping: result.shipping,
+      item_count: result.items.length,
+      payment_method: result.payment.method,
+    });
+  } catch {
+    /* silent */
+  }
+
+  return result;
 }
 
 export function getCustomerOrder(id: string): CustomerOrder | null {

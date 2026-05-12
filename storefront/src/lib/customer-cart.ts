@@ -389,6 +389,18 @@ export async function addToCustomerCart(
   }
 
   notifyChange();
+  // PostHog event — consent yoksa otomatik no-op
+  try {
+    const { track } = await import("@/lib/analytics/posthog-events");
+    track("add_to_cart", {
+      product: item.product,
+      material: item.material ?? item.materialId ?? null,
+      qty: item.qty,
+      total: item.total,
+    });
+  } catch {
+    /* silent — analytics opsiyonel */
+  }
   return { ok: true, item: cache[cache.length - 1] };
 }
 

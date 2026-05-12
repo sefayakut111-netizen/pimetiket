@@ -43,6 +43,7 @@ import {
 import { TabakaPreview } from "@/components/sticker/TabakaPreview";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import { useExperiment } from "@/lib/analytics/feature-flags";
 import { deliveryEstimate } from "@/lib/pricing";
 import {
   quoteCustomerSticker,
@@ -134,6 +135,19 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 export default function StickerPage() {
   const toast = useToast();
   const { t } = useT();
+  // A/B test: sticker CTA varyantı. PostHog'da `sticker_cta_v2` flag'ı
+  // tanımlandığında otomatik aktifleşir. Variants:
+  //   control = "Sepete ekle"
+  //   test    = "Sepete ekle · 5-7 günde teslim"
+  // PostHog yüklenmemişse veya consent yoksa → control (default).
+  const { variant: ctaVariant } = useExperiment("sticker_cta_v2", [
+    "control",
+    "test",
+  ]);
+  const ctaLabel =
+    ctaVariant === "test"
+      ? `${t.config.addToCart} · 5-7 günde teslim`
+      : t.config.addToCart;
   // 1. ADIM: Kesim tipi (Sefa kuralı — şekilden ÖNCE)
   const [cutMode, setCutMode] = useState<"tabaka" | "diecut">("diecut");
   // 2. ADIM: Şekil
@@ -632,7 +646,7 @@ export default function StickerPage() {
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
               footnote="KDV dahil fiyat · Şeffaf, sürpriz ücret yok"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
-              ctaLabel={t.config.addToCart}
+              ctaLabel={ctaLabel}
               onCta={async () => {
                 if (!quote.ok) {
                   toast.error(quote.reason ?? "Geçersiz seçim");
