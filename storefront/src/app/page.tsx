@@ -15,7 +15,6 @@ import { useT } from "@/lib/i18n/context";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
-import { UseCaseSelector } from "@/components/home/UseCaseSelector";
 import { QuickReorderWidget } from "@/components/home/QuickReorderWidget";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
@@ -286,9 +285,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-
-      {/* ============================== USE CASE SELECTOR ============================== */}
-      <UseCaseSelector />
 
       {/* ============================== PRODUCT CARDS ============================== */}
       <section className="py-12">
