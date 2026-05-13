@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, useToast, Skeleton } from "@/components/ui";
 import {
   seedDemoData,
   clearDemoData,
@@ -105,8 +105,13 @@ export default function DemoPage() {
 
   if (!hydrated) {
     return (
-      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-16">
-        <div className="text-center text-gri-500">Yükleniyor…</div>
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[920px] px-6 space-y-4">
+          <Skeleton className="h-10 w-1/2 mx-auto" />
+          <Skeleton className="h-6 w-2/3 mx-auto" />
+          <Skeleton.Card />
+          <Skeleton.Card />
+        </div>
       </main>
     );
   }
