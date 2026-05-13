@@ -44,35 +44,58 @@ export function useFeatureFlag(
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const ph = window.posthog;
-    if (!ph) {
-      setValue(null);
-      return;
-    }
 
-    const read = () => {
+    let cancelled = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20; // 250ms × 20 = 5 sn max polling
+
+    const read = (ph: NonNullable<typeof window.posthog>) => {
       try {
         const raw =
           ph.getFeatureFlag?.(flagKey) ?? ph.isFeatureEnabled?.(flagKey);
-        if (raw === undefined || raw === null) {
-          setValue(null);
-          return;
-        }
-        setValue(raw);
+        if (raw === undefined || raw === null) return false;
+        if (!cancelled) setValue(raw);
+        return true;
       } catch {
-        setValue(null);
+        return false;
       }
     };
 
-    // İlk okuma (cache'den)
-    read();
+    // PostHog snippet asenkron yüklenir (Analytics.tsx Script
+    // afterInteractive). Hook mount olduğunda window.posthog ya yok ya da
+    // stub (array.js henüz fetch edilmemiş). 250ms aralıklarla poll ediyoruz;
+    // flag yüklenince hem setValue çalışır hem onFeatureFlags subscribe
+    // edilir (sonraki değişiklikleri yakalamak için).
+    //
+    // Sefa raporu 12 May: ilk implementasyon onFeatureFlags callback'i
+    // kullandığında stub mode'da timing miss oluyor → UI control'de kalıyordu.
+    const tryRead = () => {
+      if (cancelled) return;
+      const ph = window.posthog;
+      if (ph?.getFeatureFlag) {
+        if (read(ph)) {
+          // Başarılı → sonraki değişiklikler için subscribe et
+          try {
+            ph.onFeatureFlags?.(() => {
+              if (!cancelled) read(ph);
+            });
+          } catch {
+            /* eski sürüm fallback */
+          }
+          return;
+        }
+      }
+      attempts += 1;
+      if (attempts < MAX_ATTEMPTS) {
+        setTimeout(tryRead, 250);
+      }
+      // attempts >= MAX → null kalır, caller fallback'e düşer
+    };
 
-    // PostHog flag'leri arka planda fetch'liyor — re-read için listener
-    try {
-      ph.onFeatureFlags?.(read);
-    } catch {
-      /* eski sürüm fallback */
-    }
+    tryRead();
+    return () => {
+      cancelled = true;
+    };
   }, [flagKey]);
 
   return value;
