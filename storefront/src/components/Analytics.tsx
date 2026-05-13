@@ -16,10 +16,21 @@ import { useEffect, useState } from "react";
 import Script from "next/script";
 import { hasConsent, readConsent } from "@/lib/cookie-consent";
 
-const GA4_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+// Vercel env'lerine kopyala-yapıştır sırasında değerin başına/sonuna TAB
+// veya boşluk sızabiliyor (12 May Sefa raporu: POSTHOG_HOST'un başında
+// charCode 9). Tüm public env değişkenlerini trim ediyoruz — gelecek
+// için defensive guard.
+const trimEnv = (v: string | undefined): string | undefined => {
+  if (!v) return v;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+};
+
+const GA4_ID = trimEnv(process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID);
+const POSTHOG_KEY = trimEnv(process.env.NEXT_PUBLIC_POSTHOG_KEY);
 const POSTHOG_HOST =
-  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";
+  trimEnv(process.env.NEXT_PUBLIC_POSTHOG_HOST) ??
+  "https://eu.i.posthog.com";
 
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
