@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Cloudflare bindings'i `next dev` sırasında ihtiyaç olunca aktive et.
 // Vercel build'inde gereksiz, geçici olarak kapatıldı (deploy stack: Vercel).
@@ -132,4 +133,25 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// ============================================================
+// Sentry — source map upload + release tracking
+//
+// SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT env'leri Vercel'de
+// tanımlı olduğunda her production build'de source map otomatik upload
+// edilir. Token yoksa silent skip — build break etmez.
+// ============================================================
+const sentryWebpackPluginOptions = {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Token yoksa silent — dev/local'de build break etmesin
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  // Source map'leri Sentry'ye yükle, prod bundle'da bırakma (boyut tasarrufu)
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+  // Telemetry kapalı — Sefa kararı, privacy
+  telemetry: false,
+};
+
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
