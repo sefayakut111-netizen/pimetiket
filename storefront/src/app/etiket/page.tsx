@@ -382,7 +382,7 @@ export default function EtiketPage() {
                   <div className="text-[13px] font-semibold mb-2.5">
                     Yaldız rengi
                   </div>
-                  <div className="grid grid-cols-8 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                     {YALDIZLAR.map((y) => (
                       <button
                         key={y.id}
@@ -634,7 +634,7 @@ export default function EtiketPage() {
                     onClick={() => setQty((v) => snapEtiketQty(v - ETIKET_QTY_STEP))}
                     disabled={qty <= ETIKET_MIN_QTY}
                     aria-label={`${ETIKET_QTY_STEP} adet azalt`}
-                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     −
                   </button>
@@ -653,7 +653,7 @@ export default function EtiketPage() {
                     onClick={() => setQty((v) => snapEtiketQty(v + ETIKET_QTY_STEP))}
                     disabled={qty >= ETIKET_MAX_QTY}
                     aria-label={`${ETIKET_QTY_STEP} adet artır`}
-                    className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     +
                   </button>

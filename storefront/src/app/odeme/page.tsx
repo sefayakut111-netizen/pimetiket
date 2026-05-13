@@ -136,7 +136,11 @@ const COPY = {
     vatIncluded: "KDV dahil",
 
     // Action
-    accept: "Mesafeli Satış Sözleşmesi'ni okudum, kabul ediyorum.",
+    accept: {
+      before: "",
+      linkText: "Mesafeli Satış Sözleşmesi",
+      after: "'ni okudum, kabul ediyorum.",
+    },
     acceptCopyright:
       "Yüklediğim tasarımın telif sahibi benim veya kullanma yetkim var. Başkasının fikri mülkiyetini ihlal etmediğimi taahhüt ediyorum.",
     fasonDisclaimer:
@@ -208,7 +212,11 @@ const COPY = {
     fullTotal: "Total:",
     vatIncluded: "VAT included",
 
-    accept: "I've read and accept the Distance Sales Contract.",
+    accept: {
+      before: "I've read and accept the ",
+      linkText: "Distance Sales Contract",
+      after: ".",
+    },
     acceptCopyright:
       "I own or have rights to use the design I'm uploading. I confirm I'm not infringing on anyone else's intellectual property.",
     fasonDisclaimer:
@@ -946,13 +954,15 @@ export default function OdemePage() {
                   className="mt-1 accent-pim-mercan shrink-0"
                 />
                 <span>
+                  {c.accept.before}
                   <Link
                     href="/mesafeli-satis"
                     target="_blank"
                     className="text-pim-mercan font-semibold hover:underline"
                   >
-                    {c.accept}
+                    {c.accept.linkText}
                   </Link>
+                  {c.accept.after}
                 </span>
               </label>
 

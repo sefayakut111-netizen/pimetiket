@@ -221,7 +221,7 @@ export default function SiparislerimPage() {
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Header */}
         <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
           <div>

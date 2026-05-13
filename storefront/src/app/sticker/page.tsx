@@ -515,7 +515,7 @@ export default function StickerPage() {
                         setHeight(preset.h);
                       }}
                       className={cn(
-                        "px-3 h-8 rounded-full text-[12px] font-semibold transition-colors",
+                        "px-3 h-10 md:h-8 rounded-full text-[12px] font-semibold transition-colors",
                         active
                           ? "bg-pim-mercan text-white"
                           : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
@@ -577,7 +577,7 @@ export default function StickerPage() {
                       onClick={() => setTier(q)}
                       aria-pressed={active}
                       className={cn(
-                        "relative px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
+                        "relative px-3 h-10 md:h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
                         active
                           ? "bg-pim-mercan text-white"
                           : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
@@ -1274,7 +1274,7 @@ function StickerPreview({
 
   return (
     <div
-      className="relative rounded-2xl p-8 min-h-[540px] overflow-hidden shadow-1"
+      className="relative rounded-2xl p-5 md:p-8 min-h-[360px] md:min-h-[540px] overflow-hidden shadow-1"
       style={{
         background: "linear-gradient(135deg, #FFF1EE 0%, #FFD9D2 100%)",
       }}

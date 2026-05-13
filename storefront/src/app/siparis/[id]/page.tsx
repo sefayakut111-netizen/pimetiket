@@ -415,7 +415,7 @@ export default function SiparisDetailPage({
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-[14px] mb-5">
           <Link
@@ -540,7 +540,7 @@ export default function SiparisDetailPage({
                   </div>
                 </div>
                 {/* Mock proof canvas */}
-                <div className="bg-gri-100 p-8 grid place-items-center min-h-[280px]">
+                <div className="bg-gri-100 p-4 md:p-8 grid place-items-center min-h-[280px]">
                   <div className="bg-white rounded-lg shadow-2 p-6 max-w-[360px] w-full">
                     <div className="aspect-[4/5] bg-krem rounded-md grid place-items-center mb-3">
                       <div className="text-center">

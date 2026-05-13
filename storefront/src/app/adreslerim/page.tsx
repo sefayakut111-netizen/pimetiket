@@ -153,7 +153,7 @@ export default function AdreslerimPage() {
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      <div className="mx-auto max-w-[900px] px-8">
+      <div className="mx-auto max-w-[900px] px-4 md:px-8">
         <div className="flex items-end justify-between gap-4 mb-7 flex-wrap">
           <div>
             <Eyebrow>{c.eyebrow}</Eyebrow>

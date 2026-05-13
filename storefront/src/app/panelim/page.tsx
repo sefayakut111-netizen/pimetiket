@@ -397,9 +397,9 @@ export default function PanelimPage() {
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* HERO */}
-        <div className="relative overflow-hidden rounded-2xl p-8 mb-6 bg-gradient-to-br from-krem to-krem-soft ring-1 ring-black/[0.04]">
+        <div className="relative overflow-hidden rounded-2xl p-5 md:p-8 mb-6 bg-gradient-to-br from-krem to-krem-soft ring-1 ring-black/[0.04]">
           <div className="absolute -top-5 right-8 hidden md:block">
             <Pim pose="wave" size={160} />
           </div>
@@ -656,9 +656,9 @@ export default function PanelimPage() {
 
             {/* AI suggestion — son etiket varsa upsell */}
             {hydrated && lastEtiketItem && (
-              <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-lacivert-soft text-white flex gap-5 items-center">
+              <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-lacivert-soft text-white flex gap-4 items-center flex-wrap sm:flex-nowrap">
                 <PimMini pose="think" size={56} />
-                <div className="flex-1">
+                <div className="flex-1 min-w-[180px]">
                   <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">
                     {c.aiForYou}
                   </div>

@@ -266,13 +266,13 @@ export default function SablonlarPage() {
                   )}
                   aria-pressed={isOn}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-[20px]">{c.emoji}</span>
-                    <span className="text-[13px] font-semibold truncate">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[20px] leading-none">{c.emoji}</span>
+                    <span className="text-[13px] font-semibold leading-tight flex-1">
                       {c.label}
                     </span>
                     {isOn && (
-                      <Icon.Check size={12} className="ml-auto text-pim-mercan" />
+                      <Icon.Check size={12} className="text-pim-mercan shrink-0 mt-1" />
                     )}
                   </div>
                   <div className="text-[11.5px] text-gri-700 mt-1.5 line-clamp-1">
