@@ -23,6 +23,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useSiteImage } from "@/lib/site-images";
 
 const CATEGORIES: Array<{
   id: string;
@@ -122,6 +123,8 @@ export default function SablonlarPage() {
   const [interests, setInterests] = useState<string[]>([]);
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Admin panelinden yüklenen hero görseli (varsa) — yoksa Pim mascot fallback
+  const heroImage = useSiteImage("sablonlar_hero");
   const [result, setResult] = useState<
     | null
     | {
@@ -233,9 +236,18 @@ export default function SablonlarPage() {
             </ul>
           </div>
           <div className="relative aspect-square max-w-[360px] mx-auto md:ml-auto">
-            <div className="absolute inset-0 grid place-items-center">
-              <Pim pose="excited" size={220} />
-            </div>
+            {heroImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroImage.publicUrl}
+                alt={heroImage.altText ?? "Pim Etiket şablon paketi"}
+                className="absolute inset-0 w-full h-full object-contain rounded-3xl"
+              />
+            ) : (
+              <div className="absolute inset-0 grid place-items-center">
+                <Pim pose="excited" size={220} />
+              </div>
+            )}
           </div>
         </div>
 
