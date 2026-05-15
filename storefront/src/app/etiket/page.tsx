@@ -1516,17 +1516,7 @@ export default function EtiketPage() {
           </aside>
         </div>
       </div>
-      {/* Bilgi bandı — Sefa kuralı (15 May v4): subtitle sağ panelden
-          buraya taşındı. Konfigüratör akışını kısaca anlatır. */}
-      <div className="bg-krem/40 border-y border-gri-200 py-6">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
-          <p className="text-[14px] md:text-[15px] text-gri-700 leading-relaxed max-w-[640px] mx-auto">
-            <span className="inline-block w-2 h-2 rounded-full bg-yesil mr-2 align-middle" />
-            Seçimlerin sol taraftaki canlı önizlemede anlık görünür —
-            beğenmedin mi, geri dön, başka kombinasyon dene.
-          </p>
-        </div>
-      </div>
+      {/* Bilgi bandı kaldırıldı (Sefa kuralı 15 May v5) */}
 
       {/* Ürün anlatım bölümü (Sefa kuralı 15 May v3) — Stickermule
           tarzı feature kartları + highlight + galeri. Yorumlardan önce. */}

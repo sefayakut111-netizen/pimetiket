@@ -23,6 +23,8 @@ import {
   ROLL_W_MIN,
   SMALL_SHEET_H,
   SMALL_SHEET_W,
+  TABAKA_USABLE_W,
+  TABAKA_USABLE_H,
   snapSizeUp,
 } from "./constants";
 
@@ -123,11 +125,12 @@ export function findOptimalSheet(args: FindOptimalArgs): SheetFit | null {
     const sw = rotated ? H : W;
     const sh = rotated ? W : H;
 
-    // Sığmıyorsa sonraki rotasyon
-    if (sw > SMALL_SHEET_W || sh > SMALL_SHEET_H) continue;
+    // Sığmıyorsa sonraki rotasyon (Sefa kuralı 15 May v5: kullanılabilir
+    // alan = SMALL_SHEET - 2× MARGIN, 190×270 mm sınırı).
+    if (sw > TABAKA_USABLE_W || sh > TABAKA_USABLE_H) continue;
 
-    const cols = Math.floor((SMALL_SHEET_W + gap) / (sw + gap));
-    const rows = Math.floor((SMALL_SHEET_H + gap) / (sh + gap));
+    const cols = Math.floor((TABAKA_USABLE_W + gap) / (sw + gap));
+    const rows = Math.floor((TABAKA_USABLE_H + gap) / (sh + gap));
 
     if (cols < 1 || rows < 1) continue;
 

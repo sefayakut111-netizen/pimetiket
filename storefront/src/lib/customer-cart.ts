@@ -195,6 +195,9 @@ interface DbRow {
   customization_id: string | null;
   winding: number | null;
   design_temp_id: string | null;
+  // Migration 038 (Sefa 15 May v5): multi-design metadata
+  design_count: number | null;
+  additional_designs: unknown | null; // jsonb array
   added_at: string;
 }
 
@@ -220,6 +223,13 @@ function rowToItem(r: DbRow): CustomerCartItem {
     customizationId: r.customization_id ?? undefined,
     winding: r.winding ?? undefined,
     designTempId: r.design_temp_id ?? undefined,
+    designCount: r.design_count ?? undefined,
+    additionalDesigns:
+      r.additional_designs &&
+      Array.isArray(r.additional_designs) &&
+      r.additional_designs.length > 0
+        ? (r.additional_designs as CustomerCartItem["additionalDesigns"])
+        : undefined,
     addedAt: new Date(r.added_at).getTime(),
   };
 }
@@ -251,6 +261,15 @@ function itemToInsert(
     customization_id: it.customizationId ?? null,
     winding: it.winding ?? null,
     design_temp_id: it.designTempId ?? null,
+    // Migration 038 multi-design metadata (Sefa 15 May v5).
+    // Database types henüz regenerate edilmediği için extra alanlar
+    // CartInsert tipinin dışında — extra field cast ile geçirilir.
+    // Sefa migration 038'i push edip `supabase gen types` çalıştırınca
+    // cast kalkar.
+    ...({
+      design_count: it.designCount ?? null,
+      additional_designs: it.additionalDesigns ?? null,
+    } as Partial<CartInsert>),
   };
 }
 

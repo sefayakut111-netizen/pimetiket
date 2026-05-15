@@ -17,15 +17,12 @@
 
 "use client";
 
-import Link from "next/link";
 import { Icon } from "@/components/Icon";
 
 interface FeatureCard {
   icon: React.ReactNode;
   title: string;
   desc: string;
-  linkLabel: string;
-  linkHref: string;
 }
 
 interface GalleryImage {
@@ -42,22 +39,16 @@ const ETIKET_FEATURES: FeatureCard[] = [
     icon: <Icon.Box size={24} />,
     title: "5-7 iş günü kargo",
     desc: "Üretim + kalite kontrol + kargo dahil. Türkiye'nin her yerine.",
-    linkLabel: "Kargo bilgisi",
-    linkHref: "/sss#kargo",
   },
   {
     icon: <Icon.Sparkle size={24} />,
     title: "AI dosya kontrol",
     desc: "DPI, CMYK, taşma, güvenli alan — dosyan otomatik check edilir.",
-    linkLabel: "Nasıl çalışır",
-    linkHref: "/nasil-calisir",
   },
   {
     icon: <Icon.Check size={24} />,
-    title: "1.000 adetten başlar",
-    desc: "Küçük markalar için ekonomik, tabakada 250 adetten başlanabilir.",
-    linkLabel: "Fiyat tablosu",
-    linkHref: "/sss#fiyat",
+    title: "Esnek adetler",
+    desc: "Rulo etiket 1.000'den, tabaka etiket 250 adetten başlar. Her ihtiyaca uygun parti.",
   },
 ];
 
@@ -66,22 +57,16 @@ const STICKER_FEATURES: FeatureCard[] = [
     icon: <Icon.Box size={24} />,
     title: "3-5 iş günü kargo",
     desc: "Sticker daha hızlı üretilir. Acil mi? Premium kargo da var.",
-    linkLabel: "Kargo bilgisi",
-    linkHref: "/sss#kargo",
   },
   {
     icon: <Icon.Sparkle size={24} />,
     title: "Die-cut precision kesim",
     desc: "Tasarımının dış hattı milimetrik kesilir, hiçbir fazla kağıt yok.",
-    linkLabel: "Örnekleri gör",
-    linkHref: "/galeri",
   },
   {
     icon: <Icon.Check size={24} />,
-    title: "25 adetten başlar",
-    desc: "Küçük partilerde bile uygun fiyat. Etkinlik, doğum günü, lansman.",
-    linkLabel: "Use case'ler",
-    linkHref: "/galeri",
+    title: "Esnek adetler",
+    desc: "25 adetten başlar. Küçük partilerde bile uygun fiyat — etkinlik, doğum günü, lansman.",
   },
 ];
 
@@ -138,16 +123,9 @@ export function ProductInfoSection({ product }: ProductInfoSectionProps) {
               <h3 className="text-[18px] md:text-[20px] font-bold text-lacivert mb-2">
                 {f.title}
               </h3>
-              <p className="text-[14px] text-gri-700 leading-relaxed max-w-[320px] mx-auto mb-2">
+              <p className="text-[14px] text-gri-700 leading-relaxed max-w-[320px] mx-auto">
                 {f.desc}
               </p>
-              <Link
-                href={f.linkHref}
-                className="text-[13px] text-pim-mercan font-semibold hover:underline inline-flex items-center gap-1"
-              >
-                {f.linkLabel}
-                <Icon.ArrowR size={11} />
-              </Link>
             </div>
           ))}
         </div>

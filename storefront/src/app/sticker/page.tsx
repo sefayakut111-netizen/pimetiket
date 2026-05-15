@@ -877,6 +877,22 @@ export default function StickerPage() {
                   designTempId: design?.tempId,
                   designPreviewUrl: design?.previewUrl,
                   designFileName: design?.fileName,
+                  // Multi-design metadata (Sefa 15 May v5):
+                  // Sticker'da PendingDesign local-only (Supabase upload yok)
+                  // — sadece designCount metadata gönder + sipariş sonrası
+                  // mail ile gerçek dosyalar yüklenecek.
+                  designCount: designCount > 1 ? designCount : undefined,
+                  additionalDesigns:
+                    designs.length > 0
+                      ? designs.map((d) => ({
+                          // tempId yok (local-only) → name'i kullan
+                          tempId: `local-${d.id}`,
+                          previewUrl: d.previewUrl,
+                          fileName: d.name,
+                          sizeBytes: d.sizeBytes,
+                          mimeType: d.mimeType,
+                        }))
+                      : undefined,
                 });
                 if (!result.ok) {
                   toast.error(result.reason);
@@ -922,17 +938,7 @@ export default function StickerPage() {
           </aside>
         </div>
       </div>
-      {/* Bilgi bandı — Sefa kuralı (15 May v4): subtitle sağ panelden
-          buraya taşındı. */}
-      <div className="bg-krem/40 border-y border-gri-200 py-6">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
-          <p className="text-[14px] md:text-[15px] text-gri-700 leading-relaxed max-w-[640px] mx-auto">
-            <span className="inline-block w-2 h-2 rounded-full bg-yesil mr-2 align-middle" />
-            Seçimlerin sol taraftaki canlı önizlemede anlık görünür —
-            beğenmedin mi, geri dön, başka kombinasyon dene.
-          </p>
-        </div>
-      </div>
+      {/* Bilgi bandı kaldırıldı (Sefa kuralı 15 May v5) */}
 
       {/* Ürün anlatım bölümü (Sefa 15 May v3) — sticker'a özel içerik */}
       <ProductInfoSection product="sticker" />
