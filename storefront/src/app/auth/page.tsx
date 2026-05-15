@@ -24,7 +24,7 @@ import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { useSiteImage } from "@/lib/site-images";
+import { useSiteImage } from "@/lib/site-images-client";
 
 type AuthMode = "login" | "signup";
 

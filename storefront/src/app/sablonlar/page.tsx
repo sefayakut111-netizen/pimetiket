@@ -23,7 +23,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { useSiteImage } from "@/lib/site-images";
+import { useSiteImage } from "@/lib/site-images-client";
 
 const CATEGORIES: Array<{
   id: string;

@@ -16,7 +16,7 @@ import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
 import { QuickReorderWidget } from "@/components/home/QuickReorderWidget";
-import { useSiteImage } from "@/lib/site-images";
+import { useSiteImage } from "@/lib/site-images-client";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.

@@ -16,7 +16,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast, Skeleton } from "@/components/ui";
-import { useSiteImage } from "@/lib/site-images";
+import { useSiteImage } from "@/lib/site-images-client";
 import {
   seedDemoData,
   clearDemoData,
