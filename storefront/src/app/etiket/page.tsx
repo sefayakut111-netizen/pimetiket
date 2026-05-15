@@ -53,6 +53,7 @@ import {
 } from "@/lib/etiket-customer-pricing";
 import { addToCustomerCart } from "@/lib/customer-cart";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
+import { ProductInfoSection } from "@/components/ProductInfoSection";
 
 // ============================================================
 // Configuration data
@@ -187,6 +188,30 @@ function upsellFor(qty: number): { msg: string; to: number } | null {
   if (qty < 10000) return { msg: "10000'e çık, %6 daha tasarruf", to: 10000 };
   if (qty < 20000) return { msg: "20000'e çık, %7 daha tasarruf", to: 20000 };
   return null;
+}
+
+/**
+ * Tasarım sayısı iskonto tier'ı (Sefa kuralı 15 May v3).
+ *
+ * Çoklu tasarım = aynı sipariş içinde çeşitlilik. Adet artarken birim
+ * setup maliyeti dağılır → bulk indirim.
+ *
+ *   1 tasarım     →  %0 (normal)
+ *   2-3 tasarım   →  %2
+ *   4-5 tasarım   →  %4
+ *   6-10 tasarım  →  %6
+ *   11-25 tasarım →  %8
+ *   26-50 tasarım →  %10 ⭐
+ *
+ * Sefa bu değerleri sonradan revize edebilir.
+ */
+function designCountDiscountPct(n: number): number {
+  if (n >= 26) return 10;
+  if (n >= 11) return 8;
+  if (n >= 6) return 6;
+  if (n >= 4) return 4;
+  if (n >= 2) return 2;
+  return 0;
 }
 
 /**
@@ -426,9 +451,17 @@ export default function EtiketPage() {
     customization: primaryCustom,
   });
 
-  const total = quote.ok ? quote.total : 0;
-  const unit = quote.ok ? quote.unitPrice : 0;
+  const rawTotal = quote.ok ? quote.total : 0;
+  const rawUnit = quote.ok ? quote.unitPrice : 0;
   const rollsNeeded = quote.ok ? quote.rollsNeeded : 0;
+
+  // Tasarım sayısı iskonto — Sefa kuralı 15 May v3.
+  // designCount >= 2 ise total üzerinde local discount uygulanır.
+  // Pricing engine'i değiştirmiyoruz (multi-customization gibi sonra).
+  const designDiscountPct = designCountDiscountPct(designCount);
+  const designDiscountFactor = 1 - designDiscountPct / 100;
+  const total = rawTotal * designDiscountFactor;
+  const unit = rawUnit * designDiscountFactor;
 
   // Tier savings — 1K (min) baseline ile karşılaştır
   const tierSavings = quote.ok
@@ -819,6 +852,7 @@ export default function EtiketPage() {
                     <SelectableCard
                       key={c.id}
                       selected={isSelected}
+                      hideCheckmark
                       onClick={() => {
                         if (c.id === "yok") {
                           // "Yok" tek seçilebilir — diğerlerini temizler
@@ -839,23 +873,23 @@ export default function EtiketPage() {
                       }}
                       padding={12}
                     >
-                      <div className="flex items-start gap-2">
-                        {/* Checkbox işareti (yok dışı) */}
-                        {c.id !== "yok" && (
-                          <span
-                            aria-hidden
-                            className={cn(
-                              "shrink-0 w-4 h-4 rounded grid place-items-center mt-0.5 transition-colors",
-                              isSelected
-                                ? "bg-pim-mercan"
-                                : "ring-1 ring-gri-300 bg-white"
-                            )}
-                          >
-                            {isSelected && (
-                              <Icon.Check size={11} className="text-white" />
-                            )}
-                          </span>
-                        )}
+                      {/* Sefa fix (15 May v3): tek tik — sol başında küçük
+                          checkbox/radio. Sağ üstteki SelectableCard tik
+                          rozeti hideCheckmark ile gizli. */}
+                      <div className="flex items-start gap-2.5">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "shrink-0 w-[18px] h-[18px] rounded grid place-items-center mt-px transition-all",
+                            isSelected
+                              ? "bg-pim-mercan ring-2 ring-pim-mercan"
+                              : "ring-[1.5px] ring-gri-300 bg-white"
+                          )}
+                        >
+                          {isSelected && (
+                            <Icon.Check size={12} className="text-white" />
+                          )}
+                        </span>
                         <div className="flex-1">
                           <div className="font-semibold text-sm">{c.name}</div>
                           <div className="text-[13px] text-gri-700 mt-0.5">
@@ -1239,6 +1273,11 @@ export default function EtiketPage() {
                     bekleniyor. Sayı uyumsuz mu? Düzenle.
                   </p>
                 )}
+                {designDiscountPct > 0 && (
+                  <p className="mt-2 text-[12px] text-pim-mercan font-semibold">
+                    ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
+                  </p>
+                )}
               </div>
 
               <MultiDesignDropZone
@@ -1295,11 +1334,21 @@ export default function EtiketPage() {
                   <span>{minQty.toLocaleString("tr-TR")}</span>
                   <span>{maxQty.toLocaleString("tr-TR")}</span>
                 </div>
-                {tierSavings > 0 && (
-                  <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mt-2">
-                    %{tierSavings} tasarruf 🎯 — bir önceki tier'dan ucuz
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tierSavings > 0 && (
+                    <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
+                      %{tierSavings} tasarruf 🎯 — adet indirimi
+                    </div>
+                  )}
+                  {designDiscountPct > 0 && (
+                    <div
+                      className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold"
+                      title={`${designCount} tasarım için ek iskonto`}
+                    >
+                      %{designDiscountPct} tasarım iskonto ✨ ({designCount} çeşit)
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Adet manuel girişi — Sefa kuralı (15 May v3):
@@ -1444,6 +1493,9 @@ export default function EtiketPage() {
           </aside>
         </div>
       </div>
+      {/* Ürün anlatım bölümü (Sefa kuralı 15 May v3) — Stickermule
+          tarzı feature kartları + highlight + galeri. Yorumlardan önce. */}
+      <ProductInfoSection product="etiket" />
       <ProductReviews productType="etiket" limit={6} />
 
       {/* Sticky checkout bar — mobile-only. PriceCard görünür durumda

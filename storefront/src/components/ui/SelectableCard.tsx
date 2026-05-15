@@ -10,6 +10,9 @@ interface SelectableCardProps
   children: ReactNode;
   padding?: number;
   style?: CSSProperties;
+  /** Sağ üst köşedeki coral check rozetini gizle. Multi-select kartlarda
+   *  iç checkbox kullanılıyorsa çift tik görünmesin diye. (Sefa 15 May v3) */
+  hideCheckmark?: boolean;
 }
 
 /**
@@ -25,6 +28,7 @@ export function SelectableCard({
   padding = 14,
   style = {},
   className,
+  hideCheckmark = false,
   ...rest
 }: SelectableCardProps) {
   return (
@@ -44,16 +48,18 @@ export function SelectableCard({
       )}
     >
       {children}
-      <span
-        aria-hidden
-        className={cn(
-          "absolute top-2 right-2 grid place-items-center w-[22px] h-[22px] rounded-full bg-pim-mercan text-white",
-          "transition-[opacity,transform] duration-200",
-          selected ? "opacity-100 scale-100" : "opacity-0 scale-50"
-        )}
-      >
-        <Icon.Check size={11} />
-      </span>
+      {!hideCheckmark && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute top-2 right-2 grid place-items-center w-[22px] h-[22px] rounded-full bg-pim-mercan text-white",
+            "transition-[opacity,transform] duration-200",
+            selected ? "opacity-100 scale-100" : "opacity-0 scale-50"
+          )}
+        >
+          <Icon.Check size={11} />
+        </span>
+      )}
     </button>
   );
 }
