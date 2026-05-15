@@ -440,12 +440,12 @@ export default function EtiketPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Multi-customization: ilk seçimi pricing engine'e gönder. Diğerleri
-  // şu an pricing'te yansımıyor (engine tek customizationId alıyor).
-  // Sonraki commit'te engine multi support eklenecek (multiplier çarpımı).
+  // Multi-customization (Sefa kuralı 15 May v4): pricing engine artık
+  // customizations array'ini destekliyor — tüm multiplier'lar çarpılır.
+  // Backwards compat için primaryCustom da gönderiliyor (ilk seçim).
   const primaryCustom: EtiketCustomId = customs[0] ?? "yok";
 
-  // Engine ile canlı quote
+  // Engine ile canlı quote (multi-customization aktif)
   const quote = quoteCustomerEtiket({
     width,
     height,
@@ -453,6 +453,7 @@ export default function EtiketPage() {
     material,
     coating,
     customization: primaryCustom,
+    customizations: customs,
   });
 
   const rawTotal = quote.ok ? quote.total : 0;
@@ -469,7 +470,7 @@ export default function EtiketPage() {
 
   // Tier savings — 1K (min) baseline ile karşılaştır
   const tierSavings = quote.ok
-    ? computeEtiketTierSavings({ width, height, material, coating, customization: primaryCustom }, minQty, qty)
+    ? computeEtiketTierSavings({ width, height, material, coating, customization: primaryCustom, customizations: customs }, minQty, qty)
     : 0;
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });

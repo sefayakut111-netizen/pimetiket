@@ -84,8 +84,17 @@ export interface EtiketQuoteInput {
   materialId: string;
   /** Kaplama id */
   coatingId: string;
-  /** Özelleştirme id */
+  /** Özelleştirme id (TEK — backwards compat).
+   *  Multi customization için `customizationIds` kullan. */
   customizationId: string;
+  /** Özelleştirme id LİSTESİ (Sefa kuralı 15 May v4):
+   *  Rulo etikette birden fazla özelleştirme kombine edilebilir
+   *  (örn Emboss + Spot UV). Multipliers ÇARPILIR — her özellik
+   *  ek kalıp/baskı pass'i gerektirir (endüstri standartı).
+   *
+   *  Verilirse: bu array'in çarpımı kullanılır, customizationId yok sayılır.
+   *  Verilmezse: tek customizationId kullanılır (backwards compat). */
+  customizationIds?: string[];
   /** Üretim modu — fason ya da kendi üretim */
   production: ProductionRates;
   operation: OperationRates;
@@ -281,24 +290,46 @@ export function adaptEtiketToGeometryResult(
 }
 
 /**
- * Material + coating + customization → fason rate multiplier.
+ * Material + coating + customization(s) → fason rate multiplier.
+ *
+ * Multi customization (Sefa kuralı 15 May v4): customizationIds verilirse
+ * tüm multiplier'ları çarpılır. Tek customizationId verilirse tek hesap.
+ * "yok" id'leri multiplier 1.0 verir → çarpım sonucu değişmez.
+ *
+ * Örnek:
+ *   - ["yok"]                  → 1.0
+ *   - ["emboss"]               → 1.30
+ *   - ["emboss", "spotuv"]     → 1.30 × 1.25 = 1.625 (+%62.5)
+ *   - ["emboss", "yaldiz"]     → 1.30 × 1.50 = 1.95  (+%95)
+ *   - ["emboss", "yaldiz", "spotuv"] → 1.30 × 1.50 × 1.25 = 2.4375 (+%144)
  */
 function applyEtiketMultipliers(
   baseRate: number,
   materialId: string,
   coatingId: string,
-  customizationId: string
+  customizationId: string,
+  customizationIds?: string[]
 ): {
   effectiveRate: number;
   multipliers: { material: number; coating: number; customization: number };
 } {
   const mat = ETIKET_MATERIALS.find((m) => m.id === materialId);
   const coat = ETIKET_COATINGS.find((c) => c.id === coatingId);
-  const cust = ETIKET_CUSTOMIZATIONS.find((c) => c.id === customizationId);
 
   const matMult = mat?.multiplier ?? 1;
   const coatMult = coat?.multiplier ?? 1;
-  const custMult = cust?.multiplier ?? 1;
+
+  // Multi customization: array verilmişse her id'in multiplier'ını çarp.
+  // Verilmemişse tek customizationId'yi kullan.
+  let custMult = 1;
+  const idsToProcess =
+    customizationIds && customizationIds.length > 0
+      ? customizationIds
+      : [customizationId];
+  for (const id of idsToProcess) {
+    const c = ETIKET_CUSTOMIZATIONS.find((x) => x.id === id);
+    custMult *= c?.multiplier ?? 1;
+  }
 
   return {
     effectiveRate: baseRate * matMult * coatMult * custMult,
@@ -346,7 +377,8 @@ export function quoteEtiket(input: EtiketQuoteInput): EtiketQuoteResult {
       input.production.rate,
       input.materialId,
       input.coatingId,
-      input.customizationId
+      input.customizationId,
+      input.customizationIds
     );
     effectiveRate = applied.effectiveRate;
     multipliers = applied.multipliers;
@@ -357,7 +389,8 @@ export function quoteEtiket(input: EtiketQuoteInput): EtiketQuoteResult {
       1,
       input.materialId,
       input.coatingId,
-      input.customizationId
+      input.customizationId,
+      input.customizationIds
     );
     multipliers = applied.multipliers;
     const totalMult = applied.effectiveRate;

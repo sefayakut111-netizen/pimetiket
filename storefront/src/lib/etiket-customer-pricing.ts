@@ -35,7 +35,12 @@ export interface CustomerEtiketQuoteInput {
   qty: number;
   material: EtiketMaterialId;
   coating: EtiketCoatingId;
+  /** Tek özelleştirme (backwards compat) */
   customization: EtiketCustomId;
+  /** Birden fazla özelleştirme — multi-select için (Sefa kuralı 15 May v4).
+   *  Verilirse multipliers çarpılır (Emboss + Spot UV = 1.30 × 1.25 = 1.625).
+   *  Verilmezse `customization` tek başına kullanılır. */
+  customizations?: EtiketCustomId[];
 }
 
 export interface CustomerEtiketQuoteSuccess {
@@ -75,6 +80,7 @@ export function quoteCustomerEtiket(
     materialId: input.material,
     coatingId: input.coating,
     customizationId: input.customization,
+    customizationIds: input.customizations,
     production: { mode: "fason", rate: defaults.fasonRate },
     operation: {
       // Etiket-spesifik default'lar (admin etiket page ile uyumlu)
