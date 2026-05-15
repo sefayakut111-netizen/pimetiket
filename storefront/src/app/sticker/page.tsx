@@ -18,8 +18,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Pim, PimMini } from "@/components/Pim";
+import { useCallback, useEffect, useRef, useState } from "react";
+// Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
 import { PimAsset } from "@/components/PimAsset";
 import {
   SchemaJsonLd,
@@ -27,6 +27,8 @@ import {
   breadcrumbSchema,
 } from "@/components/SchemaJsonLd";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
+import { ProductInfoSection } from "@/components/ProductInfoSection";
+import { StepProgress, VerticalStepProgress } from "@/components/Stepper";
 import { Icon } from "@/components/Icon";
 import {
   FormSection,
@@ -180,6 +182,108 @@ export default function StickerPage() {
   const [designCount, setDesignCount] = useState<number>(1);
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
 
+  // Stepper state (Sefa kuralı 15 May v4 — UX paketi sticker'a):
+  // 7 adım: Kesim → Şekil → Malzeme → Yüzey → Boyut → Adet → Tasarım
+  const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
+    () => new Set()
+  );
+  const markTouched = useCallback((n: number) => {
+    setTouchedSteps((prev) => {
+      if (prev.has(n)) return prev;
+      const next = new Set(prev);
+      next.add(n);
+      return next;
+    });
+  }, []);
+  const stepLabels = [
+    "Kesim",
+    "Şekil",
+    "Malzeme",
+    "Yüzey",
+    "Boyut",
+    "Adet",
+    "Tasarım",
+  ] as const;
+  const stepIds: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
+  const uiStepNumber = (domStepId: number): number => {
+    const idx = stepIds.indexOf(domStepId);
+    return idx === -1 ? 0 : idx + 1;
+  };
+
+  // Active step — IntersectionObserver ile scroll'a göre
+  const [activeStep, setActiveStep] = useState(1);
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const sections = stepIds
+      .map((n, idx) => {
+        const el = document.getElementById(`step-${n}`);
+        return el ? { el, stepIndex: idx + 1 } : null;
+      })
+      .filter(
+        (x): x is { el: HTMLElement; stepIndex: number } => x !== null
+      );
+    if (sections.length === 0) return;
+    const idToIndex = new Map(
+      sections.map((s) => [s.el.id, s.stepIndex])
+    );
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const visibleIndexes = entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => idToIndex.get(e.target.id))
+          .filter((n): n is number => typeof n === "number");
+        if (visibleIndexes.length > 0) {
+          setActiveStep(Math.min(...visibleIndexes));
+        }
+      },
+      { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
+    );
+    sections.forEach((s) => obs.observe(s.el));
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Stepper noktasına tıklanınca scroll-to
+  const scrollToStep = useCallback((stepIndex: number) => {
+    const sectionId = stepIds[stepIndex - 1];
+    if (sectionId == null) return;
+    const el = document.getElementById(`step-${sectionId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sticky CTA bar — PriceCard görünür değilse mobile'da bar göster
+  const priceCardRef = useRef<HTMLDivElement | null>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const el = priceCardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Tasarım sayısı iskonto — sticker'da da etiket pattern'i
+  // 1 → %0, 2-3 → %2, 4-5 → %4, 6-10 → %6, 11-25 → %8, 26-50 → %10
+  const designDiscountPct =
+    designCount >= 26
+      ? 10
+      : designCount >= 11
+        ? 8
+        : designCount >= 6
+          ? 6
+          : designCount >= 4
+            ? 4
+            : designCount >= 2
+              ? 2
+              : 0;
+  const designDiscountFactor = 1 - designDiscountPct / 100;
+
   // /tasarımlarım'dan "Yeniden bastır" tıklandıysa sessionStorage'dan al
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -220,10 +324,12 @@ export default function StickerPage() {
     cut: cutMode,
   });
 
-  // Sefa Madde 9: toplam fiyat = quote × designCount (her tasarım için ayrı baskı)
+  // Sefa Madde 9: toplam fiyat = quote × designCount × iskonto
+  // (her tasarım için ayrı baskı + tasarım sayısı iskonto v4)
   const perDesignTotal = quote.ok ? quote.total : 0;
-  const total = perDesignTotal * designCount;
-  const currentUnit = quote.ok ? quote.unitPrice : 0;
+  const total = perDesignTotal * designCount * designDiscountFactor;
+  const currentUnit =
+    (quote.ok ? quote.unitPrice : 0) * designDiscountFactor;
   const overrunCount = quote.ok ? quote.overrunCount : 0;
   const totalStickerCount = tier * designCount;
   // Tasarruf hesabı: en küçük tier (25) baseline alınır
@@ -272,23 +378,18 @@ export default function StickerPage() {
       </div>
 
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
-        {/* Page hero */}
-        <div className="flex items-end gap-4 mb-6 md:mb-7">
-          <div className="flex-1 min-w-0">
-            <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
-              <Icon.Sparkle size={12} /> {t.sticker.pillStart}
-            </span>
-            <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
-              {t.sticker.pageTitle}
-            </h1>
-            {/* Subtitle sayfa altına taşındı (Sefa kuralı 15 May v4) */}
-          </div>
-          <div className="hidden md:block">
-            <Pim pose="excited" size={120} />
-          </div>
+        {/* Page hero — Pim mascot kaldırıldı (Sefa kuralı 15 May v4) */}
+        <div className="mb-6 md:mb-7">
+          <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
+            <Icon.Sparkle size={12} /> {t.sticker.pillStart}
+          </span>
+          <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
+            {t.sticker.pageTitle}
+          </h1>
+          {/* Subtitle sayfa altına taşındı (Sefa kuralı 15 May v4) */}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_160px] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview */}
           <div className="lg:sticky lg:top-20">
             <StickerPreview
@@ -313,26 +414,47 @@ export default function StickerPage() {
 
           {/* RIGHT — config */}
           <div className="flex flex-col gap-4">
+            {/* Mobile horizontal stepper — desktop'ta dikey rail var */}
+            <div className="lg:hidden bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
+              <StepProgress
+                steps={stepLabels}
+                stepIds={stepIds}
+                activeStep={activeStep}
+                completedSet={touchedSteps}
+                onStepClick={scrollToStep}
+              />
+            </div>
+
             {/* 1. ADIM: Kesim Tipi (Tabaka / Die Cut) — şekilden önce */}
             <FormSection
+              id="step-1"
+              number={uiStepNumber(1)}
               title={t.sticker.cutTypeTitle}
               hint={t.sticker.cutTypeHint}
             >
               <div className="grid grid-cols-2 gap-3">
                 <CutModeCard
                   kind="tabaka"
-                  selected={cutMode === "tabaka"}
-                  onClick={() => setCutMode("tabaka")}
+                  selected={touchedSteps.has(1) && cutMode === "tabaka"}
+                  onClick={() => {
+                    setCutMode("tabaka");
+                    markTouched(1);
+                  }}
                 />
                 <CutModeCard
                   kind="diecut"
-                  selected={cutMode === "diecut"}
-                  onClick={() => setCutMode("diecut")}
+                  selected={touchedSteps.has(1) && cutMode === "diecut"}
+                  onClick={() => {
+                    setCutMode("diecut");
+                    markTouched(1);
+                  }}
                 />
               </div>
             </FormSection>
 
             <FormSection
+              id="step-2"
+              number={uiStepNumber(2)}
               title={t.sticker.shapeTitle}
               hint={
                 cutMode === "tabaka"
@@ -349,8 +471,11 @@ export default function StickerPage() {
                 {visibleShapes.map((s) => (
                   <SelectableCard
                     key={s.id}
-                    selected={shape === s.id}
-                    onClick={() => setShape(s.id)}
+                    selected={touchedSteps.has(2) && shape === s.id}
+                    onClick={() => {
+                      setShape(s.id);
+                      markTouched(2);
+                    }}
                     style={{ textAlign: "center" }}
                     padding={12}
                   >
@@ -415,13 +540,20 @@ export default function StickerPage() {
               )}
             </FormSection>
 
-            <FormSection title={t.config.materialTitle}>
+            <FormSection
+              id="step-3"
+              number={uiStepNumber(3)}
+              title={t.config.materialTitle}
+            >
               <div className="grid grid-cols-2 gap-2.5">
                 {MATERIALS.map((m) => (
                   <SelectableCard
                     key={m.id}
-                    selected={material === m.id}
-                    onClick={() => setMaterial(m.id)}
+                    selected={touchedSteps.has(3) && material === m.id}
+                    onClick={() => {
+                      setMaterial(m.id);
+                      markTouched(3);
+                    }}
                     padding={12}
                     style={{
                       display: "flex",
@@ -453,13 +585,20 @@ export default function StickerPage() {
               </a>
             </FormSection>
 
-            <FormSection title={t.config.finishTitle}>
+            <FormSection
+              id="step-4"
+              number={uiStepNumber(4)}
+              title={t.config.finishTitle}
+            >
               <div className="grid grid-cols-3 gap-2.5">
                 {FINISHES.map((f) => (
                   <SelectableCard
                     key={f.id}
-                    selected={finish === f.id}
-                    onClick={() => setFinish(f.id)}
+                    selected={touchedSteps.has(4) && finish === f.id}
+                    onClick={() => {
+                      setFinish(f.id);
+                      markTouched(4);
+                    }}
                     padding={12}
                   >
                     <div className="font-semibold text-sm">{f.name}</div>
@@ -471,7 +610,12 @@ export default function StickerPage() {
               </div>
             </FormSection>
 
-            <FormSection title={t.config.sizeTitle} hint={`min ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm · max ${STICKER_MAX_W}×${STICKER_MAX_H} mm (40×65 cm)`}>
+            <FormSection
+              id="step-5"
+              number={uiStepNumber(5)}
+              title={t.config.sizeTitle}
+              hint={`min ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm · max ${STICKER_MAX_W}×${STICKER_MAX_H} mm (40×65 cm)`}
+            >
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
@@ -480,7 +624,10 @@ export default function StickerPage() {
                   <input
                     type="number"
                     value={width}
-                    onChange={(e) => setWidth(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_W, Number(e.target.value) || STICKER_MIN_DIM)))}
+                    onChange={(e) => {
+                      setWidth(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_W, Number(e.target.value) || STICKER_MIN_DIM)));
+                      markTouched(5);
+                    }}
                     min={STICKER_MIN_DIM}
                     max={STICKER_MAX_W}
                     step={1}
@@ -495,7 +642,10 @@ export default function StickerPage() {
                   <input
                     type="number"
                     value={height}
-                    onChange={(e) => setHeight(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_H, Number(e.target.value) || STICKER_MIN_DIM)))}
+                    onChange={(e) => {
+                      setHeight(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_H, Number(e.target.value) || STICKER_MIN_DIM)));
+                      markTouched(5);
+                    }}
                     min={STICKER_MIN_DIM}
                     max={STICKER_MAX_H}
                     step={1}
@@ -507,14 +657,24 @@ export default function StickerPage() {
               {/* Hızlı boyut chip'leri */}
               <div className="flex gap-2 mt-3 flex-wrap">
                 <span className="text-[11.5px] text-gri-500 self-center mr-1">{t.config.quickSize}</span>
+                {/* Sefa kuralı (15 May v4): 10 hızlı boyut, 5x5/6x6/7x7
+                    kesin olsun (etiket ile tutarlı). */}
                 {[
+                  { w: 5, h: 5, label: "5×5" },
+                  { w: 6, h: 6, label: "6×6" },
+                  { w: 7, h: 7, label: "7×7" },
                   { w: 50, h: 50, label: "50×50" },
                   { w: 75, h: 75, label: "75×75" },
                   { w: 100, h: 100, label: "100×100" },
                   { w: 60, h: 80, label: "60×80" },
                   { w: 100, h: 50, label: "100×50" },
+                  { w: 150, h: 150, label: "150×150" },
+                  { w: 200, h: 100, label: "200×100" },
                 ].map((preset) => {
-                  const active = width === preset.w && height === preset.h;
+                  const active =
+                    touchedSteps.has(5) &&
+                    width === preset.w &&
+                    height === preset.h;
                   return (
                     <button
                       key={preset.label}
@@ -522,6 +682,7 @@ export default function StickerPage() {
                       onClick={() => {
                         setWidth(preset.w);
                         setHeight(preset.h);
+                        markTouched(5);
                       }}
                       className={cn(
                         "px-3 h-10 md:h-8 rounded-full text-[12px] font-semibold transition-colors",
@@ -544,32 +705,36 @@ export default function StickerPage() {
             </FormSection>
 
             <FormSection
+              id="step-6"
+              number={uiStepNumber(6)}
               title={t.config.qtyTitle}
               hint="Her tasarımdan kaç adet"
             >
-              {/* Sefa kuralı (Madde 9): adetsel artış YOK, sadece preset chip.
-                  Slider + ince ayar input KALDIRILDI. */}
-              <div className="flex items-baseline justify-between mb-3">
+              {/* Sefa kuralı (Madde 9 + v4): adet bilgisi göster, fiyat
+                  TOPLAM kartında. Duplicate kaldırıldı. */}
+              <div className="mb-3">
                 <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
                   {tier.toLocaleString("tr-TR")}
                   <span className="text-[14px] font-medium text-gri-700 ml-1">
                     adet
                   </span>
                 </span>
-                <div className="text-right tabular-nums">
-                  <div className="text-[18px] font-bold text-pim-mercan leading-none">
-                    {fmt(total)} TL
-                  </div>
-                  <div className="text-[12px] text-gri-500 mt-0.5">
-                    {fmtUnit(currentUnit)} TL/adet
-                  </div>
-                </div>
               </div>
-              {savings > 0 && (
-                <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mb-3">
-                  %{savings} tasarruf 🎯 — bir önceki tier&apos;dan ucuz
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {savings > 0 && (
+                  <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
+                    %{savings} tasarruf 🎯 — adet indirimi
+                  </div>
+                )}
+                {designDiscountPct > 0 && (
+                  <div
+                    className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold"
+                    title={`${designCount} tasarım için ek iskonto`}
+                  >
+                    %{designDiscountPct} tasarım iskonto ✨ ({designCount} çeşit)
+                  </div>
+                )}
+              </div>
 
               {/* Preset chip'leri — TEK seçim yöntemi */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
@@ -577,13 +742,16 @@ export default function StickerPage() {
                   {t.config.suggested}
                 </span>
                 {STICKER_PRESETS.map((q) => {
-                  const active = tier === q;
+                  const active = touchedSteps.has(6) && tier === q;
                   const popular = q === STICKER_POPULAR_PRESET;
                   return (
                     <button
                       key={q}
                       type="button"
-                      onClick={() => setTier(q)}
+                      onClick={() => {
+                        setTier(q);
+                        markTouched(6);
+                      }}
                       aria-pressed={active}
                       className={cn(
                         "relative px-3 h-10 md:h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
@@ -604,16 +772,29 @@ export default function StickerPage() {
 
             {/* Çoklu tasarım yükleyici + designCount input (Sefa Madde 9) */}
             <FormSection
+              id="step-7"
+              number={uiStepNumber(7)}
               title="Tasarımlar"
-              hint="Her tasarımdan aynı adet basılır, hep aynı boyut/malzeme"
+              hint="Her tasarımdan aynı adet basılır. Birden fazla tasarımda iskonto!"
             >
               <MultiDesignUploader
                 designCount={designCount}
-                onDesignCountChange={setDesignCount}
+                onDesignCountChange={(n) => {
+                  setDesignCount(n);
+                  markTouched(7);
+                }}
                 designs={designs}
-                onDesignsChange={setDesigns}
+                onDesignsChange={(d) => {
+                  setDesigns(d);
+                  markTouched(7);
+                }}
                 qtyPerDesign={tier}
               />
+              {designDiscountPct > 0 && (
+                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
+                  ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
+                </p>
+              )}
             </FormSection>
 
             {/* Tabaka önizleme (Sefa Madde 10) — tabaka modunda */}
@@ -631,6 +812,7 @@ export default function StickerPage() {
               </FormSection>
             )}
 
+            <div ref={priceCardRef}>
             <PriceCard
               variant="bold"
               topLabel="SEÇİMİN"
@@ -717,7 +899,27 @@ export default function StickerPage() {
                 );
               }}
             />
+            </div>
           </div>
+
+          {/* RAIL — desktop only dikey stepper (Sefa 15 May v4) */}
+          <aside
+            className="hidden lg:block lg:sticky lg:top-[88px]"
+            aria-label="Konfigürasyon adımları (dikey rail)"
+          >
+            <div className="bg-white rounded-xl px-3 py-3 ring-1 ring-gri-200 shadow-1">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-gri-700 mb-2 px-1">
+                Adımlar
+              </div>
+              <VerticalStepProgress
+                steps={stepLabels}
+                stepIds={stepIds}
+                activeStep={activeStep}
+                completedSet={touchedSteps}
+                onStepClick={scrollToStep}
+              />
+            </div>
+          </aside>
         </div>
       </div>
       {/* Bilgi bandı — Sefa kuralı (15 May v4): subtitle sağ panelden
@@ -731,7 +933,48 @@ export default function StickerPage() {
           </p>
         </div>
       </div>
+
+      {/* Ürün anlatım bölümü (Sefa 15 May v3) — sticker'a özel içerik */}
+      <ProductInfoSection product="sticker" />
       <ProductReviews productType="sticker" limit={6} />
+
+      {/* Sticky checkout bar — mobile-only (Sefa 15 May v4) */}
+      <div
+        className={cn(
+          "lg:hidden fixed bottom-0 inset-x-0 z-40",
+          "bg-white border-t border-gri-200 shadow-2",
+          "px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+          "flex items-center gap-3",
+          "transition-transform duration-300 ease-out",
+          showStickyBar ? "translate-y-0" : "translate-y-full"
+        )}
+        aria-hidden={!showStickyBar}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-[18px] font-bold text-pim-mercan tabular-nums leading-none">
+            {fmt(total)} TL
+          </div>
+          <div className="text-[11px] text-gri-700 mt-0.5 truncate">
+            {totalStickerCount.toLocaleString("tr-TR")} sticker · {width}×{height}mm · KDV dahil
+          </div>
+        </div>
+        <Link
+          href="#step-1"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToStep(7);
+          }}
+          className={cn(
+            "shrink-0 inline-flex items-center gap-1.5",
+            "bg-pim-mercan text-white font-bold text-[14px]",
+            "px-5 h-11 rounded-full shadow-1",
+            "active:scale-[0.98] transition-transform"
+          )}
+        >
+          Tamamla
+          <Icon.ArrowR size={14} />
+        </Link>
+      </div>
     </main>
   );
 }
@@ -1466,15 +1709,8 @@ function StickerPreview({
         </div>
       </div>
 
-      {/* Pim chat bubble */}
-      <div className="absolute bottom-5 right-5">
-        <div className="bg-white rounded-2xl p-2.5 shadow-2 flex gap-2 items-center max-w-[200px]">
-          <PimMini pose="happy" size={32} />
-          <div className="text-[12px] font-medium leading-snug">
-            <strong>Pim:</strong> Holografik festivale gider 🎉
-          </div>
-        </div>
-      </div>
+      {/* Pim chat bubble kaldırıldı (Sefa 15 May v4) — sağ alt floating
+          PimChat tek persona kanalı. */}
     </div>
   );
 }
