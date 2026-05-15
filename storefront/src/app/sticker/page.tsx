@@ -126,7 +126,20 @@ function snapStickerQty(n: number): number {
 // Yeni: quoteCustomerSticker() — admin'deki shared lib ile aynı motor.
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
-const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
+/**
+ * Birim fiyat formatlama — smart precision.
+ *
+ * Audit 15 May: 2 ondalık göstermek toplam ile matematik tutmuyor →
+ * müşteri güven kaybı. Smart precision: 2 ondalık tutturuyorsa 2,
+ * yoksa 4 ondalık göster.
+ */
+const fmtUnit = (n: number) => {
+  const twoDecimal = Math.round(n * 100) / 100;
+  if (Math.abs(twoDecimal - n) < 0.0005) {
+    return n.toFixed(2).replace(".", ",");
+  }
+  return n.toFixed(4).replace(".", ",");
+};
 
 // ============================================================
 // Page

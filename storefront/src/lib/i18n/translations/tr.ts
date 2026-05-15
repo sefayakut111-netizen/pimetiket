@@ -135,7 +135,7 @@ export const tr: TranslationDict = {
     qtyHint: "1.000'den başla, 500 adetlik artışla seç (max 50.000)",
     windingTitle: "Sarım yönü",
     windingHint:
-      "Otomatik etiketleme makinesi varsa önemli. R harfi etiketin baskı yönünü temsil eder.",
+      "Otomatik etiketleme makinen varsa önemli — \"ABC\" metni etiketin baskı yönünü gösterir. Emin değilsen Sarım 1 (düz) seç.",
     windingOuter: "DIŞA SARIM",
     windingInner: "İÇE SARIM",
   },

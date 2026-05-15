@@ -331,7 +331,7 @@ export function DesignDropZone({
               PDF, AI, EPS, PSD, PNG, JPG, SVG — max 30 MB
             </p>
             <p className="text-[11.5px] text-gri-500 mt-2 leading-relaxed">
-              Yüklersen sticker önizlemesinde tasarımını görürsün — beğenirsen
+              Yüklersen canlı önizlemede tasarımını görürsün — beğenirsen
               sepete ekle, beğenmezsen değiştir.
             </p>
           </>

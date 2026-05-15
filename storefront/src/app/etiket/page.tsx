@@ -17,8 +17,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Pim, PimMini } from "@/components/Pim";
+import { useCallback, useEffect, useRef, useState } from "react";
+// Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
+// kaldırıldı, Pim sadece PimChat floating button'da tek tutarlı persona.
 import { Icon } from "@/components/Icon";
 import {
   SchemaJsonLd,
@@ -139,7 +140,25 @@ function upsellFor(qty: number): { msg: string; to: number } | null {
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
-const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
+/**
+ * Birim fiyat formatlama — smart precision.
+ *
+ * Audit 15 May (Sefa raporu): "2,32 TL/adet × 2.000 = 4.640 TL ama
+ * gösterilen 4.631 TL → 9 TL diskrepans". Kök: birim fiyat aslında
+ * 2,3155 ama toFixed(2) ile 2,32'ye yuvarlanıyor → müşteri matematiği
+ * tutturamıyor → güven kaybı.
+ *
+ * Çözüm: 2 ondalık matematik tutturuyorsa 2 göster (örn 2,50 exact),
+ * yoksa 4 ondalık göster (örn 2,3155). Müşteri kalkulatöre vurunca
+ * unit × qty = total tam tutar.
+ */
+const fmtUnit = (n: number) => {
+  const twoDecimal = Math.round(n * 100) / 100;
+  if (Math.abs(twoDecimal - n) < 0.0005) {
+    return n.toFixed(2).replace(".", ",");
+  }
+  return n.toFixed(4).replace(".", ",");
+};
 
 // ============================================================
 // Page
@@ -199,6 +218,81 @@ export default function EtiketPage() {
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });
   const upsell = upsellFor(qty);
+
+  // Sticky CTA bar — UX audit (15 May): PriceCard sayfa sonunda, mobile'da
+  // form uzun olduğu için kullanıcı CTA'ya scroll etmek zorunda. Intersection
+  // observer ile PriceCard görünür durumda mı tespit et; görünmüyorsa
+  // ekran altında küçük yapışkan bar göster (mobile-only).
+  const priceCardRef = useRef<HTMLDivElement | null>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const el = priceCardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Sepete ekle — hem PriceCard hem sticky bar tetikler. Stale-closure'a
+  // karşı useCallback + dep array. quote/qty/material vb. her güncellemede
+  // yeni handler oluşur.
+  const handleAddToCart = useCallback(async () => {
+    if (!quote.ok) {
+      toast.error(quote.reason ?? "Geçersiz seçim");
+      return;
+    }
+    const matName =
+      MATERIALS.find((m) => m.id === material)?.name ?? material;
+    const coatName =
+      COATINGS.find((c) => c.id === coating)?.name ?? coating;
+    const custName =
+      CUSTOMS.find((c) => c.id === custom)?.name ?? custom;
+    const customSuffix = custom === "yaldiz" ? ` (${yaldiz})` : "";
+    const result = await addToCustomerCart({
+      product: "etiket",
+      title: `Etiket · ${matName} + ${coatName}`,
+      config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix} · Sarım ${winding}`,
+      width,
+      height,
+      qty,
+      unit: parseFloat(unit.toFixed(2)),
+      total: Math.round(total),
+      materialId: material,
+      coatingId: coating,
+      customizationId: custom,
+      winding,
+      designTempId: design?.tempId,
+      designPreviewUrl: design?.previewUrl,
+      designFileName: design?.fileName,
+    });
+    if (!result.ok) {
+      toast.error(result.reason);
+      return;
+    }
+    setDesign(null);
+    toast.success(
+      design
+        ? "Sepete eklendi 🛒 — tasarımın bağlandı"
+        : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
+    );
+  }, [
+    quote,
+    toast,
+    material,
+    coating,
+    custom,
+    yaldiz,
+    width,
+    height,
+    qty,
+    unit,
+    total,
+    winding,
+    design,
+  ]);
 
   return (
     <main className="bg-gri-50 min-h-[calc(100vh-64px)] animate-fade-up">
@@ -692,85 +786,85 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Price card */}
-            <PriceCard
-              variant="quiet"
-              topLabel="TOPLAM"
-              total={total}
-              unitPrice={
-                <>
-                  Birim fiyat{" "}
-                  <strong className="text-lacivert">
-                    {fmtUnit(unit)} TL/adet
-                  </strong>{" "}
-                  · KDV dahil
-                  {rollsNeeded > 0 && (
-                    <>
-                      {" "}
-                      <span className="text-gri-500">
-                        · {rollsNeeded} rulo
-                      </span>
-                    </>
-                  )}
-                </>
-              }
-              savingsLabel={
-                tierSavings > 0 ? `%${tierSavings} adet indirimi` : null
-              }
-              upsell={
-                upsell
-                  ? { msg: upsell.msg, onClick: () => setQty(upsell.to) }
-                  : null
-              }
-              deliveryDate={teslim}
-              ctaLabel={t.config.addToCart}
-              onCta={async () => {
-                if (!quote.ok) {
-                  toast.error(quote.reason ?? "Geçersiz seçim");
-                  return;
+            {/* Price card — Intersection observer için ref'li wrapper */}
+            <div ref={priceCardRef}>
+              <PriceCard
+                variant="quiet"
+                topLabel="TOPLAM"
+                total={total}
+                unitPrice={
+                  <>
+                    Birim fiyat{" "}
+                    <strong className="text-lacivert">
+                      {fmtUnit(unit)} TL/adet
+                    </strong>{" "}
+                    · KDV dahil
+                    {rollsNeeded > 0 && (
+                      <>
+                        {" "}
+                        <span className="text-gri-500">
+                          · {rollsNeeded} rulo
+                        </span>
+                      </>
+                    )}
+                  </>
                 }
-                const matName =
-                  MATERIALS.find((m) => m.id === material)?.name ?? material;
-                const coatName =
-                  COATINGS.find((c) => c.id === coating)?.name ?? coating;
-                const custName =
-                  CUSTOMS.find((c) => c.id === custom)?.name ?? custom;
-                const customSuffix =
-                  custom === "yaldiz" ? ` (${yaldiz})` : "";
-                const result = await addToCustomerCart({
-                  product: "etiket",
-                  title: `Etiket · ${matName} + ${coatName}`,
-                  config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix} · Sarım ${winding}`,
-                  width,
-                  height,
-                  qty,
-                  unit: parseFloat(unit.toFixed(2)),
-                  total: Math.round(total),
-                  materialId: material,
-                  coatingId: coating,
-                  customizationId: custom,
-                  winding,
-                  designTempId: design?.tempId,
-                  designPreviewUrl: design?.previewUrl,
-                  designFileName: design?.fileName,
-                });
-                if (!result.ok) {
-                  toast.error(result.reason);
-                  return;
+                savingsLabel={
+                  tierSavings > 0 ? `%${tierSavings} adet indirimi` : null
                 }
-                setDesign(null);
-                toast.success(
-                  design
-                    ? "Sepete eklendi 🛒 — tasarımın bağlandı"
-                    : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
-                );
-              }}
-              footnote="3 gün içinde dosya yükleyebilirsin · KDV dahil · Hızlı ve şeffaf"
-            />
+                upsell={
+                  upsell
+                    ? { msg: upsell.msg, onClick: () => setQty(upsell.to) }
+                    : null
+                }
+                deliveryDate={teslim}
+                ctaLabel={t.config.addToCart}
+                onCta={handleAddToCart}
+                footnote="Tasarımını yükle, sepete ekle · KDV dahil · 5-7 iş günü teslim"
+              />
+            </div>
           </div>
         </div>
       </div>
       <ProductReviews productType="etiket" limit={6} />
+
+      {/* Sticky checkout bar — mobile-only. PriceCard görünür durumda
+          değilse açılır. Sefa: scroll'da CTA hep elinin altında olsun. */}
+      <div
+        className={cn(
+          "lg:hidden fixed bottom-0 inset-x-0 z-40",
+          "bg-white border-t border-gri-200 shadow-2",
+          "px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+          "flex items-center gap-3",
+          "transition-transform duration-300 ease-out",
+          showStickyBar ? "translate-y-0" : "translate-y-full"
+        )}
+        aria-hidden={!showStickyBar}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-[18px] font-bold text-pim-mercan tabular-nums leading-none">
+            {fmt(total)} TL
+          </div>
+          <div className="text-[11px] text-gri-700 mt-0.5 truncate">
+            {qty.toLocaleString("tr-TR")} adet · {width}×{height}mm · KDV dahil
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={!quote.ok}
+          className={cn(
+            "shrink-0 inline-flex items-center gap-1.5",
+            "bg-pim-mercan text-white font-bold text-[14px]",
+            "px-5 h-11 rounded-full shadow-1",
+            "active:scale-[0.98] transition-transform",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+        >
+          Sepete ekle
+          <Icon.ArrowR size={14} />
+        </button>
+      </div>
     </main>
   );
 }
@@ -909,6 +1003,9 @@ function WindingIcon({ n }: { n: number }) {
         />
       ))}
 
+      {/* UX audit (15 May): Tek "R" harfi yön anlatımı zayıftı. "ABC"
+          kelimesi okunabilir yön gösterir — kullanıcı stripte "ABC" tam
+          metnini görür, rotasyona göre yönü kavrar (düz/ters/sola/sağa). */}
       {[0, 1, 2, 3].map((i) => {
         const cx = stripX + stripW / 2;
         const cy = stripTop + i * labelH + labelH / 2;
@@ -916,14 +1013,15 @@ function WindingIcon({ n }: { n: number }) {
           <g key={i} transform={`translate(${cx} ${cy}) rotate(${rot})`}>
             <text
               x="0"
-              y="6"
+              y="5"
               textAnchor="middle"
               fontFamily="Nunito, sans-serif"
               fontWeight="800"
-              fontSize="17"
+              fontSize="13"
               fill="#1F2937"
+              letterSpacing="0.5"
             >
-              R
+              ABC
             </text>
           </g>
         );
@@ -1195,13 +1293,15 @@ function PreviewCanvas({
         Canlı önizleme
       </div>
 
-      {/* Pim chat trigger */}
+      {/* Inline ipucu kartı — Pim mascot floating chat'te (PimChat.tsx);
+          burada sadece context-aware öneri metni göster. UX audit (15 May)
+          sonrası: Pim'in iki yerde aynı anda görünmesi persona dağıtıyordu. */}
       <div className="absolute bottom-6 right-6">
-        <div className="bg-white rounded-2xl p-3 shadow-2 flex gap-2.5 items-center max-w-[220px]">
-          <PimMini pose="think" size={36} />
-          <div className="text-[13px] font-medium">
-            <strong>Pim:</strong> Kozmetik için ultra clear de güzel olur,
-            denedin mi?
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-3.5 py-2.5 shadow-2 flex gap-2 items-start max-w-[240px] ring-1 ring-gri-200/60">
+          <span aria-hidden className="text-base leading-none mt-0.5">💡</span>
+          <div className="text-[12.5px] leading-relaxed text-gri-700">
+            <strong className="text-lacivert">İpucu:</strong> Kozmetik
+            etiketleri için Ultra Clear de premium bir cam etkisi verir.
           </div>
         </div>
       </div>
