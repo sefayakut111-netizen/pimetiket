@@ -8,6 +8,8 @@ interface FormSectionProps {
   hint?: string;
   children: ReactNode;
   className?: string;
+  /** Section'a DOM id ata — IntersectionObserver / scroll-to-step için. */
+  id?: string;
 }
 
 /**
@@ -23,10 +25,11 @@ export function FormSection({
   hint,
   children,
   className,
+  id,
 }: FormSectionProps) {
   const numbered = number != null;
   return (
-    <Card padding="p-5" className={className}>
+    <Card padding="p-5" className={className} id={id}>
       <div className="flex items-center gap-3 mb-3.5">
         {numbered && (
           <span

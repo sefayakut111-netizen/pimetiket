@@ -139,6 +139,17 @@ function upsellFor(qty: number): { msg: string; to: number } | null {
   return null;
 }
 
+/** Progress stepper için 6 adımın etiketleri.
+ *  IntersectionObserver "step-1"..."step-6" id'lerini izler. */
+const STEP_LABELS: readonly string[] = [
+  "Malzeme",
+  "Kaplama",
+  "Özellik",
+  "Sarım",
+  "Boyut",
+  "Adet",
+];
+
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 /**
  * Birim fiyat formatlama — smart precision.
@@ -233,6 +244,36 @@ export default function EtiketPage() {
       { threshold: 0.15 }
     );
     obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Progress stepper — 6 adım id'leri (step-1..step-6) izlenir. Hangi
+  // section viewport orta üst kısmına en yakınsa "active step" odur.
+  // Sefa kararı: kullanıcı "kaç adım kaldı?" sorusunu anlık görsün.
+  const [activeStep, setActiveStep] = useState(1);
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const sections = STEP_LABELS.map((_, i) =>
+      document.getElementById(`step-${i + 1}`)
+    ).filter((el): el is HTMLElement => el !== null);
+    if (sections.length === 0) return;
+
+    // rootMargin: top 30% — section üst sınırı viewport %30'a yaklaşınca
+    // active sayılır. Bu sayede kullanıcı section'a girdiği anda stepper
+    // güncellenir, son section'a değil.
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => parseInt(e.target.id.replace("step-", ""), 10))
+          .filter((n) => !Number.isNaN(n));
+        if (visible.length > 0) {
+          setActiveStep(Math.min(...visible));
+        }
+      },
+      { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
+    );
+    sections.forEach((s) => obs.observe(s));
     return () => obs.disconnect();
   }, []);
 
@@ -384,8 +425,13 @@ export default function EtiketPage() {
               </p>
             </div>
 
+            {/* Progress stepper — UX audit (15 May): "kaç adım kaldı?"
+                cevabı için. IntersectionObserver ile aktif adım tespit. */}
+            <StepProgress steps={STEP_LABELS} activeStep={activeStep} />
+
             {/* Step 1 — Malzeme */}
             <FormSection
+              id="step-1"
               number={1}
               title={t.config.materialTitle}
               hint=""
@@ -428,6 +474,7 @@ export default function EtiketPage() {
 
             {/* Step 2 — Kaplama */}
             <FormSection
+              id="step-2"
               number={2}
               title={t.config.coatingTitle}
               hint=""
@@ -451,6 +498,7 @@ export default function EtiketPage() {
 
             {/* Step 3 — Özelleştirme */}
             <FormSection
+              id="step-3"
               number={3}
               title={t.config.customizationTitle}
               hint=""
@@ -514,6 +562,7 @@ export default function EtiketPage() {
 
             {/* Step 4 — Sarım yönü */}
             <FormSection
+              id="step-4"
               number={4}
               title={t.etiket.windingTitle}
               hint={t.etiket.windingHint}
@@ -600,6 +649,7 @@ export default function EtiketPage() {
 
             {/* Step 5 — Boyut */}
             <FormSection
+              id="step-5"
               number={5}
               title={t.config.sizeTitle}
               hint={t.etiket.sizeHint}
@@ -678,6 +728,7 @@ export default function EtiketPage() {
 
             {/* Step 6 — Adet (serbest input + preset chip'ler) */}
             <FormSection
+              id="step-6"
               number={6}
               title={t.config.qtyTitle}
               hint={t.etiket.qtyHint}
@@ -866,6 +917,121 @@ export default function EtiketPage() {
         </button>
       </div>
     </main>
+  );
+}
+
+// ============================================================
+// StepProgress — 6 adımlık ilerleme göstergesi
+// ============================================================
+
+/**
+ * 6 adımlık konfigüratör ilerleme bandı.
+ *
+ * Desktop (md+): noktalar + altta etiketler (6 dot horizontal).
+ * Mobile: kompakt "Adım X / 6: [Label]" + ince progress bar.
+ *
+ * Aktif adım = activeStep (1-indexed). Daha küçük indeksli adımlar
+ * "tamamlanmış" sayılır (dolu coral nokta). Aktif daha büyük halka.
+ * Sonraki adımlar boş gri.
+ */
+function StepProgress({
+  steps,
+  activeStep,
+}: {
+  steps: readonly string[];
+  activeStep: number;
+}) {
+  const total = steps.length;
+  const progressPct = (Math.max(1, activeStep) / total) * 100;
+  const activeLabel = steps[activeStep - 1] ?? steps[0];
+
+  return (
+    <div className="-mb-1">
+      {/* Mobile: compact bar + text */}
+      <div className="md:hidden">
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-pim-mercan">
+            Adım {activeStep} / {total}
+          </span>
+          <span className="text-[12.5px] font-semibold text-lacivert">
+            {activeLabel}
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-gri-200 overflow-hidden">
+          <div
+            className="h-full bg-pim-mercan rounded-full transition-all duration-300 ease-out"
+            style={{ width: `${progressPct}%` }}
+            aria-hidden
+          />
+        </div>
+      </div>
+
+      {/* Desktop: dot row + labels */}
+      <div
+        className="hidden md:block"
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={total}
+        aria-valuenow={activeStep}
+        aria-label={`Konfigürasyon adımı ${activeStep} / ${total}: ${activeLabel}`}
+      >
+        <div className="flex items-center gap-1.5">
+          {steps.map((label, i) => {
+            const stepNum = i + 1;
+            const isActive = stepNum === activeStep;
+            const isDone = stepNum < activeStep;
+            return (
+              <div key={stepNum} className="flex items-center gap-1.5 flex-1">
+                {/* Dot */}
+                <div
+                  className={cn(
+                    "shrink-0 rounded-full transition-all duration-200",
+                    isActive
+                      ? "w-3 h-3 bg-pim-mercan ring-2 ring-pim-mercan-tint"
+                      : isDone
+                        ? "w-2.5 h-2.5 bg-pim-mercan"
+                        : "w-2 h-2 bg-gri-300"
+                  )}
+                  aria-hidden
+                />
+                {/* Connector line (except last) */}
+                {i < total - 1 && (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex-1 h-px transition-colors",
+                      isDone ? "bg-pim-mercan" : "bg-gri-200"
+                    )}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {/* Labels below */}
+        <div className="grid grid-cols-6 gap-1.5 mt-1.5">
+          {steps.map((label, i) => {
+            const stepNum = i + 1;
+            const isActive = stepNum === activeStep;
+            return (
+              <div
+                key={stepNum}
+                className={cn(
+                  "text-[10.5px] font-semibold tabular-nums truncate",
+                  isActive
+                    ? "text-pim-mercan"
+                    : stepNum < activeStep
+                      ? "text-lacivert"
+                      : "text-gri-500"
+                )}
+              >
+                {label}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
