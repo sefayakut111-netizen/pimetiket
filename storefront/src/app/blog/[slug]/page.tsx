@@ -13,6 +13,11 @@ import { Icon } from "@/components/Icon";
 import { Button, Card, Pill } from "@/components/ui";
 import { BLOG_POSTS, getBlogPost } from "@/lib/blog-posts";
 import { getSiteImage } from "@/lib/site-images";
+import {
+  SchemaJsonLd,
+  articleSchema,
+  breadcrumbSchema,
+} from "@/components/SchemaJsonLd";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -91,6 +96,24 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
+      {/* Article + Breadcrumb JSON-LD — rich snippet için */}
+      <SchemaJsonLd
+        data={articleSchema({
+          title: post.title,
+          description: post.excerpt,
+          url: `/blog/${post.slug}`,
+          publishedAt: post.publishedAt,
+          image: defaultHero?.publicUrl,
+        })}
+      />
+      <SchemaJsonLd
+        data={breadcrumbSchema([
+          { label: "Anasayfa", url: "/" },
+          { label: "Blog", url: "/blog" },
+          { label: post.title, url: `/blog/${post.slug}` },
+        ])}
+      />
+
       <article className="mx-auto max-w-[760px] px-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-[14px] mb-6">

@@ -5,6 +5,8 @@ import { ToastProvider } from "@/components/ui";
 import { LanguageProvider } from "@/lib/i18n/context";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Analytics } from "@/components/Analytics";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { getSiteImage } from "@/lib/site-images";
 import "./globals.css";
 
@@ -86,8 +88,21 @@ export async function generateMetadata(): Promise<Metadata> {
       canonical: "/",
     },
     category: "shopping",
+    // Google Search Console verification — Sefa env'e ekleyince aktif olur
+    // Format: <meta name="google-site-verification" content="..." />
+    verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+      ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+      : undefined,
   };
 }
+
+// Sosyal medya URL'leri — Sefa env'e ekleyince Knowledge Graph + sameAs aktif olur.
+// Format: virgülle ayrılmış URL listesi:
+//   NEXT_PUBLIC_SOCIAL_LINKS=https://instagram.com/pimetiket,https://x.com/pimetiket
+const SOCIAL_LINKS = (process.env.NEXT_PUBLIC_SOCIAL_LINKS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0 && s.startsWith("https://"));
 
 const ORGANIZATION_LD = {
   "@context": "https://schema.org",
@@ -102,7 +117,7 @@ const ORGANIZATION_LD = {
     addressRegion: "Ankara",
     addressCountry: "TR",
   },
-  sameAs: [],
+  sameAs: SOCIAL_LINKS,
 };
 
 const WEBSITE_LD = {
@@ -139,6 +154,9 @@ export default function RootLayout({
             <Analytics />
           </LanguageProvider>
         </ToastProvider>
+        {/* Vercel built-in: ücretsiz pageview + Core Web Vitals (LCP/CLS/INP) */}
+        <SpeedInsights />
+        <VercelAnalytics />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_LD) }}

@@ -11,6 +11,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
+import { SchemaJsonLd, localBusinessSchema } from "@/components/SchemaJsonLd";
 
 const COPY = {
   tr: {
@@ -132,6 +133,9 @@ export default function IletisimPage() {
 
   return (
     <main className="animate-fade-up">
+      {/* LocalBusiness JSON-LD — Google Maps + "near me" araması için */}
+      <SchemaJsonLd data={localBusinessSchema({})} />
+
       {/* HERO */}
       <section className="pt-10 md:pt-16 pb-8 md:pb-12">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 md:gap-8 items-end">
