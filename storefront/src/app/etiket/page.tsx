@@ -586,6 +586,19 @@ export default function EtiketPage() {
       designTempId: primary?.tempId,
       designPreviewUrl: primary?.previewUrl,
       designFileName: primary?.fileName,
+      // Multi-design metadata (Sefa 15 May v4): designCount + ek dosyalar
+      // primary hariç designs[1..N]. Ödeme sonrası order'a promote edilecek.
+      designCount: designCount > 1 ? designCount : undefined,
+      additionalDesigns:
+        designs.length > 1
+          ? designs.slice(1).map((d) => ({
+              tempId: d.tempId,
+              previewUrl: d.previewUrl,
+              fileName: d.fileName,
+              sizeBytes: d.sizeBytes,
+              mimeType: d.mimeType,
+            }))
+          : undefined,
     });
     if (!result.ok) {
       toast.error(result.reason);

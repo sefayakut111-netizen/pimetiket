@@ -197,8 +197,30 @@ export default function SepetPage() {
                       {item.config}
                     </div>
                     {item.designFileName && (
-                      <div className="inline-flex items-center gap-1 mt-1.5 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
-                        ✓ Tasarım yüklendi
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <div className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
+                          ✓ Tasarım yüklendi
+                        </div>
+                        {/* Multi-design metadata (Sefa 15 May v4):
+                            additionalDesigns varsa ek tasarım sayısı göster */}
+                        {item.additionalDesigns &&
+                          item.additionalDesigns.length > 0 && (
+                            <div
+                              className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-pim-mercan-tint text-pim-mercan text-[11px] font-semibold"
+                              title={`Toplam ${1 + item.additionalDesigns.length} tasarım`}
+                            >
+                              +{item.additionalDesigns.length} tasarım
+                            </div>
+                          )}
+                        {/* designCount alanı kullanıcı belirttiği — yüklenenden farklı olabilir */}
+                        {item.designCount && item.designCount > 1 && (
+                          <div
+                            className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-krem ring-1 ring-gri-200 text-lacivert text-[11px] font-semibold"
+                            title="Toplam farklı tasarım sayısı"
+                          >
+                            {item.designCount} çeşit
+                          </div>
+                        )}
                       </div>
                     )}
                     {/* +hediye chip kaldırıldı (Sefa kuralı 11 May) —

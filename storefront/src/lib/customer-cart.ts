@@ -75,6 +75,25 @@ export interface CustomerCartItem {
   /** Tasarım dosya adı — sepet kartında "marka-logo.pdf" göstermek için */
   designFileName?: string;
 
+  // Multi-design metadata (Sefa kuralı 15 May v4):
+  // Kullanıcı 1 sipariş için N farklı tasarım yükleyebilir (max 50).
+  // designTempId/PreviewUrl/FileName ANA tasarım (designs[0]).
+  // Ek tasarımlar additionalDesigns'da, sepete eklemede backend
+  // sipariş sonrası mail ile hepsi promote edilir (yakında).
+  /** Kullanıcının seçtiği tasarım adedi (1-50) — fiyat iskonto için */
+  designCount?: number;
+  /** Ek yüklenen tasarımlar (primary hariç). Ödeme sonrası order_designs
+   *  tablosuna promote edilir (sonraki commit'te DB sync). Şu an
+   *  localStorage'da tutulur, order placement aşamasında mail/admin
+   *  bildirimi olarak gönderilir. */
+  additionalDesigns?: Array<{
+    tempId: string;
+    previewUrl: string;
+    fileName: string;
+    sizeBytes: number;
+    mimeType: string;
+  }>;
+
   /** Eklendi tarih (timestamp ms) */
   addedAt: number;
 }
