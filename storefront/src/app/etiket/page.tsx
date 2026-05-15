@@ -33,6 +33,7 @@ import {
   Pill,
   QtySlider,
   DesignDropZone,
+  MultiDesignDropZone,
   type DesignTempState,
 } from "@/components/ui";
 import { deliveryEstimate } from "@/lib/pricing";
@@ -62,26 +63,32 @@ import { ProductReviews } from "@/components/reviews/ProductReviews";
  * gösterir. Sefa kuralı (15 May): tabaka etikette Ultra Clear + Metalik
  * + Soft Touch yok. Kuşe yeni eklendi (hem rulo hem tabaka).
  */
+/**
+ * Sefa kuralları (15 May v2):
+ *   - Kuşe Etiket varsayılan + ilk sıra
+ *   - "Beyaz semi-glos" → "Opak PP Etiket" (yeni isim)
+ *   - "Kraft" → "Kraft Etiket", "Kuşe" → "Kuşe Etiket"
+ */
 const MATERIALS = [
   {
+    id: "kuse",
+    name: "Kuşe Etiket",
+    desc: "Mat kaplamalı baskı kağıdı",
+    swatch: "#FAFAF4",
+    modes: ["rulo", "tabaka"] as const,
+  },
+  {
     id: "kraft",
-    name: "Kraft",
+    name: "Kraft Etiket",
     desc: "Doğal, dokunsal",
     swatch: "#C9A47A",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "beyaz",
-    name: "Beyaz semi-glos",
-    desc: "Klasik, parlak",
+    name: "Opak PP Etiket",
+    desc: "Klasik, dayanıklı, parlak",
     swatch: "#F8F8F4",
-    modes: ["rulo", "tabaka"] as const,
-  },
-  {
-    id: "kuse",
-    name: "Kuşe",
-    desc: "Mat kaplamalı baskı kağıdı",
-    swatch: "#FAFAF4",
     modes: ["rulo", "tabaka"] as const,
   },
   {
@@ -103,11 +110,12 @@ const MATERIALS = [
 
 type MaterialId = (typeof MATERIALS)[number]["id"];
 
+/** Sefa kuralı (15 May): "Kaplama yok" varsayılan + ilk sıra. */
 const COATINGS = [
+  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın", modes: ["rulo", "tabaka"] as const },
   { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", modes: ["rulo", "tabaka"] as const },
   { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", modes: ["rulo", "tabaka"] as const },
   { id: "soft", name: "Soft touch", desc: "Velvet his", modes: ["rulo"] as const },
-  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın", modes: ["rulo", "tabaka"] as const },
 ] as const;
 
 type CoatingId = (typeof COATINGS)[number]["id"];
@@ -145,14 +153,15 @@ type YaldizId = (typeof YALDIZLAR)[number]["id"];
 const ETIKET_PRESETS = CUSTOMER_ETIKET_TIERS; // [1K, 2K, 5K, 10K, 20K, 50K]
 const ETIKET_POPULAR_PRESET = 5000;
 
-/** Tabaka etiket adet sınırları — Sefa kuralı (15 May): tabaka az
- *  adetli olabilir (1000'den çok daha az). Şu an dijital baskı tabaka
- *  için 100'lük partilerle çalışır. */
-const ETIKET_TABAKA_MIN_QTY = 100;
+/** Tabaka etiket adet sınırları — Sefa kuralları (15 May):
+ *  Min 250, max 10.000, step YOK (serbest girilir, 1'lik step).
+ *  Presetler: 250, 500, 1K, 2.5K, 5K (popüler), 10K.
+ */
+const ETIKET_TABAKA_MIN_QTY = 250;
 const ETIKET_TABAKA_MAX_QTY = 10000;
-const ETIKET_TABAKA_QTY_STEP = 50;
-const ETIKET_TABAKA_PRESETS = [100, 250, 500, 1000, 2500, 5000] as const;
-const ETIKET_TABAKA_POPULAR_PRESET = 500;
+const ETIKET_TABAKA_QTY_STEP = 1; // step yok — serbest sürükle/yaz
+const ETIKET_TABAKA_PRESETS = [250, 500, 1000, 2500, 5000, 10000] as const;
+const ETIKET_TABAKA_POPULAR_PRESET = 1000;
 
 /** Qty'i step'e snap'le (500'ün katı), min/max'a clamp et */
 function snapEtiketQty(n: number): number {
@@ -161,14 +170,14 @@ function snapEtiketQty(n: number): number {
   return Math.min(ETIKET_MAX_QTY, Math.max(ETIKET_MIN_QTY, stepped));
 }
 
-/** Tabaka için ayrı snap — 50'lik step, 100-10000 range */
+/** Tabaka için clamp — step yok, serbest tam sayı (Sefa kuralı 15 May).
+ *  Sadece min/max range'e clamp ediyor, round yapmıyor. */
 function snapTabakaQty(n: number): number {
   if (!Number.isFinite(n)) return ETIKET_TABAKA_MIN_QTY;
-  const stepped =
-    Math.round(n / ETIKET_TABAKA_QTY_STEP) * ETIKET_TABAKA_QTY_STEP;
+  const rounded = Math.round(n);
   return Math.min(
     ETIKET_TABAKA_MAX_QTY,
-    Math.max(ETIKET_TABAKA_MIN_QTY, stepped)
+    Math.max(ETIKET_TABAKA_MIN_QTY, rounded)
   );
 }
 
@@ -197,12 +206,12 @@ const FORM_FACTORS: { id: FormFactor; label: string; desc: string }[] = [
   {
     id: "rulo",
     label: "Rulo etiket",
-    desc: "Makine takılabilir, 1.000 adetten",
+    desc: "Makine takılabilir, özelleştirme seçenekleri",
   },
   {
     id: "tabaka",
     label: "Tabaka etiket",
-    desc: "Düz tabaka, elle uygula, az adet",
+    desc: "Düz tabaka, elle uygula",
   },
 ];
 
@@ -257,17 +266,22 @@ const fmtUnit = (n: number) => {
 export default function EtiketPage() {
   const toast = useToast();
   const { t } = useT();
+  // Sefa kuralları (15 May v2):
+  //  - Varsayılan: Kuşe Etiket + Kaplama yok (1. sıra)
+  //  - Adet: minimum'dan başlasın (rulo→1000, tabaka→250)
   const [formFactor, setFormFactor] = useState<FormFactor>("rulo");
-  const [material, setMaterial] = useState<EtiketMaterialId>("kraft");
-  const [coating, setCoating] = useState<EtiketCoatingId>("mat");
+  const [material, setMaterial] = useState<EtiketMaterialId>("kuse");
+  const [coating, setCoating] = useState<EtiketCoatingId>("yok");
   const [custom, setCustom] = useState<EtiketCustomId>("yok");
   const [yaldiz, setYaldiz] = useState<YaldizId>("altin");
   const [winding, setWinding] = useState<number>(1);
-  const [qty, setQty] = useState<number>(2000);
+  const [qty, setQty] = useState<number>(ETIKET_MIN_QTY); // 1000 (rulo başlangıç)
   const [width, setWidth] = useState<number>(60);
   const [height, setHeight] = useState<number>(80);
-  // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
-  const [design, setDesign] = useState<DesignTempState | null>(null);
+  // Pre-purchase tasarım — Sefa kuralı (15 May v2): max 50 dosya yüklenebilir.
+  // designs[0] preview/cart için primary tasarım. Diğerleri metadata.
+  const [designs, setDesigns] = useState<DesignTempState[]>([]);
+  const primaryDesign = designs[0] ?? null;
 
   // Touched steps — kullanıcı bir adımda seçim yaptıysa o FormSection
   // numarası set'e eklenir (1=Malzeme, 2=Kaplama, 3=Özellik, 4=Sarım,
@@ -319,17 +333,11 @@ export default function EtiketPage() {
       }
       // Coating: soft tabaka'da yok → mat'a dön
       if (coating === "soft") setCoating("mat");
-      // Qty: tabaka range'inde değilse min'e snap'le
-      if (qty > ETIKET_TABAKA_MAX_QTY || qty < ETIKET_TABAKA_MIN_QTY) {
-        setQty(ETIKET_TABAKA_POPULAR_PRESET);
-      } else {
-        // Aynı qty step uyumsuzsa snap'le
-        const snapped = snapTabakaQty(qty);
-        if (snapped !== qty) setQty(snapped);
-      }
+      // Qty: tabaka modunda her zaman MIN'den başla (Sefa kuralı 15 May v2).
+      setQty(ETIKET_TABAKA_MIN_QTY);
     } else if (formFactor === "rulo") {
-      // Rulo'ya geri dönerse: tabaka range'inden çıkmış olabilir
-      if (qty < ETIKET_MIN_QTY) setQty(ETIKET_MIN_QTY);
+      // Rulo'ya geri dönerse: her zaman MIN'den başla.
+      setQty(ETIKET_MIN_QTY);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formFactor]);
@@ -343,7 +351,7 @@ export default function EtiketPage() {
       const raw = sessionStorage.getItem("pim_reprint_design");
       if (raw) {
         const parsed = JSON.parse(raw) as DesignTempState;
-        setDesign(parsed);
+        setDesigns([parsed]);
         sessionStorage.removeItem("pim_reprint_design");
         toast.info("Tasarımın hazır — malzeme/adet seç, sepete ekle");
       }
@@ -446,9 +454,10 @@ export default function EtiketPage() {
     [formFactor]
   );
 
-  // Sepete ekle — hem PriceCard hem sticky bar tetikler. Stale-closure'a
-  // karşı useCallback + dep array. quote/qty/material vb. her güncellemede
-  // yeni handler oluşur.
+  // Sepete ekle — hem PriceCard hem sticky bar tetikler.
+  // Sefa kuralı (15 May v2): max 50 tasarım. Şu an cart item modeli tek
+  // tasarım bağlar → designs[0] cart'a, designs[1..N] design_metadata
+  // alanına serileştirilir (cart genişlemesi sonraki commit'te).
   const handleAddToCart = useCallback(async () => {
     if (!quote.ok) {
       toast.error(quote.reason ?? "Geçersiz seçim");
@@ -461,10 +470,13 @@ export default function EtiketPage() {
     const custName =
       CUSTOMS.find((c) => c.id === custom)?.name ?? custom;
     const customSuffix = custom === "yaldiz" ? ` (${yaldiz})` : "";
+    const designCountSuffix =
+      designs.length > 1 ? ` · ${designs.length} tasarım` : "";
+    const primary = designs[0];
     const result = await addToCustomerCart({
       product: "etiket",
       title: `Etiket · ${matName} + ${coatName}`,
-      config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix} · Sarım ${winding}`,
+      config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding}` : ""}${designCountSuffix}`,
       width,
       height,
       qty,
@@ -474,18 +486,18 @@ export default function EtiketPage() {
       coatingId: coating,
       customizationId: custom,
       winding,
-      designTempId: design?.tempId,
-      designPreviewUrl: design?.previewUrl,
-      designFileName: design?.fileName,
+      designTempId: primary?.tempId,
+      designPreviewUrl: primary?.previewUrl,
+      designFileName: primary?.fileName,
     });
     if (!result.ok) {
       toast.error(result.reason);
       return;
     }
-    setDesign(null);
+    setDesigns([]);
     toast.success(
-      design
-        ? "Sepete eklendi 🛒 — tasarımın bağlandı"
+      designs.length > 0
+        ? `Sepete eklendi 🛒 — ${designs.length} tasarım bağlandı`
         : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
     );
   }, [
@@ -501,7 +513,8 @@ export default function EtiketPage() {
     unit,
     total,
     winding,
-    design,
+    designs,
+    formFactor,
   ]);
 
   return (
@@ -548,7 +561,7 @@ export default function EtiketPage() {
               yaldiz={yaldiz}
               width={width}
               height={height}
-              designUrl={design?.previewUrl ?? null}
+              designUrl={primaryDesign?.previewUrl ?? null}
             />
             <div className="flex justify-between items-center mt-4 px-2">
               <div className="text-[13px] text-gri-700">
@@ -577,10 +590,9 @@ export default function EtiketPage() {
                 </button>
               </div>
             </div>
-            {/* Design upload zone */}
-            <div className="mt-4">
-              <DesignDropZone value={design} onChange={setDesign} />
-            </div>
+            {/* Design upload zone sol panelden kaldırıldı — Sefa kuralı
+                (15 May v2): "Boyut altına tasarım adeti kısmı ekle".
+                MultiDesignDropZone Boyut FormSection'ının altında. */}
           </div>
 
           {/* RIGHT — config */}
@@ -942,12 +954,19 @@ export default function EtiketPage() {
                 <span className="text-[11.5px] text-gri-500 self-center mr-1">
                   {t.config.quickSize}
                 </span>
+                {/* Sefa kuralı (15 May v2): 10 hızlı boyut, 5x5/6x6/7x7
+                    kesin olsun (küçük kare etiket talepleri için). */}
                 {[
+                  { w: 5, h: 5, label: "5×5" },
+                  { w: 6, h: 6, label: "6×6" },
+                  { w: 7, h: 7, label: "7×7" },
                   { w: 30, h: 40, label: "30×40" },
                   { w: 40, h: 40, label: "40×40" },
+                  { w: 50, h: 30, label: "50×30" },
                   { w: 60, h: 80, label: "60×80" },
                   { w: 70, h: 100, label: "70×100" },
                   { w: 100, h: 50, label: "100×50" },
+                  { w: 100, h: 100, label: "100×100" },
                 ].map((preset) => {
                   const active =
                     width === preset.w && height === preset.h;
@@ -974,6 +993,18 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
+            {/* Tasarım dosyaları — Sefa kuralı (15 May v2):
+                Boyut altına eklenir, max 50 dosya, her biri 30 MB.
+                Sıralı kutuda görünür, sonradan eklenebilir.
+                Stepper'a dahil DEĞİL (ayrı bir bölüm). */}
+            <FormSection title="Tasarım dosyaları" hint="Max 50 dosya, her biri 30 MB. Sonradan da ekleyebilirsin.">
+              <MultiDesignDropZone
+                value={designs}
+                onChange={setDesigns}
+                maxFiles={50}
+              />
+            </FormSection>
+
             {/* Step 6 — Adet (serbest input + preset chip'ler).
                 Hint formFactor'a göre dinamik (rulo 1000+, tabaka 100+). */}
             <FormSection
@@ -986,7 +1017,9 @@ export default function EtiketPage() {
                   : `${minQty} adetten başla, ${qtyStep} adetlik artışla seç (max ${maxQty.toLocaleString("tr-TR")})`
               }
             >
-              {/* Slider — ana giriş yöntemi */}
+              {/* Slider — ana giriş yöntemi.
+                  Sefa kuralı (15 May v2): fiyat sadece TOPLAM card'da
+                  gösterilsin, adet section'da duplicate yok. Sade kalsın. */}
               <div className="px-1">
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
@@ -995,14 +1028,6 @@ export default function EtiketPage() {
                       adet
                     </span>
                   </span>
-                  <div className="text-right tabular-nums">
-                    <div className="text-[18px] font-bold text-pim-mercan leading-none">
-                      {fmt(total)} TL
-                    </div>
-                    <div className="text-[12px] text-gri-500 mt-0.5">
-                      {fmtUnit(unit)} TL/adet
-                    </div>
-                  </div>
                 </div>
                 <QtySlider
                   value={qty}
@@ -1016,16 +1041,8 @@ export default function EtiketPage() {
                   ariaLabel="Etiket adedi (slider)"
                 />
                 <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
-                  <span>
-                    {minQty >= 1000
-                      ? `${(minQty / 1000).toFixed(0)}K`
-                      : minQty.toString()}
-                  </span>
-                  <span>
-                    {maxQty >= 1000
-                      ? `${(maxQty / 1000).toFixed(0)}K`
-                      : maxQty.toString()}
-                  </span>
+                  <span>{minQty.toLocaleString("tr-TR")}</span>
+                  <span>{maxQty.toLocaleString("tr-TR")}</span>
                 </div>
                 {tierSavings > 0 && (
                   <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mt-2">
@@ -1086,7 +1103,8 @@ export default function EtiketPage() {
                 {qtyPresets.map((q) => {
                   const active = qty === q;
                   const popular = q === popularPreset;
-                  const label = q >= 1000 ? `${q / 1000}K` : `${q}`;
+                  // Sefa kuralı (15 May v2): binler nokta ile (10.000 not 10K)
+                  const label = q.toLocaleString("tr-TR");
                   return (
                     <button
                       key={q}
@@ -1294,22 +1312,25 @@ function StepProgress({
               completedSet.has(sectionId) && !isActive;
             return (
               <div key={stepNum} className="flex items-center gap-1.5 flex-1">
-                {/* Dot — tıklanabilir, scroll-to tetikler */}
+                {/* Numara — tıklanabilir, scroll-to tetikler */}
                 <button
                   type="button"
                   onClick={() => onStepClick(stepNum)}
                   aria-label={`${steps[i]} adımına git`}
                   className={cn(
-                    "shrink-0 rounded-full transition-all duration-200",
+                    "shrink-0 grid place-items-center rounded-full",
+                    "text-[11px] font-bold tabular-nums transition-all duration-200",
                     "hover:scale-110 active:scale-95 cursor-pointer",
                     "focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2",
                     isActive
-                      ? "w-3 h-3 bg-pim-mercan ring-2 ring-pim-mercan-tint"
+                      ? "w-6 h-6 bg-pim-mercan text-white ring-2 ring-pim-mercan-tint"
                       : isDone
-                        ? "w-2.5 h-2.5 bg-pim-mercan"
-                        : "w-2 h-2 bg-gri-300 hover:bg-gri-500"
+                        ? "w-5 h-5 bg-pim-mercan text-white"
+                        : "w-5 h-5 bg-gri-200 text-gri-700 hover:bg-gri-300"
                   )}
-                />
+                >
+                  {stepNum}
+                </button>
                 {/* Connector */}
                 {i < total - 1 && (
                   <span
@@ -1420,24 +1441,25 @@ function VerticalStepProgress({
               "focus:outline-none focus-visible:bg-pim-mercan-tint/40 rounded-r-lg"
             )}
           >
-            {/* Dot + dikey çizgi */}
+            {/* Numara + dikey çizgi */}
             <div className="relative flex flex-col items-center shrink-0 pt-0.5">
               <span
                 aria-hidden
                 className={cn(
-                  "rounded-full transition-all duration-200 shrink-0",
+                  "rounded-full grid place-items-center shrink-0",
+                  "transition-all duration-200 font-bold tabular-nums",
                   "group-hover:scale-110 group-active:scale-95",
                   isActive
-                    ? "w-3.5 h-3.5 bg-pim-mercan ring-[3px] ring-pim-mercan-tint"
+                    ? "w-7 h-7 bg-pim-mercan text-white text-[12px] ring-[3px] ring-pim-mercan-tint"
                     : isDone
-                      ? "w-3 h-3 bg-pim-mercan grid place-items-center"
-                      : "w-2.5 h-2.5 bg-gri-300 group-hover:bg-pim-mercan"
+                      ? "w-6 h-6 bg-pim-mercan text-white"
+                      : "w-6 h-6 bg-gri-200 text-gri-700 text-[11px] group-hover:bg-gri-300"
                 )}
               >
-                {isDone && (
+                {isDone ? (
                   <svg
-                    width="8"
-                    height="8"
+                    width="12"
+                    height="12"
                     viewBox="0 0 12 12"
                     fill="none"
                     aria-hidden
@@ -1450,6 +1472,8 @@ function VerticalStepProgress({
                       strokeLinejoin="round"
                     />
                   </svg>
+                ) : (
+                  stepNum
                 )}
               </span>
               {/* Dikey connector çizgisi (son adımdan sonra yok) */}
