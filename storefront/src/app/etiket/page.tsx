@@ -633,22 +633,9 @@ export default function EtiketPage() {
           ]),
         ]}
       />
-      {/* Breadcrumb */}
-      <div className="border-b border-gri-200 bg-white">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2 text-[13px] md:text-[14px]">
-          <Link
-            href="/"
-            className="px-2 py-1 rounded text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
-          >
-            {t.nav.home}
-          </Link>
-          <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold truncate">
-            {t.nav.etiket} {t.config.breadcrumb}
-          </span>
-        </div>
-      </div>
-
+      {/* Breadcrumb kaldırıldı (Sefa kuralı 15 May v4): kullanıcı zaten
+          aktif nav pillındaki "Etiket" ile yerini biliyor. Sayfa
+          başlığı "Etiketini konfigüre et" — birincil yön bildirimi. */}
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr_160px] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview */}
@@ -700,9 +687,9 @@ export default function EtiketPage() {
               <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
                 {t.etiket.pageTitle}
               </h1>
-              <p className="mt-2 text-[14px] md:text-base text-gri-700">
-                {t.etiket.pageSubtitle}
-              </p>
+              {/* Subtitle kaldırıldı (Sefa kuralı 15 May v4): "Seçimlerin sol
+                  taraftaki rulonun üstünde canlı görünür" mesajı sayfa
+                  altına taşındı (ProductInfoSection öncesi info bandı). */}
             </div>
 
             {/* Form factor toggle — Sefa kararı (15 May): kullanıcı en
@@ -1502,6 +1489,18 @@ export default function EtiketPage() {
           </aside>
         </div>
       </div>
+      {/* Bilgi bandı — Sefa kuralı (15 May v4): subtitle sağ panelden
+          buraya taşındı. Konfigüratör akışını kısaca anlatır. */}
+      <div className="bg-krem/40 border-y border-gri-200 py-6">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
+          <p className="text-[14px] md:text-[15px] text-gri-700 leading-relaxed max-w-[640px] mx-auto">
+            <span className="inline-block w-2 h-2 rounded-full bg-yesil mr-2 align-middle" />
+            Seçimlerin sol taraftaki canlı önizlemede anlık görünür —
+            beğenmedin mi, geri dön, başka kombinasyon dene.
+          </p>
+        </div>
+      </div>
+
       {/* Ürün anlatım bölümü (Sefa kuralı 15 May v3) — Stickermule
           tarzı feature kartları + highlight + galeri. Yorumlardan önce. */}
       <ProductInfoSection product="etiket" />
