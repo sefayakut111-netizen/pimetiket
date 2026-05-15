@@ -14,7 +14,7 @@
 import { quoteEtiket, type QuoteResult } from "./pricing-engine";
 import { getDefaultInput } from "./pricing-profiles";
 
-export type EtiketMaterialId = "kraft" | "beyaz" | "ultra" | "metalik";
+export type EtiketMaterialId = "kraft" | "beyaz" | "kuse" | "ultra" | "metalik";
 export type EtiketCoatingId = "yok" | "mat" | "parlak" | "soft";
 export type EtiketCustomId = "yok" | "emboss" | "yaldiz" | "spotuv";
 

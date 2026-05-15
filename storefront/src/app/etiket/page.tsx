@@ -57,19 +57,39 @@ import { ProductReviews } from "@/components/reviews/ProductReviews";
 // Configuration data
 // ============================================================
 
+/**
+ * Malzeme + Kaplama listesi — `modes` array form factor uyumluluğunu
+ * gösterir. Sefa kuralı (15 May): tabaka etikette Ultra Clear + Metalik
+ * + Soft Touch yok. Kuşe yeni eklendi (hem rulo hem tabaka).
+ */
 const MATERIALS = [
-  { id: "kraft", name: "Kraft", desc: "Doğal, dokunsal", swatch: "#C9A47A" },
+  {
+    id: "kraft",
+    name: "Kraft",
+    desc: "Doğal, dokunsal",
+    swatch: "#C9A47A",
+    modes: ["rulo", "tabaka"] as const,
+  },
   {
     id: "beyaz",
     name: "Beyaz semi-glos",
     desc: "Klasik, parlak",
     swatch: "#F8F8F4",
+    modes: ["rulo", "tabaka"] as const,
+  },
+  {
+    id: "kuse",
+    name: "Kuşe",
+    desc: "Mat kaplamalı baskı kağıdı",
+    swatch: "#FAFAF4",
+    modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "ultra",
     name: "Ultra clear",
     desc: "Şeffaf cam etkisi",
     swatch: "linear-gradient(135deg, #E0F2FE 0%, #FFFFFF 100%)",
+    modes: ["rulo"] as const,
   },
   {
     id: "metalik",
@@ -77,16 +97,17 @@ const MATERIALS = [
     desc: "Folyo gümüş",
     swatch:
       "linear-gradient(135deg, #C0C7CD 0%, #EFF2F6 60%, #B2BAC2 100%)",
+    modes: ["rulo"] as const,
   },
 ] as const;
 
 type MaterialId = (typeof MATERIALS)[number]["id"];
 
 const COATINGS = [
-  { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium" },
-  { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz" },
-  { id: "soft", name: "Soft touch", desc: "Velvet his" },
-  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın" },
+  { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", modes: ["rulo", "tabaka"] as const },
+  { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", modes: ["rulo", "tabaka"] as const },
+  { id: "soft", name: "Soft touch", desc: "Velvet his", modes: ["rulo"] as const },
+  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın", modes: ["rulo", "tabaka"] as const },
 ] as const;
 
 type CoatingId = (typeof COATINGS)[number]["id"];
@@ -124,11 +145,31 @@ type YaldizId = (typeof YALDIZLAR)[number]["id"];
 const ETIKET_PRESETS = CUSTOMER_ETIKET_TIERS; // [1K, 2K, 5K, 10K, 20K, 50K]
 const ETIKET_POPULAR_PRESET = 5000;
 
+/** Tabaka etiket adet sınırları — Sefa kuralı (15 May): tabaka az
+ *  adetli olabilir (1000'den çok daha az). Şu an dijital baskı tabaka
+ *  için 100'lük partilerle çalışır. */
+const ETIKET_TABAKA_MIN_QTY = 100;
+const ETIKET_TABAKA_MAX_QTY = 10000;
+const ETIKET_TABAKA_QTY_STEP = 50;
+const ETIKET_TABAKA_PRESETS = [100, 250, 500, 1000, 2500, 5000] as const;
+const ETIKET_TABAKA_POPULAR_PRESET = 500;
+
 /** Qty'i step'e snap'le (500'ün katı), min/max'a clamp et */
 function snapEtiketQty(n: number): number {
   if (!Number.isFinite(n)) return ETIKET_MIN_QTY;
   const stepped = Math.round(n / ETIKET_QTY_STEP) * ETIKET_QTY_STEP;
   return Math.min(ETIKET_MAX_QTY, Math.max(ETIKET_MIN_QTY, stepped));
+}
+
+/** Tabaka için ayrı snap — 50'lik step, 100-10000 range */
+function snapTabakaQty(n: number): number {
+  if (!Number.isFinite(n)) return ETIKET_TABAKA_MIN_QTY;
+  const stepped =
+    Math.round(n / ETIKET_TABAKA_QTY_STEP) * ETIKET_TABAKA_QTY_STEP;
+  return Math.min(
+    ETIKET_TABAKA_MAX_QTY,
+    Math.max(ETIKET_TABAKA_MIN_QTY, stepped)
+  );
 }
 
 function upsellFor(qty: number): { msg: string; to: number } | null {
@@ -167,7 +208,12 @@ const FORM_FACTORS: { id: FormFactor; label: string; desc: string }[] = [
 
 /** Progress stepper için adım etiketleri.
  *  IntersectionObserver "step-1"..."step-N" id'lerini izler.
- *  Form factor'a göre dinamik (rulo=6 adım, tabaka=5 — Sarım yok). */
+ *  Form factor'a göre dinamik.
+ *
+ *  Rulo (6 adım): Malzeme → Kaplama → Özellik → Sarım → Boyut → Adet
+ *  Tabaka (4 adım): Malzeme → Kaplama → Boyut → Adet
+ *    (Özelleştirme ve Sarım yok — Sefa kuralı 15 May)
+ */
 const STEP_LABELS_FULL: readonly string[] = [
   "Malzeme",
   "Kaplama",
@@ -179,7 +225,6 @@ const STEP_LABELS_FULL: readonly string[] = [
 const STEP_LABELS_TABAKA: readonly string[] = [
   "Malzeme",
   "Kaplama",
-  "Özellik",
   "Boyut",
   "Adet",
 ];
@@ -240,16 +285,51 @@ export default function EtiketPage() {
     });
   }, []);
 
-  // Adım etiketleri — tabaka seçilirse Sarım adımı çıkarılır.
+  // Adım etiketleri — tabaka seçilirse Özellik + Sarım adımları çıkarılır.
   const stepLabels =
     formFactor === "rulo" ? STEP_LABELS_FULL : STEP_LABELS_TABAKA;
 
-  // Tabaka modu seçilince Sarım state'i default'a sıfırla — kullanıcı
-  // tabakaya geçip tekrar rulo'ya dönerse "Sarım 1" başlasın (önceki
-  // seçim kalmasın).
+  // Adet sınırları formFactor'a göre değişir (Sefa kuralı 15 May).
+  const minQty =
+    formFactor === "rulo" ? ETIKET_MIN_QTY : ETIKET_TABAKA_MIN_QTY;
+  const maxQty =
+    formFactor === "rulo" ? ETIKET_MAX_QTY : ETIKET_TABAKA_MAX_QTY;
+  const qtyStep =
+    formFactor === "rulo" ? ETIKET_QTY_STEP : ETIKET_TABAKA_QTY_STEP;
+  const snapQty = formFactor === "rulo" ? snapEtiketQty : snapTabakaQty;
+  const qtyPresets: readonly number[] =
+    formFactor === "rulo" ? ETIKET_PRESETS : ETIKET_TABAKA_PRESETS;
+  const popularPreset =
+    formFactor === "rulo"
+      ? ETIKET_POPULAR_PRESET
+      : ETIKET_TABAKA_POPULAR_PRESET;
+
+  // Form factor değişince incompatible seçimleri otomatik defaulte revert.
+  // Sefa kuralı (15 May): tabaka modunda Ultra Clear/Metalik/Soft Touch/
+  // Özelleştirme/Sarım yok. Bu seçimler tabaka'ya geçilince temizlenir.
   useEffect(() => {
-    if (formFactor === "tabaka" && winding !== 1) {
-      setWinding(1);
+    if (formFactor === "tabaka") {
+      // Sarım her zaman 1'e dönsün (görünür değil ama state'i tut)
+      if (winding !== 1) setWinding(1);
+      // Özelleştirme tabaka'da yok → "yok"a dön
+      if (custom !== "yok") setCustom("yok");
+      // Material: ultra/metalik tabaka'da yok → kraft'a dön
+      if (material === "ultra" || material === "metalik") {
+        setMaterial("kraft");
+      }
+      // Coating: soft tabaka'da yok → mat'a dön
+      if (coating === "soft") setCoating("mat");
+      // Qty: tabaka range'inde değilse min'e snap'le
+      if (qty > ETIKET_TABAKA_MAX_QTY || qty < ETIKET_TABAKA_MIN_QTY) {
+        setQty(ETIKET_TABAKA_POPULAR_PRESET);
+      } else {
+        // Aynı qty step uyumsuzsa snap'le
+        const snapped = snapTabakaQty(qty);
+        if (snapped !== qty) setQty(snapped);
+      }
+    } else if (formFactor === "rulo") {
+      // Rulo'ya geri dönerse: tabaka range'inden çıkmış olabilir
+      if (qty < ETIKET_MIN_QTY) setQty(ETIKET_MIN_QTY);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formFactor]);
@@ -289,7 +369,7 @@ export default function EtiketPage() {
 
   // Tier savings — 1K (min) baseline ile karşılaştır
   const tierSavings = quote.ok
-    ? computeEtiketTierSavings({ width, height, material, coating, customization: custom }, ETIKET_MIN_QTY, qty)
+    ? computeEtiketTierSavings({ width, height, material, coating, customization: custom }, minQty, qty)
     : 0;
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });
@@ -355,7 +435,7 @@ export default function EtiketPage() {
   const scrollToStep = useCallback(
     (stepIndex: number) => {
       const sectionIds =
-        formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6];
+        formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 5, 6];
       const sectionId = sectionIds[stepIndex - 1];
       if (sectionId == null) return;
       const el = document.getElementById(`step-${sectionId}`);
@@ -562,7 +642,7 @@ export default function EtiketPage() {
             <div className="lg:hidden bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
               <StepProgress
                 steps={stepLabels}
-                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6]}
+                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 5, 6]}
                 activeStep={activeStep}
                 completedSet={touchedSteps}
                 onStepClick={scrollToStep}
@@ -577,7 +657,9 @@ export default function EtiketPage() {
               hint=""
             >
               <div className="grid grid-cols-2 gap-2.5">
-                {MATERIALS.map((m) => (
+                {MATERIALS.filter((m) =>
+                  (m.modes as readonly string[]).includes(formFactor)
+                ).map((m) => (
                   <SelectableCard
                     key={m.id}
                     selected={material === m.id}
@@ -623,7 +705,9 @@ export default function EtiketPage() {
               hint=""
             >
               <div className="grid grid-cols-2 gap-2.5">
-                {COATINGS.map((c) => (
+                {COATINGS.filter((c) =>
+                  (c.modes as readonly string[]).includes(formFactor)
+                ).map((c) => (
                   <SelectableCard
                     key={c.id}
                     selected={coating === c.id}
@@ -642,7 +726,9 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Step 3 — Özelleştirme */}
+            {/* Step 3 — Özelleştirme (sadece RULO modunda görünür).
+                Tabaka etikette emboss/yaldız/spot UV yok — Sefa kuralı. */}
+            {formFactor === "rulo" && (
             <FormSection
               id="step-3"
               number={3}
@@ -708,6 +794,7 @@ export default function EtiketPage() {
                 </div>
               )}
             </FormSection>
+            )}
 
             {/* Step 4 — Sarım yönü (sadece RULO modunda görünür).
                 Tabaka etiket: düz tabaka, sarım yok → adım gizli. */}
@@ -887,12 +974,17 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Step 6 — Adet (serbest input + preset chip'ler) */}
+            {/* Step 6 — Adet (serbest input + preset chip'ler).
+                Hint formFactor'a göre dinamik (rulo 1000+, tabaka 100+). */}
             <FormSection
               id="step-6"
               number={6}
               title={t.config.qtyTitle}
-              hint={t.etiket.qtyHint}
+              hint={
+                formFactor === "rulo"
+                  ? t.etiket.qtyHint
+                  : `${minQty} adetten başla, ${qtyStep} adetlik artışla seç (max ${maxQty.toLocaleString("tr-TR")})`
+              }
             >
               {/* Slider — ana giriş yöntemi */}
               <div className="px-1">
@@ -914,18 +1006,26 @@ export default function EtiketPage() {
                 </div>
                 <QtySlider
                   value={qty}
-                  min={ETIKET_MIN_QTY}
-                  max={ETIKET_MAX_QTY}
-                  step={ETIKET_QTY_STEP}
+                  min={minQty}
+                  max={maxQty}
+                  step={qtyStep}
                   onChange={(v) => {
-                    setQty(snapEtiketQty(v));
+                    setQty(snapQty(v));
                     markTouched(6);
                   }}
                   ariaLabel="Etiket adedi (slider)"
                 />
                 <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
-                  <span>{(ETIKET_MIN_QTY / 1000).toFixed(0)}K</span>
-                  <span>{(ETIKET_MAX_QTY / 1000).toFixed(0)}K</span>
+                  <span>
+                    {minQty >= 1000
+                      ? `${(minQty / 1000).toFixed(0)}K`
+                      : minQty.toString()}
+                  </span>
+                  <span>
+                    {maxQty >= 1000
+                      ? `${(maxQty / 1000).toFixed(0)}K`
+                      : maxQty.toString()}
+                  </span>
                 </div>
                 {tierSavings > 0 && (
                   <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold mt-2">
@@ -941,11 +1041,11 @@ export default function EtiketPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setQty((v) => snapEtiketQty(v - ETIKET_QTY_STEP));
+                      setQty((v) => snapQty(v - qtyStep));
                       markTouched(6);
                     }}
-                    disabled={qty <= ETIKET_MIN_QTY}
-                    aria-label={`${ETIKET_QTY_STEP} adet azalt`}
+                    disabled={qty <= minQty}
+                    aria-label={`${qtyStep} adet azalt`}
                     className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     −
@@ -954,23 +1054,23 @@ export default function EtiketPage() {
                     type="number"
                     value={qty}
                     onChange={(e) => {
-                      setQty(snapEtiketQty(Number(e.target.value)));
+                      setQty(snapQty(Number(e.target.value)));
                       markTouched(6);
                     }}
-                    min={ETIKET_MIN_QTY}
-                    max={ETIKET_MAX_QTY}
-                    step={ETIKET_QTY_STEP}
+                    min={minQty}
+                    max={maxQty}
+                    step={qtyStep}
                     aria-label="Etiket adedi"
                     className="w-24 h-9 text-center text-[14px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      setQty((v) => snapEtiketQty(v + ETIKET_QTY_STEP));
+                      setQty((v) => snapQty(v + qtyStep));
                       markTouched(6);
                     }}
-                    disabled={qty >= ETIKET_MAX_QTY}
-                    aria-label={`${ETIKET_QTY_STEP} adet artır`}
+                    disabled={qty >= maxQty}
+                    aria-label={`${qtyStep} adet artır`}
                     className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     +
@@ -983,9 +1083,9 @@ export default function EtiketPage() {
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
                 </span>
-                {ETIKET_PRESETS.map((q) => {
+                {qtyPresets.map((q) => {
                   const active = qty === q;
-                  const popular = q === ETIKET_POPULAR_PRESET;
+                  const popular = q === popularPreset;
                   const label = q >= 1000 ? `${q / 1000}K` : `${q}`;
                   return (
                     <button
@@ -1066,7 +1166,7 @@ export default function EtiketPage() {
               </div>
               <VerticalStepProgress
                 steps={stepLabels}
-                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6]}
+                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 5, 6]}
                 activeStep={activeStep}
                 completedSet={touchedSteps}
                 onStepClick={scrollToStep}
@@ -1581,6 +1681,8 @@ interface PreviewCanvasProps {
 const MAT_BG: Record<MaterialId, string> = {
   kraft: "linear-gradient(180deg, #D9B889 0%, #C9A472 100%)",
   beyaz: "linear-gradient(180deg, #FCFCF8 0%, #F0EFE8 100%)",
+  // Kuşe (yeni 15 May): hafif krem, mat kaplamalı kağıt hissi
+  kuse: "linear-gradient(180deg, #FAFAF4 0%, #EDEDE4 100%)",
   ultra:
     "linear-gradient(180deg, rgba(220,240,250,0.6) 0%, rgba(255,255,255,0.4) 100%)",
   metalik:
