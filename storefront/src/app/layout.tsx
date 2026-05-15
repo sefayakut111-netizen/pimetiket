@@ -88,11 +88,13 @@ export async function generateMetadata(): Promise<Metadata> {
       canonical: "/",
     },
     category: "shopping",
-    // Google Search Console verification — Sefa env'e ekleyince aktif olur
-    // Format: <meta name="google-site-verification" content="..." />
-    verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-      ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
-      : undefined,
+    // Search engine verification — env'e ekleyince meta tag otomatik basılır
+    // Google:  <meta name="google-site-verification" content="..." />
+    // Yandex:  <meta name="yandex-verification" content="..." />
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+      yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
+    },
   };
 }
 
