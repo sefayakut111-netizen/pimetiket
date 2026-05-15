@@ -28,8 +28,15 @@ export function FormSection({
   id,
 }: FormSectionProps) {
   const numbered = number != null;
+  // scroll-mt-[140px]: stepper sticky offset (72px) + stepper yüksekliği
+  // (~60px) + padding → tıklanınca section başlığı stepper'ın altına
+  // değil, biraz aşağı düşsün ki header'la kaybolmasın.
   return (
-    <Card padding="p-5" className={className} id={id}>
+    <Card
+      padding="p-5"
+      className={cn("scroll-mt-[140px]", className)}
+      id={id}
+    >
       <div className="flex items-center gap-3 mb-3.5">
         {numbered && (
           <span

@@ -558,8 +558,11 @@ export default function EtiketPage() {
 
             {/* Progress stepper — sticky scroll'da hep görünür kalsın.
                 Tıklanınca o section'a smooth scroll, seçim yapıldıkça
-                tamamlandı işareti. */}
-            <div className="lg:sticky lg:top-[72px] z-20 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
+                tamamlandı işareti. Fix (Sefa 15 May): bg-white/95 yarı
+                saydam olduğu için scroll'da alttaki içerik üzerine
+                biniyordu. Tam opak bg-white + z-30 (sticky CTA bar z-40
+                hariç her şeyin üstünde) + shadow-2 alt sınır net. */}
+            <div className="lg:sticky lg:top-[72px] z-30 bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-2">
               <StepProgress
                 steps={stepLabels}
                 stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6]}
