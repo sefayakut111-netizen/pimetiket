@@ -17,6 +17,7 @@ import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
 import { QuickReorderWidget } from "@/components/home/QuickReorderWidget";
 import { useSiteImage } from "@/lib/site-images-client";
+import { useUser } from "@/lib/supabase/use-user";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
@@ -80,6 +81,7 @@ const FAQ_QUESTIONS_EN = [
 
 export default function HomePage() {
   const { t, locale } = useT();
+  const { user } = useUser();
   // Admin panelinden yüklenen görsel slot'lar (varsa fallback'leri ezer)
   const homeHero = useSiteImage("home_hero");
   const etiketCardImage = useSiteImage("home_etiket_card");
@@ -150,17 +152,21 @@ export default function HomePage() {
                 <Icon.Sticker size={18} /> {t.home.ctaSticker}
               </Button>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-[13px] text-gri-700">
-              <Icon.User size={13} className="text-gri-500" />
-              <span>İlk siparişin için</span>
-              <Link
-                href="/auth?mode=signup"
-                className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
-              >
-                ücretsiz hesap aç
-              </Link>
-              <span className="text-gri-500">— 30 saniye</span>
-            </div>
+            {/* Sefa kuralı (16 May denetim #23): Oturum açıkken
+                "Hesap aç" mikrokopisi gizli — kullanıcı zaten girmiş. */}
+            {!user && (
+              <div className="mt-3 flex items-center gap-1.5 text-[13px] text-gri-700">
+                <Icon.User size={13} className="text-gri-500" />
+                <span>İlk siparişin için</span>
+                <Link
+                  href="/auth?mode=signup"
+                  className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
+                >
+                  ücretsiz hesap aç
+                </Link>
+                <span className="text-gri-500">— 30 saniye</span>
+              </div>
+            )}
             <div className="mt-10 flex items-center gap-2.5 flex-wrap">
               <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-yesil-soft text-yesil text-[14px] font-semibold">
                 <Icon.Check size={15} /> Düşük adetten esnek

@@ -420,7 +420,7 @@ export default function StickerPage() {
                 steps={stepLabels}
                 stepIds={stepIds}
                 activeStep={activeStep}
-                completedSet={touchedSteps}
+                completedSet={new Set(stepIds)}
                 onStepClick={scrollToStep}
               />
             </div>
@@ -932,7 +932,7 @@ export default function StickerPage() {
                 steps={stepLabels}
                 stepIds={stepIds}
                 activeStep={activeStep}
-                completedSet={touchedSteps}
+                completedSet={new Set(stepIds)}
                 onStepClick={scrollToStep}
               />
             </div>

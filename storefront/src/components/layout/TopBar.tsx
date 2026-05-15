@@ -186,7 +186,13 @@ export function TopBar() {
                   ? `${t.nav.cart}, ${cartCount}`
                   : `${t.nav.cart}`
               }
-              className="relative inline-flex p-2.5 rounded-full text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
+              aria-current={pathname === "/sepet" ? "page" : undefined}
+              className={cn(
+                "relative inline-flex p-2.5 rounded-full transition-colors",
+                pathname === "/sepet"
+                  ? "bg-pim-mercan-tint text-pim-mercan"
+                  : "text-gri-700 hover:bg-gri-100 hover:text-lacivert"
+              )}
             >
               <Icon.Cart size={18} />
               {cartCount > 0 && (
@@ -207,14 +213,32 @@ export function TopBar() {
           </div>
 
           {user ? (
-            // Logged-in: avatar + dropdown menu
+            // Logged-in: avatar + dropdown menu.
+            // Sefa kuralı (16 May denetim #4): nav active state — kullanıcı
+            // hesap sayfalarındaysa (/panelim, /siparislerim, /iadelerim,
+            // /bildirim-tercihleri, /tasarımlarım) avatar görsel active.
             <div className="relative ml-1.5" ref={menuRef}>
+              {(() => {
+                const accountActive =
+                  pathname?.startsWith("/panelim") ||
+                  pathname?.startsWith("/siparislerim") ||
+                  pathname?.startsWith("/iadelerim") ||
+                  pathname?.startsWith("/bildirim-tercihleri") ||
+                  pathname?.startsWith("/tasarımlarım") ||
+                  pathname?.startsWith("/tasarimlarim");
+                return (
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                className="inline-flex items-center gap-2 h-9 pl-1 pr-3 rounded-full ring-1 ring-gri-200 bg-white hover:ring-pim-mercan transition-colors"
+                aria-current={accountActive ? "page" : undefined}
+                className={cn(
+                  "inline-flex items-center gap-2 h-9 pl-1 pr-3 rounded-full ring-1 bg-white transition-colors",
+                  accountActive
+                    ? "ring-pim-mercan bg-pim-mercan-tint"
+                    : "ring-gri-200 hover:ring-pim-mercan"
+                )}
               >
                 <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white text-[12px] font-bold">
                   {initials || <Icon.User size={12} />}
@@ -230,6 +254,8 @@ export function TopBar() {
                   )}
                 />
               </button>
+                );
+              })()}
               {menuOpen && (
                 <div
                   role="menu"

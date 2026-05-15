@@ -242,7 +242,12 @@ export function VerticalStepProgress({
                       : "text-gri-500"
                 )}
               >
-                {isActive ? "Şu an" : isDone ? "Tamam" : `Adım ${stepNum}`}
+                {/* Sefa kuralı (16 May denetim #15): Tutarlı label — hep
+                    "Adım N" + state suffix (Şu an / Tamam). Önceden karma
+                    olduğu için "ŞU AN" tek başına, "ADIM 2" başkasında. */}
+                Adım {stepNum}
+                {isActive && " · Şu an"}
+                {isDone && " · Tamam"}
               </div>
             </div>
           </button>

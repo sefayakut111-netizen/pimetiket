@@ -115,6 +115,23 @@ export function MultiDesignUploader({
   const totalQty = qtyPerDesign * designCount;
   const progress = `${designs.length} / ${designCount}`;
   const isComplete = designs.length >= designCount;
+  const [dragActive, setDragActive] = useState(false);
+
+  // Sefa kuralı (16 May): sürükle-bırak özelliği. Kart üzerine dosya
+  // bırakılırsa otomatik upload tetiklenir.
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isComplete) setDragActive(true);
+  };
+  const handleDragLeave = () => setDragActive(false);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (isComplete) return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -177,6 +194,9 @@ export function MultiDesignUploader({
         <div className="flex items-center justify-between mb-2">
           <h4 className="font-semibold text-[13.5px] text-lacivert">
             Tasarımları yükle
+            <span className="ml-2 text-[11px] font-normal text-gri-500">
+              (sürükle bırak destekli)
+            </span>
           </h4>
           <span
             className={cn(
@@ -188,7 +208,17 @@ export function MultiDesignUploader({
           </span>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+        {/* Drop zone wrapper — kart üzerine dosya bırakılırsa upload tetikler */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 p-2 rounded-xl transition-all",
+            dragActive
+              ? "bg-pim-mercan-tint ring-2 ring-pim-mercan ring-dashed"
+              : "ring-2 ring-transparent"
+          )}>
           {designs.map((d) => (
             <div key={d.id} className="relative aspect-square group">
               <button

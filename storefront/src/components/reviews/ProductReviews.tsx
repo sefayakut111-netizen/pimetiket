@@ -117,26 +117,53 @@ function ProductReviewCard({ review }: { review: Review }) {
               key={i}
               className="w-10 h-10 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-white"
             >
-              {photo.url && (
+              {photo.url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={photo.url}
                   alt={`Yorum fotoğrafı ${i + 1}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  onError={(e) => {
+                    // Sefa kuralı (16 May denetim #2): Storage 404 fallback —
+                    // bozuk avatarlar yerine initials chip
+                    e.currentTarget.style.display = "none";
+                  }}
                 />
-              )}
+              ) : null}
             </div>
           ))}
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-gri-200 flex items-center justify-between text-[11.5px] text-gri-500">
-        <strong className="text-lacivert font-semibold">
-          {review.display_name}
-        </strong>
-        <span>{dateStr}</span>
+      <div className="mt-3 pt-3 border-t border-gri-200 flex items-center justify-between gap-2">
+        {/* Initials avatar — Sefa kuralı (16 May denetim #2): Storage 404
+            "Yorum…" placeholder yerine isim baş harfleri */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            aria-hidden
+            className="shrink-0 w-7 h-7 rounded-full bg-pim-mercan-tint text-pim-mercan grid place-items-center text-[11px] font-bold tracking-tight"
+          >
+            {getInitials(review.display_name)}
+          </span>
+          <strong className="text-lacivert font-semibold text-[12.5px] truncate">
+            {review.display_name}
+          </strong>
+        </div>
+        <span className="text-[11.5px] text-gri-500 shrink-0">{dateStr}</span>
       </div>
     </article>
   );
+}
+
+/** İsim → baş harfler. "A.K." → "AK", "Sefa Yakut" → "SY". */
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) {
+    return parts[0].replace(/[^a-zA-ZçğıİöşüÇĞİÖŞÜ]/g, "").slice(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0])
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
 }
