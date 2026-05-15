@@ -458,7 +458,7 @@ export default function EtiketPage() {
       </div>
 
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr_160px] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview */}
           <div className="lg:sticky lg:top-20">
             <PreviewCanvas
@@ -556,13 +556,10 @@ export default function EtiketPage() {
               </div>
             </div>
 
-            {/* Progress stepper — sticky scroll'da hep görünür kalsın.
-                Tıklanınca o section'a smooth scroll, seçim yapıldıkça
-                tamamlandı işareti. Fix (Sefa 15 May): bg-white/95 yarı
-                saydam olduğu için scroll'da alttaki içerik üzerine
-                biniyordu. Tam opak bg-white + z-30 (sticky CTA bar z-40
-                hariç her şeyin üstünde) + shadow-2 alt sınır net. */}
-            <div className="lg:sticky lg:top-[72px] z-30 bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-2">
+            {/* Mobile horizontal stepper — sadece mobile/tablet (lg altı).
+                Desktop'ta sağdaki dikey rail görünür (VerticalStepProgress).
+                Sefa kararı (15 May): "dikey rail daha şık". */}
+            <div className="lg:hidden bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
               <StepProgress
                 steps={stepLabels}
                 stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6]}
@@ -1054,6 +1051,28 @@ export default function EtiketPage() {
               />
             </div>
           </div>
+
+          {/* RAIL — desktop only dikey stepper. Sefa kararı (15 May):
+              "sağ kenarda dikey rail daha şık" — Linear/Stripe/Notion
+              checkout pattern. Sticky sayfa boyunca sabit. Mobile'da
+              gizli (mobile için yatay <StepProgress> üstte var). */}
+          <aside
+            className="hidden lg:block lg:sticky lg:top-[88px]"
+            aria-label="Konfigürasyon adımları (dikey rail)"
+          >
+            <div className="bg-white rounded-xl px-3 py-3 ring-1 ring-gri-200 shadow-1">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-gri-700 mb-2 px-1">
+                Adımlar
+              </div>
+              <VerticalStepProgress
+                steps={stepLabels}
+                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6]}
+                activeStep={activeStep}
+                completedSet={touchedSteps}
+                onStepClick={scrollToStep}
+              />
+            </div>
+          </aside>
         </div>
       </div>
       <ProductReviews productType="etiket" limit={6} />
@@ -1238,6 +1257,148 @@ function StepProgress({
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// VerticalStepProgress — dikey rail (desktop only)
+// ============================================================
+
+/**
+ * Sefa kararı (15 May): Stepper sayfanın sağ kenarında dikey rail
+ * olarak da denensin — "daha şık" pattern (Linear / Stripe / Notion
+ * checkout sidebar tarzı).
+ *
+ * Desktop only (lg+). Mobile'da yatay <StepProgress> kullanılır.
+ * Sticky position, scroll'da hep sabit.
+ *
+ * Görsel anatomi:
+ *   ●━━━ Malzeme    ← aktif (büyük halka)
+ *   │
+ *   ●━━━ Kaplama    ← tamamlandı (dolu coral)
+ *   │
+ *   ○━━━ Özellik    ← henüz (gri boş)
+ */
+function VerticalStepProgress({
+  steps,
+  stepIds,
+  activeStep,
+  completedSet,
+  onStepClick,
+}: {
+  steps: readonly string[];
+  stepIds: readonly number[];
+  activeStep: number;
+  completedSet: Set<number>;
+  onStepClick: (stepIndex: number) => void;
+}) {
+  const total = steps.length;
+  return (
+    <nav
+      role="navigation"
+      aria-label="Konfigürasyon adımları"
+      className="flex flex-col"
+    >
+      {steps.map((label, i) => {
+        const stepNum = i + 1;
+        const sectionId = stepIds[i];
+        const isActive = stepNum === activeStep;
+        const isDone = completedSet.has(sectionId) && !isActive;
+        const isLast = i === total - 1;
+        return (
+          <button
+            key={stepNum}
+            type="button"
+            onClick={() => onStepClick(stepNum)}
+            aria-current={isActive ? "step" : undefined}
+            aria-label={`${stepNum}. adım: ${label}${
+              isDone ? " (tamamlandı)" : isActive ? " (aktif)" : ""
+            }`}
+            className={cn(
+              "group relative flex items-start gap-3 py-2 pr-3",
+              "text-left transition-colors",
+              "focus:outline-none focus-visible:bg-pim-mercan-tint/40 rounded-r-lg"
+            )}
+          >
+            {/* Dot + dikey çizgi */}
+            <div className="relative flex flex-col items-center shrink-0 pt-0.5">
+              <span
+                aria-hidden
+                className={cn(
+                  "rounded-full transition-all duration-200 shrink-0",
+                  "group-hover:scale-110 group-active:scale-95",
+                  isActive
+                    ? "w-3.5 h-3.5 bg-pim-mercan ring-[3px] ring-pim-mercan-tint"
+                    : isDone
+                      ? "w-3 h-3 bg-pim-mercan grid place-items-center"
+                      : "w-2.5 h-2.5 bg-gri-300 group-hover:bg-pim-mercan"
+                )}
+              >
+                {isDone && (
+                  <svg
+                    width="8"
+                    height="8"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    aria-hidden
+                  >
+                    <path
+                      d="M2.5 6L5 8.5L9.5 4"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              {/* Dikey connector çizgisi (son adımdan sonra yok) */}
+              {!isLast && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "w-0.5 grow min-h-[24px] mt-1 transition-colors",
+                    isDone || isActive ? "bg-pim-mercan" : "bg-gri-200"
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Label */}
+            <div className="flex-1 pt-px">
+              <div
+                className={cn(
+                  "text-[12.5px] font-semibold transition-colors leading-tight",
+                  isActive
+                    ? "text-pim-mercan"
+                    : isDone
+                      ? "text-lacivert"
+                      : "text-gri-500 group-hover:text-pim-mercan"
+                )}
+              >
+                {label}
+              </div>
+              <div
+                className={cn(
+                  "text-[10.5px] mt-0.5 transition-colors uppercase tracking-[0.04em]",
+                  isActive
+                    ? "text-pim-mercan/80"
+                    : isDone
+                      ? "text-yesil"
+                      : "text-gri-500"
+                )}
+              >
+                {isActive
+                  ? "Şu an"
+                  : isDone
+                    ? "Tamam"
+                    : `Adım ${stepNum}`}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
