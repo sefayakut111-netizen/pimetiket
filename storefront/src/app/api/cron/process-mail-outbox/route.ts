@@ -1,12 +1,13 @@
 /**
  * GET /api/cron/process-mail-outbox
  *
- * Vercel Cron her 5 dakikada bir bu endpoint'i çağırır.
+ * Vercel Cron günde bir kez bu endpoint'i çağırır (Hobby plan limiti;
+ * Pro plan'a geçince schedule * /5 * * * * yapılabilir).
  * fason_mail_outbox tablosundan pending/failed kayıtları okur ve
  * Resend üzerinden gönderir.
  *
  * STUB MODU (Resend env yok):
- *   RESEND_API_KEY ve MAIL_FROM_ADDRESS yoksa endpoint çalışır
+ *   RESEND_API_KEY ve RESEND_FROM_EMAIL yoksa endpoint çalışır
  *   ama hiçbir mail göndermez — sadece kayıtları "blocked_no_provider"
  *   son hatasıyla işaretler, kuyrukta tutar. Resend aktifleşince
  *   tekrar denenir.
@@ -61,8 +62,11 @@ export async function GET(req: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // Env naming unification: src/lib/mail/resend.ts ile aynı isim kullan.
+  // Önce RESEND_FROM_EMAIL, fallback MAIL_FROM_ADDRESS (legacy).
   const resendKey = process.env.RESEND_API_KEY;
-  const fromAddress = process.env.MAIL_FROM_ADDRESS;
+  const fromAddress =
+    process.env.RESEND_FROM_EMAIL ?? process.env.MAIL_FROM_ADDRESS;
   const stubMode = !resendKey || !fromAddress;
 
   // Pending veya retry zamanı gelen kayıtları çek
