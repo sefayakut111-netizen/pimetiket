@@ -139,13 +139,47 @@ function upsellFor(qty: number): { msg: string; to: number } | null {
   return null;
 }
 
-/** Progress stepper için 6 adımın etiketleri.
- *  IntersectionObserver "step-1"..."step-6" id'lerini izler. */
-const STEP_LABELS: readonly string[] = [
+/**
+ * Form factor — etiket türü iki ayrı üretim akışı.
+ *
+ * - rulo:    Otomatik makinelere takılan rulodaki etiketler (1000+ adet,
+ *            sarım yönü gerekli, klasik fason akışı).
+ * - tabaka:  Düz tabaka üzerinde basılan etiketler (manuel uygulama,
+ *            sarım yönü YOK, küçük tirajlara daha uygun).
+ *
+ * Sefa kararı (15 May): kullanıcı en başta seçer, sistem ona göre
+ * dallanır. Tabaka seçimi → Sarım adımı gizlenir (5 adıma düşer).
+ */
+type FormFactor = "rulo" | "tabaka";
+
+const FORM_FACTORS: { id: FormFactor; label: string; desc: string }[] = [
+  {
+    id: "rulo",
+    label: "Rulo etiket",
+    desc: "Makine takılabilir, 1.000 adetten",
+  },
+  {
+    id: "tabaka",
+    label: "Tabaka etiket",
+    desc: "Düz tabaka, elle uygula, az adet",
+  },
+];
+
+/** Progress stepper için adım etiketleri.
+ *  IntersectionObserver "step-1"..."step-N" id'lerini izler.
+ *  Form factor'a göre dinamik (rulo=6 adım, tabaka=5 — Sarım yok). */
+const STEP_LABELS_FULL: readonly string[] = [
   "Malzeme",
   "Kaplama",
   "Özellik",
   "Sarım",
+  "Boyut",
+  "Adet",
+];
+const STEP_LABELS_TABAKA: readonly string[] = [
+  "Malzeme",
+  "Kaplama",
+  "Özellik",
   "Boyut",
   "Adet",
 ];
@@ -178,6 +212,7 @@ const fmtUnit = (n: number) => {
 export default function EtiketPage() {
   const toast = useToast();
   const { t } = useT();
+  const [formFactor, setFormFactor] = useState<FormFactor>("rulo");
   const [material, setMaterial] = useState<EtiketMaterialId>("kraft");
   const [coating, setCoating] = useState<EtiketCoatingId>("mat");
   const [custom, setCustom] = useState<EtiketCustomId>("yok");
@@ -188,6 +223,36 @@ export default function EtiketPage() {
   const [height, setHeight] = useState<number>(80);
   // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
   const [design, setDesign] = useState<DesignTempState | null>(null);
+
+  // Touched steps — kullanıcı bir adımda seçim yaptıysa o FormSection
+  // numarası set'e eklenir (1=Malzeme, 2=Kaplama, 3=Özellik, 4=Sarım,
+  // 5=Boyut, 6=Adet). Audit (15 May, Sefa): "seçim yaptıkça çalışmıyor".
+  // Scroll-based active + touch-based done = doğru completion göstergesi.
+  const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
+    () => new Set()
+  );
+  const markTouched = useCallback((n: number) => {
+    setTouchedSteps((prev) => {
+      if (prev.has(n)) return prev;
+      const next = new Set(prev);
+      next.add(n);
+      return next;
+    });
+  }, []);
+
+  // Adım etiketleri — tabaka seçilirse Sarım adımı çıkarılır.
+  const stepLabels =
+    formFactor === "rulo" ? STEP_LABELS_FULL : STEP_LABELS_TABAKA;
+
+  // Tabaka modu seçilince Sarım state'i default'a sıfırla — kullanıcı
+  // tabakaya geçip tekrar rulo'ya dönerse "Sarım 1" başlasın (önceki
+  // seçim kalmasın).
+  useEffect(() => {
+    if (formFactor === "tabaka" && winding !== 1) {
+      setWinding(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formFactor]);
 
   // /tasarımlarım'dan "Yeniden bastır" tıklandıysa sessionStorage'dan al
   useEffect(() => {
@@ -247,35 +312,59 @@ export default function EtiketPage() {
     return () => obs.disconnect();
   }, []);
 
-  // Progress stepper — 6 adım id'leri (step-1..step-6) izlenir. Hangi
-  // section viewport orta üst kısmına en yakınsa "active step" odur.
-  // Sefa kararı: kullanıcı "kaç adım kaldı?" sorusunu anlık görsün.
+  // Progress stepper — N adım id'leri izlenir. Hangi section viewport
+  // üst orta kısmına en yakınsa "active step" odur. Form factor değişince
+  // re-init (tabaka → 5 adım, rulo → 6 adım).
   const [activeStep, setActiveStep] = useState(1);
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
-    const sections = STEP_LABELS.map((_, i) =>
-      document.getElementById(`step-${i + 1}`)
-    ).filter((el): el is HTMLElement => el !== null);
+    // Tabaka modu Sarım'ı (step-4) atlar — id zinciri: 1,2,3,5,6
+    // Stepper indeksi (1..N) ile DOM id'leri ayrı: id'ler her zaman
+    // FormSection'ın orijinal number'ı, stepper UI sıralı 1..N gösterir.
+    const sectionIds =
+      formFactor === "rulo"
+        ? [1, 2, 3, 4, 5, 6]
+        : [1, 2, 3, 5, 6];
+    const sections = sectionIds.map((n, idx) => {
+      const el = document.getElementById(`step-${n}`);
+      return el ? { el, stepIndex: idx + 1 } : null;
+    }).filter((x): x is { el: HTMLElement; stepIndex: number } => x !== null);
     if (sections.length === 0) return;
 
+    const idToIndex = new Map(sections.map((s) => [s.el.id, s.stepIndex]));
+
     // rootMargin: top 30% — section üst sınırı viewport %30'a yaklaşınca
-    // active sayılır. Bu sayede kullanıcı section'a girdiği anda stepper
-    // güncellenir, son section'a değil.
+    // active sayılır.
     const obs = new IntersectionObserver(
       (entries) => {
-        const visible = entries
+        const visibleIndexes = entries
           .filter((e) => e.isIntersecting)
-          .map((e) => parseInt(e.target.id.replace("step-", ""), 10))
-          .filter((n) => !Number.isNaN(n));
-        if (visible.length > 0) {
-          setActiveStep(Math.min(...visible));
+          .map((e) => idToIndex.get(e.target.id))
+          .filter((n): n is number => typeof n === "number");
+        if (visibleIndexes.length > 0) {
+          setActiveStep(Math.min(...visibleIndexes));
         }
       },
       { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
     );
-    sections.forEach((s) => obs.observe(s));
+    sections.forEach((s) => obs.observe(s.el));
     return () => obs.disconnect();
-  }, []);
+  }, [formFactor]);
+
+  // Stepper noktasına tıklanınca o section'a smooth scroll.
+  const scrollToStep = useCallback(
+    (stepIndex: number) => {
+      const sectionIds =
+        formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6];
+      const sectionId = sectionIds[stepIndex - 1];
+      if (sectionId == null) return;
+      const el = document.getElementById(`step-${sectionId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    },
+    [formFactor]
+  );
 
   // Sepete ekle — hem PriceCard hem sticky bar tetikler. Stale-closure'a
   // karşı useCallback + dep array. quote/qty/material vb. her güncellemede
@@ -425,9 +514,60 @@ export default function EtiketPage() {
               </p>
             </div>
 
-            {/* Progress stepper — UX audit (15 May): "kaç adım kaldı?"
-                cevabı için. IntersectionObserver ile aktif adım tespit. */}
-            <StepProgress steps={STEP_LABELS} activeStep={activeStep} />
+            {/* Form factor toggle — Sefa kararı (15 May): kullanıcı en
+                başta rulo mu tabaka mı seçer. Tabaka → Sarım adımı gizli. */}
+            <div className="flex flex-col gap-2 -mt-1">
+              <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700">
+                Etiket türü
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {FORM_FACTORS.map((f) => {
+                  const active = formFactor === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setFormFactor(f.id);
+                        markTouched(1);
+                      }}
+                      aria-pressed={active}
+                      className={cn(
+                        "text-left rounded-xl px-3.5 py-2.5 ring-1 transition-all",
+                        active
+                          ? "bg-pim-mercan-tint ring-pim-mercan"
+                          : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "font-semibold text-[14px]",
+                          active ? "text-pim-mercan" : "text-lacivert"
+                        )}
+                      >
+                        {f.label}
+                      </div>
+                      <div className="text-[12px] text-gri-700 mt-0.5">
+                        {f.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Progress stepper — sticky scroll'da hep görünür kalsın.
+                Tıklanınca o section'a smooth scroll, seçim yapıldıkça
+                tamamlandı işareti. */}
+            <div className="lg:sticky lg:top-[72px] z-20 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
+              <StepProgress
+                steps={stepLabels}
+                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 5, 6]}
+                activeStep={activeStep}
+                completedSet={touchedSteps}
+                onStepClick={scrollToStep}
+              />
+            </div>
 
             {/* Step 1 — Malzeme */}
             <FormSection
@@ -441,7 +581,10 @@ export default function EtiketPage() {
                   <SelectableCard
                     key={m.id}
                     selected={material === m.id}
-                    onClick={() => setMaterial(m.id)}
+                    onClick={() => {
+                      setMaterial(m.id);
+                      markTouched(1);
+                    }}
                   >
                     <div
                       className="w-full h-14 rounded-lg mb-2.5 ring-1 ring-black/[0.06]"
@@ -484,7 +627,10 @@ export default function EtiketPage() {
                   <SelectableCard
                     key={c.id}
                     selected={coating === c.id}
-                    onClick={() => setCoating(c.id)}
+                    onClick={() => {
+                      setCoating(c.id);
+                      markTouched(2);
+                    }}
                     padding={12}
                   >
                     <div className="font-semibold text-sm">{c.name}</div>
@@ -508,7 +654,10 @@ export default function EtiketPage() {
                   <SelectableCard
                     key={c.id}
                     selected={custom === c.id}
-                    onClick={() => setCustom(c.id)}
+                    onClick={() => {
+                      setCustom(c.id);
+                      markTouched(3);
+                    }}
                     padding={12}
                   >
                     <div className="font-semibold text-sm">{c.name}</div>
@@ -560,7 +709,9 @@ export default function EtiketPage() {
               )}
             </FormSection>
 
-            {/* Step 4 — Sarım yönü */}
+            {/* Step 4 — Sarım yönü (sadece RULO modunda görünür).
+                Tabaka etiket: düz tabaka, sarım yok → adım gizli. */}
+            {formFactor === "rulo" && (
             <FormSection
               id="step-4"
               number={4}
@@ -580,7 +731,10 @@ export default function EtiketPage() {
                     <SelectableCard
                       key={n}
                       selected={winding === n}
-                      onClick={() => setWinding(n)}
+                      onClick={() => {
+                        setWinding(n);
+                        markTouched(4);
+                      }}
                       padding={10}
                       style={{ textAlign: "center", paddingTop: 12 }}
                       aria-label={`Dışa sarım yön ${n}`}
@@ -615,7 +769,10 @@ export default function EtiketPage() {
                     <SelectableCard
                       key={n}
                       selected={winding === n}
-                      onClick={() => setWinding(n)}
+                      onClick={() => {
+                        setWinding(n);
+                        markTouched(4);
+                      }}
                       padding={10}
                       style={{ textAlign: "center", paddingTop: 12 }}
                       aria-label={`İçe sarım yön ${n}`}
@@ -646,6 +803,7 @@ export default function EtiketPage() {
                 </span>
               </div>
             </FormSection>
+            )}
 
             {/* Step 5 — Boyut */}
             <FormSection
@@ -662,9 +820,10 @@ export default function EtiketPage() {
                   <input
                     type="number"
                     value={width}
-                    onChange={(e) =>
-                      setWidth(Math.max(5, Number(e.target.value) || 5))
-                    }
+                    onChange={(e) => {
+                      setWidth(Math.max(5, Number(e.target.value) || 5));
+                      markTouched(5);
+                    }}
                     min={5}
                     max={520}
                     step={1}
@@ -679,9 +838,10 @@ export default function EtiketPage() {
                   <input
                     type="number"
                     value={height}
-                    onChange={(e) =>
-                      setHeight(Math.max(5, Number(e.target.value) || 5))
-                    }
+                    onChange={(e) => {
+                      setHeight(Math.max(5, Number(e.target.value) || 5));
+                      markTouched(5);
+                    }}
                     min={5}
                     max={1470}
                     step={1}
@@ -711,6 +871,7 @@ export default function EtiketPage() {
                       onClick={() => {
                         setWidth(preset.w);
                         setHeight(preset.h);
+                        markTouched(5);
                       }}
                       className={cn(
                         "px-3 h-8 rounded-full text-[12px] font-semibold transition-colors",
@@ -756,7 +917,10 @@ export default function EtiketPage() {
                   min={ETIKET_MIN_QTY}
                   max={ETIKET_MAX_QTY}
                   step={ETIKET_QTY_STEP}
-                  onChange={(v) => setQty(snapEtiketQty(v))}
+                  onChange={(v) => {
+                    setQty(snapEtiketQty(v));
+                    markTouched(6);
+                  }}
                   ariaLabel="Etiket adedi (slider)"
                 />
                 <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
@@ -776,7 +940,10 @@ export default function EtiketPage() {
                 <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
                   <button
                     type="button"
-                    onClick={() => setQty((v) => snapEtiketQty(v - ETIKET_QTY_STEP))}
+                    onClick={() => {
+                      setQty((v) => snapEtiketQty(v - ETIKET_QTY_STEP));
+                      markTouched(6);
+                    }}
                     disabled={qty <= ETIKET_MIN_QTY}
                     aria-label={`${ETIKET_QTY_STEP} adet azalt`}
                     className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -786,7 +953,10 @@ export default function EtiketPage() {
                   <input
                     type="number"
                     value={qty}
-                    onChange={(e) => setQty(snapEtiketQty(Number(e.target.value)))}
+                    onChange={(e) => {
+                      setQty(snapEtiketQty(Number(e.target.value)));
+                      markTouched(6);
+                    }}
                     min={ETIKET_MIN_QTY}
                     max={ETIKET_MAX_QTY}
                     step={ETIKET_QTY_STEP}
@@ -795,7 +965,10 @@ export default function EtiketPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setQty((v) => snapEtiketQty(v + ETIKET_QTY_STEP))}
+                    onClick={() => {
+                      setQty((v) => snapEtiketQty(v + ETIKET_QTY_STEP));
+                      markTouched(6);
+                    }}
                     disabled={qty >= ETIKET_MAX_QTY}
                     aria-label={`${ETIKET_QTY_STEP} adet artır`}
                     className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -818,7 +991,10 @@ export default function EtiketPage() {
                     <button
                       key={q}
                       type="button"
-                      onClick={() => setQty(q)}
+                      onClick={() => {
+                        setQty(q);
+                        markTouched(6);
+                      }}
                       aria-pressed={active}
                       className={cn(
                         "relative px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
@@ -925,28 +1101,40 @@ export default function EtiketPage() {
 // ============================================================
 
 /**
- * 6 adımlık konfigüratör ilerleme bandı.
+ * N adımlık konfigüratör ilerleme bandı.
  *
- * Desktop (md+): noktalar + altta etiketler (6 dot horizontal).
- * Mobile: kompakt "Adım X / 6: [Label]" + ince progress bar.
+ * Desktop (md+): tıklanabilir nokta+çizgi + altta etiketler.
+ * Mobile: kompakt "Adım X / N · [Label]" + ince progress bar.
  *
- * Aktif adım = activeStep (1-indexed). Daha küçük indeksli adımlar
- * "tamamlanmış" sayılır (dolu coral nokta). Aktif daha büyük halka.
- * Sonraki adımlar boş gri.
+ * Active = scroll-based (IntersectionObserver). "Tamamlandı" = kullanıcı
+ * o adıma dokundu (touch tracking). Nokta/label'a tıklayınca scroll-to.
+ *
+ * Props:
+ *   - steps:        UI label dizisi (örn ["Malzeme","Kaplama",...])
+ *   - stepIds:      FormSection orijinal numaraları (touched lookup için)
+ *   - activeStep:   Şu an aktif olan UI index (1-N)
+ *   - completedSet: Tamamlanan FormSection numaraları (touched)
+ *   - onStepClick:  UI index alır, scroll-to tetikler
  */
 function StepProgress({
   steps,
+  stepIds,
   activeStep,
+  completedSet,
+  onStepClick,
 }: {
   steps: readonly string[];
+  stepIds: readonly number[];
   activeStep: number;
+  completedSet: Set<number>;
+  onStepClick: (stepIndex: number) => void;
 }) {
   const total = steps.length;
   const progressPct = (Math.max(1, activeStep) / total) * 100;
   const activeLabel = steps[activeStep - 1] ?? steps[0];
 
   return (
-    <div className="-mb-1">
+    <div>
       {/* Mobile: compact bar + text */}
       <div className="md:hidden">
         <div className="flex items-baseline justify-between mb-2">
@@ -966,7 +1154,7 @@ function StepProgress({
         </div>
       </div>
 
-      {/* Desktop: dot row + labels */}
+      {/* Desktop: dot row + tıklanabilir label */}
       <div
         className="hidden md:block"
         role="progressbar"
@@ -976,31 +1164,37 @@ function StepProgress({
         aria-label={`Konfigürasyon adımı ${activeStep} / ${total}: ${activeLabel}`}
       >
         <div className="flex items-center gap-1.5">
-          {steps.map((label, i) => {
+          {steps.map((_, i) => {
             const stepNum = i + 1;
+            const sectionId = stepIds[i];
             const isActive = stepNum === activeStep;
-            const isDone = stepNum < activeStep;
+            const isDone =
+              completedSet.has(sectionId) && !isActive;
             return (
               <div key={stepNum} className="flex items-center gap-1.5 flex-1">
-                {/* Dot */}
-                <div
+                {/* Dot — tıklanabilir, scroll-to tetikler */}
+                <button
+                  type="button"
+                  onClick={() => onStepClick(stepNum)}
+                  aria-label={`${steps[i]} adımına git`}
                   className={cn(
                     "shrink-0 rounded-full transition-all duration-200",
+                    "hover:scale-110 active:scale-95 cursor-pointer",
+                    "focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2",
                     isActive
                       ? "w-3 h-3 bg-pim-mercan ring-2 ring-pim-mercan-tint"
                       : isDone
                         ? "w-2.5 h-2.5 bg-pim-mercan"
-                        : "w-2 h-2 bg-gri-300"
+                        : "w-2 h-2 bg-gri-300 hover:bg-gri-500"
                   )}
-                  aria-hidden
                 />
-                {/* Connector line (except last) */}
+                {/* Connector */}
                 {i < total - 1 && (
                   <span
                     aria-hidden
                     className={cn(
                       "flex-1 h-px transition-colors",
-                      isDone ? "bg-pim-mercan" : "bg-gri-200"
+                      isDone || isActive ? "bg-pim-mercan" : "bg-gri-200"
                     )}
                   />
                 )}
@@ -1008,25 +1202,34 @@ function StepProgress({
             );
           })}
         </div>
-        {/* Labels below */}
-        <div className="grid grid-cols-6 gap-1.5 mt-1.5">
+        {/* Labels — clickable */}
+        <div
+          className="grid gap-1.5 mt-1.5"
+          style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
+        >
           {steps.map((label, i) => {
             const stepNum = i + 1;
+            const sectionId = stepIds[i];
             const isActive = stepNum === activeStep;
+            const isDone =
+              completedSet.has(sectionId) && !isActive;
             return (
-              <div
+              <button
                 key={stepNum}
+                type="button"
+                onClick={() => onStepClick(stepNum)}
                 className={cn(
-                  "text-[10.5px] font-semibold tabular-nums truncate",
+                  "text-[10.5px] font-semibold tabular-nums truncate text-left",
+                  "transition-colors hover:text-pim-mercan cursor-pointer",
                   isActive
                     ? "text-pim-mercan"
-                    : stepNum < activeStep
+                    : isDone
                       ? "text-lacivert"
                       : "text-gri-500"
                 )}
               >
                 {label}
-              </div>
+              </button>
             );
           })}
         </div>
