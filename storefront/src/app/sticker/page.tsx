@@ -257,8 +257,20 @@ export default function StickerPage() {
           ]),
         ]}
       />
-      {/* Breadcrumb kaldırıldı (Sefa kuralı 15 May v4) — sayfa başlığı
-          birincil yön bildirimi. */}
+      {/* Sayfa başlığı bandı — Sefa kuralı (15 May v4): tek başlık üst
+          bant (eski breadcrumb yerine). Etiket sayfasıyla tutarlı. */}
+      <div className="border-b border-gri-200 bg-white">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
+          />
+          <h2 className="font-semibold text-[14px] md:text-[15px] text-lacivert truncate">
+            {t.sticker.pageTitle}
+          </h2>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
         {/* Page hero */}
         <div className="flex items-end gap-4 mb-6 md:mb-7">

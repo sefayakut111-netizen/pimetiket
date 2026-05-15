@@ -633,9 +633,21 @@ export default function EtiketPage() {
           ]),
         ]}
       />
-      {/* Breadcrumb kaldırıldı (Sefa kuralı 15 May v4): kullanıcı zaten
-          aktif nav pillındaki "Etiket" ile yerini biliyor. Sayfa
-          başlığı "Etiketini konfigüre et" — birincil yön bildirimi. */}
+      {/* Sayfa başlığı bandı — Sefa kuralı (15 May v4): Breadcrumb yerine
+          tek başlık (sayfa adı + güven dot'u). Üst boşluğu kapatır,
+          kullanıcı nerede olduğunu net görür. */}
+      <div className="border-b border-gri-200 bg-white">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
+          />
+          <h2 className="font-semibold text-[14px] md:text-[15px] text-lacivert truncate">
+            {t.etiket.pageTitle}
+          </h2>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr_160px] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview */}
