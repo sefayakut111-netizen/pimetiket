@@ -16,6 +16,7 @@ import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
 import { QuickReorderWidget } from "@/components/home/QuickReorderWidget";
+import { useSiteImage } from "@/lib/site-images";
 
 // Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
@@ -79,6 +80,10 @@ const FAQ_QUESTIONS_EN = [
 
 export default function HomePage() {
   const { t, locale } = useT();
+  // Admin panelinden yüklenen görsel slot'lar (varsa fallback'leri ezer)
+  const homeHero = useSiteImage("home_hero");
+  const etiketCardImage = useSiteImage("home_etiket_card");
+  const stickerCardImage = useSiteImage("home_sticker_card");
 
   const PILLARS = [
     { icon: <Icon.Bolt size={22} />, t: t.home.pillar1Title, d: t.home.pillar1Desc },
@@ -260,7 +265,16 @@ export default function HomePage() {
             </div>
 
             <div className="relative z-30">
-              <Pim pose="wave" size={300} />
+              {homeHero ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={homeHero.publicUrl}
+                  alt={homeHero.altText ?? "Pim Etiket"}
+                  className="max-w-[300px] h-auto object-contain"
+                />
+              ) : (
+                <Pim pose="wave" size={300} />
+              )}
             </div>
           </div>
         </div>
@@ -298,6 +312,14 @@ export default function HomePage() {
             href="/etiket"
             priceLabel={t.home.productPriceLabel}
             ctaLabel={t.home.productConfigure}
+            customImage={
+              etiketCardImage
+                ? {
+                    url: etiketCardImage.publicUrl,
+                    alt: etiketCardImage.altText ?? t.nav.etiket,
+                  }
+                : null
+            }
           />
           <ProductCard
             kind="sticker"
@@ -308,6 +330,14 @@ export default function HomePage() {
             href="/sticker"
             priceLabel={t.home.productPriceLabel}
             ctaLabel={t.home.productConfigure}
+            customImage={
+              stickerCardImage
+                ? {
+                    url: stickerCardImage.publicUrl,
+                    alt: stickerCardImage.altText ?? t.nav.sticker,
+                  }
+                : null
+            }
           />
         </div>
       </section>
@@ -506,6 +536,7 @@ function ProductCard({
   href,
   priceLabel,
   ctaLabel,
+  customImage,
 }: {
   kind: "etiket" | "sticker";
   title: string;
@@ -515,6 +546,7 @@ function ProductCard({
   href: string;
   priceLabel: string;
   ctaLabel: string;
+  customImage?: { url: string; alt: string } | null;
 }) {
   const isEtiket = kind === "etiket";
   return (
@@ -523,18 +555,29 @@ function ProductCard({
       className="text-left bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] overflow-hidden flex flex-col sm:flex-row hover:-translate-y-0.5 transition-transform"
     >
       <div
-        className={`flex-shrink-0 w-full sm:w-60 grid place-items-center min-h-[180px] sm:min-h-[220px] ${
+        className={`flex-shrink-0 w-full sm:w-60 grid place-items-center min-h-[180px] sm:min-h-[220px] overflow-hidden ${
           isEtiket ? "bg-krem" : ""
         }`}
         style={
-          !isEtiket
+          !isEtiket && !customImage
             ? {
                 background: "linear-gradient(135deg, #FFE7D6 0%, #FFA89E 100%)",
               }
             : undefined
         }
       >
-        {isEtiket ? <RolloPreview /> : <StickerPile />}
+        {customImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={customImage.url}
+            alt={customImage.alt}
+            className="w-full h-full object-cover"
+          />
+        ) : isEtiket ? (
+          <RolloPreview />
+        ) : (
+          <StickerPile />
+        )}
       </div>
       <div className="p-7 flex-1">
         <div className="flex items-center gap-2 mb-1.5">

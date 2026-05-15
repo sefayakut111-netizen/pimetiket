@@ -24,6 +24,7 @@ import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useSiteImage } from "@/lib/site-images";
 
 type AuthMode = "login" | "signup";
 
@@ -43,6 +44,7 @@ function AuthInner() {
   const next = sp.get("next") ?? "/panelim";
   const initialMode = (sp.get("mode") === "signup" ? "signup" : "login") as AuthMode;
   const referralCode = sp.get("ref")?.toUpperCase() ?? null;
+  const authHero = useSiteImage("auth_hero");
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
@@ -264,7 +266,16 @@ function AuthInner() {
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
       <div className="mx-auto max-w-[440px] px-6">
         <div className="text-center mb-6">
-          <Pim pose="wave" size={120} />
+          {authHero ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={authHero.publicUrl}
+              alt={authHero.altText ?? "Pim Etiket"}
+              className="mx-auto max-w-[160px] h-auto object-contain"
+            />
+          ) : (
+            <Pim pose="wave" size={120} />
+          )}
           <Eyebrow>{mode === "login" ? "Giriş" : "Üye Ol"}</Eyebrow>
           <h1 className="mt-3 text-[26px] md:text-[30px] font-semibold tracking-tight">
             {mode === "login" ? "Hoş geldin tekrar" : "Aramıza katıl"}

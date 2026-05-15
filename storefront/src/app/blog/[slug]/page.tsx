@@ -12,6 +12,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill } from "@/components/ui";
 import { BLOG_POSTS, getBlogPost } from "@/lib/blog-posts";
+import { getSiteImage } from "@/lib/site-images";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -80,6 +81,9 @@ export default async function BlogPostPage({ params }: Props) {
   const post = getBlogPost(slug);
   if (!post) notFound();
 
+  // Admin panelinden yüklenen blog default hero (varsa Pim mascot yerine)
+  const defaultHero = await getSiteImage("blog_default_hero");
+
   // Sıradaki + önceki yazılar
   const idx = BLOG_POSTS.findIndex((p) => p.slug === slug);
   const prev = idx > 0 ? BLOG_POSTS[idx - 1] : null;
@@ -127,11 +131,20 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Cover */}
+        {/* Cover — admin'in yüklediği default görsel öncelikli, yoksa Pim */}
         <div
-          className={`${post.coverColor} rounded-2xl grid place-items-center min-h-[240px] mb-7`}
+          className={`${post.coverColor} rounded-2xl grid place-items-center min-h-[240px] mb-7 overflow-hidden`}
         >
-          <Pim pose="inspect" size={160} />
+          {defaultHero ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={defaultHero.publicUrl}
+              alt={defaultHero.altText ?? post.title}
+              className="w-full h-full object-cover max-h-[360px]"
+            />
+          ) : (
+            <Pim pose="inspect" size={160} />
+          )}
         </div>
 
         {/* Excerpt */}

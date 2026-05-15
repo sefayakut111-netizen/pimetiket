@@ -16,6 +16,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast, Skeleton } from "@/components/ui";
+import { useSiteImage } from "@/lib/site-images";
 import {
   seedDemoData,
   clearDemoData,
@@ -73,6 +74,7 @@ export default function DemoPage() {
   const [active, setActive] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [busy, setBusy] = useState(false);
+  const demoHero = useSiteImage("demo_hero");
 
   useEffect(() => {
     setActive(isDemoMode());
@@ -121,7 +123,16 @@ export default function DemoPage() {
       <div className="mx-auto max-w-[920px] px-6">
         {/* Hero */}
         <div className="text-center mb-10">
-          <Pim pose="excited" size={140} />
+          {demoHero ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={demoHero.publicUrl}
+              alt={demoHero.altText ?? "Pim Etiket demo"}
+              className="mx-auto max-w-[480px] aspect-video h-auto object-cover rounded-2xl shadow-2"
+            />
+          ) : (
+            <Pim pose="excited" size={140} />
+          )}
           <Eyebrow>Demo modu</Eyebrow>
           <h1 className="mt-3 text-[32px] md:text-[44px] font-semibold tracking-tight leading-tight">
             Sistemi gerçek veriyle dolaş

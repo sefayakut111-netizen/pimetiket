@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/ui";
 import { LanguageProvider } from "@/lib/i18n/context";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Analytics } from "@/components/Analytics";
+import { getSiteImage } from "@/lib/site-images";
 import "./globals.css";
 
 const SITE_URL =
@@ -17,56 +18,76 @@ const nunito = Nunito({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
-    template: "%s · Pim Etiket",
-  },
-  description:
-    "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
-  applicationName: "Pim Etiket",
-  authors: [{ name: "Pim Etiket" }],
-  generator: "Next.js",
-  keywords: [
-    "etiket baskı",
-    "sticker baskı",
-    "dijital baskı",
-    "rulo etiket",
-    "ürün etiketi",
-    "İstanbul Ankara baskı",
-    "küçük marka etiket",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "tr_TR",
-    url: SITE_URL,
-    siteName: "Pim Etiket",
-    title: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
+// generateMetadata async — admin panelinden yüklenen og_default görseli
+// varsa Open Graph + Twitter card'a otomatik enjekte edilir.
+// Next.js fetch cache: aynı render içinde tekrar çağrılmaz; sayfalar arası
+// 60 sn (Supabase REST default) cache'lenir.
+export async function generateMetadata(): Promise<Metadata> {
+  const og = await getSiteImage("og_default");
+  const ogImages = og
+    ? [
+        {
+          url: og.publicUrl,
+          width: og.width ?? 1200,
+          height: og.height ?? 630,
+          alt: og.altText ?? "Pim Etiket",
+        },
+      ]
+    : [];
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
+      template: "%s · Pim Etiket",
+    },
     description:
       "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pim Etiket",
-    description:
-      "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı atölyesi.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    applicationName: "Pim Etiket",
+    authors: [{ name: "Pim Etiket" }],
+    generator: "Next.js",
+    keywords: [
+      "etiket baskı",
+      "sticker baskı",
+      "dijital baskı",
+      "rulo etiket",
+      "ürün etiketi",
+      "İstanbul Ankara baskı",
+      "küçük marka etiket",
+    ],
+    openGraph: {
+      type: "website",
+      locale: "tr_TR",
+      url: SITE_URL,
+      siteName: "Pim Etiket",
+      title: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
+      description:
+        "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
+      images: ogImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Pim Etiket",
+      description:
+        "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı atölyesi.",
+      images: og ? [og.publicUrl] : undefined,
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-  alternates: {
-    canonical: "/",
-  },
-  category: "shopping",
-};
+    alternates: {
+      canonical: "/",
+    },
+    category: "shopping",
+  };
+}
 
 const ORGANIZATION_LD = {
   "@context": "https://schema.org",
