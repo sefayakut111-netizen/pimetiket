@@ -219,24 +219,53 @@ const FORM_FACTORS: { id: FormFactor; label: string; desc: string }[] = [
  *  IntersectionObserver "step-1"..."step-N" id'lerini izler.
  *  Form factor'a göre dinamik.
  *
- *  Rulo (6 adım): Malzeme → Kaplama → Özellik → Sarım → Boyut → Adet
- *  Tabaka (4 adım): Malzeme → Kaplama → Boyut → Adet
- *    (Özelleştirme ve Sarım yok — Sefa kuralı 15 May)
+ *  Sefa kuralları (15 May v3):
+ *
+ *  Rulo (8 adım):
+ *   1 Malzeme → 2 Kaplama → 3 Özellik → 4 Sarım yönü →
+ *   5 Sarım detayı → 6 Boyut → 7 Tasarım → 8 Adet
+ *
+ *  Tabaka (5 adım):
+ *   1 Malzeme → 2 Kaplama → 3 Boyut → 4 Tasarım → 5 Adet
+ *
+ *  DOM id'leri (`step-N`) sıralı 1-8 — tabaka modunda Özellik/Sarım
+ *  atlanır. UI step numarası (FormSection.number) formFactor'a göre
+ *  hesaplanır (uiStepNumber helper).
  */
 const STEP_LABELS_FULL: readonly string[] = [
   "Malzeme",
   "Kaplama",
   "Özellik",
-  "Sarım",
+  "Sarım yönü",
+  "Sarım detayı",
   "Boyut",
+  "Tasarım",
   "Adet",
 ];
 const STEP_LABELS_TABAKA: readonly string[] = [
   "Malzeme",
   "Kaplama",
   "Boyut",
+  "Tasarım",
   "Adet",
 ];
+
+/** Form factor'a göre aktif DOM step id'leri. */
+const STEP_IDS_FULL: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
+const STEP_IDS_TABAKA: readonly number[] = [1, 2, 6, 7, 8];
+
+/** Rulo sarım fiziksel parametreleri (Sefa kuralı 15 May v3).
+ *  Göbek çapı: rulonun iç çapı (mm). Endüstri standardı:
+ *    - 25mm (1"): küçük masaüstü makinelarda
+ *    - 40mm: orta ölçek otomatik makineler
+ *    - 76mm (3"): endüstri standardı, en yaygın ⭐
+ *  Sarım adeti: bir rulodaki etiket adedi. 250-1000 arası standart. */
+const CORE_SIZES = [
+  { id: 25, label: '25mm', desc: '1" — küçük makineler' },
+  { id: 40, label: '40mm', desc: 'Orta ölçek' },
+  { id: 76, label: '76mm', desc: '3" — standart' },
+] as const;
+const ROLL_LABEL_COUNTS = [250, 500, 750, 1000] as const;
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 /**
@@ -272,12 +301,23 @@ export default function EtiketPage() {
   const [formFactor, setFormFactor] = useState<FormFactor>("rulo");
   const [material, setMaterial] = useState<EtiketMaterialId>("kuse");
   const [coating, setCoating] = useState<EtiketCoatingId>("yok");
-  const [custom, setCustom] = useState<EtiketCustomId>("yok");
+  // Sefa kuralı (15 May v3): Rulo özelleştirmede birden fazla seçilebilir.
+  // "yok" tek seçimdir; başka seçim eklenince "yok" çıkar. Pricing engine
+  // şu an tek customization alır → multi seçimde ilki gönderilir + multiplier
+  // local hesaplanır (sonraki commit'te engine'e multi support).
+  const [customs, setCustoms] = useState<EtiketCustomId[]>(["yok"]);
   const [yaldiz, setYaldiz] = useState<YaldizId>("altin");
   const [winding, setWinding] = useState<number>(1);
+  // Sarım detayı — Sefa kuralı (15 May v3): göbek çapı + sarım adeti
+  // (rulo modunda). Sadece operasyonel bilgi, fason'a iletilir.
+  const [coreSize, setCoreSize] = useState<number>(76); // mm — 3" endüstri standardı
+  const [rollLabelCount, setRollLabelCount] = useState<number>(500);
   const [qty, setQty] = useState<number>(ETIKET_MIN_QTY); // 1000 (rulo başlangıç)
   const [width, setWidth] = useState<number>(60);
   const [height, setHeight] = useState<number>(80);
+  // Tasarım adedi — kullanıcı kaç farklı tasarım göndereceğini söyler.
+  // Max 50 (yüklenen dosya sayısı ile uyumsuzsa uyarı).
+  const [designCount, setDesignCount] = useState<number>(1);
   // Pre-purchase tasarım — Sefa kuralı (15 May v2): max 50 dosya yüklenebilir.
   // designs[0] preview/cart için primary tasarım. Diğerleri metadata.
   const [designs, setDesigns] = useState<DesignTempState[]>([]);
@@ -299,9 +339,18 @@ export default function EtiketPage() {
     });
   }, []);
 
-  // Adım etiketleri — tabaka seçilirse Özellik + Sarım adımları çıkarılır.
+  // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
   const stepLabels =
     formFactor === "rulo" ? STEP_LABELS_FULL : STEP_LABELS_TABAKA;
+  const stepIds =
+    formFactor === "rulo" ? STEP_IDS_FULL : STEP_IDS_TABAKA;
+
+  // FormSection için UI numarası: DOM step id'sinden formFactor'a göre
+  // sıralı 1-N indeks üretir. Örn rulo'da step-6 → 6, tabaka'da step-6 → 3.
+  const uiStepNumber = (domStepId: number): number => {
+    const idx = stepIds.indexOf(domStepId);
+    return idx === -1 ? 0 : idx + 1;
+  };
 
   // Adet sınırları formFactor'a göre değişir (Sefa kuralı 15 May).
   const minQty =
@@ -326,7 +375,8 @@ export default function EtiketPage() {
       // Sarım her zaman 1'e dönsün (görünür değil ama state'i tut)
       if (winding !== 1) setWinding(1);
       // Özelleştirme tabaka'da yok → "yok"a dön
-      if (custom !== "yok") setCustom("yok");
+      // Tabaka modunda Özelleştirme yok → customs sıfırla
+      if (customs.length !== 1 || customs[0] !== "yok") setCustoms(["yok"]);
       // Material: ultra/metalik tabaka'da yok → kraft'a dön
       if (material === "ultra" || material === "metalik") {
         setMaterial("kraft");
@@ -361,6 +411,11 @@ export default function EtiketPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Multi-customization: ilk seçimi pricing engine'e gönder. Diğerleri
+  // şu an pricing'te yansımıyor (engine tek customizationId alıyor).
+  // Sonraki commit'te engine multi support eklenecek (multiplier çarpımı).
+  const primaryCustom: EtiketCustomId = customs[0] ?? "yok";
+
   // Engine ile canlı quote
   const quote = quoteCustomerEtiket({
     width,
@@ -368,7 +423,7 @@ export default function EtiketPage() {
     qty,
     material,
     coating,
-    customization: custom,
+    customization: primaryCustom,
   });
 
   const total = quote.ok ? quote.total : 0;
@@ -377,7 +432,7 @@ export default function EtiketPage() {
 
   // Tier savings — 1K (min) baseline ile karşılaştır
   const tierSavings = quote.ok
-    ? computeEtiketTierSavings({ width, height, material, coating, customization: custom }, minQty, qty)
+    ? computeEtiketTierSavings({ width, height, material, coating, customization: primaryCustom }, minQty, qty)
     : 0;
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });
@@ -410,9 +465,7 @@ export default function EtiketPage() {
     // Stepper indeksi (1..N) ile DOM id'leri ayrı: id'ler her zaman
     // FormSection'ın orijinal number'ı, stepper UI sıralı 1..N gösterir.
     const sectionIds =
-      formFactor === "rulo"
-        ? [1, 2, 3, 4, 5, 6]
-        : [1, 2, 3, 5, 6];
+      formFactor === "rulo" ? STEP_IDS_FULL : STEP_IDS_TABAKA;
     const sections = sectionIds.map((n, idx) => {
       const el = document.getElementById(`step-${n}`);
       return el ? { el, stepIndex: idx + 1 } : null;
@@ -443,7 +496,7 @@ export default function EtiketPage() {
   const scrollToStep = useCallback(
     (stepIndex: number) => {
       const sectionIds =
-        formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 5, 6];
+        formFactor === "rulo" ? STEP_IDS_FULL : STEP_IDS_TABAKA;
       const sectionId = sectionIds[stepIndex - 1];
       if (sectionId == null) return;
       const el = document.getElementById(`step-${sectionId}`);
@@ -467,16 +520,22 @@ export default function EtiketPage() {
       MATERIALS.find((m) => m.id === material)?.name ?? material;
     const coatName =
       COATINGS.find((c) => c.id === coating)?.name ?? coating;
+    // Multi-customization: birleşik isim (örn "Spot UV + Yaldız")
+    const custNames = customs
+      .filter((id) => id !== "yok")
+      .map((id) => CUSTOMS.find((c) => c.id === id)?.name ?? id);
     const custName =
-      CUSTOMS.find((c) => c.id === custom)?.name ?? custom;
-    const customSuffix = custom === "yaldiz" ? ` (${yaldiz})` : "";
+      custNames.length === 0
+        ? "Özelleştirme yok"
+        : custNames.join(" + ");
+    const customSuffix = customs.includes("yaldiz") ? ` (${yaldiz})` : "";
     const designCountSuffix =
-      designs.length > 1 ? ` · ${designs.length} tasarım` : "";
+      designCount > 1 ? ` · ${designCount} tasarım` : "";
     const primary = designs[0];
     const result = await addToCustomerCart({
       product: "etiket",
       title: `Etiket · ${matName} + ${coatName}`,
-      config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding}` : ""}${designCountSuffix}`,
+      config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
       width,
       height,
       qty,
@@ -484,7 +543,7 @@ export default function EtiketPage() {
       total: Math.round(total),
       materialId: material,
       coatingId: coating,
-      customizationId: custom,
+      customizationId: primaryCustom,
       winding,
       designTempId: primary?.tempId,
       designPreviewUrl: primary?.previewUrl,
@@ -505,7 +564,8 @@ export default function EtiketPage() {
     toast,
     material,
     coating,
-    custom,
+    customs,
+    primaryCustom,
     yaldiz,
     width,
     height,
@@ -513,7 +573,10 @@ export default function EtiketPage() {
     unit,
     total,
     winding,
+    coreSize,
+    rollLabelCount,
     designs,
+    designCount,
     formFactor,
   ]);
 
@@ -557,7 +620,7 @@ export default function EtiketPage() {
             <PreviewCanvas
               material={material}
               coating={coating}
-              custom={custom}
+              custom={primaryCustom}
               yaldiz={yaldiz}
               width={width}
               height={height}
@@ -654,7 +717,7 @@ export default function EtiketPage() {
             <div className="lg:hidden bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
               <StepProgress
                 steps={stepLabels}
-                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 5, 6]}
+                stepIds={stepIds}
                 activeStep={activeStep}
                 completedSet={touchedSteps}
                 onStepClick={scrollToStep}
@@ -664,7 +727,7 @@ export default function EtiketPage() {
             {/* Step 1 — Malzeme */}
             <FormSection
               id="step-1"
-              number={1}
+              number={uiStepNumber(1)}
               title={t.config.materialTitle}
               hint=""
             >
@@ -712,7 +775,7 @@ export default function EtiketPage() {
             {/* Step 2 — Kaplama */}
             <FormSection
               id="step-2"
-              number={2}
+              number={uiStepNumber(2)}
               title={t.config.coatingTitle}
               hint=""
             >
@@ -739,34 +802,73 @@ export default function EtiketPage() {
             </FormSection>
 
             {/* Step 3 — Özelleştirme (sadece RULO modunda görünür).
-                Tabaka etikette emboss/yaldız/spot UV yok — Sefa kuralı. */}
+                Tabaka etikette emboss/yaldız/spot UV yok — Sefa kuralı.
+                Sefa kuralı (15 May v3): Multi-select — birden fazla
+                özellik kombine edilebilir (örn Emboss + Spot UV). */}
             {formFactor === "rulo" && (
             <FormSection
               id="step-3"
-              number={3}
+              number={uiStepNumber(3)}
               title={t.config.customizationTitle}
-              hint=""
+              hint="Birden fazla seçebilirsin (kombine kullanım)"
             >
               <div className="grid grid-cols-2 gap-2.5">
-                {CUSTOMS.map((c) => (
-                  <SelectableCard
-                    key={c.id}
-                    selected={custom === c.id}
-                    onClick={() => {
-                      setCustom(c.id);
-                      markTouched(3);
-                    }}
-                    padding={12}
-                  >
-                    <div className="font-semibold text-sm">{c.name}</div>
-                    <div className="text-[13px] text-gri-700 mt-0.5">
-                      {c.desc}
-                    </div>
-                  </SelectableCard>
-                ))}
+                {CUSTOMS.map((c) => {
+                  const isSelected = customs.includes(c.id);
+                  return (
+                    <SelectableCard
+                      key={c.id}
+                      selected={isSelected}
+                      onClick={() => {
+                        if (c.id === "yok") {
+                          // "Yok" tek seçilebilir — diğerlerini temizler
+                          setCustoms(["yok"]);
+                        } else {
+                          // Diğer customization — "yok"u çıkar, toggle et
+                          setCustoms((prev) => {
+                            const withoutYok = prev.filter((id) => id !== "yok");
+                            if (withoutYok.includes(c.id)) {
+                              const next = withoutYok.filter((id) => id !== c.id);
+                              // Hepsi çıkarıldıysa "yok"a dön
+                              return next.length === 0 ? ["yok"] : next;
+                            }
+                            return [...withoutYok, c.id];
+                          });
+                        }
+                        markTouched(3);
+                      }}
+                      padding={12}
+                    >
+                      <div className="flex items-start gap-2">
+                        {/* Checkbox işareti (yok dışı) */}
+                        {c.id !== "yok" && (
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "shrink-0 w-4 h-4 rounded grid place-items-center mt-0.5 transition-colors",
+                              isSelected
+                                ? "bg-pim-mercan"
+                                : "ring-1 ring-gri-300 bg-white"
+                            )}
+                          >
+                            {isSelected && (
+                              <Icon.Check size={11} className="text-white" />
+                            )}
+                          </span>
+                        )}
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">{c.name}</div>
+                          <div className="text-[13px] text-gri-700 mt-0.5">
+                            {c.desc}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectableCard>
+                  );
+                })}
               </div>
 
-              {custom === "yaldiz" && (
+              {customs.includes("yaldiz") && (
                 <div className="mt-3 p-3.5 rounded-xl bg-gri-50 ring-1 ring-gri-200">
                   <div className="text-[13px] font-semibold mb-2.5">
                     Yaldız rengi
@@ -813,7 +915,7 @@ export default function EtiketPage() {
             {formFactor === "rulo" && (
             <FormSection
               id="step-4"
-              number={4}
+              number={uiStepNumber(4)}
               title={t.etiket.windingTitle}
               hint={t.etiket.windingHint}
             >
@@ -904,10 +1006,108 @@ export default function EtiketPage() {
             </FormSection>
             )}
 
-            {/* Step 5 — Boyut */}
+            {/* Step 4.5 — Göbek çapı + Sarım adeti (Sefa 15 May v3).
+                Sadece RULO modunda. Sarım yönü kutusunun altında ayrı kutu.
+                Operasyonel bilgi — fason'a iletilir, pricing'e doğrudan
+                etki etmez (şimdilik). */}
+            {formFactor === "rulo" && (
             <FormSection
               id="step-5"
-              number={5}
+              number={uiStepNumber(5)}
+              title="Sarım detayı"
+              hint="Göbek çapı ve rulo başına etiket adeti — makine uyumu için."
+            >
+              {/* Göbek çapı */}
+              <div>
+                <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
+                  Göbek çapı
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {CORE_SIZES.map((c) => {
+                    const active = coreSize === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setCoreSize(c.id);
+                          markTouched(7);
+                        }}
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                          active
+                            ? "bg-pim-mercan-tint ring-pim-mercan"
+                            : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "font-semibold text-[14px]",
+                            active ? "text-pim-mercan" : "text-lacivert"
+                          )}
+                        >
+                          {c.label}
+                          {c.id === 76 && (
+                            <span className="ml-1 text-[11px] text-pim-mercan">⭐</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-gri-700 mt-0.5">
+                          {c.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sarım adeti */}
+              <div className="mt-4">
+                <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
+                  Bir rulodaki etiket adeti
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {ROLL_LABEL_COUNTS.map((q) => {
+                    const active = rollLabelCount === q;
+                    return (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => {
+                          setRollLabelCount(q);
+                          markTouched(7);
+                        }}
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                          active
+                            ? "bg-pim-mercan-tint ring-pim-mercan"
+                            : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "font-semibold text-[14px] tabular-nums",
+                            active ? "text-pim-mercan" : "text-lacivert"
+                          )}
+                        >
+                          {q}
+                          {q === 500 && (
+                            <span className="ml-1 text-[11px] text-pim-mercan">⭐</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </FormSection>
+            )}
+
+            {/* Step 6 — Boyut (UI numarası formFactor'a göre) */}
+            <FormSection
+              id="step-6"
+              number={uiStepNumber(6)}
               title={t.config.sizeTitle}
               hint={t.etiket.sizeHint}
             >
@@ -993,14 +1193,65 @@ export default function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Tasarım dosyaları — Sefa kuralı (15 May v2):
+            {/* Step 7 — Tasarım dosyaları (Sefa kuralı 15 May v3):
                 Boyut altına eklenir, max 50 dosya, her biri 30 MB.
-                Sıralı kutuda görünür, sonradan eklenebilir.
-                Stepper'a dahil DEĞİL (ayrı bir bölüm). */}
-            <FormSection title="Tasarım dosyaları" hint="Max 50 dosya, her biri 30 MB. Sonradan da ekleyebilirsin.">
+                Stepper'a DAHİL (numaralı). Tasarım adedi input ile
+                fiyat tier mantığına bağlanabilir (sonraki commit). */}
+            <FormSection
+              id="step-7"
+              number={uiStepNumber(7)}
+              title="Tasarım dosyaları"
+              hint="Yüklediğin dosyalar + tasarım adedi (max 50)"
+            >
+              {/* Tasarım adedi input */}
+              <div className="mb-4">
+                <label className="block">
+                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
+                    Kaç farklı tasarım göndereceksin?
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={designCount}
+                      onChange={(e) => {
+                        const n = Math.min(
+                          50,
+                          Math.max(1, Number(e.target.value) || 1)
+                        );
+                        setDesignCount(n);
+                        markTouched(7);
+                      }}
+                      min={1}
+                      max={50}
+                      step={1}
+                      aria-label="Tasarım adedi"
+                      className="w-24 h-11 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums text-center"
+                    />
+                    <span className="text-[13px] text-gri-700">
+                      adet farklı tasarım{" "}
+                      <span className="text-gri-500">(max 50)</span>
+                    </span>
+                  </div>
+                </label>
+                {designs.length > 0 && designs.length !== designCount && (
+                  <p className="mt-2 text-[12px] text-sari-koyu">
+                    ⓘ {designs.length} dosya yükledin, {designCount} tasarım
+                    bekleniyor. Sayı uyumsuz mu? Düzenle.
+                  </p>
+                )}
+              </div>
+
               <MultiDesignDropZone
                 value={designs}
-                onChange={setDesigns}
+                onChange={(next) => {
+                  setDesigns(next);
+                  markTouched(7);
+                  // Yüklenen dosya sayısı tasarım adedinden büyükse
+                  // designCount'u otomatik artır (kullanıcı dostu)
+                  if (next.length > designCount && next.length <= 50) {
+                    setDesignCount(next.length);
+                  }
+                }}
                 maxFiles={50}
               />
             </FormSection>
@@ -1008,13 +1259,13 @@ export default function EtiketPage() {
             {/* Step 6 — Adet (serbest input + preset chip'ler).
                 Hint formFactor'a göre dinamik (rulo 1000+, tabaka 100+). */}
             <FormSection
-              id="step-6"
-              number={6}
+              id="step-8"
+              number={uiStepNumber(8)}
               title={t.config.qtyTitle}
               hint={
                 formFactor === "rulo"
                   ? t.etiket.qtyHint
-                  : `${minQty} adetten başla, ${qtyStep} adetlik artışla seç (max ${maxQty.toLocaleString("tr-TR")})`
+                  : `${minQty} adetten başla, serbest tam sayı (max ${maxQty.toLocaleString("tr-TR")})`
               }
             >
               {/* Slider — ana giriş yöntemi.
@@ -1051,9 +1302,9 @@ export default function EtiketPage() {
                 )}
               </div>
 
-              {/* İnce ayar: stepper + serbest input */}
+              {/* Adet manuel girişi — Sefa kuralı (15 May v3):
+                  "İnce ayar" başlığı kaldırıldı, direkt adet kutusu. */}
               <div className="flex items-center gap-3 flex-wrap mt-4">
-                <span className="text-[11.5px] text-gri-500">İnce ayar:</span>
                 <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
                   <button
                     type="button"
@@ -1184,7 +1435,7 @@ export default function EtiketPage() {
               </div>
               <VerticalStepProgress
                 steps={stepLabels}
-                stepIds={formFactor === "rulo" ? [1, 2, 3, 4, 5, 6] : [1, 2, 5, 6]}
+                stepIds={stepIds}
                 activeStep={activeStep}
                 completedSet={touchedSteps}
                 onStepClick={scrollToStep}
