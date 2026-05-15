@@ -44,7 +44,7 @@ interface AdminOrder {
 const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: string }> = {
   paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  qc_flagged: { label: "AI flag", color: "text-sari", bg: "bg-sari-soft" },
+  qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   proof_pending: { label: "Prova bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
@@ -279,7 +279,7 @@ function AdminSiparislerPageInner() {
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-6">
           <h1 className="text-[28px] md:text-[36px] font-semibold tracking-tight">
             Sipariş yönetimi
@@ -360,7 +360,7 @@ function AdminSiparislerPageInner() {
 
         {/* Bulk action bar — sticky when items selected */}
         {selected.size > 0 && (
-          <div className="sticky top-4 z-10 mb-4 rounded-xl bg-lacivert text-white shadow-2 px-4 py-3 flex items-center gap-3 flex-wrap">
+          <div className="sticky top-14 md:top-4 z-30 mb-4 rounded-xl bg-lacivert text-white shadow-2 px-4 py-3 flex items-center gap-3 flex-wrap">
             <span className="font-semibold text-[13.5px]">
               {selected.size} sipariş seçildi
             </span>

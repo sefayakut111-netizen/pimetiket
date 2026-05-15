@@ -49,7 +49,7 @@ const STATUS_META: Record<
     color: "text-pim-mercan",
     bg: "bg-pim-mercan-tint",
   },
-  qc_flagged: { label: "AI flag", color: "text-sari", bg: "bg-sari-soft" },
+  qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft" },
   operator_review: {
     label: "Operatör",
     color: "text-pim-mercan",
@@ -107,7 +107,7 @@ function deriveSegment(orders: CustomerOrder[]): Segment {
     return {
       key: "risk",
       label: "Risk",
-      color: "text-sari",
+      color: "text-sari-koyu",
       bg: "bg-sari-soft",
       reason: `${sinceDays} gündür sipariş yok — hatırlatma maili at`,
     };
@@ -116,7 +116,7 @@ function deriveSegment(orders: CustomerOrder[]): Segment {
     return {
       key: "vip",
       label: "VIP",
-      color: "text-sari",
+      color: "text-sari-koyu",
       bg: "bg-sari-soft",
       reason: `${count} sipariş — sadık müşteri, özel ilgi`,
     };
@@ -289,7 +289,7 @@ export default function MusteriDetailPage({
   if (loading) {
     return (
       <main className="py-8 pb-20">
-        <div className="mx-auto max-w-[1280px] px-6">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <div className="animate-pulse">
             <div className="h-6 bg-gri-100 rounded w-32 mb-3" />
             <div className="h-10 bg-gri-100 rounded w-72 mb-6" />
@@ -363,7 +363,7 @@ export default function MusteriDetailPage({
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Breadcrumb */}
         <Link
           href="/admin/musteriler"
@@ -566,8 +566,8 @@ export default function MusteriDetailPage({
             </div>
           </Card>
 
-          {/* Sağ kolon: bilgi panelleri */}
-          <div className="space-y-4">
+          {/* Sağ kolon: bilgi panelleri (lg+ sticky — uzun timeline'ı kolay tara) */}
+          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
             {/* İletişim & Adres */}
             <Card padding="p-5">
               <div className="flex items-center gap-2 mb-3">

@@ -301,7 +301,7 @@ function renderLeadWelcome(input: MailTemplateInput): MailRendered {
   const subject = "Şablon paketin hazır — Pim Etiket";
 
   const body = `
-    <h1 style="font-size: 20px; margin: 0 0 12px;">Hoş geldin! 👋</h1>
+    <h1 style="font-size: 20px; margin: 0 0 12px;">Hoş geldin</h1>
     <p style="font-size: 14px; line-height: 1.6; color: #292524;">
       Pim Etiket şablon kütüphanesine kaydolduğun için teşekkürler.
       ${interests ? `İlgilendiğin alanlar: <strong>${escape(interests)}</strong>.` : ""}
@@ -310,7 +310,7 @@ function renderLeadWelcome(input: MailTemplateInput): MailRendered {
       ${
         downloadUrl
           ? `Tüm şablonları içeren ZIP aşağıdaki butonda. Canva, Illustrator,
-             Figma — istediğin araçta aç, düzenle, hadi başla.`
+             Figma — istediğin araçta aç ve ihtiyacına göre özelleştir.`
           : `Şablonlar son rötuşlardan geçiyor — hazır olur olmaz tek tıkla
              indirme linki sana mail olarak gelecek. <em>24 saat içinde</em>.`
       }
@@ -364,9 +364,11 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
   const customerName = escape(p.customer_name ?? "");
   const couponCode = escape(p.coupon_code ?? "");
 
-  const subject = couponCode
-    ? `Sepetin seni bekliyor — %10 indirim kodun da hazır 🎁`
-    : `Sepetinde ${itemCount} ürün hâlâ bekliyor`;
+  // Subject sade — emoji + indirim oranı Gmail "Promotions" tab'ına itiyor.
+  // Sayı + isim + nötr fiil → ana inbox'ta kalma şansı yüksek.
+  const subject = customerName
+    ? `${customerName}, sepetindeki ${itemCount} ürün hâlâ bekliyor`
+    : `Sepetindeki ${itemCount} ürün hâlâ bekliyor`;
 
   const body = `
     <h1 style="font-size: 18px; margin: 0 0 12px;">${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı 👀</h1>
@@ -398,8 +400,8 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
     </div>
 
     <p style="font-size: 12px; line-height: 1.6; color: #78716c;">
-      Vazgeçtiysen sorun değil — daha sonra başka bir tasarım için tekrar
-      görüşelim. Beklemekten zarar gelmez, dosyan güvende.
+      Vazgeçtiysen sorun değil — başka bir tasarım için tekrar görüşürüz.
+      Sepetin 30 gün açık kalır, fiyat değişirse hesabına yansır.
     </p>
   `;
 
@@ -427,7 +429,9 @@ function renderCustomerReviewRequest(input: MailTemplateInput): MailRendered {
     ? `${SITE_URL}/yorum-yaz/${reviewToken}`
     : `${SITE_URL}/siparislerim`;
 
-  const subject = `${customerName ? `${customerName}, deneyimini` : "Deneyimini"} paylaşır mısın? 🌟`;
+  const subject = customerName
+    ? `${customerName}, ${productName} nasıl oldu?`
+    : `${productName} için yorumun bizim için kıymetli`;
 
   const body = `
     <h1 style="font-size: 18px; margin: 0 0 12px;">Etiketin elinde — şimdi?</h1>

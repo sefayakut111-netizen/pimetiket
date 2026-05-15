@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<
   },
   qc_warned: {
     label: "Uyarı",
-    color: "text-sari",
+    color: "text-sari-koyu",
     bg: "bg-sari-soft",
   },
   qc_failed: {

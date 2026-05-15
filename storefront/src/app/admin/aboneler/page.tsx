@@ -109,7 +109,7 @@ export default function AdminAbonelerPage() {
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
           <div>
@@ -120,7 +120,7 @@ export default function AdminAbonelerPage() {
             <p className="mt-1.5 text-base text-gri-700">
               {data.length} aktif abone ·{" "}
               {pendingWelcome > 0 && (
-                <span className="text-sari font-semibold">
+                <span className="text-sari-koyu font-semibold">
                   {pendingWelcome} welcome mail bekliyor
                 </span>
               )}
@@ -286,7 +286,7 @@ export default function AdminAbonelerPage() {
                             <Icon.Check size={11} /> Gönderildi
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-sari text-[11.5px] font-semibold">
+                          <span className="inline-flex items-center gap-1 text-sari-koyu text-[11.5px] font-semibold">
                             ⏳ Bekliyor
                           </span>
                         )}

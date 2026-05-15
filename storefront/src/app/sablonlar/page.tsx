@@ -220,7 +220,7 @@ export default function SablonlarPage() {
               {[
                 "60+ ayrı şablon, sürekli güncellenir",
                 "Renk + yazı + logo serbestçe değiştirilebilir",
-                "Bilgi sahibi olmak için 5 dk · Canva uyumlu",
+                "5 dakikada düzenle · Canva, Illustrator, Figma",
                 "Bültene sadece yeni şablon çıkınca mail atarız (haftada bir bile değil)",
               ].map((line) => (
                 <li
@@ -377,8 +377,8 @@ export default function SablonlarPage() {
                   {loading ? "Kaydediliyor…" : "Şablonları gönder"}
                 </Button>
                 <p className="text-[11.5px] text-gri-500 leading-relaxed sm:max-w-[280px]">
-                  Sadece şablon ve büyük iyi haberler. Spam YOK. Bir tıkla
-                  abonelikten çıkabilirsin.
+                  Şablon güncellemeleri ve seçilmiş duyurular. Spam atmıyoruz;
+                  bir tıkla abonelikten çıkabilirsin.
                 </p>
               </div>
             </form>
@@ -391,7 +391,7 @@ export default function SablonlarPage() {
             {
               icon: "✨",
               title: "Düzenlenebilir",
-              text: "Renk, yazı, logo — her şey serbestçe değişebilir. Canva linkini direkt aç, hadi başla.",
+              text: "Renk, yazı, logo — her şey serbestçe değişir. Canva linkini direkt aç, ihtiyacına göre özelleştir.",
             },
             {
               icon: "🚀",
@@ -458,7 +458,7 @@ function SuccessState({
       <h2 className="mt-4 text-[24px] font-semibold leading-tight">
         {alreadySubscribed
           ? "Zaten kayıtlısın — tekrar görüşmek güzel."
-          : "Tamamdır! Listeye eklendin."}
+          : "Listeye eklendin."}
       </h2>
       <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
         {downloadUrl ? (

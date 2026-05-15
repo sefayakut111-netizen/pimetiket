@@ -79,7 +79,7 @@ export default function AdminProvaPage() {
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-6">
           <Eyebrow>Prova üretim</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">

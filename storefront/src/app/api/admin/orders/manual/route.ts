@@ -13,8 +13,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 interface ManualOrderItem {
   product: "etiket" | "sticker";
@@ -59,21 +59,11 @@ interface ManualOrderBody {
 import { generateOrderId } from "@/lib/customer-order";
 
 export async function POST(req: Request) {
-  // Auth check
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  // Auth — audit P0 (4-agent 15 May): inline RBAC kaldırıldı, ortak
+  // assertAdmin() helper'ı kullanılıyor (Cookie-based session, service_role
+  // header'da DEĞİL).
+  const auth = await assertAdmin();
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -137,7 +127,7 @@ export async function POST(req: Request) {
   // order_events için aktör admin
   await admin
     .from("order_events")
-    .update({ actor_id: user.id })
+    .update({ actor_id: auth.user.id })
     .eq("order_id", orderId)
     .eq("event_type", "order_created_manual");
 

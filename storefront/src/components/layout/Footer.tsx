@@ -19,6 +19,7 @@ export function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const FOOTER_GROUPS: { t: string; links: FooterLink[] }[] = [
     {
@@ -73,6 +74,10 @@ export function Footer() {
     e.preventDefault();
     if (!email.includes("@")) {
       toast.error("Geçerli e-posta gir");
+      return;
+    }
+    if (!consent) {
+      toast.error("Devam etmek için aydınlatma metnini onaylaman gerek.");
       return;
     }
     setLoading(true);
@@ -135,22 +140,44 @@ export function Footer() {
               📩 {t.footer.newsletterSuccess}
             </div>
           ) : (
-            <form onSubmit={onSubscribe} className="flex gap-2 min-w-[280px] md:min-w-[380px]">
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t.footer.newsletterPlaceholder}
-                disabled={loading}
-                className="!bg-white/15 !text-white placeholder:!text-white/60 !ring-white/25 focus:!ring-pim-mercan flex-1"
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={loading || !email}
-              >
-                {loading ? "..." : t.footer.newsletterSubscribe}
-              </Button>
+            <form onSubmit={onSubscribe} className="flex flex-col gap-2 min-w-[280px] md:min-w-[380px]">
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t.footer.newsletterPlaceholder}
+                  disabled={loading}
+                  className="!bg-white/15 !text-white placeholder:!text-white/60 !ring-white/25 focus:!ring-pim-mercan flex-1"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={loading || !email || !consent}
+                >
+                  {loading ? "..." : t.footer.newsletterSubscribe}
+                </Button>
+              </div>
+              <label className="flex items-start gap-2 text-[11.5px] text-white/65 leading-relaxed cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 shrink-0 accent-pim-mercan"
+                  required
+                />
+                <span>
+                  E-postamın yeni şablon ve duyurular için saklanmasına izin
+                  veriyorum.{" "}
+                  <Link
+                    href="/kvkk"
+                    className="text-pim-mercan font-semibold hover:underline"
+                  >
+                    KVKK aydınlatma
+                  </Link>
+                  . Üyelikten her an çıkabilirim.
+                </span>
+              </label>
             </form>
           )}
         </div>
@@ -231,9 +258,6 @@ export function Footer() {
             </strong>
             {" · "}
             Doğanbey VD / 7580607612
-            <span className="text-white/40">
-              {" · "}Adres: yakında güncellenecek
-            </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap shrink-0">
             <a
@@ -243,13 +267,6 @@ export function Footer() {
               <span className="inline-block w-1 h-1 rounded-full bg-yesil animate-pulse" />
               info@pimetiket.com
             </a>
-            <span className="text-white/20">·</span>
-            <span
-              className="text-white/40 whitespace-nowrap inline-flex items-center gap-1.5"
-              title="Telefon hattı yakında aktifleşecek"
-            >
-              📞 Telefon: yakında
-            </span>
             <span className="text-white/20">·</span>
             <Link
               href="/iletisim"

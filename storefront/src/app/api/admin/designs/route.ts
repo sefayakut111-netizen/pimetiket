@@ -9,8 +9,27 @@
  */
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+
+// Audit P0 (4-agent, 15 May): inline RBAC + raw URLSearchParams →
+// assertAdmin() + Zod query validation. Limit cap'leniyor, status enum'a
+// kısıtlı; istemci serbest karakter gönderemez.
+const QuerySchema = z.object({
+  status: z
+    .enum([
+      "uploaded",
+      "qc_pending",
+      "qc_passed",
+      "qc_flagged",
+      "qc_failed",
+      "manual_review",
+    ])
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
 
 export interface AdminDesignRow {
   id: string;
@@ -33,29 +52,26 @@ export interface AdminDesignRow {
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Role check — sadece admin/staff
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-    const role = (profile as { role?: string } | null)?.role;
-    if (role !== "admin" && role !== "staff") {
+    const auth = await assertAdmin();
+    if (!auth) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Query validation
     const { searchParams } = new URL(req.url);
-    const statusFilter = searchParams.get("status");
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "100", 10), 500);
+    const parsed = QuerySchema.safeParse({
+      status: searchParams.get("status") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
+    });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Geçersiz parametre", detail: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+    const { status: statusFilter, limit } = parsed.data;
 
+    const supabase = await createClient();
     let query = supabase
       .from("design_files")
       .select("*")

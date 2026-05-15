@@ -115,7 +115,7 @@ export default function AdminGaleriPage() {
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <Eyebrow>İçerik · Galeri</Eyebrow>

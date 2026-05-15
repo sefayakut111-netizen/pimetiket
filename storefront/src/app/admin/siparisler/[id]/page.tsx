@@ -27,7 +27,7 @@ import type { OrderStatus } from "@/lib/order";
 const STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
   paid: { label: "Yeni — dosya bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  qc_flagged: { label: "AI flag — manuel kontrol", color: "text-sari", bg: "bg-sari-soft" },
+  qc_flagged: { label: "AI flag — manuel kontrol", color: "text-sari-koyu", bg: "bg-sari-soft" },
   operator_review: { label: "Operatör inceliyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   proof_pending: { label: "Prova hazır — müşteri onayı", color: "text-lacivert", bg: "bg-gri-100" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },

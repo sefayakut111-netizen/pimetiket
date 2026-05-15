@@ -19,6 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   verifyCallback,
@@ -251,7 +252,28 @@ export async function POST(req: NextRequest) {
   );
 
   if (rpcErr) {
+    // Audit P0 (4-agent 15 May): RPC silently swallowed → şikayet
+    // gelene kadar fark edilmiyor. Sentry'a captureException + intent
+    // failure_reason'a yaz → admin/finans paneli görür.
     console.error("[payment/callback] finalize RPC error:", rpcErr);
+    Sentry.captureException(rpcErr, {
+      tags: {
+        scope: "payment.callback.rpc",
+        merchant_oid: merchantOid,
+      },
+      extra: {
+        order_id: candidateOrderId,
+        rpc: "fn_finalize_paid_order",
+      },
+    });
+    // Intent kaydına failure_reason yaz — admin sonradan görsün
+    // (Supabase typegen schema'da failure_reason yok → as never cast)
+    await admin
+      .from("payment_intents")
+      .update({
+        failure_reason: `RPC error: ${rpcErr.message ?? "unknown"}`,
+      } as never)
+      .eq("merchant_oid", merchantOid);
     return new NextResponse("OK"); // PayTR retry yapmasın
   }
 

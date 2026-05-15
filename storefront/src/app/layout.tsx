@@ -5,8 +5,7 @@ import { ToastProvider } from "@/components/ui";
 import { LanguageProvider } from "@/lib/i18n/context";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Analytics } from "@/components/Analytics";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
+import { VercelInsights } from "@/components/VercelInsights";
 import { getSiteImage } from "@/lib/site-images";
 import "./globals.css";
 
@@ -156,9 +155,9 @@ export default function RootLayout({
             <Analytics />
           </LanguageProvider>
         </ToastProvider>
-        {/* Vercel built-in: ücretsiz pageview + Core Web Vitals (LCP/CLS/INP) */}
-        <SpeedInsights />
-        <VercelAnalytics />
+        {/* Vercel built-in pageview + Core Web Vitals — KVKK gated (sadece
+            analytics izni varsa beacon gönderir). Bkz. VercelInsights.tsx. */}
+        <VercelInsights />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_LD) }}

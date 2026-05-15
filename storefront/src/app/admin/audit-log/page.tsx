@@ -83,7 +83,7 @@ export default function AdminAuditLogPage() {
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
           <div>
             <Eyebrow>Güvenlik · KVKK</Eyebrow>

@@ -246,13 +246,13 @@ export default function AdminYorumlarPage() {
                           {meta.label}
                         </span>
                       </div>
-                      <div className="flex gap-px text-sari mb-2 items-center">
+                      <div className="flex gap-px text-sari-koyu mb-2 items-center">
                         {[0, 1, 2, 3, 4].map((i) => (
                           <Icon.Star
                             key={i}
                             size={16}
                             className={cn(
-                              i < r.rating ? "text-sari" : "text-gri-200"
+                              i < r.rating ? "text-sari-koyu" : "text-gri-200"
                             )}
                           />
                         ))}

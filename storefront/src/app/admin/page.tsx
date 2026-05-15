@@ -274,7 +274,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
 const STATUS_LABEL: Record<OrderStatus, { label: string; color: string; bg: string; hex: string }> = {
   paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF8585" },
-  qc_flagged: { label: "AI flag", color: "text-sari", bg: "bg-sari-soft", hex: "#FFC53D" },
+  qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft", hex: "#FFC53D" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FFA39E" },
   proof_pending: { label: "Prova", color: "text-lacivert", bg: "bg-gri-100", hex: "#1F2A4D" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft", hex: "#52C41A" },
@@ -481,7 +481,7 @@ export default function AdminDashboardPage() {
       value: aiFlagged.toString(),
       sub: aiFlagged > 0 ? "manuel kontrol" : "kuyruk temiz",
       trend: "flat" as const,
-      accent: aiFlagged > 0 ? "text-sari" : "text-gri-500",
+      accent: aiFlagged > 0 ? "text-sari-koyu" : "text-gri-500",
     },
     {
       label: "Prova bekleyen",
@@ -812,7 +812,7 @@ export default function AdminDashboardPage() {
                       className={cn(
                         "mt-1.5 text-[10.5px] tabular-nums flex items-center gap-1",
                         slowWarning
-                          ? "text-sari font-semibold"
+                          ? "text-sari-koyu font-semibold"
                           : "text-gri-500"
                       )}
                       title={
@@ -839,7 +839,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className={cn(
               "text-[22px] font-bold mt-1 tabular-nums",
-              ops.aiFlagRate > 30 ? "text-kirmizi" : ops.aiFlagRate > 0 ? "text-sari" : "text-gri-500"
+              ops.aiFlagRate > 30 ? "text-kirmizi" : ops.aiFlagRate > 0 ? "text-sari-koyu" : "text-gri-500"
             )}>
               {orders.length > 0 ? `%${ops.aiFlagRate.toFixed(0)}` : "—"}
             </div>
@@ -868,7 +868,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className={cn(
               "text-[22px] font-bold mt-1 tabular-nums",
-              ops.cancelRate > 15 ? "text-kirmizi" : ops.cancelRate > 0 ? "text-sari" : "text-gri-500"
+              ops.cancelRate > 15 ? "text-kirmizi" : ops.cancelRate > 0 ? "text-sari-koyu" : "text-gri-500"
             )}>
               {orders.length > 0 ? `%${ops.cancelRate.toFixed(0)}` : "—"}
             </div>
@@ -1091,7 +1091,7 @@ export default function AdminDashboardPage() {
                           {c.name}
                           {isVip && (
                             <span
-                              className="inline-flex items-center gap-0.5 px-1.5 h-[16px] rounded-full bg-sari-soft text-sari text-[9.5px] font-bold uppercase tracking-[0.04em] shrink-0"
+                              className="inline-flex items-center gap-0.5 px-1.5 h-[16px] rounded-full bg-sari-soft text-sari-koyu text-[9.5px] font-bold uppercase tracking-[0.04em] shrink-0"
                               title={`VIP — ${c.orderCount} sipariş`}
                             >
                               <Icon.Star size={9} /> VIP

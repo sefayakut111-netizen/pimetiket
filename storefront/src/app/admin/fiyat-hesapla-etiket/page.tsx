@@ -332,7 +332,7 @@ export default function EtiketFiyatHesaplaPage() {
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-6">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Header */}
         <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
           <div>
