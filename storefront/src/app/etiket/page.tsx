@@ -350,11 +350,14 @@ export default function EtiketPage() {
 
   // Touched steps — kullanıcı bir adımda seçim yaptıysa o FormSection
   // numarası set'e eklenir (1=Malzeme, 2=Kaplama, 3=Özellik, 4=Sarım,
-  // 5=Boyut, 6=Adet). Audit (15 May, Sefa): "seçim yaptıkça çalışmıyor".
-  // Scroll-based active + touch-based done = doğru completion göstergesi.
+  // 5=Sarım detayı, 6=Boyut, 7=Tasarım, 8=Adet). Audit (15 May, Sefa):
+  // "seçim yaptıkça çalışmıyor". Scroll-based active + touch-based done.
+  // Sefa 15 May v4: varsayılan seçim de touched değilse görsel seçili
+  // değil. Form factor için ayrı flag: formFactorTouched.
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
     () => new Set()
   );
+  const [formFactorTouched, setFormFactorTouched] = useState(false);
   const markTouched = useCallback((n: number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
@@ -710,14 +713,15 @@ export default function EtiketPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {FORM_FACTORS.map((f) => {
-                  const active = formFactor === f.id;
+                  // Touched değilse görsel seçili yok (Sefa kuralı 15 May v4)
+                  const active = formFactorTouched && formFactor === f.id;
                   return (
                     <button
                       key={f.id}
                       type="button"
                       onClick={() => {
                         setFormFactor(f.id);
-                        markTouched(1);
+                        setFormFactorTouched(true);
                       }}
                       aria-pressed={active}
                       className={cn(
@@ -770,7 +774,7 @@ export default function EtiketPage() {
                 ).map((m) => (
                   <SelectableCard
                     key={m.id}
-                    selected={material === m.id}
+                    selected={touchedSteps.has(1) && material === m.id}
                     onClick={() => {
                       setMaterial(m.id);
                       markTouched(1);
@@ -818,7 +822,7 @@ export default function EtiketPage() {
                 ).map((c) => (
                   <SelectableCard
                     key={c.id}
-                    selected={coating === c.id}
+                    selected={touchedSteps.has(2) && coating === c.id}
                     onClick={() => {
                       setCoating(c.id);
                       markTouched(2);
@@ -847,7 +851,10 @@ export default function EtiketPage() {
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {CUSTOMS.map((c) => {
-                  const isSelected = customs.includes(c.id);
+                  // Touched değilse görsel olarak seçili göstermeyiz
+                  // (Sefa kuralı: varsayılan seçim olmasın).
+                  const isSelected =
+                    touchedSteps.has(3) && customs.includes(c.id);
                   return (
                     <SelectableCard
                       key={c.id}
@@ -965,7 +972,7 @@ export default function EtiketPage() {
                   {[1, 2, 3, 4].map((n) => (
                     <SelectableCard
                       key={n}
-                      selected={winding === n}
+                      selected={touchedSteps.has(4) && winding === n}
                       onClick={() => {
                         setWinding(n);
                         markTouched(4);
@@ -979,7 +986,7 @@ export default function EtiketPage() {
                         className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
                         style={{
                           color:
-                            winding === n
+                            touchedSteps.has(4) && winding === n
                               ? "var(--color-pim-mercan)"
                               : "var(--color-gri-700)",
                         }}
@@ -1003,7 +1010,7 @@ export default function EtiketPage() {
                   {[5, 6, 7, 8].map((n) => (
                     <SelectableCard
                       key={n}
-                      selected={winding === n}
+                      selected={touchedSteps.has(4) && winding === n}
                       onClick={() => {
                         setWinding(n);
                         markTouched(4);
@@ -1017,7 +1024,7 @@ export default function EtiketPage() {
                         className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
                         style={{
                           color:
-                            winding === n
+                            touchedSteps.has(4) && winding === n
                               ? "var(--color-pim-mercan)"
                               : "var(--color-gri-700)",
                         }}
@@ -1058,14 +1065,14 @@ export default function EtiketPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {CORE_SIZES.map((c) => {
-                    const active = coreSize === c.id;
+                    const active = touchedSteps.has(5) && coreSize === c.id;
                     return (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => {
                           setCoreSize(c.id);
-                          markTouched(7);
+                          markTouched(5);
                         }}
                         aria-pressed={active}
                         className={cn(
@@ -1102,14 +1109,14 @@ export default function EtiketPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {ROLL_LABEL_COUNTS.map((q) => {
-                    const active = rollLabelCount === q;
+                    const active = touchedSteps.has(5) && rollLabelCount === q;
                     return (
                       <button
                         key={q}
                         type="button"
                         onClick={() => {
                           setRollLabelCount(q);
-                          markTouched(7);
+                          markTouched(5);
                         }}
                         aria-pressed={active}
                         className={cn(
@@ -1203,7 +1210,9 @@ export default function EtiketPage() {
                   { w: 100, h: 100, label: "100×100" },
                 ].map((preset) => {
                   const active =
-                    width === preset.w && height === preset.h;
+                    touchedSteps.has(6) &&
+                    width === preset.w &&
+                    height === preset.h;
                   return (
                     <button
                       key={preset.label}
@@ -1401,7 +1410,7 @@ export default function EtiketPage() {
                   {t.config.suggested}
                 </span>
                 {qtyPresets.map((q) => {
-                  const active = qty === q;
+                  const active = touchedSteps.has(8) && qty === q;
                   const popular = q === popularPreset;
                   // Sefa kuralı (15 May v2): binler nokta ile (10.000 not 10K)
                   const label = q.toLocaleString("tr-TR");
@@ -2255,18 +2264,9 @@ function PreviewCanvas({
         Canlı önizleme
       </div>
 
-      {/* Inline ipucu kartı — Pim mascot floating chat'te (PimChat.tsx);
-          burada sadece context-aware öneri metni göster. UX audit (15 May)
-          sonrası: Pim'in iki yerde aynı anda görünmesi persona dağıtıyordu. */}
-      <div className="absolute bottom-6 right-6">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-3.5 py-2.5 shadow-2 flex gap-2 items-start max-w-[240px] ring-1 ring-gri-200/60">
-          <span aria-hidden className="text-base leading-none mt-0.5">💡</span>
-          <div className="text-[12.5px] leading-relaxed text-gri-700">
-            <strong className="text-lacivert">İpucu:</strong> Kozmetik
-            etiketleri için Ultra Clear de premium bir cam etkisi verir.
-          </div>
-        </div>
-      </div>
+      {/* İpucu kartı kaldırıldı — Sefa kuralı (15 May v4):
+          Preview canvas temiz kalsın, Pim mascot sadece sağ alt floating
+          chat'te (PimChat.tsx). Kullanıcı isterse oradan soru sorar. */}
     </div>
   );
 }
