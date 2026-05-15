@@ -37,10 +37,14 @@ interface Props {
   onDesignCountChange: (n: number) => void;
   designs: PendingDesign[];
   onDesignsChange: (designs: PendingDesign[]) => void;
-  /** Adet (her tasarımdan kaç sticker) */
+  /** Adet (her tasarımdan kaç ürün) */
   qtyPerDesign: number;
   /** Max tasarım sayısı, default 50 */
   maxCount?: number;
+  /** Ürün etiketi (Sefa kuralı 15 May v6 — etiket+sticker shared):
+   *  "sticker" → "...= 250 sticker"
+   *  "etiket"  → "...= 250 etiket" */
+  productLabel?: string;
 }
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
@@ -57,6 +61,7 @@ export function MultiDesignUploader({
   onDesignsChange,
   qtyPerDesign,
   maxCount = 50,
+  productLabel = "sticker",
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [lightbox, setLightbox] = useState<PendingDesign | null>(null);
@@ -159,7 +164,7 @@ export function MultiDesignUploader({
           </div>
           <span className="text-gri-700">tasarım = </span>
           <strong className="text-pim-mercan tabular-nums">
-            {totalQty.toLocaleString("tr-TR")} sticker
+            {totalQty.toLocaleString("tr-TR")} {productLabel}
           </strong>
         </div>
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">

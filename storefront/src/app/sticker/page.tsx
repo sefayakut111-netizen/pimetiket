@@ -789,6 +789,7 @@ export default function StickerPage() {
                   markTouched(7);
                 }}
                 qtyPerDesign={tier}
+                productLabel="sticker"
               />
               {designDiscountPct > 0 && (
                 <p className="mt-3 text-[12px] text-pim-mercan font-semibold">

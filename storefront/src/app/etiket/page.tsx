@@ -33,9 +33,12 @@ import {
   Pill,
   QtySlider,
   DesignDropZone,
-  MultiDesignDropZone,
   type DesignTempState,
 } from "@/components/ui";
+import {
+  MultiDesignUploader,
+  type PendingDesign,
+} from "@/components/sticker/MultiDesignUploader";
 import { deliveryEstimate } from "@/lib/pricing";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -344,9 +347,12 @@ export default function EtiketPage() {
   // Tasarım adedi — kullanıcı kaç farklı tasarım göndereceğini söyler.
   // Max 50 (yüklenen dosya sayısı ile uyumsuzsa uyarı).
   const [designCount, setDesignCount] = useState<number>(1);
-  // Pre-purchase tasarım — Sefa kuralı (15 May v2): max 50 dosya yüklenebilir.
-  // designs[0] preview/cart için primary tasarım. Diğerleri metadata.
-  const [designs, setDesigns] = useState<DesignTempState[]>([]);
+  // Pre-purchase tasarım — Sefa kuralı (15 May v6):
+  // Sticker'daki MultiDesignUploader pattern'i etikette de kullanılıyor.
+  // PendingDesign local-only (Supabase upload yok), sipariş sonrası
+  // detay sayfasından gerçek upload yapılır.
+  // designs[0] mockup preview için primary, diğerleri metadata.
+  const [designs, setDesigns] = useState<PendingDesign[]>([]);
   const primaryDesign = designs[0] ?? null;
 
   // Touched steps — kullanıcı bir adımda seçim yaptıysa o FormSection
@@ -421,7 +427,10 @@ export default function EtiketPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formFactor]);
 
-  // /tasarımlarım'dan "Yeniden bastır" tıklandıysa sessionStorage'dan al
+  // /tasarımlarım'dan "Yeniden bastır" tıklandıysa kullanıcıyı bilgilendir.
+  // Reprint flow (Sefa kuralı 15 May v6): artık MultiDesignUploader
+  // local-preview kullanıyor (PendingDesign), eski DesignTempState reprint
+  // direkt mockup'a gitmiyor. Kullanıcı sayfada manuel re-upload yapar.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const sp = new URLSearchParams(window.location.search);
@@ -429,10 +438,10 @@ export default function EtiketPage() {
     try {
       const raw = sessionStorage.getItem("pim_reprint_design");
       if (raw) {
-        const parsed = JSON.parse(raw) as DesignTempState;
-        setDesigns([parsed]);
         sessionStorage.removeItem("pim_reprint_design");
-        toast.info("Tasarımın hazır — malzeme/adet seç, sepete ekle");
+        toast.info(
+          "Yeniden bastırma için malzeme/adet seç, tasarım dosyalarını tekrar yükle"
+        );
       }
     } catch {
       // ignore
@@ -460,12 +469,14 @@ export default function EtiketPage() {
   const rawUnit = quote.ok ? quote.unitPrice : 0;
   const rollsNeeded = quote.ok ? quote.rollsNeeded : 0;
 
-  // Tasarım sayısı iskonto — Sefa kuralı 15 May v3.
-  // designCount >= 2 ise total üzerinde local discount uygulanır.
-  // Pricing engine'i değiştirmiyoruz (multi-customization gibi sonra).
+  // Sefa kuralı (15 May v6): "Her tasarımdan qty adet × designCount tasarım"
+  // mantığı sticker'da olduğu gibi etikete de uygulandı.
+  // total = quote(qty) × designCount × discountFactor (her tasarım için
+  // ayrı setup/baskı → designCount artarken fiyat lineer artar).
   const designDiscountPct = designCountDiscountPct(designCount);
   const designDiscountFactor = 1 - designDiscountPct / 100;
-  const total = rawTotal * designDiscountFactor;
+  const totalEtiketCount = qty * designCount;
+  const total = rawTotal * designCount * designDiscountFactor;
   const unit = rawUnit * designDiscountFactor;
 
   // Tier savings — 1K (min) baseline ile karşılaştır
@@ -567,34 +578,40 @@ export default function EtiketPage() {
         ? "Özelleştirme yok"
         : custNames.join(" + ");
     const customSuffix = customs.includes("yaldiz") ? ` (${yaldiz})` : "";
+    // Sefa kuralı (15 May v6): toplam etiket = qty × designCount
+    // (her tasarımdan ayrı baskı). Cart'a totalEtiketCount kaydedilir.
     const designCountSuffix =
-      designCount > 1 ? ` · ${designCount} tasarım` : "";
+      designCount > 1
+        ? ` · ${designCount} tasarım × ${qty.toLocaleString("tr-TR")} = ${totalEtiketCount.toLocaleString("tr-TR")} etiket`
+        : "";
     const primary = designs[0];
     const result = await addToCustomerCart({
       product: "etiket",
-      title: `Etiket · ${matName} + ${coatName}`,
+      title: `Etiket · ${matName} + ${coatName}${designCount > 1 ? ` (${designCount} tasarım)` : ""}`,
       config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
       width,
       height,
-      qty,
+      qty: totalEtiketCount, // toplam etiket = qty × designCount
       unit: parseFloat(unit.toFixed(2)),
       total: Math.round(total),
       materialId: material,
       coatingId: coating,
       customizationId: primaryCustom,
       winding,
-      designTempId: primary?.tempId,
+      // PendingDesign local-only (Supabase tempId yok) — "local-{id}" formatında.
+      // Sipariş sonrası detay sayfasında gerçek upload yapılır (sticker pattern).
+      designTempId: primary ? `local-${primary.id}` : undefined,
       designPreviewUrl: primary?.previewUrl,
-      designFileName: primary?.fileName,
-      // Multi-design metadata (Sefa 15 May v4): designCount + ek dosyalar
-      // primary hariç designs[1..N]. Ödeme sonrası order'a promote edilecek.
+      designFileName: primary?.name,
+      // Multi-design metadata (Sefa 15 May v6): designCount + tüm dosyalar
+      // (primary dahil, sticker pattern'ine paralel).
       designCount: designCount > 1 ? designCount : undefined,
       additionalDesigns:
-        designs.length > 1
-          ? designs.slice(1).map((d) => ({
-              tempId: d.tempId,
+        designs.length > 0
+          ? designs.map((d) => ({
+              tempId: `local-${d.id}`,
               previewUrl: d.previewUrl,
-              fileName: d.fileName,
+              fileName: d.name,
               sizeBytes: d.sizeBytes,
               mimeType: d.mimeType,
             }))
@@ -604,10 +621,13 @@ export default function EtiketPage() {
       toast.error(result.reason);
       return;
     }
+    // PendingDesign local-preview blob URL'lerini revoke et (memory leak yok)
+    designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
     setDesigns([]);
+    setDesignCount(1);
     toast.success(
       designs.length > 0
-        ? `Sepete eklendi 🛒 — ${designs.length} tasarım bağlandı`
+        ? `Sepete eklendi 🛒 — ${designs.length} tasarım, ${totalEtiketCount.toLocaleString("tr-TR")} etiket`
         : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
     );
   }, [
@@ -623,6 +643,7 @@ export default function EtiketPage() {
     qty,
     unit,
     total,
+    totalEtiketCount,
     winding,
     coreSize,
     rollLabelCount,
@@ -1257,65 +1278,30 @@ export default function EtiketPage() {
             <FormSection
               id="step-7"
               number={uiStepNumber(7)}
-              title="Tasarım dosyaları"
-              hint="Yüklediğin dosyalar + tasarım adedi (max 50)"
+              title="Tasarımlar"
+              hint="Her tasarımdan aynı adet basılır. Birden fazla tasarımda iskonto!"
             >
-              {/* Tasarım adedi input */}
-              <div className="mb-4">
-                <label className="block">
-                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
-                    Kaç farklı tasarım göndereceksin?
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      value={designCount}
-                      onChange={(e) => {
-                        const n = Math.min(
-                          50,
-                          Math.max(1, Number(e.target.value) || 1)
-                        );
-                        setDesignCount(n);
-                        markTouched(7);
-                      }}
-                      min={1}
-                      max={50}
-                      step={1}
-                      aria-label="Tasarım adedi"
-                      className="w-24 h-11 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums text-center"
-                    />
-                    <span className="text-[13px] text-gri-700">
-                      adet farklı tasarım{" "}
-                      <span className="text-gri-500">(max 50)</span>
-                    </span>
-                  </div>
-                </label>
-                {designs.length > 0 && designs.length !== designCount && (
-                  <p className="mt-2 text-[12px] text-sari-koyu">
-                    ⓘ {designs.length} dosya yükledin, {designCount} tasarım
-                    bekleniyor. Sayı uyumsuz mu? Düzenle.
-                  </p>
-                )}
-                {designDiscountPct > 0 && (
-                  <p className="mt-2 text-[12px] text-pim-mercan font-semibold">
-                    ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
-                  </p>
-                )}
-              </div>
-
-              <MultiDesignDropZone
-                value={designs}
-                onChange={(next) => {
-                  setDesigns(next);
+              <MultiDesignUploader
+                designCount={designCount}
+                onDesignCountChange={(n) => {
+                  setDesignCount(n);
                   markTouched(7);
-                  // Yüklenen dosya sayısı tasarım adedinden büyükse
-                  // designCount'u otomatik artır (kullanıcı dostu)
-                  if (next.length > designCount && next.length <= 50) {
-                    setDesignCount(next.length);
-                  }
                 }}
-                maxFiles={50}
+                designs={designs}
+                onDesignsChange={(d) => {
+                  setDesigns(d);
+                  markTouched(7);
+                }}
+                qtyPerDesign={qty}
+                productLabel="etiket"
               />
+              {designDiscountPct > 0 && (
+                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
+                  ✨ {designCount} tasarım için{" "}
+                  <strong>%{designDiscountPct} iskonto</strong> uygulanıyor —
+                  fiyat kartında görünür
+                </p>
+              )}
             </FormSection>
 
             {/* Step 6 — Adet (serbest input + preset chip'ler).
@@ -1323,11 +1309,11 @@ export default function EtiketPage() {
             <FormSection
               id="step-8"
               number={uiStepNumber(8)}
-              title={t.config.qtyTitle}
+              title="Her tasarımdan kaç adet?"
               hint={
                 formFactor === "rulo"
-                  ? t.etiket.qtyHint
-                  : `${minQty} adetten başla, serbest tam sayı (max ${maxQty.toLocaleString("tr-TR")})`
+                  ? `${minQty.toLocaleString("tr-TR")}'den başla, ${qtyStep} adetlik artışla seç. Birden fazla tasarım koyarsan her birinden bu adet basılır.`
+                  : `${minQty} adetten başla, serbest tam sayı (max ${maxQty.toLocaleString("tr-TR")}). Her tasarımdan ayrı baskı.`
               }
             >
               {/* Slider — ana giriş yöntemi.
@@ -1541,7 +1527,7 @@ export default function EtiketPage() {
             {fmt(total)} TL
           </div>
           <div className="text-[11px] text-gri-700 mt-0.5 truncate">
-            {qty.toLocaleString("tr-TR")} adet · {width}×{height}mm · KDV dahil
+            {totalEtiketCount.toLocaleString("tr-TR")} etiket{designCount > 1 ? ` (${designCount} tasarım)` : ""} · {width}×{height}mm · KDV dahil
           </div>
         </div>
         <button
