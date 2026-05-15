@@ -123,6 +123,11 @@ export type TranslationDict = {
     popular: string;
     selected: string;
     savings: string;
+    // Sefa 16 May denetim #1 — Stepper i18n
+    stepperSteps: string;
+    stepperStepN: (n: number) => string;
+    stepperActive: string;
+    stepperDone: string;
   };
   sticker: {
     pageTitle: string;
@@ -138,14 +143,36 @@ export type TranslationDict = {
     shapeHintDieCut: string;
     shapeHintTabaka: string;
     shapeSquare: string;
+    shapeSquareDesc: string;
     shapeCircle: string;
+    shapeCircleDesc: string;
     shapeCustom: string;
+    shapeCustomDesc: string;
     shapeContour: string;
+    shapeContourDesc: string;
     cornerTitle: string;
     cornerSharp: string;
     cornerSharpDesc: string;
     cornerSoft: string;
     cornerSoftDesc: string;
+    // Sefa 16 May denetim #1 — i18n eksikleri
+    materialVinil: string;
+    materialVinilDesc: string;
+    materialTransparan: string;
+    materialTransparanDesc: string;
+    materialHolo: string;
+    materialHoloDesc: string;
+    materialSimli: string;
+    materialSimliDesc: string;
+    finishParlak: string;
+    finishParlakDesc: string;
+    finishMat: string;
+    finishMatDesc: string;
+    finishNone: string;
+    finishNoneDesc: string;
+    livePreviewNoFile: string;
+    livePreviewWithFile: string;
+    cornerSubLabelHint: string;
   };
   etiket: {
     pageTitle: string;
@@ -156,6 +183,15 @@ export type TranslationDict = {
     windingHint: string;
     windingOuter: string;
     windingInner: string;
+    // Sefa 16 May denetim #1 — Stepper i18n
+    stepMaterial: string;
+    stepCoating: string;
+    stepFeature: string;
+    stepWinding: string;
+    stepWindingDetail: string;
+    stepSize: string;
+    stepDesign: string;
+    stepQty: string;
   };
   // ====== Cart + Checkout ======
   cart: {
@@ -238,6 +274,12 @@ export type TranslationDict = {
     linkSentDifferent: string;
     notReady: string;
     notReadyDesc: string;
+  };
+  // ====== Pim chat ======
+  pim: {
+    composerPlaceholder: string;
+    typing: string;
+    sendLabel: string;
   };
   // ====== Footer ======
   footer: {

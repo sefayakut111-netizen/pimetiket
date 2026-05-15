@@ -16,6 +16,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 
 interface StepperProps {
   steps: readonly string[];
@@ -32,6 +33,7 @@ export function StepProgress({
   completedSet,
   onStepClick,
 }: StepperProps) {
+  const { t } = useT();
   const total = steps.length;
   const progressPct = (Math.max(1, activeStep) / total) * 100;
   const activeLabel = steps[activeStep - 1] ?? steps[0];
@@ -42,7 +44,7 @@ export function StepProgress({
       <div className="md:hidden">
         <div className="flex items-baseline justify-between mb-2">
           <span className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-pim-mercan">
-            Adım {activeStep} / {total}
+            {t.config.stepperStepN(activeStep)} / {total}
           </span>
           <span className="text-[12.5px] font-semibold text-lacivert">
             {activeLabel}
@@ -146,6 +148,7 @@ export function VerticalStepProgress({
   completedSet,
   onStepClick,
 }: StepperProps) {
+  const { t } = useT();
   const total = steps.length;
   return (
     <nav
@@ -245,9 +248,9 @@ export function VerticalStepProgress({
                 {/* Sefa kuralı (16 May denetim #15): Tutarlı label — hep
                     "Adım N" + state suffix (Şu an / Tamam). Önceden karma
                     olduğu için "ŞU AN" tek başına, "ADIM 2" başkasında. */}
-                Adım {stepNum}
-                {isActive && " · Şu an"}
-                {isDone && " · Tamam"}
+                {t.config.stepperStepN(stepNum)}
+                {isActive && ` · ${t.config.stepperActive}`}
+                {isDone && ` · ${t.config.stepperDone}`}
               </div>
             </div>
           </button>

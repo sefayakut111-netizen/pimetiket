@@ -61,6 +61,10 @@ export default function SepetPage() {
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // Sefa 16 May denetim #10: Skeleton 300ms eşiği — kısa yüklemelerde
+  // skeleton flicker'ı önler. Cart genelde localStorage'dan anında gelir,
+  // 300ms öncesi skeleton göstermiyoruz.
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   const refresh = useCallback(() => {
     setCart(listCustomerCart());
@@ -68,17 +72,24 @@ export default function SepetPage() {
 
   useEffect(() => {
     ensureAuthBindings();
+    // 300ms threshold — eğer yükleme hızlı bittiyse skeleton hiç gözükmez
+    const skeletonTimer = setTimeout(() => {
+      if (!hydrated) setShowSkeleton(true);
+    }, 300);
     void refreshCustomerCart().then(() => {
       refresh();
       setHydrated(true);
+      clearTimeout(skeletonTimer);
     });
     const handler = () => refresh();
     window.addEventListener("pim_customer_cart_updated", handler);
     window.addEventListener("storage", handler);
     return () => {
+      clearTimeout(skeletonTimer);
       window.removeEventListener("pim_customer_cart_updated", handler);
       window.removeEventListener("storage", handler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh]);
 
   const summary = summarizeCustomerCart();
@@ -100,8 +111,13 @@ export default function SepetPage() {
     toast.info(x.toastRemoved);
   };
 
-  // Hydration guard — SSR vs CSR farklı olmasın (skeleton loading)
+  // Hydration guard — Sefa 16 May denetim #10:
+  // Skeleton sadece 300ms+ yükleme uzarsa görünür. Hızlı load'larda
+  // direkt empty state veya cart render edilir (flicker yok).
   if (!hydrated) {
+    if (!showSkeleton) {
+      return <main className="bg-gri-50 min-h-[calc(100vh-64px)]" />;
+    }
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">

@@ -261,25 +261,10 @@ const FORM_FACTORS: { id: FormFactor; label: string; desc: string }[] = [
  *  atlanır. UI step numarası (FormSection.number) formFactor'a göre
  *  hesaplanır (uiStepNumber helper).
  */
-const STEP_LABELS_FULL: readonly string[] = [
-  "Malzeme",
-  "Kaplama",
-  "Özellik",
-  "Sarım yönü",
-  "Sarım detayı",
-  "Boyut",
-  "Tasarım",
-  "Adet",
-];
-const STEP_LABELS_TABAKA: readonly string[] = [
-  "Malzeme",
-  "Kaplama",
-  "Boyut",
-  "Tasarım",
-  "Adet",
-];
-
-/** Form factor'a göre aktif DOM step id'leri. */
+/** Form factor'a göre aktif DOM step id'leri.
+ *  NOT: Step label string'leri 16 May denetim sonrası i18n'a taşındı
+ *  (component içi STEP_LABELS_*_I18N), t.etiket.step* anahtarlarından
+ *  geliyor. */
 const STEP_IDS_FULL: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
 const STEP_IDS_TABAKA: readonly number[] = [1, 2, 6, 7, 8];
 
@@ -375,8 +360,26 @@ export default function EtiketPage() {
   }, []);
 
   // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
+  // Sefa 16 May denetim #1: i18n — labels artık t.etiket.step*'ten geliyor.
+  const STEP_LABELS_FULL_I18N: readonly string[] = [
+    t.etiket.stepMaterial,
+    t.etiket.stepCoating,
+    t.etiket.stepFeature,
+    t.etiket.stepWinding,
+    t.etiket.stepWindingDetail,
+    t.etiket.stepSize,
+    t.etiket.stepDesign,
+    t.etiket.stepQty,
+  ];
+  const STEP_LABELS_TABAKA_I18N: readonly string[] = [
+    t.etiket.stepMaterial,
+    t.etiket.stepCoating,
+    t.etiket.stepSize,
+    t.etiket.stepDesign,
+    t.etiket.stepQty,
+  ];
   const stepLabels =
-    formFactor === "rulo" ? STEP_LABELS_FULL : STEP_LABELS_TABAKA;
+    formFactor === "rulo" ? STEP_LABELS_FULL_I18N : STEP_LABELS_TABAKA_I18N;
   const stepIds =
     formFactor === "rulo" ? STEP_IDS_FULL : STEP_IDS_TABAKA;
 
@@ -888,13 +891,14 @@ export default function EtiketPage() {
                 {CUSTOMS.map((c) => {
                   // Touched değilse görsel olarak seçili göstermeyiz
                   // (Sefa kuralı: varsayılan seçim olmasın).
+                  // Sefa 16 May denetim #6: hideCheckmark kaldırıldı —
+                  // standart sağ üst rozet Malzeme/Kaplama ile tutarlı.
                   const isSelected =
                     touchedSteps.has(3) && customs.includes(c.id);
                   return (
                     <SelectableCard
                       key={c.id}
                       selected={isSelected}
-                      hideCheckmark
                       onClick={() => {
                         if (c.id === "yok") {
                           // "Yok" tek seçilebilir — diğerlerini temizler
@@ -915,29 +919,12 @@ export default function EtiketPage() {
                       }}
                       padding={12}
                     >
-                      {/* Sefa fix (15 May v3): tek tik — sol başında küçük
-                          checkbox/radio. Sağ üstteki SelectableCard tik
-                          rozeti hideCheckmark ile gizli. */}
-                      <div className="flex items-start gap-2.5">
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "shrink-0 w-[18px] h-[18px] rounded grid place-items-center mt-px transition-all",
-                            isSelected
-                              ? "bg-pim-mercan ring-2 ring-pim-mercan"
-                              : "ring-[1.5px] ring-gri-300 bg-white"
-                          )}
-                        >
-                          {isSelected && (
-                            <Icon.Check size={12} className="text-white" />
-                          )}
-                        </span>
-                        <div className="flex-1">
-                          <div className="font-semibold text-sm">{c.name}</div>
-                          <div className="text-[13px] text-gri-700 mt-0.5">
-                            {c.desc}
-                          </div>
-                        </div>
+                      {/* Sefa 16 May denetim #6: sol checkbox kaldırıldı,
+                          standart SelectableCard sağ üst rozetine geri
+                          dönüldü. Malzeme/Kaplama ile tutarlı görsel. */}
+                      <div className="font-semibold text-sm">{c.name}</div>
+                      <div className="text-[13px] text-gri-700 mt-0.5">
+                        {c.desc}
                       </div>
                     </SelectableCard>
                   );
@@ -1489,7 +1476,7 @@ export default function EtiketPage() {
           >
             <div className="bg-white rounded-xl px-3 py-3 ring-1 ring-gri-200 shadow-1">
               <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-gri-700 mb-2 px-1">
-                Adımlar
+                {t.config.stepperSteps}
               </div>
               <VerticalStepProgress
                 steps={stepLabels}

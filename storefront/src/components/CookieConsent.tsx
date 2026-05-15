@@ -50,6 +50,8 @@ const COPY = {
     privacyHref: "/gizlilik",
     cookieInfo: "Çerez politikası",
     cookieInfoHref: "/cerez",
+    alwaysOn: "Daima aktif",
+    back: "Geri",
   },
   en: {
     title: "Cookie preferences",
@@ -72,6 +74,8 @@ const COPY = {
     privacyHref: "/gizlilik",
     cookieInfo: "Cookie policy",
     cookieInfoHref: "/cerez",
+    alwaysOn: "Always on",
+    back: "Back",
   },
 };
 
@@ -182,7 +186,7 @@ export function CookieConsent({ forceOpen, onClose }: CookieConsentProps) {
                 checked={true}
                 disabled
                 onChange={() => {}}
-                badge="Daima aktif"
+                badge={c.alwaysOn}
               />
               <CategoryRow
                 title={c.functional}
@@ -244,7 +248,7 @@ export function CookieConsent({ forceOpen, onClose }: CookieConsentProps) {
                   onClick={() => setShowSettings(false)}
                   className="text-[13px] font-semibold text-gri-700 hover:text-pim-mercan px-3 py-2"
                 >
-                  ← {locale === "en" ? "Back" : "Geri"}
+                  ← {c.back}
                 </button>
                 <button
                   type="button"

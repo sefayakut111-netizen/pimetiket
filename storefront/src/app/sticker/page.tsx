@@ -68,44 +68,23 @@ import { addToCustomerCart } from "@/lib/customer-cart";
 
 // Sıra: Kare → Yuvarlak → Özel oran → Kontur kesim
 // Tabaka modunda Kontur kesim GÖSTERİLMEZ (tabakada özel kontur yok).
-const SHAPES = [
-  { id: "square", name: "Kare", desc: "Köşeli kenar" },
-  { id: "circle", name: "Yuvarlak", desc: "Daire / oval" },
-  { id: "ozel", name: "Özel oran", desc: "Dikdörtgen / bumper" },
-  { id: "die", name: "Kontur kesim", desc: "Pim baykuş silueti gibi" },
-] as const;
+// Sefa kuralı (16 May denetim #1): name/desc i18n'a bağlandı —
+// SHAPES_DEFS, MATERIALS_DEFS, FINISHES_DEFS sadece id + non-text data,
+// component içinde t.* ile name+desc inşa edilir.
 
-type ShapeId = (typeof SHAPES)[number]["id"];
+const SHAPE_IDS = ["square", "circle", "ozel", "die"] as const;
+type ShapeId = (typeof SHAPE_IDS)[number];
 
-const MATERIALS = [
-  { id: "vinil", name: "Vinil", desc: "Su ve UV dayanımı", swatch: "#FFFFFF" },
-  {
-    id: "transparan",
-    name: "Transparan",
-    desc: "Şeffaf zemin",
-    swatch: "linear-gradient(135deg,#E0F2FE,#FFFFFF)",
-  },
-  {
-    id: "holo",
-    name: "Holografik",
-    desc: "Yansımalı, festival",
-    swatch:
-      "linear-gradient(135deg,#FFB7E5 0%, #B7E8FF 50%, #FFE8B7 100%)",
-  },
-  {
-    id: "simli",
-    name: "Simli",
-    desc: "Parıltı taneli zemin",
-    swatch:
-      "radial-gradient(circle at 30% 30%, #FFE8B7 1.5px, transparent 2.5px), radial-gradient(circle at 70% 60%, #FFB7E5 1.5px, transparent 2.5px), radial-gradient(circle at 50% 80%, #B7E8FF 1px, transparent 2px), linear-gradient(135deg,#F5EBD9,#FFFFFF)",
-  },
-] as const;
+const MATERIAL_SWATCHES = {
+  vinil: "#FFFFFF",
+  transparan: "linear-gradient(135deg,#E0F2FE,#FFFFFF)",
+  holo: "linear-gradient(135deg,#FFB7E5 0%, #B7E8FF 50%, #FFE8B7 100%)",
+  simli:
+    "radial-gradient(circle at 30% 30%, #FFE8B7 1.5px, transparent 2.5px), radial-gradient(circle at 70% 60%, #FFB7E5 1.5px, transparent 2.5px), radial-gradient(circle at 50% 80%, #B7E8FF 1px, transparent 2px), linear-gradient(135deg,#F5EBD9,#FFFFFF)",
+} as const;
 
-const FINISHES = [
-  { id: "parlak", name: "Parlak", desc: "Canlı renkler" },
-  { id: "mat", name: "Mat", desc: "Yansımasız" },
-  { id: "yok", name: "Kaplamasız", desc: "Yalın yüzey" },
-] as const;
+const MATERIAL_IDS = ["vinil", "transparan", "holo", "simli"] as const;
+const FINISH_IDS = ["parlak", "mat", "yok"] as const;
 
 /** Sticker preset chip'leri — serbest qty seçim yanında one-click presets */
 const STICKER_PRESETS = CUSTOMER_STICKER_TIERS; // [25, 50, 100, 250, 500, 1000]
@@ -150,6 +129,66 @@ const fmtUnit = (n: number) => {
 export default function StickerPage() {
   const toast = useToast();
   const { t } = useT();
+
+  // i18n'a bağlı array'ler — Sefa kuralı (16 May denetim #1):
+  // dil değiştiğinde shape/material/finish name+desc çevrilir.
+  const SHAPES = SHAPE_IDS.map((id) => ({
+    id,
+    name:
+      id === "square"
+        ? t.sticker.shapeSquare
+        : id === "circle"
+          ? t.sticker.shapeCircle
+          : id === "ozel"
+            ? t.sticker.shapeCustom
+            : t.sticker.shapeContour,
+    desc:
+      id === "square"
+        ? t.sticker.shapeSquareDesc
+        : id === "circle"
+          ? t.sticker.shapeCircleDesc
+          : id === "ozel"
+            ? t.sticker.shapeCustomDesc
+            : t.sticker.shapeContourDesc,
+  }));
+
+  const MATERIALS = MATERIAL_IDS.map((id) => ({
+    id,
+    name:
+      id === "vinil"
+        ? t.sticker.materialVinil
+        : id === "transparan"
+          ? t.sticker.materialTransparan
+          : id === "holo"
+            ? t.sticker.materialHolo
+            : t.sticker.materialSimli,
+    desc:
+      id === "vinil"
+        ? t.sticker.materialVinilDesc
+        : id === "transparan"
+          ? t.sticker.materialTransparanDesc
+          : id === "holo"
+            ? t.sticker.materialHoloDesc
+            : t.sticker.materialSimliDesc,
+    swatch: MATERIAL_SWATCHES[id],
+  }));
+
+  const FINISHES = FINISH_IDS.map((id) => ({
+    id,
+    name:
+      id === "parlak"
+        ? t.sticker.finishParlak
+        : id === "mat"
+          ? t.sticker.finishMat
+          : t.sticker.finishNone,
+    desc:
+      id === "parlak"
+        ? t.sticker.finishParlakDesc
+        : id === "mat"
+          ? t.sticker.finishMatDesc
+          : t.sticker.finishNoneDesc,
+  }));
+
   // A/B test: sticker CTA varyantı. PostHog'da `sticker_cta_v2` flag'ı
   // tanımlandığında otomatik aktifleşir. Variants:
   //   control = "Sepete ekle"
@@ -195,14 +234,15 @@ export default function StickerPage() {
       return next;
     });
   }, []);
+  // Sefa 16 May denetim #1: i18n. EN locale'de İngilizce stepper.
   const stepLabels = [
-    "Kesim",
-    "Şekil",
-    "Malzeme",
-    "Yüzey",
-    "Boyut",
-    "Adet",
-    "Tasarım",
+    t.sticker.cutTypeTitle,
+    t.sticker.shapeTitle,
+    t.config.materialTitle,
+    t.config.finishTitle,
+    t.config.sizeTitle,
+    t.config.qtyTitle,
+    t.nav.dashboard === "Panel" ? "Tasarım" : "Design",
   ] as const;
   const stepIds: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
   const uiStepNumber = (domStepId: number): number => {
@@ -403,8 +443,8 @@ export default function StickerPage() {
             />
             <div className="text-[13px] text-gri-700 text-center mt-3">
               {design
-                ? "✓ Senin tasarımın önizlemede"
-                : "Anlık önizleme — her seçim canlı"}
+                ? t.sticker.livePreviewWithFile
+                : t.sticker.livePreviewNoFile}
             </div>
             {/* Design upload zone */}
             <div className="mt-4">
@@ -503,7 +543,7 @@ export default function StickerPage() {
               {(shape === "square" || shape === "ozel") && (
                 <div className="mt-3">
                   <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
-                    Köşe Seçeneği
+                    {t.sticker.cornerTitle}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <CornerStyleCard
@@ -926,7 +966,7 @@ export default function StickerPage() {
           >
             <div className="bg-white rounded-xl px-3 py-3 ring-1 ring-gri-200 shadow-1">
               <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-gri-700 mb-2 px-1">
-                Adımlar
+                {t.config.stepperSteps}
               </div>
               <VerticalStepProgress
                 steps={stepLabels}
@@ -1221,6 +1261,8 @@ function CutModeCard({
   selected: boolean;
   onClick: () => void;
 }) {
+  // Sefa 16 May denetim #1: i18n
+  const { t } = useT();
   const stroke = selected
     ? "var(--color-pim-mercan)"
     : "var(--color-lacivert)";
@@ -1299,15 +1341,15 @@ function CutModeCard({
         </svg>
         <div className="min-w-0">
           <div className="font-bold text-[14px] mb-0.5">
-            {kind === "tabaka" ? "Tabaka" : "Die Cut"}
+            {kind === "tabaka" ? t.sticker.cutTabaka : t.sticker.cutDieCut}
           </div>
           <div className="text-[11.5px] text-gri-700 leading-snug">
             {kind === "tabaka"
-              ? "Yarım kesim — sticker'lar bir sayfada, müşteri ayırarak çıkarır."
-              : "Tam kesim — her sticker tek tek hazır."}
+              ? t.sticker.cutTabakaDesc
+              : t.sticker.cutDieCutDesc}
           </div>
           <div className="text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
-            {kind === "tabaka" ? "6 mm gap · ekonomik" : "50 mm gap · profesyonel"}
+            {kind === "tabaka" ? "6 mm gap" : "50 mm gap"}
           </div>
         </div>
       </div>
@@ -1331,6 +1373,8 @@ function CornerStyleCard({
   selected: boolean;
   onClick: () => void;
 }) {
+  // Sefa 16 May denetim #1: i18n
+  const { t } = useT();
   const stroke = selected
     ? "var(--color-pim-mercan)"
     : "var(--color-lacivert)";
@@ -1373,10 +1417,12 @@ function CornerStyleCard({
         </svg>
         <div>
           <div className="font-bold text-[12.5px]">
-            {kind === "sharp" ? "Düz köşe" : "Yumuşatılmış köşe"}
+            {kind === "sharp" ? t.sticker.cornerSharp : t.sticker.cornerSoft}
           </div>
           <div className="text-[10.5px] text-gri-700 leading-tight">
-            {kind === "sharp" ? "Keskin köşe" : "Yuvarlatılmış köşe"}
+            {kind === "sharp"
+              ? t.sticker.cornerSharpDesc
+              : t.sticker.cornerSoftDesc}
           </div>
         </div>
       </div>

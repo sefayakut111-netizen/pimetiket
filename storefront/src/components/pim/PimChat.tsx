@@ -21,6 +21,7 @@ import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 import type { PimPersona } from "@/lib/pim/personas";
 import {
   appendMessage,
@@ -625,8 +626,9 @@ function extractToolResults(m: unknown): ToolResultData[] {
 }
 
 function TypingDots() {
+  const { t } = useT();
   return (
-    <span className="inline-flex gap-1" aria-label="Pim yazıyor">
+    <span className="inline-flex gap-1" aria-label={t.pim.typing}>
       <span className="w-1.5 h-1.5 rounded-full bg-gri-500 animate-pulse" />
       <span
         className="w-1.5 h-1.5 rounded-full bg-gri-500 animate-pulse"
@@ -647,6 +649,7 @@ function Composer({
   onSend: (text: string) => void;
   disabled: boolean;
 }) {
+  const { t } = useT();
   const [text, setText] = useState("");
   const submit = () => {
     const trimmed = text.trim();
@@ -671,7 +674,7 @@ function Composer({
             submit();
           }
         }}
-        placeholder="Pim'e yaz…"
+        placeholder={t.pim.composerPlaceholder}
         rows={1}
         disabled={disabled}
         className="flex-1 resize-none px-3.5 py-2 rounded-2xl bg-gri-50 ring-1 ring-gri-200 text-[14px] text-lacivert placeholder:text-gri-500 focus:outline-none focus:ring-pim-mercan focus:bg-white max-h-32"
@@ -679,7 +682,7 @@ function Composer({
       <button
         type="submit"
         disabled={disabled || !text.trim()}
-        aria-label="Gönder"
+        aria-label={t.pim.sendLabel}
         className="grid place-items-center h-10 w-10 rounded-full bg-pim-mercan text-white shadow-mercan disabled:opacity-40 disabled:cursor-not-allowed hover:bg-pim-mercan-koyu transition-colors"
       >
         <Icon.ArrowR size={16} />
