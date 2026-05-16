@@ -252,14 +252,21 @@ export function Footer() {
         {/* Trust strip — payment + security */}
         <PaymentBadges />
 
-        {/* Compact legal entity row */}
+        {/* Compact legal entity row — Sefa 16 May:
+            Mersis + Ticaret Sicil eklendi (Mesafeli Satış Yönetmeliği
+            m.5/b uyumu). Adres eklenecek. */}
         <div className="border-t border-white/10 pt-5 mt-6 flex flex-col md:flex-row md:items-start md:justify-between gap-3 text-[12px] text-white/55 leading-relaxed">
-          <div>
-            <strong className="text-white/75">
-              Sefa Yakut Kırtasiye Baskı Ticaret Ltd. Şti.
-            </strong>
-            {" · "}
-            Doğanbey VD / 7580607612
+          <div className="space-y-0.5">
+            <div>
+              <strong className="text-white/75">
+                Sefa Yakut Kırtasiye Baskı Ticaret Ltd. Şti.
+              </strong>
+              {" · "}
+              Doğanbey VD / 7580607612
+            </div>
+            <div className="text-[11px] font-mono text-white/45">
+              Mersis: 0758060761200001 · Tic. Sicil No: 493212
+            </div>
           </div>
           {/* Sefa 16 May UX denetim P2-2: "Müşteri hizmetleri" linki
               /iletisim'e gidiyordu — header'da zaten İletişim var,
