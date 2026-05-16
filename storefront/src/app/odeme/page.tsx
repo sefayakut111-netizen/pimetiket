@@ -55,6 +55,7 @@ import {
   getMyProfile,
   type CustomerAddress,
 } from "@/lib/customer-profile";
+import { TR_IL_LIST, getIlceler } from "@/lib/locations/tr-locations";
 
 // ============================================================
 // Types
@@ -617,8 +618,8 @@ export default function OdemePage() {
                     autoComplete="street-address"
                     required
                   />
-                  {/* Sefa 16 May: Ülke + Şehir + İlçe ayrı alanlar
-                      (dropdown veri sonraki commit'te) */}
+                  {/* Sefa 16 May: Ülke + Şehir + İlçe — dropdown
+                      (81 il + ~973 ilçe — src/lib/locations/tr-locations.ts) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
@@ -634,26 +635,55 @@ export default function OdemePage() {
                         <option value="Türkiye">🇹🇷 Türkiye</option>
                       </select>
                     </div>
-                    <Input
-                      placeholder="Şehir"
-                      aria-label="Şehir"
-                      value={newAddr.city}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, city: e.target.value })
-                      }
-                      autoComplete="address-level1"
-                      required
-                    />
-                    <Input
-                      placeholder="İlçe"
-                      aria-label="İlçe"
-                      value={newAddr.district}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, district: e.target.value })
-                      }
-                      autoComplete="address-level2"
-                      required
-                    />
+                    <div>
+                      <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
+                        Şehir
+                      </label>
+                      <select
+                        value={newAddr.city}
+                        onChange={(e) =>
+                          setNewAddr({
+                            ...newAddr,
+                            city: e.target.value,
+                            district: "", // şehir değişince ilçeyi sıfırla
+                          })
+                        }
+                        autoComplete="address-level1"
+                        required
+                        className="w-full h-11 px-3 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan"
+                      >
+                        <option value="">Seç...</option>
+                        {TR_IL_LIST.map((il) => (
+                          <option key={il} value={il}>
+                            {il}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
+                        İlçe
+                      </label>
+                      <select
+                        value={newAddr.district}
+                        onChange={(e) =>
+                          setNewAddr({ ...newAddr, district: e.target.value })
+                        }
+                        autoComplete="address-level2"
+                        required
+                        disabled={!newAddr.city}
+                        className="w-full h-11 px-3 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">
+                          {newAddr.city ? "Seç..." : "Önce şehir seç"}
+                        </option>
+                        {getIlceler(newAddr.city).map((ilce) => (
+                          <option key={ilce} value={ilce}>
+                            {ilce}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <Input
                     placeholder={c.addressFormLabel}
