@@ -16,7 +16,7 @@
 
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
@@ -56,6 +56,57 @@ function AuthInner() {
   const [signupSuccess, setSignupSuccess] = useState(false);
 
   const configured = isSupabaseConfigured();
+
+  // Sefa 16 May UX bug fix: URL'deki error parametrelerini görünür yap.
+  // Hem ?error= (query) hem #error= (hash) parse edilir.
+  //
+  // Senaryolar:
+  //   - OAuth callback DB hatası: /auth#error=server_error&error_description=...
+  //   - Supabase generic redirect: /auth?error=access_denied
+  //   - Manual: /auth?error=password_invalid
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // 1) Hash parse (#error=...)
+    const hash = window.location.hash.replace(/^#/, "");
+    const hashParams = new URLSearchParams(hash);
+    const hashError = hashParams.get("error") || hashParams.get("error_code");
+    const hashDesc = hashParams.get("error_description");
+
+    // 2) Query parse (?error=...)
+    const queryError = sp.get("error");
+    const queryDesc = sp.get("error_description");
+
+    const errorCode = hashError || queryError;
+    const errorDesc = hashDesc || queryDesc;
+
+    if (errorCode) {
+      // Kullanıcı dostu mesajlar
+      const friendlyMap: Record<string, string> = {
+        server_error:
+          "Sunucu hatası. Bir saniye sonra tekrar dene veya farklı yöntem (e-posta/şifre) kullan.",
+        unexpected_failure:
+          "Beklenmedik bir sorun. Lütfen tekrar dene; sorun devam ederse info@pimetiket.com'a yaz.",
+        access_denied: "Giriş iptal edildi.",
+        otp_expired:
+          "Bağlantı süresi dolmuş. Yeniden mail iste veya şifreyle gir.",
+      };
+
+      const friendly = friendlyMap[errorCode] ?? "Giriş hatası.";
+      const detail = errorDesc
+        ? `\n${errorDesc.replace(/\+/g, " ").replace(/_/g, " ")}`
+        : "";
+
+      toast.error(`${friendly}${detail}`);
+
+      // URL'i temizle (hata bir daha gösterilmesin)
+      if (window.history.replaceState) {
+        const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]error[^&]*/g, "").replace(/[?&]error_description[^&]*/g, "").replace(/[?&]error_code[^&]*/g, "").replace(/^&/, "?");
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ============================================================
   // Submit handlers
