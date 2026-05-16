@@ -54,6 +54,10 @@ export class AiCostAuditor extends AuditorBase {
     findings.push(...tokens.findings);
     metrics.tokens = tokens.metrics;
 
+    const spike = await this.checkSpikeDetection();
+    findings.push(...spike.findings);
+    metrics.spike = spike.metrics;
+
     const counts = countFindings(findings);
     return {
       findings,
@@ -311,6 +315,70 @@ export class AiCostAuditor extends AuditorBase {
       findings,
       metrics: { totalTokens, avgTokens, costPerK, runCount: rows.length },
     };
+  }
+
+  // F) Spike detection — bir gün 5× ortalamayı aştıysa kritik
+  private async checkSpikeDetection() {
+    const findings: AuditorFinding[] = [];
+
+    // Son 7 günün her gününün toplam cost'u
+    const days: Array<{ date: string; cost: number; count: number }> = [];
+    for (let i = 0; i < 7; i++) {
+      const start = new Date();
+      start.setDate(start.getDate() - i - 1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+
+      const { data } = await this.admin
+        .from("design_quality_checks")
+        .select("cost_usd")
+        .gte("created_at", start.toISOString())
+        .lt("created_at", end.toISOString());
+
+      const rows = (data ?? []) as Array<{ cost_usd: number | string | null }>;
+      const cost = rows.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0);
+
+      days.push({
+        date: start.toISOString().slice(0, 10),
+        cost,
+        count: rows.length,
+      });
+    }
+
+    if (days.length < 2) {
+      return { findings, metrics: { days: [] } };
+    }
+
+    // 7 gün ortalama + max gün
+    const total = days.reduce((s, d) => s + d.cost, 0);
+    const avg = total / days.length;
+    const maxDay = days.reduce((m, d) => (d.cost > m.cost ? d : m), days[0]);
+
+    if (avg > 0 && maxDay.cost >= avg * 5 && maxDay.cost > 1) {
+      const suggestedAction: SuggestedAction = {
+        type: "notify_sefa",
+        payload: {
+          subject: "AI maliyet spike tespit edildi",
+          message: `${maxDay.date} tarihinde AI maliyet $${maxDay.cost.toFixed(2)} (${maxDay.count} run) — ortalamanın ${(maxDay.cost / avg).toFixed(1)}× üstü. 7 gün ort: $${avg.toFixed(2)}/gün.\n\nİnceleme: /admin/denetciler/ai_cost`,
+          urgency: "critical",
+        },
+        title: "AI maliyet spike bildirimi",
+        description: `${maxDay.date}: $${maxDay.cost.toFixed(2)} (ortalamanın ${(maxDay.cost / avg).toFixed(1)}× üstü)`,
+      };
+
+      findings.push(
+        this.critical(
+          "cost_spike",
+          `Cost spike: ${maxDay.date} → $${maxDay.cost.toFixed(2)}`,
+          `Bir günde **$${maxDay.cost.toFixed(2)}** harcandı (${maxDay.count} run). Ortalama $${avg.toFixed(2)}/gün — bu **${(maxDay.cost / avg).toFixed(1)}× üstü**.\n\nMuhtemel sebepler:\n- Bot saldırısı: fake order'lar Design QC tetikliyor\n- Prompt değişikliği: token sayısı patladı\n- Yeni feature: AI çağrısı eklenip cache'siz çalışıyor`,
+          { spikeDay: maxDay, avg, days },
+          suggestedAction
+        )
+      );
+    }
+
+    return { findings, metrics: { days, avg, maxDay } };
   }
 
   // D) Model breakdown — hangi model en pahalı
