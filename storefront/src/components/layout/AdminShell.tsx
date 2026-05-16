@@ -41,9 +41,16 @@ interface AdminBadges {
   aiQc: number;
   proof: number;
   fason: number;
+  // Sefa 16 May v3 — Domain denetçi agent sistemi
+  auditorsPending: number;
+  auditorsCritical: number;
 }
 
-function aggregateBadges(orders: CustomerOrder[]): AdminBadges {
+function aggregateBadges(
+  orders: CustomerOrder[],
+  auditorsPending: number = 0,
+  auditorsCritical: number = 0
+): AdminBadges {
   let active = 0;
   let aiQc = 0;
   let proof = 0;
@@ -54,7 +61,14 @@ function aggregateBadges(orders: CustomerOrder[]): AdminBadges {
     if (o.status === "proof_pending") proof++;
     if (o.status === "paid" || o.status === "qc_pending") fason++;
   }
-  return { active, aiQc, proof, fason };
+  return {
+    active,
+    aiQc,
+    proof,
+    fason,
+    auditorsPending,
+    auditorsCritical,
+  };
 }
 
 interface NavItem {
@@ -113,6 +127,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
     aiQc: 0,
     proof: 0,
     fason: 0,
+    auditorsPending: 0,
+    auditorsCritical: 0,
   });
   const [switching, setSwitching] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -136,11 +152,52 @@ export function AdminShell({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const refresh = () => setBadges(aggregateBadges(listCustomerOrders()));
+    let auditorCounts = { pending: 0, critical: 0 };
+
+    const refresh = () => {
+      setBadges(
+        aggregateBadges(
+          listCustomerOrders(),
+          auditorCounts.pending,
+          auditorCounts.critical
+        )
+      );
+    };
+
     refresh();
     window.addEventListener("pim_customer_orders_updated", refresh);
-    return () =>
+
+    // Sefa 16 May v3: Auditor pending count'u 60sn'de bir çek.
+    // /api/admin/auditors response içinde pending özet var.
+    const fetchAuditorCounts = async () => {
+      try {
+        const res = await fetch("/api/admin/auditors", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          ok?: boolean;
+          pending?: {
+            totalPending?: number;
+            criticalPending?: number;
+          };
+        };
+        if (json.ok && json.pending) {
+          auditorCounts = {
+            pending: json.pending.totalPending ?? 0,
+            critical: json.pending.criticalPending ?? 0,
+          };
+          refresh();
+        }
+      } catch {
+        // sessiz
+      }
+    };
+    void fetchAuditorCounts();
+    const interval = setInterval(fetchAuditorCounts, 60_000);
+
+    return () => {
       window.removeEventListener("pim_customer_orders_updated", refresh);
+      clearInterval(interval);
+    };
   }, []);
 
   // Pathname değişince mobile drawer kapansın
@@ -266,6 +323,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {
         label: "Sistem",
         items: [
+          // Sefa 16 May v3 — Domain denetçi agent dashboard'u.
+          // Bekleyen aksiyon sayısı badge'inde gösterilir (kritikler kırmızı).
+          {
+            href: "/admin/denetciler",
+            label: "Denetçiler",
+            icon: <Icon.Sparkle size={16} />,
+            badge: badges.auditorsPending,
+            badgeAccent: badges.auditorsCritical > 0,
+          },
           {
             href: "/admin/raporlar",
             label: "Raporlar",
