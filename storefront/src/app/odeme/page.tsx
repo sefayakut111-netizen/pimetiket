@@ -81,7 +81,7 @@ const COPY = {
     // Address
     addressTitle: "Teslimat adresi",
     addressEmpty:
-      "Adres defterinde kayıtlı adresin yok. Hızlıca ekle:",
+      "Yeni teslimat adresi — bilgileri doldur, kaydedilecek ve bir sonraki siparişinde otomatik gelir.",
     addressNew: "Yeni adres ekle",
     addressDifferent: "Bu sipariş için farklı adres kullan",
     addressFormName: "Ad Soyad",
@@ -161,7 +161,7 @@ const COPY = {
     locale: "en-US",
 
     addressTitle: "Shipping address",
-    addressEmpty: "No saved address yet. Add one quickly:",
+    addressEmpty: "New delivery address — fill in details, we'll save it for next time.",
     addressNew: "Add new address",
     addressDifferent: "Use a different address for this order",
     addressFormName: "Full name",
@@ -381,6 +381,17 @@ export default function OdemePage() {
     (selectedAddress !== undefined || isNewAddressFilled(newAddr)) &&
     isInvoiceComplete(invoiceMode, tc, vkn, companyName, taxOffice);
 
+  /** Sefa 17 May UX K#3: Hangi alan eksik? — submit butonunun
+      neden disabled olduğunu kullanıcıya net göster */
+  const submitMissing: string[] = [];
+  if (cartItems.length === 0) submitMissing.push("sepet boş");
+  if (selectedAddress === undefined && !isNewAddressFilled(newAddr))
+    submitMissing.push("teslimat adresi");
+  if (!isInvoiceComplete(invoiceMode, tc, vkn, companyName, taxOffice))
+    submitMissing.push("fatura bilgisi");
+  if (!acceptSatis) submitMissing.push("Mesafeli Satış Sözleşmesi onayı");
+  if (!acceptCopyright) submitMissing.push("Telif hakkı onayı");
+
   // ============================================================
   // Coupon check
   // ============================================================
@@ -535,11 +546,13 @@ export default function OdemePage() {
   }
 
   return (
-    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] pt-10 md:pt-14 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        {/* Sefa 17 May UX denetim K#1: sticky topbar başlığı kesiyordu,
+            pt-10 md:pt-14 + sayfa header'a margin-top eklendi. */}
         <div className="mb-5 md:mb-7">
           <Eyebrow>{c.eyebrow}</Eyebrow>
-          <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight">
+          <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight text-lacivert">
             {c.title}
           </h1>
         </div>
@@ -565,59 +578,97 @@ export default function OdemePage() {
                   {/* Sefa 16 May denetim #21: aria-label eklendi
                       (placeholder ekran okuyucuya tek başına yetmez,
                       WCAG 1.3.1 + 3.3.2). */}
-                  {/* Sefa 16 May: Ad + Soyad ayrı (tek field yerine) */}
+                  {/* Sefa 17 May UX denetim K#4: tüm field'lara label */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label
+                        htmlFor="addr-first-name"
+                        className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                      >
+                        Ad <span className="text-kirmizi">*</span>
+                      </label>
+                      <Input
+                        id="addr-first-name"
+                        placeholder="Sefa"
+                        aria-label="Ad"
+                        value={newAddr.firstName}
+                        onChange={(e) => {
+                          const firstName = e.target.value;
+                          setNewAddr({
+                            ...newAddr,
+                            firstName,
+                            name: `${firstName} ${newAddr.lastName}`.trim(),
+                          });
+                        }}
+                        autoComplete="given-name"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="addr-last-name"
+                        className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                      >
+                        Soyad <span className="text-kirmizi">*</span>
+                      </label>
+                      <Input
+                        id="addr-last-name"
+                        placeholder="Yakut"
+                        aria-label="Soyad"
+                        value={newAddr.lastName}
+                        onChange={(e) => {
+                          const lastName = e.target.value;
+                          setNewAddr({
+                            ...newAddr,
+                            lastName,
+                            name: `${newAddr.firstName} ${lastName}`.trim(),
+                          });
+                        }}
+                        autoComplete="family-name"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="addr-phone"
+                      className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                    >
+                      Telefon <span className="text-kirmizi">*</span>
+                    </label>
                     <Input
-                      placeholder="Ad"
-                      aria-label="Ad"
-                      value={newAddr.firstName}
-                      onChange={(e) => {
-                        const firstName = e.target.value;
-                        setNewAddr({
-                          ...newAddr,
-                          firstName,
-                          name: `${firstName} ${newAddr.lastName}`.trim(),
-                        });
-                      }}
-                      autoComplete="given-name"
+                      id="addr-phone"
+                      placeholder="+90 5XX XXX XX XX"
+                      aria-label="Telefon numarası"
+                      value={newAddr.phone}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, phone: e.target.value })
+                      }
+                      autoComplete="tel"
                       required
+                      inputMode="tel"
                     />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="addr-addr"
+                      className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                    >
+                      Adres (mahalle + sokak + no){" "}
+                      <span className="text-kirmizi">*</span>
+                    </label>
                     <Input
-                      placeholder="Soyad"
-                      aria-label="Soyad"
-                      value={newAddr.lastName}
-                      onChange={(e) => {
-                        const lastName = e.target.value;
-                        setNewAddr({
-                          ...newAddr,
-                          lastName,
-                          name: `${newAddr.firstName} ${lastName}`.trim(),
-                        });
-                      }}
-                      autoComplete="family-name"
+                      id="addr-addr"
+                      placeholder="Beştepeler Mah. Nergis Sok. No:7/2"
+                      aria-label="Açık adres"
+                      value={newAddr.addr}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, addr: e.target.value })
+                      }
+                      autoComplete="street-address"
                       required
                     />
                   </div>
-                  <Input
-                    placeholder={c.addressFormPhone}
-                    aria-label={c.addressFormPhone}
-                    value={newAddr.phone}
-                    onChange={(e) =>
-                      setNewAddr({ ...newAddr, phone: e.target.value })
-                    }
-                    autoComplete="tel"
-                    required
-                  />
-                  <Input
-                    placeholder={c.addressFormAddr}
-                    aria-label={c.addressFormAddr}
-                    value={newAddr.addr}
-                    onChange={(e) =>
-                      setNewAddr({ ...newAddr, addr: e.target.value })
-                    }
-                    autoComplete="street-address"
-                    required
-                  />
                   {/* Sefa 16 May: Ülke + Şehir + İlçe — dropdown
                       (81 il + ~973 ilçe — src/lib/locations/tr-locations.ts) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -685,14 +736,23 @@ export default function OdemePage() {
                       </select>
                     </div>
                   </div>
-                  <Input
-                    placeholder={c.addressFormLabel}
-                    aria-label={c.addressFormLabel}
-                    value={newAddr.label}
-                    onChange={(e) =>
-                      setNewAddr({ ...newAddr, label: e.target.value })
-                    }
-                  />
+                  <div>
+                    <label
+                      htmlFor="addr-label"
+                      className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                    >
+                      Adres etiketi <span className="text-gri-500 normal-case font-normal tracking-normal">(opsiyonel)</span>
+                    </label>
+                    <Input
+                      id="addr-label"
+                      placeholder="Ev / Ofis / Atölye"
+                      aria-label="Adres etiketi"
+                      value={newAddr.label}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, label: e.target.value })
+                      }
+                    />
+                  </div>
                   {addresses.length > 0 && (
                     <button
                       type="button"
@@ -1109,13 +1169,24 @@ export default function OdemePage() {
                 <span>{c.acceptCopyright}</span>
               </label>
 
+              {/* Sefa 17 May UX K#3: butonun neden disabled olduğunu göster */}
+              {!canSubmit && submitMissing.length > 0 && (
+                <div className="mt-3 rounded-lg bg-saman/15 ring-1 ring-saman/30 px-3 py-2 text-[12.5px] text-saman-koyu">
+                  <strong>Eksik:</strong> {submitMissing.join(" · ")}
+                </div>
+              )}
+
               <Button
                 variant="primary"
                 size="lg"
                 block
                 onClick={submit}
                 disabled={!canSubmit}
-                className="mt-4"
+                className={cn(
+                  "mt-3 font-bold !text-white",
+                  !canSubmit && "!bg-gri-300 !text-gri-500 cursor-not-allowed",
+                  canSubmit && "!bg-pim-mercan hover:!bg-pim-mercan-koyu shadow-mercan"
+                )}
               >
                 {loading
                   ? c.processing
