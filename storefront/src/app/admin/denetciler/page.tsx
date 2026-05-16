@@ -140,6 +140,8 @@ export default function DenetcilerDashboardPage() {
   const [runAllResult, setRunAllResult] = useState<string | null>(null);
   const [testingMail, setTestingMail] = useState(false);
   const [testMailResult, setTestMailResult] = useState<string | null>(null);
+  const [sendingDigest, setSendingDigest] = useState(false);
+  const [digestResult, setDigestResult] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -201,6 +203,36 @@ export default function DenetcilerDashboardPage() {
       );
     } finally {
       setTestingMail(false);
+    }
+  };
+
+  const handleSendDigest = async () => {
+    if (sendingDigest) return;
+    setSendingDigest(true);
+    setDigestResult(null);
+    try {
+      const res = await fetch("/api/admin/auditors/daily-digest", {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        sent?: string[];
+        totalCritical?: number;
+        totalWarning?: number;
+        error?: string;
+      };
+      if (json.ok) {
+        setDigestResult(
+          `✓ Digest gönderildi (${json.sent?.[0] ?? "alıcı"})`
+        );
+      } else {
+        setDigestResult(`✗ ${json.error ?? "Hata"}`);
+      }
+      setTimeout(() => setDigestResult(null), 8000);
+    } catch (err) {
+      setDigestResult("✗ " + (err instanceof Error ? err.message : "?"));
+    } finally {
+      setSendingDigest(false);
     }
   };
 
@@ -328,6 +360,31 @@ export default function DenetcilerDashboardPage() {
                 title={testMailResult}
               >
                 {testMailResult}
+              </span>
+            )}
+            {/* Manuel Daily Digest tetikle */}
+            <button
+              type="button"
+              onClick={() => void handleSendDigest()}
+              disabled={sendingDigest}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12.5px] font-semibold transition-colors",
+                sendingDigest
+                  ? "bg-gri-100 text-gri-500 cursor-not-allowed"
+                  : "bg-white ring-1 ring-gri-200 text-lacivert hover:ring-pim-mercan"
+              )}
+              title="9 agent özetini içeren günlük brifing mailini şimdi at"
+            >
+              {sendingDigest ? "⏳ Gönder..." : "📨 Digest gönder"}
+            </button>
+            {digestResult && (
+              <span
+                className={cn(
+                  "text-[12px] font-semibold",
+                  digestResult.startsWith("✓") ? "text-yesil" : "text-kirmizi"
+                )}
+              >
+                {digestResult}
               </span>
             )}
             <Link
