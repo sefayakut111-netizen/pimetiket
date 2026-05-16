@@ -250,14 +250,19 @@ export default function OdemePage() {
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [newAddr, setNewAddr] = useState({
     label: "",
-    name: "",
+    firstName: "",
+    lastName: "",
+    name: "", // computed: firstName + " " + lastName
     addr: "",
     city: "",
+    district: "",
+    country: "Türkiye",
     phone: "",
   });
 
   // Invoice state
-  const [invoiceMode, setInvoiceMode] = useState<InvoiceMode>("none");
+  // Sefa 16 May: "none" mod kaldırıldı — bireysel fatura default
+  const [invoiceMode, setInvoiceMode] = useState<InvoiceMode>("individual");
   const [tc, setTc] = useState("");
   const [showTcSkipModal, setShowTcSkipModal] = useState(false);
   const [vkn, setVkn] = useState("");
@@ -418,9 +423,13 @@ export default function OdemePage() {
         }
       : {
           label: newAddr.label || undefined,
-          name: newAddr.name,
-          addr: newAddr.addr,
-          city: newAddr.city,
+          // Sefa 16 May: firstName + lastName otomatik birleştiriliyor name'e
+          name: `${newAddr.firstName} ${newAddr.lastName}`.trim(),
+          // Adres = "addr · ilçe · şehir · ülke" formatı (geriye uyumlu single field)
+          addr: [newAddr.addr, newAddr.district, newAddr.city, newAddr.country]
+            .filter((s) => s && s.trim().length > 0)
+            .join(", "),
+          city: newAddr.city, // şehir ayrı tutulur (zaten ayrı kolon)
           phone: newAddr.phone,
         };
 
@@ -555,26 +564,49 @@ export default function OdemePage() {
                   {/* Sefa 16 May denetim #21: aria-label eklendi
                       (placeholder ekran okuyucuya tek başına yetmez,
                       WCAG 1.3.1 + 3.3.2). */}
+                  {/* Sefa 16 May: Ad + Soyad ayrı (tek field yerine) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input
-                      placeholder={c.addressFormName}
-                      aria-label={c.addressFormName}
-                      value={newAddr.name}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, name: e.target.value })
-                      }
-                      autoComplete="name"
+                      placeholder="Ad"
+                      aria-label="Ad"
+                      value={newAddr.firstName}
+                      onChange={(e) => {
+                        const firstName = e.target.value;
+                        setNewAddr({
+                          ...newAddr,
+                          firstName,
+                          name: `${firstName} ${newAddr.lastName}`.trim(),
+                        });
+                      }}
+                      autoComplete="given-name"
+                      required
                     />
                     <Input
-                      placeholder={c.addressFormPhone}
-                      aria-label={c.addressFormPhone}
-                      value={newAddr.phone}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, phone: e.target.value })
-                      }
-                      autoComplete="tel"
+                      placeholder="Soyad"
+                      aria-label="Soyad"
+                      value={newAddr.lastName}
+                      onChange={(e) => {
+                        const lastName = e.target.value;
+                        setNewAddr({
+                          ...newAddr,
+                          lastName,
+                          name: `${newAddr.firstName} ${lastName}`.trim(),
+                        });
+                      }}
+                      autoComplete="family-name"
+                      required
                     />
                   </div>
+                  <Input
+                    placeholder={c.addressFormPhone}
+                    aria-label={c.addressFormPhone}
+                    value={newAddr.phone}
+                    onChange={(e) =>
+                      setNewAddr({ ...newAddr, phone: e.target.value })
+                    }
+                    autoComplete="tel"
+                    required
+                  />
                   <Input
                     placeholder={c.addressFormAddr}
                     aria-label={c.addressFormAddr}
@@ -583,25 +615,54 @@ export default function OdemePage() {
                       setNewAddr({ ...newAddr, addr: e.target.value })
                     }
                     autoComplete="street-address"
+                    required
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Sefa 16 May: Ülke + Şehir + İlçe ayrı alanlar
+                      (dropdown veri sonraki commit'te) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
+                        Ülke
+                      </label>
+                      <select
+                        value={newAddr.country}
+                        onChange={(e) =>
+                          setNewAddr({ ...newAddr, country: e.target.value })
+                        }
+                        className="w-full h-11 px-3 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan"
+                      >
+                        <option value="Türkiye">🇹🇷 Türkiye</option>
+                      </select>
+                    </div>
                     <Input
-                      placeholder={c.addressFormCity}
-                      aria-label={c.addressFormCity}
+                      placeholder="Şehir"
+                      aria-label="Şehir"
                       value={newAddr.city}
                       onChange={(e) =>
                         setNewAddr({ ...newAddr, city: e.target.value })
                       }
+                      autoComplete="address-level1"
+                      required
                     />
                     <Input
-                      placeholder={c.addressFormLabel}
-                      aria-label={c.addressFormLabel}
-                      value={newAddr.label}
+                      placeholder="İlçe"
+                      aria-label="İlçe"
+                      value={newAddr.district}
                       onChange={(e) =>
-                        setNewAddr({ ...newAddr, label: e.target.value })
+                        setNewAddr({ ...newAddr, district: e.target.value })
                       }
+                      autoComplete="address-level2"
+                      required
                     />
                   </div>
+                  <Input
+                    placeholder={c.addressFormLabel}
+                    aria-label={c.addressFormLabel}
+                    value={newAddr.label}
+                    onChange={(e) =>
+                      setNewAddr({ ...newAddr, label: e.target.value })
+                    }
+                  />
                   {addresses.length > 0 && (
                     <button
                       type="button"
@@ -710,15 +771,12 @@ export default function OdemePage() {
                 </div>
               ) : (
                 <>
-                  {/* 3 mod radio */}
+                  {/* 2 mod radio — Sefa 16 May: "Fatura istemiyorum"
+                      seçeneği kaldırıldı (yasal yükümlülük: KDV gideri
+                      yazılması zorunlu) */}
                   <div className="space-y-2">
                     {(
                       [
-                        {
-                          id: "none",
-                          label: c.invoiceModeNone,
-                          desc: c.invoiceModeNoneDesc,
-                        },
                         {
                           id: "individual",
                           label: c.invoiceModeIndividual,
@@ -1106,15 +1164,23 @@ export default function OdemePage() {
 // ============================================================
 
 function isNewAddressFilled(a: {
+  firstName?: string;
+  lastName?: string;
   name: string;
   addr: string;
   city: string;
+  district?: string;
   phone: string;
 }): boolean {
+  // firstName + lastName birlikte sağlanması yeterli (name otomatik üretiliyor)
+  const nameOk =
+    (a.firstName?.trim().length ?? 0) > 1 &&
+    (a.lastName?.trim().length ?? 0) > 1;
   return (
-    a.name.trim().length > 1 &&
+    nameOk &&
     a.addr.trim().length > 4 &&
     a.city.trim().length > 1 &&
+    (a.district?.trim().length ?? 0) > 1 &&
     a.phone.trim().length > 9
   );
 }
