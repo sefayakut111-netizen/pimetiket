@@ -22,11 +22,8 @@ import {
   type AssignmentStatus,
   type IssueCategory,
 } from "@/lib/fason/status-labels";
-// Sefa 17 May Migration 045 — yurt içi kargo carriers + tracking URL auto-gen
-import {
-  CARRIER_FALLBACK,
-  getTrackingUrl,
-} from "@/lib/shipping/carriers";
+// Sefa 17 May Migration 045 — Yurtiçi Kargo tracking URL auto-gen
+import { getTrackingUrl } from "@/lib/shipping/carriers";
 
 interface OrderInfo {
   assignment: {
@@ -77,8 +74,8 @@ export default function FasonOrderPage({
   const [issueCategory, setIssueCategory] = useState<IssueCategory>("dosya");
   const [issueDescription, setIssueDescription] = useState("");
 
-  // Shipping form
-  const [trackingCompany, setTrackingCompany] = useState("Yurtiçi Kargo");
+  // Shipping form — Sefa 17 May: tek kargo (Yurtiçi), readonly
+  const [trackingCompany] = useState("Yurtiçi Kargo");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
 
@@ -433,28 +430,21 @@ export default function FasonOrderPage({
             </p>
 
             <div className="space-y-3">
+              {/* Sefa 17 May: Pim Etiket sadece Yurtiçi Kargo ile çalışır
+                  (tek anlaşma). Dropdown yerine readonly badge. */}
               <div>
-                <label
-                  htmlFor="fason-tr-company"
-                  className="block text-[14px] font-semibold text-lacivert mb-2"
-                >
+                <div className="block text-[14px] font-semibold text-lacivert mb-2">
                   Kargo firması:
-                </label>
-                {/* Sefa 17 May Migration 045: 8 yurt içi kargo seed listesi
-                    (DB shipment_carriers ile aynı). "Diğer" seçilirse fason
-                    tracking URL'i manuel yazar. */}
-                <select
-                  id="fason-tr-company"
-                  value={trackingCompany}
-                  onChange={(e) => setTrackingCompany(e.target.value)}
-                  className="w-full p-4 text-[16px] border-2 border-gri-200 rounded-xl focus:border-pim-mercan focus:outline-none"
-                >
-                  {CARRIER_FALLBACK.map((c) => (
-                    <option key={c.code} value={c.displayName}>
-                      {c.displayName}
-                    </option>
-                  ))}
-                </select>
+                </div>
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-yesil-soft/40 ring-1 ring-yesil/30">
+                  <span className="text-[20px]">🚚</span>
+                  <div className="font-bold text-[16px] text-yesil-koyu">
+                    Yurtiçi Kargo
+                  </div>
+                  <span className="ml-auto text-[11px] uppercase tracking-[0.06em] font-semibold text-yesil-koyu/70">
+                    Tek anlaşmalı kargo
+                  </span>
+                </div>
               </div>
 
               <div>

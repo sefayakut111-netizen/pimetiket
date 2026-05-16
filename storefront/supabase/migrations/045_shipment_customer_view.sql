@@ -30,39 +30,26 @@ create table if not exists public.shipment_carriers (
   created_at   timestamptz not null default now()
 );
 
--- Seed: Türkiye'nin yaygın 6 yurt içi kargo şirketi
+-- Seed: SADECE Yurtiçi Kargo (Sefa 17 May kararı — tek anlaşma)
+-- Not: Diğer kargo şirketleri sonradan eklenecekse insert ile aktif
+-- edilir; rezerv code'lar inactive olarak da seed edilmiyor — DB sade.
 insert into public.shipment_carriers
   (code, display_name, tracking_url_template, sort_order, active)
 values
   ('yurtici', 'Yurtiçi Kargo',
    'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code={{TRACKING_NUMBER}}',
-   10, true),
-  ('aras', 'Aras Kargo',
-   'https://kargotakip.araskargo.com.tr/?code={{TRACKING_NUMBER}}',
-   20, true),
-  ('mng', 'MNG Kargo',
-   'https://service.mngkargo.com.tr/iframe/track.aspx?id={{TRACKING_NUMBER}}',
-   30, true),
-  ('ptt', 'PTT Kargo',
-   'https://gonderitakip.ptt.gov.tr/Track/Verify?q={{TRACKING_NUMBER}}',
-   40, true),
-  ('surat', 'Sürat Kargo',
-   'https://www.suratkargo.com.tr/KargoTakip/?kargotakipno={{TRACKING_NUMBER}}',
-   50, true),
-  ('hepsijet', 'HepsiJet',
-   'https://hepsijet.com/gonderi-takibi?gonderiId={{TRACKING_NUMBER}}',
-   60, true),
-  ('ups', 'UPS Kargo',
-   'https://www.ups.com/track?tracknum={{TRACKING_NUMBER}}',
-   70, true),
-  ('diger', 'Diğer (manuel link)',
-   null,
-   999, true)
+   10, true)
 on conflict (code) do update
   set display_name = excluded.display_name,
       tracking_url_template = excluded.tracking_url_template,
       sort_order = excluded.sort_order,
       active = excluded.active;
+
+-- Eski seed kayıtları (varsa) inaktif yap — bu migration 045'i 2.
+-- kez run edenler veya daha önce 8 carrier seed edilenler için temizlik.
+update public.shipment_carriers
+  set active = false
+  where code in ('aras', 'mng', 'ptt', 'surat', 'hepsijet', 'ups', 'diger');
 
 -- RLS: public okuyabilir (dropdown için)
 alter table public.shipment_carriers enable row level security;

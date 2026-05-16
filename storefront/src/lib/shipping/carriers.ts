@@ -22,8 +22,13 @@ export interface CarrierMeta {
 }
 
 /**
- * Migration 045'teki seed ile aynı liste. DB unreachable senaryosu için
+ * Sefa 17 May: SADECE Yurtiçi Kargo ile çalışılıyor (tek anlaşma).
+ * Migration 045'teki seed ile aynı. DB unreachable senaryosu için
  * SSR fallback. Aktif source-of-truth: DB tablosu.
+ *
+ * İleride 2. kargo şirketiyle anlaşma yapılırsa:
+ *   1. Bu array'e ekle
+ *   2. Migration 046 ile DB'ye insert/update
  */
 export const CARRIER_FALLBACK: CarrierMeta[] = [
   {
@@ -32,59 +37,21 @@ export const CARRIER_FALLBACK: CarrierMeta[] = [
     trackingUrlTemplate:
       "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code={{TRACKING_NUMBER}}",
   },
-  {
-    code: "aras",
-    displayName: "Aras Kargo",
-    trackingUrlTemplate:
-      "https://kargotakip.araskargo.com.tr/?code={{TRACKING_NUMBER}}",
-  },
-  {
-    code: "mng",
-    displayName: "MNG Kargo",
-    trackingUrlTemplate:
-      "https://service.mngkargo.com.tr/iframe/track.aspx?id={{TRACKING_NUMBER}}",
-  },
-  {
-    code: "ptt",
-    displayName: "PTT Kargo",
-    trackingUrlTemplate:
-      "https://gonderitakip.ptt.gov.tr/Track/Verify?q={{TRACKING_NUMBER}}",
-  },
-  {
-    code: "surat",
-    displayName: "Sürat Kargo",
-    trackingUrlTemplate:
-      "https://www.suratkargo.com.tr/KargoTakip/?kargotakipno={{TRACKING_NUMBER}}",
-  },
-  {
-    code: "hepsijet",
-    displayName: "HepsiJet",
-    trackingUrlTemplate:
-      "https://hepsijet.com/gonderi-takibi?gonderiId={{TRACKING_NUMBER}}",
-  },
-  {
-    code: "ups",
-    displayName: "UPS Kargo",
-    trackingUrlTemplate: "https://www.ups.com/track?tracknum={{TRACKING_NUMBER}}",
-  },
-  {
-    code: "diger",
-    displayName: "Diğer (manuel link)",
-    trackingUrlTemplate: null,
-  },
 ];
+
+/** Default carrier (tek seçenek olduğu için her zaman Yurtiçi). */
+export const DEFAULT_CARRIER = CARRIER_FALLBACK[0];
 
 /**
  * Carrier code veya free-text display name'den meta bul.
- * Fason "Yurtiçi" yazmış, biz "yurtici" code istiyoruz → match.
+ * Sefa 17 May: tek carrier (yurtici) ile çalışıyoruz — match olmazsa
+ * fallback olarak DEFAULT_CARRIER (Yurtiçi Kargo) döner. Eski sistemde
+ * fason "MNG" / "Aras" yazmışsa, müşteri tarafı "Yurtiçi" görür.
+ * Tarihsel veri için label'ı koruyup template'i null'a düşürürüz.
  */
 export function findCarrier(input: string | null | undefined): CarrierMeta {
   if (!input) {
-    return {
-      code: "diger",
-      displayName: "Kargo şirketi",
-      trackingUrlTemplate: null,
-    };
+    return DEFAULT_CARRIER;
   }
   const lower = input.toLowerCase().trim();
   const found = CARRIER_FALLBACK.find(
@@ -94,13 +61,13 @@ export function findCarrier(input: string | null | undefined): CarrierMeta {
       // "Yurtiçi" → "yurtici" gibi diakritik tolerans
       stripDiacritics(c.displayName.toLowerCase()) === stripDiacritics(lower)
   );
-  return (
-    found ?? {
-      code: "diger",
-      displayName: input,
-      trackingUrlTemplate: null,
-    }
-  );
+  if (found) return found;
+  // Eski/bilinmeyen carrier — label'ı koru, otomatik link yok
+  return {
+    code: "yurtici",
+    displayName: input,
+    trackingUrlTemplate: null,
+  };
 }
 
 /**
