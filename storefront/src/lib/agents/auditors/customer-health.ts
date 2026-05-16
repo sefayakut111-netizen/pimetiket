@@ -45,6 +45,10 @@ export class CustomerHealthAuditor extends AuditorBase {
     findings.push(...abandonment.findings);
     metrics.abandonment = abandonment.metrics;
 
+    const aov = await this.checkAverageOrderValue();
+    findings.push(...aov.findings);
+    metrics.aov = aov.metrics;
+
     const counts = countFindings(findings);
     return {
       findings,
@@ -273,6 +277,106 @@ export class CustomerHealthAuditor extends AuditorBase {
         abandonmentRate: rate,
         abandonedCount: abandonedUsers.length,
         totalCartUsers: userIds.length,
+      },
+    };
+  }
+
+  // E) AOV — ortalama sipariş tutarı + trend
+  private async checkAverageOrderValue() {
+    const findings: AuditorFinding[] = [];
+
+    const thisWeek = new Date();
+    thisWeek.setDate(thisWeek.getDate() - 7);
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 14);
+
+    const successStatuses = [
+      "paid",
+      "shipped",
+      "delivered",
+      "in_production",
+      "ready_to_ship",
+      "qc_pending",
+      "proof_pending",
+    ];
+
+    // Son 7 gün
+    const { data: thisData } = await this.admin
+      .from("orders")
+      .select("total")
+      .gte("created_at", thisWeek.toISOString())
+      .in("status", successStatuses as never);
+
+    // Önceki 7 gün
+    const { data: lastData } = await this.admin
+      .from("orders")
+      .select("total")
+      .gte("created_at", lastWeek.toISOString())
+      .lt("created_at", thisWeek.toISOString())
+      .in("status", successStatuses as never);
+
+    const thisRows = (thisData ?? []) as Array<{ total: number | string }>;
+    const lastRows = (lastData ?? []) as Array<{ total: number | string }>;
+
+    if (thisRows.length === 0) {
+      return {
+        findings,
+        metrics: { thisAvg: 0, lastAvg: 0, deviation: 0 },
+      };
+    }
+
+    const thisAvg =
+      thisRows.reduce((s, r) => s + Number(r.total ?? 0), 0) / thisRows.length;
+    const lastAvg =
+      lastRows.length > 0
+        ? lastRows.reduce((s, r) => s + Number(r.total ?? 0), 0) /
+          lastRows.length
+        : thisAvg;
+    const deviation = lastAvg > 0 ? (thisAvg - lastAvg) / lastAvg : 0;
+
+    const fmtTl = (n: number) =>
+      n.toLocaleString("tr-TR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }) + " TL";
+
+    if (deviation < -0.2) {
+      findings.push(
+        this.warning(
+          "aov_drop",
+          `AOV %${Math.abs(deviation * 100).toFixed(0)} düştü: ${fmtTl(thisAvg)}`,
+          `Bu hafta ortalama sipariş tutarı **${fmtTl(thisAvg)}** (önceki hafta ${fmtTl(lastAvg)}). Düşüş anormal — küçük sipariş ağırlığı artmış olabilir. Cross-sell + bundle teklif denenebilir.`,
+          { thisAvg, lastAvg, deviation, thisCount: thisRows.length }
+        )
+      );
+    } else if (deviation > 0.2) {
+      findings.push(
+        this.info(
+          "aov_grow",
+          `AOV %${(deviation * 100).toFixed(0)} büyüdü: ${fmtTl(thisAvg)}`,
+          `Bu hafta ortalama sipariş tutarı **${fmtTl(thisAvg)}** (önceki hafta ${fmtTl(lastAvg)}). Büyüme pozitif sinyal.`,
+          { thisAvg, lastAvg, deviation }
+        )
+      );
+    } else {
+      findings.push(
+        this.info(
+          "aov_stable",
+          `AOV: ${fmtTl(thisAvg)} (stabil)`,
+          `Bu hafta: ${fmtTl(thisAvg)} (${thisRows.length} sipariş) · Önceki: ${fmtTl(lastAvg)}.`,
+          { thisAvg, lastAvg, deviation, thisCount: thisRows.length }
+        )
+      );
+    }
+
+    return {
+      findings,
+      metrics: {
+        thisAvg,
+        lastAvg,
+        deviation,
+        thisCount: thisRows.length,
+        lastCount: lastRows.length,
       },
     };
   }
