@@ -65,6 +65,10 @@ export class ComplianceAuditor extends AuditorBase {
     findings.push(...legal.findings);
     metrics.legal = legal.metrics;
 
+    const mailInfra = await this.checkMailInfrastructure();
+    findings.push(...mailInfra.findings);
+    metrics.mailInfra = mailInfra.metrics;
+
     const counts = countFindings(findings);
     return {
       findings,
@@ -254,6 +258,99 @@ export class ComplianceAuditor extends AuditorBase {
     // Sefa /admin/ayarlar'a "last_legal_review_date" tutması önerilir.
     // Şu an stub.
     return { findings, metrics: { docs: LEGAL_DOCS.length } };
+  }
+
+  // F) Mail altyapı durumu — Resend domain doğrulu mu
+  private async checkMailInfrastructure() {
+    const findings: AuditorFinding[] = [];
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      findings.push(
+        this.warning(
+          "mail_infra_no_key",
+          "RESEND_API_KEY env'de yok",
+          "Mail sistemi şu an çalışmaz. Sefa Resend API key'i Vercel'e eklemeli.",
+          { env: "RESEND_API_KEY" }
+        )
+      );
+      return { findings, metrics: { configured: false } };
+    }
+
+    try {
+      const res = await fetch("https://api.resend.com/domains", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      if (!res.ok) {
+        findings.push(
+          this.warning(
+            "mail_infra_api_error",
+            `Resend API hatası: HTTP ${res.status}`,
+            "API key geçersiz veya quota aşıldı. Resend dashboard'tan kontrol et.",
+            { status: res.status }
+          )
+        );
+        return {
+          findings,
+          metrics: { configured: true, apiError: res.status },
+        };
+      }
+
+      const json = (await res.json()) as {
+        data?: Array<{ name: string; status: string }>;
+      };
+      const domains = json.data ?? [];
+      const pimDomain = domains.find((d) => d.name === "pimetiket.com");
+
+      if (!pimDomain) {
+        findings.push(
+          this.warning(
+            "mail_infra_no_domain",
+            "pimetiket.com Resend'de yok",
+            "Domain ekli değil — mail gönderilemez. Sefa Resend dashboard → Add Domain.",
+            { existingDomains: domains.map((d) => d.name) }
+          )
+        );
+      } else if (pimDomain.status !== "verified") {
+        findings.push(
+          this.warning(
+            "mail_infra_unverified",
+            `pimetiket.com Resend'de "${pimDomain.status}"`,
+            `Domain durumu **${pimDomain.status}**. Doğrulanana kadar mail gönderilemez. DNS kayıtlarını (DKIM/SPF/MX) Cloudflare'e ekle ve Resend'de verify bas.`,
+            { resendStatus: pimDomain.status }
+          )
+        );
+      } else {
+        findings.push(
+          this.info(
+            "mail_infra_ok",
+            "Resend mail altyapısı sağlıklı",
+            "pimetiket.com **verified** durumda. Tüm mail bildirimleri çalışır.",
+            { resendStatus: "verified" }
+          )
+        );
+      }
+
+      return {
+        findings,
+        metrics: {
+          configured: true,
+          domainCount: domains.length,
+          pimStatus: pimDomain?.status ?? "missing",
+        },
+      };
+    } catch (err) {
+      findings.push(
+        this.info(
+          "mail_infra_check_failed",
+          "Mail altyapı kontrolü başarısız",
+          `Resend API'sine ulaşılamadı: ${err instanceof Error ? err.message : "unknown"}`,
+          { error: String(err) }
+        )
+      );
+      return { findings, metrics: { configured: true, networkError: true } };
+    }
   }
 }
 

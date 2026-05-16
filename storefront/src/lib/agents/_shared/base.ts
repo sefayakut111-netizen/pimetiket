@@ -223,28 +223,33 @@ export abstract class AuditorBase {
 
     // 7) Mail bildirimleri (fire-and-forget — mail başarısızlığı run'ı bozmaz)
     //
-    // Strateji (Sefa kuralı 16 May):
-    //   - Rapor maili: HER run'da gönderilir (info-only olsa bile;
-    //     Sefa "Gece Hesap Kapanışı" benzeri günlük özet alır)
+    // Strateji (Sefa kuralı 16 May v2):
+    //   - HER run'da mail YOK — sadece warning/critical varsa
+    //   - Manuel run (Sefa "Şimdi çalıştır") → mail HER ZAMAN (Sefa test
+    //     için bilinçli tetikledi, dönüş bilgisi alsın)
+    //   - Cron + info-only → MAIL ATILMAZ (gürültü engelle, günde 9 mail
+    //     yerine sadece sorun olduğunda mail gelir)
     //   - Onay isteme maili: SADECE pending_action oluşmuşsa
-    //     (her finding için ayrı değil, run için tek mail)
-    //
-    // Manual trigger'da da mail gider — Sefa "Şimdi çalıştır"
-    // basınca aynı pipeline çalışır.
-    void sendAuditorReport({
-      auditorName: this.auditorName,
-      runId,
-      summary: result.summary,
-      summaryMd: result.summaryMd,
-      findingsCount: result.findings.length,
-      criticalCount: counts.critical,
-      warningCount: counts.warning,
-    }).catch((err) => {
-      Sentry.captureException(err, {
-        tags: { scope: "auditor.mail_report", auditor: this.auditorName },
-        extra: { runId },
+    const hasIssue = counts.warning > 0 || counts.critical > 0;
+    const isManual = opts.triggerType === "manual";
+    const shouldSendReport = hasIssue || isManual;
+
+    if (shouldSendReport) {
+      void sendAuditorReport({
+        auditorName: this.auditorName,
+        runId,
+        summary: result.summary,
+        summaryMd: result.summaryMd,
+        findingsCount: result.findings.length,
+        criticalCount: counts.critical,
+        warningCount: counts.warning,
+      }).catch((err) => {
+        Sentry.captureException(err, {
+          tags: { scope: "auditor.mail_report", auditor: this.auditorName },
+          extra: { runId },
+        });
       });
-    });
+    }
 
     // Pending action varsa ek onay maili (kritik/uyarı olanlar)
     if (pendingRows.length > 0) {
