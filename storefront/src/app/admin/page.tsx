@@ -339,6 +339,11 @@ export default function AdminDashboardPage() {
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
   const [funnelMetrics, setFunnelMetrics] = useState<Record<string, FunnelMetric>>({});
+  const [auditorPending, setAuditorPending] = useState<{
+    critical: number;
+    warning: number;
+    total: number;
+  }>({ critical: 0, warning: 0, total: 0 });
 
   useEffect(() => {
     const refresh = () => {
@@ -360,6 +365,26 @@ export default function AdminDashboardPage() {
       .then((data: { metrics?: Record<string, FunnelMetric> } | null) => {
         if (data?.metrics) setFunnelMetrics(data.metrics);
       })
+      .catch(() => {
+        /* silently */
+      });
+    // Auditor pending action sayımı (üst alert strip için)
+    fetch("/api/admin/auditors")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: {
+          ok?: boolean;
+          pending?: { criticalPending: number; warningPending: number; totalPending: number };
+        } | null) => {
+          if (data?.ok && data.pending) {
+            setAuditorPending({
+              critical: data.pending.criticalPending,
+              warning: data.pending.warningPending,
+              total: data.pending.totalPending,
+            });
+          }
+        }
+      )
       .catch(() => {
         /* silently */
       });
@@ -403,7 +428,23 @@ export default function AdminDashboardPage() {
   const countChange = formatChange(count, prevCount);
   const revenueChange = formatChange(revenue, prevRevenue);
 
-  const alerts = useMemo(() => detectAlerts(orders), [orders]);
+  const alerts = useMemo(() => {
+    const baseAlerts = detectAlerts(orders);
+    // Auditor pending action varsa en üste ekle
+    if (auditorPending.total > 0) {
+      baseAlerts.unshift({
+        id: "auditor-pending",
+        level: auditorPending.critical > 0 ? "critical" : "warn",
+        message:
+          auditorPending.critical > 0
+            ? `🔴 ${auditorPending.critical} kritik denetçi aksiyonu onayını bekliyor`
+            : `🟡 ${auditorPending.total} denetçi aksiyonu onayını bekliyor`,
+        href: "/admin/denetciler/bekleyen",
+        cta: "Onay paneli",
+      });
+    }
+    return baseAlerts;
+  }, [orders, auditorPending]);
   const todoList = useMemo(() => buildTodoList(orders), [orders]);
 
   // Chart datası — daima rangeWindow.days kullan
