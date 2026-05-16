@@ -68,6 +68,8 @@ export default function DenetcilerDashboardPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [runningAll, setRunningAll] = useState(false);
+  const [runAllResult, setRunAllResult] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -97,6 +99,40 @@ export default function DenetcilerDashboardPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const handleRunAll = async () => {
+    if (runningAll) return;
+    setRunningAll(true);
+    setRunAllResult(null);
+    try {
+      const res = await fetch("/api/admin/auditors/run-all", {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        total?: number;
+        succeeded?: number;
+        failed?: number;
+        totalDurationMs?: number;
+      };
+      if (json.ok) {
+        const dur = Math.round((json.totalDurationMs ?? 0) / 1000);
+        setRunAllResult(
+          `✓ ${json.succeeded}/${json.total} agent çalıştı (${dur}s)`
+        );
+        await refresh();
+      } else {
+        setRunAllResult("✗ Hata oluştu");
+      }
+      setTimeout(() => setRunAllResult(null), 8000);
+    } catch (err) {
+      setRunAllResult(
+        "✗ " + (err instanceof Error ? err.message : "Ağ hatası")
+      );
+    } finally {
+      setRunningAll(false);
+    }
+  };
 
   const auditors =
     data?.auditors ??
@@ -137,7 +173,31 @@ export default function DenetcilerDashboardPage() {
             </p>
           </div>
           {/* Quick links — Adım 8 */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
+            {/* Tümünü çalıştır butonu */}
+            <button
+              type="button"
+              onClick={() => void handleRunAll()}
+              disabled={runningAll}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12.5px] font-semibold transition-colors",
+                runningAll
+                  ? "bg-gri-100 text-gri-500 cursor-not-allowed"
+                  : "bg-pim-mercan text-white hover:bg-pim-mercan-koyu"
+              )}
+            >
+              {runningAll ? "⏳ Çalışıyor..." : "▶ Tümünü çalıştır"}
+            </button>
+            {runAllResult && (
+              <span
+                className={cn(
+                  "text-[12px] font-semibold",
+                  runAllResult.startsWith("✓") ? "text-yesil" : "text-kirmizi"
+                )}
+              >
+                {runAllResult}
+              </span>
+            )}
             <Link
               href="/admin/denetciler/bekleyen"
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"

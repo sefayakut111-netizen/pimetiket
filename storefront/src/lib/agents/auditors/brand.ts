@@ -41,8 +41,10 @@ export class BrandAuditor extends AuditorBase {
     findings.push(...blogTone.findings);
     metrics.blogTone = blogTone.metrics;
 
-    // Yorum yanıtlarındaki ton kontrolü (kurumsal yanıt varsa)
-    // Şu an stub — Sefa kurumsal yanıt sistemi açtığında devreye girer.
+    // i18n TR/EN parity kontrolü
+    const i18nParity = await this.checkI18nParity();
+    findings.push(...i18nParity.findings);
+    metrics.i18nParity = i18nParity.metrics;
 
     findings.push(
       this.info(
@@ -124,6 +126,85 @@ export class BrandAuditor extends AuditorBase {
       findings,
       metrics: { checked: posts.length, issues: issues.length },
     };
+  }
+
+  // i18n TR/EN parity — translation dosyalarında eksik key tespiti
+  // Note: bu agent run-time'da çalışır, build artifact'lerine bakar.
+  // Static analysis için ESLint pre-commit hook daha sağlıklı, ama bu
+  // canlı sistemde "Sefa eklediği TR key'i EN'e çevirmedi mi" tespiti yapar.
+  private async checkI18nParity() {
+    const findings: AuditorFinding[] = [];
+
+    try {
+      // Dynamic import — runtime'da locale dosyalarını oku
+      const { tr } = await import("@/lib/i18n/translations/tr");
+      const { en } = await import("@/lib/i18n/translations/en");
+
+      const flattenKeys = (
+        obj: Record<string, unknown>,
+        prefix = ""
+      ): string[] => {
+        const keys: string[] = [];
+        for (const [k, v] of Object.entries(obj)) {
+          const full = prefix ? `${prefix}.${k}` : k;
+          if (v && typeof v === "object" && !Array.isArray(v)) {
+            keys.push(...flattenKeys(v as Record<string, unknown>, full));
+          } else {
+            keys.push(full);
+          }
+        }
+        return keys;
+      };
+
+      const trKeys = new Set(flattenKeys(tr as Record<string, unknown>));
+      const enKeys = new Set(flattenKeys(en as Record<string, unknown>));
+
+      const onlyInTr = [...trKeys].filter((k) => !enKeys.has(k));
+      const onlyInEn = [...enKeys].filter((k) => !trKeys.has(k));
+
+      if (onlyInTr.length > 0 || onlyInEn.length > 0) {
+        findings.push(
+          this.warning(
+            "i18n_parity",
+            `i18n eksik: TR-only ${onlyInTr.length} / EN-only ${onlyInEn.length}`,
+            `İki dil arasında **${onlyInTr.length + onlyInEn.length}** key uyumsuzluğu:\n${onlyInTr.length > 0 ? `\nTR'de var, EN'de yok:\n${onlyInTr.slice(0, 10).map((k) => `- ${k}`).join("\n")}` : ""}${onlyInEn.length > 0 ? `\n\nEN'de var, TR'de yok:\n${onlyInEn.slice(0, 10).map((k) => `- ${k}`).join("\n")}` : ""}`,
+            {
+              onlyInTr: onlyInTr.slice(0, 50),
+              onlyInEn: onlyInEn.slice(0, 50),
+              trCount: trKeys.size,
+              enCount: enKeys.size,
+            }
+          )
+        );
+      } else {
+        findings.push(
+          this.info(
+            "i18n_parity_ok",
+            `i18n TR/EN tutarlı (${trKeys.size} key)`,
+            `Translation parity ✓`,
+            { count: trKeys.size }
+          )
+        );
+      }
+
+      return {
+        findings,
+        metrics: {
+          trKeys: trKeys.size,
+          enKeys: enKeys.size,
+          missing: onlyInTr.length + onlyInEn.length,
+        },
+      };
+    } catch (err) {
+      // Build artifact'leri runtime'da erişilemiyorsa skip
+      return {
+        findings,
+        metrics: {
+          skipped: true,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      };
+    }
   }
 }
 
