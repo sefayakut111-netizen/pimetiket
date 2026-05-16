@@ -125,15 +125,38 @@ export default function DenetcilerDashboardPage() {
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Header */}
-        <div className="mb-6">
-          <Eyebrow>Domain Denetçi Agent'lar</Eyebrow>
-          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Denetçiler
-          </h1>
-          <p className="mt-1.5 text-base text-gri-700">
-            9 ajan sistemini günlük denetler. Kritik aksiyonlar için
-            onay sana düşer.
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <Eyebrow>Domain Denetçi Agent'lar</Eyebrow>
+            <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+              Denetçiler
+            </h1>
+            <p className="mt-1.5 text-base text-gri-700">
+              9 ajan sistemini günlük denetler. Kritik aksiyonlar için
+              onay sana düşer.
+            </p>
+          </div>
+          {/* Quick links — Adım 8 */}
+          <div className="flex gap-2 flex-wrap">
+            <Link
+              href="/admin/denetciler/bekleyen"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"
+            >
+              🔔 Bekleyen
+            </Link>
+            <Link
+              href="/admin/denetciler/ertelenenler"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"
+            >
+              ⏸ Karar arşivi
+            </Link>
+            <Link
+              href="/admin/denetciler/gecmis"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"
+            >
+              📋 Geçmiş
+            </Link>
+          </div>
         </div>
 
         {/* Pending action bar */}

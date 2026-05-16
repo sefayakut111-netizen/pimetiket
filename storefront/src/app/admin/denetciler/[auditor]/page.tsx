@@ -18,6 +18,7 @@ import { use as useParamsAsync } from "react";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ApprovalCard } from "@/components/admin/auditors/ApprovalCard";
+import { TrendSparkline } from "@/components/admin/auditors/TrendSparkline";
 import {
   AUDITOR_NAMES,
   AUDITOR_LABELS,
@@ -95,6 +96,7 @@ export default function AuditorDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [runSuccess, setRunSuccess] = useState<string | null>(null);
 
   const isLive = auditorName && LIVE_AUDITORS.has(auditorName);
 
@@ -129,6 +131,7 @@ export default function AuditorDetailPage({
     if (!auditorName || running || !isLive) return;
     setRunning(true);
     setRunError(null);
+    setRunSuccess(null);
     try {
       const res = await fetch(`/api/admin/auditors/${auditorName}/run`, {
         method: "POST",
@@ -142,8 +145,11 @@ export default function AuditorDetailPage({
       if (!json.ok) {
         setRunError(json.message ?? json.error ?? "Çalıştırma başarısız");
       } else {
-        // Yeni run'ı yükle
+        // Yeni run'ı yükle + başarı feedback
         await refresh();
+        setRunSuccess("Tarama tamamlandı, son sonuç yüklendi");
+        // 4 sn sonra success mesajını gizle
+        setTimeout(() => setRunSuccess(null), 4000);
       }
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Ağ hatası");
@@ -229,6 +235,11 @@ export default function AuditorDetailPage({
             {runError && (
               <span className="text-[12.5px] text-kirmizi font-semibold">
                 ⚠ {runError}
+              </span>
+            )}
+            {runSuccess && (
+              <span className="text-[12.5px] text-yesil font-semibold">
+                ✓ {runSuccess}
               </span>
             )}
           </div>
@@ -393,11 +404,42 @@ export default function AuditorDetailPage({
               </Card>
             )}
 
-            {/* Recent runs (trend için raw liste — Adım 8'de chart) */}
+            {/* Trend grafikleri (Adım 8 polish) */}
+            {data.recentRuns.length > 1 && (
+              <Card padding="p-6" className="mb-4">
+                <h2 className="text-[16px] font-semibold text-lacivert mb-4">
+                  Son {data.recentRuns.length} run trendi
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <TrendSparkline
+                    data={data.recentRuns}
+                    metric="findings"
+                    label="📊 Toplam bulgu"
+                  />
+                  <TrendSparkline
+                    data={data.recentRuns}
+                    metric="critical"
+                    label="🔴 Kritik"
+                  />
+                  <TrendSparkline
+                    data={data.recentRuns}
+                    metric="warning"
+                    label="🟡 Uyarı"
+                  />
+                  <TrendSparkline
+                    data={data.recentRuns}
+                    metric="duration"
+                    label="⏱ Süre (s)"
+                  />
+                </div>
+              </Card>
+            )}
+
+            {/* Geçmiş runs tablosu */}
             {data.recentRuns.length > 1 && (
               <Card padding="p-6">
                 <h2 className="text-[16px] font-semibold text-lacivert mb-3">
-                  Son 30 gün ({data.recentRuns.length} run)
+                  Geçmiş run kayıtları
                 </h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-[12.5px]">
