@@ -35,14 +35,19 @@ export default function OnBilgilendirmePage() {
           7580607612
         </li>
         <li>
+          <strong>Mersis No:</strong> 0758060761200001
+        </li>
+        <li>
+          <strong>Ticaret Sicil No:</strong> 493212
+        </li>
+        <li>
           <strong>Ana Faaliyet:</strong> 464903 — Kırtasiye Ürünleri Toptan
           Ticareti
         </li>
         <li>
-          <strong>Adres:</strong>{" "}
-          <em>
-            (İş yeri kayıt değişikliği sürecinde — adres yakında güncellenecek)
-          </em>
+          <strong>Adres:</strong> Workinton Ankara Söğütözü, Beştepeler Mah.
+          Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510
+          Çankaya/Ankara
         </li>
         <li>
           <strong>E-posta:</strong>{" "}

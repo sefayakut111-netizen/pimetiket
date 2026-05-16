@@ -30,20 +30,16 @@ export default function KvkkPage() {
         <br />
         Vergi Dairesi / No: Doğanbey Vergi Dairesi / 7580607612
         <br />
+        Mersis No: 0758060761200001 · Tic. Sicil No: 493212
+        <br />
         Ana Faaliyet: 464903 — Kırtasiye Ürünleri Toptan Ticareti
         <br />
-        Tebligat Adresi:{" "}
-        <em>
-          (İş yeri kayıt değişikliği sürecinde — adres yakında güncellenecek)
-        </em>
+        Tebligat Adresi: Workinton Ankara Söğütözü, Beştepeler Mah. Nergis
+        Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510 Çankaya/Ankara
         <br />
         E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
         <br />
         Web: <a href="https://pimetiket.com">pimetiket.com</a>
-      </p>
-      <p className="text-[12.5px] text-gri-700 italic">
-        Not: Şirket ünvanı resmî değişiklik sürecindedir. Vergi numarası ve
-        vergi dairesi sabittir.
       </p>
 
       <h2>2. İşlenen Kişisel Veri Kategorileri</h2>

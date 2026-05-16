@@ -267,6 +267,10 @@ export function Footer() {
             <div className="text-[11px] font-mono text-white/45">
               Mersis: 0758060761200001 · Tic. Sicil No: 493212
             </div>
+            <div className="text-[11px] text-white/45 max-w-[480px]">
+              Workinton Ankara Söğütözü · Beştepeler Mah. Nergis Sok. No:7/2
+              ViaFlat İş Merkezi Ofis: 27-28, 06510 Çankaya/Ankara
+            </div>
           </div>
           {/* Sefa 16 May UX denetim P2-2: "Müşteri hizmetleri" linki
               /iletisim'e gidiyordu — header'da zaten İletişim var,

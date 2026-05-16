@@ -34,6 +34,9 @@ const COPY = {
     addressLabel: "Üretim",
     addressNote:
       "İstanbul & Ankara — anlaşmalı dijital baskı atölyelerinde fason üretim",
+    legalLabel: "Yasal merkez",
+    legalAddress:
+      "Workinton Ankara Söğütözü\nBeştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28\n06510 Çankaya/Ankara",
     hoursLabel: "Yanıt saatleri",
     hoursMonFri: "Pazartesi – Cuma · 09:00 – 18:00",
     hoursSat: "Cumartesi · 10:00 – 14:00 (acele siparişler)",
@@ -71,6 +74,9 @@ const COPY = {
     addressLabel: "Production",
     addressNote:
       "Istanbul & Ankara — partner digital print workshops (fason model)",
+    legalLabel: "Registered office",
+    legalAddress:
+      "Workinton Ankara Söğütözü\nBeştepeler Mah. Nergis Sok. No:7/2 ViaFlat Business Center Office: 27-28\n06510 Çankaya/Ankara, Türkiye",
     hoursLabel: "Response hours",
     hoursMonFri: "Monday – Friday · 09:00 – 18:00",
     hoursSat: "Saturday · 10:00 – 14:00 (rush orders)",
@@ -134,7 +140,12 @@ export default function IletisimPage() {
   return (
     <main className="animate-fade-up">
       {/* LocalBusiness JSON-LD — Google Maps + "near me" araması için */}
-      <SchemaJsonLd data={localBusinessSchema({})} />
+      <SchemaJsonLd
+        data={localBusinessSchema({
+          address:
+            "Workinton Ankara Söğütözü, Beştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510 Çankaya/Ankara",
+        })}
+      />
 
       {/* HERO */}
       <section className="pt-10 md:pt-16 pb-8 md:pb-12">
@@ -219,6 +230,19 @@ export default function IletisimPage() {
                   </div>
                   <div className="leading-relaxed">
                     {c.addressNote}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
+                    {c.legalLabel}
+                  </div>
+                  <div className="leading-relaxed text-[13.5px] whitespace-pre-line">
+                    {c.legalAddress}
+                  </div>
+                  <div className="mt-2 text-[11.5px] text-gri-500 font-mono">
+                    Mersis: 0758060761200001 · Tic. Sicil: 493212
+                    <br />
+                    Doğanbey VD: 7580607612
                   </div>
                 </div>
                 <div>
