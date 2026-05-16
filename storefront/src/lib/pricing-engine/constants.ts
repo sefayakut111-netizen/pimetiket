@@ -201,7 +201,7 @@ export interface EtiketCoating {
 }
 
 export const ETIKET_COATINGS: EtiketCoating[] = [
-  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın", multiplier: 1.0 },
+  { id: "yok", name: "Kaplamasız", desc: "Kâğıt dokusu kalsın", multiplier: 1.0 },
   { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", multiplier: 1.15 },
   { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", multiplier: 1.15 },
   { id: "soft", name: "Soft touch", desc: "Velvet his", multiplier: 1.30 },

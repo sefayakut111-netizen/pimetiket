@@ -77,7 +77,9 @@ const COPY = {
     trackBtn: "Takip et",
     deliveredAt: "Teslim edildi",
     locale: "tr-TR",
-    dateFmt: { day: "numeric", month: "short", year: "numeric" } as const,
+    // Sefa 17 May P1-15: TR full month ("17 Mayıs 2026") — abbrev "17 May"
+    // yanlıştı (TR'de ay kısaltma yaygın değil)
+    dateFmt: { day: "numeric", month: "long", year: "numeric" } as const,
   },
   en: {
     eyebrow: "My account",

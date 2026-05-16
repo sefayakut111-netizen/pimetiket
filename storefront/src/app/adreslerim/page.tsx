@@ -57,7 +57,7 @@ const COPY = {
     labelLabel: "Etiket",
     labelPh: "Ev / Ofis / Atölye",
     nameLabel: "Ad Soyad",
-    namePh: "Sefa Yakut",
+    namePh: "Ad Soyad",
     addrLabel: "Adres (mahalle + sokak + no)",
     addrPh: "Beştepeler Mah. Nergis Sok. No:7/2",
     cityLabel: "Şehir",

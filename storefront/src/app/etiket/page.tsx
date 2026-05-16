@@ -115,9 +115,9 @@ const MATERIALS = [
 
 type MaterialId = (typeof MATERIALS)[number]["id"];
 
-/** Sefa kuralı (15 May): "Kaplama yok" varsayılan + ilk sıra. */
+/** Sefa kuralı (15 May): "Kaplamasız" varsayılan + ilk sıra. */
 const COATINGS = [
-  { id: "yok", name: "Kaplama yok", desc: "Kâğıt dokusu kalsın", modes: ["rulo", "tabaka"] as const },
+  { id: "yok", name: "Kaplamasız", desc: "Kâğıt dokusu kalsın", modes: ["rulo", "tabaka"] as const },
   { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", modes: ["rulo", "tabaka"] as const },
   { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", modes: ["rulo", "tabaka"] as const },
   { id: "soft", name: "Soft touch", desc: "Velvet his", modes: ["rulo"] as const },

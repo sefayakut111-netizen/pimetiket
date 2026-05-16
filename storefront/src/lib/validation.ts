@@ -42,11 +42,17 @@ export function validateTcKimlik(value: string): ValidationResult {
   const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
   const d10 = (oddSum * 7 - evenSum) % 10;
   if (d10 !== digits[9]) {
-    return { valid: false, message: "TC kimlik geçersiz (algoritma)" };
+    return {
+      valid: false,
+      message: "TC kimlik numarası hatalı — kontrol et",
+    };
   }
   const sumTen = digits.slice(0, 10).reduce((a, b) => a + b, 0);
   if (sumTen % 10 !== digits[10]) {
-    return { valid: false, message: "TC kimlik geçersiz (algoritma)" };
+    return {
+      valid: false,
+      message: "TC kimlik numarası hatalı — kontrol et",
+    };
   }
   return ok;
 }

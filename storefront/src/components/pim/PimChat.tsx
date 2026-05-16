@@ -507,7 +507,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
       const r = await addToCustomerCart({
         product: "etiket",
         title: `Etiket · ${result.material}${
-          result.coating !== "Kaplama yok" ? ` + ${result.coating}` : ""
+          result.coating !== "Kaplamasız" ? ` + ${result.coating}` : ""
         }`,
         config: `${result.width_mm}×${result.height_mm}mm · ${result.qty.toLocaleString(
           "tr-TR"
@@ -559,7 +559,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
           ) : (
             <>
               {result.width_mm}×{result.height_mm} mm · {result.material}
-              {result.coating !== "Kaplama yok" && ` · ${result.coating}`}
+              {result.coating !== "Kaplamasız" && ` · ${result.coating}`}
               {result.customization !== "Eklenti yok" &&
                 ` · ${result.customization}`}
               {" · "}

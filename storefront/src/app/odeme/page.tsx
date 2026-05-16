@@ -464,10 +464,35 @@ export default function OdemePage() {
   /** Sefa 17 May UX K#3: Hangi alan eksik? — submit butonunun
       neden disabled olduğunu kullanıcıya net göster */
   const submitMissing: string[] = [];
+  // Sefa 17 May P1-9: "fatura bilgisi" yerine HANGI alan eksik söyle
   if (cartItems.length === 0) submitMissing.push("sepet boş");
   if (selectedAddress === undefined && !isNewAddressFilled(newAddr))
     submitMissing.push("teslimat adresi");
-  if (!invoiceComplete) submitMissing.push("fatura bilgisi");
+  if (!invoiceComplete) {
+    if (invoiceMode === "individual") {
+      if (tc.trim().length === 0) {
+        submitMissing.push("TC kimlik numarası");
+      } else if (!validateTcKimlik(tc).valid) {
+        submitMissing.push("TC kimlik (geçersiz numara — kontrol et)");
+      }
+    } else if (invoiceMode === "corporate" && !selectedInvoiceProfile) {
+      const missingFields: string[] = [];
+      if (!validateVkn(newInvoice.vkn).valid) missingFields.push("VKN");
+      if (newInvoice.companyName.trim().length < 2)
+        missingFields.push("şirket ünvanı");
+      if (newInvoice.taxOffice.trim().length < 2)
+        missingFields.push("vergi dairesi");
+      if (newInvoice.companyAddress.trim().length < 5)
+        missingFields.push("fatura adresi");
+      if (missingFields.length > 0) {
+        submitMissing.push(`kurumsal fatura (${missingFields.join(", ")})`);
+      } else {
+        submitMissing.push("kurumsal fatura");
+      }
+    } else {
+      submitMissing.push("fatura bilgisi");
+    }
+  }
   if (!acceptSatis) submitMissing.push("Mesafeli Satış Sözleşmesi onayı");
   if (!acceptCopyright) submitMissing.push("Telif hakkı onayı");
 
@@ -769,7 +794,7 @@ export default function OdemePage() {
                       </label>
                       <Input
                         id="addr-first-name"
-                        placeholder="Sefa"
+                        placeholder="Adınız"
                         aria-label="Ad"
                         value={newAddr.firstName}
                         onChange={(e) => {
@@ -793,7 +818,7 @@ export default function OdemePage() {
                       </label>
                       <Input
                         id="addr-last-name"
-                        placeholder="Yakut"
+                        placeholder="Soyadınız"
                         aria-label="Soyad"
                         value={newAddr.lastName}
                         onChange={(e) => {
