@@ -18,12 +18,18 @@ import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { AUDITOR_NAMES, type AuditorName } from "@/lib/agents/_shared/types";
 import { SecurityAuditor } from "@/lib/agents/auditors/security";
 import { FinanceAuditor } from "@/lib/agents/auditors/finance";
+import { WorkflowAuditor } from "@/lib/agents/auditors/workflow";
+import { ComplianceAuditor } from "@/lib/agents/auditors/compliance";
+import { AiCostAuditor } from "@/lib/agents/auditors/ai-cost";
 
 const AUDITOR_FACTORIES: Partial<
   Record<AuditorName, () => { run: (opts: { triggerType: "manual"; triggeredBy: string }) => Promise<string> }>
 > = {
   security: () => new SecurityAuditor(),
   finance: () => new FinanceAuditor(),
+  workflow: () => new WorkflowAuditor(),
+  compliance: () => new ComplianceAuditor(),
+  ai_cost: () => new AiCostAuditor(),
 };
 
 export async function POST(

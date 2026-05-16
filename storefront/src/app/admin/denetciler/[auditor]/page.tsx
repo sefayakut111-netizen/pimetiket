@@ -40,7 +40,13 @@ interface DetailResponse {
 }
 
 // Canlı olan auditor'lar — "Şimdi çalıştır" sadece bunlarda aktif
-const LIVE_AUDITORS: ReadonlySet<string> = new Set(["security", "finance"]);
+const LIVE_AUDITORS: ReadonlySet<string> = new Set([
+  "security",
+  "finance",
+  "workflow",
+  "compliance",
+  "ai_cost",
+]);
 
 const SEVERITY_STYLES = {
   critical: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",

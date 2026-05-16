@@ -23,6 +23,9 @@ import { NextResponse } from "next/server";
 import { AUDITOR_NAMES, type AuditorName } from "@/lib/agents/_shared/types";
 import { SecurityAuditor } from "@/lib/agents/auditors/security";
 import { FinanceAuditor } from "@/lib/agents/auditors/finance";
+import { WorkflowAuditor } from "@/lib/agents/auditors/workflow";
+import { ComplianceAuditor } from "@/lib/agents/auditors/compliance";
+import { AiCostAuditor } from "@/lib/agents/auditors/ai-cost";
 
 // Auditor name → factory function
 const AUDITOR_FACTORIES: Partial<
@@ -30,7 +33,9 @@ const AUDITOR_FACTORIES: Partial<
 > = {
   security: () => new SecurityAuditor(),
   finance: () => new FinanceAuditor(),
-  // Adım 6'da: workflow + compliance + ai_cost
+  workflow: () => new WorkflowAuditor(),
+  compliance: () => new ComplianceAuditor(),
+  ai_cost: () => new AiCostAuditor(),
   // Adım 7'de: data_hygiene + customer_health + seo + brand
 };
 
