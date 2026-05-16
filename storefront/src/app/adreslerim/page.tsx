@@ -28,6 +28,10 @@ import {
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 import { TR_IL_LIST, getIlceler } from "@/lib/locations/tr-locations";
+import {
+  parseTrPhoneToLocal,
+  dbPhoneToInputValue,
+} from "@/lib/validation/phone-tr";
 
 const COPY = {
   tr: {
@@ -362,15 +366,15 @@ export default function AdreslerimPage() {
                   <Input
                     id="form-addr-phone"
                     placeholder="5XX XXX XX XX"
-                    value={form.phone.replace(/^\+?90\s*/, "")}
+                    value={dbPhoneToInputValue(form.phone)}
                     onChange={(e) => {
-                      const cleaned = e.target.value
-                        .replace(/\D/g, "")
-                        .slice(0, 10);
-                      setForm({ ...form, phone: cleaned });
+                      // Sefa 17 May P0-1: helper kullan
+                      const local10 = parseTrPhoneToLocal(e.target.value);
+                      setForm({ ...form, phone: local10 });
                     }}
                     autoComplete="tel-national"
                     inputMode="tel"
+                    maxLength={10}
                     required
                   />
                 </div>

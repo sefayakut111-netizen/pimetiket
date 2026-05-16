@@ -64,6 +64,11 @@ import {
   type CustomerInvoiceProfile,
 } from "@/lib/customer-invoice";
 import { TR_IL_LIST, getIlceler } from "@/lib/locations/tr-locations";
+import {
+  parseTrPhoneToLocal,
+  formatTrPhoneForDb,
+  dbPhoneToInputValue,
+} from "@/lib/validation/phone-tr";
 
 // ============================================================
 // Types
@@ -139,6 +144,13 @@ const COPY = {
     couponApply: "Uygula",
     couponRemove: "Kaldır",
     couponInvalid: "Bu kupon kodu geçersiz veya süresi dolmuş.",
+    couponRpcError:
+      "Şu an kupon kontrolü yapamıyoruz. Birkaç saniye sonra tekrar dene.",
+    couponAppliedPercent: (pct: number, discount: string) =>
+      `✓ Kupon uygulandı — %${pct} indirim (-${discount} TL)`,
+    couponAppliedFixed: (discount: string) =>
+      `✓ Kupon uygulandı — ${discount} TL indirim`,
+    couponAppliedFreeShip: "✓ Kupon uygulandı — Kargo ücretsiz",
     couponMinSubtotal: (n: number) =>
       `Min sepet tutarı ${n} TL — bu indirimden faydalanmıyor.`,
     couponUserLimit: "Bu kuponu zaten kullandın.",
@@ -227,6 +239,13 @@ const COPY = {
     couponApply: "Apply",
     couponRemove: "Remove",
     couponInvalid: "This coupon is invalid or expired.",
+    couponRpcError:
+      "Cannot check coupon right now. Try again in a few seconds.",
+    couponAppliedPercent: (pct: number, discount: string) =>
+      `✓ Coupon applied — ${pct}% off (-${discount} TRY)`,
+    couponAppliedFixed: (discount: string) =>
+      `✓ Coupon applied — ${discount} TRY off`,
+    couponAppliedFreeShip: "✓ Coupon applied — Free shipping",
     couponMinSubtotal: (n: number) =>
       `Min subtotal ${n} TRY — discount doesn't apply.`,
     couponUserLimit: "You've already used this coupon.",
@@ -806,22 +825,22 @@ export default function OdemePage() {
                         id="addr-phone"
                         placeholder="5XX XXX XX XX"
                         aria-label="Telefon numarası"
-                        value={newAddr.phone.replace(/^\+?90\s*/, "")}
+                        value={dbPhoneToInputValue(newAddr.phone)}
                         onChange={(e) => {
-                          // Sadece rakam ve boşluk
-                          const cleaned = e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, 10);
-                          // +90 prefix DB'ye gider
+                          // Sefa 17 May P0-1: parseTrPhoneToLocal "+90"/"90"/"0"
+                          // prefix'lerini güvenli şekilde strip eder. Eski
+                          // bug: paste edilen +90... numara 12 hane → ilk
+                          // 10 alındığında alan kodu kalıyordu.
+                          const local10 = parseTrPhoneToLocal(e.target.value);
                           setNewAddr({
                             ...newAddr,
-                            phone: cleaned ? `+90${cleaned}` : "",
+                            phone: formatTrPhoneForDb(local10),
                           });
                         }}
                         autoComplete="tel-national"
                         required
                         inputMode="tel"
-                        maxLength={13}
+                        maxLength={10}
                       />
                     </div>
                   </div>
@@ -1509,8 +1528,13 @@ export default function OdemePage() {
                       </Button>
                     )}
                   </div>
+                  {/* Sefa 17 May P0-2: Hata + başarı mesajı her durum
+                      için açık feedback (eski versiyonda %/fixed indirim
+                      kupon kabul edildiğinde sadece line item görünüyordu,
+                      kullanıcı "uygulandı mı?" diye anlayamıyordu). */}
                   {couponResult && !couponResult.ok && (
-                    <div className="mt-2 text-[12px] leading-relaxed text-kirmizi">
+                    <div className="mt-2 rounded-lg bg-kirmizi/10 ring-1 ring-kirmizi/20 px-3 py-2 text-[12.5px] leading-relaxed text-kirmizi-koyu">
+                      ⚠{" "}
                       {couponResult.reason === "invalid_or_expired"
                         ? c.couponInvalid
                         : couponResult.reason === "min_subtotal"
@@ -1519,12 +1543,24 @@ export default function OdemePage() {
                             ? c.couponUserLimit
                             : couponResult.reason === "total_limit_reached"
                               ? c.couponTotalLimit
-                              : c.couponDefault}
+                              : couponResult.reason === "rpc_error" ||
+                                  couponResult.reason === "invalid_response"
+                                ? c.couponRpcError
+                                : c.couponDefault}
                     </div>
                   )}
-                  {couponResult?.ok && couponResult.kind === "free_ship" && (
-                    <div className="mt-2 text-[12px] text-yesil font-semibold flex items-center gap-1.5">
-                      <Icon.Check size={12} /> Kargo ücretsiz!
+                  {couponResult?.ok && (
+                    <div className="mt-2 rounded-lg bg-yesil-soft/60 ring-1 ring-yesil/30 px-3 py-2 text-[12.5px] text-yesil-koyu font-semibold leading-relaxed">
+                      {couponResult.kind === "free_ship"
+                        ? c.couponAppliedFreeShip
+                        : couponResult.kind === "percent"
+                          ? c.couponAppliedPercent(
+                              Math.round(
+                                (couponResult.discount / subtotal) * 100
+                              ),
+                              fmt(couponResult.discount)
+                            )
+                          : c.couponAppliedFixed(fmt(couponResult.discount))}
                     </div>
                   )}
                 </div>

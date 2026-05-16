@@ -256,18 +256,27 @@ async function dbList(userId: string): Promise<CustomerOrder[]> {
 }
 
 async function dbGet(orderId: string): Promise<CustomerOrder | null> {
+  // Sefa 17 May P0-4: Order ID case-insensitive lookup. Eski kod
+  // `eq("id", orderId)` direkt string match ile case-sensitive.
+  // /siparis/PE-2026-PKTBJWFE (uppercase) → bulamıyordu çünkü DB'de
+  // "PE-2026-pkTBJwFE" (mixed) duruyor. ilike ile case-insensitive
+  // match yapıyoruz.
   const supabase = createClient();
   const { data: order, error } = await supabase
     .from("orders")
     .select("*")
-    .eq("id", orderId)
-    .single();
+    .ilike("id", orderId)
+    .maybeSingle();
   if (error || !order) return null;
+
+  // Gerçek (canonical) ID'yi DB row'undan al — order_items lookup için
+  // bu ID kullanılmalı, kullanıcının yazdığı değil
+  const canonicalId = (order as DbOrderRow).id;
 
   const { data: items } = await supabase
     .from("order_items")
     .select("*")
-    .eq("order_id", orderId);
+    .eq("order_id", canonicalId);
   return rowsToOrder(
     order as DbOrderRow,
     (items ?? []) as DbOrderItemRow[]

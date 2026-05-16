@@ -343,6 +343,17 @@ export default function SiparisDetailPage({
     void fetchCustomerOrder(id).then((o) => {
       setOrder(o);
       setHydrated(true);
+      // Sefa 17 May P0-4: URL'i canonical ID ile değiştir (kullanıcı
+      // farklı case ile gelmişse). Bu sayede breadcrumb / header /
+      // linkler tek format gösterilir, paylaşılabilir URL düzgün kalır.
+      if (
+        o &&
+        typeof window !== "undefined" &&
+        o.id !== id &&
+        o.id.toLowerCase() === id.toLowerCase()
+      ) {
+        window.history.replaceState(null, "", `/siparis/${o.id}`);
+      }
     });
     void fetchMyOrderShipment(id).then(setShipment);
   }, [id]);
@@ -461,7 +472,10 @@ export default function SiparisDetailPage({
             {c.breadOrders}
           </Link>
           <Icon.ChevR size={14} className="text-gri-500" />
-          <span className="font-semibold">{id}</span>
+          {/* Sefa 17 May P0-4: canonical ID kullan (order yüklendikten sonra) */}
+          <span className="font-semibold font-mono uppercase">
+            {order?.id ?? id}
+          </span>
         </div>
 
         {/* Header */}
