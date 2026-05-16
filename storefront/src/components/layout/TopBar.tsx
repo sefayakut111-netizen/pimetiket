@@ -157,26 +157,37 @@ export function TopBar() {
           <PimAsset variant="logo" size={180} bob={false} />
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex flex-1 gap-1 items-center">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "px-3.5 py-2 rounded-full text-[14.5px] font-medium transition-colors",
-                  active
-                    ? "bg-pim-mercan-tint text-pim-mercan"
-                    : "text-gri-700 hover:bg-gri-100 hover:text-lacivert"
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Desktop Nav — Sefa 17 May Dalga 2 #12:
+            Checkout/payment sayfalarında nav linkleri gizle
+            (kullanıcı checkout'tan ayrılmasın — conversion best practice) */}
+        {!pathname?.startsWith("/odeme") ? (
+          <nav className="hidden md:flex flex-1 gap-1 items-center">
+            {navItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-3.5 py-2 rounded-full text-[14.5px] font-medium transition-colors",
+                    active
+                      ? "bg-pim-mercan-tint text-pim-mercan"
+                      : "text-gri-700 hover:bg-gri-100 hover:text-lacivert"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        ) : (
+          /* Checkout: nav yerine "🔒 Güvenli ödeme" rozeti */
+          <div className="hidden md:flex flex-1 items-center justify-center">
+            <span className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-yesil-soft text-yesil text-[13px] font-semibold">
+              🔒 Güvenli ödeme · 3D Secure
+            </span>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-1 items-center">

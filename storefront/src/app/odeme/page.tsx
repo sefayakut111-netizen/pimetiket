@@ -102,9 +102,8 @@ const COPY = {
     invoiceCorporateAuto:
       "Profilinizdeki kurumsal bilgilerle fatura kesilecek.",
     tcLabel: "TC Kimlik No",
-    tcPh: "11 hane (boş bırakılabilir)",
-    tcOptionalNote:
-      "TC vermek zorunda değilsin. Vermezsen fatura kesilir ama gider olarak yazılamaz.",
+    tcPh: "11 haneli — opsiyonel",
+    tcOptionalNote: "Vermek zorunda değilsin (fatura kesilir, KDV gider yazılamaz)",
     tcSkipModalTitle: "TC kimlik vermeden devam edelim mi?",
     tcSkipModalBody:
       "Faturan e-arşiv olarak '11111111111' placeholder ile kesilir. Bu durumda KDV gider yazamazsın, KDV iadesi alamazsın. Yine de devam etmek ister misin?",
@@ -181,7 +180,7 @@ const COPY = {
     invoiceCorporateAuto:
       "Will use the corporate info from your profile.",
     tcLabel: "TC ID number",
-    tcPh: "11 digits (optional)",
+    tcPh: "11 digits — optional",
     tcOptionalNote:
       "Providing TC is optional. Without it, an invoice is issued but cannot be used for VAT deduction.",
     tcSkipModalTitle: "Continue without TC ID?",
@@ -636,18 +635,33 @@ export default function OdemePage() {
                     >
                       Telefon <span className="text-kirmizi">*</span>
                     </label>
-                    <Input
-                      id="addr-phone"
-                      placeholder="+90 5XX XXX XX XX"
-                      aria-label="Telefon numarası"
-                      value={newAddr.phone}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, phone: e.target.value })
-                      }
-                      autoComplete="tel"
-                      required
-                      inputMode="tel"
-                    />
+                    {/* Sefa 17 May Dalga 2 #11: +90 prefix */}
+                    <div className="flex gap-2">
+                      <div className="flex items-center gap-1.5 px-3 h-12 rounded-[12px] bg-gri-50 ring-1 ring-gri-200 text-[14px] font-semibold text-lacivert shrink-0">
+                        🇹🇷 <span>+90</span>
+                      </div>
+                      <Input
+                        id="addr-phone"
+                        placeholder="5XX XXX XX XX"
+                        aria-label="Telefon numarası"
+                        value={newAddr.phone.replace(/^\+?90\s*/, "")}
+                        onChange={(e) => {
+                          // Sadece rakam ve boşluk
+                          const cleaned = e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 10);
+                          // +90 prefix DB'ye gider
+                          setNewAddr({
+                            ...newAddr,
+                            phone: cleaned ? `+90${cleaned}` : "",
+                          });
+                        }}
+                        autoComplete="tel-national"
+                        required
+                        inputMode="tel"
+                        maxLength={13}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label
@@ -887,7 +901,7 @@ export default function OdemePage() {
                           onClick={() => setInvoiceMode(opt.id)}
                           aria-pressed={active}
                           className={cn(
-                            "block w-full text-left p-3 rounded-lg ring-[1.5px] transition-all",
+                            "relative block w-full text-left p-3 pr-10 rounded-lg ring-[1.5px] transition-all",
                             active
                               ? "ring-pim-mercan bg-pim-mercan-tint/30"
                               : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
@@ -899,17 +913,29 @@ export default function OdemePage() {
                           <div className="text-[12px] text-gri-700 mt-0.5">
                             {opt.desc}
                           </div>
+                          {/* Sefa 17 May Dalga 2 #6: check ikonu */}
+                          {active && (
+                            <span
+                              aria-hidden
+                              className="absolute top-3 right-3 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[12px]"
+                            >
+                              <Icon.Check size={12} />
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
 
-                  {/* TC alanı (bireysel) */}
+                  {/* TC alanı (bireysel) — Sefa 17 May Dalga 2 #7 */}
                   {invoiceMode === "individual" && (
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 space-y-1.5">
                       <label className="block">
-                        <span className="text-[13px] font-semibold mb-1.5 block">
+                        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
                           {c.tcLabel}
+                          <span className="text-gri-500 normal-case font-normal tracking-normal">
+                            (opsiyonel)
+                          </span>
                         </span>
                         <ValidatedInput
                           id="tc-checkout"
@@ -921,8 +947,8 @@ export default function OdemePage() {
                           inputMode="numeric"
                         />
                       </label>
-                      <p className="text-[12px] text-gri-700 leading-relaxed">
-                        {c.tcOptionalNote}
+                      <p className="text-[11.5px] text-gri-500 italic leading-relaxed">
+                        ℹ {c.tcOptionalNote}
                       </p>
                     </div>
                   )}
