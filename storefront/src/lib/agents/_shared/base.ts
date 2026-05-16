@@ -34,6 +34,10 @@
 import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  sendAuditorReport,
+  sendActionApprovalRequest,
+} from "./mailer";
 import type {
   AuditorFinding,
   AuditorName,
@@ -216,6 +220,76 @@ export abstract class AuditorBase {
         metrics_snapshot: result.metricsSnapshot ?? null,
       } as never)
       .eq("id", runId);
+
+    // 7) Mail bildirimleri (fire-and-forget — mail başarısızlığı run'ı bozmaz)
+    //
+    // Strateji (Sefa kuralı 16 May):
+    //   - Rapor maili: HER run'da gönderilir (info-only olsa bile;
+    //     Sefa "Gece Hesap Kapanışı" benzeri günlük özet alır)
+    //   - Onay isteme maili: SADECE pending_action oluşmuşsa
+    //     (her finding için ayrı değil, run için tek mail)
+    //
+    // Manual trigger'da da mail gider — Sefa "Şimdi çalıştır"
+    // basınca aynı pipeline çalışır.
+    void sendAuditorReport({
+      auditorName: this.auditorName,
+      runId,
+      summary: result.summary,
+      summaryMd: result.summaryMd,
+      findingsCount: result.findings.length,
+      criticalCount: counts.critical,
+      warningCount: counts.warning,
+    }).catch((err) => {
+      Sentry.captureException(err, {
+        tags: { scope: "auditor.mail_report", auditor: this.auditorName },
+        extra: { runId },
+      });
+    });
+
+    // Pending action varsa ek onay maili (kritik/uyarı olanlar)
+    if (pendingRows.length > 0) {
+      const firstCritical = pendingRows.find((p) => p.severity === "critical");
+      const firstWarning = pendingRows.find((p) => p.severity === "warning");
+      const topPending = firstCritical ?? firstWarning;
+
+      if (topPending) {
+        // Pending insert sonrası ID lookup — ilki yeterli, kalanı UI'da görünür
+        const { data: createdPending } = await this.admin
+          .from("auditor_pending_actions")
+          .select("id, title, description, severity")
+          .eq("run_id", runId)
+          .eq("severity", topPending.severity)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const row = (createdPending ?? [])[0] as
+          | {
+              id: string;
+              title: string;
+              description: string;
+              severity: "warning" | "critical";
+            }
+          | undefined;
+
+        if (row) {
+          void sendActionApprovalRequest({
+            auditorName: this.auditorName,
+            pendingActionId: row.id,
+            title: row.title,
+            description: row.description,
+            severity: row.severity,
+          }).catch((err) => {
+            Sentry.captureException(err, {
+              tags: {
+                scope: "auditor.mail_approval",
+                auditor: this.auditorName,
+              },
+              extra: { runId, pendingActionId: row.id },
+            });
+          });
+        }
+      }
+    }
 
     return runId;
   }
