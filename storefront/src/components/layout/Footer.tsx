@@ -34,9 +34,10 @@ export function Footer() {
     },
     {
       t: t.footer.groupCompany,
+      // Sefa 16 May denetim #22: Blog hem Ürün hem Şirket'te tekrar
+      // ediyordu — Ürün'de bırakıldı, Şirket'ten kaldırıldı.
       links: [
         { label: t.nav.about, href: "/hakkimizda" },
-        { label: t.nav.blog, href: "/blog" },
         { label: t.nav.contact, href: "/iletisim" },
       ],
     },
@@ -147,6 +148,7 @@ export function Footer() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t.footer.newsletterPlaceholder}
+                  aria-label={t.footer.newsletterTitle}
                   disabled={loading}
                   className="!bg-white/15 !text-white placeholder:!text-white/60 !ring-white/25 focus:!ring-pim-mercan flex-1"
                 />
@@ -229,7 +231,7 @@ export function Footer() {
           {/* Link columns */}
           {FOOTER_GROUPS.map((g) => (
             <div key={g.t}>
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-white/45">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-white/65">
                 {g.t}
               </div>
               <div className="flex flex-col gap-2">
@@ -278,7 +280,7 @@ export function Footer() {
         </div>
 
         {/* Bottom strip — © + legal links */}
-        <div className="pt-5 mt-5 border-t border-white/10 flex flex-col md:flex-row md:justify-between md:items-center text-[12px] text-white/45 gap-3">
+        <div className="pt-5 mt-5 border-t border-white/10 flex flex-col md:flex-row md:justify-between md:items-center text-[12px] text-white/65 gap-3">
           <div>
             © {new Date().getFullYear()} {t.footer.copyright}
           </div>

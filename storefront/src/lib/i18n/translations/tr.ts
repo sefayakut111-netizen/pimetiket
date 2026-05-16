@@ -105,6 +105,8 @@ export const tr: TranslationDict = {
     stepperStepN: (n) => `Adım ${n}`,
     stepperActive: "Şu an",
     stepperDone: "Tamam",
+    dimensionBadge: "BOYUT",
+    livePreviewBadge: "Canlı önizleme",
   },
   sticker: {
     pageTitle: "Sticker'ını konfigüre et",
@@ -160,7 +162,7 @@ export const tr: TranslationDict = {
     qtyHint: "1.000'den başla, 500 adetlik artışla seç (max 50.000)",
     windingTitle: "Sarım yönü",
     windingHint:
-      "Otomatik etiketleme makinen varsa önemli — \"ABC\" metni etiketin baskı yönünü gösterir. Emin değilsen Sarım 1 (düz) seç.",
+      "Otomatik etiketleme makinen varsa önemli — “ABC” metni etiketin baskı yönünü gösterir. Emin değilsen Sarım 1 (düz) seç.",
     windingOuter: "DIŞA SARIM",
     windingInner: "İÇE SARIM",
     stepMaterial: "Malzeme",

@@ -1326,7 +1326,7 @@ export default function EtiketPage() {
                   }}
                   ariaLabel="Etiket adedi (slider)"
                 />
-                <div className="flex justify-between text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
+                <div className="flex justify-between text-[11.5px] text-gri-700 mt-1.5 tabular-nums">
                   <span>{minQty.toLocaleString("tr-TR")}</span>
                   <span>{maxQty.toLocaleString("tr-TR")}</span>
                 </div>
@@ -1753,6 +1753,7 @@ function PreviewCanvas({
   height,
   designUrl,
 }: PreviewCanvasProps) {
+  const { t } = useT();
   const matBg = MAT_BG[material];
   const sheen = SHEEN[coating];
   const yaldizGrad = YALDIZ_GRAD[yaldiz];
@@ -1946,11 +1947,13 @@ function PreviewCanvas({
         </div>
       </div>
 
-      {/* Dimension overlay */}
+      {/* Dimension overlay — Sefa 16 May denetim #18:
+          Etiket "ÖLÇÜ" idi → sticker ile tutarlı "BOYUT" oldu
+          (t.config.dimensionBadge anahtarı, sticker da aynısını kullanır). */}
       <div className="absolute bottom-6 left-6 px-3 py-2 bg-white rounded-lg shadow-1 flex items-center gap-3">
         <div className="text-sm">
           <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-            ÖLÇÜ
+            {t.config.dimensionBadge}
           </div>
           <div className="font-semibold">
             {width} × {height} mm
@@ -1961,7 +1964,7 @@ function PreviewCanvas({
       {/* Live indicator */}
       <div className="absolute top-6 left-6 px-3 py-1.5 bg-white rounded-full shadow-1 flex items-center gap-1.5 text-xs font-semibold">
         <span className="w-2 h-2 rounded-full bg-yesil" />
-        Canlı önizleme
+        {t.config.livePreviewBadge}
       </div>
 
       {/* İpucu kartı kaldırıldı — Sefa kuralı (15 May v4):

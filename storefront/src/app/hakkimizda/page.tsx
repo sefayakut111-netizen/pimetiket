@@ -29,12 +29,12 @@ const COPY = {
     storyWhy: "Neden böyle bir sistem?",
     story3:
       "Sektörün içinden gözlemledik: ister küçük marka olsun ister büyük alıcı, baskı süreci bir maraton olabiliyordu. Düşük adetlerde fiyatlar uçuyor, büyük adetlerde formaliteler uzuyor; ortada herkesin işini hızla halleden bir yer eksikti.",
-    story4pre: "Mühendislik eğitiminin getirdiği bakış açısı şunu söyledi: otomasyon ve yapay zeka gelecek değil, bugün. Doğru kullanıldığında bu teknolojiler oyun alanını eşitliyor — küçük marka da kurumsal alıcı da aynı hızda iş çıkarabiliyor. Biz de o değişime \"mecburen\" değil, ",
+    story4pre: "Mühendislik eğitiminin getirdiği bakış açısı şunu söyledi: otomasyon ve yapay zeka gelecek değil, bugün. Doğru kullanıldığında bu teknolojiler oyun alanını eşitliyor — küçük marka da kurumsal alıcı da aynı hızda iş çıkarabiliyor. Biz de o değişime “mecburen” değil, ",
     story4bold: "öngörerek",
     story4post: " katıldık.",
     storyPromise: "Sana ne vaat ediyoruz?",
     story5:
-      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok, \"5 iş günü\" diyince 10. günü beklemek yok.",
+      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok, “5 iş günü” diyince 10. günü beklemek yok.",
     story6: "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 75 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası.",
     pimWhoEyebrow: "Pim kim?",
     pimWhoTitle: "Selam, ben Pim. Bu işin baykuşuyum.",
@@ -94,12 +94,12 @@ const COPY = {
     story3:
       "We saw it from inside the industry: whether you're a small brand or a corporate buyer, printing could turn into a marathon. Prices skyrocket at low volumes, paperwork drags at high volumes — the middle ground, where everyone could simply print, was missing.",
     story4pre:
-      "An engineering perspective taught us one thing: automation and AI aren't the future, they're today. Used right, these technologies level the field — small brand or large, everyone gets the same speed. So we joined that shift not \"out of necessity\" but ",
+      "An engineering perspective taught us one thing: automation and AI aren't the future, they're today. Used right, these technologies level the field — small brand or large, everyone gets the same speed. So we joined that shift not “out of necessity” but ",
     story4bold: "by foresight",
     story4post: ".",
     storyPromise: "What we promise you",
     story5:
-      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses, no \"5 business days\" turning into ten.",
+      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses, no “5 business days” turning into ten.",
     story6:
       "Thank you for walking with us on this journey. 75 years of trading experience + the AI era — Pim Etiket is where these two meet.",
     pimWhoEyebrow: "Who's Pim?",

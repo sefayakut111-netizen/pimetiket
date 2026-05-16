@@ -207,7 +207,7 @@ const COPY = {
   tr: {
     eyebrow: "Sıkça sorulanlar",
     h1Line1: "Cevap genelde",
-    h1Line2: "\"evet, hallederiz\".",
+    h1Line2: "“evet, hallederiz”.",
     intro:
       "Aklındakini kategoriler altında topladık. Bulamadığını Pim'e sorabilir veya ",
     introLink: "iletişim",
@@ -220,7 +220,7 @@ const COPY = {
   en: {
     eyebrow: "Frequently asked",
     h1Line1: "Answer is usually",
-    h1Line2: '"yes, we got you".',
+    h1Line2: "“yes, we got you”.",
     intro: "We grouped the common questions by category. Can't find yours? Ask Pim or ",
     introLink: "contact",
     introEnd: " us directly.",

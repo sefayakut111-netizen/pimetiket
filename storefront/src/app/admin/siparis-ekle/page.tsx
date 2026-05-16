@@ -466,7 +466,7 @@ export default function AdminCreateOrderPage() {
               </Button>
             </div>
             <p className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
-              Bu sipariş <strong>"Yeni"</strong> statüsünde oluşturulur. Operatör
+              Bu sipariş <strong>“Yeni”</strong> statüsünde oluşturulur. Operatör
               dosyasını alıp AI kontrolüne göndereceksin.
             </p>
           </Card>

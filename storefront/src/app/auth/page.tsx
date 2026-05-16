@@ -488,7 +488,7 @@ function AuthInner() {
             </Button>
           </form>
 
-          <p className="text-[11.5px] text-gri-500 mt-5 text-center leading-relaxed">
+          <p className="text-[11.5px] text-gri-700 mt-5 text-center leading-relaxed">
             {mode === "login" ? (
               <>
                 Hesabın yok mu?{" "}

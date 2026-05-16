@@ -532,9 +532,13 @@ export default function OdemePage() {
                       {c.addressEmpty}
                     </p>
                   )}
+                  {/* Sefa 16 May denetim #21: aria-label eklendi
+                      (placeholder ekran okuyucuya tek başına yetmez,
+                      WCAG 1.3.1 + 3.3.2). */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input
                       placeholder={c.addressFormName}
+                      aria-label={c.addressFormName}
                       value={newAddr.name}
                       onChange={(e) =>
                         setNewAddr({ ...newAddr, name: e.target.value })
@@ -543,6 +547,7 @@ export default function OdemePage() {
                     />
                     <Input
                       placeholder={c.addressFormPhone}
+                      aria-label={c.addressFormPhone}
                       value={newAddr.phone}
                       onChange={(e) =>
                         setNewAddr({ ...newAddr, phone: e.target.value })
@@ -552,6 +557,7 @@ export default function OdemePage() {
                   </div>
                   <Input
                     placeholder={c.addressFormAddr}
+                    aria-label={c.addressFormAddr}
                     value={newAddr.addr}
                     onChange={(e) =>
                       setNewAddr({ ...newAddr, addr: e.target.value })
@@ -561,6 +567,7 @@ export default function OdemePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input
                       placeholder={c.addressFormCity}
+                      aria-label={c.addressFormCity}
                       value={newAddr.city}
                       onChange={(e) =>
                         setNewAddr({ ...newAddr, city: e.target.value })
@@ -568,6 +575,7 @@ export default function OdemePage() {
                     />
                     <Input
                       placeholder={c.addressFormLabel}
+                      aria-label={c.addressFormLabel}
                       value={newAddr.label}
                       onChange={(e) =>
                         setNewAddr({ ...newAddr, label: e.target.value })
@@ -808,6 +816,7 @@ export default function OdemePage() {
                     setCouponResult(null);
                   }}
                   placeholder={c.couponPh}
+                  aria-label={c.couponTitle}
                   className="flex-1 uppercase tracking-wider"
                   disabled={couponChecking || couponResult?.ok === true}
                 />
@@ -1022,7 +1031,7 @@ export default function OdemePage() {
       {/* ============ TC SKIP MODAL ============ */}
       {showTcSkipModal && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[70] grid place-items-center bg-black/40 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
         >

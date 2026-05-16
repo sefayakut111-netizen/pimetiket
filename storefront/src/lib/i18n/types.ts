@@ -128,6 +128,9 @@ export type TranslationDict = {
     stepperStepN: (n: number) => string;
     stepperActive: string;
     stepperDone: string;
+    // Sefa 16 May denetim #18 — Preview dimension badge (ÖLÇÜ → BOYUT)
+    dimensionBadge: string;
+    livePreviewBadge: string;
   };
   sticker: {
     pageTitle: string;

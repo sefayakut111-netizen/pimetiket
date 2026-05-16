@@ -214,7 +214,7 @@ export default function IletisimPage() {
 
               <div className="mt-6 space-y-4 text-[15px] md:text-base text-gri-700">
                 <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-500 mb-1">
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
                     {c.addressLabel}
                   </div>
                   <div className="leading-relaxed">
@@ -222,7 +222,7 @@ export default function IletisimPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-500 mb-1">
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
                     {c.hoursLabel}
                   </div>
                   <div className="leading-relaxed">
@@ -232,7 +232,7 @@ export default function IletisimPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-500 mb-1">
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
                     {c.appointmentLabel}
                   </div>
                   <div className="leading-relaxed">

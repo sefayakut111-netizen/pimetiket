@@ -104,6 +104,8 @@ export const en: TranslationDict = {
     stepperStepN: (n) => `Step ${n}`,
     stepperActive: "Now",
     stepperDone: "Done",
+    dimensionBadge: "SIZE",
+    livePreviewBadge: "Live preview",
   },
   sticker: {
     pageTitle: "Configure your sticker",
@@ -160,7 +162,7 @@ export const en: TranslationDict = {
     qtyHint: "Start from 1,000, step of 500 (max 50,000)",
     windingTitle: "Winding direction",
     windingHint:
-      "Important if you have automatic labeling machines — the \"ABC\" text shows the print direction. Not sure? Pick Winding 1 (straight).",
+      "Important if you have automatic labeling machines — the “ABC” text shows the print direction. Not sure? Pick Winding 1 (straight).",
     windingOuter: "OUTSIDE WIND",
     windingInner: "INSIDE WIND",
     stepMaterial: "Material",

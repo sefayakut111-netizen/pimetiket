@@ -27,6 +27,7 @@ import {
 } from "@/lib/payment/paytr";
 import { sendOrderConfirmation } from "@/lib/mail/notifications";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
+import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 
 interface IntentRow {
   id: string;
@@ -362,6 +363,15 @@ export async function POST(req: NextRequest) {
   }).catch((err) =>
     console.error("[payment/callback] order mail failed:", err)
   );
+
+  // 14b) Design QC agent (Sefa kuralı 16 May v3 — fire-and-forget).
+  // Müşteri ödeme yaptıktan sonra tasarım kalite kontrolü background'da.
+  // PayTR retry'lamasın diye await ETMEYİZ.
+  void runOrderDesignQC(admin, orderId).catch((err) => {
+    console.error("[payment/callback] design QC failed:", err);
+    // Sentry zaten run-order-qc içinde capture ediyor; order paid'de kalır,
+    // admin manuel /admin/ai-qc'tan re-run yapabilir.
+  });
 
   // 15) PayTR'ye "OK" yanıtı (KRİTİK — yoksa retry yapar)
   return new NextResponse("OK");

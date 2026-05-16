@@ -1527,6 +1527,7 @@ function StickerPreview({
   height,
   designUrl,
 }: PreviewProps) {
+  const { t } = useT();
   // Maks 360px hedef, en uzun kenara göre ölçekle
   const maxDim = Math.max(width, height);
   const scale = Math.min(360 / maxDim, 2.4);
@@ -1752,10 +1753,10 @@ function StickerPreview({
         )}
       </div>
 
-      {/* Size badge */}
+      {/* Size badge — Sefa 16 May denetim #18: etiket ile aynı i18n key */}
       <div className="absolute bottom-5 left-5 px-3 py-2 bg-white rounded-lg shadow-1">
         <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-          BOYUT
+          {t.config.dimensionBadge}
         </div>
         <div className="font-semibold text-sm">
           {width} × {height} mm

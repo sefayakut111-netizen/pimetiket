@@ -160,7 +160,7 @@ export function PimChat() {
         aria-label={open ? "Pim'i kapat" : "Pim ile konuş"}
         aria-expanded={open}
         className={cn(
-          "fixed bottom-5 right-5 z-50 group scroll-mt-20",
+          "fixed bottom-5 right-5 z-[55] group scroll-mt-20",
           "transition-all duration-200 ease-out",
           open && "scale-90 opacity-0 pointer-events-none"
         )}
@@ -187,7 +187,7 @@ export function PimChat() {
         aria-modal="false"
         aria-label="Pim ile sohbet"
         className={cn(
-          "fixed bottom-5 right-5 z-50",
+          "fixed bottom-5 right-5 z-[55]",
           "w-[min(380px,calc(100vw-2.5rem))] h-[min(560px,calc(100vh-7rem))]",
           "flex flex-col rounded-2xl bg-white shadow-2 ring-1 ring-gri-200 overflow-hidden",
           "transition-all duration-200 ease-out origin-bottom-right",
