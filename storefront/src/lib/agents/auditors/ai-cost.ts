@@ -46,6 +46,10 @@ export class AiCostAuditor extends AuditorBase {
     findings.push(...monthly.findings);
     metrics.monthly = monthly.metrics;
 
+    const breakdown = await this.checkModelBreakdown();
+    findings.push(...breakdown.findings);
+    metrics.breakdown = breakdown.metrics;
+
     const counts = countFindings(findings);
     return {
       findings,
@@ -236,6 +240,77 @@ export class AiCostAuditor extends AuditorBase {
     return {
       findings,
       metrics: { monthCost, projection },
+    };
+  }
+
+  // D) Model breakdown — hangi model en pahalı
+  private async checkModelBreakdown() {
+    const findings: AuditorFinding[] = [];
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+
+    const { data } = await this.admin
+      .from("design_quality_checks")
+      .select("cost_usd, model")
+      .gte("created_at", since.toISOString());
+
+    const rows = (data ?? []) as Array<{
+      cost_usd: number | string | null;
+      model: string | null;
+    }>;
+
+    if (rows.length === 0) {
+      return { findings, metrics: { byModel: {} } };
+    }
+
+    // Model bazlı toplam ve sayı
+    const byModel: Record<string, { count: number; cost: number }> = {};
+    for (const r of rows) {
+      const m = r.model ?? "unknown";
+      if (!byModel[m]) byModel[m] = { count: 0, cost: 0 };
+      byModel[m].count += 1;
+      byModel[m].cost += Number(r.cost_usd ?? 0);
+    }
+
+    const sortedModels = Object.entries(byModel).sort(
+      (a, b) => b[1].cost - a[1].cost
+    );
+
+    findings.push(
+      this.info(
+        "model_breakdown",
+        `Son 7 gün model kullanımı: ${sortedModels.length} model`,
+        sortedModels
+          .map(
+            ([model, stats]) =>
+              `- **${model}**: ${stats.count} run · $${stats.cost.toFixed(2)} · ort $${(stats.cost / stats.count).toFixed(4)}/run`
+          )
+          .join("\n"),
+        { byModel: Object.fromEntries(sortedModels) }
+      )
+    );
+
+    // Tasarruf önerisi: gpt-4o varsa ve gpt-4o-mini'den 5× pahalıysa
+    const gpt4o = byModel["gpt-4o"];
+    const gpt4oMini = byModel["gpt-4o-mini"];
+    if (gpt4o && gpt4o.cost > 1.0 && gpt4oMini) {
+      const avg4o = gpt4o.cost / gpt4o.count;
+      const avgMini = gpt4oMini.cost / gpt4oMini.count;
+      if (avg4o > avgMini * 5) {
+        findings.push(
+          this.info(
+            "savings_opportunity",
+            `Model tasarruf fırsatı: gpt-4o run başına ${(avg4o / avgMini).toFixed(1)}× pahalı`,
+            `gpt-4o ort: $${avg4o.toFixed(4)}/run. gpt-4o-mini ort: $${avgMini.toFixed(4)}/run. Pim chat veya basit kategoriler için mini'ye geç → aylık ~$${(gpt4o.cost * 4 * 0.7).toFixed(0)} tasarruf.`,
+            { gpt4o, gpt4oMini, ratio: avg4o / avgMini }
+          )
+        );
+      }
+    }
+
+    return {
+      findings,
+      metrics: { byModel: Object.fromEntries(sortedModels) },
     };
   }
 }
