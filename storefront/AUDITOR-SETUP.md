@@ -48,10 +48,14 @@ Bu env için **iki adım** gerek:
 
 ## 🤖 9 Agent ve cron schedule'ları
 
+> NOT: Vercel Hobby plan günde 1 cron limiti — security ve workflow
+> ideal değerlerinden düşürüldü. Pro plan'a ($20/ay) geçilirse
+> orijinal değerlere döner.
+
 | Agent | Cron | Açıklama |
 |---|---|---|
-| 🛡️ security | `0 * * * *` | Saatlik — brute force, spoof, bot |
-| ⚙️ workflow | `0 */4 * * *` | 4 saatlik — stuck order, SLA |
+| 🛡️ security | `0 1 * * *` | Günlük 01:00 — brute force, spoof, bot |
+| ⚙️ workflow | `0 5 * * *` | Günlük 05:00 — stuck order, SLA |
 | 💰 finance | `0 9 * * *` | Günlük 09:00 — gece hesap kapanışı |
 | 💸 ai_cost | `30 9 * * *` | Günlük 09:30 — AI maliyet |
 | ⚖️ compliance | `0 10 * * *` | Günlük 10:00 — KVKK SLA |
@@ -59,6 +63,20 @@ Bu env için **iki adım** gerek:
 | 😊 customer_health | `0 10 * * 1` | Pazartesi 10:00 — müşteri sağlık |
 | 📈 seo | `0 11 * * 3` | Çarşamba 11:00 — görünürlük |
 | 🎨 brand | `0 14 * * 5` | Cuma 14:00 — marka tutarlılığı |
+| 📨 daily-digest | `0 8 * * *` | Günlük 08:00 — tek mail, 9 agent özeti |
+
+## 📧 Mail strateji (Sefa'nın inbox spam'ı önleyici)
+
+| Tetik | Mail gider mi? |
+|---|---|
+| Cron + info-only sonuç | ❌ Hayır (gürültü engellendi) |
+| Cron + warning/critical | ✅ Evet (gerçek sorun) |
+| Manuel "Şimdi çalıştır" | ✅ Her zaman (test için) |
+| Pending action oluştu | ✅ Onay isteme maili |
+| Daily Digest | ✅ Her sabah 08:00 (9 agent özeti) |
+
+**Beklenen günlük mail sayısı (sağlıklı sistem):**
+1 daily digest + 0-3 alert = günde 1-4 mail.
 
 ## 📍 Admin sayfaları
 
@@ -77,3 +95,79 @@ Bu env için **iki adım** gerek:
 ---
 
 **İlk test:** `/admin/denetciler/security` → "▶ Şimdi çalıştır" → bulgu görür → `/admin/denetciler/bekleyen` → onay/red ver.
+
+---
+
+## 🔧 Debug — Sorun çıkarsa nereye bak
+
+### "Agent çalışmıyor / cron tetiklemiyor"
+1. **Vercel Dashboard → Project → Crons sekmesi**
+   - Cron schedule görünüyor mu?
+   - Son çalışma zamanı + status
+2. **Vercel Dashboard → Functions → /api/cron/auditors/[name]**
+   - Log'larda 401 → CRON_SECRET yanlış
+   - Log'larda 501 → auditor factory eksik
+3. Manuel test: `/admin/denetciler/<name>` → "▶ Şimdi çalıştır"
+   - Bu cron'u bypass eder, doğrudan agent çalıştırır
+
+### "Mail gelmiyor"
+1. **Resend Dashboard → Domains**
+   - `pimetiket.com` status: **verified** olmalı (pending değil)
+2. **Resend Dashboard → Logs → Sent**
+   - Mail kaydı var mı? Yoksa kod tarafı sorunu.
+   - Varsa "Delivered" mı, "Bounced" mı?
+3. **Gmail Spam klasörü** kontrol
+4. Compliance auditor → mail_infra check → durumu raporlar
+
+### "Block_ip aksiyonu çalışmıyor (partial)"
+- `CLOUDFLARE_API_TOKEN` Vercel'de var mı?
+- Token izinleri: `Account · Account Filter Lists · Edit` gerek
+- `CLOUDFLARE_BLOCKED_IPS_LIST_ID` Vercel'de var mı?
+- CF'de `pimetiket_blocked_ips` IP list oluşturulmuş mu?
+
+### "KVKK silme aksiyonu çalışmıyor"
+- Migration 041 push edildi mi?
+- `fn_process_kvkk_deletion` RPC var mı?
+- Test: SELECT * FROM pg_proc WHERE proname = 'fn_process_kvkk_deletion';
+
+### "Auditor karar verdim ama uygulanmadı"
+- `/admin/denetciler/ertelenenler` → "Uygulananlar" tabını kontrol et
+- `apply_error` kolonu varsa hata mesajı orada
+- `auditor_action_log` tablosu detaylı log tutar
+
+---
+
+## 📊 Sistem mimarisi özeti
+
+```
+Cron schedule (vercel.json)
+      ↓
+GET /api/cron/auditors/[name]
+      ↓
+auth: Bearer CRON_SECRET
+      ↓
+AUDITOR_FACTORIES[name]() → SecurityAuditor / FinanceAuditor / ...
+      ↓
+auditor.run({ triggerType: "cron" })
+      ↓
+1. auditor_runs INSERT (status=running)
+2. runChecks() — finding'ler üret
+3. auditor_findings INSERT (toplu)
+4. auditor_pending_actions INSERT (suggestedAction olanlar)
+5. auditor_runs UPDATE (status=success + counts)
+6. Mail tetik (warning/critical varsa veya manuel ise)
+7. Onay isteme mail (pending action varsa)
+```
+
+Onay zinciri:
+```
+Sefa /admin/denetciler/bekleyen → ApprovalCard görür
+      ↓
+POST /api/admin/auditors/pending/[id]/decide
+      ↓
+status = approved → executePendingAction() → handler çalışır
+      ↓
+auditor_action_log INSERT
+      ↓
+sendActionAppliedNotification() — sonuç maili
+```
