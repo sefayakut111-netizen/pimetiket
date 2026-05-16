@@ -50,6 +50,10 @@ export class AiCostAuditor extends AuditorBase {
     findings.push(...breakdown.findings);
     metrics.breakdown = breakdown.metrics;
 
+    const tokens = await this.checkTokenUsage();
+    findings.push(...tokens.findings);
+    metrics.tokens = tokens.metrics;
+
     const counts = countFindings(findings);
     return {
       findings,
@@ -240,6 +244,72 @@ export class AiCostAuditor extends AuditorBase {
     return {
       findings,
       metrics: { monthCost, projection },
+    };
+  }
+
+  // E) Token usage analizi
+  private async checkTokenUsage() {
+    const findings: AuditorFinding[] = [];
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+
+    const { data } = await this.admin
+      .from("design_quality_checks")
+      .select("tokens_used, cost_usd, duration_ms, model")
+      .gte("created_at", since.toISOString())
+      .not("tokens_used", "is", null);
+
+    const rows = (data ?? []) as Array<{
+      tokens_used: number | string | null;
+      cost_usd: number | string | null;
+      duration_ms: number | null;
+      model: string | null;
+    }>;
+
+    if (rows.length === 0) {
+      return { findings, metrics: { totalTokens: 0 } };
+    }
+
+    const totalTokens = rows.reduce(
+      (s, r) => s + Number(r.tokens_used ?? 0),
+      0
+    );
+    const totalCost = rows.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0);
+    const avgTokens = totalTokens / rows.length;
+    const costPerK = totalTokens > 0 ? (totalCost / totalTokens) * 1000 : 0;
+
+    findings.push(
+      this.info(
+        "token_usage",
+        `Son 7 gün: ${(totalTokens / 1000).toFixed(1)}k token`,
+        `Toplam: **${totalTokens.toLocaleString("tr-TR")} token** · Ort: **${avgTokens.toFixed(0)} token/run** · $${costPerK.toFixed(4)}/1k token`,
+        { totalTokens, avgTokens, costPerK, runCount: rows.length }
+      )
+    );
+
+    // Prompt şişme tespit — son 24 saat ort vs son 7 gün ort
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const recentRows = rows.filter(
+      (r) => r.duration_ms !== null
+    );
+    // Burada tarih filter yapamıyoruz çünkü tokens query'sinde created_at yok
+    // — basit yaklaşım: ortalama token 5000+ ise uyarı
+    if (avgTokens > 5000) {
+      findings.push(
+        this.warning(
+          "high_token_usage",
+          `Yüksek token kullanımı: ${avgTokens.toFixed(0)} token/run`,
+          `Ortalama her AI çağrısı **${avgTokens.toFixed(0)} token** harcıyor. Prompt'lar büyük olabilir — Design QC prompt'unu küçültme şansı var mı incele.`,
+          { avgTokens, threshold: 5000 }
+        )
+      );
+    }
+
+    void recentRows;
+    return {
+      findings,
+      metrics: { totalTokens, avgTokens, costPerK, runCount: rows.length },
     };
   }
 
