@@ -20,7 +20,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
-import { PimAsset } from "@/components/PimAsset";
 import {
   SchemaJsonLd,
   productSchema,
@@ -1663,12 +1662,29 @@ function StickerPreview({
                   }}
                 />
               ) : (
-                <PimAsset
-                  variant="detailed"
-                  size={Math.min(minDim * scale * 1.2, 360)}
-                  bob={false}
-                  ariaLabel="Pim baykuş — kontur kesim sticker örneği"
-                />
+                // Sefa 16 May UX denetim P2-4: Pim baykuşu yerine
+                // nötr placeholder (Pim sticker satıyor algısı kalkar)
+                <div
+                  className="grid place-items-center text-center"
+                  style={{
+                    width: Math.min(minDim * scale * 1.2, 360),
+                    height: Math.min(minDim * scale * 1.2, 360),
+                  }}
+                  aria-label="Tasarım önizleme alanı — kontur kesim"
+                >
+                  <div className="opacity-60">
+                    <Icon.Plus
+                      size={36}
+                      className="mx-auto mb-2 text-lacivert"
+                    />
+                    <div className="text-[12.5px] font-semibold text-lacivert">
+                      Tasarımını yükle
+                    </div>
+                    <div className="text-[10.5px] text-gri-700 mt-0.5">
+                      Kontur kesim · alanın etrafı kesilir
+                    </div>
+                  </div>
+                </div>
               )}
               {/* Holografik / simli renk overlay — tasarım siluetinin
                   üstüne malzeme tonu yansıtır (kontur drop-shadow zaten
@@ -1731,12 +1747,21 @@ function StickerPreview({
                   }}
                 />
               ) : (
-                <PimAsset
-                  variant="detailed"
-                  size={Math.min(minDim * scale * 0.7, 220)}
-                  bob={false}
-                  ariaLabel="Pim baykuş — sticker örneği"
-                />
+                // Sefa 16 May UX denetim P2-4: Nötr placeholder
+                <div
+                  className="grid place-items-center text-center w-full h-full"
+                  aria-label="Tasarım önizleme alanı"
+                >
+                  <div className="opacity-60">
+                    <Icon.Plus
+                      size={28}
+                      className="mx-auto mb-1.5 text-lacivert"
+                    />
+                    <div className="text-[11.5px] font-semibold text-lacivert">
+                      Tasarımını yükle
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
             <div
