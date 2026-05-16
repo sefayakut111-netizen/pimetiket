@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow, Pill } from "@/components/ui";
-import { BLOG_POSTS } from "@/lib/blog-posts";
+import { BLOG_POSTS, getReadMinutes } from "@/lib/blog-posts";
 
 export const metadata: Metadata = {
   title: "Blog — Etiket ve sticker rehberleri",
@@ -79,7 +79,7 @@ export default function BlogIndexPage() {
                   <span>·</span>
                   <span>{formatDate(featured.publishedAt)}</span>
                   <span>·</span>
-                  <span>{featured.readMinutes} dk okuma</span>
+                  <span>{getReadMinutes(featured)} dk okuma</span>
                 </div>
               </div>
             </Card>

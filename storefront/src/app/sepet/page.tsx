@@ -265,23 +265,25 @@ export default function SepetPage() {
                     )}
                     {/* +hediye chip kaldırıldı (Sefa kuralı 11 May) —
                         overrun adet backend'de depo etiketi olarak kalır */}
+                    {/* Sefa 17 May P2-26: tap target 32→44px (WCAG 2.1
+                        mobil minimum), font 16→18 görünürlük */}
                     <div className="flex items-center gap-3 mt-3">
                       <div className="inline-flex items-center gap-2 ring-1 ring-gri-200 rounded-full bg-white">
                         <button
                           type="button"
                           onClick={() => updateQty(item, -1)}
-                          className="w-8 h-8 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-l-full"
+                          className="w-11 h-11 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-l-full text-[18px] font-semibold active:scale-95 transition-transform"
                           aria-label={x.decreaseQty}
                         >
                           −
                         </button>
-                        <span className="text-[13px] font-semibold min-w-[60px] text-center">
+                        <span className="text-[14px] font-semibold min-w-[64px] text-center tabular-nums">
                           {fmt(item.qty)}
                         </span>
                         <button
                           type="button"
                           onClick={() => updateQty(item, 1)}
-                          className="w-8 h-8 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-r-full"
+                          className="w-11 h-11 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-r-full text-[18px] font-semibold active:scale-95 transition-transform"
                           aria-label={x.increaseQty}
                         >
                           +

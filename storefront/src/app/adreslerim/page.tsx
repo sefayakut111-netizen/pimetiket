@@ -144,34 +144,30 @@ export default function AdreslerimPage() {
       phone: "",
       isDefault: addresses.length === 0,
     });
+    setFormErrors({}); // Sefa 17 May P2-21: hataları sıfırla
     setShowModal(true);
   };
+
+  // Sefa 17 May P2-21: tek tek hata yerine TÜM eksikleri toplu göster
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const onSave = async () => {
     if (!isLoggedInSync()) {
       toast.error("Giriş yapman gerekiyor.");
       return;
     }
-    if (form.name.trim().length < 2) {
-      toast.error("Ad Soyad girmen lazım.");
+    const errs: Record<string, string> = {};
+    if (form.name.trim().length < 2) errs.name = "Ad Soyad gerekli";
+    if (form.addr.trim().length < 4) errs.addr = "Açık adres gerekli";
+    if (!form.city) errs.city = "Şehir seç";
+    if (!form.district) errs.district = "İlçe seç";
+    if (form.phone.trim().length < 10) errs.phone = "10 haneli telefon";
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
+      toast.error(`Eksik alan: ${Object.keys(errs).length}`);
       return;
     }
-    if (form.addr.trim().length < 4) {
-      toast.error("Açık adres girmen lazım.");
-      return;
-    }
-    if (!form.city) {
-      toast.error("Şehir seçmen lazım.");
-      return;
-    }
-    if (!form.district) {
-      toast.error("İlçe seçmen lazım.");
-      return;
-    }
-    if (form.phone.trim().length < 10) {
-      toast.error("Telefon numarası girmen lazım (10 hane).");
-      return;
-    }
+    setFormErrors({});
     setSaving(true);
     const combinedAddr = [form.addr, form.district, form.city, "Türkiye"]
       .filter((s) => s && s.trim().length > 0)
@@ -350,7 +346,13 @@ export default function AdreslerimPage() {
                   placeholder={c.namePh}
                   autoComplete="name"
                   required
+                  className={cn(formErrors.name && "!ring-kirmizi")}
                 />
+                {formErrors.name && (
+                  <p className="mt-1 text-[12px] text-kirmizi font-medium">
+                    ⚠ {formErrors.name}
+                  </p>
+                )}
               </div>
               <div>
                 <label
@@ -368,7 +370,6 @@ export default function AdreslerimPage() {
                     placeholder="5XX XXX XX XX"
                     value={dbPhoneToInputValue(form.phone)}
                     onChange={(e) => {
-                      // Sefa 17 May P0-1: helper kullan
                       const local10 = parseTrPhoneToLocal(e.target.value);
                       setForm({ ...form, phone: local10 });
                     }}
@@ -376,8 +377,14 @@ export default function AdreslerimPage() {
                     inputMode="tel"
                     maxLength={10}
                     required
+                    className={cn(formErrors.phone && "!ring-kirmizi")}
                   />
                 </div>
+                {formErrors.phone && (
+                  <p className="mt-1 text-[12px] text-kirmizi font-medium">
+                    ⚠ {formErrors.phone}
+                  </p>
+                )}
               </div>
               <div>
                 <label
@@ -393,7 +400,13 @@ export default function AdreslerimPage() {
                   placeholder={c.addrPh}
                   autoComplete="street-address"
                   required
+                  className={cn(formErrors.addr && "!ring-kirmizi")}
                 />
+                {formErrors.addr && (
+                  <p className="mt-1 text-[12px] text-kirmizi font-medium">
+                    ⚠ {formErrors.addr}
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -479,25 +492,26 @@ export default function AdreslerimPage() {
                   </div>
                 </div>
               </div>
-              <label className="flex items-start gap-2 text-[13px] text-gri-700 cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={form.isDefault}
-                  onChange={(e) =>
-                    setForm({ ...form, isDefault: e.target.checked })
-                  }
-                  className="mt-0.5 accent-pim-mercan"
-                  disabled={addresses.length === 0}
-                />
-                <span>
-                  {c.saveDefault}
-                  {addresses.length === 0 && (
-                    <span className="text-[11.5px] text-gri-500 italic block mt-0.5">
-                      (İlk kayıt otomatik varsayılan olur)
-                    </span>
-                  )}
-                </span>
-              </label>
+              {/* Sefa 17 May P2-20: 0 adres iken checkbox conditional —
+                  zaten otomatik varsayılan olacak, kafa karıştırmasın. */}
+              {addresses.length > 0 && (
+                <label className="flex items-start gap-2.5 text-[13px] text-gri-700 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={form.isDefault}
+                    onChange={(e) =>
+                      setForm({ ...form, isDefault: e.target.checked })
+                    }
+                    className="mt-0.5 accent-pim-mercan w-5 h-5"
+                  />
+                  <span>{c.saveDefault}</span>
+                </label>
+              )}
+              {addresses.length === 0 && (
+                <p className="text-[12px] text-gri-500 italic">
+                  ℹ İlk adres otomatik olarak varsayılan adresin olur.
+                </p>
+              )}
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <Button

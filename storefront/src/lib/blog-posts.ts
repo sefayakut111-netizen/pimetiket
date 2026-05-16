@@ -1,6 +1,9 @@
 /**
  * Blog yazıları — şu an hardcoded (SEO + içerik pazarlaması).
  * Backend swap'te `blog_posts` tablosu + admin /admin/blog sayfası gelecek.
+ *
+ * Sefa 17 May P2-31: readMinutes hardcoded değer yerine hesaplanıyor
+ * (Türkçe ortalama okuma hızı 200 wpm). 5 dk için 1000 kelime gerekir.
  */
 
 export interface BlogPost {
@@ -14,6 +17,28 @@ export interface BlogPost {
   coverColor: string; // tailwind bg class
   /** Markdown gibi düz metin — render için basit paragraflar */
   body: string;
+}
+
+/**
+ * Sefa 17 May P2-31: Gerçek okuma süresi hesabı.
+ * 200 wpm (Türkçe ortalama), min 1 dk.
+ */
+export function calculateReadMinutes(body: string): number {
+  const words = body.trim().split(/\s+/).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
+/**
+ * Belirli bir post için readMinutes'i hesaplanmış değerle override et.
+ * Hardcoded değer fallback olarak kalır (eğer body kısa veya boşsa).
+ */
+export function getReadMinutes(post: BlogPost): number {
+  const calc = calculateReadMinutes(post.body);
+  // Hardcoded ile %30+ farkı varsa hesaplananı kullan (yazı güncellendiğinde)
+  if (Math.abs(calc - post.readMinutes) / post.readMinutes > 0.3) {
+    return calc;
+  }
+  return post.readMinutes;
 }
 
 export const BLOG_POSTS: BlogPost[] = [

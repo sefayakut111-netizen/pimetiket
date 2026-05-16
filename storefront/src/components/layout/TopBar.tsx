@@ -316,6 +316,22 @@ export function TopBar() {
                     >
                       <Icon.Truck size={14} /> {t.nav.addresses}
                     </Link>
+                    <Link
+                      href="/fatura-bilgileri"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      <Icon.Box size={14} /> Fatura bilgilerim
+                    </Link>
+                    {/* Sefa 17 May P2-24: Bildirim tercihleri (footer'da var
+                        header'da yoktu — tutarlı navigation) */}
+                    <Link
+                      href="/bildirim-tercihleri"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      🔔 Bildirim tercihleri
+                    </Link>
                     {/* Sefa 16 May Kritik 4: 2FA sayfa linki */}
                     <Link
                       href="/ayarlar/2fa"

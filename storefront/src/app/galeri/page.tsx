@@ -130,7 +130,8 @@ export default function GaleriPage() {
         {/* Empty */}
         {items !== null && totalCount === 0 && (
           <Card padding="p-12" className="text-center">
-            <Pim pose="wave" size={140} />
+            {/* Sefa 17 May P2-27: pose çeşitlilik — galeri için "excited" */}
+            <Pim pose="excited" size={140} />
             <h2 className="mt-4 text-[22px] md:text-[28px] font-semibold tracking-tight">
               {isEn ? "Coming soon" : "Yakında doluyor"}
             </h2>

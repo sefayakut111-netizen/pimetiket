@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
@@ -241,6 +241,33 @@ export default function SssPage() {
   const [active, setActive] = useState<Category>("siparis");
   const items = FAQS[active];
 
+  // Sefa 17 May P2-23: URL hash ile paylaşılabilir kategori (örn /sss#kargo)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const validCats: Category[] = [
+      "siparis",
+      "uretim",
+      "kargo",
+      "odeme",
+      "iade",
+    ];
+    const readHash = () => {
+      const h = window.location.hash.replace("#", "") as Category;
+      if (validCats.includes(h)) setActive(h);
+    };
+    readHash();
+    window.addEventListener("hashchange", readHash);
+    return () => window.removeEventListener("hashchange", readHash);
+  }, []);
+
+  // Tab değişince URL hash güncelle
+  const changeCategory = (cat: Category) => {
+    setActive(cat);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${cat}`);
+    }
+  };
+
   // Tüm FAQ'leri tek liste yapıp JSON-LD'ye çevir (Google Rich Snippet için)
   const allFaqs: { q: string; a: string }[] = [
     ...FAQS.siparis,
@@ -283,7 +310,7 @@ export default function SssPage() {
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setActive(cat.id)}
+                onClick={() => changeCategory(cat.id)}
                 className={cn(
                   "px-4 md:px-5 py-2.5 rounded-full text-sm font-semibold transition-colors",
                   active === cat.id

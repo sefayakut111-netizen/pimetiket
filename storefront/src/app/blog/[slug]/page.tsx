@@ -11,7 +11,7 @@ import { notFound } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill } from "@/components/ui";
-import { BLOG_POSTS, getBlogPost } from "@/lib/blog-posts";
+import { BLOG_POSTS, getBlogPost, getReadMinutes } from "@/lib/blog-posts";
 import { getSiteImage } from "@/lib/site-images";
 import {
   SchemaJsonLd,
@@ -138,7 +138,7 @@ export default async function BlogPostPage({ params }: Props) {
         <div className="flex items-center gap-2 mb-3">
           <Pill variant="mercan">{post.category}</Pill>
           <span className="text-[12px] text-gri-500">
-            {post.readMinutes} dk okuma
+            {getReadMinutes(post)} dk okuma
           </span>
         </div>
         <h1 className="text-[32px] md:text-[40px] font-semibold tracking-tight leading-tight mb-4">

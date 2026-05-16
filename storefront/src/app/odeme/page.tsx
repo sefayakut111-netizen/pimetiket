@@ -1633,13 +1633,16 @@ export default function OdemePage() {
                 {c.vatIncluded}
               </div>
 
-              {/* Accept + submit */}
-              <label className="flex items-start gap-2.5 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-5">
+              {/* Accept + submit
+                  Sefa 17 May P2-28: checkbox tap target 14×14 → 20×20
+                  (label ile beraber clickable area zaten geniş, ama
+                  checkbox'ın kendisi de görünür ve dokunulabilir olsun) */}
+              <label className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-5 min-h-[44px] py-1">
                 <input
                   type="checkbox"
                   checked={acceptSatis}
                   onChange={(e) => setAcceptSatis(e.target.checked)}
-                  className="mt-1 accent-pim-mercan shrink-0"
+                  className="mt-0.5 accent-pim-mercan shrink-0 w-5 h-5 cursor-pointer"
                 />
                 <span>
                   {c.accept.before}
@@ -1654,28 +1657,30 @@ export default function OdemePage() {
                 </span>
               </label>
 
-              {/* Fason üretim disclaimer (KVKK m.5/2-c bilgilendirme) */}
+              {/* Fason üretim disclaimer (KVKK m.5/2-c bilgilendirme)
+                  Sefa 17 May P2-25: "Detay →" linki spesifik anchor'a */}
               <div className="mt-3 px-3 py-2.5 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[12px] text-gri-700 leading-relaxed flex items-start gap-2">
                 <span aria-hidden="true">🏭</span>
                 <span>
                   {c.fasonDisclaimer}{" "}
                   <Link
-                    href="/gizlilik"
+                    href="/gizlilik#fason-aktarim"
                     target="_blank"
                     className="font-semibold text-pim-mercan hover:underline"
+                    title="Fason atölyeye veri aktarım detayları (Gizlilik Politikası)"
                   >
-                    {c.fasonDisclaimerLink} →
+                    Veri akışı detayı →
                   </Link>
                 </span>
               </div>
 
-              {/* Telif taahhüdü */}
-              <label className="flex items-start gap-2.5 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3">
+              {/* Telif taahhüdü — Sefa 17 May P2-28: aynı tap target */}
+              <label className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3 min-h-[44px] py-1">
                 <input
                   type="checkbox"
                   checked={acceptCopyright}
                   onChange={(e) => setAcceptCopyright(e.target.checked)}
-                  className="mt-1 accent-pim-mercan shrink-0"
+                  className="mt-0.5 accent-pim-mercan shrink-0 w-5 h-5 cursor-pointer"
                 />
                 <span>{c.acceptCopyright}</span>
               </label>

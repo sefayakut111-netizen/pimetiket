@@ -226,8 +226,10 @@ export default function IadeTalepPage() {
             <Button variant="primary" size="lg" href="/siparislerim">
               {c.backToOrders}
             </Button>
+            {/* Sefa 17 May P2-30: link hedefi (/iletisim) belirsizdi —
+                buton label'ına "→ İletişim sayfasına git" suffix eklendi */}
             <Button variant="secondary" size="lg" href="/iletisim">
-              <Icon.ChatBubble size={16} /> {c.contactUs}
+              <Icon.ChatBubble size={16} /> {c.contactUs} → İletişim
             </Button>
           </div>
         </div>
