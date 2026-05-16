@@ -32,6 +32,7 @@ import retriggerStuckOrder from "../actions/retrigger-stuck-order";
 import cancelNoDesignOrder from "../actions/cancel-no-design-order";
 import processKvkkDeletion from "../actions/process-kvkk-deletion";
 import archiveOldFiles from "../actions/archive-old-files";
+import cleanupOrphanCart from "../actions/cleanup-orphan-cart";
 
 // ============================================================
 // Handler interface
@@ -80,6 +81,7 @@ export const ACTION_REGISTRY: Record<string, ActionHandler> = {
   cancel_no_design_order: cancelNoDesignOrder,
   process_kvkk_deletion: processKvkkDeletion,
   archive_old_files: archiveOldFiles,
+  cleanup_orphan_cart: cleanupOrphanCart,
 };
 
 // ============================================================

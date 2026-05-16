@@ -39,13 +39,18 @@ interface DetailResponse {
   error?: string;
 }
 
-// Canlı olan auditor'lar — "Şimdi çalıştır" sadece bunlarda aktif
+// Canlı olan auditor'lar — "Şimdi çalıştır" sadece bunlarda aktif.
+// Adım 7 ile 9 agent tam set canlı.
 const LIVE_AUDITORS: ReadonlySet<string> = new Set([
   "security",
   "finance",
   "workflow",
   "compliance",
   "ai_cost",
+  "data_hygiene",
+  "customer_health",
+  "seo",
+  "brand",
 ]);
 
 const SEVERITY_STYLES = {

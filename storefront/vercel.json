@@ -43,6 +43,22 @@
     {
       "path": "/api/cron/auditors/ai_cost",
       "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/cron/auditors/data_hygiene",
+      "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/auditors/customer_health",
+      "schedule": "0 10 * * 1"
+    },
+    {
+      "path": "/api/cron/auditors/seo",
+      "schedule": "0 11 * * 3"
+    },
+    {
+      "path": "/api/cron/auditors/brand",
+      "schedule": "0 14 * * 5"
     }
   ]
 }

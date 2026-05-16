@@ -21,6 +21,10 @@ import { FinanceAuditor } from "@/lib/agents/auditors/finance";
 import { WorkflowAuditor } from "@/lib/agents/auditors/workflow";
 import { ComplianceAuditor } from "@/lib/agents/auditors/compliance";
 import { AiCostAuditor } from "@/lib/agents/auditors/ai-cost";
+import { DataHygieneAuditor } from "@/lib/agents/auditors/data-hygiene";
+import { CustomerHealthAuditor } from "@/lib/agents/auditors/customer-health";
+import { SeoAuditor } from "@/lib/agents/auditors/seo";
+import { BrandAuditor } from "@/lib/agents/auditors/brand";
 
 const AUDITOR_FACTORIES: Partial<
   Record<AuditorName, () => { run: (opts: { triggerType: "manual"; triggeredBy: string }) => Promise<string> }>
@@ -30,6 +34,10 @@ const AUDITOR_FACTORIES: Partial<
   workflow: () => new WorkflowAuditor(),
   compliance: () => new ComplianceAuditor(),
   ai_cost: () => new AiCostAuditor(),
+  data_hygiene: () => new DataHygieneAuditor(),
+  customer_health: () => new CustomerHealthAuditor(),
+  seo: () => new SeoAuditor(),
+  brand: () => new BrandAuditor(),
 };
 
 export async function POST(
