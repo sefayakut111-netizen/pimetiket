@@ -138,6 +138,8 @@ export default function DenetcilerDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [runningAll, setRunningAll] = useState(false);
   const [runAllResult, setRunAllResult] = useState<string | null>(null);
+  const [testingMail, setTestingMail] = useState(false);
+  const [testMailResult, setTestMailResult] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -167,6 +169,40 @@ export default function DenetcilerDashboardPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const handleTestMail = async () => {
+    if (testingMail) return;
+    setTestingMail(true);
+    setTestMailResult(null);
+    try {
+      const res = await fetch("/api/admin/auditors/test-mail", {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        recipients?: string[];
+        messageId?: string | null;
+        error?: string;
+        hint?: string;
+      };
+      if (json.ok) {
+        setTestMailResult(
+          `✓ Mail gönderildi (${json.recipients?.[0] ?? "alıcı"})`
+        );
+      } else {
+        setTestMailResult(
+          `✗ ${json.error ?? "Hata"}${json.hint ? " — " + json.hint : ""}`
+        );
+      }
+      setTimeout(() => setTestMailResult(null), 10000);
+    } catch (err) {
+      setTestMailResult(
+        "✗ " + (err instanceof Error ? err.message : "Ağ hatası")
+      );
+    } finally {
+      setTestingMail(false);
+    }
+  };
 
   const handleRunAll = async () => {
     if (runningAll) return;
@@ -264,6 +300,34 @@ export default function DenetcilerDashboardPage() {
                 )}
               >
                 {runAllResult}
+              </span>
+            )}
+            {/* Test mail butonu — Resend domain doğrulaması anında test */}
+            <button
+              type="button"
+              onClick={() => void handleTestMail()}
+              disabled={testingMail}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12.5px] font-semibold transition-colors",
+                testingMail
+                  ? "bg-gri-100 text-gri-500 cursor-not-allowed"
+                  : "bg-white ring-1 ring-gri-200 text-lacivert hover:ring-pim-mercan"
+              )}
+              title="Resend mail altyapısını anında test et"
+            >
+              {testingMail ? "⏳ Test..." : "🧪 Test mail"}
+            </button>
+            {testMailResult && (
+              <span
+                className={cn(
+                  "text-[12px] font-semibold max-w-[400px] truncate",
+                  testMailResult.startsWith("✓")
+                    ? "text-yesil"
+                    : "text-kirmizi"
+                )}
+                title={testMailResult}
+              >
+                {testMailResult}
               </span>
             )}
             <Link
