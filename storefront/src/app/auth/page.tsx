@@ -90,6 +90,22 @@ function AuthInner() {
         password,
       });
       if (error) {
+        // Sefa 16 May Migration 041: brute force tespit için
+        // başarısız giriş denemesi server-side log'lanır.
+        // Fire-and-forget — login akışını bloklamaz.
+        const reason = error.message.toLowerCase().includes("invalid login")
+          ? "password_invalid"
+          : error.message.toLowerCase().includes("email not confirmed")
+            ? "email_not_confirmed"
+            : "other";
+        void fetch("/api/auth/log-failed-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, reason }),
+        }).catch(() => {
+          /* silently */
+        });
+
         if (error.message.toLowerCase().includes("invalid login")) {
           toast.error("E-posta veya şifre hatalı");
         } else if (error.message.toLowerCase().includes("email not confirmed")) {
