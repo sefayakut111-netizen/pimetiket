@@ -63,6 +63,10 @@ export class WorkflowAuditor extends AuditorBase {
     findings.push(...designReject.findings);
     metrics.designReject = designReject.metrics;
 
+    const fulfillment = await this.checkFulfillmentSpeed();
+    findings.push(...fulfillment.findings);
+    metrics.fulfillment = fulfillment.metrics;
+
     const counts = countFindings(findings);
     const summary = buildSummary(counts);
 
@@ -451,6 +455,96 @@ export class WorkflowAuditor extends AuditorBase {
     }
 
     return { findings, metrics: { total: rows.length, rejected, rate } };
+  }
+
+  // H) Fulfillment speed — paid → shipped ortalama süre (bu hafta vs geçen hafta)
+  private async checkFulfillmentSpeed() {
+    const findings: AuditorFinding[] = [];
+
+    const thisWeek = new Date();
+    thisWeek.setDate(thisWeek.getDate() - 7);
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 14);
+
+    // Bu hafta shipped olan siparişler
+    const { data: thisData } = await this.admin
+      .from("orders")
+      .select("created_at, updated_at")
+      .in("status", ["shipped", "delivered"] as never)
+      .gte("updated_at", thisWeek.toISOString())
+      .limit(200);
+
+    // Geçen hafta shipped olan siparişler
+    const { data: lastData } = await this.admin
+      .from("orders")
+      .select("created_at, updated_at")
+      .in("status", ["shipped", "delivered"] as never)
+      .gte("updated_at", lastWeek.toISOString())
+      .lt("updated_at", thisWeek.toISOString())
+      .limit(200);
+
+    const calcAvgDays = (rows: Array<{ created_at: string; updated_at: string }>) => {
+      if (rows.length === 0) return 0;
+      const totalMs = rows.reduce((s, r) => {
+        const diff =
+          new Date(r.updated_at).getTime() - new Date(r.created_at).getTime();
+        return s + diff;
+      }, 0);
+      return totalMs / rows.length / 86400_000;
+    };
+
+    const thisRows = (thisData ?? []) as Array<{
+      created_at: string;
+      updated_at: string;
+    }>;
+    const lastRows = (lastData ?? []) as Array<{
+      created_at: string;
+      updated_at: string;
+    }>;
+
+    const thisAvg = calcAvgDays(thisRows);
+    const lastAvg = calcAvgDays(lastRows);
+
+    if (thisRows.length === 0) {
+      return { findings, metrics: { thisAvg: 0, lastAvg: 0, deviation: 0 } };
+    }
+
+    const deviation = lastAvg > 0 ? (thisAvg - lastAvg) / lastAvg : 0;
+
+    // SLA: 5 iş günü kargoya — yani ortalama 5-7 gün makul
+    if (thisAvg > 8) {
+      findings.push(
+        this.warning(
+          "fulfillment_slow",
+          `Üretim+kargo süresi yavaşladı: ${thisAvg.toFixed(1)} gün`,
+          `Bu hafta paid → shipped ortalama **${thisAvg.toFixed(1)} gün** (SLA 5 iş günü). Geçen hafta: ${lastAvg.toFixed(1)} gün. Fason atölye yoğunluğu veya QC darboğazı olabilir.`,
+          { thisAvg, lastAvg, thisCount: thisRows.length }
+        )
+      );
+    } else if (deviation > 0.3 && lastAvg > 0) {
+      findings.push(
+        this.info(
+          "fulfillment_trend",
+          `Üretim hızı %${(deviation * 100).toFixed(0)} yavaşladı`,
+          `Bu hafta ort: ${thisAvg.toFixed(1)} gün, önceki: ${lastAvg.toFixed(1)} gün. SLA içinde ama trend dikkat.`,
+          { thisAvg, lastAvg, deviation }
+        )
+      );
+    } else {
+      findings.push(
+        this.info(
+          "fulfillment_ok",
+          `Üretim+kargo: ${thisAvg.toFixed(1)} gün ort (SLA 5 iş)`,
+          `Bu hafta ${thisRows.length} sipariş, ort ${thisAvg.toFixed(1)} gün. Geçen hafta: ${lastAvg.toFixed(1)} gün.`,
+          { thisAvg, lastAvg, thisCount: thisRows.length }
+        )
+      );
+    }
+
+    return {
+      findings,
+      metrics: { thisAvg, lastAvg, deviation, thisCount: thisRows.length },
+    };
   }
 }
 
