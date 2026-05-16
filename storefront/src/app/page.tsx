@@ -23,7 +23,7 @@ import { useUser } from "@/lib/supabase/use-user";
 // "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
 // Sticker 250 (popüler), etiket 2000 (popüler) — fixed cost yayıldığında
 // daha makul birim fiyat görünür ("ucuz baskı" mesajıyla uyumlu).
-function baselineStickerPrice(): string {
+function baselineStickerPrice(): number | "—" {
   // 250 adet (popüler tier) baseline — fixed cost yayılınca makul birim
   const r = quoteCustomerSticker({
     width: 75,
@@ -33,10 +33,10 @@ function baselineStickerPrice(): string {
     qty: 250,
   });
   if (!r.ok) return "—";
-  return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
+  return r.unitPrice;
 }
 
-function baselineEtiketPrice(): string {
+function baselineEtiketPrice(): number | "—" {
   const r = quoteCustomerEtiket({
     width: 60,
     height: 80,
@@ -46,7 +46,19 @@ function baselineEtiketPrice(): string {
     customization: "yok",
   });
   if (!r.ok) return "—";
-  return `${r.unitPrice.toFixed(2).replace(".", ",")} TL/adet`;
+  return r.unitPrice;
+}
+
+/** Locale-aware unit price format — TR "2,05 TL/adet", EN "2.05 TRY/pc" */
+function formatUnitPriceLocale(
+  value: number | "—" | string,
+  locale: "tr" | "en"
+): string {
+  if (value === "—" || typeof value !== "number") return "—";
+  if (locale === "en") {
+    return `${value.toFixed(2)} TRY/pc`;
+  }
+  return `${value.toFixed(2).replace(".", ",")} TL/adet`;
 }
 
 const FAQ_QUESTIONS_TR = [
@@ -157,25 +169,39 @@ export default function HomePage() {
             {!user && (
               <div className="mt-3 flex items-center gap-1.5 text-[13px] text-gri-700">
                 <Icon.User size={13} className="text-gri-500" />
-                <span>İlk siparişin için</span>
+                <span>
+                  {locale === "en" ? "For your first order" : "İlk siparişin için"}
+                </span>
                 <Link
                   href="/auth?mode=signup"
                   className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
                 >
-                  ücretsiz hesap aç
+                  {locale === "en"
+                    ? "create a free account"
+                    : "ücretsiz hesap aç"}
                 </Link>
-                <span className="text-gri-500">— 30 saniye</span>
+                <span className="text-gri-500">
+                  — {locale === "en" ? "30 seconds" : "30 saniye"}
+                </span>
               </div>
             )}
+            {/* Sefa 17 May P1-7: hero chip'ler locale-aware (eski hardcoded TR) */}
             <div className="mt-10 flex items-center gap-2.5 flex-wrap">
               <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-yesil-soft text-yesil text-[14px] font-semibold">
-                <Icon.Check size={15} /> Düşük adetten esnek
+                <Icon.Check size={15} />{" "}
+                {locale === "en"
+                  ? "Flexible low quantities"
+                  : "Düşük adetten esnek"}
               </span>
               <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-pim-mercan-tint text-pim-mercan text-[14px] font-semibold">
-                <Icon.Sparkle size={15} /> AI dosya kontrolü
+                <Icon.Sparkle size={15} />{" "}
+                {locale === "en" ? "AI file check" : "AI dosya kontrolü"}
               </span>
               <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-krem text-lacivert text-[14px] font-semibold">
-                <Icon.Truck size={15} /> Türkiye geneli teslimat
+                <Icon.Truck size={15} />{" "}
+                {locale === "en"
+                  ? "Nationwide delivery"
+                  : "Türkiye geneli teslimat"}
               </span>
             </div>
           </div>
@@ -309,12 +335,16 @@ export default function HomePage() {
       {/* ============================== PRODUCT CARDS ============================== */}
       <section className="py-12">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Sefa 17 May P1-7: "1000 from" → "From 1,000" (EN sözdizimi)
+              + unit price locale-aware */}
           <ProductCard
             kind="etiket"
             title={t.nav.etiket}
             sub={t.home.productEtiketSub}
-            from={`1000 ${t.home.productFrom}`}
-            price={baselineEtiketPrice()}
+            from={
+              locale === "en" ? "From 1,000" : `${t.home.productFrom} 1000`
+            }
+            price={formatUnitPriceLocale(baselineEtiketPrice(), locale)}
             href="/etiket"
             priceLabel={t.home.productPriceLabel}
             ctaLabel={t.home.productConfigure}
@@ -331,8 +361,8 @@ export default function HomePage() {
             kind="sticker"
             title={t.nav.sticker}
             sub={t.home.productStickerSub}
-            from={`25 ${t.home.productFrom}`}
-            price={baselineStickerPrice()}
+            from={locale === "en" ? "From 25" : `${t.home.productFrom} 25`}
+            price={formatUnitPriceLocale(baselineStickerPrice(), locale)}
             href="/sticker"
             priceLabel={t.home.productPriceLabel}
             ctaLabel={t.home.productConfigure}

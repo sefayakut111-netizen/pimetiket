@@ -20,9 +20,18 @@ import {
   refreshCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { useT } from "@/lib/i18n/context";
 
-function lastOrderDateLabel(ts: number): string {
+// Sefa 17 May P1-7: locale-aware date label
+function lastOrderDateLabel(ts: number, locale: "tr" | "en"): string {
   const days = Math.floor((Date.now() - ts) / (24 * 60 * 60 * 1000));
+  if (locale === "en") {
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    if (days < 30) return `${days} days ago`;
+    if (days < 60) return "Last month";
+    return `${Math.floor(days / 30)} months ago`;
+  }
   if (days === 0) return "Bugün";
   if (days === 1) return "Dün";
   if (days < 30) return `${days} gün önce`;
@@ -30,10 +39,11 @@ function lastOrderDateLabel(ts: number): string {
   return `${Math.floor(days / 30)} ay önce`;
 }
 
-const fmt = (n: number) =>
-  Math.round(n).toLocaleString("tr-TR") + " TL";
-
 export function QuickReorderWidget() {
+  const { locale } = useT();
+  const fmt = (n: number) =>
+    Math.round(n).toLocaleString(locale === "en" ? "en-US" : "tr-TR") +
+    (locale === "en" ? " TRY" : " TL");
   const [lastOrder, setLastOrder] = useState<CustomerOrder | null>(null);
   const [orderCount, setOrderCount] = useState(0);
 
@@ -56,10 +66,11 @@ export function QuickReorderWidget() {
 
   if (!lastOrder) return null;
 
+  const isEn = locale === "en";
   const itemSummary =
     lastOrder.items.length === 1
-      ? `${lastOrder.items[0].product === "sticker" ? "Sticker" : "Etiket"} · ${lastOrder.items[0].config}`
-      : `${lastOrder.items.length} ürün`;
+      ? `${lastOrder.items[0].product === "sticker" ? (isEn ? "Sticker" : "Sticker") : isEn ? "Label" : "Etiket"} · ${lastOrder.items[0].config}`
+      : `${lastOrder.items.length} ${isEn ? "items" : "ürün"}`;
 
   return (
     <section className="mx-auto max-w-[1280px] px-4 md:px-8 mt-8">
@@ -70,17 +81,20 @@ export function QuickReorderWidget() {
           </span>
           <div className="flex-1 min-w-0">
             <div className="text-[11px] uppercase tracking-[0.06em] text-pim-mercan font-bold">
-              Yeniden bastır
+              {isEn ? "REORDER" : "YENİDEN BASTIR"}
             </div>
             <div className="text-[15px] font-semibold text-lacivert truncate mt-0.5">
               {itemSummary}
             </div>
             <div className="text-[12px] text-gri-700 mt-0.5">
-              {lastOrderDateLabel(lastOrder.createdAt)} · {fmt(lastOrder.total)}
+              {lastOrderDateLabel(lastOrder.createdAt, locale)} ·{" "}
+              {fmt(lastOrder.total)}
               {orderCount > 1 && (
                 <>
-                  {" "}
-                  · {orderCount} sipariş arşivinde
+                  {" · "}
+                  {isEn
+                    ? `${orderCount} orders in archive`
+                    : `${orderCount} sipariş arşivinde`}
                 </>
               )}
             </div>
@@ -88,13 +102,13 @@ export function QuickReorderWidget() {
           <div className="flex gap-2 shrink-0">
             <Link href={`/siparis/${lastOrder.id}`}>
               <Button variant="primary" size="md">
-                Detay → bastır
+                {isEn ? "Details → reorder" : "Detay → bastır"}
               </Button>
             </Link>
             {orderCount > 1 && (
               <Link href="/siparislerim">
                 <Button variant="ghost" size="md">
-                  Tümü
+                  {isEn ? "All" : "Tümü"}
                 </Button>
               </Link>
             )}

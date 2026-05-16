@@ -74,39 +74,51 @@ import { StepProgress, VerticalStepProgress } from "@/components/Stepper";
  *   - "Beyaz semi-glos" → "Opak PP Etiket" (yeni isim)
  *   - "Kraft" → "Kraft Etiket", "Kuşe" → "Kuşe Etiket"
  */
+// Sefa 17 May P1-7: EN locale eklendi (Site denetim raporu i18n leak)
+// id sabit kalır; name/desc locale'a göre seçilir runtime'da.
 const MATERIALS = [
   {
     id: "kuse",
     name: "Kuşe Etiket",
+    name_en: "Coated paper label",
     desc: "Mat kaplamalı baskı kağıdı",
+    desc_en: "Matte coated print paper",
     swatch: "#FAFAF4",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "kraft",
     name: "Kraft Etiket",
+    name_en: "Kraft label",
     desc: "Doğal, dokunsal",
+    desc_en: "Natural, tactile",
     swatch: "#C9A47A",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "beyaz",
     name: "Opak PP Etiket",
+    name_en: "Opaque PP label",
     desc: "Klasik, dayanıklı, parlak",
+    desc_en: "Classic, durable, glossy",
     swatch: "#F8F8F4",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "ultra",
     name: "Ultra clear",
+    name_en: "Ultra clear",
     desc: "Şeffaf cam etkisi",
+    desc_en: "Transparent glass effect",
     swatch: "linear-gradient(135deg, #E0F2FE 0%, #FFFFFF 100%)",
     modes: ["rulo"] as const,
   },
   {
     id: "metalik",
     name: "Metalik",
+    name_en: "Metallic",
     desc: "Folyo gümüş",
+    desc_en: "Silver foil",
     swatch:
       "linear-gradient(135deg, #C0C7CD 0%, #EFF2F6 60%, #B2BAC2 100%)",
     modes: ["rulo"] as const,
@@ -117,19 +129,71 @@ type MaterialId = (typeof MATERIALS)[number]["id"];
 
 /** Sefa kuralı (15 May): "Kaplamasız" varsayılan + ilk sıra. */
 const COATINGS = [
-  { id: "yok", name: "Kaplamasız", desc: "Kâğıt dokusu kalsın", modes: ["rulo", "tabaka"] as const },
-  { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", modes: ["rulo", "tabaka"] as const },
-  { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", modes: ["rulo", "tabaka"] as const },
-  { id: "soft", name: "Soft touch", desc: "Velvet his", modes: ["rulo"] as const },
+  {
+    id: "yok",
+    name: "Kaplamasız",
+    name_en: "Uncoated",
+    desc: "Kâğıt dokusu kalsın",
+    desc_en: "Keeps paper texture",
+    modes: ["rulo", "tabaka"] as const,
+  },
+  {
+    id: "mat",
+    name: "Mat selefon",
+    name_en: "Matte lamination",
+    desc: "Yansımasız, premium",
+    desc_en: "No reflection, premium",
+    modes: ["rulo", "tabaka"] as const,
+  },
+  {
+    id: "parlak",
+    name: "Parlak selefon",
+    name_en: "Gloss lamination",
+    desc: "Canlı, temiz",
+    desc_en: "Vivid, clean",
+    modes: ["rulo", "tabaka"] as const,
+  },
+  {
+    id: "soft",
+    name: "Soft touch",
+    name_en: "Soft touch",
+    desc: "Velvet his",
+    desc_en: "Velvet feel",
+    modes: ["rulo"] as const,
+  },
 ] as const;
 
 type CoatingId = (typeof COATINGS)[number]["id"];
 
 const CUSTOMS = [
-  { id: "yok", name: "Özelleştirme yok", desc: "Sade baskı (emboss/yaldız/spot UV yok)" },
-  { id: "emboss", name: "Kabartma (emboss)", desc: "Logo / metin kabartması" },
-  { id: "yaldiz", name: "Sıcak yaldız", desc: "Folyo baskı, premium parıltı" },
-  { id: "spotuv", name: "Spot UV", desc: "Parlak nokta vurgu" },
+  {
+    id: "yok",
+    name: "Özelleştirme yok",
+    name_en: "No customization",
+    desc: "Sade baskı (emboss/yaldız/spot UV yok)",
+    desc_en: "Plain print (no emboss/foil/spot UV)",
+  },
+  {
+    id: "emboss",
+    name: "Kabartma (emboss)",
+    name_en: "Emboss",
+    desc: "Logo / metin kabartması",
+    desc_en: "Logo / text emboss",
+  },
+  {
+    id: "yaldiz",
+    name: "Sıcak yaldız",
+    name_en: "Hot foil",
+    desc: "Folyo baskı, premium parıltı",
+    desc_en: "Foil print, premium shine",
+  },
+  {
+    id: "spotuv",
+    name: "Spot UV",
+    name_en: "Spot UV",
+    desc: "Parlak nokta vurgu",
+    desc_en: "Glossy spot accent",
+  },
 ] as const;
 
 type CustomId = (typeof CUSTOMS)[number]["id"];
@@ -231,16 +295,27 @@ function designCountDiscountPct(n: number): number {
  */
 type FormFactor = "rulo" | "tabaka";
 
-const FORM_FACTORS: { id: FormFactor; label: string; desc: string }[] = [
+// Sefa 17 May P1-7: EN locale eklendi
+const FORM_FACTORS: {
+  id: FormFactor;
+  label: string;
+  label_en: string;
+  desc: string;
+  desc_en: string;
+}[] = [
   {
     id: "rulo",
     label: "Rulo etiket",
+    label_en: "Roll label",
     desc: "Makine takılabilir, özelleştirme seçenekleri",
+    desc_en: "Machine-applicable, customization options",
   },
   {
     id: "tabaka",
     label: "Tabaka etiket",
+    label_en: "Sheet label",
     desc: "Düz tabaka, elle uygula",
+    desc_en: "Flat sheet, manual application",
   },
 ];
 
@@ -308,7 +383,7 @@ const fmtUnit = (n: number) => {
 
 export default function EtiketPage() {
   const toast = useToast();
-  const { t } = useT();
+  const { t, locale } = useT();
   // Sefa kuralları (15 May v2):
   //  - Varsayılan: Kuşe Etiket + Kaplama yok (1. sıra)
   //  - Adet: minimum'dan başlasın (rulo→1000, tabaka→250)
@@ -716,7 +791,11 @@ export default function EtiketPage() {
                   disabled
                   aria-disabled="true"
                   aria-pressed="true"
-                  title="3D görünüm aktif (yakında değiştirilebilir)"
+                  title={
+                    locale === "en"
+                      ? "3D view active (toggle coming soon)"
+                      : "3D görünüm aktif (yakında değiştirilebilir)"
+                  }
                   className="text-sm px-3 h-9 rounded-full ring-1 ring-pim-mercan bg-pim-mercan-tint text-pim-mercan font-semibold cursor-not-allowed"
                 >
                   3D
@@ -726,10 +805,12 @@ export default function EtiketPage() {
                   disabled
                   aria-disabled="true"
                   aria-pressed="false"
-                  title="Düz görünüm yakında"
+                  title={
+                    locale === "en" ? "Flat view coming soon" : "Düz görünüm yakında"
+                  }
                   className="text-sm px-3 h-9 rounded-full ring-1 ring-gri-200 text-gri-500 cursor-not-allowed opacity-60"
                 >
-                  Düz
+                  {locale === "en" ? "Flat" : "Düz"}
                 </button>
               </div>
             </div>
@@ -781,10 +862,10 @@ export default function EtiketPage() {
                           active ? "text-pim-mercan" : "text-lacivert"
                         )}
                       >
-                        {f.label}
+                        {locale === "en" ? f.label_en : f.label}
                       </div>
                       <div className="text-[12px] text-gri-700 mt-0.5">
-                        {f.desc}
+                        {locale === "en" ? f.desc_en : f.desc}
                       </div>
                     </button>
                   );
@@ -830,9 +911,12 @@ export default function EtiketPage() {
                     />
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-semibold text-sm">{m.name}</div>
+                        {/* Sefa 17 May P1-7: locale-aware name/desc */}
+                        <div className="font-semibold text-sm">
+                          {locale === "en" ? m.name_en : m.name}
+                        </div>
                         <div className="text-[13px] text-gri-700 mt-0.5">
-                          {m.desc}
+                          {locale === "en" ? m.desc_en : m.desc}
                         </div>
                       </div>
                       <Icon.Info size={14} className="text-gri-500 shrink-0 mt-0.5" />
@@ -846,7 +930,7 @@ export default function EtiketPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 mt-2.5 text-[12.5px] font-semibold text-pim-mercan hover:underline"
               >
-                Malzeme detayları
+                {locale === "en" ? "Material details" : "Malzeme detayları"}
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                   <path d="M7 17L17 7M17 7H7M17 7V17" />
                 </svg>
@@ -873,9 +957,11 @@ export default function EtiketPage() {
                     }}
                     padding={12}
                   >
-                    <div className="font-semibold text-sm">{c.name}</div>
+                    <div className="font-semibold text-sm">
+                      {locale === "en" ? c.name_en : c.name}
+                    </div>
                     <div className="text-[13px] text-gri-700 mt-0.5">
-                      {c.desc}
+                      {locale === "en" ? c.desc_en : c.desc}
                     </div>
                   </SelectableCard>
                 ))}
@@ -928,9 +1014,11 @@ export default function EtiketPage() {
                       {/* Sefa 16 May denetim #6: sol checkbox kaldırıldı,
                           standart SelectableCard sağ üst rozetine geri
                           dönüldü. Malzeme/Kaplama ile tutarlı görsel. */}
-                      <div className="font-semibold text-sm">{c.name}</div>
+                      <div className="font-semibold text-sm">
+                        {locale === "en" ? c.name_en : c.name}
+                      </div>
                       <div className="text-[13px] text-gri-700 mt-0.5">
-                        {c.desc}
+                        {locale === "en" ? c.desc_en : c.desc}
                       </div>
                     </SelectableCard>
                   );
@@ -940,7 +1028,7 @@ export default function EtiketPage() {
               {customs.includes("yaldiz") && (
                 <div className="mt-3 p-3.5 rounded-xl bg-gri-50 ring-1 ring-gri-200">
                   <div className="text-[13px] font-semibold mb-2.5">
-                    Yaldız rengi
+                    {locale === "en" ? "Foil color" : "Yaldız rengi"}
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                     {YALDIZLAR.map((y) => (
@@ -1767,7 +1855,7 @@ function PreviewCanvas({
   height,
   designUrl,
 }: PreviewCanvasProps) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const matBg = MAT_BG[material];
   const sheen = SHEEN[coating];
   const yaldizGrad = YALDIZ_GRAD[yaldiz];
