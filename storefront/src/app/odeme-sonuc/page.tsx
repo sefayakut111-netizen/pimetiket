@@ -20,9 +20,9 @@ const EXTRA = {
     failTitle: "Ödeme alınamadı",
     failDesc:
       "Bankadan onay gelmedi. Kart bilgilerini kontrol edip tekrar denemen gerekiyor. Tutar hesabından çekilmedi.",
-    pspUnavailableTitle: "Ödeme henüz aktif değil",
+    pspUnavailableTitle: "Ödeme şu an alınamıyor",
     pspUnavailableDesc:
-      "PayTR aktivasyonumuz tamamlanma aşamasında. Birkaç gün içinde online ödeme açılacak. Şimdiden sipariş vermek istersen e-posta veya iletişim formundan bize yaz — fiyatı manuel hazırlarız, havale ile başlatırız.",
+      "PayTR ödeme altyapımızda geçici bir sorun olabilir. Birkaç dakika sonra tekrar dene. Acil siparişin varsa e-posta veya iletişim formundan bize yaz — fiyatı manuel hazırlarız, havale ile başlatırız.",
     pspWhatsApp: "E-posta gönder",
     retry: "Tekrar dene",
     contact: "Bize yaz",
@@ -46,9 +46,9 @@ const EXTRA = {
     failTitle: "Payment failed",
     failDesc:
       "We didn't get bank approval. Please check your card details and try again. Your account hasn't been charged.",
-    pspUnavailableTitle: "Payments not active yet",
+    pspUnavailableTitle: "Payment temporarily unavailable",
     pspUnavailableDesc:
-      "Our PayTR activation is in progress — online payments will open within a few days. To start your order now, message us via email or the contact form. We'll prepare the quote manually and accept bank transfer.",
+      "There may be a temporary issue with our PayTR payment infrastructure. Try again in a few minutes. For urgent orders, message us via email or the contact form — we'll prepare the quote manually and accept bank transfer.",
     pspWhatsApp: "Send email",
     retry: "Try again",
     contact: "Contact us",

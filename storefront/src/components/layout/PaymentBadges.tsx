@@ -157,16 +157,24 @@ export function PaymentBadges() {
           </span>
         </div>
 
-        {/* PayTR */}
+        {/* PayTR — Sefa 16 May: resmi logo eklendi */}
         <div
-          className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md bg-white/10 ring-1 ring-white/15"
+          className="inline-flex items-center gap-2 px-2.5 h-7 rounded-md bg-white/10 ring-1 ring-white/15"
           aria-label="Ödemeler PayTR güvencesi ile"
           title="Ödemeler PayTR güvencesi ile"
         >
           <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-white/55">
             Ödeme altyapısı
           </span>
-          <span className="text-[11.5px] font-bold text-white/95">PayTR</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/paytr/paytr-white.svg"
+            alt="PayTR"
+            width="56"
+            height="14"
+            className="opacity-95"
+            style={{ height: "14px", width: "auto" }}
+          />
         </div>
 
         {/* KVKK */}

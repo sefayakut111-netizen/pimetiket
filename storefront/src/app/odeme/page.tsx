@@ -1039,8 +1039,22 @@ export default function OdemePage() {
                 <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
                   🔒 3D Secure
                 </span>
-                <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold">
-                  PayTR ile güvenli
+                <span
+                  className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-gri-100 ring-1 ring-gri-200"
+                  aria-label="PayTR ile güvenli ödeme"
+                  title="PayTR ile güvenli ödeme"
+                >
+                  <span className="text-[10px] font-semibold text-gri-700 uppercase tracking-[0.04em]">
+                    Güvenli ödeme
+                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/paytr/paytr-color.svg"
+                    alt="PayTR"
+                    width="40"
+                    height="11"
+                    style={{ height: "11px", width: "auto" }}
+                  />
                 </span>
               </div>
             </Card>
