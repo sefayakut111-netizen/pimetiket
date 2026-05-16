@@ -42,7 +42,7 @@ export const tr: TranslationDict = {
     h1Brand: "Markanın etiketi,",
     h1Idea: "fikrinin sticker'ı.",
     heroDescription:
-      "Etiket 1.000 adetten, sticker 25 adetten. AI dosyana bakar, eksiği söyler. Etiket 8-12 iş gününde, sticker 5-7 iş gününde kapına teslim.",
+      "Etiket 1.000 adetten, sticker 25 adetten. AI dosyana bakar, eksiği söyler. 5 iş günü içinde kargoya veriyoruz.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
     socialProof: "Türkiye'den markaların tercihi",
@@ -56,7 +56,7 @@ export const tr: TranslationDict = {
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler.",
     pillar3Title: "Hızlı teslim",
     pillar3Desc:
-      "Etiket 8-12 iş günü, sticker 5-7 iş günü. Şeffaf üretim takibi.",
+      "5 iş günü içinde kargoda. Şeffaf üretim takibi.",
     productEtiketSub: "Rulodan etiket — kozmetik, gıda, içecek, parfüm.",
     productStickerSub: "Tekli ya da tabakada — laptop, defter, kampanya.",
     productPriceLabel: "fiyatı, başlangıç",
@@ -72,7 +72,7 @@ export const tr: TranslationDict = {
     step3: "Provayı onayla",
     step3Desc: "Rulonun üstünde nasıl görüneceğini gör, onayla.",
     step4: "Teslim al",
-    step4Desc: "Etiket 8-12, sticker 5-7 iş gününde kapında.",
+    step4Desc: "5 iş günü içinde kargoya veriyoruz, kargo + 1-3 gün.",
     faqEyebrow: "Sıkça sorulanlar",
     faqTitle: 'Cevap genelde "evet, hallederiz".',
     faqHelp:
@@ -151,7 +151,7 @@ export const tr: TranslationDict = {
     finishMatDesc: "Yansımasız",
     finishNone: "Kaplamasız",
     finishNoneDesc: "Yalın yüzey",
-    livePreviewNoFile: "Anlık önizleme — her seçim canlı",
+    livePreviewNoFile: "Canlı önizleme — her seçim anlık",
     livePreviewWithFile: "✓ Senin tasarımın önizlemede",
     cornerSubLabelHint: "Kare ve özel oran için köşe stilini seç",
   },
@@ -235,7 +235,7 @@ export const tr: TranslationDict = {
       "Operatör manuel kontrolünden sonra prova göndereceğiz. Onayladıktan sonra üretime girer.",
     step3Title: "Kapına teslim",
     step3Desc:
-      "Etiket 8-12 iş günü, sticker 5-7 iş günü. Kargo takip linkini e-posta + SMS ile gönderirim.",
+      "5 iş günü içinde kargoya veriyoruz, kargo + 1-3 iş günü. Kargo takip linkini e-posta + SMS ile gönderirim.",
     orderDetail: "Sipariş detayı",
     backToPanel: "Panele git",
   },

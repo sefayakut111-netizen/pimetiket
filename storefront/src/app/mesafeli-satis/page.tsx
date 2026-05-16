@@ -70,7 +70,8 @@ export default function MesafeliSatisPage() {
           gösterilir; sözleşmenin esaslı unsurudur.
         </li>
         <li>
-          Tahmini teslim süresi: ortalama 8-12 iş günü. Üretim süresi
+          Tahmini teslim süresi: ürünler 5 (beş) iş günü içinde kargoya
+          verilir, kargo süresi şehre göre 1-3 iş günü sürer. Üretim süresi
           ALICI&rsquo;nın tasarım dosyasını yüklemesinden sonra başlar.
         </li>
       </ul>

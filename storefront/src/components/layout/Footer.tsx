@@ -261,6 +261,9 @@ export function Footer() {
             {" · "}
             Doğanbey VD / 7580607612
           </div>
+          {/* Sefa 16 May UX denetim P2-2: "Müşteri hizmetleri" linki
+              /iletisim'e gidiyordu — header'da zaten İletişim var,
+              duplicate. Yerine çalışma saati bilgisi (güven artırır). */}
           <div className="flex items-center gap-3 flex-wrap shrink-0">
             <a
               href="mailto:info@pimetiket.com"
@@ -270,12 +273,9 @@ export function Footer() {
               info@pimetiket.com
             </a>
             <span className="text-white/20">·</span>
-            <Link
-              href="/iletisim"
-              className="hover:text-white transition-colors whitespace-nowrap"
-            >
-              Müşteri hizmetleri
-            </Link>
+            <span className="whitespace-nowrap">
+              Hafta içi 09:00-18:00 · Cumartesi 10:00-14:00
+            </span>
           </div>
         </div>
 

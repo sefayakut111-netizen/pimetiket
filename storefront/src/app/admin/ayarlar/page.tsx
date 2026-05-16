@@ -41,8 +41,10 @@ const DEFAULTS: SiteSettings = {
   welcomeCreditTry: 250,
   referralCreditTry: 250,
   minSubtotalForCredit: 500,
-  defaultStickerDelivery: 7, // 5-7 iş günü
-  defaultEtiketDelivery: 12, // 8-12 iş günü
+  // Sefa kuralı (16 May): "5 iş günü içinde kargoda" tek standart.
+  // Kargo süresi (1-3 iş günü) bu sayıya dahil DEĞİL, ayrı.
+  defaultStickerDelivery: 5,
+  defaultEtiketDelivery: 5,
   fastTrackEnabled: true,
   emailFrom: "info@pimetiket.com",
   contactPhone: "", // Henüz hat yok — Sefa açacak

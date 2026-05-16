@@ -128,9 +128,11 @@ export default function OnBilgilendirmePage() {
           aracılığıyla gönderilir.
         </li>
         <li>
-          <strong>Tahmini teslim süresi: 8-12 iş günü</strong> (üretim +
-          kargo). Süre, ALICI&rsquo;nın tasarım dosyasını yüklemesinden ve
-          kalite kontrolünden geçtikten sonra başlar.
+          <strong>Tahmini teslim süresi:</strong> Ürünler 5 (beş) iş günü
+          içinde kargoya verilir; kargonun ALICI&rsquo;ya ulaşması teslim
+          adresine göre 1-3 iş günü sürebilir. Süre, ALICI&rsquo;nın
+          tasarım dosyasını yüklemesinden ve kalite kontrolünden geçtikten
+          sonra başlar.
         </li>
         <li>
           ALICI&rsquo;nın 3 (üç) gün içinde tasarım dosyasını yüklememesi

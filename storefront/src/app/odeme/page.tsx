@@ -504,6 +504,26 @@ export default function OdemePage() {
   // Render
   // ============================================================
 
+  // Sefa 16 May UX denetim P0-5: /odeme direct erişimde sepet
+  // boşken sayfanın geri kalanını HİÇ render etme — temiz "Sepete
+  // yönlendiriliyor" durumu göster. Aksi halde adres formu vs.
+  // boş alanlarla yarı render olup kullanıcı şaşırıyor.
+  if (hydrated && cartItems.length === 0) {
+    return (
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] grid place-items-center px-4 py-12">
+        <div className="text-center max-w-[420px]">
+          <Eyebrow>{c.eyebrow}</Eyebrow>
+          <h1 className="mt-3 text-[22px] md:text-[28px] font-semibold tracking-tight">
+            {c.cartEmptyRedirect}
+          </h1>
+          <p className="mt-3 text-[14px] text-gri-700 leading-relaxed">
+            Ödemeye geçmeden önce sepetinde en az bir ürün olmalı.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">

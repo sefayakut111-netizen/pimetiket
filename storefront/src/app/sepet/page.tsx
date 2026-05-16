@@ -72,9 +72,23 @@ export default function SepetPage() {
 
   useEffect(() => {
     ensureAuthBindings();
-    // 300ms threshold — eğer yükleme hızlı bittiyse skeleton hiç gözükmez
+    // Sefa 16 May UX denetim P2-1:
+    //   1) localStorage'dan ilk render — anında görselleştir
+    //   2) Cart boşsa hydrated=true → skeleton hiç gözükmez,
+    //      direkt empty state. Auditer "3 sn skeleton sonra empty"
+    //      şikayetini çözer.
+    //   3) Cart doluysa hydrated=true → kart anında render olur,
+    //      arka planda Supabase ile freshen olunur.
+    //   4) Sadece "auth'ı yeni yenileme" gibi kenar senaryoda
+    //      300ms eşik + skeleton.
+    refresh();
+    const initialCount = summarizeCustomerCart().itemCount;
+    if (initialCount === 0) {
+      // localStorage boş — empty state'i direkt göster, fetch arka planda
+      setHydrated(true);
+    }
     const skeletonTimer = setTimeout(() => {
-      if (!hydrated) setShowSkeleton(true);
+      if (!hydrated && initialCount === 0) setShowSkeleton(true);
     }, 300);
     void refreshCustomerCart().then(() => {
       refresh();

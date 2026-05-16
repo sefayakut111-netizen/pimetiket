@@ -53,11 +53,14 @@ export function Button(props: ButtonProps) {
     children,
   } = props;
 
+  // Sefa 16 May UX denetim P2-3: disabled state daha güçlü görsel
+  // sinyal verir — KVKK consent öncesi "Abone ol" gibi butonların
+  // tıklanabilir göründüğü sorununu çözer. opacity-50 yetersizdi.
   const classes = cn(
     "inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap select-none",
     "transition-all duration-150 ease-out",
     "active:translate-y-0 active:scale-[0.99]",
-    "disabled:opacity-50 disabled:pointer-events-none",
+    "disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0",
     VARIANT_CLASS[variant],
     SIZE_CLASS[size],
     block && "w-full",

@@ -37,8 +37,8 @@ interface ProductInfoSectionProps {
 const ETIKET_FEATURES: FeatureCard[] = [
   {
     icon: <Icon.Box size={24} />,
-    title: "5-7 iş günü kargo",
-    desc: "Üretim + kalite kontrol + kargo dahil. Türkiye'nin her yerine.",
+    title: "5 iş günü içinde kargoda",
+    desc: "5 iş günü içinde kargoya veriyoruz. Kargo şehre göre 1-3 iş günü daha sürer.",
   },
   {
     icon: <Icon.Sparkle size={24} />,
@@ -130,58 +130,26 @@ export function ProductInfoSection({ product }: ProductInfoSectionProps) {
           ))}
         </div>
 
-        {/* Highlight — büyük görsel + sağ açıklama */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mb-16 md:mb-20">
-          <div className="aspect-video rounded-2xl bg-krem ring-1 ring-gri-200 overflow-hidden grid place-items-center">
-            {/* Placeholder — Sefa görsel yükleyince burada gerçek görsel olur */}
-            <div className="text-center p-8">
-              <Icon.Sparkle size={48} className="text-pim-mercan mx-auto mb-3 opacity-50" />
-              <p className="text-[13px] text-gri-700 italic">
-                {product === "etiket" ? "Etiket ürün görseli" : "Sticker ürün görseli"}
-                <br />
-                <span className="text-[11px] text-gri-500">
-                  Yakında — gerçek ürün fotoğrafları
-                </span>
-              </p>
-            </div>
-          </div>
-          <div>
-            <h2 className="text-[24px] md:text-[32px] font-bold text-lacivert leading-tight mb-4">
-              {highlightTitle}
-            </h2>
-            <p className="text-[15px] md:text-base text-gri-700 leading-relaxed">
-              {highlightBody}
-            </p>
-          </div>
-        </div>
+        {/* Sefa kuralı (16 May UX denetim P0-2 + P0-4):
+            Görsel placeholder'lı bölümler gizlendi — Sefa gerçek
+            ürün fotoğraflarını yükleyince koşulu kaldırıp tekrar
+            açılacak. Boş kartlar konversiyon sayfası ortasında
+            kötü izlenim veriyor.
 
-        {/* Galeri başlık */}
-        <div className="text-center mb-8 md:mb-10">
-          <h2 className="text-[24px] md:text-[32px] font-bold text-lacivert leading-tight mb-3">
-            {galleryTitle}
-          </h2>
-          <p className="text-[14px] md:text-[15px] text-gri-700 leading-relaxed max-w-[700px] mx-auto">
-            {galleryBody}
-          </p>
-        </div>
-
-        {/* Ürün galerisi grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {gallery.map((img) => (
-            <div
-              key={img.src}
-              className="aspect-square rounded-xl bg-krem ring-1 ring-gri-200 overflow-hidden grid place-items-center group hover:ring-pim-mercan transition-colors"
-            >
-              {/* Şimdilik placeholder — gerçek görseller Sefa yükleyince */}
-              <div className="text-center p-3 opacity-60 group-hover:opacity-100 transition-opacity">
-                <Icon.Box size={28} className="text-pim-mercan mx-auto mb-2" />
-                <p className="text-[11px] text-gri-700 leading-tight">
-                  {img.alt}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            Geri açmak için: HIGHLIGHT_IMAGES_READY = true yap +
+            gerçek <img src={...} /> ile placeholder'ı değiştir.
+            highlightTitle, highlightBody, galleryTitle, galleryBody,
+            gallery sabitleri zaten kullanıma hazır. */}
+        {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
+        {(() => {
+          // referansları "unused" lint'inden kurtarmak için bir kez kullan
+          void highlightTitle;
+          void highlightBody;
+          void galleryTitle;
+          void galleryBody;
+          void gallery;
+          return null;
+        })()}
       </div>
     </section>
   );

@@ -120,7 +120,7 @@ PİM ETİKET HAKKINDA:
 - Etiket: 1.000 adetten başlar, 500'er artışla. Rulo halinde. Malzemeler: kraft, beyaz semi-glos, ultra clear, metalik. Kaplama: mat selefon, parlak selefon, soft touch, kaplamasız.
 - Sticker: 25 adetten başlar, 25'er adet artışla. Tekli (die-cut) ya da tabakada. Malzeme: vinil, transparan, holografik, simli. Yüzey: parlak, mat, kaplamasız.
 - Özelleştirme: kabartma (emboss), sıcak yaldız (8 renk), spot UV.
-- Teslim: etiket 8-12 iş günü, sticker 5-7 iş günü. Hızlı (acele) seçenek mevcut, ek ücretle daha hızlı.
+- Teslim: 5 iş günü içinde kargoya veriyoruz. Kargo şehre göre 1-3 iş günü daha sürer. Hızlı (acele) seçenek mevcut, ek ücretle daha hızlı.
 - Adet artışında otomatik tier indirim (2K/5K/10K/20K/50K eşikleri).
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
 - KDV dahil fiyat gösterilir.
@@ -138,7 +138,7 @@ NE YAPMIYORUZ:
 
 ÖNEMLİ KURALLAR:
 - Fiyat sorulduğunda kesin rakam VERME — "/etiket veya /sticker sayfasında konfigüre et, anlık çıkar" yönlendir.
-- Teslim tarihi konusunda kesin söz verme — "etiket 8-12, sticker 5-7 iş günü, dosyan hızlı geldiyse daha erken" de.
+- Teslim tarihi konusunda kesin söz verme — "5 iş günü içinde kargoya veriyoruz, kargo süresi şehre göre değişir; dosyan hızlı geldiyse daha erken" de.
 - AI dosya kontrolü matbaa pre-press odaklı (DPI/CMYK/font), mevzuat denetimi DEĞİL.
 - Cüzdan/puan/üyelik indiriminden bahsetme — yok.
 `.trim();
@@ -288,11 +288,11 @@ GÖREVİN:
    - AI kontrol → "dosyayı AI okuyor; DPI/CMYK/bleed bakıyor"
    - Operatör onayı → "bizim ekipten biri bakıyor, gün içinde dönülür"
    - Prova bekleniyor → "provayı sana gönderdik, onay bekliyoruz"
-   - Üretimde → "fason atölyede basılıyor, 5-7 gün içinde kargoya gider"
+   - Üretimde → "fason atölyede basılıyor, 5 iş günü içinde kargoya gider"
    - Kargoda → "kargoda, takip linki e-posta + SMS ile gitti"
    - Teslim edildi → "ulaşmış görünüyor, problem varsa söyle"
    - İptal → "iptal edilmiş, sebebi için iletişime geç"
-3. Tahmini teslim sorularına: "etiket için 8-12 iş günü, sticker için 5-7 iş günü, dosyan hızlı geldiyse daha erken" de.
+3. Tahmini teslim sorularına: "5 iş günü içinde kargoya veriyoruz, kargo şehre göre 1-3 iş günü, dosyan hızlı geldiyse daha erken" de.
 4. Kargo firması: Yurtiçi/MNG/Aras — şu an manuel atanıyor, sipariş detayında takip linki olur.
 5. Müşteri "geç kaldı" şikayeti varsa: "Hemen bakıyoruz, ekip detayına dönüş yapacak" tonunda samimi ama kuru. Cüzdan/puan teklif etme.
 

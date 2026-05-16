@@ -60,7 +60,7 @@ const COPY = {
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler. Pre-press hatası elinde patlamaz.",
     val3Title: "Kapına teslim",
     val3Desc:
-      "Etiket 8-12 iş günü, sticker 5-7. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
+      "5 iş günü içinde kargoda. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
     val4Title: "Açık ve dürüst fiyat",
     val4Desc:
       "Konfigüratörde gördüğün anlık fiyat sepete düştüğünde aynı kalır. Sürpriz ek yok.",
@@ -126,7 +126,7 @@ const COPY = {
       "DPI, CMYK, bleed — anything missing, we flag it before production. Pre-press errors don't blow up in your hand.",
     val3Title: "Door delivery",
     val3Desc:
-      "Labels 8-12 business days, stickers 5-7. Transparent production tracking, real-time status, Pim's updates.",
+      "We ship within 5 business days. Transparent production tracking, real-time status, Pim's updates.",
     val4Title: "Clear and honest pricing",
     val4Desc:
       "The instant price you see in the configurator stays the same in the cart. No hidden fees.",

@@ -329,8 +329,8 @@ function renderLeadWelcome(input: MailTemplateInput): MailRendered {
     <p style="font-size: 13px; line-height: 1.6; color: #57534e;">
       Hazır tasarımını Pim Etiket'te bastırmak istersen, sticker ya da
       etiket sayfasından konfigürasyonu seçip dosyanı yükleyebilirsin —
-      Pim AI dosyanı kontrol eder, prova hazırlanır, 5-7 gün içinde
-      kapına gelir.
+      Pim AI dosyanı kontrol eder, prova hazırlanır, 5 iş günü içinde
+      kargoya veriyoruz.
     </p>
 
     <div style="margin: 24px 0; display: flex; gap: 12px;">

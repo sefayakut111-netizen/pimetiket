@@ -662,7 +662,7 @@ export default function EtiketPage() {
           productSchema({
             name: "Rulodan etiket — özel baskı",
             description:
-              "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/transparent. AI dosya kontrolü ile 8-12 iş günü teslim. 1.000 adetten başlar.",
+              "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/transparent. AI dosya kontrolü ile 5 iş günü içinde kargoda. 1.000 adetten başlar.",
             category: "Etiket / Label",
             priceFrom: 850,
           }),
@@ -794,7 +794,7 @@ export default function EtiketPage() {
                 steps={stepLabels}
                 stepIds={stepIds}
                 activeStep={activeStep}
-                completedSet={new Set(stepIds)}
+                completedSet={touchedSteps}
                 onStepClick={scrollToStep}
               />
             </div>
@@ -1461,7 +1461,7 @@ export default function EtiketPage() {
                 deliveryDate={teslim}
                 ctaLabel={t.config.addToCart}
                 onCta={handleAddToCart}
-                footnote="Tasarımını yükle, sepete ekle · KDV dahil · 5-7 iş günü teslim"
+                footnote="Tasarımını yükle, sepete ekle · KDV dahil · 5 iş günü içinde kargoda"
               />
             </div>
           </div>
@@ -1482,7 +1482,7 @@ export default function EtiketPage() {
                 steps={stepLabels}
                 stepIds={stepIds}
                 activeStep={activeStep}
-                completedSet={new Set(stepIds)}
+                completedSet={touchedSteps}
                 onStepClick={scrollToStep}
               />
             </div>

@@ -77,7 +77,7 @@ const FAQS_TR: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "Teslimat süresi nedir?",
-      a: "Üretim + kargo dahil etiket için 8-12 iş günü, sticker için 5-7 iş günü. İstanbul ve Ankara içi 1-2 gün daha hızlı, uzak iller 1-2 gün daha geç olabilir.",
+      a: "5 iş günü içinde kargoya veriyoruz. Kargo süresi şehre göre 1-3 iş günü daha sürer; İstanbul ve Ankara içi en hızlı, uzak iller 1-2 gün daha geç olabilir.",
     },
     {
       q: "Kargo takip linkim olacak mı?",
@@ -162,7 +162,7 @@ const FAQS_EN: Record<Category, { q: string; a: string }[]> = {
     },
     {
       q: "What's the delivery time?",
-      a: "8-12 business days for labels, 5-7 for stickers (production + shipping). 1-2 days faster within Istanbul/Ankara, 1-2 days slower for distant cities.",
+      a: "We ship within 5 business days; the courier takes 1-3 more days depending on city. Istanbul and Ankara are fastest; remote cities 1-2 days slower.",
     },
     {
       q: "Will I get a tracking link?",
@@ -214,7 +214,7 @@ const COPY = {
     introEnd: " sayfasından bize yazabilirsin.",
     cantFindTitle: "Cevabını bulamadın mı?",
     cantFindDesc:
-      "Pim sağ alt köşede sana yardım etmek için bekliyor — veya doğrudan WhatsApp/e-posta üzerinden bize yaz.",
+      "Pim sağ alt köşede sana yardım etmek için bekliyor — ya da doğrudan e-posta ile bize yaz.",
     contactButton: "Bize yaz",
   },
   en: {
@@ -226,7 +226,7 @@ const COPY = {
     introEnd: " us directly.",
     cantFindTitle: "Couldn't find your answer?",
     cantFindDesc:
-      "Pim is waiting in the bottom-right corner to help — or message us directly on WhatsApp/email.",
+      "Pim is waiting in the bottom-right corner to help — or just send us an email.",
     contactButton: "Contact us",
   },
 };

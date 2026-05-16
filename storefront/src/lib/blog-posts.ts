@@ -57,7 +57,7 @@ Hangi malzemenin sana uygun olduğunu bilmiyorsan Pim'e bir 60 saniyelik soru-ce
 
 **Teslim süresi:**
 - Sticker Mule: 7-12 gün (üretim + uluslararası kargo + gümrük)
-- Pim Etiket: 5-7 iş günü, kapına teslim (Türkiye geneli)
+- Pim Etiket: 5 iş günü içinde kargoda, Türkiye geneli
 
 **Kalite:**
 - İkisi de dijital UV baskı, kraft dosyalardan kontur kesim. Vinil + holografik + glitter birebir aynı malzeme grubu.

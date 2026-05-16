@@ -36,13 +36,20 @@ export function TopBar() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Sefa 16 May UX denetim:
+  //   P1-2: Galeri içeriği hazır olana kadar header'dan kaldırıldı
+  //         (footer'da hâlâ var).
+  //   P2-6: Panelim linki sadece oturum açık kullanıcıya gösterilir
+  //         — anonim kullanıcıya "/panelim" gösterip /auth'a redirect
+  //         etmek şaşırtıcı. Giriş yapmamış kullanıcı zaten profil
+  //         dropdown'da "Giriş yap" butonu görüyor.
   const navItems = [
     { href: "/", label: t.nav.home },
     { href: "/etiket", label: t.nav.etiket },
     { href: "/sticker", label: t.nav.sticker },
-    { href: "/galeri", label: t.nav.gallery },
+    // { href: "/galeri", label: t.nav.gallery },
     { href: "/blog", label: t.nav.blog },
-    { href: "/panelim", label: t.nav.dashboard },
+    ...(user ? [{ href: "/panelim", label: t.nav.dashboard }] : []),
   ];
 
   useEffect(() => {

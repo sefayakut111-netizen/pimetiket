@@ -192,7 +192,7 @@ export default function StickerPage() {
   // A/B test: sticker CTA varyantı. PostHog'da `sticker_cta_v2` flag'ı
   // tanımlandığında otomatik aktifleşir. Variants:
   //   control = "Sepete ekle"
-  //   test    = "Sepete ekle · 5-7 günde teslim"
+  //   test    = "Sepete ekle · 5 iş günü içinde kargoda"
   // PostHog yüklenmemişse veya consent yoksa → control (default).
   const { variant: ctaVariant } = useExperiment("sticker_cta_v2", [
     "control",
@@ -200,7 +200,7 @@ export default function StickerPage() {
   ]);
   const ctaLabel =
     ctaVariant === "test"
-      ? `${t.config.addToCart} · 5-7 günde teslim`
+      ? `${t.config.addToCart} · 5 iş günü içinde kargoda`
       : t.config.addToCart;
   // 1. ADIM: Kesim tipi (Sefa kuralı — şekilden ÖNCE)
   const [cutMode, setCutMode] = useState<"tabaka" | "diecut">("diecut");
@@ -393,7 +393,7 @@ export default function StickerPage() {
           productSchema({
             name: "Sticker — özel baskı",
             description:
-              "Die-cut veya tabaka. Vinil/transparan/holo/simli. Laptop, defter, kampanya için. AI dosya kontrolü ile 5-7 iş günü teslim. 25 adetten başlar.",
+              "Die-cut veya tabaka. Vinil/transparan/holo/simli. Laptop, defter, kampanya için. AI dosya kontrolü ile 5 iş günü içinde kargoda. 25 adetten başlar.",
             category: "Sticker",
             priceFrom: 113,
           }),
@@ -460,7 +460,7 @@ export default function StickerPage() {
                 steps={stepLabels}
                 stepIds={stepIds}
                 activeStep={activeStep}
-                completedSet={new Set(stepIds)}
+                completedSet={touchedSteps}
                 onStepClick={scrollToStep}
               />
             </div>
@@ -972,7 +972,7 @@ export default function StickerPage() {
                 steps={stepLabels}
                 stepIds={stepIds}
                 activeStep={activeStep}
-                completedSet={new Set(stepIds)}
+                completedSet={touchedSteps}
                 onStepClick={scrollToStep}
               />
             </div>
@@ -1607,10 +1607,11 @@ function StickerPreview({
         }}
       />
 
-      {/* Live indicator */}
+      {/* Live indicator — Sefa 16 May UX denetim P1-5: etiket
+          ile aynı i18n key (t.config.livePreviewBadge) */}
       <span className="absolute top-5 left-5 inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-white shadow-1 text-[12.5px] font-semibold">
         <span className="w-2 h-2 rounded-full bg-yesil" />
-        Canlı
+        {t.config.livePreviewBadge}
       </span>
 
       {/* Sticker */}
