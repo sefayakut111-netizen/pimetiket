@@ -39,6 +39,9 @@ interface DetailResponse {
   error?: string;
 }
 
+// Adım 4+ ile canlı olan auditor'lar — "Şimdi çalıştır" sadece bunlarda aktif
+const LIVE_AUDITORS: ReadonlySet<string> = new Set(["security"]);
+
 const SEVERITY_STYLES = {
   critical: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",
   warning: "bg-saman/15 text-saman-koyu ring-saman/30",
@@ -79,6 +82,10 @@ export default function AuditorDetailPage({
   const [data, setData] = useState<DetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+
+  const isLive = auditorName && LIVE_AUDITORS.has(auditorName);
 
   const refresh = useCallback(async () => {
     if (!auditorName) return;
@@ -106,6 +113,33 @@ export default function AuditorDetailPage({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const handleManualRun = async () => {
+    if (!auditorName || running || !isLive) return;
+    setRunning(true);
+    setRunError(null);
+    try {
+      const res = await fetch(`/api/admin/auditors/${auditorName}/run`, {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        runId?: string;
+        error?: string;
+        message?: string;
+      };
+      if (!json.ok) {
+        setRunError(json.message ?? json.error ?? "Çalıştırma başarısız");
+      } else {
+        // Yeni run'ı yükle
+        await refresh();
+      }
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "Ağ hatası");
+    } finally {
+      setRunning(false);
+    }
+  };
 
   if (!isValid || !auditorName) {
     return (
@@ -156,16 +190,36 @@ export default function AuditorDetailPage({
               {auditorName}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {/* Adım 4+'da aktif olacak */}
-            <button
-              type="button"
-              disabled
-              className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-gri-100 text-gri-500 text-[13px] font-semibold cursor-not-allowed"
-              title="Adım 4'te bu agent canlı olunca aktif olacak"
-            >
-              ⏳ Şimdi çalıştır (yakında)
-            </button>
+          <div className="flex gap-2 flex-wrap items-center">
+            {isLive ? (
+              <button
+                type="button"
+                onClick={() => void handleManualRun()}
+                disabled={running}
+                className={cn(
+                  "inline-flex items-center gap-2 h-10 px-4 rounded-full text-[13px] font-semibold transition-colors",
+                  running
+                    ? "bg-gri-100 text-gri-500 cursor-not-allowed"
+                    : "bg-pim-mercan text-white hover:bg-pim-mercan-koyu"
+                )}
+              >
+                {running ? "⏳ Çalışıyor..." : "▶ Şimdi çalıştır"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-gri-100 text-gri-500 text-[13px] font-semibold cursor-not-allowed"
+                title="Bu agent henüz canlı değil — sonraki adımlarda eklenecek"
+              >
+                ⏳ Şimdi çalıştır (yakında)
+              </button>
+            )}
+            {runError && (
+              <span className="text-[12.5px] text-kirmizi font-semibold">
+                ⚠ {runError}
+              </span>
+            )}
           </div>
         </div>
 

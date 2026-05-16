@@ -22,6 +22,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult, AuditorPendingActionRow } from "./types";
 
+// Action handler implementasyonları
+import blockIp from "../actions/block-ip";
+import lockAdminAccount from "../actions/lock-admin-account";
+import notifySefa from "../actions/notify-sefa";
+
 // ============================================================
 // Handler interface
 // ============================================================
@@ -51,19 +56,18 @@ export type ActionHandler = (
 // ============================================================
 
 /**
- * Şu an REGISTRY BOŞ — sonraki adımlarda doldurulacak.
+ * Adım 4 ile gelen ilk 3 action handler.
  *
- * Örnek (Adım 4'te):
- *   import blockIp from "../actions/block-ip";
- *   import lockAdmin from "../actions/lock-admin-account";
- *
- *   export const ACTION_REGISTRY: Record<string, ActionHandler> = {
- *     block_ip: blockIp,
- *     lock_admin_account: lockAdmin,
- *   };
+ * Yeni action eklemek için:
+ *   1. src/lib/agents/actions/[type].ts dosyası oluştur
+ *   2. ActionHandler imzasına uygun default export
+ *   3. Aşağıdaki registry'ye ekle
+ *   4. Manuel test: SQL ile sahte pending_action insert → onay → uygulanır mı
  */
 export const ACTION_REGISTRY: Record<string, ActionHandler> = {
-  // Action handler'lar Adım 4+ ile eklenecek
+  block_ip: blockIp,
+  lock_admin_account: lockAdminAccount,
+  notify_sefa: notifySefa,
 };
 
 // ============================================================
