@@ -49,6 +49,10 @@ export class CustomerHealthAuditor extends AuditorBase {
     findings.push(...aov.findings);
     metrics.aov = aov.metrics;
 
+    const segment = await this.checkSegmentMix();
+    findings.push(...segment.findings);
+    metrics.segment = segment.metrics;
+
     const counts = countFindings(findings);
     return {
       findings,
@@ -377,6 +381,84 @@ export class CustomerHealthAuditor extends AuditorBase {
         deviation,
         thisCount: thisRows.length,
         lastCount: lastRows.length,
+      },
+    };
+  }
+
+  // F) Segment mix — B2B vs bireysel sipariş oranı
+  private async checkSegmentMix() {
+    const findings: AuditorFinding[] = [];
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    // orders.invoice jsonb içinde invoice_type ya da fatura kayıt yapısı
+    // Basit yaklaşım: orders'i çek, JSON içinden invoice_type kontrol
+    const { data } = await this.admin
+      .from("orders")
+      .select("invoice, total")
+      .gte("created_at", since.toISOString())
+      .in("status", [
+        "paid",
+        "shipped",
+        "delivered",
+        "in_production",
+        "ready_to_ship",
+      ] as never)
+      .limit(500);
+
+    const rows = (data ?? []) as Array<{
+      invoice: { type?: string; vkn?: string; company_name?: string } | null;
+      total: number | string;
+    }>;
+
+    if (rows.length === 0) {
+      return { findings, metrics: { total: 0 } };
+    }
+
+    let b2bCount = 0;
+    let bireyselCount = 0;
+    let b2bRevenue = 0;
+    let bireyselRevenue = 0;
+
+    for (const r of rows) {
+      const isB2B = !!(r.invoice?.vkn || r.invoice?.company_name);
+      const total = Number(r.total ?? 0);
+      if (isB2B) {
+        b2bCount++;
+        b2bRevenue += total;
+      } else {
+        bireyselCount++;
+        bireyselRevenue += total;
+      }
+    }
+
+    const totalRevenue = b2bRevenue + bireyselRevenue;
+    const b2bShare = totalRevenue > 0 ? b2bRevenue / totalRevenue : 0;
+
+    const fmtTl = (n: number) =>
+      n.toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " TL";
+
+    findings.push(
+      this.info(
+        "segment_mix",
+        `B2B %${(b2bShare * 100).toFixed(0)} · Bireysel %${((1 - b2bShare) * 100).toFixed(0)}`,
+        `Son 30 gün ciro dağılımı:\n- **B2B:** ${b2bCount} sipariş · ${fmtTl(b2bRevenue)}\n- **Bireysel:** ${bireyselCount} sipariş · ${fmtTl(bireyselRevenue)}\n\nToplam: ${rows.length} sipariş · ${fmtTl(totalRevenue)}`,
+        {
+          b2b: { count: b2bCount, revenue: b2bRevenue },
+          bireysel: { count: bireyselCount, revenue: bireyselRevenue },
+          b2bShare,
+        }
+      )
+    );
+
+    return {
+      findings,
+      metrics: {
+        b2bCount,
+        bireyselCount,
+        b2bRevenue,
+        bireyselRevenue,
+        b2bShare,
       },
     };
   }
