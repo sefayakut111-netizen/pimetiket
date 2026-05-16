@@ -55,6 +55,14 @@ export class WorkflowAuditor extends AuditorBase {
     findings.push(...sla.findings);
     metrics.sla = sla.metrics;
 
+    const aiQc = await this.checkAiQcPerformance();
+    findings.push(...aiQc.findings);
+    metrics.aiQc = aiQc.metrics;
+
+    const designReject = await this.checkDesignRejectionRate();
+    findings.push(...designReject.findings);
+    metrics.designReject = designReject.metrics;
+
     const counts = countFindings(findings);
     const summary = buildSummary(counts);
 
@@ -315,6 +323,134 @@ export class WorkflowAuditor extends AuditorBase {
     }
 
     return { findings, metrics: { violationCount: count ?? 0 } };
+  }
+
+  // F) AI QC Performance — ortalama süre + trend
+  private async checkAiQcPerformance() {
+    const findings: AuditorFinding[] = [];
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    // Son 24 saat ortalama süre
+    const { data: recentData } = await this.admin
+      .from("design_quality_checks")
+      .select("duration_ms")
+      .gte("created_at", yesterday.toISOString())
+      .not("duration_ms", "is", null);
+
+    const recentRows = (recentData ?? []) as Array<{ duration_ms: number }>;
+
+    // Önceki 7 gün ortalama (referans)
+    const { data: weeklyData } = await this.admin
+      .from("design_quality_checks")
+      .select("duration_ms")
+      .gte("created_at", lastWeek.toISOString())
+      .lt("created_at", yesterday.toISOString())
+      .not("duration_ms", "is", null);
+
+    const weeklyRows = (weeklyData ?? []) as Array<{ duration_ms: number }>;
+
+    if (recentRows.length === 0) {
+      return {
+        findings,
+        metrics: { recentAvg: 0, weeklyAvg: 0, deviation: 0 },
+      };
+    }
+
+    const recentAvg =
+      recentRows.reduce((s, r) => s + (r.duration_ms ?? 0), 0) /
+      recentRows.length;
+    const weeklyAvg =
+      weeklyRows.length > 0
+        ? weeklyRows.reduce((s, r) => s + (r.duration_ms ?? 0), 0) /
+          weeklyRows.length
+        : recentAvg;
+
+    const deviation = weeklyAvg > 0 ? (recentAvg - weeklyAvg) / weeklyAvg : 0;
+
+    // 1.5× yavaşlama uyarı, 2× kritik
+    if (deviation > 1.0) {
+      findings.push(
+        this.critical(
+          "ai_qc_slow",
+          `AI QC ${(deviation * 100).toFixed(0)}% yavaşladı`,
+          `Son 24 saat ort: **${(recentAvg / 1000).toFixed(1)}s**. Önceki haftalık ort: ${(weeklyAvg / 1000).toFixed(1)}s. Bu kadar yavaşlama OpenAI rate-limit veya prompt boyutu sorunu olabilir.`,
+          { recentAvg, weeklyAvg, deviation, recentCount: recentRows.length }
+        )
+      );
+    } else if (deviation > 0.5) {
+      findings.push(
+        this.warning(
+          "ai_qc_slow",
+          `AI QC %${(deviation * 100).toFixed(0)} yavaşladı`,
+          `Son 24 saat: ${(recentAvg / 1000).toFixed(1)}s, geçen hafta: ${(weeklyAvg / 1000).toFixed(1)}s. Trend incelemeli.`,
+          { recentAvg, weeklyAvg, deviation }
+        )
+      );
+    } else {
+      findings.push(
+        this.info(
+          "ai_qc_performance",
+          `AI QC ort. süre: ${(recentAvg / 1000).toFixed(1)}s`,
+          `Son 24 saatte ${recentRows.length} run, ortalama ${(recentAvg / 1000).toFixed(1)}s. Haftalık ortalama: ${(weeklyAvg / 1000).toFixed(1)}s.`,
+          { recentAvg, weeklyAvg, recentCount: recentRows.length }
+        )
+      );
+    }
+
+    return {
+      findings,
+      metrics: { recentAvg, weeklyAvg, deviation, recentCount: recentRows.length },
+    };
+  }
+
+  // G) Design rejection rate — son 7 gün reddedilen tasarım oranı
+  private async checkDesignRejectionRate() {
+    const findings: AuditorFinding[] = [];
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+
+    const { data } = await this.admin
+      .from("design_quality_checks")
+      .select("verdict")
+      .gte("created_at", since.toISOString())
+      .not("verdict", "is", null);
+
+    const rows = (data ?? []) as Array<{ verdict: string }>;
+    if (rows.length === 0) {
+      return { findings, metrics: { total: 0, rejected: 0, rate: 0 } };
+    }
+
+    const rejected = rows.filter(
+      (r) => r.verdict === "fail" || r.verdict === "reject"
+    ).length;
+    const rate = rejected / rows.length;
+
+    if (rate > 0.25) {
+      findings.push(
+        this.warning(
+          "high_rejection_rate",
+          `Tasarım reddetme oranı %${(rate * 100).toFixed(0)} (eşik %25)`,
+          `Son 7 günde **${rejected} / ${rows.length}** tasarım reddedildi. Yüksek oran müşteriyi frustre eder — kabul kriterleri çok katı olabilir. Çıktıları /admin/yorumlar + Pim chat'te incele.`,
+          { total: rows.length, rejected, rate }
+        )
+      );
+    } else {
+      findings.push(
+        this.info(
+          "rejection_rate",
+          `Tasarım reddetme oranı %${(rate * 100).toFixed(0)} (sağlıklı)`,
+          `Son 7 gün: ${rejected} red / ${rows.length} toplam. Eşik %25'in altında.`,
+          { total: rows.length, rejected, rate }
+        )
+      );
+    }
+
+    return { findings, metrics: { total: rows.length, rejected, rate } };
   }
 }
 

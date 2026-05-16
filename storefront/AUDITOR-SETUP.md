@@ -16,13 +16,19 @@
 | `OPENAI_API_KEY` | Design QC + Pim chat |
 | `SUPABASE_SERVICE_ROLE_KEY` | Admin client |
 | `NEXT_PUBLIC_SITE_URL` | Mail içindeki linkler |
+| `CLOUDFLARE_API_TOKEN` | block_ip handler |
+| `CLOUDFLARE_ACCOUNT_ID` | CF API çağrıları için |
 
-## ⏳ Sefa'nın eklemesi gereken (opsiyonel)
+## ⏳ Eksik olan ve etkisi
 
 | Env | Amaç | Yoksa ne olur |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | block_ip handler | Aksiyon "partial" döner, audit kalır, gerçek block atlanır |
-| `CLOUDFLARE_BLOCKED_IPS_LIST_ID` | block_ip target | Aynı |
+| `CLOUDFLARE_BLOCKED_IPS_LIST_ID` | block_ip target list | block_ip aksiyonu "partial" döner — audit kalır, gerçek block atlanır |
+
+Bu env için **iki adım** gerek:
+1. CF API token izin yükseltmesi (`Account · Account Filter Lists · Edit` ekle)
+2. CF'de `pimetiket_blocked_ips` IP list oluştur, ID Vercel'e ekle
+3. WAF rule: `if ip.src in $pimetiket_blocked_ips → Block`
 
 **Cloudflare token nasıl alınır:**
 1. Cloudflare → My Profile → API Tokens → Create Custom Token
