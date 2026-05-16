@@ -17,12 +17,13 @@ import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { AUDITOR_NAMES, type AuditorName } from "@/lib/agents/_shared/types";
 import { SecurityAuditor } from "@/lib/agents/auditors/security";
+import { FinanceAuditor } from "@/lib/agents/auditors/finance";
 
 const AUDITOR_FACTORIES: Partial<
   Record<AuditorName, () => { run: (opts: { triggerType: "manual"; triggeredBy: string }) => Promise<string> }>
 > = {
   security: () => new SecurityAuditor(),
-  // Adım 5+: diğerleri
+  finance: () => new FinanceAuditor(),
 };
 
 export async function POST(

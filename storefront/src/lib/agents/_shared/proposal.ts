@@ -26,6 +26,8 @@ import type { ActionResult, AuditorPendingActionRow } from "./types";
 import blockIp from "../actions/block-ip";
 import lockAdminAccount from "../actions/lock-admin-account";
 import notifySefa from "../actions/notify-sefa";
+import expireStaleIntents from "../actions/expire-stale-intents";
+import extendCouponExpiry from "../actions/extend-coupon-expiry";
 
 // ============================================================
 // Handler interface
@@ -68,6 +70,8 @@ export const ACTION_REGISTRY: Record<string, ActionHandler> = {
   block_ip: blockIp,
   lock_admin_account: lockAdminAccount,
   notify_sefa: notifySefa,
+  expire_stale_intents: expireStaleIntents,
+  extend_coupon_expiry: extendCouponExpiry,
 };
 
 // ============================================================

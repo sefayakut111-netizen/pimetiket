@@ -39,8 +39,8 @@ interface DetailResponse {
   error?: string;
 }
 
-// Adım 4+ ile canlı olan auditor'lar — "Şimdi çalıştır" sadece bunlarda aktif
-const LIVE_AUDITORS: ReadonlySet<string> = new Set(["security"]);
+// Canlı olan auditor'lar — "Şimdi çalıştır" sadece bunlarda aktif
+const LIVE_AUDITORS: ReadonlySet<string> = new Set(["security", "finance"]);
 
 const SEVERITY_STYLES = {
   critical: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",

@@ -22,13 +22,15 @@
 import { NextResponse } from "next/server";
 import { AUDITOR_NAMES, type AuditorName } from "@/lib/agents/_shared/types";
 import { SecurityAuditor } from "@/lib/agents/auditors/security";
+import { FinanceAuditor } from "@/lib/agents/auditors/finance";
 
 // Auditor name → factory function
 const AUDITOR_FACTORIES: Partial<
   Record<AuditorName, () => { run: (opts: { triggerType: "cron"; triggeredBy: string }) => Promise<string> }>
 > = {
   security: () => new SecurityAuditor(),
-  // Adım 5'te: finance, Adım 6'da: workflow + compliance + ai_cost
+  finance: () => new FinanceAuditor(),
+  // Adım 6'da: workflow + compliance + ai_cost
   // Adım 7'de: data_hygiene + customer_health + seo + brand
 };
 
