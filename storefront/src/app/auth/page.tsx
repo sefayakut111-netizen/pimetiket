@@ -203,6 +203,22 @@ function AuthInner() {
           toast.error(`Giriş hatası: ${error.message}`);
         }
       } else {
+        // Sefa 16 May Kritik 4: 2FA enforcement
+        // Login başarılı → MFA factor varsa AAL2 zorla
+        try {
+          const { data: aalData } =
+            await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (
+            aalData?.currentLevel === "aal1" &&
+            aalData?.nextLevel === "aal2"
+          ) {
+            // MFA enroll edilmiş ama bu session henüz AAL2 değil
+            router.push(`/auth/mfa-challenge?next=${encodeURIComponent(next)}`);
+            return;
+          }
+        } catch {
+          // AAL check başarısız olursa normal akışa devam (MFA yoksa zaten gerek yok)
+        }
         toast.success("Hoş geldin!");
         router.push(next);
         router.refresh();

@@ -117,6 +117,29 @@ export async function updateSession(request: NextRequest) {
         redirectUrl.search = "";
         return NextResponse.redirect(redirectUrl);
       }
+
+      // Sefa 16 May Kritik 4: Admin için 2FA enforcement
+      // Eğer kullanıcı MFA enroll etmişse (factor var) ama AAL2 session değilse
+      // mfa-challenge sayfasına yönlendir.
+      try {
+        const { data: aalData } =
+          await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (
+          aalData?.currentLevel === "aal1" &&
+          aalData?.nextLevel === "aal2"
+        ) {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = "/auth/mfa-challenge";
+          redirectUrl.searchParams.set("next", pathname + request.nextUrl.search);
+          return NextResponse.redirect(redirectUrl);
+        }
+        // NOT: currentLevel='aal1' + nextLevel='aal1' = MFA enroll edilmemiş.
+        // Sefa enroll edene kadar /admin'e izin ver. İlerde enroll'a zorlanacak:
+        //   if (!hasEnrolledFactor) redirect to /ayarlar/2fa?force=admin
+      } catch {
+        // AAL check başarısız olursa admin'e izin ver (Supabase MFA env'i yoksa)
+      }
+
       // Admin ama "müşteri görünümü" cookie aktif → /admin'i bloke et
       const viewMode = parseViewMode(
         request.cookies.get(VIEW_MODE_COOKIE)?.value

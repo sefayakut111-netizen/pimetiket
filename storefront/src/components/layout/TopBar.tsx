@@ -305,6 +305,14 @@ export function TopBar() {
                     >
                       <Icon.Truck size={14} /> {t.nav.addresses}
                     </Link>
+                    {/* Sefa 16 May Kritik 4: 2FA sayfa linki */}
+                    <Link
+                      href="/ayarlar/2fa"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-lacivert hover:bg-gri-50"
+                    >
+                      🔐 İki Faktör Doğrulama
+                    </Link>
                     {/* Cüzdan özelliği KALDIRILDI (Migration 015, 10 May 2026) */}
                   </div>
                   <button
