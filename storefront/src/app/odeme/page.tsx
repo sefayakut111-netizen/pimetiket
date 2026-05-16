@@ -30,6 +30,7 @@ import {
   Input,
   Eyebrow,
   ValidatedInput,
+  useToast,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
@@ -265,6 +266,7 @@ export default function OdemePage() {
   const router = useRouter();
   const { t, locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
+  const toast = useToast();
 
   // Cart hydration
   const [cartItems, setCartItems] = useState<CustomerCartItem[]>([]);
@@ -533,6 +535,31 @@ export default function OdemePage() {
 
   const submit = async () => {
     if (cartItems.length === 0) return;
+
+    // Sefa 17 May — Submit'te EKSİKSİZ guard
+    // (canSubmit disabled olsa bile direkt çağrı olursa burada blokla)
+    if (!canSubmit) {
+      const firstMissing = submitMissing[0] ?? "form alanları";
+      toast.error(`⚠ Eksik: ${firstMissing}`);
+      // İlk eksik alana scroll
+      if (typeof document !== "undefined") {
+        let target: HTMLElement | null = null;
+        if (submitMissing.includes("teslimat adresi")) {
+          target = document.getElementById("addr-first-name");
+        } else if (submitMissing.includes("fatura bilgisi")) {
+          if (invoiceMode === "individual") {
+            target = document.getElementById("tc-checkout");
+          } else {
+            target = document.getElementById("inv-vkn");
+          }
+        }
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          target.focus();
+        }
+      }
+      return;
+    }
 
     setLoading(true);
 
@@ -1729,8 +1756,9 @@ function isInvoiceCompleteV2(args: {
   invoiceProfilesCount: number;
 }): boolean {
   if (args.mode === "individual") {
-    // TC ZORUNLU — Sefa 17 May
-    return validateTcKimlik(args.tc).valid;
+    // TC ZORUNLU — Sefa 17 May (validateTcKimlik boş için true döner, ekstra
+    // length kontrolü gerekli)
+    return args.tc.trim().length === 11 && validateTcKimlik(args.tc).valid;
   }
   if (args.mode === "corporate") {
     // Seçili kayıt varsa OK
