@@ -46,6 +46,74 @@ function severityChipClass(critical: number, warning: number) {
   return "bg-yesil-soft/40 text-yesil ring-yesil/30";
 }
 
+// vercel.json'daki cron schedule'ı insan-okunur metne çevir
+const CRON_SCHEDULE: Record<string, { label: string; nextRun: () => string }> = {
+  security: {
+    label: "Günlük 01:00",
+    nextRun: () => nextDailyAt(1, 0),
+  },
+  finance: {
+    label: "Günlük 09:00",
+    nextRun: () => nextDailyAt(9, 0),
+  },
+  workflow: {
+    label: "Günlük 05:00",
+    nextRun: () => nextDailyAt(5, 0),
+  },
+  ai_cost: {
+    label: "Günlük 09:30",
+    nextRun: () => nextDailyAt(9, 30),
+  },
+  compliance: {
+    label: "Günlük 10:00",
+    nextRun: () => nextDailyAt(10, 0),
+  },
+  data_hygiene: {
+    label: "Pazar 03:00",
+    nextRun: () => nextWeeklyAt(0, 3, 0),
+  },
+  customer_health: {
+    label: "Pazartesi 10:00",
+    nextRun: () => nextWeeklyAt(1, 10, 0),
+  },
+  seo: {
+    label: "Çarşamba 11:00",
+    nextRun: () => nextWeeklyAt(3, 11, 0),
+  },
+  brand: {
+    label: "Cuma 14:00",
+    nextRun: () => nextWeeklyAt(5, 14, 0),
+  },
+};
+
+function nextDailyAt(hour: number, minute: number): string {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, minute, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  const diffMs = next.getTime() - now.getTime();
+  return formatDiff(diffMs);
+}
+
+function nextWeeklyAt(weekday: number, hour: number, minute: number): string {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, minute, 0, 0);
+  const daysUntil = (weekday - now.getDay() + 7) % 7;
+  next.setDate(now.getDate() + daysUntil);
+  if (next <= now) next.setDate(next.getDate() + 7);
+  return formatDiff(next.getTime() - now.getTime());
+}
+
+function formatDiff(ms: number): string {
+  const min = Math.floor(ms / 60_000);
+  if (min < 60) return `${min} dk sonra`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} sa sonra`;
+  const day = Math.floor(hr / 24);
+  return `${day} gün sonra`;
+}
+
 function statusLabel(summary: AuditorLatestRunSummary): string {
   if (!summary.latestRunId) return "Henüz çalışmadı";
   if (summary.criticalCount > 0)
@@ -328,6 +396,18 @@ export default function DenetcilerDashboardPage() {
                       </>
                     )}
                 </div>
+
+                {/* Sonraki cron — Adım 8 polish v2 */}
+                {!isEmpty && CRON_SCHEDULE[a.auditorName] && (
+                  <div className="mt-3 pt-3 border-t border-gri-100 flex items-center justify-between text-[10.5px] text-gri-500">
+                    <span>
+                      ⏰ {CRON_SCHEDULE[a.auditorName].label}
+                    </span>
+                    <span className="font-semibold text-pim-mercan">
+                      {CRON_SCHEDULE[a.auditorName].nextRun()}
+                    </span>
+                  </div>
+                )}
               </Link>
             );
           })}
