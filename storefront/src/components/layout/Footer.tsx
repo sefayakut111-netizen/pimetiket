@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { Input, Button, useToast } from "@/components/ui";
@@ -16,6 +17,10 @@ interface FooterLink {
 export function Footer() {
   const toast = useToast();
   const { t } = useT();
+  const pathname = usePathname();
+  // Sefa 17 May Dalga 3 #19: checkout sayfasında newsletter friction yaratır
+  // (kullanıcı ödeme dikkati dağılmasın). Footer'ı minimal göster.
+  const isCheckout = pathname?.startsWith("/odeme") ?? false;
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -116,7 +121,9 @@ export function Footer() {
   return (
     <footer className="bg-lacivert text-white/85 pt-14 pb-6 mt-20">
       <div className="mx-auto max-w-[1280px] px-6 md:px-8">
-        {/* Newsletter — compact strip */}
+        {/* Newsletter — compact strip
+            Sefa 17 May Dalga 3 #19: /odeme'de gizli */}
+        {!isCheckout && (
         <div className="mb-10 pb-8 border-b border-white/10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan mb-1.5">
@@ -183,6 +190,7 @@ export function Footer() {
             </form>
           )}
         </div>
+        )}
 
         {/* Brand + 4 nav columns */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-10">

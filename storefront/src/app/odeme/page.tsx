@@ -683,72 +683,99 @@ export default function OdemePage() {
                       required
                     />
                   </div>
-                  {/* Sefa 16 May: Ülke + Şehir + İlçe — dropdown
-                      (81 il + ~973 ilçe — src/lib/locations/tr-locations.ts) */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Sefa 16 May: Şehir + İlçe — dropdown
+                      (81 il + ~973 ilçe — src/lib/locations/tr-locations.ts)
+                      Sefa 17 May Dalga 3 #14: Ülke dropdown kaldırıldı, sadece
+                      Türkiye desteklendiği için statik rozet gösteriliyor. */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                        Ülke
+                        Şehir <span className="text-kirmizi">*</span>
                       </label>
-                      <select
-                        value={newAddr.country}
-                        onChange={(e) =>
-                          setNewAddr({ ...newAddr, country: e.target.value })
-                        }
-                        className="w-full h-11 px-3 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan"
-                      >
-                        <option value="Türkiye">🇹🇷 Türkiye</option>
-                      </select>
+                      {/* Sefa 17 May Dalga 3 #13: custom chevron icon */}
+                      <div className="relative">
+                        <select
+                          value={newAddr.city}
+                          onChange={(e) =>
+                            setNewAddr({
+                              ...newAddr,
+                              city: e.target.value,
+                              district: "", // şehir değişince ilçeyi sıfırla
+                            })
+                          }
+                          autoComplete="address-level1"
+                          required
+                          className="w-full h-11 pl-3 pr-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan appearance-none cursor-pointer"
+                        >
+                          <option value="">Seç...</option>
+                          {TR_IL_LIST.map((il) => (
+                            <option key={il} value={il}>
+                              {il}
+                            </option>
+                          ))}
+                        </select>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gri-500 pointer-events-none"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                        Şehir
+                        İlçe <span className="text-kirmizi">*</span>
                       </label>
-                      <select
-                        value={newAddr.city}
-                        onChange={(e) =>
-                          setNewAddr({
-                            ...newAddr,
-                            city: e.target.value,
-                            district: "", // şehir değişince ilçeyi sıfırla
-                          })
-                        }
-                        autoComplete="address-level1"
-                        required
-                        className="w-full h-11 px-3 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan"
-                      >
-                        <option value="">Seç...</option>
-                        {TR_IL_LIST.map((il) => (
-                          <option key={il} value={il}>
-                            {il}
+                      <div className="relative">
+                        <select
+                          value={newAddr.district}
+                          onChange={(e) =>
+                            setNewAddr({ ...newAddr, district: e.target.value })
+                          }
+                          autoComplete="address-level2"
+                          required
+                          disabled={!newAddr.city}
+                          className="w-full h-11 pl-3 pr-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          <option value="">
+                            {newAddr.city ? "Seç..." : "Önce şehir seç"}
                           </option>
-                        ))}
-                      </select>
+                          {getIlceler(newAddr.city).map((ilce) => (
+                            <option key={ilce} value={ilce}>
+                              {ilce}
+                            </option>
+                          ))}
+                        </select>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gri-500 pointer-events-none"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                        İlçe
-                      </label>
-                      <select
-                        value={newAddr.district}
-                        onChange={(e) =>
-                          setNewAddr({ ...newAddr, district: e.target.value })
-                        }
-                        autoComplete="address-level2"
-                        required
-                        disabled={!newAddr.city}
-                        className="w-full h-11 px-3 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <option value="">
-                          {newAddr.city ? "Seç..." : "Önce şehir seç"}
-                        </option>
-                        {getIlceler(newAddr.city).map((ilce) => (
-                          <option key={ilce} value={ilce}>
-                            {ilce}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  </div>
+                  {/* Statik ülke gösterimi */}
+                  <div className="text-[11.5px] text-gri-500 inline-flex items-center gap-1.5">
+                    <span>📍 Teslimat ülkesi:</span>
+                    <span className="font-semibold text-lacivert">🇹🇷 Türkiye</span>
+                    <span className="text-gri-500">(yurt dışına gönderim henüz aktif değil)</span>
                   </div>
                   <div>
                     <label
@@ -996,73 +1023,8 @@ export default function OdemePage() {
               )}
             </Card>
 
-            {/* ================ COUPON ================ */}
-            <Card padding="p-5">
-              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
-                <Icon.Sparkle size={16} className="text-pim-mercan" />
-                {c.couponTitle}
-              </h3>
-              <div className="flex gap-2">
-                <Input
-                  value={couponCode}
-                  onChange={(e) => {
-                    setCouponCode(e.target.value.toUpperCase());
-                    setCouponResult(null);
-                  }}
-                  placeholder={c.couponPh}
-                  aria-label={c.couponTitle}
-                  className="flex-1 uppercase tracking-wider"
-                  disabled={couponChecking || couponResult?.ok === true}
-                />
-                {couponResult?.ok ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setCouponCode("");
-                      setCouponResult(null);
-                    }}
-                  >
-                    {c.couponRemove}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={onCheckCoupon}
-                    disabled={couponChecking || couponCode.trim().length < 2}
-                  >
-                    {couponChecking ? "..." : c.couponApply}
-                  </Button>
-                )}
-              </div>
-              {couponResult && (
-                <div className="mt-3 text-[13px] leading-relaxed">
-                  {couponResult.ok ? (
-                    <span className="text-yesil font-semibold flex items-center gap-1.5">
-                      <Icon.Check size={14} />
-                      {couponResult.kind === "free_ship"
-                        ? "Kargo ücretsiz!"
-                        : `İndirim: ${Math.round(
-                            couponResult.discount
-                          ).toLocaleString(c.locale)} ${c.currency}`}
-                    </span>
-                  ) : (
-                    <span className="text-kirmizi">
-                      {couponResult.reason === "invalid_or_expired"
-                        ? c.couponInvalid
-                        : couponResult.reason === "min_subtotal"
-                          ? c.couponMinSubtotal(couponResult.minSubtotal ?? 0)
-                          : couponResult.reason === "user_limit_reached"
-                            ? c.couponUserLimit
-                            : couponResult.reason === "total_limit_reached"
-                              ? c.couponTotalLimit
-                              : c.couponDefault}
-                    </span>
-                  )}
-                </div>
-              )}
-            </Card>
+            {/* COUPON Sefa 17 May Dalga 2 #9: sağ sipariş özet kartına taşındı,
+                sol kolondaki ayrı card kaldırıldı. */}
 
           </div>
 
@@ -1107,6 +1069,62 @@ export default function OdemePage() {
                   </div>
                 ))}
 
+                {/* Sefa 17 May Dalga 2 #9: kupon inline (eski ayrı card kaldırıldı) */}
+                <div className="border-t border-gri-200 pt-3">
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value.toUpperCase());
+                        setCouponResult(null);
+                      }}
+                      placeholder={c.couponPh}
+                      aria-label={c.couponTitle}
+                      className="flex-1 uppercase tracking-wider !text-[12.5px] !h-10"
+                      disabled={couponChecking || couponResult?.ok === true}
+                    />
+                    {couponResult?.ok ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setCouponCode("");
+                          setCouponResult(null);
+                        }}
+                      >
+                        {c.couponRemove}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onCheckCoupon}
+                        disabled={couponChecking || couponCode.trim().length < 2}
+                      >
+                        {couponChecking ? "..." : c.couponApply}
+                      </Button>
+                    )}
+                  </div>
+                  {couponResult && !couponResult.ok && (
+                    <div className="mt-2 text-[12px] leading-relaxed text-kirmizi">
+                      {couponResult.reason === "invalid_or_expired"
+                        ? c.couponInvalid
+                        : couponResult.reason === "min_subtotal"
+                          ? c.couponMinSubtotal(couponResult.minSubtotal ?? 0)
+                          : couponResult.reason === "user_limit_reached"
+                            ? c.couponUserLimit
+                            : couponResult.reason === "total_limit_reached"
+                              ? c.couponTotalLimit
+                              : c.couponDefault}
+                    </div>
+                  )}
+                  {couponResult?.ok && couponResult.kind === "free_ship" && (
+                    <div className="mt-2 text-[12px] text-yesil font-semibold flex items-center gap-1.5">
+                      <Icon.Check size={12} /> Kargo ücretsiz!
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-between border-t border-gri-200 pt-3">
                   <span className="text-gri-700">{c.subtotal}</span>
                   <span className="font-semibold tabular-nums">
@@ -1144,7 +1162,9 @@ export default function OdemePage() {
                   </span>
                 </span>
               </div>
-              <div className="text-[11.5px] text-gri-700 text-right">
+              {/* Sefa 17 May Dalga 3 #16: KDV dahil notu büyütüldü
+                  11.5px → 13px + font-medium ile okunabilirlik arttı */}
+              <div className="text-[13px] font-medium text-gri-700 text-right">
                 {c.vatIncluded}
               </div>
 
@@ -1220,25 +1240,59 @@ export default function OdemePage() {
                 {!loading && <Icon.ArrowR />}
               </Button>
 
-              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-                <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
-                  🔒 3D Secure
+              {/* Sefa 17 May Dalga 3 #18: trust rozetleri büyütüldü
+                  22px → 28px height, font 11.5 → 13, ikon görünürlüğü +
+                  SSL rozet de eklendi (footer'daki gibi) */}
+              <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-yesil-soft text-yesil text-[12.5px] font-semibold">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  3D Secure
+                </span>
+                <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-yesil-soft text-yesil text-[12.5px] font-semibold">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  SSL
                 </span>
                 <span
-                  className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-gri-100 ring-1 ring-gri-200"
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-gri-100 ring-1 ring-gri-200"
                   aria-label="PayTR ile güvenli ödeme"
                   title="PayTR ile güvenli ödeme"
                 >
-                  <span className="text-[10px] font-semibold text-gri-700 uppercase tracking-[0.04em]">
-                    Güvenli ödeme
+                  <span className="text-[11px] font-semibold text-gri-700 uppercase tracking-[0.04em]">
+                    Ödeme altyapısı
                   </span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/logos/paytr/paytr-color.svg"
                     alt="PayTR"
-                    width="40"
-                    height="11"
-                    style={{ height: "11px", width: "auto" }}
+                    width="52"
+                    height="14"
+                    style={{ height: "14px", width: "auto" }}
                   />
                 </span>
               </div>
