@@ -31,6 +31,31 @@ interface DbRow {
 }
 
 /**
+ * N sipariş için tek seferde kargo bilgisi çek (Promise.all).
+ * /siparislerim listesinde her satır için ayrı render'da N+1 query
+ * yapmamak adına önceden batch fetch yapılır.
+ *
+ * Map<orderId, CustomerShipment | null> döner.
+ */
+export async function fetchShipmentsByOrderIds(
+  orderIds: string[]
+): Promise<Map<string, CustomerShipment | null>> {
+  const result = new Map<string, CustomerShipment | null>();
+  if (orderIds.length === 0) return result;
+  const user = await getCurrentUser();
+  if (!user) return result;
+
+  // Paralel RPC çağrıları — Supabase 10-20 paralel rahat kaldırır
+  await Promise.all(
+    orderIds.map(async (id) => {
+      const ship = await fetchMyOrderShipment(id);
+      result.set(id, ship);
+    })
+  );
+  return result;
+}
+
+/**
  * Sipariş için kargo bilgisini getir.
  * `null` döner:
  *   - Auth yok (guest)

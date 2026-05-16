@@ -20,6 +20,11 @@ import {
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { useT } from "@/lib/i18n/context";
+// Sefa 17 May Migration 045 — sipariş listesinde kargo durumu badge
+import {
+  fetchShipmentsByOrderIds,
+  type CustomerShipment,
+} from "@/lib/shipping/customer-shipment";
 
 // Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
 // olarak gösterilir, daha basit. Admin daha granuler görür.
@@ -65,6 +70,12 @@ const COPY = {
     currency: "TL",
     reorder: "Tekrar sipariş",
     detail: "Detay",
+    // Sefa 17 May — kargo badge
+    trackPrefix: "🚚 Kargoda",
+    trackCarrier: "Yurtiçi Kargo",
+    trackingNo: "Takip",
+    trackBtn: "Takip et",
+    deliveredAt: "Teslim edildi",
     locale: "tr-TR",
     dateFmt: { day: "numeric", month: "short", year: "numeric" } as const,
   },
@@ -93,6 +104,11 @@ const COPY = {
     currency: "TRY",
     reorder: "Reorder",
     detail: "Details",
+    trackPrefix: "🚚 In transit",
+    trackCarrier: "Yurtiçi Kargo",
+    trackingNo: "Tracking",
+    trackBtn: "Track",
+    deliveredAt: "Delivered",
     locale: "en-US",
     dateFmt: { day: "numeric", month: "short", year: "numeric" } as const,
   },
@@ -129,6 +145,11 @@ export default function SiparislerimPage() {
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // Sefa 17 May — Map<orderId, shipment | null>, kargo gönderilmiş
+  // siparişler için batch fetch
+  const [shipments, setShipments] = useState<
+    Map<string, CustomerShipment | null>
+  >(new Map());
 
   const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
 
@@ -198,6 +219,20 @@ export default function SiparislerimPage() {
     void refreshCustomerOrders().then(() => {
       refresh();
       setHydrated(true);
+      // Kargolanmış siparişlerin tracking bilgisini batch fetch
+      // (qc/üretimdekiler için RPC çağırma — gereksiz)
+      const list = listCustomerOrders();
+      const shippedOrDelivered = list
+        .filter(
+          (o) =>
+            o.status === "shipped" ||
+            o.status === "delivered" ||
+            o.status === "in_production" // ready durumunda da kargo veri olabilir
+        )
+        .map((o) => o.id);
+      if (shippedOrDelivered.length > 0) {
+        void fetchShipmentsByOrderIds(shippedOrDelivered).then(setShipments);
+      }
     });
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () =>
@@ -316,6 +351,12 @@ export default function SiparislerimPage() {
           <div className="flex flex-col gap-3">
             {filtered.map((o) => {
               const s = STATUS_META[o.status];
+              // Sefa 17 May — kargo bilgisi varsa kartın altına satır ekle
+              const ship = shipments.get(o.id);
+              const showShipRow =
+                ship &&
+                ship.hasShipment &&
+                (o.status === "shipped" || o.status === "delivered");
               return (
                 <Card key={o.id} padding="p-5">
                   <div className="grid grid-cols-[1fr_auto] gap-4 items-center">
@@ -370,6 +411,44 @@ export default function SiparislerimPage() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Sefa 17 May — Kargo info row */}
+                  {showShipRow && ship && (
+                    <div className="mt-3 pt-3 border-t border-gri-200 flex items-center gap-3 flex-wrap text-[12.5px]">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-yesil-koyu">
+                        🚚 {ship.carrierLabel || c.trackCarrier}
+                      </span>
+                      <span className="text-gri-500">·</span>
+                      <span className="text-gri-700">
+                        {c.trackingNo}:{" "}
+                        <code className="font-mono font-semibold text-lacivert">
+                          {ship.trackingNumber}
+                        </code>
+                      </span>
+                      {ship.shippedAt && (
+                        <>
+                          <span className="text-gri-500">·</span>
+                          <span className="text-gri-500">
+                            {new Date(ship.shippedAt).toLocaleDateString(
+                              c.locale,
+                              c.dateFmt
+                            )}
+                          </span>
+                        </>
+                      )}
+                      {ship.trackingUrl && (
+                        <a
+                          href={ship.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {c.trackBtn} →
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </Card>
               );
             })}
