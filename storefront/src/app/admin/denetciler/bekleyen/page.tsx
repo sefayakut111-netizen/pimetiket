@@ -13,36 +13,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Eyebrow, Pill } from "@/components/ui";
+import { Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import {
-  AUDITOR_LABELS,
-  AUDITOR_EMOJI,
-  type AuditorPendingActionRow,
-} from "@/lib/agents/_shared/types";
+import { ApprovalCard } from "@/components/admin/auditors/ApprovalCard";
+import type { AuditorPendingActionRow } from "@/lib/agents/_shared/types";
 
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(diffMs / 60_000);
-  if (min < 1) return "az önce";
-  if (min < 60) return `${min} dk önce`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} sa önce`;
-  const day = Math.floor(hr / 24);
-  return `${day} gün önce`;
-}
-
-const SEVERITY_STYLES = {
-  critical: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",
-  warning: "bg-saman/15 text-saman-koyu ring-saman/30",
-  info: "bg-gri-100 text-gri-700 ring-gri-200",
-} as const;
-
-const SEVERITY_LABELS = {
-  critical: "🔴 KRİTİK",
-  warning: "🟡 UYARI",
-  info: "🔵 BİLGİ",
-} as const;
+// (Severity helper'ları ApprovalCard içinde — burada gerek yok)
 
 export default function BekleyenPage() {
   const [items, setItems] = useState<AuditorPendingActionRow[]>([]);
@@ -146,58 +122,19 @@ export default function BekleyenPage() {
         ) : (
           <div className="space-y-3">
             {items.map((item) => (
-              <Card
+              <ApprovalCard
                 key={item.id}
-                padding="p-5"
-                className="hover:ring-pim-mercan transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4 flex-wrap mb-2">
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <span className="text-[20px]">
-                      {AUDITOR_EMOJI[item.auditor_name]}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[11.5px] text-gri-500 mb-0.5 font-semibold uppercase tracking-[0.04em]">
-                        {AUDITOR_LABELS[item.auditor_name]}
-                      </div>
-                      <h3 className="font-semibold text-[15px] text-lacivert leading-tight truncate">
-                        {item.title}
-                      </h3>
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "inline-flex items-center h-[24px] px-2.5 rounded-full ring-1 text-[11px] font-bold shrink-0",
-                      SEVERITY_STYLES[item.severity]
-                    )}
-                  >
-                    {SEVERITY_LABELS[item.severity]}
-                  </span>
-                </div>
-
-                <p className="text-[13px] text-gri-700 leading-relaxed mb-3 line-clamp-3">
-                  {item.description}
-                </p>
-
-                <div className="flex items-center justify-between gap-3 flex-wrap pt-2 border-t border-gri-100">
-                  <div className="text-[11.5px] text-gri-500">
-                    {timeAgo(item.created_at)} · Aksiyon tipi:{" "}
-                    <code className="font-mono text-lacivert">
-                      {item.action_type}
-                    </code>
-                  </div>
-                  {/* Onay butonları Adım 3'te gelecek */}
-                  <Pill>İncele →</Pill>
-                </div>
-              </Card>
+                action={item}
+                onDecided={() => void refresh()}
+              />
             ))}
           </div>
         )}
 
         {/* Footer note */}
         <div className="mt-8 text-center text-[12px] text-gri-500">
-          Onay/red/erteleme butonları Adım 3'te aktif olacak. Şu an liste
-          görünümünde.
+          Onaylanan aksiyon ACTION_REGISTRY'deki handler ile uygulanır.
+          Adım 4'ten itibaren handler'lar canlı.
         </div>
       </div>
     </main>

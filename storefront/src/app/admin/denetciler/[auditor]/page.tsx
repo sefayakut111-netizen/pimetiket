@@ -17,6 +17,7 @@ import Link from "next/link";
 import { use as useParamsAsync } from "react";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { ApprovalCard } from "@/components/admin/auditors/ApprovalCard";
 import {
   AUDITOR_NAMES,
   AUDITOR_LABELS,
@@ -249,6 +250,32 @@ export default function AuditorDetailPage({
                 </div>
               )}
             </Card>
+
+            {/* Pending actions for this auditor */}
+            {data.pendingActions.filter((p) => p.status === "pending").length >
+              0 && (
+              <div className="mb-4">
+                <h2 className="text-[16px] font-semibold text-lacivert mb-3">
+                  Onayını bekleyen aksiyonlar (
+                  {
+                    data.pendingActions.filter((p) => p.status === "pending")
+                      .length
+                  }
+                  )
+                </h2>
+                <div className="space-y-3">
+                  {data.pendingActions
+                    .filter((p) => p.status === "pending")
+                    .map((action) => (
+                      <ApprovalCard
+                        key={action.id}
+                        action={action}
+                        onDecided={() => void refresh()}
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
 
             {/* Findings */}
             {data.findings.length > 0 && (
