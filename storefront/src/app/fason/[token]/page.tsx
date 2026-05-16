@@ -22,6 +22,11 @@ import {
   type AssignmentStatus,
   type IssueCategory,
 } from "@/lib/fason/status-labels";
+// Sefa 17 May Migration 045 — yurt içi kargo carriers + tracking URL auto-gen
+import {
+  CARRIER_FALLBACK,
+  getTrackingUrl,
+} from "@/lib/shipping/carriers";
 
 interface OrderInfo {
   assignment: {
@@ -435,19 +440,20 @@ export default function FasonOrderPage({
                 >
                   Kargo firması:
                 </label>
+                {/* Sefa 17 May Migration 045: 8 yurt içi kargo seed listesi
+                    (DB shipment_carriers ile aynı). "Diğer" seçilirse fason
+                    tracking URL'i manuel yazar. */}
                 <select
                   id="fason-tr-company"
                   value={trackingCompany}
                   onChange={(e) => setTrackingCompany(e.target.value)}
                   className="w-full p-4 text-[16px] border-2 border-gri-200 rounded-xl focus:border-pim-mercan focus:outline-none"
                 >
-                  <option>Yurtiçi Kargo</option>
-                  <option>Aras Kargo</option>
-                  <option>MNG Kargo</option>
-                  <option>PTT Kargo</option>
-                  <option>Sürat Kargo</option>
-                  <option>HepsiJet</option>
-                  <option>Trendyol Express</option>
+                  {CARRIER_FALLBACK.map((c) => (
+                    <option key={c.code} value={c.displayName}>
+                      {c.displayName}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -468,12 +474,49 @@ export default function FasonOrderPage({
                 />
               </div>
 
+              {/* Otomatik tracking URL preview — Sefa 17 May
+                  Migration 045 carrier seçilince + takip no girilince
+                  otomatik link üretiliyor. Fason manuel override etmek
+                  isterse aşağıdaki opsiyonel alana yazar. */}
+              {(() => {
+                const auto = getTrackingUrl(
+                  trackingCompany,
+                  trackingNumber,
+                  null
+                );
+                if (!auto || !trackingNumber || trackingNumber.length < 3) {
+                  return null;
+                }
+                return (
+                  <div className="rounded-xl bg-yesil-soft/40 ring-1 ring-yesil/30 p-3 text-[13px]">
+                    <div className="text-[11px] uppercase tracking-[0.06em] font-semibold text-yesil-koyu mb-1">
+                      Otomatik takip linki
+                    </div>
+                    <a
+                      href={auto}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-pim-mercan font-semibold hover:underline break-all"
+                    >
+                      {auto}
+                    </a>
+                    <div className="text-[11px] text-gri-700 mt-1">
+                      ℹ Müşteriye bu link gönderilecek — kontrol et.
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div>
                 <label
                   htmlFor="fason-tr-url"
                   className="block text-[14px] font-semibold text-lacivert mb-2"
                 >
-                  Takip linki <span className="text-gri-500">(varsa)</span>:
+                  Manuel link{" "}
+                  <span className="text-gri-500">
+                    (opsiyonel — otomatik linkin yerine geçer)
+                  </span>
+                  :
                 </label>
                 <input
                   id="fason-tr-url"

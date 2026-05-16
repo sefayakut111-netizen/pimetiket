@@ -32,6 +32,10 @@ import {
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 import { OrderDesignHistory } from "@/components/design/OrderDesignHistory";
+import {
+  fetchMyOrderShipment,
+  type CustomerShipment,
+} from "@/lib/shipping/customer-shipment";
 
 const COPY = {
   tr: {
@@ -82,6 +86,17 @@ const COPY = {
     deliveryTitle: "Teslimat",
     paymentTitle: "Ödeme",
     invoice: "Fatura",
+    // Sefa 17 May Migration 045 — Kargo Takip
+    shipmentTitle: "Kargo takibi",
+    shipmentCarrier: "Kargo şirketi",
+    shipmentTracking: "Takip numarası",
+    shipmentShippedAt: "Kargoya verildi",
+    shipmentDeliveredAt: "Teslim edildi",
+    shipmentTrackBtn: "Kargo şirketinde takip et",
+    shipmentNotShipped:
+      "Sipariş henüz kargoya verilmedi. Üretim tamamlandığında kargo bilgisi burada görünür.",
+    shipmentCopied: "Takip numarası kopyalandı",
+    shipmentCopy: "Kopyala",
     pimAskTitle: "Pim'e sor",
     pimAskSub: "Bu sipariş hakkında soru?",
     openChat: "Sohbeti aç →",
@@ -171,6 +186,16 @@ const COPY = {
     deliveryTitle: "Delivery",
     paymentTitle: "Payment",
     invoice: "Invoice",
+    shipmentTitle: "Shipment tracking",
+    shipmentCarrier: "Carrier",
+    shipmentTracking: "Tracking number",
+    shipmentShippedAt: "Shipped at",
+    shipmentDeliveredAt: "Delivered at",
+    shipmentTrackBtn: "Track on carrier site",
+    shipmentNotShipped:
+      "Order has not been shipped yet. Tracking info will appear here once production is complete.",
+    shipmentCopied: "Tracking number copied",
+    shipmentCopy: "Copy",
     pimAskTitle: "Ask Pim",
     pimAskSub: "Question about this order?",
     openChat: "Open chat →",
@@ -310,12 +335,16 @@ export default function SiparisDetailPage({
     }
   };
 
+  // Sefa 17 May Migration 045: kargo bilgisi
+  const [shipment, setShipment] = useState<CustomerShipment | null>(null);
+
   useEffect(() => {
     ensureAuthBindings();
     void fetchCustomerOrder(id).then((o) => {
       setOrder(o);
       setHydrated(true);
     });
+    void fetchMyOrderShipment(id).then(setShipment);
   }, [id]);
 
   const handleReorder = async () => {
@@ -700,7 +729,81 @@ export default function SiparisDetailPage({
               </div>
             </Card>
 
-            {/* Shipping */}
+            {/* Kargo Takip — Sefa 17 May Migration 045 */}
+            {shipment && shipment.hasShipment && (
+              <Card
+                padding="p-6"
+                className="!bg-yesil-soft/40 ring-1 !ring-yesil/30"
+              >
+                <h3 className="font-semibold text-base mb-3 flex items-center gap-2 text-yesil-koyu">
+                  <Icon.Truck size={16} /> {c.shipmentTitle}
+                  {shipment.status === "delivered" && (
+                    <span className="inline-flex items-center h-[20px] px-2 rounded-full bg-yesil text-white text-[11px] font-semibold">
+                      ✓ {c.shipmentDeliveredAt}
+                    </span>
+                  )}
+                </h3>
+                <div className="text-[13px] space-y-2.5 leading-relaxed">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gri-700">{c.shipmentCarrier}</span>
+                    <span className="font-semibold text-lacivert text-right">
+                      {shipment.carrierLabel}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3 items-baseline">
+                    <span className="text-gri-700">{c.shipmentTracking}</span>
+                    <div className="flex items-center gap-2">
+                      <code className="font-mono text-[12.5px] text-lacivert font-semibold">
+                        {shipment.trackingNumber}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== "undefined") {
+                            void navigator.clipboard
+                              .writeText(shipment.trackingNumber)
+                              .then(() => toast.success(c.shipmentCopied));
+                          }
+                        }}
+                        className="text-[11px] font-semibold text-pim-mercan hover:underline"
+                        aria-label={c.shipmentCopy}
+                      >
+                        {c.shipmentCopy}
+                      </button>
+                    </div>
+                  </div>
+                  {shipment.shippedAt && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gri-700">
+                        {c.shipmentShippedAt}
+                      </span>
+                      <span className="text-lacivert">
+                        {new Date(shipment.shippedAt).toLocaleDateString(
+                          c.locale,
+                          { day: "numeric", month: "long", year: "numeric" }
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {shipment.trackingUrl && (
+                  <div className="mt-4">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      block
+                      href={shipment.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon.Truck size={14} /> {c.shipmentTrackBtn} →
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* Shipping (teslimat adresi) */}
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
                 <Icon.Truck size={16} /> {c.deliveryTitle}
@@ -717,6 +820,12 @@ export default function SiparisDetailPage({
                 <div>{order.address.addr}</div>
                 <div>{order.address.city}</div>
                 <div>{order.address.phone}</div>
+                {/* Henüz kargoya verilmemiş bilgisi */}
+                {!shipment && order.status !== "delivered" && (
+                  <div className="mt-3 pt-3 border-t border-gri-200 text-[11.5px] text-gri-500 italic leading-relaxed">
+                    ℹ {c.shipmentNotShipped}
+                  </div>
+                )}
               </div>
             </Card>
 
