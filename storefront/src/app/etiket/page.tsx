@@ -588,9 +588,15 @@ export default function EtiketPage() {
         ? ` · ${designCount} tasarım × ${qty.toLocaleString("tr-TR")} = ${totalEtiketCount.toLocaleString("tr-TR")} etiket`
         : "";
     const primary = designs[0];
+    // Sefa 17 May P1-12: tasarım yüklemeden sepete ekle akışı net opt-in.
+    // Eski "policy: ödeme sonrası 3 gün" gizliydi → cart title'da açık
+    // göster ki müşteri sepete bakınca "tasarımı yüklemem lazım" anlasın.
+    const hasNoDesign = designs.length === 0;
     const result = await addToCustomerCart({
       product: "etiket",
-      title: `Etiket · ${matName} + ${coatName}${designCount > 1 ? ` (${designCount} tasarım)` : ""}`,
+      title: `Etiket · ${matName} + ${coatName}${
+        designCount > 1 ? ` (${designCount} tasarım)` : ""
+      }${hasNoDesign ? " · 📎 Tasarım sonra yüklenecek" : ""}`,
       config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
       width,
       height,
@@ -1514,8 +1520,16 @@ export default function EtiketPage() {
             {fmt(total)} TL
           </div>
           <div className="text-[11px] text-gri-700 mt-0.5 truncate">
-            {totalEtiketCount.toLocaleString("tr-TR")} etiket{designCount > 1 ? ` (${designCount} tasarım)` : ""} · {width}×{height}mm · KDV dahil
+            {totalEtiketCount.toLocaleString("tr-TR")} etiket
+            {designCount > 1 ? ` (${designCount} tasarım)` : ""} · {width}×
+            {height}mm · KDV dahil
           </div>
+          {/* Sefa 17 May P1-12: tasarım eksik hint */}
+          {designs.length === 0 && (
+            <div className="text-[10.5px] text-saman-koyu mt-1 truncate">
+              📎 Tasarım sonra yüklenecek (3 gün)
+            </div>
+          )}
         </div>
         <button
           type="button"

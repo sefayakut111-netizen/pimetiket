@@ -27,6 +27,7 @@ import {
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { reorderFromOrder } from "@/lib/customer-reorder";
+import { getMyProfile } from "@/lib/customer-profile";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 
@@ -294,10 +295,24 @@ export default function PanelimPage() {
   const [hydrated, setHydrated] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
+  // Sefa 17 May P1-11: localStorage cache placeholder ile "Hoş geldin, ..."
+  // 2-3sn boş kalma sorununu çöz. İlk render anında en son bilinen isim
+  // gösterilir, profile fetch'i tamamlanınca düzenlenir.
+  const [profileName, setProfileName] = useState<string | null>(null);
   const router = useRouter();
   const toast = useToast();
 
   useEffect(() => {
+    // localStorage cache okumayı useEffect içinde yap (SSR uyumu)
+    if (typeof window !== "undefined") {
+      try {
+        const cached = window.localStorage.getItem("pim_user_display_name");
+        if (cached) setProfileName(cached);
+      } catch {
+        /* ignore */
+      }
+    }
+
     ensureAuthBindings();
     const refresh = () => setOrders(listCustomerOrders());
     void refreshCustomerOrders().then(() => {
@@ -305,6 +320,18 @@ export default function PanelimPage() {
       setHydrated(true);
     });
     window.addEventListener("pim_customer_orders_updated", refresh);
+
+    // Profil fetch — isim cache'le (sonraki ziyarette anında görünsün)
+    void getMyProfile().then((p) => {
+      if (!p?.displayName) return;
+      const first = p.displayName.split(" ")[0];
+      setProfileName(first);
+      try {
+        window.localStorage.setItem("pim_user_display_name", first);
+      } catch {
+        /* ignore */
+      }
+    });
 
     // Loyalty data fetch
     fetch("/api/loyalty/me", { cache: "no-store" })
@@ -363,9 +390,11 @@ export default function PanelimPage() {
     .filter((o) => new Date(o.createdAtIso).getFullYear() === thisYear)
     .reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0);
 
-  // Selam — son müşteri adı (auth gelince kullanıcı profilden)
+  // Selam — Sefa 17 May P1-11: profile cache > orders fallback
+  // (orders yüklenmesini beklemeden anında isim göstersin)
   const customerName =
-    orders.length > 0 ? orders[0].address.name.split(" ")[0] : null;
+    profileName ??
+    (orders.length > 0 ? orders[0].address.name.split(" ")[0] : null);
 
   // Tekrar sipariş için en son etiket / sticker item'ı
   const lastEtiketOrder = orders.find((o) =>
@@ -386,14 +415,24 @@ export default function PanelimPage() {
   // Quick reorder: en son sipariş (etiket varsa o, yoksa sticker)
   const lastReorderTarget = lastEtiketOrder ?? lastStickerOrder ?? null;
 
-  const today = new Date();
-  const dateLabel = today
-    .toLocaleDateString(c.locale, {
-      day: "numeric",
-      month: "long",
-      weekday: "long",
-    })
-    .toUpperCase();
+  // Sefa 17 May P1-5 + P2-19:
+  // - Hydration error #418 — SSR'de server timezone'da date farklı dönebiliyor
+  //   → client-only render. SSR'de empty string.
+  // - YIL EKSİKTİ ("17 MAYIS PAZAR" → "17 MAYIS 2026 PAZAR")
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    const today = new Date();
+    setDateLabel(
+      today
+        .toLocaleDateString(c.locale, {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          weekday: "long",
+        })
+        .toUpperCase()
+    );
+  }, [c.locale]);
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">

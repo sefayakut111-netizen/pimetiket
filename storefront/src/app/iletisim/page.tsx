@@ -20,6 +20,9 @@ const COPY = {
     h1Line2: "cevap hızlı gelir.",
     intro:
       "Aklındakini en hızlı şekilde çözmek için 3 farklı kanal ve sağ alt köşede bekleyen Pim — istediğin yere yaz.",
+    // Sefa 17 May P1-18: telefon yok bilinçli karar — açıkça yaz
+    noPhoneNote:
+      "📞 Telefon hattımız yok — yanıt hızı için sohbet ve e-posta tercih ediyoruz. Acil sipariş durumlarında 30 dakika içinde geri dönüş yapıyoruz.",
     waTitle: "Pim Sohbet",
     waDesc: "Sağ alt köşedeki Pim'e tıkla, yapay zeka destekli sohbet hemen yanıtlar.",
     waCta: "Pim'e yaz",
@@ -59,6 +62,8 @@ const COPY = {
     h1Line2: "we respond fast.",
     intro:
       "Three different channels and Pim waiting in the bottom-right corner — pick whichever you prefer.",
+    noPhoneNote:
+      "📞 No phone line — for response speed we prefer chat and email. For urgent orders we respond within 30 minutes.",
     waTitle: "Pim Chat",
     waDesc:
       "Click Pim in the bottom-right corner — AI-powered chat replies instantly.",
@@ -159,6 +164,10 @@ export default function IletisimPage() {
             </h1>
             <p className="mt-5 text-[15px] md:text-lg text-gri-700 max-w-[520px] leading-relaxed">
               {c.intro}
+            </p>
+            {/* Sefa 17 May P1-18: telefon yok bilinçli karar açıklaması */}
+            <p className="mt-3 text-[13px] text-gri-500 max-w-[520px] leading-relaxed italic">
+              {c.noPhoneNote}
             </p>
           </div>
           <Pim pose="wave" size={180} className="hidden md:inline-block" />
