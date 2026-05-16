@@ -52,9 +52,16 @@ import {
 } from "@/lib/customer-coupon";
 import {
   listMyAddresses,
-  getMyProfile,
+  deleteMyAddress,
   type CustomerAddress,
 } from "@/lib/customer-profile";
+import {
+  listMyInvoiceProfiles,
+  createMyInvoiceProfile,
+  deleteMyInvoiceProfile,
+  setDefaultInvoiceProfile,
+  type CustomerInvoiceProfile,
+} from "@/lib/customer-invoice";
 import { TR_IL_LIST, getIlceler } from "@/lib/locations/tr-locations";
 
 // ============================================================
@@ -102,16 +109,28 @@ const COPY = {
     invoiceCorporateAuto:
       "Profilinizdeki kurumsal bilgilerle fatura kesilecek.",
     tcLabel: "TC Kimlik No",
-    tcPh: "11 haneli — opsiyonel",
-    tcOptionalNote: "Vermek zorunda değilsin (fatura kesilir, KDV gider yazılamaz)",
-    tcSkipModalTitle: "TC kimlik vermeden devam edelim mi?",
-    tcSkipModalBody:
-      "Faturan e-arşiv olarak '11111111111' placeholder ile kesilir. Bu durumda KDV gider yazamazsın, KDV iadesi alamazsın. Yine de devam etmek ister misin?",
-    tcSkipConfirm: "Evet, devam et",
-    tcSkipCancel: "İptal — TC vereceğim",
+    tcPh: "11 haneli",
+    tcRequiredNote:
+      "E-arşiv fatura için TC kimlik zorunludur (GİB e-fatura yönetmeliği).",
     vknLabel: "VKN",
     companyNameLabel: "Şirket ünvanı",
     taxOfficeLabel: "Vergi dairesi",
+    companyAddressLabel: "Fatura adresi",
+    companyAddressPh:
+      "Şirketinizin yasal adresi (Tic. sicil adresi)",
+    invoiceLabelLabel: "Fatura etiketi",
+    invoiceLabelPh: "(opsiyonel) Kendi şirketim",
+    invoiceProfileSaved: "Bu kurumsal fatura bilgileri kaydedildi.",
+    invoiceProfileSwitch: "Başka bir kurumsal fatura kullan",
+    invoiceProfileAdd: "Yeni kurumsal fatura ekle",
+    invoiceProfileDelete: "Sil",
+    invoiceProfileLimit:
+      "Maksimum 2 kurumsal fatura kaydedebilirsin. Yeni eklemek için birini silmen lazım.",
+    invoiceProfileBack: "← Kayıtlı faturalarıma dön",
+    invoiceProfileFormSave: "Bu kurumsal faturayı kaydet",
+    invoiceProfileDefaultBadge: "Varsayılan",
+    addressLimit:
+      "Maksimum 5 adres kaydedebilirsin. Yeni eklemek için bir adresi silmen lazım.",
 
     // Coupon
     couponTitle: "Kupon kodun var mı?",
@@ -180,17 +199,27 @@ const COPY = {
     invoiceCorporateAuto:
       "Will use the corporate info from your profile.",
     tcLabel: "TC ID number",
-    tcPh: "11 digits — optional",
-    tcOptionalNote:
-      "Providing TC is optional. Without it, an invoice is issued but cannot be used for VAT deduction.",
-    tcSkipModalTitle: "Continue without TC ID?",
-    tcSkipModalBody:
-      "Your e-archive invoice will be issued with placeholder '11111111111'. You won't be able to claim VAT or expense deductions. Still continue?",
-    tcSkipConfirm: "Yes, continue",
-    tcSkipCancel: "Cancel — I'll enter TC",
+    tcPh: "11 digits",
+    tcRequiredNote:
+      "TC ID is required for e-archive invoice (Turkish Revenue Administration requirement).",
     vknLabel: "Tax number (VKN)",
     companyNameLabel: "Company legal name",
     taxOfficeLabel: "Tax office",
+    companyAddressLabel: "Invoice address",
+    companyAddressPh: "Company's legal registered address",
+    invoiceLabelLabel: "Invoice label",
+    invoiceLabelPh: "(optional) My company",
+    invoiceProfileSaved: "This corporate invoice has been saved.",
+    invoiceProfileSwitch: "Use a different corporate invoice",
+    invoiceProfileAdd: "Add new corporate invoice",
+    invoiceProfileDelete: "Delete",
+    invoiceProfileLimit:
+      "Maximum 2 corporate invoices can be saved. Delete one to add new.",
+    invoiceProfileBack: "← Back to saved invoices",
+    invoiceProfileFormSave: "Save this corporate invoice",
+    invoiceProfileDefaultBadge: "Default",
+    addressLimit:
+      "Maximum 5 addresses can be saved. Delete one to add new.",
 
     couponTitle: "Got a coupon?",
     couponPh: "EXAMPLE: WELCOME10",
@@ -262,14 +291,28 @@ export default function OdemePage() {
 
   // Invoice state
   // Sefa 16 May: "none" mod kaldırıldı — bireysel fatura default
+  // Sefa 17 May: TC ZORUNLU oldu (GİB e-arşiv yönetmeliği) → skip modal kaldırıldı
   const [invoiceMode, setInvoiceMode] = useState<InvoiceMode>("individual");
   const [tc, setTc] = useState("");
-  const [showTcSkipModal, setShowTcSkipModal] = useState(false);
-  const [vkn, setVkn] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [taxOffice, setTaxOffice] = useState("");
-  /** Profilde VKN varsa kurumsal otomatik */
-  const [profileHasCorporate, setProfileHasCorporate] = useState(false);
+
+  // Kurumsal fatura — kayıtlı profiller + yeni form
+  const [invoiceProfiles, setInvoiceProfiles] = useState<
+    CustomerInvoiceProfile[]
+  >([]);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
+    null
+  );
+  const [showNewInvoiceForm, setShowNewInvoiceForm] = useState(false);
+  const [newInvoice, setNewInvoice] = useState({
+    label: "",
+    vkn: "",
+    companyName: "",
+    taxOffice: "",
+    companyAddress: "",
+    saveAndDefault: true,
+  });
+  const [invoiceLimitWarning, setInvoiceLimitWarning] = useState(false);
+  const [savingInvoice, setSavingInvoice] = useState(false);
 
   // Coupon
   const [couponCode, setCouponCode] = useState("");
@@ -321,15 +364,14 @@ export default function OdemePage() {
       else setShowNewAddressForm(true); // 0 adres → inline form
     });
 
-    // Profil — kurumsal kullanıcıyı otomatik tespit
-    void getMyProfile().then((p) => {
-      if (!p) return;
-      if (p.invoiceType === "corporate" && p.vkn) {
-        setProfileHasCorporate(true);
+    // Kayıtlı kurumsal fatura profilleri (Migration 044, max 2)
+    void listMyInvoiceProfiles().then((list) => {
+      setInvoiceProfiles(list);
+      if (list.length > 0) {
+        // 1+ kayıt varsa kurumsal moduna otomatik geç + default seç
         setInvoiceMode("corporate");
-        setVkn(p.vkn);
-        setCompanyName(p.companyName ?? "");
-        setTaxOffice(p.taxOffice ?? "");
+        const def = list.find((p) => p.isDefault) ?? list[0];
+        setSelectedInvoiceId(def.id);
       }
     });
 
@@ -371,6 +413,24 @@ export default function OdemePage() {
 
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
 
+  // Kurumsal fatura: seçili kayıt veya yeni form?
+  const selectedInvoiceProfile = invoiceProfiles.find(
+    (p) => p.id === selectedInvoiceId
+  );
+
+  // Adres limit kontrolü (max 5 — Migration 044 trigger)
+  const addressLimitReached = addresses.length >= 5;
+
+  /** Sefa 17 May: TC ZORUNLU + Kurumsal'a adres ZORUNLU */
+  const invoiceComplete = isInvoiceCompleteV2({
+    mode: invoiceMode,
+    tc,
+    selectedInvoiceProfile,
+    newInvoice,
+    showNewInvoiceForm,
+    invoiceProfilesCount: invoiceProfiles.length,
+  });
+
   /** Form complete mi? Submit aktive olur mu? */
   const canSubmit =
     !loading &&
@@ -378,7 +438,7 @@ export default function OdemePage() {
     acceptSatis &&
     acceptCopyright &&
     (selectedAddress !== undefined || isNewAddressFilled(newAddr)) &&
-    isInvoiceComplete(invoiceMode, tc, vkn, companyName, taxOffice);
+    invoiceComplete;
 
   /** Sefa 17 May UX K#3: Hangi alan eksik? — submit butonunun
       neden disabled olduğunu kullanıcıya net göster */
@@ -386,10 +446,73 @@ export default function OdemePage() {
   if (cartItems.length === 0) submitMissing.push("sepet boş");
   if (selectedAddress === undefined && !isNewAddressFilled(newAddr))
     submitMissing.push("teslimat adresi");
-  if (!isInvoiceComplete(invoiceMode, tc, vkn, companyName, taxOffice))
-    submitMissing.push("fatura bilgisi");
+  if (!invoiceComplete) submitMissing.push("fatura bilgisi");
   if (!acceptSatis) submitMissing.push("Mesafeli Satış Sözleşmesi onayı");
   if (!acceptCopyright) submitMissing.push("Telif hakkı onayı");
+
+  // ============================================================
+  // Address delete (Sefa 17 May — 5 limit + UX)
+  // ============================================================
+
+  const [deletingAddress, setDeletingAddress] = useState(false);
+  const handleDeleteAddress = async (id: string) => {
+    if (deletingAddress) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Bu adresi silmek istediğine emin misin?")
+    ) {
+      return;
+    }
+    setDeletingAddress(true);
+    const r = await deleteMyAddress(id);
+    if (r.ok) {
+      const fresh = await listMyAddresses();
+      setAddresses(fresh);
+      if (selectedAddressId === id) {
+        setSelectedAddressId(fresh[0]?.id ?? null);
+        if (fresh.length === 0) {
+          setShowNewAddressForm(true);
+        }
+      }
+    }
+    setDeletingAddress(false);
+  };
+
+  // ============================================================
+  // Invoice profile delete
+  // ============================================================
+
+  const handleDeleteInvoiceProfile = async (id: string) => {
+    if (savingInvoice) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Bu kurumsal fatura kaydını silmek istediğine emin misin?"
+      )
+    ) {
+      return;
+    }
+    setSavingInvoice(true);
+    const r = await deleteMyInvoiceProfile(id);
+    if (r.ok) {
+      // Listeyi yenile
+      const fresh = await listMyInvoiceProfiles();
+      setInvoiceProfiles(fresh);
+      // Seçili olan silindiyse seçimi temizle
+      if (selectedInvoiceId === id) {
+        setSelectedInvoiceId(
+          fresh.length > 0
+            ? (fresh.find((p) => p.isDefault) ?? fresh[0]).id
+            : null
+        );
+        if (fresh.length === 0) {
+          setShowNewInvoiceForm(true);
+        }
+      }
+      setInvoiceLimitWarning(false);
+    }
+    setSavingInvoice(false);
+  };
 
   // ============================================================
   // Coupon check
@@ -410,16 +533,6 @@ export default function OdemePage() {
 
   const submit = async () => {
     if (cartItems.length === 0) return;
-
-    // TC opsiyonel: bireysel + boş TC + henüz onaylanmadı → modal
-    if (
-      invoiceMode === "individual" &&
-      tc.trim().length === 0 &&
-      !showTcSkipModal
-    ) {
-      setShowTcSkipModal(true);
-      return;
-    }
 
     setLoading(true);
 
@@ -444,14 +557,36 @@ export default function OdemePage() {
           phone: newAddr.phone,
         };
 
-    // Fatura snapshot (none modu için tip=individual placeholder)
-    const invoice = buildInvoicePayload(
-      invoiceMode,
+    // Fatura snapshot — TC zorunlu (individual) + kurumsal'a adres dahil
+    const invoice = buildInvoicePayloadV2({
+      mode: invoiceMode,
       tc,
-      vkn,
-      companyName,
-      taxOffice
-    );
+      selectedInvoiceProfile,
+      newInvoice,
+    });
+
+    // Kurumsal: yeni fatura ise + saveAndDefault ise → DB'ye kaydet
+    // (limit aşılırsa hata göster, kullanıcıyı blokla)
+    if (
+      invoiceMode === "corporate" &&
+      !selectedInvoiceProfile &&
+      newInvoice.saveAndDefault
+    ) {
+      const r = await createMyInvoiceProfile({
+        label: newInvoice.label.trim() || null,
+        vkn: newInvoice.vkn.trim(),
+        companyName: newInvoice.companyName.trim(),
+        taxOffice: newInvoice.taxOffice.trim(),
+        companyAddress: newInvoice.companyAddress.trim(),
+        isDefault: true,
+      });
+      if (!r.ok && r.reason === "limit_reached") {
+        setInvoiceLimitWarning(true);
+        setLoading(false);
+        return;
+      }
+      // limit harici hata → siparişe devam (DB kayıt critical değil)
+    }
 
     try {
       const res = await fetch("/api/payment/init", {
@@ -806,31 +941,42 @@ export default function OdemePage() {
                 </div>
               )}
 
-              {/* 1 adres → kompakt özet */}
+              {/* 1 adres → kompakt özet (sil butonlu) */}
               {!showNewAddressForm &&
                 addresses.length === 1 &&
                 selectedAddress && (
                   <div className="flex items-start justify-between gap-3 px-4 py-3 rounded-lg bg-gri-50 ring-1 ring-gri-200">
-                    <div className="text-[13px] leading-relaxed text-gri-700">
-                      <div className="font-semibold text-lacivert">
-                        {selectedAddress.label ?? "Adres"} — {selectedAddress.name}
+                    <div className="text-[13px] leading-relaxed text-gri-700 flex-1 min-w-0">
+                      <div className="font-semibold text-lacivert truncate">
+                        {selectedAddress.label ?? "Adres"} —{" "}
+                        {selectedAddress.name}
                       </div>
-                      <div>{selectedAddress.addr}</div>
+                      <div className="truncate">{selectedAddress.addr}</div>
                       <div>
                         {selectedAddress.city} · {selectedAddress.phone}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewAddressForm(true)}
-                      className="text-[12.5px] font-semibold text-pim-mercan hover:underline shrink-0"
-                    >
-                      {c.addressDifferent}
-                    </button>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewAddressForm(true)}
+                        className="text-[12px] font-semibold text-pim-mercan hover:underline whitespace-nowrap"
+                      >
+                        {c.addressDifferent}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAddress(selectedAddress.id)}
+                        className="text-[12px] font-semibold text-kirmizi hover:underline whitespace-nowrap"
+                        aria-label="Bu adresi sil"
+                      >
+                        🗑 Sil
+                      </button>
+                    </div>
                   </div>
                 )}
 
-              {/* 2+ adres → radio kart */}
+              {/* 2+ adres → radio kart (her kartta sil ikonu) */}
               {!showNewAddressForm && addresses.length > 1 && (
                 <div className="space-y-2">
                   {addresses.map((a) => (
@@ -849,177 +995,408 @@ export default function OdemePage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="text-[13px] leading-relaxed flex-1 min-w-0">
                           <div className="font-semibold text-lacivert flex items-center gap-2">
-                            {a.label ?? "Adres"}
+                            <span className="truncate">
+                              {a.label ?? "Adres"}
+                            </span>
                             {a.isDefault && (
-                              <span className="inline-flex items-center h-[18px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold">
+                              <span className="inline-flex items-center h-[18px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold shrink-0">
                                 Varsayılan
                               </span>
                             )}
                           </div>
                           <div className="text-gri-700 mt-0.5">{a.name}</div>
-                          <div className="text-gri-700">{a.addr}</div>
+                          <div className="text-gri-700 truncate">{a.addr}</div>
                           <div className="text-gri-700">
                             {a.city} · {a.phone}
                           </div>
                         </div>
-                        {selectedAddressId === a.id && (
-                          <span className="grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white shrink-0">
-                            <Icon.Check size={12} />
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {selectedAddressId === a.id && (
+                            <span className="grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white">
+                              <Icon.Check size={12} />
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAddress(a.id);
+                            }}
+                            className="grid place-items-center w-7 h-7 rounded-full text-kirmizi hover:bg-kirmizi/10 transition-colors"
+                            aria-label={`${a.label ?? "Adresi"} sil`}
+                            title="Sil"
+                          >
+                            🗑
+                          </button>
+                        </div>
                       </div>
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowNewAddressForm(true)}
-                    className="text-[12.5px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
-                  >
-                    <Icon.Plus size={12} /> {c.addressNew}
-                  </button>
+                  {/* + Yeni adres — 5 limit kontrolü */}
+                  {addressLimitReached ? (
+                    <div className="rounded-lg bg-saman/15 ring-1 ring-saman/30 px-3 py-2 text-[12.5px] text-saman-koyu">
+                      ℹ {c.addressLimit}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewAddressForm(true)}
+                      className="text-[12.5px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
+                    >
+                      <Icon.Plus size={12} /> {c.addressNew} (
+                      {addresses.length}/5)
+                    </button>
+                  )}
                 </div>
               )}
             </Card>
 
-            {/* ================ INVOICE ================ */}
+            {/* ================ INVOICE ================
+                Sefa 17 May: TC ZORUNLU + Kurumsal'a adres ZORUNLU.
+                Kurumsal fatura için kayıtlı profil sistemi (max 2). */}
             <Card padding="p-5 md:p-6">
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <Icon.Box size={18} className="text-pim-mercan" />
                 {c.invoiceTitle}
+                <span className="text-kirmizi">*</span>
               </h2>
 
-              {profileHasCorporate ? (
-                <div className="px-4 py-3 rounded-lg bg-pim-mercan-tint/40 ring-1 ring-pim-mercan-soft text-[13px]">
-                  <div className="font-semibold text-lacivert mb-1">
-                    {companyName}
-                  </div>
-                  <div className="text-gri-700 leading-relaxed">
-                    VKN: {vkn} · {taxOffice ?? ""}
-                  </div>
-                  <div className="text-[11.5px] text-gri-700 mt-2">
-                    {c.invoiceCorporateAuto}
-                  </div>
+              {/* 2 mod radio */}
+              <div className="space-y-2">
+                {(
+                  [
+                    {
+                      id: "individual",
+                      label: c.invoiceModeIndividual,
+                      desc: c.invoiceModeIndividualDesc,
+                    },
+                    {
+                      id: "corporate",
+                      label: c.invoiceModeCorporate,
+                      desc: c.invoiceModeCorporateDesc,
+                    },
+                  ] as const
+                ).map((opt) => {
+                  const active = invoiceMode === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setInvoiceMode(opt.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        "relative block w-full text-left p-3 pr-10 rounded-lg ring-[1.5px] transition-all",
+                        active
+                          ? "ring-pim-mercan bg-pim-mercan-tint/30"
+                          : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+                      )}
+                    >
+                      <div className="font-semibold text-[14px]">
+                        {opt.label}
+                      </div>
+                      <div className="text-[12px] text-gri-700 mt-0.5">
+                        {opt.desc}
+                      </div>
+                      {active && (
+                        <span
+                          aria-hidden
+                          className="absolute top-3 right-3 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[12px]"
+                        >
+                          <Icon.Check size={12} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ============ BİREYSEL — TC ZORUNLU ============ */}
+              {invoiceMode === "individual" && (
+                <div className="mt-4 space-y-1.5">
+                  <label className="block">
+                    <span className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
+                      {c.tcLabel}
+                      <span className="text-kirmizi">*</span>
+                    </span>
+                    <ValidatedInput
+                      id="tc-checkout"
+                      value={tc}
+                      onChange={setTc}
+                      validate={validateTcKimlik}
+                      placeholder={c.tcPh}
+                      maxLength={11}
+                      inputMode="numeric"
+                    />
+                  </label>
+                  <p className="text-[11.5px] text-gri-500 italic leading-relaxed">
+                    ℹ {c.tcRequiredNote}
+                  </p>
                 </div>
-              ) : (
-                <>
-                  {/* 2 mod radio — Sefa 16 May: "Fatura istemiyorum"
-                      seçeneği kaldırıldı (yasal yükümlülük: KDV gideri
-                      yazılması zorunlu) */}
-                  <div className="space-y-2">
-                    {(
-                      [
-                        {
-                          id: "individual",
-                          label: c.invoiceModeIndividual,
-                          desc: c.invoiceModeIndividualDesc,
-                        },
-                        {
-                          id: "corporate",
-                          label: c.invoiceModeCorporate,
-                          desc: c.invoiceModeCorporateDesc,
-                        },
-                      ] as const
-                    ).map((opt) => {
-                      const active = invoiceMode === opt.id;
-                      return (
+              )}
+
+              {/* ============ KURUMSAL — Smart defaults (0/1/2) ============ */}
+              {invoiceMode === "corporate" && (
+                <div className="mt-4">
+                  {/* 0 kayıt veya yeni form aktif */}
+                  {(showNewInvoiceForm || invoiceProfiles.length === 0) && (
+                    <div className="space-y-3">
+                      <div>
+                        <label
+                          htmlFor="inv-label"
+                          className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                        >
+                          {c.invoiceLabelLabel}{" "}
+                          <span className="text-gri-500 normal-case font-normal tracking-normal">
+                            (opsiyonel)
+                          </span>
+                        </label>
+                        <Input
+                          id="inv-label"
+                          placeholder={c.invoiceLabelPh}
+                          value={newInvoice.label}
+                          onChange={(e) =>
+                            setNewInvoice({
+                              ...newInvoice,
+                              label: e.target.value,
+                            })
+                          }
+                          aria-label="Fatura etiketi"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="inv-company"
+                          className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                        >
+                          {c.companyNameLabel}{" "}
+                          <span className="text-kirmizi">*</span>
+                        </label>
+                        <Input
+                          id="inv-company"
+                          value={newInvoice.companyName}
+                          onChange={(e) =>
+                            setNewInvoice({
+                              ...newInvoice,
+                              companyName: e.target.value,
+                            })
+                          }
+                          autoComplete="organization"
+                          required
+                          aria-label="Şirket ünvanı"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label
+                            htmlFor="inv-vkn"
+                            className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                          >
+                            {c.vknLabel}{" "}
+                            <span className="text-kirmizi">*</span>
+                          </label>
+                          <ValidatedInput
+                            id="inv-vkn"
+                            value={newInvoice.vkn}
+                            onChange={(v) =>
+                              setNewInvoice({ ...newInvoice, vkn: v })
+                            }
+                            validate={validateVkn}
+                            placeholder="10 haneli"
+                            maxLength={10}
+                            inputMode="numeric"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="inv-tax"
+                            className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                          >
+                            {c.taxOfficeLabel}{" "}
+                            <span className="text-kirmizi">*</span>
+                          </label>
+                          <Input
+                            id="inv-tax"
+                            value={newInvoice.taxOffice}
+                            onChange={(e) =>
+                              setNewInvoice({
+                                ...newInvoice,
+                                taxOffice: e.target.value,
+                              })
+                            }
+                            required
+                            aria-label="Vergi dairesi"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="inv-addr"
+                          className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
+                        >
+                          {c.companyAddressLabel}{" "}
+                          <span className="text-kirmizi">*</span>
+                        </label>
+                        <textarea
+                          id="inv-addr"
+                          value={newInvoice.companyAddress}
+                          onChange={(e) =>
+                            setNewInvoice({
+                              ...newInvoice,
+                              companyAddress: e.target.value,
+                            })
+                          }
+                          placeholder={c.companyAddressPh}
+                          required
+                          rows={3}
+                          aria-label="Fatura adresi"
+                          className="w-full px-3 py-2.5 rounded-[12px] bg-white ring-1 ring-gri-200 text-[14px] text-lacivert focus:outline-none focus:ring-pim-mercan resize-none"
+                        />
+                      </div>
+                      <label className="flex items-start gap-2 text-[12.5px] text-gri-700 leading-relaxed cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newInvoice.saveAndDefault}
+                          onChange={(e) =>
+                            setNewInvoice({
+                              ...newInvoice,
+                              saveAndDefault: e.target.checked,
+                            })
+                          }
+                          className="mt-0.5 accent-pim-mercan shrink-0"
+                        />
+                        <span>
+                          💾 {c.invoiceProfileFormSave} (
+                          {invoiceProfiles.length}/2)
+                        </span>
+                      </label>
+                      {invoiceProfiles.length > 0 && (
                         <button
-                          key={opt.id}
                           type="button"
-                          onClick={() => setInvoiceMode(opt.id)}
-                          aria-pressed={active}
+                          onClick={() => {
+                            setShowNewInvoiceForm(false);
+                            setInvoiceLimitWarning(false);
+                          }}
+                          className="text-[12.5px] font-semibold text-gri-700 hover:text-pim-mercan"
+                        >
+                          {c.invoiceProfileBack}
+                        </button>
+                      )}
+                      {invoiceLimitWarning && (
+                        <div className="rounded-lg bg-saman/15 ring-1 ring-saman/30 px-3 py-2 text-[12.5px] text-saman-koyu">
+                          {c.invoiceProfileLimit}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 1 kayıt → kompakt özet */}
+                  {!showNewInvoiceForm &&
+                    invoiceProfiles.length === 1 &&
+                    selectedInvoiceProfile && (
+                      <div className="flex items-start justify-between gap-3 px-4 py-3 rounded-lg bg-gri-50 ring-1 ring-gri-200">
+                        <div className="text-[13px] leading-relaxed text-gri-700 flex-1 min-w-0">
+                          <div className="font-semibold text-lacivert truncate">
+                            {selectedInvoiceProfile.label ??
+                              selectedInvoiceProfile.companyName}
+                          </div>
+                          <div className="font-mono text-[12px]">
+                            VKN: {selectedInvoiceProfile.vkn} ·{" "}
+                            {selectedInvoiceProfile.taxOffice}
+                          </div>
+                          <div className="text-[12px] truncate">
+                            {selectedInvoiceProfile.companyAddress}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNewInvoiceForm(true);
+                              setSelectedInvoiceId(null);
+                            }}
+                            className="text-[12px] font-semibold text-pim-mercan hover:underline whitespace-nowrap"
+                          >
+                            {c.invoiceProfileSwitch}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteInvoiceProfile(
+                                selectedInvoiceProfile.id
+                              )
+                            }
+                            className="text-[12px] font-semibold text-kirmizi hover:underline whitespace-nowrap"
+                            aria-label="Bu kurumsal faturayı sil"
+                          >
+                            🗑 {c.invoiceProfileDelete}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* 2 kayıt → radio kart (limit dolu) */}
+                  {!showNewInvoiceForm && invoiceProfiles.length === 2 && (
+                    <div className="space-y-2">
+                      {invoiceProfiles.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setSelectedInvoiceId(p.id)}
+                          aria-pressed={selectedInvoiceId === p.id}
                           className={cn(
-                            "relative block w-full text-left p-3 pr-10 rounded-lg ring-[1.5px] transition-all",
-                            active
+                            "block w-full text-left p-3.5 rounded-lg ring-[1.5px] transition-all",
+                            selectedInvoiceId === p.id
                               ? "ring-pim-mercan bg-pim-mercan-tint/30"
                               : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
                           )}
                         >
-                          <div className="font-semibold text-[14px]">
-                            {opt.label}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-[13px] leading-relaxed flex-1 min-w-0">
+                              <div className="font-semibold text-lacivert flex items-center gap-2">
+                                <span className="truncate">
+                                  {p.label ?? p.companyName}
+                                </span>
+                                {p.isDefault && (
+                                  <span className="inline-flex items-center h-[18px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold shrink-0">
+                                    {c.invoiceProfileDefaultBadge}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-gri-700 mt-0.5 font-mono text-[12px]">
+                                VKN: {p.vkn} · {p.taxOffice}
+                              </div>
+                              <div className="text-gri-700 text-[12px] line-clamp-1">
+                                {p.companyAddress}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {selectedInvoiceId === p.id && (
+                                <span className="grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white">
+                                  <Icon.Check size={12} />
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteInvoiceProfile(p.id);
+                                }}
+                                className="grid place-items-center w-7 h-7 rounded-full text-kirmizi hover:bg-kirmizi/10 transition-colors"
+                                aria-label={`${p.label ?? p.companyName} faturasını sil`}
+                                title="Sil"
+                              >
+                                🗑
+                              </button>
+                            </div>
                           </div>
-                          <div className="text-[12px] text-gri-700 mt-0.5">
-                            {opt.desc}
-                          </div>
-                          {/* Sefa 17 May Dalga 2 #6: check ikonu */}
-                          {active && (
-                            <span
-                              aria-hidden
-                              className="absolute top-3 right-3 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[12px]"
-                            >
-                              <Icon.Check size={12} />
-                            </span>
-                          )}
                         </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* TC alanı (bireysel) — Sefa 17 May Dalga 2 #7 */}
-                  {invoiceMode === "individual" && (
-                    <div className="mt-4 space-y-1.5">
-                      <label className="block">
-                        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                          {c.tcLabel}
-                          <span className="text-gri-500 normal-case font-normal tracking-normal">
-                            (opsiyonel)
-                          </span>
-                        </span>
-                        <ValidatedInput
-                          id="tc-checkout"
-                          value={tc}
-                          onChange={setTc}
-                          validate={validateTcKimlik}
-                          placeholder={c.tcPh}
-                          maxLength={11}
-                          inputMode="numeric"
-                        />
-                      </label>
-                      <p className="text-[11.5px] text-gri-500 italic leading-relaxed">
-                        ℹ {c.tcOptionalNote}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Kurumsal alanları */}
-                  {invoiceMode === "corporate" && (
-                    <div className="mt-4 space-y-3">
-                      <label className="block">
-                        <span className="text-[13px] font-semibold mb-1.5 block">
-                          {c.companyNameLabel}
-                        </span>
-                        <Input
-                          value={companyName}
-                          onChange={(e) => setCompanyName(e.target.value)}
-                        />
-                      </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label className="block">
-                          <span className="text-[13px] font-semibold mb-1.5 block">
-                            {c.vknLabel}
-                          </span>
-                          <ValidatedInput
-                            id="vkn-checkout"
-                            value={vkn}
-                            onChange={setVkn}
-                            validate={validateVkn}
-                            placeholder="10"
-                            maxLength={10}
-                            inputMode="numeric"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="text-[13px] font-semibold mb-1.5 block">
-                            {c.taxOfficeLabel}
-                          </span>
-                          <Input
-                            value={taxOffice}
-                            onChange={(e) => setTaxOffice(e.target.value)}
-                          />
-                        </label>
+                      ))}
+                      <div className="text-[12px] text-gri-500 italic mt-2">
+                        ℹ {c.invoiceProfileLimit}
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </Card>
 
@@ -1301,41 +1678,7 @@ export default function OdemePage() {
         </div>
       </div>
 
-      {/* ============ TC SKIP MODAL ============ */}
-      {showTcSkipModal && (
-        <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-black/40 backdrop-blur-sm p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <Card padding="p-6" className="max-w-[440px] w-full">
-            <h3 className="text-lg font-semibold mb-2">
-              {c.tcSkipModalTitle}
-            </h3>
-            <p className="text-[13px] text-gri-700 leading-relaxed mb-5">
-              {c.tcSkipModalBody}
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="ghost"
-                onClick={() => setShowTcSkipModal(false)}
-              >
-                {c.tcSkipCancel}
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setShowTcSkipModal(false);
-                  // Modal "evet" → submit gerçekten çalışsın
-                  void submit();
-                }}
-              >
-                {c.tcSkipConfirm}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* TC SKIP MODAL — Sefa 17 May TC ZORUNLU yapıldığı için kaldırıldı */}
     </main>
   );
 }
@@ -1366,57 +1709,86 @@ function isNewAddressFilled(a: {
   );
 }
 
-function isInvoiceComplete(
-  mode: "none" | "individual" | "corporate",
-  tc: string,
-  vkn: string,
-  companyName: string,
-  taxOffice: string
-): boolean {
-  if (mode === "none") return true;
-  if (mode === "individual") {
-    // TC opsiyonel — boş bırakılabilir, doluysa Maliye checksum gerekir
-    if (tc.trim().length === 0) return true;
-    return validateTcKimlik(tc).valid;
+/**
+ * Sefa 17 May: V2 fatura validasyon
+ * - Bireysel: TC ZORUNLU (GİB e-arşiv yönetmeliği)
+ * - Kurumsal: ya seçili kayıt VAR ya da yeni form COMPLETE (VKN + Şirket +
+ *   Vergi Dairesi + Adres — m.5/c)
+ */
+function isInvoiceCompleteV2(args: {
+  mode: "individual" | "corporate" | "none";
+  tc: string;
+  selectedInvoiceProfile: CustomerInvoiceProfile | undefined;
+  newInvoice: {
+    vkn: string;
+    companyName: string;
+    taxOffice: string;
+    companyAddress: string;
+  };
+  showNewInvoiceForm: boolean;
+  invoiceProfilesCount: number;
+}): boolean {
+  if (args.mode === "individual") {
+    // TC ZORUNLU — Sefa 17 May
+    return validateTcKimlik(args.tc).valid;
   }
-  // corporate — VKN zorunlu, şirket adı + vergi dairesi zorunlu
-  return (
-    validateVkn(vkn).valid &&
-    companyName.trim().length > 1 &&
-    taxOffice.trim().length > 1
-  );
+  if (args.mode === "corporate") {
+    // Seçili kayıt varsa OK
+    if (args.selectedInvoiceProfile) return true;
+    // Yoksa yeni form complete olmalı: VKN + Şirket + Vergi + Adres
+    return (
+      validateVkn(args.newInvoice.vkn).valid &&
+      args.newInvoice.companyName.trim().length > 1 &&
+      args.newInvoice.taxOffice.trim().length > 1 &&
+      args.newInvoice.companyAddress.trim().length > 4
+    );
+  }
+  return false;
 }
 
-/** Invoice mode'u backend payload'una çevir */
-function buildInvoicePayload(
-  mode: "none" | "individual" | "corporate",
-  tc: string,
-  vkn: string,
-  companyName: string,
-  taxOffice: string
-): {
+/** V2 — kurumsal'a adres dahil */
+function buildInvoicePayloadV2(args: {
+  mode: "individual" | "corporate" | "none";
+  tc: string;
+  selectedInvoiceProfile: CustomerInvoiceProfile | undefined;
+  newInvoice: {
+    label: string;
+    vkn: string;
+    companyName: string;
+    taxOffice: string;
+    companyAddress: string;
+  };
+}): {
   type: "individual" | "corporate";
   tc?: string;
   vkn?: string;
   companyName?: string;
   taxOffice?: string;
+  companyAddress?: string;
+  label?: string;
 } {
-  if (mode === "corporate") {
+  if (args.mode === "corporate") {
+    if (args.selectedInvoiceProfile) {
+      return {
+        type: "corporate",
+        vkn: args.selectedInvoiceProfile.vkn,
+        companyName: args.selectedInvoiceProfile.companyName,
+        taxOffice: args.selectedInvoiceProfile.taxOffice,
+        companyAddress: args.selectedInvoiceProfile.companyAddress,
+        label: args.selectedInvoiceProfile.label ?? undefined,
+      };
+    }
     return {
       type: "corporate",
-      vkn: vkn.trim(),
-      companyName: companyName.trim(),
-      taxOffice: taxOffice.trim(),
+      vkn: args.newInvoice.vkn.trim(),
+      companyName: args.newInvoice.companyName.trim(),
+      taxOffice: args.newInvoice.taxOffice.trim(),
+      companyAddress: args.newInvoice.companyAddress.trim(),
+      label: args.newInvoice.label.trim() || undefined,
     };
   }
-  if (mode === "individual") {
-    return {
-      type: "individual",
-      tc: tc.trim() || undefined,
-    };
-  }
-  // none → backend'de "tc verilmedi, fiş kesilecek" işareti olarak
-  // type=individual + tc=undefined gönderiyoruz (callback metadata'ya
-  // koyabilir, ileride fiş için ayrı flag eklenebilir)
-  return { type: "individual" };
+  return {
+    type: "individual",
+    tc: args.tc.trim(),
+  };
 }
