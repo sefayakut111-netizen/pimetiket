@@ -141,38 +141,40 @@ const MATERIALS = [
 
 type MaterialId = (typeof MATERIALS)[number]["id"];
 
-/** Sefa kuralı (15 May): "Kaplamasız" varsayılan + ilk sıra. */
+/** Sefa kuralı (15 May): "Kaplamasız" varsayılan + ilk sıra.
+ *  Sefa 18 May v47: Açıklamalar genişletildi + Title Case (Mat Selefon,
+ *  Parlak Selefon, Soft Touch). */
 const COATINGS = [
   {
     id: "yok",
     name: "Kaplamasız",
     name_en: "Uncoated",
-    desc: "Kâğıt dokusu kalsın",
-    desc_en: "Keeps paper texture",
+    desc: "Doğal kâğıt dokusu korunur.",
+    desc_en: "Keeps the natural paper texture.",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "mat",
-    name: "Mat selefon",
-    name_en: "Matte lamination",
-    desc: "Yansımasız, premium",
-    desc_en: "No reflection, premium",
+    name: "Mat Selefon",
+    name_en: "Matte Lamination",
+    desc: "Yansımasız, mat premium görünüm.",
+    desc_en: "No reflection, matte premium look.",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "parlak",
-    name: "Parlak selefon",
-    name_en: "Gloss lamination",
-    desc: "Canlı, temiz",
-    desc_en: "Vivid, clean",
+    name: "Parlak Selefon",
+    name_en: "Gloss Lamination",
+    desc: "Canlı, parlak ve temiz yüzey.",
+    desc_en: "Vivid, glossy and clean surface.",
     modes: ["rulo", "tabaka"] as const,
   },
   {
     id: "soft",
-    name: "Soft touch",
-    name_en: "Soft touch",
-    desc: "Velvet his",
-    desc_en: "Velvet feel",
+    name: "Soft Touch",
+    name_en: "Soft Touch",
+    desc: "Premium kadife dokunma hissi.",
+    desc_en: "Premium velvet touch feel.",
     modes: ["rulo"] as const,
   },
 ] as const;
@@ -854,7 +856,7 @@ export default function EtiketPage() {
               id="step-0"
               number={uiStepNumber(0)}
               title={t.etiket.stepFormFactor}
-              hint="Rulo (makineye sığar, özelleştirme) veya tabaka (düz, elle uygula)"
+              hint="Rulo etiketlerde ekstra özelleştirme seçenekleri mevcuttur."
             >
               <div className="grid grid-cols-2 gap-2">
                 {FORM_FACTORS.map((f) => {
