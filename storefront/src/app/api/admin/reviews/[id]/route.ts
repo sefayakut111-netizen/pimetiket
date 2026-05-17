@@ -1,7 +1,13 @@
 /**
- * /api/admin/reviews/[id] — yorum durum/featured/homepage güncelle.
+ * /api/admin/reviews/[id] — yorum güncelle.
  *
- * PATCH { status?, featured?, showOnHomepage?, moderationNote? }
+ * Sefa 17 May v34: body + display_name + rating + photos eklendi.
+ * (önceden sadece status/featured/showOnHomepage/moderationNote vardı)
+ *
+ * PATCH {
+ *   status?, featured?, showOnHomepage?, moderationNote?,
+ *   body?, displayName?, rating?, productType?, photos?
+ * }
  */
 
 import { NextResponse } from "next/server";
@@ -9,11 +15,20 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
 
+interface PhotoEntry {
+  path: string;
+}
+
 interface BodyShape {
   status?: unknown;
   featured?: unknown;
   showOnHomepage?: unknown;
   moderationNote?: unknown;
+  body?: unknown;
+  displayName?: unknown;
+  rating?: unknown;
+  productType?: unknown;
+  photos?: unknown;
 }
 
 const VALID_STATUS = ["pending", "published", "rejected", "hidden"];
@@ -73,6 +88,55 @@ export async function PATCH(
   }
   if (typeof body.moderationNote === "string") {
     update.moderation_note = body.moderationNote;
+  }
+  // Sefa 17 May v34: body (cümle), display_name, rating, photos edit
+  if (typeof body.body === "string") {
+    const trimmed = body.body.trim();
+    if (trimmed.length < 10 || trimmed.length > 800) {
+      return NextResponse.json(
+        { error: "Yorum 10-800 karakter arası olmalı" },
+        { status: 400 }
+      );
+    }
+    update.body = trimmed;
+  }
+  if (typeof body.displayName === "string") {
+    const trimmed = body.displayName.trim();
+    if (trimmed.length === 0 || trimmed.length > 80) {
+      return NextResponse.json(
+        { error: "Ad 1-80 karakter olmalı" },
+        { status: 400 }
+      );
+    }
+    update.display_name = trimmed;
+  }
+  if (typeof body.rating === "number" && Number.isInteger(body.rating)) {
+    if (body.rating < 1 || body.rating > 5) {
+      return NextResponse.json(
+        { error: "Yıldız 1-5 arası olmalı" },
+        { status: 400 }
+      );
+    }
+    update.rating = body.rating;
+  }
+  if (
+    typeof body.productType === "string" &&
+    ["etiket", "sticker"].includes(body.productType)
+  ) {
+    update.product_type = body.productType;
+  }
+  if (Array.isArray(body.photos)) {
+    // Normalize: { path: string } only, max 2
+    const normalized: PhotoEntry[] = body.photos
+      .filter(
+        (p): p is { path: string } =>
+          typeof p === "object" &&
+          p !== null &&
+          typeof (p as { path?: unknown }).path === "string"
+      )
+      .map((p) => ({ path: p.path }))
+      .slice(0, 2);
+    update.photos = normalized;
   }
 
   if (Object.keys(update).length === 0) {

@@ -62,6 +62,37 @@ export default function AdminYorumlarPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ReviewStatus | "all">("pending");
   const [updating, setUpdating] = useState<string | null>(null);
+  // Sefa 17 May v34: Inline body editor
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    body: string;
+    displayName: string;
+    rating: number;
+    productType: "etiket" | "sticker";
+  }>({ body: "", displayName: "", rating: 5, productType: "etiket" });
+
+  const startEdit = (r: DbReview) => {
+    setEditingId(r.id);
+    setEditForm({
+      body: r.body ?? "",
+      displayName: r.display_name ?? "",
+      rating: r.rating,
+      productType:
+        r.product_type === "sticker" ? "sticker" : "etiket",
+    });
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+  const saveEdit = async (id: string) => {
+    await updateReview(id, {
+      body: editForm.body,
+      displayName: editForm.displayName,
+      rating: editForm.rating,
+      productType: editForm.productType,
+    });
+    setEditingId(null);
+  };
 
   const fetchReviews = async () => {
     try {
@@ -92,6 +123,10 @@ export default function AdminYorumlarPage() {
       status?: ReviewStatus;
       featured?: boolean;
       showOnHomepage?: boolean;
+      body?: string;
+      displayName?: string;
+      rating?: number;
+      productType?: "etiket" | "sticker";
     }
   ) => {
     setUpdating(id);
@@ -265,9 +300,117 @@ export default function AdminYorumlarPage() {
                           {r.title}
                         </p>
                       )}
-                      <p className="text-[14px] text-gri-700 leading-relaxed">
-                        {r.body ? `"${r.body}"` : "(Yazılı yorum yok)"}
-                      </p>
+
+                      {editingId === r.id ? (
+                        /* Sefa 17 May v34: Inline body editor */
+                        <div className="mt-2 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={editForm.displayName}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  displayName: e.target.value,
+                                })
+                              }
+                              placeholder="Ad (örn. A.K.)"
+                              className="px-3 h-9 rounded-lg ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
+                            />
+                            <select
+                              value={editForm.productType}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  productType: e.target.value as
+                                    | "etiket"
+                                    | "sticker",
+                                })
+                              }
+                              className="px-3 h-9 rounded-lg ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan bg-white"
+                            >
+                              <option value="etiket">Etiket</option>
+                              <option value="sticker">Sticker</option>
+                            </select>
+                          </div>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() =>
+                                  setEditForm({ ...editForm, rating: n })
+                                }
+                                className="p-0.5"
+                              >
+                                <Icon.Star
+                                  size={20}
+                                  className={cn(
+                                    n <= editForm.rating
+                                      ? "text-sari-koyu"
+                                      : "text-gri-200 hover:text-sari-koyu/50"
+                                  )}
+                                />
+                              </button>
+                            ))}
+                            <span className="ml-2 text-[12px] text-gri-500 self-center">
+                              {editForm.rating}/5
+                            </span>
+                          </div>
+                          <textarea
+                            value={editForm.body}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, body: e.target.value })
+                            }
+                            rows={4}
+                            maxLength={800}
+                            placeholder="Yorum metni (10-800 karakter)"
+                            className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 text-[13.5px] leading-relaxed focus:outline-none focus:ring-pim-mercan resize-y"
+                          />
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-[11.5px] text-gri-500">
+                              {editForm.body.length}/800 karakter
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={cancelEdit}
+                                disabled={isUpdating}
+                                className="h-9 px-4 rounded-lg text-[12.5px] font-semibold bg-white ring-1 ring-gri-200 hover:ring-gri-500 disabled:opacity-50"
+                              >
+                                İptal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void saveEdit(r.id)}
+                                disabled={
+                                  isUpdating ||
+                                  editForm.body.trim().length < 10 ||
+                                  editForm.displayName.trim().length === 0
+                                }
+                                className="h-9 px-4 rounded-lg text-[12.5px] font-semibold bg-pim-mercan text-white hover:bg-pim-mercan-koyu disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                              >
+                                <Icon.Check size={12} />
+                                {isUpdating ? "Kaydediliyor..." : "Kaydet"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[14px] text-gri-700 leading-relaxed">
+                            {r.body ? `"${r.body}"` : "(Yazılı yorum yok)"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(r)}
+                            className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-pim-mercan hover:underline"
+                          >
+                            <span aria-hidden>✏️</span> Düzenle
+                          </button>
+                        </>
+                      )}
+
                       {r.moderation_note && (
                         <p className="mt-2 text-[12px] text-gri-500 italic">
                           Mod notu: {r.moderation_note}
