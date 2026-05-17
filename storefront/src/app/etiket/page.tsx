@@ -1649,19 +1649,37 @@ export default function EtiketPage() {
                       {fmtUnit(unit)} TL/adet
                     </strong>{" "}
                     · KDV dahil
-                    {/* Sefa 18 May v59: '3 rulo' kısmı yeni satıra alındı
-                        (önceki tek satır akışı dağınıktı). */}
-                    {rollsNeeded > 0 && (
-                      <div className="mt-1 inline-flex items-center gap-1 text-[12px] text-gri-700">
-                        <span aria-hidden>📦</span>
-                        <span className="tabular-nums font-semibold text-lacivert">
-                          {rollsNeeded}
-                        </span>
-                        <span>rulo</span>
-                      </div>
-                    )}
                   </>
                 }
+                /* Sefa 18 May v62: İşlem özeti — toplam rulo + toplam adet
+                   (caller locale-aware string'ler oluşturur) */
+                /* v63: labels kısaltıldı — eyebrow "İşlem özeti" zaten
+                   "Toplam" sözünü taşıyor, içeride tekrar gerek yok */
+                summaryItems={[
+                  ...(rollsNeeded > 0
+                    ? [
+                        {
+                          icon: "📦",
+                          label: locale === "en" ? "Roll count" : "Rulo adedi",
+                          value: `${rollsNeeded} ${locale === "en" ? "rolls" : "rulo"}`,
+                        },
+                      ]
+                    : []),
+                  {
+                    icon: "📋",
+                    label: locale === "en" ? "Label count" : "Etiket adedi",
+                    value: `${totalEtiketCount.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitLabel}`,
+                  },
+                  ...(designCount > 1
+                    ? [
+                        {
+                          icon: "🎨",
+                          label: locale === "en" ? "Designs" : "Tasarım",
+                          value: `${designCount}`,
+                        },
+                      ]
+                    : []),
+                ]}
                 savingsLabel={
                   tierSavings > 0 ? `%${tierSavings} adet indirimi` : null
                 }
@@ -1673,7 +1691,9 @@ export default function EtiketPage() {
                 deliveryDate={teslim}
                 ctaLabel={t.config.addToCart}
                 onCta={handleAddToCart}
-                footnote="Tasarımını yükle, sepete ekle · KDV dahil"
+                /* Sefa 18 May v62: footnote kaldırıldı — KDV bilgisi
+                   unitPrice'da, teslim ve özet zaten kart içinde var. */
+                footnote={null}
               />
             </div>
           </div>

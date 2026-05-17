@@ -13,6 +13,12 @@ interface Upsell {
   onClick: () => void;
 }
 
+interface SummaryItem {
+  icon?: string;        // emoji veya kısa metin (örn "📦")
+  label: string;        // örn "Toplam rulo"
+  value: string;        // örn "5 rulo"
+}
+
 interface PriceCardProps {
   variant?: Variant;
   topLabel: string; // "TOPLAM" | "SEÇİMİN"
@@ -25,6 +31,9 @@ interface PriceCardProps {
   onCta?: () => void;
   footnote?: string | null;
   className?: string;
+  /** Sefa 18 May v62: İşlem özeti satırları (örn rulo + toplam adet).
+   *  Caller içeriği belirler, locale-aware string'ler. */
+  summaryItems?: SummaryItem[];
 }
 
 /**
@@ -46,6 +55,7 @@ export function PriceCard({
   onCta,
   footnote,
   className,
+  summaryItems,
 }: PriceCardProps) {
   const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
@@ -141,6 +151,44 @@ export function PriceCard({
           </Pill>
         )}
       </div>
+
+      {/* Sefa 18 May v62: İşlem özeti — caller satır listesi geçer.
+          v63 UX/A11y reviewer fix:
+          - Eyebrow rengi mercan (2.42:1 fail) → kahve (~13:1, WCAG AAA)
+          - <section aria-label> + sr-only <h3> → ekran okuyucu için
+            başlık-liste ilişkisi kuruldu */}
+      {summaryItems && summaryItems.length > 0 && (
+        <section
+          aria-label="İşlem özeti"
+          className="mb-4 rounded-lg bg-krem-soft/70 ring-1 ring-krem-koyu/30 px-3.5 py-2.5"
+        >
+          <h3 className="sr-only">İşlem özeti</h3>
+          <div
+            aria-hidden
+            className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-kahve mb-1.5"
+          >
+            İşlem özeti
+          </div>
+          <ul className="space-y-1">
+            {summaryItems.map((item, i) => (
+              <li
+                key={i}
+                className="flex items-baseline gap-1.5 text-[13px] text-lacivert leading-snug"
+              >
+                {item.icon && (
+                  <span aria-hidden className="text-[14px]">
+                    {item.icon}
+                  </span>
+                )}
+                <span className="text-gri-700">{item.label}:</span>
+                <strong className="font-semibold tabular-nums">
+                  {item.value}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {upsell && (
         <button
