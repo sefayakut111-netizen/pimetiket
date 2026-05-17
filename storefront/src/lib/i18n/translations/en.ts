@@ -284,6 +284,6 @@ export const en: TranslationDict = {
     groupCompany: "Company",
     groupSupport: "Support",
     groupAccount: "My account",
-    copyright: "Pim Etiket — İstanbul & Ankara",
+    copyright: "Pim Etiket — All rights reserved.",
   },
 };

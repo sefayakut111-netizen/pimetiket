@@ -260,43 +260,11 @@ export function Footer() {
         {/* Trust strip — payment + security */}
         <PaymentBadges />
 
-        {/* Compact legal entity row — Sefa 16 May:
-            Mersis + Ticaret Sicil eklendi (Mesafeli Satış Yönetmeliği
-            m.5/b uyumu). Adres eklenecek. */}
-        <div className="border-t border-white/10 pt-5 mt-6 flex flex-col md:flex-row md:items-start md:justify-between gap-3 text-[12px] text-white/55 leading-relaxed">
-          <div className="space-y-0.5">
-            <div>
-              <strong className="text-white/75">
-                Sefa Yakut Kırtasiye Baskı Ticaret Ltd. Şti.
-              </strong>
-              {" · "}
-              Doğanbey VD / 7580607612
-            </div>
-            <div className="text-[11px] font-mono text-white/45">
-              Mersis: 0758060761200001 · Tic. Sicil No: 493212
-            </div>
-            <div className="text-[11px] text-white/45 max-w-[480px]">
-              Workinton Ankara Söğütözü · Beştepeler Mah. Nergis Sok. No:7/2
-              ViaFlat İş Merkezi Ofis: 27-28, 06510 Çankaya/Ankara
-            </div>
-          </div>
-          {/* Sefa 16 May UX denetim P2-2: "Müşteri hizmetleri" linki
-              /iletisim'e gidiyordu — header'da zaten İletişim var,
-              duplicate. Yerine çalışma saati bilgisi (güven artırır). */}
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
-            <a
-              href="mailto:info@pimetiket.com"
-              className="hover:text-white transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
-            >
-              <span className="inline-block w-1 h-1 rounded-full bg-yesil animate-pulse" />
-              info@pimetiket.com
-            </a>
-            <span className="text-white/20">·</span>
-            <span className="whitespace-nowrap">
-              Hafta içi 09:00-18:00 · Cumartesi 10:00-14:00
-            </span>
-          </div>
-        </div>
+        {/* Sefa kararı 17 May v15: Şirket bilgisi bloğu (Sefa Yakut
+            Kırtasiye Baskı Ticaret Ltd. Şti. + Mersis/Sicil + adres +
+            email + saatler) footer'dan kaldırıldı.
+            Yasal zorunluluk için bu bilgiler "Hakkımızda" ve "İletişim"
+            sayfalarında zaten mevcut (Mesafeli Satış Yönetmeliği m.5/b). */}
 
         {/* Bottom strip — © + legal links */}
         <div className="pt-5 mt-5 border-t border-white/10 flex flex-col md:flex-row md:justify-between md:items-center text-[12px] text-white/65 gap-3">
