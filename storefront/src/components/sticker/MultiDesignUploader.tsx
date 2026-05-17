@@ -129,7 +129,8 @@ export function MultiDesignUploader({
     onDesignsChange(designs.filter((d) => d.id !== id));
   };
 
-  const totalQty = qtyPerDesign * designCount;
+  // Sefa 18 May v57: totalQty hesaplaması kaldırıldı (UI'dan 'tasarım =
+  // X etiket' satırı çıkarıldı, kullanım yok)
   const progress = `${designs.length} / ${designCount}`;
   const isComplete = designs.length >= designCount;
   const [dragActive, setDragActive] = useState(false);
@@ -196,10 +197,9 @@ export function MultiDesignUploader({
               +
             </button>
           </div>
-          <span className="text-gri-700">tasarım = </span>
-          <strong className="text-pim-mercan tabular-nums">
-            {totalQty.toLocaleString("tr-TR")} {productLabel}
-          </strong>
+          <span className="text-gri-700">tasarım</span>
+          {/* Sefa 18 May v57: 'tasarım = 1.000 etiket' 2. satır kaldırıldı
+              (toplam adet hesabı görsel olarak gereksizdi) */}
         </div>
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">
           Tüm tasarımlarda aynı malzeme + ölçü + yüzey kullanılır; sadece
