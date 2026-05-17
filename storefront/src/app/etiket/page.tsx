@@ -1479,7 +1479,7 @@ export default function EtiketPage() {
               id="step-7"
               number={uiStepNumber(7)}
               title="Tasarımlar"
-              hint="Her tasarımdan aynı adet basılır. Birden fazla tasarımda iskonto!"
+              hint="Her tasarımdan aynı adet basılır. Çoklu tasarımda otomatik iskonto var."
               locked={isStepLocked(7)}
               lockMessage={getLockMessage(7)}
             >

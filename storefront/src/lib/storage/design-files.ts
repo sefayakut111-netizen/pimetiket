@@ -10,29 +10,47 @@
  * Bucket: `designs` (privé)
  * Path: `designs/<orderId>/<uuid>.<ext>`
  *
- * Validation (server-side):
- *   - max size: 30 MB
- *   - allowed mime: PDF, AI, EPS, PSD, PNG, JPG, SVG
+ * Validation (server-side, Sefa kuralı 18 May v54):
+ *   - max size: 30 MB / dosya
+ *   - max count: 50 dosya / sipariş (MultiDesignDropZone tarafında)
+ *   - allowed format: PDF, PNG, AI, PSD, EPS
+ *   - JPEG ve SVG kaldırıldı (Sefa kararı v54 — sade liste).
  *   - magic-byte check (mime spoofing'e karşı, AI ön-kontrol esnasında)
  */
 
 export const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "application/illustrator",
-  "application/postscript",
+  "application/postscript", // EPS + AI (Adobe AI dosyalarını da bazen tetikler)
   "image/vnd.adobe.photoshop",
   "image/png",
-  "image/jpeg",
-  "image/svg+xml",
+] as const;
+
+/** Tarayıcı .ai/.psd/.eps için MIME döndürmediği durumda uzantı bazlı kontrol */
+export const ALLOWED_EXTENSIONS = [
+  ".pdf",
+  ".png",
+  ".ai",
+  ".psd",
+  ".eps",
 ] as const;
 
 export type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
 
 export const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
+export const MAX_FILES_PER_ORDER = 50; // Sefa 18 May v54
 export const STORAGE_BUCKET = "designs";
 
 export function isAllowedMime(mime: string): mime is AllowedMime {
   return (ALLOWED_MIME_TYPES as readonly string[]).includes(mime);
+}
+
+/** MIME yoksa uzantıya bak — AI/PSD/EPS çoğu tarayıcıda mime boş. */
+export function isAllowedByExtension(fileName: string): boolean {
+  const lastDot = fileName.lastIndexOf(".");
+  if (lastDot === -1) return false;
+  const ext = fileName.slice(lastDot).toLowerCase();
+  return (ALLOWED_EXTENSIONS as readonly string[]).includes(ext);
 }
 
 export function getExtensionFromMime(mime: string): string {
@@ -47,10 +65,6 @@ export function getExtensionFromMime(mime: string): string {
       return "psd";
     case "image/png":
       return "png";
-    case "image/jpeg":
-      return "jpg";
-    case "image/svg+xml":
-      return "svg";
     default:
       return "bin";
   }

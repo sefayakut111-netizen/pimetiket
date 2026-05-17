@@ -78,11 +78,16 @@ export function DesignDropZone({
       );
       return;
     }
+    // Sefa 18 May v54: PDF/PNG/AI/PSD/EPS. AI/PSD/EPS bazı tarayıcılarda
+    // boş mime döndürür → uzantı kontrolü fallback.
     if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-      toast.error(
-        `Bu format desteklenmiyor: ${file.type || file.name.split(".").pop()}`
-      );
-      return;
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (!ext || !["pdf", "png", "ai", "psd", "eps"].includes(ext)) {
+        toast.error(
+          `Desteklenmeyen format: PDF, PNG, AI, PSD, EPS kabul edilir.`
+        );
+        return;
+      }
     }
 
     if (!isLoggedInSync()) {
@@ -264,7 +269,7 @@ export function DesignDropZone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.ai,.eps,.psd,.png,.jpg,.jpeg,.svg"
+          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png"
           onChange={onInputChange}
           disabled={uploading}
         />
@@ -328,7 +333,7 @@ export function DesignDropZone({
               Tasarımını sürükle veya tıkla
             </div>
             <p className="text-[12px] text-gri-700 mt-1.5 leading-relaxed">
-              PDF, AI, EPS, PSD, PNG, JPG, SVG — max 30 MB
+              PDF · PNG · AI · PSD · EPS — max 30 MB
             </p>
             <p className="text-[11.5px] text-gri-500 mt-2 leading-relaxed">
               Yüklersen canlı önizlemede tasarımını görürsün — beğenirsen
@@ -341,7 +346,7 @@ export function DesignDropZone({
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.ai,.eps,.psd,.png,.jpg,.jpeg,.svg"
+        accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png"
         onChange={onInputChange}
         disabled={uploading}
       />

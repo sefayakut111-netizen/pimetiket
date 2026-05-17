@@ -47,11 +47,24 @@ interface Props {
   productLabel?: string;
 }
 
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
-const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+// Sefa 18 May v54: Tüm uploader'lar standart kural —
+// 50 dosya × 30 MB her biri, PDF/PNG/AI/PSD/EPS.
+// AI/PSD/EPS için tarayıcı MIME döndürmez → uzantı kontrolü baz alınır.
+const ALLOWED_EXTENSIONS = [".pdf", ".png", ".ai", ".psd", ".eps"] as const;
+const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
+
+function getExt(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i === -1 ? "" : name.slice(i).toLowerCase();
+}
+
+function isAcceptedFile(file: File): boolean {
+  const ext = getExt(file.name);
+  return (ALLOWED_EXTENSIONS as readonly string[]).includes(ext);
+}
 
 function isImage(mime: string): boolean {
-  return mime === "image/png" || mime === "image/jpeg";
+  return mime === "image/png";
 }
 
 export function MultiDesignUploader({
@@ -79,12 +92,16 @@ export function MultiDesignUploader({
     }
     const accepted: PendingDesign[] = [];
     for (const file of arr.slice(0, remaining)) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        setError(`${file.name}: PDF, PNG, JPEG dışı format kabul edilmiyor`);
+      if (!isAcceptedFile(file)) {
+        setError(
+          `${file.name}: Sadece PDF, PNG, AI, PSD, EPS dosyaları kabul ediliyor.`
+        );
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
-        setError(`${file.name}: 15 MB üstü dosya kabul edilmiyor`);
+        setError(
+          `${file.name}: 30 MB üstü dosya kabul edilmiyor (her dosya max 30 MB).`
+        );
         continue;
       }
       const previewUrl = URL.createObjectURL(file);
@@ -185,7 +202,8 @@ export function MultiDesignUploader({
           </strong>
         </div>
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">
-          Aynı boyut, malzeme ve yüzey kullanılır. Tasarımlar farklı.
+          Tüm tasarımlarda aynı malzeme + ölçü + yüzey kullanılır; sadece
+          görsel değişir.
         </p>
       </div>
 
@@ -193,9 +211,9 @@ export function MultiDesignUploader({
       <div>
         <div className="flex items-center justify-between mb-2">
           <h4 className="font-semibold text-[13.5px] text-lacivert">
-            Tasarımları yükle
+            Dosyalarını yükle
             <span className="ml-2 text-[11px] font-normal text-gri-500">
-              (sürükle bırak destekli)
+              (sürükle bırak ile)
             </span>
           </h4>
           <span
@@ -272,7 +290,7 @@ export function MultiDesignUploader({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf"
+          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -288,9 +306,9 @@ export function MultiDesignUploader({
         )}
 
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">
-          PDF, PNG veya JPEG · max 15 MB/dosya · son tasarımlar yüklenmedi mi?
-          Sipariş onaylandıktan sonra detay sayfasından eksik tasarımları
-          yükleyebilirsin.
+          <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong>
+          {" · "}max 30 MB/dosya · 50 dosyaya kadar. Sipariş onayından sonra
+          eksik tasarımları sipariş detay sayfasından yükleyebilirsin.
         </p>
       </div>
 

@@ -32,8 +32,8 @@ import {
 import type { DesignTempState } from "./DesignDropZone";
 
 const MAX_FILES_PER_ORDER = 50;
-const ACCEPT_ATTR =
-  ".pdf,.ai,.eps,.psd,.png,.jpg,.jpeg,.svg";
+// Sefa 18 May v54: JPEG + SVG kaldırıldı. Sadece PDF/PNG/AI/PSD/EPS.
+const ACCEPT_ATTR = ".pdf,.png,.ai,.psd,.eps,application/pdf,image/png";
 
 interface MultiDesignDropZoneProps {
   value: DesignTempState[];
@@ -78,13 +78,13 @@ export function MultiDesignDropZone({
       return null;
     }
     if (file.type && !(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-      // Bazı browser .ai/.eps için mime type vermez; uzantı kontrolü
+      // Sefa 18 May v54: Sadece PDF/PNG/AI/PSD/EPS. JPEG ve SVG kaldırıldı.
+      // Bazı browser .ai/.eps/.psd için mime type vermez; uzantı kontrolü
       const ext = file.name.split(".").pop()?.toLowerCase();
-      if (
-        !ext ||
-        !["pdf", "ai", "eps", "psd", "png", "jpg", "jpeg", "svg"].includes(ext)
-      ) {
-        toast.error(`${file.name}: desteklenmeyen format`);
+      if (!ext || !["pdf", "png", "ai", "psd", "eps"].includes(ext)) {
+        toast.error(
+          `${file.name}: desteklenmeyen format (PDF, PNG, AI, PSD, EPS kabul edilir)`
+        );
         return null;
       }
     }
@@ -221,7 +221,7 @@ export function MultiDesignDropZone({
           Tasarımını yüklemek için giriş yap
         </div>
         <p className="text-[12px] text-gri-700 mt-1.5 leading-relaxed">
-          PDF, AI, EPS, PSD, PNG, JPG, SVG — max 30 MB her dosya, 50 dosyaya kadar
+          <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong> — her dosya max 30 MB, 50 dosyaya kadar
         </p>
         <Link
           href="/auth"
