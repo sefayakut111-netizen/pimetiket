@@ -352,6 +352,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Yedekler",
             icon: <Icon.Box size={16} />,
           },
+          // Sefa 17 May: E2E sipariş simülatörü
+          {
+            href: "/admin/test-siparis-simulator",
+            label: "Sipariş simülatörü",
+            icon: <Icon.Refresh size={16} />,
+          },
           {
             href: "/admin/ayarlar",
             label: "Ayarlar",
