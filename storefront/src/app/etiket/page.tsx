@@ -461,6 +461,38 @@ export default function EtiketPage() {
     });
   }, []);
 
+  // Sefa 18 May v65: Form factor değişince TÜM seçimleri sıfırla
+  // ('refresh' davranışı — kullanıcı rulo'ya geçti, ayarladı, sonra
+  // tabaka'ya döndü → eski rulo seçimleri çakışmasın).
+  const handleFormFactorChange = useCallback(
+    (next: FormFactor) => {
+      // Aynı zaten seçili ise no-op
+      if (next === formFactor && formFactorTouched) return;
+      // Tasarım blob URL'lerini temizle (memory leak yok)
+      designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
+      // State'leri default'a döndür
+      setFormFactor(next);
+      setFormFactorTouched(true);
+      setTouchedSteps(new Set([0])); // sadece etiket türü touched
+      setMaterial("kuse");
+      setCoating("yok");
+      setCustoms(["yok"]);
+      setYaldiz("altin");
+      setWinding(1);
+      setCoreSize(76);
+      setRollLabelCount(500);
+      setWidth(60);
+      setHeight(80);
+      setQty(next === "rulo" ? ETIKET_MIN_QTY : ETIKET_TABAKA_MIN_QTY);
+      setDesignCount(1);
+      setDesigns([]);
+      // step-0 touched gözüksün diye markTouched(0) tetikle
+      // (setTouchedSteps Set'ini doğrudan set ettiğimiz için zaten dahil)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [formFactor, formFactorTouched, designs]
+  );
+
   // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
   // Sefa 16 May denetim #1: i18n — labels artık t.etiket.step*'ten geliyor.
   const STEP_LABELS_FULL_I18N: readonly string[] = [
@@ -520,30 +552,9 @@ export default function EtiketPage() {
       ? ETIKET_POPULAR_PRESET
       : ETIKET_TABAKA_POPULAR_PRESET;
 
-  // Form factor değişince incompatible seçimleri otomatik defaulte revert.
-  // Sefa kuralı (15 May): tabaka modunda Ultra Clear/Metalik/Soft Touch/
-  // Özelleştirme/Sarım yok. Bu seçimler tabaka'ya geçilince temizlenir.
-  useEffect(() => {
-    if (formFactor === "tabaka") {
-      // Sarım her zaman 1'e dönsün (görünür değil ama state'i tut)
-      if (winding !== 1) setWinding(1);
-      // Özelleştirme tabaka'da yok → "yok"a dön
-      // Tabaka modunda Özelleştirme yok → customs sıfırla
-      if (customs.length !== 1 || customs[0] !== "yok") setCustoms(["yok"]);
-      // Material: ultra/metalik tabaka'da yok → kraft'a dön
-      if (material === "ultra" || material === "metalik") {
-        setMaterial("kraft");
-      }
-      // Coating: soft tabaka'da yok → mat'a dön
-      if (coating === "soft") setCoating("mat");
-      // Qty: tabaka modunda her zaman MIN'den başla (Sefa kuralı 15 May v2).
-      setQty(ETIKET_TABAKA_MIN_QTY);
-    } else if (formFactor === "rulo") {
-      // Rulo'ya geri dönerse: her zaman MIN'den başla.
-      setQty(ETIKET_MIN_QTY);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formFactor]);
+  // Sefa 18 May v65: Form factor değişince incompatible seçim revert
+  // useEffect'i kaldırıldı. handleFormFactorChange tüm reset'i yapıyor
+  // (tam refresh — state default'lara dönüyor, kullanıcı sıfırdan ayar).
 
   // /tasarımlarım'dan "Yeniden bastır" tıklandıysa kullanıcıyı bilgilendir.
   // Reprint flow (Sefa kuralı 15 May v6): artık MultiDesignUploader
@@ -887,11 +898,10 @@ export default function EtiketPage() {
                       key={f.id}
                       type="button"
                       onClick={() => {
-                        setFormFactor(f.id);
-                        setFormFactorTouched(true);
-                        // Sefa 18 May v64: Stepper "TAMAM" göstermesi için
-                        // step-0 (etiket türü) de touchedSteps Set'ine eklenir
-                        markTouched(0);
+                        // Sefa 18 May v65: form factor değişince TÜM seçimler
+                        // sıfırlanır (refresh davranışı). handleFormFactorChange
+                        // markTouched(0) dahil tüm reset'i yapar.
+                        handleFormFactorChange(f.id);
                       }}
                       aria-pressed={active}
                       className={cn(
