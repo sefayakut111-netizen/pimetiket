@@ -1115,6 +1115,28 @@ export default function EtiketPage() {
               title={t.etiket.windingTitle}
               hint={t.etiket.windingHint}
             >
+              {/* Sefa 18 May v46: Kalın guidance — eski alt info kutusunun
+                  içeriği üstte vurgulu olarak. */}
+              <div className="mb-3.5 text-[13.5px] text-lacivert leading-relaxed">
+                {locale === "en" ? (
+                  <>
+                    Not sure? Pick{" "}
+                    <strong className="font-bold text-pim-mercan">
+                      Winding 1 (straight)
+                    </strong>{" "}
+                    — the most common direction.
+                  </>
+                ) : (
+                  <>
+                    Emin değilsen{" "}
+                    <strong className="font-bold text-pim-mercan">
+                      Sarım 1 (düz)
+                    </strong>{" "}
+                    seç — en yaygın kullanılan yön.
+                  </>
+                )}
+              </div>
+
               {/* DIŞA SARIM */}
               <fieldset className="border-0 p-0 m-0">
                 <legend className="flex items-center gap-2.5 mb-2.5 w-full">
@@ -1191,14 +1213,8 @@ export default function EtiketPage() {
                 </div>
               </fieldset>
 
-              <div className="flex items-start gap-2 mt-3.5 px-3 py-2.5 rounded-lg bg-gri-50 text-[13px] text-gri-700">
-                <Icon.Info size={14} className="shrink-0 mt-0.5" />
-                <span>
-                  Emin değilsen{" "}
-                  <strong className="text-lacivert">Sarım 1</strong>&rsquo;i
-                  seç — en yaygın kullanılan yön. Pim sana yardım edebilir.
-                </span>
-              </div>
+              {/* Sefa 18 May v46: Alt info kutusu kaldırıldı (vurgulu
+                  guidance üstte). */}
             </FormSection>
             )}
 

@@ -162,7 +162,7 @@ export const en: TranslationDict = {
     qtyHint: "Start from 1,000, step of 500 (max 50,000)",
     windingTitle: "Winding direction",
     windingHint:
-      "Important if you have automatic labeling machines — the “ABC” text shows the print direction. Not sure? Pick Winding 1 (straight).",
+      "Important if you have automatic labeling machines. The “ABC” text shows the print direction.",
     windingOuter: "OUTSIDE WIND",
     windingInner: "INSIDE WIND",
     stepFormFactor: "Label format",
