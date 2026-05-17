@@ -43,7 +43,7 @@ export function Pim({
       size={size}
       bob={bob}
       className={className}
-      ariaLabel={`Pim baykuş: ${pose}`}
+      ariaLabel={`Pim karga: ${pose}`}
     />
   );
 }

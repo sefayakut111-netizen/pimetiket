@@ -37,9 +37,9 @@ const COPY = {
       "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok, “5 iş günü” diyince 10. günü beklemek yok.",
     story6: "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 75 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası.",
     pimWhoEyebrow: "Pim kim?",
-    pimWhoTitle: "Selam, ben Pim. Bu işin baykuşuyum.",
+    pimWhoTitle: "Selam, ben Pim. Bu işin kargasıyım.",
     pimWho1:
-      "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse fason atölyeyi kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — baykuşum, saymıyoruz.",
+      "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse fason atölyeyi kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — kargayım, saymıyoruz.",
     pimWho2:
       "Tek başıma çalışıyorum ama her konuya hâkimim — sen ne sorarsan, hangi kategoriye giriyorsa doğru cevabı vermek için eğitildim:",
     pimRole1Name: "Sipariş & fiyat",
@@ -103,9 +103,9 @@ const COPY = {
     story6:
       "Thank you for walking with us on this journey. 75 years of trading experience + the AI era — Pim Etiket is where these two meet.",
     pimWhoEyebrow: "Who's Pim?",
-    pimWhoTitle: "Hi, I'm Pim. The owl behind this whole thing.",
+    pimWhoTitle: "Hi, I'm Pim. The crow behind this whole thing.",
     pimWho1:
-      "When things get tangled, just call me — I quote prices, track orders, chase the contract workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm an owl, I don't count.",
+      "When things get tangled, just call me — I quote prices, track orders, chase the contract workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm a crow, I don't count.",
     pimWho2:
       "I work solo but I cover every angle — whatever you ask, whatever category it falls in, I'm trained to answer:",
     pimRole1Name: "Orders & pricing",

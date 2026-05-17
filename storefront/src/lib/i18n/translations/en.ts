@@ -130,7 +130,7 @@ export const en: TranslationDict = {
     shapeCustom: "Custom ratio",
     shapeCustomDesc: "Rectangle / bumper",
     shapeContour: "Contour cut",
-    shapeContourDesc: "Owl silhouette like Pim",
+    shapeContourDesc: "Crow silhouette like Pim",
     cornerTitle: "Corner Style",
     cornerSharp: "Sharp",
     cornerSharpDesc: "Crisp corner",

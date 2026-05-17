@@ -130,7 +130,7 @@ export const tr: TranslationDict = {
     shapeCustom: "Özel oran",
     shapeCustomDesc: "Dikdörtgen / bumper",
     shapeContour: "Kontur kesim",
-    shapeContourDesc: "Pim baykuş silueti gibi",
+    shapeContourDesc: "Pim karga silueti gibi",
     cornerTitle: "Köşe Seçeneği",
     cornerSharp: "Düz köşe",
     cornerSharpDesc: "Keskin köşe",

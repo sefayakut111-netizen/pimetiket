@@ -280,7 +280,7 @@ export default function HomePage() {
       {/* Sefa kararı 17 May v13: Trust strip + Bottom CTA section'ları kaldırıldı.
           - Trust strip (3D Secure / Hızlı kargo / AI dosya / KVKK) → footer'da
             zaten 4 güven rozeti var, ayrıca FAQ bölümünde mesaj veriliyor.
-          - Bottom CTA "Hadi başlayalım" (Pim baykuş + Etiket bastır/Sticker'a
+          - Bottom CTA "Hadi başlayalım" (Pim karga + Etiket bastır/Sticker'a
             göz at butonları) → hero'da aynı CTA var, duplicate.
           Anasayfa şimdi: Hero → How it works → Reviews → FAQ → Footer. */}
     </main>

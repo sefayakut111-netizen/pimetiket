@@ -1227,7 +1227,7 @@ function ShapeSheetIcon({ id, active }: { id: ShapeId; active: boolean }) {
       )}
       {id === "die" && (
         <g>
-          {/* 2 col × 3 row asimetrik kontur (Pim baykuş tasarımcı görselle uyum için)
+          {/* 2 col × 3 row asimetrik kontur (Pim karga tasarımcı görselle uyum için)
              — tabaka modunda die zaten gizli ama defansif fallback */}
           {[0, 1, 2].map((row) =>
             [0, 1].map((col) => (
@@ -1662,7 +1662,7 @@ function StickerPreview({
                   }}
                 />
               ) : (
-                // Sefa 16 May UX denetim P2-4: Pim baykuşu yerine
+                // Sefa 16 May UX denetim P2-4: Pim kargayı yerine
                 // nötr placeholder (Pim sticker satıyor algısı kalkar)
                 <div
                   className="grid place-items-center text-center"
