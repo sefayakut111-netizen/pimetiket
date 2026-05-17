@@ -79,6 +79,29 @@ export async function runCheckoutSimulation(
     steps[idx] = { ...steps[idx], ...patch };
   }
 
+  /**
+   * Supabase PostgrestError ve diğer error tiplerini düzgün parse eder.
+   * `[object Object]` görmemek için.
+   */
+  function formatError(err: unknown): { message: string; raw: unknown } {
+    if (err instanceof Error) {
+      return { message: err.message, raw: { stack: err.stack } };
+    }
+    if (err && typeof err === "object") {
+      const e = err as Record<string, unknown>;
+      const parts: string[] = [];
+      if (typeof e.message === "string") parts.push(e.message);
+      if (typeof e.code === "string") parts.push(`(${e.code})`);
+      if (typeof e.details === "string") parts.push(`— ${e.details}`);
+      if (typeof e.hint === "string") parts.push(`hint: ${e.hint}`);
+      const message = parts.length > 0
+        ? parts.join(" ")
+        : JSON.stringify(err);
+      return { message, raw: err };
+    }
+    return { message: String(err), raw: err };
+  }
+
   async function step<T>(
     id: string,
     fn: () => Promise<T>
@@ -93,10 +116,13 @@ export async function runCheckoutSimulation(
       });
       return result;
     } catch (err) {
+      const { message, raw } = formatError(err);
+      const existing = steps.find((s) => s.id === id)?.data;
       setStep(id, {
         status: "fail",
         duration_ms: Date.now() - start,
-        error: err instanceof Error ? err.message : String(err),
+        error: message,
+        data: { ...(existing ?? {}), error_raw: raw },
       });
       return null;
     }
@@ -287,13 +313,17 @@ export async function runCheckoutSimulation(
     const random4 = Math.random().toString(36).substr(2, 4).toUpperCase();
     const newOrderId = `PE-${new Date().getFullYear()}-SIM${random4}`;
 
+    // Sefa 17 May fix: order_status enum'da "pending_payment" YOK
+    // (sadece paid/qc_pending/.../cancelled). Direkt paid olarak oluştur,
+    // Step 7 idempotency testi yapar.
+    // metadata kolonu da yok — payment jsonb içinde test bayrağı tutuyoruz.
     const { error: orderErr } = await admin
       .from("orders")
       .insert([
         {
           id: newOrderId,
           user_id: userId,
-          status: "pending_payment",
+          status: "paid",
           subtotal: 6050,
           shipping: 0,
           total: 6050,
@@ -311,8 +341,10 @@ export async function runCheckoutSimulation(
             companyAddress:
               "Beştepeler Mah. Nergis Sok. No:7/2 Çankaya/Ankara",
           },
-          payment: { method: "card" },
-          metadata: { is_simulator_test: true },
+          payment: {
+            method: "card",
+            is_simulator_test: true,
+          },
         },
       ] as never);
 
