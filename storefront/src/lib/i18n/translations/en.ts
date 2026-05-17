@@ -158,7 +158,7 @@ export const en: TranslationDict = {
     pageTitle: "Configure Your Label",
     pageSubtitle: "Your selections appear instantly on the roll on the left.",
     sizeHint:
-      "Typical labels are between 30×40 and 100×100 mm. Enter your own size.",
+      "Enter a custom size or pick from the most popular dimensions.",
     qtyHint: "Start from 1,000, step of 500 (max 50,000)",
     windingTitle: "Winding direction",
     windingHint:

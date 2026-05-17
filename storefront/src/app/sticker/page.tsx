@@ -651,7 +651,7 @@ export default function StickerPage() {
               id="step-5"
               number={uiStepNumber(5)}
               title={t.config.sizeTitle}
-              hint={`min ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm · max ${STICKER_MAX_W}×${STICKER_MAX_H} mm (40×65 cm)`}
+              hint="Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin."
             >
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
@@ -691,22 +691,30 @@ export default function StickerPage() {
                 </label>
               </div>
 
-              {/* Hızlı boyut chip'leri */}
-              <div className="flex gap-2 mt-3 flex-wrap">
-                <span className="text-[11.5px] text-gri-500 self-center mr-1">{t.config.quickSize}</span>
-                {/* Sefa kuralı (15 May v4): 10 hızlı boyut, 5x5/6x6/7x7
-                    kesin olsun (etiket ile tutarlı). */}
+              {/* Hızlı boyut chip'leri — Sefa kararı 18 May v49:
+                  "En çok tercih edilen ölçüler (mm)" başlığı + 15 boyut
+                  (etiket sayfası ile tutarlı). */}
+              <div className="mt-4">
+                <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-gri-700 mb-2">
+                  En çok tercih edilen ölçüler (mm)
+                </div>
+                <div className="flex gap-2 flex-wrap">
                 {[
-                  { w: 5, h: 5, label: "5×5" },
-                  { w: 6, h: 6, label: "6×6" },
-                  { w: 7, h: 7, label: "7×7" },
+                  { w: 15, h: 40, label: "15×40" },
+                  { w: 20, h: 50, label: "20×50" },
+                  { w: 30, h: 30, label: "30×30" },
+                  { w: 30, h: 50, label: "30×50" },
+                  { w: 40, h: 60, label: "40×60" },
                   { w: 50, h: 50, label: "50×50" },
-                  { w: 75, h: 75, label: "75×75" },
+                  { w: 50, h: 80, label: "50×80" },
+                  { w: 50, h: 200, label: "50×200" },
+                  { w: 60, h: 120, label: "60×120" },
+                  { w: 70, h: 70, label: "70×70" },
+                  { w: 80, h: 80, label: "80×80" },
+                  { w: 80, h: 100, label: "80×100" },
                   { w: 100, h: 100, label: "100×100" },
-                  { w: 60, h: 80, label: "60×80" },
-                  { w: 100, h: 50, label: "100×50" },
-                  { w: 150, h: 150, label: "150×150" },
-                  { w: 200, h: 100, label: "200×100" },
+                  { w: 100, h: 150, label: "100×150" },
+                  { w: 150, h: 200, label: "150×200" },
                 ].map((preset) => {
                   const active =
                     touchedSteps.has(5) &&
@@ -732,6 +740,7 @@ export default function StickerPage() {
                     </button>
                   );
                 })}
+                </div>
               </div>
 
               {sizeError && (

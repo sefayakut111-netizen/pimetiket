@@ -157,7 +157,7 @@ export const tr: TranslationDict = {
   etiket: {
     pageTitle: "Etiketini Konfigüre Et",
     pageSubtitle: "Seçimlerin sol taraftaki rulonun üstünde canlı görünür.",
-    sizeHint: "Tipik etiket 30×40 ile 100×100 mm arası. Kendi ölçüne yaz.",
+    sizeHint: "Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin.",
     qtyHint: "1.000'den başla, 500 adetlik artışla seç (max 50.000)",
     windingTitle: "Sarım yönü",
     windingHint:
