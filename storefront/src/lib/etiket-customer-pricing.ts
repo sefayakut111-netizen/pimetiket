@@ -24,7 +24,10 @@ export type EtiketCustomId = "yok" | "emboss" | "yaldiz" | "spotuv";
 /** Customer-facing tier preset'leri — chip'ler için kullanılır.
  * Müşteri serbest qty seçer (500'er artış); engine en yakın tier
  * zammını otomatik uygular (findEtiketTier). */
-export const CUSTOMER_ETIKET_TIERS = [1000, 2000, 5000, 10000, 20000, 50000] as const;
+// Sefa 18 May v58: preset listesi sadeleştirildi.
+// Eski: [1000, 2000, 5000, 10000, 20000, 50000] (6 preset, 2 satır)
+// Yeni: [1000, 2000, 3000, 5000, 10000]         (5 preset, tek satır)
+export const CUSTOMER_ETIKET_TIERS = [1000, 2000, 3000, 5000, 10000] as const;
 export type CustomerEtiketTier = (typeof CUSTOMER_ETIKET_TIERS)[number];
 
 /** Etiket qty sınırları — UI input için */

@@ -237,9 +237,10 @@ type YaldizId = (typeof YALDIZLAR)[number]["id"];
 // kaldırıldı — quoteCustomerEtiket() admin'deki shared lib ile aynı motor
 // ============================================================
 
-/** Etiket preset chip'leri */
-const ETIKET_PRESETS = CUSTOMER_ETIKET_TIERS; // [1K, 2K, 5K, 10K, 20K, 50K]
-const ETIKET_POPULAR_PRESET = 5000;
+/** Etiket preset chip'leri (Sefa 18 May v58: 5 preset tek satır) */
+const ETIKET_PRESETS = CUSTOMER_ETIKET_TIERS; // [1000, 2000, 3000, 5000, 10000]
+// Sefa 18 May v58: popüler yıldız rozeti kaldırıldı (-1 = match yok)
+const ETIKET_POPULAR_PRESET = -1;
 
 /** Tabaka etiket adet sınırları — Sefa kuralları (15 May):
  *  Min 250, max 10.000, step YOK (serbest girilir, 1'lik step).
@@ -1520,17 +1521,48 @@ export default function EtiketPage() {
               locked={isStepLocked(8)}
               lockMessage={getLockMessage(8)}
             >
-              {/* Slider — ana giriş yöntemi.
-                  Sefa kuralı (15 May v2): fiyat sadece TOPLAM card'da
-                  gösterilsin, adet section'da duplicate yok. Sade kalsın. */}
+              {/* Sefa 18 May v58: Slider + inline +/− step butonları.
+                  Manuel input kutusu kaldırıldı (slider yeterli, kullanıcı
+                  istediği değeri sağdaki ok'larla fine tune ediyor). */}
               <div className="px-1">
-                <div className="flex items-baseline justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-3">
                   <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
                     {qty.toLocaleString("tr-TR")}
                     <span className="text-[14px] font-medium text-gri-700 ml-1">
                       adet
                     </span>
                   </span>
+                  {/* Sefa 18 May v58: Slider yanında +/− ok — fine control */}
+                  <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQty((v) => snapQty(v - qtyStep));
+                        markTouched(8);
+                      }}
+                      disabled={qty <= minQty}
+                      aria-label={`${qtyStep} adet azalt`}
+                      className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      −
+                    </button>
+                    <span
+                      aria-hidden
+                      className="w-px bg-gri-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQty((v) => snapQty(v + qtyStep));
+                        markTouched(8);
+                      }}
+                      disabled={qty >= maxQty}
+                      aria-label={`${qtyStep} adet artır`}
+                      className="w-9 h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 <QtySlider
                   value={qty}
@@ -1564,50 +1596,6 @@ export default function EtiketPage() {
                 </div>
               </div>
 
-              {/* Adet manuel girişi — Sefa kuralı (15 May v3):
-                  "İnce ayar" başlığı kaldırıldı, direkt adet kutusu. */}
-              <div className="flex items-center gap-3 flex-wrap mt-4">
-                <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQty((v) => snapQty(v - qtyStep));
-                      markTouched(8);
-                    }}
-                    disabled={qty <= minQty}
-                    aria-label={`${qtyStep} adet azalt`}
-                    className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    value={qty}
-                    onChange={(e) => {
-                      setQty(snapQty(Number(e.target.value)));
-                      markTouched(8);
-                    }}
-                    min={minQty}
-                    max={maxQty}
-                    step={qtyStep}
-                    aria-label="Etiket adedi"
-                    className="w-24 h-9 text-center text-[14px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQty((v) => snapQty(v + qtyStep));
-                      markTouched(8);
-                    }}
-                    disabled={qty >= maxQty}
-                    aria-label={`${qtyStep} adet artır`}
-                    className="w-11 h-11 md:w-9 md:h-9 grid place-items-center text-base font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
               {/* Preset chip'leri — popüler nokta atışı */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
@@ -1615,7 +1603,7 @@ export default function EtiketPage() {
                 </span>
                 {qtyPresets.map((q) => {
                   const active = touchedSteps.has(8) && qty === q;
-                  const popular = q === popularPreset;
+                  // Sefa 18 May v58: popüler yıldız gösterimi kaldırıldı
                   // Sefa kuralı (15 May v2): binler nokta ile (10.000 not 10K)
                   const label = q.toLocaleString("tr-TR");
                   return (
@@ -1628,16 +1616,13 @@ export default function EtiketPage() {
                       }}
                       aria-pressed={active}
                       className={cn(
-                        "relative px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
+                        "px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors tabular-nums",
                         active
                           ? "bg-pim-mercan text-white"
                           : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan"
                       )}
                     >
                       {label}
-                      {popular && !active && (
-                        <span className="ml-1 text-pim-mercan">⭐</span>
-                      )}
                     </button>
                   );
                 })}
