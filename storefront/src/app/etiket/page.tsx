@@ -18,6 +18,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSequentialSteps } from "@/lib/use-sequential-steps";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
 // kaldırıldı, Pim sadece PimChat floating button'da tek tutarlı persona.
 import { Icon } from "@/components/Icon";
@@ -488,27 +489,16 @@ export default function EtiketPage() {
     return idx === -1 ? 0 : idx + 1;
   };
 
-  // Sefa 18 May v51: Sequential UX — bir basamak tamamlanmadan
-  // sonraki kilitli. stepIds sırasına göre her adımın bir öncekini
-  // touch etmesi gerek (touchedSteps + formFactorTouched).
-  const isStepLocked = (domStepId: number): boolean => {
-    const idx = stepIds.indexOf(domStepId);
-    if (idx <= 0) return false; // ilk adım (etiket türü) asla locked
-    const prev = stepIds[idx - 1];
-    if (prev === 0) return !formFactorTouched;
-    return !touchedSteps.has(prev);
-  };
-  const getLockMessage = (domStepId: number): string => {
-    const idx = stepIds.indexOf(domStepId);
-    if (idx <= 0) return "";
-    const prev = stepIds[idx - 1];
-    const prevLabel = stepLabels[idx - 1] ?? "önceki";
-    return locale === "en"
-      ? `Complete step ${idx} (${prevLabel}) first.`
-      : `Önce "${prevLabel}" adımını tamamla.`;
-    // prev kullanılmıyor ama gelecekte kullanım için imza korunur
-    void prev;
-  };
+  // Sefa 18 May v53: Sequential UX → useSequentialSteps hook'una
+  // taşındı (tüm konfigüratör sayfaları aynı sistemi kullanır).
+  const { isLocked: isStepLocked, lockMessage: getLockMessage } =
+    useSequentialSteps({
+      stepIds,
+      stepLabels,
+      touchedSteps,
+      prerequisiteForFirst: formFactorTouched,
+      locale,
+    });
 
   // Adet sınırları formFactor'a göre değişir (Sefa kuralı 15 May).
   const minQty =

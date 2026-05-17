@@ -19,6 +19,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSequentialSteps } from "@/lib/use-sequential-steps";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
 import {
   SchemaJsonLd,
@@ -127,7 +128,7 @@ const fmtUnit = (n: number) => {
 
 export default function StickerPage() {
   const toast = useToast();
-  const { t } = useT();
+  const { t, locale } = useT();
 
   // i18n'a bağlı array'ler — Sefa kuralı (16 May denetim #1):
   // dil değiştiğinde shape/material/finish name+desc çevrilir.
@@ -248,6 +249,15 @@ export default function StickerPage() {
     const idx = stepIds.indexOf(domStepId);
     return idx === -1 ? 0 : idx + 1;
   };
+
+  // Sefa 18 May v53: Sequential UX — basamak tamamlanmadan sonraki kilitli
+  const { isLocked: isStepLocked, lockMessage: getLockMessage } =
+    useSequentialSteps({
+      stepIds,
+      stepLabels,
+      touchedSteps,
+      locale,
+    });
 
   // Active step — IntersectionObserver ile scroll'a göre
   const [activeStep, setActiveStep] = useState(1);
@@ -498,6 +508,8 @@ export default function StickerPage() {
                   ? t.sticker.shapeHintTabaka
                   : t.sticker.shapeHintDieCut
               }
+              locked={isStepLocked(2)}
+              lockMessage={getLockMessage(2)}
             >
               <div
                 className={cn(
@@ -581,6 +593,8 @@ export default function StickerPage() {
               id="step-3"
               number={uiStepNumber(3)}
               title={t.config.materialTitle}
+              locked={isStepLocked(3)}
+              lockMessage={getLockMessage(3)}
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {MATERIALS.map((m) => (
@@ -626,6 +640,8 @@ export default function StickerPage() {
               id="step-4"
               number={uiStepNumber(4)}
               title={t.config.finishTitle}
+              locked={isStepLocked(4)}
+              lockMessage={getLockMessage(4)}
             >
               <div className="grid grid-cols-3 gap-2.5">
                 {FINISHES.map((f) => (
@@ -652,6 +668,8 @@ export default function StickerPage() {
               number={uiStepNumber(5)}
               title={t.config.sizeTitle}
               hint="Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin."
+              locked={isStepLocked(5)}
+              lockMessage={getLockMessage(5)}
             >
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
@@ -755,6 +773,8 @@ export default function StickerPage() {
               number={uiStepNumber(6)}
               title={t.config.qtyTitle}
               hint="Her tasarımdan kaç adet"
+              locked={isStepLocked(6)}
+              lockMessage={getLockMessage(6)}
             >
               {/* Sefa kuralı (Madde 9 + v4): adet bilgisi göster, fiyat
                   TOPLAM kartında. Duplicate kaldırıldı. */}
@@ -822,6 +842,8 @@ export default function StickerPage() {
               number={uiStepNumber(7)}
               title="Tasarımlar"
               hint="Her tasarımdan aynı adet basılır. Birden fazla tasarımda iskonto!"
+              locked={isStepLocked(7)}
+              lockMessage={getLockMessage(7)}
             >
               <MultiDesignUploader
                 designCount={designCount}
