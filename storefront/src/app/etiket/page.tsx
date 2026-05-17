@@ -488,6 +488,28 @@ export default function EtiketPage() {
     return idx === -1 ? 0 : idx + 1;
   };
 
+  // Sefa 18 May v51: Sequential UX — bir basamak tamamlanmadan
+  // sonraki kilitli. stepIds sırasına göre her adımın bir öncekini
+  // touch etmesi gerek (touchedSteps + formFactorTouched).
+  const isStepLocked = (domStepId: number): boolean => {
+    const idx = stepIds.indexOf(domStepId);
+    if (idx <= 0) return false; // ilk adım (etiket türü) asla locked
+    const prev = stepIds[idx - 1];
+    if (prev === 0) return !formFactorTouched;
+    return !touchedSteps.has(prev);
+  };
+  const getLockMessage = (domStepId: number): string => {
+    const idx = stepIds.indexOf(domStepId);
+    if (idx <= 0) return "";
+    const prev = stepIds[idx - 1];
+    const prevLabel = stepLabels[idx - 1] ?? "önceki";
+    return locale === "en"
+      ? `Complete step ${idx} (${prevLabel}) first.`
+      : `Önce "${prevLabel}" adımını tamamla.`;
+    // prev kullanılmıyor ama gelecekte kullanım için imza korunur
+    void prev;
+  };
+
   // Adet sınırları formFactor'a göre değişir (Sefa kuralı 15 May).
   const minQty =
     formFactor === "rulo" ? ETIKET_MIN_QTY : ETIKET_TABAKA_MIN_QTY;
@@ -918,6 +940,8 @@ export default function EtiketPage() {
                   ? "Material that the print will be applied on"
                   : "Baskının uygulanacağı malzeme"
               }
+              locked={isStepLocked(1)}
+              lockMessage={getLockMessage(1)}
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {MATERIALS.filter((m) =>
@@ -980,6 +1004,8 @@ export default function EtiketPage() {
               number={uiStepNumber(2)}
               title={t.config.coatingTitle}
               hint=""
+              locked={isStepLocked(2)}
+              lockMessage={getLockMessage(2)}
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {COATINGS.filter((c) =>
@@ -1019,6 +1045,8 @@ export default function EtiketPage() {
                   ? "Special layer — combine multiple options"
                   : "Özel katman — birden fazla seçebilirsin"
               }
+              locked={isStepLocked(3)}
+              lockMessage={getLockMessage(3)}
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {CUSTOMS.map((c) => {
@@ -1116,6 +1144,8 @@ export default function EtiketPage() {
               number={uiStepNumber(4)}
               title={t.etiket.windingTitle}
               hint={t.etiket.windingHint}
+              locked={isStepLocked(4)}
+              lockMessage={getLockMessage(4)}
             >
               {/* Sefa 18 May v46: Kalın guidance — eski alt info kutusunun
                   içeriği üstte vurgulu olarak. */}
@@ -1235,6 +1265,8 @@ export default function EtiketPage() {
               number={uiStepNumber(5)}
               title="Sarım detayı"
               hint="Göbek çapı ve rulo başına etiket adeti — makine uyumu için."
+              locked={isStepLocked(5)}
+              lockMessage={getLockMessage(5)}
             >
               {/* Göbek çapı */}
               <div>
@@ -1329,6 +1361,8 @@ export default function EtiketPage() {
               number={uiStepNumber(6)}
               title={t.config.sizeTitle}
               hint={t.etiket.sizeHint}
+              locked={isStepLocked(6)}
+              lockMessage={getLockMessage(6)}
             >
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
@@ -1430,6 +1464,8 @@ export default function EtiketPage() {
               number={uiStepNumber(7)}
               title="Tasarımlar"
               hint="Her tasarımdan aynı adet basılır. Birden fazla tasarımda iskonto!"
+              locked={isStepLocked(7)}
+              lockMessage={getLockMessage(7)}
             >
               <MultiDesignUploader
                 designCount={designCount}
@@ -1465,6 +1501,8 @@ export default function EtiketPage() {
                   ? `${minQty.toLocaleString("tr-TR")}'den başla, ${qtyStep} adetlik artışla seç. Birden fazla tasarım koyarsan her birinden bu adet basılır.`
                   : `${minQty} adetten başla, serbest tam sayı (max ${maxQty.toLocaleString("tr-TR")}). Her tasarımdan ayrı baskı.`
               }
+              locked={isStepLocked(8)}
+              lockMessage={getLockMessage(8)}
             >
               {/* Slider — ana giriş yöntemi.
                   Sefa kuralı (15 May v2): fiyat sadece TOPLAM card'da

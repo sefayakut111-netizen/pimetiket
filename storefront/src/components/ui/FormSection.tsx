@@ -10,6 +10,12 @@ interface FormSectionProps {
   className?: string;
   /** Section'a DOM id ata — IntersectionObserver / scroll-to-step için. */
   id?: string;
+  /** Sefa 18 May v51: Önceki adım tamamlanmadıysa locked.
+   *  Kart yarı saydam + tıklanamaz + üstte küçük "🔒 Önce X adımını
+   *  tamamla" mesajı. */
+  locked?: boolean;
+  /** Locked iken gösterilen mesaj. */
+  lockMessage?: string;
 }
 
 /**
@@ -26,6 +32,8 @@ export function FormSection({
   children,
   className,
   id,
+  locked,
+  lockMessage,
 }: FormSectionProps) {
   const numbered = number != null;
   // scroll-mt-[140px]: stepper sticky offset (72px) + stepper yüksekliği
@@ -34,26 +42,52 @@ export function FormSection({
   return (
     <Card
       padding="p-5"
-      className={cn("scroll-mt-[140px]", className)}
+      className={cn("scroll-mt-[140px] relative", className)}
       id={id}
+      aria-disabled={locked || undefined}
     >
-      <div className="flex items-center gap-3 mb-3.5">
+      <div
+        className={cn(
+          "flex items-center gap-3 mb-3.5",
+          locked && "opacity-60"
+        )}
+      >
         {numbered && (
           <span
             aria-hidden
-            className="grid place-items-center w-7 h-7 rounded-full bg-lacivert text-white font-bold text-[13px] shrink-0"
+            className={cn(
+              "grid place-items-center w-7 h-7 rounded-full font-bold text-[13px] shrink-0",
+              locked
+                ? "bg-gri-200 text-gri-500"
+                : "bg-lacivert text-white"
+            )}
           >
-            {number}
+            {locked ? "🔒" : number}
           </span>
         )}
         <div className="flex-1">
           <div className={cn("font-semibold", numbered ? "text-base" : "text-[15px]")}>
             {title}
           </div>
-          {hint && <div className="text-[13px] text-gri-700 mt-0.5">{hint}</div>}
+          {hint && !locked && (
+            <div className="text-[13px] text-gri-700 mt-0.5">{hint}</div>
+          )}
+          {locked && lockMessage && (
+            <div className="text-[12.5px] text-saman-koyu mt-0.5">
+              {lockMessage}
+            </div>
+          )}
         </div>
       </div>
-      {children}
+      {/* Locked iken içerik tıklanamaz + soluk */}
+      <div
+        className={cn(
+          locked && "opacity-40 pointer-events-none select-none"
+        )}
+        aria-hidden={locked || undefined}
+      >
+        {children}
+      </div>
     </Card>
   );
 }
