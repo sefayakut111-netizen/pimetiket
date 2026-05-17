@@ -15,6 +15,7 @@ import { getHomepageReviews, type Review } from "@/lib/reviews";
 import { Eyebrow } from "@/components/ui";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
+import { PhotoLightbox } from "@/components/reviews/PhotoLightbox";
 
 interface Props {
   /** Default 9 — anasayfada 3-3-3 grid */
@@ -27,6 +28,8 @@ interface Props {
 
 export function HomeReviews({ limit = 9 }: Props) {
   const [reviews, setReviews] = useState<Review[] | null>(null);
+  // Sefa 17 May v37: photo lightbox state
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
     void getHomepageReviews(limit).then((real) => {
@@ -87,7 +90,11 @@ export function HomeReviews({ limit = 9 }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {reviews.map((r) => (
-            <ReviewCard key={r.id} review={r} />
+            <ReviewCard
+              key={r.id}
+              review={r}
+              onPhotoClick={(src) => setLightboxSrc(src)}
+            />
           ))}
         </div>
 
@@ -100,6 +107,11 @@ export function HomeReviews({ limit = 9 }: Props) {
           </Link>
         </div>
       </div>
+      {/* Sefa 17 May v37: Lightbox — photo'ya tıklayınca açılır */}
+      <PhotoLightbox
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </section>
   );
 }
@@ -110,9 +122,10 @@ export function HomeReviews({ limit = 9 }: Props) {
 
 interface ReviewCardProps {
   review: Review;
+  onPhotoClick?: (src: string) => void;
 }
 
-function ReviewCard({ review }: ReviewCardProps) {
+function ReviewCard({ review, onPhotoClick }: ReviewCardProps) {
   const date = new Date(review.created_at);
   const dateStr = date.toLocaleDateString("tr-TR", {
     day: "numeric",
@@ -145,17 +158,20 @@ function ReviewCard({ review }: ReviewCardProps) {
         {review.body}
       </p>
 
-      {/* Photos (max 2) — Sefa 17 May v36:
-          · alt="" (decorative) → broken image'da "Yorum fotoğrafı"
-            placeholder text görünmez, boş kalır
-          · onError → broken url ise tüm kutucuk gizlenir */}
+      {/* Photos (max 2) — Sefa 17 May v37:
+          · Button olarak render → tıklayınca lightbox açılır (yeni link YOK)
+          · alt="" decorative
+          · onError → broken url ise tüm buton gizlenir */}
       {review.photos.length > 0 && (
         <div className="flex gap-1.5 mt-3">
           {review.photos.slice(0, 2).map((photo, i) =>
             photo.url ? (
-              <div
+              <button
                 key={i}
-                className="w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-gri-100"
+                type="button"
+                onClick={() => onPhotoClick?.(photo.url!)}
+                aria-label="Fotoğrafı büyüt"
+                className="w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan bg-gri-100 transition-all cursor-zoom-in"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -164,13 +180,12 @@ function ReviewCard({ review }: ReviewCardProps) {
                   className="w-full h-full object-cover"
                   loading="lazy"
                   onError={(e) => {
-                    // Yüklenemezse kutucuğu tamamen gizle
                     const wrap = (e.currentTarget as HTMLImageElement)
                       .parentElement;
-                    if (wrap) wrap.style.display = "none";
+                    if (wrap) (wrap as HTMLElement).style.display = "none";
                   }}
                 />
-              </div>
+              </button>
             ) : null
           )}
         </div>

@@ -24,6 +24,7 @@ import { Pim } from "@/components/Pim";
 import { Eyebrow } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
+import { PhotoLightbox } from "@/components/reviews/PhotoLightbox";
 
 // FALLBACK_REVIEWS kaldırıldı (TKHK m.61 — yanıltıcı reklam riski).
 // İlk gerçek müşteri yorumu DB'ye düşene kadar boş state gösterilecek.
@@ -43,6 +44,8 @@ function YorumlarInner() {
   const [filter, setFilter] = useState<"all" | ProductType>(
     kategori ?? "all"
   );
+  // Sefa 17 May v37: lightbox state
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
     setReviews(null);
@@ -168,17 +171,32 @@ function YorumlarInner() {
           {reviews && reviews.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {reviews.map((r) => (
-                <ReviewCard key={r.id} review={r} />
+                <ReviewCard
+                  key={r.id}
+                  review={r}
+                  onPhotoClick={(src) => setLightboxSrc(src)}
+                />
               ))}
             </div>
           )}
         </div>
       </section>
+      {/* Sefa 17 May v37: Lightbox modal — yeni link açma yerine */}
+      <PhotoLightbox
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </main>
   );
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({
+  review,
+  onPhotoClick,
+}: {
+  review: Review;
+  onPhotoClick?: (src: string) => void;
+}) {
   const dateStr = new Date(review.created_at).toLocaleDateString("tr-TR", {
     day: "numeric",
     month: "long",
@@ -206,27 +224,34 @@ function ReviewCard({ review }: { review: Review }) {
       <p className="text-[14px] text-lacivert leading-relaxed flex-1">
         {review.body}
       </p>
+      {/* Photos — Sefa 17 May v37: <a target=_blank> kaldırıldı,
+          buton + lightbox ile sayfa içinde aç. */}
       {review.photos.length > 0 && (
         <div className="flex gap-2 mt-3">
-          {review.photos.slice(0, 2).map((photo, i) => (
-            <a
-              key={i}
-              href={photo.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-gri-100 hover:ring-pim-mercan transition-all"
-            >
-              {photo.url && (
-                // eslint-disable-next-line @next/next/no-img-element
+          {review.photos.slice(0, 2).map((photo, i) =>
+            photo.url ? (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onPhotoClick?.(photo.url!)}
+                aria-label="Fotoğrafı büyüt"
+                className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan bg-gri-100 transition-all cursor-zoom-in"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photo.url}
-                  alt={`Yorum fotoğrafı ${i + 1}`}
+                  alt=""
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  onError={(e) => {
+                    const wrap = (e.currentTarget as HTMLImageElement)
+                      .parentElement;
+                    if (wrap) (wrap as HTMLElement).style.display = "none";
+                  }}
                 />
-              )}
-            </a>
-          ))}
+              </button>
+            ) : null
+          )}
         </div>
       )}
       <div className="mt-4 pt-4 border-t border-gri-100 flex items-center justify-between text-[12px] text-gri-500">
