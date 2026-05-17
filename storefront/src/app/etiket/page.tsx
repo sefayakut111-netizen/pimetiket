@@ -1642,13 +1642,16 @@ export default function EtiketPage() {
                       {fmtUnit(unit)} TL/adet
                     </strong>{" "}
                     · KDV dahil
+                    {/* Sefa 18 May v59: '3 rulo' kısmı yeni satıra alındı
+                        (önceki tek satır akışı dağınıktı). */}
                     {rollsNeeded > 0 && (
-                      <>
-                        {" "}
-                        <span className="text-gri-500">
-                          · {rollsNeeded} rulo
+                      <div className="mt-1 inline-flex items-center gap-1 text-[12px] text-gri-700">
+                        <span aria-hidden>📦</span>
+                        <span className="tabular-nums font-semibold text-lacivert">
+                          {rollsNeeded}
                         </span>
-                      </>
+                        <span>rulo</span>
+                      </div>
                     )}
                   </>
                 }
@@ -1663,7 +1666,7 @@ export default function EtiketPage() {
                 deliveryDate={teslim}
                 ctaLabel={t.config.addToCart}
                 onCta={handleAddToCart}
-                footnote="Tasarımını yükle, sepete ekle · KDV dahil · 5 iş günü içinde kargoda"
+                footnote="Tasarımını yükle, sepete ekle · KDV dahil"
               />
             </div>
           </div>
