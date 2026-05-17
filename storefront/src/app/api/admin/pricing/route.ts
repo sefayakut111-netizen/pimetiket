@@ -68,6 +68,17 @@ export async function GET(req: Request) {
   });
 }
 
+/**
+ * PUT /api/admin/pricing — Sefa 17 May v4: Single-step save & publish.
+ *
+ * Form değişikliği direkt LIVE'e yazılır. Eskiden draft → live ayrımı vardı,
+ * Sefa "canlı önizleme zaten teklif gibi, draft gereksiz" kararı.
+ *
+ * Body: { config: ProfileConfig, note?: string }
+ * - draft_config + live_config aynı anda güncellenir
+ * - history entry: action="publish" (audit log korunur)
+ * - cache invalidate
+ */
 export async function PUT(req: Request) {
   const auth = await assertAdmin();
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -81,20 +92,23 @@ export async function PUT(req: Request) {
   }
 
   const body = (await req.json().catch(() => ({}))) as {
-    draft?: unknown;
+    config?: unknown;
+    draft?: unknown; // geriye uyum
     note?: string;
   };
 
-  if (!body.draft || typeof body.draft !== "object") {
+  const payload = body.config ?? body.draft;
+  if (!payload || typeof payload !== "object") {
     return NextResponse.json(
-      { error: "draft_required" },
+      { error: "config_required" },
       { status: 400 }
     );
   }
 
+  // Önce draft kaydet (audit için)
   const r = await saveDraftPricingConfig(
     scope,
-    body.draft as never,
+    payload as never,
     auth.user.id,
     auth.user.email ?? "admin",
     body.note
@@ -103,6 +117,16 @@ export async function PUT(req: Request) {
   if (!r.ok) {
     return NextResponse.json(
       { error: "save_failed", detail: r.error },
+      { status: 500 }
+    );
+  }
+
+  // Hemen live'e yayınla (single-step)
+  const { publishPricingConfig } = await import("@/lib/pricing-config");
+  const pub = await publishPricingConfig(scope, body.note);
+  if (!pub.ok) {
+    return NextResponse.json(
+      { error: "publish_failed", detail: pub.error },
       { status: 500 }
     );
   }

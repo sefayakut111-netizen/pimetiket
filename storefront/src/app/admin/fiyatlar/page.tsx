@@ -122,7 +122,6 @@ export default function FiyatlarPage() {
   const [draft, setDraft] = useState<ProfileConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -174,22 +173,17 @@ export default function FiyatlarPage() {
     void refresh();
   }, [refresh]);
 
-  const isDirty = data && draft && !deepEqual(draft, data.draft);
-  const isLiveBehindDraft = data && !deepEqual(data.draft, data.live);
+  // Sefa 17 May v4: Single-step save. Form değişti mi (canlıdan farklı mı)?
+  const isDirty = data && draft && !deepEqual(draft, data.live);
 
-  // Sefa 17 May v3: draft → live diff (yayınlandığında değişecek olan)
-  const draftToLiveDiff = useMemo<DiffEntry[]>(() => {
-    if (!data?.live || !data?.draft) return [];
-    return diffProfileConfig(data.live, data.draft);
-  }, [data?.live, data?.draft]);
-
-  // Form-anında diff (henüz kaydedilmeyen değişiklikler)
+  // Form-anında diff (canlı vs şu anki form)
   const draftFormDiff = useMemo<DiffEntry[]>(() => {
-    if (!data?.draft || !draft) return [];
-    return diffProfileConfig(data.draft, draft);
-  }, [data?.draft, draft]);
+    if (!data?.live || !draft) return [];
+    return diffProfileConfig(data.live, draft);
+  }, [data?.live, draft]);
 
   // Material/option/tier satırlarında "değişti" rozet için
+  // Satır seviyesi değişiklik kontrolü — form ↔ canlı
   const isItemChanged = (
     section: "material" | "option" | "tier",
     id_or_idx: string | number,
@@ -208,45 +202,31 @@ export default function FiyatlarPage() {
     return false;
   };
 
-  const handleSaveDraft = async () => {
+  // Sefa 17 May v4: Single-step save. Form değişikliği direkt canlıya kaydedilir.
+  // Draft mekanizması kaldırıldı (gerçek hayatta solo founder için gereksiz).
+  // Canlı önizleme zaten teklif/hesap fonksiyonu görüyor.
+  const handleSave = async () => {
     if (!draft) return;
+    if (
+      !confirm(
+        "Değişiklikler canlıya kaydedilecek. Müşteri tarafı yeni fiyatları görür. Devam?"
+      )
+    )
+      return;
     setSaving(true);
     try {
       const r = await fetch(`/api/admin/pricing?scope=${scope}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ draft }),
+        body: JSON.stringify({ config: draft }),
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (j.ok) {
-        toast.success("💾 Draft kaydedildi");
+        toast.success("✓ Canlıya kaydedildi");
         await refresh();
       } else toast.error(j.error ?? "Kaydedilemedi");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (
-      !confirm(
-        "Draft canlıya yayınlanacak. Müşteri tarafı yeni fiyatları görür. Devam?"
-      )
-    )
-      return;
-    setPublishing(true);
-    try {
-      const r = await fetch(
-        `/api/admin/pricing/publish?scope=${scope}`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }
-      );
-      const j = (await r.json()) as { ok?: boolean; error?: string };
-      if (j.ok) {
-        toast.success("🚀 Canlıya yayınlandı");
-        await refresh();
-      } else toast.error(j.error ?? "Yayınlama başarısız");
-    } finally {
-      setPublishing(false);
     }
   };
 
@@ -362,47 +342,31 @@ export default function FiyatlarPage() {
           </p>
         </div>
 
-        {/* Status banner — Sefa 17 May v3 güçlendirildi */}
+        {/* Status banner — Sefa 17 May v4 sadeleştirildi (Draft kaldırıldı) */}
         <Card
           padding="p-4"
           className={cn(
             "mb-4",
             isDirty
               ? "!bg-saman/10 ring-saman/30"
-              : isLiveBehindDraft
-                ? "!bg-pim-mercan-tint ring-pim-mercan-soft"
-                : "!bg-yesil-soft/30 ring-yesil/30"
+              : "!bg-yesil-soft/30 ring-yesil/30"
           )}
         >
           <div className="flex items-center gap-3 flex-wrap mb-3">
-            <span className="text-[28px]">
-              {isDirty ? "📝" : isLiveBehindDraft ? "📤" : "🟢"}
-            </span>
+            <span className="text-[28px]">{isDirty ? "✏" : "🟢"}</span>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-[15px] text-lacivert">
                 {isDirty
                   ? "Kaydedilmemiş değişiklikler var"
-                  : isLiveBehindDraft
-                    ? "Draft canlıdan farklı — yayınlanmayı bekliyor"
-                    : "Her şey güncel: Canlıda olan = Draft"}
+                  : "Her şey canlıda — güncel"}
               </div>
               <div className="text-[12px] text-gri-700 mt-1 leading-relaxed">
                 <span className="inline-flex items-center gap-1">
-                  🟢 <strong>Canlıda olan:</strong>
+                  🟢 <strong>Son kayıt:</strong>
                   <span>{timeAgo(data.live_updated_at ?? null)}</span>
                   {data.live_updated_by_email && (
                     <span className="text-gri-500">
                       · {data.live_updated_by_email}
-                    </span>
-                  )}
-                </span>
-                <span className="mx-2 text-gri-300">·</span>
-                <span className="inline-flex items-center gap-1">
-                  📝 <strong>Draft:</strong>
-                  <span>{timeAgo(data.draft_updated_at ?? null)}</span>
-                  {data.draft_updated_by_email && (
-                    <span className="text-gri-500">
-                      · {data.draft_updated_by_email}
                     </span>
                   )}
                 </span>
@@ -417,14 +381,14 @@ export default function FiyatlarPage() {
             </Button>
           </div>
 
-          {/* Diff özet — Draft ↔ Live arası (yayınlanacak değişiklikler) */}
-          {isLiveBehindDraft && draftToLiveDiff.length > 0 && (
-            <div className="rounded-lg bg-white/60 ring-1 ring-pim-mercan/20 p-3">
-              <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-pim-mercan mb-2">
-                🚀 Yayınlanacak değişiklikler ({draftToLiveDiff.length})
+          {/* Form-anında diff — canlıdan ne değişti */}
+          {isDirty && draftFormDiff.length > 0 && (
+            <div className="rounded-lg bg-white/60 ring-1 ring-saman/30 p-3">
+              <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-saman-koyu mb-2">
+                ✏ Kayıt sonrası canlıya çıkacak ({draftFormDiff.length})
               </div>
               <ul className="space-y-1 text-[12.5px] max-h-[180px] overflow-y-auto">
-                {draftToLiveDiff.slice(0, 8).map((d, i) => (
+                {draftFormDiff.slice(0, 8).map((d, i) => (
                   <li
                     key={i}
                     className="flex items-center gap-2 leading-relaxed"
@@ -442,37 +406,9 @@ export default function FiyatlarPage() {
                     </span>
                   </li>
                 ))}
-                {draftToLiveDiff.length > 8 && (
+                {draftFormDiff.length > 8 && (
                   <li className="text-[11.5px] text-gri-500 italic">
-                    ... ve {draftToLiveDiff.length - 8} değişiklik daha
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-
-          {/* Form-anında diff (kaydedilmemiş) */}
-          {isDirty && draftFormDiff.length > 0 && (
-            <div className="rounded-lg bg-white/60 ring-1 ring-saman/30 p-3">
-              <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-saman-koyu mb-2">
-                ✏ Kaydedilmemiş ({draftFormDiff.length})
-              </div>
-              <ul className="space-y-1 text-[12.5px] max-h-[140px] overflow-y-auto">
-                {draftFormDiff.slice(0, 6).map((d, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="text-gri-700">{d.label}:</span>
-                    <span className="font-mono text-gri-500 text-[11.5px]">
-                      {d.old_value}
-                    </span>
-                    <span className="text-gri-400">→</span>
-                    <span className="font-mono text-saman-koyu font-bold text-[11.5px]">
-                      {d.new_value}
-                    </span>
-                  </li>
-                ))}
-                {draftFormDiff.length > 6 && (
-                  <li className="text-[11.5px] text-gri-500 italic">
-                    ... ve {draftFormDiff.length - 6} satır daha
+                    ... ve {draftFormDiff.length - 8} değişiklik daha
                   </li>
                 )}
               </ul>
@@ -833,35 +769,30 @@ export default function FiyatlarPage() {
 
           {/* SAĞ — Aksiyon + Preview */}
           <div className="space-y-4 xl:sticky xl:top-4 h-fit">
-            {/* Actions */}
+            {/* Sefa 17 May v4: Tek buton — direkt canlıya kaydet */}
             <Card padding="p-4">
               <h3 className="font-semibold text-[13.5px] mb-3">⚡ Aksiyon</h3>
-              <Button
-                variant={isDirty ? "primary" : "ghost"}
-                size="md"
-                block
-                onClick={() => void handleSaveDraft()}
-                disabled={!isDirty || saving}
-              >
-                {saving ? "..." : isDirty ? "💾 Draft kaydet" : "✓ Kayıtlı"}
-              </Button>
               <Button
                 variant="primary"
                 size="md"
                 block
-                onClick={() => void handlePublish()}
-                disabled={!isLiveBehindDraft || publishing}
-                className="mt-2 !bg-yesil hover:!bg-yesil/90"
+                onClick={() => void handleSave()}
+                disabled={!isDirty || saving}
+                className={cn(
+                  "!bg-yesil hover:!bg-yesil/90 !text-white",
+                  !isDirty && "!bg-gri-200 !text-gri-500"
+                )}
               >
-                {publishing
-                  ? "..."
-                  : isLiveBehindDraft
-                    ? "🚀 Canlıya yayınla"
-                    : "Yayın bekleyen yok"}
+                {saving
+                  ? "Kaydediliyor..."
+                  : isDirty
+                    ? "💾 Canlıya kaydet"
+                    : "✓ Güncel"}
               </Button>
               <div className="mt-3 text-[11px] text-gri-700 leading-relaxed">
-                <strong>Draft</strong> = sadece sen test edersin.<br />
-                <strong>Yayınla</strong> = müşteriler yeni fiyatları görür.
+                Değişiklikler <strong>anında canlıya</strong> kaydedilir,
+                müşteriler 5 dakika içinde yeni fiyatları görür. Hata olursa{" "}
+                <strong>Geçmiş</strong> panelinden eski sürüme geri dönebilirsin.
               </div>
             </Card>
 
