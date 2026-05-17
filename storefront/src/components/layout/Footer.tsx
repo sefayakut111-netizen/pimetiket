@@ -125,7 +125,10 @@ export function Footer() {
         {/* Newsletter — compact strip
             Sefa 17 May Dalga 3 #19: /odeme'de gizli */}
         {!isCheckout && (
-        <div className="mb-10 pb-8 border-b border-white/10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
+        <div className="mb-10 pb-8 border-b border-white/10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-start">
+          {/* Sefa 17 May v19: items-center → items-start, sağ form'a
+              md:mt-7 (eyebrow + mb yüksekliği) → sağdaki input row sol
+              bloktaki h2 ile aynı dikey hizada başlar. */}
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan mb-1.5">
               {t.footer.newsletterEyebrow}
@@ -141,11 +144,11 @@ export function Footer() {
             </p>
           </div>
           {subscribed ? (
-            <div className="inline-flex items-center gap-2.5 bg-yesil-soft/15 ring-1 ring-yesil/30 rounded-full px-4 h-11 text-yesil-soft text-[13px] font-semibold">
+            <div className="md:mt-7 inline-flex items-center gap-2.5 bg-yesil-soft/15 ring-1 ring-yesil/30 rounded-full px-4 h-11 text-yesil-soft text-[13px] font-semibold">
               📩 {t.footer.newsletterSuccess}
             </div>
           ) : (
-            <form onSubmit={onSubscribe} className="flex flex-col gap-2 min-w-[280px] md:min-w-[380px]">
+            <form onSubmit={onSubscribe} className="md:mt-7 flex flex-col gap-2 min-w-[280px] md:min-w-[380px]">
               <div className="flex gap-2">
                 <Input
                   type="email"
