@@ -17,10 +17,9 @@
 import type {
   ProfileConfig,
   MaterialItem,
-  OptionGroup,
   OptionItem,
   TierConfig,
-} from "./pricing-config";
+} from "./pricing-config-types";
 
 // ============================================================
 // Input / Output
