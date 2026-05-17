@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
   <title>Pim Etiket — sembol</title>
-  <path d="M 38 110
+  <style>
+    .body { fill: #1F2937; }
+    @media (prefers-color-scheme: dark) {
+      .body { fill: #F5F2EC; }
+    }
+  </style>
+  <path class="body" d="M 38 110
        C 38 70, 70 42, 108 42
        C 138 42, 158 58, 162 84
        L 196 96
@@ -8,6 +14,6 @@
        C 158 130, 138 148, 108 152
        C 96 158, 86 162, 78 158
        C 70 154, 70 144, 74 138
-       C 56 132, 38 122, 38 110 Z" fill="#1F2937"></path>
-  <circle cx="118" cy="92" r="9" fill="#FF6B5B"></circle>
+       C 56 132, 38 122, 38 110 Z"/>
+  <circle cx="118" cy="92" r="9" fill="#FF6B5B"/>
 </svg>
