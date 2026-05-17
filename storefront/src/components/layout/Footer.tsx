@@ -133,15 +133,11 @@ export function Footer() {
             <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-1">
               {t.footer.newsletterTitle}
             </h3>
+            {/* Sefa 17 May v18: "Ücretsiz şablon paketi da yolda —
+                spam yok, sadece iş." satırı kaldırıldı (duplicate;
+                newsletterDesc'te zaten "spam yok" geçiyor). */}
             <p className="text-[13px] text-white/60 leading-relaxed">
-              {t.footer.newsletterDesc}{" "}
-              <Link
-                href="/sablonlar"
-                className="text-pim-mercan font-semibold hover:underline"
-              >
-                Ücretsiz şablon paketi
-              </Link>{" "}
-              da yolda — spam yok, sadece iş.
+              {t.footer.newsletterDesc}
             </p>
           </div>
           {subscribed ? (
