@@ -79,6 +79,10 @@ export function MultiDesignUploader({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [lightbox, setLightbox] = useState<PendingDesign | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Sefa 18 May v67: 'tasarım kısmında adet yazmasın, kullanıcı yazsın'
+  // designCount input ilk başta boş gözüksün → touched mantığı
+  const [designCountTouched, setDesignCountTouched] = useState(false);
+  const touchDesignCount = () => setDesignCountTouched(true);
 
   const handleFiles = (files: FileList | File[]) => {
     setError(null);
@@ -178,7 +182,10 @@ export function MultiDesignUploader({
           <div className="inline-flex items-stretch rounded-full ring-1 ring-gri-200 bg-white overflow-hidden">
             <button
               type="button"
-              onClick={() => onDesignCountChange(Math.max(1, designCount - 1))}
+              onClick={() => {
+                touchDesignCount();
+                onDesignCountChange(Math.max(1, designCount - 1));
+              }}
               disabled={designCount <= 1}
               aria-label="Tasarım sayısı azalt"
               className="w-8 h-8 grid place-items-center text-sm font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30"
@@ -187,8 +194,11 @@ export function MultiDesignUploader({
             </button>
             <input
               type="number"
-              value={designCount}
+              value={designCountTouched ? designCount : ""}
+              placeholder="örn. 1"
+              autoComplete="off"
               onChange={(e) => {
+                touchDesignCount();
                 const n = parseInt(e.target.value, 10);
                 if (Number.isFinite(n)) {
                   onDesignCountChange(Math.max(1, Math.min(maxCount, n)));
@@ -197,13 +207,14 @@ export function MultiDesignUploader({
               min={1}
               max={maxCount}
               aria-label="Tasarım sayısı"
-              className="w-14 h-8 text-center text-[13px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
+              className="w-16 h-8 text-center text-[13px] font-semibold text-lacivert tabular-nums border-x border-gri-200 focus:outline-none focus:bg-pim-mercan-tint/30"
             />
             <button
               type="button"
-              onClick={() =>
-                onDesignCountChange(Math.min(maxCount, designCount + 1))
-              }
+              onClick={() => {
+                touchDesignCount();
+                onDesignCountChange(Math.min(maxCount, designCount + 1));
+              }}
               disabled={designCount >= maxCount}
               aria-label="Tasarım sayısı artır"
               className="w-8 h-8 grid place-items-center text-sm font-semibold text-gri-700 hover:bg-gri-100 disabled:opacity-30"
@@ -304,7 +315,7 @@ export function MultiDesignUploader({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png"
+          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
           multiple
           className="hidden"
           onChange={(e) => {

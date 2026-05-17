@@ -32,8 +32,12 @@ import {
 import type { DesignTempState } from "./DesignDropZone";
 
 const MAX_FILES_PER_ORDER = 50;
-// Sefa 18 May v54: JPEG + SVG kaldırıldı. Sadece PDF/PNG/AI/PSD/EPS.
-const ACCEPT_ATTR = ".pdf,.png,.ai,.psd,.eps,application/pdf,image/png";
+// Sefa 18 May v54-v67: Sadece PDF/PNG/AI/PSD/EPS.
+// MIME types genişletildi → tarayıcı dosya seçicide daha sıkı filter.
+const ACCEPT_ATTR =
+  ".pdf,.png,.ai,.psd,.eps," +
+  "application/pdf,image/png," +
+  "application/illustrator,application/postscript,image/vnd.adobe.photoshop";
 
 interface MultiDesignDropZoneProps {
   value: DesignTempState[];

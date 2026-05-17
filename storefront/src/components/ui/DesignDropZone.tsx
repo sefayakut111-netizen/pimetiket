@@ -269,7 +269,7 @@ export function DesignDropZone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png"
+          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
           onChange={onInputChange}
           disabled={uploading}
         />
@@ -346,7 +346,7 @@ export function DesignDropZone({
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png"
+        accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
         onChange={onInputChange}
         disabled={uploading}
       />
