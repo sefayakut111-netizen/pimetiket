@@ -26,6 +26,9 @@ import {
   type AuditorLatestRunSummary,
   type PendingCountSummary,
 } from "@/lib/agents/_shared/types";
+// Sefa 17 May: Timeline + Aksiyon hub rehberi
+import { AuditorTimeline } from "@/components/admin/auditors/AuditorTimeline";
+import { ActionHubGuide } from "@/components/admin/auditors/ActionHubGuide";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";
@@ -408,6 +411,10 @@ export default function DenetcilerDashboardPage() {
           </div>
         </div>
 
+        {/* Sefa 17 May: Aksiyon hub rehberi — "bulgular için ne yapmalıyım?"
+            sorusuna cevap. 4 adım: Bekleyen → Agent detayı → Arşiv → Geçmiş */}
+        <ActionHubGuide />
+
         {/* Pending action bar */}
         {pending.totalPending > 0 && (
           <Link
@@ -533,6 +540,30 @@ export default function DenetcilerDashboardPage() {
             );
           })}
         </div>
+
+        {/* Sefa 17 May: Aktivite Timeline — son 24 saatte ne çalıştı, hangi
+            bulgu çıktı (önceden "Adım 8'de gelecek" diye işaretliydi). */}
+        <section className="mt-10">
+          <div className="flex items-end justify-between gap-3 mb-4 flex-wrap">
+            <div>
+              <Eyebrow>Aktivite</Eyebrow>
+              <h2 className="mt-2 text-[20px] md:text-[24px] font-semibold tracking-tight text-lacivert">
+                Son denetim akışı
+              </h2>
+              <p className="mt-1 text-[13px] text-gri-700">
+                Son 7 gün içindeki tüm agent run'ları, en yeniden eskiye.
+                Bir satıra tıkla → detay sayfası.
+              </p>
+            </div>
+            <Link
+              href="/admin/denetciler/gecmis"
+              className="text-[12.5px] font-semibold text-pim-mercan hover:underline"
+            >
+              Tüm geçmişi gör →
+            </Link>
+          </div>
+          <AuditorTimeline limit={20} hoursWindow={168} />
+        </section>
 
         {/* Footer note */}
         <div className="mt-8 text-center text-[12px] text-gri-500">
