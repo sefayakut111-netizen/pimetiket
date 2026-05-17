@@ -1149,41 +1149,35 @@ export default function EtiketPage() {
                 </legend>
                 <div className="grid grid-cols-4 gap-2.5 mb-4">
                   {[1, 2, 3, 4].map((n) => (
-                    <div key={n} className="relative">
-                      {/* Sefa 18 May v48: SARIM 1 önerilen → yıldız rozeti */}
-                      {n === 1 && (
-                        <span
-                          aria-label="Önerilen"
-                          title="En yaygın kullanılan yön"
-                          className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
-                        >
-                          ★
-                        </span>
-                      )}
-                      <SelectableCard
-                        selected={touchedSteps.has(4) && winding === n}
-                        onClick={() => {
-                          setWinding(n);
-                          markTouched(4);
+                    <SelectableCard
+                      key={n}
+                      selected={touchedSteps.has(4) && winding === n}
+                      onClick={() => {
+                        setWinding(n);
+                        markTouched(4);
+                      }}
+                      padding={10}
+                      style={{ textAlign: "center", paddingTop: 12 }}
+                      aria-label={`Dışa sarım yön ${n}${n === 1 ? " (önerilen)" : ""}`}
+                    >
+                      <WindingIcon n={n} />
+                      <div
+                        className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
+                        style={{
+                          color:
+                            touchedSteps.has(4) && winding === n
+                              ? "var(--color-pim-mercan)"
+                              : "var(--color-gri-700)",
                         }}
-                        padding={10}
-                        style={{ textAlign: "center", paddingTop: 12 }}
-                        aria-label={`Dışa sarım yön ${n}`}
                       >
-                        <WindingIcon n={n} />
-                        <div
-                          className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
-                          style={{
-                            color:
-                              touchedSteps.has(4) && winding === n
-                                ? "var(--color-pim-mercan)"
-                                : "var(--color-gri-700)",
-                          }}
-                        >
-                          SARIM {n}
-                        </div>
-                      </SelectableCard>
-                    </div>
+                        SARIM {n}
+                        {/* Sefa 18 May v50: yuvarlak rozet → inline emoji
+                            yıldız (Sarım detayı'ndaki 76mm/500 ile tutarlı) */}
+                        {n === 1 && (
+                          <span className="ml-1 text-[11px] text-pim-mercan">⭐</span>
+                        )}
+                      </div>
+                    </SelectableCard>
                   ))}
                 </div>
               </fieldset>
