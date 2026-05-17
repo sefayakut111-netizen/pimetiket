@@ -56,8 +56,8 @@ const CRON_SCHEDULE: Record<string, { label: string; nextRun: () => string }> = 
     nextRun: () => nextDailyAt(1, 0),
   },
   finance: {
-    label: "Günlük 09:00",
-    nextRun: () => nextDailyAt(9, 0),
+    label: "Z-raporu · Gece 00:00",
+    nextRun: () => nextDailyAt(0, 0),
   },
   workflow: {
     label: "Günlük 05:00",
