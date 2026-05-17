@@ -389,9 +389,11 @@ function WelcomeView({
         <div className="text-[13.5px] text-gri-700 leading-relaxed">
           {subtext}
         </div>
-        <div className="text-[12px] text-gri-500 mt-2 leading-relaxed">
-          Aklındaki neyse yaz — fiyat, sipariş, malzeme, teslim. Akıllı sistem
-          olduğum için bağlamı anlayıp doğru cevabı veririm.
+        {/* Sefa 17 May v32: text-gri-500 → text-gri-700 (görünürlük fix)
+            + boyut 12px → 13px + mesaj güncellendi */}
+        <div className="text-[13px] text-gri-700 mt-2 leading-relaxed">
+          Aklındaki neyse yaz — fiyat, sipariş, malzeme, teslim. Akıllı bir
+          yapay zekayım, seni iyi anlayıp doğru cevabı veririm 🙂
         </div>
       </div>
       {returning && (
