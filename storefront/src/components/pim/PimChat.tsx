@@ -151,23 +151,26 @@ export function PimChat() {
     return () => window.removeEventListener("pim-chat-open", handler);
   }, []);
 
-  // Sefa 17 May v30: Teaser bubble 5sn aç + 5sn kapat sonsuz döngü.
-  // - Chat zaten açıksa veya kullanıcı × ile kapattıysa gösterme.
-  // - İlk açılışta 2.5sn delay (sayfa yüklenir yüklenmez patlamasın).
-  // - /admin sayfalarında render olmuyor zaten (üstteki guard).
+  // Sefa 17 May v31: Teaser bubble — optimum asimetrik ritim
+  // v30 (5sn+5sn) çok hızlı / flash gibiydi.
+  // v31: 4sn delay → 6sn açık → 25sn kapalı → 6sn açık → ...
+  // Toplam ~31sn döngü; sayfada ortalama 2-3 kez görünür, yormaz.
   useEffect(() => {
     if (open || teaserDismissed) {
       setShowTeaser(false);
       return;
     }
-    const startDelay = setTimeout(() => setShowTeaser(true), 2500);
-    const interval = setInterval(() => {
-      setShowTeaser((v) => !v);
-    }, 5000);
-    return () => {
-      clearTimeout(startDelay);
-      clearInterval(interval);
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let visible = false;
+    const cycle = () => {
+      visible = !visible;
+      setShowTeaser(visible);
+      // Açık ise 6sn sonra kapat, kapalı ise 25sn sonra aç
+      timeoutId = setTimeout(cycle, visible ? 6000 : 25000);
     };
+    // İlk gösterim için 4sn delay
+    timeoutId = setTimeout(cycle, 4000);
+    return () => clearTimeout(timeoutId);
   }, [open, teaserDismissed]);
 
   // /admin altında render etme — AdminShell'in kendi flow'u var
@@ -175,36 +178,45 @@ export function PimChat() {
 
   return (
     <>
-      {/* Teaser speech bubble (Sefa 17 May v30) — chat butonunun solunda.
-          5sn aç + 5sn kapat döngüsü. Chat açıksa veya × ile dismiss
-          edildiyse gösterilmez. */}
+      {/* Teaser speech bubble (Sefa 17 May v31) — Pim karga marka uyumlu
+          · Krem-soft arka plan (sayfa palette ile uyumlu)
+          · Mini karga mark sol tarafta
+          · Samimi Pim tonu mesaj
+          · 4sn delay → 6sn açık → 25sn kapalı asimetrik döngü */}
       <div
         aria-hidden={!showTeaser}
         className={cn(
           "fixed bottom-7 right-[88px] z-[55]",
-          "transition-all duration-300 ease-out origin-bottom-right",
+          "transition-all duration-400 ease-out origin-bottom-right",
           showTeaser && !open && !teaserDismissed
             ? "opacity-100 translate-x-0 scale-100 pointer-events-auto"
-            : "opacity-0 translate-x-4 scale-95 pointer-events-none"
+            : "opacity-0 translate-x-3 scale-95 pointer-events-none"
         )}
       >
-        <div className="relative bg-white rounded-2xl shadow-2 ring-1 ring-gri-200 pl-4 pr-7 py-2.5 max-w-[230px]">
+        <div className="relative bg-krem-soft rounded-2xl shadow-2 ring-1 ring-krem-koyu/40 pl-3 pr-8 py-2.5 max-w-[260px] flex items-center gap-2.5">
+          {/* Mini karga mark — sol */}
+          <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full bg-white ring-1 ring-krem-koyu/30">
+            <PimAsset variant="icon" bg="light" size={22} bob={false} />
+          </span>
+          {/* Mesaj */}
           <p className="text-[12.5px] text-lacivert leading-snug font-medium">
-            Takıldığın bir nokta varsa{" "}
-            <span className="text-pim-mercan font-semibold">bana danışabilirsin</span>
+            Selam, ben{" "}
+            <span className="text-pim-mercan font-semibold">Pim</span>
+            {" "}— soracağın bir şey mi var?
           </p>
+          {/* × close */}
           <button
             type="button"
             onClick={() => setTeaserDismissed(true)}
             aria-label="Bildirimi kapat"
-            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-gri-100 text-gri-700 text-[12px] leading-none flex items-center justify-center hover:bg-gri-200 hover:text-lacivert transition-colors"
+            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-white/70 text-gri-700 text-[13px] leading-none flex items-center justify-center hover:bg-white hover:text-lacivert transition-colors"
           >
             ×
           </button>
-          {/* Sağ tarafta küçük pointer/ok (chat butonuna doğru) */}
+          {/* Pointer ok — chat butonuna işaret eder */}
           <span
             aria-hidden
-            className="absolute right-[-6px] bottom-4 w-3 h-3 bg-white rotate-45 ring-1 ring-gri-200"
+            className="absolute right-[-6px] bottom-4 w-3 h-3 bg-krem-soft rotate-45 ring-1 ring-krem-koyu/40"
             style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
           />
         </div>
