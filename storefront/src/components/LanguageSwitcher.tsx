@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/context";
-import { LOCALES, LOCALE_LABELS, LOCALE_FLAGS, type Locale } from "@/lib/i18n/types";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/types";
 import { cn } from "@/lib/cn";
 
 export function LanguageSwitcher() {
@@ -35,11 +35,11 @@ export function LanguageSwitcher() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Dil: ${LOCALE_LABELS[locale]}`}
-        className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full text-[13px] font-semibold text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold text-gri-700 hover:bg-gri-100 hover:text-lacivert transition-colors"
       >
-        <span aria-hidden className="text-base leading-none">
-          {LOCALE_FLAGS[locale]}
-        </span>
+        {/* Sefa 17 May v29: Emoji bayraklar Windows'ta TR/GB harfleriyle
+            render olup "TR TR" / "GB ENG" duplicate görüntüsü veriyordu.
+            Tek text kod gösterimi: TR / EN. */}
         <span className="uppercase tracking-wide">{locale}</span>
         <svg
           width="10"
@@ -82,8 +82,17 @@ export function LanguageSwitcher() {
                   : "text-lacivert hover:bg-gri-50"
               )}
             >
-              <span aria-hidden className="text-base leading-none">
-                {LOCALE_FLAGS[l]}
+              {/* Mini text badge — TR / EN */}
+              <span
+                aria-hidden
+                className={cn(
+                  "inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded text-[10.5px] font-bold uppercase tracking-wide",
+                  locale === l
+                    ? "bg-pim-mercan text-white"
+                    : "bg-gri-100 text-gri-700"
+                )}
+              >
+                {l}
               </span>
               <span className="flex-1">{LOCALE_LABELS[l]}</span>
               {locale === l && (

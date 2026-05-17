@@ -15,10 +15,9 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
 };
 
-export const LOCALE_FLAGS: Record<Locale, string> = {
-  tr: "🇹🇷",
-  en: "🇬🇧",
-};
+// Sefa 17 May v29: LOCALE_FLAGS kaldırıldı. Emoji bayraklar Windows'ta
+// metin ile render olduğu için "TR TR" / "GB ENG" duplicate görüntüsü
+// veriyordu. LanguageSwitcher artık text-only badge kullanıyor.
 
 /**
  * Translation dictionary tipi — TR'den otomatik üretilir.

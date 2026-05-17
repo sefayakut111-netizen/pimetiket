@@ -100,13 +100,15 @@ export default function HomePage() {
                   className="absolute left-0 -bottom-1.5 w-full"
                   aria-hidden
                 >
+                  {/* Sefa 17 May v28: çizgi minimal "self-draw" animasyonu
+                      (6s döngü, gözü yormayan yavaş hareket) */}
                   <path
                     d="M2 8 Q60 2 120 8 T238 6"
                     stroke="currentColor"
                     strokeWidth="3"
                     fill="none"
                     strokeLinecap="round"
-                    opacity="0.5"
+                    className="h1-underline-anim"
                   />
                 </svg>
               </span>

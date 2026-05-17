@@ -183,6 +183,35 @@
   }
 }
 
+/* Hero h1 alt çizgi — minimal "self-drawing" hareket (Sefa 17 May v28).
+   Soldan sağa hafif çizilir, opasite dalgalanır, sağdan kayar.
+   6s döngü → çok yavaş, gözü yormaz. */
+@keyframes h1-underline-draw {
+  0% {
+    stroke-dashoffset: 240;
+    opacity: 0;
+  }
+  20%, 75% {
+    stroke-dashoffset: 0;
+    opacity: 0.55;
+  }
+  100% {
+    stroke-dashoffset: -240;
+    opacity: 0;
+  }
+}
+.h1-underline-anim {
+  stroke-dasharray: 240;
+  animation: h1-underline-draw 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .h1-underline-anim {
+    animation: none !important;
+    stroke-dasharray: none;
+    opacity: 0.5;
+  }
+}
+
 /* ---------- Base ---------- */
 body {
   font-family: var(--font-sans);

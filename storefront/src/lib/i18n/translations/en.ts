@@ -39,8 +39,8 @@ export const en: TranslationDict = {
   },
   home: {
     eyebrow: "Smart digital printing ecosystem",
-    h1Brand: "Your brand's label,",
-    h1Idea: "your idea's sticker.",
+    h1Brand: "Your Brand's Label,",
+    h1Idea: "Your Idea's Sticker.",
     heroDescription:
       "For label or sticker solutions tailored to your needs, chat with our AI-powered assistant Pim for support.",
     ctaEtiket: "Print labels",

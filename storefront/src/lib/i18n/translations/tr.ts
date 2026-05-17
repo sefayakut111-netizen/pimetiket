@@ -39,8 +39,8 @@ export const tr: TranslationDict = {
   },
   home: {
     eyebrow: "Akıllı dijital baskı ekosistemi",
-    h1Brand: "Markanın etiketi,",
-    h1Idea: "fikrinin sticker'ı.",
+    h1Brand: "Markanın Etiketi,",
+    h1Idea: "Fikrinin Sticker'ı.",
     heroDescription:
       "İhtiyacınıza özel etiket veya sticker çözümleri için yapay zeka tabanlı Pim ile sohbet edip destek alabilirsiniz.",
     ctaEtiket: "Etiket bastır",
