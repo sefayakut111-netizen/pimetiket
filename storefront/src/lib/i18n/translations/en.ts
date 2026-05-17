@@ -38,11 +38,11 @@ export const en: TranslationDict = {
     returns: "My returns",
   },
   home: {
-    eyebrow: "Smart digital print workshop",
+    eyebrow: "Smart digital printing ecosystem",
     h1Brand: "Your brand's label,",
     h1Idea: "your idea's sticker.",
     heroDescription:
-      "Labels from 1,000, stickers from 25. AI checks your file and tells you what's missing. We ship within 5 business days.",
+      "For label or sticker solutions tailored to your needs, chat with our AI-powered assistant Pim for support.",
     ctaEtiket: "Print labels",
     ctaSticker: "Print stickers",
     socialProof: "Trusted by brands across Türkiye",

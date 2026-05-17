@@ -38,11 +38,11 @@ export const tr: TranslationDict = {
     returns: "İadelerim",
   },
   home: {
-    eyebrow: "Akıllı dijital baskı atölyesi",
+    eyebrow: "Akıllı dijital baskı ekosistemi",
     h1Brand: "Markanın etiketi,",
     h1Idea: "fikrinin sticker'ı.",
     heroDescription:
-      "Etiket 1.000 adetten, sticker 25 adetten. AI dosyana bakar, eksiği söyler. 5 iş günü içinde kargoya veriyoruz.",
+      "İhtiyacınıza özel etiket veya sticker çözümleri için yapay zeka tabanlı Pim ile sohbet edip destek alabilirsiniz.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
     socialProof: "Türkiye'den markaların tercihi",

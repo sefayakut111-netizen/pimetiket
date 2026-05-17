@@ -241,7 +241,9 @@ export function Footer() {
           {/* Link columns */}
           {FOOTER_GROUPS.map((g) => (
             <div key={g.t}>
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-white/65">
+              {/* Sefa 17 May v27: sütun başlıkları mercan rengine
+                  (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan">
                 {g.t}
               </div>
               <div className="flex flex-col gap-2">
