@@ -270,8 +270,7 @@ export const en: TranslationDict = {
     sendLabel: "Send",
   },
   footer: {
-    tagline:
-      "Smart digital printing — for small brands and growing teams.",
+    tagline: "Smart digital printing",
     newsletterEyebrow: "Pim's notebook",
     newsletterTitle: "Read the print guide first",
     newsletterDesc:
