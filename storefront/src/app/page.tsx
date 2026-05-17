@@ -10,56 +10,17 @@
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Pill, Eyebrow } from "@/components/ui";
+import { Button, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
-import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
-import { quoteCustomerEtiket } from "@/lib/etiket-customer-pricing";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
-import { QuickReorderWidget } from "@/components/home/QuickReorderWidget";
 import { useSiteImage } from "@/lib/site-images-client";
 import { useUser } from "@/lib/supabase/use-user";
 
-// Anasayfa baseline fiyatları — engine'den hesaplanır (server-side, build time).
-// "Popüler tier × tipik boyut × sade konfigürasyon" ile gösterilir.
-// Sticker 250 (popüler), etiket 2000 (popüler) — fixed cost yayıldığında
-// daha makul birim fiyat görünür ("ucuz baskı" mesajıyla uyumlu).
-function baselineStickerPrice(): number | "—" {
-  // 250 adet (popüler tier) baseline — fixed cost yayılınca makul birim
-  const r = quoteCustomerSticker({
-    width: 75,
-    height: 75,
-    material: "vinil",
-    finish: "parlak",
-    qty: 250,
-  });
-  if (!r.ok) return "—";
-  return r.unitPrice;
-}
-
-function baselineEtiketPrice(): number | "—" {
-  const r = quoteCustomerEtiket({
-    width: 60,
-    height: 80,
-    qty: 2000,
-    material: "kraft",
-    coating: "yok",
-    customization: "yok",
-  });
-  if (!r.ok) return "—";
-  return r.unitPrice;
-}
-
-/** Locale-aware unit price format — TR "2,05 TL/adet", EN "2.05 TRY/pc" */
-function formatUnitPriceLocale(
-  value: number | "—" | string,
-  locale: "tr" | "en"
-): string {
-  if (value === "—" || typeof value !== "number") return "—";
-  if (locale === "en") {
-    return `${value.toFixed(2)} TRY/pc`;
-  }
-  return `${value.toFixed(2).replace(".", ",")} TL/adet`;
-}
+// Sefa kararı 17 May v11: baselineStickerPrice/baselineEtiketPrice/
+// formatUnitPriceLocale helper'ları + QuickReorderWidget + Product
+// Cards section'ları kaldırıldı (anasayfa sadeleştirildi).
+// ProductCard sub-component'i, RolloPreview/StickerPile mockup'ları da
+// kullanılmıyor → silindi.
 
 const FAQ_QUESTIONS_TR = [
   {
@@ -94,10 +55,10 @@ const FAQ_QUESTIONS_EN = [
 export default function HomePage() {
   const { t, locale } = useT();
   const { user } = useUser();
-  // Admin panelinden yüklenen görsel slot'lar (varsa fallback'leri ezer)
+  // Admin panelinden yüklenen görsel slot'u (varsa Pim fallback'i ezer)
+  // Product Cards kaldırıldığı için home_etiket_card / home_sticker_card
+  // artık kullanılmıyor (slot'lar admin'de hâlâ durur, ileride kullanılırsa).
   const homeHero = useSiteImage("home_hero");
-  const etiketCardImage = useSiteImage("home_etiket_card");
-  const stickerCardImage = useSiteImage("home_sticker_card");
 
   // PILLARS array kaldırıldı (Sefa kararı 17 May v10) — section silindi
 
@@ -232,59 +193,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Quick reorder — sadece login + sipariş geçmişi varsa görünür */}
-      <QuickReorderWidget />
-
-      {/* Sefa kararı 17 May v10: 3 PILLAR card section kaldırıldı
-          (Etiket 1.000'den / AI dosyana bakar / Hızlı teslim).
-          Hero açıklamasıyla duplicate → Quick reorder'dan direkt
-          Product Cards'a geçiş daha sade. */}
-
-      {/* ============================== PRODUCT CARDS ============================== */}
-      <section className="py-12">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Sefa 17 May P1-7: "1000 from" → "From 1,000" (EN sözdizimi)
-              + unit price locale-aware */}
-          <ProductCard
-            kind="etiket"
-            title={t.nav.etiket}
-            sub={t.home.productEtiketSub}
-            from={
-              locale === "en" ? "From 1,000" : `${t.home.productFrom} 1000`
-            }
-            price={formatUnitPriceLocale(baselineEtiketPrice(), locale)}
-            href="/etiket"
-            priceLabel={t.home.productPriceLabel}
-            ctaLabel={t.home.productConfigure}
-            customImage={
-              etiketCardImage
-                ? {
-                    url: etiketCardImage.publicUrl,
-                    alt: etiketCardImage.altText ?? t.nav.etiket,
-                  }
-                : null
-            }
-          />
-          <ProductCard
-            kind="sticker"
-            title={t.nav.sticker}
-            sub={t.home.productStickerSub}
-            from={locale === "en" ? "From 25" : `${t.home.productFrom} 25`}
-            price={formatUnitPriceLocale(baselineStickerPrice(), locale)}
-            href="/sticker"
-            priceLabel={t.home.productPriceLabel}
-            ctaLabel={t.home.productConfigure}
-            customImage={
-              stickerCardImage
-                ? {
-                    url: stickerCardImage.publicUrl,
-                    alt: stickerCardImage.altText ?? t.nav.sticker,
-                  }
-                : null
-            }
-          />
-        </div>
-      </section>
+      {/* Sefa kararı 17 May v11: QuickReorderWidget + Product Cards
+          section'ları kaldırıldı.
+          - "YENİDEN BASTIR" card (sticker · kare · 50×50mm · 1.520 TL) →
+            kullanıcı zaten /panelim'de geçmiş siparişlerini görüyor
+          - Etiket / Sticker product cards (2,05 TL/adet · 30,55 TL/adet) →
+            hero'da iki büyük CTA buton ("Etiket bastır" + "Sticker bastır")
+            zaten aynı yere yönlendiriyor; duplicate.
+          Yeni akış: Hero → How it works → Reviews → FAQ */}
 
       {/* ============================== HOW IT WORKS ============================== */}
       <section className="py-20 bg-gri-50">
@@ -467,199 +383,3 @@ export default function HomePage() {
   );
 }
 
-// ============================================================
-// Sub-components
-// ============================================================
-
-function ProductCard({
-  kind,
-  title,
-  sub,
-  from,
-  price,
-  href,
-  priceLabel,
-  ctaLabel,
-  customImage,
-}: {
-  kind: "etiket" | "sticker";
-  title: string;
-  sub: string;
-  from: string;
-  price: string;
-  href: string;
-  priceLabel: string;
-  ctaLabel: string;
-  customImage?: { url: string; alt: string } | null;
-}) {
-  const isEtiket = kind === "etiket";
-  return (
-    <Link
-      href={href}
-      className="text-left bg-white rounded-2xl shadow-1 ring-1 ring-black/[0.04] overflow-hidden flex flex-col sm:flex-row hover:-translate-y-0.5 transition-transform"
-    >
-      <div
-        className={`flex-shrink-0 w-full sm:w-60 grid place-items-center min-h-[180px] sm:min-h-[220px] overflow-hidden ${
-          isEtiket ? "bg-krem" : ""
-        }`}
-        style={
-          !isEtiket && !customImage
-            ? {
-                background: "linear-gradient(135deg, #FFE7D6 0%, #FFA89E 100%)",
-              }
-            : undefined
-        }
-      >
-        {customImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={customImage.url}
-            alt={customImage.alt}
-            className="w-full h-full object-cover"
-          />
-        ) : isEtiket ? (
-          <RolloPreview />
-        ) : (
-          <StickerPile />
-        )}
-      </div>
-      <div className="p-7 flex-1">
-        <div className="flex items-center gap-2 mb-1.5">
-          <h3 className="text-2xl font-semibold m-0">{title}</h3>
-          <Pill variant="krem">{from}</Pill>
-        </div>
-        <p className="text-base text-gri-700 mb-4 mt-1 leading-relaxed">
-          {sub}
-        </p>
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="text-[11.5px] uppercase tracking-[0.04em] font-semibold text-gri-700">
-              {title} {priceLabel}
-            </div>
-            <div className="font-bold text-[22px]">{price}</div>
-          </div>
-          <span className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold">
-            {ctaLabel} <Icon.ArrowR size={16} />
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function RolloPreview() {
-  return (
-    <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden>
-      <defs>
-        <linearGradient id="rollo" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#E8DCC4" />
-          <stop offset="50%" stopColor="white" />
-          <stop offset="100%" stopColor="#E8DCC4" />
-        </linearGradient>
-      </defs>
-      <ellipse cx="90" cy="40" rx="62" ry="14" fill="#1F2937" opacity="0.08" />
-      <rect x="28" y="40" width="124" height="100" fill="url(#rollo)" />
-      <ellipse cx="90" cy="40" rx="62" ry="14" fill="white" />
-      <ellipse
-        cx="90"
-        cy="40"
-        rx="62"
-        ry="14"
-        fill="none"
-        stroke="#1F2937"
-        strokeWidth="1"
-        opacity="0.2"
-      />
-      <rect
-        x="50"
-        y="60"
-        width="80"
-        height="60"
-        rx="6"
-        fill="white"
-        stroke="#1F2937"
-        strokeWidth="1"
-      />
-      <text
-        x="90"
-        y="86"
-        textAnchor="middle"
-        fontWeight="700"
-        fontSize="14"
-        fill="#1F2937"
-        fontFamily="Nunito"
-      >
-        OLEA
-      </text>
-      <text
-        x="90"
-        y="102"
-        textAnchor="middle"
-        fontSize="9"
-        fill="#FF6B5B"
-        fontFamily="Nunito"
-        fontWeight="600"
-      >
-        DOĞAL SABUN
-      </text>
-      <line
-        x1="60"
-        y1="110"
-        x2="120"
-        y2="110"
-        stroke="#1F2937"
-        strokeWidth="0.5"
-        opacity="0.3"
-      />
-      <ellipse cx="90" cy="140" rx="62" ry="14" fill="#1F2937" opacity="0.05" />
-    </svg>
-  );
-}
-
-function StickerPile() {
-  return (
-    <svg width="200" height="180" viewBox="0 0 200 180" aria-hidden>
-      <g transform="translate(40 30) rotate(-12)">
-        <rect
-          width="100"
-          height="100"
-          rx="20"
-          fill="white"
-          stroke="#1F2937"
-          strokeWidth="1.5"
-        />
-        <text
-          x="50"
-          y="58"
-          textAnchor="middle"
-          fontWeight="800"
-          fontSize="28"
-          fill="#FF6B5B"
-          fontFamily="Nunito"
-        >
-          PİM
-        </text>
-      </g>
-      <g transform="translate(70 50) rotate(8)">
-        <circle cx="50" cy="50" r="50" fill="#1F2937" />
-        <text
-          x="50"
-          y="58"
-          textAnchor="middle"
-          fontWeight="800"
-          fontSize="22"
-          fill="white"
-          fontFamily="Nunito"
-        >
-          YENİ!
-        </text>
-      </g>
-      <g transform="translate(30 80) rotate(15)">
-        <path
-          d="M50 0 L60 38 L100 38 L68 60 L80 100 L50 75 L20 100 L32 60 L0 38 L40 38 Z"
-          fill="#FF9933"
-        />
-      </g>
-    </svg>
-  );
-}
