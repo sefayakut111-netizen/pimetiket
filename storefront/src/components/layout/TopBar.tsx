@@ -154,7 +154,8 @@ export function TopBar() {
           aria-label="Pim Etiket"
           className="shrink-0 flex-1 md:flex-none"
         >
-          <PimAsset variant="logo" size={180} bob={false} />
+          {/* TopBar açık zemin → light-bg lockup (koyu logo) */}
+          <PimAsset variant="logo" bg="light" size={180} bob={false} />
         </Link>
 
         {/* Desktop Nav — Sefa 17 May Dalga 2 #12:

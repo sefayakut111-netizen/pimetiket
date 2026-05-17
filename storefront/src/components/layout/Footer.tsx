@@ -199,10 +199,11 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link
               href="/"
-              className="inline-flex items-center bg-white rounded-xl px-3 py-2 mb-3"
+              className="inline-flex items-center mb-3"
               aria-label="Pim Etiket — Anasayfa"
             >
-              <PimAsset variant="logo" size={160} bob={false} />
+              {/* Footer lacivert zemin → dark-bg lockup (krem logo) */}
+              <PimAsset variant="logo" bg="dark" size={160} bob={false} />
             </Link>
             <p className="text-[12.5px] text-white/55 leading-relaxed max-w-[260px]">
               {t.footer.tagline}

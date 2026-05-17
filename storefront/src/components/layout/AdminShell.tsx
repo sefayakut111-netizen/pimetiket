@@ -405,9 +405,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href="/admin"
             className="flex items-center gap-2.5 font-semibold text-[15px]"
           >
-            <span className="bg-white rounded p-0.5">
-              <PimAsset variant="icon" size={26} bob={false} />
-            </span>
+            {/* Admin sidebar lacivert zemin → mark-light (krem icon) */}
+            <PimAsset variant="icon" bg="dark" size={28} bob={false} />
             <span>Admin Panel</span>
           </Link>
           {/* Mobile close button */}

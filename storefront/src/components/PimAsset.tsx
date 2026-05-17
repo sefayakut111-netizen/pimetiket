@@ -1,33 +1,55 @@
 /**
- * PimAsset — 3 mascot varyasyonu için image wrapper.
+ * PimAsset — mascot/logo wrapper.
  *
- * Kaynak (Sefa'nın illüstratör çıktıları, SVG):
- *   /pim/pim-detailed.svg  → tek baykuş tam karakter (Hero, CTA)
- *   /pim/pim-icon.svg      → sadece kafa (favicon, mini avatar)
- *   /pim/pim-logo.svg      → mascot + "pim etiket" wordmark (topbar, footer)
+ * Sefa 17 May v24: Yeni logo seti (Bricolage Grotesque + mark/lockup).
  *
- * SVG'ler şu an path-traced sırasında siyah olarak gelmiş; Sefa renk
- * kodlarını sonra düzeltecek. Renkli versiyon production'a aynı yolla
- * gidecek (PimAsset değişmez).
+ * Kaynak dosyalar:
+ *   /pim/pim-etiket-mark-dark.svg     → sadece karga sembolü (koyu, açık zeminler)
+ *   /pim/pim-etiket-mark-light.svg    → sadece karga sembolü (krem, koyu zeminler)
+ *   /pim/pim-etiket-lockup-light-bg.svg → mascot + "pim etiket" wordmark (açık zemin)
+ *   /pim/pim-etiket-lockup-dark-bg.svg  → mascot + "pim etiket" wordmark (koyu zemin)
  *
- * PNG/JPG yedekleri yine /pim/* altında duruyor.
+ * Variant + bg matrisi:
+ *   variant="logo" bg="light" → lockup-light-bg (TopBar, açık sidebar)
+ *   variant="logo" bg="dark"  → lockup-dark-bg  (Footer lacivert, dark overlay)
+ *   variant="icon" bg="light" → mark-dark       (admin sidebar beyaz, light card)
+ *   variant="icon" bg="dark"  → mark-light      (mercan/lacivert chat button)
+ *
+ * Backward compat: variant="detailed" → icon olarak alias'lanır (eski Pim
+ * component'i kullanıyor; yeni set'te "detailed" karşılığı yok).
  */
 
 import { cn } from "@/lib/cn";
 
 export type PimVariant = "detailed" | "icon" | "logo";
+export type PimBg = "light" | "dark";
 
-const SOURCES: Record<
-  PimVariant,
-  { src: string; aspect: number }
-> = {
-  detailed: { src: "/pim/pim-detailed.svg", aspect: 1 },
-  icon: { src: "/pim/pim-icon.svg", aspect: 1 },
-  logo: { src: "/pim/pim-logo.svg", aspect: 1920 / 500 }, // ~3.84:1
+type AssetEntry = { src: string; aspect: number };
+
+/** variant × bg → asset.
+ *  - aspect: width/height. logo = 690/240 ≈ 2.875, icon = 1 (kare). */
+const ASSETS: Record<PimVariant, Record<PimBg, AssetEntry>> = {
+  logo: {
+    light: { src: "/pim/pim-etiket-lockup-light-bg.svg", aspect: 690 / 240 },
+    dark: { src: "/pim/pim-etiket-lockup-dark-bg.svg", aspect: 690 / 240 },
+  },
+  icon: {
+    // Açık zemin → koyu mark · Koyu zemin → açık mark
+    light: { src: "/pim/pim-etiket-mark-dark.svg", aspect: 1 },
+    dark: { src: "/pim/pim-etiket-mark-light.svg", aspect: 1 },
+  },
+  // detailed → icon alias'ı (eski Pim component'i için backward compat)
+  detailed: {
+    light: { src: "/pim/pim-etiket-mark-dark.svg", aspect: 1 },
+    dark: { src: "/pim/pim-etiket-mark-light.svg", aspect: 1 },
+  },
 };
 
 interface PimAssetProps {
   variant?: PimVariant;
+  /** Zemin rengi. "light" = açık zemin → koyu logo göster.
+   *  "dark" = koyu zemin → açık logo göster. */
+  bg?: PimBg;
   size?: number; // longest side (px)
   bob?: boolean;
   className?: string;
@@ -36,19 +58,20 @@ interface PimAssetProps {
 
 export function PimAsset({
   variant = "detailed",
+  bg = "light",
   size = 300,
   bob = true,
   className,
   ariaLabel,
 }: PimAssetProps) {
-  const { src, aspect } = SOURCES[variant];
+  const { src, aspect } = ASSETS[variant][bg];
   const w = aspect >= 1 ? size : size * aspect;
   const h = aspect >= 1 ? size / aspect : size;
 
   return (
     <span
       role="img"
-      aria-label={ariaLabel ?? `Pim baykuş (${variant})`}
+      aria-label={ariaLabel ?? `Pim Etiket logo (${variant})`}
       className={cn(
         "inline-block leading-none align-top",
         bob && "animate-pim-bob",

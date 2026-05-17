@@ -166,9 +166,8 @@ export function PimChat() {
         )}
       >
         <span className="relative inline-flex items-center justify-center h-14 w-14 rounded-full bg-pim-mercan shadow-mercan-lg ring-4 ring-white hover:scale-105 transition-transform">
-          <span className="text-white">
-            <PimAsset variant="icon" size={36} bob={false} />
-          </span>
+          {/* Mercan koyu zemin → mark-light (krem icon) */}
+          <PimAsset variant="icon" bg="dark" size={36} bob={false} />
           {unread > 0 && (
             <span
               aria-hidden
@@ -199,9 +198,8 @@ export function PimChat() {
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gri-200 bg-gradient-to-br from-pim-mercan-tint to-white">
           <span className="grid place-items-center h-10 w-10 rounded-full bg-pim-mercan ring-2 ring-white shadow-1">
-            <span className="text-white">
-              <PimAsset variant="icon" size={28} bob={false} />
-            </span>
+            {/* Chat header mercan koyu → mark-light */}
+            <PimAsset variant="icon" bg="dark" size={28} bob={false} />
           </span>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-[15px] leading-tight text-lacivert">
