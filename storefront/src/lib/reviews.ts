@@ -340,7 +340,15 @@ function normalizePhoto(raw: unknown): ReviewPhoto | null {
   return null;
 }
 
+/**
+ * Photo URL builder — 3 path tipi destekler (Sefa 17 May v35):
+ * 1. "/reviews/foo.jpg" (slash ile başlar) → yerel public/ direkt
+ * 2. "https://..." → tam URL, dokunma (zaten public)
+ * 3. "fake-1/foo.jpg" → Supabase Storage review-photos bucket
+ */
 function buildPhotoUrl(path: string): string {
+  if (path.startsWith("/")) return path; // local public/
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) return path;
   return `${supabaseUrl}/storage/v1/object/public/review-photos/${path}`;
