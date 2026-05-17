@@ -351,15 +351,27 @@ export default function FiyatHesaplaPage() {
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        {/* Profile rozeti — Sefa 17 May v4: hangi ürün için olduğu net görünsün */}
+        <div className="mb-4 inline-flex items-center gap-2 px-3 h-8 rounded-full bg-pim-mercan-tint text-pim-mercan ring-1 ring-pim-mercan/30 text-[13px] font-bold uppercase tracking-[0.04em]">
+          🏷 STİCKER FİYAT HESABI
+        </div>
+
         {/* Header */}
         <div className="flex items-end justify-between flex-wrap gap-4 mb-5">
           <div>
-            <Eyebrow>Operatör</Eyebrow>
+            <Eyebrow>Operatör · Hesaplama aracı</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Fiyat Hesapla
+              Sticker Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              Manuel hesap + parametre tuning. Pricing-engine v0.4.
+              <strong>Sticker (vinil/transparan/holo/simli)</strong> için manuel
+              hesap + parametre tuning. Etiket için{" "}
+              <a
+                href="/admin/fiyat-hesapla-etiket"
+                className="text-pim-mercan font-semibold hover:underline"
+              >
+                ayrı sayfa →
+              </a>
             </p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">

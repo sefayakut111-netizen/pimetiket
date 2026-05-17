@@ -101,8 +101,8 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/iadeler": "İade talepleri",
   "/admin/kuponlar": "Kuponlar",
   "/admin/calisanlar": "Çalışanlar",
-  "/admin/fiyat-hesapla": "Fiyat hesapla — sticker",
-  "/admin/fiyat-hesapla-etiket": "Fiyat hesapla — etiket",
+  "/admin/fiyat-hesapla": "🏷 Sticker fiyat hesabı",
+  "/admin/fiyat-hesapla-etiket": "📋 Rulo etiket fiyat hesabı",
   "/admin/raporlar": "Raporlar",
   "/admin/audit-log": "Denetim kaydı",
   "/admin/kvkk-talepleri": "KVKK talepleri",
@@ -313,9 +313,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Çalışanlar",
             icon: <Icon.User size={16} />,
           },
+          // Sefa 17 May v4: Fiyat hesaplama 2 ayrı link (sticker + etiket).
+          // Hangi ürün için olduğu sidebar'dan da görünür.
           {
             href: "/admin/fiyat-hesapla",
-            label: "Fiyat hesapla",
+            label: "Sticker fiyat hesabı",
+            icon: <Icon.Bolt size={16} />,
+          },
+          {
+            href: "/admin/fiyat-hesapla-etiket",
+            label: "Etiket fiyat hesabı",
             icon: <Icon.Bolt size={16} />,
           },
         ],
