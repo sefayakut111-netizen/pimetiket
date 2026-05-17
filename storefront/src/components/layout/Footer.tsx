@@ -39,19 +39,28 @@ export function Footer() {
     },
     {
       t: t.footer.groupCompany,
-      // Sefa 16 May denetim #22: Blog hem Ürün hem Şirket'te tekrar
-      // ediyordu — Ürün'de bırakıldı, Şirket'ten kaldırıldı.
+      // Sefa 17 May v16: Bottom strip'teki legal linkler sütunlara dağıtıldı.
+      // Şirket → kurumsal yasal (KVKK / Gizlilik / Kullanım Şartları)
       links: [
         { label: t.nav.about, href: "/hakkimizda" },
         { label: t.nav.contact, href: "/iletisim" },
+        { label: "KVKK", href: "/kvkk" },
+        { label: "Gizlilik", href: "/gizlilik" },
+        { label: "Kullanım Şartları", href: "/sartlar" },
       ],
     },
     {
       t: t.footer.groupSupport,
+      // Sefa 17 May v16: Alışveriş/iade yasal metinleri buraya
+      // (Çerez / Ön Bilgilendirme / Mesafeli Satış / Cayma Hakkı)
       links: [
         { label: "SSS", href: "/sss" },
         { label: "İade talebi oluştur", href: "/iade-talep" },
         { label: "İade-değişim politikası", href: "/iade-degisim-politikasi" },
+        { label: "Çerez Politikası", href: "/cerez" },
+        { label: "Ön Bilgilendirme", href: "/on-bilgilendirme" },
+        { label: "Mesafeli Satış", href: "/mesafeli-satis" },
+        { label: "Cayma Hakkı", href: "/cayma-hakki" },
       ],
     },
     {
@@ -65,16 +74,8 @@ export function Footer() {
     },
   ];
 
-  const LEGAL_LINKS: FooterLink[] = [
-    { label: "KVKK", href: "/kvkk" },
-    { label: "Gizlilik", href: "/gizlilik" },
-    { label: "Kullanım", href: "/sartlar" },
-    { label: "Çerez", href: "/cerez" },
-    { label: "Ön Bilgilendirme", href: "/on-bilgilendirme" },
-    { label: "Mesafeli Satış", href: "/mesafeli-satis" },
-    { label: "Cayma Hakkı", href: "/cayma-hakki" },
-    { label: "İade & Değişim", href: "/iade-degisim-politikasi" },
-  ];
+  // LEGAL_LINKS kaldırıldı (Sefa 17 May v16) — tüm linkler artık
+  // FOOTER_GROUPS içindeki Şirket + Destek sütunlarında.
 
   const onSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,21 +267,11 @@ export function Footer() {
             Yasal zorunluluk için bu bilgiler "Hakkımızda" ve "İletişim"
             sayfalarında zaten mevcut (Mesafeli Satış Yönetmeliği m.5/b). */}
 
-        {/* Bottom strip — © + legal links */}
-        <div className="pt-5 mt-5 border-t border-white/10 flex flex-col md:flex-row md:justify-between md:items-center text-[12px] text-white/65 gap-3">
+        {/* Bottom strip — © (Sefa 17 May v16: legal linkler yukarı
+            sütunlara taşındı, burada sadece copyright kalır) */}
+        <div className="pt-5 mt-5 border-t border-white/10 flex justify-center md:justify-start text-[12px] text-white/65">
           <div>
             © {new Date().getFullYear()} {t.footer.copyright}
-          </div>
-          <div className="flex gap-x-4 gap-y-1.5 flex-wrap">
-            {LEGAL_LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="hover:text-white transition-colors"
-              >
-                {l.label}
-              </Link>
-            ))}
           </div>
         </div>
       </div>
