@@ -14,7 +14,10 @@
 import { quoteEtiket, type QuoteResult } from "./pricing-engine";
 import { getDefaultInput } from "./pricing-profiles";
 
-export type EtiketMaterialId = "kraft" | "beyaz" | "kuse" | "ultra" | "metalik";
+// Sefa 18 May v42: "seffaf" eklendi (Şeffaf Etiket). Pricing engine
+// fiyatı henüz tanımlı değil → quoteEtiket içinde MATERIAL_RATES'e
+// eklenene kadar ultra ile aynı fiyat olarak değerlendir.
+export type EtiketMaterialId = "kraft" | "beyaz" | "kuse" | "seffaf" | "ultra" | "metalik";
 export type EtiketCoatingId = "yok" | "mat" | "parlak" | "soft";
 export type EtiketCustomId = "yok" | "emboss" | "yaldiz" | "spotuv";
 

@@ -185,12 +185,14 @@ export interface EtiketMaterial {
 
 export const ETIKET_MATERIALS: EtiketMaterial[] = [
   { id: "kraft", name: "Kraft", desc: "Doğal, dokunsal", swatch: "#C9A47A", multiplier: 1.0 },
-  { id: "beyaz", name: "Beyaz semi-glos", desc: "Klasik, parlak", swatch: "#F8F8F4", multiplier: 1.10 },
+  { id: "beyaz", name: "Opak PP", desc: "Yırtılmaz, suya dayanıklı", swatch: "#F8F8F4", multiplier: 1.10 },
   // Sefa eklemesi (15 May): Kuşe — standart matbaa kaplamalı kağıdı.
   // Hem rulo hem tabaka modunda kullanılır. Kraft'tan biraz pahalı.
-  { id: "kuse", name: "Kuşe", desc: "Mat kaplamalı baskı kağıdı", swatch: "#FAFAF4", multiplier: 1.05 },
-  { id: "ultra", name: "Ultra clear", desc: "Şeffaf cam etkisi", swatch: "linear-gradient(135deg,#E0F2FE,#FFFFFF)", multiplier: 1.35 },
-  { id: "metalik", name: "Metalik", desc: "Folyo gümüş", swatch: "linear-gradient(135deg,#C0C7CD,#EFF2F6,#B2BAC2)", multiplier: 1.60 },
+  { id: "kuse", name: "Kuşe", desc: "Pürüzsüz kâğıt etiket", swatch: "#FAFAF4", multiplier: 1.05 },
+  // Sefa 18 May v42: Şeffaf etiket eklendi (ultra clear'dan biraz ucuz)
+  { id: "seffaf", name: "Şeffaf Etiket", desc: "Arka planı gösteren saydam etiket", swatch: "linear-gradient(135deg,#F0F9FF,#FFFFFF,#E0F2FE)", multiplier: 1.25 },
+  { id: "ultra", name: "Ultra Clear", desc: "Tamamen şeffaf görünmez film", swatch: "linear-gradient(135deg,#E0F2FE,#FFFFFF)", multiplier: 1.35 },
+  { id: "metalik", name: "Metalize", desc: "Parlak metalik yüzey", swatch: "linear-gradient(135deg,#C0C7CD,#EFF2F6,#B2BAC2)", multiplier: 1.60 },
 ];
 
 export interface EtiketCoating {

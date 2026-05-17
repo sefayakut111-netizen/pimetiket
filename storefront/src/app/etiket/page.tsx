@@ -76,13 +76,16 @@ import { StepProgress, VerticalStepProgress } from "@/components/Stepper";
  */
 // Sefa 17 May P1-7: EN locale eklendi (Site denetim raporu i18n leak)
 // id sabit kalır; name/desc locale'a göre seçilir runtime'da.
+// Sefa 18 May v42: Malzeme açıklamaları + Şeffaf Etiket eklendi.
+// note?: opsiyonel uyarı satırı (örn. kraft → "el ile yapıştırmaya
+// uygun değildir"). SelectableCard altına ek satır olarak görünür.
 const MATERIALS = [
   {
     id: "kuse",
     name: "Kuşe Etiket",
     name_en: "Coated paper label",
-    desc: "Mat kaplamalı baskı kağıdı",
-    desc_en: "Matte coated print paper",
+    desc: "Pürüzsüz yüzeyli standart kâğıt etiket.",
+    desc_en: "Smooth-surface standard paper label.",
     swatch: "#FAFAF4",
     modes: ["rulo", "tabaka"] as const,
   },
@@ -90,8 +93,10 @@ const MATERIALS = [
     id: "kraft",
     name: "Kraft Etiket",
     name_en: "Kraft label",
-    desc: "Doğal, dokunsal",
-    desc_en: "Natural, tactile",
+    desc: "Doğal görünümlü, dokulu ekolojik kâğıt.",
+    desc_en: "Natural-look, textured eco paper.",
+    note: "El ile yapıştırmaya uygun değildir.",
+    note_en: "Not suitable for hand application.",
     swatch: "#C9A47A",
     modes: ["rulo", "tabaka"] as const,
   },
@@ -99,26 +104,35 @@ const MATERIALS = [
     id: "beyaz",
     name: "Opak PP Etiket",
     name_en: "Opaque PP label",
-    desc: "Klasik, dayanıklı, parlak",
-    desc_en: "Classic, durable, glossy",
+    desc: "Yırtılmaz, suya dayanıklı plastik etiket.",
+    desc_en: "Tear-proof, water-resistant plastic label.",
     swatch: "#F8F8F4",
     modes: ["rulo", "tabaka"] as const,
   },
   {
+    id: "seffaf",
+    name: "Şeffaf Etiket",
+    name_en: "Transparent label",
+    desc: "Arka planı gösteren saydam etiket.",
+    desc_en: "See-through transparent label.",
+    swatch: "linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 50%, #E0F2FE 100%)",
+    modes: ["rulo"] as const,
+  },
+  {
     id: "ultra",
-    name: "Ultra clear",
-    name_en: "Ultra clear",
-    desc: "Şeffaf cam etkisi",
-    desc_en: "Transparent glass effect",
+    name: "Ultra Clear Etiket",
+    name_en: "Ultra Clear label",
+    desc: "Tamamen şeffaf, görünmez film etiket.",
+    desc_en: "Fully transparent, invisible film label.",
     swatch: "linear-gradient(135deg, #E0F2FE 0%, #FFFFFF 100%)",
     modes: ["rulo"] as const,
   },
   {
     id: "metalik",
-    name: "Metalik",
-    name_en: "Metallic",
-    desc: "Folyo gümüş",
-    desc_en: "Silver foil",
+    name: "Metalize Etiket",
+    name_en: "Metallic label",
+    desc: "Parlak metalik yüzeyli, dikkat çekici.",
+    desc_en: "Glossy metallic finish, eye-catching.",
     swatch:
       "linear-gradient(135deg, #C0C7CD 0%, #EFF2F6 60%, #B2BAC2 100%)",
     modes: ["rulo"] as const,
@@ -165,6 +179,8 @@ const COATINGS = [
 
 type CoatingId = (typeof COATINGS)[number]["id"];
 
+// Sefa 18 May v42: Özelleştirme açıklamaları güncellendi (özel katman
+// notu — yüzey üzerine ek işlem).
 const CUSTOMS = [
   {
     id: "yok",
@@ -175,24 +191,24 @@ const CUSTOMS = [
   },
   {
     id: "emboss",
-    name: "Kabartma (emboss)",
-    name_en: "Emboss",
-    desc: "Logo / metin kabartması",
-    desc_en: "Logo / text emboss",
+    name: "Kabartma (Emboss Lak)",
+    name_en: "Emboss Lacquer",
+    desc: "Yüzeyde dokunsal üç boyutlu etki.",
+    desc_en: "Tactile 3D effect on the surface.",
   },
   {
     id: "yaldiz",
-    name: "Sıcak yaldız",
-    name_en: "Hot foil",
-    desc: "Folyo baskı, premium parıltı",
-    desc_en: "Foil print, premium shine",
+    name: "Sıcak Yaldız",
+    name_en: "Hot Foil",
+    desc: "Isıyla uygulanan parlak metalik detay.",
+    desc_en: "Heat-applied glossy metallic detail.",
   },
   {
     id: "spotuv",
     name: "Spot UV",
     name_en: "Spot UV",
-    desc: "Parlak nokta vurgu",
-    desc_en: "Glossy spot accent",
+    desc: "Belirli alanları parlatan şeffaf katman.",
+    desc_en: "Transparent gloss on selected areas.",
   },
 ] as const;
 
@@ -307,8 +323,8 @@ const FORM_FACTORS: {
     id: "rulo",
     label: "Rulo etiket",
     label_en: "Roll label",
-    desc: "Makine takılabilir, özelleştirme seçenekleri",
-    desc_en: "Machine-applicable, customization options",
+    desc: "Makine ile yapıştırmak için idealdir.",
+    desc_en: "Ideal for machine application.",
   },
   {
     id: "tabaka",
@@ -890,12 +906,16 @@ export default function EtiketPage() {
               />
             </div>
 
-            {/* Step 1 — Malzeme */}
+            {/* Step 1 — Malzeme (Sefa 18 May v42: hint eklendi) */}
             <FormSection
               id="step-1"
               number={uiStepNumber(1)}
               title={t.config.materialTitle}
-              hint=""
+              hint={
+                locale === "en"
+                  ? "Material that the print will be applied on"
+                  : "Baskının uygulanacağı malzeme"
+              }
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {MATERIALS.filter((m) =>
@@ -922,6 +942,17 @@ export default function EtiketPage() {
                         <div className="text-[13px] text-gri-700 mt-0.5">
                           {locale === "en" ? m.desc_en : m.desc}
                         </div>
+                        {/* Sefa 18 May v42: opsiyonel uyarı notu (örn kraft) */}
+                        {"note" in m && (
+                          <div className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-saman-koyu font-medium leading-tight">
+                            <span aria-hidden>⚠</span>
+                            <span>
+                              {locale === "en" && "note_en" in m
+                                ? (m as { note_en: string }).note_en
+                                : (m as { note: string }).note}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <Icon.Info size={14} className="text-gri-500 shrink-0 mt-0.5" />
                     </div>
@@ -981,7 +1012,11 @@ export default function EtiketPage() {
               id="step-3"
               number={uiStepNumber(3)}
               title={t.config.customizationTitle}
-              hint="Birden fazla seçebilirsin (kombine kullanım)"
+              hint={
+                locale === "en"
+                  ? "Special layer — combine multiple options"
+                  : "Özel katman — birden fazla seçebilirsin"
+              }
             >
               <div className="grid grid-cols-2 gap-2.5">
                 {CUSTOMS.map((c) => {
@@ -1825,6 +1860,9 @@ const MAT_BG: Record<MaterialId, string> = {
   beyaz: "linear-gradient(180deg, #FCFCF8 0%, #F0EFE8 100%)",
   // Kuşe (yeni 15 May): hafif krem, mat kaplamalı kağıt hissi
   kuse: "linear-gradient(180deg, #FAFAF4 0%, #EDEDE4 100%)",
+  // Şeffaf etiket (Sefa 18 May v42): hafif saydam, arka planı gösteren
+  seffaf:
+    "linear-gradient(180deg, rgba(240,249,255,0.5) 0%, rgba(255,255,255,0.3) 100%)",
   ultra:
     "linear-gradient(180deg, rgba(220,240,250,0.6) 0%, rgba(255,255,255,0.4) 100%)",
   metalik:
@@ -1872,22 +1910,23 @@ function PreviewCanvas({
   //   - beyaz → düz beyaz (mevcut)
   const ultraCheckerBg =
     "linear-gradient(45deg, #dfe5ea 25%, transparent 25%), linear-gradient(-45deg, #dfe5ea 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #dfe5ea 75%), linear-gradient(-45deg, transparent 75%, #dfe5ea 75%), white";
-  const labelBg =
-    material === "ultra"
-      ? designUrl
-        ? ultraCheckerBg
-        : "rgba(255,255,255,0.5)"
-      : material === "metalik"
-        ? "linear-gradient(135deg,#E5E9EE,#FFFFFF,#C7CFD8)"
-        : material === "kraft"
-          ? "#E8C99B"
-          : "white";
+  // Sefa 18 May v42: seffaf de transparent davranışı alır (ultra gibi)
+  const isTransparent = material === "ultra" || material === "seffaf";
+  const labelBg = isTransparent
+    ? designUrl
+      ? ultraCheckerBg
+      : "rgba(255,255,255,0.5)"
+    : material === "metalik"
+      ? "linear-gradient(135deg,#E5E9EE,#FFFFFF,#C7CFD8)"
+      : material === "kraft"
+        ? "#E8C99B"
+        : "white";
   const labelBgSize =
-    material === "ultra" && designUrl
+    isTransparent && designUrl
       ? "10px 10px, 10px 10px, 10px 10px, 10px 10px, auto"
       : "auto";
   const labelBgPos =
-    material === "ultra" && designUrl
+    isTransparent && designUrl
       ? "0 0, 0 5px, 5px -5px, -5px 0px, 0 0"
       : "0 0";
 
