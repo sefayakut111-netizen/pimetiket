@@ -148,46 +148,42 @@ export default function HomePage() {
                 kaldırıldı, hero açıklamasında zaten geçiyor. */}
           </div>
 
-          {/* RIGHT — Hero görsel (sadeleştirilmiş, Sefa 17 May v9)
-              Önceki versiyonda 6 floating card (Olea/SHIP PIM/Rulo/AI/Truck/Decor)
-              vardı — fazla görsel gürültü → kaldırıldı.
-              Yerine: tek görsel + soft radial halo + edge mask fade. */}
-          <div className="relative flex justify-center items-center min-h-[420px] md:min-h-[480px]">
-            {/* Soft mercan halo — arkada radial gradient yumuşatma */}
+          {/* RIGHT — Hero görsel (Sefa 17 May v12)
+              · 5:4 yatay aspect (önceki kare yerine)
+              · Horizontal elips mask — yanlardan soft fade, üst/alt net
+              · Yerel /hero/home-hero.png (DB'deki homeHero varsa o önceliklidir)
+              · Fallback: Pim baykuş (yerel dosya da yoksa) */}
+          <div className="relative flex justify-center items-center min-h-[360px] md:min-h-[460px]">
+            {/* Soft mercan halo — yatay elips */}
             <div
               aria-hidden
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(ellipse 70% 60% at center, rgba(255,107,91,0.10) 0%, rgba(255,107,91,0.04) 40%, transparent 70%)",
+                  "radial-gradient(ellipse 85% 65% at center, rgba(255,107,91,0.10) 0%, rgba(255,107,91,0.04) 45%, transparent 75%)",
               }}
             />
 
-            {/* Görsel — soft mask + drop shadow */}
-            <div className="relative z-10 w-full max-w-[480px] aspect-square">
-              {homeHero ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={homeHero.publicUrl}
-                  alt={homeHero.altText ?? "Pim Etiket"}
-                  className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(255,107,91,0.18)]"
-                  style={{
-                    // Görselin kenarlarını yumuşat — radial mask
-                    WebkitMaskImage:
-                      "radial-gradient(ellipse 85% 85% at center, black 60%, transparent 100%)",
-                    maskImage:
-                      "radial-gradient(ellipse 85% 85% at center, black 60%, transparent 100%)",
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full grid place-items-center">
-                  <Pim
-                    pose="wave"
-                    size={340}
-                    className="drop-shadow-[0_20px_40px_rgba(255,107,91,0.15)]"
-                  />
-                </div>
-              )}
+            {/* Görsel — 5:4 yatay + horizontal mask + drop shadow.
+                Öncelik: DB (admin paneli) > yerel public/hero/home-hero.png */}
+            <div className="relative z-10 w-full max-w-[640px] aspect-[5/4]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={homeHero?.publicUrl ?? "/hero/home-hero.png"}
+                alt={
+                  homeHero?.altText ??
+                  "Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
+                }
+                className="w-full h-full object-cover drop-shadow-[0_20px_50px_rgba(255,107,91,0.18)]"
+                style={{
+                  // Horizontal elips mask — yanlardan daha fazla fade,
+                  // üst/alt biraz daha net (Sefa "yandaki alanlara soft geçiş" kuralı)
+                  WebkitMaskImage:
+                    "radial-gradient(ellipse 90% 80% at center, black 55%, transparent 100%)",
+                  maskImage:
+                    "radial-gradient(ellipse 90% 80% at center, black 55%, transparent 100%)",
+                }}
+              />
             </div>
           </div>
         </div>
