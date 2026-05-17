@@ -33,6 +33,7 @@ import {
   nextLot,
   peekNextLot,
 } from "@/lib/pricing-pdf";
+import { ProfileTabs } from "@/components/admin/pricing/ProfileTabs";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
 import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
 import { addToCart, type CartItem } from "@/lib/pricing-cart";
@@ -333,27 +334,19 @@ export default function EtiketFiyatHesaplaPage() {
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        {/* Profile rozeti — Sefa 17 May v4 */}
-        <div className="mb-4 inline-flex items-center gap-2 px-3 h-8 rounded-full bg-yesil-soft text-yesil-koyu ring-1 ring-yesil/30 text-[13px] font-bold uppercase tracking-[0.04em]">
-          📋 RULO ETİKET FİYAT HESABI
-        </div>
+        {/* Sefa 17 May v5: Profil tabları üstte */}
+        <ProfileTabs active="rulo" />
 
         {/* Header */}
         <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
           <div>
             <Eyebrow>Operatör · Hesaplama aracı</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Rulo Etiket Fiyat Hesapla
+              📋 Rulo Etiket Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              <strong>Rulo etiket (kraft/kuşe/beyaz/ultra/metalik)</strong>
-              · min 1000 adet · Sticker için{" "}
-              <a
-                href="/admin/fiyat-hesapla"
-                className="text-pim-mercan font-semibold hover:underline"
-              >
-                ayrı sayfa →
-              </a>
+              Kraft / Kuşe / Beyaz / Ultra clear / Metalik · min 1000 adet,
+              rulo başına hesaplama.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">

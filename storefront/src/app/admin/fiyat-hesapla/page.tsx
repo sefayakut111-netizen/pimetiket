@@ -44,6 +44,7 @@ import {
   quoteSticker,
   findTier,
 } from "@/lib/pricing-engine";
+import { ProfileTabs } from "@/components/admin/pricing/ProfileTabs";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
 import { SheetPreviewSvg } from "@/components/admin/pricing/SheetPreviewSvg";
 import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
@@ -351,27 +352,19 @@ export default function FiyatHesaplaPage() {
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-56px)] py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        {/* Profile rozeti — Sefa 17 May v4: hangi ürün için olduğu net görünsün */}
-        <div className="mb-4 inline-flex items-center gap-2 px-3 h-8 rounded-full bg-pim-mercan-tint text-pim-mercan ring-1 ring-pim-mercan/30 text-[13px] font-bold uppercase tracking-[0.04em]">
-          🏷 STİCKER FİYAT HESABI
-        </div>
+        {/* Sefa 17 May v5: Profil tabları üstte — Sticker/Rulo/Tabaka */}
+        <ProfileTabs active="sticker" />
 
         {/* Header */}
         <div className="flex items-end justify-between flex-wrap gap-4 mb-5">
           <div>
             <Eyebrow>Operatör · Hesaplama aracı</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Sticker Fiyat Hesapla
+              🏷 Sticker Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              <strong>Sticker (vinil/transparan/holo/simli)</strong> için manuel
-              hesap + parametre tuning. Etiket için{" "}
-              <a
-                href="/admin/fiyat-hesapla-etiket"
-                className="text-pim-mercan font-semibold hover:underline"
-              >
-                ayrı sayfa →
-              </a>
+              Vinil / Transparan / Holografik / Simli için manuel hesap +
+              parametre tuning.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
