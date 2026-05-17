@@ -238,6 +238,31 @@ export default function StickerPage() {
       return next;
     });
   }, []);
+
+  // Sefa 18 May v66: Cut mode değişince TÜM seçimleri sıfırla
+  // (etiket form factor refresh pattern — birebir paralel).
+  const handleCutModeChange = useCallback(
+    (next: "diecut" | "tabaka") => {
+      if (next === cutMode) return;
+      // Tasarım blob URL'leri temizle (memory leak yok)
+      designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
+      // State'leri default'a döndür
+      setCutMode(next);
+      setTouchedSteps(new Set([1])); // sadece kesim tipi touched
+      setShape("square");
+      setSoftCorners(false);
+      setMaterial("vinil");
+      setFinish("parlak");
+      setTier(250);
+      setWidth(75);
+      setHeight(75);
+      setDesign(null);
+      setDesignCount(1);
+      setDesigns([]);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cutMode, designs]
+  );
   // Sefa 16 May denetim #1: i18n. EN locale'de İngilizce stepper.
   const stepLabels = [
     t.sticker.cutTypeTitle,
@@ -487,18 +512,12 @@ export default function StickerPage() {
                 <CutModeCard
                   kind="tabaka"
                   selected={touchedSteps.has(1) && cutMode === "tabaka"}
-                  onClick={() => {
-                    setCutMode("tabaka");
-                    markTouched(1);
-                  }}
+                  onClick={() => handleCutModeChange("tabaka")}
                 />
                 <CutModeCard
                   kind="diecut"
                   selected={touchedSteps.has(1) && cutMode === "diecut"}
-                  onClick={() => {
-                    setCutMode("diecut");
-                    markTouched(1);
-                  }}
+                  onClick={() => handleCutModeChange("diecut")}
                 />
               </div>
             </FormSection>

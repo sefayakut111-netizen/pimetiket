@@ -193,10 +193,9 @@ export function AddToCartSuccessModal({
           </button>
         </div>
 
-        {/* Mikrokopisi */}
-        <p className="mt-4 text-[11.5px] text-gri-500 text-center leading-relaxed">
-          {t.cart.successNote}
-        </p>
+        {/* Sefa 18 May v66: 'KDV dahil · Onayladığın siparişler...' footnote
+            kaldırıldı — modal'ın amacı sadece sepete ekleme onayı, KDV
+            bilgisi PriceCard'da zaten var. */}
       </div>
     </div>,
     document.body

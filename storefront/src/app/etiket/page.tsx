@@ -1552,20 +1552,10 @@ export default function EtiketPage() {
                   istediği değeri sağdaki ok'larla fine tune ediyor). */}
               <div className="px-1">
                 <div className="flex items-center justify-between mb-2 gap-3">
-                  {/* v64 ux/a11y fix: aria-live polite — touched durumu
-                      ekran okuyucuya bildirilir */}
-                  <span
-                    className="text-[28px] font-bold text-lacivert tabular-nums leading-none"
-                    aria-live="polite"
-                    aria-label={
-                      touchedSteps.has(8)
-                        ? `${qty.toLocaleString("tr-TR")} adet seçildi`
-                        : "Henüz adet seçilmedi"
-                    }
-                  >
-                    {touchedSteps.has(8)
-                      ? qty.toLocaleString("tr-TR")
-                      : "—"}
+                  {/* Sefa 18 May v66: 'adet en alt adetten başlasın'
+                      → touched check kaldırıldı, default minQty her zaman gözüküyor */}
+                  <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
+                    {qty.toLocaleString("tr-TR")}
                     <span className="text-[14px] font-medium text-gri-700 ml-1">
                       adet
                     </span>
