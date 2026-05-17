@@ -44,6 +44,10 @@ export function PimChat() {
   const [memory, setMemory] = useState<PimMemory | null>(null);
   const [persona, setPersona] = useState<PimPersona>("welcome");
   const [unread, setUnread] = useState(0);
+  // Sefa 17 May v30: Otomatik açılıp kapanan teaser bubble.
+  // 5sn açık + 5sn kapalı sonsuz döngü. Kullanıcı × ile kapatabilir.
+  const [showTeaser, setShowTeaser] = useState(false);
+  const [teaserDismissed, setTeaserDismissed] = useState(false);
 
   // Mount'ta memory'yi oku (sadece client). Sefa kuralı: "beni hatırla"
   // sorusu sormayız, KVKK m.5/2-c hizmetin parçası varsayılan açık.
@@ -147,11 +151,65 @@ export function PimChat() {
     return () => window.removeEventListener("pim-chat-open", handler);
   }, []);
 
+  // Sefa 17 May v30: Teaser bubble 5sn aç + 5sn kapat sonsuz döngü.
+  // - Chat zaten açıksa veya kullanıcı × ile kapattıysa gösterme.
+  // - İlk açılışta 2.5sn delay (sayfa yüklenir yüklenmez patlamasın).
+  // - /admin sayfalarında render olmuyor zaten (üstteki guard).
+  useEffect(() => {
+    if (open || teaserDismissed) {
+      setShowTeaser(false);
+      return;
+    }
+    const startDelay = setTimeout(() => setShowTeaser(true), 2500);
+    const interval = setInterval(() => {
+      setShowTeaser((v) => !v);
+    }, 5000);
+    return () => {
+      clearTimeout(startDelay);
+      clearInterval(interval);
+    };
+  }, [open, teaserDismissed]);
+
   // /admin altında render etme — AdminShell'in kendi flow'u var
   if (pathname?.startsWith("/admin")) return null;
 
   return (
     <>
+      {/* Teaser speech bubble (Sefa 17 May v30) — chat butonunun solunda.
+          5sn aç + 5sn kapat döngüsü. Chat açıksa veya × ile dismiss
+          edildiyse gösterilmez. */}
+      <div
+        aria-hidden={!showTeaser}
+        className={cn(
+          "fixed bottom-7 right-[88px] z-[55]",
+          "transition-all duration-300 ease-out origin-bottom-right",
+          showTeaser && !open && !teaserDismissed
+            ? "opacity-100 translate-x-0 scale-100 pointer-events-auto"
+            : "opacity-0 translate-x-4 scale-95 pointer-events-none"
+        )}
+      >
+        <div className="relative bg-white rounded-2xl shadow-2 ring-1 ring-gri-200 pl-4 pr-7 py-2.5 max-w-[230px]">
+          <p className="text-[12.5px] text-lacivert leading-snug font-medium">
+            Takıldığın bir nokta varsa{" "}
+            <span className="text-pim-mercan font-semibold">bana danışabilirsin</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setTeaserDismissed(true)}
+            aria-label="Bildirimi kapat"
+            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-gri-100 text-gri-700 text-[12px] leading-none flex items-center justify-center hover:bg-gri-200 hover:text-lacivert transition-colors"
+          >
+            ×
+          </button>
+          {/* Sağ tarafta küçük pointer/ok (chat butonuna doğru) */}
+          <span
+            aria-hidden
+            className="absolute right-[-6px] bottom-4 w-3 h-3 bg-white rotate-45 ring-1 ring-gri-200"
+            style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
+          />
+        </div>
+      </div>
+
       {/* Floating bubble (her zaman görünür) */}
       <button
         id="pim-chat"
