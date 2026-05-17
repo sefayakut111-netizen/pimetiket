@@ -206,106 +206,45 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* RIGHT — Pim + ürün önizlemeleri (sticker/etiket mockup) */}
-          <div className="relative flex justify-center items-center min-h-[420px]">
-            {/* Decorative card behind */}
+          {/* RIGHT — Hero görsel (sadeleştirilmiş, Sefa 17 May v9)
+              Önceki versiyonda 6 floating card (Olea/SHIP PIM/Rulo/AI/Truck/Decor)
+              vardı — fazla görsel gürültü → kaldırıldı.
+              Yerine: tek görsel + soft radial halo + edge mask fade. */}
+          <div className="relative flex justify-center items-center min-h-[420px] md:min-h-[480px]">
+            {/* Soft mercan halo — arkada radial gradient yumuşatma */}
             <div
               aria-hidden
-              className="absolute w-80 h-80 bg-white rounded-[32px] shadow-2 z-0"
-              style={{ transform: "rotate(-4deg)" }}
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(ellipse 70% 60% at center, rgba(255,107,91,0.10) 0%, rgba(255,107,91,0.04) 40%, transparent 70%)",
+              }}
             />
-            <div
-              aria-hidden
-              className="absolute w-[280px] h-[280px] bg-pim-mercan-tint rounded-[28px] -z-10"
-              style={{ transform: "rotate(6deg) translate(40px, 40px)" }}
-            />
 
-            {/* Floating mini etiket — sol üst */}
-            <div
-              aria-hidden
-              className="absolute top-2 left-0 z-20 hidden sm:block"
-              style={{ transform: "rotate(-10deg)" }}
-            >
-              <div className="w-[72px] h-[96px] rounded-md shadow-2 bg-gradient-to-br from-krem to-krem-koyu ring-1 ring-kahve/10 p-2 flex flex-col items-center justify-center text-kahve">
-                <div className="text-[7px] font-bold tracking-[0.1em] opacity-70">
-                  ZEYTİNYAĞI
-                </div>
-                <div className="text-[14px] font-bold mt-1">Olea</div>
-                <div className="w-8 h-px bg-kahve/30 my-1.5" />
-                <div className="text-[6px] tracking-[0.05em] opacity-60">
-                  100 ml · CMYK
-                </div>
-              </div>
-            </div>
-
-            {/* Floating mini sticker — sağ orta */}
-            <div
-              aria-hidden
-              className="absolute top-12 right-2 z-20 hidden sm:block"
-              style={{ transform: "rotate(8deg)" }}
-            >
-              <div className="w-[72px] h-[72px] rounded-full shadow-2 bg-pim-mercan grid place-items-center ring-2 ring-white">
-                <div className="text-white text-center">
-                  <div className="text-[8px] font-bold tracking-[0.08em]">
-                    SHIP
-                  </div>
-                  <div className="text-[14px] font-bold leading-none">PIM</div>
-                  <div className="text-[7px] mt-0.5 opacity-80">DIE-CUT</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating mini rulo — sol alt */}
-            <div
-              aria-hidden
-              className="absolute bottom-8 left-2 z-20 hidden sm:block"
-              style={{ transform: "rotate(-5deg)" }}
-            >
-              <div className="w-[80px] h-[28px] rounded-full bg-white shadow-2 ring-1 ring-gri-200 flex items-center px-2 gap-1 overflow-hidden">
-                <div className="w-3 h-3 rounded-full bg-gri-200 shrink-0" />
-                <div className="flex-1 flex gap-0.5 items-center overflow-hidden">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-3.5 rounded-[1px] bg-pim-mercan/80 shrink-0"
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-gri-500 text-center mt-1">
-                Rulo etiket
-              </div>
-            </div>
-
-            {/* AI pill (üstte ortalı) */}
-            <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 z-20"
-            >
-              <Pill variant="mercan" className="!h-8 !text-[13px] !px-3.5 shadow-2">
-                <Icon.Sparkle size={14} /> {t.home.aiPill}
-              </Pill>
-            </div>
-
-            {/* Truck pill (sağ alt) */}
-            <div
-              className="absolute bottom-4 right-2 z-20"
-              style={{ transform: "rotate(4deg)" }}
-            >
-              <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-white shadow-2 text-[13px] font-semibold">
-                <Icon.Truck size={14} className="text-pim-mercan" /> {t.home.deliveryPill}
-              </span>
-            </div>
-
-            <div className="relative z-30">
+            {/* Görsel — soft mask + drop shadow */}
+            <div className="relative z-10 w-full max-w-[480px] aspect-square">
               {homeHero ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={homeHero.publicUrl}
                   alt={homeHero.altText ?? "Pim Etiket"}
-                  className="max-w-[300px] h-auto object-contain"
+                  className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(255,107,91,0.18)]"
+                  style={{
+                    // Görselin kenarlarını yumuşat — radial mask
+                    WebkitMaskImage:
+                      "radial-gradient(ellipse 85% 85% at center, black 60%, transparent 100%)",
+                    maskImage:
+                      "radial-gradient(ellipse 85% 85% at center, black 60%, transparent 100%)",
+                  }}
                 />
               ) : (
-                <Pim pose="wave" size={300} />
+                <div className="w-full h-full grid place-items-center">
+                  <Pim
+                    pose="wave"
+                    size={340}
+                    className="drop-shadow-[0_20px_40px_rgba(255,107,91,0.15)]"
+                  />
+                </div>
               )}
             </div>
           </div>
