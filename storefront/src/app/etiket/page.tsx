@@ -19,6 +19,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
+import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
 // kaldırıldı, Pim sadece PimChat floating button'da tek tutarlı persona.
 import { Icon } from "@/components/Icon";
@@ -448,6 +449,9 @@ export default function EtiketPage() {
     () => new Set()
   );
   const [formFactorTouched, setFormFactorTouched] = useState(false);
+  // Sefa 18 May v60: Sepete eklendi pop-up'ı (toast yerine modal)
+  const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
+  const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
   const markTouched = useCallback((n: number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
@@ -743,13 +747,16 @@ export default function EtiketPage() {
     }
     // PendingDesign local-preview blob URL'lerini revoke et (memory leak yok)
     designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
+    // Sefa 18 May v60-v61: toast yerine modal popup; productSummary
+    // locale-aware ('adet'/'etiket' EN'de 'pcs'/'labels')
+    const summary =
+      designs.length > 0
+        ? `${matName} · ${width}×${height} mm · ${designCount} ${locale === "en" ? "designs" : "tasarım"} × ${qty.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} = ${totalEtiketCount.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitLabel}`
+        : `${matName} · ${width}×${height} mm · ${qty.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitPiece}`;
+    setCartSuccessSummary(summary);
+    setCartSuccessOpen(true);
     setDesigns([]);
     setDesignCount(1);
-    toast.success(
-      designs.length > 0
-        ? `Sepete eklendi 🛒 — ${designs.length} tasarım, ${totalEtiketCount.toLocaleString("tr-TR")} etiket`
-        : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
-    );
   }, [
     quote,
     toast,
@@ -1746,6 +1753,13 @@ export default function EtiketPage() {
           <Icon.ArrowR size={14} />
         </button>
       </div>
+
+      {/* Sefa 18 May v60: Sepete eklendi onay pop-up'ı */}
+      <AddToCartSuccessModal
+        open={cartSuccessOpen}
+        onClose={() => setCartSuccessOpen(false)}
+        productSummary={cartSuccessSummary}
+      />
     </main>
   );
 }

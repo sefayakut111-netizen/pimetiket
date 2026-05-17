@@ -211,6 +211,16 @@ export type TranslationDict = {
     continueShopping: string;
     freeShippingHint: (remaining: string) => string;
     summary: string;
+    // Sefa 18 May v60: Sepete eklendi pop-up'ı
+    successTitle: string;
+    successDesc: string;
+    goToCart: string;
+    stayHere: string;
+    successNote: string;
+    // Birimler — productSummary locale-aware
+    unitPiece: string;       // 'adet' / 'pcs'
+    unitLabel: string;       // 'etiket' / 'labels'
+    unitSticker: string;     // 'sticker' / 'stickers'
   };
   checkout: {
     eyebrow: string;

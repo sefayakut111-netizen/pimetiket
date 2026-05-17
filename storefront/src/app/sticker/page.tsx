@@ -20,6 +20,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
+import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
 import {
   SchemaJsonLd,
@@ -226,6 +227,9 @@ export default function StickerPage() {
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
     () => new Set()
   );
+  // Sefa 18 May v60: Sepete eklendi pop-up'ı
+  const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
+  const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
   const markTouched = useCallback((n: number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
@@ -967,6 +971,14 @@ export default function StickerPage() {
                   toast.error(result.reason);
                   return;
                 }
+                // Sefa 18 May v60-v61: toast yerine modal popup; locale-aware
+                const summary =
+                  designs.length > 0
+                    ? `${matName} · ${width}×${height} mm · ${designCount} ${locale === "en" ? "designs" : "tasarım"} × ${tier.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} = ${totalStickerCount.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitSticker}`
+                    : `${matName} · ${width}×${height} mm · ${tier.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitPiece}`;
+                setCartSuccessSummary(summary);
+                setCartSuccessOpen(true);
+
                 // Tasarım state'ini sıfırla — yeni eklemede temiz başla
                 setDesign(null);
                 // Çoklu tasarım kullanıldıysa local preview'ları temizle
@@ -975,13 +987,6 @@ export default function StickerPage() {
                   setDesigns([]);
                   setDesignCount(1);
                 }
-                toast.success(
-                  designs.length > 0
-                    ? `Sepete eklendi 🛒 — ${designs.length} tasarımı sipariş detayında yükleyeceksin`
-                    : design
-                      ? "Sepete eklendi 🛒 — tasarımın bağlandı"
-                      : "Sepete eklendi 🛒 — sepete gitmek için üst menü"
-                );
               }}
             />
             </div>
@@ -1050,6 +1055,13 @@ export default function StickerPage() {
           <Icon.ArrowR size={14} />
         </Link>
       </div>
+
+      {/* Sefa 18 May v60: Sepete eklendi onay pop-up'ı */}
+      <AddToCartSuccessModal
+        open={cartSuccessOpen}
+        onClose={() => setCartSuccessOpen(false)}
+        productSummary={cartSuccessSummary}
+      />
     </main>
   );
 }

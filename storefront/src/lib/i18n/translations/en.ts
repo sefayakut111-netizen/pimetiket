@@ -191,6 +191,16 @@ export const en: TranslationDict = {
     freeShippingHint: (remaining) =>
       `💡 Free shipping over 1,500 TL — ${remaining} TL to go.`,
     summary: "Order summary",
+    // Sefa 18 May v60: Added-to-cart popup
+    successTitle: "Added to cart 🎉",
+    successDesc: "Where to next?",
+    goToCart: "🛒 Go to cart",
+    stayHere: "Keep browsing",
+    successNote:
+      "VAT included · Approved orders ship within 5 business days.",
+    unitPiece: "pcs",
+    unitLabel: "labels",
+    unitSticker: "stickers",
   },
   checkout: {
     eyebrow: "Checkout",

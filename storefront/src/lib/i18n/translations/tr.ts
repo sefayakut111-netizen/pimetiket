@@ -190,6 +190,16 @@ export const tr: TranslationDict = {
     freeShippingHint: (remaining) =>
       `💡 1.500 TL üzeri alışverişlerde kargo ücretsiz — ${remaining} TL kaldı.`,
     summary: "Sipariş özeti",
+    // Sefa 18 May v60: Sepete eklendi pop-up'ı
+    successTitle: "Sepete eklendi 🎉",
+    successDesc: "Devam edelim mi?",
+    goToCart: "🛒 Sepete git",
+    stayHere: "Sayfada kal",
+    successNote:
+      "KDV dahil · Onayladığın siparişler 5 iş günü içinde kargoya verilir.",
+    unitPiece: "adet",
+    unitLabel: "etiket",
+    unitSticker: "sticker",
   },
   checkout: {
     eyebrow: "Ödeme",
