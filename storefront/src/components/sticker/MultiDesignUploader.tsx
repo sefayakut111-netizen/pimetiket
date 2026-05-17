@@ -91,6 +91,12 @@ export function MultiDesignUploader({
       return;
     }
     const accepted: PendingDesign[] = [];
+    // Sefa 18 May v64: Duplicate kontrolü — aynı dosya (ad + boyut)
+    // tekrar yüklenmesin. Set'te mevcut dosyalar referans alınır.
+    const existingKeys = new Set(
+      designs.map((d) => `${d.name}__${d.sizeBytes}`)
+    );
+    const newKeys = new Set<string>(); // aynı batch içinde de duplicate engelle
     for (const file of arr.slice(0, remaining)) {
       if (!isAcceptedFile(file)) {
         setError(
@@ -104,6 +110,14 @@ export function MultiDesignUploader({
         );
         continue;
       }
+      const dupKey = `${file.name}__${file.size}`;
+      if (existingKeys.has(dupKey) || newKeys.has(dupKey)) {
+        setError(
+          `${file.name}: Bu dosya zaten yüklendi (aynı ad + boyut).`
+        );
+        continue;
+      }
+      newKeys.add(dupKey);
       const previewUrl = URL.createObjectURL(file);
       const uid =
         typeof crypto.randomUUID === "function"
@@ -263,7 +277,7 @@ export function MultiDesignUploader({
                 type="button"
                 onClick={() => removeDesign(d.id)}
                 aria-label={`${d.name} kaldır`}
-                className="absolute -top-1.5 -right-1.5 grid place-items-center w-5 h-5 rounded-full bg-kirmizi text-white text-[12px] shadow-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 grid place-items-center w-8 h-8 rounded-full bg-kirmizi text-white text-[14px] shadow-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity touch-manipulation"
               >
                 ×
               </button>
@@ -301,14 +315,34 @@ export function MultiDesignUploader({
           }}
         />
 
+        {/* Sefa 18 May v64 ux/a11y fix: role=alert + ikon prefix
+            (color-only mesaj WCAG 1.4.1 fail önlemi) */}
         {error && (
-          <div className="mt-2 text-[12px] text-kirmizi">{error}</div>
+          <div
+            role="alert"
+            className="mt-2 flex items-start gap-1.5 text-[12px] text-kirmizi"
+          >
+            <span aria-hidden className="shrink-0">
+              ⚠
+            </span>
+            <span>{error}</span>
+          </div>
         )}
 
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">
           <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong>
-          {" · "}max 30 MB/dosya · 50 dosyaya kadar. Sipariş onayından sonra
-          eksik tasarımları sipariş detay sayfasından yükleyebilirsin.
+          {" · "}max 30 MB/dosya · 50 dosyaya kadar.
+        </p>
+        {/* Sefa 18 May v64: Eksik dosya / hiç dosya yüklenmemiş durumda
+            bilgi mesajı — sepete eklemeyi engellemiyoruz, sadece bilgilendiriyoruz */}
+        <p className="mt-1.5 text-[11.5px] text-gri-700 leading-relaxed">
+          {designs.length < designCount && (
+            <>
+              💡 Tasarımları şimdi yüklemek zorunda değilsin. Eksik kalanları{" "}
+              <strong className="text-lacivert">sipariş onayından sonra</strong>{" "}
+              detay sayfasından veya tek PDF içinde yükleyebilirsin.
+            </>
+          )}
         </p>
       </div>
 

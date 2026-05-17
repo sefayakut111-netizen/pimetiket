@@ -889,6 +889,9 @@ export default function EtiketPage() {
                       onClick={() => {
                         setFormFactor(f.id);
                         setFormFactorTouched(true);
+                        // Sefa 18 May v64: Stepper "TAMAM" göstermesi için
+                        // step-0 (etiket türü) de touchedSteps Set'ine eklenir
+                        markTouched(0);
                       }}
                       aria-pressed={active}
                       className={cn(
@@ -1393,9 +1396,13 @@ export default function EtiketPage() {
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                     Genişlik (mm)
                   </span>
+                  {/* Sefa 18 May v64: touched değilse value boş gözüksün
+                      (kullanıcı bilinçli seçim yapsın) */}
                   <input
                     type="number"
-                    value={width}
+                    value={touchedSteps.has(6) ? width : ""}
+                    placeholder="örn. 60"
+                    autoComplete="off"
                     onChange={(e) => {
                       setWidth(Math.max(5, Number(e.target.value) || 5));
                       markTouched(6);
@@ -1413,7 +1420,9 @@ export default function EtiketPage() {
                   </span>
                   <input
                     type="number"
-                    value={height}
+                    value={touchedSteps.has(6) ? height : ""}
+                    placeholder="örn. 80"
+                    autoComplete="off"
                     onChange={(e) => {
                       setHeight(Math.max(5, Number(e.target.value) || 5));
                       markTouched(6);
@@ -1533,8 +1542,20 @@ export default function EtiketPage() {
                   istediği değeri sağdaki ok'larla fine tune ediyor). */}
               <div className="px-1">
                 <div className="flex items-center justify-between mb-2 gap-3">
-                  <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
-                    {qty.toLocaleString("tr-TR")}
+                  {/* v64 ux/a11y fix: aria-live polite — touched durumu
+                      ekran okuyucuya bildirilir */}
+                  <span
+                    className="text-[28px] font-bold text-lacivert tabular-nums leading-none"
+                    aria-live="polite"
+                    aria-label={
+                      touchedSteps.has(8)
+                        ? `${qty.toLocaleString("tr-TR")} adet seçildi`
+                        : "Henüz adet seçilmedi"
+                    }
+                  >
+                    {touchedSteps.has(8)
+                      ? qty.toLocaleString("tr-TR")
+                      : "—"}
                     <span className="text-[14px] font-medium text-gri-700 ml-1">
                       adet
                     </span>
