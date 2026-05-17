@@ -8,6 +8,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
@@ -168,25 +169,44 @@ export default function HomePage() {
             />
 
             {/* Görsel — geniş yumuşak mask + warm drop shadow.
-                Mask oranı 55% → 40% düşürüldü → kenarlar daha geniş alanda
-                fade. Görselin arka planı sayfa arkaplanıyla kaynaşır. */}
+                Sefa 17 May v33: next/image ile otomatik WebP/AVIF + responsive
+                sizes + priority (LCP image). Local fallback için Image, DB
+                URL'i için <img> (Supabase Storage remote pattern config
+                yapılana kadar). */}
             <div className="relative z-10 w-full max-w-[640px] aspect-[5/4]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={homeHero?.publicUrl ?? "/hero/home-hero.png"}
-                alt={
-                  homeHero?.altText ??
-                  "Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
-                }
-                className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
-                style={{
-                  // Daha geniş mask — kenarları arka plan kremiyle kaynaştır
-                  WebkitMaskImage:
-                    "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
-                  maskImage:
-                    "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
-                }}
-              />
+              {homeHero ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={homeHero.publicUrl}
+                  alt={
+                    homeHero.altText ??
+                    "Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
+                  }
+                  className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
+                  style={{
+                    WebkitMaskImage:
+                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
+                    maskImage:
+                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
+                  }}
+                />
+              ) : (
+                <Image
+                  src="/hero/home-hero.png"
+                  alt="Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
+                  width={1200}
+                  height={960}
+                  priority
+                  sizes="(max-width: 768px) 100vw, 640px"
+                  className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
+                  style={{
+                    WebkitMaskImage:
+                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
+                    maskImage:
+                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>

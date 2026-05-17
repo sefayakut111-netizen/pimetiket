@@ -36,41 +36,49 @@ export async function generateMetadata(): Promise<Metadata> {
       ]
     : [];
 
+  // Sefa 17 May v33: Description + OG güncellendi (hero copy ile uyumlu —
+  // "ekosistemi" + AI sohbet odaklı). Keywords genişletildi, "İstanbul
+  // Ankara baskı" çıkarıldı (footer'da yer adı yok artık).
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
+      default: "Pim Etiket — Markanın Etiketi, Fikrinin Sticker'ı",
       template: "%s · Pim Etiket",
     },
     description:
-      "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
+      "AI destekli dijital baskı ekosistemi. Etiket veya sticker çözümleriniz için Pim ile sohbet edin — fiyat, malzeme, teslim sorularına anında cevap.",
     applicationName: "Pim Etiket",
     authors: [{ name: "Pim Etiket" }],
     generator: "Next.js",
     keywords: [
-      "etiket baskı",
+      "AI etiket baskı",
+      "yapay zeka destekli dijital baskı",
       "sticker baskı",
       "dijital baskı",
-      "rulo etiket",
-      "ürün etiketi",
-      "İstanbul Ankara baskı",
-      "küçük marka etiket",
+      "rulo etiket baskı",
+      "tabaka etiket",
+      "die cut sticker",
+      "hologram sticker",
+      "şeffaf etiket",
+      "soft touch etiket",
+      "küçük adet etiket baskı",
+      "online etiket tasarım",
     ],
     openGraph: {
       type: "website",
       locale: "tr_TR",
       url: SITE_URL,
       siteName: "Pim Etiket",
-      title: "Pim Etiket — Markanın etiketi, fikrinin sticker'ı",
+      title: "Pim Etiket — Markanın Etiketi, Fikrinin Sticker'ı",
       description:
-        "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı — küçük markalar ve büyük ekipler için.",
+        "AI destekli dijital baskı ekosistemi. Pim ile sohbet et, fiyat ve teslim sorularına anında cevap al.",
       images: ogImages,
     },
     twitter: {
       card: "summary_large_image",
       title: "Pim Etiket",
       description:
-        "Etiket 1.000'den, sticker 25'ten. AI destekli dijital baskı atölyesi.",
+        "AI destekli dijital baskı ekosistemi. Etiket ve sticker çözümleri için Pim ile sohbet et.",
       images: og ? [og.publicUrl] : undefined,
     },
     robots: {
@@ -112,7 +120,7 @@ const ORGANIZATION_LD = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
-    "AI destekli dijital baskı — etiket ve sticker. İstanbul ve Ankara fason ortakları üzerinden Türkiye geneli teslimat.",
+    "AI destekli dijital baskı ekosistemi. Etiket ve sticker çözümleri — Türkiye geneli teslimat.",
   address: {
     "@type": "PostalAddress",
     addressRegion: "Ankara",
