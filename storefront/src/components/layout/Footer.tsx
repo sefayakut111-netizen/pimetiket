@@ -258,8 +258,11 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Trust strip — payment + security */}
-        <PaymentBadges />
+        {/* Trust strip — copyright (sol) + security badges (sağ)
+            Sefa 17 May v17: Kart ikonları kaldırıldı, yerine ©. */}
+        <PaymentBadges
+          copyrightText={`© ${new Date().getFullYear()} ${t.footer.copyright}`}
+        />
 
         {/* Sefa kararı 17 May v15: Şirket bilgisi bloğu (Sefa Yakut
             Kırtasiye Baskı Ticaret Ltd. Şti. + Mersis/Sicil + adres +
@@ -267,13 +270,8 @@ export function Footer() {
             Yasal zorunluluk için bu bilgiler "Hakkımızda" ve "İletişim"
             sayfalarında zaten mevcut (Mesafeli Satış Yönetmeliği m.5/b). */}
 
-        {/* Bottom strip — © (Sefa 17 May v16: legal linkler yukarı
-            sütunlara taşındı, burada sadece copyright kalır) */}
-        <div className="pt-5 mt-5 border-t border-white/10 flex justify-center md:justify-start text-[12px] text-white/65">
-          <div>
-            © {new Date().getFullYear()} {t.footer.copyright}
-          </div>
-        </div>
+        {/* Sefa 17 May v17: Ayrı © satırı kaldırıldı, copyright
+            PaymentBadges satırına (sol tarafa) taşındı. */}
       </div>
     </footer>
   );

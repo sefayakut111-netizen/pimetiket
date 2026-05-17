@@ -1,107 +1,21 @@
 /**
- * PaymentBadges — footer'da ödeme yöntemleri + güvenlik rozetleri.
+ * PaymentBadges — footer'da güvenlik rozetleri + copyright.
  *
- * PayTR site denetiminde footer'da kabul edilen kart markalarının ve
- * 3D Secure / SSL ibarelerinin gösterilmesi olumlu sayılır.
- *
- * SVG'ler inline (CSP friendly, build-time, 0 network).
- * Marka logoları stilistik temsillerdir, ticari marka kullanımı için
- * resmi gereksinimler korundu (renkler ve okunabilirlik).
+ * Sefa 17 May v17: "Kabul ettiğimiz kartlar" başlığı + Visa/MC/Troy/
+ * Amex ikonları kaldırıldı. Sol tarafa © Pim Etiket yazısı kondu.
+ * Security rozetleri (3D Secure / SSL / PayTR / KVKK) sağda kalır.
  */
 
-export function PaymentBadges() {
+interface PaymentBadgesProps {
+  /** "© 2026 Pim Etiket — Tüm hakları saklıdır." şeklinde tam string */
+  copyrightText: string;
+}
+
+export function PaymentBadges({ copyrightText }: PaymentBadgesProps) {
   return (
     <div className="border-t border-white/10 pt-6 mt-6 flex flex-wrap gap-x-6 gap-y-4 items-center justify-between">
-      {/* Card brands */}
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-white/55 mr-1">
-          Kabul ettiğimiz kartlar
-        </span>
-
-        {/* Visa */}
-        <div
-          className="inline-flex items-center justify-center w-12 h-7 rounded-md bg-white shadow-sm"
-          aria-label="Visa"
-          title="Visa"
-        >
-          <svg viewBox="0 0 48 16" width="36" height="12" aria-hidden="true">
-            <text
-              x="24"
-              y="13"
-              textAnchor="middle"
-              fontFamily="Arial, sans-serif"
-              fontSize="14"
-              fontWeight="900"
-              fontStyle="italic"
-              fill="#1A1F71"
-              letterSpacing="-0.5"
-            >
-              VISA
-            </text>
-          </svg>
-        </div>
-
-        {/* Mastercard */}
-        <div
-          className="inline-flex items-center justify-center w-12 h-7 rounded-md bg-white shadow-sm"
-          aria-label="Mastercard"
-          title="Mastercard"
-        >
-          <svg viewBox="0 0 48 32" width="32" height="20" aria-hidden="true">
-            <circle cx="18" cy="16" r="10" fill="#EB001B" />
-            <circle cx="30" cy="16" r="10" fill="#F79E1B" />
-            <path
-              d="M24 8.5 a10 10 0 0 1 0 15 a10 10 0 0 1 0 -15"
-              fill="#FF5F00"
-            />
-          </svg>
-        </div>
-
-        {/* Troy */}
-        <div
-          className="inline-flex items-center justify-center w-12 h-7 rounded-md bg-white shadow-sm"
-          aria-label="Troy"
-          title="Troy"
-        >
-          <svg viewBox="0 0 48 16" width="36" height="12" aria-hidden="true">
-            <text
-              x="24"
-              y="13"
-              textAnchor="middle"
-              fontFamily="Arial, sans-serif"
-              fontSize="13"
-              fontWeight="900"
-              fill="#00945F"
-              letterSpacing="-0.3"
-            >
-              troy
-            </text>
-            <circle cx="40" cy="9" r="2" fill="#E20D2C" />
-          </svg>
-        </div>
-
-        {/* American Express */}
-        <div
-          className="inline-flex items-center justify-center w-12 h-7 rounded-md bg-[#006FCF] shadow-sm"
-          aria-label="American Express"
-          title="American Express"
-        >
-          <svg viewBox="0 0 48 16" width="40" height="12" aria-hidden="true">
-            <text
-              x="24"
-              y="12"
-              textAnchor="middle"
-              fontFamily="Arial, sans-serif"
-              fontSize="9"
-              fontWeight="900"
-              fill="#FFFFFF"
-              letterSpacing="0.5"
-            >
-              AMEX
-            </text>
-          </svg>
-        </div>
-      </div>
+      {/* Copyright (sol) */}
+      <div className="text-[12px] text-white/65">{copyrightText}</div>
 
       {/* Security badges */}
       <div className="flex items-center gap-3 flex-wrap">
