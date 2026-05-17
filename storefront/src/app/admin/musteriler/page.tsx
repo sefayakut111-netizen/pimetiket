@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Card, Input, Eyebrow, Skeleton } from "@/components/ui";
+import { Card, Input, Eyebrow, Skeleton, Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type {
   AdminCustomerWithSegment,
@@ -117,6 +117,7 @@ function timeAgo(iso: string | null): string {
 }
 
 export default function AdminMusterilerPage() {
+  const toast = useToast();
   const [customers, setCustomers] = useState<AdminCustomerWithSegment[]>([]);
   const [kpi, setKpi] = useState<KPI | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,6 +125,11 @@ export default function AdminMusterilerPage() {
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState<SegmentFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Sprint 3: bulk email modal
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
+  const [bulkSubject, setBulkSubject] = useState("");
+  const [bulkBody, setBulkBody] = useState("");
+  const [bulkSending, setBulkSending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,6 +182,57 @@ export default function AdminMusterilerPage() {
     } else {
       setSelectedIds(new Set(customers.map((c) => c.user_id)));
     }
+  };
+
+  // Sprint 3 — bulk handlers
+  const handleBulkEmail = async () => {
+    if (selectedIds.size === 0) return;
+    if (bulkSubject.trim().length < 2 || bulkBody.trim().length < 10) {
+      toast.error("Konu 2+ karakter, içerik 10+ karakter olmalı");
+      return;
+    }
+    setBulkSending(true);
+    try {
+      const r = await fetch("/api/admin/customers/bulk/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          user_ids: Array.from(selectedIds),
+          subject: bulkSubject.trim(),
+          body_text: bulkBody.trim(),
+        }),
+      });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        enqueued?: number;
+        skipped?: number;
+        error?: string;
+      };
+      if (j.ok) {
+        toast.success(
+          `✓ ${j.enqueued} email kuyruğa eklendi${j.skipped ? ` (${j.skipped} atlandı)` : ""}`
+        );
+        setBulkEmailOpen(false);
+        setBulkSubject("");
+        setBulkBody("");
+        setSelectedIds(new Set());
+      } else {
+        toast.error(j.error ?? "Toplu email başarısız");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ağ hatası");
+    } finally {
+      setBulkSending(false);
+    }
+  };
+
+  const handleCsvExport = () => {
+    const params = new URLSearchParams({ segment });
+    if (search) params.set("search", search);
+    window.open(
+      `/api/admin/customers/export?${params.toString()}`,
+      "_blank"
+    );
   };
 
   const repeatPlusVip = useMemo(
@@ -314,11 +371,11 @@ export default function AdminMusterilerPage() {
           </div>
         </Card>
 
-        {/* Bulk action bar (Sprint 3'te aktif) */}
+        {/* Sprint 3: Bulk action bar (aktif) */}
         {selectedIds.size > 0 && (
           <Card
             padding="p-3"
-            className="mb-4 !bg-pim-mercan-tint ring-pim-mercan/30"
+            className="mb-4 !bg-pim-mercan-tint ring-pim-mercan/30 sticky top-4 z-10 shadow-1"
           >
             <div className="flex items-center gap-3 flex-wrap">
               <span className="font-semibold text-[13.5px] text-lacivert">
@@ -327,16 +384,37 @@ export default function AdminMusterilerPage() {
               <button
                 type="button"
                 onClick={() => setSelectedIds(new Set())}
-                className="text-[12px] font-semibold text-pim-mercan hover:underline"
+                className="text-[12px] font-semibold text-gri-700 hover:text-kirmizi"
               >
                 Seçimi kaldır
               </button>
-              <span className="text-gri-500">·</span>
-              <span className="text-[12px] text-gri-700 italic">
-                Toplu aksiyon (email/tag/export) Sprint 3'te aktif olacak
-              </span>
+              <div className="ml-auto flex gap-2 flex-wrap">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setBulkEmailOpen(true)}
+                >
+                  📧 Toplu email at
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCsvExport}
+                >
+                  📤 CSV indir (filtreli)
+                </Button>
+              </div>
             </div>
           </Card>
+        )}
+
+        {/* CSV export button — her zaman görünür (filtreye göre çalışır) */}
+        {selectedIds.size === 0 && customers.length > 0 && (
+          <div className="mb-4 flex justify-end">
+            <Button variant="ghost" size="sm" onClick={handleCsvExport}>
+              📤 Tüm filtreyi CSV olarak indir
+            </Button>
+          </div>
         )}
 
         {/* Error */}
@@ -551,6 +629,74 @@ export default function AdminMusterilerPage() {
           </Card>
         )}
       </div>
+
+      {/* Sprint 3: Bulk email modal */}
+      {bulkEmailOpen && (
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <Card padding="p-6" className="max-w-[600px] w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[18px] font-semibold">
+                📧 Toplu email gönder ({selectedIds.size} alıcı)
+              </h3>
+              <button
+                type="button"
+                onClick={() => setBulkEmailOpen(false)}
+                className="text-gri-500 hover:text-lacivert text-[18px]"
+                aria-label="Kapat"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="text-[12px] text-gri-700 mb-3 leading-relaxed">
+              ℹ Her alıcıya ayrı email gider (Resend rate limit korunur).
+              Toplu gönderim için cron 5 dk içinde işlemeye başlar.
+              <strong> Spam koruması:</strong> max 100 alıcı / istek.
+            </div>
+            <input
+              value={bulkSubject}
+              onChange={(e) => setBulkSubject(e.target.value)}
+              placeholder="Konu (2-120 karakter)"
+              className="w-full px-3 h-11 rounded-[12px] bg-white ring-1 ring-gri-200 text-[14px] focus:outline-none focus:ring-pim-mercan mb-3"
+            />
+            <textarea
+              value={bulkBody}
+              onChange={(e) => setBulkBody(e.target.value)}
+              rows={10}
+              placeholder="Email içeriği... (10-4000 karakter, düz metin)"
+              className="w-full px-3 py-2.5 rounded-[12px] bg-white ring-1 ring-gri-200 text-[14px] focus:outline-none focus:ring-pim-mercan resize-none"
+            />
+            <div className="mt-2 text-[11.5px] text-gri-500">
+              {bulkBody.length} / 4000 karakter
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setBulkEmailOpen(false)}
+                disabled={bulkSending}
+              >
+                İptal
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => void handleBulkEmail()}
+                disabled={
+                  bulkSending ||
+                  bulkSubject.trim().length < 2 ||
+                  bulkBody.trim().length < 10
+                }
+              >
+                {bulkSending
+                  ? "Gönderiliyor..."
+                  : `${selectedIds.size} kişiye gönder`}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </main>
   );
 }
