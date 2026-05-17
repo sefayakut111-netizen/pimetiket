@@ -155,7 +155,7 @@ export const en: TranslationDict = {
     cornerSubLabelHint: "Choose corner style for square/custom",
   },
   etiket: {
-    pageTitle: "Configure your label",
+    pageTitle: "Configure Your Label",
     pageSubtitle: "Your selections appear instantly on the roll on the left.",
     sizeHint:
       "Typical labels are between 30×40 and 100×100 mm. Enter your own size.",
@@ -165,6 +165,7 @@ export const en: TranslationDict = {
       "Important if you have automatic labeling machines — the “ABC” text shows the print direction. Not sure? Pick Winding 1 (straight).",
     windingOuter: "OUTSIDE WIND",
     windingInner: "INSIDE WIND",
+    stepFormFactor: "Label format",
     stepMaterial: "Material",
     stepCoating: "Coating",
     stepFeature: "Feature",

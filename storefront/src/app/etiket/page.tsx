@@ -340,8 +340,11 @@ const FORM_FACTORS: {
  *  NOT: Step label string'leri 16 May denetim sonrası i18n'a taşındı
  *  (component içi STEP_LABELS_*_I18N), t.etiket.step* anahtarlarından
  *  geliyor. */
-const STEP_IDS_FULL: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
-const STEP_IDS_TABAKA: readonly number[] = [1, 2, 6, 7, 8];
+// Sefa 17 May v40: Etiket türü FormSection olarak eklendi (id=step-0,
+// stepper'da ADIM 1). Mevcut step-1..step-8 DOM id'leri korundu, UI
+// numaraları otomatik +1 kaydı (uiStepNumber idx + 1 → step-0 için 1).
+const STEP_IDS_FULL: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+const STEP_IDS_TABAKA: readonly number[] = [0, 1, 2, 6, 7, 8];
 
 /** Rulo sarım fiziksel parametreleri (Sefa kuralı 15 May v3).
  *  Göbek çapı: rulonun iç çapı (mm). Endüstri standardı:
@@ -437,6 +440,7 @@ export default function EtiketPage() {
   // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
   // Sefa 16 May denetim #1: i18n — labels artık t.etiket.step*'ten geliyor.
   const STEP_LABELS_FULL_I18N: readonly string[] = [
+    t.etiket.stepFormFactor,
     t.etiket.stepMaterial,
     t.etiket.stepCoating,
     t.etiket.stepFeature,
@@ -447,6 +451,7 @@ export default function EtiketPage() {
     t.etiket.stepQty,
   ];
   const STEP_LABELS_TABAKA_I18N: readonly string[] = [
+    t.etiket.stepFormFactor,
     t.etiket.stepMaterial,
     t.etiket.stepCoating,
     t.etiket.stepSize,
@@ -753,18 +758,22 @@ export default function EtiketPage() {
           ]),
         ]}
       />
-      {/* Sayfa başlığı bandı — Sefa kuralı (15 May v4): Breadcrumb yerine
-          tek başlık (sayfa adı + güven dot'u). Üst boşluğu kapatır,
-          kullanıcı nerede olduğunu net görür. */}
+      {/* Sefa 17 May v40: küçük breadcrumb yerine BÜYÜK başlık strip'i.
+          Title Case, full-width, görsel olarak güçlü açılış. */}
       <div className="border-b border-gri-200 bg-white">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2">
-          <span
-            aria-hidden
-            className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
-          />
-          <h2 className="font-semibold text-[14px] md:text-[15px] text-lacivert truncate">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span
+              aria-hidden
+              className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
+            />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan">
+              Konfigüratör
+            </span>
+          </div>
+          <h1 className="text-[26px] md:text-[40px] font-semibold tracking-tight leading-tight text-lacivert">
             {t.etiket.pageTitle}
-          </h2>
+          </h1>
         </div>
       </div>
 
@@ -824,23 +833,18 @@ export default function EtiketPage() {
                 MultiDesignDropZone Boyut FormSection'ının altında. */}
           </div>
 
-          {/* RIGHT — config */}
+          {/* RIGHT — config (Sefa 17 May v40: h1 duplicate kaldırıldı,
+              üstte büyük strip'e taşındı) */}
           <div className="flex flex-col gap-5">
-            <div>
-              <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
-                {t.etiket.pageTitle}
-              </h1>
-              {/* Subtitle kaldırıldı (Sefa kuralı 15 May v4): "Seçimlerin sol
-                  taraftaki rulonun üstünde canlı görünür" mesajı sayfa
-                  altına taşındı (ProductInfoSection öncesi info bandı). */}
-            </div>
 
-            {/* Form factor toggle — Sefa kararı (15 May): kullanıcı en
-                başta rulo mu tabaka mı seçer. Tabaka → Sarım adımı gizli. */}
-            <div className="flex flex-col gap-2 -mt-1">
-              <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700">
-                Etiket türü
-              </div>
+            {/* Step 0 — Etiket türü (Sefa 17 May v40: form factor seçimi
+                FormSection olarak kutu içine alındı, ADIM 1 numaralı) */}
+            <FormSection
+              id="step-0"
+              number={uiStepNumber(0)}
+              title={t.etiket.stepFormFactor}
+              hint="Rulo (makineye sığar, özelleştirme) veya tabaka (düz, elle uygula)"
+            >
               <div className="grid grid-cols-2 gap-2">
                 {FORM_FACTORS.map((f) => {
                   // Touched değilse görsel seçili yok (Sefa kuralı 15 May v4)
@@ -876,7 +880,7 @@ export default function EtiketPage() {
                   );
                 })}
               </div>
-            </div>
+            </FormSection>
 
             {/* Mobile horizontal stepper — sadece mobile/tablet (lg altı).
                 Desktop'ta sağdaki dikey rail görünür (VerticalStepProgress).

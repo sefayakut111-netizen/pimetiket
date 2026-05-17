@@ -155,7 +155,7 @@ export const tr: TranslationDict = {
     cornerSubLabelHint: "Kare ve özel oran için köşe stilini seç",
   },
   etiket: {
-    pageTitle: "Etiketini konfigüre et",
+    pageTitle: "Etiketini Konfigüre Et",
     pageSubtitle: "Seçimlerin sol taraftaki rulonun üstünde canlı görünür.",
     sizeHint: "Tipik etiket 30×40 ile 100×100 mm arası. Kendi ölçüne yaz.",
     qtyHint: "1.000'den başla, 500 adetlik artışla seç (max 50.000)",
@@ -164,6 +164,7 @@ export const tr: TranslationDict = {
       "Otomatik etiketleme makinen varsa önemli — “ABC” metni etiketin baskı yönünü gösterir. Emin değilsen Sarım 1 (düz) seç.",
     windingOuter: "DIŞA SARIM",
     windingInner: "İÇE SARIM",
+    stepFormFactor: "Etiket türü",
     stepMaterial: "Malzeme",
     stepCoating: "Kaplama",
     stepFeature: "Özellik",

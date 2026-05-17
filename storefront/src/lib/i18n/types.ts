@@ -186,6 +186,7 @@ export type TranslationDict = {
     windingOuter: string;
     windingInner: string;
     // Sefa 16 May denetim #1 — Stepper i18n
+    stepFormFactor: string;
     stepMaterial: string;
     stepCoating: string;
     stepFeature: string;
