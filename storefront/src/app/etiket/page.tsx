@@ -1179,35 +1179,43 @@ export default function EtiketPage() {
                 </legend>
                 <div className="grid grid-cols-4 gap-2.5 mb-4">
                   {[1, 2, 3, 4].map((n) => (
-                    <SelectableCard
-                      key={n}
-                      selected={touchedSteps.has(4) && winding === n}
-                      onClick={() => {
-                        setWinding(n);
-                        markTouched(4);
-                      }}
-                      padding={10}
-                      style={{ textAlign: "center", paddingTop: 12 }}
-                      aria-label={`Dışa sarım yön ${n}${n === 1 ? " (önerilen)" : ""}`}
-                    >
-                      <WindingIcon n={n} />
-                      <div
-                        className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
-                        style={{
-                          color:
-                            touchedSteps.has(4) && winding === n
-                              ? "var(--color-pim-mercan)"
-                              : "var(--color-gri-700)",
+                    <div key={n} className="relative">
+                      {/* Sefa 18 May v52: yuvarlak mercan daire içinde yıldız
+                          rozeti (v48'deki tasarım — Sefa "diğer yerlere de
+                          koy" demişti, doğru tasarım bu). */}
+                      {n === 1 && (
+                        <span
+                          aria-label="Önerilen"
+                          title="En yaygın kullanılan yön"
+                          className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
+                        >
+                          ★
+                        </span>
+                      )}
+                      <SelectableCard
+                        selected={touchedSteps.has(4) && winding === n}
+                        onClick={() => {
+                          setWinding(n);
+                          markTouched(4);
                         }}
+                        padding={10}
+                        style={{ textAlign: "center", paddingTop: 12 }}
+                        aria-label={`Dışa sarım yön ${n}${n === 1 ? " (önerilen)" : ""}`}
                       >
-                        SARIM {n}
-                        {/* Sefa 18 May v50: yuvarlak rozet → inline emoji
-                            yıldız (Sarım detayı'ndaki 76mm/500 ile tutarlı) */}
-                        {n === 1 && (
-                          <span className="ml-1 text-[11px] text-pim-mercan">⭐</span>
-                        )}
-                      </div>
-                    </SelectableCard>
+                        <WindingIcon n={n} />
+                        <div
+                          className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
+                          style={{
+                            color:
+                              touchedSteps.has(4) && winding === n
+                                ? "var(--color-pim-mercan)"
+                                : "var(--color-gri-700)",
+                          }}
+                        >
+                          SARIM {n}
+                        </div>
+                      </SelectableCard>
+                    </div>
                   ))}
                 </div>
               </fieldset>
@@ -1277,36 +1285,45 @@ export default function EtiketPage() {
                   {CORE_SIZES.map((c) => {
                     const active = touchedSteps.has(5) && coreSize === c.id;
                     return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setCoreSize(c.id);
-                          markTouched(5);
-                        }}
-                        aria-pressed={active}
-                        className={cn(
-                          "rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
-                          active
-                            ? "bg-pim-mercan-tint ring-pim-mercan"
-                            : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                      <div key={c.id} className="relative">
+                        {/* Sefa 18 May v52: 76mm önerilen → yuvarlak mercan
+                            daire içinde yıldız (Sarım yönü ile tutarlı) */}
+                        {c.id === 76 && (
+                          <span
+                            aria-label="Önerilen"
+                            title="Endüstri standardı"
+                            className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
+                          >
+                            ★
+                          </span>
                         )}
-                      >
-                        <div
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCoreSize(c.id);
+                            markTouched(5);
+                          }}
+                          aria-pressed={active}
                           className={cn(
-                            "font-semibold text-[14px]",
-                            active ? "text-pim-mercan" : "text-lacivert"
+                            "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                            active
+                              ? "bg-pim-mercan-tint ring-pim-mercan"
+                              : "bg-white ring-gri-200 hover:ring-pim-mercan"
                           )}
                         >
-                          {c.label}
-                          {c.id === 76 && (
-                            <span className="ml-1 text-[11px] text-pim-mercan">⭐</span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-gri-700 mt-0.5">
-                          {c.desc}
-                        </div>
-                      </button>
+                          <div
+                            className={cn(
+                              "font-semibold text-[14px]",
+                              active ? "text-pim-mercan" : "text-lacivert"
+                            )}
+                          >
+                            {c.label}
+                          </div>
+                          <div className="text-[11px] text-gri-700 mt-0.5">
+                            {c.desc}
+                          </div>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -1321,33 +1338,42 @@ export default function EtiketPage() {
                   {ROLL_LABEL_COUNTS.map((q) => {
                     const active = touchedSteps.has(5) && rollLabelCount === q;
                     return (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => {
-                          setRollLabelCount(q);
-                          markTouched(5);
-                        }}
-                        aria-pressed={active}
-                        className={cn(
-                          "rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
-                          active
-                            ? "bg-pim-mercan-tint ring-pim-mercan"
-                            : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                      <div key={q} className="relative">
+                        {/* Sefa 18 May v52: 500 önerilen → yuvarlak mercan
+                            daire içinde yıldız (Sarım yönü + 76mm ile tutarlı) */}
+                        {q === 500 && (
+                          <span
+                            aria-label="Önerilen"
+                            title="En yaygın seçim"
+                            className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
+                          >
+                            ★
+                          </span>
                         )}
-                      >
-                        <div
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRollLabelCount(q);
+                            markTouched(5);
+                          }}
+                          aria-pressed={active}
                           className={cn(
-                            "font-semibold text-[14px] tabular-nums",
-                            active ? "text-pim-mercan" : "text-lacivert"
+                            "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                            active
+                              ? "bg-pim-mercan-tint ring-pim-mercan"
+                              : "bg-white ring-gri-200 hover:ring-pim-mercan"
                           )}
                         >
-                          {q}
-                          {q === 500 && (
-                            <span className="ml-1 text-[11px] text-pim-mercan">⭐</span>
-                          )}
-                        </div>
-                      </button>
+                          <div
+                            className={cn(
+                              "font-semibold text-[14px] tabular-nums",
+                              active ? "text-pim-mercan" : "text-lacivert"
+                            )}
+                          >
+                            {q}
+                          </div>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
