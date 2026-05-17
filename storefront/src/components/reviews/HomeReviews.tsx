@@ -145,25 +145,34 @@ function ReviewCard({ review }: ReviewCardProps) {
         {review.body}
       </p>
 
-      {/* Photos (max 2) */}
+      {/* Photos (max 2) — Sefa 17 May v36:
+          · alt="" (decorative) → broken image'da "Yorum fotoğrafı"
+            placeholder text görünmez, boş kalır
+          · onError → broken url ise tüm kutucuk gizlenir */}
       {review.photos.length > 0 && (
         <div className="flex gap-1.5 mt-3">
-          {review.photos.slice(0, 2).map((photo, i) => (
-            <div
-              key={i}
-              className="w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-gri-100"
-            >
-              {photo.url && (
-                // eslint-disable-next-line @next/next/no-img-element
+          {review.photos.slice(0, 2).map((photo, i) =>
+            photo.url ? (
+              <div
+                key={i}
+                className="w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-gri-100"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photo.url}
-                  alt={`Yorum fotoğrafı ${i + 1}`}
+                  alt=""
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  onError={(e) => {
+                    // Yüklenemezse kutucuğu tamamen gizle
+                    const wrap = (e.currentTarget as HTMLImageElement)
+                      .parentElement;
+                    if (wrap) wrap.style.display = "none";
+                  }}
                 />
-              )}
-            </div>
-          ))}
+              </div>
+            ) : null
+          )}
         </div>
       )}
 
