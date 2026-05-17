@@ -32,12 +32,19 @@ export interface PriceCalcInput {
   material_id: string;
   /** Map of group_id → selected option(s). Single: string, Multi: string[] */
   selected_options: Record<string, string | string[] | undefined>;
+  /** Sheet mode (etiket_tabaka) için: geometriden gelen tabaka sayısı.
+   *  pricing_mode === "sheet" ise ZORUNLU. */
+  sheets_needed?: number;
 }
 
 export interface PriceCalcOk {
   ok: true;
   // Adım adım değerler
   area_m2: number;
+  /** "area" → m²×alan×qty, "sheet" → sheet_cost×sheets_needed */
+  pricing_mode: "area" | "sheet";
+  /** Sheet mode'da kullanılan tabaka sayısı (area mode'da undefined) */
+  sheets_used?: number;
   material: MaterialItem;
   tier: TierConfig;
   base: number;
@@ -117,11 +124,43 @@ export function calculatePrice(
     return { ok: false, reason: "invalid_qty" };
   }
 
-  // 3. Area m²
+  // 3. Area m² (her iki mode'da da hesaplanır — display için)
   const area_m2 = (input.width_mm * input.height_mm) / 1_000_000;
 
-  // 4. Base = m2_cost × area × qty
-  const base = material.m2_cost_try * area_m2 * input.qty;
+  // 4. Base hesabı — pricing_mode'a göre
+  //    "area"  → m2_cost × area × qty   (sticker + rulo etiket)
+  //    "sheet" → sheet_cost × sheets_needed   (tabaka etiket)
+  const mode: "area" | "sheet" = config.pricing_mode === "sheet" ? "sheet" : "area";
+  let base: number;
+  let sheets_used: number | undefined;
+
+  if (mode === "sheet") {
+    if (material.sheet_cost_try === undefined || material.sheet_cost_try === null) {
+      return {
+        ok: false,
+        reason: "missing_sheet_cost",
+        hint: `Tabaka modunda "${material.name}" malzemesinde sheet_cost_try tanımlı değil`,
+      };
+    }
+    if (!input.sheets_needed || input.sheets_needed <= 0) {
+      return {
+        ok: false,
+        reason: "missing_sheets_needed",
+        hint: "Tabaka modunda sheets_needed (geometriden) gerekli",
+      };
+    }
+    sheets_used = input.sheets_needed;
+    base = material.sheet_cost_try * input.sheets_needed;
+  } else {
+    if (material.m2_cost_try === undefined || material.m2_cost_try === null) {
+      return {
+        ok: false,
+        reason: "missing_m2_cost",
+        hint: `Alan modunda "${material.name}" malzemesinde m2_cost_try tanımlı değil`,
+      };
+    }
+    base = material.m2_cost_try * area_m2 * input.qty;
+  }
 
   // 5. Tier (çarpansal)
   const tier = findTier(input.qty, config.tiers);
@@ -200,6 +239,8 @@ export function calculatePrice(
   return {
     ok: true,
     area_m2,
+    pricing_mode: mode,
+    sheets_used,
     material,
     tier,
     base,

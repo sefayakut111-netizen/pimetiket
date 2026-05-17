@@ -79,6 +79,30 @@ const SCOPE_PREVIEW_DEFAULTS: Record<
   etiket_tabaka: { width: 70, height: 50, qty: 1000 },
 };
 
+// ============================================================
+// Tabaka geometry — sheet preview için sheets_needed hesabı
+// (fiyat-hesapla-tabaka sayfasındaki ile aynı kurallar)
+// ============================================================
+const SHEET_W_MM = 230;
+const SHEET_H_MM = 310;
+const SHEET_MARGIN_MM = 20;
+const USABLE_W_MM = SHEET_W_MM - 2 * SHEET_MARGIN_MM; // 190
+const USABLE_H_MM = SHEET_H_MM - 2 * SHEET_MARGIN_MM; // 270
+const GAP_MM = 6;
+
+function calcSheetsNeeded(width_mm: number, height_mm: number, qty: number): number {
+  const w = Math.max(5, Math.ceil(width_mm / 5) * 5);
+  const h = Math.max(5, Math.ceil(height_mm / 5) * 5);
+  const per_a =
+    Math.max(0, Math.floor((USABLE_W_MM + GAP_MM) / (w + GAP_MM))) *
+    Math.max(0, Math.floor((USABLE_H_MM + GAP_MM) / (h + GAP_MM)));
+  const per_b =
+    Math.max(0, Math.floor((USABLE_W_MM + GAP_MM) / (h + GAP_MM))) *
+    Math.max(0, Math.floor((USABLE_H_MM + GAP_MM) / (w + GAP_MM)));
+  const per_sheet = Math.max(per_a, per_b, 1);
+  return Math.ceil(qty / per_sheet);
+}
+
 function fmtMoney(n: number): string {
   return Math.round(n).toLocaleString("tr-TR") + " TL";
 }
@@ -244,10 +268,19 @@ export default function FiyatlarPage() {
     } else toast.error(j.error ?? "Hata");
   };
 
+  // Tabaka mode mu? (pricing_mode === "sheet" veya scope etiket_tabaka)
+  const isSheetMode = useMemo(() => {
+    if (draft?.pricing_mode) return draft.pricing_mode === "sheet";
+    return scope === "etiket_tabaka";
+  }, [draft, scope]);
+
   // Live preview hesaplama
   const previewResult = useMemo(() => {
     if (!draft || !previewMaterialId) return null;
     const defaults = SCOPE_PREVIEW_DEFAULTS[scope];
+    const sheets_needed = isSheetMode
+      ? calcSheetsNeeded(defaults.width, defaults.height, defaults.qty)
+      : undefined;
     return calculatePrice(
       {
         width_mm: defaults.width,
@@ -255,10 +288,11 @@ export default function FiyatlarPage() {
         qty: defaults.qty,
         material_id: previewMaterialId,
         selected_options: previewOptions,
+        sheets_needed,
       },
       draft
     );
-  }, [draft, previewMaterialId, previewOptions, scope]);
+  }, [draft, previewMaterialId, previewOptions, scope, isSheetMode]);
 
   if (loading && !data) {
     return (
@@ -336,9 +370,10 @@ export default function FiyatlarPage() {
             Fiyat Yönetimi
           </h1>
           <p className="mt-1.5 text-base text-gri-700 leading-relaxed max-w-[700px]">
-            <strong>m² maliyet</strong> gir, sistem üstüne adet kademesi +
-            özelleştirme % + kâr marjı + KDV ekler. <strong>Draft</strong>'ta
-            test et, tatmin olunca <strong>Canlıya yayınla</strong>.
+            <strong>Birim maliyet</strong> gir (sticker/rulo &rarr; m² · tabaka
+            &rarr; 1 tabaka), sistem üstüne adet kademesi + özelleştirme % + kâr
+            marjı + KDV ekler. Tatmin olunca{" "}
+            <strong>Canlıya kaydet</strong>.
           </p>
         </div>
 
@@ -514,29 +549,48 @@ export default function FiyatlarPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5">
           {/* SOL — FORM */}
           <div className="space-y-5">
-            {/* Materials */}
+            {/* Materials — scope'a göre m² ya da tabaka bazlı */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
-                🎨 <span>Malzemeler (m² maliyet)</span>
+                🎨{" "}
+                <span>
+                  Malzemeler (
+                  {isSheetMode ? "1 tabaka maliyeti" : "m² maliyet"})
+                </span>
               </h2>
               <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
-                Her malzeme için <strong>TL/m²</strong> birim maliyeti.
-                Atölye tarifesinden direkt girersin.
+                {isSheetMode ? (
+                  <>
+                    Her malzeme için <strong>TL/tabaka</strong> (23×31 cm 1
+                    tabaka) maliyeti. Sistem geometriye göre kaç tabaka
+                    gerektiğini hesaplar.
+                  </>
+                ) : (
+                  <>
+                    Her malzeme için <strong>TL/m²</strong> birim maliyeti.
+                    Atölye tarifesinden direkt girersin.
+                  </>
+                )}
               </p>
               <div className="space-y-2">
-                <div className="grid grid-cols-[80px_1.5fr_2fr_140px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                <div className="grid grid-cols-[80px_1.5fr_2fr_160px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
                   <span>ID</span>
                   <span>Ad</span>
                   <span>Açıklama</span>
-                  <span className="text-right">m² maliyet (TL)</span>
+                  <span className="text-right">
+                    {isSheetMode ? "Tabaka mal. (TL)" : "m² maliyet (TL)"}
+                  </span>
                 </div>
                 {draft.materials.map((m, i) => {
                   const changed = isItemChanged("material", m.id);
+                  const inputVal = isSheetMode
+                    ? (m.sheet_cost_try ?? 0)
+                    : (m.m2_cost_try ?? 0);
                   return (
                   <div
                     key={m.id}
                     className={cn(
-                      "grid grid-cols-[80px_1.5fr_2fr_140px] gap-2 items-center rounded px-1 py-0.5",
+                      "grid grid-cols-[80px_1.5fr_2fr_160px] gap-2 items-center rounded px-1 py-0.5",
                       changed && "bg-saman/10"
                     )}
                   >
@@ -558,13 +612,17 @@ export default function FiyatlarPage() {
                     />
                     <input
                       type="number"
-                      value={m.m2_cost_try}
-                      step={10}
-                      onChange={(e) =>
-                        updateMaterial(i, {
-                          m2_cost_try: Number(e.target.value),
-                        })
-                      }
+                      value={inputVal}
+                      step={isSheetMode ? 1 : 10}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        updateMaterial(
+                          i,
+                          isSheetMode
+                            ? { sheet_cost_try: v }
+                            : { m2_cost_try: v }
+                        );
+                      }}
                       className={cn(
                         "px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
                         changed && "ring-saman bg-saman/10"
@@ -814,7 +872,11 @@ export default function FiyatlarPage() {
                 >
                   {draft.materials.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.name} ({m.m2_cost_try} TL/m²)
+                      {m.name} (
+                      {isSheetMode
+                        ? `${m.sheet_cost_try ?? "?"} TL/tabaka`
+                        : `${m.m2_cost_try ?? "?"} TL/m²`}
+                      )
                     </option>
                   ))}
                 </select>
@@ -891,7 +953,14 @@ export default function FiyatlarPage() {
               {/* Hesap sonucu */}
               {previewResult?.ok ? (
                 <div className="text-[11.5px] space-y-1 font-mono leading-relaxed text-lacivert">
-                  <Row label="Base" value={fmtMoney2(previewResult.base)} />
+                  <Row
+                    label={
+                      isSheetMode && previewResult.sheets_used
+                        ? `Base (${previewResult.sheets_used} tabaka)`
+                        : "Base (m²×alan×adet)"
+                    }
+                    value={fmtMoney2(previewResult.base)}
+                  />
                   <Row
                     label={`Tier × ${previewResult.tier.multiplier}`}
                     value={fmtMoney2(previewResult.tiered)}

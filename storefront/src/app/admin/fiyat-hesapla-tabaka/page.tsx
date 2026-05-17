@@ -154,10 +154,12 @@ export default function FiyatHesaplaTabakaPage() {
         qty,
         material_id: materialId,
         selected_options: { coating: coatingId },
+        // Tabaka mode: geometriden gelen tabaka sayısı
+        sheets_needed: geometry.sheets_needed,
       },
       config
     );
-  }, [width, height, qty, materialId, coatingId, config]);
+  }, [width, height, qty, materialId, coatingId, config, geometry.sheets_needed]);
 
   // Config override (margin/operation/vat değiştirmek için)
   const updateMargin = (pct: number) => {
@@ -308,7 +310,7 @@ export default function FiyatHesaplaTabakaPage() {
                   >
                     {config.materials.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} — {m.m2_cost_try} TL/m²
+                        {m.name} — {m.sheet_cost_try ?? m.m2_cost_try} TL/tabaka
                       </option>
                     ))}
                   </select>
@@ -463,7 +465,10 @@ export default function FiyatHesaplaTabakaPage() {
                   </strong>
                 </div>
                 <div className="mt-4 pt-4 border-t border-saman/20 space-y-1.5 text-[12px] font-mono">
-                  <Row label="Base (m²×alan×adet)" value={fmt(priceResult.base, 2)} />
+                  <Row
+                    label={`Base (tabaka × ${geometry.sheets_needed} adet)`}
+                    value={fmt(priceResult.base, 2)}
+                  />
                   <Row
                     label={`× Tier (${priceResult.tier.label})`}
                     value={fmt(priceResult.tiered, 2)}

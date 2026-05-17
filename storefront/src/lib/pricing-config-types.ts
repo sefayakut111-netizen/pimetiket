@@ -14,7 +14,10 @@ export type ScopeName =
 export interface MaterialItem {
   id: string;
   name: string;
-  m2_cost_try: number;
+  /** Sticker + Rulo Etiket için: TL/m² maliyet */
+  m2_cost_try?: number;
+  /** Tabaka Etiket için: TL/tabaka maliyet (23×31 cm 1 tabaka) */
+  sheet_cost_try?: number;
   desc?: string;
 }
 
@@ -49,7 +52,13 @@ export interface PercentConfig {
   pct: number;
 }
 
+export type PricingMode = "area" | "sheet";
+
 export interface ProfileConfig {
+  /** "area" → m2_cost × area × qty (sticker, rulo etiket)
+   *  "sheet" → sheet_cost × sheets_needed (tabaka etiket)
+   *  Default: "area" (geriye uyum) */
+  pricing_mode?: PricingMode;
   materials: MaterialItem[];
   options: Record<string, OptionGroup>;
   tiers: TierConfig[];
@@ -151,11 +160,14 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
   vat: { pct: 20 },
 };
 
+// Sefa 17 May v7: Tabaka etikette m² mantığı YOK — 1 tabaka belirli fiyat.
+// Hesap: sheet_cost × sheets_needed (kaç tabaka basılacak)
 export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
+  pricing_mode: "sheet",
   materials: [
-    { id: "kuse",  name: "Kuşe Etiket",    m2_cost_try: 320, desc: "Mat kaplamalı baskı kağıdı" },
-    { id: "kraft", name: "Kraft Etiket",   m2_cost_try: 280, desc: "Doğal, dokunsal" },
-    { id: "beyaz", name: "Opak PP Etiket", m2_cost_try: 380, desc: "Klasik, dayanıklı, parlak" },
+    { id: "kuse",  name: "Kuşe Etiket",    sheet_cost_try: 22, desc: "Mat kaplamalı baskı kağıdı (23×31 cm)" },
+    { id: "kraft", name: "Kraft Etiket",   sheet_cost_try: 20, desc: "Doğal, dokunsal (23×31 cm)" },
+    { id: "beyaz", name: "Opak PP Etiket", sheet_cost_try: 27, desc: "Klasik, dayanıklı, parlak (23×31 cm)" },
   ],
   options: {
     coating: {

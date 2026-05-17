@@ -36,24 +36,32 @@ export function diffProfileConfig(
   const diffs: DiffEntry[] = [];
   if (!isProfileConfig(oldCfg) || !isProfileConfig(newCfg)) return diffs;
 
-  // Materials
+  // Materials — sheet mode için sheet_cost_try, area mode için m2_cost_try
+  const isSheetMode = newCfg.pricing_mode === "sheet" || oldCfg.pricing_mode === "sheet";
+  const costUnit = isSheetMode ? "TL/tabaka" : "TL/m²";
+  const costLabel = isSheetMode ? "tabaka maliyet" : "m² maliyet";
+  const getCost = (m: { m2_cost_try?: number; sheet_cost_try?: number }): number | undefined =>
+    isSheetMode ? m.sheet_cost_try : m.m2_cost_try;
+
   for (const oldMat of oldCfg.materials) {
     const newMat = newCfg.materials.find((m) => m.id === oldMat.id);
     if (!newMat) {
       diffs.push({
         section: "materials",
         label: `Malzeme "${oldMat.name}" KALDIRILDI`,
-        old_value: `${oldMat.m2_cost_try} TL/m²`,
+        old_value: `${getCost(oldMat) ?? "?"} ${costUnit}`,
         new_value: "-",
       });
       continue;
     }
-    if (oldMat.m2_cost_try !== newMat.m2_cost_try) {
+    const oldCost = getCost(oldMat);
+    const newCost = getCost(newMat);
+    if (oldCost !== newCost) {
       diffs.push({
         section: "materials",
-        label: `${newMat.name} m² maliyet`,
-        old_value: `${oldMat.m2_cost_try} TL`,
-        new_value: `${newMat.m2_cost_try} TL`,
+        label: `${newMat.name} ${costLabel}`,
+        old_value: `${oldCost ?? "?"} TL`,
+        new_value: `${newCost ?? "?"} TL`,
       });
     }
     if (oldMat.name !== newMat.name) {
@@ -72,7 +80,7 @@ export function diffProfileConfig(
         section: "materials",
         label: `Malzeme "${newMat.name}" EKLENDI`,
         old_value: "-",
-        new_value: `${newMat.m2_cost_try} TL/m²`,
+        new_value: `${getCost(newMat) ?? "?"} ${costUnit}`,
       });
     }
   }
@@ -213,6 +221,7 @@ export function isMaterialChanged(
   if (!live || !draft) return true;
   return (
     live.m2_cost_try !== draft.m2_cost_try ||
+    live.sheet_cost_try !== draft.sheet_cost_try ||
     live.name !== draft.name ||
     (live.desc ?? "") !== (draft.desc ?? "")
   );
