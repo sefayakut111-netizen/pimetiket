@@ -29,6 +29,13 @@ import type {
   TierConfig,
 } from "@/lib/pricing-config";
 import { calculatePrice } from "@/lib/pricing-calc";
+import {
+  diffProfileConfig,
+  isMaterialChanged,
+  isOptionChanged,
+  isTierChanged,
+  type DiffEntry,
+} from "@/lib/pricing-diff";
 
 type Scope = "sticker" | "etiket_rulo" | "etiket_tabaka";
 
@@ -169,6 +176,37 @@ export default function FiyatlarPage() {
 
   const isDirty = data && draft && !deepEqual(draft, data.draft);
   const isLiveBehindDraft = data && !deepEqual(data.draft, data.live);
+
+  // Sefa 17 May v3: draft → live diff (yayınlandığında değişecek olan)
+  const draftToLiveDiff = useMemo<DiffEntry[]>(() => {
+    if (!data?.live || !data?.draft) return [];
+    return diffProfileConfig(data.live, data.draft);
+  }, [data?.live, data?.draft]);
+
+  // Form-anında diff (henüz kaydedilmeyen değişiklikler)
+  const draftFormDiff = useMemo<DiffEntry[]>(() => {
+    if (!data?.draft || !draft) return [];
+    return diffProfileConfig(data.draft, draft);
+  }, [data?.draft, draft]);
+
+  // Material/option/tier satırlarında "değişti" rozet için
+  const isItemChanged = (
+    section: "material" | "option" | "tier",
+    id_or_idx: string | number,
+    group_id?: string
+  ): boolean => {
+    if (!data?.live || !draft) return false;
+    if (section === "material" && typeof id_or_idx === "string") {
+      return isMaterialChanged(data.live, draft, id_or_idx);
+    }
+    if (section === "option" && typeof id_or_idx === "string" && group_id) {
+      return isOptionChanged(data.live, draft, group_id, id_or_idx);
+    }
+    if (section === "tier" && typeof id_or_idx === "number") {
+      return isTierChanged(data.live, draft, id_or_idx);
+    }
+    return false;
+  };
 
   const handleSaveDraft = async () => {
     if (!draft) return;
@@ -324,7 +362,7 @@ export default function FiyatlarPage() {
           </p>
         </div>
 
-        {/* Status banner */}
+        {/* Status banner — Sefa 17 May v3 güçlendirildi */}
         <Card
           padding="p-4"
           className={cn(
@@ -336,24 +374,38 @@ export default function FiyatlarPage() {
                 : "!bg-yesil-soft/30 ring-yesil/30"
           )}
         >
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-[24px]">
-              {isDirty ? "📝" : isLiveBehindDraft ? "📤" : "✓"}
+          <div className="flex items-center gap-3 flex-wrap mb-3">
+            <span className="text-[28px]">
+              {isDirty ? "📝" : isLiveBehindDraft ? "📤" : "🟢"}
             </span>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13.5px] text-lacivert">
+              <div className="font-semibold text-[15px] text-lacivert">
                 {isDirty
                   ? "Kaydedilmemiş değişiklikler var"
                   : isLiveBehindDraft
                     ? "Draft canlıdan farklı — yayınlanmayı bekliyor"
-                    : "Her şey güncel: Draft = Live"}
+                    : "Her şey güncel: Canlıda olan = Draft"}
               </div>
-              <div className="text-[11.5px] text-gri-700 mt-0.5">
-                Draft: {timeAgo(data.draft_updated_at ?? null)}
-                {data.draft_updated_by_email && (
-                  <> · {data.draft_updated_by_email}</>
-                )}
-                {" · "}Live: {timeAgo(data.live_updated_at ?? null)}
+              <div className="text-[12px] text-gri-700 mt-1 leading-relaxed">
+                <span className="inline-flex items-center gap-1">
+                  🟢 <strong>Canlıda olan:</strong>
+                  <span>{timeAgo(data.live_updated_at ?? null)}</span>
+                  {data.live_updated_by_email && (
+                    <span className="text-gri-500">
+                      · {data.live_updated_by_email}
+                    </span>
+                  )}
+                </span>
+                <span className="mx-2 text-gri-300">·</span>
+                <span className="inline-flex items-center gap-1">
+                  📝 <strong>Draft:</strong>
+                  <span>{timeAgo(data.draft_updated_at ?? null)}</span>
+                  {data.draft_updated_by_email && (
+                    <span className="text-gri-500">
+                      · {data.draft_updated_by_email}
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
             <Button
@@ -361,9 +413,71 @@ export default function FiyatlarPage() {
               size="sm"
               onClick={() => setShowHistory((s) => !s)}
             >
-              {showHistory ? "Geçmiş gizle" : "📋 Geçmiş"}
+              {showHistory ? "Geçmiş gizle" : "📋 Tüm geçmiş"}
             </Button>
           </div>
+
+          {/* Diff özet — Draft ↔ Live arası (yayınlanacak değişiklikler) */}
+          {isLiveBehindDraft && draftToLiveDiff.length > 0 && (
+            <div className="rounded-lg bg-white/60 ring-1 ring-pim-mercan/20 p-3">
+              <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-pim-mercan mb-2">
+                🚀 Yayınlanacak değişiklikler ({draftToLiveDiff.length})
+              </div>
+              <ul className="space-y-1 text-[12.5px] max-h-[180px] overflow-y-auto">
+                {draftToLiveDiff.slice(0, 8).map((d, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center gap-2 leading-relaxed"
+                  >
+                    <span className="inline-flex items-center h-[16px] px-1.5 rounded text-[9.5px] font-bold uppercase bg-gri-100 text-gri-700">
+                      {d.section}
+                    </span>
+                    <span className="text-gri-700">{d.label}:</span>
+                    <span className="font-mono text-kirmizi line-through text-[11.5px]">
+                      {d.old_value}
+                    </span>
+                    <span className="text-gri-500">→</span>
+                    <span className="font-mono text-yesil font-bold text-[11.5px]">
+                      {d.new_value}
+                    </span>
+                  </li>
+                ))}
+                {draftToLiveDiff.length > 8 && (
+                  <li className="text-[11.5px] text-gri-500 italic">
+                    ... ve {draftToLiveDiff.length - 8} değişiklik daha
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Form-anında diff (kaydedilmemiş) */}
+          {isDirty && draftFormDiff.length > 0 && (
+            <div className="rounded-lg bg-white/60 ring-1 ring-saman/30 p-3">
+              <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-saman-koyu mb-2">
+                ✏ Kaydedilmemiş ({draftFormDiff.length})
+              </div>
+              <ul className="space-y-1 text-[12.5px] max-h-[140px] overflow-y-auto">
+                {draftFormDiff.slice(0, 6).map((d, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-gri-700">{d.label}:</span>
+                    <span className="font-mono text-gri-500 text-[11.5px]">
+                      {d.old_value}
+                    </span>
+                    <span className="text-gri-400">→</span>
+                    <span className="font-mono text-saman-koyu font-bold text-[11.5px]">
+                      {d.new_value}
+                    </span>
+                  </li>
+                ))}
+                {draftFormDiff.length > 6 && (
+                  <li className="text-[11.5px] text-gri-500 italic">
+                    ... ve {draftFormDiff.length - 6} satır daha
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </Card>
 
         {/* Scope tabs */}
@@ -480,13 +594,19 @@ export default function FiyatlarPage() {
                   <span>Açıklama</span>
                   <span className="text-right">m² maliyet (TL)</span>
                 </div>
-                {draft.materials.map((m, i) => (
+                {draft.materials.map((m, i) => {
+                  const changed = isItemChanged("material", m.id);
+                  return (
                   <div
                     key={m.id}
-                    className="grid grid-cols-[80px_1.5fr_2fr_140px] gap-2 items-center"
+                    className={cn(
+                      "grid grid-cols-[80px_1.5fr_2fr_140px] gap-2 items-center rounded px-1 py-0.5",
+                      changed && "bg-saman/10"
+                    )}
                   >
-                    <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center">
+                    <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center gap-1">
                       {m.id}
+                      {changed && <span className="text-saman-koyu" title="Değişti">●</span>}
                     </span>
                     <input
                       type="text"
@@ -509,10 +629,14 @@ export default function FiyatlarPage() {
                           m2_cost_try: Number(e.target.value),
                         })
                       }
-                      className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan"
+                      className={cn(
+                        "px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
+                        changed && "ring-saman bg-saman/10"
+                      )}
                     />
                   </div>
-                ))}
+                );
+                })}
               </div>
             </Card>
 
@@ -545,13 +669,19 @@ export default function FiyatlarPage() {
                     <span>Açıklama</span>
                     <span className="text-right">% Ekleme</span>
                   </div>
-                  {group.items.map((it: OptionItem, idx: number) => (
+                  {group.items.map((it: OptionItem, idx: number) => {
+                    const changed = isItemChanged("option", it.id, group_id);
+                    return (
                     <div
                       key={it.id}
-                      className="grid grid-cols-[80px_1.5fr_2fr_120px] gap-2 items-center"
+                      className={cn(
+                        "grid grid-cols-[80px_1.5fr_2fr_120px] gap-2 items-center rounded px-1 py-0.5",
+                        changed && "bg-saman/10"
+                      )}
                     >
-                      <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center">
+                      <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center gap-1">
                         {it.id}
+                        {changed && <span className="text-saman-koyu" title="Değişti">●</span>}
                       </span>
                       <input
                         type="text"
@@ -589,7 +719,8 @@ export default function FiyatlarPage() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </Card>
             ))}
@@ -609,8 +740,16 @@ export default function FiyatlarPage() {
                   <span>Çarpan</span>
                   <span>Label</span>
                 </div>
-                {draft.tiers.map((t, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_2fr] gap-2 items-center">
+                {draft.tiers.map((t, i) => {
+                  const changed = isItemChanged("tier", i);
+                  return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "grid grid-cols-[1fr_1fr_2fr] gap-2 items-center rounded px-1 py-0.5",
+                      changed && "bg-saman/10"
+                    )}
+                  >
                     <input
                       type="number"
                       value={t.qty}
@@ -639,7 +778,8 @@ export default function FiyatlarPage() {
                       className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
                     />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
 
