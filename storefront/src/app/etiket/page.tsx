@@ -789,11 +789,6 @@ export default function EtiketPage() {
               width={width}
               height={height}
               designUrl={primaryDesign?.previewUrl ?? null}
-              // Sefa 17 May v39: form'a henüz dokunulmadı + tasarım yok →
-              // empty state rehberi göster (boş krem zemin yerine).
-              showEmptyHint={
-                !formFactorTouched && !primaryDesign && designs.length === 0
-              }
             />
             <div className="flex justify-between items-center mt-4 px-2">
               <div className="text-[13px] text-gri-700">
@@ -1823,10 +1818,6 @@ interface PreviewCanvasProps {
   height: number;
   /** Müşterinin yüklediği tasarım dosyası — preview için signed URL */
   designUrl?: string | null;
-  /** İlk açılış / form henüz dokunulmadıysa empty state hint göster
-   *  (Sefa 17 May v39 — sayfa başlangıcında sol panelin boş gözükmesi
-   *  sorununa karşı rehber overlay) */
-  showEmptyHint?: boolean;
 }
 
 const MAT_BG: Record<MaterialId, string> = {
@@ -1867,7 +1858,6 @@ function PreviewCanvas({
   width,
   height,
   designUrl,
-  showEmptyHint,
 }: PreviewCanvasProps) {
   const { t, locale } = useT();
   const matBg = MAT_BG[material];
@@ -1910,45 +1900,9 @@ function PreviewCanvas({
         background: "linear-gradient(180deg, var(--color-krem) 0%, #EFE3CB 100%)",
       }}
     >
-      {/* Sefa 17 May v39: Empty state hint — form'a henüz dokunulmadıysa
-          kullanıcıya "burada ne olacak?" anlatan rehber overlay. Form
-          başlayınca z-index'te altta kalır, mevcut canvas görünür. */}
-      {showEmptyHint && (
-        <div
-          className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-8 pointer-events-none animate-fade-up"
-          aria-hidden="true"
-        >
-          <div className="grid place-items-center w-20 h-20 rounded-2xl bg-white/80 backdrop-blur-sm shadow-1 ring-1 ring-kahve/10 mb-5">
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-pim-mercan"
-            >
-              <path d="M9.5 2v7.5L4 12l5.5 2.5V22" />
-              <path d="M14.5 2v7.5L20 12l-5.5 2.5V22" />
-              <path d="M9.5 9.5h5" />
-              <path d="M9.5 14.5h5" />
-            </svg>
-          </div>
-          <h3 className="text-[18px] font-semibold text-lacivert mb-1.5">
-            Etiketin burada belirecek
-          </h3>
-          <p className="text-[13.5px] text-gri-700 leading-relaxed max-w-[280px]">
-            Sağdaki formu doldurmaya başla — malzeme, kaplama ve boyut
-            seçtikçe canlı önizleme burada güncellenir.
-          </p>
-          <div className="mt-5 flex items-center gap-1.5 text-[11.5px] font-semibold text-pim-mercan uppercase tracking-[0.06em]">
-            <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
-            Hazır, seni bekliyorum
-          </div>
-        </div>
-      )}
+      {/* Sefa 17 May v41: Empty hint overlay kaldırıldı — sabun mockup'ı
+          kendi başına yeterli (Olea etiket görseli zaten "burada ne olur"u
+          anlatıyor). showEmptyHint prop'u expose edildi ama no-op. */}
 
       {/* Radial highlight */}
       <div
