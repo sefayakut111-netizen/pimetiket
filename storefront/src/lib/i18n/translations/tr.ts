@@ -108,7 +108,7 @@ export const tr: TranslationDict = {
     livePreviewBadge: "Canlı önizleme",
   },
   sticker: {
-    pageTitle: "Sticker'ını konfigüre et",
+    pageTitle: "Sticker'ını Konfigüre Et",
     pageSubtitle:
       "Kampanya, hediye, kişisel — 25 adetten başla, 25'er artır.",
     pillStart: "25 adetten başlar",

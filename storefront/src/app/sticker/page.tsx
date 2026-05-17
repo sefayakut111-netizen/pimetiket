@@ -402,31 +402,29 @@ export default function StickerPage() {
           ]),
         ]}
       />
-      {/* Sayfa başlığı bandı — Sefa kuralı (15 May v4): tek başlık üst
-          bant (eski breadcrumb yerine). Etiket sayfasıyla tutarlı. */}
+      {/* Sefa 18 May v43: /etiket sayfasıyla aynı yapı.
+          Tam-genişlik strip + mercan eyebrow 'KONFIGÜRATÖR' + büyük h1.
+          '25 adetten başlar' rozeti kaldırıldı (Sefa isteği). */}
       <div className="border-b border-gri-200 bg-white">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-3 md:py-4 flex items-center gap-2">
-          <span
-            aria-hidden
-            className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
-          />
-          <h2 className="font-semibold text-[14px] md:text-[15px] text-lacivert truncate">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span
+              aria-hidden
+              className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
+            />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan">
+              Konfigüratör
+            </span>
+          </div>
+          <h1 className="text-[26px] md:text-[40px] font-semibold tracking-tight leading-tight text-lacivert">
             {t.sticker.pageTitle}
-          </h2>
+          </h1>
         </div>
       </div>
 
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
-        {/* Page hero — Pim mascot kaldırıldı (Sefa kuralı 15 May v4) */}
-        <div className="mb-6 md:mb-7">
-          <span className="inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-full bg-turuncu text-white text-[12.5px] font-semibold mb-2.5">
-            <Icon.Sparkle size={12} /> {t.sticker.pillStart}
-          </span>
-          <h1 className="text-[24px] md:text-[40px] font-semibold tracking-tight leading-tight">
-            {t.sticker.pageTitle}
-          </h1>
-          {/* Subtitle sayfa altına taşındı (Sefa kuralı 15 May v4) */}
-        </div>
+        {/* Sefa 18 May v43: page hero kaldırıldı (üstte strip var, duplicate
+            başlık + '25 adetten başlar' rozeti gereksizdi) */}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_160px] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview */}

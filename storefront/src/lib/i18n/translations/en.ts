@@ -108,7 +108,7 @@ export const en: TranslationDict = {
     livePreviewBadge: "Live preview",
   },
   sticker: {
-    pageTitle: "Configure your sticker",
+    pageTitle: "Configure Your Sticker",
     pageSubtitle:
       "Campaign, gift, personal — start from 25, increase by 25.",
     pillStart: "Starts from 25 units",
