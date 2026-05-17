@@ -271,7 +271,7 @@ export const tr: TranslationDict = {
     sendLabel: "Gönder",
   },
   footer: {
-    tagline: "Akıllı dijital baskı",
+    tagline: "Akıllı dijital baskı ekosistemi",
     newsletterEyebrow: "Pim'in defteri",
     newsletterTitle: "Etiket rehberini ilk sen oku",
     newsletterDesc:
