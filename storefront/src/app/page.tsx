@@ -8,7 +8,6 @@
 "use client";
 
 import Link from "next/link";
-import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
@@ -268,113 +267,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============================== TRUST STRIP ============================== */}
-      <section className="py-10 bg-white border-y border-gri-100">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 text-center">
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan">
-                <Icon.Check size={18} />
-              </div>
-              <div className="text-[13px] font-semibold text-lacivert">
-                3D Secure ödeme
-              </div>
-              <div className="text-[11.5px] text-gri-500">
-                BDDK lisanslı altyapı
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="grid place-items-center w-10 h-10 rounded-xl bg-yesil-soft text-yesil">
-                <Icon.Truck size={18} />
-              </div>
-              <div className="text-[13px] font-semibold text-lacivert">
-                Hızlı kargo
-              </div>
-              <div className="text-[11.5px] text-gri-500">
-                1.500 TL üzeri ücretsiz
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="grid place-items-center w-10 h-10 rounded-xl bg-krem text-lacivert">
-                <Icon.Sparkle size={18} />
-              </div>
-              <div className="text-[13px] font-semibold text-lacivert">
-                AI dosya kontrolü
-              </div>
-              <div className="text-[11.5px] text-gri-500">
-                Üretime gitmeden uyarı
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan">
-                <Icon.Star size={18} />
-              </div>
-              <div className="text-[13px] font-semibold text-lacivert">
-                KVKK uyumlu
-              </div>
-              <div className="text-[11.5px] text-gri-500">
-                Verilerin güvende
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================== BOTTOM CTA ============================== */}
-      <section className="py-20">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <div className="relative overflow-hidden bg-lacivert text-white rounded-[32px] px-8 md:px-14 py-16">
-            <div
-              aria-hidden
-              className="absolute inset-0 opacity-70"
-              style={{
-                backgroundImage:
-                  "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)",
-                backgroundSize: "16px 16px",
-              }}
-            />
-            <div className="relative grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8 items-center">
-              <div>
-                <h2 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
-                  {t.home.bottomCtaTitle}
-                </h2>
-                <p className="mt-4 text-lg text-white/75 max-w-[520px] leading-relaxed">
-                  {t.home.bottomCtaDesc}
-                </p>
-                <div className="mt-7 flex gap-3 flex-wrap">
-                  <Button variant="primary" size="lg" href="/etiket">
-                    {t.home.bottomCtaPrimary} <Icon.ArrowR />
-                  </Button>
-                  <Link
-                    href="/sticker"
-                    className="inline-flex items-center justify-center gap-2 h-[52px] px-7 rounded-full text-white font-semibold text-base ring-1 ring-white/30 hover:bg-white/10 hover:ring-white/60 transition-all"
-                  >
-                    {t.home.bottomCtaSecondary} <Icon.ArrowR size={16} />
-                  </Link>
-                </div>
-                {/* CTA alt mikrocopy — friction azaltır */}
-                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-white/60">
-                  <span className="flex items-center gap-1.5">
-                    <Icon.Check size={12} className="text-yesil" /> Konfigüre
-                    et, anlık fiyat çıkar
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Icon.Check size={12} className="text-yesil" /> Ödemeden
-                    önce dosya kontrol
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Icon.Check size={12} className="text-yesil" /> Onaylamadan
-                    üretime başlamayız
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-center">
-                <Pim pose="excited" size={240} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Sefa kararı 17 May v13: Trust strip + Bottom CTA section'ları kaldırıldı.
+          - Trust strip (3D Secure / Hızlı kargo / AI dosya / KVKK) → footer'da
+            zaten 4 güven rozeti var, ayrıca FAQ bölümünde mesaj veriliyor.
+          - Bottom CTA "Hadi başlayalım" (Pim baykuş + Etiket bastır/Sticker'a
+            göz at butonları) → hero'da aynı CTA var, duplicate.
+          Anasayfa şimdi: Hero → How it works → Reviews → FAQ → Footer. */}
     </main>
   );
 }
