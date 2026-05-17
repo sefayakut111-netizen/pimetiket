@@ -63,7 +63,7 @@ export const en: TranslationDict = {
     productConfigure: "Configure",
     productFrom: "from",
     howItWorksEyebrow: "How it works",
-    howItWorksTitle: "Print-ready in 4 steps.",
+    howItWorksTitle: "Print-Ready in 4 Steps.",
     step1: "Configure",
     step1Desc: "Choose your material and print settings.",
     step2: "Upload your file",

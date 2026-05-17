@@ -63,7 +63,7 @@ export const tr: TranslationDict = {
     productConfigure: "Konfigüre et",
     productFrom: "adetten",
     howItWorksEyebrow: "Nasıl çalışır",
-    howItWorksTitle: "4 adımda baskı hazır.",
+    howItWorksTitle: "4 Adımda Baskı Hazır.",
     step1: "Konfigüre et",
     step1Desc: "Malzeme ve baskı ayarlarını seç.",
     step2: "Dosyanı yükle",
