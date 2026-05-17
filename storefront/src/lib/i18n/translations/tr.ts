@@ -66,13 +66,13 @@ export const tr: TranslationDict = {
     howItWorksTitle:
       "Konfigüre et, dosyanı yükle, onayla — gerisini bize bırak.",
     step1: "Konfigüre et",
-    step1Desc: "Malzeme, kaplama, ölçü, adet — anlık fiyat.",
+    step1Desc: "Malzeme ve baskı ayarlarını seç.",
     step2: "Dosyanı yükle",
-    step2Desc: "PDF, AI, EPS… AI dosyana bakar; DPI/CMYK/bleed eksikse söyler.",
+    step2Desc: "PDF, PNG, PSD ve AI formatlarını yükleyebilirsin.",
     step3: "Provayı onayla",
-    step3Desc: "Rulonun üstünde nasıl görüneceğini gör, onayla.",
+    step3Desc: "Basılacak ürününü baskıya hazır halde gör.",
     step4: "Teslim al",
-    step4Desc: "5 iş günü içinde kargoya veriyoruz, kargo + 1-3 gün.",
+    step4Desc: "5-10 gün arasında kargoda.",
     faqEyebrow: "Sıkça sorulanlar",
     faqTitle: 'Cevap genelde "evet, hallederiz".',
     faqHelp:

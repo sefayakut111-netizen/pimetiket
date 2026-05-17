@@ -209,14 +209,22 @@ export default function HomePage() {
             </h2>
           </div>
           <div className="relative">
+            {/* Akış animasyonu (Sefa 17 May v22):
+                · Alt çizgi: bg-gri-200 statik gri zemin
+                · Üst çizgi: .flow-line — sağa kayan mercan parıltı (3.5s döngü) */}
             <div
               aria-hidden
               className="hidden md:block absolute left-[12.5%] right-[12.5%] top-9 h-0.5 bg-gri-200 z-0"
             />
+            <div
+              aria-hidden
+              className="hidden md:block absolute left-[12.5%] right-[12.5%] top-9 h-0.5 flow-line z-0"
+            />
             <div className="relative grid grid-cols-2 md:grid-cols-4 gap-6 z-10">
               {STEPS.map((s, i) => (
                 <div key={i} className="text-center">
-                  <div className="grid place-items-center w-[72px] h-[72px] rounded-full bg-white ring-2 ring-gri-200 mx-auto mb-5 font-bold text-[22px] text-pim-mercan shadow-1">
+                  {/* step-circle-anim → sırayla pulse (0s, 0.85s, 1.7s, 2.55s) */}
+                  <div className="step-circle-anim grid place-items-center w-[72px] h-[72px] rounded-full bg-white ring-2 ring-gri-200 mx-auto mb-5 font-bold text-[22px] text-pim-mercan shadow-1">
                     {s.n}
                   </div>
                   <h3 className="text-xl font-semibold mb-1.5">{s.t}</h3>
