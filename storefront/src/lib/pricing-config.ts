@@ -1,14 +1,18 @@
 /**
- * Pricing Config — DB-bağlı fiyat yönetimi (Migration 047).
+ * Pricing Config — DB-bağlı fiyat yönetimi (Migration 047 + 048).
  *
- * Sefa 17 May: "fiyat girebileceim bir alan yok".
+ * v2 (Migration 048): m² maliyet + toplamsal % yapısı + 3 profil:
+ *   - sticker
+ *   - etiket_rulo
+ *   - etiket_tabaka
+ *   - global (ileride)
  *
- * 3 scope: 'sticker', 'etiket', 'global'.
- * Her scope draft + live tutar. Müşteri tarafı LIVE okur, admin DRAFT'ta
- * çalışıp "Canlıya yayınla" butonuyla LIVE'e geçirir.
- *
- * Cache: 5 dakika in-memory (LIVE config için). DB unreachable senaryosunda
- * fallback default değerler (hardcoded constants'tan).
+ * Her profil:
+ *   - materials[]:  { id, name, m2_cost_try, desc }
+ *   - options:      { groupId: { label, single_select, items[] } }
+ *   - tiers[]:      adet kademesi (çarpansal)
+ *   - operation:    setup/packaging/cargo/fee%
+ *   - margin/vat:   yüzde
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -18,76 +22,64 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Types
 // ============================================================
 
-export interface ProductionConfig {
-  mode: "fason" | "uretim";
-  fasonRate: number;
-  paper?: number;
-  ink?: number;
-  coating?: number;
-  labor?: number;
-  overhead?: number;
-  depreciation?: number;
+export type ScopeName =
+  | "sticker"
+  | "etiket_rulo"
+  | "etiket_tabaka"
+  | "global";
+
+export interface MaterialItem {
+  id: string;
+  name: string;
+  /** TL/m² maliyet — Sefa girer (atölye tarifesi) */
+  m2_cost_try: number;
+  desc?: string;
 }
 
-export interface OperationConfig {
-  setup: number;
-  packaging: number;
-  cargo: number;
-  feePct: number;
+export interface OptionItem {
+  id: string;
+  name: string;
+  /** Toplamsal yüzde ekleme (ana fiyat üzerinden) */
+  pct_add: number;
+  desc?: string;
 }
 
-export interface MarginConfigStored {
-  marginPct: number;
-  vatPct: number;
-  minMarkupFraction: number;
+export interface OptionGroup {
+  label: string;
+  required?: boolean;
+  /** true ise tek seçim, false ise multi-select */
+  single_select: boolean;
+  items: OptionItem[];
 }
 
 export interface TierConfig {
   qty: number;
+  /** Çarpansal — referans=1.0, az adet >1.0 (zam), çok adet <1.0 (indirim) */
   multiplier: number;
   label: string;
 }
 
-export interface MultiplierItem {
-  id: string;
-  name: string;
-  desc: string;
-  multiplier: number;
+export interface OperationConfig {
+  setup: number;
+  packaging_per_unit: number;
+  cargo: number;
+  fee_pct: number;
 }
 
-export interface StickerScopeConfig {
-  production: ProductionConfig;
-  operation: OperationConfig;
-  margin: MarginConfigStored;
+export interface PercentConfig {
+  pct: number;
+}
+
+export interface ProfileConfig {
+  materials: MaterialItem[];
+  options: Record<string, OptionGroup>;
   tiers: TierConfig[];
-}
-
-export interface EtiketScopeConfig {
-  production: ProductionConfig;
   operation: OperationConfig;
-  margin: MarginConfigStored;
-  tiers: TierConfig[];
-  materials: MultiplierItem[];
-  coatings: MultiplierItem[];
-  customizations: MultiplierItem[];
+  margin: PercentConfig;
+  vat: PercentConfig;
 }
 
-export type ScopeName = "sticker" | "etiket" | "global";
-export type ScopeConfig =
-  | StickerScopeConfig
-  | EtiketScopeConfig
-  | Record<string, unknown>;
-
-export interface PricingConfigRow {
-  scope: ScopeName;
-  draft_config: ScopeConfig;
-  live_config: ScopeConfig;
-  draft_updated_at: string;
-  draft_updated_by_email: string | null;
-  live_updated_at: string;
-  live_updated_by_email: string | null;
-  live_published_at: string;
-}
+export type ScopeConfig = ProfileConfig | Record<string, unknown>;
 
 export interface PricingHistoryRow {
   id: string;
@@ -100,13 +92,28 @@ export interface PricingHistoryRow {
 }
 
 // ============================================================
-// Fallback defaults — Migration 047 ile aynı (DB unreachable senaryo)
+// Fallback defaults (DB unreachable senaryosu)
 // ============================================================
 
-export const FALLBACK_STICKER_CONFIG: StickerScopeConfig = {
-  production: { mode: "fason", fasonRate: 0.40 },
-  operation: { setup: 50, packaging: 0.01, cargo: 80, feePct: 2.5 },
-  margin: { marginPct: 50, vatPct: 20, minMarkupFraction: 0.10 },
+export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
+  materials: [
+    { id: "vinil", name: "Vinil", m2_cost_try: 500, desc: "Standart vinil" },
+    { id: "opak", name: "Opak", m2_cost_try: 600, desc: "Beyaz opak" },
+    { id: "seffaf", name: "Şeffaf", m2_cost_try: 700, desc: "Cam üstü görünmez" },
+    { id: "holografik", name: "Holografik", m2_cost_try: 1200, desc: "Yansıtıcı" },
+    { id: "metalik", name: "Metalik", m2_cost_try: 1500, desc: "Krom efekti" },
+  ],
+  options: {
+    finish: {
+      label: "Finiş",
+      required: true,
+      single_select: true,
+      items: [
+        { id: "parlak", name: "Parlak", pct_add: 0 },
+        { id: "mat", name: "Mat", pct_add: 10 },
+      ],
+    },
+  },
   tiers: [
     { qty: 25, multiplier: 1.30, label: "+%30 zam" },
     { qty: 50, multiplier: 1.20, label: "+%20 zam" },
@@ -115,12 +122,42 @@ export const FALLBACK_STICKER_CONFIG: StickerScopeConfig = {
     { qty: 500, multiplier: 0.90, label: "-%10 indirim" },
     { qty: 1000, multiplier: 0.80, label: "-%20 indirim" },
   ],
+  operation: { setup: 50, packaging_per_unit: 0.01, cargo: 80, fee_pct: 2.5 },
+  margin: { pct: 50 },
+  vat: { pct: 20 },
 };
 
-export const FALLBACK_ETIKET_CONFIG: EtiketScopeConfig = {
-  production: { mode: "fason", fasonRate: 0.35 },
-  operation: { setup: 80, packaging: 0.015, cargo: 80, feePct: 2.5 },
-  margin: { marginPct: 50, vatPct: 20, minMarkupFraction: 0.10 },
+export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
+  materials: [
+    { id: "kraft", name: "Kraft", m2_cost_try: 300, desc: "Doğal, dokunsal" },
+    { id: "kuse", name: "Kuşe", m2_cost_try: 350, desc: "Mat kaplamalı" },
+    { id: "beyaz", name: "Beyaz semi-glos", m2_cost_try: 400, desc: "Klasik" },
+    { id: "ultra", name: "Ultra clear", m2_cost_try: 600, desc: "Şeffaf" },
+    { id: "metalik", name: "Metalik", m2_cost_try: 900, desc: "Folyo gümüş" },
+  ],
+  options: {
+    coating: {
+      label: "Kaplama",
+      required: true,
+      single_select: true,
+      items: [
+        { id: "yok", name: "Kaplamasız", pct_add: 0 },
+        { id: "mat", name: "Mat selefon", pct_add: 15 },
+        { id: "parlak", name: "Parlak selefon", pct_add: 15 },
+        { id: "soft", name: "Soft touch", pct_add: 30 },
+      ],
+    },
+    customization: {
+      label: "Özelleştirme",
+      required: false,
+      single_select: false,
+      items: [
+        { id: "emboss", name: "Emboss (Kabartma)", pct_add: 30 },
+        { id: "yaldiz", name: "Sıcak yaldız", pct_add: 50 },
+        { id: "spot_uv", name: "Spot UV", pct_add: 25 },
+      ],
+    },
+  },
   tiers: [
     { qty: 1000, multiplier: 1.10, label: "+%10 zam" },
     { qty: 2000, multiplier: 1.05, label: "+%5 zam" },
@@ -129,25 +166,40 @@ export const FALLBACK_ETIKET_CONFIG: EtiketScopeConfig = {
     { qty: 20000, multiplier: 0.90, label: "-%10 indirim" },
     { qty: 50000, multiplier: 0.82, label: "-%18 indirim" },
   ],
+  operation: { setup: 80, packaging_per_unit: 0.015, cargo: 80, fee_pct: 2.5 },
+  margin: { pct: 50 },
+  vat: { pct: 20 },
+};
+
+export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
   materials: [
-    { id: "kraft", name: "Kraft", desc: "Doğal, dokunsal", multiplier: 1.00 },
-    { id: "kuse", name: "Kuşe", desc: "Mat kaplamalı baskı kağıdı", multiplier: 1.05 },
-    { id: "beyaz", name: "Beyaz semi-glos", desc: "Klasik, parlak", multiplier: 1.10 },
-    { id: "ultra", name: "Ultra clear", desc: "Şeffaf cam etkisi", multiplier: 1.35 },
-    { id: "metalik", name: "Metalik", desc: "Folyo gümüş", multiplier: 1.60 },
+    { id: "kraft", name: "Kraft", m2_cost_try: 280, desc: "Doğal, dokunsal" },
+    { id: "kuse", name: "Kuşe", m2_cost_try: 320, desc: "Mat kaplamalı" },
+    { id: "beyaz", name: "Beyaz semi-glos", m2_cost_try: 380, desc: "Klasik" },
   ],
-  coatings: [
-    { id: "yok", name: "Kaplamasız", desc: "Kâğıt dokusu kalsın", multiplier: 1.00 },
-    { id: "mat", name: "Mat selefon", desc: "Yansımasız, premium", multiplier: 1.15 },
-    { id: "parlak", name: "Parlak selefon", desc: "Canlı, temiz", multiplier: 1.15 },
-    { id: "soft", name: "Soft touch", desc: "Velvet his", multiplier: 1.30 },
+  options: {
+    coating: {
+      label: "Kaplama",
+      required: true,
+      single_select: true,
+      items: [
+        { id: "yok", name: "Kaplamasız", pct_add: 0 },
+        { id: "mat", name: "Mat selefon", pct_add: 15 },
+        { id: "parlak", name: "Parlak selefon", pct_add: 15 },
+      ],
+    },
+  },
+  tiers: [
+    { qty: 250, multiplier: 1.15, label: "+%15 zam" },
+    { qty: 500, multiplier: 1.08, label: "+%8 zam" },
+    { qty: 1000, multiplier: 1.00, label: "referans" },
+    { qty: 2500, multiplier: 0.95, label: "-%5 indirim" },
+    { qty: 5000, multiplier: 0.90, label: "-%10 indirim" },
+    { qty: 10000, multiplier: 0.85, label: "-%15 indirim" },
   ],
-  customizations: [
-    { id: "yok", name: "Özelleştirme yok", desc: "Sade baskı", multiplier: 1.00 },
-    { id: "emboss", name: "Kabartma (emboss)", desc: "Logo/metin kabartması", multiplier: 1.30 },
-    { id: "yaldiz", name: "Sıcak yaldız", desc: "Folyo baskı, premium parıltı", multiplier: 1.50 },
-    { id: "spotuv", name: "Spot UV", desc: "Parlak nokta vurgu", multiplier: 1.25 },
-  ],
+  operation: { setup: 60, packaging_per_unit: 0.02, cargo: 80, fee_pct: 2.5 },
+  margin: { pct: 50 },
+  vat: { pct: 20 },
 };
 
 // ============================================================
@@ -158,7 +210,7 @@ interface CacheEntry {
   config: ScopeConfig;
   expiresAt: number;
 }
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 dakika
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const liveCache = new Map<ScopeName, CacheEntry>();
 
 function getCached(scope: ScopeName): ScopeConfig | null {
@@ -187,11 +239,7 @@ export function invalidatePricingCache(scope?: ScopeName): void {
 // Public API
 // ============================================================
 
-/**
- * Live config oku (müşteri sayfası + sipariş akışı).
- * Cache + DB + fallback.
- */
-export async function getLivePricingConfig<T extends ScopeConfig>(
+export async function getLivePricingConfig<T extends ScopeConfig = ProfileConfig>(
   scope: ScopeName
 ): Promise<T> {
   const cached = getCached(scope);
@@ -222,9 +270,6 @@ export async function getLivePricingConfig<T extends ScopeConfig>(
   }
 }
 
-/**
- * Admin için: hem draft hem live oku.
- */
 export async function getAdminPricingConfig(
   scope: ScopeName
 ): Promise<{
@@ -262,9 +307,6 @@ export async function getAdminPricingConfig(
   };
 }
 
-/**
- * Draft kaydet (server-side, admin auth zaten kontrol edildi).
- */
 export async function saveDraftPricingConfig(
   scope: ScopeName,
   draft: ScopeConfig,
@@ -284,7 +326,6 @@ export async function saveDraftPricingConfig(
     .eq("scope", scope);
   if (error) return { ok: false, error: error.message };
 
-  // History entry
   await admin.from("pricing_config_history").insert([
     {
       scope,
@@ -299,9 +340,6 @@ export async function saveDraftPricingConfig(
   return { ok: true };
 }
 
-/**
- * Draft → Live (RPC ile, audit log dahil).
- */
 export async function publishPricingConfig(
   scope: ScopeName,
   note?: string
@@ -316,9 +354,6 @@ export async function publishPricingConfig(
   return { ok: true };
 }
 
-/**
- * History snapshot'ına geri dön (live'i değiştirir).
- */
 export async function revertPricingConfig(
   scope: ScopeName,
   historyId: string
@@ -333,9 +368,6 @@ export async function revertPricingConfig(
   return { ok: true };
 }
 
-/**
- * History listesi (son 30 değişiklik).
- */
 export async function listPricingHistory(
   scope: ScopeName,
   limit = 30
@@ -358,7 +390,14 @@ export async function listPricingHistory(
 // ============================================================
 
 function getFallback(scope: ScopeName): ScopeConfig {
-  if (scope === "sticker") return FALLBACK_STICKER_CONFIG;
-  if (scope === "etiket") return FALLBACK_ETIKET_CONFIG;
-  return {};
+  switch (scope) {
+    case "sticker":
+      return FALLBACK_STICKER_CONFIG;
+    case "etiket_rulo":
+      return FALLBACK_ETIKET_RULO_CONFIG;
+    case "etiket_tabaka":
+      return FALLBACK_ETIKET_TABAKA_CONFIG;
+    default:
+      return {};
+  }
 }

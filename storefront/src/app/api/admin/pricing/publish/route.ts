@@ -12,7 +12,12 @@ import {
   type ScopeName,
 } from "@/lib/pricing-config";
 
-const VALID_SCOPES: ScopeName[] = ["sticker", "etiket", "global"];
+const VALID_SCOPES: ScopeName[] = [
+  "sticker",
+  "etiket_rulo",
+  "etiket_tabaka",
+  "global",
+];
 
 export async function POST(req: Request) {
   const auth = await assertAdmin();

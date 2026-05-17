@@ -24,7 +24,12 @@ import {
   type ScopeName,
 } from "@/lib/pricing-config";
 
-const VALID_SCOPES: ScopeName[] = ["sticker", "etiket", "global"];
+const VALID_SCOPES: ScopeName[] = [
+  "sticker",
+  "etiket_rulo",
+  "etiket_tabaka",
+  "global",
+];
 
 function parseScope(req: Request): ScopeName | null {
   const url = new URL(req.url);

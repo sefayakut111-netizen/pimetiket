@@ -1,51 +1,83 @@
 /**
- * Pim Etiket — /admin/fiyatlar
+ * Pim Etiket — /admin/fiyatlar (v2)
  *
- * Sefa 17 May: "fiyat girebileceiğim bir alan yok".
+ * Sefa 17 May v2: 3 profil (Sticker / Rulo Etiket / Tabaka Etiket).
  *
- * 3 tab: Sticker · Etiket · (Global ileride)
- * Her tab:
- *   - Production (fason rate VEYA 6 üretim kalemi)
- *   - Operation (setup / packaging / cargo / fee%)
- *   - Margin (margin% / KDV% / minMarkup)
- *   - Tier matrix (qty + multiplier + label)
- *   - Material/Coating/Customization multiplier'ları (etiket için)
+ * Her profil:
+ *   - Materials (m² maliyet TL)
+ *   - Options (groups: finish/coating/customization, toplamsal %)
+ *   - Tiers (adet kademesi, çarpansal)
+ *   - Operation (setup/packaging/cargo/fee%)
+ *   - Margin + KDV
  *
- * Akış:
- *   1. Sayfa açılınca GET /api/admin/pricing?scope=X → draft + live
- *   2. Sefa formu doldurur → "💾 Draft kaydet" (PUT)
- *   3. Tatmin olunca → "🚀 Canlıya yayınla" (POST publish)
- *   4. Sorun olursa → History panelinden "↩ Bu noktaya dön"
+ * Sağ panel: Canlı preview (örnek sipariş ile gerçek hesap)
  */
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pim } from "@/components/Pim";
-import { Card, Eyebrow, Button, Input, useToast } from "@/components/ui";
+import { Card, Eyebrow, Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type {
-  StickerScopeConfig,
-  EtiketScopeConfig,
+  ProfileConfig,
   PricingHistoryRow,
   ScopeName,
-  MultiplierItem,
+  MaterialItem,
+  OptionGroup,
+  OptionItem,
   TierConfig,
 } from "@/lib/pricing-config";
+import { calculatePrice } from "@/lib/pricing-calc";
 
-type Scope = "sticker" | "etiket";
+type Scope = "sticker" | "etiket_rulo" | "etiket_tabaka";
 
 interface ApiResponse {
   ok?: boolean;
   scope?: ScopeName;
-  draft?: StickerScopeConfig | EtiketScopeConfig;
-  live?: StickerScopeConfig | EtiketScopeConfig;
+  draft?: ProfileConfig;
+  live?: ProfileConfig;
   draft_updated_at?: string | null;
   draft_updated_by_email?: string | null;
   live_updated_at?: string | null;
   live_updated_by_email?: string | null;
   history?: PricingHistoryRow[];
   error?: string;
+}
+
+const SCOPE_META: Record<Scope, { label: string; emoji: string; desc: string }> = {
+  sticker: {
+    label: "Sticker",
+    emoji: "🏷",
+    desc: "Vinil / Opak / Şeffaf / Holografik / Metalik · Finiş seçimi",
+  },
+  etiket_rulo: {
+    label: "Rulo Etiket",
+    emoji: "📋",
+    desc: "Kraft / Kuşe / Beyaz / Ultra / Metalik · Kaplama + Özelleştirme",
+  },
+  etiket_tabaka: {
+    label: "Tabaka Etiket",
+    emoji: "📄",
+    desc: "Kraft / Kuşe / Beyaz · Kaplama (özelleştirme yok)",
+  },
+};
+
+const SCOPE_PREVIEW_DEFAULTS: Record<
+  Scope,
+  { width: number; height: number; qty: number }
+> = {
+  sticker: { width: 50, height: 50, qty: 250 },
+  etiket_rulo: { width: 60, height: 40, qty: 5000 },
+  etiket_tabaka: { width: 70, height: 50, qty: 1000 },
+};
+
+function fmtMoney(n: number): string {
+  return Math.round(n).toLocaleString("tr-TR") + " TL";
+}
+
+function fmtMoney2(n: number): string {
+  return n.toFixed(2).replace(".", ",") + " TL";
 }
 
 function fmtDateTime(iso: string | null): string {
@@ -78,16 +110,20 @@ function deepEqual(a: unknown, b: unknown): boolean {
 
 export default function FiyatlarPage() {
   const toast = useToast();
-  const [scope, setScope] = useState<Scope>("etiket");
+  const [scope, setScope] = useState<Scope>("sticker");
   const [data, setData] = useState<ApiResponse | null>(null);
-  const [draft, setDraft] = useState<StickerScopeConfig | EtiketScopeConfig | null>(
-    null
-  );
+  const [draft, setDraft] = useState<ProfileConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Preview state — örnek sipariş için
+  const [previewMaterialId, setPreviewMaterialId] = useState<string>("");
+  const [previewOptions, setPreviewOptions] = useState<
+    Record<string, string | string[]>
+  >({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -103,8 +139,23 @@ export default function FiyatlarPage() {
         return;
       }
       setData(j);
-      // Draft'ı initial value olarak set et (deep clone)
-      setDraft(JSON.parse(JSON.stringify(j.draft)));
+      setDraft(JSON.parse(JSON.stringify(j.draft)) as ProfileConfig);
+
+      // Preview defaults
+      const firstMaterial = (j.draft as ProfileConfig).materials[0];
+      if (firstMaterial) setPreviewMaterialId(firstMaterial.id);
+
+      const defaultOptions: Record<string, string | string[]> = {};
+      for (const [group_id, group] of Object.entries(
+        (j.draft as ProfileConfig).options
+      )) {
+        if (group.single_select && group.items[0]) {
+          defaultOptions[group_id] = group.items[0].id;
+        } else if (!group.single_select) {
+          defaultOptions[group_id] = [];
+        }
+      }
+      setPreviewOptions(defaultOptions);
     } catch (err) {
       setError(err instanceof Error ? err.message : "network");
     } finally {
@@ -132,9 +183,7 @@ export default function FiyatlarPage() {
       if (j.ok) {
         toast.success("💾 Draft kaydedildi");
         await refresh();
-      } else {
-        toast.error(j.error ?? "Kaydedilemedi");
-      }
+      } else toast.error(j.error ?? "Kaydedilemedi");
     } finally {
       setSaving(false);
     }
@@ -143,7 +192,7 @@ export default function FiyatlarPage() {
   const handlePublish = async () => {
     if (
       !confirm(
-        "Draft canlıya yayınlanacak. Müşteri tarafı yeni fiyatları anında görecek. Devam?"
+        "Draft canlıya yayınlanacak. Müşteri tarafı yeni fiyatları görür. Devam?"
       )
     )
       return;
@@ -151,26 +200,20 @@ export default function FiyatlarPage() {
     try {
       const r = await fetch(
         `/api/admin/pricing/publish?scope=${scope}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({}),
-        }
+        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }
       );
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (j.ok) {
         toast.success("🚀 Canlıya yayınlandı");
         await refresh();
-      } else {
-        toast.error(j.error ?? "Yayınlama başarısız");
-      }
+      } else toast.error(j.error ?? "Yayınlama başarısız");
     } finally {
       setPublishing(false);
     }
   };
 
   const handleRevert = async (historyId: string) => {
-    if (!confirm("Bu noktaya geri dönülecek (live config). Devam?")) return;
+    if (!confirm("Bu noktaya geri dönülecek. Devam?")) return;
     const r = await fetch(`/api/admin/pricing/revert?scope=${scope}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -180,39 +223,31 @@ export default function FiyatlarPage() {
     if (j.ok) {
       toast.success("↩ Geri alındı");
       await refresh();
-    } else {
-      toast.error(j.error ?? "Hata");
-    }
+    } else toast.error(j.error ?? "Hata");
   };
 
-  // Form helpers ===============================================================
-
-  const updateDraft = (
-    updater: (
-      d: StickerScopeConfig | EtiketScopeConfig
-    ) => StickerScopeConfig | EtiketScopeConfig
-  ) => {
-    if (!draft) return;
-    setDraft(updater(JSON.parse(JSON.stringify(draft))));
-  };
-
-  const updateNumber = (path: string[], value: number) => {
-    if (!draft) return;
-    const next = JSON.parse(JSON.stringify(draft));
-    let cursor: Record<string, unknown> = next;
-    for (let i = 0; i < path.length - 1; i++) {
-      cursor = cursor[path[i]] as Record<string, unknown>;
-    }
-    cursor[path[path.length - 1]] = value;
-    setDraft(next);
-  };
+  // Live preview hesaplama
+  const previewResult = useMemo(() => {
+    if (!draft || !previewMaterialId) return null;
+    const defaults = SCOPE_PREVIEW_DEFAULTS[scope];
+    return calculatePrice(
+      {
+        width_mm: defaults.width,
+        height_mm: defaults.height,
+        qty: defaults.qty,
+        material_id: previewMaterialId,
+        selected_options: previewOptions,
+      },
+      draft
+    );
+  }, [draft, previewMaterialId, previewOptions, scope]);
 
   if (loading && !data) {
     return (
       <main className="py-8">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <div className="h-8 bg-gri-100 rounded animate-pulse w-1/3 mb-4" />
-          <div className="h-[500px] bg-gri-100 rounded-2xl animate-pulse" />
+          <div className="h-[600px] bg-gri-100 rounded-2xl animate-pulse" />
         </div>
       </main>
     );
@@ -235,30 +270,65 @@ export default function FiyatlarPage() {
     );
   }
 
+  const updateMaterial = (idx: number, patch: Partial<MaterialItem>) => {
+    const next = { ...draft, materials: [...draft.materials] };
+    next.materials[idx] = { ...next.materials[idx], ...patch };
+    setDraft(next);
+  };
+
+  const updateOptionItem = (
+    group_id: string,
+    item_idx: number,
+    patch: Partial<OptionItem>
+  ) => {
+    const next: ProfileConfig = JSON.parse(JSON.stringify(draft));
+    if (!next.options[group_id]) return;
+    next.options[group_id].items[item_idx] = {
+      ...next.options[group_id].items[item_idx],
+      ...patch,
+    };
+    setDraft(next);
+  };
+
+  const updateTier = (idx: number, patch: Partial<TierConfig>) => {
+    const next = { ...draft, tiers: [...draft.tiers] };
+    next.tiers[idx] = { ...next.tiers[idx], ...patch };
+    setDraft(next);
+  };
+
+  const updateOperationField = (key: keyof ProfileConfig["operation"], value: number) => {
+    setDraft({ ...draft, operation: { ...draft.operation, [key]: value } });
+  };
+
+  const updateMarginPct = (value: number) => {
+    setDraft({ ...draft, margin: { pct: value } });
+  };
+
+  const updateVatPct = (value: number) => {
+    setDraft({ ...draft, vat: { pct: value } });
+  };
+
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+      <div className="mx-auto max-w-[1400px] px-4 md:px-8">
         {/* Header */}
-        <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <Eyebrow>Yönetim</Eyebrow>
-            <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Fiyat Yönetimi
-            </h1>
-            <p className="mt-1.5 text-base text-gri-700 leading-relaxed max-w-[640px]">
-              Üretim maliyetlerini, kâr marjını, tier indirimlerini ve malzeme
-              çarpanlarını buradan yönet. Önce <strong>draft</strong> olarak
-              kaydet, tatmin olunca <strong>"Canlıya yayınla"</strong> ile
-              müşteri sayfalarına aktar.
-            </p>
-          </div>
+        <div className="mb-5">
+          <Eyebrow>Yönetim</Eyebrow>
+          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+            Fiyat Yönetimi
+          </h1>
+          <p className="mt-1.5 text-base text-gri-700 leading-relaxed max-w-[700px]">
+            <strong>m² maliyet</strong> gir, sistem üstüne adet kademesi +
+            özelleştirme % + kâr marjı + KDV ekler. <strong>Draft</strong>'ta
+            test et, tatmin olunca <strong>Canlıya yayınla</strong>.
+          </p>
         </div>
 
         {/* Status banner */}
         <Card
           padding="p-4"
           className={cn(
-            "mb-5",
+            "mb-4",
             isDirty
               ? "!bg-saman/10 ring-saman/30"
               : isLiveBehindDraft
@@ -273,7 +343,7 @@ export default function FiyatlarPage() {
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-[13.5px] text-lacivert">
                 {isDirty
-                  ? "Kaydedilmemiş değişikliklerin var"
+                  ? "Kaydedilmemiş değişiklikler var"
                   : isLiveBehindDraft
                     ? "Draft canlıdan farklı — yayınlanmayı bekliyor"
                     : "Her şey güncel: Draft = Live"}
@@ -283,58 +353,60 @@ export default function FiyatlarPage() {
                 {data.draft_updated_by_email && (
                   <> · {data.draft_updated_by_email}</>
                 )}
-                {" · "}
-                Live: {timeAgo(data.live_updated_at ?? null)}
-                {data.live_updated_by_email && (
-                  <> · {data.live_updated_by_email}</>
-                )}
+                {" · "}Live: {timeAgo(data.live_updated_at ?? null)}
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHistory((s) => !s)}
-              >
-                {showHistory ? "Geçmişi gizle" : "📋 Geçmiş"}
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHistory((s) => !s)}
+            >
+              {showHistory ? "Geçmiş gizle" : "📋 Geçmiş"}
+            </Button>
           </div>
         </Card>
 
         {/* Scope tabs */}
         <div className="mb-5 flex gap-2 flex-wrap">
-          {(["sticker", "etiket"] as Scope[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                if (isDirty) {
-                  if (
-                    !confirm(
-                      "Kaydedilmemiş değişikliklerin var, yine de geçeyim mi?"
+          {(["sticker", "etiket_rulo", "etiket_tabaka"] as Scope[]).map((s) => {
+            const meta = SCOPE_META[s];
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  if (isDirty) {
+                    if (
+                      !confirm(
+                        "Kaydedilmemiş değişiklik var, yine de geçeyim mi?"
+                      )
                     )
-                  )
-                    return;
-                }
-                setScope(s);
-              }}
-              className={cn(
-                "px-5 py-2.5 rounded-full text-[13.5px] font-semibold transition-colors",
-                scope === s
-                  ? "bg-lacivert text-white"
-                  : "bg-gri-100 text-gri-700 hover:bg-gri-200"
-              )}
-            >
-              {s === "sticker" ? "🏷 Sticker" : "📋 Etiket"}
-            </button>
-          ))}
+                      return;
+                  }
+                  setScope(s);
+                }}
+                className={cn(
+                  "px-4 py-2.5 rounded-full text-[13.5px] font-semibold transition-colors",
+                  scope === s
+                    ? "bg-lacivert text-white"
+                    : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                )}
+              >
+                {meta.emoji} {meta.label}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Scope description */}
+        <p className="text-[12.5px] text-gri-700 italic mb-5">
+          {SCOPE_META[scope].desc}
+        </p>
 
         {/* History panel */}
         {showHistory && (
-          <Card padding="p-5" className="mb-5">
-            <h3 className="font-semibold text-[15px] mb-3">
+          <Card padding="p-4" className="mb-5">
+            <h3 className="font-semibold text-[14px] mb-3">
               📋 Son 30 değişiklik
             </h3>
             {!data.history || data.history.length === 0 ? (
@@ -342,38 +414,35 @@ export default function FiyatlarPage() {
                 Henüz değişiklik yok
               </div>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                 {data.history.map((h) => (
                   <div
                     key={h.id}
-                    className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[12.5px]"
+                    className="flex items-center justify-between gap-3 p-2 rounded bg-gri-50 ring-1 ring-gri-200 text-[12px]"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span
-                          className={cn(
-                            "inline-flex items-center h-[20px] px-2 rounded-full text-[10.5px] font-bold uppercase tracking-[0.04em]",
-                            h.action === "publish"
-                              ? "bg-yesil-soft text-yesil"
-                              : h.action === "revert"
-                                ? "bg-saman/15 text-saman-koyu"
-                                : "bg-gri-100 text-gri-700"
-                          )}
-                        >
-                          {h.action === "publish"
-                            ? "🚀 Yayın"
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex items-center h-[20px] px-2 rounded-full text-[10.5px] font-bold uppercase",
+                          h.action === "publish"
+                            ? "bg-yesil-soft text-yesil"
                             : h.action === "revert"
-                              ? "↩ Geri"
-                              : "💾 Draft"}
-                        </span>
-                        <span className="text-lacivert font-mono text-[11px]">
-                          {fmtDateTime(h.changed_at)}
-                        </span>
-                      </div>
-                      <div className="text-gri-700">
+                              ? "bg-saman/15 text-saman-koyu"
+                              : "bg-gri-100 text-gri-700"
+                        )}
+                      >
+                        {h.action === "publish"
+                          ? "🚀 Yayın"
+                          : h.action === "revert"
+                            ? "↩ Geri"
+                            : "💾 Draft"}
+                      </span>
+                      <span className="font-mono text-[11px] text-lacivert">
+                        {fmtDateTime(h.changed_at)}
+                      </span>
+                      <span className="text-gri-700">
                         {h.changed_by_email ?? "—"}
-                        {h.note && <> · {h.note}</>}
-                      </div>
+                      </span>
                     </div>
                     {h.action !== "revert" && (
                       <button
@@ -381,7 +450,7 @@ export default function FiyatlarPage() {
                         onClick={() => void handleRevert(h.id)}
                         className="text-[11.5px] font-semibold text-pim-mercan hover:underline"
                       >
-                        Bu noktaya dön ↩
+                        Geri dön ↩
                       </button>
                     )}
                   </div>
@@ -391,166 +460,240 @@ export default function FiyatlarPage() {
           </Card>
         )}
 
-        {/* ============ FORM ============ */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+        {/* Main grid: Form (left) + Preview (right) */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5">
+          {/* SOL — FORM */}
           <div className="space-y-5">
-            {/* Production */}
+            {/* Materials */}
             <Card padding="p-5">
-              <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                🏭 <span>Üretim maliyeti</span>
+              <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
+                🎨 <span>Malzemeler (m² maliyet)</span>
               </h2>
-              <div className="text-[12.5px] text-gri-700 mb-3 leading-relaxed">
-                Fason atölyeye ödediğin birim fiyat. Sticker için adet başına,
-                etiket için adet başına. Mevcut tek mod: fason.
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <NumberField
-                  label="Fason rate (TL/adet)"
-                  value={draft.production.fasonRate}
-                  step={0.05}
-                  onChange={(v) => updateNumber(["production", "fasonRate"], v)}
-                />
+              <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
+                Her malzeme için <strong>TL/m²</strong> birim maliyeti.
+                Atölye tarifesinden direkt girersin.
+              </p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[80px_1.5fr_2fr_140px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                  <span>ID</span>
+                  <span>Ad</span>
+                  <span>Açıklama</span>
+                  <span className="text-right">m² maliyet (TL)</span>
+                </div>
+                {draft.materials.map((m, i) => (
+                  <div
+                    key={m.id}
+                    className="grid grid-cols-[80px_1.5fr_2fr_140px] gap-2 items-center"
+                  >
+                    <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center">
+                      {m.id}
+                    </span>
+                    <input
+                      type="text"
+                      value={m.name}
+                      onChange={(e) => updateMaterial(i, { name: e.target.value })}
+                      className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
+                    />
+                    <input
+                      type="text"
+                      value={m.desc ?? ""}
+                      onChange={(e) => updateMaterial(i, { desc: e.target.value })}
+                      className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] focus:outline-none focus:ring-pim-mercan"
+                    />
+                    <input
+                      type="number"
+                      value={m.m2_cost_try}
+                      step={10}
+                      onChange={(e) =>
+                        updateMaterial(i, {
+                          m2_cost_try: Number(e.target.value),
+                        })
+                      }
+                      className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan"
+                    />
+                  </div>
+                ))}
               </div>
             </Card>
 
-            {/* Operation */}
+            {/* Options groups — dynamic render */}
+            {Object.entries(draft.options).map(([group_id, group]) => (
+              <Card padding="p-5" key={group_id}>
+                <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
+                  ✨ <span>{group.label}</span>
+                  <span
+                    className={cn(
+                      "ml-2 inline-flex items-center h-[20px] px-2 rounded-full text-[10px] font-bold",
+                      group.single_select
+                        ? "bg-pim-mercan-tint text-pim-mercan"
+                        : "bg-yesil-soft text-yesil"
+                    )}
+                  >
+                    {group.single_select ? "TEK SEÇİM" : "ÇOKLU SEÇİM"}
+                  </span>
+                </h2>
+                <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
+                  Yüzde <strong>toplamsal</strong> eklenir (ana fiyat × (1 + Σ%)).
+                  {!group.single_select && (
+                    <> Birden fazla seçilebilir, %'ler toplanır.</>
+                  )}
+                </p>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[80px_1.5fr_2fr_120px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                    <span>ID</span>
+                    <span>Ad</span>
+                    <span>Açıklama</span>
+                    <span className="text-right">% Ekleme</span>
+                  </div>
+                  {group.items.map((it: OptionItem, idx: number) => (
+                    <div
+                      key={it.id}
+                      className="grid grid-cols-[80px_1.5fr_2fr_120px] gap-2 items-center"
+                    >
+                      <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center">
+                        {it.id}
+                      </span>
+                      <input
+                        type="text"
+                        value={it.name}
+                        onChange={(e) =>
+                          updateOptionItem(group_id, idx, { name: e.target.value })
+                        }
+                        className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
+                      />
+                      <input
+                        type="text"
+                        value={it.desc ?? ""}
+                        onChange={(e) =>
+                          updateOptionItem(group_id, idx, { desc: e.target.value })
+                        }
+                        className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] focus:outline-none focus:ring-pim-mercan"
+                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={it.pct_add}
+                          step={1}
+                          onChange={(e) =>
+                            updateOptionItem(group_id, idx, {
+                              pct_add: Number(e.target.value),
+                            })
+                          }
+                          className={cn(
+                            "w-full px-3 pr-7 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
+                            it.pct_add === 0 && "text-gri-500"
+                          )}
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gri-500 text-[11px]">
+                          %
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
+
+            {/* Tiers */}
+            <Card padding="p-5">
+              <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
+                📊 <span>Adet kademeleri (çarpansal)</span>
+              </h2>
+              <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
+                Adet × çarpan. <strong>1.00 = referans</strong>, <strong>&gt;1.00 = zam</strong>,{" "}
+                <strong>&lt;1.00 = indirim</strong>.
+              </p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_1fr_2fr] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                  <span>Adet</span>
+                  <span>Çarpan</span>
+                  <span>Label</span>
+                </div>
+                {draft.tiers.map((t, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_2fr] gap-2 items-center">
+                    <input
+                      type="number"
+                      value={t.qty}
+                      step={1}
+                      onChange={(e) => updateTier(i, { qty: Number(e.target.value) })}
+                      className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] tabular-nums focus:outline-none focus:ring-pim-mercan"
+                    />
+                    <input
+                      type="number"
+                      value={t.multiplier}
+                      step={0.01}
+                      onChange={(e) =>
+                        updateTier(i, { multiplier: Number(e.target.value) })
+                      }
+                      className={cn(
+                        "px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] tabular-nums focus:outline-none focus:ring-pim-mercan",
+                        t.multiplier === 1 && "ring-yesil bg-yesil-soft/40",
+                        t.multiplier < 1 && "text-yesil",
+                        t.multiplier > 1 && "text-kirmizi"
+                      )}
+                    />
+                    <input
+                      type="text"
+                      value={t.label}
+                      onChange={(e) => updateTier(i, { label: e.target.value })}
+                      className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Operation + Margin + KDV (single card) */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                📦 <span>Operasyon</span>
+                💰 <span>Operasyon + Marj + KDV</span>
               </h2>
-              <div className="text-[12.5px] text-gri-700 mb-3 leading-relaxed">
-                Setup (kurulum sabit), paketleme (adet başı), kargo (sabit),
-                ödeme komisyonu (% — PayTR + Vergi).
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <NumberField
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <NumField
                   label="Setup (TL)"
                   value={draft.operation.setup}
                   step={5}
-                  onChange={(v) => updateNumber(["operation", "setup"], v)}
+                  onChange={(v) => updateOperationField("setup", v)}
                 />
-                <NumberField
+                <NumField
                   label="Paketleme (TL/adet)"
-                  value={draft.operation.packaging}
+                  value={draft.operation.packaging_per_unit}
                   step={0.005}
-                  onChange={(v) => updateNumber(["operation", "packaging"], v)}
+                  onChange={(v) => updateOperationField("packaging_per_unit", v)}
                 />
-                <NumberField
+                <NumField
                   label="Kargo (TL)"
                   value={draft.operation.cargo}
                   step={5}
-                  onChange={(v) => updateNumber(["operation", "cargo"], v)}
+                  onChange={(v) => updateOperationField("cargo", v)}
                 />
-                <NumberField
+                <NumField
                   label="Komisyon (%)"
-                  value={draft.operation.feePct}
+                  value={draft.operation.fee_pct}
                   step={0.1}
-                  onChange={(v) => updateNumber(["operation", "feePct"], v)}
+                  onChange={(v) => updateOperationField("fee_pct", v)}
                 />
               </div>
-            </Card>
-
-            {/* Margin */}
-            <Card padding="p-5">
-              <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                💰 <span>Kâr marjı & KDV</span>
-              </h2>
-              <div className="text-[12.5px] text-gri-700 mb-3 leading-relaxed">
-                Markup (cost-plus). Min markup floor (tier sonrası aşağı düşme
-                korumasi).
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <NumberField
+              <div className="grid grid-cols-2 gap-3">
+                <NumField
                   label="Kâr marjı (%)"
-                  value={draft.margin.marginPct}
+                  value={draft.margin.pct}
                   step={1}
-                  onChange={(v) => updateNumber(["margin", "marginPct"], v)}
+                  onChange={updateMarginPct}
                 />
-                <NumberField
+                <NumField
                   label="KDV (%)"
-                  value={draft.margin.vatPct}
+                  value={draft.vat.pct}
                   step={1}
-                  onChange={(v) => updateNumber(["margin", "vatPct"], v)}
-                />
-                <NumberField
-                  label="Min markup (0-1)"
-                  value={draft.margin.minMarkupFraction}
-                  step={0.01}
-                  onChange={(v) =>
-                    updateNumber(["margin", "minMarkupFraction"], v)
-                  }
+                  onChange={updateVatPct}
                 />
               </div>
             </Card>
-
-            {/* Tier matrix */}
-            <Card padding="p-5">
-              <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                📊 <span>Adet kademeleri (Tier)</span>
-              </h2>
-              <div className="text-[12.5px] text-gri-700 mb-3 leading-relaxed">
-                Adet × multiplier. "referans" tier = 1.00. Düşük adet zam, yüksek
-                adet indirim olur. Çarpan toplam fiyata uygulanır.
-              </div>
-              <TierEditor
-                tiers={draft.tiers}
-                onChange={(newTiers) =>
-                  updateDraft((d) => ({ ...d, tiers: newTiers }))
-                }
-              />
-            </Card>
-
-            {/* Etiket-specific: Material/Coating/Customization */}
-            {scope === "etiket" && (
-              <>
-                <Card padding="p-5">
-                  <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                    🎨 <span>Malzeme çarpanları</span>
-                  </h2>
-                  <MultiplierEditor
-                    items={(draft as EtiketScopeConfig).materials}
-                    onChange={(items) =>
-                      setDraft({
-                        ...(draft as EtiketScopeConfig),
-                        materials: items,
-                      })
-                    }
-                  />
-                </Card>
-                <Card padding="p-5">
-                  <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                    ✨ <span>Kaplama çarpanları</span>
-                  </h2>
-                  <MultiplierEditor
-                    items={(draft as EtiketScopeConfig).coatings}
-                    onChange={(items) =>
-                      setDraft({
-                        ...(draft as EtiketScopeConfig),
-                        coatings: items,
-                      })
-                    }
-                  />
-                </Card>
-                <Card padding="p-5">
-                  <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                    💎 <span>Özelleştirme çarpanları</span>
-                  </h2>
-                  <MultiplierEditor
-                    items={(draft as EtiketScopeConfig).customizations}
-                    onChange={(items) =>
-                      setDraft({
-                        ...(draft as EtiketScopeConfig),
-                        customizations: items,
-                      })
-                    }
-                  />
-                </Card>
-              </>
-            )}
           </div>
 
-          {/* Sağ panel — actions + live preview */}
-          <div className="space-y-4 lg:sticky lg:top-4 h-fit">
+          {/* SAĞ — Aksiyon + Preview */}
+          <div className="space-y-4 xl:sticky xl:top-4 h-fit">
+            {/* Actions */}
             <Card padding="p-4">
               <h3 className="font-semibold text-[13.5px] mb-3">⚡ Aksiyon</h3>
               <Button
@@ -574,22 +717,157 @@ export default function FiyatlarPage() {
                   ? "..."
                   : isLiveBehindDraft
                     ? "🚀 Canlıya yayınla"
-                    : "Yayınlanacak değişiklik yok"}
+                    : "Yayın bekleyen yok"}
               </Button>
               <div className="mt-3 text-[11px] text-gri-700 leading-relaxed">
-                <strong>Draft</strong> sadece sen görürsün. Test ettikten sonra{" "}
-                <strong>Yayınla</strong> ile müşteri tarafına aktar.
+                <strong>Draft</strong> = sadece sen test edersin.<br />
+                <strong>Yayınla</strong> = müşteriler yeni fiyatları görür.
               </div>
             </Card>
 
+            {/* Live preview */}
             <Card padding="p-4" className="!bg-krem">
-              <h3 className="font-semibold text-[13.5px] mb-2">
-                💡 Örnek fiyat preview
+              <h3 className="font-semibold text-[13.5px] mb-3 flex items-center gap-2">
+                🔮 <span>Canlı önizleme</span>
               </h3>
-              <div className="text-[11.5px] text-gri-700 leading-relaxed">
-                Burada draft'a göre örnek bir siparişin fiyatını canlı
-                hesaplayacağız (yakında).
+
+              {/* Material seçimi */}
+              <div className="mb-3">
+                <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
+                  Malzeme
+                </label>
+                <select
+                  value={previewMaterialId}
+                  onChange={(e) => setPreviewMaterialId(e.target.value)}
+                  className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px]"
+                >
+                  {draft.materials.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.m2_cost_try} TL/m²)
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Options seçimi */}
+              {Object.entries(draft.options).map(([gid, group]) => (
+                <div key={gid} className="mb-3">
+                  <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
+                    {group.label}
+                  </label>
+                  {group.single_select ? (
+                    <select
+                      value={(previewOptions[gid] as string) ?? ""}
+                      onChange={(e) =>
+                        setPreviewOptions({
+                          ...previewOptions,
+                          [gid]: e.target.value,
+                        })
+                      }
+                      className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px]"
+                    >
+                      <option value="">— seçilmedi —</option>
+                      {group.items.map((it: OptionItem) => (
+                        <option key={it.id} value={it.id}>
+                          {it.name} (+{it.pct_add}%)
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="space-y-1">
+                      {group.items.map((it: OptionItem) => {
+                        const arr = (previewOptions[gid] as string[]) ?? [];
+                        const checked = arr.includes(it.id);
+                        return (
+                          <label
+                            key={it.id}
+                            className="flex items-center gap-2 text-[12px] cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const newArr = e.target.checked
+                                  ? [...arr, it.id]
+                                  : arr.filter((id) => id !== it.id);
+                                setPreviewOptions({
+                                  ...previewOptions,
+                                  [gid]: newArr,
+                                });
+                              }}
+                              className="accent-pim-mercan"
+                            />
+                            <span>
+                              {it.name} (+{it.pct_add}%)
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div className="text-[11px] text-gri-700 mb-2">
+                Boyut:{" "}
+                <strong>
+                  {SCOPE_PREVIEW_DEFAULTS[scope].width}×
+                  {SCOPE_PREVIEW_DEFAULTS[scope].height}mm
+                </strong>{" "}
+                · Adet: <strong>{SCOPE_PREVIEW_DEFAULTS[scope].qty}</strong>
+              </div>
+
+              {/* Hesap sonucu */}
+              {previewResult?.ok ? (
+                <div className="text-[11.5px] space-y-1 font-mono leading-relaxed text-lacivert">
+                  <Row label="Base" value={fmtMoney2(previewResult.base)} />
+                  <Row
+                    label={`Tier × ${previewResult.tier.multiplier}`}
+                    value={fmtMoney2(previewResult.tiered)}
+                  />
+                  <Row
+                    label={`+ % toplam ${previewResult.options_pct_total}`}
+                    value={fmtMoney2(previewResult.with_options)}
+                  />
+                  <Row
+                    label="+ Operasyon"
+                    value={`+${fmtMoney2(previewResult.operation_cost)}`}
+                  />
+                  <Row label="Toplam maliyet" value={fmtMoney2(previewResult.cost_total)} />
+                  <Row
+                    label={`+ Margin %${draft.margin.pct}`}
+                    value={fmtMoney2(previewResult.with_margin)}
+                  />
+                  <Row label="+ Fee gross-up" value={fmtMoney2(previewResult.with_fee)} />
+                  <Row
+                    label={`+ KDV %${draft.vat.pct}`}
+                    value={fmtMoney2(previewResult.final)}
+                  />
+                  <div className="border-t border-pim-mercan/30 pt-2 mt-2">
+                    <div className="font-sans">
+                      <div className="text-[10.5px] uppercase tracking-[0.04em] text-pim-mercan font-bold">
+                        Müşteri görür
+                      </div>
+                      <div className="text-[20px] font-bold text-pim-mercan tabular-nums">
+                        {fmtMoney(previewResult.final)}
+                      </div>
+                      <div className="text-[11px] text-gri-700">
+                        Birim: {previewResult.unit_price.toFixed(2)} TL/adet
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : previewResult ? (
+                <div className="text-[12px] text-kirmizi">
+                  ⚠ {previewResult.reason}
+                  {previewResult.hint && (
+                    <>
+                      <br />
+                      {previewResult.hint}
+                    </>
+                  )}
+                </div>
+              ) : null}
             </Card>
           </div>
         </div>
@@ -602,7 +880,7 @@ export default function FiyatlarPage() {
 // Sub-components
 // =============================================================================
 
-function NumberField({
+function NumField({
   label,
   value,
   step,
@@ -629,114 +907,11 @@ function NumberField({
   );
 }
 
-function TierEditor({
-  tiers,
-  onChange,
-}: {
-  tiers: TierConfig[];
-  onChange: (next: TierConfig[]) => void;
-}) {
-  const update = (idx: number, patch: Partial<TierConfig>) => {
-    const next = [...tiers];
-    next[idx] = { ...next[idx], ...patch };
-    onChange(next);
-  };
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[1fr_1fr_2fr] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
-        <span>Adet</span>
-        <span>Çarpan</span>
-        <span>Label (UI)</span>
-      </div>
-      {tiers.map((t, i) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_2fr] gap-2 items-center">
-          <input
-            type="number"
-            value={t.qty}
-            step={1}
-            onChange={(e) => update(i, { qty: Number(e.target.value) })}
-            className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] tabular-nums focus:outline-none focus:ring-pim-mercan"
-          />
-          <input
-            type="number"
-            value={t.multiplier}
-            step={0.01}
-            onChange={(e) =>
-              update(i, { multiplier: Number(e.target.value) })
-            }
-            className={cn(
-              "px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] tabular-nums focus:outline-none focus:ring-pim-mercan",
-              t.multiplier === 1 && "ring-yesil bg-yesil-soft/40",
-              t.multiplier < 1 && "text-yesil",
-              t.multiplier > 1 && "text-kirmizi"
-            )}
-          />
-          <input
-            type="text"
-            value={t.label}
-            onChange={(e) => update(i, { label: e.target.value })}
-            className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MultiplierEditor({
-  items,
-  onChange,
-}: {
-  items: MultiplierItem[];
-  onChange: (next: MultiplierItem[]) => void;
-}) {
-  const update = (idx: number, patch: Partial<MultiplierItem>) => {
-    const next = [...items];
-    next[idx] = { ...next[idx], ...patch };
-    onChange(next);
-  };
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[80px_1.2fr_2fr_1fr] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
-        <span>ID</span>
-        <span>Ad</span>
-        <span>Açıklama</span>
-        <span>Çarpan</span>
-      </div>
-      {items.map((it, i) => (
-        <div
-          key={it.id}
-          className="grid grid-cols-[80px_1.2fr_2fr_1fr] gap-2 items-center"
-        >
-          <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center">
-            {it.id}
-          </span>
-          <input
-            type="text"
-            value={it.name}
-            onChange={(e) => update(i, { name: e.target.value })}
-            className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] focus:outline-none focus:ring-pim-mercan"
-          />
-          <input
-            type="text"
-            value={it.desc}
-            onChange={(e) => update(i, { desc: e.target.value })}
-            className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] focus:outline-none focus:ring-pim-mercan"
-          />
-          <input
-            type="number"
-            value={it.multiplier}
-            step={0.05}
-            onChange={(e) =>
-              update(i, { multiplier: Number(e.target.value) })
-            }
-            className={cn(
-              "px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] tabular-nums focus:outline-none focus:ring-pim-mercan",
-              it.multiplier === 1 && "ring-yesil bg-yesil-soft/40"
-            )}
-          />
-        </div>
-      ))}
+    <div className="flex justify-between gap-2">
+      <span className="text-gri-700">{label}</span>
+      <span className="font-semibold tabular-nums">{value}</span>
     </div>
   );
 }
