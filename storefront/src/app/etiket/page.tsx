@@ -186,8 +186,8 @@ const CUSTOMS = [
     id: "yok",
     name: "Özelleştirme yok",
     name_en: "No customization",
-    desc: "Sade baskı (emboss/yaldız/spot UV yok)",
-    desc_en: "Plain print (no emboss/foil/spot UV)",
+    desc: "",
+    desc_en: "",
   },
   {
     id: "emboss",
