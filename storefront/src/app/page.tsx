@@ -73,12 +73,14 @@ export default function HomePage() {
     <main className="animate-fade-up">
       {/* ============================== HERO ============================== */}
       <section className="relative overflow-hidden pt-10 md:pt-16 pb-12 md:pb-20">
+        {/* Hero bg — krem-soft soft gradient. Görselin (bal kavanozu)
+            açık bej arka planı sayfayla kaynaşıyor (Sefa 17 May v14). */}
         <div
           aria-hidden
           className="absolute inset-0 -z-10 pointer-events-none"
           style={{
             background:
-              "radial-gradient(900px 480px at 78% 28%, var(--color-krem) 0%, transparent 60%)",
+              "radial-gradient(1100px 560px at 75% 38%, var(--color-krem-soft) 0%, var(--color-krem-soft) 25%, transparent 70%)",
           }}
         />
         {/* Uçuşan etiketler kaldırıldı (Sefa kararı 12 May) */}
@@ -147,24 +149,25 @@ export default function HomePage() {
                 kaldırıldı, hero açıklamasında zaten geçiyor. */}
           </div>
 
-          {/* RIGHT — Hero görsel (Sefa 17 May v12)
-              · 5:4 yatay aspect (önceki kare yerine)
-              · Horizontal elips mask — yanlardan soft fade, üst/alt net
-              · Yerel /hero/home-hero.png (DB'deki homeHero varsa o önceliklidir)
-              · Fallback: Pim baykuş (yerel dosya da yoksa) */}
+          {/* RIGHT — Hero görsel (Sefa 17 May v14)
+              · 5:4 yatay, daha yumuşak edge
+              · Halo + mask krem rengiyle uyumlu (görselin arka plan bej
+                tonu sayfanın krem-soft arka planıyla doğal kaynaşır)
+              · Drop shadow krem-koyu tonunda warm gölge */}
           <div className="relative flex justify-center items-center min-h-[360px] md:min-h-[460px]">
-            {/* Soft mercan halo — yatay elips */}
+            {/* Soft krem halo — görselin arka plan bej tonuyla aynı palette */}
             <div
               aria-hidden
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(ellipse 85% 65% at center, rgba(255,107,91,0.10) 0%, rgba(255,107,91,0.04) 45%, transparent 75%)",
+                  "radial-gradient(ellipse 95% 75% at center, var(--color-krem-soft) 0%, var(--color-krem-soft) 35%, transparent 80%)",
               }}
             />
 
-            {/* Görsel — 5:4 yatay + horizontal mask + drop shadow.
-                Öncelik: DB (admin paneli) > yerel public/hero/home-hero.png */}
+            {/* Görsel — geniş yumuşak mask + warm drop shadow.
+                Mask oranı 55% → 40% düşürüldü → kenarlar daha geniş alanda
+                fade. Görselin arka planı sayfa arkaplanıyla kaynaşır. */}
             <div className="relative z-10 w-full max-w-[640px] aspect-[5/4]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -173,14 +176,13 @@ export default function HomePage() {
                   homeHero?.altText ??
                   "Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
                 }
-                className="w-full h-full object-cover drop-shadow-[0_20px_50px_rgba(255,107,91,0.18)]"
+                className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
                 style={{
-                  // Horizontal elips mask — yanlardan daha fazla fade,
-                  // üst/alt biraz daha net (Sefa "yandaki alanlara soft geçiş" kuralı)
+                  // Daha geniş mask — kenarları arka plan kremiyle kaynaştır
                   WebkitMaskImage:
-                    "radial-gradient(ellipse 90% 80% at center, black 55%, transparent 100%)",
+                    "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
                   maskImage:
-                    "radial-gradient(ellipse 90% 80% at center, black 55%, transparent 100%)",
+                    "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
                 }}
               />
             </div>
