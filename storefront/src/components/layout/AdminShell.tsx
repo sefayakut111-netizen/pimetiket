@@ -358,6 +358,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Sipariş simülatörü",
             icon: <Icon.Refresh size={16} />,
           },
+          // Sefa 17 May: Fiyat Yönetimi (Migration 047)
+          {
+            href: "/admin/fiyatlar",
+            label: "Fiyat yönetimi",
+            icon: <Icon.Sparkle size={16} />,
+          },
           {
             href: "/admin/ayarlar",
             label: "Ayarlar",
