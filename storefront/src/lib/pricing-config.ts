@@ -95,13 +95,14 @@ export interface PricingHistoryRow {
 // Fallback defaults (DB unreachable senaryosu)
 // ============================================================
 
+// Sefa 17 May v3: ID'ler konfigüratör sayfalarıyla birebir eşleşir
+// (src/app/sticker/page.tsx MATERIAL_IDS = ["vinil", "transparan", "holo", "simli"])
 export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
   materials: [
-    { id: "vinil", name: "Vinil", m2_cost_try: 500, desc: "Standart vinil" },
-    { id: "opak", name: "Opak", m2_cost_try: 600, desc: "Beyaz opak" },
-    { id: "seffaf", name: "Şeffaf", m2_cost_try: 700, desc: "Cam üstü görünmez" },
-    { id: "holografik", name: "Holografik", m2_cost_try: 1200, desc: "Yansıtıcı" },
-    { id: "metalik", name: "Metalik", m2_cost_try: 1500, desc: "Krom efekti" },
+    { id: "vinil",      name: "Vinil",      m2_cost_try: 500,  desc: "Standart parlak vinil, açıkhava dayanımlı" },
+    { id: "transparan", name: "Transparan", m2_cost_try: 700,  desc: "Şeffaf, cam üstü görünmez efekt" },
+    { id: "holo",       name: "Holografik", m2_cost_try: 1200, desc: "Yansıtıcı, prizmatik efekt" },
+    { id: "simli",      name: "Simli",      m2_cost_try: 1500, desc: "Metalik gümüş/altın parıltı" },
   ],
   options: {
     finish: {
@@ -109,8 +110,9 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
       required: true,
       single_select: true,
       items: [
+        { id: "yok",    name: "Yok",    pct_add: 0 },
         { id: "parlak", name: "Parlak", pct_add: 0 },
-        { id: "mat", name: "Mat", pct_add: 10 },
+        { id: "mat",    name: "Mat",    pct_add: 10 },
       ],
     },
   },
@@ -127,13 +129,15 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
   vat: { pct: 20 },
 };
 
+// Sefa 17 May v3: ID'ler etiket konfigüratörüyle eşleşir
+// (kuse/kraft/beyaz/ultra/metalik, beyaz name="Opak PP Etiket")
 export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
   materials: [
-    { id: "kraft", name: "Kraft", m2_cost_try: 300, desc: "Doğal, dokunsal" },
-    { id: "kuse", name: "Kuşe", m2_cost_try: 350, desc: "Mat kaplamalı" },
-    { id: "beyaz", name: "Beyaz semi-glos", m2_cost_try: 400, desc: "Klasik" },
-    { id: "ultra", name: "Ultra clear", m2_cost_try: 600, desc: "Şeffaf" },
-    { id: "metalik", name: "Metalik", m2_cost_try: 900, desc: "Folyo gümüş" },
+    { id: "kuse",    name: "Kuşe Etiket",    m2_cost_try: 350, desc: "Mat kaplamalı baskı kağıdı" },
+    { id: "kraft",   name: "Kraft Etiket",   m2_cost_try: 300, desc: "Doğal, dokunsal" },
+    { id: "beyaz",   name: "Opak PP Etiket", m2_cost_try: 400, desc: "Klasik, dayanıklı, parlak" },
+    { id: "ultra",   name: "Ultra clear",    m2_cost_try: 600, desc: "Şeffaf cam etkisi" },
+    { id: "metalik", name: "Metalik",        m2_cost_try: 900, desc: "Folyo gümüş" },
   ],
   options: {
     coating: {
@@ -141,10 +145,10 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
       required: true,
       single_select: true,
       items: [
-        { id: "yok", name: "Kaplamasız", pct_add: 0 },
-        { id: "mat", name: "Mat selefon", pct_add: 15 },
+        { id: "yok",    name: "Kaplamasız",     pct_add: 0 },
+        { id: "mat",    name: "Mat selefon",    pct_add: 15 },
         { id: "parlak", name: "Parlak selefon", pct_add: 15 },
-        { id: "soft", name: "Soft touch", pct_add: 30 },
+        { id: "soft",   name: "Soft touch",     pct_add: 30 },
       ],
     },
     customization: {
@@ -152,9 +156,10 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
       required: false,
       single_select: false,
       items: [
-        { id: "emboss", name: "Emboss (Kabartma)", pct_add: 30 },
-        { id: "yaldiz", name: "Sıcak yaldız", pct_add: 50 },
-        { id: "spot_uv", name: "Spot UV", pct_add: 25 },
+        { id: "yok",    name: "Özelleştirme yok",  pct_add: 0 },
+        { id: "emboss", name: "Kabartma (emboss)", pct_add: 30 },
+        { id: "yaldiz", name: "Sıcak yaldız",      pct_add: 50 },
+        { id: "spotuv", name: "Spot UV",           pct_add: 25 },
       ],
     },
   },
@@ -173,9 +178,9 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
 
 export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
   materials: [
-    { id: "kraft", name: "Kraft", m2_cost_try: 280, desc: "Doğal, dokunsal" },
-    { id: "kuse", name: "Kuşe", m2_cost_try: 320, desc: "Mat kaplamalı" },
-    { id: "beyaz", name: "Beyaz semi-glos", m2_cost_try: 380, desc: "Klasik" },
+    { id: "kuse",  name: "Kuşe Etiket",    m2_cost_try: 320, desc: "Mat kaplamalı baskı kağıdı" },
+    { id: "kraft", name: "Kraft Etiket",   m2_cost_try: 280, desc: "Doğal, dokunsal" },
+    { id: "beyaz", name: "Opak PP Etiket", m2_cost_try: 380, desc: "Klasik, dayanıklı, parlak" },
   ],
   options: {
     coating: {
@@ -183,8 +188,8 @@ export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
       required: true,
       single_select: true,
       items: [
-        { id: "yok", name: "Kaplamasız", pct_add: 0 },
-        { id: "mat", name: "Mat selefon", pct_add: 15 },
+        { id: "yok",    name: "Kaplamasız",     pct_add: 0 },
+        { id: "mat",    name: "Mat selefon",    pct_add: 15 },
         { id: "parlak", name: "Parlak selefon", pct_add: 15 },
       ],
     },
