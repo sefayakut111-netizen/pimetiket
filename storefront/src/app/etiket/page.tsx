@@ -1390,7 +1390,7 @@ export default function EtiketPage() {
                     value={width}
                     onChange={(e) => {
                       setWidth(Math.max(5, Number(e.target.value) || 5));
-                      markTouched(5);
+                      markTouched(6);
                     }}
                     min={5}
                     max={520}
@@ -1408,7 +1408,7 @@ export default function EtiketPage() {
                     value={height}
                     onChange={(e) => {
                       setHeight(Math.max(5, Number(e.target.value) || 5));
-                      markTouched(5);
+                      markTouched(6);
                     }}
                     min={5}
                     max={1470}
@@ -1454,7 +1454,7 @@ export default function EtiketPage() {
                       onClick={() => {
                         setWidth(preset.w);
                         setHeight(preset.h);
-                        markTouched(5);
+                        markTouched(6);
                       }}
                       className={cn(
                         "px-3 h-8 rounded-full text-[12px] font-semibold transition-colors",
@@ -1539,7 +1539,7 @@ export default function EtiketPage() {
                   step={qtyStep}
                   onChange={(v) => {
                     setQty(snapQty(v));
-                    markTouched(6);
+                    markTouched(8);
                   }}
                   ariaLabel="Etiket adedi (slider)"
                 />
@@ -1572,7 +1572,7 @@ export default function EtiketPage() {
                     type="button"
                     onClick={() => {
                       setQty((v) => snapQty(v - qtyStep));
-                      markTouched(6);
+                      markTouched(8);
                     }}
                     disabled={qty <= minQty}
                     aria-label={`${qtyStep} adet azalt`}
@@ -1585,7 +1585,7 @@ export default function EtiketPage() {
                     value={qty}
                     onChange={(e) => {
                       setQty(snapQty(Number(e.target.value)));
-                      markTouched(6);
+                      markTouched(8);
                     }}
                     min={minQty}
                     max={maxQty}
@@ -1597,7 +1597,7 @@ export default function EtiketPage() {
                     type="button"
                     onClick={() => {
                       setQty((v) => snapQty(v + qtyStep));
-                      markTouched(6);
+                      markTouched(8);
                     }}
                     disabled={qty >= maxQty}
                     aria-label={`${qtyStep} adet artır`}
@@ -1624,7 +1624,7 @@ export default function EtiketPage() {
                       type="button"
                       onClick={() => {
                         setQty(q);
-                        markTouched(6);
+                        markTouched(8);
                       }}
                       aria-pressed={active}
                       className={cn(
