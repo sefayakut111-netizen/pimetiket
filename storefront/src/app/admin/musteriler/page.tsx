@@ -1,9 +1,16 @@
 /**
- * Pim Etiket — /admin/musteriler
+ * Pim Etiket — /admin/musteriler (Sefa 17 May yeni CRM)
  *
- * CRM: customer-orders'tan unique müşterileri çıkarır.
- * Her müşteri için: ad, email, telefon (adres'ten), sipariş sayısı,
- * toplam ciro, son sipariş tarihi, ortalama sipariş değeri.
+ * Migration 046 v_admin_customers view'den okur.
+ * Eski versiyon: localStorage orders'tan aggregate → sadece sipariş verenler.
+ * Yeni versiyon: auth.users + orders join → kayıtlı tüm kullanıcılar.
+ *
+ * Yapı:
+ *   - 4 KPI kart (Toplam · Tekrar+VIP · Risk · Sipariş yok)
+ *   - Segment chip filtresi (Tümü · VIP · Tekrar · Yeni · Risk · Kayıp · Sipariş yok)
+ *   - Search (email/ad/telefon)
+ *   - Bulk select skeleton (Sprint 3'te aksiyon eklenecek)
+ *   - Tablo: müşteri · segment · sipariş · ciro · email✓ · 2FA · son hareket
  */
 
 "use client";
@@ -12,77 +19,97 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow } from "@/components/ui";
+import { Card, Input, Eyebrow, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import {
-  listCustomerOrders,
-  type CustomerOrder,
-} from "@/lib/customer-order";
+import type {
+  AdminCustomerWithSegment,
+} from "@/app/api/admin/customers/route";
 
-interface CustomerProfile {
-  /** Email yoksa name olarak kullanılır (auth gelene kadar) */
-  key: string;
-  name: string;
-  phone: string;
-  city: string;
-  orderCount: number;
-  totalRevenue: number;
-  avgOrder: number;
-  lastOrderAt: number;
-  lastOrderId: string;
-  /** Aktif (delivered/cancelled hariç) sipariş sayısı */
-  activeOrders: number;
+type Segment = AdminCustomerWithSegment["segment"];
+type SegmentFilter = Segment | "all";
+
+interface KPI {
+  total: number;
+  vip: number;
+  repeat: number;
+  new: number;
+  risk: number;
+  lost: number;
+  no_order: number;
+  total_revenue: number;
 }
 
-function aggregateCustomers(orders: CustomerOrder[]): CustomerProfile[] {
-  const map = new Map<string, CustomerProfile>();
-  for (const o of orders) {
-    const key = `${o.address.name.trim().toLowerCase()}|${o.address.phone}`;
-    const existing = map.get(key);
-    if (existing) {
-      existing.orderCount += 1;
-      existing.totalRevenue += o.total;
-      if (o.createdAt > existing.lastOrderAt) {
-        existing.lastOrderAt = o.createdAt;
-        existing.lastOrderId = o.id;
-      }
-      if (o.status !== "delivered" && o.status !== "cancelled") {
-        existing.activeOrders += 1;
-      }
-    } else {
-      map.set(key, {
-        key,
-        name: o.address.name,
-        phone: o.address.phone,
-        city: o.address.city,
-        orderCount: 1,
-        totalRevenue: o.total,
-        avgOrder: o.total,
-        lastOrderAt: o.createdAt,
-        lastOrderId: o.id,
-        activeOrders:
-          o.status !== "delivered" && o.status !== "cancelled" ? 1 : 0,
-      });
-    }
-  }
-  for (const c of map.values()) {
-    c.avgOrder = c.totalRevenue / c.orderCount;
-  }
-  return Array.from(map.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
-}
+const SEGMENT_META: Record<
+  Segment,
+  { label: string; emoji: string; color: string; bg: string; ring: string }
+> = {
+  vip: {
+    label: "VIP",
+    emoji: "⭐",
+    color: "text-sari-koyu",
+    bg: "bg-sari-soft",
+    ring: "ring-sari-soft",
+  },
+  repeat: {
+    label: "Tekrar",
+    emoji: "🔁",
+    color: "text-yesil",
+    bg: "bg-yesil-soft",
+    ring: "ring-yesil/30",
+  },
+  new: {
+    label: "Yeni",
+    emoji: "✨",
+    color: "text-pim-mercan",
+    bg: "bg-pim-mercan-tint",
+    ring: "ring-pim-mercan-soft",
+  },
+  risk: {
+    label: "Risk",
+    emoji: "⚠",
+    color: "text-saman-koyu",
+    bg: "bg-saman/15",
+    ring: "ring-saman/30",
+  },
+  lost: {
+    label: "Kayıp",
+    emoji: "💤",
+    color: "text-kirmizi",
+    bg: "bg-kirmizi/10",
+    ring: "ring-kirmizi/20",
+  },
+  no_order: {
+    label: "Sipariş yok",
+    emoji: "🆕",
+    color: "text-gri-700",
+    bg: "bg-gri-100",
+    ring: "ring-gri-200",
+  },
+};
+
+const FILTER_OPTIONS: { id: SegmentFilter; label: string }[] = [
+  { id: "all", label: "Tümü" },
+  { id: "vip", label: "VIP" },
+  { id: "repeat", label: "Tekrar" },
+  { id: "new", label: "Yeni" },
+  { id: "risk", label: "Risk" },
+  { id: "lost", label: "Kayıp" },
+  { id: "no_order", label: "Sipariş yok" },
+];
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
-function timeAgo(timestamp: number): string {
-  const diffMs = Date.now() - timestamp;
+function timeAgo(iso: string | null): string {
+  if (!iso) return "—";
+  const diffMs = Date.now() - new Date(iso).getTime();
   const min = Math.floor(diffMs / 60_000);
   if (min < 1) return "Az önce";
   if (min < 60) return `${min} dk önce`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} saat önce`;
+  if (hr < 24) return `${hr} sa önce`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day} gün önce`;
-  return new Date(timestamp).toLocaleDateString("tr-TR", {
+  return new Date(iso).toLocaleDateString("tr-TR", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -90,113 +117,257 @@ function timeAgo(timestamp: number): string {
 }
 
 export default function AdminMusterilerPage() {
-  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [customers, setCustomers] = useState<AdminCustomerWithSegment[]>([]);
+  const [kpi, setKpi] = useState<KPI | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [segment, setSegment] = useState<SegmentFilter>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const refresh = () => {
-      const orders = listCustomerOrders();
-      setCustomers(aggregateCustomers(orders));
+    let cancelled = false;
+    setLoading(true);
+    const params = new URLSearchParams({ segment, limit: "200" });
+    if (search) params.set("search", search);
+    fetch(`/api/admin/customers?${params.toString()}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then(
+        (j: {
+          ok?: boolean;
+          customers?: AdminCustomerWithSegment[];
+          kpi?: KPI;
+          error?: string;
+        }) => {
+          if (cancelled) return;
+          if (!j.ok || !j.customers) {
+            setError(j.error ?? "fetch_failed");
+            return;
+          }
+          setError(null);
+          setCustomers(j.customers);
+          if (j.kpi) setKpi(j.kpi);
+        }
+      )
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "network");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-    refresh();
-    window.addEventListener("pim_customer_orders_updated", refresh);
-    return () =>
-      window.removeEventListener("pim_customer_orders_updated", refresh);
-  }, []);
+  }, [search, segment]);
 
-  const filtered = useMemo(() => {
-    if (!search) return customers;
-    const q = search.toLowerCase();
-    return customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        c.city.toLowerCase().includes(q)
-    );
-  }, [customers, search]);
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-  // KPI'lar
-  const totalCustomers = customers.length;
-  const totalRevenue = customers.reduce((s, c) => s + c.totalRevenue, 0);
-  const repeat = customers.filter((c) => c.orderCount > 1).length;
-  const repeatRate =
-    totalCustomers > 0 ? Math.round((repeat / totalCustomers) * 100) : 0;
+  const toggleSelectAll = () => {
+    if (selectedIds.size === customers.length && customers.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(customers.map((c) => c.user_id)));
+    }
+  };
+
+  const repeatPlusVip = useMemo(
+    () => (kpi ? kpi.repeat + kpi.vip : 0),
+    [kpi]
+  );
+  const repeatRate = useMemo(() => {
+    if (!kpi || kpi.total === 0) return 0;
+    return Math.round((repeatPlusVip / kpi.total) * 100);
+  }, [kpi, repeatPlusVip]);
 
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        {/* Header */}
         <div className="mb-6">
           <Eyebrow>CRM</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
             Müşteriler
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {totalCustomers} müşteri · {repeat} tekrar eden ({repeatRate}%) ·{" "}
-            {fmt(totalRevenue)} TL toplam ciro
+            {kpi
+              ? `${kpi.total} kayıtlı kullanıcı · ${repeatPlusVip} tekrar eden (${repeatRate}%) · ${fmt(kpi.total_revenue)} TL toplam ciro`
+              : "—"}
           </p>
         </div>
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Toplam müşteri", value: totalCustomers, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-            { label: "Tekrar eden", value: `${repeat} (${repeatRate}%)`, accent: "text-yesil", bg: "bg-yesil-soft" },
-            { label: "Toplam ciro", value: `${fmt(totalRevenue)} TL`, accent: "text-lacivert", bg: "bg-gri-100" },
             {
-              label: "Ortalama sepet",
-              value: totalCustomers > 0 ? `${fmt(totalRevenue / customers.reduce((s, c) => s + c.orderCount, 0))} TL` : "—",
-              accent: "text-turuncu",
-              bg: "bg-krem",
+              label: "Toplam kayıtlı",
+              value: kpi?.total ?? 0,
+              accent: "text-pim-mercan",
+              bg: "bg-pim-mercan-tint",
+              filter: "all" as SegmentFilter,
+            },
+            {
+              label: "VIP + Tekrar",
+              value: repeatPlusVip,
+              accent: "text-yesil",
+              bg: "bg-yesil-soft",
+              filter: "repeat" as SegmentFilter,
+            },
+            {
+              label: "Risk + Kayıp",
+              value: (kpi?.risk ?? 0) + (kpi?.lost ?? 0),
+              accent: "text-saman-koyu",
+              bg: "bg-saman/15",
+              filter: "risk" as SegmentFilter,
+            },
+            {
+              label: "Sipariş vermemiş",
+              value: kpi?.no_order ?? 0,
+              accent: "text-gri-700",
+              bg: "bg-gri-100",
+              filter: "no_order" as SegmentFilter,
             },
           ].map((k) => (
-            <Card key={k.label} padding="p-4">
+            <button
+              key={k.label}
+              type="button"
+              onClick={() => setSegment(k.filter)}
+              className={cn(
+                "rounded-2xl bg-white ring-1 ring-gri-200 p-4 text-left transition-all",
+                "hover:ring-pim-mercan hover:-translate-y-0.5",
+                segment === k.filter && "ring-pim-mercan ring-2"
+              )}
+            >
               <div className="flex items-center gap-3">
-                <div className={cn("grid place-items-center w-10 h-10 rounded-xl shrink-0", k.bg, k.accent)}>
+                <div
+                  className={cn(
+                    "grid place-items-center w-10 h-10 rounded-xl shrink-0",
+                    k.bg,
+                    k.accent
+                  )}
+                >
                   <Icon.User size={16} />
                 </div>
                 <div>
                   <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
                     {k.label}
                   </div>
-                  <div className={cn("text-2xl font-bold tabular-nums", k.accent)}>
+                  <div
+                    className={cn(
+                      "text-2xl font-bold tabular-nums",
+                      k.accent
+                    )}
+                  >
                     {k.value}
                   </div>
                 </div>
               </div>
-            </Card>
+            </button>
           ))}
         </div>
 
-        {/* Search */}
+        {/* Filter chips + Search */}
         <Card padding="p-4" className="mb-5">
-          <div className="relative">
-            <Input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="İsim, telefon, şehir ara…"
-              className="!h-11 !pl-10"
-            />
-            <Icon.Search
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gri-500"
-            />
+          <div className="flex flex-wrap gap-2 items-center">
+            {FILTER_OPTIONS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setSegment(f.id)}
+                className={cn(
+                  "px-3.5 py-2 rounded-full text-[13px] font-semibold transition-colors",
+                  segment === f.id
+                    ? "bg-lacivert text-white"
+                    : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                )}
+              >
+                {f.label}
+                {f.id !== "all" && kpi && (
+                  <span className="ml-1.5 opacity-70">
+                    ({kpi[f.id as keyof KPI] ?? 0})
+                  </span>
+                )}
+              </button>
+            ))}
+            <div className="ml-auto w-full sm:w-auto sm:min-w-[280px]">
+              <div className="relative">
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Email, ad, telefon ara…"
+                  className="!h-11 !pl-10"
+                />
+                <Icon.Search
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gri-500"
+                />
+              </div>
+            </div>
           </div>
         </Card>
 
+        {/* Bulk action bar (Sprint 3'te aktif) */}
+        {selectedIds.size > 0 && (
+          <Card
+            padding="p-3"
+            className="mb-4 !bg-pim-mercan-tint ring-pim-mercan/30"
+          >
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-semibold text-[13.5px] text-lacivert">
+                {selectedIds.size} müşteri seçili
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-[12px] font-semibold text-pim-mercan hover:underline"
+              >
+                Seçimi kaldır
+              </button>
+              <span className="text-gri-500">·</span>
+              <span className="text-[12px] text-gri-700 italic">
+                Toplu aksiyon (email/tag/export) Sprint 3'te aktif olacak
+              </span>
+            </div>
+          </Card>
+        )}
+
+        {/* Error */}
+        {error && (
+          <Card padding="p-4" className="mb-5 !bg-kirmizi/5 ring-kirmizi/20">
+            <div className="text-[13px] text-kirmizi">
+              <strong>Veri yüklenemedi:</strong> {error}
+            </div>
+          </Card>
+        )}
+
         {/* Table */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton.OrderRow />
+            <Skeleton.OrderRow />
+            <Skeleton.OrderRow />
+            <Skeleton.OrderRow />
+          </div>
+        ) : customers.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Pim pose="think" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
-              {customers.length === 0
-                ? "Henüz müşteri yok"
-                : "Bu aramada sonuç yok"}
+              {search || segment !== "all"
+                ? "Bu filtrede sonuç yok"
+                : "Henüz kayıtlı müşteri yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
-              {customers.length === 0
-                ? "Müşteriler sipariş verdikçe burada görünecek."
-                : "Arama metnini değiştirmeyi dene."}
+              {search || segment !== "all"
+                ? "Filtreyi gevşet veya farklı bir arama dene."
+                : "Kullanıcılar kayıt oldukça burada görünecek."}
             </p>
           </Card>
         ) : (
@@ -204,74 +375,172 @@ export default function AdminMusterilerPage() {
             <table className="w-full text-[13px] text-left">
               <thead className="border-b border-gri-200 bg-gri-50">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedIds.size === customers.length &&
+                        customers.length > 0
+                      }
+                      onChange={toggleSelectAll}
+                      className="accent-pim-mercan w-4 h-4 cursor-pointer"
+                      aria-label="Tümünü seç"
+                    />
+                  </th>
+                  <th className="px-3 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
                     Müşteri
                   </th>
-                  <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
-                    Şehir
+                  <th className="px-3 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
+                    Segment
                   </th>
-                  <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 text-right">
+                  <th className="px-3 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 text-right">
                     Sipariş
                   </th>
-                  <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 text-right">
+                  <th className="px-3 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 text-right">
                     Ciro
                   </th>
-                  <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 text-right">
-                    Ort. sepet
+                  <th className="px-3 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
+                    Hesap
                   </th>
-                  <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
-                    Son sipariş
+                  <th className="px-3 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
+                    Son hareket
                   </th>
-                  <th className="px-4 py-3"></th>
+                  <th className="px-3 py-3 w-16"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gri-100">
-                {filtered.map((c) => {
-                  const detailHref = `/admin/musteriler/${encodeURIComponent(c.key)}`;
+                {customers.map((c) => {
+                  const meta = SEGMENT_META[c.segment];
+                  const detailHref = `/admin/musteriler/${c.user_id}`;
+                  const isBanned =
+                    c.banned_until &&
+                    new Date(c.banned_until).getTime() > Date.now();
+                  const lastActivity =
+                    c.last_sign_in_at ?? c.last_order_at ?? c.registered_at;
                   return (
-                    <tr key={c.key} className="hover:bg-gri-50">
-                      <td className="px-4 py-3">
+                    <tr
+                      key={c.user_id}
+                      className={cn(
+                        "hover:bg-gri-50",
+                        selectedIds.has(c.user_id) && "bg-pim-mercan-tint/20"
+                      )}
+                    >
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(c.user_id)}
+                          onChange={() => toggleSelect(c.user_id)}
+                          className="accent-pim-mercan w-4 h-4 cursor-pointer"
+                          aria-label={`${c.display_name ?? c.email} seç`}
+                        />
+                      </td>
+                      <td className="px-3 py-3">
                         <Link
                           href={detailHref}
                           className="font-semibold text-lacivert hover:text-pim-mercan"
                         >
-                          {c.name}
+                          {c.display_name ?? c.email.split("@")[0]}
                         </Link>
-                        <div className="text-[12px] text-gri-500">
-                          {c.phone}
+                        <div className="text-[12px] text-gri-500 flex items-center gap-1.5">
+                          <span className="truncate max-w-[200px]">
+                            {c.email}
+                          </span>
+                          {isBanned && (
+                            <span className="inline-flex items-center h-[16px] px-1.5 rounded bg-kirmizi/10 text-kirmizi text-[10px] font-bold">
+                              🚫 BAN
+                            </span>
+                          )}
                         </div>
+                        {c.tags.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {c.tags.slice(0, 3).map((t) => (
+                              <span
+                                key={t}
+                                className="inline-flex items-center h-[18px] px-1.5 rounded bg-gri-100 text-gri-700 text-[10.5px] font-semibold"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                            {c.tags.length > 3 && (
+                              <span className="text-[10.5px] text-gri-500">
+                                +{c.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-gri-700">{c.city}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        <span className="font-semibold">{c.orderCount}</span>
-                        {c.activeOrders > 0 && (
-                          <span className="ml-1.5 inline-flex items-center h-[20px] px-1.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10px] font-bold">
-                            {c.activeOrders} aktif
+                      <td className="px-3 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 h-[22px] px-2 rounded-full ring-1 text-[11px] font-bold",
+                            meta.bg,
+                            meta.color,
+                            meta.ring
+                          )}
+                        >
+                          {meta.emoji} {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">
+                        <span className="font-semibold">{c.order_count}</span>
+                        {c.active_orders > 0 && (
+                          <span className="ml-1.5 inline-flex items-center h-[18px] px-1.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10px] font-bold">
+                            {c.active_orders} aktif
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                        {fmt(c.totalRevenue)} TL
+                      <td className="px-3 py-3 text-right font-semibold tabular-nums">
+                        {fmt(c.total_revenue)} TL
                       </td>
-                      <td className="px-4 py-3 text-right text-gri-700 tabular-nums">
-                        {fmt(c.avgOrder)} TL
-                      </td>
-                      <td className="px-4 py-3 text-[12.5px] text-gri-700">
-                        <Link
-                          href={`/admin/siparisler/${c.lastOrderId}`}
-                          className="font-mono text-pim-mercan hover:underline"
-                        >
-                          {c.lastOrderId}
-                        </Link>
-                        <div className="text-[11px] text-gri-500 mt-0.5">
-                          {timeAgo(c.lastOrderAt)}
+                      <td className="px-3 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[20px] px-1.5 rounded text-[10.5px] font-bold",
+                              c.email_confirmed_at
+                                ? "bg-yesil-soft text-yesil"
+                                : "bg-gri-100 text-gri-500"
+                            )}
+                            title={
+                              c.email_confirmed_at
+                                ? "Email doğrulanmış"
+                                : "Email doğrulanmamış"
+                            }
+                          >
+                            📧 {c.email_confirmed_at ? "✓" : "—"}
+                          </span>
+                          {c.has_2fa && (
+                            <span
+                              className="inline-flex items-center h-[20px] px-1.5 rounded bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-bold"
+                              title="2FA aktif"
+                            >
+                              🔐
+                            </span>
+                          )}
+                          {c.marketing_subscribed && (
+                            <span
+                              className="inline-flex items-center h-[20px] px-1.5 rounded bg-krem text-lacivert text-[10.5px] font-bold"
+                              title="Pazarlama abonesi"
+                            >
+                              📨
+                            </span>
+                          )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={detailHref}>
-                          <Button variant="ghost" size="sm">
-                            Detay <Icon.ChevR size={12} />
-                          </Button>
+                      <td className="px-3 py-3 text-[12.5px] text-gri-700">
+                        {timeAgo(lastActivity)}
+                        {c.last_order_id && (
+                          <div className="text-[11px] text-gri-500 mt-0.5 font-mono">
+                            {c.last_order_id}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <Link
+                          href={detailHref}
+                          className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline"
+                        >
+                          Detay <Icon.ChevR size={11} />
                         </Link>
                       </td>
                     </tr>
