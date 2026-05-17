@@ -99,11 +99,7 @@ export default function HomePage() {
   const etiketCardImage = useSiteImage("home_etiket_card");
   const stickerCardImage = useSiteImage("home_sticker_card");
 
-  const PILLARS = [
-    { icon: <Icon.Bolt size={22} />, t: t.home.pillar1Title, d: t.home.pillar1Desc },
-    { icon: <Icon.Sparkle size={22} />, t: t.home.pillar2Title, d: t.home.pillar2Desc },
-    { icon: <Icon.Truck size={22} />, t: t.home.pillar3Title, d: t.home.pillar3Desc },
-  ];
+  // PILLARS array kaldırıldı (Sefa kararı 17 May v10) — section silindi
 
   const STEPS = [
     { n: "01", t: t.home.step1, d: t.home.step1Desc },
@@ -185,25 +181,10 @@ export default function HomePage() {
                 </span>
               </div>
             )}
-            {/* Sefa 17 May P1-7: hero chip'ler locale-aware (eski hardcoded TR) */}
-            <div className="mt-10 flex items-center gap-2.5 flex-wrap">
-              <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-yesil-soft text-yesil text-[14px] font-semibold">
-                <Icon.Check size={15} />{" "}
-                {locale === "en"
-                  ? "Flexible low quantities"
-                  : "Düşük adetten esnek"}
-              </span>
-              <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-pim-mercan-tint text-pim-mercan text-[14px] font-semibold">
-                <Icon.Sparkle size={15} />{" "}
-                {locale === "en" ? "AI file check" : "AI dosya kontrolü"}
-              </span>
-              <span className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-krem text-lacivert text-[14px] font-semibold">
-                <Icon.Truck size={15} />{" "}
-                {locale === "en"
-                  ? "Nationwide delivery"
-                  : "Türkiye geneli teslimat"}
-              </span>
-            </div>
+            {/* Sefa kararı 17 May v10: 3 pill chip kaldırıldı
+                (Düşük adetten esnek / AI dosya kontrolü / Türkiye geneli teslimat).
+                3 PILLAR card ile aynı mesaj duplicate ediyordu → ikisi de
+                kaldırıldı, hero açıklamasında zaten geçiyor. */}
           </div>
 
           {/* RIGHT — Hero görsel (sadeleştirilmiş, Sefa 17 May v9)
@@ -254,22 +235,10 @@ export default function HomePage() {
       {/* Quick reorder — sadece login + sipariş geçmişi varsa görünür */}
       <QuickReorderWidget />
 
-      {/* ============================== 3 PILLAR ============================== */}
-      <section className="pt-8 pb-16">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PILLARS.map((p, i) => (
-            <Card key={i} padding="p-7">
-              <div className="grid place-items-center w-11 h-11 rounded-xl bg-pim-mercan-tint text-pim-mercan mb-4">
-                {p.icon}
-              </div>
-              <h3 className="text-xl font-semibold leading-snug mb-1.5">
-                {p.t}
-              </h3>
-              <p className="text-base text-gri-700 leading-relaxed">{p.d}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
+      {/* Sefa kararı 17 May v10: 3 PILLAR card section kaldırıldı
+          (Etiket 1.000'den / AI dosyana bakar / Hızlı teslim).
+          Hero açıklamasıyla duplicate → Quick reorder'dan direkt
+          Product Cards'a geçiş daha sade. */}
 
       {/* ============================== PRODUCT CARDS ============================== */}
       <section className="py-12">
