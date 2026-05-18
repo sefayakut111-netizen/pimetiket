@@ -277,33 +277,16 @@ export function DesignDropZone({
     );
   }
 
-  // Auth yok — login CTA
-  // Sefa 18 May v68 (UX uzman 1.3): CTA hiyerarşi tutarsızlığı düzeltildi.
-  // Eski: primary mercan buton (Sepete ekle ile aynı görsel ağırlık →
-  // kullanıcı hangisi asıl aksiyon kafa karışıyordu). Yeni: secondary
-  // outline (mercan ring + mercan text, beyaz bg) → "Sepete ekle" tek
-  // primary kalır, hiyerarşi netleşir.
-  if (!authed) {
-    return (
-      <div
-        className={`rounded-xl ring-1 ring-dashed ring-gri-200 bg-gri-50 p-5 text-center ${className ?? ""}`}
-      >
-        <Icon.Box size={28} className="text-gri-500 mx-auto mb-2" />
-        <p className="text-[13px] text-gri-700 leading-relaxed mb-3">
-          Tasarımını şimdi yükle — sepete eklemeden önce mockup'ta nasıl
-          duracağını gör.
-        </p>
-        <Link
-          href="/auth?next=/sticker"
-          className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-full bg-white ring-1 ring-pim-mercan text-pim-mercan text-[13px] font-semibold hover:bg-pim-mercan-tint/40 transition-colors"
-        >
-          Giriş yap → tasarım yükle
-        </Link>
-      </div>
-    );
-  }
+  // Sefa 18 May v68 (CRO denetim KRİTİK fix):
+  // Mockup preview feature iptal edildi (varsayılan sistem). Misafir
+  // kullanıcı için login CTA bloğu kaldırıldı — drop-zone misafire de
+  // gösterilir. Upload denerken auth check yapılır (yoksa /auth'a redirect).
+  //
+  // Önceki versiyon: misafir kullanıcıya "Tasarımını şimdi yükle —
+  // mockup'ta nasıl duracağını gör" + login CTA → Persona C (Canva
+  // tasarımcı) hesap açmadan denemek istediğinde bounce oluyordu.
 
-  // Auth var, henüz dosya yok — drag-drop zone
+  // Auth var ya da misafir — drag-drop zone (upload deneme noktasında auth check)
   return (
     <>
       <div

@@ -37,7 +37,6 @@ import {
   SelectableCard,
   PriceCard,
   useToast,
-  DesignDropZone,
   MaterialSwatch,
   PopulerBadge,
   InfoTooltip,
@@ -241,6 +240,9 @@ export default function StickerPage() {
   const [tier, setTier] = useState<number>(250);
   const [width, setWidth] = useState<number>(75);
   const [height, setHeight] = useState<number>(75);
+  // Sefa 18 May v68 (CRO denetim — Preset feedback fix):
+  // Preset chip basıldığında input'ta 700ms pulse animasyonu
+  const [presetPulseAt, setPresetPulseAt] = useState<number | null>(null);
   // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
   const [design, setDesign] = useState<DesignTempState | null>(null);
   // Sefa Madde 9 (11 May): müşteri çoklu tasarım yükleyebilir.
@@ -552,10 +554,12 @@ export default function StickerPage() {
                 geometrySheetH={quote.ok ? quote.geometry.sheetH : undefined}
               />
             </ProductPreviewShell>
-            {/* Design upload zone — Sefa: preview altında tek tasarım slot */}
-            <div className="mt-4">
-              <DesignDropZone value={design} onChange={setDesign} />
-            </div>
+            {/* Sefa 18 May v68 (CRO denetim KRİTİK fix):
+                Preview altındaki "mockup için şimdi tasarım yükle" CTA'sı
+                kaldırıldı. Mockup preview feature iptal — varsayılan akış
+                = sepete eklerken konfigüratör Tasarım adımında yüklenir.
+                Eski versiyon misafir kullanıcı için login redirect veriyordu,
+                Persona C (Canva tasarımcı) bounce ediyordu. */}
           </div>
 
           {/* RIGHT — config */}
@@ -814,7 +818,12 @@ export default function StickerPage() {
                     min={STICKER_MIN_DIM}
                     max={STICKER_MAX_W}
                     step={1}
-                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
+                    className={cn(
+                      "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                      presetPulseAt
+                        ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                        : "ring-gri-200"
+                    )}
                   />
                 </label>
                 <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
@@ -832,7 +841,12 @@ export default function StickerPage() {
                     min={STICKER_MIN_DIM}
                     max={STICKER_MAX_H}
                     step={1}
-                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
+                    className={cn(
+                      "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                      presetPulseAt
+                        ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                        : "ring-gri-200"
+                    )}
                   />
                 </label>
               </div>
@@ -874,6 +888,9 @@ export default function StickerPage() {
                         setWidth(preset.w);
                         setHeight(preset.h);
                         markTouched(5);
+                        // Input pulse animasyonu
+                        setPresetPulseAt(Date.now());
+                        setTimeout(() => setPresetPulseAt(null), 700);
                       }}
                       className={cn(
                         "px-3 h-10 md:h-8 rounded-full text-[12px] font-semibold transition-colors",

@@ -34,7 +34,6 @@ import {
   PriceCard,
   Pill,
   QtySlider,
-  DesignDropZone,
   MaterialSwatch,
   PopulerBadge,
   InfoTooltip,
@@ -473,6 +472,11 @@ export default function EtiketPage() {
   const [qty, setQty] = useState<number>(ETIKET_MIN_QTY); // 1000 (rulo başlangıç)
   const [width, setWidth] = useState<number>(60);
   const [height, setHeight] = useState<number>(80);
+  // Sefa 18 May v68 (CRO denetim — Preset feedback fix):
+  // Preset chip tıklanınca input'lara 700ms pulse animasyonu — kullanıcı
+  // değişikliği fark etsin. Eski versiyon: input doldu ama görsel feedback
+  // yoktu, "preset bastım mı manuel girdim mi belirsiz" şikayeti.
+  const [presetPulseAt, setPresetPulseAt] = useState<number | null>(null);
   // Tasarım adedi — kullanıcı kaç farklı tasarım göndereceğini söyler.
   // Max 50 (yüklenen dosya sayısı ile uyumsuzsa uyarı).
   const [designCount, setDesignCount] = useState<number>(1);
@@ -1511,7 +1515,12 @@ export default function EtiketPage() {
                     min={5}
                     max={520}
                     step={1}
-                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
+                    className={cn(
+                      "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                      presetPulseAt
+                        ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                        : "ring-gri-200"
+                    )}
                   />
                 </label>
                 <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
@@ -1531,7 +1540,12 @@ export default function EtiketPage() {
                     min={5}
                     max={1470}
                     step={1}
-                    className="block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow tabular-nums"
+                    className={cn(
+                      "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                      presetPulseAt
+                        ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                        : "ring-gri-200"
+                    )}
                   />
                 </label>
               </div>
@@ -1573,6 +1587,10 @@ export default function EtiketPage() {
                         setWidth(preset.w);
                         setHeight(preset.h);
                         markTouched(6);
+                        // Input'larda kısa bir pulse — preset basıldığını
+                        // görsel olarak ilet
+                        setPresetPulseAt(Date.now());
+                        setTimeout(() => setPresetPulseAt(null), 700);
                       }}
                       className={cn(
                         "px-3 h-8 rounded-full text-[12px] font-semibold transition-colors",

@@ -4,16 +4,22 @@
  * ViewModeBanner — admin/staff kullanıcı "müşteri görünümü"ndeyken üstte
  * uyarı çubuğu. Tek tıkla admin paneline geri döner.
  *
- * Cookie pim_view_mode=customer ise gösterilir. Cookie httpOnly:false
- * olduğu için client-side document.cookie'den okunur.
+ * Cookie pim_view_mode=customer ise gösterilir.
  *
- * Sadece login admin'lerin gördüğü çubuk olduğu için stale bir cookie
- * (rol değişti, role artık admin değil) middleware tarafından zaten
- * yok sayılır — banner sadece UX kolaylığı.
+ * Sefa 18 May v68 (CRO denetim — UX KRİTİK fix):
+ * Eski versiyon SADECE cookie'ye bakıyordu — non-admin kullanıcılarda
+ * stale cookie sebebiyle banner public olarak rendered oluyordu (ana
+ * sayfa, /etiket, /sticker, /galeri, /blog, /sepet — her sayfada).
+ * Misafir ziyaretçi "dev sitesi mi?" izlenimi aldı.
+ *
+ * Şimdi: cookie + Supabase auth check + profiles.role kontrolü.
+ * Sadece admin/staff rolündeki kullanıcı bu banner'ı görür.
+ * Non-admin'in tarayıcısında cookie kalmışsa otomatik silinir.
  */
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const COOKIE_NAME = "pim_view_mode";
 
@@ -26,13 +32,64 @@ function readViewModeCookie(): string | null {
   return match ? decodeURIComponent(match.split("=")[1] ?? "") : null;
 }
 
+function clearViewModeCookie() {
+  if (typeof document === "undefined") return;
+  // Tüm path/domain kombinasyonlarında temizle
+  document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
+
 export function ViewModeBanner() {
   const router = useRouter();
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setShow(readViewModeCookie() === "customer");
+    let cancelled = false;
+
+    // Önce cookie kontrolü — yoksa hiçbir şey yapma
+    if (readViewModeCookie() !== "customer") {
+      return;
+    }
+
+    // Cookie var → auth + role kontrolü zorunlu
+    async function verifyAdminRole() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      // Auth yok → cookie stale, sil + gösterme
+      if (!user) {
+        clearViewModeCookie();
+        if (!cancelled) setShow(false);
+        return;
+      }
+
+      // Role check
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      const role = (profile as { role?: string } | null)?.role;
+      const isAdmin = role === "admin" || role === "staff";
+
+      // Non-admin → cookie stale (eski admin oturumundan kalmış olabilir), sil
+      if (!isAdmin) {
+        clearViewModeCookie();
+        if (!cancelled) setShow(false);
+        return;
+      }
+
+      // Admin/staff + cookie=customer → banner göster
+      if (!cancelled) setShow(true);
+    }
+
+    void verifyAdminRole();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!show) return null;

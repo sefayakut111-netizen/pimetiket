@@ -48,14 +48,6 @@ export function LegalLayout({
           </p>
 
           <div className="legal-prose">{children}</div>
-
-          <div className="mt-12 p-5 rounded-lg bg-sari-soft text-sari-koyu text-sm leading-relaxed">
-            <strong>⚠️ Bilgilendirme:</strong> Bu metin başlangıç taslağıdır.
-            Hukuki yayın öncesi avukat tarafından gözden geçirilmiş nihai
-            metni içerecektir. Sefa Yakut / Pim Etiket adına yapılan tüm
-            değişiklikler işbu sayfada yansıtılır; son güncelleme tarihi
-            yukarıda belirtilmiştir.
-          </div>
         </article>
 
         <aside className="hidden lg:block">
