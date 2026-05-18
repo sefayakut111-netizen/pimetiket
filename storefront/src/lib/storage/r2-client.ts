@@ -262,6 +262,48 @@ export async function listR2Objects(prefix: string): Promise<string[]> {
   return keys;
 }
 
+/**
+ * Detaylı list — admin paneli için key + size + lastModified içerir.
+ */
+export interface R2ObjectInfo {
+  key: string;
+  size: number;
+  lastModified: Date | null;
+}
+
+export async function listR2ObjectsDetailed(
+  prefix: string
+): Promise<R2ObjectInfo[]> {
+  if (IS_DRY_RUN) {
+    console.log(`[r2-client:DRY_RUN] list-detailed prefix="${prefix}"`);
+    return [];
+  }
+  const items: R2ObjectInfo[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const response = await getClient().send(
+      new ListObjectsV2Command({
+        Bucket: R2_BUCKET,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    );
+    response.Contents?.forEach((obj) => {
+      if (obj.Key) {
+        items.push({
+          key: obj.Key,
+          size: obj.Size ?? 0,
+          lastModified: obj.LastModified ?? null,
+        });
+      }
+    });
+    continuationToken = response.IsTruncated
+      ? response.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+  return items;
+}
+
 // ============================================================
 // Key Builders — tutarlı klasör yapısı
 // ============================================================

@@ -355,6 +355,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Yedekler",
             icon: <Icon.Box size={16} />,
           },
+          // Sefa 18 May: R2 Cold Storage arşiv yönetimi
+          {
+            href: "/admin/arsiv",
+            label: "Arşiv (R2)",
+            icon: <Icon.Box size={16} />,
+          },
           // Sefa 17 May: E2E sipariş simülatörü
           {
             href: "/admin/test-siparis-simulator",
