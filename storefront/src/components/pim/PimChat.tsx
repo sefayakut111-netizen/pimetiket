@@ -178,25 +178,31 @@ export function PimChat() {
 
   return (
     <>
-      {/* Teaser speech bubble (Sefa 17 May v31) — Pim karga marka uyumlu
-          · Krem-soft arka plan (sayfa palette ile uyumlu)
-          · Mini karga mark sol tarafta
-          · Samimi Pim tonu mesaj
-          · 4sn delay → 6sn açık → 25sn kapalı asimetrik döngü */}
+      {/* Teaser speech bubble — Sefa 18 May v68 UX düzeltmeleri:
+          - Pointer ok vertical-center (chat butonun merkezine işaret eder)
+          - Balon ile chat buton arası boşluk 96px (eski 88 → bitişik fix)
+          - × close 32×32 px (WCAG 2.5.5 tap target compliant)
+          - --sticky-cta-h CSS variable → mobile sticky CTA ile uyumlu
+          - SVG triangle pointer (rotate ring çirkinliği gitti)
+          - z-[56] (chat buton z-[55] üstünde, modal z-[9999] altında) */}
       <div
         aria-hidden={!showTeaser}
         className={cn(
-          "fixed bottom-7 right-[88px] z-[55]",
-          "transition-all duration-400 ease-out origin-bottom-right",
+          "fixed right-[96px] z-[56]",
+          "transition-all duration-300 ease-out origin-bottom-right",
           showTeaser && !open && !teaserDismissed
             ? "opacity-100 translate-x-0 scale-100 pointer-events-auto"
             : "opacity-0 translate-x-3 scale-95 pointer-events-none"
         )}
+        style={{
+          // Chat buton ile aynı CSS variable → mobile sticky CTA ile birlikte kayar
+          bottom: "calc(2rem + var(--sticky-cta-h, 0px))",
+        }}
       >
-        <div className="relative bg-krem-soft rounded-2xl shadow-2 ring-1 ring-krem-koyu/40 pl-3 pr-8 py-2.5 max-w-[260px] flex items-center gap-2.5">
+        <div className="relative bg-krem-soft rounded-2xl shadow-2 ring-1 ring-krem-koyu/40 pl-3 pr-10 py-3 max-w-[260px] flex items-center gap-2.5">
           {/* Mini karga mark — sol */}
-          <span className="shrink-0 grid place-items-center w-8 h-8 rounded-full bg-white ring-1 ring-krem-koyu/30">
-            <PimAsset variant="icon" bg="light" size={22} bob={false} />
+          <span className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-white ring-1 ring-krem-koyu/30">
+            <PimAsset variant="icon" bg="light" size={24} bob={false} />
           </span>
           {/* Mesaj */}
           <p className="text-[12.5px] text-lacivert leading-snug font-medium">
@@ -204,21 +210,32 @@ export function PimChat() {
             <span className="text-pim-mercan font-semibold">Pim</span>
             {" "}— soracağın bir şey mi var?
           </p>
-          {/* × close */}
+          {/* × close — Sefa 18 May v68: 20×20 → 32×32 WCAG 2.5.5 compliant */}
           <button
             type="button"
             onClick={() => setTeaserDismissed(true)}
             aria-label="Bildirimi kapat"
-            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-white/70 text-gri-700 text-[13px] leading-none flex items-center justify-center hover:bg-white hover:text-lacivert transition-colors"
+            className="absolute top-1 right-1 w-8 h-8 rounded-full text-gri-500 text-[16px] leading-none flex items-center justify-center hover:bg-white hover:text-lacivert focus-visible:outline focus-visible:outline-2 focus-visible:outline-pim-mercan transition-colors"
           >
             ×
           </button>
-          {/* Pointer ok — chat butonuna işaret eder */}
-          <span
+          {/* SVG triangle pointer — vertical center, chat butonun merkezine bakar */}
+          <svg
             aria-hidden
-            className="absolute right-[-6px] bottom-4 w-3 h-3 bg-krem-soft rotate-45 ring-1 ring-krem-koyu/40"
-            style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
-          />
+            width="10"
+            height="14"
+            viewBox="0 0 10 14"
+            className="absolute right-[-9px] top-1/2 -translate-y-1/2 drop-shadow-[1px_1px_0_rgba(184,154,109,0.4)]"
+            style={{ overflow: "visible" }}
+          >
+            <path
+              d="M 0 0 L 10 7 L 0 14 Z"
+              fill="var(--color-krem-soft)"
+              stroke="rgba(184,154,109,0.4)"
+              strokeWidth="1"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
       </div>
 
