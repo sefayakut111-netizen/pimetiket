@@ -22,33 +22,35 @@ import { useUser } from "@/lib/supabase/use-user";
 // ProductCard sub-component'i, RolloPreview/StickerPile mockup'ları da
 // kullanılmıyor → silindi.
 
+// Sefa 18 May v68: Anasayfa SSS özeti — /sss tam sayfayla uyumlu.
+// "Acele baskı" sorusu kaldırıldı (Sefa: "acele baskı yapmıyoruz").
 const FAQ_QUESTIONS_TR = [
   {
     q: "Minimum kaç adet basabiliyorum?",
-    a: "Etiket için 1000, sticker için 25 adetten başlıyoruz.",
+    a: "Etiket rulo için 1.000, etiket tabaka için 250, sticker için 25 adetten başlıyoruz. Konfigüratörde kaç adet sığacağını canlı önizlemede görebilirsin.",
   },
   {
     q: "Tasarım dosyam yok, ne yapacağım?",
-    a: "Pim'e söyle, basit bir tasarım için kütüphanemizdeki şablonlardan birini özelleştirebilirsin; daha karmaşık iş için partner stüdyolarımızla bağlarız.",
+    a: "Pim sohbet butonuna (sağ alt) sor — ürün tipine göre öneri, renk paleti ve sektör örnekleri verir. Profesyonel grafik desteği için WhatsApp'tan iletişime geçebilirsin.",
   },
   {
-    q: "10 günden hızlı teslim mümkün mü?",
-    a: "Evet, 'hızlı şerit' opsiyonu ile 5 güne kadar düşürebiliyoruz; ek ücreti konfigürasyon sayfasında görürsün.",
+    q: "Üretim ve teslim ne kadar sürer?",
+    a: "Standart üretim 1-3 iş günü, özel efektli (yaldız, emboss, Spot UV) 3-5 iş günü. Kargo İstanbul içi 1 gün, diğer iller 2-3 gün. Sepette tahmini teslim tarihi otomatik gösterilir.",
   },
 ];
 
 const FAQ_QUESTIONS_EN = [
   {
     q: "What's the minimum order quantity?",
-    a: "1000 for labels, 25 for stickers — that's where we start.",
+    a: "1,000 for roll labels, 250 for sheet labels, 25 for stickers. The live preview shows how many fit per sheet.",
   },
   {
     q: "I don't have a design file, what now?",
-    a: "Tell Pim — for simple designs you can customize one of our templates; for more complex work we connect you with partner studios.",
+    a: "Ask Pim chat (bottom-right) — it gives product-specific suggestions, color palettes, and industry examples. For professional design support, reach us via WhatsApp.",
   },
   {
-    q: "Can I get faster than 10-day delivery?",
-    a: "Yes — the 'fast track' option brings it down to 5 days; the surcharge appears on the configurator.",
+    q: "How long does production and delivery take?",
+    a: "Standard production 1-3 business days, special effects (foil, emboss, Spot UV) 3-5 days. Shipping 1 day in Istanbul, 2-3 days elsewhere. Estimated delivery shown at checkout.",
   },
 ];
 
