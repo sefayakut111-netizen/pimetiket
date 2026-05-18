@@ -98,6 +98,33 @@ export function ProductPreviewShell({
           {livePreviewLabel}
         </span>
 
+        {/* Sefa 18 May v68 (koruma): Diagonal watermark — mockup ekran görüntü
+            alındığında bile "© pimetiket.com" görünür. Çok hafif opacity
+            (0.06) — müşteri akışına engel olmaz ama copy yaparken belirgin. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden"
+          style={{
+            backgroundImage: `repeating-linear-gradient(-30deg, transparent 0, transparent 110px, rgba(31,27,45,0.045) 110px, rgba(31,27,45,0.045) 112px)`,
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 z-0 pointer-events-none select-none flex items-center justify-center"
+        >
+          <span
+            className="text-lacivert font-bold uppercase tracking-[0.3em]"
+            style={{
+              transform: "rotate(-30deg)",
+              fontSize: "clamp(11px, 2.2vw, 18px)",
+              opacity: 0.07,
+              whiteSpace: "nowrap",
+            }}
+          >
+            © pimetiket.com · pim etiket © pimetiket.com · pim etiket
+          </span>
+        </div>
+
         {/* Merkez içerik */}
         <div className="relative z-0 h-full min-h-[540px] grid place-items-center px-6 py-12">
           {children}

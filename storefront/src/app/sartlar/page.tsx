@@ -89,7 +89,57 @@ export default function SartlarPage() {
         uygulanmasını sağlar; nihai red yetkisi Pim Etiket&rsquo;tedir.
       </p>
 
-      <h2>5. Sorumluluk Sınırları</h2>
+      <h2>5. Fikri Mülkiyet ve Kopyalama Yasağı</h2>
+      <p>
+        <strong>pimetiket.com</strong> sitesinde yer alan tüm içerik —
+        kaynak kod, tasarımlar, görseller, metinler, ürün konfigüratörü,
+        fiyat motoru algoritmaları, AI prompt&apos;ları, &ldquo;Pim
+        Etiket&rdquo; marka adı ve karga maskotu dahil — 5846 sayılı{" "}
+        <strong>Fikir ve Sanat Eserleri Kanunu (FSEK)</strong> ve 6769
+        sayılı <strong>Sınai Mülkiyet Kanunu</strong> kapsamında Pim
+        Etiket (Sefa Yakut)&rsquo;ün münhasır mülkiyetindedir.
+      </p>
+      <p>Aşağıdaki davranışlar kesinlikle yasaktır:</p>
+      <ul>
+        <li>
+          <strong>Otomatik veri toplama (scraping)</strong>: bot, crawler,
+          spider veya benzeri otomatik araçlarla sitenin içeriğini, ürün
+          listesini, fiyat bilgilerini veya kullanıcı verilerini toplamak.
+        </li>
+        <li>
+          <strong>Tersine mühendislik</strong>: Frontend veya backend
+          kodlarını çözmek, decompile etmek, kopyalamak veya türev eser
+          üretmek.
+        </li>
+        <li>
+          <strong>İçerik yeniden yayınlama</strong>: Yazılı izin
+          alınmaksızın içeriğin (metin, görsel, kod) tamamını veya bir
+          kısmını başka bir mecrada kullanmak, dağıtmak, çoğaltmak.
+        </li>
+        <li>
+          <strong>Marka taklidi</strong>: &ldquo;Pim Etiket&rdquo; adı,
+          karga logosu, mercan-lacivert renk paleti veya benzeri ayırt
+          edici işaretleri kullanarak müşterileri yanıltacak benzer site
+          oluşturmak.
+        </li>
+        <li>
+          <strong>API kötüye kullanım</strong>: Rate limit&rsquo;leri
+          aşmak, çoklu hesapla otomatik çağrı yapmak, paylaşılan
+          kapasiteyi tüketmek.
+        </li>
+      </ul>
+      <p>
+        Bu maddelerin ihlali halinde Pim Etiket; (a) hesabınızı askıya
+        alma, (b) IP adresinizi engelleme, (c) FSEK m.71 ve TBK m.49
+        kapsamında <strong>tazminat davası</strong>, (d) yetkili
+        otoritelere bildirimde bulunma haklarını saklı tutar. Meşru
+        akademik araştırma veya basın haberi için yazılı izin almak
+        üzere{" "}
+        <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>{" "}
+        adresine başvurabilirsiniz.
+      </p>
+
+      <h2>6. Sorumluluk Sınırları</h2>
       <ul>
         <li>
           Sitenin kesintisiz çalışacağı garanti edilmez. Bakım, güncelleme
@@ -106,7 +156,7 @@ export default function SartlarPage() {
         </li>
       </ul>
 
-      <h2>6. Hesap Askıya Alma ve Fesih</h2>
+      <h2>7. Hesap Askıya Alma ve Fesih</h2>
       <p>
         Aşağıdaki durumlarda hesap askıya alınabilir veya silinebilir:
       </p>
@@ -122,7 +172,7 @@ export default function SartlarPage() {
         iletilebilir.
       </p>
 
-      <h2>7. Değişiklikler</h2>
+      <h2>8. Değişiklikler</h2>
       <p>
         İşbu şartlar Pim Etiket tarafından zaman zaman güncellenebilir.
         Önemli değişiklikler kayıtlı kullanıcılara e-posta ile bildirilir.
@@ -130,7 +180,7 @@ export default function SartlarPage() {
         anlamına gelir.
       </p>
 
-      <h2>8. Yetkili Mahkeme ve Hukuk</h2>
+      <h2>9. Yetkili Mahkeme ve Hukuk</h2>
       <p>
         İşbu şartlar Türkiye Cumhuriyeti hukukuna tabidir. Doğacak
         uyuşmazlıklarda, tüketici işlemleri için Gümrük ve Ticaret
@@ -140,7 +190,7 @@ export default function SartlarPage() {
         Daireleri yetkilidir.
       </p>
 
-      <h2>9. İletişim</h2>
+      <h2>10. İletişim</h2>
       <p>
         İşbu şartlarla ilgili sorularını{" "}
         <a href="/iletisim">iletişim</a> sayfasından iletebilirsin.

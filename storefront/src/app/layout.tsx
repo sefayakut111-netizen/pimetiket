@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/lib/i18n/context";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Analytics } from "@/components/Analytics";
 import { VercelInsights } from "@/components/VercelInsights";
+import { CopyProtection } from "@/components/security/CopyProtection";
 import { getSiteImage } from "@/lib/site-images";
 import "./globals.css";
 
@@ -161,6 +162,9 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
             <CookieConsent />
             <Analytics />
+            {/* Sefa 18 May v68: Frontend caydırıcı koruma — DevTools detect
+                + agresif console uyarısı (self-XSS + telif). Production-only. */}
+            <CopyProtection />
           </LanguageProvider>
         </ToastProvider>
         {/* Vercel built-in pageview + Core Web Vitals — KVKK gated (sadece

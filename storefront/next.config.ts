@@ -117,6 +117,12 @@ const nextConfig: NextConfig = {
   // React 19 strict-mode hata avlama.
   reactStrictMode: true,
 
+  // Sefa 18 May v68 (koruma): Source map'ler production'da tarayıcıya
+  // SERVE EDİLMEZ — sadece Sentry'ye upload olur (debug için).
+  // Bu, prod kodun okunmasını ciddi şekilde zorlaştırır (minified bundle
+  // kalır, ama original source map yok). Sentry hideSourceMaps zaten true.
+  productionBrowserSourceMaps: false,
+
   // PayTR REST API kullanıyoruz, npm paket yok — external mark gerekmez.
   // serverExternalPackages: [],
 
