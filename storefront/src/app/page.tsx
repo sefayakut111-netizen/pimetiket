@@ -31,7 +31,7 @@ const FAQ_QUESTIONS_TR = [
   },
   {
     q: "Tasarım dosyam yok, ne yapacağım?",
-    a: "Pim sohbet butonuna (sağ alt) sor — ürün tipine göre öneri, renk paleti ve sektör örnekleri verir. Profesyonel grafik desteği için WhatsApp'tan iletişime geçebilirsin.",
+    a: "Canva, Adobe Express veya Figma gibi ücretsiz online tasarım araçlarıyla hazırlayıp PDF/PNG olarak indir, sisteme yükle. Hangi renk, font veya kompozisyon önereyim diye Pim sohbet'e sor — sektörüne göre yönlendirir.",
   },
   {
     q: "Üretim ve teslim ne kadar sürer?",
@@ -46,7 +46,7 @@ const FAQ_QUESTIONS_EN = [
   },
   {
     q: "I don't have a design file, what now?",
-    a: "Ask Pim chat (bottom-right) — it gives product-specific suggestions, color palettes, and industry examples. For professional design support, reach us via WhatsApp.",
+    a: "Use free online tools like Canva, Adobe Express, or Figma — design your layout, export as PDF/PNG, then upload here. Ask Pim chat for color, font, or composition suggestions based on your industry.",
   },
   {
     q: "How long does production and delivery take?",

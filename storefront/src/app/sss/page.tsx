@@ -183,11 +183,11 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
         "Illustrator'da: Type → Create Outlines (Cmd/Ctrl+Shift+O). Photoshop'ta: katmanı rasterize et veya smart object'e çevir. PDF dışa aktarırken 'Embed All Fonts' seçili olsun. Outline yapılmamış PDF'lerde font yoksa ön denetim FATAL warning verir, üretim bekletilir.",
     },
     {
-      q: "Tasarım hazırlatabilir miyim?",
+      q: "Tasarımı kendim yapabilir miyim, hangi araçları kullanmalıyım?",
       summary:
-        "Pim sohbet AI'sından temel tasarım önerisi al veya WhatsApp'tan profesyonel grafik desteği iste.",
+        "Canva, Adobe Express, Figma gibi ücretsiz online araçlarla hazırla; PDF veya PNG indir, sisteme yükle.",
       detail:
-        "Pim sohbet (sağ alt) bedava — ürün tipine göre öneri, renk paleti, font kombinasyonu, sektör örnekleri verir. Profesyonel grafiker hizmeti şu an pakette değil, WhatsApp'tan dış grafiker yönlendirmesi yapabiliriz. 2026 Q2'de 'Tasarım stüdyosu' özelliği (Polotno entegrasyonu) yol haritamızda.",
+        "Bizim dahili şablon kütüphanemiz yok — ama internette ücretsiz ve kolay tasarım araçları çok. En yaygınları: Canva (binlerce hazır etiket/sticker şablonu), Adobe Express (basit ve hızlı), Figma (free tier, profesyonel görünüm), VistaCreate/Crello. Hangisini seçersen seç, tasarımı bitirince **PDF veya PNG** olarak indir ve buraya yükle. Pim sohbet'e (sağ alt) ürün/sektör adını yaz — sana uygun renk, font, kompozisyon önerisi verir. Profesyonel grafiker desteği için WhatsApp'tan yönlendirme yapabiliriz.",
     },
     {
       q: "Çoklu tasarım nasıl çalışır?",
@@ -616,6 +616,13 @@ const FAQS_EN: Record<Category, FaqItem[]> = {
       summary: "300 DPI at actual size — print quality standard.",
       detail:
         "Lower DPI may produce blurry print. CMYK color space recommended.",
+    },
+    {
+      q: "Can I design it myself? Which tools do you recommend?",
+      summary:
+        "Use Canva, Adobe Express, or Figma — free online tools. Export as PDF/PNG and upload.",
+      detail:
+        "We don't have an in-house template library yet — but the web has plenty: Canva (thousands of label/sticker templates), Adobe Express (fast and simple), Figma (free tier, pro look), VistaCreate. Pick one, design, export PDF/PNG, upload here. Ask Pim chat for color and font suggestions based on your industry.",
     },
   ],
   malzeme: [
