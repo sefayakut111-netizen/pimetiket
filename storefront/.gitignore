@@ -41,6 +41,12 @@ yarn-error.log*
 .wrangler/
 .dev.vars
 
+# Playwright E2E bot (Sefa 18 May v68)
+/playwright-report/
+/test-results/
+/tests/.auth/
+/playwright/.cache/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

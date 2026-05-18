@@ -12,7 +12,12 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",
-    "cf:upload": "opennextjs-cloudflare upload"
+    "cf:upload": "opennextjs-cloudflare upload",
+    "bot:smoke": "playwright test --headed",
+    "bot:headless": "playwright test",
+    "bot:customer": "playwright test --headed --project=setup --project=customer",
+    "bot:admin": "playwright test --headed --project=setup --project=admin",
+    "bot:report": "playwright show-report"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.63",
@@ -36,6 +41,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.8",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
