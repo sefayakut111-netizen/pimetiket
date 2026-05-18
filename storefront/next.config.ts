@@ -137,6 +137,23 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Sefa 18 May v68 (admin denetim 1.2): eski/test yasal URL'leri
+  // güncel sayfalara redirect — 404 göstermesin
+  async redirects() {
+    return [
+      {
+        source: "/iade-cayma",
+        destination: "/iade-degisim-politikasi",
+        permanent: true,
+      },
+      {
+        source: "/cayma-hakki",
+        destination: "/iade-degisim-politikasi",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 // ============================================================
