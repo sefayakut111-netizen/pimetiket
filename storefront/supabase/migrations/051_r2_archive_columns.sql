@@ -73,7 +73,7 @@ create index if not exists idx_orders_archive_status
   on public.orders(archive_status, created_at);
 
 create index if not exists idx_design_files_archive_status
-  on public.design_files(archive_status, created_at);
+  on public.design_files(archive_status, uploaded_at);
 
 -- =========================================================
 -- 4. ARŞİV AUDIT TABLOSU (KVKK uyumu için kritik)
@@ -113,15 +113,15 @@ create index if not exists idx_archive_events_type
 -- =========================================================
 alter table public.archive_events enable row level security;
 
--- Sadece admin arşiv event'lerini görebilir
+-- Sadece admin arşiv event'lerini görebilir (Pim Etiket: profiles.role)
 drop policy if exists "admin_read_archive_events" on public.archive_events;
 create policy "admin_read_archive_events"
   on public.archive_events for select
   using (
     exists (
-      select 1 from public.user_roles ur
-      where ur.user_id = auth.uid()
-        and ur.role in ('admin', 'staff')
+      select 1 from public.profiles
+      where id = auth.uid()
+        and role in ('admin', 'staff')
     )
   );
 
@@ -146,12 +146,15 @@ stable
 security definer
 set search_path = public
 as $$
+  -- Pim Etiket order_status enum: paid, qc_pending, qc_flagged, operator_review,
+  -- proof_pending, proof_generating, fason_assigned, in_production, shipped,
+  -- delivered, cancelled. "Aktif" = delivered/cancelled dışı (gelecek-uyumlu).
   select
     p.id as user_id,
     coalesce(max(o.created_at), p.created_at) as last_activity_at,
     count(o.id)::int as order_count,
     coalesce(
-      bool_or(o.status in ('paid', 'in_production', 'shipped', 'pending')),
+      bool_or(o.status not in ('delivered', 'cancelled')),
       false
     ) as has_active_orders
   from public.profiles p
@@ -160,7 +163,7 @@ as $$
   group by p.id, p.created_at
   having coalesce(max(o.created_at), p.created_at) < (now() - (p_days_inactive || ' days')::interval)
     and not coalesce(
-      bool_or(o.status in ('paid', 'in_production', 'shipped', 'pending')),
+      bool_or(o.status not in ('delivered', 'cancelled')),
       false
     )
 $$;

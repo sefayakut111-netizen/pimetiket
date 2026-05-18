@@ -44,16 +44,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const targetUserId = (body.targetUserId as string) ?? user.id;
 
-  // Admin ise başkasının verisini silebilir
+  // Admin ise başkasının verisini silebilir (Pim Etiket: profiles.role)
   if (targetUserId !== user.id) {
-    const { data: roles } = await supabase
-      .from("user_roles")
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("role")
-      .eq("user_id", user.id);
-    const rolesList = (roles ?? []) as Array<{ role: string }>;
-    const isAdmin = rolesList.some(
-      (r) => r.role === "admin" || r.role === "staff"
-    );
+      .eq("id", user.id)
+      .single();
+    const role = (profile as { role?: string } | null)?.role;
+    const isAdmin = role === "admin" || role === "staff";
     if (!isAdmin) {
       return NextResponse.json(
         { error: "Yetkisiz — sadece kendi verinizi silebilirsiniz" },
