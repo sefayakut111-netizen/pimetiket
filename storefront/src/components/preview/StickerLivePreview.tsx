@@ -1,0 +1,460 @@
+/**
+ * StickerLivePreview — Sticker konfigüratörünün ÜRÜN simülasyonu.
+ *
+ * Sefa kuralı (18 May v67): Cut mode + şekil + malzeme + yüzey
+ * seçimleri canlı yansır. Karga maskotu default placeholder.
+ *
+ * Cut mode mantığı:
+ *   - diecut:  TEK sticker, etrafında 2.5mm BEYAZ KONTUR (cut path)
+ *              + havada duruyor drop-shadow (Sticker Mule mantığı)
+ *   - tabaka:  Tabaka grid içinde sticker'lar (kesim YOK,
+ *              henüz makasa girmemiş — TabakaPreview ile aynı)
+ *
+ * Şekil:
+ *   - square      → dikdörtgen (boyut oranlı)
+ *   - circle      → daire/elips (boyut oranlı)
+ *   - ozel        → yumuşak köşeli dikdörtgen (pill-leaning)
+ *   - die         → custom kontur (karga silüetini takip eder)
+ *
+ * Malzeme zemin:
+ *   - vinil       → opakpp.svg (beyaz parlak)
+ *   - transparan  → transparan.svg (frosted/cam)
+ *   - holo        → holografik.svg (gökkuşağı iridescence)
+ *   - simli       → simli.svg (multi-spark glitter)
+ *
+ * Yüzey:
+ *   - parlak      → glossy sheen overlay (yansıma)
+ *   - mat         → düz, parlama yok
+ *   - yok         → düz
+ */
+
+"use client";
+
+import { MaterialSwatch, type SurfaceId } from "@/components/ui";
+import { MaskotPlaceholder } from "./MaskotPlaceholder";
+import type { PreviewView } from "./ProductPreviewShell";
+import type {
+  StickerMaterial,
+  StickerFinish,
+} from "@/lib/sticker-customer-pricing";
+
+type ShapeId = "square" | "circle" | "ozel" | "die";
+
+const STICKER_SURFACE: Record<StickerMaterial, SurfaceId> = {
+  vinil: "opakpp",
+  transparan: "transparan",
+  holo: "holografik",
+  simli: "simli",
+};
+
+const FINISH_SHEEN: Record<StickerFinish, number> = {
+  parlak: 0.5,
+  mat: 0.04,
+  yok: 0.16,
+};
+
+interface StickerLivePreviewProps {
+  cutMode: "diecut" | "tabaka";
+  shape: ShapeId;
+  softCorners: boolean;
+  material: StickerMaterial;
+  finish: StickerFinish;
+  width: number;
+  height: number;
+  qty?: number;
+  view: PreviewView;
+  designUrl?: string | null;
+  /** Sefa 18 May v67: gerçek pricing geometrisi — tabaka grid'i
+   *  bu cols × rows üzerinden çizilir. */
+  geometryCols?: number;
+  geometryRows?: number;
+  geometryPerSheet?: number;
+  geometrySheetsNeeded?: number;
+  /** Sefa 18 May v68: tabaka boyutu (mm) — preview üstünde
+   *  "230×310 mm" şeklinde gösterilir. */
+  geometrySheetW?: number;
+  geometrySheetH?: number;
+}
+
+export function StickerLivePreview({
+  cutMode,
+  shape,
+  softCorners,
+  material,
+  finish,
+  width,
+  height,
+  qty = 50,
+  view,
+  designUrl,
+  geometryCols,
+  geometryRows,
+  geometryPerSheet,
+  geometrySheetsNeeded,
+  geometrySheetW,
+  geometrySheetH,
+}: StickerLivePreviewProps) {
+  const surface = STICKER_SURFACE[material];
+  const sheen = FINISH_SHEEN[finish];
+  const isTransparent = material === "transparan";
+
+  // Boyut normalizasyon (maks 280px hedef)
+  const maxDim = Math.max(width, height);
+  const scale = Math.min(280 / maxDim, 4);
+  const stickerWidthPx = width * scale;
+  const stickerHeightPx = height * scale;
+
+  // Şekil → border-radius
+  // Sefa 18 May v68: "Düz köşe" seçilince tam keskin köşe (0px).
+  // Eski: square düz=4, ozel düz=12 → görsel olarak hala yuvarlatılmış
+  // gözüküyordu. Şimdi: square düz=0, ozel düz=0, yumuşatılmış olanlar
+  // belirgin radius alır (square 16, ozel 36).
+  const radius =
+    shape === "circle"
+      ? "50%"
+      : shape === "square"
+        ? softCorners
+          ? 16
+          : 0
+        : shape === "ozel"
+          ? softCorners
+            ? 36
+            : 0
+          : 0;
+
+  // Sefa 18 May v68 (5): View modları
+  // - "3d"     → perspective + rotation (gerçekçi sunum)
+  // - "sketch" → düz, no perspective (eskiz/diyagram netliği)
+  const isSketch = view === "sketch";
+  const view3dWrap: React.CSSProperties = isSketch
+    ? {}
+    : { perspective: "2000px" };
+  const view3dInner: React.CSSProperties = isSketch
+    ? {
+        transform: "rotateZ(0deg)",
+        transition: "transform 280ms cubic-bezier(.2,.8,.2,1)",
+      }
+    : {
+        transform: "rotateZ(-4deg) rotateX(6deg)",
+        transformStyle: "preserve-3d",
+        transformOrigin: "center center",
+        transition: "transform 280ms cubic-bezier(.2,.8,.2,1)",
+      };
+
+  // Beyaz kontur kalınlığı (die-cut için cut path simülasyonu)
+  const CUT_PATH_WIDTH = 8; // px, ekranda ~2.5mm karşılığı
+
+  // ─────────────────────────────────────────────────────────────
+  // Tek sticker render helper
+  // ─────────────────────────────────────────────────────────────
+  const renderSingleSticker = (
+    key: string | number,
+    {
+      withCutPath = false,
+      withShadow = false,
+    }: { withCutPath?: boolean; withShadow?: boolean } = {}
+  ) => {
+    const padPx = withCutPath ? CUT_PATH_WIDTH : 0;
+    return (
+      <div
+        key={key}
+        className="relative"
+        style={{
+          padding: padPx,
+          background: withCutPath ? "white" : "transparent",
+          borderRadius: typeof radius === "number" ? radius + padPx : radius,
+          boxShadow: withShadow
+            ? "0 12px 28px rgba(31,41,55,0.22), 0 4px 10px rgba(31,41,55,0.12)"
+            : "none",
+        }}
+      >
+        <div
+          className={
+            isSketch ? "relative overflow-hidden ring-1 ring-pim-mercan" : "relative overflow-hidden"
+          }
+          style={{
+            width: stickerWidthPx,
+            height: stickerHeightPx,
+            borderRadius: radius,
+            background: isSketch ? "rgba(255, 107, 91, 0.18)" : undefined,
+          }}
+        >
+          {/* Layer 1 — 3D: Material zemin · Sketch: mercan dolgu (yukarıda) */}
+          {!isSketch && (
+            <MaterialSwatch
+              surface={surface}
+              className="absolute inset-0 w-full h-full"
+              rounded="md"
+              style={{
+                borderRadius:
+                  typeof radius === "number" ? `${radius}px` : radius,
+              }}
+            />
+          )}
+
+          {/* Layer 2 — Şeffaf checker (3D + transparan) */}
+          {!isSketch && isTransparent && (
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage:
+                  "linear-gradient(45deg, rgba(200,210,220,0.5) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,210,220,0.5) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,210,220,0.5) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,210,220,0.5) 75%)",
+                backgroundSize: "10px 10px",
+                backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0px",
+                opacity: 0.45,
+              }}
+            />
+          )}
+
+          {/* Layer 3 — Tasarım veya karga (her iki modda) */}
+          {designUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={designUrl}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <MaskotPlaceholder sizePct={70} />
+          )}
+
+          {/* Layer 4 — Finish sheen (sadece 3D) */}
+          {!isSketch && sheen > 0.08 && (
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: `radial-gradient(80% 60% at 30% 20%, rgba(255,255,255,${sheen}) 0%, transparent 60%)`,
+                mixBlendMode: "screen",
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // DIE-CUT MODE — TEK sticker, BEYAZ KONTUR (cut path) belirgin.
+  // Sefa 18 May v68: shape === "die" için ÖZEL render → karga silüeti
+  // dış kontur olarak görünür (Sticker Mule pattern). Diğer şekillerde
+  // (kare/yuvarlak/özel oran) renderSingleSticker normal akış.
+  // ─────────────────────────────────────────────────────────────
+  if (cutMode === "diecut") {
+    // ÖZEL: shape === "die" + tasarım yok → karga silüetine göre kesim
+    // (kontur tasarımın alfa kanalını takip eder).
+    // Sefa 18 May v68 (2): Tüm kargalar lacivert (dark mark) — auto-contrast yok.
+    if (shape === "die") {
+      const maskotSrc = "/pim/pim-etiket-mark-dark.svg";
+      // Sefa 18 May v68: NET kalın beyaz kontur (diğer şekillerle aynı).
+      // Eski drop-shadow blur'lu halo veriyordu → bulanık.
+      // Yeni: 8 yönde 0-blur multi-drop-shadow → uniform solid stroke etkisi.
+      // 3px her yön = ~2.5mm cut path eşdeğeri. + tek soft shadow havada.
+      const S = 3; // stroke kalınlığı (px)
+      const dieCutFilter = `
+        drop-shadow(${S}px 0 0 white)
+        drop-shadow(-${S}px 0 0 white)
+        drop-shadow(0 ${S}px 0 white)
+        drop-shadow(0 -${S}px 0 white)
+        drop-shadow(${S * 0.75}px ${S * 0.75}px 0 white)
+        drop-shadow(-${S * 0.75}px ${S * 0.75}px 0 white)
+        drop-shadow(${S * 0.75}px -${S * 0.75}px 0 white)
+        drop-shadow(-${S * 0.75}px -${S * 0.75}px 0 white)
+        drop-shadow(0 12px 24px rgba(31,41,55,0.25))
+        drop-shadow(0 4px 8px rgba(31,41,55,0.12))
+      `;
+      // Sefa 18 May v68 (2): Container artık gerçek sticker aspect'inde
+      // (bumper için 100×40, kare için 75×75). Eski Math.min kare zorluyordu
+      // → bumper'da karga sol köşede kalıyordu. Şimdi container bumper aspect
+      // + karga w/h %100 → preserveAspectRatio meet ile tam ortalı.
+      return (
+        <div style={view3dWrap} className="relative">
+          <div style={view3dInner} className="flex flex-col items-center gap-3">
+            <div
+              className="relative grid place-items-center"
+              style={{
+                width: stickerWidthPx,
+                height: stickerHeightPx,
+                filter: dieCutFilter,
+              }}
+            >
+              {designUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={designUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={maskotSrc}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-contain"
+                  style={{ padding: 4 }}
+                />
+              )}
+            </div>
+            <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
+              Kontur kesim · {Math.round(width)}×{Math.round(height)} mm
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Diğer şekiller (kare/yuvarlak/özel oran) — normal sticker + cut path
+    return (
+      <div style={view3dWrap} className="relative">
+        <div style={view3dInner} className="flex flex-col items-center gap-3">
+          {renderSingleSticker("die-single", {
+            withCutPath: true,
+            withShadow: true,
+          })}
+          <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
+            Kontur kesim · {Math.round(width)}×{Math.round(height)} mm
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TABAKA MODE — Gerçek pricing geometrisi üzerinden grid
+  // Sefa 18 May v67: tabaka kaç sticker sığacağını fiyat motorundan al,
+  // temsili 1 tabakayı çiz. Çok büyükse 6×5 cap.
+  // ─────────────────────────────────────────────────────────────
+  const rawCols = geometryCols ?? 2;
+  const rawRows = geometryRows ?? 2;
+  const realPerSheet = geometryPerSheet ?? rawCols * rawRows;
+  const displayCols = Math.min(rawCols, 6);
+  const displayRows = Math.min(rawRows, 5);
+  const isCapped = displayCols < rawCols || displayRows < rawRows;
+  const PREVIEW_MAX_W = 280;
+  const PREVIEW_MAX_H = 260;
+  const GAP_PX = 4;
+  const aspect = width / height;
+  const cellByCols =
+    (PREVIEW_MAX_W - GAP_PX * (displayCols - 1)) / displayCols;
+  const cellByRows =
+    (PREVIEW_MAX_H - GAP_PX * (displayRows - 1)) / displayRows;
+  const cellW = Math.min(cellByCols, cellByRows * aspect);
+  const cellH = cellW / aspect;
+  // Sefa 18 May v68 (3): tüm cells'e karga (centerCellIdx kullanılmıyor artık)
+  const totalDisplayCells = displayCols * displayRows;
+  const cells = Array.from({ length: totalDisplayCells }, (_, i) => i);
+
+  // Sefa 18 May v68 (4): Outer form TabakaPreview pattern korunur
+  // (solid white kağıt + üst sol köşe boyut etiketi + inner dashed),
+  // AMA içerdeki cell'lerde MATERIAL ZEMİN + FINISH SHEEN + KARGA korunur
+  // (referans sadece görsel form için, efektler kalıcı).
+  return (
+    <div style={view3dWrap} className="relative">
+      <div style={view3dInner} className="flex flex-col items-center gap-2">
+        {/* Tabaka kağıdı: solid white + soft shadow (TabakaPreview pattern) */}
+        <div
+          className="relative rounded-lg bg-white p-3 ring-1 ring-gri-200"
+          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        >
+          {/* Üst sol köşe: tabaka boyutu etiketi */}
+          <span className="absolute -top-2 left-3 px-1.5 text-[9px] font-bold uppercase tracking-[0.06em] text-gri-500 bg-krem tabular-nums">
+            {geometrySheetW && geometrySheetH
+              ? `${Math.round(geometrySheetW)}×${Math.round(geometrySheetH)} mm`
+              : "Tabaka"}
+          </span>
+          {/* Inner dashed border (tabaka usable area) */}
+          <div className="rounded ring-1 ring-dashed ring-gri-400 p-2">
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${displayCols}, ${cellW}px)`,
+                gridTemplateRows: `repeat(${displayRows}, ${cellH}px)`,
+                gap: GAP_PX * 1.5,
+              }}
+            >
+              {cells.map((i) => (
+                <div
+                  key={i}
+                  className={
+                    isSketch
+                      ? "relative overflow-hidden ring-1 ring-pim-mercan"
+                      : "relative overflow-hidden ring-1 ring-black/[0.08]"
+                  }
+                  style={{
+                    borderRadius: radius,
+                    boxShadow: isSketch
+                      ? "none"
+                      : "0 1px 3px rgba(0,0,0,0.08)",
+                    background: isSketch
+                      ? "rgba(255, 107, 91, 0.18)"
+                      : undefined,
+                  }}
+                >
+                  {/* Layer 1 — Sketch: mercan dolgu (yukarıda) /
+                                3D: Material zemin SVG */}
+                  {!isSketch && (
+                    <MaterialSwatch
+                      surface={surface}
+                      className="absolute inset-0 w-full h-full"
+                      rounded="md"
+                    />
+                  )}
+
+                  {/* Layer 2 — Şeffaf checker (sadece 3D + transparan) */}
+                  {!isSketch && isTransparent && (
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(45deg, rgba(200,210,220,0.5) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,210,220,0.5) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,210,220,0.5) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,210,220,0.5) 75%)",
+                        backgroundSize: "8px 8px",
+                        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px",
+                        opacity: 0.35,
+                      }}
+                    />
+                  )}
+
+                  {/* Layer 3 — Tasarım veya karga (her iki modda) */}
+                  {designUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={designUrl}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <MaskotPlaceholder sizePct={60} />
+                  )}
+
+                  {/* Layer 4 — Finish sheen (sadece 3D) */}
+                  {!isSketch && sheen > 0.08 && (
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: `radial-gradient(80% 60% at 30% 20%, rgba(255,255,255,${sheen}) 0%, transparent 60%)`,
+                        mixBlendMode: "screen",
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Alt yazı: format standardı */}
+        <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
+          Tabaka · {Math.round(width)}×{Math.round(height)} mm ·{" "}
+          {isCapped ? "≈" : ""}
+          <span className="text-pim-mercan">{realPerSheet}</span> ad/tabaka
+        </span>
+      </div>
+    </div>
+  );
+}

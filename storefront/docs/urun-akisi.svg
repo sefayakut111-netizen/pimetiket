@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 980" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <!-- ============================================================ -->
+  <!-- Pim Etiket — Ürün akışı (17 May 2026)                         -->
+  <!-- Figma board referans: aLFkZFlsL3KR5WlEKWR5cG                  -->
+  <!-- ============================================================ -->
+
+  <defs>
+    <!-- Dotted grid background (Figma vibe) -->
+    <pattern id="dotgrid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" fill="#D4D2CC"/>
+    </pattern>
+    <!-- Sticky note shadow -->
+    <filter id="stickyShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1500" height="980" fill="#FAFAF7"/>
+  <rect width="1500" height="980" fill="url(#dotgrid)"/>
+
+  <!-- ============================================================ -->
+  <!-- Sticky note (Sefa'nın Figma'sındaki gibi)                     -->
+  <!-- ============================================================ -->
+  <g filter="url(#stickyShadow)">
+    <rect x="40" y="40" width="260" height="160" rx="4" fill="#B8E6B0"/>
+    <text x="60" y="78" font-size="14" font-weight="700" fill="#1a1a1a">Sticker üretim:</text>
+    <text x="60" y="100" font-size="13" fill="#1a1a1a">mimaki uv 100-160 uv baskı</text>
+    <text x="60" y="118" font-size="13" fill="#1a1a1a">ile üretilir.</text>
+    <text x="60" y="170" font-size="12" font-weight="600" fill="#1a1a1a">— Sefa Yakut</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- Connection paths (bezier curves)                              -->
+  <!-- ============================================================ -->
+  <g fill="none" stroke="#A8A6A0" stroke-width="1.5">
+    <!-- Ürün → Sticker -->
+    <path d="M 415 480 C 470 480, 490 280, 545 280"/>
+    <!-- Ürün → Etiket -->
+    <path d="M 415 480 C 470 480, 490 700, 545 700"/>
+
+    <!-- Sticker → Die cut -->
+    <path d="M 625 280 C 680 280, 700 160, 755 160"/>
+    <!-- Sticker → Tabaka Sticker -->
+    <path d="M 625 280 C 680 280, 700 400, 755 400"/>
+
+    <!-- Etiket → Rulo -->
+    <path d="M 625 700 C 680 700, 700 580, 755 580"/>
+    <!-- Etiket → Tabaka Etiket -->
+    <path d="M 625 700 C 680 700, 700 830, 755 830"/>
+
+    <!-- Die cut → 4 folyo -->
+    <path d="M 870 160 C 925 160, 945 80,  1000 80"/>
+    <path d="M 870 160 C 925 160, 945 133, 1000 133"/>
+    <path d="M 870 160 C 925 160, 945 186, 1000 186"/>
+    <path d="M 870 160 C 925 160, 945 240, 1000 240"/>
+
+    <!-- Tabaka Sticker → 4 folyo -->
+    <path d="M 870 400 C 925 400, 945 320, 1000 320"/>
+    <path d="M 870 400 C 925 400, 945 373, 1000 373"/>
+    <path d="M 870 400 C 925 400, 945 427, 1000 427"/>
+    <path d="M 870 400 C 925 400, 945 480, 1000 480"/>
+
+    <!-- Rulo → 5 malzeme -->
+    <path d="M 870 580 C 925 580, 945 540, 1000 540"/>
+    <path d="M 870 580 C 925 580, 945 570, 1000 570"/>
+    <path d="M 870 580 C 925 580, 945 600, 1000 600"/>
+    <path d="M 870 580 C 925 580, 945 630, 1000 630"/>
+    <path d="M 870 580 C 925 580, 945 660, 1000 660"/>
+
+    <!-- Tabaka Etiket → 3 malzeme -->
+    <path d="M 870 830 C 925 830, 945 800, 1000 800"/>
+    <path d="M 870 830 C 925 830, 945 830, 1000 830"/>
+    <path d="M 870 830 C 925 830, 945 860, 1000 860"/>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LEVEL 1 — Ürün                                                -->
+  <!-- ============================================================ -->
+  <g>
+    <text x="345" y="488" font-size="28" font-weight="700" fill="#0F1A30">Ürün</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LEVEL 2 — Sticker / Etiket                                    -->
+  <!-- ============================================================ -->
+  <g font-size="20" font-weight="600" fill="#0F1A30">
+    <text x="545" y="288">Sticker</text>
+    <text x="545" y="708">Etiket</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LEVEL 3 — Form-faktör                                          -->
+  <!-- ============================================================ -->
+  <g font-size="16" font-weight="500" fill="#0F1A30">
+    <text x="755" y="166">Die cut sticker</text>
+    <text x="755" y="406">Tabaka Sticker</text>
+    <text x="755" y="586">Rulo Etiket</text>
+    <text x="755" y="836">Tabaka Etiket</text>
+  </g>
+
+  <!-- Form-faktör badge'leri (mode + adet aralığı) -->
+  <g font-size="10.5" font-weight="600">
+    <!-- Die cut -->
+    <rect x="755" y="178" width="78" height="18" rx="9" fill="#FFE0DC"/>
+    <text x="794" y="190" text-anchor="middle" fill="#C44A3C">📐 m² mode</text>
+    <rect x="838" y="178" width="62" height="18" rx="9" fill="#F0F0EC"/>
+    <text x="869" y="190" text-anchor="middle" fill="#5C5A55">25-1000</text>
+
+    <!-- Tabaka Sticker -->
+    <rect x="755" y="418" width="86" height="18" rx="9" fill="#FFF4D0"/>
+    <text x="798" y="430" text-anchor="middle" fill="#8B6E1A">📄 sheet mode</text>
+    <rect x="846" y="418" width="62" height="18" rx="9" fill="#F0F0EC"/>
+    <text x="877" y="430" text-anchor="middle" fill="#5C5A55">25-1000</text>
+
+    <!-- Rulo Etiket -->
+    <rect x="755" y="598" width="78" height="18" rx="9" fill="#FFE0DC"/>
+    <text x="794" y="610" text-anchor="middle" fill="#C44A3C">📐 m² mode</text>
+    <rect x="838" y="598" width="72" height="18" rx="9" fill="#F0F0EC"/>
+    <text x="874" y="610" text-anchor="middle" fill="#5C5A55">1K-50K</text>
+
+    <!-- Tabaka Etiket -->
+    <rect x="755" y="848" width="86" height="18" rx="9" fill="#FFF4D0"/>
+    <text x="798" y="860" text-anchor="middle" fill="#8B6E1A">📄 sheet mode</text>
+    <rect x="846" y="848" width="78" height="18" rx="9" fill="#F0F0EC"/>
+    <text x="885" y="860" text-anchor="middle" fill="#5C5A55">250-10K</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LEVEL 4 — Malzemeler                                          -->
+  <!-- ============================================================ -->
+  <g font-size="15" fill="#0F1A30">
+    <!-- Die cut sticker malzemeleri -->
+    <text x="1000" y="85">Opak Folyo</text>
+    <text x="1000" y="138">Şeffaf Folyo</text>
+    <text x="1000" y="191">Hologram Folyo</text>
+    <text x="1000" y="245">Simli Hologram Folyo</text>
+
+    <!-- Tabaka Sticker malzemeleri -->
+    <text x="1000" y="325">Opak Folyo</text>
+    <text x="1000" y="378">Şeffaf Folyo</text>
+    <text x="1000" y="432">Hologram Folyo</text>
+    <text x="1000" y="485">Simli Hologram Folyo</text>
+
+    <!-- Rulo Etiket malzemeleri -->
+    <text x="1000" y="545">Opak PP Etiket</text>
+    <text x="1000" y="575">Şeffaf Etiket</text>
+    <text x="1000" y="605">Kuşe Etiket</text>
+    <text x="1000" y="635">Metalize PP Etiket</text>
+    <text x="1000" y="665">Clear Şeffaf Etiket</text>
+
+    <!-- Tabaka Etiket malzemeleri -->
+    <text x="1000" y="805">Kuşe Etiket</text>
+    <text x="1000" y="835">Kraft Etiket</text>
+    <text x="1000" y="865">Opak PP Etiket</text>
+  </g>
+
+  <!-- "Yeni" rozeti — Şeffaf Etiket (sistem yok şu an) -->
+  <g>
+    <rect x="1135" y="562" width="40" height="18" rx="9" fill="#FF6B5B"/>
+    <text x="1155" y="575" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">YENİ</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- Özelleştirme / Kaplama notları (form-faktör kartların altında) -->
+  <!-- ============================================================ -->
+
+  <!-- Die cut sticker küçük not -->
+  <g font-size="11" fill="#6B6862">
+    <text x="755" y="208">✨ Finiş: Yok / Parlak / Mat (+%10)</text>
+    <text x="755" y="222">🎨 Şekil: Kare / Yuvarlak / Özel / Kontur</text>
+  </g>
+
+  <!-- Tabaka Sticker küçük not -->
+  <g font-size="11" fill="#6B6862">
+    <text x="755" y="448">✨ Finiş: Yok / Parlak / Mat (+%10)</text>
+    <text x="755" y="462">🎨 Şekil: Kare / Yuvarlak / Özel (Kontur YOK)</text>
+  </g>
+
+  <!-- Rulo Etiket küçük not -->
+  <g font-size="11" fill="#6B6862">
+    <text x="755" y="628">✨ Kaplama: Yok / Mat+%15 / Parlak+%15 / Soft+%30</text>
+    <text x="755" y="642">🎨 Özelleştirme: Emboss+%30 / Yaldız+%50 / Spot UV+%25</text>
+    <text x="755" y="656">🌀 Sarım yönü + Göbek 25/40/76mm</text>
+  </g>
+
+  <!-- Tabaka Etiket küçük not -->
+  <g font-size="11" fill="#6B6862">
+    <text x="755" y="878">✨ Kaplama: Yok / Mat+%15 / Parlak+%15</text>
+    <text x="755" y="892">❌ Özelleştirme yok · 23×31 cm tabaka</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- Footer/legend                                                 -->
+  <!-- ============================================================ -->
+  <g>
+    <line x1="40" y1="930" x2="1460" y2="930" stroke="#D4D2CC" stroke-width="1"/>
+
+    <text x="40" y="958" font-size="11" font-weight="600" fill="#0F1A30">Pim Etiket · Ürün akışı</text>
+    <text x="40" y="972" font-size="10" fill="#6B6862">17 May 2026 · /docs/urun-akisi-tam.md ile birlikte</text>
+
+    <!-- Legend -->
+    <g font-size="10" fill="#6B6862">
+      <rect x="370" y="948" width="14" height="14" rx="7" fill="#FFE0DC"/>
+      <text x="390" y="959">m² mode (alan × adet)</text>
+
+      <rect x="540" y="948" width="14" height="14" rx="7" fill="#FFF4D0"/>
+      <text x="560" y="959">sheet mode (1 tabaka × N)</text>
+
+      <rect x="730" y="948" width="14" height="14" rx="3" fill="#FF6B5B"/>
+      <text x="750" y="959">Yeni eklenecek malzeme</text>
+
+      <rect x="900" y="948" width="14" height="14" rx="3" fill="#B8E6B0"/>
+      <text x="920" y="959">Üretim notu (Sefa)</text>
+    </g>
+  </g>
+</svg>

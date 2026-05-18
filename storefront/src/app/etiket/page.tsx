@@ -35,8 +35,16 @@ import {
   Pill,
   QtySlider,
   DesignDropZone,
+  MaterialSwatch,
+  PopulerBadge,
+  InfoTooltip,
   type DesignTempState,
 } from "@/components/ui";
+import {
+  ProductPreviewShell,
+  EtiketLivePreview,
+  type PreviewView,
+} from "@/components/preview";
 import {
   MultiDesignUploader,
   type PendingDesign,
@@ -89,7 +97,9 @@ const MATERIALS = [
     desc: "Pürüzsüz yüzeyli standart kâğıt etiket.",
     desc_en: "Smooth-surface standard paper label.",
     swatch: "#FAFAF4",
+    surface: "kuse" as const,
     modes: ["rulo", "tabaka"] as const,
+    tooltip: "",
   },
   {
     id: "kraft",
@@ -98,7 +108,9 @@ const MATERIALS = [
     desc: "Doğal görünümlü, dokulu ekolojik kâğıt.",
     desc_en: "Natural-look, textured eco paper.",
     swatch: "#C9A47A",
+    surface: "kraft" as const,
     modes: ["rulo", "tabaka"] as const,
+    tooltip: "",
   },
   {
     id: "beyaz",
@@ -107,7 +119,10 @@ const MATERIALS = [
     desc: "Yırtılmaz, suya dayanıklı plastik etiket.",
     desc_en: "Tear-proof, water-resistant plastic label.",
     swatch: "#F8F8F4",
+    surface: "opakpp" as const,
     modes: ["rulo", "tabaka"] as const,
+    tooltip:
+      "PP (Polipropilen): Suya, neme, yağa dayanıklı plastik etiket. Buzdolabı / soğuk zincir ürünlerinde tercih edilir.",
   },
   {
     id: "seffaf",
@@ -116,7 +131,9 @@ const MATERIALS = [
     desc: "Arka planı gösteren saydam etiket.",
     desc_en: "See-through transparent label.",
     swatch: "linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 50%, #E0F2FE 100%)",
+    surface: "transparan" as const,
     modes: ["rulo"] as const,
+    tooltip: "",
   },
   {
     id: "ultra",
@@ -127,7 +144,10 @@ const MATERIALS = [
     note: "El ile yapıştırmaya uygun değildir.",
     note_en: "Not suitable for hand application.",
     swatch: "linear-gradient(135deg, #E0F2FE 0%, #FFFFFF 100%)",
+    surface: "ultraclear" as const,
     modes: ["rulo"] as const,
+    tooltip:
+      "Ultra Clear: Cam berraklığında tamamen şeffaf film. Sadece basılan tasarım görünür, etiket sınırı belli olmaz. Cam şişe / parfümlerde standart.",
   },
   {
     id: "metalik",
@@ -137,7 +157,9 @@ const MATERIALS = [
     desc_en: "Glossy metallic finish, eye-catching.",
     swatch:
       "linear-gradient(135deg, #C0C7CD 0%, #EFF2F6 60%, #B2BAC2 100%)",
+    surface: "metalik" as const,
     modes: ["rulo"] as const,
+    tooltip: "",
   },
 ] as const;
 
@@ -153,7 +175,9 @@ const COATINGS = [
     name_en: "Uncoated",
     desc: "Doğal kâğıt dokusu korunur.",
     desc_en: "Keeps the natural paper texture.",
+    surface: "kaplamasiz" as const,
     modes: ["rulo", "tabaka"] as const,
+    tooltip: "",
   },
   {
     id: "mat",
@@ -161,7 +185,10 @@ const COATINGS = [
     name_en: "Matte Lamination",
     desc: "Yansımasız, mat premium görünüm.",
     desc_en: "No reflection, matte premium look.",
+    surface: "matselefon" as const,
     modes: ["rulo", "tabaka"] as const,
+    tooltip:
+      "Selefon: Etiket üzerine yapıştırılan ince koruyucu film. Mat yapısı yansıma yapmaz, premium ürünlerde tercih edilir.",
   },
   {
     id: "parlak",
@@ -169,7 +196,10 @@ const COATINGS = [
     name_en: "Gloss Lamination",
     desc: "Canlı, parlak ve temiz yüzey.",
     desc_en: "Vivid, glossy and clean surface.",
+    surface: "parlakselefon" as const,
     modes: ["rulo", "tabaka"] as const,
+    tooltip:
+      "Selefon: Etiketin üzerini parlak bir koruyucu film ile kaplar. Renkleri canlandırır, çiziklere karşı dayanım sağlar.",
   },
   {
     id: "soft",
@@ -177,7 +207,10 @@ const COATINGS = [
     name_en: "Soft Touch",
     desc: "Premium kadife dokunma hissi.",
     desc_en: "Premium velvet touch feel.",
+    surface: "softtouch" as const,
     modes: ["rulo"] as const,
+    tooltip:
+      "Soft Touch: Kadife / şeftali kabuğu dokusunda mat kaplama. Yüksek kalite hissi verir, kozmetik ve parfüm etiketlerinde tercih edilir.",
   },
 ] as const;
 
@@ -192,6 +225,8 @@ const CUSTOMS = [
     name_en: "No customization",
     desc: "",
     desc_en: "",
+    surface: "ozyok" as const,
+    tooltip: "",
   },
   {
     id: "emboss",
@@ -199,6 +234,9 @@ const CUSTOMS = [
     name_en: "Emboss Lacquer",
     desc: "Yüzeyde dokunsal üç boyutlu etki.",
     desc_en: "Tactile 3D effect on the surface.",
+    surface: "emboss" as const,
+    tooltip:
+      "Tasarımın belirli kısımları kabartılır. Logo, başlık veya çerçeve için tercih edilir — dokunulduğunda hissedilir.",
   },
   {
     id: "yaldiz",
@@ -206,6 +244,9 @@ const CUSTOMS = [
     name_en: "Hot Foil",
     desc: "Isıyla uygulanan parlak metalik detay.",
     desc_en: "Heat-applied glossy metallic detail.",
+    surface: "sicakyaldiz" as const,
+    tooltip:
+      "Altın, gümüş veya bakır rengi metalik folyo, ısıyla baskı yüzeyine yapıştırılır. Lüks ürünlerde standart.",
   },
   {
     id: "spotuv",
@@ -213,6 +254,9 @@ const CUSTOMS = [
     name_en: "Spot UV",
     desc: "Belirli alanları parlatan şeffaf katman.",
     desc_en: "Transparent gloss on selected areas.",
+    surface: "spotuv" as const,
+    tooltip:
+      "Spot UV: Belirli alanlara uygulanan parlak şeffaf vernik. Logo veya fotoğrafı diğer alanlardan ayırarak öne çıkarır.",
   },
 ] as const;
 
@@ -323,6 +367,7 @@ const FORM_FACTORS: {
   label_en: string;
   desc: string;
   desc_en: string;
+  icon: string;
 }[] = [
   {
     id: "rulo",
@@ -330,6 +375,7 @@ const FORM_FACTORS: {
     label_en: "Roll label",
     desc: "Makine ile yapıştırmak için idealdir.",
     desc_en: "Ideal for machine application.",
+    icon: "/assets/svg/icons/roll-icon.svg",
   },
   {
     id: "tabaka",
@@ -337,6 +383,7 @@ const FORM_FACTORS: {
     label_en: "Sheet label",
     desc: "Düz tabaka, elle uygula",
     desc_en: "Flat sheet, manual application",
+    icon: "/assets/svg/icons/sheet-icon.svg",
   },
 ];
 
@@ -393,13 +440,10 @@ const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
  * yoksa 4 ondalık göster (örn 2,3155). Müşteri kalkulatöre vurunca
  * unit × qty = total tam tutar.
  */
-const fmtUnit = (n: number) => {
-  const twoDecimal = Math.round(n * 100) / 100;
-  if (Math.abs(twoDecimal - n) < 0.0005) {
-    return n.toFixed(2).replace(".", ",");
-  }
-  return n.toFixed(4).replace(".", ",");
-};
+/** Sefa 18 May v68 (UX uzman 3.7): Birim fiyatlar 2 ondalığa yuvarlandı.
+ *  "2,5079 TL" → "2,51 TL" — 4 basamak okunaklılığı bozuyordu, kuruş
+ *  hassasiyeti (2 ondalık) Türk müşterisi için yeterli ve standart. */
+const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 // ============================================================
 // Page
@@ -438,6 +482,9 @@ export default function EtiketPage() {
   // designs[0] mockup preview için primary, diğerleri metadata.
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
   const primaryDesign = designs[0] ?? null;
+
+  // Sefa 18 May v68 (5): 3D / Eskiz toggle state
+  const [previewView, setPreviewView] = useState<PreviewView>("3d");
 
   // Touched steps — kullanıcı bir adımda seçim yaptıysa o FormSection
   // numarası set'e eklenir (1=Malzeme, 2=Kaplama, 3=Özellik, 4=Sarım,
@@ -632,6 +679,23 @@ export default function EtiketPage() {
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+  // Sefa 18 May v68 (UX uzman 3.2): Sticky CTA görünürken Pim chat butonu
+  // sticky bar'ın üzerine binmesin → CSS variable ile chat'i yukarı kaydır.
+  // PimChat.tsx `--sticky-cta-h` variable'ı okur.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    // Mobile breakpoint kontrolü — lg altında sticky bar var
+    const isMobile = window.matchMedia("(max-width: 1023px)").matches;
+    if (showStickyBar && isMobile) {
+      root.style.setProperty("--sticky-cta-h", "76px");
+    } else {
+      root.style.setProperty("--sticky-cta-h", "0px");
+    }
+    return () => {
+      root.style.setProperty("--sticky-cta-h", "0px");
+    };
+  }, [showStickyBar]);
 
   // Progress stepper — N adım id'leri izlenir. Hangi section viewport
   // üst orta kısmına en yakınsa "active step" odur. Form factor değişince
@@ -827,54 +891,50 @@ export default function EtiketPage() {
       </div>
 
       <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-6 md:py-8 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr_160px] gap-6 lg:gap-7 items-start">
-          {/* LEFT — sticky preview */}
+        {/* Sefa 18 May v68: preview kolonu sticker ile aynı oran (1fr).
+            Eskiden 1.3fr → çok genişti; sticker'daki kompakt görünüm
+            daha dengeli + config alanı daha geniş okunur kalıyor. */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_160px] gap-6 lg:gap-7 items-start">
+          {/* LEFT — sticky preview (Sefa 18 May v67: yeni ProductPreviewShell
+              + EtiketLivePreview kompozisyonu, eski PreviewCanvas kaldırıldı) */}
           <div className="lg:sticky lg:top-20">
-            <PreviewCanvas
-              material={material}
-              coating={coating}
-              custom={primaryCustom}
-              yaldiz={yaldiz}
+            <ProductPreviewShell
               width={width}
               height={height}
-              designUrl={primaryDesign?.previewUrl ?? null}
-            />
-            <div className="flex justify-between items-center mt-4 px-2">
-              <div className="text-[13px] text-gri-700">
-                Seçimlerin canlı önizlemesi
-              </div>
-              <div className="flex gap-2" role="group" aria-label="Önizleme görünümü">
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  aria-pressed="true"
-                  title={
-                    locale === "en"
-                      ? "3D view active (toggle coming soon)"
-                      : "3D görünüm aktif (yakında değiştirilebilir)"
-                  }
-                  className="text-sm px-3 h-9 rounded-full ring-1 ring-pim-mercan bg-pim-mercan-tint text-pim-mercan font-semibold cursor-not-allowed"
-                >
-                  3D
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  aria-pressed="false"
-                  title={
-                    locale === "en" ? "Flat view coming soon" : "Düz görünüm yakında"
-                  }
-                  className="text-sm px-3 h-9 rounded-full ring-1 ring-gri-200 text-gri-500 cursor-not-allowed opacity-60"
-                >
-                  {locale === "en" ? "Flat" : "Düz"}
-                </button>
-              </div>
-            </div>
+              view={previewView}
+              onViewChange={setPreviewView}
+              footnote={
+                primaryDesign
+                  ? t.etiket.livePreviewWithFile
+                  : t.etiket.livePreviewNoFile
+              }
+            >
+              <EtiketLivePreview
+                formFactor={formFactor}
+                material={material}
+                coating={coating}
+                customs={customs}
+                yaldiz={yaldiz}
+                width={width}
+                height={height}
+                view={previewView}
+                designUrl={primaryDesign?.previewUrl ?? null}
+                /* Sefa 18 May v67: gerçek geometri — tabaka grid'i
+                 * "kaç adet sığar"a göre çizer (sabit 6 değil). */
+                geometryCols={quote.ok ? quote.geometry.cols : undefined}
+                geometryRows={
+                  quote.ok ? quote.geometry.rowsPerSheet : undefined
+                }
+                geometryPerSheet={
+                  quote.ok ? quote.geometry.perSheet : undefined
+                }
+              />
+            </ProductPreviewShell>
             {/* Design upload zone sol panelden kaldırıldı — Sefa kuralı
                 (15 May v2): "Boyut altına tasarım adeti kısmı ekle".
-                MultiDesignDropZone Boyut FormSection'ının altında. */}
+                MultiDesignDropZone Boyut FormSection'ının altında.
+                Sefa 18 May v67: BOYUT chip + 3D/Düz toggle artık
+                ProductPreviewShell içinde — eski legacy buttonlar silindi. */}
           </div>
 
           {/* RIGHT — config (Sefa 17 May v40: h1 duplicate kaldırıldı,
@@ -905,22 +965,35 @@ export default function EtiketPage() {
                       }}
                       aria-pressed={active}
                       className={cn(
-                        "text-left rounded-xl px-3.5 py-2.5 ring-1 transition-all",
+                        // Sefa 18 May v68: sticker CutModeCard ile birebir parite
+                        // — p-4, ring-1.5px, flex items-start (üst hizalı), gap-3
+                        "p-4 rounded-xl ring-[1.5px] text-left transition-all flex items-start gap-3",
                         active
-                          ? "bg-pim-mercan-tint ring-pim-mercan"
-                          : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                          ? "ring-pim-mercan bg-pim-mercan-tint/40 shadow-1 -translate-y-0.5"
+                          : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
                       )}
                     >
-                      <div
-                        className={cn(
-                          "font-semibold text-[14px]",
-                          active ? "text-pim-mercan" : "text-lacivert"
-                        )}
-                      >
-                        {locale === "en" ? f.label_en : f.label}
-                      </div>
-                      <div className="text-[12px] text-gri-700 mt-0.5">
-                        {locale === "en" ? f.desc_en : f.desc}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={f.icon}
+                        alt=""
+                        aria-hidden="true"
+                        loading="lazy"
+                        decoding="async"
+                        className="w-14 h-14 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div
+                          className={cn(
+                            "font-semibold text-[14.5px] leading-tight",
+                            active ? "text-pim-mercan" : "text-lacivert"
+                          )}
+                        >
+                          {locale === "en" ? f.label_en : f.label}
+                        </div>
+                        <div className="text-[12.5px] text-gri-700 mt-1 leading-snug">
+                          {locale === "en" ? f.desc_en : f.desc}
+                        </div>
                       </div>
                     </button>
                   );
@@ -931,14 +1004,19 @@ export default function EtiketPage() {
             {/* Mobile horizontal stepper — sadece mobile/tablet (lg altı).
                 Desktop'ta sağdaki dikey rail görünür (VerticalStepProgress).
                 Sefa kararı (15 May): "dikey rail daha şık". */}
-            <div className="lg:hidden bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
-              <StepProgress
-                steps={stepLabels}
-                stepIds={stepIds}
-                activeStep={activeStep}
-                completedSet={touchedSteps}
-                onStepClick={scrollToStep}
-              />
+            {/* Sefa 18 May v68 (UX uzman 4-mobile): Mobile stepper sticky
+                — scroll'da kaybolmasın, kullanıcı her zaman nerede olduğunu
+                bilsin. top-16 navbar altında. */}
+            <div className="lg:hidden sticky top-16 z-30 -mx-4 px-4 bg-krem/80 backdrop-blur-md py-2">
+              <div className="bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
+                <StepProgress
+                  steps={stepLabels}
+                  stepIds={stepIds}
+                  activeStep={activeStep}
+                  completedSet={touchedSteps}
+                  onStepClick={scrollToStep}
+                />
+              </div>
             </div>
 
             {/* Step 1 — Malzeme (Sefa 18 May v42: hint eklendi) */}
@@ -954,7 +1032,10 @@ export default function EtiketPage() {
               locked={isStepLocked(1)}
               lockMessage={getLockMessage(1)}
             >
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Sefa 18 May v68: sticker'a paralel — 2 → 3 kolon (md+).
+                  6 etiket malzemesi 3×2 grid'e oturur, kartlar kompakt
+                  + okunur. Mobile 2 kolon korunur. */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
                 {MATERIALS.filter((m) =>
                   (m.modes as readonly string[]).includes(formFactor)
                 ).map((m) => (
@@ -966,33 +1047,39 @@ export default function EtiketPage() {
                       markTouched(1);
                     }}
                   >
-                    <div
-                      className="w-full h-14 rounded-lg mb-2.5 ring-1 ring-black/[0.06]"
-                      style={{ background: m.swatch }}
+                    {/* Sefa 18 May v68 (Sefa feedback): h-14 → aspect-[2/1]
+                        SVG native oran (220×110). Distortion/sünme yok,
+                        kompozisyon tam görünür. */}
+                    <MaterialSwatch
+                      surface={m.surface}
+                      fallback={m.swatch}
+                      className="w-full aspect-[2/1] mb-2.5"
+                      label={locale === "en" ? m.name_en : m.name}
                     />
-                    <div className="flex justify-between items-start">
-                      <div>
-                        {/* Sefa 17 May P1-7: locale-aware name/desc */}
-                        <div className="font-semibold text-sm">
-                          {locale === "en" ? m.name_en : m.name}
-                        </div>
-                        <div className="text-[13px] text-gri-700 mt-0.5">
-                          {locale === "en" ? m.desc_en : m.desc}
-                        </div>
-                        {/* Sefa 18 May v42: opsiyonel uyarı notu (örn kraft) */}
-                        {"note" in m && (
-                          <div className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-saman-koyu font-medium leading-tight">
-                            <span aria-hidden>⚠</span>
-                            <span>
-                              {locale === "en" && "note_en" in m
-                                ? (m as { note_en: string }).note_en
-                                : (m as { note: string }).note}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <Icon.Info size={14} className="text-gri-500 shrink-0 mt-0.5" />
+                    {/* Sefa 18 May v68 (Sefa feedback): sağ üst Icon.Info "i"
+                        ikonu kaldırıldı — tooltip için zaten title yanında "?"
+                        gösterilir. Başlık satırına min-h ekle ki 1 ya da 2
+                        satır olsa da içerikler eşit hizada üstten başlasın. */}
+                    <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
+                      <span>{locale === "en" ? m.name_en : m.name}</span>
+                      {"tooltip" in m && m.tooltip ? (
+                        <InfoTooltip text={m.tooltip} />
+                      ) : null}
                     </div>
+                    <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
+                      {locale === "en" ? m.desc_en : m.desc}
+                    </div>
+                    {/* Opsiyonel uyarı notu (örn kraft) */}
+                    {"note" in m && (
+                      <div className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-saman-koyu font-medium leading-tight">
+                        <span aria-hidden>⚠</span>
+                        <span>
+                          {locale === "en" && "note_en" in m
+                            ? (m as { note_en: string }).note_en
+                            : (m as { note: string }).note}
+                        </span>
+                      </div>
+                    )}
                   </SelectableCard>
                 ))}
               </div>
@@ -1018,7 +1105,9 @@ export default function EtiketPage() {
               locked={isStepLocked(2)}
               lockMessage={getLockMessage(2)}
             >
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Sefa 18 May v68: 4 kaplama → 4 kolon tek satır (md+),
+                  mobile 2 kolon. Sticker yüzeyiyle aynı kompakt his. */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                 {COATINGS.filter((c) =>
                   (c.modes as readonly string[]).includes(formFactor)
                 ).map((c) => (
@@ -1031,10 +1120,22 @@ export default function EtiketPage() {
                     }}
                     padding={12}
                   >
-                    <div className="font-semibold text-sm">
-                      {locale === "en" ? c.name_en : c.name}
+                    {/* Sefa 18 May v68: aspect-[2/1] SVG native oran +
+                        line-clamp-2 ile desc 2 satır sabit → kart eşit
+                        yükseklik */}
+                    {/* Sefa 18 May v68: aspect-[2/1] SVG native oran +
+                        line-clamp-2 ile desc 2 satır sabit → kart eşit
+                        yükseklik. Title min-h ile içerikler üstten başlar. */}
+                    <MaterialSwatch
+                      surface={c.surface}
+                      className="w-full aspect-[2/1] mb-2"
+                      label={locale === "en" ? c.name_en : c.name}
+                    />
+                    <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
+                      <span>{locale === "en" ? c.name_en : c.name}</span>
+                      {c.tooltip ? <InfoTooltip text={c.tooltip} /> : null}
                     </div>
-                    <div className="text-[13px] text-gri-700 mt-0.5">
+                    <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
                       {locale === "en" ? c.desc_en : c.desc}
                     </div>
                   </SelectableCard>
@@ -1059,7 +1160,9 @@ export default function EtiketPage() {
               locked={isStepLocked(3)}
               lockMessage={getLockMessage(3)}
             >
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Sefa 18 May v68: 4 özelleştirme → 4 kolon (md+).
+                  Kompakt + tek satır görünüm. */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                 {CUSTOMS.map((c) => {
                   // Touched değilse görsel olarak seçili göstermeyiz
                   // (Sefa kuralı: varsayılan seçim olmasın).
@@ -1094,10 +1197,17 @@ export default function EtiketPage() {
                       {/* Sefa 16 May denetim #6: sol checkbox kaldırıldı,
                           standart SelectableCard sağ üst rozetine geri
                           dönüldü. Malzeme/Kaplama ile tutarlı görsel. */}
-                      <div className="font-semibold text-sm">
-                        {locale === "en" ? c.name_en : c.name}
+                      {/* Sefa 18 May v68: aspect-[2/1] + line-clamp-2 + title min-h */}
+                      <MaterialSwatch
+                        surface={c.surface}
+                        className="w-full aspect-[2/1] mb-2"
+                        label={locale === "en" ? c.name_en : c.name}
+                      />
+                      <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
+                        <span>{locale === "en" ? c.name_en : c.name}</span>
+                        {c.tooltip ? <InfoTooltip text={c.tooltip} /> : null}
                       </div>
-                      <div className="text-[13px] text-gri-700 mt-0.5">
+                      <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
                         {locale === "en" ? c.desc_en : c.desc}
                       </div>
                     </SelectableCard>
@@ -1191,17 +1301,10 @@ export default function EtiketPage() {
                 <div className="grid grid-cols-4 gap-2.5 mb-4">
                   {[1, 2, 3, 4].map((n) => (
                     <div key={n} className="relative">
-                      {/* Sefa 18 May v52: yuvarlak mercan daire içinde yıldız
-                          rozeti (v48'deki tasarım — Sefa "diğer yerlere de
-                          koy" demişti, doğru tasarım bu). */}
+                      {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge
+                          ile değiştirildi — tüm sayfalarda tek tutarlı rozet. */}
                       {n === 1 && (
-                        <span
-                          aria-label="Önerilen"
-                          title="En yaygın kullanılan yön"
-                          className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
-                        >
-                          ★
-                        </span>
+                        <PopulerBadge tooltip="En yaygın kullanılan yön" />
                       )}
                       <SelectableCard
                         selected={touchedSteps.has(4) && winding === n}
@@ -1298,15 +1401,9 @@ export default function EtiketPage() {
                     return (
                       <div key={c.id} className="relative">
                         {/* Sefa 18 May v52: 76mm önerilen → yuvarlak mercan
-                            daire içinde yıldız (Sarım yönü ile tutarlı) */}
+                            standart PopulerBadge (Sefa 18 May v68) */}
                         {c.id === 76 && (
-                          <span
-                            aria-label="Önerilen"
-                            title="Endüstri standardı"
-                            className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
-                          >
-                            ★
-                          </span>
+                          <PopulerBadge tooltip="Endüstri standardı (3 inch)" />
                         )}
                         <button
                           type="button"
@@ -1350,16 +1447,9 @@ export default function EtiketPage() {
                     const active = touchedSteps.has(5) && rollLabelCount === q;
                     return (
                       <div key={q} className="relative">
-                        {/* Sefa 18 May v52: 500 önerilen → yuvarlak mercan
-                            daire içinde yıldız (Sarım yönü + 76mm ile tutarlı) */}
+                        {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge */}
                         {q === 500 && (
-                          <span
-                            aria-label="Önerilen"
-                            title="En yaygın seçim"
-                            className="absolute -top-1.5 -right-1.5 z-10 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] leading-none shadow-1 ring-2 ring-white"
-                          >
-                            ★
-                          </span>
+                          <PopulerBadge tooltip="En yaygın seçim" />
                         )}
                         <button
                           type="button"
@@ -1592,6 +1682,9 @@ export default function EtiketPage() {
                     </button>
                   </div>
                 </div>
+                {/* Sefa 18 May v68 (UX uzman 3.8): Logaritmik tick'ler —
+                    25K nerede sorusu artık görsel olarak belli. Eski min/max
+                    iki ucundaki label kaldırıldı, tick'ler yeterli. */}
                 <QtySlider
                   value={qty}
                   min={minQty}
@@ -1602,11 +1695,13 @@ export default function EtiketPage() {
                     markTouched(8);
                   }}
                   ariaLabel="Etiket adedi (slider)"
+                  ticks={
+                    formFactor === "rulo"
+                      ? [1000, 2000, 5000, 10000, 25000, 50000]
+                      : [250, 500, 1000, 2500, 5000, 10000]
+                  }
+                  showTickLabels
                 />
-                <div className="flex justify-between text-[11.5px] text-gri-700 mt-1.5 tabular-nums">
-                  <span>{minQty.toLocaleString("tr-TR")}</span>
-                  <span>{maxQty.toLocaleString("tr-TR")}</span>
-                </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {tierSavings > 0 && (
                     <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">

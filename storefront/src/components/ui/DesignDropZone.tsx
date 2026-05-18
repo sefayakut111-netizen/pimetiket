@@ -278,6 +278,11 @@ export function DesignDropZone({
   }
 
   // Auth yok — login CTA
+  // Sefa 18 May v68 (UX uzman 1.3): CTA hiyerarşi tutarsızlığı düzeltildi.
+  // Eski: primary mercan buton (Sepete ekle ile aynı görsel ağırlık →
+  // kullanıcı hangisi asıl aksiyon kafa karışıyordu). Yeni: secondary
+  // outline (mercan ring + mercan text, beyaz bg) → "Sepete ekle" tek
+  // primary kalır, hiyerarşi netleşir.
   if (!authed) {
     return (
       <div
@@ -290,7 +295,7 @@ export function DesignDropZone({
         </p>
         <Link
           href="/auth?next=/sticker"
-          className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
+          className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-full bg-white ring-1 ring-pim-mercan text-pim-mercan text-[13px] font-semibold hover:bg-pim-mercan-tint/40 transition-colors"
         >
           Giriş yap → tasarım yükle
         </Link>

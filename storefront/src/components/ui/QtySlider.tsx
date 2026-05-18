@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 
 interface QtySliderProps {
@@ -11,11 +12,20 @@ interface QtySliderProps {
   onChange: (value: number) => void;
   className?: string;
   ariaLabel?: string;
+  /** Sefa 18 May v68 (UX uzman 3.8): Logaritmik tick'ler.
+   *  Örn etiket için [1000, 2000, 5000, 10000, 25000, 50000] —
+   *  kullanıcı slider üzerinde değer dağılımını görsel olarak görür. */
+  ticks?: number[];
+  /** Tick'lerin altında label gösterilsin mi (1K, 5K, 10K formatı) */
+  showTickLabels?: boolean;
 }
 
 /**
  * Custom range slider — 22px lacivert thumb (4px beyaz border + soft shadow),
  * 6px gri track. Tailwind 4'te slider thumb stillemesi için inline <style>.
+ *
+ * Sefa 18 May v68: Opsiyonel tick'ler + tick label'ları (logaritmik dağılım
+ * için görsel guide).
  */
 export function QtySlider({
   value,
@@ -25,9 +35,20 @@ export function QtySlider({
   onChange,
   className,
   ariaLabel = "Miktar",
+  ticks,
+  showTickLabels = false,
 }: QtySliderProps) {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
     onChange(Number(e.target.value));
+  const listId = useId();
+  const formatTick = (n: number): string => {
+    if (n >= 1000) {
+      const k = n / 1000;
+      // 1K, 2K, 5K, 10K, 25K, 50K — tam sayı ise sade
+      return Number.isInteger(k) ? `${k}K` : `${k.toFixed(1)}K`;
+    }
+    return `${n}`;
+  };
 
   return (
     <>
@@ -42,8 +63,37 @@ export function QtySlider({
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
+        list={ticks && ticks.length > 0 ? listId : undefined}
         className={cn("pim-qty-slider w-full h-1.5 bg-gri-200 rounded-[3px]", className)}
       />
+      {ticks && ticks.length > 0 && (
+        <>
+          <datalist id={listId}>
+            {ticks.map((t) => (
+              <option key={t} value={t} label={formatTick(t)} />
+            ))}
+          </datalist>
+          {showTickLabels && (
+            <div
+              className="relative mt-1 h-3.5 text-[10px] font-medium text-gri-500 tabular-nums select-none"
+              aria-hidden="true"
+            >
+              {ticks.map((t) => {
+                const pct = ((t - min) / (max - min)) * 100;
+                return (
+                  <span
+                    key={t}
+                    className="absolute -translate-x-1/2"
+                    style={{ left: `${pct}%` }}
+                  >
+                    {formatTick(t)}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
       <style>{`
         .pim-qty-slider {
           -webkit-appearance: none;

@@ -25,3 +25,7 @@ export { DesignDropZone } from "./DesignDropZone";
 export type { DesignTempState } from "./DesignDropZone";
 export { MultiDesignDropZone } from "./MultiDesignDropZone";
 export { Modal } from "./Modal";
+export { MaterialSwatch } from "./MaterialSwatch";
+export type { SurfaceId } from "./MaterialSwatch";
+export { PopulerBadge } from "./PopulerBadge";
+export { InfoTooltip } from "./InfoTooltip";

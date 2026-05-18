@@ -46,19 +46,19 @@ export function FormSection({
       id={id}
       aria-disabled={locked || undefined}
     >
-      <div
-        className={cn(
-          "flex items-center gap-3 mb-3.5",
-          locked && "opacity-60"
-        )}
-      >
+      {/* Sefa 18 May v68 (UX uzman analizi 2.2): Locked state WCAG 1.4.3
+          ihlali düzeltildi. Eski: header opacity 0.6 + content opacity 0.4
+          (kontrast ~2:1 fail). Yeni: header tam opaklık (lock mesajı net),
+          content opacity 0.55 (~5:1 ≥ 4.5:1 hedefi). Lock ikonu kart-içi
+          değil, başlık satırına amber-ring ile belirgin. */}
+      <div className="flex items-center gap-3 mb-3.5">
         {numbered && (
           <span
             aria-hidden
             className={cn(
-              "grid place-items-center w-7 h-7 rounded-full font-bold text-[13px] shrink-0",
+              "grid place-items-center w-7 h-7 rounded-full font-bold text-[13px] shrink-0 transition-colors",
               locked
-                ? "bg-gri-200 text-gri-500"
+                ? "bg-saman text-saman-koyu ring-1 ring-saman-koyu/30"
                 : "bg-lacivert text-white"
             )}
           >
@@ -66,23 +66,24 @@ export function FormSection({
           </span>
         )}
         <div className="flex-1">
-          <div className={cn("font-semibold", numbered ? "text-base" : "text-[15px]")}>
+          <div className={cn("font-semibold text-lacivert", numbered ? "text-base" : "text-[15px]")}>
             {title}
           </div>
           {hint && !locked && (
             <div className="text-[13px] text-gri-700 mt-0.5">{hint}</div>
           )}
           {locked && lockMessage && (
-            <div className="text-[12.5px] text-saman-koyu mt-0.5">
+            <div className="text-[12.5px] text-saman-koyu mt-0.5 font-medium">
               {lockMessage}
             </div>
           )}
         </div>
       </div>
-      {/* Locked iken içerik tıklanamaz + soluk */}
+      {/* Locked iken içerik tıklanamaz; WCAG kontrast için opacity 0.6
+          (eski 0.4 fail idi). Metinler hala okunabilir kontrast'ta. */}
       <div
         className={cn(
-          locked && "opacity-40 pointer-events-none select-none"
+          locked && "opacity-60 pointer-events-none select-none"
         )}
         aria-hidden={locked || undefined}
       >

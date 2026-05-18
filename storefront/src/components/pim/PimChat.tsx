@@ -222,7 +222,10 @@ export function PimChat() {
         </div>
       </div>
 
-      {/* Floating bubble (her zaman görünür) */}
+      {/* Floating bubble (her zaman görünür) — Sefa 18 May v68 (UX uzman 3.2):
+          Mobile'da sticky CTA bar göründüğünde butonu yukarı kaydır.
+          `--sticky-cta-h` CSS variable'ı sayfalar tarafından set edilir
+          (etiket/sticker page'inde useEffect). */}
       <button
         id="pim-chat"
         type="button"
@@ -230,10 +233,13 @@ export function PimChat() {
         aria-label={open ? "Pim'i kapat" : "Pim ile konuş"}
         aria-expanded={open}
         className={cn(
-          "fixed bottom-5 right-5 z-[55] group scroll-mt-20",
+          "fixed right-5 z-[55] group scroll-mt-20",
           "transition-all duration-200 ease-out",
           open && "scale-90 opacity-0 pointer-events-none"
         )}
+        style={{
+          bottom: "calc(1.25rem + var(--sticky-cta-h, 0px))",
+        }}
       >
         <span className="relative inline-flex items-center justify-center h-14 w-14 rounded-full bg-pim-mercan shadow-mercan-lg ring-4 ring-white hover:scale-105 transition-transform">
           {/* Mercan koyu zemin → mark-light (krem icon) */}

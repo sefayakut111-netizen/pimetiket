@@ -9,7 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Eyebrow } from "@/components/ui";
+import { Eyebrow, MaterialSwatch, type SurfaceId } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Malzemeler — Pim Etiket",
@@ -25,6 +25,8 @@ interface MaterialInfo {
   use: string;
   surface: string;
   durability: string;
+  /** Sefa 18 May v67: SVG surface preview (photorealistic doku) */
+  swatchSurface?: SurfaceId;
 }
 
 const ETIKET_MATERIALS: MaterialInfo[] = [
@@ -36,6 +38,7 @@ const ETIKET_MATERIALS: MaterialInfo[] = [
     use: "Doğal kozmetik, organik gıda, el yapımı sabun, kuru çay/baharat",
     surface: "Mat, hafif dokulu yüzey. Yazı baskısı net, fotoğraf baskısı daha soft görünür.",
     durability: "Suya orta dayanım. Buzdolabı/kavanoz ürünleri için kaplama tavsiye edilir.",
+    swatchSurface: "kraft",
   },
   {
     id: "beyaz_semi_glos",
@@ -45,6 +48,7 @@ const ETIKET_MATERIALS: MaterialInfo[] = [
     use: "Genel amaçlı — gıda, kozmetik, ev temizlik ürünleri",
     surface: "Yarı parlak, pürüzsüz. CMYK baskı tam doygunlukta basılır.",
     durability: "Yüksek kaplama ile su geçirmez hale getirilebilir.",
+    swatchSurface: "kuse",
   },
   {
     id: "ultra_clear",
@@ -54,6 +58,7 @@ const ETIKET_MATERIALS: MaterialInfo[] = [
     use: "Cam şişeli içecekler, parfüm, şeffaf kavanozlu sos/reçel",
     surface: "Parlak şeffaf. Sadece basılan kısımları görünür, gerisi şeffaf kalır.",
     durability: "Suya dayanıklı. Soğuk zincir + buzdolabı uygundur.",
+    swatchSurface: "ultraclear",
   },
   {
     id: "metalik",
@@ -63,6 +68,7 @@ const ETIKET_MATERIALS: MaterialInfo[] = [
     use: "Lüks parfüm, premium çikolata, şarap, viski etiketleri",
     surface: "Pürüzsüz metalik parlak. Renkler metalik zemin üzerinde yumuşak görünür.",
     durability: "Yüksek. Premium ürünlerde standart kaplama yeter.",
+    swatchSurface: "metalik",
   },
 ];
 
@@ -75,6 +81,7 @@ const STICKER_MATERIALS: MaterialInfo[] = [
     use: "Laptop, su şişesi, araba, dış mekan, ürün ambalajı",
     surface: "Standart parlak ya da mat. Renkler canlı, kontrast yüksek.",
     durability: "3-5 yıl dış mekan dayanımı. Çamaşır makinesi tehlikesi DEĞİL.",
+    swatchSurface: "opakpp",
   },
   {
     id: "transparan",
@@ -84,6 +91,7 @@ const STICKER_MATERIALS: MaterialInfo[] = [
     use: "Cam kavanoz, şampuan/krem şişeleri, vitrin etiketleri",
     surface: "Şeffaf, sadece basılan kısımlar görünür.",
     durability: "Vinil ile aynı — dış mekan + su uygundur.",
+    swatchSurface: "transparan",
   },
   {
     id: "holografik",
@@ -93,6 +101,7 @@ const STICKER_MATERIALS: MaterialInfo[] = [
     use: "Etkinlik sticker, sınırlı koleksiyon, dergi ekleri, çocuk ürünleri",
     surface: "Parlak, ışıkta renkler kayar (gökkuşağı/baklava efekti).",
     durability: "İç mekan optimum. Dış mekanda yansıma 6-12 ayda solar.",
+    swatchSurface: "holografik",
   },
   {
     id: "simli",
@@ -102,46 +111,63 @@ const STICKER_MATERIALS: MaterialInfo[] = [
     use: "Çocuk ürünleri, parti malzemeleri, kozmetik, kırtasiye",
     surface: "Simli parlak. Renkler sim arasından parlar.",
     durability: "İç mekan. Yıkamada sim dökülmez, ama çamaşır makinesi önerilmez.",
+    swatchSurface: "simli",
   },
 ];
 
-const COATINGS = [
+const COATINGS: { name: string; desc: string; swatchSurface: SurfaceId }[] = [
   {
     name: "Mat Selefon",
     desc: "Yansıma yok, dokunulduğunda yumuşak. Doğal/premium hissi.",
+    swatchSurface: "matselefon",
   },
   {
     name: "Parlak Selefon",
     desc: "Yüksek parlaklık, renkleri canlandırır. Klasik perakende.",
+    swatchSurface: "parlakselefon",
   },
   {
     name: "Soft Touch",
     desc: "Kadife dokuda mat. Premium kozmetik ve şişelerde tercih edilir.",
+    swatchSurface: "softtouch",
   },
   {
     name: "Kaplamasız",
     desc: "Hiç kaplama yok. Doğal kağıt hissini korur.",
+    swatchSurface: "kaplamasiz",
   },
 ];
 
-const CUSTOMIZATIONS = [
+const CUSTOMIZATIONS: { name: string; desc: string; swatchSurface: SurfaceId }[] = [
   {
     name: "Kabartma (Emboss)",
     desc: "Tasarımın belirli kısımları kabartılır. Logo, başlık, çerçeve için.",
+    swatchSurface: "emboss",
   },
   {
     name: "Sıcak Yaldız",
     desc: "Altın, gümüş, bakır 8 renk metalik folyo baskı. Lüks dokunuş.",
+    swatchSurface: "sicakyaldiz",
   },
   {
     name: "Spot UV",
     desc: "Belirli kısımlara parlak vernik. Foto/logo'yu öne çıkarır.",
+    swatchSurface: "spotuv",
   },
 ];
 
 function MaterialCard({ m }: { m: MaterialInfo }) {
   return (
     <div className="rounded-xl bg-white p-5 ring-1 ring-gri-200">
+      {m.swatchSurface && (
+        // Sefa 18 May v68: aspect-[2/1] SVG native oran (sünme yok)
+        <MaterialSwatch
+          surface={m.swatchSurface}
+          className="w-full aspect-[2/1] mb-3"
+          rounded="xl"
+          label={m.name}
+        />
+      )}
       <h3 className="font-semibold text-[16px] text-lacivert mb-1.5">{m.name}</h3>
       <p className="text-[13px] text-gri-700 leading-relaxed mb-3">{m.description}</p>
       <dl className="space-y-2 text-[12.5px]">
@@ -224,13 +250,22 @@ export default function MalzemelerPage() {
             {COATINGS.map((c) => (
               <div
                 key={c.name}
-                className="rounded-xl bg-white p-4 ring-1 ring-gri-200"
+                className="rounded-xl bg-white p-4 ring-1 ring-gri-200 flex gap-4 items-start"
               >
-                <div className="font-semibold text-[14.5px] text-lacivert">
-                  {c.name}
-                </div>
-                <div className="text-[13px] text-gri-700 mt-1 leading-relaxed">
-                  {c.desc}
+                {/* Sefa 18 May v68: 20×14 zaten yaklaşık 2:1 → mevcut */}
+                <MaterialSwatch
+                  surface={c.swatchSurface}
+                  className="w-24 aspect-[2/1] shrink-0"
+                  rounded="lg"
+                  label={c.name}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-[14.5px] text-lacivert">
+                    {c.name}
+                  </div>
+                  <div className="text-[13px] text-gri-700 mt-1 leading-relaxed">
+                    {c.desc}
+                  </div>
                 </div>
               </div>
             ))}
@@ -247,6 +282,12 @@ export default function MalzemelerPage() {
                 key={c.name}
                 className="rounded-xl bg-white p-4 ring-1 ring-gri-200"
               >
+                <MaterialSwatch
+                  surface={c.swatchSurface}
+                  className="w-full aspect-[2/1] mb-2"
+                  rounded="lg"
+                  label={c.name}
+                />
                 <div className="font-semibold text-[14.5px] text-lacivert">
                   {c.name}
                 </div>

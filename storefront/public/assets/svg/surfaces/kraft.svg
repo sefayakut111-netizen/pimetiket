@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="110" viewBox="0 0 220 110">
+  <defs>
+    <clipPath id="surface-clip">
+      <rect x="0" y="0" width="220" height="110" rx="35" ry="35"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#surface-clip)">
+<defs>
+          <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#D4A578"></stop>
+            <stop offset="55%" stop-color="#BB8A5A"></stop>
+            <stop offset="100%" stop-color="#996A3F"></stop>
+          </linearGradient>
+          
+          <filter id="mottle">
+            <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="13"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.08  0 0 0 0.35 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          
+          <filter id="fibers">
+            <feTurbulence type="fractalNoise" baseFrequency="0.08 3.2" numOctaves="2" seed="5"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.30  0 0 0 0 0.18  0 0 0 0 0.06  0 0 0 0.55 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          
+          <filter id="lightfiber">
+            <feTurbulence type="fractalNoise" baseFrequency="0.06 2.2" numOctaves="2" seed="19"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.95  0 0 0 0 0.85  0 0 0 0 0.65  0 0 0 1 -0.55"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          
+          <filter id="grain">
+            <feTurbulence type="fractalNoise" baseFrequency="2.2" numOctaves="2" seed="3"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.20  0 0 0 0 0.12  0 0 0 0 0.05  0 0 0 0.38 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          
+          <filter id="specks">
+            <feTurbulence type="fractalNoise" baseFrequency="3.6" numOctaves="1" seed="29"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.12  0 0 0 0 0.06  0 0 0 0 0.02  0 0 0 1 -0.6"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          <radialGradient id="key" cx="35%" cy="12%" r="70%">
+            <stop offset="0%" stop-color="#FFE6BA" stop-opacity="0.45"></stop>
+            <stop offset="60%" stop-color="#FFE6BA" stop-opacity="0"></stop>
+          </radialGradient>
+          <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+            <stop offset="60%" stop-color="#3D2810" stop-opacity="0"></stop>
+            <stop offset="100%" stop-color="#3D2810" stop-opacity="0.30"></stop>
+          </radialGradient>
+          <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"></stop>
+            <stop offset="4%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#base)"></rect>
+        <rect width="100%" height="100%" filter="url(#mottle)" opacity="0.55"></rect>
+        <rect width="100%" height="100%" filter="url(#fibers)" opacity="0.55"></rect>
+        <rect width="100%" height="100%" filter="url(#lightfiber)" opacity="0.40"></rect>
+        <rect width="100%" height="100%" filter="url(#grain)" opacity="0.6"></rect>
+        <rect width="100%" height="100%" filter="url(#specks)" opacity="0.65"></rect>
+        <rect width="100%" height="100%" fill="url(#key)"></rect>
+        <rect width="100%" height="100%" fill="url(#vignette)"></rect>
+        <rect width="100%" height="100%" fill="url(#rim)"></rect>
+  </g>
+</svg>

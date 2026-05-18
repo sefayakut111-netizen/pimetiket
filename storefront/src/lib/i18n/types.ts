@@ -195,6 +195,8 @@ export type TranslationDict = {
     stepSize: string;
     stepDesign: string;
     stepQty: string;
+    livePreviewNoFile: string;
+    livePreviewWithFile: string;
   };
   // ====== Cart + Checkout ======
   cart: {

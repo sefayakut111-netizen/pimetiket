@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="110" viewBox="0 0 220 110">
+  <defs>
+    <clipPath id="surface-clip">
+      <rect x="0" y="0" width="220" height="110" rx="35" ry="35"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#surface-clip)">
+<defs>
+          <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#F7F3E7"></stop>
+            <stop offset="55%" stop-color="#EDE7D5"></stop>
+            <stop offset="100%" stop-color="#DFD7BF"></stop>
+          </linearGradient>
+          
+          <radialGradient id="key" cx="22%" cy="14%" r="80%">
+            <stop offset="0%" stop-color="#FFFBE8" stop-opacity="0.6"></stop>
+            <stop offset="55%" stop-color="#FFFBE8" stop-opacity="0"></stop>
+          </radialGradient>
+          
+          <filter id="mottle" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="2"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.62  0 0 0 0 0.55  0 0 0 0 0.40  0 0 0 0.12 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          
+          <filter id="grain">
+            <feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="2" seed="7"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 0.50  0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0.30 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          
+          <filter id="coat">
+            <feTurbulence type="fractalNoise" baseFrequency="0.02 2.0" numOctaves="2" seed="11"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.22 0"></feColorMatrix>
+            <feComposite in2="SourceGraphic" operator="in"></feComposite>
+          </filter>
+          <linearGradient id="bot" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="62%" stop-color="#3A2E18" stop-opacity="0"></stop>
+            <stop offset="100%" stop-color="#3A2E18" stop-opacity="0.18"></stop>
+          </linearGradient>
+          <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6"></stop>
+            <stop offset="5%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#base)"></rect>
+        <rect width="100%" height="100%" filter="url(#mottle)" opacity="0.7"></rect>
+        <rect width="100%" height="100%" filter="url(#coat)" opacity="0.4"></rect>
+        <rect width="100%" height="100%" filter="url(#grain)" opacity="0.6"></rect>
+        <rect width="100%" height="100%" fill="url(#key)"></rect>
+        <rect width="100%" height="100%" fill="url(#bot)"></rect>
+        <rect width="100%" height="100%" fill="url(#rim)"></rect>
+  </g>
+</svg>

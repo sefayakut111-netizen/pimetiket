@@ -84,6 +84,16 @@ export interface CustomerQuoteSuccess {
   tierMultiplier: number;
   /** Toplam cost'a uygulanan material+finish multiplier */
   surchargeMultiplier: number;
+  /** Sefa 18 May v67: canlı önizleme için geometri özetı.
+   *  Preview tabaka grid'i bu cols × rows üzerinden çizilir. */
+  geometry: {
+    cols: number;
+    rows: number;
+    perSheet: number;
+    sheetsNeeded: number;
+    sheetW: number;
+    sheetH: number;
+  };
 }
 
 export interface CustomerQuoteError {
@@ -158,6 +168,14 @@ export function quoteCustomerSticker(
     overrunCount,
     tierMultiplier: cost.tierMultiplier,
     surchargeMultiplier,
+    geometry: {
+      cols: geometry.fit.cols,
+      rows: geometry.fit.rows,
+      perSheet: geometry.fit.perSheet,
+      sheetsNeeded: geometry.fit.sheetsNeeded,
+      sheetW: geometry.fit.sheetW,
+      sheetH: geometry.fit.sheetH,
+    },
   };
 }
 

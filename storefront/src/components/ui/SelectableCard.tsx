@@ -38,7 +38,10 @@ export function SelectableCard({
       {...rest}
       style={{ padding, ...style }}
       className={cn(
-        "relative w-full bg-white text-left rounded-[12px] cursor-pointer",
+        // Sefa 18 May v68: h-full eklendi → grid içinde tüm kartlar
+        // eşit yükseklik alır (auto-stretch). UX uzman feedback'i: eşit
+        // yükseklik için içerik miktarından bağımsız sabit kart yüksekliği.
+        "relative w-full h-full bg-white text-left rounded-[12px] cursor-pointer",
         "ring-[1.5px] ring-gri-200",
         "transition-[box-shadow,transform,border-color] duration-200",
         "hover:ring-pim-mercan-soft hover:-translate-y-0.5",

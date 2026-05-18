@@ -245,11 +245,11 @@ export function VerticalStepProgress({
                       : "text-gri-500"
                 )}
               >
-                {/* Sefa kuralı (16 May denetim #15): Tutarlı label — hep
-                    "Adım N" + state suffix (Şu an / Tamam). Önceden karma
-                    olduğu için "ŞU AN" tek başına, "ADIM 2" başkasında. */}
+                {/* Sefa 18 May v68 (UX uzman analizi): Aktif adım için 3x
+                    vurgu redundancy'si kaldırıldı. Daire renk + başlık renk
+                    yeterli (2 vurgu). " · ŞU AN" suffix kaldırıldı,
+                    "Tamam" ✓ done state korundu (progress için kritik). */}
                 {t.config.stepperStepN(stepNum)}
-                {isActive && ` · ${t.config.stepperActive}`}
                 {isDone && ` · ${t.config.stepperDone}`}
               </div>
             </div>

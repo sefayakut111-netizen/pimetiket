@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="110" viewBox="0 0 220 110">
+  <defs>
+    <clipPath id="surface-clip">
+      <rect x="0" y="0" width="220" height="110" rx="35" ry="35"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#surface-clip)">
+<defs>
+          
+          <linearGradient id="iri1" x1="0" y1="0" x2="1" y2="1.1">
+            <stop offset="0%" stop-color="#FFB8DA"></stop>
+            <stop offset="16%" stop-color="#FFA0C8"></stop>
+            <stop offset="32%" stop-color="#A6DEFF"></stop>
+            <stop offset="48%" stop-color="#BEF5D0"></stop>
+            <stop offset="64%" stop-color="#FFEA9C"></stop>
+            <stop offset="80%" stop-color="#D8B4FF"></stop>
+            <stop offset="100%" stop-color="#B0DAFF"></stop>
+          </linearGradient>
+          
+          <linearGradient id="iri2" x1="1" y1="0" x2="0" y2="1.1">
+            <stop offset="0%" stop-color="#B0EEFF"></stop>
+            <stop offset="30%" stop-color="#FFC2DC"></stop>
+            <stop offset="55%" stop-color="#CAB6FF"></stop>
+            <stop offset="80%" stop-color="#FFE89A"></stop>
+            <stop offset="100%" stop-color="#BEF5D0"></stop>
+          </linearGradient>
+          
+          <filter id="spark-fine">
+            <feTurbulence type="fractalNoise" baseFrequency="3.2" numOctaves="1" seed="13"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 5.5 -3.5"></feColorMatrix>
+          </filter>
+          
+          <filter id="spark-med">
+            <feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="1" seed="7"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 6.5 -4.7"></feColorMatrix>
+          </filter>
+          
+          <filter id="spark-big">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="21"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 0.96  0 0 0 0 0.85  0 0 0 9 -7"></feColorMatrix>
+          </filter>
+          
+          <filter id="spark-gold">
+            <feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="1" seed="19"></feTurbulence>
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 0.82  0 0 0 0 0.35  0 0 0 5.5 -3.7"></feColorMatrix>
+          </filter>
+          
+          <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+            <stop offset="48%" stop-color="#FFFFFF" stop-opacity="0.35"></stop>
+            <stop offset="52%" stop-color="#FFFFFF" stop-opacity="0.5"></stop>
+            <stop offset="70%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+          </linearGradient>
+          <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.7"></stop>
+            <stop offset="3%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+          </linearGradient>
+        </defs>
+        
+        <rect width="100%" height="100%" fill="url(#iri1)"></rect>
+        <rect width="100%" height="100%" fill="url(#iri2)" style="mix-blend-mode: screen" opacity="0.8"></rect>
+        
+        <rect width="100%" height="100%" filter="url(#spark-fine)"></rect>
+        <rect width="100%" height="100%" filter="url(#spark-gold)"></rect>
+        <rect width="100%" height="100%" filter="url(#spark-med)"></rect>
+        <rect width="100%" height="100%" filter="url(#spark-big)"></rect>
+        <rect width="100%" height="100%" fill="url(#sheen)"></rect>
+        <rect width="100%" height="100%" fill="url(#rim)"></rect>
+  </g>
+</svg>

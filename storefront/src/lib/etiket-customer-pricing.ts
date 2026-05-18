@@ -54,6 +54,15 @@ export interface CustomerEtiketQuoteSuccess {
   total: number; // KDV dahil
   unitPrice: number;
   rollsNeeded: number;
+  /** Sefa 18 May v67: canlı önizleme için geometri özetı.
+   *  Etiket için "tabaka" konsepti = "rulo" adapter (engine internal).
+   *  Preview component'leri burada cols × rowsPerSheet × perSheet bilgisini
+   *  kullanır ve tabaka grid'ini gerçek hesap üzerinden çizer. */
+  geometry: {
+    cols: number;
+    rowsPerSheet: number;
+    perSheet: number;
+  };
   effectiveRate: number; // gizli — UI'da gösterilmez
   multipliers: {
     material: number;
@@ -113,6 +122,11 @@ export function quoteCustomerEtiket(
     total: cost.total,
     unitPrice: cost.unitPrice,
     rollsNeeded: geometry.rollsNeeded,
+    geometry: {
+      cols: geometry.cols,
+      rowsPerSheet: geometry.rowsPerRoll,
+      perSheet: geometry.perRoll,
+    },
     effectiveRate,
     multipliers,
   };

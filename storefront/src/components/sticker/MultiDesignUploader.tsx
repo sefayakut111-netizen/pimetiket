@@ -212,7 +212,14 @@ export function MultiDesignUploader({
             <button
               type="button"
               onClick={() => {
-                touchDesignCount();
+                // Sefa 18 May v68: İlk basışta + → 1 göster (input "" idi
+                // designCount state 1, touched true olduğunda 1 görünür).
+                // Eski davranış: input "" iken + bastığında 2'ye atlıyordu.
+                if (!designCountTouched) {
+                  touchDesignCount();
+                  // designCount zaten 1, sadece touched true olsun, "1" görünür
+                  return;
+                }
                 onDesignCountChange(Math.min(maxCount, designCount + 1));
               }}
               disabled={designCount >= maxCount}
@@ -340,9 +347,12 @@ export function MultiDesignUploader({
           </div>
         )}
 
+        {/* Sefa 18 May v68 (UX uzman 3.6): "50 dosyaya kadar" kaldırıldı —
+            sayaç 0/{designCount} ile çelişiyordu (designCount=1 iken "50"
+            karışıklık yaratıyordu). Limit sayacı sayaç bölümünde dinamik. */}
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">
           <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong>
-          {" · "}max 30 MB/dosya · 50 dosyaya kadar.
+          {" · "}max 30 MB/dosya
         </p>
         {/* Sefa 18 May v64: Eksik dosya / hiç dosya yüklenmemiş durumda
             bilgi mesajı — sepete eklemeyi engellemiyoruz, sadece bilgilendiriyoruz */}

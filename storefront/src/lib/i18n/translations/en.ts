@@ -174,6 +174,8 @@ export const en: TranslationDict = {
     stepSize: "Size",
     stepDesign: "Design",
     stepQty: "Quantity",
+    livePreviewNoFile: "Live preview — every choice instantly",
+    livePreviewWithFile: "✓ Your design is in the preview",
   },
   cart: {
     title: "My cart",

@@ -1,5 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <title>Pim Etiket — sembol (koyu zemin için)</title>
-  <path d="M 38 110&#xA;       C 38 70, 70 42, 108 42&#xA;       C 138 42, 158 58, 162 84&#xA;       L 196 96&#xA;       L 162 104&#xA;       C 158 130, 138 148, 108 152&#xA;       C 96 158, 86 162, 78 158&#xA;       C 70 154, 70 144, 74 138&#xA;       C 56 132, 38 122, 38 110 Z" fill="#F5F2EC"></path>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="38 42 158 120">
+  <title>Pim Etiket — sembol (krem, koyu zemin için)</title>
+  <!-- Sefa 18 May v68: viewBox trim (mark-dark ile aynı). Bounding box
+       odaklı, container içinde otomatik ortalanır. -->
+  <path d="M 38 110
+       C 38 70, 70 42, 108 42
+       C 138 42, 158 58, 162 84
+       L 196 96
+       L 162 104
+       C 158 130, 138 148, 108 152
+       C 96 158, 86 162, 78 158
+       C 70 154, 70 144, 74 138
+       C 56 132, 38 122, 38 110 Z" fill="#F5F2EC"></path>
   <circle cx="118" cy="92" r="9" fill="#FF6B5B"></circle>
 </svg>

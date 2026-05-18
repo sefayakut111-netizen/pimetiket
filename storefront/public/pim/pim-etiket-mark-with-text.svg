@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="38 42 158 168">
+  <title>Pim Etiket — dikey lockup (karga + yazı)</title>
+  <!-- Sefa 18 May v68 (8): Tek SVG dosyası → container queries riski yok.
+       Karga + "Pim Etiket" yazısı her container'da preserveAspectRatio meet
+       ile garantili orantılı scale olur. viewBox karga+yazı bounding box'ına
+       trim, asimetri yok. -->
+
+  <!-- Karga (mark-dark ile aynı path) -->
+  <path d="M 38 110
+       C 38 70, 70 42, 108 42
+       C 138 42, 158 58, 162 84
+       L 196 96
+       L 162 104
+       C 158 130, 138 148, 108 152
+       C 96 158, 86 162, 78 158
+       C 70 154, 70 144, 74 138
+       C 56 132, 38 122, 38 110 Z" fill="#1F2937"/>
+  <circle cx="118" cy="92" r="9" fill="#FF6B5B"/>
+
+  <!-- "Pim Etiket" yazısı (system-ui font, native browser render) -->
+  <text
+    x="117"
+    y="200"
+    text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    font-size="32"
+    font-weight="700"
+    letter-spacing="-0.4"
+    fill="#1F2937"
+  >Pim Etiket</text>
+</svg>

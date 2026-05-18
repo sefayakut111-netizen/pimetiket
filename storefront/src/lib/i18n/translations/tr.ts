@@ -173,6 +173,8 @@ export const tr: TranslationDict = {
     stepSize: "Boyut",
     stepDesign: "Tasarım",
     stepQty: "Adet",
+    livePreviewNoFile: "Canlı önizleme — her seçim anlık",
+    livePreviewWithFile: "✓ Senin tasarımın önizlemede",
   },
   cart: {
     title: "Sepetim",

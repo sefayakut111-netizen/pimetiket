@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="110" viewBox="0 0 220 110">
+  <defs>
+    <clipPath id="surface-clip">
+      <rect x="0" y="0" width="220" height="110" rx="35" ry="35"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#surface-clip)">
+<defs>
+          <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#EFE9DC"></stop>
+            <stop offset="55%" stop-color="#DED5BF"></stop>
+            <stop offset="100%" stop-color="#C9BFA4"></stop>
+          </linearGradient>
+          
+          <radialGradient id="key" cx="30%" cy="22%" r="80%">
+            <stop offset="0%" stop-color="#FFFAEA" stop-opacity="0.30"></stop>
+            <stop offset="100%" stop-color="#FFFAEA" stop-opacity="0"></stop>
+          </radialGradient>
+          <linearGradient id="bot" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="68%" stop-color="#2A2010" stop-opacity="0"></stop>
+            <stop offset="100%" stop-color="#2A2010" stop-opacity="0.16"></stop>
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#base)"></rect>
+        <rect width="100%" height="100%" fill="url(#key)"></rect>
+        <rect width="100%" height="100%" fill="url(#bot)"></rect>
+  </g>
+</svg>

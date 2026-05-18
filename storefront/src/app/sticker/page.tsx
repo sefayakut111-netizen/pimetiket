@@ -37,13 +37,24 @@ import {
   PriceCard,
   useToast,
   DesignDropZone,
+  MaterialSwatch,
+  PopulerBadge,
+  InfoTooltip,
   type DesignTempState,
+  type SurfaceId,
 } from "@/components/ui";
+import {
+  ProductPreviewShell,
+  StickerLivePreview,
+  type PreviewView,
+} from "@/components/preview";
 import {
   MultiDesignUploader,
   type PendingDesign,
 } from "@/components/sticker/MultiDesignUploader";
-import { TabakaPreview } from "@/components/sticker/TabakaPreview";
+// Sefa 18 May v68 (6): TabakaPreview kaldırıldı — sol canlı önizleme
+// (eskiz modu) zaten tabaka yerleşimini gösteriyor. Admin tarafında kalır.
+// import { TabakaPreview } from "@/components/sticker/TabakaPreview";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import { useExperiment } from "@/lib/analytics/feature-flags";
@@ -84,6 +95,24 @@ const MATERIAL_SWATCHES = {
     "radial-gradient(circle at 30% 30%, #FFE8B7 1.5px, transparent 2.5px), radial-gradient(circle at 70% 60%, #FFB7E5 1.5px, transparent 2.5px), radial-gradient(circle at 50% 80%, #B7E8FF 1px, transparent 2px), linear-gradient(135deg,#F5EBD9,#FFFFFF)",
 } as const;
 
+/** Sefa 18 May v67: Sticker malzeme dokuları — gerçek malzeme hissi
+ *  veren photorealistic SVG'ler. vinil → opak PP doku, transparan
+ *  → frosted, holo → iridescence, simli → glitter+spark. */
+const MATERIAL_SURFACES = {
+  vinil: "opakpp",
+  transparan: "transparan",
+  holo: "holografik",
+  simli: "simli",
+} as const;
+
+/** Sticker finish (parlak/mat/yok) için surface mapping.
+ *  parlak → parlak selefon, mat → mat selefon, yok → kaplamasız. */
+const FINISH_SURFACES = {
+  parlak: "parlakselefon",
+  mat: "matselefon",
+  yok: "kaplamasiz",
+} as const;
+
 const MATERIAL_IDS = ["vinil", "transparan", "holo", "simli"] as const;
 const FINISH_IDS = ["parlak", "mat", "yok"] as const;
 
@@ -111,17 +140,11 @@ const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 /**
  * Birim fiyat formatlama — smart precision.
  *
- * Audit 15 May: 2 ondalık göstermek toplam ile matematik tutmuyor →
- * müşteri güven kaybı. Smart precision: 2 ondalık tutturuyorsa 2,
- * yoksa 4 ondalık göster.
+ * Sefa 18 May v68 (UX uzman 3.7): Birim fiyat 2 ondalığa sabitlendi.
+ * "0,2510" gibi 4 basamak okunaklılığı bozuyordu. Toplam fiyat zaten
+ * doğru (round-half ile matematik tutuyor), birim fiyat referans değer.
  */
-const fmtUnit = (n: number) => {
-  const twoDecimal = Math.round(n * 100) / 100;
-  if (Math.abs(twoDecimal - n) < 0.0005) {
-    return n.toFixed(2).replace(".", ",");
-  }
-  return n.toFixed(4).replace(".", ",");
-};
+const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 // ============================================================
 // Page
@@ -172,6 +195,7 @@ export default function StickerPage() {
             ? t.sticker.materialHoloDesc
             : t.sticker.materialSimliDesc,
     swatch: MATERIAL_SWATCHES[id],
+    surface: MATERIAL_SURFACES[id] as SurfaceId,
   }));
 
   const FINISHES = FINISH_IDS.map((id) => ({
@@ -188,6 +212,7 @@ export default function StickerPage() {
         : id === "mat"
           ? t.sticker.finishMatDesc
           : t.sticker.finishNoneDesc,
+    surface: FINISH_SURFACES[id] as SurfaceId,
   }));
 
   // A/B test: sticker CTA varyantı. PostHog'da `sticker_cta_v2` flag'ı
@@ -221,6 +246,9 @@ export default function StickerPage() {
   // designCount × tier adet = toplam sticker. Tasarımlar local-preview.
   const [designCount, setDesignCount] = useState<number>(1);
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
+
+  // Sefa 18 May v68 (5): 3D / Eskiz toggle state
+  const [previewView, setPreviewView] = useState<PreviewView>("3d");
 
   // Stepper state (Sefa kuralı 15 May v4 — UX paketi sticker'a):
   // 7 adım: Kesim → Şekil → Malzeme → Yüzey → Boyut → Adet → Tasarım
@@ -345,6 +373,21 @@ export default function StickerPage() {
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+  // Sefa 18 May v68 (UX uzman 3.2): Sticky CTA göründüğünde Pim chat
+  // butonu yukarı kaysın (etiket page pattern'i ile paralel).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    const isMobile = window.matchMedia("(max-width: 1023px)").matches;
+    if (showStickyBar && isMobile) {
+      root.style.setProperty("--sticky-cta-h", "76px");
+    } else {
+      root.style.setProperty("--sticky-cta-h", "0px");
+    }
+    return () => {
+      root.style.setProperty("--sticky-cta-h", "0px");
+    };
+  }, [showStickyBar]);
 
   // Tasarım sayısı iskonto — sticker'da da etiket pattern'i
   // 1 → %0, 2-3 → %2, 4-5 → %4, 6-10 → %6, 11-25 → %8, 26-50 → %10
@@ -466,23 +509,49 @@ export default function StickerPage() {
             başlık + '25 adetten başlar' rozeti gereksizdi) */}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_160px] gap-6 lg:gap-7 items-start">
-          {/* LEFT — sticky preview */}
+          {/* LEFT — sticky preview (Sefa 18 May v67: yeni ProductPreviewShell
+              + StickerLivePreview kompozisyonu. Cut mode + şekil + malzeme
+              canlı yansır. Die-cut'ta beyaz kontur belirgin → ürün tipi
+              görsel olarak anlatılır.) */}
           <div className="lg:sticky lg:top-20">
-            <StickerPreview
-              shape={shape}
-              softCorners={softCorners}
-              material={material}
-              finish={finish}
+            <ProductPreviewShell
               width={width}
               height={height}
-              designUrl={design?.previewUrl ?? null}
-            />
-            <div className="text-[13px] text-gri-700 text-center mt-3">
-              {design
-                ? t.sticker.livePreviewWithFile
-                : t.sticker.livePreviewNoFile}
-            </div>
-            {/* Design upload zone */}
+              view={previewView}
+              onViewChange={setPreviewView}
+              footnote={
+                design
+                  ? t.sticker.livePreviewWithFile
+                  : t.sticker.livePreviewNoFile
+              }
+            >
+              <StickerLivePreview
+                cutMode={cutMode}
+                shape={shape}
+                softCorners={softCorners}
+                material={material}
+                finish={finish}
+                width={width}
+                height={height}
+                qty={tier}
+                view={previewView}
+                designUrl={design?.previewUrl ?? null}
+                /* Sefa 18 May v67: gerçek geometri — tabaka grid'i pricing
+                 * hesabından "kaç adet sığar" üzerinden çizilir.
+                 * v68: tabaka boyutu da geçirildi (üst köşe etiketi). */
+                geometryCols={quote.ok ? quote.geometry.cols : undefined}
+                geometryRows={quote.ok ? quote.geometry.rows : undefined}
+                geometryPerSheet={
+                  quote.ok ? quote.geometry.perSheet : undefined
+                }
+                geometrySheetsNeeded={
+                  quote.ok ? quote.geometry.sheetsNeeded : undefined
+                }
+                geometrySheetW={quote.ok ? quote.geometry.sheetW : undefined}
+                geometrySheetH={quote.ok ? quote.geometry.sheetH : undefined}
+              />
+            </ProductPreviewShell>
+            {/* Design upload zone — Sefa: preview altında tek tasarım slot */}
             <div className="mt-4">
               <DesignDropZone value={design} onChange={setDesign} />
             </div>
@@ -491,14 +560,18 @@ export default function StickerPage() {
           {/* RIGHT — config */}
           <div className="flex flex-col gap-4">
             {/* Mobile horizontal stepper — desktop'ta dikey rail var */}
-            <div className="lg:hidden bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
-              <StepProgress
-                steps={stepLabels}
-                stepIds={stepIds}
-                activeStep={activeStep}
-                completedSet={touchedSteps}
-                onStepClick={scrollToStep}
-              />
+            {/* Sefa 18 May v68 (UX uzman 4-mobile): Sticky mobile stepper —
+                etiket page ile aynı pattern. */}
+            <div className="lg:hidden sticky top-16 z-30 -mx-4 px-4 bg-krem/80 backdrop-blur-md py-2">
+              <div className="bg-white rounded-xl px-4 py-3 ring-1 ring-gri-200 shadow-1">
+                <StepProgress
+                  steps={stepLabels}
+                  stepIds={stepIds}
+                  activeStep={activeStep}
+                  completedSet={touchedSteps}
+                  onStepClick={scrollToStep}
+                />
+              </div>
             </div>
 
             {/* 1. ADIM: Kesim Tipi (Tabaka / Die Cut) — şekilden önce */}
@@ -547,6 +620,22 @@ export default function StickerPage() {
                     onClick={() => {
                       setShape(s.id);
                       markTouched(2);
+                      // Sefa 18 May v68: Şekil değişimi → default boyut adapte.
+                      // Boyut adımı (5) henüz touched değilse otomatik:
+                      //   ozel  → bumper (100×40 dar dikdörtgen)
+                      //   kare/yuvarlak → kare 75×75
+                      // Touched ise kullanıcı seçimi korunur.
+                      if (!touchedSteps.has(5)) {
+                        if (s.id === "ozel") {
+                          setWidth(100);
+                          setHeight(40);
+                          // Bumper sticker için yumuşatılmış köşe default
+                          setSoftCorners(true);
+                        } else if (s.id === "square" || s.id === "circle") {
+                          setWidth(75);
+                          setHeight(75);
+                        }
+                      }
                     }}
                     style={{ textAlign: "center" }}
                     padding={12}
@@ -592,11 +681,13 @@ export default function StickerPage() {
                 </div>
               )}
 
-              {/* Şekil örnekleri — sadece kontur kesim için (özel oran düz dikdörtgen) */}
+              {/* Sefa 18 May v68: panel metni daha akıcı + somut.
+                  Eski: "Kontur kesim ile mümkün olanlar / ve dahası ..."
+                  Yeni: "Tasarımının silüetine göre kesim — her form mümkün." */}
               {shape === "die" && (
                 <div className="mt-3 px-3.5 py-3 rounded-lg bg-krem-soft ring-1 ring-krem-deep">
                   <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
-                    Kontur kesim ile mümkün olanlar
+                    Tasarımının silüetine göre kesim
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <ShapeExampleIcon kind="heart" />
@@ -604,8 +695,10 @@ export default function StickerPage() {
                     <ShapeExampleIcon kind="wave" />
                     <ShapeExampleIcon kind="leaf" />
                     <ShapeExampleIcon kind="speech" />
-                    <span className="text-[11.5px] text-gri-700 ml-1">
-                      ve dahası — kalp, yıldız, dalga, yaprak, balon …
+                    <span className="text-[11.5px] text-gri-700 ml-1 leading-snug">
+                      Tasarımın hangi formdaysa, sticker da o şekilde kesilir —
+                      kalp, yıldız, yaprak, balon, dalga ya da kendi özgün
+                      silüetin.
                     </span>
                   </div>
                 </div>
@@ -619,7 +712,10 @@ export default function StickerPage() {
               locked={isStepLocked(3)}
               lockMessage={getLockMessage(3)}
             >
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Sefa 18 May v68: kart boyutu etiket kaplama ile parity —
+                  4 öğe → 4 kolon (md+), mobile 2 kolon. Eski 2 kolon kartlar
+                  çok büyük görünüyordu, kompakt 4'lü grid daha dengeli. */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                 {MATERIALS.map((m) => (
                   <SelectableCard
                     key={m.id}
@@ -629,19 +725,19 @@ export default function StickerPage() {
                       markTouched(3);
                     }}
                     padding={12}
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      alignItems: "center",
-                    }}
                   >
-                    <div
-                      className="w-11 h-11 rounded-lg flex-shrink-0 ring-1 ring-black/[0.06]"
-                      style={{ background: m.swatch }}
+                    <MaterialSwatch
+                      surface={m.surface}
+                      fallback={m.swatch}
+                      className="w-full aspect-[2/1] mb-2"
+                      label={m.name}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm">{m.name}</div>
-                      <div className="text-[13px] text-gri-700">{m.desc}</div>
+                    {/* Sefa 18 May v68: title min-h → 2 satır da olsa içerik üstten başlar */}
+                    <div className="font-semibold text-sm min-h-[2.6em] leading-tight">
+                      {m.name}
+                    </div>
+                    <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
+                      {m.desc}
                     </div>
                   </SelectableCard>
                 ))}
@@ -677,8 +773,16 @@ export default function StickerPage() {
                     }}
                     padding={12}
                   >
-                    <div className="font-semibold text-sm">{f.name}</div>
-                    <div className="text-[13px] text-gri-700 mt-0.5">
+                    {/* Sefa 18 May v68: aspect-[2/1] + line-clamp-2 + title min-h */}
+                    <MaterialSwatch
+                      surface={f.surface}
+                      className="w-full aspect-[2/1] mb-2"
+                      label={f.name}
+                    />
+                    <div className="font-semibold text-sm min-h-[2.6em] leading-tight">
+                      {f.name}
+                    </div>
+                    <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
                       {f.desc}
                     </div>
                   </SelectableCard>
@@ -850,9 +954,7 @@ export default function StickerPage() {
                       )}
                     >
                       {q}
-                      {popular && !active && (
-                        <span className="ml-1 text-pim-mercan">⭐</span>
-                      )}
+                      {popular && !active && <PopulerBadge variant="inline" />}
                     </button>
                   );
                 })}
@@ -889,20 +991,10 @@ export default function StickerPage() {
               )}
             </FormSection>
 
-            {/* Tabaka önizleme (Sefa Madde 10) — tabaka modunda */}
-            {cutMode === "tabaka" && quote.ok && (
-              <FormSection
-                title="Tabaka yerleşimi"
-                hint="Tabaka üzerinde sticker'lar nasıl dizilir"
-              >
-                <TabakaPreview
-                  width={width}
-                  height={height}
-                  cut={cutMode}
-                  qty={tier}
-                />
-              </FormSection>
-            )}
+            {/* Sefa 18 May v68 (6): Sağdaki "Tabaka yerleşimi" kaldırıldı.
+                Sol canlı önizlemede zaten tabaka yerleşimi gösteriliyor
+                (eskiz modunda referans tarz). Bu bilgi admin tarafında
+                ayrıca üretim diagramı olarak kalır. */}
 
             <div ref={priceCardRef}>
             <PriceCard
@@ -1399,8 +1491,16 @@ function CutModeCard({
           )}
         </svg>
         <div className="min-w-0">
-          <div className="font-bold text-[14px] mb-0.5">
-            {kind === "tabaka" ? t.sticker.cutTabaka : t.sticker.cutDieCut}
+          {/* Sefa 18 May v68 (UX uzman 2.4): teknik terim '?' tooltip */}
+          <div className="font-bold text-[14px] mb-0.5 inline-flex items-center gap-1.5">
+            <span>{kind === "tabaka" ? t.sticker.cutTabaka : t.sticker.cutDieCut}</span>
+            <InfoTooltip
+              text={
+                kind === "tabaka"
+                  ? "Tabaka: Sticker'lar tek bir kağıt üzerine yarım kesimli olarak basılır, sen elle ayırırsın. Toplu dağıtım, etkinlik veya kırtasiye sticker'ı için ideal."
+                  : "Die Cut (Kontur Kesim): Her sticker tasarımın silüetine göre tek tek kesilir. Profesyonel ürün ambalajı görüntüsü, her sticker hazır gelir."
+              }
+            />
           </div>
           <div className="text-[11.5px] text-gri-700 leading-snug">
             {kind === "tabaka"
