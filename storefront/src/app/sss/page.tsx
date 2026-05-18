@@ -67,72 +67,74 @@ const CATEGORIES_EN: { id: Category; name: string }[] = [
 const FAQS_TR: Record<Category, FaqItem[]> = {
   siparis: [
     {
-      q: "Nasıl sipariş veririm?",
+      q: "Pim Etiket'te nasıl sipariş verilir?",
       summary:
-        "Etiket veya Sticker sayfasında konfigüratörü doldur, sepete ekle, ödemeyi tamamla.",
+        "Etiket veya sticker sayfasındaki konfigüratörü tamamlayıp sepete ekleyerek online ödeme ile siparişinizi oluşturabilirsiniz.",
       detail:
-        "Adımlar: Etiket türü / Kesim tipi → Malzeme → Kaplama/Yüzey → Boyut → Tasarım → Adet. Her adımda canlı önizlemeden ne basacağını görürsün. Boyut ve adeti ister chip'lerden seç ister kendin yaz. Sepete ekledikten sonra ödeme sayfasında kart bilgilerini gir, sipariş onayı e-postan gelir. Tasarımını şimdi yüklemek zorunda değilsin — sipariş sonrası detay sayfasından da yükleyebilirsin.",
+        "Pim Etiket sipariş akışı tek sayfa konfigüratör üzerinden yürütülür: etiket türü veya kesim tipi seçimi → malzeme → kaplama veya yüzey → boyut → tasarım → adet. Her adımda canlı önizleme ekranı, seçimlerinizin son ürün üzerindeki etkisini gerçek zamanlı gösterir. Tasarım dosyanızı sipariş anında yüklemek zorunda değilsiniz; siparişiniz onaylandıktan sonra panel üzerinden de yükleme yapılabilir. Sepete eklenen ürünün KDV dahil son fiyatı ve tahmini teslim tarihi otomatik olarak görüntülenir.",
     },
     {
-      q: "Üye olmam zorunlu mu?",
+      q: "Sipariş vermek için üye olmak zorunlu mudur?",
       summary:
-        "Tasarım yüklemek ve sipariş takibi için üyelik gerekir; sepete ekleme ve fiyat görme misafir olarak da çalışır.",
+        "Tasarım yükleme ve sipariş takibi için üyelik gereklidir; konfigüratör ve fiyat görüntüleme misafir olarak da kullanılabilir.",
       detail:
-        "Tasarım dosyaları Supabase Storage'da kişisel hesabına bağlı saklanır (KVKK uyumu — sadece sen erişirsin). Bu yüzden tasarım yüklemek için giriş gerek. Üye olmak 30 saniye sürer, e-posta + şifre yeterli. Üye olarak: sipariş geçmişi, yeniden basım kolaylığı, tasarım kütüphanen, çoklu fatura adresi.",
+        "Pim Etiket sisteminde tasarım dosyaları, KVKK 6698 sayılı kanun uyumlu olarak yalnızca kullanıcının erişebileceği kişisel depolama alanında saklanır. Bu güvenlik politikası gereği dosya yükleme işlemi için üye girişi zorunludur. Üyelik işlemi yalnızca e-posta ve şifre ile 30 saniyede tamamlanır. Üyelik avantajları arasında sipariş geçmişi takibi, yeniden basım kolaylığı, çoklu fatura adresi tanımlama ve özel kampanya bildirimleri yer alır.",
     },
     {
       q: "Hangi ödeme yöntemlerini kabul ediyorsunuz?",
-      summary: "Visa, Mastercard, Troy ve Amex kart ile PayTR üzerinden ödeme.",
-      detail:
-        "Ödeme altyapımız PayTR Sanal POS — Türkiye'nin en yaygın PSP'lerinden biri, BDDK lisanslı. Kartlarına ek olarak 3D Secure ile her işlemde bankanız SMS doğrulama isteyebilir. Kapıda ödeme / havale-EFT / kripto kabul etmiyoruz. Kurumsal müşteriler için elden teslim seçeneği WhatsApp üzerinden görüşülür.",
-    },
-    {
-      q: "3D Secure kullanıyor musunuz, kartım güvende mi?",
       summary:
-        "Evet, tüm işlemler 3D Secure 2.0 ile bankanın SMS/uygulama doğrulamasından geçer.",
+        "Visa, Mastercard, Troy ve American Express kartları ile PayTR Sanal POS üzerinden 3D Secure güvenli ödeme kabul edilmektedir.",
       detail:
-        "Kart bilgileriniz bizim sunucularımıza hiç ulaşmaz — PayTR'ın PCI-DSS sertifikalı altyapısında işlenir. Biz sadece 'ödeme başarılı / başarısız' callback'i alırız. Bu, PCI scope dışı olmamızı sağlar. CVV bizde saklanmaz, kart numarası tokenize edilir.",
+        "Pim Etiket'in ödeme altyapısı, BDDK lisanslı PayTR Sanal POS sistemidir. Türkiye'de en yaygın kullanılan ödeme aracılarından biri olan PayTR, PCI-DSS sertifikalı altyapısıyla kart bilgilerinizin güvenli işlenmesini sağlar. Her ödeme işlemi 3D Secure 2.0 standardına uygun olarak bankanız tarafından SMS veya mobil uygulama doğrulamasıyla onaylanır. Kapıda ödeme, havale/EFT ve kripto para ödeme yöntemleri kabul edilmemektedir. Kurumsal toplu siparişler için özel ödeme koşulları WhatsApp üzerinden görüşülebilir.",
     },
     {
-      q: "Kapıda ödeme var mı?",
-      summary: "Hayır, sadece online kart ile ödeme.",
-      detail:
-        "Özel üretim ürünler basıldıktan sonra iade edilemediği için (TKHK m.15/b) kapıda ödeme riski yüksek — siparişin reddedilmesi durumunda üretim maliyeti kayıp olur. Kurumsal sipariş ve toplu alımlar için havale-EFT seçeneği WhatsApp üzerinden açılabilir.",
-    },
-    {
-      q: "Taksit imkânı var mı?",
+      q: "Kredi kartı bilgilerim güvende mi?",
       summary:
-        "Bankanızın kart taksit kampanyalarına göre PayTR ekranında otomatik görünür.",
+        "Evet, tüm ödemeler 3D Secure 2.0 ile bankanız üzerinden doğrulanır ve kart bilgileri Pim Etiket sunucularında saklanmaz.",
       detail:
-        "Biz ek taksit komisyonu eklemiyoruz — bankanızın güncel kampanyası neyse o uygulanır. Tek çekim her zaman seçilebilir. 500 TL altı siparişlerde bazı bankalarda taksit görünmeyebilir (kart politikası).",
+        "Kart bilgileri, PayTR'ın PCI-DSS Level 1 sertifikalı altyapısında işlenir; Pim Etiket sunucularına hiçbir aşamada iletilmez. Sistem yalnızca ödemenin başarılı veya başarısız sonucunu callback olarak alır. CVV kodu hiçbir şekilde saklanmaz, kart numarası tokenize edilerek anonimleştirilir. Bu yapı sayesinde Pim Etiket, PCI-DSS uyum kapsamı dışında kalır ve kart verisi sızıntısı riski sıfırlanır.",
     },
     {
-      q: "Fatura nasıl kesilir?",
+      q: "Kapıda ödeme seçeneği bulunuyor mu?",
       summary:
-        "E-arşiv fatura, sipariş onayı sonrası e-postan iletilir; kurumsal için e-fatura yol haritamızda.",
+        "Hayır, Pim Etiket'te yalnızca online kart ile ödeme kabul edilmektedir.",
       detail:
-        "Şahıs işletmesi olarak çalışıyoruz (Sefa Yakut, Alemdağ VD 9290558622). Ticari müşterilerimiz için e-fatura entegrasyonu yol haritamızda. Şirket adına faturada VKN/TCKN bilgisi sepet ekranında istenir. Vergi mevzuatı gereği fatura sipariş tarihinden itibaren 7 gün içinde kesilir.",
+        "Tüketicinin Korunması Hakkında Kanun (TKHK) madde 15/b uyarınca, kişiye özel olarak üretilen ürünlerde cayma hakkı bulunmadığından, kapıda ödeme yöntemi Pim Etiket'in iş modeli için uygun değildir. Üretimi tamamlanan özel siparişlerin teslimat sırasında reddedilmesi durumunda doğacak maliyet riski nedeniyle bu yöntem desteklenmemektedir. Kurumsal toplu siparişler için banka havalesi/EFT seçeneği müşteri temsilcimiz üzerinden talep edilebilir.",
     },
     {
-      q: "Şirket adına fatura kesilir mi?",
+      q: "Taksitli ödeme yapabilir miyim?",
       summary:
-        "Evet, sepet adımında 'Şirket adına' seçerek vergi numarası gir.",
+        "Bankanızın kart taksitlendirme kampanyaları PayTR ödeme ekranında otomatik olarak listelenir.",
       detail:
-        "Unvan + VKN + vergi dairesi bilgisi alınır, e-arşiv faturanız bu bilgilerle düzenlenir. KDV %20 dahil görüntülenir, fatura üzerinde matrah + KDV ayrı ayrı dökülür.",
+        "Pim Etiket, taksit işlemleri için ek komisyon talep etmez. Ödeme sayfasında kartınızın bağlı olduğu bankanın güncel taksit kampanyası otomatik olarak gösterilir. Tek çekim ödeme seçeneği her durumda mevcuttur. 500 TL altındaki siparişlerde bazı bankaların kart politikası gereği taksit seçeneği görüntülenmeyebilir.",
     },
     {
-      q: "Sipariş onayı nereden gelir?",
+      q: "Fatura nasıl ve ne zaman kesilir?",
       summary:
-        "Üye e-postana anında sipariş onayı + tahmini teslim tarihi gönderilir.",
+        "E-arşiv faturanız sipariş onayını takip eden 7 iş günü içinde kayıtlı e-posta adresinize iletilir.",
       detail:
-        "Spam klasörünü de kontrol et (info@pimetiket.com alan adından). Sipariş takibi /panelim/siparislerim üzerinden de görünür. Üretim aşamasında ayrıca 'Üretime girdi' ve 'Kargoya verildi' bildirimleri gelir.",
+        "Pim Etiket faturalarını şahıs işletmesi statüsünde (Sefa Yakut, Alemdağ Vergi Dairesi, Vergi No: 9290558622) düzenler. Bireysel siparişlerde e-arşiv fatura, ticari siparişlerde e-fatura formatında düzenleme yol haritamızdadır. Şirket adına fatura için sepet ekranında \"Şirket adına\" seçeneğini işaretleyerek vergi numaranızı girmeniz yeterlidir. Vergi mevzuatı uyarınca fatura, sipariş tarihinden itibaren 7 takvim günü içinde kesilir.",
     },
     {
-      q: "Siparişi nasıl iptal ederim?",
+      q: "Şirket adına fatura düzenlenebilir mi?",
       summary:
-        "Üretime girmeden önce panelimden iptal et — sonrasında özel üretim olduğu için iade yok.",
+        "Evet, sepet ekranında 'Şirket adına' seçeneğiyle unvan, VKN ve vergi dairesi bilgilerini girmeniz yeterlidir.",
       detail:
-        "Sipariş onayından sonra maksimum 2 saat içinde iptal hakkın var (üretim hazırlığı başlamadan). /panelim/siparislerim → İptal et butonu. 2 saat sonra ya da üretime girmişse, TKHK m.15/b kapsamında cayma hakkı yoktur (özel üretim ürün). Bu konuda müşteri hizmetleri yardımcı olur.",
+        "Kurumsal müşterilerimiz için e-arşiv fatura unvan, vergi kimlik numarası (VKN) ve bağlı bulunulan vergi dairesi bilgileri ile düzenlenir. Tüm fiyatlar KDV %20 dahil olarak görüntülenir; fatura üzerinde matrah ve KDV tutarı ayrı satırlarda detaylandırılır. E-fatura mükellefiyseniz, e-fatura entegrasyonumuz devreye alındığında otomatik aktarım sağlanacaktır.",
+    },
+    {
+      q: "Sipariş onay bildirimi nereden iletilir?",
+      summary:
+        "Sipariş onayı, üyelik e-postanıza anında gönderilir; ayrıca panel üzerinden de görüntülenebilir.",
+      detail:
+        "Sipariş tamamlandığı anda sipariş özetinizi ve tahmini teslim tarihinizi içeren onay e-postası info@pimetiket.com adresinden iletilir. Olası teslimat aksaklıklarını önlemek için e-postanızın spam klasörünü de kontrol etmenizi öneririz. Sipariş geçmişiniz ve aşama bilgileri /panelim/siparislerim sayfasında gerçek zamanlı olarak görüntülenir. Üretime giriş ve kargo teslim bildirimleri de aynı kanaldan gönderilir.",
+    },
+    {
+      q: "Verdiğim siparişi iptal edebilir miyim?",
+      summary:
+        "Siparişiniz üretime girmediği sürece panel üzerinden iptal edilebilir; üretime girdikten sonra iptal mümkün değildir.",
+      detail:
+        "Sipariş onayını takip eden 2 saat içinde, üretim hazırlığı başlamadan önce /panelim/siparislerim sayfasından iptal işlemi gerçekleştirilebilir. Bu süre sonunda sipariş üretim hattına aktarıldığı için, TKHK madde 15/b kapsamında kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır. İptal süreciyle ilgili sorularınız için müşteri hizmetlerimiz size yardımcı olur.",
     },
   ],
   tasarim: [
@@ -360,129 +362,134 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
   ],
   fiyat: [
     {
-      q: "Fiyatlara KDV dahil mi?",
-      summary: "Evet, görüntülenen tüm fiyatlar KDV %20 dahil.",
-      detail:
-        "Türkiye'de basılı matbaa ürünleri %20 KDV oranına tabi. Fatura üzerinde matrah (KDV hariç) + KDV ayrı dökülür. Sürpriz ek vergi yoktur. KDV oranı 2026 itibariyle %20'dir, mevzuat değişirse fiyatlar günceller.",
-    },
-    {
-      q: "Kargo ücretsiz mi?",
+      q: "Pim Etiket fiyatlarına KDV dahil mi?",
       summary:
-        "Evet, 500 TL üstü siparişlerde kargo bizden; altında küçük bir kargo ücreti eklenir.",
+        "Evet, sitede görüntülenen tüm fiyatlar %20 KDV dahildir.",
       detail:
-        "500 TL altı için ~45-60 TL kargo ücreti (sepete eklenir). Türkiye geneli Yurtiçi Kargo / Aras Kargo ile gönderiyoruz, kapı önü teslim. Adada/dağda zorlu adresler için ek ücret çıkabilir, sipariş onayı sonrası bilgilendiririz.",
+        "Türkiye'de basılı matbaa ürünleri %20 KDV oranına tabidir ve Pim Etiket fiyatlandırması bu oranı içerecek şekilde sunulur. Faturada matrah (KDV hariç tutar) ve KDV bedeli ayrı satırlarda detaylandırılır. Vergi mevzuatında değişiklik olması halinde fiyatlar otomatik olarak güncellenir. Hiçbir aşamada sürpriz vergi veya ek bedel uygulanmaz.",
     },
     {
-      q: "Sürpriz / gizli ücret olur mu?",
-      summary: "Hayır — KDV dahil, kargo dahil, sürpriz yok.",
-      detail:
-        "Görüntülediğin fiyat son fiyat. PSP komisyonu, kart komisyonu, hizmet bedeli gibi ekstra kalemler bizden çıkıyor. Tek değişebilen: bankanın kart taksit kampanyası varsa indirim olabilir.",
-    },
-    {
-      q: "Adet arttıkça birim fiyat nasıl düşer?",
+      q: "Kargo ücreti ne kadar, ücretsiz kargo limiti var mı?",
       summary:
-        "Otomatik tier indirimleri — 2K → %4, 5K → %6, 10K → %7 birim fiyat düşer.",
+        "500 TL ve üzeri siparişlerde kargo ücretsizdir; bu limitin altındaki siparişlere kargo ücreti uygulanır.",
       detail:
-        "Etiket tier'ları: 1K, 2K, 5K, 10K, 25K, 50K → her tier birim fiyatı kademeli düşer. Konfigüratörde adet sürgüsünü sürüklediğinde canlı fiyat güncellenir, '+1000 daha ekle, %X daha tasarruf' upsell ipuçları görünür. Sticker'da 25, 50, 100, 250, 500, 1000 tier'ları benzer mantık.",
+        "500 TL altı siparişlerde Yurtiçi Kargo standart ücreti (yaklaşık 45-60 TL) sepete eklenir. Tüm gönderimlerimiz Yurtiçi Kargo aracılığıyla, Türkiye geneli kapı teslim şeklinde yapılır. Adres erişiminin zor olduğu bölgelerde (uzak ada/dağ köyleri) ek ücret çıkması durumunda sipariş onayı sonrasında bilgilendirilirsiniz.",
     },
     {
-      q: "Çoklu tasarım indirimi nasıl çalışır?",
+      q: "Gizli ücret veya sürpriz masraf var mı?",
       summary:
-        "Aynı siparişte birden fazla tasarım = otomatik %2-%10 indirim.",
+        "Hayır, sepette gördüğünüz tutar son ödeme tutarıdır; ek ücret uygulanmaz.",
       detail:
-        "2-3 → %2, 4-5 → %4, 6-10 → %6, 11-25 → %8, 26-50 → %10. Mantık: setup maliyeti çoklu tasarımda dağılır, hammadde aynı. Örnek: 5 tasarım × 1000 adet = 5000 etiket → her tasarımdan 1000 adet basılır, %4 indirim uygulanır. Her tasarım için ayrı PDF/PNG dosyası yükle.",
+        "Pim Etiket fiyatlandırma politikası şeffaflık ilkesi üzerine kurulmuştur. Sepetinizde görüntülenen tutar; ürün bedeli, KDV ve gerekli kargo ücretini içerir. Ödeme aracısı komisyonu, hizmet bedeli veya işlem ücreti gibi gizli kalemler bulunmamaktadır. Bankanızın taksit kampanyası uygulanması durumunda ödeme tutarınız değişebilir; ancak bu Pim Etiket lehine değil müşteri lehine bir değişikliktir.",
     },
     {
-      q: "Kupon kodu nasıl kullanılır?",
+      q: "Adet arttıkça birim fiyat düşüyor mu?",
       summary:
-        "Sepet adımında 'Kupon kodu' kutusuna gir, Uygula butonu indirimleri otomatik hesaplar.",
+        "Evet, miktar bazlı kademeli indirim uygulanır; sipariş adetiniz arttıkça birim fiyat otomatik düşer.",
       detail:
-        "Kupon türleri: yüzde indirim (örn %10), sabit indirim (örn 100 TL), kargo bedavası. Kuponların minimum sepet tutarı veya geçerlilik tarihi olabilir. Pim sohbet AI ekrana aktif kuponları gösterir, 'kupon var mı?' diye sorabilirsin.",
+        "Etiket siparişlerinde indirim kademeleri: 1.000, 2.000, 5.000, 10.000, 25.000 ve 50.000 adet. Sticker siparişlerinde: 25, 50, 100, 250, 500 ve 1.000 adet. Konfigüratörde adet seçicisini hareket ettirdiğinizde fiyat ve birim maliyet anlık olarak güncellenir; sistem ayrıca \"+1.000 adet daha ekleyin, %X tasarruf edin\" gibi öneriler sunarak optimum sipariş büyüklüğünü görmenize yardımcı olur.",
     },
     {
-      q: "Toplu sipariş için özel teklif?",
+      q: "Çoklu tasarım indirimi nasıl uygulanır?",
       summary:
-        "20.000+ etiket veya 500+ sticker için WhatsApp/e-posta üzerinden özel teklif alabilirsin.",
+        "Aynı siparişte birden fazla tasarım yüklediğinizde, otomatik olarak %2 ile %10 arasında indirim uygulanır.",
       detail:
-        "Toplu siparişlerde: birim fiyat ekstra indirim, kargo özel ayarlama (palet/koli), faturalama (e-fatura, açık hesap), teslim takvimi. Lütfen ürün tipi + adet + boyut + malzeme bilgisiyle bize ulaş — 24 saat içinde özel teklif iletilir.",
+        "Çoklu tasarım indirim oranları: 2-3 tasarım %2, 4-5 tasarım %4, 6-10 tasarım %6, 11-25 tasarım %8 ve 26-50 tasarım %10. Bu yapı, baskı hazırlık (setup) maliyetinin çoklu tasarıma dağıtılması esasına dayanır. Örneğin 5 farklı tasarımdan her birinden 1.000 adet basıldığında toplam 5.000 etiket %4 indirimli fiyatla üretilir. Her tasarım için ayrı PDF veya PNG dosyası yüklenmesi gerekir.",
+    },
+    {
+      q: "İndirim kuponu nasıl kullanılır?",
+      summary:
+        "Sepet ekranındaki 'Kupon kodu' alanına kodu yazıp 'Uygula' butonuna basmanız yeterlidir.",
+      detail:
+        "Pim Etiket'te yüzde indirim, sabit indirim ve ücretsiz kargo kuponları sunulmaktadır. Kuponlar minimum sepet tutarı veya kullanım süresi şartı içerebilir; bu bilgiler kupon detay sayfasında belirtilir. Aktif kampanyalar için Pim Etiket sohbet asistanına \"kupon var mı?\" sorusunu yöneltebilirsiniz; sistem geçerli kuponları size sunar.",
+    },
+    {
+      q: "Toplu sipariş için özel fiyat teklifi alınabilir mi?",
+      summary:
+        "20.000+ etiket veya 500+ sticker siparişleriniz için WhatsApp veya e-posta üzerinden özel teklif talep edebilirsiniz.",
+      detail:
+        "Toplu siparişlerde birim fiyat üzerinden ekstra indirim, palet/koli düzeyinde özel kargo planlaması, e-fatura ile vadeli faturalama ve özelleştirilmiş teslim takvimi gibi avantajlar sunulur. Talep için ürün tipi, adet, boyut, malzeme ve teslim adresi bilgilerini içeren bir mesajı WhatsApp veya info@pimetiket.com adresine iletmeniz yeterlidir; 24 saat içinde detaylı teklif tarafınıza ulaştırılır.",
     },
   ],
   uretim: [
     {
-      q: "Üretim ne kadar sürer?",
+      q: "Pim Etiket üretim süresi ne kadardır?",
       summary:
-        "Etiket için 10 iş günü, sticker için 5 iş günü (resmi tatiller hariç).",
+        "Standart etiket siparişleri 10 iş günü, sticker siparişleri 5 iş günü içinde üretilir (resmi tatiller hariç).",
       detail:
-        "Sabit üretim sürelerimiz: Rulo etiket ve tabaka etiket — 10 iş günü; sticker (tabaka + die-cut) — 5 iş günü. Bu süreler tasarım onayından sonra başlar, resmi tatiller hesaba katılmaz. Üzerine kargo süresi (1-3 iş günü, şehre göre) eklenir. Sepete eklediğinde tahmini teslim tarihi otomatik hesaplanır.",
+        "Pim Etiket'te sabit üretim süreleri uygulanmaktadır: rulo etiket ve tabaka etiket üretimi 10 iş günü, sticker (tabaka ve kontur kesim/die-cut) üretimi 5 iş günü sürmektedir. Bu süreler tasarım dosyanızın onaylanmasının ardından başlar; cumartesi, pazar ve resmi tatil günleri hesaba katılmaz. Üretim tamamlandıktan sonra kargo süresi (şehir bazında 1-3 iş günü) eklenir. Konfigüratör ve sepet ekranında, siparişiniz için tahmini teslim tarihi otomatik olarak hesaplanıp gösterilir.",
     },
     {
-      q: "Hangi kargo firması?",
-      summary: "Yurtiçi Kargo ve Aras Kargo ile gönderiyoruz.",
+      q: "Siparişlerinizi hangi kargo firmasıyla gönderiyorsunuz?",
+      summary:
+        "Tüm siparişlerimiz Yurtiçi Kargo aracılığıyla, Türkiye geneli kapı teslim olarak gönderilmektedir.",
       detail:
-        "Türkiye geneli kapı önü teslim. İstanbul içi 1 iş günü, diğer iller 2-3 iş günü. Adres + telefon doğru olmazsa kargo iade eder, yeniden gönderim ek ücret. Kargo takip numarası sipariş 'Kargoya verildi' bildirimi ile e-postana gelir.",
+        "Pim Etiket olarak siparişlerinizi yalnızca Yurtiçi Kargo aracılığıyla göndermekteyiz. Teslimat süresi İstanbul içi 1 iş günü, diğer iller için 2-3 iş günü olarak gerçekleşmektedir. Kargo takip numaranız, siparişiniz kargoya verildiği anda sistemde görüntülenir ve kayıtlı e-posta adresinize otomatik olarak iletilir. Eksik veya hatalı adres bilgisi nedeniyle iade olan siparişlerin yeniden gönderim ücreti müşteriye aittir.",
     },
     {
-      q: "Tahmini teslim tarihi gösterilir mi?",
+      q: "Tahmini teslim tarihi sipariş ekranında gösteriliyor mu?",
       summary:
-        "Evet, konfigüratörde sepete eklemeden önce ve sipariş sonrası gösterilir.",
+        "Evet, sepete eklediğiniz andan itibaren tahmini teslim tarihi konfigüratör ekranında otomatik gösterilir.",
       detail:
-        "Hesap: bugünün tarihi + üretim süresi (etiket 10 iş günü / sticker 5 iş günü) + kargo (1-3 iş günü) → tahmini teslim. Hafta sonu ve resmi tatiller hesaba katılmaz. Üretimde gecikme olursa 48 saat önceden sana e-posta + Pim sohbet bildirimi gider.",
+        "Hesaplama formülü: sipariş tarihi + üretim süresi (etiket için 10, sticker için 5 iş günü) + kargo süresi (1-3 iş günü). Bu hesaplamada hafta sonları ve resmi tatil günleri dikkate alınmaz. Üretim sürecinde olası bir gecikme durumunda, beklenen teslim tarihinden en az 48 saat önce e-posta ve sistem bildirimi ile bilgilendirilirsiniz.",
     },
     {
-      q: "Aynı gün kargoya verebilir misiniz, hızlı baskı var mı?",
+      q: "Hızlı baskı veya acil sipariş hizmetiniz var mı?",
       summary:
-        "Hayır, hızlı/acil baskı hizmetimiz yok. Sabit üretim sürelerimiz var: etiket 10, sticker 5 iş günü.",
+        "Hayır, Pim Etiket'te hızlı veya acil baskı hizmeti sunulmamaktadır. Tüm siparişler standart üretim akışına tabidir.",
       detail:
-        "Kalite kontrol, ön denetim ve fason ortaklarımızla planlı üretim akışı için sabit süreler uyguluyoruz. 'Acele baskı' sipariş kalitesini düşürür, biz buna izin vermiyoruz. Daha kısa süre gereken bir durumda planlamayı önceden yap — sipariş ne kadar erken verirsen teslim de o kadar erken olur.",
+        "Pim Etiket'in kalite politikası gereği tüm siparişler, planlı üretim akışı ve kalite kontrol süreçlerinden geçer. Hızlı baskı uygulanması; ön denetim, fason üretim planlaması ve son kalite kontrol aşamalarının atlanması anlamına geldiğinden, baskı kalitesi olumsuz etkilenir. Bu nedenle hızlı baskı hizmeti kataloğumuzda yer almamaktadır. Belirli bir teslim tarihine yetişmesi gereken siparişler için planlama yaparak erken sipariş vermenizi öneririz.",
     },
     {
-      q: "Üretim aşamasını takip edebilir miyim?",
+      q: "Sipariş üretim aşamasını sistem üzerinden takip edebilir miyim?",
       summary:
-        "Evet, /panelim/siparislerim üzerinden gerçek zamanlı aşama takibi.",
+        "Evet, siparişlerinizin tüm üretim ve kargo aşamalarını /panelim/siparislerim sayfasından gerçek zamanlı takip edebilirsiniz.",
       detail:
-        "Aşamalar: 1️⃣ Sipariş alındı → 2️⃣ Tasarım onaylandı → 3️⃣ Üretime girdi → 4️⃣ Üretim tamamlandı → 5️⃣ Kalite kontrolde → 6️⃣ Kargoya verildi → 7️⃣ Teslim edildi. Her aşama değişiminde e-posta bildirimi.",
+        "Sipariş takip akışı şu aşamaları içerir: Sipariş alındı → Tasarım onaylandı → Üretime girdi → Üretim tamamlandı → Kalite kontrolde → Kargoya verildi → Teslim edildi. Her aşama değişiminde sistem tarafından otomatik olarak e-posta bildirimi gönderilir. Sipariş geçmişiniz ve fatura kayıtlarınız da aynı panelden erişilebilir durumdadır.",
     },
     {
-      q: "Adres değiştirebilir miyim sipariş sonrası?",
+      q: "Sipariş verdikten sonra teslimat adresini değiştirebilir miyim?",
       summary:
-        "Üretim aşamasında evet, kargoya verildikten sonra hayır.",
+        "Sipariş kargoya verilmeden önce panelinizden adresi güncelleyebilirsiniz; kargoya verildikten sonra değişiklik mümkün değildir.",
       detail:
-        "/panelim/siparislerim → Sipariş detay → Adres değiştir. Üretime girmiş ama kargoya verilmemişse değişim kabul. Kargoya verildikten sonra kargo firmasının kendi sistemi üzerinden adres yönlendirme talep edebilirsin (ek ücret olabilir).",
+        "Üretim sürecindeki siparişlerin teslimat adresi /panelim/siparislerim → Sipariş Detay → Adres Düzenle yolu ile güncellenebilir. Sipariş kargoya teslim edildikten sonra kargo firmasının sistemi üzerinden yönlendirme talebinde bulunabilirsiniz; bu işlem kargo firmasının politikası gereği ek ücretlendirmeye tabi olabilir. Sipariş esnasında adres bilgilerinizi dikkatli girmenizi öneririz.",
     },
   ],
   iade: [
     {
-      q: "İade hakkım var mı?",
+      q: "Pim Etiket'te cayma hakkı kullanılabilir mi?",
       summary:
-        "Özel üretim ürünlerde cayma hakkı yoktur — ama bizim hatamızsa ücretsiz yeniden basım.",
+        "Kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır; ancak üretim veya kargo kaynaklı hatalarda ücretsiz yeniden basım hizmeti sunulur.",
       detail:
-        "Etiket/sticker sana özel basıldığı için iadesi başkasına satılamaz. Türk Tüketici Kanunu m.15/b 'kişiye özel olarak hazırlanan mallar' istisnası kapsamında cayma hakkı kullanılamaz. Ama: tasarımın hatalı basılmışsa, kalite sorunu varsa, kargoda hasar gördüyse → 7 gün içinde fotoğrafla bildir, ücretsiz yeniden basım + iade kargo yaparız.",
+        "Tüketicinin Korunması Hakkında Kanun (TKHK) madde 15/b uyarınca, müşteriye özel olarak üretilen mallar cayma hakkı istisnası kapsamındadır. Pim Etiket'te basılan etiket ve sticker ürünleri bu istisna kapsamına girer. Ancak teslim alınan üründe üretim hatası, kalite sorunu veya kargo hasarı tespit edilmesi durumunda; teslim tarihinden itibaren 7 takvim günü içinde fotoğraf ile bildirim yapılması halinde ücretsiz yeniden basım ve iade kargo ücreti tarafımızdan karşılanır.",
     },
     {
-      q: "Tasarımım yanlış basılırsa?",
-      summary: "Bizim hatamızsa ücretsiz yeniden basım + iade kargo.",
-      detail:
-        "Hata türleri: yanlış malzeme, eksik özellik (yaldız uygulanmamış), renk %15+ kayma, kesim/kontur hatası, hasarlı teslim. Fotoğraf çek → /iade-talep formunu doldur veya info@pimetiket.com mail at. 48 saat içinde inceleyip yeniden üretime alırız.",
-    },
-    {
-      q: "Üründe çizik / hasar varsa?",
+      q: "Tasarımım yanlış veya hatalı basıldığında ne yapmalıyım?",
       summary:
-        "Kargo hasarı: tutanak tut + bildir. Üretim hasarı: fotoğraf + yeniden basım.",
+        "Pim Etiket kaynaklı üretim hatalarında, fotoğraf ile bildirim yaparak ücretsiz yeniden basım talep edebilirsiniz.",
       detail:
-        "Kargo kutusu zarar görmüş gibi görüyorsan TESLIM ALMA, tutanak tut (kargo firması zorunlu olarak yapar). Sonra biz kargo firmasından tazminat alıp size yenisini ücretsiz göndeririz. Açtıktan sonra hasar fark ettiysen 48 saat içinde fotoğrafla bildir.",
+        "Yanlış malzeme kullanımı, eksik özellik uygulaması (yaldız, emboss, Spot UV), %15 ve üzeri renk sapması, kesim veya kontur hatası ve teslim sırasında hasar gibi durumlar üretim hatası olarak kabul edilir. Hata fotoğrafını /iade-talep sayfasındaki form aracılığıyla veya info@pimetiket.com adresine e-posta ile bildirebilirsiniz. Talebiniz 48 saat içinde incelenip yeniden üretim akışına alınır.",
     },
     {
-      q: "Renk benim ekrandakine göre farklı çıkarsa?",
+      q: "Ürün çizik veya kargo hasarlı geldiğinde nasıl bir yol izlenir?",
       summary:
-        "Ekran (RGB) ↔ matbaa (CMYK) farkı %5-10 kabul edilir.",
+        "Görünür kargo hasarı varsa kargo görevlisi önünde tutanak tutturmanız önerilir; iç hasar fark edildiğinde 48 saat içinde fotoğraflı bildirim yapılmalıdır.",
       detail:
-        "Aynı PDF iki farklı monitörde bile farklı görünür (kalibrasyon, parlaklık, renk profili). Matbaa CMYK + 4-renk baskı; ekran RGB + 16M renk. Bu yüzden kanvas/UV efektli renkler tam birebir olamaz. Pantone spot renk istiyorsan sipariş sonrası WhatsApp'tan iletişime geç, ek prova baskı sürecimiz var.",
+        "Kargo paketinde dış hasar tespit ettiğinizde teslim almadan önce kargo görevlisinden hasar tutanağı talep etmeniz tazminat sürecini hızlandırır. Paketi açtıktan sonra iç hasar fark ederseniz, hasarın fotoğrafını 48 saat içinde info@pimetiket.com adresine ileterek bildirim yapın. Kargo şirketinden tazmin edilen tutar sonrasında ürün ücretsiz olarak yeniden gönderilir.",
     },
     {
-      q: "Hatalı tasarım yükledim, geri alabilir miyim?",
-      summary: "Üretime girmeden önce evet — yeni dosya yükle, eski silinir.",
+      q: "Basılan ürünün rengi ekranda gördüğümden farklı olabilir mi?",
+      summary:
+        "Ekran (RGB) ve matbaa (CMYK) renk uzaylarının farkından dolayı %5-10 oranında renk sapması olağan kabul edilir.",
       detail:
-        "/panelim/siparislerim → Sipariş detay → Tasarım dosyaları → Sil + Yeni yükle. Sipariş 2 saatlik üretim hazırlığı penceresinde değişiklik yapılır. Üretime girdiyse maalesef yeniden basım ücretli olur (özel üretim mantığı).",
+        "Dijital ekranlar RGB (ışık karışımı) ve matbaa baskı sistemleri CMYK (mürekkep karışımı) renk uzaylarında çalışır. Bu iki sistem arasında, özellikle parlak kırmızı, neon ve koyu mavi tonlarında doğal bir renk sapması bulunur. Aynı PDF dosyası farklı monitörlerde de farklı görüntülenebilir. Marka renginizin birebir basılmasını gerektiren projelerde Pantone spot renk tanımı yapılmalı ve sipariş öncesinde WhatsApp üzerinden bizimle iletişime geçilmelidir; bu siparişler için prova baskı uygulanabilir.",
+    },
+    {
+      q: "Hatalı tasarım dosyası yükledim, değiştirebilir miyim?",
+      summary:
+        "Sipariş üretime alınmadığı sürece dosyanızı panelden silip yeniden yükleyebilirsiniz.",
+      detail:
+        "/panelim/siparislerim → Sipariş Detay → Tasarım Dosyaları menüsünden eski dosyayı silip yeni dosyayı yükleyebilirsiniz. Bu işlem yalnızca sipariş onayını takip eden 2 saatlik üretim hazırlık penceresinde mümkündür. Sipariş üretim hattına aktarıldıktan sonra dosya değişikliği kabul edilmez; bu durumda kişiye özel üretim ilkesi gereği yeni bir sipariş açılması gerekir.",
     },
   ],
   onizleme: [
@@ -517,67 +524,69 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
   ],
   kvkk: [
     {
-      q: "KVKK kapsamında verilerim güvende mi?",
+      q: "Kişisel verilerim KVKK kapsamında nasıl korunuyor?",
       summary:
-        "Evet, 6698 sayılı KVKK uyumlu işliyoruz — veriler şifreli, üçüncü tarafa satılmaz.",
+        "Pim Etiket, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyumlu olarak verilerinizi şifreli olarak saklar ve üçüncü taraflarla paylaşmaz.",
       detail:
-        "Aydınlatma metni /kvkk sayfasında. Topladığımız veriler: ad-soyad, e-posta, telefon, fatura adresi, ödeme bilgisi (PayTR'da). Saklama süresi: sipariş kayıtları 10 yıl (VUK gereği), pazarlama izinli verileri silinme talebine kadar. Veri sahibi hakların: erişim, düzeltme, silme, taşınabilirlik, itiraz → /ayarlar/verilerim.",
+        "Aydınlatma metnimizin tamamına /kvkk sayfasından erişebilirsiniz. Toplanan veriler şunlardır: ad-soyad, e-posta, telefon, fatura adresi ve ödeme bilgileri (PayTR'da tokenize edilmiş). Sipariş kayıtları Vergi Usul Kanunu uyarınca 10 yıl, pazarlama izinli iletişim verileri ise silinme talebine kadar saklanır. Veri sahibi olarak KVKK madde 11 kapsamındaki haklarınızı (erişim, düzeltme, silme, taşınabilirlik, itiraz) /ayarlar/verilerim sayfasından kullanabilirsiniz.",
     },
     {
-      q: "Tasarımım başkalarıyla paylaşılır mı?",
-      summary: "Hayır — tasarım dosyaların sadece üretim için kullanılır.",
+      q: "Yüklediğim tasarım dosyaları üçüncü taraflarla paylaşılır mı?",
+      summary:
+        "Hayır, tasarım dosyalarınız yalnızca üretim süreci için kullanılır ve üçüncü taraflarla kesinlikle paylaşılmaz.",
       detail:
-        "Yüklediğin PDF/PNG'ler Supabase Storage kişisel RLS (Row Level Security) ile saklanır — sadece sen + biz (üretim için) erişebiliriz. Üçüncü taraflara, başka müşterilere, pazarlama amaçlı asla kullanılmaz. AI training data lake için opsiyonel onay verirsen anonimleştirilmiş şekilde kalite iyileştirme için kullanılır (cayabilirsin).",
+        "Tasarım dosyalarınız (PDF, PNG, AI, PSD, EPS), Supabase Storage altyapısında Row Level Security (RLS) ile kişisel hesabınıza bağlı olarak şifreli saklanır. Bu dosyalara yalnızca siz ve üretim ekibimiz erişebilir. Pazarlama, reklam veya başka müşterilere örnek gösterme gibi amaçlarla asla kullanılmaz. Yapay zeka model eğitimi için anonim veri katkısı yalnızca opsiyonel açık rızanız doğrultusunda gerçekleştirilir ve dilediğiniz zaman geri alabilirsiniz.",
     },
     {
-      q: "Verilerim ne kadar süre saklanır?",
+      q: "Verilerim ne kadar süre saklanıyor?",
       summary:
-        "Sipariş 10 yıl (VUK), pazarlama silme talebine kadar, tasarım dosyaları 90 gün.",
+        "Sipariş kayıtları 10 yıl (VUK gereği), pazarlama verileri silme talebine kadar, tasarım dosyaları 90 gün saklanır.",
       detail:
-        "VUK (Vergi Usul Kanunu) gereği fatura ve sipariş kayıtları 10 yıl korunmalı. Bu sürede pazarlama amaçlı kullanmıyoruz, sadece muhasebe/denetim için. Tasarım dosyaları 90 gün sonra otomatik silinir (yeniden basım istersen tekrar yüklersin). Hesap silme talebinde tüm KVKK kapsamında veriler 30 gün içinde silinir.",
+        "Vergi Usul Kanunu gereği fatura ve sipariş kayıtları 10 yıl boyunca muhasebe ve denetim amacıyla korunur; bu süreçte pazarlama amaçlı kullanılmaz. Tasarım dosyaları, yeniden basım taleplerini desteklemek için son siparişten itibaren 90 gün boyunca tutulur ve sonrasında otomatik olarak silinir. Hesap silme talebinde bulunmanız halinde KVKK kapsamındaki tüm kişisel verileriniz 30 gün içinde tamamen silinir veya anonimleştirilir.",
     },
     {
-      q: "Mesafeli satış sözleşmesi nedir?",
+      q: "Mesafeli satış sözleşmesi nedir, nasıl onaylanıyor?",
       summary:
-        "Online alışverişte zorunlu olan tarafların hak ve yükümlülüklerini belirleyen sözleşme.",
+        "Mesafeli satış sözleşmesi, online alışverişte tarafların hak ve yükümlülüklerini düzenleyen yasal belgedir; sipariş öncesi onayınız alınır.",
       detail:
-        "/mesafeli-satis sayfasında tam metni var — sipariş öncesi otomatik gösterilir, 'kabul ediyorum' kutusunu işaretlemeden sipariş tamamlanmaz. İçeriği: ürün açıklaması, fiyat, ödeme, teslim, cayma hakkı (özel üretim hariç), iade koşulları, kişisel veri. Türk Tüketici Kanunu (TKHK) zorunlu unsurları içerir.",
+        "Sözleşmenin tam metnine /mesafeli-satis sayfasından erişebilirsiniz. Ödeme adımından önce sözleşme otomatik olarak görüntülenir; \"Okudum ve kabul ediyorum\" onay kutusu işaretlenmeden sipariş tamamlanamaz. İçerikte; ürün özellikleri, fiyat ve ödeme bilgisi, teslim koşulları, cayma hakkı (özel üretim ürünlerde istisna), iade prosedürü ve kişisel veri politikası gibi TKHK madde 5'in zorunlu kıldığı tüm unsurlar yer alır.",
     },
     {
-      q: "Telif hakkı olan tasarım gönderirsem?",
+      q: "Telif hakkı olan bir tasarım için sipariş verebilir miyim?",
       summary:
-        "Müşteri sorumluluğunda — başkasının logosunu/markasını basamayız.",
+        "Telif veya marka hakkı bulunan içeriklerin baskısı için ilgili hakların sahibi olmanız veya yetkilendirilmiş olmanız gereklidir; aksi takdirde sipariş reddedilir.",
       detail:
-        "Sipariş ettiğin tasarımın fikri mülkiyet hakkına sahip olduğunu garanti ediyorsun. Başkasının markası (örn Adidas logosu), telif eseri (örn Marvel karakteri), patent ürünü basmak istersen — siparişi reddederiz. Şüpheli durumda yetki belgesi isteriz. Müşteri telif ihlalinden hukuki olarak sorumludur.",
+        "Sipariş verirken yüklediğiniz tasarımın fikri ve sınai mülkiyet haklarına sahip olduğunuzu veya bu hakları kullanma yetkinizin bulunduğunu kabul ve taahhüt etmiş olursunuz. Tescilli marka logoları (örneğin Adidas, Nike), telif altındaki karakterler (Marvel, Disney) veya patent kapsamındaki tasarımlar için yetki belgesi ibraz edilemediği takdirde sipariş Pim Etiket tarafından reddedilir. Müşteri, yüklediği içerikten doğan tüm telif ihlali sonuçlarından hukuken sorumludur.",
     },
   ],
   yardim: [
     {
-      q: "Pim sohbet butonu ne işe yarıyor?",
+      q: "Pim sohbet asistanı hangi konularda yardımcı oluyor?",
       summary:
-        "AI asistan — ürün önerisi, malzeme seçimi, fiyat sorgulama, sipariş takibi.",
+        "Pim Etiket'in yapay zeka destekli sohbet asistanı; ürün önerisi, malzeme seçimi, fiyat sorgulama ve sipariş takibi konularında destek sağlar.",
       detail:
-        "Sağ altta karga ikonu — tıkla, sohbet başlasın. AI olarak: 'balsamik sirke etiketi için ne öneririm' gibi sorulara cevap, mevcut sipariş durumu sorgulama, kupon kodu, malzeme detayı, fiyat tahmini. Yapay zeka çıktıları hatalı olabilir, nihai sorumluluk müşteridedir — kritik kararlarda WhatsApp insan desteği.",
+        "Sayfanın sağ alt köşesindeki karga ikonuna tıklayarak sohbeti başlatabilirsiniz. Asistan; \"balsamik sirke şişesi için hangi malzeme uygundur?\" gibi ürün danışmanlığı, fiyat tahmini, kupon kodu sorgulama, malzeme detayları ve aktif siparişlerinizin durumu gibi sorularınızı yanıtlar. Yapay zeka tarafından üretilen yanıtlar bilgilendirme amaçlıdır ve hatalı olabilir; kritik karar gerektiren konularda müşteri hizmetlerimizle iletişime geçmeniz önerilir.",
     },
     {
-      q: "AI bana hangi konularda yardım edebilir?",
+      q: "Yapay zeka asistanı tasarım yapabiliyor mu?",
       summary:
-        "Ürün seçim danışmanlığı, malzeme önerisi, tasarım ipuçları, sipariş takibi, fiyat tahmini.",
+        "Hayır, Pim sohbet asistanı renk, font ve kompozisyon önerisi sunar; tasarım dosyasını oluşturmaz.",
       detail:
-        "Yapabildikleri: 'Bal kavanozuna nasıl etiket önerirsin?' → kraft + mat selefon; '100 sticker için kaç TL?' → canlı fiyat hesabı; 'Siparişim ne aşamada?' → durum bilgisi. Yapamadıkları: Hukuki tavsiye, vergi danışmanlığı, tasarımı kendisi YAPMAZ (sadece yönlendirme/öneri).",
+        "Pim sohbet asistanı; \"organik bal için minimal etiket önerisi\" gibi sektör bazlı tavsiye, renk paleti seçimi, font kombinasyonu önerisi ve örnek paylaşımı yapar. Tasarımın fiili olarak hazırlanması Canva, Adobe Express veya Figma gibi ücretsiz online tasarım araçları üzerinden tarafınızca gerçekleştirilir. Hukuki tavsiye, vergi danışmanlığı veya kişisel sağlık bilgisi gibi konularda yanıt vermez.",
     },
     {
-      q: "İnsan müşteri hizmetlerine nasıl ulaşırım?",
+      q: "Müşteri hizmetlerine nasıl ulaşabilirim?",
       summary:
-        "WhatsApp (en hızlı), info@pimetiket.com (24 saat), iletişim formu.",
+        "WhatsApp en hızlı yanıt kanalımızdır; e-posta (info@pimetiket.com) ve /iletisim formu da kullanılabilir.",
       detail:
-        "WhatsApp: en hızlı yanıt (iş saatleri içinde 30 dk, dışında 12 saat). E-posta: 24 saat içinde dönüş, detaylı sorunlar için. İletişim formu: /iletisim sayfasında, ürün/sipariş id ile birlikte. Telefon henüz aktif değil — Q2 2026'da açılır.",
+        "İletişim kanallarımız ve ortalama yanıt süreleri: WhatsApp — hafta içi mesai saatlerinde 30 dakika, hafta sonu 12 saat içinde dönüş. E-posta (info@pimetiket.com) — 24 saat içinde detaylı yanıt. /iletisim formu — sipariş numarası ile birlikte iletildiğinde aynı gün incelenir. Telefonla iletişim kanalımız henüz aktif değildir; 2026 Q2'de hizmete açılacaktır.",
     },
     {
-      q: "WhatsApp / e-posta destek var mı?",
-      summary: "Evet, WhatsApp ve e-posta ana iletişim kanalları.",
+      q: "Çalışma saatleriniz nedir?",
+      summary:
+        "Müşteri hizmetlerimiz hafta içi 09:00-18:00, hafta sonu 10:00-16:00 saatleri arasında hizmet vermektedir.",
       detail:
-        "Çalışma saatleri: hafta içi 09:00-18:00, hafta sonu 10:00-16:00 (acil siparişler için). Cevap süresi: WhatsApp 30 dk, e-posta 4-12 saat. Çoğu sorununu Pim AI çözer, çözmezse otomatik olarak insan operatöre yönlendirir.",
+        "Pim sohbet asistanı 7/24 yanıt verir; operatör desteği yukarıdaki saatlerle sınırlıdır. WhatsApp yanıt süresi mesai içinde 30 dakika, mesai dışında 4-12 saattir. E-posta yanıt süresi 4-12 saattir. Çoğu soru AI asistan tarafından çözülür; çözülemeyen talepler otomatik olarak insan operatöre yönlendirilir.",
     },
   ],
 };

@@ -26,31 +26,31 @@ import { useUser } from "@/lib/supabase/use-user";
 // "Acele baskı" sorusu kaldırıldı (Sefa: "acele baskı yapmıyoruz").
 const FAQ_QUESTIONS_TR = [
   {
-    q: "Minimum kaç adet basabiliyorum?",
-    a: "Etiket rulo için 1.000, etiket tabaka için 250, sticker için 25 adetten başlıyoruz. Konfigüratörde kaç adet sığacağını canlı önizlemede görebilirsin.",
+    q: "Pim Etiket'te minimum kaç adet sipariş verilebilir?",
+    a: "Rulo etiket siparişleri 1.000 adetten, tabaka etiket siparişleri 250 adetten, sticker siparişleri ise 25 adetten başlamaktadır. Tabaka başına kaç ürün sığacağını konfigüratör ekranındaki canlı önizleme bölümünden görüntüleyebilirsiniz.",
   },
   {
-    q: "Tasarım dosyam yok, ne yapacağım?",
-    a: "Canva, Adobe Express veya Figma gibi ücretsiz online tasarım araçlarıyla hazırlayıp PDF/PNG olarak indir, sisteme yükle. Hangi renk, font veya kompozisyon önereyim diye Pim sohbet'e sor — sektörüne göre yönlendirir.",
+    q: "Tasarım dosyam yok, nasıl bir yol izlemeliyim?",
+    a: "Canva, Adobe Express ve Figma gibi ücretsiz online tasarım araçlarıyla tasarımınızı hazırlayıp PDF veya PNG formatında indirebilir, ardından sistemimize yükleyebilirsiniz. Sektörünüze uygun renk paleti ve font kombinasyonu önerileri için Pim Etiket sohbet asistanına sorularınızı yöneltebilirsiniz.",
   },
   {
-    q: "Üretim ve teslim ne kadar sürer?",
-    a: "Etiket için 10 iş günü, sticker için 5 iş günü üretim süremiz (resmi tatiller hariç). Üzerine kargo 1-3 iş günü eklenir. Sepete eklediğinde tahmini teslim tarihi otomatik gösterilir.",
+    q: "Üretim ve teslimat süresi ne kadardır?",
+    a: "Standart etiket siparişleri 10 iş günü, sticker siparişleri 5 iş günü içinde üretilmektedir (resmi tatiller hariç). Üretim tamamlandıktan sonra kargo süresi şehir bazında 1-3 iş günüdür. Tahmini teslim tarihi konfigüratör ve sepet ekranında otomatik olarak hesaplanıp gösterilir.",
   },
 ];
 
 const FAQ_QUESTIONS_EN = [
   {
-    q: "What's the minimum order quantity?",
-    a: "1,000 for roll labels, 250 for sheet labels, 25 for stickers. The live preview shows how many fit per sheet.",
+    q: "What is the minimum order quantity at Pim Etiket?",
+    a: "Roll labels start at 1,000 units, sheet labels at 250, and stickers at 25. The live preview in the configurator shows how many items fit per sheet, helping you plan your order size.",
   },
   {
-    q: "I don't have a design file, what now?",
-    a: "Use free online tools like Canva, Adobe Express, or Figma — design your layout, export as PDF/PNG, then upload here. Ask Pim chat for color, font, or composition suggestions based on your industry.",
+    q: "I don't have a design file — what should I do?",
+    a: "Free online design tools such as Canva, Adobe Express, and Figma make it easy to prepare your artwork. Export your design as PDF or PNG and upload it to our system. For industry-specific color palette or typography suggestions, ask the Pim Etiket chat assistant.",
   },
   {
     q: "How long does production and delivery take?",
-    a: "Labels: 10 business days production; stickers: 5 business days (excluding public holidays). Add 1-3 business days for shipping. Estimated delivery date is shown automatically at checkout.",
+    a: "Standard production lead times are 10 business days for labels and 5 business days for stickers (excluding public holidays). Shipping adds 1-3 business days depending on the city. Estimated delivery date is calculated and displayed automatically at checkout.",
   },
 ];
 
