@@ -1,17 +1,22 @@
 /**
  * Pim Etiket — /iletisim
  *
- * 2-col layout: 3 iletişim kanalı kartı + atölye bilgileri + harita.
- * Client (i18n hook). Metadata layout.tsx'te.
+ * Sefa 18 May v68: Sadeleştirildi.
+ * - Atölye Ziyareti kartı kaldırıldı (3 → 2 kart: Pim Sohbet + E-posta)
+ * - noPhoneNote (telefon yok + 30 dk acil) paragrafı kaldırıldı
+ * - Üretim adres, Yasal merkez, Randevu blokları kaldırıldı
+ * - Yanıt saatleri kaldırıldı, yerine sadece sabit "Mesai saatleri"
+ * - Harita placeholder kaldırıldı
+ *
+ * Sonuç: HERO + 2 kart + Mesai saatleri + SSS link section'ları.
  */
 
 "use client";
 
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Card, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
-import { SchemaJsonLd, localBusinessSchema } from "@/components/SchemaJsonLd";
 
 const COPY = {
   tr: {
@@ -19,84 +24,48 @@ const COPY = {
     h1Line1: "Pim'e bir mesaj at,",
     h1Line2: "cevap hızlı gelir.",
     intro:
-      "Aklındakini en hızlı şekilde çözmek için 3 farklı kanal ve sağ alt köşede bekleyen Pim — istediğin yere yaz.",
-    // Sefa 17 May P1-18: telefon yok bilinçli karar — açıkça yaz
-    noPhoneNote:
-      "📞 Telefon hattımız yok — yanıt hızı için sohbet ve e-posta tercih ediyoruz. Acil sipariş durumlarında 30 dakika içinde geri dönüş yapıyoruz.",
+      "Aklındakini en hızlı şekilde çözmek için iki kanal ve sağ alt köşede bekleyen Pim — istediğin yere yaz.",
     waTitle: "Pim Sohbet",
-    waDesc: "Sağ alt köşedeki Pim'e tıkla, yapay zeka destekli sohbet hemen yanıtlar.",
+    waDesc:
+      "Sağ alt köşedeki Pim'e tıkla, yapay zeka destekli sohbet asistanı sorularını anında yanıtlar.",
     waCta: "Pim'e yaz",
     emailTitle: "E-posta",
-    emailDesc: "Detaylı sorular, teklif istekleri, B2B partnership için.",
-    workshopTitle: "Atölye Ziyareti",
-    workshopDesc: "Numune almak veya tanışmak için randevulu ziyaret.",
-    workshopCta: "Bilgi al",
-    bursaEyebrow: "Pim Etiket atölyesi",
-    bursaTitle1: "Numune almak için",
-    bursaTitle2: "iletişime geç.",
-    addressLabel: "Üretim",
-    addressNote:
-      "İstanbul & Ankara — anlaşmalı dijital baskı atölyelerinde fason üretim",
-    legalLabel: "Yasal merkez",
-    legalAddress:
-      "Workinton Ankara Söğütözü\nBeştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28\n06510 Çankaya/Ankara",
-    hoursLabel: "Yanıt saatleri",
-    hoursMonFri: "Pazartesi – Cuma · 09:00 – 18:00",
-    hoursSat: "Cumartesi · 10:00 – 14:00 (acele siparişler)",
-    appointmentLabel: "Randevu",
-    appointmentText:
-      "Ziyaret etmek istersen önce e-posta yaz, atölye konumu ve uygunluk bilgisini paylaşalım.",
-    waButton: "E-posta gönder",
-    mapSoonTitle: "Atölye konumu",
-    mapSoonDesc:
-      "Pim Etiket fason üretim modeliyle çalışır. Spesifik atölye konumu randevu sırasında paylaşılır.",
+    emailDesc:
+      "Detaylı sorular, teklif istekleri, kurumsal işbirliği ve numune talepleri için.",
+    hoursEyebrow: "Çalışma saatleri",
+    hoursTitle: "Mesai saatleri",
+    hoursLine: "Hafta içi · 09:00 – 18:00",
+    hoursNote:
+      "Pim Etiket yapay zeka destekli sohbet asistanı 7/24 hizmetinizdedir. Operatör desteği yukarıdaki saatlerde aktiftir.",
     faqEyebrow: "Önce SSS'ye bakmak istersen",
     faqTitle: "Cevabın hazır olabilir.",
-    faqOrder: "Sipariş aşaması",
-    faqProduction: "Üretim & AI kontrolü",
-    faqShipping: "Kargo & teslim",
+    faqOrder: "Sipariş & Ödeme",
+    faqProduction: "Üretim & Teslim",
+    faqShipping: "İade & Garanti",
   },
   en: {
     eyebrow: "Contact",
     h1Line1: "Send Pim a message,",
     h1Line2: "we respond fast.",
     intro:
-      "Three different channels and Pim waiting in the bottom-right corner — pick whichever you prefer.",
-    noPhoneNote:
-      "📞 No phone line — for response speed we prefer chat and email. For urgent orders we respond within 30 minutes.",
+      "Two channels and Pim waiting in the bottom-right corner — pick whichever works for you.",
     waTitle: "Pim Chat",
     waDesc:
-      "Click Pim in the bottom-right corner — AI-powered chat replies instantly.",
+      "Click Pim in the bottom-right corner — the AI-powered chat assistant answers instantly.",
     waCta: "Chat with Pim",
     emailTitle: "Email",
-    emailDesc: "Detailed questions, RFQs, B2B partnerships.",
-    workshopTitle: "Workshop visit",
-    workshopDesc: "Visit by appointment to see samples or get to know us.",
-    workshopCta: "Get info",
-    bursaEyebrow: "Pim Etiket workshop",
-    bursaTitle1: "Drop a line for samples",
-    bursaTitle2: "or to get to know us.",
-    addressLabel: "Production",
-    addressNote:
-      "Istanbul & Ankara — partner digital print workshops (fason model)",
-    legalLabel: "Registered office",
-    legalAddress:
-      "Workinton Ankara Söğütözü\nBeştepeler Mah. Nergis Sok. No:7/2 ViaFlat Business Center Office: 27-28\n06510 Çankaya/Ankara, Türkiye",
-    hoursLabel: "Response hours",
-    hoursMonFri: "Monday – Friday · 09:00 – 18:00",
-    hoursSat: "Saturday · 10:00 – 14:00 (rush orders)",
-    appointmentLabel: "Appointment",
-    appointmentText:
-      "If you'd like to visit, drop us an email first — we'll share the workshop location and availability.",
-    waButton: "Send email",
-    mapSoonTitle: "Workshop location",
-    mapSoonDesc:
-      "Pim Etiket runs on a fason production model. The specific workshop location is shared during appointment booking.",
+    emailDesc:
+      "Detailed questions, RFQs, corporate partnerships and sample requests.",
+    hoursEyebrow: "Working hours",
+    hoursTitle: "Office hours",
+    hoursLine: "Weekdays · 09:00 – 18:00",
+    hoursNote:
+      "Pim Etiket's AI-powered chat assistant is available 24/7. Operator support is active during the hours above.",
     faqEyebrow: "Want to check the FAQ first?",
     faqTitle: "Your answer might already be there.",
-    faqOrder: "Ordering",
-    faqProduction: "Production & AI check",
-    faqShipping: "Shipping & delivery",
+    faqOrder: "Order & Payment",
+    faqProduction: "Production & Delivery",
+    faqShipping: "Returns & Warranty",
   },
 };
 
@@ -126,32 +95,16 @@ export default function IletisimPage() {
       href: "mailto:info@pimetiket.com",
       accent: "bg-yesil-soft text-yesil",
     },
-    {
-      icon: <Icon.Truck size={20} />,
-      title: c.workshopTitle,
-      desc: c.workshopDesc,
-      cta: c.workshopCta,
-      href: "#harita",
-      accent: "bg-krem text-lacivert",
-    },
   ];
 
   const FAQ_LINKS = [
-    { q: c.faqOrder, href: "/sss?cat=siparis" },
-    { q: c.faqProduction, href: "/sss?cat=uretim" },
-    { q: c.faqShipping, href: "/sss?cat=kargo" },
+    { q: c.faqOrder, href: "/sss#siparis" },
+    { q: c.faqProduction, href: "/sss#uretim" },
+    { q: c.faqShipping, href: "/sss#iade" },
   ];
 
   return (
     <main className="animate-fade-up">
-      {/* LocalBusiness JSON-LD — Google Maps + "near me" araması için */}
-      <SchemaJsonLd
-        data={localBusinessSchema({
-          address:
-            "Workinton Ankara Söğütözü, Beştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510 Çankaya/Ankara",
-        })}
-      />
-
       {/* HERO */}
       <section className="pt-10 md:pt-16 pb-8 md:pb-12">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 md:gap-8 items-end">
@@ -165,19 +118,16 @@ export default function IletisimPage() {
             <p className="mt-5 text-[15px] md:text-lg text-gri-700 max-w-[520px] leading-relaxed">
               {c.intro}
             </p>
-            {/* Sefa 17 May P1-18: telefon yok bilinçli karar açıklaması */}
-            <p className="mt-3 text-[13px] text-gri-500 max-w-[520px] leading-relaxed italic">
-              {c.noPhoneNote}
-            </p>
           </div>
           <Pim pose="wave" size={180} className="hidden md:inline-block" />
         </div>
       </section>
 
-      {/* 3 İLETİŞİM KANALI */}
+      {/* 2 İLETİŞİM KANALI — Sefa 18 May v68: Atölye Ziyareti kaldırıldı,
+          2 kart ortalı görünüm */}
       <section className="py-6 md:py-8">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="mx-auto max-w-[900px] px-4 md:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             {CONTACT_METHODS.map((m) => (
               <Card key={m.title} padding="p-6 md:p-7">
                 <div
@@ -219,81 +169,20 @@ export default function IletisimPage() {
         </div>
       </section>
 
-      {/* HARİTA + ATÖLYE */}
-      <section className="py-10 md:py-12" id="harita">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6 items-start">
-            {/* Sol — atölye bilgileri */}
-            <div>
-              <Eyebrow>{c.bursaEyebrow}</Eyebrow>
-              <h2 className="mt-4 text-[24px] md:text-[32px] font-semibold tracking-tight leading-tight">
-                {c.bursaTitle1}
-                <br />
-                {c.bursaTitle2}
-              </h2>
-
-              <div className="mt-6 space-y-4 text-[15px] md:text-base text-gri-700">
-                <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                    {c.addressLabel}
-                  </div>
-                  <div className="leading-relaxed">
-                    {c.addressNote}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                    {c.legalLabel}
-                  </div>
-                  <div className="leading-relaxed text-[13.5px] whitespace-pre-line">
-                    {c.legalAddress}
-                  </div>
-                  <div className="mt-2 text-[11.5px] text-gri-500 font-mono">
-                    Mersis: 0758060761200001 · Tic. Sicil: 493212
-                    <br />
-                    Doğanbey VD: 7580607612
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                    {c.hoursLabel}
-                  </div>
-                  <div className="leading-relaxed">
-                    {c.hoursMonFri}
-                    <br />
-                    {c.hoursSat}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                    {c.appointmentLabel}
-                  </div>
-                  <div className="leading-relaxed">
-                    {c.appointmentText}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <Button variant="primary" href="mailto:info@pimetiket.com">
-                  <Icon.ChatBubble size={16} /> {c.waButton}
-                </Button>
-              </div>
-            </div>
-
-            {/* Sağ — harita */}
-            <div className="rounded-2xl overflow-hidden ring-1 ring-gri-200 shadow-1 aspect-[4/3] bg-gri-100 grid place-items-center text-center">
-              <div className="px-6 py-12">
-                <Icon.Truck size={48} className="text-gri-500 mx-auto mb-4" />
-                <div className="font-semibold text-lacivert mb-2">
-                  {c.mapSoonTitle}
-                </div>
-                <p className="text-[13px] text-gri-700 max-w-[280px] mx-auto leading-relaxed">
-                  {c.mapSoonDesc}
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* MESAİ SAATLERİ — Sefa 18 May v68: Üretim/Yasal merkez/Randevu/Yanıt
+          saatleri kaldırıldı, sadece sabit mesai saatleri */}
+      <section className="py-10 md:py-14">
+        <div className="mx-auto max-w-[700px] px-4 md:px-8 text-center">
+          <Eyebrow>{c.hoursEyebrow}</Eyebrow>
+          <h2 className="mt-4 text-[24px] md:text-[32px] font-semibold tracking-tight">
+            {c.hoursTitle}
+          </h2>
+          <p className="mt-4 text-[18px] md:text-[22px] font-semibold text-pim-mercan tabular-nums">
+            {c.hoursLine}
+          </p>
+          <p className="mt-3 text-[13.5px] text-gri-700 max-w-[480px] mx-auto leading-relaxed">
+            {c.hoursNote}
+          </p>
         </div>
       </section>
 
