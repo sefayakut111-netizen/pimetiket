@@ -139,225 +139,234 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
   ],
   tasarim: [
     {
-      q: "Hangi dosya formatlarını kabul ediyorsunuz?",
-      summary: "PDF, PNG, AI, PSD, EPS — toplam 5 format.",
-      detail:
-        "En sağlıklı sonuç için PDF (X-1a) veya AI önerilir — vektör, font outline, renk profili korunur. PNG ile gönderirsen tasarım rasterized olur (ölçek değişimi pixel kaybı yapabilir, 300 DPI önerilir). JPEG ve SVG kabul etmiyoruz — JPEG sıkıştırma artefaktları matbaada belirgin, SVG ise font/renk varyasyonu riskli.",
-    },
-    {
-      q: "Dosya boyutu limiti nedir?",
-      summary: "Dosya başına max 30 MB, sipariş başına 50 dosyaya kadar.",
-      detail:
-        "PDF için 30 MB genelde yüksek çözünürlük + birden fazla sayfa için yeterli. Daha büyük dosyan varsa: PDF/X-1a'ya optimize et (Adobe Acrobat → Save As → Optimized PDF), veya WhatsApp üzerinden gönder, biz upload edelim.",
-    },
-    {
-      q: "Tasarımı şimdi yüklemek zorunda mıyım?",
+      q: "Hangi tasarım dosyası formatları kabul edilmektedir?",
       summary:
-        "Hayır, sipariş onayından sonra detay sayfasından da yükleyebilirsin.",
+        "Pim Etiket sistemi; PDF, PNG, AI, PSD ve EPS olmak üzere beş ana tasarım dosyası formatını kabul etmektedir.",
       detail:
-        "Konfigüratörde 'Tasarımı şimdi yükle' alanı opsiyonel — mockup'ta nasıl duracağını görmek için ön yükleme yapabilirsin ama sipariş onayını bekletmez. Üretim sadece tasarım yüklendikten sonra başlar, o yüzden teslim süresini hızlandırmak için en kısa zamanda yükle.",
+        "Yüksek baskı kalitesi için PDF/X-1a veya AI formatı önerilir; bu formatlarda vektör veriler, font outline'ları ve renk profilleri korunur. PNG formatı rasterized olduğundan 300 DPI çözünürlük tavsiye edilir. JPEG dosyaları sıkıştırma artefaktları nedeniyle, SVG dosyaları ise font ve renk standartlarındaki tutarsızlıklar nedeniyle kabul edilmemektedir. Yüklenen dosyalar otomatik ön denetimden geçirilerek format, çözünürlük ve renk profili açısından kontrol edilir.",
     },
     {
-      q: "Çözünürlük kaç olmalı?",
-      summary: "300 DPI (gerçek boyutta) — fotoğraf-baskı kalitesi standardı.",
-      detail:
-        "Tasarım web ekranında 72 DPI yeterli görünebilir ama matbaada bulanık çıkar. Photoshop'ta Image → Image Size → Resolution: 300 ppi, vektör programda zaten ölçek bağımsız. Düşük DPI yüklersen sistem uyarı verir, devam etmek istersen ön denetim WARNING döner.",
-    },
-    {
-      q: "CMYK mi RGB mi?",
+      q: "Maksimum dosya boyutu ve yükleme limiti nedir?",
       summary:
-        "CMYK önerilir; RGB gönderirsen baskı öncesi otomatik dönüştürürüz, renk hafif kayabilir.",
+        "Tek bir tasarım dosyası en fazla 30 MB olabilir; bir sipariş içinde 50 dosyaya kadar yükleme yapılabilir.",
       detail:
-        "Ekranın RGB (yayılan ışık) ile basılı kağıdın CMYK (yansıyan mürekkep) renk uzayları farklı — özellikle parlak kırmızılar, neon renkler, koyu maviler. Tasarım programında dosya modunu CMYK olarak ayarla. Pantone spot renk işleri için lütfen sipariş sonrası WhatsApp'tan bize ulaş.",
+        "30 MB limiti, yüksek çözünürlüklü çok sayfalı PDF dosyaları için yeterli boyut sunar. Bu sınırı aşan dosyalarda Adobe Acrobat üzerinden Save As → Optimized PDF işlemi uygulanması veya PDF/X-1a profiline dönüştürülmesi önerilir. Boyut sorunu yaşamanız halinde WhatsApp aracılığıyla dosyanızı iletebilirsiniz; ekibimiz sisteme adınıza yükleyecektir. Yükleme limitleri, hem altyapı performansını korumak hem de dosya bütünlüğünü güvence altına almak amacıyla belirlenmiştir.",
     },
     {
-      q: "Bleed (taşma payı) nasıl ayarlanır?",
+      q: "Tasarım dosyamı sipariş anında yüklemek zorunda mıyım?",
       summary:
-        "Her kenardan 2-3 mm bleed ekle, önemli içeriği iç güvenli alandan 3 mm uzak tut.",
+        "Hayır, tasarım dosyanızı sipariş onaylandıktan sonra panel üzerinden de yükleyebilirsiniz.",
       detail:
-        "Etiket 60×80 mm istiyorsan tasarım dosyası 64×84 mm olmalı (2 mm bleed her kenarda). Yazılar, logo, kritik öğeler kesim çizgisinden 3 mm içeride kalsın — matbaa toleransı +/- 0.5 mm. Mockup önizlemede bleed alanı sınırı görünmez ama hesap dahildir.",
+        "Konfigüratördeki tasarım yükleme alanı opsiyoneldir; bu adım atlandığı takdirde sipariş onaylanır ve dosyayı /panelim/siparislerim → Sipariş Detay menüsünden sonradan ekleyebilirsiniz. Ancak üretim akışı yalnızca tasarım dosyası onaylandıktan sonra başlatılır; teslim süresinin gecikmemesi için dosyanın en kısa sürede yüklenmesi önerilir. Sipariş ön denetimden başarıyla geçen dosyalar otomatik olarak üretim hattına aktarılır.",
     },
     {
-      q: "Yazılarımı outline yapmam gerekir mi?",
+      q: "Tasarım dosyasının çözünürlüğü kaç olmalıdır?",
       summary:
-        "Evet — fontu bizde yoksa otomatik değiştirilmesin diye outline'a çevir.",
+        "Tüm tasarım dosyaları, gerçek baskı boyutunda 300 DPI çözünürlükte hazırlanmalıdır.",
       detail:
-        "Illustrator'da: Type → Create Outlines (Cmd/Ctrl+Shift+O). Photoshop'ta: katmanı rasterize et veya smart object'e çevir. PDF dışa aktarırken 'Embed All Fonts' seçili olsun. Outline yapılmamış PDF'lerde font yoksa ön denetim FATAL warning verir, üretim bekletilir.",
+        "300 DPI değeri, profesyonel matbaa standardı kabul edilen fotoğraf-baskı çözünürlüğüdür. Web ekranı için 72 DPI yeterli görünse de basıma alındığında bulanık bir sonuç oluşturur. Photoshop kullanıcıları Image → Image Size → Resolution: 300 ppi ayarını yapmalıdır; vektör tabanlı tasarım programlarında çözünürlük ölçek bağımsız olduğundan ek ayar gerekmez. Düşük çözünürlüklü dosyalar yüklendiğinde sistem otomatik uyarı verir; bu durumda ön denetim sonucunda WARNING bildirimi oluşur.",
     },
     {
-      q: "Tasarımı kendim yapabilir miyim, hangi araçları kullanmalıyım?",
+      q: "Tasarımım CMYK mi RGB renk uzayında mı olmalıdır?",
       summary:
-        "Canva, Adobe Express, Figma gibi ücretsiz online araçlarla hazırla; PDF veya PNG indir, sisteme yükle.",
+        "Renk uyumu açısından CMYK renk uzayı önerilir; RGB dosyalar baskı öncesinde otomatik olarak CMYK'ya dönüştürülür.",
       detail:
-        "Bizim dahili şablon kütüphanemiz yok — ama internette ücretsiz ve kolay tasarım araçları çok. En yaygınları: Canva (binlerce hazır etiket/sticker şablonu), Adobe Express (basit ve hızlı), Figma (free tier, profesyonel görünüm), VistaCreate/Crello. Hangisini seçersen seç, tasarımı bitirince **PDF veya PNG** olarak indir ve buraya yükle. Pim sohbet'e (sağ alt) ürün/sektör adını yaz — sana uygun renk, font, kompozisyon önerisi verir. Profesyonel grafiker desteği için WhatsApp'tan yönlendirme yapabiliriz.",
+        "Ekran teknolojisi RGB (yayılan ışık) renk uzayında çalışırken matbaa baskı sistemleri CMYK (yansıyan mürekkep) renk uzayında çalışır. Bu iki sistem arasında özellikle parlak kırmızı, neon ve koyu mavi tonlarında doğal renk farklılıkları görülür. Renk doğruluğu kritik olan projeler için tasarım dosyasının doğrudan CMYK modunda hazırlanması en sağlıklı yaklaşımdır. Pantone spot renk gerektiren özel siparişlerde sipariş sonrasında WhatsApp aracılığıyla bizimle iletişime geçmeniz önerilir.",
     },
     {
-      q: "Çoklu tasarım nasıl çalışır?",
+      q: "Taşma payı (bleed) nasıl ayarlanmalıdır?",
       summary:
-        "Aynı siparişte birden fazla farklı tasarım yükleyebilirsin, otomatik indirim uygulanır.",
+        "Tasarım dosyasının her kenarına 2-3 mm taşma payı eklenmeli; metin ve logo gibi kritik öğeler kesim çizgisinden 3 mm içeride konumlandırılmalıdır.",
       detail:
-        "Konfigüratörde 'Tasarım sayısı' inputuna yaz: 2-3 → %2, 4-5 → %4, 6-10 → %6, 11-25 → %8, 26-50 → %10 indirim. Her tasarımdan girdiğin adet kadar basılır (örn 3 tasarım × 1000 = 3000 etiket). Setup maliyeti dağıldığı için birim fiyat düşer.",
+        "Örnek olarak 60×80 mm boyutunda bir etiket için tasarım dosyası 64×84 mm boyutunda hazırlanmalıdır (her kenarda 2 mm taşma). Matbaa kesim toleransı ±0,5 mm olduğundan kritik içerik (yazı, logo, çerçeve) güvenli alanda tutulmazsa kesim sırasında zarar görme riski oluşur. Sistem canlı önizlemede taşma çizgilerini görünür kılmaz ancak hesaplama aşamasında dikkate alır. PDF dışa aktarımında 'Bleed: 2 mm' seçeneği işaretlenmelidir.",
     },
     {
-      q: "Tasarımıma müdahale ediyor musunuz?",
+      q: "Tasarımdaki yazıları outline'a çevirmem gerekiyor mu?",
       summary:
-        "Hayır, tasarım olduğu gibi basılır; sadece ön denetimde teknik uyarı veririz.",
+        "Evet, font sistemimizde mevcut değilse otomatik değişikliği önlemek için tüm yazıların outline'a (eğriye) çevrilmesi gerekmektedir.",
       detail:
-        "Ön denetim otomatik AI kontrolü + matbaa elcek (gerekirse): DPI, font outline, taşma, mürekkep doygunluğu (>320%). Sorun bulursak 'Onay bekleniyor' diye iletiriz, sen düzeltip yeniden yükleyebilirsin. İçeriğe asla müdahale etmiyoruz (renk değişikliği, metin düzeltme yapmıyoruz — özel istek değilse).",
+        "Adobe Illustrator kullanıcıları için Type → Create Outlines (Cmd/Ctrl+Shift+O) komutu, Photoshop kullanıcıları için katmanın rasterize edilmesi veya smart object'e dönüştürülmesi gereklidir. PDF dışa aktarımında 'Embed All Fonts' (tüm fontları göm) seçeneği aktif olmalıdır. Outline'a çevrilmemiş ve font dosyası gömülmemiş PDF'lerde font eksikliği ön denetim aşamasında FATAL uyarısı oluşturur ve üretim süreci başlatılmaz.",
+    },
+    {
+      q: "Tasarımı kendim hazırlayabilir miyim, hangi araçları kullanmalıyım?",
+      summary:
+        "Evet, Canva, Adobe Express ve Figma gibi ücretsiz online tasarım araçlarıyla hazırladığınız tasarımları PDF veya PNG formatında sisteme yükleyebilirsiniz.",
+      detail:
+        "Pim Etiket dahili tasarım şablonu kütüphanesi sunmamaktadır; ancak internet üzerindeki ücretsiz tasarım araçları profesyonel sonuçlar elde etmenizi sağlar. En yaygın araçlar: Canva (binlerce hazır etiket ve sticker şablonu), Adobe Express (hızlı ve sezgisel arayüz), Figma (ücretsiz sürüm, profesyonel görünüm) ve VistaCreate / Crello. Tasarımınızı tamamladıktan sonra PDF veya PNG olarak dışa aktarıp Pim Etiket konfigüratörüne yükleyebilirsiniz. Sayfanın sağ alt köşesindeki Pim sohbet asistanına ürün veya sektör adınızı yazarak; renk, font ve kompozisyon önerileri alabilirsiniz. Profesyonel grafik tasarım desteği için WhatsApp üzerinden yönlendirme yapılmaktadır.",
+    },
+    {
+      q: "Çoklu tasarım siparişi nasıl çalışır, indirim oranı nedir?",
+      summary:
+        "Aynı sipariş içinde birden fazla farklı tasarım yükleyebilirsiniz; tasarım sayısına göre %2 ile %10 arasında otomatik indirim uygulanır.",
+      detail:
+        "Çoklu tasarım indirim kademeleri: 2-3 tasarım %2, 4-5 tasarım %4, 6-10 tasarım %6, 11-25 tasarım %8 ve 26-50 tasarım %10. Konfigüratördeki 'Tasarım sayısı' alanına yazdığınız değer kadar tasarımdan, seçtiğiniz adet kadar baskı üretilir; örneğin 3 tasarım × 1.000 adet = toplamda 3.000 etiket. Bu indirim, baskı hazırlık (setup) maliyetinin çoklu tasarıma dağıtılması esasına dayanır ve birim fiyatın düşmesini sağlar. Her tasarım için ayrı dosya yüklenmesi gerekmektedir.",
+    },
+    {
+      q: "Yüklediğim tasarıma Pim Etiket tarafından müdahale ediliyor mu?",
+      summary:
+        "Hayır, tasarımlar olduğu gibi basılır; yalnızca ön denetim sürecinde teknik uyarılar müşteri ile paylaşılır.",
+      detail:
+        "Tasarım içeriğinize (renk, metin, kompozisyon) hiçbir şekilde müdahale edilmez. Ön denetim aşamasında otomatik yapay zeka kontrolü ve gerekli durumlarda matbaa ekibi denetimi gerçekleştirilir; DPI değeri, font outline durumu, taşma payı, mürekkep doygunluğu (%320 üzeri toplam ink coverage) ve kontur kesim hatları kontrol edilir. Teknik sorun tespit edildiğinde sipariş 'Onay bekleniyor' durumuna alınır ve müşteri tarafından düzeltilmiş dosyanın yüklenmesi beklenir. İçerik değişikliği yalnızca müşterinin açık talebi doğrultusunda gerçekleştirilir.",
     },
   ],
   malzeme: [
     {
-      q: "Hangi malzemeyi seçmeliyim?",
+      q: "Ürünüm için hangi malzemeyi seçmeliyim?",
       summary:
-        "Ürünün ortamı belirler: gıda → kuşe/kraft, su/buzdolabı → opak PP, premium → metalik, cam şişe → ultra clear.",
+        "Malzeme seçimi, ürünün kullanılacağı ortama göre belirlenir: gıda ürünleri için kuşe/kraft, su ve buzdolabı için opak PP, premium ürünler için metalize, cam şişeler için ultra clear film önerilir.",
       detail:
-        "/malzemeler sayfasında her malzeme için 'Nerede kullanılır + Yüzey + Dayanım' detayları var. Karar veremezsen sepete eklemeden önce Pim sohbet butonuna ürün adını yaz (örn 'balsamik sirke şişesi etiketi'), uygun malzeme önerir.",
+        "Pim Etiket /malzemeler sayfasında her malzeme için kullanım alanı, yüzey özellikleri ve dayanım kriterleri ayrıntılı olarak listelenmiştir. Doğru malzeme seçimi; etiketin ürün ömrü boyunca okunaklı kalmasını, marka algısının korunmasını ve mevzuat uyumunun sağlanmasını mümkün kılar. Karar aşamasında destek almak için sayfanın sağ alt köşesindeki Pim sohbet asistanına ürün adınızı (örneğin 'balsamik sirke cam şişe etiketi') yazmanız yeterlidir; sistem ortam koşullarına uygun malzeme önerisi sunar.",
     },
     {
-      q: "Kuşe ile Kraft farkı ne?",
+      q: "Kuşe etiket ile Kraft etiket arasındaki fark nedir?",
       summary:
-        "Kuşe = pürüzsüz beyaz parlak kağıt (renkleri canlı); Kraft = kahverengi doğal lifli kağıt (organik / el yapımı hissi).",
+        "Kuşe etiket; pürüzsüz beyaz parlak yüzeyiyle renkleri canlı bir şekilde aktarır; Kraft etiket ise kahverengi doğal lifli yapısıyla organik ve el yapımı bir hava sunar.",
       detail:
-        "Kuşe genel amaçlı — ev temizlik, kozmetik, gıda, ilaç. Kraft daha eko/doğallık vurgusu yapan markalar için — el yapımı sabun, organik gıda, baharat, çay. Kraft'a baskı doğal olarak daha mat görünür, beyaz mürekkep basmıyoruz (basit ofset).",
+        "Kuşe etiket, geniş bir ürün yelpazesi için tercih edilen genel amaçlı bir kağıt türüdür ve ev temizlik ürünleri, kozmetik, gıda ve ilaç sektörlerinde sıklıkla kullanılır. Kraft etiket ise eko-bilinçli markalar, el yapımı sabun, organik gıda, baharat ve çay ürünleri için tercih edilir; doğal kahverengi rengi marka mesajını destekler. Kraft yüzey üzerine yapılan baskılar doğal olarak daha mat görünür; beyaz mürekkep baskısı yapılmadığı için açık renklerin canlılığı kağıdın ham rengiyle bütünleşir.",
     },
     {
-      q: "Opak PP nedir?",
-      summary: "Polipropilen plastik etiket — yırtılmaz, suya/yağa dayanıklı.",
-      detail:
-        "PP (polipropilen), kağıttan farklı olarak ıslanınca yırtılmaz, donmaya dayanır, yağ emmez. Buzdolabı, dondurucu, soğuk zincir gıda, sıvı sabun, deterjan, şampuan ürünleri için ideal. Kağıt etiketin 'kıvrılma/sararma' sorunu olmaz.",
-    },
-    {
-      q: "Ultra Clear ile Şeffaf Etiket farkı ne?",
+      q: "Opak PP malzeme hangi kullanım alanları için uygundur?",
       summary:
-        "Ultra Clear tamamen film (görünmez, makine uygulama); Şeffaf Etiket kağıt-bazlı saydam (elle uygulama).",
+        "Opak PP (polipropilen) malzeme; yırtılmaz, suya, yağa ve donmaya dayanıklı bir plastik etiket çözümüdür.",
       detail:
-        "Ultra Clear cam berraklığında — sadece basılan tasarım görünür, etiket sınırı belli olmaz. Profesyonel cam şişe, parfüm, premium içecek için. Ama elle yapıştırmaya uygun değildir — kayar, hava kabarcığı yapar, otomatik aplikatör makine gerekir. Şeffaf Etiket daha standart film, elle uygulanır.",
+        "Polipropilen, kağıt etiketlerden farklı olarak ıslandığında yırtılmaz, donmaya dayanır ve yağ emmez. Bu özellikleri sayesinde buzdolabı, dondurucu ve soğuk zincir gıda ürünleri, sıvı sabun, deterjan, şampuan ve temizlik ürünlerinde tercih edilen bir malzemedir. Kağıt etiketlerde yaygın görülen kıvrılma, sararma ve nem deformasyonu sorunları opak PP yüzeylerde yaşanmaz; bu da uzun raf ömrü gerektiren ürünler için ideal bir çözüm sunar.",
     },
     {
-      q: "Metalize Etiket parıltı kaybeder mi?",
-      summary: "Hayır, alüminyum kaplama; UV/su/temas dayanıklı.",
-      detail:
-        "Metalize Etiket gümüş alüminyum + akrilik koruma katmanı — premium çikolata, şarap, viski, parfüm etiketlerinde standart. Renkler bu metalik zemin üzerinde 'yumuşak' görünür çünkü beyaz mürekkep basmıyoruz, opak vurgu istiyorsan tasarımda parlak/koyu renk seç.",
-    },
-    {
-      q: "Mat / Parlak Selefon ne işe yarar?",
+      q: "Ultra Clear etiket ile Şeffaf Etiket arasındaki fark nedir?",
       summary:
-        "Etiket üzerine koruyucu film kaplaması; çiziklerden korur, görünümü değiştirir.",
+        "Ultra Clear etiket tamamen film yapısında olup otomatik aplikatör makineler için tasarlanmıştır; Şeffaf Etiket ise kağıt bazlı saydam yapısıyla elle uygulamaya uygundur.",
       detail:
-        "Parlak Selefon: yansıma yüksek, renkler canlı, klasik perakende. Mat Selefon: yansıma yok, premium / sade his, dokunduğunda yumuşak. Su geçirmezlik artar, çizik dayanımı %200+ olur. Etiket fiyatına +%10-15 ekler.",
+        "Ultra Clear etiket cam berraklığında bir görünüm sunar; yalnızca basılan tasarım görünür, etiket sınırı fark edilmez. Bu özelliği nedeniyle profesyonel cam şişeler, parfüm ürünleri ve premium içeceklerde tercih edilir. Ancak elle yapıştırmaya uygun değildir; kayma ve hava kabarcığı oluşumu nedeniyle otomatik aplikatör makinesi gereklidir. Şeffaf Etiket daha standart bir film yapısına sahiptir, elle uygulamaya elverişlidir ve küçük ölçekli işletmeler ile el yapımı ürünler için uygundur.",
     },
     {
-      q: "Soft Touch nedir?",
+      q: "Metalize Etiket zaman içinde parıltısını kaybeder mi?",
       summary:
-        "Kadife / şeftali kabuğu dokusunda mat kaplama — yüksek kalite hissi.",
+        "Hayır, metalize etiketler alüminyum kaplama yapısı sayesinde UV ışınlarına, suya ve temasa karşı uzun süreli dayanım gösterir.",
       detail:
-        "Soft Touch, parmak ucuyla dokunulduğunda hissedilen yumuşak doku verir. Kozmetik, parfüm, premium hediye etiketlerinde tercih edilir. Klasik mat selefondan +%30-40 fiyatlı, ama 'ürün lüks görünsün' hissi yaratır. Sadece rulo etiket modunda mevcut (tabaka'da yok).",
+        "Metalize etiket; gümüş alüminyum yüzey ve üzerine uygulanan akrilik koruma katmanından oluşur. Premium çikolata, şarap, viski ve parfüm ürünlerinde standart bir tercih olarak öne çıkar. Beyaz mürekkep baskısı uygulanmadığı için renkler metalik zemin üzerinde yumuşak bir görünüm kazanır. Opak ve canlı bir renk vurgusu isteniyorsa tasarımın koyu veya yüksek doygunluklu renklerle hazırlanması önerilir; bu yaklaşım metalik yüzeyin görsel etkisini destekler.",
     },
     {
-      q: "Spot UV, Emboss ve Sıcak Yaldız kombine olur mu?",
-      summary: "Evet, üçü birden uygulanabilir (rulo etiket modunda).",
-      detail:
-        "Konfigüratörde Özelleştirme adımında multi-select — birden fazla seçebilirsin. Her ek özellik fiyatı çarpar (örn yaldız ×1.25 + spot UV ×1.30 = ~1.6x). Tasarımda hangi alana hangi özellik uygulanacağını PDF'te ayrı katman olarak gönder (spot UV katmanı 'SpotUV' isimli, sıcak yaldız katmanı Pantone numarası).",
-    },
-    {
-      q: "Holografik vs Simli stickerda fark ne?",
+      q: "Mat Selefon ve Parlak Selefon kaplamaların farkı nedir?",
       summary:
-        "Holografik = ışıkta gökkuşağı renkleri (düz iridescent); Simli = içinde parıltı taneleri (glitter).",
+        "Mat ve parlak selefon; etiket yüzeyine uygulanan koruyucu film kaplamalarıdır. Çizik ve aşınmalara karşı dayanım sağlar ve görsel hissi belirler.",
       detail:
-        "Holografik düz bir film, ışık açısına göre renk kayar (baklava efekti yaygın). Simli daha 'festival/parti' hissi, taneler ışığı kırarak parıldar. Etkinlik, çocuk ürünleri, kırtasiye için ideal. İç mekanda her ikisi de uzun ömürlü, dış mekanda 6-12 ay sonra mat'lanabilir.",
+        "Parlak Selefon, yüksek yansıma değeri ve canlı renkler sunar; klasik perakende ürünlerde tercih edilir. Mat Selefon ise yansımayı ortadan kaldırarak premium ve sade bir his uyandırır; dokunulduğunda yumuşak bir doku verir. Her iki selefon türü de su geçirmezliği artırır ve çizik dayanımını yaklaşık %200 oranında yükseltir. Selefon uygulaması, etiketin temel fiyatına %10-15 oranında ek bir maliyet ekler.",
     },
     {
-      q: "Sticker dış mekanda kaç yıl dayanır?",
-      summary: "Vinil 3-5 yıl; Holografik/Simli 6-12 ay (sonra solar).",
+      q: "Soft Touch kaplama hangi ürünler için uygundur?",
+      summary:
+        "Soft Touch; kadife veya şeftali kabuğu dokusunda yumuşak mat bir kaplamadır ve premium algı oluşturan ürünler için tercih edilir.",
       detail:
-        "Vinil UV ve neme dayanıklı — laptop, su şişesi, araba, vitrin sticker için. Çamaşır makinesi tehlikesi değil (60°C bile kalıyor). Holografik/simli özel filmler dış mekan UV'sine daha duyarlı, iç mekan optimum. Transparan vinil vinil ile aynı dayanım, sadece şeffaf zemin.",
+        "Soft Touch kaplama, parmak ucuyla dokunulduğunda hissedilen yumuşak doku ile diğer kaplamalardan ayrışır. Kozmetik, parfüm ve premium hediye etiketlerinde tercih edilen bir çözümdür; lüks marka algısı oluşturmaya katkı sağlar. Mat selefona göre yaklaşık %30-40 daha yüksek bir maliyet farkı bulunur. Soft Touch kaplama yalnızca rulo etiket üretiminde mevcuttur; tabaka etiket üretiminde sunulmamaktadır.",
+    },
+    {
+      q: "Spot UV, Emboss ve Sıcak Yaldız özelleştirmeleri kombine edilebilir mi?",
+      summary:
+        "Evet, Spot UV, Emboss ve Sıcak Yaldız özelleştirmeleri tek bir tasarım üzerinde kombine olarak uygulanabilir (yalnızca rulo etiket modunda).",
+      detail:
+        "Konfigüratördeki Özelleştirme adımında çoklu seçim yapılabilir; birden fazla efekt aynı etiket üzerine uygulanabilir. Her ek özelleştirme fiyat çarpanını yükseltir; örneğin sıcak yaldız ×1,25 ve Spot UV ×1,30 uygulandığında toplam fiyat yaklaşık 1,6 katına çıkar. Hangi alana hangi özelleştirmenin uygulanacağını belirtmek için tasarım dosyasının PDF formatında ayrı katmanlar halinde hazırlanması gerekir; Spot UV katmanı 'SpotUV' adıyla ve sıcak yaldız katmanı ilgili Pantone numarasıyla işaretlenmelidir.",
+    },
+    {
+      q: "Holografik ve Simli sticker malzemeleri arasındaki fark nedir?",
+      summary:
+        "Holografik malzeme; ışıkta gökkuşağı renkleri yansıtan düz iridescent bir film yapısına sahiptir. Simli malzeme ise içinde parıltı taneleri (glitter) barındıran dekoratif bir yüzey sunar.",
+      detail:
+        "Holografik film düz bir yüzeye sahiptir ve ışık açısına göre renk değişimi (baklava deseni) gösterir; bu özelliği yüksek görünürlük gerektiren ürünlerde tercih edilir. Simli film daha festival ve parti havası sunar; taneler ışığı kırarak parıldama efekti oluşturur. Etkinlik organizasyonu, çocuk ürünleri ve kırtasiye sektörü için ideal seçeneklerdir. İç mekan kullanımında her iki film de uzun ömürlüdür; dış mekan koşullarında 6-12 ay sonra UV etkisiyle matlaşma görülebilir.",
+    },
+    {
+      q: "Sticker ürünleri dış mekanda kaç yıl dayanıklılığını korur?",
+      summary:
+        "Vinil sticker dış mekan koşullarında 3-5 yıl, holografik ve simli sticker ise yaklaşık 6-12 ay dayanım gösterir.",
+      detail:
+        "Vinil sticker UV ışınlarına ve neme karşı yüksek dayanım sağlar; laptop, su şişesi, otomobil ve vitrin uygulamaları için ideal seçenektir. 60°C sıcaklığa kadar deformasyona uğramaz; çamaşır makinesi gibi yüksek sıcaklık ortamlarına dahi dayanıklıdır. Holografik ve simli özel filmler ise dış mekan UV ışınlarına karşı daha duyarlıdır ve iç mekan kullanımı için optimumdur. Transparan vinil malzeme; standart vinilin tüm dayanım özelliklerini taşır, yalnızca şeffaf zemin sunması açısından farklılık gösterir.",
     },
   ],
   kesim: [
     {
-      q: "Rulo etiket ile Tabaka etiket farkı?",
+      q: "Rulo etiket ile Tabaka etiket arasındaki fark nedir?",
       summary:
-        "Rulo = silindirde sarılı, otomatik makine için; Tabaka = düz sayfa, elle uygulama için.",
+        "Rulo etiket; silindir biçiminde sarılı, otomatik aplikatör makineler için tasarlanmıştır. Tabaka etiket ise düz sayfa formatında yarı kesimli olarak hazırlanır ve elle uygulamaya uygundur.",
       detail:
-        "Rulo: 1.000+ adet, makinede sürekli akış. Endüstriyel üretim — şişe etiketleme, kavanoz, kozmetik aplikatörleri. Tabaka: 250+ adet, SRA3 (320×450 mm) tabakada yarı kesimli, elle çıkarıp ürüne yapıştırırsın. Küçük tirajlı el yapımı ürünler için. Konfigüratörde Etiket türü ilk adım — Tabaka seçince Sarım yönü/detayı gizlenir (5 adıma düşer).",
+        "Rulo etiket üretimi; minimum 1.000 adetlik siparişler için sürekli makine akışında gerçekleştirilir ve endüstriyel ölçekte şişe etiketleme, kavanoz ve kozmetik aplikasyonlarında tercih edilir. Tabaka etiket ise minimum 250 adet ile SRA3 (320×450 mm) tabakada yarı kesimli olarak üretilir; etiketler elle ayrılarak ürüne uygulanır ve küçük tirajlı el yapımı ürünler için ideal bir çözümdür. Konfigüratörde Etiket türü ilk adım olarak seçilir; Tabaka tercih edildiğinde sarım yönü ve göbek çapı adımları otomatik olarak devre dışı kalır ve süreç 5 adıma düşer.",
     },
     {
-      q: "Hangisini seçmeliyim — Rulo mu Tabaka mı?",
+      q: "Rulo etiket mi Tabaka etiket mi seçmeliyim?",
       summary:
-        "1000+ adet ve makine kullanıyorsan Rulo; küçük tiraj (250-1000) ve elle uyguluyorsan Tabaka.",
+        "1.000+ adet sipariş ve otomatik aplikatör kullanıyorsanız Rulo etiket; 250-1.000 arası tirajlı el uygulaması yapıyorsanız Tabaka etiket önerilir.",
       detail:
-        "Rulo ekonomik eşik 1000 adettir — daha az basmak istersen tabakaya geç. Tabaka aplikatör makineye sığmaz (yarı kesimli, elle ayırıp yapıştırırsın). Karar veremezsen: el yapımı sabun/kozmetik/küçük seri → Tabaka; içecek/parfüm/seri üretim → Rulo.",
+        "Rulo etiket üretimi için ekonomik eşik 1.000 adettir; bu rakamın altında birim maliyet yükselir ve Tabaka etiket daha avantajlı bir seçim haline gelir. Tabaka etiket otomatik aplikatör makineye uygun değildir; yarı kesimli yapısı nedeniyle elle ayırma ve uygulama gerektirir. El yapımı sabun, kozmetik ve küçük seri üretim için Tabaka etiket önerilirken; içecek, parfüm ve seri üretim için Rulo etiket tercih edilmelidir.",
     },
     {
-      q: "Sarım yönü nedir?",
+      q: "Rulo etikette sarım yönü ne anlama gelir?",
       summary:
-        "Etiketin rulo üzerinde dış mı içe mi sarılacağı — otomatik aplikatör makinen varsa kritik.",
+        "Sarım yönü; etiketin rulo üzerinde içe mi dışa mı bakacak şekilde sarılacağını belirler ve otomatik aplikatör makine kullanan müşteriler için kritik bir parametredir.",
       detail:
-        "4 sarım yönü: yön 1 (en yaygın, önerilen) yön 2/3/4. Etiket sayfasındaki canlı önizlemede 'ABC' metnin yönü gösterilir. Makinenle aynı yönü seçmezsen etiket ters yapışır. Elle yapıştırıyorsan fark etmez, yön 1 default. Şüphedeyseniz aplikatör manueline veya bayisinin yön kodu (örn 'U-IN') sorulur.",
+        "Pim Etiket sisteminde dört farklı sarım yönü sunulmaktadır: yön 1 (en yaygın ve önerilen), yön 2, yön 3 ve yön 4. Etiket konfigüratörü ekranındaki canlı önizleme alanında, 'ABC' referans metni üzerinden seçilen sarım yönü görsel olarak doğrulanabilir. Aplikatör makinenin sarım yönü ile uyumsuz seçim yapılması, etiketin ters yapışmasına neden olur. Elle uygulama yapan müşteriler için sarım yönü kritik değildir; yön 1 varsayılan olarak önerilir. Şüphe halinde aplikatör makine kullanım kılavuzu veya bayinin verdiği yön kodu (örneğin 'U-IN') referans alınabilir.",
     },
     {
-      q: "Göbek çapı (1\" / 1.5\" / 3\" / 4\") ne anlama gelir?",
+      q: "Rulo göbek çapı (1\" / 1.5\" / 3\" / 4\") nedir, nasıl seçilmelidir?",
       summary:
-        "Rulonun iç boruk çapı (core hole) — makinenize göre seçmen gerek.",
+        "Rulo göbek çapı, rulonun iç boru çapını (core) ifade eder ve aplikatör makinenin teknik özelliklerine göre seçilmelidir.",
       detail:
-        "Endüstri standardı 3 inch (76 mm) — büyük endüstriyel makineler. 1 inch (25 mm) masaüstü/küçük lab makineleri. 1.5\" ve 4\" ara boyutlar, daha az yaygın. Makinen yoksa 3\" seç (default), tabakaya geçersen göbek adımı kaybolur. Yanlış göbek = rulo makineye takılmaz.",
+        "Endüstri standardı 3 inch (76 mm) göbek çapıdır; büyük ölçekli endüstriyel aplikatör makinelerinde tercih edilir. 1 inch (25 mm) göbek; masaüstü ve küçük laboratuvar makineleri için uygundur. 1,5 inch ve 4 inch göbek çapları ara boyutlar olarak sunulur ancak daha az tercih edilir. Aplikatör makineye sahip olmayan müşteriler için 3 inch varsayılan değerdir. Tabaka etiket seçildiğinde göbek çapı adımı konfigüratörden otomatik olarak kaldırılır. Yanlış göbek çapı seçimi, rulonun aplikatör makineye uyum sağlayamaması sonucunu doğurur.",
     },
     {
-      q: "Tabaka ile Die-Cut (Kontur Kesim) farkı?",
+      q: "Tabaka sticker ile Kontur Kesim (Die-Cut) sticker arasındaki fark nedir?",
       summary:
-        "Tabaka: sayfada yarı kesimli, müşteri elle ayırır; Die-Cut: her sticker tasarımın silüetine göre tek tek kesilir.",
+        "Tabaka sticker; sayfada yarı kesimli olarak üretilir ve müşteri tarafından elle ayrılır. Die-Cut (kontur kesim) sticker ise her birimin tasarım silüetine göre tek tek özel olarak kesilmesi yöntemidir.",
       detail:
-        "Tabaka — toplu dağıtım, etkinlik, kırtasiye sticker (örn 8 sticker / A4 tabaka). Die-Cut — profesyonel ürün ambalajı, her sticker hazır, beyaz kontur 2.5 mm. Die-cut'ta tasarımın PNG'sinin alpha kanalı kesim yolunu belirler — düz arka planlı PNG yükle, biz sınırı otomatik çıkarırız.",
+        "Tabaka sticker; toplu dağıtım, etkinlik ve kırtasiye uygulamaları için tercih edilir; örneğin tek bir A4 tabakada 8 sticker yarı kesimli olarak yer alabilir. Die-Cut sticker ise profesyonel ürün ambalajlama için tasarlanmıştır; her birim hazır halde teslim edilir ve 2,5 mm beyaz kontur çerçevesi sticker'a karakteristik bir görünüm kazandırır. Die-Cut üretiminde tasarım PNG dosyasının alpha kanalı kesim yolunu otomatik olarak belirler; düz arka planlı PNG dosyası yüklenmesi durumunda sistem kesim sınırını otomatik olarak hesaplar.",
     },
     {
-      q: "Kontur kesim ile her şekil mümkün mü?",
-      summary: "Evet, tasarımın silüeti ne ise sticker o şekilde kesilir.",
+      q: "Kontur kesim sticker'da her şekil üretilebilir mi?",
+      summary:
+        "Evet, kontur kesim teknolojisi sayesinde tasarımın silüeti ne ise sticker tam o şekilde kesilebilir.",
       detail:
-        "Kalp, yıldız, yaprak, dalga, balon, logo silüeti, özgün karakter — sınır yok. Tasarım PNG (şeffaf arka plan) veya AI/PSD (vektör path) yükle. Çok ince çıkıntılar (1 mm altı) üretimde kopabilir, otomatik 1 mm minimum kenar uygulanır.",
+        "Kalp, yıldız, yaprak, dalga, balon, logo silüeti, özgün karakter tasarımları ve diğer karmaşık formlarda hiçbir şekil sınırlaması bulunmaz. Üretim için tasarım dosyası PNG formatında şeffaf arka planlı olarak veya AI/PSD formatında vektör path içerecek şekilde yüklenmelidir. 1 mm altındaki çok ince çıkıntılar üretim sırasında kopabileceğinden sistem otomatik olarak 1 mm minimum kenar payı uygular. Kontur kesim, her birimin lazer veya kalıp ile özel olarak kesilmesini sağladığından el yapımı ürün görünümünden profesyonel marka logosuna kadar geniş bir uygulama yelpazesi sunar.",
     },
     {
-      q: "Yumuşatılmış köşe (bumper) ne demek?",
+      q: "Yumuşatılmış köşe (bumper) seçeneği nedir?",
       summary:
-        "Dikdörtgen sticker köşelerinin yuvarlatılmış versiyonu — pill/bumper sticker görünümü.",
+        "Yumuşatılmış köşe; dikdörtgen sticker'ların köşelerinin yuvarlatılmış halidir ve pill veya bumper sticker görünümü oluşturur.",
       detail:
-        "Standart kare/dikdörtgen sticker keskin köşeli (radius 0). Yumuşatılmış seçersen 16-36 px radius eklenir, araba bumper sticker, pill formu, kart benzeri görünüm. Özel oran (örn 100×40 mm) + yumuşatılmış köşe = klasik bumper sticker.",
+        "Standart kare ve dikdörtgen sticker'lar varsayılan olarak keskin köşeli (radius 0) üretilir. Yumuşatılmış köşe seçeneği işaretlendiğinde 16-36 piksel arası bir köşe yumuşatma uygulanır; bu da otomobil bumper sticker'ları, pill formu ve kart benzeri görünümler için ideal bir estetik sağlar. Özel oran (örneğin 100×40 mm) ile birlikte yumuşatılmış köşe seçildiğinde klasik bumper sticker görünümü elde edilir; konfigüratör bu seçim için varsayılan bumper boyutunu otomatik olarak uygular.",
     },
   ],
   boyut: [
     {
-      q: "Etikette neden minimum 1.000 adet?",
+      q: "Rulo etikette neden minimum 1.000 adet sipariş zorunluluğu vardır?",
       summary:
-        "Fason rulo üretimi ekonomik eşik — daha az basmak verim kaybı oluşturuyor.",
+        "1.000 adet minimum sipariş; fason rulo etiket üretiminin ekonomik eşiğidir ve birim fiyatın sürdürülebilir kalmasını sağlar.",
       detail:
-        "Rulo etiket flexografi/dijital baskı makinelerinde setup süresi (mürekkep değişimi, prova baskı, kalibrasyon) 1-2 saat. 1000 adetin altında bu maliyet birim fiyata aşırı yansır. Daha az istersen Tabaka etiket (min 250) veya Sticker tabaka (min 25) seç.",
+        "Rulo etiket üretimi, flexografi ve dijital baskı makinelerinde gerçekleştirilir; bu makinelerde mürekkep değişimi, prova baskı ve kalibrasyon süreçleri ortalama 1-2 saat sürer. 1.000 adet altındaki siparişlerde bu hazırlık (setup) maliyeti birim fiyata aşırı oranda yansıyacağı için ekonomik açıdan sürdürülebilir değildir. Daha düşük adetli siparişler için Tabaka etiket (minimum 250 adet) veya Sticker tabaka (minimum 25 adet) seçenekleri konfigüratörde sunulmaktadır.",
     },
     {
-      q: "Sticker'da neden minimum 25 adet?",
-      summary: "Tabaka tam dolar — daha az basmak için yer kalmıyor.",
+      q: "Sticker'da minimum sipariş adedi neden 25 olarak belirlenmiştir?",
+      summary:
+        "Sticker tabaka 25 adet minimumu; SRA3 tabakanın standart sticker boyutuyla tamamen dolacak şekilde optimize edilmesinden kaynaklanır.",
       detail:
-        "SRA3 tabakası (320×450 mm) 25 standart sticker (75×75 mm) ile dolar. Bunun altı verimsiz. 25 sticker tek tabakaya basılır, sen elle ayırırsın veya die-cut için bireysel kesilir. Hediyelik, etkinlik, kırtasiye için 25 yeterli, kişisel kullanım için optimum.",
+        "SRA3 tabaka (320×450 mm) 25 standart sticker (75×75 mm) ile tam olarak dolar; bu rakamın altındaki sipariş tabakanın boş kalmasına ve verim kaybına neden olur. 25 adet sticker tek bir tabakaya basılır ve müşteri tarafından elle ayrılır veya kontur kesim (die-cut) uygulamasında bireysel olarak kesilir. Bu adet; hediyelik ürünler, kurumsal etkinlikler, kırtasiye uygulamaları ve kişisel kullanım için optimum bir başlangıç miktarıdır.",
     },
     {
-      q: "Maksimum kaç adet sipariş verebilirim?",
+      q: "Maksimum kaç adet sipariş verilebilir?",
       summary:
-        "Etiket: 50.000 adet, Sticker: 1.000+ (toplu için iletişim).",
+        "Etiket siparişleri için maksimum 50.000 adet, sticker siparişleri için 1.000 adet üzeri özel teklifle gerçekleştirilebilir.",
       detail:
-        "Etikette 50.000 üstü sipariş için WhatsApp'tan özel teklif al — fiyat tier'ı düşer, üretim 2-3 makinaya bölünür. Sticker'da 1.000 üstü teknik olarak kabul ediyor ama üretim süresi 5+ iş günü olur. Tek seferde mi parça parça mı ihtiyacın varsa ona göre planlayalım.",
+        "Etiket siparişleri için 50.000 adet üzerindeki tirajlar konfigüratör üzerinden doğrudan oluşturulamaz; bu tür siparişler için WhatsApp veya e-posta aracılığıyla özel teklif talep edilmesi önerilir. Yüksek adetli siparişlerde birim fiyat indirim kademesi düşer ve üretim 2-3 makineye bölünerek teslim süresi optimize edilir. Sticker'da 1.000 adet üzeri siparişler teknik olarak kabul edilir; ancak üretim süresi 5 iş gününü aşabilir. Tek seferlik veya parçalı teslim ihtiyacınız doğrultusunda özel üretim planı oluşturulur.",
     },
     {
-      q: "Tabaka etikette kaç adet tek tabakaya sığar?",
+      q: "Tabaka etikette tek tabakaya kaç adet etiket sığar?",
       summary:
-        "Etiket boyutuna göre değişir — canlı önizlemede gerçek sayıyı gösteriyoruz.",
+        "Tek SRA3 tabakaya sığacak etiket sayısı; etiket boyutuna göre değişir ve canlı önizleme ekranında gerçek değerle görüntülenir.",
       detail:
-        "SRA3 tabakası (320×450 mm) + 2 mm gap. Hesap algoritması en iyi yerleşimi (yatay vs çevrilmiş) otomatik seçer: 30×50 mm → ~84 etiket, 60×80 mm → ~30 etiket, 100×150 mm → ~9 etiket. Canlı önizlemede gerçek cols × rows = perSheet etiket grid'i çizilir.",
+        "Hesaplama; SRA3 (320×450 mm) tabaka üzerinde etiketler arası 2 mm boşluk dikkate alınarak gerçekleştirilir. Sistem algoritması en yüksek verimliliği sağlayan yerleşimi (yatay veya çevrilmiş yön) otomatik olarak seçer. Örnek hesaplamalar: 30×50 mm etiket ≈ 84 adet, 60×80 mm etiket ≈ 30 adet, 100×150 mm etiket ≈ 9 adet. Canlı önizleme ekranındaki tabaka diyagramında sütun × satır olarak yerleşim ızgara biçiminde gösterilir; bu sayede müşteri her tabakadan kaç adet etiket alacağını net olarak görüntüleyebilir.",
     },
     {
-      q: "Özel oran sticker nedir?",
+      q: "Özel oran (custom ratio) sticker seçeneği nedir?",
       summary:
-        "Kare/yuvarlak yerine kendi en-boy oranını seç — bumper sticker, pill, geniş yatay için ideal.",
+        "Özel oran sticker seçeneği; standart kare veya yuvarlak boyutlar yerine müşterinin belirleyeceği en-boy oranıyla üretim imkanı sunar.",
       detail:
-        "Standart kare 75×75 mm → bumper 100×40 mm (yatay uzun) veya 25×255 mm (çubuk). Konfigüratörde 'Özel oran' seçince sistem otomatik bumper boyut (100×40) uygular, sen boyut adımında değiştirebilirsin. Köşe seçeneği ile düz/yumuşatılmış arasında karar ver.",
+        "Standart 75×75 mm kare sticker dışında, özel oran seçeneği ile 100×40 mm bumper sticker veya 25×255 mm çubuk sticker gibi farklı geometrilerde üretim yapılabilir. Konfigüratörde 'Özel oran' seçildiğinde sistem otomatik olarak bumper boyutunu (100×40 mm) varsayılan değer olarak uygular; bu değer boyut adımında müşteri tarafından düzenlenebilir. Köşe seçimi ile keskin köşeli veya yumuşatılmış köşeli (bumper sticker görünümü) arasında tercih yapılabilir.",
     },
   ],
   fiyat: [
@@ -494,32 +503,32 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
   ],
   onizleme: [
     {
-      q: "Canlı önizleme ne kadar gerçekçi?",
+      q: "Canlı önizleme ne kadar gerçekçidir?",
       summary:
-        "Malzeme dokusu, kaplama parlaklığı, boyut oranı gerçek; renk hassasiyeti monitör kalibrasyonuna bağlı.",
+        "Canlı önizleme; malzeme dokusu, kaplama parlaklığı, boyut oranı ve yerleşim açısından gerçek üretimle birebir uyumludur. Renk hassasiyeti ise monitör kalibrasyonuna bağlı olarak farklılık gösterebilir.",
       detail:
-        "Önizlemede gerçek olanlar: malzeme zemini (kuşe vs kraft vs metalik), kaplama efekti (mat/parlak/soft touch), özelleştirme (yaldız/emboss/spotUV katmanları), boyut oranı (60×80 ≠ 75×75), tabaka yerleşimi (cols×rows). Tam gerçek olmayan: kesin renk tonu (ekran ↔ baskı CMYK farkı), kağıt kalınlığı/hissi.",
+        "Önizleme ekranında gerçek üretim sonucuyla birebir aktarılan unsurlar şunlardır: malzeme zemini (kuşe, kraft, metalize, ultra clear), kaplama efekti (mat selefon, parlak selefon, soft touch), özelleştirme katmanları (sıcak yaldız, emboss, Spot UV), boyut oranı (60×80 mm ile 75×75 mm görsel farkı) ve tabaka yerleşimi (sütun × satır ızgarası). Tam birebir aktarılamayan unsurlar arasında ise ekran-baskı arasındaki renk uzayı farkından (RGB ↔ CMYK) kaynaklanan ton sapması ve kağıt kalınlığı/dokunsal his yer alır. Yüksek hassasiyet gerektiren kurumsal projeler için sipariş öncesinde fiziksel prova baskı talep edilebilir.",
     },
     {
-      q: "3D mod ile Eskiz mod farkı?",
+      q: "3D önizleme modu ile Eskiz modu arasındaki fark nedir?",
       summary:
-        "3D: malzeme dokusu + perspektif (gerçekçi sunum); Eskiz: mercan dolu diyagram (matbaa yerleşim ipucu).",
+        "3D modu; malzeme dokusu ve hafif perspektif ile gerçekçi bir sunum sağlar. Eskiz modu ise mercan rengiyle dolgulu matbaa diyagramı görünümüyle yerleşim planını detaylı aktarır.",
       detail:
-        "Sağ alttaki toggle ile geçiş. 3D modu müşteriye 'böyle görünecek' hissi verir — malzeme zemini, sheen efekti, hafif perspektif. Eskiz modu 'ne kadar sığar, nasıl dizilecek' net anlatır — matbaa diyagramı gibi.",
+        "Pim Etiket önizleme paneli üzerindeki toggle ile iki mod arasında geçiş yapılabilir. 3D modu; malzeme zemini, parlaklık efekti ve hafif perspektif ile 'ürün son halinde böyle görünecek' algısı sunar. Bu mod özellikle müşteri sunumları ve mockup ihtiyaçları için tercih edilir. Eskiz modu ise tabakaya kaç adet etiket sığacağını ve yerleşim planını net bir şekilde aktarır; matbaa üretim diyagramına benzer bir görsellik ile teknik açıdan değerlendirme yapma imkanı sağlar.",
     },
     {
-      q: "Önizlemede tasarımım nasıl göründüyse aynısı mı basılır?",
+      q: "Önizlemede gördüğüm tasarım, basılı ürünle aynı mı olacak?",
       summary:
-        "Evet, mockup üretim referansı — boyut oranı + malzeme + özelleştirme tam birebir.",
+        "Evet, canlı önizleme üretim referansıdır; boyut oranı, malzeme tipi ve özelleştirme katmanları birebir uygulanır.",
       detail:
-        "Tasarımın PDF/PNG olarak yüklediğin halinde önizleme cell'inde ortalı görünür. Üretimde aynı yerleşim uygulanır (bleed payı 2 mm sistem otomatik ekler). Renk hassasiyeti hariç tüm görsel öğeler birebir.",
+        "Yüklenen PDF veya PNG tasarım dosyası, önizleme hücresinde otomatik olarak ortalı şekilde konumlandırılır. Üretim aşamasında aynı yerleşim uygulanır; sistem 2 mm taşma payını otomatik olarak ekler. Malzeme tipi (kuşe, kraft, metalize), kaplama (mat, parlak, soft touch) ve özelleştirme (yaldız, emboss, Spot UV) öğeleri birebir aktarılır. Yalnızca renk hassasiyeti açısından, ekran ile baskı arasındaki doğal renk uzayı farkından kaynaklanan %5-10 oranında sapma olağan kabul edilir.",
     },
     {
-      q: "Üretim öncesi onay süreci var mı?",
+      q: "Üretim öncesi tasarım onay süreci nasıl işlemektedir?",
       summary:
-        "Evet, tasarım yüklendikten sonra otomatik AI ön denetim + senin onay bekleniyor.",
+        "Evet, tasarım yüklendikten sonra otomatik yapay zeka ön denetimi yapılır ve müşterinin son onayı beklenir.",
       detail:
-        "AI denetimi: DPI, font outline, taşma payı, mürekkep doygunluğu, kontur kesim hatları, çok ince çıkıntılar. Sorun bulursa 'Onay bekleniyor' durumuna alırız, sen düzeltip tekrar yüklersin. Sorun yoksa otomatik üretime girer. Kritik tasarımlarda (kurumsal müşteri) elcek prova baskı isteyebilirsin (ek ücret).",
+        "Ön denetim sürecinde yapay zeka tabanlı kontrol mekanizması; DPI değeri, font outline durumu, taşma payı, mürekkep doygunluğu (%320 üzeri toplam ink coverage), kontur kesim hatları ve 1 mm altındaki ince çıkıntılar gibi teknik parametreleri analiz eder. Sorun tespit edildiğinde sipariş 'Onay bekleniyor' durumuna alınır ve müşteriye düzeltilmiş dosya yükleme talebi iletilir. Sorun bulunmadığında sipariş otomatik olarak üretim hattına aktarılır. Kurumsal müşteriler veya yüksek hassasiyet gerektiren projeler için sipariş öncesinde fiziksel prova baskı talep edilebilir; bu hizmet için ek ücret uygulanır.",
     },
   ],
   kvkk: [
