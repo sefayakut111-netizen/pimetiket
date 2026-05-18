@@ -262,30 +262,12 @@ export function Footer() {
         </div>
 
         {/* Trust strip — copyright (sol) + security badges (sağ)
-            Sefa 17 May v17: Kart ikonları kaldırıldı, yerine ©. */}
+            Sefa 17 May v17: Kart ikonları kaldırıldı, yerine ©.
+            Sefa 18 May v68: Uzun FSEK telif paragrafı kaldırıldı —
+            sadece /sartlar §5 ve /telif-sikayet sayfalarında yazıyor. */}
         <PaymentBadges
           copyrightText={`© ${new Date().getFullYear()} ${t.footer.copyright}`}
         />
-
-        {/* Sefa 18 May v68 (koruma): Telif uyarısı — FSEK 5846 + Sınai Mülkiyet
-            Kanunu 6769 referansı. İhlal halinde tazminat davası açıkça beyan. */}
-        <div className="mt-4 pt-4 border-t border-gri-200/60 text-center">
-          <p className="text-[11px] text-gri-500 leading-relaxed max-w-[860px] mx-auto">
-            Bu sitedeki tüm içerik — kaynak kod, tasarımlar, görseller, metinler,
-            ürün konfigüratörü, &ldquo;Pim Etiket&rdquo; markası ve karga
-            maskotu — <strong>5846 sayılı FSEK</strong> ve{" "}
-            <strong>6769 sayılı Sınai Mülkiyet Kanunu</strong> kapsamında
-            korunmaktadır. İzinsiz kopyalama, scraping, tersine mühendislik ve
-            türev eser üretimi <strong>yasaktır</strong>; ihlal halinde
-            tazminat davası açma hakkı saklıdır.{" "}
-            <a
-              href="/sartlar#fikri-mulkiyet"
-              className="text-gri-700 underline hover:text-pim-mercan"
-            >
-              Detay
-            </a>
-          </p>
-        </div>
 
         {/* Sefa kararı 17 May v15: Şirket bilgisi bloğu (Sefa Yakut
             Kırtasiye Baskı Ticaret Ltd. Şti. + Mersis/Sicil + adres +
