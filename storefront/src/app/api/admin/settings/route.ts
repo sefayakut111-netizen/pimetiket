@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const auth = await assertAdmin();
+  // Sefa 18 May v68 (RBAC yayma): Site ayarları sadece super_admin
+  // (operations bile değiştirememeli — sistem geneli ayar, kritik).
+  const auth = await assertPermission("settings", "update");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

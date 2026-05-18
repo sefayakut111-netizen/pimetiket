@@ -1,270 +1,337 @@
 /**
  * Pim Etiket — /admin/calisanlar
  *
- * Rol bazlı yetki yönetimi. Auth gelene kadar mock; backend swap'te
- * Supabase Auth kullanıcılarına `role` claim eklenir.
+ * Sefa 18 May v68 (RBAC yayma — Migration 054):
+ * Mevcut mock veri kaldırıldı, gerçek Supabase profiles tablosundan
+ * admin_role NOT NULL kullanıcıları liste. 5 rol enum'una geçildi.
+ *
+ * Önceki mock roller (admin/operator/designer/accountant) artık geçerli
+ * DEĞİL — Migration 054'teki 5 sabit role taşındı.
  */
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Eyebrow,
+  useToast,
+  Skeleton,
+} from "@/components/ui";
 import { cn } from "@/lib/cn";
+import type { StaffRow } from "@/app/api/admin/staff/route";
 
-type Role = "admin" | "operator" | "designer" | "accountant";
+type AdminRole =
+  | "super_admin"
+  | "operations"
+  | "customer_service"
+  | "production"
+  | "content_editor";
 
-const ROLE_LABEL: Record<Role, string> = {
-  admin: "Yönetici",
-  operator: "Operatör",
-  designer: "Tasarımcı",
-  accountant: "Muhasebeci",
-};
-
-const ROLE_COLOR: Record<Role, string> = {
-  admin: "bg-pim-mercan text-white",
-  operator: "bg-yesil-soft text-yesil",
-  designer: "bg-krem text-lacivert",
-  accountant: "bg-gri-100 text-gri-700",
-};
-
-const ROLE_DESC: Record<Role, string> = {
-  admin: "Tam yetki: ayarlar, çalışan yönetimi, raporlar, audit",
-  operator: "Sipariş + AI QC + prova + fason atama",
-  designer: "Sipariş + tasarım dosyası + prova üretimi",
-  accountant: "Sipariş listesi + raporlar + iade ödemeleri",
-};
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  active: boolean;
-  lastLoginAt: number | null;
+interface RoleOption {
+  role: AdminRole;
+  label: string;
+  description: string;
 }
 
-const INITIAL_STAFF: Staff[] = [
-  {
-    id: "s1",
-    name: "Sefa Yakut",
-    email: "sefa@pimetiket.com",
-    role: "admin",
-    active: true,
-    lastLoginAt: Date.now() - 1000 * 60 * 5,
-  },
-];
+const ROLE_COLOR: Record<AdminRole, string> = {
+  super_admin: "bg-pim-mercan text-white",
+  operations: "bg-mavi-soft text-mavi-koyu",
+  customer_service: "bg-yesil-soft text-yesil-koyu",
+  production: "bg-sari-soft text-sari-koyu",
+  content_editor: "bg-mor/10 text-mor",
+};
 
-function timeAgo(ts: number | null): string {
-  if (!ts) return "Hiç";
-  const diff = Date.now() - ts;
+const ROLE_EMOJI: Record<AdminRole, string> = {
+  super_admin: "👑",
+  operations: "📦",
+  customer_service: "💬",
+  production: "🎨",
+  content_editor: "✍️",
+};
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "Hiç giriş yapmadı";
+  const diff = Date.now() - new Date(iso).getTime();
   const min = Math.floor(diff / 60_000);
   if (min < 1) return "Az önce";
   if (min < 60) return `${min} dk önce`;
   const hr = Math.floor(min / 60);
   if (hr < 24) return `${hr} saat önce`;
   const day = Math.floor(hr / 24);
-  return `${day} gün önce`;
+  if (day < 30) return `${day} gün önce`;
+  return new Date(iso).toLocaleDateString("tr-TR");
 }
 
 export default function AdminCalisanlarPage() {
   const toast = useToast();
-  const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteName, setInviteName] = useState("");
-  const [inviteRole, setInviteRole] = useState<Role>("operator");
+  const [loading, setLoading] = useState(true);
+  const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [updating, setUpdating] = useState<string | null>(null);
 
-  const onInvite = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteEmail.includes("@") || !inviteName.trim()) {
-      toast.error("E-posta ve isim gerekli");
+  async function fetchStaff() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/staff", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Liste alınamadı");
+        return;
+      }
+      setStaff(data.staff ?? []);
+      setRoles(data.roles ?? []);
+    } catch (e) {
+      toast.error(`Yükleme hatası: ${(e as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void fetchStaff();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleRoleChange(userId: string, newRole: string | null) {
+    setUpdating(userId);
+    try {
+      const res = await fetch(`/api/admin/staff/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admin_role: newRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Rol değiştirilemedi");
+        return;
+      }
+      toast.success("Rol güncellendi");
+      await fetchStaff();
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function handleRemove(userId: string, email: string | null) {
+    if (
+      !confirm(
+        `${email ?? userId} çalışan listesinden çıkarılacak. Devam edilsin mi?`
+      )
+    ) {
       return;
     }
-    setStaff((arr) => [
-      ...arr,
-      {
-        id: `s-${Date.now()}`,
-        name: inviteName.trim(),
-        email: inviteEmail.trim(),
-        role: inviteRole,
-        active: true,
-        lastLoginAt: null,
-      },
-    ]);
-    toast.success(`${inviteEmail} davet edildi (mock — Faz 2'de e-posta)`);
-    setInviteEmail("");
-    setInviteName("");
-    setInviteRole("operator");
-    setShowInvite(false);
-  };
-
-  const toggleActive = (id: string) => {
-    setStaff((arr) =>
-      arr.map((s) => (s.id === id ? { ...s, active: !s.active } : s))
-    );
-  };
-
-  const remove = (s: Staff) => {
-    if (s.role === "admin") {
-      toast.error("Admin kullanıcı silinemez");
-      return;
+    setUpdating(userId);
+    try {
+      const res = await fetch(`/api/admin/staff/${userId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Kaldırılamadı");
+        return;
+      }
+      toast.success("Çalışan kaldırıldı");
+      await fetchStaff();
+    } finally {
+      setUpdating(null);
     }
-    if (!confirm(`${s.name} çıkarılsın mı?`)) return;
-    setStaff((arr) => arr.filter((x) => x.id !== s.id));
-    toast.info(`${s.name} çıkarıldı`);
-  };
+  }
 
   return (
-    <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1080px] px-6">
-        <div className="flex items-end justify-between gap-6 mb-7 flex-wrap">
-          <div>
-            <Eyebrow>Ekip yönetimi</Eyebrow>
-            <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Çalışanlar
-            </h1>
-            <p className="mt-1.5 text-base text-gri-700">
-              {staff.length} çalışan · rol bazlı yetki
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => setShowInvite((v) => !v)}
-          >
-            <Icon.Plus size={16} /> Çalışan davet et
-          </Button>
+    <main className="mx-auto max-w-[1280px] px-4 py-6 md:px-6">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <Eyebrow>RBAC — 5 Rol</Eyebrow>
+          <h1 className="mt-1 text-2xl font-bold text-lacivert md:text-3xl">
+            Çalışanlar & Yetki
+          </h1>
+          <p className="mt-1 text-sm text-gri-700">
+            Migration 054 ile granular yetki. Her endpoint{" "}
+            <code className="rounded bg-gri-100 px-1 text-[12px]">
+              fn_has_permission(module, action)
+            </code>{" "}
+            ile korunur.
+          </p>
         </div>
+      </div>
 
-        {/* Invite form */}
-        {showInvite && (
-          <Card padding="p-6" className="mb-5">
-            <h2 className="text-lg font-semibold mb-4">Yeni çalışan davet et</h2>
-            <form onSubmit={onInvite} className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="text-[13px] font-semibold mb-1.5 block">İsim</span>
-                  <Input
-                    value={inviteName}
-                    onChange={(e) => setInviteName(e.target.value)}
-                    placeholder="Ahmet Operatör"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[13px] font-semibold mb-1.5 block">E-posta</span>
-                  <Input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="ahmet@pimetiket.com"
-                  />
-                </label>
-              </div>
-              <div>
-                <span className="text-[13px] font-semibold mb-2 block">Rol</span>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {(Object.keys(ROLE_LABEL) as Role[])
-                    .filter((r) => r !== "admin")
-                    .map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setInviteRole(r)}
-                        className={cn(
-                          "px-3 py-2.5 rounded-lg ring-[1.5px] text-left transition-all",
-                          inviteRole === r
-                            ? "ring-pim-mercan bg-pim-mercan-tint/40"
-                            : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
-                        )}
-                      >
-                        <div className="font-semibold text-[13px]">
-                          {ROLE_LABEL[r]}
-                        </div>
-                        <div className="text-[11.5px] text-gri-700 mt-0.5 leading-tight">
-                          {ROLE_DESC[r]}
-                        </div>
-                      </button>
-                    ))}
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end pt-2">
-                <Button variant="ghost" type="button" onClick={() => setShowInvite(false)}>
-                  İptal
-                </Button>
-                <Button type="submit" variant="primary">
-                  Davet gönder <Icon.ArrowR size={14} />
-                </Button>
-              </div>
-            </form>
-          </Card>
-        )}
-
-        {/* Staff list */}
-        <div className="flex flex-col gap-3">
-          {staff.map((s) => (
-            <Card key={s.id} padding="p-5">
-              <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-4 items-center">
-                <div className="grid place-items-center w-12 h-12 rounded-full bg-pim-mercan text-white font-bold text-[15px] shrink-0">
-                  {s.name
-                    .split(" ")
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((p) => p[0]?.toUpperCase())
-                    .join("")}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span className="font-semibold text-base">{s.name}</span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
-                        ROLE_COLOR[s.role]
-                      )}
-                    >
-                      {ROLE_LABEL[s.role]}
-                    </span>
-                    {!s.active && (
-                      <span className="inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold bg-gri-100 text-gri-700">
-                        Pasif
-                      </span>
+      {/* Rol açıklamaları */}
+      <Card padding="p-5" className="mb-6">
+        <h2 className="text-base font-semibold mb-3 text-lacivert">
+          Yetki matrisi (5 rol)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          {roles.length === 0 ? (
+            <>
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+            </>
+          ) : (
+            roles.map((r) => (
+              <div
+                key={r.role}
+                className="rounded-lg border border-gri-200 p-3"
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span>{ROLE_EMOJI[r.role as AdminRole]}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                      ROLE_COLOR[r.role as AdminRole]
                     )}
-                  </div>
-                  <div className="text-[13px] text-gri-700">{s.email}</div>
-                  <div className="text-[11.5px] text-gri-500 mt-0.5">
-                    Son giriş: {timeAgo(s.lastLoginAt)}
-                  </div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleActive(s.id)}
                   >
-                    {s.active ? "Pasifleştir" : "Aktifleştir"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => remove(s)}
-                    disabled={s.role === "admin"}
-                  >
-                    <Icon.Info size={12} /> Çıkar
-                  </Button>
+                    {r.label}
+                  </span>
                 </div>
+                <p className="text-[11.5px] text-gri-700 leading-relaxed">
+                  {r.description}
+                </p>
               </div>
-            </Card>
-          ))}
+            ))
+          )}
         </div>
+      </Card>
 
-        <div className="mt-6 flex items-center gap-3 text-[12px] text-gri-500">
-          <Icon.Info size={14} />
-          <span>
-            Davet e-postası Faz 2&rsquo;de Resend ile gönderilir. Şimdilik
-            mock — backend swap sonrası gerçek invite linki çıkacak.
-          </span>
+      {/* Çalışan listesi */}
+      <Card padding="p-0" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gri-50 border-b border-gri-200 text-[12px] uppercase text-gri-600">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold">Kişi</th>
+                <th className="px-4 py-3 text-left font-semibold">Rol</th>
+                <th className="px-4 py-3 text-left font-semibold">2FA</th>
+                <th className="px-4 py-3 text-left font-semibold">Son giriş</th>
+                <th className="px-4 py-3 text-right font-semibold">İşlem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={i} className="border-b border-gri-100">
+                    <td colSpan={5} className="px-4 py-3">
+                      <Skeleton className="h-6 w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : staff.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-10 text-center text-gri-500"
+                  >
+                    Henüz çalışan yok. Sefa süper admin tek başına.
+                  </td>
+                </tr>
+              ) : (
+                staff.map((s) => {
+                  const isLegacy = !s.admin_role && s.legacy_role;
+                  const displayRole = s.admin_role ?? null;
+                  return (
+                    <tr
+                      key={s.user_id}
+                      className="border-b border-gri-100 last:border-0 hover:bg-gri-50"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-lacivert">
+                          {s.display_name ?? s.email?.split("@")[0] ?? "—"}
+                        </div>
+                        <div className="text-[12px] text-gri-500">
+                          {s.email ?? "—"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {isLegacy ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center rounded-full bg-sari-soft px-2 py-0.5 text-[11px] font-semibold text-sari-koyu">
+                              ⚠️ Legacy "{s.legacy_role}"
+                            </span>
+                            <div className="text-[11px] text-gri-500">
+                              Migration 054'e göre rol seçilmedi
+                            </div>
+                          </div>
+                        ) : displayRole ? (
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
+                              ROLE_COLOR[displayRole as AdminRole]
+                            )}
+                          >
+                            {ROLE_EMOJI[displayRole as AdminRole]}{" "}
+                            {roles.find((r) => r.role === displayRole)?.label ??
+                              displayRole}
+                          </span>
+                        ) : (
+                          <span className="text-gri-500 text-[12px]">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.mfa_enabled ? (
+                          <span className="inline-flex items-center gap-1 text-yesil-koyu text-[12px] font-semibold">
+                            🔒 Aktif
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-kirmizi-koyu text-[12px] font-semibold">
+                            ⚠️ Kapalı
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-[12.5px] text-gri-700">
+                        {timeAgo(s.last_sign_in_at)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <select
+                            value={s.admin_role ?? ""}
+                            onChange={(e) =>
+                              handleRoleChange(
+                                s.user_id,
+                                e.target.value || null
+                              )
+                            }
+                            disabled={updating === s.user_id}
+                            className="rounded-lg border border-gri-200 px-2 py-1.5 text-[12px] disabled:opacity-50"
+                          >
+                            <option value="">Rol seç…</option>
+                            {roles.map((r) => (
+                              <option key={r.role} value={r.role}>
+                                {ROLE_EMOJI[r.role as AdminRole]} {r.label}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(s.user_id, s.email)}
+                            disabled={updating === s.user_id}
+                            className="text-[12px] text-kirmizi-koyu hover:underline disabled:opacity-50"
+                            title="Çalışanlardan çıkar"
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+      </Card>
+
+      {/* Bilgilendirme — davet akışı henüz yok */}
+      <div className="mt-6 rounded-lg bg-mavi-soft p-4 text-[12.5px] text-mavi-koyu">
+        <strong className="block mb-1">💡 Yeni çalışan eklemek için:</strong>
+        Önce kişi <code>/auth</code> sayfasından kendi hesabını açar (email
+        + şifre veya Google). Sonra buraya gelir, listede görünür → rol
+        atarsın. Resend email davet akışı Faz 2'de aktif olacak.
       </div>
     </main>
   );

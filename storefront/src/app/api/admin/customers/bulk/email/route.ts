@@ -16,10 +16,13 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  // Sefa 18 May v68 (RBAC yayma — Migration 054):
+  // Bulk email customer_service yetkisi (modul=customers, action=update).
+  // Spam koruması — operations/production/content_editor mail atamaz.
+  const auth = await assertPermission("customers", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as {

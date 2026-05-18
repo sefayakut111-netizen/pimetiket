@@ -21,7 +21,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 
 const BodySchema = z.object({
   orderId: z.string().min(1),
@@ -30,7 +30,8 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  // Sefa 18 May v68 (RBAC yayma): AI QC kararı production yetkisi
+  const auth = await assertPermission("ai_qc", "approve");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
