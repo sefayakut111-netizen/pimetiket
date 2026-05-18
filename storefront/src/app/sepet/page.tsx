@@ -71,6 +71,9 @@ export default function SepetPage() {
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // Sefa 18 May v68 Migration 053: min/max sipariş tutarı limit
+  const [minOrderTotal, setMinOrderTotal] = useState<number>(0);
+  const [maxOrderTotal, setMaxOrderTotal] = useState<number>(0);
   // Sefa 16 May denetim #10: Skeleton 300ms eşiği — kısa yüklemelerde
   // skeleton flicker'ı önler. Cart genelde localStorage'dan anında gelir,
   // 300ms öncesi skeleton göstermiyoruz.
@@ -92,6 +95,18 @@ export default function SepetPage() {
     //   4) Sadece "auth'ı yeni yenileme" gibi kenar senaryoda
     //      300ms eşik + skeleton.
     refresh();
+    // Site settings (min/max sepet) fetch — public GET endpoint
+    void fetch("/api/admin/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json?.settings) {
+          setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
+          setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
+        }
+      })
+      .catch(() => {
+        /* silent — limit kontrol opsiyonel */
+      });
     const initialCount = summarizeCustomerCart().itemCount;
     if (initialCount === 0) {
       // localStorage boş — empty state'i direkt göster, fetch arka planda
@@ -409,7 +424,54 @@ export default function SepetPage() {
                 {t.cart.vatIncluded}
               </div>
 
-              <Button variant="primary" size="lg" block href="/odeme" className="mt-5">
+              {/* Sefa 18 May v68 Migration 053: min/max sipariş limit uyarıları */}
+              {minOrderTotal > 0 && total < minOrderTotal && total > 0 && (
+                <div className="mt-4 rounded-lg bg-sari-soft p-3 ring-1 ring-sari/30 text-[12.5px] text-sari-koyu">
+                  <div className="font-semibold mb-1">
+                    ⚠️ Minimum sipariş tutarı {fmt(minOrderTotal)} TL
+                  </div>
+                  <p className="leading-relaxed">
+                    Sepete <strong>{fmt(minOrderTotal - total)} TL</strong> daha
+                    eklemen gerekiyor. Adet yükselt veya yeni ürün ekle.
+                  </p>
+                </div>
+              )}
+              {maxOrderTotal > 0 && total > maxOrderTotal && (
+                <div className="mt-4 rounded-lg bg-mavi-soft p-3 ring-1 ring-mavi/30 text-[12.5px] text-mavi-koyu">
+                  <div className="font-semibold mb-1">
+                    📞 Toplu sipariş — WhatsApp'a yönlendir
+                  </div>
+                  <p className="leading-relaxed mb-2">
+                    Sepetin {fmt(maxOrderTotal)} TL'yi aştı. Bu büyüklükteki
+                    siparişler için <strong>özel teklif</strong> hazırlıyoruz —
+                    daha iyi fiyat + kişisel destek.
+                  </p>
+                  <a
+                    href="https://wa.me/905330000000?text=Toplu%20sipari%C5%9F%20i%C3%A7in%20bilgi%20almak%20istiyorum"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-mavi-koyu underline"
+                  >
+                    WhatsApp'tan ulaş →
+                  </a>
+                </div>
+              )}
+
+              <Button
+                variant="primary"
+                size="lg"
+                block
+                href={
+                  minOrderTotal > 0 && total < minOrderTotal
+                    ? "#"
+                    : "/odeme"
+                }
+                className={`mt-5 ${
+                  minOrderTotal > 0 && total < minOrderTotal
+                    ? "opacity-50 cursor-not-allowed pointer-events-none"
+                    : ""
+                }`}
+              >
                 {t.cart.proceedToCheckout} <Icon.ArrowR />
               </Button>
               <p className="text-[11.5px] text-gri-500 text-center mt-3 leading-relaxed">

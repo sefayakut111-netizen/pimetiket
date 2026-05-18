@@ -25,6 +25,9 @@ interface BodyShape {
   welcome_credit_try?: unknown;
   referral_credit_try?: unknown;
   min_subtotal_for_credit?: unknown;
+  // Sefa 18 May Migration 053: min/max sipariş tutarı
+  min_order_total_try?: unknown;
+  max_order_total_try?: unknown;
 }
 
 function serviceClient() {
@@ -71,6 +74,8 @@ export async function GET() {
         welcome_credit_try: 250,
         referral_credit_try: 250,
         min_subtotal_for_credit: 500,
+        min_order_total_try: 100,
+        max_order_total_try: 100000,
         updated_at: null,
       },
       stale: true,
@@ -99,6 +104,9 @@ export async function PATCH(req: Request) {
     "welcome_credit_try",
     "referral_credit_try",
     "min_subtotal_for_credit",
+    // Sefa 18 May Migration 053
+    "min_order_total_try",
+    "max_order_total_try",
   ] as const;
   for (const f of fields) {
     const v = body[f];

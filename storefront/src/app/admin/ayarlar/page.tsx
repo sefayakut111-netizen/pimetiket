@@ -25,6 +25,9 @@ interface SiteSettings {
   welcomeCreditTry: number;
   referralCreditTry: number;
   minSubtotalForCredit: number;
+  // Sefa 18 May Migration 053: min/max sipariş tutarı
+  minOrderTotal: number;
+  maxOrderTotal: number;
   defaultStickerDelivery: number;
   defaultEtiketDelivery: number;
   fastTrackEnabled: boolean;
@@ -41,15 +44,16 @@ const DEFAULTS: SiteSettings = {
   welcomeCreditTry: 250,
   referralCreditTry: 250,
   minSubtotalForCredit: 500,
-  // Sefa kuralı (16 May): "5 iş günü içinde kargoda" tek standart.
-  // Kargo süresi (1-3 iş günü) bu sayıya dahil DEĞİL, ayrı.
+  minOrderTotal: 100,
+  maxOrderTotal: 100000,
+  // Sefa kuralı (18 May v68): Etiket 10 iş günü, Sticker 5 iş günü.
   defaultStickerDelivery: 5,
-  defaultEtiketDelivery: 5,
-  fastTrackEnabled: true,
+  defaultEtiketDelivery: 10,
+  fastTrackEnabled: false, // Hızlı baskı YOK
   emailFrom: "info@pimetiket.com",
   contactPhone: "", // Henüz hat yok — Sefa açacak
   contactWhatsapp: "", // Henüz aktif değil
-  holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim",
+  holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim + Ramazan + Kurban",
 };
 
 function loadLocalSettings(): Partial<SiteSettings> {
@@ -98,6 +102,12 @@ export default function AdminAyarlarPage() {
           minSubtotalForCredit: Number(
             s.min_subtotal_for_credit ?? prev.minSubtotalForCredit
           ),
+          minOrderTotal: Number(
+            s.min_order_total_try ?? prev.minOrderTotal
+          ),
+          maxOrderTotal: Number(
+            s.max_order_total_try ?? prev.maxOrderTotal
+          ),
         }));
       })
       .catch(() => {
@@ -128,6 +138,8 @@ export default function AdminAyarlarPage() {
           welcome_credit_try: settings.welcomeCreditTry,
           referral_credit_try: settings.referralCreditTry,
           min_subtotal_for_credit: settings.minSubtotalForCredit,
+          min_order_total_try: settings.minOrderTotal,
+          max_order_total_try: settings.maxOrderTotal,
         }),
       });
       if (!res.ok) {
@@ -205,6 +217,32 @@ export default function AdminAyarlarPage() {
                 value={settings.freeShippingThreshold}
                 onChange={(v) => update("freeShippingThreshold", v)}
                 hint="Bu tutar üstünde kargo ücretsiz"
+              />
+            </div>
+          </Card>
+
+          {/* Sefa 18 May v68 (CRO denetim): Sepet min/max sipariş tutarı */}
+          <Card padding="p-6">
+            <h2 className="text-lg font-semibold mb-4">
+              Sipariş tutarı limit
+            </h2>
+            <p className="text-[12.5px] text-gri-700 mb-4 leading-relaxed">
+              Sepet bu aralığın dışına çıkarsa kullanıcıya uyarı gösterilir.
+              Min altında "X TL daha ekle"; max üstünde "toplu sipariş için
+              WhatsApp" yönlendirmesi. KDV dahil tutar üzerinden kontrol edilir.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <NumberField
+                label="Minimum sipariş tutarı (TL)"
+                value={settings.minOrderTotal}
+                onChange={(v) => update("minOrderTotal", v)}
+                hint="Altındaki sepet ödemeye geçemez (0 = limit yok)"
+              />
+              <NumberField
+                label="Maksimum sipariş tutarı (TL)"
+                value={settings.maxOrderTotal}
+                onChange={(v) => update("maxOrderTotal", v)}
+                hint="Üstündeki sepet WhatsApp'a yönlendirilir (0 = limit yok)"
               />
             </div>
           </Card>

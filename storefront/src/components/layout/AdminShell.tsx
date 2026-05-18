@@ -32,6 +32,10 @@ import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
 import {
+  AdminCommandPalette,
+  type CommandItem,
+} from "@/components/admin/AdminCommandPalette";
+import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
@@ -133,6 +137,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
   });
   const [switching, setSwitching] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Sefa 18 May v68 (CRO denetim): Cmd+K global arama palette
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Global Cmd+K / Ctrl+K listener
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   const switchToCustomer = async () => {
     if (switching) return;
@@ -391,8 +409,28 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const pageTitle = getPageTitle(pathname);
 
+  // Sefa 18 May v68: navGroups → flat commandItems (palette için)
+  const commandItems: CommandItem[] = useMemo(
+    () =>
+      navGroups.flatMap((g) =>
+        g.items.map((it) => ({
+          href: it.href,
+          label: it.label,
+          group: g.label,
+          icon: it.icon,
+        }))
+      ),
+    [navGroups]
+  );
+
   return (
     <div className="min-h-screen bg-gri-50">
+      {/* Cmd+K Command Palette */}
+      <AdminCommandPalette
+        items={commandItems}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
       {/* Mobile backdrop */}
       {drawerOpen && (
         <div
@@ -428,6 +466,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
             aria-label="Menüyü kapat"
           >
             <Icon.X size={18} />
+          </button>
+        </div>
+
+        {/* Sefa 18 May v68 (CRO denetim): Sidebar üstünde Cmd+K arama butonu */}
+        <div className="px-3 pt-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition-colors text-left"
+          >
+            <span className="text-white/60 text-[13px]">🔍</span>
+            <span className="flex-1 text-[12.5px] text-white/60">
+              Sayfa ara...
+            </span>
+            <kbd className="text-[10px] font-semibold text-white/50 bg-white/10 px-1.5 py-0.5 rounded">
+              ⌘K
+            </kbd>
           </button>
         </div>
 
