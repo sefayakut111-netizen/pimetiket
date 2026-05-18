@@ -249,6 +249,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
             badge: badges.proof,
           },
           {
+            href: "/admin/kargo",
+            label: "Kargo",
+            icon: <Icon.Truck size={16} />,
+          },
+          {
             href: "/admin/fason",
             label: "Fason",
             icon: <Icon.Truck size={16} />,
