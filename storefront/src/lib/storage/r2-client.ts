@@ -12,8 +12,7 @@
  *   R2_ACCESS_KEY_ID — R2 API token access key
  *   R2_SECRET_ACCESS_KEY — R2 API token secret
  *   R2_ENDPOINT — https://{account_id}.r2.cloudflarestorage.com
- *   R2_BUCKET_NAME — production bucket (pimetiket-archive)
- *   R2_BUCKET_NAME_DEV — dev bucket (pimetiket-archive-dev)
+ *   R2_BUCKET — bucket name (pim-etiket-archive)
  *   R2_ARCHIVE_DRY_RUN — "true" ise gerçek yazma yapmaz (test mode)
  */
 
@@ -31,10 +30,12 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 // Configuration
 // ============================================================
 
-const isProd = process.env.NODE_ENV === "production";
-const R2_BUCKET = isProd
-  ? (process.env.R2_BUCKET_NAME ?? "pimetiket-archive")
-  : (process.env.R2_BUCKET_NAME_DEV ?? "pimetiket-archive-dev");
+/**
+ * Bucket adı tek env'den okunur: R2_BUCKET (Vercel + .env.local'da set).
+ * NODE_ENV ayrımı yok — DRY_RUN flag zaten güvenlik katmanı sağlıyor.
+ * Default fallback Cloudflare'deki gerçek bucket adıyla eşleşmeli (tireli).
+ */
+const R2_BUCKET = process.env.R2_BUCKET ?? "pim-etiket-archive";
 
 /** DRY_RUN modu — gerçek yazma yapmaz, sadece log basar. İlk hafta için
  *  güvenlik kalkanı. Sefa ENV'de R2_ARCHIVE_DRY_RUN=false yapınca aktif olur. */
@@ -67,6 +68,19 @@ function getClient(): S3Client {
     region: "auto",
     endpoint,
     credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: false,
+    // KRİTİK 1: AWS SDK v3.730+ varsayılan olarak CRC32 checksum header'ı
+    // ekliyor (x-amz-sdk-checksum-algorithm). Cloudflare R2 bu yeni S3
+    // header'larını tanımıyor → 403 AccessDenied. WHEN_REQUIRED ile bu
+    // davranış kapatılır (sadece müşteri açıkça istediğinde checksum ekler).
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+    // KRİTİK 2: Bucket EU location'da yaratıldıysa endpoint'in
+    // jurisdiction-specific (.eu.r2.cloudflarestorage.com) olması ZORUNLU.
+    // Cloudflare "Default" endpoint'i token sonuç ekranında gösterse bile,
+    // EU location bucket'a default endpoint üzerinden erişilemez (403).
+    // R2_ENDPOINT env'ini EU bucket için ".eu.r2.cloudflarestorage.com"
+    // formatında set et (R2_ENDPOINT=https://<account>.eu.r2.cloudflarestorage.com).
   });
 
   return _r2Client;
