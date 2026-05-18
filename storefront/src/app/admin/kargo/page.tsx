@@ -29,6 +29,12 @@ import { cn } from "@/lib/cn";
 import type { AdminShipmentRow } from "@/app/api/admin/shipments/route";
 import type { ShipmentStats } from "@/app/api/admin/shipments/stats/route";
 import { ShipmentTrendChart } from "@/components/admin/ShipmentTrendChart";
+import { DeliveryHistogram } from "@/components/admin/DeliveryHistogram";
+import {
+  GeoDistributionTreemap,
+  type CityStat,
+} from "@/components/admin/GeoDistributionTreemap";
+import type { GeoDistributionResponse } from "@/app/api/admin/shipments/geo-distribution/route";
 
 type StatusFilter =
   | "all"
@@ -114,6 +120,7 @@ export default function AdminKargoPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ShipmentStats | null>(null);
+  const [geo, setGeo] = useState<GeoDistributionResponse | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
@@ -158,13 +165,19 @@ export default function AdminKargoPage() {
     };
   }, [statusFilter, dateRange, debounced, toast]);
 
-  // Fetch stats (KPI + trend) — sadece 1 kez
+  // Fetch stats (KPI + trend + histogram) — sadece 1 kez
   useEffect(() => {
     let cancelled = false;
     fetch("/api/admin/shipments/stats")
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled && !data.error) setStats(data);
+      });
+    // Geo distribution (il bazlı) — paralel
+    fetch("/api/admin/shipments/geo-distribution")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && !data.error) setGeo(data);
       });
     return () => {
       cancelled = true;
@@ -354,6 +367,42 @@ export default function AdminKargoPage() {
             </p>
           </Card>
         </div>
+      </div>
+
+      {/* Faz 3: Histogram + Geo distribution */}
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-lacivert">
+              Teslim süresi dağılımı
+            </h3>
+            <span className="text-[11px] text-gri-500">Son 90 gün</span>
+          </div>
+          {stats ? (
+            <DeliveryHistogram data={stats.delivery_histogram ?? []} />
+          ) : (
+            <Skeleton className="h-48 w-full" />
+          )}
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-lacivert">
+              İl bazlı dağılım
+            </h3>
+            <span className="text-[11px] text-gri-500">
+              {geo?.total_cities ?? "—"} il · son 90 gün
+            </span>
+          </div>
+          {geo ? (
+            <GeoDistributionTreemap
+              cities={geo.cities as CityStat[]}
+              fastest={geo.fastest_city}
+              slowest={geo.slowest_city}
+            />
+          ) : (
+            <Skeleton className="h-48 w-full" />
+          )}
+        </Card>
       </div>
 
       {/* Filtre + arama */}

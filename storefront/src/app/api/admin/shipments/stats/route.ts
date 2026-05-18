@@ -36,6 +36,8 @@ export interface ShipmentStats {
   success_rate: number | null;
   last_poll: string | null;
   daily_trend: Array<{ day: string; shipped: number; delivered: number }>;
+  /** Faz 3: teslim süresi histogram bucket'ları */
+  delivery_histogram: Array<{ bucket: string; count: number }>;
 }
 
 export async function GET() {
@@ -185,6 +187,43 @@ export async function GET() {
     delivered: counts.delivered,
   }));
 
+  // 11. Teslim süresi histogram (son 90 gün, delivered olanlar)
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * day).toISOString();
+  const { data: histRows } = await supabase
+    .from("order_assignments")
+    .select("shipped_at, tracking_delivered_at")
+    .not("tracking_delivered_at", "is", null)
+    .gte("tracking_delivered_at", ninetyDaysAgo);
+
+  // Bucket'lar: 0-1, 1-2, 2-3, 3-4, 4-5, 5-7, 7+
+  const buckets = [
+    { bucket: "0-1", min: 0, max: 1, count: 0 },
+    { bucket: "1-2", min: 1, max: 2, count: 0 },
+    { bucket: "2-3", min: 2, max: 3, count: 0 },
+    { bucket: "3-4", min: 3, max: 4, count: 0 },
+    { bucket: "4-5", min: 4, max: 5, count: 0 },
+    { bucket: "5-7", min: 5, max: 7, count: 0 },
+    { bucket: "7+", min: 7, max: 9999, count: 0 },
+  ];
+
+  for (const row of (histRows ?? []) as Array<{
+    shipped_at: string;
+    tracking_delivered_at: string;
+  }>) {
+    const days =
+      (new Date(row.tracking_delivered_at).getTime() -
+        new Date(row.shipped_at).getTime()) /
+      day;
+    if (days < 0) continue;
+    const b = buckets.find((b) => days >= b.min && days < b.max);
+    if (b) b.count++;
+  }
+
+  const deliveryHistogram = buckets.map((b) => ({
+    bucket: b.bucket,
+    count: b.count,
+  }));
+
   const stats: ShipmentStats = {
     shipped_today: shippedToday ?? 0,
     in_transit: inTransit ?? 0,
@@ -196,6 +235,7 @@ export async function GET() {
     success_rate: successRate,
     last_poll: lastPoll,
     daily_trend: dailyTrend,
+    delivery_histogram: deliveryHistogram,
   };
 
   return NextResponse.json(stats);

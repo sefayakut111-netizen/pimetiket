@@ -9,6 +9,8 @@
  * (etiket + sticker konfigüratörlerinde tek source-of-truth).
  */
 
+import { addBusinessDays } from "./turkey-holidays";
+
 const MONTHS_TR = [
   "Oca",
   "Şub",
@@ -37,9 +39,9 @@ interface DeliveryInput {
  *   Sticker: 5 iş günü (die-cut + tabaka)
  *   + Ortalama kargo: 2 iş günü
  *
- * NOT: Resmi tatiller hariç. Bu fonksiyon basit "iş günü" hesabı yapar —
- * weekend (Cmt/Pzr) atlanır, ulusal bayramlar şu an dahil değil (TODO:
- * 2026 resmi tatil takvimi entegrasyonu).
+ * NOT: Resmi tatiller HARİÇ (Sefa 18 May Faz 3 entegre etti).
+ * turkey-holidays.ts 2026-2027 TR resmi tatil listesini içerir.
+ * Weekend (Cmt/Pzr) + ulusal bayram + Ramazan + Kurban günleri atlanır.
  *
  * @example
  *   deliveryEstimate({ kind: "etiket", qty: 5000 })  // "18 May 2026" (10 + 2 iş günü)
@@ -52,15 +54,7 @@ export function deliveryEstimate({ kind, qty }: DeliveryInput): string {
   const shippingDays = 2; // ortalama kargo (İstanbul 1, diğer iller 2-3)
   const totalBusinessDays = productionDays + shippingDays;
 
-  // İş günü hesabı — weekend atlama
-  const d = new Date();
-  let added = 0;
-  while (added < totalBusinessDays) {
-    d.setDate(d.getDate() + 1);
-    const dayOfWeek = d.getDay(); // 0 = Pzr, 6 = Cmt
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      added++;
-    }
-  }
-  return `${d.getDate()} ${MONTHS_TR[d.getMonth()]} ${d.getFullYear()}`;
+  // İş günü hesabı — weekend + TR resmi tatil atlama
+  const target = addBusinessDays(new Date(), totalBusinessDays);
+  return `${target.getDate()} ${MONTHS_TR[target.getMonth()]} ${target.getFullYear()}`;
 }
