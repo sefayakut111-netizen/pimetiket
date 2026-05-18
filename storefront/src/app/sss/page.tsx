@@ -411,9 +411,9 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
     {
       q: "Üretim ne kadar sürer?",
       summary:
-        "1-3 iş günü (özelleştirme yoksa); özel efekt varsa 3-5 iş günü.",
+        "Etiket için 10 iş günü, sticker için 5 iş günü (resmi tatiller hariç).",
       detail:
-        "Standart rulo/tabaka etiket: tasarım onayı + 1-2 iş günü üretim. Özelleştirmeli (yaldız/emboss/spotUV): ek 1-2 gün ince işçilik. Sticker die-cut: 2 iş günü, tabaka: 1 iş günü. Tahmini teslim tarihi sepet ekranında otomatik hesaplanır (üretim + kargo).",
+        "Sabit üretim sürelerimiz: Rulo etiket ve tabaka etiket — 10 iş günü; sticker (tabaka + die-cut) — 5 iş günü. Bu süreler tasarım onayından sonra başlar, resmi tatiller hesaba katılmaz. Üzerine kargo süresi (1-3 iş günü, şehre göre) eklenir. Sepete eklediğinde tahmini teslim tarihi otomatik hesaplanır.",
     },
     {
       q: "Hangi kargo firması?",
@@ -426,14 +426,14 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
       summary:
         "Evet, konfigüratörde sepete eklemeden önce ve sipariş sonrası gösterilir.",
       detail:
-        "Hesap: bugünün tarihi + 3-5 iş günü (üretim + kargo) → tahmini teslim. Hafta sonu / resmi tatil hariç. Üretimde gecikme olursa 48 saat önceden sana e-posta + Pim sohbet bildirimi gider.",
+        "Hesap: bugünün tarihi + üretim süresi (etiket 10 iş günü / sticker 5 iş günü) + kargo (1-3 iş günü) → tahmini teslim. Hafta sonu ve resmi tatiller hesaba katılmaz. Üretimde gecikme olursa 48 saat önceden sana e-posta + Pim sohbet bildirimi gider.",
     },
     {
-      q: "Aynı gün kargoya verebilir misiniz?",
+      q: "Aynı gün kargoya verebilir misiniz, hızlı baskı var mı?",
       summary:
-        "Standart süreçte hayır; acil ise WhatsApp'tan özel ayarlama mümkün (ek ücret).",
+        "Hayır, hızlı/acil baskı hizmetimiz yok. Sabit üretim sürelerimiz var: etiket 10, sticker 5 iş günü.",
       detail:
-        "Üretim akışı: tasarım onayı → ön denetim → baskı → kontrol → paketleme → kargo. Bu zincir minimum 1 iş günü. Acil 50-200 adet için 'Hızlı Geçiş' hizmeti (+%50-100) WhatsApp ile sınırlı kapasitede.",
+        "Kalite kontrol, ön denetim ve fason ortaklarımızla planlı üretim akışı için sabit süreler uyguluyoruz. 'Acele baskı' sipariş kalitesini düşürür, biz buna izin vermiyoruz. Daha kısa süre gereken bir durumda planlamayı önceden yap — sipariş ne kadar erken verirsen teslim de o kadar erken olur.",
     },
     {
       q: "Üretim aşamasını takip edebilir miyim?",
@@ -683,15 +683,22 @@ const FAQS_EN: Record<Category, FaqItem[]> = {
     {
       q: "How long does production take?",
       summary:
-        "1-3 business days (standard); 3-5 days with special effects (foil, emboss, spot UV).",
+        "Labels: 10 business days, stickers: 5 business days (public holidays excluded).",
       detail:
-        "Estimated delivery shown at checkout. Production starts after design upload.",
+        "Fixed lead times: roll & sheet labels — 10 business days; stickers (sheet + die-cut) — 5 business days. Starts after design approval, public holidays not counted. Add 1-3 days for shipping. Estimated delivery date shown automatically at checkout.",
     },
     {
       q: "Which courier do you use?",
       summary: "Yurtiçi Kargo and Aras Kargo — Turkey-wide delivery.",
       detail:
         "Istanbul 1 business day, other cities 2-3. Tracking number in your dashboard.",
+    },
+    {
+      q: "Same-day shipping / rush print?",
+      summary:
+        "No rush service. Fixed lead times: 10 days labels, 5 days stickers.",
+      detail:
+        "We keep fixed production windows for QC, pre-flight checks, and planned fason partner runs. Rush printing degrades quality; we don't compromise. Plan ahead — the sooner you order, the sooner it ships.",
     },
   ],
   iade: [

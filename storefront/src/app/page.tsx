@@ -35,7 +35,7 @@ const FAQ_QUESTIONS_TR = [
   },
   {
     q: "Üretim ve teslim ne kadar sürer?",
-    a: "Standart üretim 1-3 iş günü, özel efektli (yaldız, emboss, Spot UV) 3-5 iş günü. Kargo İstanbul içi 1 gün, diğer iller 2-3 gün. Sepette tahmini teslim tarihi otomatik gösterilir.",
+    a: "Etiket için 10 iş günü, sticker için 5 iş günü üretim süremiz (resmi tatiller hariç). Üzerine kargo 1-3 iş günü eklenir. Sepete eklediğinde tahmini teslim tarihi otomatik gösterilir.",
   },
 ];
 
@@ -50,7 +50,7 @@ const FAQ_QUESTIONS_EN = [
   },
   {
     q: "How long does production and delivery take?",
-    a: "Standard production 1-3 business days, special effects (foil, emboss, Spot UV) 3-5 days. Shipping 1 day in Istanbul, 2-3 days elsewhere. Estimated delivery shown at checkout.",
+    a: "Labels: 10 business days production; stickers: 5 business days (excluding public holidays). Add 1-3 business days for shipping. Estimated delivery date is shown automatically at checkout.",
   },
 ];
 
