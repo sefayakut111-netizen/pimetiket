@@ -161,15 +161,65 @@ export default function AdminAiQcPage() {
   if (queue.length === 0) {
     return (
       <main className="py-12">
-        <div className="mx-auto max-w-[600px] px-6 text-center">
-          <Pim pose="happy" size={160} />
-          <h1 className="mt-4 text-[28px] font-semibold tracking-tight">
-            Kuyruk temiz! 🎉
-          </h1>
-          <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            Manuel inceleme bekleyen sipariş yok. Yeni QC flag&rsquo;i
-            geldiğinde burada görünür.
-          </p>
+        <div className="mx-auto max-w-[760px] px-6">
+          {/* Üst — başarı kutlama */}
+          <div className="text-center mb-10">
+            <Pim pose="happy" size={140} />
+            <h1 className="mt-4 text-[28px] font-semibold tracking-tight">
+              Kuyruk temiz! 🎉
+            </h1>
+            <p className="mt-3 text-base text-gri-700 leading-relaxed">
+              Manuel inceleme bekleyen sipariş yok. Yeni QC flag&rsquo;i
+              geldiğinde burada görünür.
+            </p>
+          </div>
+
+          {/* Sefa 18 May v68 (admin UX denetim — empty state mikro tur):
+              AI QC nasıl çalışır 4-step özet. Yeni operatörlerin
+              ilk girişte ne yapacaklarını anlaması için. */}
+          <div className="rounded-2xl bg-white ring-1 ring-gri-200 p-6">
+            <h2 className="text-[15px] font-semibold mb-4 text-lacivert">
+              📚 AI QC nasıl çalışır?
+            </h2>
+            <ol className="space-y-3 text-[13.5px] text-gri-700 leading-relaxed">
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-mavi-soft text-mavi-koyu font-bold flex items-center justify-center text-[12px]">1</span>
+                <div>
+                  <strong className="text-lacivert">Müşteri sipariş veriyor</strong> + tasarım yüklüyor (PDF/AI/PSD/PNG).
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-mavi-soft text-mavi-koyu font-bold flex items-center justify-center text-[12px]">2</span>
+                <div>
+                  <strong className="text-lacivert">AI motor kontrol ediyor:</strong> DPI ≥300, CMYK renk uzayı, bleed 2-3mm, font outline, mürekkep doygunluğu (&lt;%320), kontur kesim hatları.
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-sari-soft text-sari-koyu font-bold flex items-center justify-center text-[12px]">3</span>
+                <div>
+                  <strong className="text-lacivert">Sorun bulursa</strong> burada flag oluşur — sen manuel inceler, onayla / düzeltme iste / üretime geç seçeneklerini görürsün.
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-yesil-soft text-yesil-koyu font-bold flex items-center justify-center text-[12px]">4</span>
+                <div>
+                  <strong className="text-lacivert">Sorun yoksa otomatik</strong> üretim hattına aktarılır + müşteriye "Tasarım onaylandı" maili gider.
+                </div>
+              </li>
+            </ol>
+
+            <div className="mt-6 pt-4 border-t border-gri-200">
+              <h3 className="text-[12.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-2">
+                💡 Operatör ipuçları
+              </h3>
+              <ul className="space-y-1.5 text-[12.5px] text-gri-700">
+                <li>• DPI flag: müşteriye "300 DPI ile tekrar yükle" iste, override etme</li>
+                <li>• CMYK flag: Canva Free RGB→CMYK otomatik döner, %5-10 sapma kabul edilebilir</li>
+                <li>• Bleed flag: kritik içerik kesim çizgisinden 3mm içeride mi? Değilse düzelt iste</li>
+                <li>• Font outline: PDF font gömülmemişse mutlaka düzelt iste (üretimde değişir)</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </main>
     );

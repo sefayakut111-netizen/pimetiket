@@ -35,6 +35,7 @@ import {
   AdminCommandPalette,
   type CommandItem,
 } from "@/components/admin/AdminCommandPalette";
+import { AdminBreadcrumb } from "@/components/admin/AdminBreadcrumb";
 import {
   listCustomerOrders,
   type CustomerOrder,
@@ -626,6 +627,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         {/* Main content */}
         <main id="main" tabIndex={-1} className="flex-1 outline-none">
+          {/* Sefa 18 May v68 (admin UX denetim): tutarlı breadcrumb */}
+          <div className="px-4 md:px-6 lg:px-8 pt-3">
+            <AdminBreadcrumb />
+          </div>
           {children}
         </main>
       </div>

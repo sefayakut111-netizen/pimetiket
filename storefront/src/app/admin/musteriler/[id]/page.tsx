@@ -385,8 +385,31 @@ export default function AdminMusteriDetailPage({
           </span>
         </div>
 
+        {/* Sefa 18 May v68 (admin UX denetim — 360° tab nav):
+            4 anchor link ile bölüm gezinti — uzun sayfada hızlı scroll. */}
+        <nav className="sticky top-14 z-30 -mx-4 md:-mx-8 px-4 md:px-8 mb-4 bg-white/80 backdrop-blur-md border-b border-gri-200 py-2 flex flex-wrap gap-2">
+          {[
+            { id: "genel", label: "👤 Genel" },
+            { id: "siparisler", label: "📦 Siparişler" },
+            { id: "iletisim", label: "📧 İletişim" },
+            { id: "kvkk", label: "🛡️ KVKK & Audit" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                const el = document.getElementById(t.id);
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="rounded-full bg-gri-100 hover:bg-pim-mercan-tint hover:text-pim-mercan px-3 py-1 text-[12px] font-semibold text-gri-700 transition-colors"
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
         {/* Header */}
-        <div className="flex items-end justify-between gap-4 mb-6 flex-wrap">
+        <div id="genel" className="flex items-end justify-between gap-4 mb-6 flex-wrap">
           <div>
             <Eyebrow>Müşteri 360°</Eyebrow>
             <h1 className="mt-2 text-[26px] md:text-[32px] font-semibold tracking-tight flex items-center gap-3 flex-wrap">

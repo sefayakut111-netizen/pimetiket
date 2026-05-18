@@ -15,7 +15,7 @@
 
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Card, Input, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -166,14 +166,30 @@ export default function AdminSiparislerPage() {
 
 function AdminSiparislerPageInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const initialFilter = (searchParams.get("status") as AdminStatus | null) ?? "all";
+  const initialSearch = searchParams.get("q") ?? "";
 
   const [filter, setFilter] = useState<AdminStatus | "all">(initialFilter);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeView, setActiveView] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState<AdminStatus | "">("");
+
+  // Sefa 18 May v68 (admin UX denetim): Filter + search → URL sync.
+  // 2 sekmede farklı filtre tutmak için + paylaşılabilir link.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter !== "all") params.set("status", filter);
+    if (search.trim()) params.set("q", search.trim());
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+    router.replace(newUrl, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, search]);
 
   useEffect(() => {
     const refresh = () =>
@@ -403,6 +419,32 @@ function AdminSiparislerPageInner() {
               </Button>
             </div>
             <span className="ml-auto" />
+            {/* Sefa 18 May v68 (admin UX denetim): CSV indir butonu */}
+            <button
+              type="button"
+              onClick={() => {
+                const rows = filtered.filter((o) => selected.has(o.id));
+                const header = "ID,Müşteri,Ürün,Adet,Tutar,Durum,Tarih\n";
+                const lines = rows
+                  .map(
+                    (o) =>
+                      `"${o.id}","${o.customer}","${o.product}","${o.qty}","${o.total}","${o.status}","${new Date(o.createdAt).toISOString()}"`
+                  )
+                  .join("\n");
+                const blob = new Blob([header + lines], {
+                  type: "text/csv;charset=utf-8",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `siparisler-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="text-[12.5px] font-semibold text-white/80 hover:text-white"
+            >
+              📥 CSV indir
+            </button>
             <button
               type="button"
               onClick={clearSelection}
@@ -413,10 +455,10 @@ function AdminSiparislerPageInner() {
           </div>
         )}
 
-        {/* Table */}
+        {/* Table — Sefa 18 May v68 (admin UX denetim): sticky thead */}
         <Card padding="p-0" className="overflow-x-auto">
           <table className="w-full text-[13px] text-left">
-            <thead className="border-b border-gri-200 bg-gri-50">
+            <thead className="sticky top-14 z-20 border-b border-gri-200 bg-gri-50">
               <tr>
                 <th className="px-3 py-3 w-[40px]">
                   <input
