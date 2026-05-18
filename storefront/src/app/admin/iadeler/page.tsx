@@ -188,6 +188,19 @@ export default function AdminIadelerPage() {
                 hour: "2-digit",
                 minute: "2-digit",
               });
+              // Sefa 18 May v68 (admin UX denetim): SLA yaş rozeti
+              // <24h yeşil, 24-72h sarı, >72h kırmızı (TKHK m.30 gün limit)
+              const ageHours =
+                (Date.now() - new Date(r.createdAtIso).getTime()) /
+                (1000 * 60 * 60);
+              const isPending = r.status === "pending";
+              const slaMeta = !isPending
+                ? null
+                : ageHours < 24
+                  ? { tr: "Yeni", bg: "bg-yesil-soft", color: "text-yesil-koyu" }
+                  : ageHours < 72
+                    ? { tr: `${Math.floor(ageHours)}sa`, bg: "bg-sari-soft", color: "text-sari-koyu" }
+                    : { tr: `⚠️ ${Math.floor(ageHours / 24)}g+`, bg: "bg-kirmizi-soft", color: "text-kirmizi-koyu" };
               return (
                 <Card key={r.id} padding="p-5">
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
@@ -212,6 +225,18 @@ export default function AdminIadelerPage() {
                         >
                           {STATUS_LABEL[r.status]}
                         </span>
+                        {slaMeta && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
+                              slaMeta.bg,
+                              slaMeta.color
+                            )}
+                            title="SLA yaşı — TKHK m.30 gün sınır"
+                          >
+                            {slaMeta.tr}
+                          </span>
+                        )}
                       </div>
                       <div className="font-semibold text-base text-lacivert">
                         {r.customerName}{" "}

@@ -112,6 +112,20 @@ export default function AdminRaporlarPage() {
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        {/* Sefa 18 May v68 (admin UX denetim — kritik):
+            Raporlar mock veri üzerinden hesaplanıyor, kullanıcı bunu
+            altta küçük yazıyla görüyor. Sayfanın üstüne dikkat çekici
+            uyarı bandı. Backend swap (Faz 1.2) sonrası bu kaldırılır. */}
+        <div className="mb-5 rounded-lg bg-kirmizi-soft p-3 ring-1 ring-kirmizi/30 flex items-center gap-3">
+          <span className="text-xl">⚠️</span>
+          <div className="flex-1 text-[12.5px] text-kirmizi-koyu">
+            <strong>DEMO VERİ:</strong> Bu sayfadaki tüm rakamlar mock
+            örneklerden hesaplanır — gerçek DB sorgusu DEĞİL. Operasyonel
+            karar (kampanya, fason atama, fiyat) için kullanma. Backend
+            swap (Faz 1.2) sonrası gerçek veriye geçecek.
+          </div>
+        </div>
+
         <div className="mb-6">
           <Eyebrow>Analytics</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">

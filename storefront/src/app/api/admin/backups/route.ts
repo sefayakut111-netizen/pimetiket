@@ -103,7 +103,14 @@ async function listR2Backups(input: {
   prefix: string;
 }): Promise<BackupItem[]> {
   const { accountId, accessKey, secretKey, bucket, prefix } = input;
-  const host = `${accountId}.r2.cloudflarestorage.com`;
+  // Sefa 18 May v68 (yedek R2 403 fix):
+  // EU jurisdiction bucket'lar için endpoint'in .eu.r2.cloudflarestorage.com
+  // olması zorunlu (default endpoint silent 403 dönüyor, "Access Denied"
+  // hatası). R2_ENDPOINT env'inden host parse, yoksa EU default kullan.
+  const envEndpoint = process.env.R2_ENDPOINT;
+  const host = envEndpoint
+    ? new URL(envEndpoint).host
+    : `${accountId}.eu.r2.cloudflarestorage.com`;
   const path = `/${bucket}`;
   const query = `list-type=2&prefix=${encodeURIComponent(prefix)}&max-keys=500`;
   const url = `https://${host}${path}?${query}`;

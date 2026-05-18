@@ -417,11 +417,32 @@ export default function AdminMusterilerPage() {
           </div>
         )}
 
-        {/* Error */}
+        {/* Error — Sefa 18 May v68: Friendly mesaj + hint */}
         {error && (
           <Card padding="p-4" className="mb-5 !bg-kirmizi/5 ring-kirmizi/20">
-            <div className="text-[13px] text-kirmizi">
-              <strong>Veri yüklenemedi:</strong> {error}
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0">⚠️</span>
+              <div className="flex-1 text-[13px] text-kirmizi-koyu">
+                <strong className="block mb-1">
+                  Müşteri verisi şu an çekilemiyor
+                </strong>
+                <p className="text-gri-700 leading-relaxed">{error}</p>
+                <div className="mt-2 flex gap-3 text-[12px]">
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="text-pim-mercan font-semibold hover:underline"
+                  >
+                    🔄 Yeniden dene
+                  </button>
+                  <Link
+                    href="/admin/audit-log"
+                    className="text-pim-mercan font-semibold hover:underline"
+                  >
+                    Audit log →
+                  </Link>
+                </div>
+              </div>
             </div>
           </Card>
         )}

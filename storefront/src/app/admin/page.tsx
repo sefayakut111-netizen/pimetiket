@@ -719,8 +719,14 @@ export default function AdminDashboardPage() {
           </Card>
         )}
 
-        {/* KPI grid 6 cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        {/* KPI grid 6 cards — Sefa 18 May v68 (admin UX denetim):
+            1400px ekran sınırında 6 kart yan yana sığmıyordu, sağdaki kart
+            kesiliyor + scrollbar belirmiyordu. auto-fit + minmax(180px,1fr)
+            ile responsive: 6→4→3→2 düzeyinde otomatik kırılır. */}
+        <div
+          className="grid gap-3 mb-6"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+        >
           {KPIS.map((k) => (
             <Card key={k.label} padding="p-4">
               <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 truncate">

@@ -102,12 +102,46 @@ const INITIAL_STEPS: SimStep[] = [
   { id: "verify", label: "Doğrulama (status + outbox)", emoji: "✅", status: "pending" },
 ];
 
+// Sefa 18 May v68 (admin UX denetim — kritik güvenlik):
+// Sipariş simülatörü canlıda yanlışlıkla tıklanırsa gerçek finans datasına
+// "test cirosu" düşüyordu. Flag default false → production'da gizle.
+// NEXT_PUBLIC_ALLOW_SIMULATOR=true ile yalnız staging'de aç.
+const SIMULATOR_ENABLED =
+  process.env.NEXT_PUBLIC_ALLOW_SIMULATOR === "true";
+
 export default function TestSimulatorPage() {
   const toast = useToast();
   const [result, setResult] = useState<SimResult | null>(null);
   const [running, setRunning] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [cleaningUp, setCleaningUp] = useState(false);
+
+  if (!SIMULATOR_ENABLED) {
+    return (
+      <main className="mx-auto max-w-[800px] px-4 py-10 md:px-6">
+        <Card padding="p-10" className="text-center">
+          <div className="mb-3 text-4xl">🔒</div>
+          <h1 className="text-xl font-semibold text-lacivert mb-2">
+            Sipariş simülatörü production'da devre dışı
+          </h1>
+          <p className="text-[13.5px] text-gri-700 max-w-md mx-auto leading-relaxed">
+            Bu araç yanlışlıkla canlı finans verisini bozmasın diye production
+            ortamında kilitli. Staging'de açmak için{" "}
+            <code className="rounded bg-gri-100 px-1.5 py-0.5 text-[12px]">
+              NEXT_PUBLIC_ALLOW_SIMULATOR=true
+            </code>{" "}
+            env'i set edilmeli.
+          </p>
+          <Link
+            href="/admin"
+            className="inline-block mt-5 text-pim-mercan font-semibold text-[13px] hover:underline"
+          >
+            ← Dashboard'a dön
+          </Link>
+        </Card>
+      </main>
+    );
+  }
 
   const handleRun = async () => {
     if (running) return;

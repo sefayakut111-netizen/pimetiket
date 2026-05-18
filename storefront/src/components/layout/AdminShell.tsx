@@ -302,6 +302,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Tasarımlar",
             icon: <Icon.Doc size={16} />,
           },
+        ],
+      },
+      // Sefa 18 May v68 (admin UX denetim — yeni İÇERİK grubu):
+      // Galeri/Site Görselleri Müşteri'de yanlış kategorize idi.
+      // İçerik editörü (Persona D) için tek grup altında.
+      {
+        label: "İçerik",
+        items: [
           {
             href: "/admin/aboneler",
             label: "Aboneler",
@@ -385,11 +393,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
             icon: <Icon.Box size={16} />,
           },
           // Sefa 17 May: E2E sipariş simülatörü
-          {
-            href: "/admin/test-siparis-simulator",
-            label: "Sipariş simülatörü",
-            icon: <Icon.Refresh size={16} />,
-          },
+          // Sefa 18 May v68 (admin UX denetim): NEXT_PUBLIC_ALLOW_SIMULATOR
+          // flag ile production'da menüden gizlenir, yanlışlıkla tıklanmasın.
+          ...(process.env.NEXT_PUBLIC_ALLOW_SIMULATOR === "true"
+            ? [
+                {
+                  href: "/admin/test-siparis-simulator",
+                  label: "Sipariş simülatörü",
+                  icon: <Icon.Refresh size={16} />,
+                },
+              ]
+            : []),
           // Sefa 17 May: Fiyat Yönetimi (Migration 047)
           {
             href: "/admin/fiyatlar",
@@ -400,6 +414,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/ayarlar",
             label: "Ayarlar",
             icon: <Icon.Cog size={16} />,
+          },
+          // Sefa 18 May v68 (admin UX denetim — KVKK m.12 2FA)
+          {
+            href: "/admin/profil",
+            label: "Profilim & 2FA",
+            icon: <Icon.User size={16} />,
           },
         ],
       },

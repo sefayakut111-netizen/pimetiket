@@ -91,8 +91,26 @@ export async function GET(req: Request) {
     .returns<AdminCustomerRow[]>();
 
   if (error) {
+    // Sefa 18 May v68 (admin UX denetim — kullanıcı dostu hata):
+    // v_admin_customers view eksikse veya RLS policy çakışırsa
+    // generic "query_failed" gösteriliyordu. Şimdi:
+    //   - Code/mesaj loglanır (Sentry'ye)
+    //   - Friendly UI mesajı + admin için detail
+    console.error("[admin/customers] view query failed:", error);
+    const isViewMissing =
+      error.code === "42P01" || // PostgreSQL: undefined_table/view
+      error.message.toLowerCase().includes("does not exist");
     return NextResponse.json(
-      { error: "query_failed", detail: error.message },
+      {
+        error: isViewMissing
+          ? "Müşteri view'u kurulu değil — Migration 046'yı production'a push et."
+          : "Müşteri verisi şu an çekilemiyor. Teknik ekip bilgilendirildi.",
+        code: error.code,
+        detail: error.message,
+        hint: isViewMissing
+          ? "npx supabase db push --linked çalıştır"
+          : "/admin/audit-log'a göz at, son sorgu girişimleri orada",
+      },
       { status: 500 }
     );
   }
