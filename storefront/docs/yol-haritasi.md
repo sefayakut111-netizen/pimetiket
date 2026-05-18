@@ -102,6 +102,70 @@ Tek gün boyunca **12 commit, ~5.000+ satır kod** değişikliği. Konfigüratö
 
 ---
 
+## 🧊 18 Mayıs 2026 — R2 Cold Storage Paketi
+
+90+ gün hareketsiz müşterinin Supabase verisi → Cloudflare R2 cold storage'a otomatik transfer. KVKK silme talebine R2 cleanup eklendi. DRY_RUN flag ile güvenli başlangıç.
+
+### Yapılan iş
+
+- **Migration 051** (`051_r2_archive_columns.sql`):
+  - `archive_status` enum (`hot`, `archiving`, `cold`, `restoring`, `deleted`)
+  - profiles + orders + design_files + reviews + returns tablolarına `archive_status` + `archived_at` + `archive_path` kolonları
+  - design_files'a ek `archive_size_bytes`
+  - `archive_events` audit tablo (KVKK uyumlu — 5+ yıl saklanır, RLS admin/staff read)
+  - `get_archive_candidates(p_days_inactive int)` RPC fonksiyonu (90 günden eski müşterileri listele)
+- **`src/lib/storage/r2-client.ts`**:
+  - AWS SDK v3 S3Client lazy init
+  - `IS_DRY_RUN` flag (env `R2_ARCHIVE_DRY_RUN` default `"true"` — sahte yanıt döndürür, gerçek I/O yok)
+  - `uploadToR2`, `getSignedDownloadUrl`, `downloadFromR2`, `deleteFromR2`, `getR2ObjectInfo`, `listR2Objects`
+  - `r2KeyBuilders` (customerSnapshot, orderDetails, orderEvents, designFile, vb. tutarlı path şeması)
+- **`src/lib/storage/archive-service.ts`** (`archiveCustomer(userId, reason)`):
+  - 8 adım: lock → profile snapshot → orders+events → design files (Supabase Storage → R2) → reviews → returns → status update → audit log
+  - Rollback: hata olursa `archive_status = 'hot'` geri + `failed_archive` audit
+  - DRY_RUN aware her aşamada
+- **`src/lib/storage/restore-service.ts`**:
+  - `getArchivedDesignFileUrl({designFileId, requesterId, requesterType, reason, ttlSeconds})` — 1 saatlik signed URL
+  - Yetki: user → kendi dosyası, admin/cowork → tüm
+  - `cold_access` audit log
+  - `restoreCustomerToHot(userId, reason)` — profil + orders + reviews + returns geri sıcağa
+- **API endpoint'ler**:
+  - `POST /api/customer/design-files/[id]/restore-url` — müşteri taraf, signed URL döndürür
+  - `POST /api/customer/kvkk-archive-delete` — KVKK m.11/e gereği R2 arşiv tam silme (admin başkası adına da yapabilir)
+  - `GET /api/cron/archive-inactive` — günlük cron (03:30), Bearer ${CRON_SECRET}, BATCH_SIZE=10, DAYS_INACTIVE=90, runtime nodejs, maxDuration 300s
+- **`src/components/storage/RestoreArchivedFileButton.tsx`**:
+  - Müşteri sipariş detayında `archive_status === "cold"` ise gösterilir
+  - Saman/amber styled kart + 📦 ikon + 2-3 saniye getirme mesajı
+  - Loading state + toast (başarı/hata)
+- **`vercel.json`**: `"30 3 * * *"` cron eklendi (mevcut "0 3" ile çakışmayı önlemek için)
+- **Test scriptleri**:
+  - `scripts/test-r2-archive.mjs` — DRY_RUN modda arşivleme testi
+  - `scripts/test-r2-restore.mjs` — signed URL üretim testi
+
+### Sefa'nın yapması gerekenler (R2 canlıya almadan önce)
+
+1. **Cloudflare R2 hesap aç** (free tier: 10 GB depo + 1M class A op + 10M class B op/ay)
+2. **Bucket oluştur**: `pim-etiket-archive` (production) + `pim-etiket-archive-dev` (test)
+3. **API token üret**: Object Read & Write permission, bucket-scoped
+4. **Vercel env vars set**:
+   - `R2_ACCOUNT_ID`
+   - `R2_ACCESS_KEY_ID`
+   - `R2_SECRET_ACCESS_KEY`
+   - `R2_BUCKET=pim-etiket-archive`
+   - `R2_ARCHIVE_DRY_RUN=true` (önce true ile başla, smoke test sonra `false` yap)
+   - `CRON_SECRET` (rastgele 32+ karakter, cron auth için)
+5. **Migration 051 push**: `npx supabase db push --linked` (workspace'te)
+6. **DRY_RUN smoke test**: `node scripts/test-r2-archive.mjs <test_user_uuid>` — log basılmalı, gerçek silme yok
+7. **DRY_RUN=false** yap → 1 test müşterisinde gerçek arşivleme dene
+8. **Production**: Otomatik cron 03:30'da çalışacak
+
+### Kalan iş (kod tarafı)
+
+- Sipariş detay sayfasında `RestoreArchivedFileButton` koşullu render
+- `/admin/arsiv` paneli (archive_events listesi + manuel "şimdi arşivle/geri getir" butonları)
+- Email bildirimi: müşteri restore istediğinde otomatik mail (Resend Faz 2 ile birlikte)
+
+---
+
 ## 🗺️ Bundan Sonra Yol Haritası
 
 ### 🔴 P0 — Bu hafta (kritik)
@@ -112,8 +176,11 @@ Tek gün boyunca **12 commit, ~5.000+ satır kod** değişikliği. Konfigüratö
    - Kraft eski siparişler için migration davranışı
    - Sticker tabaka'da kontur kesim olur mu
    - Sticker'a yeni özelleştirme (UV vernik vs.) eklenir mi
-2. **Sefa: `supabase db push --linked`** Migration 050 production push
+2. **Sefa: `supabase db push --linked`** Migration 050 + 051 production push (sıralı)
+   - 050: sticker_die_cut + 4 folyo + rulo malzeme rename
+   - 051: archive_status + archive_events (R2 cold storage altyapısı)
 3. **Marka tescil başvurusu** TÜRKPATENT (1.500-3.000 TL, 10 yıl koruma) — turkpatent.gov.tr online
+4. **Sefa: Cloudflare R2 hesap + bucket + API token + Vercel env** (R2 paketi prerequisite — yukarıdaki "R2 Cold Storage" bölümüne bak)
 
 ### 🟡 P1 — Bu ay
 
