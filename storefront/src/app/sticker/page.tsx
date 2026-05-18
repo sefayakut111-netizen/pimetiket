@@ -28,7 +28,8 @@ import {
   breadcrumbSchema,
 } from "@/components/SchemaJsonLd";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
-import { ProductInfoSection } from "@/components/ProductInfoSection";
+// Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
+// import { ProductInfoSection } from "@/components/ProductInfoSection";
 import { StepProgress, VerticalStepProgress } from "@/components/Stepper";
 import { Icon } from "@/components/Icon";
 import {
@@ -1125,8 +1126,8 @@ export default function StickerPage() {
       </div>
       {/* Bilgi bandı kaldırıldı (Sefa kuralı 15 May v5) */}
 
-      {/* Ürün anlatım bölümü (Sefa 15 May v3) — sticker'a özel içerik */}
-      <ProductInfoSection product="sticker" />
+      {/* Sefa 18 May v68: ProductInfoSection (3 feature söylemi) kaldırıldı.
+          Yorumlar direkt gösterilir. */}
       <ProductReviews productType="sticker" limit={6} />
 
       {/* Sticky checkout bar — mobile-only (Sefa 15 May v4) */}

@@ -66,7 +66,8 @@ import {
 } from "@/lib/etiket-customer-pricing";
 import { addToCustomerCart } from "@/lib/customer-cart";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
-import { ProductInfoSection } from "@/components/ProductInfoSection";
+// Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
+// import { ProductInfoSection } from "@/components/ProductInfoSection";
 import { StepProgress, VerticalStepProgress } from "@/components/Stepper";
 
 // ============================================================
@@ -1839,9 +1840,8 @@ export default function EtiketPage() {
       </div>
       {/* Bilgi bandı kaldırıldı (Sefa kuralı 15 May v5) */}
 
-      {/* Ürün anlatım bölümü (Sefa kuralı 15 May v3) — Stickermule
-          tarzı feature kartları + highlight + galeri. Yorumlardan önce. */}
-      <ProductInfoSection product="etiket" />
+      {/* Sefa 18 May v68: ProductInfoSection (3 feature söylemi) kaldırıldı.
+          Yorumlar direkt gösterilir. */}
       <ProductReviews productType="etiket" limit={6} />
 
       {/* Sticky checkout bar — mobile-only. PriceCard görünür durumda
