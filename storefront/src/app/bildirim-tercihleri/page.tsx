@@ -30,8 +30,7 @@ interface Prefs {
     blog: boolean;
   };
   sms: {
-    urgentOrder: boolean;
-    proofReady: boolean;
+    // Sefa 18 May v68: urgentOrder + proofReady SMS iptal edildi.
     delivery: boolean;
   };
 }
@@ -45,8 +44,6 @@ const DEFAULTS: Prefs = {
     blog: false,
   },
   sms: {
-    urgentOrder: true,
-    proofReady: false,
     delivery: false,
   },
 };
@@ -68,7 +65,7 @@ const COPY = {
     requiredBadge: "Zorunlu",
     footerTitle: "Tercihler hemen uygulanır",
     footerDesc:
-      "İstediğin zaman kapatabilir/açabilirsin. E-posta gönderim altyapısı Faz 2'de Resend ile aktif olacak; şimdilik tercihler kayıtlı tutuluyor.",
+      "Bildirim tercihlerinizi istediğiniz zaman kapatıp açabilirsiniz. Sipariş güncellemeleri yasal zorunluluk gereği daima aktif kalır.",
     emailRows: {
       orderUpdates: {
         label: "Sipariş güncellemeleri",
@@ -92,14 +89,6 @@ const COPY = {
       },
     },
     smsRows: {
-      urgentOrder: {
-        label: "Acil sipariş bildirimi",
-        desc: "Üretimde sorun, geç teslim riski gibi durumlar.",
-      },
-      proofReady: {
-        label: "Prova bekliyor SMS",
-        desc: "E-posta yetmez, kısa süre içinde onay gerekiyorsa.",
-      },
       delivery: {
         label: "Kargo teslimat günü",
         desc: "Kargo gelmeden önce bilgi notu.",
@@ -122,7 +111,7 @@ const COPY = {
     requiredBadge: "Required",
     footerTitle: "Preferences apply immediately",
     footerDesc:
-      "You can turn them off/on anytime. Email delivery infrastructure will go live in Phase 2 with Resend; for now your preferences are stored locally.",
+      "You can turn notifications on or off anytime. Order updates remain active by legal requirement.",
     emailRows: {
       orderUpdates: {
         label: "Order updates",
@@ -146,14 +135,6 @@ const COPY = {
       },
     },
     smsRows: {
-      urgentOrder: {
-        label: "Urgent order alerts",
-        desc: "Production issues, late-delivery risks.",
-      },
-      proofReady: {
-        label: "Proof waiting SMS",
-        desc: "When email is not enough and approval is needed soon.",
-      },
       delivery: {
         label: "Delivery day notice",
         desc: "Heads-up before the courier arrives.",
@@ -309,18 +290,7 @@ export default function BildirimTercihleriPage() {
           </div>
 
           <div className="space-y-1">
-            <ToggleRow
-              label={c.smsRows.urgentOrder.label}
-              description={c.smsRows.urgentOrder.desc}
-              checked={prefs.sms.urgentOrder}
-              onChange={() => toggleSms("urgentOrder")}
-            />
-            <ToggleRow
-              label={c.smsRows.proofReady.label}
-              description={c.smsRows.proofReady.desc}
-              checked={prefs.sms.proofReady}
-              onChange={() => toggleSms("proofReady")}
-            />
+            {/* Sefa 18 May v68: 'Acil sipariş bildirimi' + 'Prova bekliyor SMS' iptal */}
             <ToggleRow
               label={c.smsRows.delivery.label}
               description={c.smsRows.delivery.desc}
@@ -362,19 +332,24 @@ function ToggleRow({
   checked: boolean;
   onChange: () => void;
 }) {
+  // Sefa 18 May v68: Toggle UI fix — required state opacity-60 ile yarı saydam
+  // mercan "bozuk gibi" görünüyordu. Şimdi required iken bg-lacivert (kilitli
+  // ama aktif net mesaj), opacity korunmuyor. Thumb içinde ✓ ikonu var.
   return (
     <label
       className={cn(
-        "flex items-center gap-4 py-3 cursor-pointer",
-        required && "opacity-70 cursor-not-allowed"
+        "flex items-center gap-4 py-3",
+        required ? "cursor-not-allowed" : "cursor-pointer"
       )}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-[14.5px]">{label}</span>
+          <span className="font-semibold text-[14.5px] text-lacivert">
+            {label}
+          </span>
           {required && (
-            <span className="inline-flex items-center h-[20px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold">
-              {requiredLabel ?? "Required"}
+            <span className="inline-flex items-center h-[20px] px-2 rounded-full bg-lacivert/10 text-lacivert text-[11px] font-semibold ring-1 ring-lacivert/20">
+              🔒 {requiredLabel ?? "Required"}
             </span>
           )}
         </div>
@@ -390,17 +365,26 @@ function ToggleRow({
         onClick={() => !required && onChange()}
         className={cn(
           "relative w-11 h-6 rounded-full transition-colors shrink-0",
-          checked ? "bg-pim-mercan" : "bg-gri-200",
-          required && "cursor-not-allowed opacity-60"
+          required
+            ? "bg-lacivert cursor-not-allowed"
+            : checked
+              ? "bg-pim-mercan"
+              : "bg-gri-200"
         )}
       >
         <span
           aria-hidden
           className={cn(
-            "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
-            checked ? "translate-x-5" : "translate-x-0.5"
+            "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform flex items-center justify-center text-[10px]",
+            checked ? "translate-x-[22px]" : "translate-x-0.5"
           )}
-        />
+        >
+          {required && (
+            <span aria-hidden className="text-lacivert font-bold">
+              ✓
+            </span>
+          )}
+        </span>
       </button>
     </label>
   );
