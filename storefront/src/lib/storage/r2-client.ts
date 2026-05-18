@@ -68,19 +68,25 @@ function getClient(): S3Client {
     region: "auto",
     endpoint,
     credentials: { accessKeyId, secretAccessKey },
-    forcePathStyle: false,
     // KRİTİK 1: AWS SDK v3.730+ varsayılan olarak CRC32 checksum header'ı
     // ekliyor (x-amz-sdk-checksum-algorithm). Cloudflare R2 bu yeni S3
     // header'larını tanımıyor → 403 AccessDenied. WHEN_REQUIRED ile bu
     // davranış kapatılır (sadece müşteri açıkça istediğinde checksum ekler).
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
-    // KRİTİK 2: Bucket EU location'da yaratıldıysa endpoint'in
-    // jurisdiction-specific (.eu.r2.cloudflarestorage.com) olması ZORUNLU.
-    // Cloudflare "Default" endpoint'i token sonuç ekranında gösterse bile,
-    // EU location bucket'a default endpoint üzerinden erişilemez (403).
-    // R2_ENDPOINT env'ini EU bucket için ".eu.r2.cloudflarestorage.com"
-    // formatında set et (R2_ENDPOINT=https://<account>.eu.r2.cloudflarestorage.com).
+    // KRİTİK 2: Bucket EU jurisdiction'da → endpoint mecburen
+    // .eu.r2.cloudflarestorage.com (default endpoint "bucket does not exist"
+    // hatası verir, UI manuel upload bile fail eder).
+    // R2_ENDPOINT env'i EU bucket için "https://<acc>.eu.r2.cloudflarestorage.com"
+    // formatında olmalı.
+    //
+    // KRİTİK 3: EU jurisdiction bucket'lar virtual-hosted style subdomain
+    // DNS'i (bucket.account.eu.r2.cloudflarestorage.com) DESTEKLEMİYOR
+    // (Cloudflare wildcard DNS sadece default jurisdiction için). EU
+    // jurisdiction'da PATH-STYLE ZORUNLU. AWS SDK default'u virtual-hosted
+    // olduğu için 18 May testinde "silent ignore" (200 OK, ama Class A
+    // sayılır + Storage=0) yaşandı. forcePathStyle:true ile düzeltildi.
+    forcePathStyle: true,
   });
 
   return _r2Client;
