@@ -67,6 +67,10 @@
     {
       "path": "/api/cron/archive-inactive",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/poll-shipments",
+      "schedule": "0 */4 * * *"
     }
   ]
 }

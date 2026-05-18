@@ -56,6 +56,57 @@ export async function fetchShipmentsByOrderIds(
 }
 
 /**
+ * Sefa 18 May Migration 052: Kargo durum geçmişi timeline.
+ * "Kargoya verildi → Yolda → Dağıtımda → Teslim edildi" gibi event listesi.
+ */
+export interface ShipmentTimelineEvent {
+  status:
+    | "created"
+    | "picked_up"
+    | "in_transit"
+    | "out_for_delivery"
+    | "delivered"
+    | "failed"
+    | "returned"
+    | "cancelled";
+  description: string | null;
+  location: string | null;
+  eventTime: string;
+}
+
+export async function fetchMyShipmentTimeline(
+  orderId: string
+): Promise<ShipmentTimelineEvent[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc(
+    "fn_get_my_shipment_timeline" as never,
+    { p_order_id: orderId } as never
+  );
+
+  if (error) {
+    console.warn("[shipment timeline] fetch error:", error.message);
+    return [];
+  }
+
+  const rows = (data ?? []) as Array<{
+    status: ShipmentTimelineEvent["status"];
+    description: string | null;
+    location: string | null;
+    event_time: string;
+  }>;
+
+  return rows.map((r) => ({
+    status: r.status,
+    description: r.description,
+    location: r.location,
+    eventTime: r.event_time,
+  }));
+}
+
+/**
  * Sipariş için kargo bilgisini getir.
  * `null` döner:
  *   - Auth yok (guest)

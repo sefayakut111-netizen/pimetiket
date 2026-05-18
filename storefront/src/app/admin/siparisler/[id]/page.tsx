@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Card, Button, Eyebrow, useToast, Skeleton } from "@/components/ui";
+import { AdminTrackingForm } from "@/components/admin/AdminTrackingForm";
 import { cn } from "@/lib/cn";
 import {
   listCustomerOrders,
@@ -861,6 +862,9 @@ export default function AdminOrderDetailPage({
                 </Link>
               </div>
             </Card>
+
+            {/* Sefa 18 May: Yurtiçi Kargo manuel tracking + durum geçmişi */}
+            <AdminTrackingForm orderId={order.id} />
           </div>
         </div>
       </div>

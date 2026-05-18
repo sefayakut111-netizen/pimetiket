@@ -35,6 +35,8 @@ import { OrderDesignHistory } from "@/components/design/OrderDesignHistory";
 import {
   fetchMyOrderShipment,
   type CustomerShipment,
+  fetchMyShipmentTimeline,
+  type ShipmentTimelineEvent,
 } from "@/lib/shipping/customer-shipment";
 
 const COPY = {
@@ -337,6 +339,10 @@ export default function SiparisDetailPage({
 
   // Sefa 17 May Migration 045: kargo bilgisi
   const [shipment, setShipment] = useState<CustomerShipment | null>(null);
+  // Sefa 18 May Migration 052: kargo durum geçmişi (Yurtiçi poll)
+  const [shipmentTimeline, setShipmentTimeline] = useState<
+    ShipmentTimelineEvent[]
+  >([]);
 
   useEffect(() => {
     ensureAuthBindings();
@@ -356,6 +362,7 @@ export default function SiparisDetailPage({
       }
     });
     void fetchMyOrderShipment(id).then(setShipment);
+    void fetchMyShipmentTimeline(id).then(setShipmentTimeline);
   }, [id]);
 
   const handleReorder = async () => {
@@ -812,6 +819,73 @@ export default function SiparisDetailPage({
                     >
                       <Icon.Truck size={14} /> {c.shipmentTrackBtn} →
                     </Button>
+                  </div>
+                )}
+
+                {/* Sefa 18 May Migration 052: Yurtiçi'den gelen durum timeline'ı */}
+                {shipmentTimeline.length > 0 && (
+                  <div className="mt-5 border-t border-yesil/20 pt-4">
+                    <h4 className="mb-3 text-[12px] font-semibold uppercase text-gri-700">
+                      Durum geçmişi
+                    </h4>
+                    <ol className="space-y-2">
+                      {shipmentTimeline.map((ev, i) => {
+                        const meta = (
+                          {
+                            created: { tr: "İşleme alındı", emoji: "📝" },
+                            picked_up: { tr: "Kargo alındı", emoji: "📦" },
+                            in_transit: { tr: "Yolda", emoji: "🚚" },
+                            out_for_delivery: {
+                              tr: "Dağıtımda",
+                              emoji: "🛵",
+                            },
+                            delivered: { tr: "Teslim edildi", emoji: "✅" },
+                            failed: {
+                              tr: "Teslim edilemedi",
+                              emoji: "⚠️",
+                            },
+                            returned: { tr: "İade edildi", emoji: "↩️" },
+                            cancelled: { tr: "İptal", emoji: "❌" },
+                          } as const
+                        )[ev.status];
+                        return (
+                          <li
+                            key={`${ev.status}-${ev.eventTime}-${i}`}
+                            className="flex gap-2.5 rounded-lg bg-white/70 p-2.5 text-[12.5px]"
+                          >
+                            <span className="text-base leading-none">
+                              {meta?.emoji ?? "📍"}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-lacivert">
+                                {meta?.tr ?? ev.status}
+                              </div>
+                              {(ev.description || ev.location) && (
+                                <div className="text-[11.5px] text-gri-700 mt-0.5">
+                                  {ev.description}
+                                  {ev.location && (
+                                    <span className="text-gri-500">
+                                      {" "}· {ev.location}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div className="text-[11px] text-gri-500 mt-0.5">
+                                {new Date(ev.eventTime).toLocaleString(
+                                  c.locale,
+                                  {
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
                   </div>
                 )}
               </Card>
