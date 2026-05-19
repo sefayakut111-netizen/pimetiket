@@ -36,27 +36,47 @@ export async function POST(
     );
   }
 
+  // Sefa 19 May v68 (Agent denetim P0 #3):
+  // Eski kod ne olursa olsun "100y" geçiyordu, body.until tamamen
+  // yoksayılıyordu → geçici ban koyulamıyordu. Supabase auth admin API
+  // `ban_duration` parametresi süre cinsinden string ister ("24h", "7d",
+  // "Ns"). ISO tarihi → fark saniyesi → "Ns" string.
+  let banDuration: string;
   let bannedUntilIso: string | null;
+
   if (body.until === null || body.until === undefined) {
+    banDuration = "none";
     bannedUntilIso = null;
   } else if (body.until === "permanent") {
+    banDuration = "876000h"; // 100 yıl
     bannedUntilIso = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000)
       .toISOString();
   } else {
     const t = new Date(body.until);
     if (isNaN(t.getTime())) {
       return NextResponse.json(
-        { error: "invalid_until" },
+        { error: "invalid_until", hint: "ISO 8601 tarih veya 'permanent'" },
         { status: 400 }
       );
     }
+    const diffMs = t.getTime() - Date.now();
+    if (diffMs < 60_000) {
+      return NextResponse.json(
+        {
+          error: "until_too_short",
+          hint: "Tarih en az 1 dakika ileri olmalı (geçmiş tarih ban için anlamsız)",
+        },
+        { status: 400 }
+      );
+    }
+    const seconds = Math.ceil(diffMs / 1000);
+    banDuration = `${seconds}s`;
     bannedUntilIso = t.toISOString();
   }
 
   const admin = createAdminClient();
-  // Supabase admin API: banned_until set
   const { error } = await admin.auth.admin.updateUserById(id, {
-    ban_duration: bannedUntilIso ? "100y" : "none",
+    ban_duration: banDuration,
   } as never);
 
   if (error) {
@@ -66,14 +86,27 @@ export async function POST(
     );
   }
 
-  // Customer_notes auto-log
+  // Customer_notes auto-log (insan-okunabilir tarihle)
+  const untilLabel = bannedUntilIso
+    ? body.until === "permanent"
+      ? "kalıcı"
+      : new Date(bannedUntilIso).toLocaleString("tr-TR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/Istanbul",
+        })
+    : null;
+
   await admin.from("customer_notes").insert([
     {
       user_id: id,
       author_id: auth.user.id,
       author_name: auth.user.email ?? "admin",
       body: bannedUntilIso
-        ? `🚫 Hesap donduruldu — Sebep: ${reason}`
+        ? `🚫 Hesap donduruldu (${untilLabel}) — Sebep: ${reason}`
         : `✓ Hesap dondurması kaldırıldı — Sebep: ${reason}`,
       pinned: true,
     },
