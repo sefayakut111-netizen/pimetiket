@@ -873,6 +873,222 @@
     margin-bottom: 6px;
   }
 
+  /* === TIER ROZETI === */
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .tier-badge.pro {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #14532d;
+    border: 1px solid #86efac;
+  }
+
+  .tier-badge.standard {
+    background: #eff6ff;
+    color: #1e3a8a;
+    border: 1px solid #93c5fd;
+  }
+
+  .tier-badge.improve {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #78350f;
+    border: 1px solid #fbbf24;
+  }
+
+  .tier-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Pim yorumu içindeki aksiyon butonu */
+  .pim-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 7px 12px;
+    background: var(--text);
+    color: var(--surface);
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+
+  .pim-action:hover {
+    background: #2a2a2a;
+    transform: translateY(-1px);
+  }
+
+  .pim-action svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Profesyonel tier için onay butonu vurgulama */
+  .btn-approve.highlighted {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15); }
+    50% { box-shadow: 0 4px 20px rgba(22, 163, 74, 0.45); }
+  }
+
+  /* Slider altı dinamik not */
+  .slider-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    min-height: 14px;
+    line-height: 1.3;
+    transition: color 0.15s ease;
+  }
+  .slider-note.warn { color: #c2410c; }
+  .slider-note.info { color: var(--accent); }
+
+  /* === MALZEME SEÇİCİ === */
+  .material-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .material-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .material-btn:hover { border-color: var(--text-muted); }
+  .material-btn.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  .material-btn .mat-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .material-btn[data-material="paper"] .mat-icon { background: #fafafa; color: #333; border: 1px solid #ddd; }
+  .material-btn[data-material="transparent"] .mat-icon {
+    background: repeating-conic-gradient(#e5e5e5 0% 25%, transparent 0% 50%) 0 0 / 8px 8px;
+    color: #555;
+    border: 1px solid #ddd;
+  }
+  .material-btn[data-material="metallic"] .mat-icon {
+    background: linear-gradient(135deg, #d4d4d8 0%, #ffffff 50%, #a1a1aa 100%);
+    color: #333;
+  }
+  .material-btn[data-material="holographic"] .mat-icon {
+    background: linear-gradient(135deg, #fbcfe8 0%, #c7d2fe 33%, #bae6fd 66%, #bbf7d0 100%);
+    color: #333;
+  }
+
+  .material-btn .mat-label {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* === BEYAZ PLAN MOD SEÇİCİ === */
+  .white-mode-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .white-mode-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    text-align: center;
+    position: relative;
+  }
+
+  .white-mode-btn:hover { border-color: var(--text-muted); }
+  .white-mode-btn.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  .white-mode-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* AI butonu için özel görsel ipucu */
+  .white-mode-btn[data-wmode="ai"] {
+    background: linear-gradient(135deg, #fdf6f1 0%, #f9ebda 100%);
+    color: #7c3a0f;
+    border-color: #f0dec9;
+  }
+  .white-mode-btn[data-wmode="ai"].active {
+    background: linear-gradient(135deg, #d97757 0%, #c45a32 100%);
+    color: white;
+    border-color: #c45a32;
+  }
+  .white-mode-btn[data-wmode="ai"]::before {
+    content: '✨';
+    margin-right: 3px;
+    font-size: 10px;
+  }
+
+  /* Beyaz plan açıklama notu */
+  .white-note {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border-left: 3px solid #94a3b8;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  /* Layers paneline beyaz toggle renk */
+  .toggle.on[data-layer="white"] {
+    background: #64748b;
+  }
+
   /* Background removal butonu */
   .bg-remove-btn {
     width: 100%;
@@ -1069,6 +1285,29 @@
       </button>
     </div>
 
+    <!-- Malzeme tipi -->
+    <div class="panel">
+      <div class="panel-title">Malzeme tipi</div>
+      <div class="material-grid">
+        <button class="material-btn active" data-material="paper">
+          <div class="mat-icon">A</div>
+          <div class="mat-label">Normal kağıt</div>
+        </button>
+        <button class="material-btn" data-material="transparent">
+          <div class="mat-icon"></div>
+          <div class="mat-label">Şeffaf folyo</div>
+        </button>
+        <button class="material-btn" data-material="metallic">
+          <div class="mat-icon"></div>
+          <div class="mat-label">Metalize</div>
+        </button>
+        <button class="material-btn" data-material="holographic">
+          <div class="mat-icon"></div>
+          <div class="mat-label">Holografik</div>
+        </button>
+      </div>
+    </div>
+
     <!-- PDF sayfa seçici (sadece çok sayfalı PDF'lerde görünür) -->
     <div class="panel" id="pdfPagePanel" style="display:none;">
       <div class="panel-title">PDF Sayfası</div>
@@ -1076,90 +1315,106 @@
       <div id="pdfPageGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;"></div>
     </div>
 
-    <!-- Düzenleme paneli (accordion - default kapalı) -->
-    <div class="accordion" id="editPanel">
-      <!-- Kesim modu -->
-      <div class="panel">
-        <div class="panel-title">Kesim modu</div>
-        <div class="mode-grid">
-          <button class="mode-btn active" data-mode="contour">
-            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M5 8c3-4 11-4 14 0c2 3-1 7-4 9c-2 1-7 1-9-1c-3-3-3-6-1-8z" stroke-dasharray="2,2"/>
-            </svg>
-            <span class="mode-label">Kontur</span>
-          </button>
-          <button class="mode-btn" data-mode="hull">
-            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <polygon points="4,8 10,4 18,5 20,12 16,19 6,18" stroke-dasharray="2,2"/>
-            </svg>
-            <span class="mode-label">Çevresel</span>
-          </button>
-          <button class="mode-btn" data-mode="rect">
-            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="4" y="5" width="16" height="14" stroke-dasharray="2,2"/>
-            </svg>
-            <span class="mode-label">Dikdörtgen</span>
-          </button>
-          <button class="mode-btn" data-mode="circle">
-            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="8" stroke-dasharray="2,2"/>
-            </svg>
-            <span class="mode-label">Yuvarlak</span>
-          </button>
+    <!-- Kesim modu -->
+    <div class="panel">
+      <div class="panel-title">Kesim modu</div>
+      <div class="mode-grid">
+        <button class="mode-btn active" data-mode="contour">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 8c3-4 11-4 14 0c2 3-1 7-4 9c-2 1-7 1-9-1c-3-3-3-6-1-8z" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Kontur</span>
+        </button>
+        <button class="mode-btn" data-mode="hull">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="4,8 10,4 18,5 20,12 16,19 6,18" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Çevresel</span>
+        </button>
+        <button class="mode-btn" data-mode="rect">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="4" y="5" width="16" height="14" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Dikdörtgen</span>
+        </button>
+        <button class="mode-btn" data-mode="circle">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="8" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Yuvarlak</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Ayarlar -->
+    <div class="panel" id="settingsPanel">
+      <div class="panel-title">Ayarlar</div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="label">Kesim mesafesi</span>
+          <span class="value"><span id="offsetVal">2.0</span> mm</span>
         </div>
+        <input type="range" id="offsetSlider" min="0" max="5" step="0.1" value="2.0">
+        <div class="slider-note" id="offsetNote"></div>
       </div>
 
-      <!-- Ayarlar -->
-      <div class="panel">
-        <div class="panel-title">Ayarlar</div>
-
-        <div class="slider-row">
-          <div class="slider-header">
-            <span class="label">Kesim mesafesi</span>
-            <span class="value"><span id="offsetVal">2.0</span> mm</span>
-          </div>
-          <input type="range" id="offsetSlider" min="0" max="5" step="0.1" value="2.0">
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="label">Yumuşatma</span>
+          <span class="value"><span id="smoothVal">0</span></span>
         </div>
-
-        <div class="slider-row">
-          <div class="slider-header">
-            <span class="label">Yumuşatma</span>
-            <span class="value"><span id="smoothVal">0</span></span>
-          </div>
-          <input type="range" id="smoothSlider" min="0" max="100" step="1" value="0">
-        </div>
-
-        <div class="slider-row">
-          <div class="slider-header">
-            <span class="label">Görüntü çözünürlüğü (DPI)</span>
-            <span class="value"><span id="dpiVal">300</span></span>
-          </div>
-          <input type="range" id="dpiSlider" min="72" max="600" step="1" value="300">
-        </div>
+        <input type="range" id="smoothSlider" min="0" max="100" step="1" value="0">
       </div>
 
-      <!-- Görünürlük -->
-      <div class="panel">
-        <div class="panel-title">Katmanlar</div>
-        <div class="toggle-row">
-          <span>Bıçak çizgisi</span>
-          <div class="toggle on" data-layer="cut"></div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="label">Görüntü çözünürlüğü (DPI)</span>
+          <span class="value"><span id="dpiVal">300</span></span>
         </div>
-        <div class="toggle-row">
-          <span>Bleed (taşma)</span>
-          <div class="toggle" data-layer="bleed"></div>
-        </div>
-        <div class="toggle-row">
-          <span>Safe zone</span>
-          <div class="toggle" data-layer="safe"></div>
-        </div>
+        <input type="range" id="dpiSlider" min="72" max="600" step="1" value="300">
       </div>
+    </div>
 
-      <!-- Çıktı -->
-      <div class="panel">
-        <div class="panel-title">Çıktı</div>
-        <button class="btn secondary" id="exportSvg" disabled>SVG indir</button>
+    <!-- Görünürlük -->
+    <div class="panel">
+      <div class="panel-title">Katmanlar</div>
+      <div class="toggle-row">
+        <span>Bıçak çizgisi</span>
+        <div class="toggle on" data-layer="cut"></div>
       </div>
+      <div class="toggle-row">
+        <span>Beyaz plan</span>
+        <div class="toggle" data-layer="white"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Bleed (taşma)</span>
+        <div class="toggle" data-layer="bleed"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Safe zone</span>
+        <div class="toggle" data-layer="safe"></div>
+      </div>
+    </div>
+
+    <!-- Beyaz plan ayarları (sadece kağıt-dışı malzemelerde görünür) -->
+    <div class="panel" id="whitePlanPanel" style="display:none;">
+      <div class="panel-title">Beyaz plan modu</div>
+      <div class="white-mode-row">
+        <button class="white-mode-btn active" data-wmode="full">Full</button>
+        <button class="white-mode-btn" data-wmode="smart">Smart</button>
+        <button class="white-mode-btn" data-wmode="ai">AI ile belirle</button>
+        <button class="white-mode-btn" data-wmode="custom" disabled>Custom</button>
+      </div>
+      <div class="white-note" id="whiteNote">
+        Şeffaf/metalize malzemede tasarımın altına beyaz mürekkep basılır. Renkler doğru çıkar.
+      </div>
+    </div>
+
+    <!-- Çıktı -->
+    <div class="panel">
+      <div class="panel-title">Çıktı</div>
+      <button class="btn secondary" id="exportSvg" disabled>SVG indir</button>
     </div>
 
     <!-- Bilgi -->
@@ -1215,8 +1470,8 @@
       </div>
     </div>
 
-    <!-- Action bar — 3 katmanlı akış -->
-    <div class="action-bar" id="actionBar" style="display:none;">
+    <!-- Action bar — her zaman görünür -->
+    <div class="action-bar" id="actionBar">
       <div class="action-bar-left">
         <button class="btn-help" id="btnHelp">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1233,9 +1488,9 @@
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
-          Bıçağı düzenle
+          Ayarlar
         </button>
-        <button class="btn-approve" id="btnApprove">
+        <button class="btn-approve" id="btnApprove" disabled>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
@@ -1278,13 +1533,19 @@ let currentPaths = [];       // Bıçak path'leri (canvas koordinatlarında)
 let bleedPaths = [];         // Bleed path'leri (offset +bleed)
 let safePaths = [];          // Safe zone path'leri (offset -safe)
 let currentMode = 'contour';
-let layers = { cut: true, bleed: false, safe: false };
+let layers = { cut: true, white: false, bleed: false, safe: false };
 let imageMetadata = null;
 let currentPdfDoc = null;    // PDF.js document instance
 let currentPageNum = 1;
 let currentFile = null;
 let currentFileSource = 'raster'; // 'raster' | 'vector' | 'vector-with-cutline'
 let detectedCutContourNames = []; // Tespit edilen spot color isimleri
+
+// === BEYAZ PLAN STATE ===
+let materialType = 'paper';        // 'paper' | 'transparent' | 'metallic' | 'holographic'
+let whitePlanMode = 'full';        // 'off' | 'full' | 'smart' | 'custom'
+let whitePlanPaths = [];           // beyaz plan path'leri (canvas koordinatlarında)
+let hasCustomWhitePlan = false;    // PDF/AI/PSD içinde white spot color bulundu mu
 
 // ============================================================
 // OPENCV.JS BAŞLATMA
@@ -1567,6 +1828,10 @@ async function selectPdfPage(pageNum) {
     img.onload = () => {
       currentFileSource = cutDetect.found ? 'vector-with-cutline' : 'vector';
       detectedCutContourNames = cutDetect.names;
+      hasCustomWhitePlan = cutDetect.hasWhite;
+      // Custom modu sadece white spot color varsa enable et
+      const customBtn = document.querySelector('.white-mode-btn[data-wmode="custom"]');
+      if (customBtn) customBtn.disabled = !cutDetect.hasWhite;
       processImage(img, currentFile);
       currentPageNum = pageNum;
     };
@@ -1579,10 +1844,11 @@ async function selectPdfPage(pageNum) {
   }
 }
 
-// CutContour spot color tespiti — basit heuristik
-// Döndürür: { found: bool, names: [bulunan isimler] }
+// CutContour ve White spot color tespiti — basit heuristik
+// Döndürür: { found: bool, names: [bulunan isimler], hasWhite: bool }
 async function tryDetectCutContour(page) {
-  const found = new Set();
+  const cutNames = new Set();
+  let whiteFound = false;
   try {
     const opList = await page.getOperatorList();
     const fns = pdfjsLib.OPS;
@@ -1591,16 +1857,22 @@ async function tryDetectCutContour(page) {
       const fn = opList.fnArray[i];
       const args = opList.argsArray[i];
 
-      // setStrokeColorN / setFillColorN — spot/named color işaretler
       if (fn === fns.setStrokeColorN || fn === fns.setFillColorN) {
         if (args && args.length > 0) {
           for (const arg of args) {
             if (typeof arg === 'string') {
               const upper = arg.toUpperCase();
+              // CutContour ailesi
               if (upper.includes('CUTCONTOUR') || upper.includes('DIELINE') ||
                   upper.includes('CUT') || upper.includes('KESIM') ||
                   upper.includes('STANZE') || upper.includes('DIE')) {
-                found.add(arg);
+                cutNames.add(arg);
+              }
+              // White spot color ailesi
+              if (upper === 'WHITE' || upper === 'WHITEINK' ||
+                  upper === 'BEYAZ' || upper.startsWith('WHITE_') ||
+                  upper.includes('UNDERBASE')) {
+                whiteFound = true;
               }
             }
           }
@@ -1610,11 +1882,10 @@ async function tryDetectCutContour(page) {
   } catch (err) {
     console.warn('Spot color tarama hatası (yok sayılacak):', err);
   }
-  const names = Array.from(found);
-  if (names.length > 0) {
-    console.log('CutContour spot color(lar) tespit edildi:', names);
-  }
-  return { found: names.length > 0, names };
+  const names = Array.from(cutNames);
+  if (names.length > 0) console.log('CutContour spot color(lar) tespit edildi:', names);
+  if (whiteFound) console.log('White underbase spot color tespit edildi');
+  return { found: names.length > 0, names, hasWhite: whiteFound };
 }
 
 function processImage(img, file) {
@@ -1679,6 +1950,7 @@ function processImage(img, file) {
 
   updateMetadataDisplay();
   generateCutline();
+  generateWhitePlan();
   render();
   generatePimComment();
   hideLoading();
@@ -1694,11 +1966,18 @@ function generateCutline() {
   const smoothness = parseFloat(document.getElementById('smoothSlider').value);
   const dpi = parseInt(document.getElementById('dpiSlider').value);
 
+  // === Kayma toleransı (sıfır kesim koruması) ===
+  // Kullanıcı 0 mm seçerse, kesim makinesinin ~0.3mm kayma toleransını
+  // telafi etmek için bıçak otomatik 0.3mm içerden kesilir.
+  // Bu sayede kenarlarda görselin dışı (şeffaf/beyaz folyo) görünmez.
+  const slipToleranceMm = 0.3;
+  const effectiveOffsetMm = (offsetMm === 0) ? -slipToleranceMm : offsetMm;
+
   // mm → piksel dönüşümü (scaled görüntüde)
   const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
-  const offsetPx = Math.max(0, Math.round(offsetMm * pxPerMm));
-  const bleedPx = Math.round(2.0 * pxPerMm);  // 2mm bleed
-  const safePx = Math.round(2.0 * pxPerMm);   // 2mm safe zone
+  const offsetPx = Math.round(effectiveOffsetMm * pxPerMm);  // negatif olabilir
+  const bleedPx = Math.round(2.0 * pxPerMm);
+  const safePx = Math.round(2.0 * pxPerMm);
 
   // STEP 1: Akıllı mask oluştur (adaptive threshold + morfolojik temizleme)
   const maskResult = buildMask(currentMat);
@@ -1735,30 +2014,172 @@ function generateCutline() {
     // Convex hull of all content
     currentPaths = generateOffsetPaths(mask, offsetPx, smoothness, true);
     bleedPaths = generateOffsetPaths(mask, offsetPx + bleedPx, smoothness, true);
-    safePaths = generateOffsetPaths(mask, Math.max(0, offsetPx - safePx), smoothness, true);
+    safePaths = generateOffsetPaths(mask, offsetPx - safePx, smoothness, true);
   } else {
     // contour (default)
     currentPaths = generateOffsetPaths(mask, offsetPx, smoothness, false);
     bleedPaths = generateOffsetPaths(mask, offsetPx + bleedPx, smoothness, false);
-    safePaths = generateOffsetPaths(mask, Math.max(0, offsetPx - safePx), smoothness, false);
+    safePaths = generateOffsetPaths(mask, offsetPx - safePx, smoothness, false);
   }
 
   mask.delete();
 }
 
+// ============================================================
+// BEYAZ PLAN ÜRETİMİ (white underbase)
+// ============================================================
+// Şeffaf/metalize/holografik malzemede tasarımın altına basılan beyaz mürekkep katmanı.
+// 3 mod:
+//   - 'full'   : tüm baskı alanını kapla (hafif inset)
+//   - 'smart'  : sadece koyu/canlı renklerin altına (brightness threshold)
+//   - 'custom' : müşterinin kendi tasarladığı white spot color (PDF/PSD'den)
+function generateWhitePlan() {
+  whitePlanPaths = [];
+  if (!currentMat || !cvReady) return;
+  if (whitePlanMode === 'off') return;
+  if (materialType === 'paper') return;
+
+  if (whitePlanMode === 'custom') {
+    if (!hasCustomWhitePlan) return;
+    return; // Next.js fazında server'dan path çıkarılır
+  }
+
+  // Mask oluştur (silüetin gerçek sınırı)
+  const maskResult = buildMask(currentMat);
+  let baseMask = maskResult.mask;
+
+  const pxPerMm = (imageMetadata.dpi / 25.4) * imageMetadata.scale;
+
+  // ============================================================
+  // SMART MOD: sadece koyu/canlı pikseller AND silüet
+  // ============================================================
+  if (whitePlanMode === 'smart') {
+    const gray = new cv.Mat();
+    cv.cvtColor(currentMat, gray, cv.COLOR_RGBA2GRAY);
+    const darkMask = new cv.Mat();
+    cv.threshold(gray, darkMask, 200, 255, cv.THRESH_BINARY_INV);
+
+    const smartMask = new cv.Mat();
+    cv.bitwise_and(baseMask, darkMask, smartMask);
+
+    baseMask.delete();
+    baseMask = smartMask;
+    gray.delete();
+    darkMask.delete();
+  }
+  // ============================================================
+  // FULL MOD: beyaz plan görselin TAM SİLÜETİ
+  // ============================================================
+  // baseMask zaten silüet — ekstra dilate/erode yok.
+  // Bıçak silüetin offsetMm dışında kesilir, aralarındaki şeffaf folyo kalır.
+  else if (whitePlanMode === 'full') {
+    // baseMask olduğu gibi kullanılır
+  }
+  // ============================================================
+  // AI MOD: bağımsız küçük parçalara duyarlı, gerekirse bg removal
+  // ============================================================
+  // Mevcut alpha temizse direkt kullan, değilse bg removal arka planda.
+  // minArea filtresi çok düşük → küçük detaylar yakalanır.
+  else if (whitePlanMode === 'ai') {
+    // baseMask zaten oluştu — AI modunda minArea filtresi düşürülecek (aşağıda)
+    // Eğer görselin alpha'sı kullanışsızsa kullanıcıya bg removal öner
+    if (!imageMetadata.alphaUseful && currentFileSource === 'raster') {
+      // Bu durumda generateWhitePlan'in tek başına yapacağı sınırlı.
+      // setTimeout ile prompt göster — bg removal yap, sonra yeniden çağrılır
+      maybeOfferBgRemovalForAi();
+    }
+  }
+
+  // Kontur çıkarma
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(baseMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+  const totalArea = baseMask.rows * baseMask.cols;
+  // AI modunda küçük bağımsız parçalara duyarlı — eşik %20 kat daha düşük
+  const minArea = whitePlanMode === 'ai'
+    ? Math.max(20, totalArea * 0.0005)   // %0.05 — küçük detayları yakala
+    : Math.max(100, totalArea * 0.003);  // %0.3 — gürültü filtresi
+
+  for (let i = 0; i < contours.size(); i++) {
+    const c = contours.get(i);
+    if (cv.contourArea(c) < minArea) continue;
+    const approx = new cv.Mat();
+    const epsilon = 0.003 * cv.arcLength(c, true);
+    cv.approxPolyDP(c, approx, epsilon, true);
+    const path = [];
+    for (let j = 0; j < approx.rows; j++) {
+      path.push([approx.data32S[j * 2], approx.data32S[j * 2 + 1]]);
+    }
+    whitePlanPaths.push(path);
+    approx.delete();
+  }
+
+  contours.delete();
+  hierarchy.delete();
+  baseMask.delete();
+}
+
+// AI modu seçildiğinde, görselin temiz alpha'sı yoksa bg removal öner
+let aiBgRemovalOffered = false;
+function maybeOfferBgRemovalForAi() {
+  if (aiBgRemovalOffered) return;
+  aiBgRemovalOffered = true;
+
+  // Pim üzerinden öneri göster
+  setTimeout(() => {
+    const pimText = document.getElementById('pimText');
+    if (!pimText) return;
+    const currentMsg = pimText.innerHTML;
+    pimText.innerHTML = currentMsg + `<br><br>
+      <strong>AI beyaz plan için öneri:</strong> Görselinin arka planı temiz değil.
+      AI'nın bağımsız parçaları doğru tespit etmesi için önce arka planı kaldıralım.
+      <button class="pim-action" onclick="performBackgroundRemovalThenWhitePlan()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        Evet, arka planı kaldır
+      </button>`;
+  }, 100);
+}
+
+// AI white plan flow: bg removal → white plan regenerate
+window.performBackgroundRemovalThenWhitePlan = async function() {
+  aiBgRemovalOffered = false; // sıfırla
+  await performBackgroundRemoval();
+  // performBackgroundRemoval sonunda processImage çalışır,
+  // processImage de generateWhitePlan çağırır — AI mod hala aktifse otomatik düzgün üretilir
+};
+
+// Malzeme tipine göre default beyaz plan modu belirle
+function defaultWhitePlanForMaterial(material) {
+  switch (material) {
+    case 'paper': return 'off';
+    case 'transparent': return 'full';
+    case 'metallic': return 'full';
+    case 'holographic': return 'smart';
+    default: return 'off';
+  }
+}
+
 // Ana offset + smooth + contour işlemi
+// offsetPx pozitif → dilate (dışa), negatif → erode (içeri), 0 → mask'i olduğu gibi kullan
 function generateOffsetPaths(mask, offsetPx, smoothness, useHull) {
   let workingMask = mask;
   let needsDelete = false;
 
-  // Dilate ile dış offset
-  if (offsetPx > 0) {
+  const absOffset = Math.abs(offsetPx);
+  if (absOffset > 0) {
     const kernel = cv.getStructuringElement(
       cv.MORPH_ELLIPSE,
-      new cv.Size(2 * offsetPx + 1, 2 * offsetPx + 1)
+      new cv.Size(2 * absOffset + 1, 2 * absOffset + 1)
     );
     workingMask = new cv.Mat();
-    cv.dilate(mask, workingMask, kernel);
+    if (offsetPx > 0) {
+      cv.dilate(mask, workingMask, kernel);     // pozitif: dışa
+    } else {
+      cv.erode(mask, workingMask, kernel);       // negatif: içeri (kayma toleransı için)
+    }
     kernel.delete();
     needsDelete = true;
   }
@@ -2022,15 +2443,79 @@ function render() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Görüntüyü çiz
+  // ============================================================
+  // 1. BEYAZ PLAN — ALT KATMAN (görselden ÖNCE çizilir)
+  // ============================================================
+  // Gerçek baskı sırası: white ink → görsel → cut. Önizleme de aynı.
+  // Görsel alpha kanallı olduğu için silüet dışında beyaz plan görünür.
+  if (layers.white && whitePlanPaths.length > 0) {
+    const patternSize = 8;
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = patternSize;
+    patternCanvas.height = patternSize;
+    const pctx = patternCanvas.getContext('2d');
+    // Beyaz dolgu
+    pctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    pctx.fillRect(0, 0, patternSize, patternSize);
+    // Diagonal çizgi (beyaz mürekkep göstergesi)
+    pctx.strokeStyle = 'rgba(71, 85, 105, 0.35)';
+    pctx.lineWidth = 1;
+    pctx.beginPath();
+    pctx.moveTo(0, patternSize);
+    pctx.lineTo(patternSize, 0);
+    pctx.stroke();
+    const pattern = ctx.createPattern(patternCanvas, 'repeat');
+
+    ctx.save();
+    ctx.fillStyle = pattern;
+    for (const path of whitePlanPaths) {
+      if (path.length < 3) continue;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1]);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Beyaz planın kenarını da kesik çizgi olarak çiz
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    for (const path of whitePlanPaths) {
+      if (path.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1]);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ============================================================
+  // 2. GÖRSEL — drawImage ile (alpha respect, beyaz planın üstüne)
+  // ============================================================
+  // putImageData direkt piksel atar (alttaki katmanı override eder).
+  // drawImage alpha-blend yapar, alttaki beyaz planı korur.
+  const offscreen = document.createElement('canvas');
+  offscreen.width = currentMat.cols;
+  offscreen.height = currentMat.rows;
+  const offCtx = offscreen.getContext('2d');
   const imgData = new ImageData(
     new Uint8ClampedArray(currentMat.data),
     currentMat.cols,
     currentMat.rows
   );
-  ctx.putImageData(imgData, 0, 0);
+  offCtx.putImageData(imgData, 0, 0);
+  ctx.drawImage(offscreen, 0, 0);
 
-  // Bleed çiz (en dış)
+  // ============================================================
+  // 3. BLEED / CUT / SAFE — en üst katman (overlay)
+  // ============================================================
   if (layers.bleed && bleedPaths.length > 0) {
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = 1.5;
@@ -2038,7 +2523,6 @@ function render() {
     drawPaths(ctx, bleedPaths);
   }
 
-  // Cut çiz (orta)
   if (layers.cut && currentPaths.length > 0) {
     ctx.strokeStyle = '#ff0080';
     ctx.lineWidth = 2;
@@ -2046,7 +2530,6 @@ function render() {
     drawPaths(ctx, currentPaths);
   }
 
-  // Safe zone çiz (en iç)
   if (layers.safe && safePaths.length > 0) {
     ctx.strokeStyle = '#3b82f6';
     ctx.lineWidth = 1.5;
@@ -2181,8 +2664,75 @@ function runPreflight() {
 }
 
 // ============================================================
-// PIM YORUMU (POC: kural tabanlı; gerçek sistemde Claude API)
+// TIER SINIFLANDIRMA — Profesyonel / Standart / İyileştirme
 // ============================================================
+// Kural tabanlı, hızlı, ücretsiz.
+// Üretim sisteminde ChatGPT Vision ile derinleştirilecek.
+function classifyTier() {
+  if (!imageMetadata) return { tier: 'standard', reason: '' };
+
+  // PROFESYONEL TIER — Tasarımcının hazırladığı dosya
+  if (currentFileSource === 'vector-with-cutline') {
+    return {
+      tier: 'pro',
+      label: 'Profesyonel',
+      reason: 'PDF/AI/PSD içinde gömülü bıçak bulundu. Tasarımcının çizdiği bıçağı koruyoruz.',
+      materialNote: materialType !== 'paper'
+        ? `Malzeme: ${materialLabel(materialType)}. Beyaz plan: ${whitePlanMode === 'custom' && hasCustomWhitePlan ? 'tasarımcının kendi white\'ı korunuyor' : whitePlanMode + ' modunda otomatik üretiliyor'}.`
+        : null
+    };
+  }
+
+  // STANDART TIER
+  if (currentFileSource === 'vector') {
+    return {
+      tier: 'standard',
+      label: 'Standart',
+      reason: 'Vektörel dosya, otomatik bıçak ürettim.'
+    };
+  }
+
+  const dpi = imageMetadata.dpi;
+  const hasUsefulAlpha = imageMetadata.alphaUseful === true;
+  const coverage = imageMetadata.cutCoverage || 0;
+
+  if (hasUsefulAlpha && dpi >= 220 && coverage < 0.9) {
+    return {
+      tier: 'standard',
+      label: 'Standart',
+      reason: 'Şeffaf arka planlı kaliteli PNG.'
+    };
+  }
+
+  let reasons = [];
+  let suggestedAction = null;
+
+  if (!imageMetadata.hasAlpha) {
+    reasons.push('arka plan kaldırma gerekli');
+    suggestedAction = 'bg-remove';
+  } else if (!hasUsefulAlpha) {
+    reasons.push('alpha kanalı boş');
+    suggestedAction = 'bg-remove';
+  }
+  if (dpi < 220) {
+    reasons.push(`çözünürlük düşük (${dpi} DPI)`);
+  }
+  if (coverage > 0.9) {
+    reasons.push('bıçak görsel kenarını takip ediyor');
+    suggestedAction = 'bg-remove';
+  }
+
+  return {
+    tier: 'improve',
+    label: 'İyileştirme önerilir',
+    reason: reasons.join(', '),
+    suggestedAction: suggestedAction
+  };
+}
+
+function materialLabel(m) {
+  return { paper: 'Normal kağıt', transparent: 'Şeffaf folyo', metallic: 'Metalize', holographic: 'Holografik' }[m] || m;
+}
 function generatePimComment() {
   if (!imageMetadata) return;
   const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
@@ -2190,38 +2740,69 @@ function generatePimComment() {
   const partCount = currentPaths.length;
   const coverage = imageMetadata.cutCoverage || 0;
 
+  const tierInfo = classifyTier();
+
   let msg = '';
+  let actionBtn = '';
 
-  // Önce kritik durumlar
-  if (coverage > 0.95) {
-    msg = 'Bıçak çizgini ürettim ama görselin tüm dış kenarlarını takip ediyor — bu, görselinin arka planını ayıramadığım anlamına geliyor. Photoshop\'tan PNG-24 şeffaf olarak veya arka planı silip yeniden gönderirsen daha temiz bir bıçak çıkartabilirim.';
-  } else if (imageMetadata.alphaUseful === false && imageMetadata.hasAlpha) {
-    msg = 'PNG\'nde alpha kanalı var ama tamamen opak görünüyor — yani şeffaflık taşımıyor. Beyaz arka planı otomatik tespit ettim, sonuç fena değil ama "Save for Web → PNG-24 transparency açık" ile yeniden kaydedersen mükemmel olur.';
+  // Tier rozeti
+  const tierBadge = `<div class="tier-badge ${tierInfo.tier}">${tierInfo.label}</div>`;
+
+  // PROFESYONEL — minimal, güven veren, "onayla" odaklı
+  if (tierInfo.tier === 'pro') {
+    msg = 'Tasarımının içindeki bıçağı buldum ve koruyorum. Bıçak çizgisi senin tasarımcının çizdiği şekilde, dokunmadım. Direkt onaylayabilirsin.';
+    if (tierInfo.materialNote) {
+      msg += ' ' + tierInfo.materialNote;
+    }
+    // Onay butonunu vurgula
+    document.getElementById('btnApprove').classList.add('highlighted');
   }
-  // Vektörel kaynak özel mesajları
-  else if (currentFileSource === 'vector-with-cutline') {
-    msg = 'Bu PDF\'in içinde zaten bir CutContour spot color bıçağı buldum! Şu an raster önizleme gösteriyorum, ama gerçek sistemde mevcut bıçağı doğrudan kullanırdım. Otomatik üretim yerine senin tasarımcının çizdiği orijinal kesim çizgisi korunur.';
-  } else if (currentFileSource === 'vector' && dpi >= 220) {
-    msg = `Vektörel dosya yüklemişsin — harika, baskı kalitesi açısından en iyisi. ${dpi} DPI'da rasterize edip bıçak ürettim. ${partCount} parça bulduğum için "${currentMode === 'contour' ? 'Kontur' : currentMode === 'hull' ? 'Çevresel' : currentMode === 'rect' ? 'Dikdörtgen' : 'Yuvarlak'}" modunu kullanıyorsun.`;
-  } else if (currentFileSource === 'vector' && dpi < 220) {
-    msg = `Vektörel dosya yüklemişsin ama DPI ayarın ${dpi}. Vektörel kaynaklarda 300+ DPI'a çıkartırsan daha hassas bıçak elde edersin. Slider'dan yukarı çekebilirsin.`;
-  } else if (dpi < 150) {
-    msg = `Görselin ${dpi} DPI'da gelmiş, baskıda pikselli çıkar. Daha yüksek çözünürlüklü bir versiyonu var mı? 300 DPI ideal.`;
-  } else if (!imageMetadata.hasAlpha) {
-    msg = 'Görselin şeffaf arka planı yok, beyaz arka planı otomatik kestim ama bazen yumuşak kenarlar (saç, kürk) sorun olur. Photoshop\'tan PNG-24 şeffaf olarak dışa aktarırsan daha temiz olur.';
-  } else if (partCount === 0) {
-    msg = 'Bıçak üretemedim. Görselin tamamen şeffaf arka plana sahip olduğundan emin misin?';
-  } else if (partCount > 8) {
-    msg = `${partCount} ayrı parça tespit ettim. Hepsi ayrı sticker olarak mı kesilsin, yoksa "Çevresel" modunu seçip tek parça mı yapayım?`;
-  } else if (offsetMm < 1) {
-    msg = `Kesim mesafesi ${offsetMm.toFixed(1)}mm — biraz dar. Kesim makinesi 0.3mm'lik tolerans ile çalışıyor, 2mm önerilir.`;
-  } else if (offsetMm > 4) {
-    msg = `${offsetMm.toFixed(1)}mm offset oldukça geniş. Bilinçli bir tercih ise sorun yok ama 2mm çoğu işte yeterli oluyor.`;
-  } else {
-    msg = 'Tasarım baskıya hazır görünüyor! Bıçak çizgisi temiz, çözünürlük yeterli. SVG\'yi indirip kontrol edebilirsin.';
+  // İYİLEŞTİRME ÖNERİLİYOR — yönlendirici, tek tıkla aksiyon
+  else if (tierInfo.tier === 'improve') {
+    document.getElementById('btnApprove').classList.remove('highlighted');
+
+    if (tierInfo.suggestedAction === 'bg-remove' && currentFileSource === 'raster') {
+      if (coverage > 0.95) {
+        msg = 'Bıçak görselin tüm kenarlarını takip ediyor, yani arka planı temiz ayıramadım. AI ile arka planı kaldırırsam çok daha temiz bir bıçak çıkar. Bunu deneyelim mi?';
+      } else if (!imageMetadata.hasAlpha) {
+        msg = 'JPG/beyaz arka planlı görsel yüklemişsin. Otomatik tespit ettim ama saçaklar olabilir. AI ile arka planı kaldırırsam mükemmel sonuç alırız. Deneyelim mi?';
+      } else {
+        msg = 'Görselin alpha kanalı var ama şeffaflık taşımıyor. AI ile gerçek bir şeffaf arka plan yapayım mı?';
+      }
+      actionBtn = `<button class="pim-action" onclick="performBackgroundRemoval()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        Evet, arka planı kaldır
+      </button>`;
+    } else if (dpi < 150) {
+      msg = `Görselin ${dpi} DPI'da gelmiş, baskıda pikselli çıkar. Daha yüksek çözünürlüklü bir versiyonu var mı? 300 DPI ideal.`;
+    } else {
+      msg = `Tasarım baskıya hazır ama ${tierInfo.reason}. İstersen "Bıçağı düzenle"den ayarları manuel oynatabilirsin.`;
+    }
+  }
+  // STANDART — sade, bilgilendirici
+  else {
+    document.getElementById('btnApprove').classList.remove('highlighted');
+
+    if (partCount === 0) {
+      msg = 'Bıçak üretemedim. Görselin tamamen şeffaf arka plana sahip olduğundan emin misin?';
+    } else if (partCount > 8) {
+      msg = `${partCount} ayrı parça tespit ettim. Hepsi ayrı sticker olarak mı kesilsin, yoksa "Çevresel" modunu seçip tek parça mı yapayım?`;
+    } else if (offsetMm === 0) {
+      msg = `Sıfır kesim seçtin — bıçak görselin tam üstünden geçecek. Kesim makinesinin kayma toleransı için bıçağı otomatik 0.3mm içerden geçirdim, kenarlarda boşluk görünmez.`;
+    } else if (offsetMm < 1) {
+      msg = `Kesim mesafesi ${offsetMm.toFixed(1)}mm — biraz dar. Kesim makinesi 0.3mm'lik tolerans ile çalışıyor, 2mm önerilir.`;
+    } else {
+      let baseMsg = `${currentFileSource === 'vector' ? 'Vektörel' : 'Yüksek kaliteli'} bir dosya yüklemişsin. Bıçağı temiz ürettim, baskıya hazır görünüyor.`;
+      if (materialType !== 'paper' && whitePlanPaths.length > 0) {
+        baseMsg += ` ${materialLabel(materialType)} seçtin, beyaz planı ${whitePlanMode === 'full' ? 'tam kaplama' : 'akıllı (smart)'} modunda ürettim — sol panelden "Beyaz plan" toggle'ı ile önizleyebilirsin.`;
+      }
+      msg = baseMsg;
+    }
   }
 
-  document.getElementById('pimText').textContent = msg;
+  document.getElementById('pimText').innerHTML = tierBadge + '<br>' + msg + actionBtn;
   document.getElementById('pimComment').style.display = 'flex';
 }
 
@@ -2285,18 +2866,21 @@ async function performBackgroundRemoval() {
 }
 
 document.getElementById('btnRemoveBg').addEventListener('click', performBackgroundRemoval);
+// Global'e expose et — Pim aksiyon butonundan da çağrılabilsin
+window.performBackgroundRemoval = performBackgroundRemoval;
 
-// Action bar görünürlüğü — sadece dosya yüklenince göster
+// Dosya yüklenince "Onayla" butonu aktif olur (action bar default'ta görünür)
 function showActionBar() {
-  document.getElementById('actionBar').style.display = 'flex';
+  document.getElementById('btnApprove').disabled = false;
 }
 
-// "Bıçağı düzenle" — accordion'u aç/kapat
+// "Ayarlar" — panellere smooth scroll
 document.getElementById('btnEdit').addEventListener('click', () => {
-  const panel = document.getElementById('editPanel');
-  const btn = document.getElementById('btnEdit');
-  const isOpen = panel.classList.toggle('open');
-  btn.classList.toggle('active', isOpen);
+  const settings = document.getElementById('settingsPanel');
+  if (settings) {
+    settings.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Mobilde özellikle yararlı — sidebar aşağıda
+  }
 });
 
 // "Bıçağı onayla" — onay overlay göster
@@ -2350,6 +2934,7 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
     currentMode = btn.dataset.mode;
     if (currentMat) {
       generateCutline();
+      generateWhitePlan();
       render();
       updateMetadataDisplay();
       generatePimComment();
@@ -2366,31 +2951,140 @@ document.querySelectorAll('.toggle').forEach(t => {
   });
 });
 
+// === MALZEME TİPİ SEÇİCİ ===
+document.querySelectorAll('.material-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    materialType = btn.dataset.material;
+
+    // Malzemeye göre beyaz plan default modunu güncelle
+    whitePlanMode = defaultWhitePlanForMaterial(materialType);
+    document.querySelectorAll('.white-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.wmode === whitePlanMode);
+    });
+
+    // Beyaz plan toggle'ı ve modu otomatik aç/kapat
+    const whiteToggle = document.querySelector('.toggle[data-layer="white"]');
+    const whitePanel = document.getElementById('whitePlanPanel');
+    if (materialType === 'paper') {
+      layers.white = false;
+      whiteToggle.classList.remove('on');
+      if (whitePanel) whitePanel.style.display = 'none';
+    } else {
+      layers.white = true;
+      whiteToggle.classList.add('on');
+      if (whitePanel) whitePanel.style.display = '';
+    }
+
+    updateWhiteNote();
+
+    if (currentMat) {
+      generateWhitePlan();
+      render();
+      generatePimComment();
+    }
+  });
+});
+
+// === BEYAZ PLAN MODU SEÇİCİ ===
+document.querySelectorAll('.white-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.disabled) return;
+    document.querySelectorAll('.white-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    whitePlanMode = btn.dataset.wmode;
+    updateWhiteNote();
+    if (currentMat) {
+      generateWhitePlan();
+      // Beyaz katmanı otomatik aç ki görsünler
+      if (whitePlanMode !== 'off' && materialType !== 'paper') {
+        layers.white = true;
+        document.querySelector('.toggle[data-layer="white"]').classList.add('on');
+      }
+      render();
+      generatePimComment();
+    }
+  });
+});
+
+function updateOffsetNote() {
+  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
+  const note = document.getElementById('offsetNote');
+  if (!note) return;
+  if (offsetMm === 0) {
+    note.textContent = 'Sıfır kesim — kayma toleransı için bıçak 0.3mm içerden kesilir';
+    note.className = 'slider-note info';
+  } else if (offsetMm < 1) {
+    note.textContent = `Dar kesim (${offsetMm.toFixed(1)}mm) — makine toleransına dikkat`;
+    note.className = 'slider-note warn';
+  } else if (offsetMm > 4) {
+    note.textContent = 'Geniş kesim — bilinçli tercih ise sorun yok';
+    note.className = 'slider-note';
+  } else {
+    note.textContent = '';
+    note.className = 'slider-note';
+  }
+}
+
+function updateWhiteNote() {
+  const note = document.getElementById('whiteNote');
+  if (materialType === 'paper') {
+    note.textContent = 'Normal kağıt seçili — beyaz plan gerekmez.';
+    return;
+  }
+  switch (whitePlanMode) {
+    case 'full':
+      note.textContent = 'Beyaz plan görselin tam sınırında. Bıçak ile beyaz plan arası şeffaf folyo olarak kalır.';
+      break;
+    case 'smart':
+      note.textContent = 'Sadece koyu/canlı renklerin altına beyaz basılır. Holografik veya metalize parıltısı korunur.';
+      break;
+    case 'ai':
+      note.textContent = 'AI bağımsız küçük parçaları da yakalar. Otomatik mod hata verirse veya tasarımda noktalar/parçalar varsa kullan.';
+      break;
+    case 'custom':
+      note.textContent = hasCustomWhitePlan
+        ? 'Tasarımcının kendi white spot color\'ı bulundu, koruyoruz.'
+        : 'Dosyada white spot color bulunamadı. Full, Smart veya AI seç.';
+      break;
+    case 'off':
+      note.textContent = 'Beyaz plan kapalı. Bilinçli bir tercih ise sorun yok.';
+      break;
+  }
+}
+
 // Slider'lar (canlı update)
 const sliders = ['offsetSlider', 'smoothSlider', 'dpiSlider'];
 sliders.forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
     const valEl = document.getElementById(id.replace('Slider', 'Val'));
-    if (id === 'offsetSlider') valEl.textContent = parseFloat(el.value).toFixed(1);
-    else valEl.textContent = el.value;
+    if (id === 'offsetSlider') {
+      valEl.textContent = parseFloat(el.value).toFixed(1);
+      updateOffsetNote();
+    } else {
+      valEl.textContent = el.value;
+    }
 
     if (currentMat) {
       if (id === 'dpiSlider') {
-        // DPI değişince metadata güncellenir
         const dpi = parseInt(el.value);
         imageMetadata.dpi = dpi;
         imageMetadata.widthMm = ((imageMetadata.originalW / dpi) * 25.4).toFixed(1);
         imageMetadata.heightMm = ((imageMetadata.originalH / dpi) * 25.4).toFixed(1);
-        // pxPerMm'yi etkiler, bu yüzden bıçak da yenile
       }
       generateCutline();
+      generateWhitePlan();
       render();
       updateMetadataDisplay();
       generatePimComment();
     }
   });
 });
+
+// İlk yüklemede offset note'u set et
+updateOffsetNote();
 
 // ============================================================
 // SVG EXPORT (CutContour spot color uyumlu)
@@ -2430,6 +3124,30 @@ document.getElementById('exportSvg').addEventListener('click', () => {
     svgPaths += `  <path d="${d}" fill="none" stroke="#FF0080" stroke-width="0.5"/>\n`;
   }
 
+  // BEYAZ KATMAN — varsa ekle (White spot color olarak)
+  let whitePaths = '';
+  if (whitePlanPaths.length > 0 && whitePlanMode !== 'off' && materialType !== 'paper') {
+    const toOrig = (pt) => [
+      ((pt[0] - imageMetadata.padding) * inverseScale).toFixed(2),
+      ((pt[1] - imageMetadata.padding) * inverseScale).toFixed(2)
+    ];
+    for (const path of whitePlanPaths) {
+      if (path.length < 2) continue;
+      const [x0, y0] = toOrig(path[0]);
+      let d = `M ${x0} ${y0}`;
+      for (let i = 1; i < path.length; i++) {
+        const [x, y] = toOrig(path[i]);
+        d += ` L ${x} ${y}`;
+      }
+      d += ' Z';
+      whitePaths += `    <path d="${d}" fill="#FFFFFF" stroke="none"/>\n`;
+    }
+  }
+
+  const whiteGroup = whitePaths ? `
+  <g id="White" data-pim-white="true" data-material="${materialType}" data-mode="${whitePlanMode}">
+${whitePaths}  </g>` : '';
+
   const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--
   Pim Etiket — Otomatik Üretilen Kesim Çizgisi
@@ -2440,18 +3158,20 @@ document.getElementById('exportSvg').addEventListener('click', () => {
   Görüntü: ${imageMetadata.filename} (${w}x${h}px, ${imageMetadata.dpi}dpi)
   Baskı: ${imageMetadata.widthMm} x ${imageMetadata.heightMm}mm
   Padding: ${paddingOrig.toFixed(1)}px her tarafa (bıçağın taşması için)
+  Malzeme: ${materialType}
+  Beyaz plan: ${whitePlanMode}${whitePaths ? ' (üretildi)' : ''}
 
-  Koordinat sistemi: Orijinal görüntü (0,0) — (${w},${h}) arasında.
-  Bıçak negatif koordinatlarda veya görüntü dışına taşmış olabilir.
+  Katman sırası: White (alt) → Tasarım → CutContour (üst)
 
   NOT: Bu SVG'deki magenta (#FF0080) çizgisi, üretim aşamasında
   PDF'e dönüştürülürken "CutContour" spot color olarak işaretlenmelidir.
-  Roland/Mimaki/Graphtec RIP yazılımları bunu otomatik kesim çizgisi
-  olarak tanır.
+  Beyaz katman (#FFFFFF dolgu) "White" veya "WhiteInk" spot color olarak
+  işaretlenmelidir. Roland VersaWorks, Mimaki RasterLink, Graphtec Cutting
+  Master Pro bu spot color'ları beyaz mürekkep kanalında basar.
 -->
 <svg xmlns="http://www.w3.org/2000/svg"
      width="${viewW.toFixed(2)}" height="${viewH.toFixed(2)}"
-     viewBox="${viewMinX.toFixed(2)} ${viewMinY.toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}">
+     viewBox="${viewMinX.toFixed(2)} ${viewMinY.toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}">${whiteGroup}
   <g id="CutContour" data-pim-cutline="true">
 ${svgPaths}  </g>
 </svg>`;
