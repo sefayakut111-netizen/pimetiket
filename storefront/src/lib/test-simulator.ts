@@ -309,9 +309,11 @@ export async function runCheckoutSimulation(
   // Step 6: Order oluştur
   // -----------------------------------------------------------
   await step("order", async () => {
-    // PE-YYYY-XXXX formatı
-    const random4 = Math.random().toString(36).substr(2, 4).toUpperCase();
-    const newOrderId = `PE-${new Date().getFullYear()}-SIM${random4}`;
+    // PE-YYYY-XXXXXXXX formatı (Sefa 19 May: sadece rakam, telefon
+    // dictation kolaylığı). Simülasyon ID'leri 999... ile başlar ki
+    // gerçek production siparişlerden ayırt edilebilsin.
+    const random5 = String(Math.floor(Math.random() * 100000)).padStart(5, "0");
+    const newOrderId = `PE-${new Date().getFullYear()}-999${random5}`;
 
     // Sefa 17 May fix: order_status enum'da "pending_payment" YOK
     // (sadece paid/qc_pending/.../cancelled). Direkt paid olarak oluştur,

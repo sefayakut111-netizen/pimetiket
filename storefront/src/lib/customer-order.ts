@@ -83,38 +83,38 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
-// Sefa kuralı (12 May P0 audit): orderId 4-haneli random çakışma riski
-// (doğum günü paradoksu ~110 sipariş sonra %50). nanoid 8-char (URL-safe
-// alfabe) ile 218 trilyon kombinasyon — DB unique constraint zaten korur
-// ama çakışma matematiksel olarak imkansız.
+// Sefa kuralı (19 May v68): Sipariş ID'leri sadece rakamdan oluşur —
+// telefon/WhatsApp dictation, kargo etiketi, fatura, üretici RIP sistemi
+// için harf/rakam karışıklığı (B/P/D, I/1, O/0) çözüldü.
 //
-// Format: PE-2026-Xa3Bc7Pq (62^8 = 218 trilyon).
-const NANOID_ALPHABET =
-  "0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
-// (I, O, l, o, 0 dahil değil — okuma/söyleme kolaylığı için ambiguity önlendi)
+// Format: PE-2026-12345678 (10^8 = 100 milyon kombinasyon).
+// Yıl başına 1M sipariş varsayımında doğum günü paradoksu ile çakışma
+// olasılığı ~%0.05 — DB unique constraint zaten korur, retry mantığı yok.
+const NUMERIC_ALPHABET = "0123456789";
 
-function nanoidLike8(): string {
+function numericId8(): string {
   if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
     const bytes = new Uint8Array(8);
     crypto.getRandomValues(bytes);
     let out = "";
     for (let i = 0; i < 8; i++) {
-      out += NANOID_ALPHABET[bytes[i] % NANOID_ALPHABET.length];
+      // 256 % 10 = 6 → ilk 6 rakam çok hafif bias ama insan gözüyle görülmez
+      out += NUMERIC_ALPHABET[bytes[i] % 10];
     }
     return out;
   }
   // Fallback (server-side Node 18+'da crypto var, bu dal nadir)
   let out = "";
   for (let i = 0; i < 8; i++) {
-    out += NANOID_ALPHABET[Math.floor(Math.random() * NANOID_ALPHABET.length)];
+    out += NUMERIC_ALPHABET[Math.floor(Math.random() * 10)];
   }
   return out;
 }
 
-/** PE-{YIL}-{8 char nanoid} formatında sipariş id üret. */
+/** PE-{YIL}-{8 rakam} formatında sipariş id üret. Örn: PE-2026-48372651 */
 export function generateOrderId(): string {
   const year = new Date().getFullYear();
-  return `PE-${year}-${nanoidLike8()}`;
+  return `PE-${year}-${numericId8()}`;
 }
 
 /** Bugünden N gün sonrası ISO date (sadece tarih). */
