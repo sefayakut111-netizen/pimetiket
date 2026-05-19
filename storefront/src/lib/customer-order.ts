@@ -83,37 +83,37 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
-// Sefa kuralı (19 May v68): Sipariş ID = 8 haneli saf rakam.
-// Önceki "PE-YIL-XXX" formatı kaldırıldı (Sefa: "pe leri de tireleri
-// de kaldır"). Yıl bilgisi created_at kolonunda zaten var.
+// Sefa kuralı (19 May v68): Sipariş ID = DDMMYYYY + 4 random rakam.
+// Önceki tüm formatlar (PE-YIL-XXX, 8 rakam) kaldırıldı.
+// Format: 12 hane saf rakam — operatör görür görmez tarih okur.
 //
-// Format: 12345678 (10^8 = 100 milyon kombinasyon).
-// Telefon/WhatsApp dictation, kargo etiketi, fatura, RIP sistemi için
-// en pratik form — harf yok, prefix yok, tire yok.
-// Çakışma: yıl başına 1M sipariş bile ~%0.05 (DB unique constraint korur).
-const NUMERIC_ALPHABET = "0123456789";
-
-function numericId8(): string {
+// Yapı:  [GG][AA][YYYY][rand4]
+// Örnek: 190520264837  → 19 Mayıs 2026, random 4837
+// Görsel grup: 1905 2026 4837 (DB'de bitişik tutulur)
+//
+// Çakışma: günlük 10K kombinasyon. Yıl başına 100K sipariş varsayımı
+// (~270/gün) → %2.7 birim çakışma — DB unique constraint zaten korur.
+// Çakışma olursa fn_finalize_paid_order RPC yeniden ID üretir
+// (retry payment-callback dışında problem değil).
+function dateStampedId(): string {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  let rand = "";
   if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
-    const bytes = new Uint8Array(8);
+    const bytes = new Uint8Array(4);
     crypto.getRandomValues(bytes);
-    let out = "";
-    for (let i = 0; i < 8; i++) {
-      out += NUMERIC_ALPHABET[bytes[i] % 10];
-    }
-    return out;
+    for (let i = 0; i < 4; i++) rand += String(bytes[i] % 10);
+  } else {
+    rand = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
   }
-  // Fallback (server-side Node 18+'da crypto var, bu dal nadir)
-  let out = "";
-  for (let i = 0; i < 8; i++) {
-    out += NUMERIC_ALPHABET[Math.floor(Math.random() * 10)];
-  }
-  return out;
+  return `${dd}${mm}${yyyy}${rand}`;
 }
 
-/** 8 haneli saf rakam sipariş id üret. Örn: 48372651 */
+/** 12 haneli tarih damgalı sipariş id üret. Örn: 190520264837 */
 export function generateOrderId(): string {
-  return numericId8();
+  return dateStampedId();
 }
 
 /** Bugünden N gün sonrası ISO date (sadece tarih). */
