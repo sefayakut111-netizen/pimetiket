@@ -44,7 +44,7 @@ as $$
     where order_id = p_order_id
       and status in (
         'uploaded',
-        'qc_running',
+        'analyzing',
         'qc_warned',
         'qc_passed',
         'approved'
@@ -109,7 +109,7 @@ as $$
 declare
   v_current_status public.order_status;
 begin
-  if TG_OP = 'INSERT' and NEW.status in ('uploaded', 'qc_running', 'qc_warned', 'qc_passed') then
+  if TG_OP = 'INSERT' and NEW.status in ('uploaded', 'analyzing', 'qc_warned', 'qc_passed') then
     select status into v_current_status from public.orders where id = NEW.order_id;
     if v_current_status = 'awaiting_upload' then
       update public.orders

@@ -1012,111 +1012,121 @@ export default function OdemePage() {
                 </div>
               )}
 
-              {/* 1 adres → kompakt özet (sil butonlu) */}
-              {!showNewAddressForm &&
-                addresses.length === 1 &&
-                selectedAddress && (
-                  <div className="flex items-start justify-between gap-3 px-4 py-3 rounded-lg bg-gri-50 ring-1 ring-gri-200">
-                    <div className="text-[13px] leading-relaxed text-gri-700 flex-1 min-w-0">
-                      <div className="font-semibold text-lacivert truncate">
-                        {selectedAddress.label ?? "Adres"} —{" "}
-                        {selectedAddress.name}
-                      </div>
-                      <div className="truncate">{selectedAddress.addr}</div>
-                      <div>
-                        {selectedAddress.city} · {selectedAddress.phone}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setShowNewAddressForm(true)}
-                        className="text-[12px] font-semibold text-pim-mercan hover:underline whitespace-nowrap"
-                      >
-                        {c.addressDifferent}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAddress(selectedAddress.id)}
-                        className="text-[12px] font-semibold text-kirmizi hover:underline whitespace-nowrap"
-                        aria-label="Bu adresi sil"
-                      >
-                        🗑 Sil
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* 2+ adres → radio kart (her kartta sil ikonu) */}
-              {!showNewAddressForm && addresses.length > 1 && (
-                <div className="space-y-2">
-                  {addresses.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => setSelectedAddressId(a.id)}
-                      aria-pressed={selectedAddressId === a.id}
-                      className={cn(
-                        "block w-full text-left p-3.5 rounded-lg ring-[1.5px] transition-all",
-                        selectedAddressId === a.id
-                          ? "ring-pim-mercan bg-pim-mercan-tint/30"
-                          : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-[13px] leading-relaxed flex-1 min-w-0">
-                          <div className="font-semibold text-lacivert flex items-center gap-2">
-                            <span className="truncate">
+              {/* Slot picker — 1, 2, 3... numaralı chip'ler + yeni ekle.
+                  Sefa 19 May v68: dropdown/radio kart yerine üstte sabit
+                  slot şeridi. Aktif slot içeriği aşağıda özet kartında. */}
+              {!showNewAddressForm && addresses.length > 0 && (
+                <div className="space-y-3">
+                  {/* Chip şeridi — 5 slot maks + ekle chip'i */}
+                  <div className="flex flex-wrap gap-2">
+                    {addresses.map((a, idx) => {
+                      const isSelected = selectedAddressId === a.id;
+                      const slotNum = idx + 1;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setSelectedAddressId(a.id)}
+                          aria-pressed={isSelected}
+                          title={`${a.label ?? "Adres"} — ${a.name}`}
+                          className={cn(
+                            "relative flex flex-col items-start gap-1 min-w-[120px] max-w-[180px]",
+                            "px-3 py-2.5 rounded-xl ring-[1.5px] transition-all text-left",
+                            isSelected
+                              ? "ring-pim-mercan bg-pim-mercan-tint/40 shadow-mercan"
+                              : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <span
+                              className={cn(
+                                "grid place-items-center w-6 h-6 rounded-full text-[12px] font-bold shrink-0",
+                                isSelected
+                                  ? "bg-pim-mercan text-white"
+                                  : "bg-gri-100 text-gri-700"
+                              )}
+                            >
+                              {slotNum}
+                            </span>
+                            <span className="text-[12px] font-semibold text-lacivert truncate flex-1">
                               {a.label ?? "Adres"}
                             </span>
                             {a.isDefault && (
-                              <span className="inline-flex items-center h-[18px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold shrink-0">
-                                Varsayılan
+                              <span
+                                className="text-[10px] text-pim-mercan"
+                                title="Varsayılan"
+                              >
+                                ★
                               </span>
                             )}
                           </div>
-                          <div className="text-gri-700 mt-0.5">{a.name}</div>
-                          <div className="text-gri-700 truncate">{a.addr}</div>
-                          <div className="text-gri-700">
-                            {a.city} · {a.phone}
+                          <div className="text-[11px] text-gri-700 truncate w-full leading-tight">
+                            {a.city}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {selectedAddressId === a.id && (
-                            <span className="grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white">
-                              <Icon.Check size={12} />
+                          {isSelected && (
+                            <span className="absolute -top-1.5 -right-1.5 grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white shadow ring-2 ring-white">
+                              <Icon.Check size={10} />
                             </span>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteAddress(a.id);
-                            }}
-                            className="grid place-items-center w-7 h-7 rounded-full text-kirmizi hover:bg-kirmizi/10 transition-colors"
-                            aria-label={`${a.label ?? "Adresi"} sil`}
-                            title="Sil"
-                          >
-                            🗑
-                          </button>
+                        </button>
+                      );
+                    })}
+                    {/* + Yeni adres — boş slot chip'i */}
+                    {!addressLimitReached && (
+                      <button
+                        type="button"
+                        onClick={() => setShowNewAddressForm(true)}
+                        title="Yeni adres ekle"
+                        className="flex flex-col items-center justify-center gap-0.5 min-w-[120px] px-3 py-2.5 rounded-xl ring-[1.5px] ring-dashed ring-gri-300 text-gri-700 hover:ring-pim-mercan hover:text-pim-mercan transition-all"
+                      >
+                        <span className="grid place-items-center w-6 h-6 rounded-full bg-gri-100 text-[14px] font-bold">
+                          +
+                        </span>
+                        <span className="text-[11.5px] font-semibold">
+                          {addresses.length + 1}. ekle
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Aktif slot içeriği — kompakt özet + sil/düzenle */}
+                  {selectedAddress && (
+                    <div className="flex items-start justify-between gap-3 px-4 py-3 rounded-lg bg-gri-50 ring-1 ring-gri-200">
+                      <div className="text-[13px] leading-relaxed text-gri-700 flex-1 min-w-0">
+                        <div className="font-semibold text-lacivert">
+                          {selectedAddress.name}
+                        </div>
+                        <div>{selectedAddress.addr}</div>
+                        <div>
+                          {selectedAddress.city} · +90 {selectedAddress.phone}
                         </div>
                       </div>
-                    </button>
-                  ))}
-                  {/* + Yeni adres — 5 limit kontrolü */}
-                  {addressLimitReached ? (
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowNewAddressForm(true)}
+                          className="text-[12px] font-semibold text-pim-mercan hover:underline whitespace-nowrap"
+                        >
+                          ✎ Düzenle / Yeni
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDeleteAddress(selectedAddress.id)
+                          }
+                          className="text-[12px] font-semibold text-kirmizi hover:underline whitespace-nowrap"
+                          aria-label="Bu adresi sil"
+                        >
+                          🗑 Sil
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {addressLimitReached && (
                     <div className="rounded-lg bg-saman/15 ring-1 ring-saman/30 px-3 py-2 text-[12.5px] text-saman-koyu">
                       ℹ {c.addressLimit}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewAddressForm(true)}
-                      className="text-[12.5px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
-                    >
-                      <Icon.Plus size={12} /> {c.addressNew} (
-                      {addresses.length}/5)
-                    </button>
                   )}
                 </div>
               )}

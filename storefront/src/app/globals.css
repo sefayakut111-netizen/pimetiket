@@ -297,8 +297,10 @@ body {
 }
 
 /* Sefa 17 May Dalga 2 #8: Chrome autofill default sarı/mavi
-   arka planını marka beyaz/krem'e çek — input'lar pastel
-   görünmesin (UX denetim audit). */
+   arka planını marka beyaz/krem'e çek — input'lar pastel görünmesin.
+   Sefa 19 May v68 fix: Tailwind ring-1 outset shadow autofill
+   inset shadow'a kurban gidiyordu (border kayboluyor). Hem inset bg
+   hem outset ring shadow tek box-shadow listesinde verilir. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -309,8 +311,26 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-box-shadow:
+    0 0 0 1000px white inset,
+    0 0 0 1px var(--color-gri-200) !important;
+  box-shadow:
+    0 0 0 1000px white inset,
+    0 0 0 1px var(--color-gri-200) !important;
   -webkit-text-fill-color: var(--color-lacivert) !important;
   transition: background-color 5000s ease-in-out 0s;
   caret-color: var(--color-lacivert);
+}
+/* Focus durumunda ring rengi mercan'a + glow */
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow:
+    0 0 0 1000px white inset,
+    0 0 0 1px var(--color-pim-mercan),
+    0 0 0 5px var(--color-pim-mercan-tint) !important;
+  box-shadow:
+    0 0 0 1000px white inset,
+    0 0 0 1px var(--color-pim-mercan),
+    0 0 0 5px var(--color-pim-mercan-tint) !important;
 }

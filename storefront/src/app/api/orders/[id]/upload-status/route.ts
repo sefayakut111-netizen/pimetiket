@@ -23,7 +23,7 @@ export const runtime = "nodejs";
 
 const USABLE_DESIGN_STATUSES = [
   "uploaded",
-  "qc_running",
+  "analyzing",
   "qc_warned",
   "qc_passed",
   "approved",
