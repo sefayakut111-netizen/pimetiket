@@ -254,16 +254,69 @@ export async function publishPricingConfig(
   return { ok: true };
 }
 
+/**
+ * Sefa 19 May v68: RPC bypass (publishPricingConfig'in kardeşi).
+ *
+ * fn_revert_pricing_config RPC içinde auth.uid() ile yetki check yapıyor.
+ * createAdminClient (service role) ile çağrıldığında auth.uid() NULL →
+ * "raise exception 'forbidden'" → 500. assertAdmin endpoint seviyesinde
+ * yetki check yaptığı için RPC'nin tekrarına gerek yok.
+ */
 export async function revertPricingConfig(
   scope: ScopeName,
-  historyId: string
+  historyId: string,
+  adminId: string,
+  adminEmail: string
 ): Promise<{ ok: boolean; error?: string }> {
   const admin = createAdminClient();
-  const { error } = await admin.rpc(
-    "fn_revert_pricing_config" as never,
-    { p_scope: scope, p_history_id: historyId } as never
-  );
-  if (error) return { ok: false, error: error.message };
+
+  // 1. History snapshot'ı oku — scope+id ile guard (cross-scope revert engelle)
+  const { data: histRow, error: histReadErr } = await admin
+    .from("pricing_config_history")
+    .select("config_snapshot")
+    .eq("id", historyId)
+    .eq("scope", scope)
+    .maybeSingle();
+  if (histReadErr) {
+    return { ok: false, error: `history_read_failed: ${histReadErr.message}` };
+  }
+  if (!histRow) return { ok: false, error: "history_not_found" };
+
+  const snapshot = (histRow as { config_snapshot: ScopeConfig }).config_snapshot;
+  const now = new Date().toISOString();
+
+  // 2. Live'a yükle
+  const { error: updErr } = await admin
+    .from("pricing_config")
+    .update({
+      live_config: snapshot,
+      live_updated_at: now,
+      live_updated_by: adminId,
+      live_updated_by_email: adminEmail,
+      live_published_at: now,
+    } as never)
+    .eq("scope", scope);
+  if (updErr) return { ok: false, error: `update_failed: ${updErr.message}` };
+
+  // 3. Yeni history entry (revert action — audit izi)
+  const { error: histInsErr } = await admin
+    .from("pricing_config_history")
+    .insert([
+      {
+        scope,
+        action: "revert",
+        config_snapshot: snapshot,
+        changed_by: adminId,
+        changed_by_email: adminEmail,
+        note: `Revert to history ID ${historyId}`,
+      },
+    ] as never);
+  if (histInsErr) {
+    console.warn(
+      `[revertPricingConfig] history insert failed (revert ok): ${histInsErr.message}`
+    );
+  }
+
   invalidatePricingCache(scope);
   return { ok: true };
 }
