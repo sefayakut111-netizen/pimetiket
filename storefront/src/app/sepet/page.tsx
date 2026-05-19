@@ -26,6 +26,14 @@ import {
   FREE_SHIPPING_THRESHOLD,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
+import {
+  STICKER_MIN_QTY,
+  STICKER_QTY_STEP,
+} from "@/lib/sticker-customer-pricing";
+import {
+  ETIKET_MIN_QTY,
+  ETIKET_QTY_STEP,
+} from "@/lib/etiket-customer-pricing";
 
 const EXTRA = {
   tr: {
@@ -137,10 +145,11 @@ export default function SepetPage() {
   const total = summary.total;
 
   const updateQty = (item: CustomerCartItem, delta: number) => {
-    // Sticker tier'ları 50/100/250/500/1000; etiket 1000/2000/...
-    // Burada basit +/- adet — minimum item.product'a göre 50 / 1000
-    const minQty = item.product === "sticker" ? 50 : 1000;
-    const step = item.product === "sticker" ? 50 : 500;
+    // Sefa 19 May v68 (UX agent P1 #11): step + min konfigüratörle hizalandı.
+    // Eski: sticker 50/50 (konfigüratör 25/25 → tier mismatch + fiyat
+    // yeniden hesabı kırılgan). Yeni: aynı constants kullan.
+    const minQty = item.product === "sticker" ? STICKER_MIN_QTY : ETIKET_MIN_QTY;
+    const step = item.product === "sticker" ? STICKER_QTY_STEP : ETIKET_QTY_STEP;
     const next = Math.max(minQty, item.qty + delta * step);
     void updateCustomerCartQty(item.id, next);
   };

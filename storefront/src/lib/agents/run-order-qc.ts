@@ -93,76 +93,77 @@ export async function runOrderDesignQC(
 
   const verdictCounts = { iyi: 0, normal: 0, kotu: 0, error: 0 };
 
-  // 3) Her dosya için QC çalıştır (sıralı — paralel race condition riski yok)
-  for (const file of files) {
-    // İlgili item'i bul (yoksa ilk item'in boyutunu varsay)
-    const item =
-      items.find((i) => i.id === file.order_item_id) ?? items[0];
+  // 3) Her dosya için QC paralel çalıştır (Sefa 19 May v68 — AI agent P1
+  //    #15: dosyalar bağımsız, race condition yok; ~40 sn → ~12 sn).
+  //    Promise.allSettled fail-tolerant: bir dosya patlarsa diğerleri
+  //    devam eder, error verdict audit'e düşer.
+  await Promise.allSettled(
+    files.map(async (file) => {
+      const item =
+        items.find((i) => i.id === file.order_item_id) ?? items[0];
 
-    try {
-      // Signed URL (1 saat)
-      const { data: signed } = await admin.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(file.storage_path, 3600);
-      if (!signed?.signedUrl) {
-        throw new Error("signed_url_failed");
+      try {
+        const { data: signed } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(file.storage_path, 3600);
+        if (!signed?.signedUrl) {
+          throw new Error("signed_url_failed");
+        }
+
+        const fileFormat = mimeToFormat(file.mime_type);
+        const result = await runDesignQC({
+          fileUrl: signed.signedUrl,
+          fileFormat,
+          printWidthMm: item.width,
+          printHeightMm: item.height,
+          productType: item.product,
+        });
+
+        verdictCounts[result.verdict] += 1;
+
+        await admin.from("design_quality_checks").insert({
+          order_id: orderId,
+          design_file_id: file.id,
+          file_format: fileFormat,
+          print_width_mm: item.width,
+          print_height_mm: item.height,
+          product_type: item.product,
+          verdict: result.verdict,
+          score: result.score,
+          analysis: {
+            fileType: result.fileType,
+            effectiveDpi: result.effectiveDpi,
+            embeddedRasterCount: result.embeddedRasterCount,
+            colorProfile: result.colorProfile,
+            hasBleed: result.hasBleed,
+            hasCutPath: result.hasCutPath,
+            isTextOutlined: result.isTextOutlined,
+            visualQuality: result.visualQuality,
+          },
+          findings: result.findings,
+          model: result.model,
+          duration_ms: result.durationMs,
+          cost_usd: result.costUsd,
+        } as never);
+      } catch (err) {
+        verdictCounts.error += 1;
+        Sentry.captureException(err, {
+          tags: { scope: "design_qc.order_auto", order_id: orderId },
+          extra: { file_id: file.id },
+        });
+        await admin.from("design_quality_checks").insert({
+          order_id: orderId,
+          design_file_id: file.id,
+          file_format: mimeToFormat(file.mime_type),
+          print_width_mm: item.width,
+          print_height_mm: item.height,
+          product_type: item.product,
+          verdict: "error",
+          error: err instanceof Error ? err.message : "unknown",
+        } as never);
       }
-
-      const fileFormat = mimeToFormat(file.mime_type);
-      const result = await runDesignQC({
-        fileUrl: signed.signedUrl,
-        fileFormat,
-        printWidthMm: item.width,
-        printHeightMm: item.height,
-        productType: item.product,
-      });
-
-      verdictCounts[result.verdict] += 1;
-
-      // Audit log
-      await admin.from("design_quality_checks").insert({
-        order_id: orderId,
-        design_file_id: file.id,
-        file_format: fileFormat,
-        print_width_mm: item.width,
-        print_height_mm: item.height,
-        product_type: item.product,
-        verdict: result.verdict,
-        score: result.score,
-        analysis: {
-          fileType: result.fileType,
-          effectiveDpi: result.effectiveDpi,
-          embeddedRasterCount: result.embeddedRasterCount,
-          colorProfile: result.colorProfile,
-          hasBleed: result.hasBleed,
-          hasCutPath: result.hasCutPath,
-          isTextOutlined: result.isTextOutlined,
-          visualQuality: result.visualQuality,
-        },
-        findings: result.findings,
-        model: result.model,
-        duration_ms: result.durationMs,
-        cost_usd: result.costUsd,
-      } as never);
-    } catch (err) {
-      verdictCounts.error += 1;
-      Sentry.captureException(err, {
-        tags: { scope: "design_qc.order_auto", order_id: orderId },
-        extra: { file_id: file.id },
-      });
-      // Error verdict'i de audit'e yaz
-      await admin.from("design_quality_checks").insert({
-        order_id: orderId,
-        design_file_id: file.id,
-        file_format: mimeToFormat(file.mime_type),
-        print_width_mm: item.width,
-        print_height_mm: item.height,
-        product_type: item.product,
-        verdict: "error",
-        error: err instanceof Error ? err.message : "unknown",
-      } as never);
-    }
-  }
+    })
+  );
 
   // 4) Aggregate karar — Sefa kuralı: tek bir hata insan göz gerektirir
   const allGood =

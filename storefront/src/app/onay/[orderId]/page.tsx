@@ -812,6 +812,15 @@ export default function ProofApprovalPage({
             style={{ width: `${progressPct}%` }}
           />
         </div>
+
+        {/* Sefa 19 May v68 (UX agent denetim P1): 36-saat SLA müşteriye
+            açıkça bildiriliyor. Önce hiçbir yerde yoktu. */}
+        <p className="mt-3 text-[12.5px] text-gri-500 max-w-md leading-relaxed">
+          <span aria-hidden>⏱</span> 36 saat içinde onay vermezsen sipariş
+          otomatik iade edilir. Acelen olursa{" "}
+          <span className="text-pim-mercan font-semibold">Pim&apos;e sor</span>{" "}
+          (sağ alt köşe).
+        </p>
       </div>
 
       {/* Pim tip */}
