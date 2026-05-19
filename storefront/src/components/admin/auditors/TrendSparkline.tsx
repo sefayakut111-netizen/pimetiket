@@ -51,6 +51,7 @@ function formatTooltip(run: AuditorRunRow, metric: TrendMetric): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Istanbul",
   });
   const value = extractValue(run, metric);
   const suffix =

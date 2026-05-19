@@ -250,6 +250,7 @@ export default function VerilerimPage() {
                           year: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
+                          timeZone: "Europe/Istanbul",
                         })}
                         {r.grace_period_until && r.status === "confirmed" && (
                           <>

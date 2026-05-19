@@ -187,6 +187,7 @@ export default function AdminIadelerPage() {
                 month: "short",
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: "Europe/Istanbul",
               });
               // Sefa 18 May v68 (admin UX denetim): SLA yaş rozeti
               // <24h yeşil, 24-72h sarı, >72h kırmızı (TKHK m.30 gün limit)

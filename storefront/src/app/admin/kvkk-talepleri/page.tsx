@@ -243,6 +243,7 @@ export default function AdminKvkkTalepleriPage() {
                           month: "short",
                           hour: "2-digit",
                           minute: "2-digit",
+                          timeZone: "Europe/Istanbul",
                         })}
                       </td>
                       <td className="px-4 py-3">

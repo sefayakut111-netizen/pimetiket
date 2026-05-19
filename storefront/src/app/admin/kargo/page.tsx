@@ -93,9 +93,16 @@ const STATUS_META: Record<
 function formatDate(iso: string | null, withTime = false): string {
   if (!iso) return "—";
   const d = new Date(iso);
+  // Sefa 20 May v68: timeZone Europe/Istanbul (hydration #418 fix)
   const opts: Intl.DateTimeFormatOptions = withTime
-    ? { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }
-    : { day: "2-digit", month: "short", year: "numeric" };
+    ? {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Istanbul",
+      }
+    : { day: "2-digit", month: "short", year: "numeric", timeZone: "Europe/Istanbul" };
   return d.toLocaleString("tr-TR", opts);
 }
 
