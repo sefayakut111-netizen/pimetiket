@@ -89,13 +89,16 @@ export async function GET(req: NextRequest) {
   );
 
   // Base query: order_assignments with shipping data
+  // Sefa 18 May v68 (admin denetim — schema fix):
+  // orders.address JSONB kolon, address_city YOK. address->>'city' yerine
+  // tüm JSON objesini çek, client-side parse et.
   let query = supabase
     .from("order_assignments")
     .select(
       `id, order_id, status, tracking_company, tracking_number, tracking_url,
        tracking_status, tracking_last_polled_at, tracking_delivered_at,
        shipped_at,
-       orders!inner(id, user_id, address_city)`,
+       orders!inner(id, user_id, address)`,
       { count: "exact" }
     )
     .not("tracking_number", "is", null)
@@ -153,7 +156,12 @@ export async function GET(req: NextRequest) {
     tracking_last_polled_at: string | null;
     tracking_delivered_at: string | null;
     shipped_at: string | null;
-    orders: { id: string; user_id: string; address_city: string | null };
+    orders: {
+      id: string;
+      user_id: string;
+      // address JSON snapshot: { name, city, district, ... }
+      address: { city?: string; district?: string } | null;
+    };
   };
 
   const rows = (data ?? []) as unknown as RawRow[];
@@ -224,7 +232,7 @@ export async function GET(req: NextRequest) {
       tracking_last_polled_at: r.tracking_last_polled_at,
       tracking_delivered_at: r.tracking_delivered_at,
       assignment_status: r.status,
-      city: r.orders.address_city,
+      city: r.orders.address?.city ?? null,
       last_event_description: lastEv?.description ?? null,
       last_event_location: lastEv?.location ?? null,
       last_event_time: lastEv?.event_time ?? null,

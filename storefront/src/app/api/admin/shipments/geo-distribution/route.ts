@@ -99,11 +99,13 @@ export async function GET() {
     Date.now() - 90 * 24 * 60 * 60 * 1000
   ).toISOString();
 
+  // Sefa 18 May v68 (admin denetim — schema fix):
+  // orders.address JSONB kolon; city ayrı sütun değil.
   const { data, error } = await supabase
     .from("order_assignments")
     .select(
       `shipped_at, tracking_status, tracking_delivered_at,
-       orders!inner(address_city)`
+       orders!inner(address)`
     )
     .not("tracking_number", "is", null)
     .gte("shipped_at", ninetyDaysAgo);
@@ -116,7 +118,7 @@ export async function GET() {
     shipped_at: string;
     tracking_status: string | null;
     tracking_delivered_at: string | null;
-    orders: { address_city: string | null };
+    orders: { address: { city?: string } | null };
   };
 
   const rows = (data ?? []) as unknown as Row[];
@@ -135,7 +137,7 @@ export async function GET() {
   const day = 24 * 60 * 60 * 1000;
 
   for (const row of rows) {
-    const city = normalizeCity(row.orders.address_city);
+    const city = normalizeCity(row.orders.address?.city ?? null);
     if (!city) continue;
 
     const acc = cityMap.get(city) ?? {
