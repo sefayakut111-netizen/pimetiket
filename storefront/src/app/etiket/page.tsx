@@ -498,6 +498,23 @@ export default function EtiketPage() {
       field
     ];
   };
+
+  /** Sefa 19 May v68: admin'in ↑↓ ile belirlediği sıralama.
+   *  Admin config varsa o sırayla, yoksa modül const sırasıyla. */
+  const orderedIds = <T extends string>(
+    moduleIds: readonly T[],
+    bucket: "materials" | "coating" | "customization"
+  ): readonly T[] => {
+    const adminIds =
+      bucket === "materials"
+        ? adminConfig?.materials?.map((m) => m.id)
+        : adminConfig?.options?.[bucket]?.items.map((i) => i.id);
+    if (!adminIds) return moduleIds;
+    const filtered = adminIds.filter((id) =>
+      (moduleIds as readonly string[]).includes(id)
+    ) as T[];
+    return filtered.length > 0 ? filtered : moduleIds;
+  };
   // Sefa kuralı (15 May v3): Rulo özelleştirmede birden fazla seçilebilir.
   // "yok" tek seçimdir; başka seçim eklenince "yok" çıkar. Pricing engine
   // şu an tek customization alır → multi seçimde ilki gönderilir + multiplier
@@ -1091,9 +1108,15 @@ export default function EtiketPage() {
                   6 etiket malzemesi 3×2 grid'e oturur, kartlar kompakt
                   + okunur. Mobile 2 kolon korunur. */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                {MATERIALS.filter((m) =>
-                  (m.modes as readonly string[]).includes(formFactor)
-                ).map((m) => (
+                {orderedIds(
+                  MATERIALS.map((m) => m.id),
+                  "materials"
+                )
+                  .map((id) => MATERIALS.find((m) => m.id === id)!)
+                  .filter((m) =>
+                    (m.modes as readonly string[]).includes(formFactor)
+                  )
+                  .map((m) => (
                   <SelectableCard
                     key={m.id}
                     selected={touchedSteps.has(1) && material === m.id}
@@ -1163,9 +1186,15 @@ export default function EtiketPage() {
               {/* Sefa 18 May v68: 4 kaplama → 4 kolon tek satır (md+),
                   mobile 2 kolon. Sticker yüzeyiyle aynı kompakt his. */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                {COATINGS.filter((c) =>
-                  (c.modes as readonly string[]).includes(formFactor)
-                ).map((c) => (
+                {orderedIds(
+                  COATINGS.map((c) => c.id),
+                  "coating"
+                )
+                  .map((id) => COATINGS.find((c) => c.id === id)!)
+                  .filter((c) =>
+                    (c.modes as readonly string[]).includes(formFactor)
+                  )
+                  .map((c) => (
                   <SelectableCard
                     key={c.id}
                     selected={touchedSteps.has(2) && coating === c.id}
@@ -1218,7 +1247,12 @@ export default function EtiketPage() {
               {/* Sefa 18 May v68: 4 özelleştirme → 4 kolon (md+).
                   Kompakt + tek satır görünüm. */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                {CUSTOMS.map((c) => {
+                {orderedIds(
+                  CUSTOMS.map((c) => c.id),
+                  "customization"
+                )
+                  .map((id) => CUSTOMS.find((c) => c.id === id)!)
+                  .map((c) => {
                   // Touched değilse görsel olarak seçili göstermeyiz
                   // (Sefa kuralı: varsayılan seçim olmasın).
                   // Sefa 16 May denetim #6: hideCheckmark kaldırıldı —

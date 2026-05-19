@@ -197,8 +197,17 @@ export default function StickerPage() {
             : t.sticker.shapeContourDesc,
   }));
 
-  // Faz 2: ad/açıklama admin live_config > i18n fallback
-  const MATERIALS = MATERIAL_IDS.map((id) => {
+  // Faz 2 (Sefa 19 May v68): ad/açıklama + SIRA admin live_config > i18n fallback.
+  // Admin /admin/fiyatlar'da ↑↓ ile sıralanmış malzemeler aynı sırayla render.
+  // Admin'de bilinmeyen ID varsa atla (UI-only swatch/surface yok).
+  const orderedMaterialIds: readonly StickerMaterial[] = adminConfig?.materials
+    ? (adminConfig.materials
+        .map((m) => m.id as StickerMaterial)
+        .filter((id) =>
+          (MATERIAL_IDS as readonly string[]).includes(id)
+        ) as readonly StickerMaterial[])
+    : MATERIAL_IDS;
+  const MATERIALS = orderedMaterialIds.map((id) => {
     const fromAdmin = adminConfig?.materials.find((m) => m.id === id);
     const i18nName =
       id === "vinil"
@@ -225,7 +234,16 @@ export default function StickerPage() {
     };
   });
 
-  const FINISHES = FINISH_IDS.map((id) => {
+  // Sefa 19 May v68: finiş sırası da admin'den (varsa)
+  const orderedFinishIds: readonly StickerFinish[] = adminConfig?.options?.finish
+    ?.items
+    ? (adminConfig.options.finish.items
+        .map((i) => i.id as StickerFinish)
+        .filter((id) =>
+          (FINISH_IDS as readonly string[]).includes(id)
+        ) as readonly StickerFinish[])
+    : FINISH_IDS;
+  const FINISHES = orderedFinishIds.map((id) => {
     const fromAdmin = adminConfig?.options?.finish?.items.find(
       (i) => i.id === id
     );

@@ -328,6 +328,35 @@ export default function FiyatlarPage() {
     setDraft(next);
   };
 
+  // Sefa 19 May v68: sıralama desteği — admin sırası müşteri tarafına
+  // aynen yansır (/sticker /etiket render adminConfig.materials/options'tan).
+  const moveMaterial = (idx: number, direction: -1 | 1) => {
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= draft.materials.length) return;
+    const next = { ...draft, materials: [...draft.materials] };
+    [next.materials[idx], next.materials[newIdx]] = [
+      next.materials[newIdx],
+      next.materials[idx],
+    ];
+    setDraft(next);
+  };
+
+  const moveOptionItem = (
+    group_id: string,
+    item_idx: number,
+    direction: -1 | 1
+  ) => {
+    const newIdx = item_idx + direction;
+    const items = draft.options[group_id]?.items;
+    if (!items || newIdx < 0 || newIdx >= items.length) return;
+    const next: ProfileConfig = JSON.parse(JSON.stringify(draft));
+    [next.options[group_id].items[item_idx], next.options[group_id].items[newIdx]] = [
+      next.options[group_id].items[newIdx],
+      next.options[group_id].items[item_idx],
+    ];
+    setDraft(next);
+  };
+
   const updateOptionItem = (
     group_id: string,
     item_idx: number,
@@ -573,7 +602,8 @@ export default function FiyatlarPage() {
                 )}
               </p>
               <div className="space-y-2">
-                <div className="grid grid-cols-[80px_1.5fr_2fr_160px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                <div className="grid grid-cols-[32px_80px_1.5fr_2fr_160px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                  <span className="text-center">Sıra</span>
                   <span>ID</span>
                   <span>Ad</span>
                   <span>Açıklama</span>
@@ -586,14 +616,33 @@ export default function FiyatlarPage() {
                   const inputVal = isSheetMode
                     ? (m.sheet_cost_try ?? 0)
                     : (m.m2_cost_try ?? 0);
+                  const isFirst = i === 0;
+                  const isLast = i === draft.materials.length - 1;
                   return (
                   <div
                     key={m.id}
                     className={cn(
-                      "grid grid-cols-[80px_1.5fr_2fr_160px] gap-2 items-center rounded px-1 py-0.5",
+                      "grid grid-cols-[32px_80px_1.5fr_2fr_160px] gap-2 items-center rounded px-1 py-0.5",
                       changed && "bg-saman/10"
                     )}
                   >
+                    {/* Sefa 19 May v68: sıra ↑↓ — müşteri tarafına bire bir yansır */}
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => moveMaterial(i, -1)}
+                        disabled={isFirst}
+                        title="Yukarı taşı"
+                        className="h-4 rounded text-[10px] text-gri-700 hover:bg-gri-100 hover:text-pim-mercan disabled:opacity-25 disabled:hover:bg-transparent"
+                      >▲</button>
+                      <button
+                        type="button"
+                        onClick={() => moveMaterial(i, +1)}
+                        disabled={isLast}
+                        title="Aşağı taşı"
+                        className="h-4 rounded text-[10px] text-gri-700 hover:bg-gri-100 hover:text-pim-mercan disabled:opacity-25 disabled:hover:bg-transparent"
+                      >▼</button>
+                    </div>
                     <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center gap-1">
                       {m.id}
                       {changed && <span className="text-saman-koyu" title="Değişti">●</span>}
@@ -657,7 +706,8 @@ export default function FiyatlarPage() {
                   )}
                 </p>
                 <div className="space-y-2">
-                  <div className="grid grid-cols-[80px_1.5fr_2fr_120px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                  <div className="grid grid-cols-[32px_80px_1.5fr_2fr_120px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                    <span className="text-center">Sıra</span>
                     <span>ID</span>
                     <span>Ad</span>
                     <span>Açıklama</span>
@@ -665,14 +715,33 @@ export default function FiyatlarPage() {
                   </div>
                   {group.items.map((it: OptionItem, idx: number) => {
                     const changed = isItemChanged("option", it.id, group_id);
+                    const isFirst = idx === 0;
+                    const isLast = idx === group.items.length - 1;
                     return (
                     <div
                       key={it.id}
                       className={cn(
-                        "grid grid-cols-[80px_1.5fr_2fr_120px] gap-2 items-center rounded px-1 py-0.5",
+                        "grid grid-cols-[32px_80px_1.5fr_2fr_120px] gap-2 items-center rounded px-1 py-0.5",
                         changed && "bg-saman/10"
                       )}
                     >
+                      {/* Sefa 19 May v68: option sırası müşteri tarafına yansır */}
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => moveOptionItem(group_id, idx, -1)}
+                          disabled={isFirst}
+                          title="Yukarı taşı"
+                          className="h-4 rounded text-[10px] text-gri-700 hover:bg-gri-100 hover:text-pim-mercan disabled:opacity-25 disabled:hover:bg-transparent"
+                        >▲</button>
+                        <button
+                          type="button"
+                          onClick={() => moveOptionItem(group_id, idx, +1)}
+                          disabled={isLast}
+                          title="Aşağı taşı"
+                          className="h-4 rounded text-[10px] text-gri-700 hover:bg-gri-100 hover:text-pim-mercan disabled:opacity-25 disabled:hover:bg-transparent"
+                        >▼</button>
+                      </div>
                       <span className="px-2 h-9 rounded bg-gri-100 text-[11px] font-mono text-gri-700 inline-flex items-center gap-1">
                         {it.id}
                         {changed && <span className="text-saman-koyu" title="Değişti">●</span>}
