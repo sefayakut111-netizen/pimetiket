@@ -140,26 +140,39 @@ const SAVED_VIEWS: SavedView[] = [
 
 /** CustomerOrder → AdminOrder row */
 function toAdminOrderRow(o: CustomerOrder): AdminOrder {
+  // Defensive: items/address bazı siparişlerde eksik gelirse JSX render
+  // o satırı sessiz düşürüyor (Sefa 19 May v68 — PE-2026-8MAv1Rmy bug).
+  const items = Array.isArray(o.items) ? o.items : [];
   const product =
-    o.items.length === 1
-      ? `${o.items[0].product === "sticker" ? "Sticker" : "Etiket"} × ${o.items[0].qty.toLocaleString("tr-TR")}`
-      : `${o.items.length} ürün`;
-  const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
-  const date = new Date(o.createdAtIso).toLocaleString("tr-TR", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+    items.length === 1
+      ? `${items[0].product === "sticker" ? "Sticker" : "Etiket"} × ${(items[0].qty ?? 0).toLocaleString("tr-TR")}`
+      : items.length > 0
+        ? `${items.length} ürün`
+        : "—";
+  const totalQty = items.reduce((sum, i) => sum + (i.qty ?? 0), 0);
+  let date = "—";
+  try {
+    if (o.createdAtIso) {
+      date = new Date(o.createdAtIso).toLocaleString("tr-TR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  } catch {
+    /* invalid date — '—' default */
+  }
   return {
     id: o.id,
-    customer: o.address.name,
+    customer:
+      (o.address as { name?: string } | null)?.name ?? "(adres yok)",
     product,
     qty: totalQty,
-    total: o.total,
+    total: typeof o.total === "number" ? o.total : 0,
     status: o.status,
     date,
-    createdAt: o.createdAt,
+    createdAt: o.createdAt ?? Date.now(),
   };
 }
 
@@ -565,7 +578,13 @@ function AdminSiparislerPageInner() {
                 </tr>
               ) : (
                 filtered.map((o) => {
-                  const s = STATUS_META[o.status];
+                  // Defensive: STATUS_META'da bilinmeyen status varsa fallback.
+                  // Önce: undefined s.bg → crash → tüm satır render başarısız.
+                  const s = STATUS_META[o.status] ?? {
+                    label: o.status || "—",
+                    bg: "bg-gri-100",
+                    color: "text-gri-700",
+                  };
                   const isSelected = selected.has(o.id);
                   return (
                     <tr
