@@ -30,7 +30,7 @@ interface SiteSettings {
   maxOrderTotal: number;
   defaultStickerDelivery: number;
   defaultEtiketDelivery: number;
-  fastTrackEnabled: boolean;
+  fastTrackEnabled: boolean; // DEPRECATED — Sefa kuralı "hızlı baskı yok", UI'dan kaldırıldı
   emailFrom: string;
   contactPhone: string;
   contactWhatsapp: string;
@@ -40,7 +40,7 @@ interface SiteSettings {
 const DEFAULTS: SiteSettings = {
   vatPct: 20,
   shippingFee: 49,
-  freeShippingThreshold: 1000,
+  freeShippingThreshold: 500,
   welcomeCreditTry: 250,
   referralCreditTry: 250,
   minSubtotalForCredit: 500,
@@ -80,7 +80,10 @@ export default function AdminAyarlarPage() {
 
   useEffect(() => {
     const local = loadLocalSettings();
-    setSettings({ ...DEFAULTS, ...local });
+    // Sefa 18 May v68: fastTrackEnabled deprecated, eski localStorage
+    // kayıtlarını sıfırla (true kalmışsa false'a çek)
+    const cleaned = { ...DEFAULTS, ...local, fastTrackEnabled: false };
+    setSettings(cleaned);
     setHydrated(true);
 
     // DB'den canlı değerleri çek — kargo + sadakat fields override eder
@@ -292,17 +295,16 @@ export default function AdminAyarlarPage() {
                 onChange={(v) => update("defaultEtiketDelivery", v)}
               />
             </div>
-            <label className="flex items-center gap-2.5 mt-4 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.fastTrackEnabled}
-                onChange={(e) => update("fastTrackEnabled", e.target.checked)}
-                className="accent-pim-mercan"
-              />
-              <span className="text-[14px]">
-                Hızlı şerit (acele) seçeneği aktif
-              </span>
-            </label>
+            {/* Sefa 18 May v68 (senkronizasyon denetimi):
+                "Hızlı şerit (acele)" checkbox kaldırıldı. Sefa kuralı:
+                "Hızlı/acele baskı YOK" — Pim AI KB + SSS + anasayfada
+                tutarlı. Checkbox UI'da kalırsa yanlış toggle riski +
+                Pim AI'a yanlış sinyal verir. */}
+            <div className="mt-4 rounded-lg bg-mavi-soft p-3 text-[12.5px] text-mavi-koyu">
+              <strong>Sabit politika:</strong> Hızlı/acele baskı hizmeti
+              YOK. Tüm siparişler standart akış. Bu kural kod tabanında
+              sabit (Pim AI KB + SSS + Pim chat KB ile senkron).
+            </div>
           </Card>
 
           {/* İletişim */}
