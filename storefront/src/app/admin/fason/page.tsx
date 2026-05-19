@@ -31,6 +31,19 @@ import {
 interface FasonPartner {
   id: string;
   name: string;
+  // Mig 067 yeni alanlar
+  short_name?: string | null;
+  city?: string | null;
+  town?: string | null;
+  status?: "active" | "paused" | "terminated";
+  status_reason?: string | null;
+  express_lead_time_days?: number | null;
+  min_order_amount_try?: number | null;
+  payment_term?: string | null;
+  iban?: string | null;
+  contract_pdf_url?: string | null;
+  contract_uploaded_at?: string | null;
+  // Mig 018 mevcut alanlar
   contact_email: string;
   contact_whatsapp: string | null;
   contact_person: string | null;
@@ -42,7 +55,29 @@ interface FasonPartner {
   contract_signed_at: string | null;
   notes: string | null;
   created_at: string;
+  // Mig 067 nested
+  contacts?: Array<{
+    role: string;
+    name: string;
+    email: string;
+    phone_e164: string;
+    auto_notification?: boolean;
+  }>;
+  capabilities?: Array<{
+    capability_type: "product_type" | "material";
+    capability_value: string;
+  }>;
 }
+
+const CAPABILITY_LABEL: Record<string, string> = {
+  roll_label: "Rulo",
+  sheet_label: "Tabaka",
+  sticker: "Sticker",
+  paper: "Kağıt",
+  transparent: "Şeffaf",
+  metallic: "Metalize",
+  holographic: "Holografik",
+};
 
 interface AssignmentRow {
   id: string;
@@ -160,9 +195,15 @@ export default function AdminFasonPage() {
               )}
             </p>
           </div>
-          <Button variant="primary" onClick={() => setShowAdd(true)}>
+          {/* Sefa 20 May v68: Yeni partner artık ayrı sayfa (/admin/fason/yeni) —
+              4-kart form (firma + 3 yetkili + yetkinlik + sözleşme).
+              Modal (PartnerAddModal) legacy backward-compat için duruyor. */}
+          <Link
+            href="/admin/fason/yeni"
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-[10px] bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan/90 transition-colors"
+          >
             <Icon.Plus size={14} /> Yeni partner ekle
-          </Button>
+          </Link>
         </div>
 
         {/* KPI strip */}
@@ -439,7 +480,15 @@ function PartnerCard({
       <Card padding="p-5" className={isSelected ? "!ring-pim-mercan" : ""}>
         <div className="flex items-start justify-between gap-3 mb-2.5">
           <div className="min-w-0">
-            <h3 className="font-semibold text-base truncate">{partner.name}</h3>
+            <h3 className="font-semibold text-base truncate">
+              {partner.name}
+              {/* Sefa 20 May v68: Mig 067 city göster */}
+              {partner.city && (
+                <span className="text-[12px] font-normal text-gri-700 ml-2">
+                  · {partner.city}
+                </span>
+              )}
+            </h3>
             <div className="text-[12px] text-gri-700 mt-0.5 truncate">
               {partner.contact_email}
             </div>
@@ -455,26 +504,62 @@ function PartnerCard({
                 {scorePct} / 100
               </span>
             )}
-            {!partner.active && (
-              <span className="inline-flex items-center h-[24px] px-2.5 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold">
-                Pasif
+            {/* Mig 067 status enum (paused/terminated), legacy active fallback */}
+            {(partner.status === "paused" ||
+              (partner.status === undefined && !partner.active)) && (
+              <span
+                className="inline-flex items-center h-[24px] px-2.5 rounded-full bg-sari-soft text-sari-koyu text-[11px] font-semibold"
+                title={partner.status_reason ?? undefined}
+              >
+                ◐ Pasif
+              </span>
+            )}
+            {partner.status === "terminated" && (
+              <span className="inline-flex items-center h-[24px] px-2.5 rounded-full bg-kirmizi-soft text-kirmizi text-[11px] font-semibold">
+                ✕ Sonlandırıldı
               </span>
             )}
           </div>
         </div>
 
-        {/* Specialties */}
-        {partner.specialties.length > 0 && (
+        {/* Sefa 20 May v68: Mig 067 capabilities (product_type + material) */}
+        {partner.capabilities && partner.capabilities.length > 0 ? (
           <div className="flex gap-1.5 flex-wrap mb-3">
-            {partner.specialties.map((s) => (
-              <span
-                key={s}
-                className="inline-flex items-center h-[20px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold capitalize"
-              >
-                {s}
-              </span>
-            ))}
+            {partner.capabilities
+              .filter((c) => c.capability_type === "product_type")
+              .map((c) => (
+                <span
+                  key={`pt-${c.capability_value}`}
+                  className="inline-flex items-center h-[20px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold"
+                >
+                  {CAPABILITY_LABEL[c.capability_value] ?? c.capability_value}
+                </span>
+              ))}
+            {partner.capabilities
+              .filter((c) => c.capability_type === "material")
+              .map((c) => (
+                <span
+                  key={`mat-${c.capability_value}`}
+                  className="inline-flex items-center h-[20px] px-2 rounded-full bg-lacivert/10 text-lacivert text-[10.5px] font-semibold"
+                >
+                  {CAPABILITY_LABEL[c.capability_value] ?? c.capability_value}
+                </span>
+              ))}
           </div>
+        ) : (
+          partner.specialties.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {/* Eski legacy specialties (Mig 018 öncesi) */}
+              {partner.specialties.map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center h-[20px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-semibold capitalize"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )
         )}
 
         <div className="flex items-center gap-3 text-[12px] text-gri-700 pt-3 border-t border-gri-100">
