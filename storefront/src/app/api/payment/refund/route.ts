@@ -126,13 +126,70 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // PayTR refund
+  // Sefa 20 May v68 (Mig 069): race condition guard.
+  // PayTR refund call'dan ÖNCE INSERT placeholder (status='processing').
+  // Partial unique index aynı anda 2. paralel insert'i fail eder
+  // → çift PayTR call önlenir. Sonra PayTR çağrılır, status update.
+  const isPartial = refundAmount < charge.amount;
+  const action = isPartial ? "partial_refund" : "refund";
+
+  const { data: placeholderRow, error: phErr } = await admin
+    .from("payments")
+    .insert([
+      {
+        order_id: body.orderId,
+        psp_provider: "paytr",
+        psp_transaction_id: charge.psp_transaction_id,
+        action,
+        amount: refundAmount,
+        currency: "TRY",
+        status: "processing", // Mig 069: PayTR call sonuçlanana kadar lock
+        idempotency_key: `refund:${body.orderId}:${Date.now()}`,
+        psp_raw: { refund_amount: refundAmount, reason: body.reason } as never,
+      },
+    ] as never)
+    .select("id")
+    .single();
+
+  if (phErr) {
+    // Unique constraint violation (23505) → başka refund zaten in-progress
+    const code = (phErr as { code?: string }).code;
+    if (code === "23505") {
+      return NextResponse.json(
+        {
+          error: "refund_already_in_progress",
+          hint: "Bu sipariş için başka bir iade işlemi şu an çalışıyor (veya tamamlandı). Birkaç saniye sonra kontrol et.",
+        },
+        { status: 409 }
+      );
+    }
+    console.error("[payment/refund] placeholder insert error:", phErr);
+    return NextResponse.json(
+      { error: "placeholder_insert_failed", detail: phErr.message },
+      { status: 500 }
+    );
+  }
+
+  const placeholderId = (placeholderRow as { id: string }).id;
+
+  // PayTR refund (artık DB seviyesinde lock alındı)
   const result = await refundPayment({
     merchantOid: charge.psp_transaction_id,
     returnAmountTL: refundAmount,
   });
 
   if (!result.ok) {
+    // PayTR reject → placeholder'ı 'failed' yap (sonradan tekrar denenebilir)
+    await admin
+      .from("payments")
+      .update({
+        status: "failed",
+        psp_raw: {
+          ...{ refund_amount: refundAmount, reason: body.reason },
+          paytr_error: { reason: result.reason, code: result.errCode },
+        } as never,
+      } as never)
+      .eq("id", placeholderId);
     console.error("[payment/refund] PayTR refund failed:", result);
     return NextResponse.json(
       {
@@ -144,34 +201,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // payments INSERT — refund kaydı
-  const isPartial = refundAmount < charge.amount;
-  const action = isPartial ? "partial_refund" : "refund";
+  // PayTR success → placeholder'ı 'success' yap
   const { data: refundRow, error: insertErr } = await admin
     .from("payments")
-    .insert([
-      {
-        order_id: body.orderId,
-        psp_provider: "paytr",
-        psp_transaction_id: charge.psp_transaction_id,
-        action,
-        amount: refundAmount,
-        currency: "TRY",
-        status: "success",
-        idempotency_key: `refund:${body.orderId}:${Date.now()}`,
-        psp_raw: { refund_amount: refundAmount, reason: body.reason } as never,
-        completed_at: new Date().toISOString(),
-      },
-    ] as never)
+    .update({
+      status: "success",
+      completed_at: new Date().toISOString(),
+    } as never)
+    .eq("id", placeholderId)
     .select("*")
     .single();
 
   if (insertErr) {
-    console.error("[payment/refund] payments insert error:", insertErr);
+    console.error("[payment/refund] payments update error:", insertErr);
     return NextResponse.json(
       {
         error: "paytr_ok_but_db_failed",
-        warning: "PayTR'de iade yapıldı ama DB kaydı düşmedi",
+        warning:
+          "PayTR'de iade yapıldı ama DB kaydı 'processing'de takıldı — manuel kontrol",
       },
       { status: 500 }
     );
