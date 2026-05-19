@@ -82,12 +82,14 @@ export async function getHomepageReviews(
   const supabase = createClient();
   const { data, error } = await supabase.rpc("get_homepage_reviews", {
     p_limit: limit,
-  });
+  } as never);
   if (error) {
     console.error("[reviews] getHomepageReviews error:", error.message);
     return [];
   }
-  return (data ?? []).map((r: Record<string, unknown>) => normalize(r));
+  return ((data as unknown as Record<string, unknown>[]) ?? []).map((r) =>
+    normalize(r)
+  );
 }
 
 /**
@@ -102,12 +104,14 @@ export async function getProductReviews(
   const { data, error } = await supabase.rpc("get_product_reviews", {
     p_product_type: productType,
     p_limit: limit,
-  });
+  } as never);
   if (error) {
     console.error("[reviews] getProductReviews error:", error.message);
     return [];
   }
-  return (data ?? []).map((r: Record<string, unknown>) => normalize(r));
+  return ((data as unknown as Record<string, unknown>[]) ?? []).map((r) =>
+    normalize(r)
+  );
 }
 
 // ============================================================

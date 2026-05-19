@@ -247,7 +247,7 @@ export const tr: TranslationDict = {
       "Operatör manuel kontrolünden sonra prova göndereceğiz. Onayladıktan sonra üretime girer.",
     step3Title: "Kapına teslim",
     step3Desc:
-      "5 iş günü içinde kargoya veriyoruz, kargo + 1-3 iş günü. Kargo takip linkini e-posta + SMS ile gönderirim.",
+      "5 iş günü içinde kargoya veriyoruz. Süreci takip etmek için panelim sayfasına bakabilirsin.",
     orderDetail: "Sipariş detayı",
     backToPanel: "Panele git",
   },

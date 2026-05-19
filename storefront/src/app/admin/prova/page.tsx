@@ -22,6 +22,7 @@ import {
   updateCustomerOrderStatus,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
@@ -42,15 +43,25 @@ export default function AdminProvaPage() {
   const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
 
   useEffect(() => {
-    const refresh = () => {
-      const all = listCustomerOrders();
+    let cancelled = false;
+    const applyOrders = (all: CustomerOrder[]) => {
+      if (cancelled) return;
       setAllOrders(all);
       setItems(all.filter((o) => o.status === "proof_pending"));
     };
-    refresh();
+    // İlk paint: local cache (kendi user'ı)
+    applyOrders(listCustomerOrders());
+    // Asıl: admin API → tüm siparişler
+    void fetchAllOrdersForAdmin({ limit: 500 }).then(applyOrders);
+    const refresh = () => {
+      applyOrders(listCustomerOrders());
+      void fetchAllOrdersForAdmin({ limit: 500 }).then(applyOrders);
+    };
     window.addEventListener("pim_customer_orders_updated", refresh);
-    return () =>
+    return () => {
+      cancelled = true;
       window.removeEventListener("pim_customer_orders_updated", refresh);
+    };
   }, []);
 
   // KPI hesapları — admin'in genel görüşü

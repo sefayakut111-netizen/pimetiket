@@ -27,6 +27,7 @@ import type { OrderStatus } from "@/lib/order";
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
   paid: { label: "Yeni — dosya bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  awaiting_upload: { label: "Müşteri tasarım yüklemedi (Mig 061)", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_flagged: { label: "AI flag — manuel kontrol", color: "text-sari-koyu", bg: "bg-sari-soft" },
   operator_review: { label: "Operatör inceliyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
@@ -505,6 +506,71 @@ export default function AdminOrderDetailPage({
                       Müşteri /siparis/{order.id} sayfasından "Provayı onayla"
                       veya "Değişiklik iste" butonuna basacak.
                     </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Baskı manifest indir — Mig 063 (E öbeği). Sadece üretim
+                aşamasındaki siparişler için. JSON içinde signed SVG URL'leri
+                + tüm POC v2 meta (material, white_plan, tier, ...) var. */}
+            {(order.status === "proof_approved" ||
+              order.status === "ready_to_ship" ||
+              order.status === "fason_assigned" ||
+              order.status === "in_production") && (
+              <Card
+                padding="p-5"
+                className="!bg-yesil-soft !ring-yesil/30"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-yesil/20 text-yesil shrink-0">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </span>
+                  <div className="flex-1">
+                    <h2 className="text-[14px] font-semibold text-yesil">
+                      Baskı manifesti hazır
+                    </h2>
+                    <p className="text-[12.5px] text-yesil/85 mt-1 leading-relaxed">
+                      Müşteri onaylı cutline'lar + meta (malzeme/beyaz
+                      plan/tier) + SVG signed URL'leri içeren JSON paket. RIP
+                      sisteminize alabilirsiniz. URL'ler 1 saat geçerli.
+                    </p>
+                    <a
+                      href={`/api/admin/print-job/${order.id}/manifest`}
+                      download={`print-manifest-${order.id}.json`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-yesil px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-yesil-koyu"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Manifest JSON indir
+                    </a>
                   </div>
                 </div>
               </Card>

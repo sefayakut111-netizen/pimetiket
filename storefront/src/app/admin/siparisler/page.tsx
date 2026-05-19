@@ -25,6 +25,7 @@ import {
   updateCustomerOrderStatus,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 
 type AdminStatus = OrderStatus;
 
@@ -43,6 +44,7 @@ interface AdminOrder {
 
 const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: string }> = {
   paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  awaiting_upload: { label: "Tasarım bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
@@ -199,18 +201,34 @@ function AdminSiparislerPageInner() {
   }, [filter, search]);
 
   useEffect(() => {
-    const refresh = () =>
+    // İlk paint için local cache (LocalStorage / kendi user'ı)
+    setOrders(listCustomerOrders().map(toAdminOrderRow));
+    // Asıl liste: admin API → tüm müşterilerin siparişleri (RLS bypass)
+    let cancelled = false;
+    void fetchAllOrdersForAdmin({ limit: 500 }).then((all) => {
+      if (!cancelled) setOrders(all.map(toAdminOrderRow));
+    });
+    const refresh = () => {
       setOrders(listCustomerOrders().map(toAdminOrderRow));
-    refresh();
+      void fetchAllOrdersForAdmin({ limit: 500 }).then((all) => {
+        if (!cancelled) setOrders(all.map(toAdminOrderRow));
+      });
+    };
     window.addEventListener("pim_customer_orders_updated", refresh);
-    return () =>
+    return () => {
+      cancelled = true;
       window.removeEventListener("pim_customer_orders_updated", refresh);
+    };
   }, []);
 
   const handleStatusChange = useCallback(
     (id: string, status: AdminStatus) => {
       updateCustomerOrderStatus(id, status);
+      // Hemen local'i göster, sonra DB fresh çek
       setOrders(listCustomerOrders().map(toAdminOrderRow));
+      void fetchAllOrdersForAdmin({ limit: 500 }).then((all) =>
+        setOrders(all.map(toAdminOrderRow))
+      );
     },
     []
   );
@@ -285,6 +303,9 @@ function AdminSiparislerPageInner() {
       updateCustomerOrderStatus(id, bulkStatus);
     });
     setOrders(listCustomerOrders().map(toAdminOrderRow));
+    void fetchAllOrdersForAdmin({ limit: 500 }).then((all) =>
+      setOrders(all.map(toAdminOrderRow))
+    );
     clearSelection();
     setBulkStatus("");
     // PostHog: bulk update event

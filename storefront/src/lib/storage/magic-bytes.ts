@@ -132,12 +132,14 @@ export function detectMimeFromMagicBytes(
     }
   }
 
-  // SVG (XML başlığı binary değil — string scan)
+  // SVG (XML başlığı binary değil — string scan).
+  // SVG ALLOWED_MIME_TYPES'ta yok (Sefa security ile vector-only PDF/AI istiyor),
+  // ama yine de tanı + reject akışı için claim comparison string olarak yapılır.
   if (detectSvg(buf)) {
     return {
       detected: "image/svg+xml",
       label: "SVG/XML",
-      matchesClaim: claimedMime === "image/svg+xml",
+      matchesClaim: (claimedMime as string) === "image/svg+xml",
     };
   }
 

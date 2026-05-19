@@ -65,6 +65,10 @@ interface Body {
   has_custom_white_plan?: unknown;
   tier?: unknown;
   detected_cut_contour_names?: unknown;
+  // Mig 062 — auto-generated cutline (B1+B2: hidden iframe POC)
+  auto?: unknown;
+  // Mig 063 — multi-design proof: hangi design_file için cutline
+  design_file_id?: unknown;
 }
 
 const ALLOWED_SOURCES = new Set([
@@ -162,6 +166,14 @@ export async function POST(
       .slice(0, 10)
       .map((s: string) => s.slice(0, 100));
   })();
+  // Mig 063 — design_file_id (multi-design proof). UUID format kontrolü.
+  const designFileId =
+    typeof body.design_file_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      body.design_file_id
+    )
+      ? body.design_file_id
+      : null;
 
   const supabase = await createServerClient();
   const {
@@ -186,7 +198,14 @@ export async function POST(
   if (orderRow.user_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  if (orderRow.status !== "proof_pending") {
+  // Mig 062: proof_generating de geçerli — hidden iframe POC otomatik üretirken
+  // bu state'te olur. Cutline INSERT'i fn_advance_after_cutline ile
+  // otomatik proof_pending'e geçirir.
+  const isAuto = body.auto === true;
+  const allowedStatuses = isAuto
+    ? ["proof_generating", "proof_pending"]
+    : ["proof_pending"];
+  if (!allowedStatuses.includes(orderRow.status)) {
     return NextResponse.json(
       { error: `Düzenleme bu aşamada yapılamaz (${orderRow.status})` },
       { status: 400 }
@@ -254,6 +273,7 @@ export async function POST(
   const cdInsert = {
     order_id: orderId,
     order_item_id: itemId,
+    design_file_id: designFileId, // Mig 063 — multi-design proof
     user_id: user.id,
     svg_url: svgKey,
     preview_png_url: previewKey,
@@ -273,7 +293,8 @@ export async function POST(
         ? body.pim_feedback.slice(0, 2000)
         : null,
     pim_severity: pimSeverity,
-    status: "draft",
+    // Mig 062: auto=true ise auto_generated, müşteri manuel düzenlediyse draft
+    status: isAuto ? "auto_generated" : "draft",
     // POC v2 (Mig 060)
     material_type: materialType,
     white_plan_mode: whitePlanMode,
@@ -297,19 +318,30 @@ export async function POST(
   }
   const cutlineId = (cd as { id: string }).id;
 
-  // Önceki draft'ları superseded yap
-  await admin
-    .from("cutline_designs")
-    .update({ status: "superseded" } as never)
-    .eq("order_item_id", itemId)
-    .eq("status", "draft")
-    .neq("id", cutlineId);
+  // Önceki draft + auto_generated'ları superseded yap. Multi-design (Mig 063):
+  // design_file_id varsa o tasarıma özel scope; yoksa item-bağlı eski kayıtlar.
+  {
+    const supersedeQuery = admin
+      .from("cutline_designs")
+      .update({ status: "superseded" } as never)
+      .eq("order_item_id", itemId)
+      .in("status", ["draft", "auto_generated"])
+      .neq("id", cutlineId);
+    if (designFileId) {
+      await supersedeQuery.eq("design_file_id", designFileId);
+    } else {
+      // Eski (design_file_id null) kayıtlar — item başına tek scope
+      await supersedeQuery.is("design_file_id", null);
+    }
+  }
 
-  // order_items proof_status = 'edited' + son cutline reference
+  // order_items proof_status:
+  //   - auto = pending (henüz müşteri görmedi)
+  //   - manual = edited (müşteri ayarladı)
   await admin
     .from("order_items")
     .update({
-      proof_status: "edited",
+      proof_status: isAuto ? "pending" : "edited",
       proof_edited_at: new Date().toISOString(),
       cutline_design_id: cutlineId,
     } as never)
@@ -320,11 +352,13 @@ export async function POST(
   await admin.from("order_events").insert([
     {
       order_id: orderId,
-      event_type: "proof_item_edited",
+      event_type: isAuto ? "proof_auto_generated" : "proof_item_edited",
       status_after: orderRow.status,
       actor_id: user.id,
-      actor_role: "customer",
-      summary: `Müşteri bıçak çizgisini düzenledi (${mode}, ${source}${tier ? `, tier:${tier}` : ""}${materialType && materialType !== "paper" ? `, ${materialType}` : ""})`,
+      actor_role: isAuto ? "system" : "customer",
+      summary: isAuto
+        ? `Otomatik bıçak üretildi (${mode}, ${source}${tier ? `, tier:${tier}` : ""})`
+        : `Müşteri bıçak çizgisini düzenledi (${mode}, ${source}${tier ? `, tier:${tier}` : ""}${materialType && materialType !== "paper" ? `, ${materialType}` : ""})`,
       detail: {
         item_id: itemId,
         cutline_id: cutlineId,
@@ -333,6 +367,7 @@ export async function POST(
         material_type: materialType,
         white_plan_mode: whitePlanMode,
         tier,
+        auto: isAuto,
       },
     },
   ] as never);

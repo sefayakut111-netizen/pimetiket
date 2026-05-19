@@ -21,7 +21,10 @@
  */
 export type OrderStatus =
   // Sipariş alındı
-  | "paid" // Ödendi, dosya yüklenmesi bekleniyor
+  | "paid" // Geçici state — paid trigger anında awaiting_upload veya proof_pending'e geçer
+
+  // Ödeme sonrası dosya bekleyiş (Mig 061)
+  | "awaiting_upload" // Ödeme yapıldı ama tasarım henüz yüklenmedi — müşteri /siparis/[id]/tasarim-yukle'ye
 
   // AI QC akışı
   | "qc_pending" // Dosya yüklendi, AI ön kontrol + operatör sırasında

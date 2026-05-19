@@ -248,7 +248,7 @@ export const en: TranslationDict = {
       "After operator manual check, we'll send a proof. Once approved, it goes to production.",
     step3Title: "Door delivery",
     step3Desc:
-      "Labels 8–12 business days, stickers 5–7. I'll send the cargo tracking link by email + SMS.",
+      "We hand it over to the courier within 5 business days. You can track the process from the my-panel page.",
     orderDetail: "Order detail",
     backToPanel: "Go to panel",
   },

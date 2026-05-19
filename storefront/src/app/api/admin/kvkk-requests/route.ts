@@ -79,7 +79,7 @@ export async function GET(req: Request) {
   // Müşteri email + isim için profiles join
   const userIds = Array.from(
     new Set(
-      ((rows as { user_id: string }[]) ?? []).map((r) => r.user_id)
+      ((rows as unknown as { user_id: string }[]) ?? []).map((r) => r.user_id)
     )
   );
 
@@ -102,14 +102,16 @@ export async function GET(req: Request) {
     }
   }
 
-  const enriched = (rows ?? []).map((r) => {
-    const u = userMap.get((r as { user_id: string }).user_id);
-    return {
-      ...r,
-      user_email: u?.email ?? null,
-      user_name: u?.full_name ?? null,
-    };
-  });
+  const enriched = ((rows as unknown as Record<string, unknown>[]) ?? []).map(
+    (r) => {
+      const u = userMap.get((r as { user_id: string }).user_id);
+      return {
+        ...r,
+        user_email: u?.email ?? null,
+        user_name: u?.full_name ?? null,
+      };
+    }
+  );
 
   return NextResponse.json({ requests: enriched });
 }

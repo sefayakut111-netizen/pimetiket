@@ -1,0 +1,3266 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pim Etiket — Otomatik Bıçak Üretici (POC)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #faf8f3;
+    --surface: #ffffff;
+    --surface-2: #f3efe6;
+    --border: #e5dfd2;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --accent: #d97757;       /* Pim Etiket sıcak ton */
+    --cut: #ff0080;          /* CutContour magenta */
+    --bleed: #ef4444;
+    --safe: #3b82f6;
+    --success: #16a34a;
+    --warning: #ca8a04;
+    --danger: #dc2626;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--text);
+    color: var(--bg);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .poc-tag {
+    font-size: 11px;
+    padding: 3px 8px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  #cvStatus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  #cvStatus .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--warning);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  #cvStatus.ready .dot {
+    background: var(--success);
+    animation: none;
+  }
+
+  @keyframes pulse {
+    50% { opacity: 0.4; }
+  }
+
+  /* Layout */
+  main {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: calc(100vh - 60px);
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* Sidebar */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* Upload */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    background: var(--surface);
+  }
+
+  .upload-zone:hover, .upload-zone.dragging {
+    border-color: var(--accent);
+    background: #fdf6f1;
+  }
+
+  .upload-zone svg {
+    width: 28px;
+    height: 28px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .upload-zone .title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .upload-zone .sub {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .upload-zone input { display: none; }
+
+  /* Mode selector */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .mode-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    font-family: inherit;
+  }
+
+  .mode-btn:hover {
+    border-color: var(--text-muted);
+  }
+
+  .mode-btn.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  .mode-btn .mode-icon {
+    display: block;
+    margin: 0 auto 4px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .mode-btn .mode-label {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* Sliders */
+  .slider-row {
+    margin-bottom: 14px;
+  }
+
+  .slider-row:last-child { margin-bottom: 0; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .slider-header .label { color: var(--text); font-weight: 500; }
+  .slider-header .value { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 13px;
+  }
+
+  .toggle-row:not(:last-child) {
+    border-bottom: 1px solid var(--surface-2);
+  }
+
+  .toggle {
+    position: relative;
+    width: 34px;
+    height: 20px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.18s ease;
+  }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease;
+  }
+
+  .toggle.on {
+    background: var(--text);
+  }
+
+  .toggle.on::after {
+    transform: translateX(14px);
+  }
+
+  /* Info & metadata */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .meta-item {
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .meta-item .key {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .meta-item .val {
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Status messages */
+  .status {
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid;
+    line-height: 1.4;
+  }
+
+  .status.warn {
+    background: #fef9e9;
+    border-color: #f3e2a4;
+    color: #856e0c;
+  }
+
+  .status.err {
+    background: #fef0f0;
+    border-color: #f3c4c4;
+    color: #9b1414;
+  }
+
+  .status.ok {
+    background: #ecf8ed;
+    border-color: #bce0bf;
+    color: #1a5b1d;
+  }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    background: var(--text);
+    color: var(--surface);
+    border: none;
+    border-radius: 8px;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s ease;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  /* Preview area */
+  .preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 600px;
+    position: relative;
+  }
+
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-swatch {
+    width: 16px;
+    height: 0;
+    border-top: 2px dashed;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    overflow: auto;
+    background:
+      linear-gradient(45deg, #efe9da 25%, transparent 25%),
+      linear-gradient(-45deg, #efe9da 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #efe9da 75%),
+      linear-gradient(-45deg, transparent 75%, #efe9da 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: var(--surface-2);
+  }
+
+  #canvas {
+    max-width: 100%;
+    max-height: 100%;
+    background: transparent;
+    border-radius: 6px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px;
+  }
+
+  .empty-state h3 {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .empty-state p {
+    font-size: 14px;
+  }
+
+  /* Loading */
+  .loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.85);
+    display: grid;
+    place-items: center;
+    z-index: 10;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--surface-2);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 12px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-content {
+    text-align: center;
+  }
+
+  .hidden { display: none !important; }
+
+  /* Pim comment area */
+  .pim-comment {
+    display: flex;
+    gap: 10px;
+    padding: 14px;
+    background: linear-gradient(135deg, #fdf6f1 0%, #faf0e6 100%);
+    border: 1px solid #f0dec9;
+    border-radius: 10px;
+    margin-top: 12px;
+  }
+
+  .pim-avatar {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--accent);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .pim-content {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .pim-content .pim-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+    font-size: 12px;
+  }
+
+  .footer-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .pdf-page-thumb {
+    aspect-ratio: 3/4;
+    background: var(--surface-2);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: border-color 0.15s ease;
+    position: relative;
+  }
+
+  .pdf-page-thumb:hover {
+    border-color: var(--text-muted);
+  }
+
+  .pdf-page-thumb.active {
+    border-color: var(--accent);
+  }
+
+  .pdf-page-thumb canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .pdf-page-thumb .page-num {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+
+  .source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--surface-2);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-left: 8px;
+  }
+
+  .source-badge.vector {
+    background: #ecf3fe;
+    color: #1e40af;
+  }
+
+  /* === 3 KATMANLI MÜŞTERİ AKIŞI === */
+
+  /* Action bar — preview altında sticky */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .action-bar-left {
+    display: flex;
+    align-items: center;
+  }
+
+  .action-bar-right {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-help {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+
+  .btn-help:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .btn-edit {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-edit:hover {
+    border-color: var(--text-muted);
+    background: var(--surface-2);
+  }
+
+  .btn-edit.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  .btn-approve {
+    background: #16a34a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15);
+  }
+
+  .btn-approve:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+  }
+
+  .btn-approve:disabled {
+    background: #cbd5e1;
+    color: white;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* Accordion — düzenle paneli */
+  .accordion {
+    display: none;
+  }
+
+  .accordion.open {
+    display: block;
+    animation: slideDown 0.2s ease-out;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Default state — düzenleme paneli kapalıyken görünen yardımcı yazı */
+  .quick-status {
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #14532d;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .quick-status strong {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* Yardım modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 15, 15, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+    animation: fadeIn 0.18s ease-out;
+  }
+
+  .modal-backdrop.open {
+    display: flex;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: scaleIn 0.18s ease-out;
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .modal h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .modal p {
+    color: var(--text-muted);
+    margin-bottom: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .modal textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 16px;
+  }
+
+  .modal textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .modal .btn-cancel {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .modal .btn-cancel:hover {
+    background: var(--surface-2);
+  }
+
+  .modal .btn-submit {
+    background: var(--text);
+    color: var(--surface);
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* Onay sonrası overlay */
+  .approval-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.94);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .approval-overlay.show {
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .approval-icon {
+    width: 64px;
+    height: 64px;
+    background: #16a34a;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: white;
+    margin-bottom: 16px;
+    animation: scaleIn 0.4s ease-out;
+  }
+
+  .approval-overlay h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #14532d;
+    margin-bottom: 6px;
+  }
+
+  /* === TIER ROZETI === */
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .tier-badge.pro {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #14532d;
+    border: 1px solid #86efac;
+  }
+
+  .tier-badge.standard {
+    background: #eff6ff;
+    color: #1e3a8a;
+    border: 1px solid #93c5fd;
+  }
+
+  .tier-badge.improve {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #78350f;
+    border: 1px solid #fbbf24;
+  }
+
+  .tier-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Pim yorumu içindeki aksiyon butonu */
+  .pim-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 7px 12px;
+    background: var(--text);
+    color: var(--surface);
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+
+  .pim-action:hover {
+    background: #2a2a2a;
+    transform: translateY(-1px);
+  }
+
+  .pim-action svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Profesyonel tier için onay butonu vurgulama */
+  .btn-approve.highlighted {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15); }
+    50% { box-shadow: 0 4px 20px rgba(22, 163, 74, 0.45); }
+  }
+
+  /* Slider altı dinamik not */
+  .slider-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    min-height: 14px;
+    line-height: 1.3;
+    transition: color 0.15s ease;
+  }
+  .slider-note.warn { color: #c2410c; }
+  .slider-note.info { color: var(--accent); }
+
+  /* === MALZEME SEÇİCİ === */
+  .material-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .material-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .material-btn:hover { border-color: var(--text-muted); }
+  .material-btn.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  .material-btn .mat-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .material-btn[data-material="paper"] .mat-icon { background: #fafafa; color: #333; border: 1px solid #ddd; }
+  .material-btn[data-material="transparent"] .mat-icon {
+    background: repeating-conic-gradient(#e5e5e5 0% 25%, transparent 0% 50%) 0 0 / 8px 8px;
+    color: #555;
+    border: 1px solid #ddd;
+  }
+  .material-btn[data-material="metallic"] .mat-icon {
+    background: linear-gradient(135deg, #d4d4d8 0%, #ffffff 50%, #a1a1aa 100%);
+    color: #333;
+  }
+  .material-btn[data-material="holographic"] .mat-icon {
+    background: linear-gradient(135deg, #fbcfe8 0%, #c7d2fe 33%, #bae6fd 66%, #bbf7d0 100%);
+    color: #333;
+  }
+
+  .material-btn .mat-label {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* === BEYAZ PLAN MOD SEÇİCİ === */
+  .white-mode-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .white-mode-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    text-align: center;
+    position: relative;
+  }
+
+  .white-mode-btn:hover { border-color: var(--text-muted); }
+  .white-mode-btn.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  .white-mode-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* AI butonu için özel görsel ipucu */
+  .white-mode-btn[data-wmode="ai"] {
+    background: linear-gradient(135deg, #fdf6f1 0%, #f9ebda 100%);
+    color: #7c3a0f;
+    border-color: #f0dec9;
+  }
+  .white-mode-btn[data-wmode="ai"].active {
+    background: linear-gradient(135deg, #d97757 0%, #c45a32 100%);
+    color: white;
+    border-color: #c45a32;
+  }
+  .white-mode-btn[data-wmode="ai"]::before {
+    content: '✨';
+    margin-right: 3px;
+    font-size: 10px;
+  }
+
+  /* Beyaz plan açıklama notu */
+  .white-note {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border-left: 3px solid #94a3b8;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  /* Layers paneline beyaz toggle renk */
+  .toggle.on[data-layer="white"] {
+    background: #64748b;
+  }
+
+  /* Background removal butonu */
+  .bg-remove-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #fdf6f1 0%, #f9ebda 100%);
+    border: 1px solid #f0dec9;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #7c3a0f;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .bg-remove-btn:hover {
+    background: linear-gradient(135deg, #faedd9 0%, #f5dcbb 100%);
+    transform: translateY(-1px);
+  }
+
+  .bg-remove-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .bg-remove-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* === MOBİL RESPONSIVE === */
+  @media (max-width: 900px) {
+    main {
+      grid-template-columns: 1fr;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    header {
+      padding: 12px 16px;
+    }
+
+    .logo span:not(.poc-tag) {
+      font-size: 15px;
+    }
+
+    .poc-tag {
+      display: none;
+    }
+
+    #cvStatus .text {
+      font-size: 11px;
+    }
+
+    .preview {
+      min-height: 400px;
+      order: -1;
+    }
+
+    .panel {
+      padding: 14px;
+    }
+
+    .panel-title {
+      font-size: 10px;
+    }
+
+    /* Action bar mobilde — buton metinleri kısalır */
+    .action-bar {
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .action-bar-left,
+    .action-bar-right {
+      width: 100%;
+    }
+
+    .action-bar-right {
+      gap: 6px;
+    }
+
+    .btn-edit,
+    .btn-approve {
+      flex: 1;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .btn-help {
+      width: 100%;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    /* Slider'lar dokunmatik için daha büyük */
+    input[type="range"]::-webkit-slider-thumb {
+      width: 22px;
+      height: 22px;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+    }
+
+    /* Mode butonları daha küçük gridde */
+    .mode-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Modal mobilde alt sheet gibi */
+    .modal {
+      margin: 16px;
+      padding: 20px;
+    }
+
+    /* PDF sayfa grid mobilde daha az sütun */
+    #pdfPageGrid {
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+
+    /* Pim yorumu mobilde sıkışmasın */
+    .pim-comment {
+      padding: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    main {
+      padding: 8px;
+    }
+
+    .canvas-wrap {
+      padding: 12px;
+    }
+
+    .preview-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 14px;
+    }
+
+    .legend {
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">P</div>
+    <span>Pim Etiket</span>
+    <span class="poc-tag">POC · Bıçak Üretici</span>
+  </div>
+  <div id="cvStatus">
+    <span class="dot"></span>
+    <span class="text">OpenCV yükleniyor...</span>
+  </div>
+</header>
+
+<main>
+  <aside class="sidebar">
+    <!-- Upload -->
+    <div class="panel">
+      <div class="panel-title">Dosya</div>
+      <label class="upload-zone" id="uploadZone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="title">Dosya yükle veya sürükle</div>
+        <div class="sub">PNG · JPG · PDF · AI · PSD desteklenir</div>
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,application/pdf,.ai,.pdf,.psd,image/vnd.adobe.photoshop">
+      </label>
+      <!-- Background removal — sadece raster dosya yüklendikten sonra görünür -->
+      <button class="bg-remove-btn" id="btnRemoveBg" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <span>AI ile arka planı kaldır</span>
+      </button>
+    </div>
+
+    <!-- Malzeme tipi -->
+    <div class="panel">
+      <div class="panel-title">Malzeme tipi</div>
+      <div class="material-grid">
+        <button class="material-btn active" data-material="paper">
+          <div class="mat-icon">A</div>
+          <div class="mat-label">Normal kağıt</div>
+        </button>
+        <button class="material-btn" data-material="transparent">
+          <div class="mat-icon"></div>
+          <div class="mat-label">Şeffaf folyo</div>
+        </button>
+        <button class="material-btn" data-material="metallic">
+          <div class="mat-icon"></div>
+          <div class="mat-label">Metalize</div>
+        </button>
+        <button class="material-btn" data-material="holographic">
+          <div class="mat-icon"></div>
+          <div class="mat-label">Holografik</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- PDF sayfa seçici (sadece çok sayfalı PDF'lerde görünür) -->
+    <div class="panel" id="pdfPagePanel" style="display:none;">
+      <div class="panel-title">PDF Sayfası</div>
+      <div id="pdfPageInfo" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;"></div>
+      <div id="pdfPageGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;"></div>
+    </div>
+
+    <!-- Kesim modu -->
+    <div class="panel">
+      <div class="panel-title">Kesim modu</div>
+      <div class="mode-grid">
+        <button class="mode-btn active" data-mode="contour">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 8c3-4 11-4 14 0c2 3-1 7-4 9c-2 1-7 1-9-1c-3-3-3-6-1-8z" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Kontur</span>
+        </button>
+        <button class="mode-btn" data-mode="hull">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="4,8 10,4 18,5 20,12 16,19 6,18" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Çevresel</span>
+        </button>
+        <button class="mode-btn" data-mode="rect">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="4" y="5" width="16" height="14" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Dikdörtgen</span>
+        </button>
+        <button class="mode-btn" data-mode="circle">
+          <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="8" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="mode-label">Yuvarlak</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Ayarlar -->
+    <div class="panel" id="settingsPanel">
+      <div class="panel-title">Ayarlar</div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="label">Kesim mesafesi</span>
+          <span class="value"><span id="offsetVal">2.0</span> mm</span>
+        </div>
+        <input type="range" id="offsetSlider" min="0" max="5" step="0.1" value="2.0">
+        <div class="slider-note" id="offsetNote"></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="label">Yumuşatma</span>
+          <span class="value"><span id="smoothVal">0</span></span>
+        </div>
+        <input type="range" id="smoothSlider" min="0" max="100" step="1" value="0">
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="label">Görüntü çözünürlüğü (DPI)</span>
+          <span class="value"><span id="dpiVal">300</span></span>
+        </div>
+        <input type="range" id="dpiSlider" min="72" max="600" step="1" value="300">
+      </div>
+    </div>
+
+    <!-- Görünürlük -->
+    <div class="panel">
+      <div class="panel-title">Katmanlar</div>
+      <div class="toggle-row">
+        <span>Bıçak çizgisi</span>
+        <div class="toggle on" data-layer="cut"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Beyaz plan</span>
+        <div class="toggle" data-layer="white"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Bleed (taşma)</span>
+        <div class="toggle" data-layer="bleed"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Safe zone</span>
+        <div class="toggle" data-layer="safe"></div>
+      </div>
+    </div>
+
+    <!-- Beyaz plan ayarları (sadece kağıt-dışı malzemelerde görünür) -->
+    <div class="panel" id="whitePlanPanel" style="display:none;">
+      <div class="panel-title">Beyaz plan modu</div>
+      <div class="white-mode-row">
+        <button class="white-mode-btn active" data-wmode="full">Full</button>
+        <button class="white-mode-btn" data-wmode="smart">Smart</button>
+        <button class="white-mode-btn" data-wmode="ai">AI ile belirle</button>
+        <button class="white-mode-btn" data-wmode="custom" disabled>Custom</button>
+      </div>
+      <div class="white-note" id="whiteNote">
+        Şeffaf/metalize malzemede tasarımın altına beyaz mürekkep basılır. Renkler doğru çıkar.
+      </div>
+    </div>
+
+    <!-- Çıktı -->
+    <div class="panel">
+      <div class="panel-title">Çıktı</div>
+      <button class="btn secondary" id="exportSvg" disabled>SVG indir</button>
+    </div>
+
+    <!-- Bilgi -->
+    <div class="panel" id="infoPanel" style="display:none;">
+      <div class="panel-title">Analiz</div>
+      <div class="meta-grid" id="metaGrid"></div>
+      <div id="statusBox" style="margin-top:10px;"></div>
+      <div class="pim-comment" id="pimComment" style="display:none;">
+        <div class="pim-avatar">P</div>
+        <div class="pim-content">
+          <div class="pim-name">Pim</div>
+          <div id="pimText"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <section class="preview">
+    <div class="preview-header">
+      <div>
+        <strong style="font-size:14px;">Canlı önizleme</strong>
+      </div>
+      <div class="legend">
+        <div class="legend-item">
+          <span class="legend-swatch" style="border-top-color: var(--cut);"></span> Bıçak
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="border-top-color: var(--bleed);"></span> Bleed
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="border-top-color: var(--safe);"></span> Safe
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap" style="position:relative;">
+      <div class="empty-state" id="emptyState">
+        <h3>Bir görsel yükle</h3>
+        <p>Sol panelden PNG dosyası seç veya bu alana sürükle</p>
+      </div>
+      <canvas id="canvas" class="hidden"></canvas>
+
+      <!-- Onay sonrası overlay -->
+      <div class="approval-overlay" id="approvalOverlay">
+        <div class="approval-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h2>Bıçak onaylandı</h2>
+        <p>Sepete ekleniyor, üretim aşamasına geçiyoruz.</p>
+        <button class="btn-edit" onclick="resetApproval()">Geri al</button>
+      </div>
+    </div>
+
+    <!-- Action bar — her zaman görünür -->
+    <div class="action-bar" id="actionBar">
+      <div class="action-bar-left">
+        <button class="btn-help" id="btnHelp">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Ekibimizden yardım iste
+        </button>
+      </div>
+      <div class="action-bar-right">
+        <button class="btn-edit" id="btnEdit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Ayarlar
+        </button>
+        <button class="btn-approve" id="btnApprove" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Bıçağı onayla
+        </button>
+      </div>
+    </div>
+
+    <div class="loading hidden" id="loading">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <div id="loadingText">İşleniyor...</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Yardım modal -->
+<div class="modal-backdrop" id="helpModal">
+  <div class="modal">
+    <h3>Ekibimizden yardım iste</h3>
+    <p>Tasarımının kesim ayarları için ekibimiz Photoshop/Illustrator'da elle düzenleme yapsın. Genellikle 1 iş günü içinde dönüş yaparız.</p>
+    <textarea id="helpMessage" placeholder="Sorunu kısaca anlat: bıçak nerede iyi durmuyor, ne istiyorsun?"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnHelpCancel">İptal</button>
+      <button class="btn-submit" id="btnHelpSubmit">Talep gönder</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let cvReady = false;
+let pdfJsReady = false;
+let psdReady = false;
+let currentMat = null;       // OpenCV.js Mat — orijinal resim
+let currentPaths = [];       // Bıçak path'leri (canvas koordinatlarında)
+let bleedPaths = [];         // Bleed path'leri (offset +bleed)
+let safePaths = [];          // Safe zone path'leri (offset -safe)
+let currentMode = 'contour';
+let layers = { cut: true, white: false, bleed: false, safe: false };
+let imageMetadata = null;
+let currentPdfDoc = null;    // PDF.js document instance
+let currentPageNum = 1;
+let currentFile = null;
+let currentFileSource = 'raster'; // 'raster' | 'vector' | 'vector-with-cutline'
+let detectedCutContourNames = []; // Tespit edilen spot color isimleri
+
+// === BEYAZ PLAN STATE ===
+let materialType = 'paper';        // 'paper' | 'transparent' | 'metallic' | 'holographic'
+let whitePlanMode = 'full';        // 'off' | 'full' | 'smart' | 'custom'
+let whitePlanPaths = [];           // beyaz plan path'leri (canvas koordinatlarında)
+let hasCustomWhitePlan = false;    // PDF/AI/PSD içinde white spot color bulundu mu
+
+// ============================================================
+// OPENCV.JS BAŞLATMA
+// ============================================================
+function onOpenCvReady() {
+  cvReady = true;
+  if (typeof updateLibStatus === 'function') {
+    updateLibStatus();
+  }
+}
+
+// OpenCV.js initialization module
+var Module = {
+  onRuntimeInitialized: onOpenCvReady
+};
+
+// ============================================================
+// DOSYA YÜKLEME
+// ============================================================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) handleFile(e.target.files[0]);
+});
+
+['dragenter', 'dragover'].forEach(evt => {
+  uploadZone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragging');
+  });
+});
+
+['dragleave', 'drop'].forEach(evt => {
+  uploadZone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragging');
+  });
+});
+
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (e.dataTransfer.files.length > 0) {
+    handleFile(e.dataTransfer.files[0]);
+  }
+});
+
+function handleFile(file) {
+  if (!cvReady) {
+    showStatus('OpenCV henüz hazır değil, lütfen bekleyin...', 'warn');
+    return;
+  }
+
+  // Dosya tipini belirle
+  const ext = file.name.split('.').pop().toLowerCase();
+  const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+  const isAi = ext === 'ai';
+  const isPsd = ext === 'psd' || file.type === 'image/vnd.adobe.photoshop';
+  const isImage = file.type.startsWith('image/') && !isPsd;
+
+  if (!isPdf && !isAi && !isPsd && !isImage) {
+    showStatus('Desteklenmeyen dosya tipi. PNG, JPG, PDF, AI veya PSD yükleyin.', 'err');
+    return;
+  }
+
+  // PSD → ag-psd ile işle
+  if (isPsd) {
+    if (typeof agPsd === 'undefined') {
+      showStatus('PSD motoru henüz yükleniyor, biraz bekleyin...', 'warn');
+      return;
+    }
+    handlePsdFile(file);
+    return;
+  }
+
+  // PDF/AI → PDF.js ile işle
+  if (isPdf || isAi) {
+    if (!pdfJsReady) {
+      showStatus('PDF motoru henüz yükleniyor, biraz bekleyin...', 'warn');
+      return;
+    }
+    handlePdfFile(file, isAi);
+    return;
+  }
+
+  // PNG/JPG → mevcut akış
+  showLoading('Görsel okunuyor...');
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      currentFileSource = 'raster';
+      currentFile = file;
+      processImage(img, file);
+      // Raster dosya yüklenince BG kaldırma butonu görünür olsun
+      document.getElementById('btnRemoveBg').style.display = 'flex';
+    };
+    img.onerror = () => {
+      hideLoading();
+      showStatus('Görsel okunamadı', 'err');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// PSD İŞLEME (ag-psd)
+// ============================================================
+async function handlePsdFile(file) {
+  showLoading('Photoshop dosyası açılıyor...');
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const psd = agPsd.readPsd(arrayBuffer, {
+      skipLayerImageData: false,  // katmanları da oku ki cutline arayalım
+      skipThumbnail: true
+    });
+
+    // Cutline katmanı var mı kontrol et
+    let foundCutlineLayer = null;
+    function findCutlineLayer(children) {
+      if (!children) return null;
+      for (const layer of children) {
+        const name = (layer.name || '').toLowerCase();
+        if (name.includes('cutline') || name.includes('kesim') ||
+            name.includes('die') || name.includes('cutcontour')) {
+          return layer;
+        }
+        if (layer.children) {
+          const inner = findCutlineLayer(layer.children);
+          if (inner) return inner;
+        }
+      }
+      return null;
+    }
+    foundCutlineLayer = findCutlineLayer(psd.children);
+
+    // Flattened canvas'ı kullan (tüm görünür katmanlar birleşik)
+    if (!psd.canvas) {
+      hideLoading();
+      showStatus('PSD dosyası açıldı ama görüntü verisi yok. "Save As → Maximize compatibility" ile yeniden kaydedin.', 'err');
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      currentFileSource = foundCutlineLayer ? 'vector-with-cutline' : 'raster';
+      detectedCutContourNames = foundCutlineLayer ? [`Katman: ${foundCutlineLayer.name}`] : [];
+      currentFile = file;
+      processImage(img, file);
+      document.getElementById('btnRemoveBg').style.display = 'flex';
+
+      if (foundCutlineLayer) {
+        console.log('[PimEtiket] PSD\'de cutline katmanı bulundu:', foundCutlineLayer.name);
+      }
+    };
+    img.src = psd.canvas.toDataURL('image/png');
+
+  } catch (err) {
+    hideLoading();
+    console.error('PSD açma hatası:', err);
+    showStatus('PSD dosyası açılamadı: ' + (err.message || 'Bilinmeyen hata'), 'err');
+  }
+}
+
+// ============================================================
+// PDF/AI İŞLEME
+// ============================================================
+async function handlePdfFile(file, isAi) {
+  showLoading(isAi ? 'Illustrator dosyası açılıyor...' : 'PDF açılıyor...');
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({
+      data: arrayBuffer,
+      // AI dosyaları için tolerans
+      stopAtErrors: false
+    });
+    currentPdfDoc = await loadingTask.promise;
+    currentFile = file;
+    currentFileSource = 'vector';
+
+    if (currentPdfDoc.numPages > 1) {
+      // Çok sayfalı: sayfa seçici göster
+      await renderPdfPageGrid(currentPdfDoc);
+      // İlk sayfayı seç
+      await selectPdfPage(1);
+    } else {
+      // Tek sayfa: direkt işle
+      document.getElementById('pdfPagePanel').style.display = 'none';
+      await selectPdfPage(1);
+    }
+  } catch (err) {
+    hideLoading();
+    console.error('PDF açma hatası:', err);
+    if (isAi) {
+      showStatus('Illustrator dosyası açılamadı. Eski sürüm AI dosyaları PDF uyumlu olmayabilir. Lütfen "Save As" ile PDF uyumlu kaydedin.', 'err');
+    } else {
+      showStatus('PDF açılamadı: ' + (err.message || 'Bilinmeyen hata'), 'err');
+    }
+  }
+}
+
+async function renderPdfPageGrid(pdf) {
+  const panel = document.getElementById('pdfPagePanel');
+  const info = document.getElementById('pdfPageInfo');
+  const grid = document.getElementById('pdfPageGrid');
+
+  panel.style.display = 'block';
+  info.textContent = `${pdf.numPages} sayfa bulundu. İşlemek için bir sayfa seçin:`;
+  grid.innerHTML = '';
+
+  const maxThumbs = Math.min(pdf.numPages, 12); // Maks 12 thumb göster
+  for (let i = 1; i <= maxThumbs; i++) {
+    const thumb = document.createElement('div');
+    thumb.className = 'pdf-page-thumb';
+    thumb.dataset.page = i;
+    thumb.innerHTML = `<span class="page-num">${i}</span>`;
+    thumb.addEventListener('click', () => selectPdfPage(i));
+    grid.appendChild(thumb);
+
+    // Async render thumbnail
+    pdf.getPage(i).then(page => {
+      const viewport = page.getViewport({ scale: 0.3 });
+      const c = document.createElement('canvas');
+      c.width = viewport.width;
+      c.height = viewport.height;
+      page.render({ canvasContext: c.getContext('2d'), viewport }).promise.then(() => {
+        thumb.insertBefore(c, thumb.firstChild);
+      });
+    });
+  }
+
+  if (pdf.numPages > maxThumbs) {
+    const more = document.createElement('div');
+    more.style.cssText = 'font-size:11px; color:var(--text-muted); padding:8px;';
+    more.textContent = `+${pdf.numPages - maxThumbs} sayfa daha`;
+    grid.appendChild(more);
+  }
+}
+
+async function selectPdfPage(pageNum) {
+  if (!currentPdfDoc) return;
+  showLoading(`Sayfa ${pageNum} işleniyor...`);
+
+  try {
+    // Aktif thumbnail'i işaretle
+    document.querySelectorAll('.pdf-page-thumb').forEach(t => {
+      t.classList.toggle('active', parseInt(t.dataset.page) === pageNum);
+    });
+
+    const page = await currentPdfDoc.getPage(pageNum);
+
+    // Yüksek DPI'da render (300 DPI ~= 4.17 scale ile pdf.js'in 72 DPI default'una göre)
+    const dpi = parseInt(document.getElementById('dpiSlider').value);
+    const scale = dpi / 72;
+    const viewport = page.getViewport({ scale: scale });
+
+    const renderCanvas = document.createElement('canvas');
+    renderCanvas.width = viewport.width;
+    renderCanvas.height = viewport.height;
+    const ctx = renderCanvas.getContext('2d', { alpha: true });
+
+    // Beyaz arka planı temizle - transparency için
+    ctx.clearRect(0, 0, viewport.width, viewport.height);
+
+    await page.render({
+      canvasContext: ctx,
+      viewport: viewport,
+      background: 'rgba(0,0,0,0)' // şeffaf arka plan
+    }).promise;
+
+    // Spot color tespiti (best effort)
+    const cutDetect = await tryDetectCutContour(page);
+
+    // Image'e dönüştür
+    const img = new Image();
+    img.onload = () => {
+      currentFileSource = cutDetect.found ? 'vector-with-cutline' : 'vector';
+      detectedCutContourNames = cutDetect.names;
+      hasCustomWhitePlan = cutDetect.hasWhite;
+      // Custom modu sadece white spot color varsa enable et
+      const customBtn = document.querySelector('.white-mode-btn[data-wmode="custom"]');
+      if (customBtn) customBtn.disabled = !cutDetect.hasWhite;
+      processImage(img, currentFile);
+      currentPageNum = pageNum;
+    };
+    img.src = renderCanvas.toDataURL('image/png');
+
+  } catch (err) {
+    hideLoading();
+    console.error('Sayfa render hatası:', err);
+    showStatus('Sayfa işlenemedi: ' + (err.message || 'Hata'), 'err');
+  }
+}
+
+// CutContour ve White spot color tespiti — basit heuristik
+// Döndürür: { found: bool, names: [bulunan isimler], hasWhite: bool }
+async function tryDetectCutContour(page) {
+  const cutNames = new Set();
+  let whiteFound = false;
+  try {
+    const opList = await page.getOperatorList();
+    const fns = pdfjsLib.OPS;
+
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      const fn = opList.fnArray[i];
+      const args = opList.argsArray[i];
+
+      if (fn === fns.setStrokeColorN || fn === fns.setFillColorN) {
+        if (args && args.length > 0) {
+          for (const arg of args) {
+            if (typeof arg === 'string') {
+              const upper = arg.toUpperCase();
+              // CutContour ailesi
+              if (upper.includes('CUTCONTOUR') || upper.includes('DIELINE') ||
+                  upper.includes('CUT') || upper.includes('KESIM') ||
+                  upper.includes('STANZE') || upper.includes('DIE')) {
+                cutNames.add(arg);
+              }
+              // White spot color ailesi
+              if (upper === 'WHITE' || upper === 'WHITEINK' ||
+                  upper === 'BEYAZ' || upper.startsWith('WHITE_') ||
+                  upper.includes('UNDERBASE')) {
+                whiteFound = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Spot color tarama hatası (yok sayılacak):', err);
+  }
+  const names = Array.from(cutNames);
+  if (names.length > 0) console.log('CutContour spot color(lar) tespit edildi:', names);
+  if (whiteFound) console.log('White underbase spot color tespit edildi');
+  return { found: names.length > 0, names, hasWhite: whiteFound };
+}
+
+function processImage(img, file) {
+  // Resize for performance (max 800px)
+  const maxSize = 800;
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+
+  // PADDING: PNG'nin dış sınırı bıçağı kısıtlamasın diye etrafına
+  // şeffaf alan ekle. Bu olmadan, görselin kenarına yakın içerik için
+  // bıçak çizgisi PNG kenarına dayanıyor ve düzleşiyordu.
+  // 80 piksel @ 800px canvas = max offset (5mm) + güvenlik payı
+  const padding = 80;
+  const paddedW = w + 2 * padding;
+  const paddedH = h + 2 * padding;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = paddedW;
+  tempCanvas.height = paddedH;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.clearRect(0, 0, paddedW, paddedH);
+  // Görüntüyü padded canvas'ın ortasına yerleştir
+  tempCtx.drawImage(img, padding, padding, w, h);
+
+  if (currentMat) currentMat.delete();
+  currentMat = cv.imread(tempCanvas);
+
+  // Metadata
+  const dpi = parseInt(document.getElementById('dpiSlider').value);
+  const widthMm = (img.width / dpi) * 25.4;
+  const heightMm = (img.height / dpi) * 25.4;
+
+  imageMetadata = {
+    filename: file.name,
+    originalW: img.width,
+    originalH: img.height,
+    displayW: paddedW,        // padded canvas boyutu
+    displayH: paddedH,
+    contentW: w,              // gerçek içeriğin scaled boyutu
+    contentH: h,
+    contentOffsetX: padding,  // içeriğin padded canvas'taki sol konumu
+    contentOffsetY: padding,
+    padding: padding,
+    scale: scale,
+    fileSize: (file.size / 1024).toFixed(1) + ' KB',
+    dpi: dpi,
+    widthMm: widthMm.toFixed(1),
+    heightMm: heightMm.toFixed(1),
+    hasAlpha: currentMat.channels() === 4
+  };
+
+  // Show UI
+  document.getElementById('canvas').classList.remove('hidden');
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('infoPanel').style.display = 'block';
+  document.getElementById('exportSvg').disabled = false;
+
+  // 3 katmanlı akış: action bar'ı göster, varsa önceki onayı sıfırla
+  showActionBar();
+  document.getElementById('approvalOverlay').classList.remove('show');
+
+  updateMetadataDisplay();
+  generateCutline();
+  generateWhitePlan();
+  render();
+  generatePimComment();
+  hideLoading();
+}
+
+// ============================================================
+// BIÇAK ÜRETİMİ (Ana algoritma)
+// ============================================================
+function generateCutline() {
+  if (!currentMat || !cvReady) return;
+
+  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
+  const smoothness = parseFloat(document.getElementById('smoothSlider').value);
+  const dpi = parseInt(document.getElementById('dpiSlider').value);
+
+  // === Kayma toleransı (sıfır kesim koruması) ===
+  // Kullanıcı 0 mm seçerse, kesim makinesinin ~0.3mm kayma toleransını
+  // telafi etmek için bıçak otomatik 0.3mm içerden kesilir.
+  // Bu sayede kenarlarda görselin dışı (şeffaf/beyaz folyo) görünmez.
+  const slipToleranceMm = 0.3;
+  const effectiveOffsetMm = (offsetMm === 0) ? -slipToleranceMm : offsetMm;
+
+  // mm → piksel dönüşümü (scaled görüntüde)
+  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
+  const offsetPx = Math.round(effectiveOffsetMm * pxPerMm);  // negatif olabilir
+  const bleedPx = Math.round(2.0 * pxPerMm);
+  const safePx = Math.round(2.0 * pxPerMm);
+
+  // STEP 1: Akıllı mask oluştur (adaptive threshold + morfolojik temizleme)
+  const maskResult = buildMask(currentMat);
+  let mask = maskResult.mask;
+  // Sonuçları metadata'ya kaydet (preflight ve Pim yorumu için)
+  if (imageMetadata) {
+    imageMetadata.alphaUseful = maskResult.isAlphaUseful;
+    imageMetadata.detectedBg = maskResult.detectedBg;
+  }
+
+  // STEP 2: Mode'a göre işle
+  if (currentMode === 'rect') {
+    // Bounding box
+    const rect = getBoundingRect(mask);
+    if (rect) {
+      const r = expandRect(rect, offsetPx);
+      currentPaths = [rectToPath(r)];
+      bleedPaths = [rectToPath(expandRect(rect, offsetPx + bleedPx))];
+      safePaths = [rectToPath(expandRect(rect, offsetPx - safePx))];
+    } else {
+      currentPaths = []; bleedPaths = []; safePaths = [];
+    }
+  } else if (currentMode === 'circle') {
+    // Min enclosing circle
+    const circle = getEnclosingCircle(mask);
+    if (circle) {
+      currentPaths = [circleToPath(circle.cx, circle.cy, circle.r + offsetPx)];
+      bleedPaths = [circleToPath(circle.cx, circle.cy, circle.r + offsetPx + bleedPx)];
+      safePaths = [circleToPath(circle.cx, circle.cy, Math.max(1, circle.r + offsetPx - safePx))];
+    } else {
+      currentPaths = []; bleedPaths = []; safePaths = [];
+    }
+  } else if (currentMode === 'hull') {
+    // Convex hull of all content
+    currentPaths = generateOffsetPaths(mask, offsetPx, smoothness, true);
+    bleedPaths = generateOffsetPaths(mask, offsetPx + bleedPx, smoothness, true);
+    safePaths = generateOffsetPaths(mask, offsetPx - safePx, smoothness, true);
+  } else {
+    // contour (default)
+    currentPaths = generateOffsetPaths(mask, offsetPx, smoothness, false);
+    bleedPaths = generateOffsetPaths(mask, offsetPx + bleedPx, smoothness, false);
+    safePaths = generateOffsetPaths(mask, offsetPx - safePx, smoothness, false);
+  }
+
+  mask.delete();
+}
+
+// ============================================================
+// BEYAZ PLAN ÜRETİMİ (white underbase)
+// ============================================================
+// Şeffaf/metalize/holografik malzemede tasarımın altına basılan beyaz mürekkep katmanı.
+// 3 mod:
+//   - 'full'   : tüm baskı alanını kapla (hafif inset)
+//   - 'smart'  : sadece koyu/canlı renklerin altına (brightness threshold)
+//   - 'custom' : müşterinin kendi tasarladığı white spot color (PDF/PSD'den)
+function generateWhitePlan() {
+  whitePlanPaths = [];
+  if (!currentMat || !cvReady) return;
+  if (whitePlanMode === 'off') return;
+  if (materialType === 'paper') return;
+
+  if (whitePlanMode === 'custom') {
+    if (!hasCustomWhitePlan) return;
+    return; // Next.js fazında server'dan path çıkarılır
+  }
+
+  // Mask oluştur (silüetin gerçek sınırı)
+  const maskResult = buildMask(currentMat);
+  let baseMask = maskResult.mask;
+
+  const pxPerMm = (imageMetadata.dpi / 25.4) * imageMetadata.scale;
+
+  // ============================================================
+  // SMART MOD: sadece koyu/canlı pikseller AND silüet
+  // ============================================================
+  if (whitePlanMode === 'smart') {
+    const gray = new cv.Mat();
+    cv.cvtColor(currentMat, gray, cv.COLOR_RGBA2GRAY);
+    const darkMask = new cv.Mat();
+    cv.threshold(gray, darkMask, 200, 255, cv.THRESH_BINARY_INV);
+
+    const smartMask = new cv.Mat();
+    cv.bitwise_and(baseMask, darkMask, smartMask);
+
+    baseMask.delete();
+    baseMask = smartMask;
+    gray.delete();
+    darkMask.delete();
+  }
+  // ============================================================
+  // FULL MOD: beyaz plan görselin TAM SİLÜETİ
+  // ============================================================
+  // baseMask zaten silüet — ekstra dilate/erode yok.
+  // Bıçak silüetin offsetMm dışında kesilir, aralarındaki şeffaf folyo kalır.
+  else if (whitePlanMode === 'full') {
+    // baseMask olduğu gibi kullanılır
+  }
+  // ============================================================
+  // AI MOD: bağımsız küçük parçalara duyarlı, gerekirse bg removal
+  // ============================================================
+  // Mevcut alpha temizse direkt kullan, değilse bg removal arka planda.
+  // minArea filtresi çok düşük → küçük detaylar yakalanır.
+  else if (whitePlanMode === 'ai') {
+    // baseMask zaten oluştu — AI modunda minArea filtresi düşürülecek (aşağıda)
+    // Eğer görselin alpha'sı kullanışsızsa kullanıcıya bg removal öner
+    if (!imageMetadata.alphaUseful && currentFileSource === 'raster') {
+      // Bu durumda generateWhitePlan'in tek başına yapacağı sınırlı.
+      // setTimeout ile prompt göster — bg removal yap, sonra yeniden çağrılır
+      maybeOfferBgRemovalForAi();
+    }
+  }
+
+  // Kontur çıkarma
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(baseMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+  const totalArea = baseMask.rows * baseMask.cols;
+  // AI modunda küçük bağımsız parçalara duyarlı — eşik %20 kat daha düşük
+  const minArea = whitePlanMode === 'ai'
+    ? Math.max(20, totalArea * 0.0005)   // %0.05 — küçük detayları yakala
+    : Math.max(100, totalArea * 0.003);  // %0.3 — gürültü filtresi
+
+  for (let i = 0; i < contours.size(); i++) {
+    const c = contours.get(i);
+    if (cv.contourArea(c) < minArea) continue;
+    const approx = new cv.Mat();
+    const epsilon = 0.003 * cv.arcLength(c, true);
+    cv.approxPolyDP(c, approx, epsilon, true);
+    const path = [];
+    for (let j = 0; j < approx.rows; j++) {
+      path.push([approx.data32S[j * 2], approx.data32S[j * 2 + 1]]);
+    }
+    whitePlanPaths.push(path);
+    approx.delete();
+  }
+
+  contours.delete();
+  hierarchy.delete();
+  baseMask.delete();
+}
+
+// AI modu seçildiğinde, görselin temiz alpha'sı yoksa bg removal öner
+let aiBgRemovalOffered = false;
+function maybeOfferBgRemovalForAi() {
+  if (aiBgRemovalOffered) return;
+  aiBgRemovalOffered = true;
+
+  // Pim üzerinden öneri göster
+  setTimeout(() => {
+    const pimText = document.getElementById('pimText');
+    if (!pimText) return;
+    const currentMsg = pimText.innerHTML;
+    pimText.innerHTML = currentMsg + `<br><br>
+      <strong>AI beyaz plan için öneri:</strong> Görselinin arka planı temiz değil.
+      AI'nın bağımsız parçaları doğru tespit etmesi için önce arka planı kaldıralım.
+      <button class="pim-action" onclick="performBackgroundRemovalThenWhitePlan()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        Evet, arka planı kaldır
+      </button>`;
+  }, 100);
+}
+
+// AI white plan flow: bg removal → white plan regenerate
+window.performBackgroundRemovalThenWhitePlan = async function() {
+  aiBgRemovalOffered = false; // sıfırla
+  await performBackgroundRemoval();
+  // performBackgroundRemoval sonunda processImage çalışır,
+  // processImage de generateWhitePlan çağırır — AI mod hala aktifse otomatik düzgün üretilir
+};
+
+// Malzeme tipine göre default beyaz plan modu belirle
+function defaultWhitePlanForMaterial(material) {
+  switch (material) {
+    case 'paper': return 'off';
+    case 'transparent': return 'full';
+    case 'metallic': return 'full';
+    case 'holographic': return 'smart';
+    default: return 'off';
+  }
+}
+
+// Ana offset + smooth + contour işlemi
+// offsetPx pozitif → dilate (dışa), negatif → erode (içeri), 0 → mask'i olduğu gibi kullan
+function generateOffsetPaths(mask, offsetPx, smoothness, useHull) {
+  let workingMask = mask;
+  let needsDelete = false;
+
+  const absOffset = Math.abs(offsetPx);
+  if (absOffset > 0) {
+    const kernel = cv.getStructuringElement(
+      cv.MORPH_ELLIPSE,
+      new cv.Size(2 * absOffset + 1, 2 * absOffset + 1)
+    );
+    workingMask = new cv.Mat();
+    if (offsetPx > 0) {
+      cv.dilate(mask, workingMask, kernel);     // pozitif: dışa
+    } else {
+      cv.erode(mask, workingMask, kernel);       // negatif: içeri (kayma toleransı için)
+    }
+    kernel.delete();
+    needsDelete = true;
+  }
+
+  // Kontur bul
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(workingMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+  const paths = [];
+
+  if (useHull && contours.size() > 0) {
+    // Tüm noktaları birleştir → convex hull
+    let allPoints = [];
+    for (let i = 0; i < contours.size(); i++) {
+      const c = contours.get(i);
+      for (let j = 0; j < c.rows; j++) {
+        allPoints.push(c.data32S[j * 2], c.data32S[j * 2 + 1]);
+      }
+    }
+    if (allPoints.length >= 6) {
+      const mat = cv.matFromArray(allPoints.length / 2, 1, cv.CV_32SC2, allPoints);
+      const hull = new cv.Mat();
+      cv.convexHull(mat, hull, false, true);
+      const path = [];
+      for (let i = 0; i < hull.rows; i++) {
+        path.push([hull.data32S[i * 2], hull.data32S[i * 2 + 1]]);
+      }
+      paths.push(smoothPath(path, smoothness));
+      mat.delete();
+      hull.delete();
+    }
+  } else {
+    // Her konturu ayrı işle, sadece anlamlı boyuttakileri al
+    // Dinamik minArea: resmin alanının %0.3'ünden küçük konturları ele
+    // Bu, sağ üst köşedeki gibi küçük anti-alias artıklarını filtreler
+    const totalArea = workingMask.rows * workingMask.cols;
+    const minArea = Math.max(100, totalArea * 0.003);
+    for (let i = 0; i < contours.size(); i++) {
+      const c = contours.get(i);
+      if (cv.contourArea(c) < minArea) continue;
+
+      // Douglas-Peucker simplification
+      const approx = new cv.Mat();
+      const epsilon = (smoothness / 100) * 0.015 * cv.arcLength(c, true);
+      cv.approxPolyDP(c, approx, epsilon, true);
+
+      const path = [];
+      for (let j = 0; j < approx.rows; j++) {
+        path.push([approx.data32S[j * 2], approx.data32S[j * 2 + 1]]);
+      }
+      paths.push(path);
+      approx.delete();
+    }
+  }
+
+  contours.delete();
+  hierarchy.delete();
+  if (needsDelete) workingMask.delete();
+
+  return paths;
+}
+
+// Chaikin smoothing (yumuşatma katmanı; approxPolyDP'den sonra ek yumuşatma)
+function smoothPath(path, iterations) {
+  // approxPolyDP zaten yapıyor, burası boş bırakılabilir veya ek geçiş yapılabilir
+  return path;
+}
+
+// ============================================================
+// YARDIMCI FONKSİYONLAR
+// ============================================================
+
+// Akıllı mask oluşturma — alpha analizi + adaptif threshold + morfolojik temizleme
+function buildMask(srcMat) {
+  let mask = new cv.Mat();
+  const hasAlpha = srcMat.channels() === 4;
+  let isAlphaUseful = false;
+  let detectedBg = null;
+
+  if (hasAlpha) {
+    // Alpha kanalını çıkar ve gerçekten kullanılabilir mi kontrol et
+    const channels = new cv.MatVector();
+    cv.split(srcMat, channels);
+    const alphaChannel = channels.get(3);
+    const meanAlpha = cv.mean(alphaChannel)[0];
+
+    // Alpha'nın ortalama parlaklığı 250+ ise neredeyse tamamen opak → kullanışsız
+    if (meanAlpha < 250) {
+      // Yüksek threshold (200) ile SADECE tamamen opak pikselleri al
+      // Bu, anti-aliasing halo'sunu (yarı-şeffaf kenarları) dışlar
+      cv.threshold(alphaChannel, mask, 200, 255, cv.THRESH_BINARY);
+      isAlphaUseful = true;
+    } else {
+      // Alpha var ama hepsi opak — beyaz threshold fallback'e geç
+      const gray = new cv.Mat();
+      cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
+      detectedBg = detectBackgroundColor(gray);
+      const threshold = Math.max(200, detectedBg - 8);
+      cv.threshold(gray, mask, threshold, 255, cv.THRESH_BINARY_INV);
+      gray.delete();
+    }
+    channels.delete();
+  } else {
+    // Alpha yok — beyaz threshold
+    const gray = new cv.Mat();
+    cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
+    detectedBg = detectBackgroundColor(gray);
+    const threshold = Math.max(200, detectedBg - 8);
+    cv.threshold(gray, mask, threshold, 255, cv.THRESH_BINARY_INV);
+    gray.delete();
+  }
+
+  // Çift aşamalı morfolojik temizleme:
+  //   1. CLOSE (büyük kernel) → silüet içindeki anti-aliasing alpha boşluklarını doldur
+  //      Bu olmadan, renk geçişleri olan PNG'lerde mask parçalanıyor ve
+  //      iç parçalar ayrı kontur olarak çıkıyor.
+  //   2. OPEN (küçük kernel) → saçakları, kalan artıkları temizle
+  // Closing kernel'i görüntü boyutuna göre ölçekle (büyük resimde daha geniş boşluk olabilir)
+  const minDim = Math.min(srcMat.cols, srcMat.rows);
+  const closeSize = Math.max(5, Math.min(9, Math.round(minDim / 120) * 2 + 1));
+  // closeSize tek sayı olmalı
+
+  const closeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(closeSize, closeSize));
+  const closed = new cv.Mat();
+  cv.morphologyEx(mask, closed, cv.MORPH_CLOSE, closeKernel);
+  mask.delete();
+  closeKernel.delete();
+
+  const openKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
+  const cleaned = new cv.Mat();
+  cv.morphologyEx(closed, cleaned, cv.MORPH_OPEN, openKernel);
+  closed.delete();
+  openKernel.delete();
+
+  return { mask: cleaned, hasAlpha, isAlphaUseful, detectedBg };
+}
+
+// 4 köşeden örnek alıp gerçek arka plan rengini tespit et
+function detectBackgroundColor(grayMat) {
+  const w = grayMat.cols;
+  const h = grayMat.rows;
+  const sampleSize = Math.min(10, Math.floor(Math.min(w, h) / 10));
+  const samples = [];
+
+  const corners = [
+    { x: 0, y: 0 },
+    { x: w - sampleSize, y: 0 },
+    { x: 0, y: h - sampleSize },
+    { x: w - sampleSize, y: h - sampleSize }
+  ];
+
+  for (const corner of corners) {
+    for (let dy = 0; dy < sampleSize; dy++) {
+      for (let dx = 0; dx < sampleSize; dx++) {
+        const px = grayMat.data[(corner.y + dy) * w + (corner.x + dx)];
+        samples.push(px);
+      }
+    }
+  }
+
+  // Median al — outlier'lara karşı dayanıklı
+  samples.sort((a, b) => a - b);
+  return samples[Math.floor(samples.length / 2)];
+}
+
+// Poligon alanı (Shoelace formülü) — tam-resim kontur tespitinde kullanılır
+function polygonArea(path) {
+  let area = 0;
+  for (let i = 0; i < path.length; i++) {
+    const j = (i + 1) % path.length;
+    area += path[i][0] * path[j][1];
+    area -= path[j][0] * path[i][1];
+  }
+  return Math.abs(area / 2);
+}
+
+function getBoundingRect(mask) {
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  if (contours.size() === 0) {
+    contours.delete(); hierarchy.delete();
+    return null;
+  }
+  let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+  for (let i = 0; i < contours.size(); i++) {
+    const r = cv.boundingRect(contours.get(i));
+    minX = Math.min(minX, r.x);
+    minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.width);
+    maxY = Math.max(maxY, r.y + r.height);
+  }
+  contours.delete(); hierarchy.delete();
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+function getEnclosingCircle(mask) {
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  if (contours.size() === 0) {
+    contours.delete(); hierarchy.delete();
+    return null;
+  }
+  // Tüm noktaları topla
+  let allPoints = [];
+  for (let i = 0; i < contours.size(); i++) {
+    const c = contours.get(i);
+    for (let j = 0; j < c.rows; j++) {
+      allPoints.push(c.data32S[j * 2], c.data32S[j * 2 + 1]);
+    }
+  }
+  contours.delete(); hierarchy.delete();
+  if (allPoints.length < 6) return null;
+
+  const mat = cv.matFromArray(allPoints.length / 2, 1, cv.CV_32SC2, allPoints);
+  const result = cv.minEnclosingCircle(mat);
+  mat.delete();
+  return { cx: result.center.x, cy: result.center.y, r: result.radius };
+}
+
+function expandRect(rect, offset) {
+  return {
+    x: rect.x - offset,
+    y: rect.y - offset,
+    w: rect.w + 2 * offset,
+    h: rect.h + 2 * offset
+  };
+}
+
+function rectToPath(r) {
+  return [
+    [r.x, r.y],
+    [r.x + r.w, r.y],
+    [r.x + r.w, r.y + r.h],
+    [r.x, r.y + r.h]
+  ];
+}
+
+function circleToPath(cx, cy, r, segments = 96) {
+  const path = [];
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * 2 * Math.PI;
+    path.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+  }
+  return path;
+}
+
+// ============================================================
+// CANVAS RENDER
+// ============================================================
+function render() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!currentMat) return;
+
+  canvas.width = currentMat.cols;
+  canvas.height = currentMat.rows;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ============================================================
+  // 1. BEYAZ PLAN — ALT KATMAN (görselden ÖNCE çizilir)
+  // ============================================================
+  // Gerçek baskı sırası: white ink → görsel → cut. Önizleme de aynı.
+  // Görsel alpha kanallı olduğu için silüet dışında beyaz plan görünür.
+  if (layers.white && whitePlanPaths.length > 0) {
+    const patternSize = 8;
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = patternSize;
+    patternCanvas.height = patternSize;
+    const pctx = patternCanvas.getContext('2d');
+    // Beyaz dolgu
+    pctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    pctx.fillRect(0, 0, patternSize, patternSize);
+    // Diagonal çizgi (beyaz mürekkep göstergesi)
+    pctx.strokeStyle = 'rgba(71, 85, 105, 0.35)';
+    pctx.lineWidth = 1;
+    pctx.beginPath();
+    pctx.moveTo(0, patternSize);
+    pctx.lineTo(patternSize, 0);
+    pctx.stroke();
+    const pattern = ctx.createPattern(patternCanvas, 'repeat');
+
+    ctx.save();
+    ctx.fillStyle = pattern;
+    for (const path of whitePlanPaths) {
+      if (path.length < 3) continue;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1]);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Beyaz planın kenarını da kesik çizgi olarak çiz
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    for (const path of whitePlanPaths) {
+      if (path.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1]);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ============================================================
+  // 2. GÖRSEL — drawImage ile (alpha respect, beyaz planın üstüne)
+  // ============================================================
+  // putImageData direkt piksel atar (alttaki katmanı override eder).
+  // drawImage alpha-blend yapar, alttaki beyaz planı korur.
+  const offscreen = document.createElement('canvas');
+  offscreen.width = currentMat.cols;
+  offscreen.height = currentMat.rows;
+  const offCtx = offscreen.getContext('2d');
+  const imgData = new ImageData(
+    new Uint8ClampedArray(currentMat.data),
+    currentMat.cols,
+    currentMat.rows
+  );
+  offCtx.putImageData(imgData, 0, 0);
+  ctx.drawImage(offscreen, 0, 0);
+
+  // ============================================================
+  // 3. BLEED / CUT / SAFE — en üst katman (overlay)
+  // ============================================================
+  if (layers.bleed && bleedPaths.length > 0) {
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 3]);
+    drawPaths(ctx, bleedPaths);
+  }
+
+  if (layers.cut && currentPaths.length > 0) {
+    ctx.strokeStyle = '#ff0080';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 4]);
+    drawPaths(ctx, currentPaths);
+  }
+
+  if (layers.safe && safePaths.length > 0) {
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    drawPaths(ctx, safePaths);
+  }
+
+  ctx.setLineDash([]);
+}
+
+function drawPaths(ctx, paths) {
+  for (const path of paths) {
+    if (path.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(path[0][0], path[0][1]);
+    for (let i = 1; i < path.length; i++) {
+      ctx.lineTo(path[i][0], path[i][1]);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+
+// ============================================================
+// METADATA GÖSTERIMI & ANALİZ
+// ============================================================
+function updateMetadataDisplay() {
+  if (!imageMetadata) return;
+
+  const grid = document.getElementById('metaGrid');
+  const totalNodes = currentPaths.reduce((sum, p) => sum + p.length, 0);
+
+  // Kaynak rozeti
+  let sourceBadge = '';
+  let sourceLabel = 'Raster (PNG/JPG)';
+  let cutContourRow = '';
+  if (currentFileSource === 'vector') {
+    sourceLabel = 'Vektörel (PDF/AI)';
+    sourceBadge = '<span class="source-badge vector">Vektör</span>';
+  } else if (currentFileSource === 'vector-with-cutline') {
+    sourceLabel = 'Vektörel + gömülü bıçak';
+    sourceBadge = '<span class="source-badge vector">Gömülü Bıçak</span>';
+    // Bulunan spot color isimlerini ayrı satırda göster
+    if (detectedCutContourNames.length > 0) {
+      const namesStr = detectedCutContourNames.map(n => `<code style="background:#fde8da; padding:1px 5px; border-radius:3px; font-size:11px;">${n}</code>`).join(' ');
+      cutContourRow = `
+        <div class="meta-item" style="grid-column: span 2; background:#fff5ec; border:1px solid #f0dec9;">
+          <div class="key">Tespit edilen bıçak rengi</div>
+          <div class="val" style="font-size:12px; margin-top:4px;">${namesStr}</div>
+        </div>
+      `;
+    }
+  }
+
+  grid.innerHTML = `
+    <div class="meta-item" style="grid-column: span 2;">
+      <div class="key">Kaynak ${sourceBadge}</div>
+      <div class="val" style="font-size:12px;">${sourceLabel}</div>
+    </div>
+    ${cutContourRow}
+    <div class="meta-item">
+      <div class="key">Boyut</div>
+      <div class="val">${imageMetadata.originalW} × ${imageMetadata.originalH} px</div>
+    </div>
+    <div class="meta-item">
+      <div class="key">Baskı boyutu</div>
+      <div class="val">${imageMetadata.widthMm} × ${imageMetadata.heightMm} mm</div>
+    </div>
+    <div class="meta-item">
+      <div class="key">Alpha</div>
+      <div class="val">${imageMetadata.hasAlpha ? '✓ Var' : '✗ Yok'}</div>
+    </div>
+    <div class="meta-item">
+      <div class="key">Path düğümü</div>
+      <div class="val">${totalNodes}</div>
+    </div>
+  `;
+
+  runPreflight();
+}
+
+function runPreflight() {
+  const issues = [];
+  const dpi = imageMetadata.dpi;
+
+  // Tam-resim kontur tespiti — en büyük path resmin neredeyse tamamını kaplıyor mu?
+  let largestArea = 0;
+  for (const path of currentPaths) {
+    if (path.length < 3) continue;
+    const a = polygonArea(path);
+    if (a > largestArea) largestArea = a;
+  }
+  // Tam-resim kontur tespiti — gerçek içerik alanına göre hesapla (padding'i hesaba katmadan)
+  const imgArea = (imageMetadata.contentW || imageMetadata.displayW || 1) *
+                  (imageMetadata.contentH || imageMetadata.displayH || 1);
+  const coverage = imgArea > 0 ? largestArea / imgArea : 0;
+  imageMetadata.cutCoverage = coverage; // Pim yorumu kullanacak
+
+  if (coverage > 0.95) {
+    issues.push({
+      level: 'err',
+      msg: 'Bıçak çizgisi neredeyse tüm görselin kenarlarından geçiyor. Bu, arka planın temiz ayrılamadığı anlamına gelir. Şeffaf arka planlı PNG-24 olarak yeniden dışa aktarın.'
+    });
+  }
+
+  if (imageMetadata.alphaUseful === false && imageMetadata.hasAlpha) {
+    issues.push({ level: 'warn', msg: 'PNG\'nin alpha kanalı var ama hepsi opak — şeffaflık taşımıyor. Beyaz arka plan tespitine düşüldü.' });
+  } else if (!imageMetadata.hasAlpha) {
+    issues.push({ level: 'warn', msg: 'Görselin şeffaf arka planı yok. Otomatik tespit denendi ancak doğruluk düşebilir.' });
+  }
+
+  if (dpi < 150) {
+    issues.push({ level: 'err', msg: `Çözünürlük düşük (${dpi} DPI). Baskıda pikselleşme görünür.` });
+  } else if (dpi < 220) {
+    issues.push({ level: 'warn', msg: `Çözünürlük sınırda (${dpi} DPI). 300 DPI önerilir.` });
+  }
+  if (currentPaths.length === 0) {
+    issues.push({ level: 'err', msg: 'Bıçak çizgisi üretilemedi. Görüntüyü kontrol edin.' });
+  }
+  if (currentPaths.length > 8) {
+    issues.push({ level: 'warn', msg: `${currentPaths.length} ayrı parça tespit edildi. "Çevresel" modu tek parça istiyorsanız uygun olabilir.` });
+  }
+
+  const statusBox = document.getElementById('statusBox');
+  if (issues.length === 0) {
+    statusBox.innerHTML = `<div class="status ok">✓ Baskıya hazır görünüyor</div>`;
+  } else {
+    statusBox.innerHTML = issues.map(i =>
+      `<div class="status ${i.level === 'err' ? 'err' : 'warn'}" style="margin-bottom:6px;">${i.msg}</div>`
+    ).join('');
+  }
+}
+
+// ============================================================
+// TIER SINIFLANDIRMA — Profesyonel / Standart / İyileştirme
+// ============================================================
+// Kural tabanlı, hızlı, ücretsiz.
+// Üretim sisteminde ChatGPT Vision ile derinleştirilecek.
+function classifyTier() {
+  if (!imageMetadata) return { tier: 'standard', reason: '' };
+
+  // PROFESYONEL TIER — Tasarımcının hazırladığı dosya
+  if (currentFileSource === 'vector-with-cutline') {
+    return {
+      tier: 'pro',
+      label: 'Profesyonel',
+      reason: 'PDF/AI/PSD içinde gömülü bıçak bulundu. Tasarımcının çizdiği bıçağı koruyoruz.',
+      materialNote: materialType !== 'paper'
+        ? `Malzeme: ${materialLabel(materialType)}. Beyaz plan: ${whitePlanMode === 'custom' && hasCustomWhitePlan ? 'tasarımcının kendi white\'ı korunuyor' : whitePlanMode + ' modunda otomatik üretiliyor'}.`
+        : null
+    };
+  }
+
+  // STANDART TIER
+  if (currentFileSource === 'vector') {
+    return {
+      tier: 'standard',
+      label: 'Standart',
+      reason: 'Vektörel dosya, otomatik bıçak ürettim.'
+    };
+  }
+
+  const dpi = imageMetadata.dpi;
+  const hasUsefulAlpha = imageMetadata.alphaUseful === true;
+  const coverage = imageMetadata.cutCoverage || 0;
+
+  if (hasUsefulAlpha && dpi >= 220 && coverage < 0.9) {
+    return {
+      tier: 'standard',
+      label: 'Standart',
+      reason: 'Şeffaf arka planlı kaliteli PNG.'
+    };
+  }
+
+  let reasons = [];
+  let suggestedAction = null;
+
+  if (!imageMetadata.hasAlpha) {
+    reasons.push('arka plan kaldırma gerekli');
+    suggestedAction = 'bg-remove';
+  } else if (!hasUsefulAlpha) {
+    reasons.push('alpha kanalı boş');
+    suggestedAction = 'bg-remove';
+  }
+  if (dpi < 220) {
+    reasons.push(`çözünürlük düşük (${dpi} DPI)`);
+  }
+  if (coverage > 0.9) {
+    reasons.push('bıçak görsel kenarını takip ediyor');
+    suggestedAction = 'bg-remove';
+  }
+
+  return {
+    tier: 'improve',
+    label: 'İyileştirme önerilir',
+    reason: reasons.join(', '),
+    suggestedAction: suggestedAction
+  };
+}
+
+function materialLabel(m) {
+  return { paper: 'Normal kağıt', transparent: 'Şeffaf folyo', metallic: 'Metalize', holographic: 'Holografik' }[m] || m;
+}
+function generatePimComment() {
+  if (!imageMetadata) return;
+  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
+  const dpi = imageMetadata.dpi;
+  const partCount = currentPaths.length;
+  const coverage = imageMetadata.cutCoverage || 0;
+
+  const tierInfo = classifyTier();
+
+  let msg = '';
+  let actionBtn = '';
+
+  // Tier rozeti
+  const tierBadge = `<div class="tier-badge ${tierInfo.tier}">${tierInfo.label}</div>`;
+
+  // PROFESYONEL — minimal, güven veren, "onayla" odaklı
+  if (tierInfo.tier === 'pro') {
+    msg = 'Tasarımının içindeki bıçağı buldum ve koruyorum. Bıçak çizgisi senin tasarımcının çizdiği şekilde, dokunmadım. Direkt onaylayabilirsin.';
+    if (tierInfo.materialNote) {
+      msg += ' ' + tierInfo.materialNote;
+    }
+    // Onay butonunu vurgula
+    document.getElementById('btnApprove').classList.add('highlighted');
+  }
+  // İYİLEŞTİRME ÖNERİLİYOR — yönlendirici, tek tıkla aksiyon
+  else if (tierInfo.tier === 'improve') {
+    document.getElementById('btnApprove').classList.remove('highlighted');
+
+    if (tierInfo.suggestedAction === 'bg-remove' && currentFileSource === 'raster') {
+      if (coverage > 0.95) {
+        msg = 'Bıçak görselin tüm kenarlarını takip ediyor, yani arka planı temiz ayıramadım. AI ile arka planı kaldırırsam çok daha temiz bir bıçak çıkar. Bunu deneyelim mi?';
+      } else if (!imageMetadata.hasAlpha) {
+        msg = 'JPG/beyaz arka planlı görsel yüklemişsin. Otomatik tespit ettim ama saçaklar olabilir. AI ile arka planı kaldırırsam mükemmel sonuç alırız. Deneyelim mi?';
+      } else {
+        msg = 'Görselin alpha kanalı var ama şeffaflık taşımıyor. AI ile gerçek bir şeffaf arka plan yapayım mı?';
+      }
+      actionBtn = `<button class="pim-action" onclick="performBackgroundRemoval()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        Evet, arka planı kaldır
+      </button>`;
+    } else if (dpi < 150) {
+      msg = `Görselin ${dpi} DPI'da gelmiş, baskıda pikselli çıkar. Daha yüksek çözünürlüklü bir versiyonu var mı? 300 DPI ideal.`;
+    } else {
+      msg = `Tasarım baskıya hazır ama ${tierInfo.reason}. İstersen "Bıçağı düzenle"den ayarları manuel oynatabilirsin.`;
+    }
+  }
+  // STANDART — sade, bilgilendirici
+  else {
+    document.getElementById('btnApprove').classList.remove('highlighted');
+
+    if (partCount === 0) {
+      msg = 'Bıçak üretemedim. Görselin tamamen şeffaf arka plana sahip olduğundan emin misin?';
+    } else if (partCount > 8) {
+      msg = `${partCount} ayrı parça tespit ettim. Hepsi ayrı sticker olarak mı kesilsin, yoksa "Çevresel" modunu seçip tek parça mı yapayım?`;
+    } else if (offsetMm === 0) {
+      msg = `Sıfır kesim seçtin — bıçak görselin tam üstünden geçecek. Kesim makinesinin kayma toleransı için bıçağı otomatik 0.3mm içerden geçirdim, kenarlarda boşluk görünmez.`;
+    } else if (offsetMm < 1) {
+      msg = `Kesim mesafesi ${offsetMm.toFixed(1)}mm — biraz dar. Kesim makinesi 0.3mm'lik tolerans ile çalışıyor, 2mm önerilir.`;
+    } else {
+      let baseMsg = `${currentFileSource === 'vector' ? 'Vektörel' : 'Yüksek kaliteli'} bir dosya yüklemişsin. Bıçağı temiz ürettim, baskıya hazır görünüyor.`;
+      if (materialType !== 'paper' && whitePlanPaths.length > 0) {
+        baseMsg += ` ${materialLabel(materialType)} seçtin, beyaz planı ${whitePlanMode === 'full' ? 'tam kaplama' : 'akıllı (smart)'} modunda ürettim — sol panelden "Beyaz plan" toggle'ı ile önizleyebilirsin.`;
+      }
+      msg = baseMsg;
+    }
+  }
+
+  document.getElementById('pimText').innerHTML = tierBadge + '<br>' + msg + actionBtn;
+  document.getElementById('pimComment').style.display = 'flex';
+}
+
+// ============================================================
+// BACKGROUND REMOVAL (@imgly/background-removal — U²-Net tarayıcıda)
+// ============================================================
+let bgRemovalModule = null; // Lazy-loaded
+
+async function performBackgroundRemoval() {
+  if (!currentFile) {
+    showStatus('Önce bir görsel yükleyin', 'warn');
+    return;
+  }
+
+  const btn = document.getElementById('btnRemoveBg');
+  btn.disabled = true;
+
+  showLoading('AI modeli yükleniyor ve arka plan kaldırılıyor...\n(İlk kullanımda 30sn-1dk sürer, sonraki kullanımlarda hızlı)');
+
+  try {
+    // Lazy load — ilk tıklamada modülü indir
+    if (!bgRemovalModule) {
+      bgRemovalModule = await import('https://esm.run/@imgly/background-removal@1.5.5');
+    }
+    const { removeBackground } = bgRemovalModule;
+
+    // Blob'a dönüştür
+    const blob = await removeBackground(currentFile, {
+      progress: (key, current, total) => {
+        const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+        document.getElementById('loadingText').textContent =
+          `AI işliyor... ${key.includes('download') ? 'Model indiriliyor' : 'Arka plan kaldırılıyor'} (${pct}%)`;
+      }
+    });
+
+    // Yeni dosya gibi davran
+    const newFileName = currentFile.name.replace(/\.[^.]+$/, '') + '-bg-kaldirildi.png';
+    const newFile = new File([blob], newFileName, { type: 'image/png' });
+
+    const img = new Image();
+    img.onload = () => {
+      currentFileSource = 'raster';
+      currentFile = newFile;
+      processImage(img, newFile);
+      btn.disabled = false;
+      showStatus('✓ Arka plan kaldırıldı. Bıçak yeniden üretildi.', 'ok');
+    };
+    img.onerror = () => {
+      hideLoading();
+      btn.disabled = false;
+      showStatus('Sonuç görseli yüklenemedi', 'err');
+    };
+    img.src = URL.createObjectURL(blob);
+
+  } catch (err) {
+    hideLoading();
+    btn.disabled = false;
+    console.error('BG removal hatası:', err);
+    showStatus('Arka plan kaldırılamadı: ' + (err.message || 'Bilinmeyen hata. İnternet bağlantını kontrol et.'), 'err');
+  }
+}
+
+document.getElementById('btnRemoveBg').addEventListener('click', performBackgroundRemoval);
+// Global'e expose et — Pim aksiyon butonundan da çağrılabilsin
+window.performBackgroundRemoval = performBackgroundRemoval;
+
+// Dosya yüklenince "Onayla" butonu aktif olur (action bar default'ta görünür)
+function showActionBar() {
+  document.getElementById('btnApprove').disabled = false;
+}
+
+// "Ayarlar" — panellere smooth scroll
+document.getElementById('btnEdit').addEventListener('click', () => {
+  const settings = document.getElementById('settingsPanel');
+  if (settings) {
+    settings.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Mobilde özellikle yararlı — sidebar aşağıda
+  }
+});
+
+// "Bıçağı onayla" — onay overlay göster
+document.getElementById('btnApprove').addEventListener('click', () => {
+  if (!currentMat) return;
+  document.getElementById('approvalOverlay').classList.add('show');
+  // Gerçek sistemde burada sepete ekleme / order workflow tetiklenir
+  console.log('[PimEtiket] Bıçak onaylandı, sipariş akışına geçildi');
+});
+
+// Onay sonrası "Geri al" — overlay'i kaldır, kullanıcı düzenleyebilir
+window.resetApproval = function() {
+  document.getElementById('approvalOverlay').classList.remove('show');
+};
+
+// "Yardım iste" — modal aç
+document.getElementById('btnHelp').addEventListener('click', () => {
+  document.getElementById('helpModal').classList.add('open');
+});
+
+// Modal iptal
+document.getElementById('btnHelpCancel').addEventListener('click', () => {
+  document.getElementById('helpModal').classList.remove('open');
+});
+
+// Modal submit
+document.getElementById('btnHelpSubmit').addEventListener('click', () => {
+  const msg = document.getElementById('helpMessage').value.trim();
+  if (!msg) {
+    document.getElementById('helpMessage').focus();
+    return;
+  }
+  // Gerçek sistemde: operatör paneline talep gönder
+  console.log('[PimEtiket] Yardım talebi:', msg);
+  document.getElementById('helpModal').classList.remove('open');
+  document.getElementById('helpMessage').value = '';
+  showStatus('✓ Talebin alındı. Ekibimiz 1 iş günü içinde sana dönecek.', 'ok');
+});
+
+// Modal backdrop'a tıklayınca kapat
+document.getElementById('helpModal').addEventListener('click', (e) => {
+  if (e.target.id === 'helpModal') {
+    document.getElementById('helpModal').classList.remove('open');
+  }
+});
+// Mode butonları
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    if (currentMat) {
+      generateCutline();
+      generateWhitePlan();
+      render();
+      updateMetadataDisplay();
+      generatePimComment();
+    }
+  });
+});
+
+// Layer toggles
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => {
+    t.classList.toggle('on');
+    layers[t.dataset.layer] = t.classList.contains('on');
+    render();
+  });
+});
+
+// === MALZEME TİPİ SEÇİCİ ===
+document.querySelectorAll('.material-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    materialType = btn.dataset.material;
+
+    // Malzemeye göre beyaz plan default modunu güncelle
+    whitePlanMode = defaultWhitePlanForMaterial(materialType);
+    document.querySelectorAll('.white-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.wmode === whitePlanMode);
+    });
+
+    // Beyaz plan toggle'ı ve modu otomatik aç/kapat
+    const whiteToggle = document.querySelector('.toggle[data-layer="white"]');
+    const whitePanel = document.getElementById('whitePlanPanel');
+    if (materialType === 'paper') {
+      layers.white = false;
+      whiteToggle.classList.remove('on');
+      if (whitePanel) whitePanel.style.display = 'none';
+    } else {
+      layers.white = true;
+      whiteToggle.classList.add('on');
+      if (whitePanel) whitePanel.style.display = '';
+    }
+
+    updateWhiteNote();
+
+    if (currentMat) {
+      generateWhitePlan();
+      render();
+      generatePimComment();
+    }
+  });
+});
+
+// === BEYAZ PLAN MODU SEÇİCİ ===
+document.querySelectorAll('.white-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.disabled) return;
+    document.querySelectorAll('.white-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    whitePlanMode = btn.dataset.wmode;
+    updateWhiteNote();
+    if (currentMat) {
+      generateWhitePlan();
+      // Beyaz katmanı otomatik aç ki görsünler
+      if (whitePlanMode !== 'off' && materialType !== 'paper') {
+        layers.white = true;
+        document.querySelector('.toggle[data-layer="white"]').classList.add('on');
+      }
+      render();
+      generatePimComment();
+    }
+  });
+});
+
+function updateOffsetNote() {
+  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
+  const note = document.getElementById('offsetNote');
+  if (!note) return;
+  if (offsetMm === 0) {
+    note.textContent = 'Sıfır kesim — kayma toleransı için bıçak 0.3mm içerden kesilir';
+    note.className = 'slider-note info';
+  } else if (offsetMm < 1) {
+    note.textContent = `Dar kesim (${offsetMm.toFixed(1)}mm) — makine toleransına dikkat`;
+    note.className = 'slider-note warn';
+  } else if (offsetMm > 4) {
+    note.textContent = 'Geniş kesim — bilinçli tercih ise sorun yok';
+    note.className = 'slider-note';
+  } else {
+    note.textContent = '';
+    note.className = 'slider-note';
+  }
+}
+
+function updateWhiteNote() {
+  const note = document.getElementById('whiteNote');
+  if (materialType === 'paper') {
+    note.textContent = 'Normal kağıt seçili — beyaz plan gerekmez.';
+    return;
+  }
+  switch (whitePlanMode) {
+    case 'full':
+      note.textContent = 'Beyaz plan görselin tam sınırında. Bıçak ile beyaz plan arası şeffaf folyo olarak kalır.';
+      break;
+    case 'smart':
+      note.textContent = 'Sadece koyu/canlı renklerin altına beyaz basılır. Holografik veya metalize parıltısı korunur.';
+      break;
+    case 'ai':
+      note.textContent = 'AI bağımsız küçük parçaları da yakalar. Otomatik mod hata verirse veya tasarımda noktalar/parçalar varsa kullan.';
+      break;
+    case 'custom':
+      note.textContent = hasCustomWhitePlan
+        ? 'Tasarımcının kendi white spot color\'ı bulundu, koruyoruz.'
+        : 'Dosyada white spot color bulunamadı. Full, Smart veya AI seç.';
+      break;
+    case 'off':
+      note.textContent = 'Beyaz plan kapalı. Bilinçli bir tercih ise sorun yok.';
+      break;
+  }
+}
+
+// Slider'lar (canlı update)
+const sliders = ['offsetSlider', 'smoothSlider', 'dpiSlider'];
+sliders.forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    const valEl = document.getElementById(id.replace('Slider', 'Val'));
+    if (id === 'offsetSlider') {
+      valEl.textContent = parseFloat(el.value).toFixed(1);
+      updateOffsetNote();
+    } else {
+      valEl.textContent = el.value;
+    }
+
+    if (currentMat) {
+      if (id === 'dpiSlider') {
+        const dpi = parseInt(el.value);
+        imageMetadata.dpi = dpi;
+        imageMetadata.widthMm = ((imageMetadata.originalW / dpi) * 25.4).toFixed(1);
+        imageMetadata.heightMm = ((imageMetadata.originalH / dpi) * 25.4).toFixed(1);
+      }
+      generateCutline();
+      generateWhitePlan();
+      render();
+      updateMetadataDisplay();
+      generatePimComment();
+    }
+  });
+});
+
+// İlk yüklemede offset note'u set et
+updateOffsetNote();
+
+// ============================================================
+// SVG EXPORT (CutContour spot color uyumlu)
+// ============================================================
+document.getElementById('exportSvg').addEventListener('click', () => {
+  if (!currentPaths || currentPaths.length === 0 || !currentMat) {
+    showStatus('Önce bir görsel yükleyin', 'warn');
+    return;
+  }
+
+  const inverseScale = 1 / imageMetadata.scale;
+  const w = imageMetadata.originalW;
+  const h = imageMetadata.originalH;
+  // Padding'i orijinal koordinat sistemine çevir
+  const paddingOrig = imageMetadata.padding * inverseScale;
+  // SVG viewBox: orijinal görüntü + her tarafta padding kadar alan
+  const viewMinX = -paddingOrig;
+  const viewMinY = -paddingOrig;
+  const viewW = w + 2 * paddingOrig;
+  const viewH = h + 2 * paddingOrig;
+
+  let svgPaths = '';
+  for (const path of currentPaths) {
+    if (path.length < 2) continue;
+    // Path padded canvas'ta. Önce padding'i çıkar, sonra inverseScale ile orijinal piksele çevir.
+    const toOrig = (pt) => [
+      ((pt[0] - imageMetadata.padding) * inverseScale).toFixed(2),
+      ((pt[1] - imageMetadata.padding) * inverseScale).toFixed(2)
+    ];
+    const [x0, y0] = toOrig(path[0]);
+    let d = `M ${x0} ${y0}`;
+    for (let i = 1; i < path.length; i++) {
+      const [x, y] = toOrig(path[i]);
+      d += ` L ${x} ${y}`;
+    }
+    d += ' Z';
+    svgPaths += `  <path d="${d}" fill="none" stroke="#FF0080" stroke-width="0.5"/>\n`;
+  }
+
+  // BEYAZ KATMAN — varsa ekle (White spot color olarak)
+  let whitePaths = '';
+  if (whitePlanPaths.length > 0 && whitePlanMode !== 'off' && materialType !== 'paper') {
+    const toOrig = (pt) => [
+      ((pt[0] - imageMetadata.padding) * inverseScale).toFixed(2),
+      ((pt[1] - imageMetadata.padding) * inverseScale).toFixed(2)
+    ];
+    for (const path of whitePlanPaths) {
+      if (path.length < 2) continue;
+      const [x0, y0] = toOrig(path[0]);
+      let d = `M ${x0} ${y0}`;
+      for (let i = 1; i < path.length; i++) {
+        const [x, y] = toOrig(path[i]);
+        d += ` L ${x} ${y}`;
+      }
+      d += ' Z';
+      whitePaths += `    <path d="${d}" fill="#FFFFFF" stroke="none"/>\n`;
+    }
+  }
+
+  const whiteGroup = whitePaths ? `
+  <g id="White" data-pim-white="true" data-material="${materialType}" data-mode="${whitePlanMode}">
+${whitePaths}  </g>` : '';
+
+  const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Pim Etiket — Otomatik Üretilen Kesim Çizgisi
+  Tarih: ${new Date().toISOString()}
+  Mod: ${currentMode}
+  Offset: ${document.getElementById('offsetSlider').value}mm
+  Yumuşatma: ${document.getElementById('smoothSlider').value}
+  Görüntü: ${imageMetadata.filename} (${w}x${h}px, ${imageMetadata.dpi}dpi)
+  Baskı: ${imageMetadata.widthMm} x ${imageMetadata.heightMm}mm
+  Padding: ${paddingOrig.toFixed(1)}px her tarafa (bıçağın taşması için)
+  Malzeme: ${materialType}
+  Beyaz plan: ${whitePlanMode}${whitePaths ? ' (üretildi)' : ''}
+
+  Katman sırası: White (alt) → Tasarım → CutContour (üst)
+
+  NOT: Bu SVG'deki magenta (#FF0080) çizgisi, üretim aşamasında
+  PDF'e dönüştürülürken "CutContour" spot color olarak işaretlenmelidir.
+  Beyaz katman (#FFFFFF dolgu) "White" veya "WhiteInk" spot color olarak
+  işaretlenmelidir. Roland VersaWorks, Mimaki RasterLink, Graphtec Cutting
+  Master Pro bu spot color'ları beyaz mürekkep kanalında basar.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="${viewW.toFixed(2)}" height="${viewH.toFixed(2)}"
+     viewBox="${viewMinX.toFixed(2)} ${viewMinY.toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}">${whiteGroup}
+  <g id="CutContour" data-pim-cutline="true">
+${svgPaths}  </g>
+</svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pim-cutline-${Date.now()}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showStatus('SVG indirildi', 'ok');
+});
+
+// ============================================================
+// UI YARDIMCILARI
+// ============================================================
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || 'İşleniyor...';
+  document.getElementById('loading').classList.remove('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('loading').classList.add('hidden');
+}
+
+function showStatus(msg, level = 'warn') {
+  // Geçici bildirim için statusBox kullan
+  const box = document.getElementById('statusBox');
+  if (box) {
+    box.innerHTML = `<div class="status ${level === 'err' ? 'err' : level === 'ok' ? 'ok' : 'warn'}">${msg}</div>`;
+    setTimeout(() => runPreflight(), 3000);
+  }
+}
+</script>
+
+<!-- PDF.js — PDF/AI dosyaları için -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<!-- ag-psd — PSD dosyaları için (window.agPsd olarak global'e gelir) -->
+<script src="https://cdn.jsdelivr.net/npm/ag-psd@28.0.0/dist/bundle.js"></script>
+<script>
+  // PDF.js worker konfigürasyonu
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+    pdfJsReady = true;
+    updateLibStatus();
+  } else {
+    const checkPdfJs = setInterval(() => {
+      if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        pdfJsReady = true;
+        updateLibStatus();
+        clearInterval(checkPdfJs);
+      }
+    }, 200);
+  }
+
+  // ag-psd hazır mı kontrol et
+  if (typeof agPsd !== 'undefined') {
+    psdReady = true;
+    updateLibStatus();
+  } else {
+    const checkAgPsd = setInterval(() => {
+      if (typeof agPsd !== 'undefined') {
+        psdReady = true;
+        updateLibStatus();
+        clearInterval(checkAgPsd);
+      }
+    }, 200);
+  }
+
+  function updateLibStatus() {
+    const status = document.getElementById('cvStatus');
+    if (cvReady && pdfJsReady && psdReady) {
+      status.classList.add('ready');
+      status.querySelector('.text').textContent = 'Hazır';
+    } else {
+      const pending = [];
+      if (!cvReady) pending.push('OpenCV');
+      if (!pdfJsReady) pending.push('PDF');
+      if (!psdReady) pending.push('PSD');
+      status.querySelector('.text').textContent = pending.join(', ') + ' yükleniyor...';
+    }
+  }
+</script>
+
+<!-- OpenCV.js (yaklaşık 9MB - ilk yüklemede biraz bekleyebilir) -->
+<script async src="https://docs.opencv.org/4.10.0/opencv.js"></script>
+
+</body>
+</html>

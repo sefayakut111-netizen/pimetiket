@@ -1610,12 +1610,14 @@ export default function EtiketPage() {
             {/* Step 7 — Tasarım dosyaları (Sefa kuralı 15 May v3):
                 Boyut altına eklenir, max 50 dosya, her biri 30 MB.
                 Stepper'a DAHİL (numaralı). Tasarım adedi input ile
-                fiyat tier mantığına bağlanabilir (sonraki commit). */}
+                fiyat tier mantığına bağlanabilir (sonraki commit).
+                Mig 061: Tasarım zorunlu değil — boş bırakırsan ödeme sonrası
+                /siparis/[id]/tasarim-yukle sayfasından yükleyebilirsin. */}
             <FormSection
               id="step-7"
               number={uiStepNumber(7)}
               title="Tasarımlar"
-              hint="Her tasarımdan aynı adet basılır. Çoklu tasarımda otomatik iskonto var."
+              hint="Tasarımın hazırsa şimdi yükle; değilse boş bırak, ödeme sonrası yükleyebilirsin."
               locked={isStepLocked(7)}
               lockMessage={getLockMessage(7)}
             >
@@ -1639,6 +1641,14 @@ export default function EtiketPage() {
                   <strong>%{designDiscountPct} iskonto</strong> uygulanıyor —
                   fiyat kartında görünür
                 </p>
+              )}
+              {designs.length === 0 && (
+                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3 text-[12px] leading-relaxed text-lacivert">
+                  <strong>Sonra yükleme akışı aktif:</strong> Tasarımsız da
+                  sepete ekleyebilirsin. Ödeme yaptıktan sonra "Tasarımını
+                  yükle" sayfasına yönlendirileceksin (ve hatırlatma mail'i
+                  alacaksın).
+                </div>
               )}
             </FormSection>
 

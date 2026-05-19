@@ -105,6 +105,17 @@ interface ProofHelpRequest {
   resolution_note: string | null;
 }
 
+// Mig 063 — multi-design proof: her design_file kendi cutline'ı ile
+interface ProofDesign {
+  design_file_id: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  version: number;
+  design_status: string;
+  cutline: ProofCutline | null;
+}
+
 interface ProofItem {
   id: string;
   product: "sticker" | "etiket";
@@ -125,6 +136,9 @@ interface ProofItem {
     | "help_requested";
   proof_viewed_at: string | null;
   proof_approved_at: string | null;
+  // Mig 063: multi-design — her tasarım kendi cutline'ı ile
+  designs: ProofDesign[];
+  // Geriye uyumluluk: item-bağlı en güncel cutline (designs[] boşsa kullan)
   cutline: ProofCutline | null;
   help_request: ProofHelpRequest | null;
 }
@@ -138,6 +152,8 @@ interface ProofSummary {
     total: number;
     address: { name?: string } | null;
     created_at: string;
+    // Mig 062: 5 dk SLA deadline (proof_generating durumunda set olur)
+    sla_proof_deadline?: string | null;
   };
   items: ProofItem[];
   summary: {
@@ -280,15 +296,29 @@ export default function ProofApprovalPage({
 
   const [data, setData] = useState<ProofSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpMsg, setHelpMsg] = useState("");
   const [submittingHelp, setSubmittingHelp] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Multi-design (C2): item içinde aktif tasarım seçimi
+  const [activeDesignFileId, setActiveDesignFileId] = useState<string | null>(null);
+  // SLA countdown — proof_generating durumunda her saniye güncellenir
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  // Background auto-cutline (B1+C1) — cutline'sız design_file'lar için sequential queue
+  const [bgGenSrc, setBgGenSrc] = useState<string | null>(null);
+  const [bgGenItemId, setBgGenItemId] = useState<string | null>(null);
+  const [bgGenDesignFileId, setBgGenDesignFileId] = useState<string | null>(null);
+  const [bgGenError, setBgGenError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const summary = await fetchProofSummary(orderId);
       setData(summary);
 
@@ -297,8 +327,17 @@ export default function ProofApprovalPage({
         router.replace(`/onay/${orderId}/tamamlandi`);
         return;
       }
-      if (summary.order.status !== "proof_pending") {
-        router.replace(`/siparis/${orderId}`);
+      // Mig 062: proof_generating de bu sayfada kalır — auto cutline orchestration
+      // (hidden iframe POC) burada çalışır.
+      if (
+        summary.order.status !== "proof_pending" &&
+        summary.order.status !== "proof_generating"
+      ) {
+        if (summary.order.status === "awaiting_upload") {
+          router.replace(`/siparis/${orderId}/tasarim-yukle`);
+        } else {
+          router.replace(`/siparis/${orderId}`);
+        }
         return;
       }
 
@@ -315,6 +354,8 @@ export default function ProofApprovalPage({
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      setLoadError(msg);
+      setData(null);
       toast.error(`Sipariş yüklenemedi: ${msg}`);
     } finally {
       setLoading(false);
@@ -326,6 +367,242 @@ export default function ProofApprovalPage({
   }, [load]);
 
   const activeItem = data?.items.find((i) => i.id === activeItemId) ?? null;
+
+  // Multi-design (C2): activeItem değişince ilk design'ı seç
+  useEffect(() => {
+    if (!activeItem) {
+      setActiveDesignFileId(null);
+      return;
+    }
+    if (activeItem.designs && activeItem.designs.length > 0) {
+      // Eğer activeDesignFileId bu item'a ait değilse sıfırla
+      const stillValid = activeItem.designs.some(
+        (d) => d.design_file_id === activeDesignFileId
+      );
+      if (!stillValid) {
+        setActiveDesignFileId(activeItem.designs[0].design_file_id);
+      }
+    } else {
+      setActiveDesignFileId(null);
+    }
+  }, [activeItem, activeDesignFileId]);
+
+  // Seçilen design + cutline (multi-design → designs[]; legacy → item.cutline)
+  const activeDesign =
+    activeItem?.designs?.find((d) => d.design_file_id === activeDesignFileId) ??
+    null;
+  const activeCutline = activeDesign?.cutline ?? activeItem?.cutline ?? null;
+
+  // activeItem/activeDesign değiştiğinde preview signed URL fetch et
+  useEffect(() => {
+    if (!activeItem) {
+      setPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewUrl(null);
+    // Multi-design: activeCutline (design-specific) varsa onun preview'i
+    if (!activeCutline?.preview_png_url) return;
+    setPreviewLoading(true);
+    (async () => {
+      try {
+        // Multi-design endpoint geliştirilince design_file_id param eklenir
+        const dfParam = activeDesignFileId
+          ? `?design_file_id=${activeDesignFileId}`
+          : "";
+        const res = await fetch(
+          `/api/orders/${orderId}/proof/${activeItem.id}/preview-url${dfParam}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const j = (await res.json()) as { url: string | null };
+        if (!cancelled) setPreviewUrl(j.url);
+      } catch {
+        // Sessizce geç — UI placeholder gösterir
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeItem, activeCutline, activeDesignFileId, orderId]);
+
+  // Lightbox açıkken ESC ile kapansın
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxOpen]);
+
+  // SLA countdown — proof_generating'de her saniye now'ı güncelle
+  useEffect(() => {
+    if (data?.order.status !== "proof_generating") return;
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [data?.order.status]);
+
+  // ============================================================
+  // BACKGROUND AUTO-CUTLINE (B1) — cutline'sız itemları sırayla üret
+  // ============================================================
+  // Müşteri /onay'a geldiğinde cutline'sız her item için hidden iframe
+  // POC açıp arka planda bıçak üretir. POC autoSave=1 ile çağrılır,
+  // postMessage 'pim-cutline-saved' geldiğinde save-edit (auto:true)
+  // POST edilir → cutline_designs INSERT → trigger proof_pending'e geçer.
+  useEffect(() => {
+    if (!data) return;
+    // Zaten bir iframe aktif → bekle
+    if (bgGenItemId) return;
+
+    // Cutline'sız design_file bul (multi-design öncelik). Eski siparişlerde
+    // designs[] boş olabilir; o zaman item-bağlı eski cutline'a düşeriz.
+    type Candidate = {
+      itemId: string;
+      designFileId: string | null;
+      material: string;
+    };
+    // Konfigüratör material → POC material mapping.
+    // Sticker: vinil/transparan/holo/simli, Etiket: kraft/kuşe/...
+    // POC: paper / transparent / metallic / holographic
+    const mapMaterial = (m: unknown): string => {
+      if (typeof m !== "string") return "paper";
+      const k = m.toLowerCase();
+      if (k === "transparan" || k === "transparent") return "transparent";
+      if (k === "holo" || k === "holographic") return "holographic";
+      if (k === "simli" || k === "metallic") return "metallic";
+      return "paper"; // vinil, kraft, kuşe, default
+    };
+
+    let candidate: Candidate | null = null;
+    for (const item of data.items) {
+      if (item.proof_status === "approved") continue;
+      const material = mapMaterial(
+        item.meta?.material_type ?? item.meta?.material
+      );
+      if (item.designs && item.designs.length > 0) {
+        const noCutDesign = item.designs.find((d) => !d.cutline);
+        if (noCutDesign) {
+          candidate = {
+            itemId: item.id,
+            designFileId: noCutDesign.design_file_id,
+            material,
+          };
+          break;
+        }
+      } else if (!item.cutline) {
+        // Legacy: designs[] yok, item-bağlı
+        candidate = { itemId: item.id, designFileId: null, material };
+        break;
+      }
+    }
+    if (!candidate) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const qs = candidate.designFileId
+          ? `?design_file_id=${candidate.designFileId}`
+          : "";
+        const r = await fetch(
+          `/api/orders/${orderId}/items/${candidate.itemId}/design-url${qs}`,
+          { cache: "no-store" }
+        );
+        if (!r.ok) {
+          setBgGenError("Tasarım bulunamadı");
+          return;
+        }
+        const j = (await r.json()) as {
+          url: string;
+          mimeType: string;
+          fileName: string;
+        };
+        if (cancelled) return;
+        const params = new URLSearchParams({
+          embed: "1",
+          designUrl: j.url,
+          designName: j.fileName,
+          designMime: j.mimeType,
+          material: candidate.material,
+          mode: "contour",
+          autoSave: "1",
+          orderId,
+          itemId: candidate.itemId,
+        });
+        setBgGenItemId(candidate.itemId);
+        setBgGenDesignFileId(candidate.designFileId);
+        setBgGenSrc(`/poc.html?${params.toString()}`);
+        setBgGenError(null);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        setBgGenError(msg);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, bgGenItemId, orderId]);
+
+  // Hidden POC iframe'inden gelen mesajları yakala (auto cutline akışı)
+  useEffect(() => {
+    const handler = async (e: MessageEvent) => {
+      const d = e.data as
+        | {
+            type: string;
+            svg?: string;
+            meta?: Record<string, unknown>;
+            preview_png_base64?: string | null;
+            error?: string;
+          }
+        | undefined;
+      if (!d || !bgGenItemId) return;
+
+      if (d.type === "pim-cutline-saved" && d.svg && d.meta) {
+        try {
+          const res = await fetch(
+            `/api/orders/${orderId}/proof/${bgGenItemId}/save-edit`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                svg: d.svg,
+                preview_png_base64: d.preview_png_base64,
+                auto: true,
+                design_file_id: bgGenDesignFileId, // Mig 063 — multi-design proof
+                ...d.meta,
+              }),
+            }
+          );
+          if (!res.ok) {
+            const err = (await res.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            setBgGenError(err.error || `HTTP ${res.status}`);
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+          setBgGenError(msg);
+        } finally {
+          // Iframe'i kapat, kuyruktan sonraki design'a geç + data refresh
+          setBgGenItemId(null);
+          setBgGenDesignFileId(null);
+          setBgGenSrc(null);
+          void load();
+        }
+      } else if (d.type === "pim-cutline-auto-failed") {
+        setBgGenError(d.error || "auto_failed");
+        setBgGenItemId(null);
+        setBgGenDesignFileId(null);
+        setBgGenSrc(null);
+        // Bu design için skip — kullanıcı manuel düzenleyebilir
+        void load();
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [bgGenItemId, bgGenDesignFileId, orderId, load]);
 
   // ============================================================
   // Actions
@@ -440,7 +717,11 @@ export default function ProofApprovalPage({
 
   const handleEdit = () => {
     if (!activeItem) return;
-    router.push(`/onay/${orderId}/duzenle/${activeItem.id}`);
+    // Mig 063: multi-design — hangi tasarım düzenlenecek? query param ile geçir.
+    const dfParam = activeDesignFileId
+      ? `?design_file_id=${activeDesignFileId}`
+      : "";
+    router.push(`/onay/${orderId}/duzenle/${activeItem.id}${dfParam}`);
   };
 
   // ============================================================
@@ -463,17 +744,46 @@ export default function ProofApprovalPage({
   if (!data) {
     return (
       <main className="container py-12">
-        <Card className="p-8 text-center">
-          <h1 className="mb-2 text-lg font-semibold">
-            Sipariş yüklenemedi
+        <Card className="mx-auto max-w-lg p-8 text-center">
+          <h1 className="mb-2 text-lg font-semibold text-lacivert">
+            Baskı onay sayfası açılamadı
           </h1>
-          <p className="text-sm text-gri-700">
-            Tarayıcıyı yenilemeyi dene veya{" "}
-            <Link href="/siparislerim" className="text-pim-mercan underline">
-              siparişlerime dön
-            </Link>
-            .
+          <p className="mb-4 text-sm text-gri-700">
+            Sipariş özeti yüklenirken bir sorun oluştu.
           </p>
+          {loadError && (
+            <div className="mb-4 rounded-lg border border-kirmizi/30 bg-kirmizi-soft/30 p-3 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-kirmizi">
+                Hata detayı
+              </p>
+              <p className="mt-1 font-mono text-xs text-kirmizi-koyu">
+                {loadError}
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => void load()}
+            >
+              Tekrar dene
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              href={`/siparis/${orderId}`}
+            >
+              Sipariş detayına git
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              href="/siparislerim"
+            >
+              Siparişlerime dön
+            </Button>
+          </div>
         </Card>
       </main>
     );
@@ -692,9 +1002,47 @@ export default function ProofApprovalPage({
                   </div>
                 </div>
 
-                {/* Canvas placeholder — burada cutline_design preview gösterilir */}
+                {/* Multi-design picker (C2) — item başına N tasarım varsa */}
+                {activeItem.designs && activeItem.designs.length > 1 && (
+                  <div className="border-b border-gri-200 bg-gri-100/50 px-4 py-2">
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gri-700">
+                      Bu üründe {activeItem.designs.length} tasarım var
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeItem.designs.map((d, idx) => {
+                        const isSel = d.design_file_id === activeDesignFileId;
+                        const ready = !!d.cutline;
+                        return (
+                          <button
+                            key={d.design_file_id}
+                            type="button"
+                            onClick={() =>
+                              setActiveDesignFileId(d.design_file_id)
+                            }
+                            className={cn(
+                              "rounded-md border px-2.5 py-1 text-xs transition",
+                              isSel
+                                ? "border-pim-mercan bg-pim-mercan text-white"
+                                : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
+                            )}
+                            title={d.file_name}
+                          >
+                            <span className="font-semibold">
+                              Tasarım {idx + 1}
+                            </span>
+                            <span className="ml-1 opacity-75">
+                              {ready ? "✓" : "⏳"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Canlı önizleme — cutline_design preview PNG (R2 signed URL) */}
                 <div
-                  className="grid min-h-[320px] place-items-center bg-gri-100 p-6"
+                  className="relative grid min-h-[320px] place-items-center bg-gri-100 p-6"
                   style={{
                     backgroundImage:
                       "linear-gradient(45deg, #f3efe6 25%, transparent 25%), linear-gradient(-45deg, #f3efe6 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f3efe6 75%), linear-gradient(-45deg, transparent 75%, #f3efe6 75%)",
@@ -703,10 +1051,36 @@ export default function ProofApprovalPage({
                       "0 0, 0 10px, 10px -10px, -10px 0px",
                   }}
                 >
-                  {activeItem.cutline?.preview_png_url ? (
-                    // TODO: signed URL endpoint ile çek
+                  {previewUrl ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setLightboxOpen(true)}
+                        className="group relative max-h-[400px] cursor-zoom-in"
+                        title="Büyütüp incele"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={previewUrl}
+                          alt={`${activeItem.title} bıçak önizlemesi`}
+                          className="max-h-[400px] rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02]"
+                        />
+                        <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+                          🔍 Büyüt
+                        </span>
+                      </button>
+                    </>
+                  ) : previewLoading ? (
                     <div className="text-sm text-gri-700">
                       Önizleme yükleniyor…
+                    </div>
+                  ) : activeItem.cutline?.preview_png_url ? (
+                    // PNG R2'de var ama signed URL alınamadı (5xx vb.)
+                    <div className="text-center text-sm text-gri-700">
+                      <p className="font-medium">Önizleme şu an açılamıyor</p>
+                      <p className="mt-1 text-xs">
+                        Sayfayı yenilemeyi dene.
+                      </p>
                     </div>
                   ) : (
                     <div className="text-center text-sm text-gri-700">
@@ -845,6 +1219,103 @@ export default function ProofApprovalPage({
               </Button>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* B1 · Hidden auto-cutline iframe — Mig 062. POC headless mode'da
+          tasarımı fetch edip otomatik bıçak üretir + save-edit'e POST eder.
+          Görünmez ama sandbox attribute ile güvenli. */}
+      {bgGenSrc && (
+        <iframe
+          src={bgGenSrc}
+          title="Otomatik bıçak üretimi"
+          className="pointer-events-none fixed left-[-9999px] top-0 h-[1px] w-[1px]"
+          sandbox="allow-scripts allow-same-origin"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* "Bıçak hazırlanıyor" banner — proof_generating veya queue aktifken.
+          SLA: orders.sla_proof_deadline (Mig 062, 5dk). Süre dolduğunda
+          fason operatöre düşer, müşteriye "operatör inceliyor" mesajı. */}
+      {(data?.order.status === "proof_generating" || bgGenItemId) && (() => {
+        const deadlineIso = data?.order.sla_proof_deadline;
+        const deadlineMs = deadlineIso ? new Date(deadlineIso).getTime() : null;
+        const remainingMs = deadlineMs ? deadlineMs - nowMs : null;
+        const remainingSec =
+          remainingMs !== null ? Math.max(0, Math.floor(remainingMs / 1000)) : null;
+        const mm = remainingSec !== null ? Math.floor(remainingSec / 60) : null;
+        const ss = remainingSec !== null ? remainingSec % 60 : null;
+        const slaExpired = remainingSec !== null && remainingSec === 0;
+        return (
+          <div className="fixed bottom-4 right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg">
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 h-2 w-2 animate-pulse rounded-full bg-pim-mercan" />
+              <div className="flex-1 text-sm">
+                <p className="font-semibold text-lacivert">
+                  {slaExpired
+                    ? "Operatöre düştü"
+                    : "Bıçak hazırlanıyor…"}
+                </p>
+                {!slaExpired && mm !== null && ss !== null && (
+                  <p className="mt-0.5 font-mono text-xs text-pim-mercan">
+                    {`Kalan süre: ${mm}:${ss.toString().padStart(2, "0")}`}
+                  </p>
+                )}
+                <p className="mt-0.5 text-xs text-gri-700">
+                  {slaExpired
+                    ? "5 dakikalık otomatik üretim süresi doldu — operatörümüz devraldı. Birkaç saat içinde tamamlanacak."
+                    : "Otomasyon bıçağını çıkarıyor. Sayfayı kapatabilirsin, hazır olunca mail atacağız."}
+                </p>
+                {bgGenError && (
+                  <p className="mt-1 text-xs text-kirmizi">
+                    Hata: {bgGenError} — manuel düzenleyebilirsin
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Lightbox modal — büyütülmüş bıçak önizlemesi */}
+      {lightboxOpen && previewUrl && activeItem && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4"
+          onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Bıçak önizleme büyük görünüm"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20"
+            aria-label="Kapat"
+          >
+            ✕ Kapat (Esc)
+          </button>
+          <div
+            className="relative max-h-[90vh] max-w-[95vw]"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            style={{
+              backgroundImage:
+                "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
+              backgroundSize: "20px 20px",
+              backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
+              backgroundColor: "#1a1a1a",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt={`${activeItem.title} bıçak büyük önizlemesi`}
+              className="max-h-[90vh] max-w-[95vw] object-contain"
+            />
+          </div>
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white">
+            {activeItem.title} · {activeItem.width}×{activeItem.height} mm
+          </div>
         </div>
       )}
     </main>

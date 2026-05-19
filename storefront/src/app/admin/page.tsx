@@ -273,6 +273,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
 
 const STATUS_LABEL: Record<OrderStatus, { label: string; color: string; bg: string; hex: string }> = {
   paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
+  awaiting_upload: { label: "Tasarım bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FB923C" },
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF8585" },
   qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft", hex: "#FFC53D" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FFA39E" },
@@ -354,8 +355,23 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     const refresh = () => {
+      // İlk paint için local cache (LocalStorage / kendi user'ı)
       setOrders(listCustomerOrders());
       setLastUpdate(Date.now());
+
+      // Sonra gerçek "tüm siparişler" listesini admin API'sinden çek.
+      // assertAdmin guard'lı; admin tarafı tüm müşterilerin siparişlerini görür.
+      fetch("/api/admin/orders/list?limit=500")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { orders?: CustomerOrder[] } | null) => {
+          if (data?.orders) {
+            setOrders(data.orders);
+            setLastUpdate(Date.now());
+          }
+        })
+        .catch(() => {
+          /* silently — local cache fallback */
+        });
     };
     refresh();
     setNow(new Date());

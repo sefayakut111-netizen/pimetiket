@@ -62,9 +62,8 @@
 
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { use, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
 
@@ -82,6 +81,30 @@ interface ProofSummaryLite {
   items: ProofItem[];
 }
 
+// POC iframe'inden gelen message payload shape (pim_etiket_poc.html ile uyumlu)
+interface CutlineSavedPayload {
+  type: "pim-cutline-saved";
+  svg: string;
+  meta: {
+    source: "raster" | "vector" | "vector-with-cutline" | "psd";
+    mode: "contour" | "hull" | "rect" | "circle";
+    offset_mm: number | null;
+    smoothness: number | null;
+    dpi: number | null;
+    width_mm: number | null;
+    height_mm: number | null;
+    pim_feedback: string | null;
+    pim_severity: "ok" | "warn" | "err" | null;
+    material_type: "paper" | "transparent" | "metallic" | "holographic" | null;
+    white_plan_mode: "off" | "full" | "smart" | "ai" | "custom" | null;
+    white_plan_path_count: number;
+    has_custom_white_plan: boolean;
+    tier: "pro" | "standard" | "improve" | null;
+    detected_cut_contour_names: string[];
+  };
+  preview_png_base64: string | null;
+}
+
 export default function ProofEditPage({
   params,
 }: {
@@ -90,10 +113,15 @@ export default function ProofEditPage({
   const { orderId, itemId } = use(params);
   const router = useRouter();
   const toast = useToast();
+  const searchParams = useSearchParams();
+  const designFileId = searchParams.get("design_file_id"); // Mig 063
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [item, setItem] = useState<ProofItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,6 +161,118 @@ export default function ProofEditPage({
       cancelled = true;
     };
   }, [orderId, itemId, router, toast]);
+
+  // Item yüklendikten sonra design-url fetch et + iframe src state'ini kur.
+  // POC tarafı autoSave=0 ile — müşteri elle "Kaydet ve dön" basacak.
+  useEffect(() => {
+    if (!item) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const qs = designFileId ? `?design_file_id=${designFileId}` : "";
+        const res = await fetch(
+          `/api/orders/${orderId}/items/${itemId}/design-url${qs}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) {
+          toast.error("Tasarım yüklenemedi — manuel düzenleme yapamayız");
+          return;
+        }
+        const j = (await res.json()) as {
+          url: string;
+          mimeType: string;
+          fileName: string;
+        };
+        if (cancelled) return;
+        // Konfigüratör material → POC material mapping (vinil/transparan/holo/simli)
+        const mapMaterial = (m: unknown): string => {
+          if (typeof m !== "string") return "paper";
+          const k = m.toLowerCase();
+          if (k === "transparan" || k === "transparent") return "transparent";
+          if (k === "holo" || k === "holographic") return "holographic";
+          if (k === "simli" || k === "metallic") return "metallic";
+          return "paper";
+        };
+        const meta = (item as unknown as { meta?: Record<string, unknown> })
+          .meta;
+        const material = mapMaterial(meta?.material_type ?? meta?.material);
+
+        const params = new URLSearchParams({
+          embed: "1",
+          designUrl: j.url,
+          designName: j.fileName,
+          designMime: j.mimeType,
+          material,
+          mode: "contour",
+          autoSave: "0",
+          orderId,
+          itemId,
+        });
+        if (designFileId) params.set("designFileId", designFileId);
+        setIframeSrc(`/poc.html?${params.toString()}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        toast.error(`POC açılamadı: ${msg}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [item, orderId, itemId, designFileId, toast]);
+
+  // POC iframe'den 'pim-cutline-saved' mesajını yakala → save-edit POST → /onay'a dön
+  useEffect(() => {
+    if (!item) return;
+
+    const handler = async (e: MessageEvent) => {
+      // Yalnız kendi iframe'imizden gelen mesajı kabul et
+      if (iframeRef.current && e.source !== iframeRef.current.contentWindow) return;
+      const data = e.data as CutlineSavedPayload | undefined;
+      if (!data || data.type !== "pim-cutline-saved") return;
+      if (saving) return;
+      setSaving(true);
+
+      try {
+        const res = await fetch(
+          `/api/orders/${orderId}/proof/${itemId}/save-edit`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              svg: data.svg,
+              preview_png_base64: data.preview_png_base64,
+              design_file_id: designFileId, // Mig 063 — multi-design proof
+              ...data.meta,
+            }),
+          }
+        );
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          const err = j.error || `HTTP ${res.status}`;
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: "pim-cutline-save-failed", error: err },
+            "*"
+          );
+          toast.error("Bıçak kaydedilemedi: " + err);
+          setSaving(false);
+          return;
+        }
+        toast.success("Bıçak kaydedildi");
+        router.push(`/onay/${orderId}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: "pim-cutline-save-failed", error: msg },
+          "*"
+        );
+        toast.error("Bıçak kaydedilemedi: " + msg);
+        setSaving(false);
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [item, orderId, itemId, router, toast, saving, designFileId]);
 
   if (loading) {
     return (
@@ -186,91 +326,35 @@ export default function ProofEditPage({
       <Card className="mb-4 flex items-start gap-3 bg-pim-mercan-tint/30 p-4">
         <PimMini pose="inspect" size={48} />
         <p className="text-sm leading-relaxed text-lacivert">
-          Bıçak çizgisini istediğin gibi ayarlayabilirsin. "Kaydet" dersen
-          taslak olarak kalır, sonra onay sayfasında "Onayla" diyebilirsin.
+          Bıçak çizgisini istediğin gibi ayarlayabilirsin. "Kaydet ve dön"
+          dersen taslak olarak kalır, sonra onay sayfasında "Onayla"
+          diyebilirsin.
         </p>
       </Card>
 
-      {/* PLACEHOLDER — Sefa POC entegre edince buraya gelecek */}
-      <Card className="mt-6 p-8 text-center">
-        <div className="mx-auto max-w-lg">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-pim-mercan-tint">
-            <span className="text-2xl">🛠️</span>
+      {/* POC v2 iframe mount — design-url fetch hazır olunca yüklenir */}
+      <div className="overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
+        {iframeSrc ? (
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            title="Bıçak düzenleyici"
+            className="block h-[calc(100vh-220px)] min-h-[640px] w-full"
+            // POC esm.run'dan @imgly/background-removal indiriyor, allow-scripts şart
+            sandbox="allow-scripts allow-same-origin allow-downloads"
+          />
+        ) : (
+          <div className="grid h-[calc(100vh-220px)] min-h-[640px] place-items-center bg-gri-100 text-sm text-gri-700">
+            Tasarım yükleniyor…
           </div>
-          <h2 className="mb-2 text-lg font-semibold text-lacivert">
-            CutlineDesigner — Sefa POC entegrasyonu
-          </h2>
-          <p className="mb-4 text-sm text-gri-700">
-            POC v2 (pim_etiket_poc.html, 3266 satır) burada mount edilecek.
-            <br />
-            <strong className="text-lacivert">Özellikler:</strong> PNG/JPG/PDF/AI/PSD
-            yükleme, OpenCV.js otomatik kesim (4 mod: kontur/çevresel/dikdörtgen/yuvarlak),
-            AI background removal (U²-Net), <strong>malzeme seçici</strong>
-            (kağıt/şeffaf/metalize/holografik), <strong>beyaz plan</strong> (5
-            mod: full/smart/AI/custom), <strong>tier sınıflandırma</strong>
-            (pro/standard/improve), 0mm kayma toleransı (0.3mm erode), SVG
-            export (CutContour + White spot color grupları).
-          </p>
-          <p className="mb-4 text-sm text-gri-700">
-            <strong className="text-lacivert">🧠 Pim AI (GPT-4o-mini):</strong>{" "}
-            Kural-tabanlı yorum yerine OpenAI'ye bağlandı. Dosya yüklenince
-            veya slider değişince <code className="rounded bg-gri-100 px-1 py-0.5">POST /api/pim/cutline-feedback</code>{" "}
-            çağrılır; müşteri adıyla, doğal Türkçe, severity ve önerilen
-            aksiyon içerir (~$0.0002/çağrı).
-          </p>
-          <p className="text-xs text-gri-700">
-            Backend hazır: <code className="rounded bg-gri-100 px-1 py-0.5">POST /api/orders/{orderId}/proof/{itemId}/save-edit</code>
-          </p>
-
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button
-              variant="secondary"
-              size="md"
-              href={`/onay/${orderId}`}
-            >
-              Düzenlemeden vazgeç
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                toast.info("POC entegre edilince buradan SVG kaydedebilirsin");
-              }}
-              disabled
-            >
-              Bıçağı kaydet ve onayla
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Geliştirici notu */}
-      <div className="mt-6 rounded-lg border border-gri-200 bg-gri-100/50 p-4 text-xs text-gri-700">
-        <strong>Sözleşme (CutlineDesigner için):</strong>
-        <pre className="mt-2 overflow-x-auto rounded bg-white p-3 text-[11px] leading-relaxed">
-{`<CutlineDesigner
-  orderId="${orderId}"
-  itemId="${itemId}"
-  itemTitle="${item.title}"
-  itemMaterial="paper"  // konfigüratörden gelen, POC sadece görsel
-  originalFileUrl={signedUrl}
-  onSaveAndApprove={async (cutlineId) => {
-    // POC v2 — SVG export sonrası save-edit body'sine
-    //   material_type, white_plan_mode, white_plan_path_count,
-    //   has_custom_white_plan, tier, detected_cut_contour_names
-    // alanlarını da gönder (Mig 060)
-    await fetch(\`/api/orders/\${orderId}/proof/\${itemId}/approve\`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cutlineId }),
-    });
-    router.push(\`/onay/\${orderId}\`);
-  }}
-  onSave={(cutlineId) => router.push(\`/onay/\${orderId}\`)}
-  onCancel={() => router.push(\`/onay/\${orderId}\`)}
-/>`}
-        </pre>
+        )}
       </div>
+
+      {saving && (
+        <div className="mt-4 rounded-lg bg-pim-mercan-tint/30 p-3 text-center text-sm text-lacivert">
+          Bıçak kaydediliyor, lütfen bekle…
+        </div>
+      )}
     </main>
   );
 }

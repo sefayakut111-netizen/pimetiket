@@ -214,6 +214,13 @@ function statusMeta(
   pim: "inspect" | "happy" | "box" | "wave";
 } {
   switch (status) {
+    case "awaiting_upload":
+      return {
+        label: "Tasarım yüklemen lazım",
+        color: "var(--color-pim-mercan)",
+        soft: "var(--color-pim-mercan-tint)",
+        pim: "inspect",
+      };
     case "paid":
     case "qc_pending":
     case "qc_flagged":

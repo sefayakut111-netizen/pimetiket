@@ -105,6 +105,7 @@ export type StatusCount = Record<OrderStatus, number>;
 export function aggregateStatus(orders: CustomerOrder[]): StatusCount {
   const init: StatusCount = {
     paid: 0,
+    awaiting_upload: 0,
     qc_pending: 0,
     qc_flagged: 0,
     operator_review: 0,

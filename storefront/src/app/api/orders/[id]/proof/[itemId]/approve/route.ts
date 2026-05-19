@@ -90,30 +90,25 @@ export async function POST(
     return NextResponse.json({ error: "Onay kaydedilemedi" }, { status: 500 });
   }
 
-  // İlişkili draft cutline'ı approve durumuna çek
+  // İlişkili draft + auto_generated cutline'ları approve durumuna çek.
+  // Mig 062: hidden iframe auto cutline → status='auto_generated'
+  // Mig 063: multi-design — bu item'a ait HER design_file için en güncel
+  //          cutline (auto_generated veya draft) approved'a çekilir.
   if (cutlineId) {
     await admin
       .from("cutline_designs")
       .update({ status: "approved", approved_at: now } as never)
       .eq("id", cutlineId)
       .eq("order_item_id", itemId)
-      .eq("status", "draft");
+      .in("status", ["draft", "auto_generated"]);
   } else {
-    // CutlineId verilmediyse: bu item'a ait en son draft (varsa) → approved
-    const { data: latest } = await admin
+    // CutlineId verilmediyse: item'a ait tüm non-superseded, non-approved
+    // cutline'ları approve et (multi-design: her tasarım için ayrı row).
+    await admin
       .from("cutline_designs")
-      .select("id")
+      .update({ status: "approved", approved_at: now } as never)
       .eq("order_item_id", itemId)
-      .eq("status", "draft")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latest) {
-      await admin
-        .from("cutline_designs")
-        .update({ status: "approved", approved_at: now } as never)
-        .eq("id", (latest as { id: string }).id);
-    }
+      .in("status", ["draft", "auto_generated"]);
   }
 
   // Tüm itemler approved mı? (frontend kullanır)

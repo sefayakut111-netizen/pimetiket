@@ -37,6 +37,7 @@ const InitBodySchema = z.object({
 
 const ACCEPTED_ORDER_STATUSES = [
   "paid",
+  "awaiting_upload", // Mig 061 — ödeme sonrası tasarım yükleme
   "qc_pending",
   "qc_flagged",
   "operator_review",

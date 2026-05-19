@@ -225,7 +225,7 @@ async function hmac(
     typeof key === "string" ? new TextEncoder().encode(key) : key;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    keyBuf,
+    keyBuf as BufferSource,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]

@@ -272,9 +272,19 @@ export default function StickerPage() {
 
   // Sefa 18 May v66: Cut mode değişince TÜM seçimleri sıfırla
   // (etiket form factor refresh pattern — birebir paralel).
+  // Sefa 19 May v68: Default "diecut" — kullanıcı Die Cut'a tıklayınca
+  // next === cutMode oluyor, eskiden early-return touched'ı atlıyordu →
+  // step 2 (Şekil) kilitli kalıyordu. Artık "aynı seçim ise" durumunda
+  // sadece touched işaretle, state reset etmeden geç.
   const handleCutModeChange = useCallback(
     (next: "diecut" | "tabaka") => {
-      if (next === cutMode) return;
+      // Aynı seçimde state'i resetleme, ama step 1'i touched yap → unlock
+      if (next === cutMode) {
+        setTouchedSteps((prev) =>
+          prev.has(1) ? prev : new Set([...prev, 1])
+        );
+        return;
+      }
       // Tasarım blob URL'leri temizle (memory leak yok)
       designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
       // State'leri default'a döndür
@@ -979,12 +989,14 @@ export default function StickerPage() {
               </div>
             </FormSection>
 
-            {/* Çoklu tasarım yükleyici + designCount input (Sefa Madde 9) */}
+            {/* Çoklu tasarım yükleyici + designCount input (Sefa Madde 9)
+                Mig 061: Tasarım zorunlu değil — boş bırakırsan ödeme sonrası
+                /siparis/[id]/tasarim-yukle sayfasından yükleyebilirsin. */}
             <FormSection
               id="step-7"
               number={uiStepNumber(7)}
               title="Tasarımlar"
-              hint="Her tasarımdan aynı adet basılır. Çoklu tasarımda otomatik iskonto var."
+              hint="Tasarımın hazırsa şimdi yükle; değilse boş bırak, ödeme sonrası yükleyebilirsin."
               locked={isStepLocked(7)}
               lockMessage={getLockMessage(7)}
             >
@@ -1006,6 +1018,14 @@ export default function StickerPage() {
                 <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
                   ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
                 </p>
+              )}
+              {designs.length === 0 && (
+                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3 text-[12px] leading-relaxed text-lacivert">
+                  <strong>Sonra yükleme akışı aktif:</strong> Tasarımsız da
+                  sepete ekleyebilirsin. Ödeme yaptıktan sonra "Tasarımını
+                  yükle" sayfasına yönlendirileceksin (ve hatırlatma mail'i
+                  alacaksın).
+                </div>
               )}
             </FormSection>
 

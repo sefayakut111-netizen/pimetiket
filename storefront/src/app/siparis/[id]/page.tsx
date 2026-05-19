@@ -280,6 +280,9 @@ export default function SiparisDetailPage({
   const [proofApproved, setProofApproved] = useState(false);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  // Dosya yüklendi mi? — DesignUploadCard içindeki files state ana
+  // komponente erişilemiyor; bu yüzden burada ayrıca count çekiyoruz.
+  const [hasUploadedDesign, setHasUploadedDesign] = useState(false);
 
   const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
 
@@ -365,6 +368,22 @@ export default function SiparisDetailPage({
     });
     void fetchMyOrderShipment(id).then(setShipment);
     void fetchMyShipmentTimeline(id).then(setShipmentTimeline);
+
+    // Design dosyası yüklü mü? Status trigger gecikmiş olsa bile UI
+    // "Dosya yüklendi" adımını doğru gösterir.
+    void (async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const { count } = await supabase
+          .from("design_files")
+          .select("id", { count: "exact", head: true })
+          .eq("order_id", id)
+          .neq("status", "superseded");
+        if (typeof count === "number") setHasUploadedDesign(count > 0);
+      } catch {
+        // sessiz fallback — UI alt komponentten yine refresh edebilir
+      }
+    })();
   }, [id]);
 
   const handleReorder = async () => {
@@ -460,7 +479,13 @@ export default function SiparisDetailPage({
         year: "numeric",
       })
     : "-";
-  const phaseIdx = statusToPhaseIndex(order.status);
+  // Phase: status'a bakar, ama dosya zaten yüklendiyse "Dosya yüklendi"
+  // adımını minimum aktif say (status trigger yansımamış olabilir — race
+  // koşulu veya Migration sıralaması — UI gerçekliği yansıtmalı).
+  const phaseIdx = Math.max(
+    statusToPhaseIndex(order.status),
+    hasUploadedDesign ? 2 : 0
+  );
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">

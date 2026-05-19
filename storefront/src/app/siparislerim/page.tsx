@@ -28,7 +28,9 @@ import {
 
 // Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
 // olarak gösterilir, daha basit. Admin daha granuler görür.
+// Mig 061: awaiting_upload ayrı bucket — müşteri aksiyon alması gerekiyor.
 type CustomerStatus =
+  | "awaiting_upload"
   | "qc_pending"
   | "in_production"
   | "shipped"
@@ -119,6 +121,8 @@ const COPY = {
 /** Backend OrderStatus → customer-friendly bucket. */
 function toCustomerStatus(s: OrderStatus): CustomerStatus {
   switch (s) {
+    case "awaiting_upload":
+      return "awaiting_upload";
     case "paid":
     case "qc_pending":
     case "qc_flagged":
@@ -166,6 +170,11 @@ export default function SiparislerimPage() {
     CustomerStatus,
     { label: string; color: string; bg: string }
   > = {
+    awaiting_upload: {
+      label: "Tasarım yüklemen lazım",
+      color: "text-pim-mercan",
+      bg: "bg-pim-mercan-tint",
+    },
     qc_pending: {
       label: c.statusQcPending,
       color: "text-sari",
@@ -195,6 +204,7 @@ export default function SiparislerimPage() {
 
   const FILTER_OPTIONS: { id: CustomerStatus | "all"; label: string }[] = [
     { id: "all", label: c.filterAll },
+    { id: "awaiting_upload", label: "Tasarım yüklenecek" },
     { id: "qc_pending", label: c.statusQcPending },
     { id: "in_production", label: c.statusInProduction },
     { id: "shipped", label: c.statusShipped },

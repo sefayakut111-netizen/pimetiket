@@ -245,14 +245,23 @@ function OdemeSonucInner() {
           </ol>
         </Card>
 
-        {/* Sefa 19 May v68 (Migration 059):
-            Primer CTA artık baskı onay sayfasına gider — müşteri ödeme
-            sonrası önce baskı önizlemelerini onaylamalı. Sipariş detayı
-            ikincil aksiyon. */}
+        {/* Sefa 19 May v68 — Mig 061: Eğer sipariş awaiting_upload durumunda
+            ise (müşteri tasarımsız ödedi) primer CTA tasarım yükleme sayfasına
+            gider. Aksi halde baskı onay sayfasına. */}
         <div className="mt-8 flex gap-3 justify-center flex-wrap">
-          <Button variant="primary" size="lg" href={`/onay/${orderId}`}>
-            Baskı önizlemesini onayla →
-          </Button>
+          {order?.status === "awaiting_upload" ? (
+            <Button
+              variant="primary"
+              size="lg"
+              href={`/siparis/${orderId}/tasarim-yukle`}
+            >
+              Tasarımını yükle →
+            </Button>
+          ) : (
+            <Button variant="primary" size="lg" href={`/onay/${orderId}`}>
+              Baskı önizlemesini onayla →
+            </Button>
+          )}
           <Button variant="secondary" size="lg" href={`/siparis/${orderId}`}>
             <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
           </Button>

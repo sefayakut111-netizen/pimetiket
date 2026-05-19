@@ -28,6 +28,7 @@ import {
   refreshCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import {
   buildDailySeries,
   topCustomers,
@@ -154,10 +155,17 @@ export default function AdminFinansPage() {
     const refresh = () => setOrders(listCustomerOrders());
     refresh();
     setCoupons(loadCoupons());
+    // Önce kendi cache (hızlı), sonra admin tüm siparişler (RLS bypass)
     refreshCustomerOrders()
       .then((o) => setOrders(o))
       .catch(() => {
         /* silent */
+      })
+      .finally(() => {
+        // Admin için son kelime: tüm müşterilerin siparişleri
+        void fetchAllOrdersForAdmin({ limit: 1000 }).then((all) => {
+          if (all.length > 0) setOrders(all);
+        });
       });
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () =>

@@ -18,6 +18,7 @@ import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
@@ -78,11 +79,22 @@ export default function AdminRaporlarPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
 
   useEffect(() => {
-    const refresh = () => setOrders(listCustomerOrders());
-    refresh();
+    let cancelled = false;
+    setOrders(listCustomerOrders());
+    void fetchAllOrdersForAdmin({ limit: 1000 }).then((all) => {
+      if (!cancelled) setOrders(all);
+    });
+    const refresh = () => {
+      setOrders(listCustomerOrders());
+      void fetchAllOrdersForAdmin({ limit: 1000 }).then((all) => {
+        if (!cancelled) setOrders(all);
+      });
+    };
     window.addEventListener("pim_customer_orders_updated", refresh);
-    return () =>
+    return () => {
+      cancelled = true;
       window.removeEventListener("pim_customer_orders_updated", refresh);
+    };
   }, []);
 
   const monthly = useMemo(() => aggregateMonthly(orders), [orders]);
