@@ -46,7 +46,13 @@ const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: strin
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
   qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  // Sefa 19 May v68 (DB↔TS sync): 5 yeni statü
+  human_review: { label: "İnsan incelemesi", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+  human_review_failed: { label: "Düzeltme isteniyor", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft" },
+  proof_generating: { label: "Prova hazırlanıyor", color: "text-lacivert", bg: "bg-gri-100" },
   proof_pending: { label: "Prova bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
+  ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
+  fason_assigned: { label: "Fasona atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
   shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
   delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft" },

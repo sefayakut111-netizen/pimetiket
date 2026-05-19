@@ -131,7 +131,22 @@ export async function GET(req: NextRequest) {
         if (!upErr) newEvents++;
       }
 
-      // order_assignments güncelle
+      // order_assignments güncelle — önce ESKİ değerleri çek (status transition tespit için)
+      const { data: oldAssignment } = await supabase
+        .from("order_assignments")
+        .select("tracking_status, tracking_delivered_at")
+        .eq("id", row.assignment_id)
+        .maybeSingle();
+
+      type OldA = {
+        tracking_status: string | null;
+        tracking_delivered_at: string | null;
+      };
+      const oldStatus =
+        (oldAssignment as OldA | null)?.tracking_status ?? null;
+      const wasDelivered =
+        (oldAssignment as OldA | null)?.tracking_delivered_at !== null;
+
       await supabase
         .from("order_assignments")
         .update({
@@ -140,6 +155,65 @@ export async function GET(req: NextRequest) {
           tracking_delivered_at: apiResult.deliveredAt?.toISOString() ?? null,
         })
         .eq("id", row.assignment_id);
+
+      // Sefa 19 May v68 (su borusu mail trigger):
+      // Status değişimi varsa müşteriye mail gönder (fire-and-forget)
+      const newStatus = apiResult.currentStatus;
+      const justDelivered = !wasDelivered && apiResult.deliveredAt;
+      const statusChanged =
+        newStatus !== null && newStatus !== oldStatus;
+
+      if (justDelivered || statusChanged) {
+        // user_id'yi orders tablosundan çek
+        const { data: orderInfo } = await supabase
+          .from("orders")
+          .select("user_id")
+          .eq("id", row.order_id)
+          .maybeSingle();
+        const userId =
+          (orderInfo as { user_id?: string } | null)?.user_id;
+
+        if (userId) {
+          const notif = await import("@/lib/mail/notifications");
+
+          if (justDelivered && apiResult.deliveredAt) {
+            void notif.sendOrderDelivered({
+              userId,
+              orderId: row.order_id,
+              deliveredAt: apiResult.deliveredAt.toLocaleString("tr-TR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              carrierLabel: row.tracking_company ?? "Yurtiçi Kargo",
+            });
+          } else if (
+            statusChanged &&
+            (newStatus === "in_transit" ||
+              newStatus === "out_for_delivery" ||
+              newStatus === "failed" ||
+              newStatus === "returned")
+          ) {
+            // En son event'i bul (description + location için)
+            const lastEv = apiResult.events[apiResult.events.length - 1];
+            void notif.sendShipmentStatus({
+              userId,
+              orderId: row.order_id,
+              status: newStatus as
+                | "in_transit"
+                | "out_for_delivery"
+                | "failed"
+                | "returned",
+              description: lastEv?.description ?? "Durum güncellendi",
+              location: lastEv?.location ?? null,
+              trackingNumber: row.tracking_number,
+              trackingUrl: null,
+            });
+          }
+        }
+      }
     } else {
       // Poll fail olsa bile last_polled_at güncelle (rate limit için)
       await supabase

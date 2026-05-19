@@ -92,6 +92,26 @@ export async function POST(req: Request) {
     },
   } as never);
 
+  // Sefa 19 May v68 (su borusu mail trigger):
+  // Reject ise müşteriye "düzeltme iste" maili — fire-and-forget
+  if (body.decision === "reject") {
+    const { data: orderData } = await admin
+      .from("orders")
+      .select("user_id")
+      .eq("id", body.orderId)
+      .maybeSingle();
+    const userId = (orderData as { user_id?: string } | null)?.user_id;
+    if (userId) {
+      const { sendQcRejected } = await import("@/lib/mail/notifications");
+      void sendQcRejected({
+        userId,
+        orderId: body.orderId,
+        reason: body.note ?? "Operatör düzeltme istedi",
+        issueCategory: "other",
+      });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     orderId: body.orderId,

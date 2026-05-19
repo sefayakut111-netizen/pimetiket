@@ -22,13 +22,23 @@ import * as React from "react";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
 
-const COLORS = {
+// Sefa 19 May v68: COLORS export edildi (yeni template'ler için)
+export const COLORS = {
   lacivert: "#1A2335",
   pimMercan: "#FF6B5B",
+  brand: "#FF6B5B", // alias
   krem: "#FFF5EB",
   gri700: "#5C6877",
   gri200: "#E5E7EB",
+  muted: "#5C6877", // alias
   yesil: "#22C55E",
+  success: "#22C55E", // alias
+  warningBg: "#FFF7E6",
+  warningBorder: "#FFD591",
+  warningText: "#AD6800",
+  errorBg: "#FFF1F0",
+  errorBorder: "#FFA39E",
+  errorText: "#A8071A",
 };
 
 interface BaseLayoutProps {
@@ -213,8 +223,15 @@ export const mailStyles = {
     fontWeight: 600,
     textTransform: "uppercase" as const,
     letterSpacing: "0.04em",
-  },
+  } as React.CSSProperties,
+  // Sefa 19 May v68: label alias for new templates
+  label: {
+    fontSize: 12,
+    color: COLORS.gri700,
+    fontWeight: 600,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.04em",
+  } as React.CSSProperties,
 };
 
-export { COLORS };
 export const SITE = SITE_URL;

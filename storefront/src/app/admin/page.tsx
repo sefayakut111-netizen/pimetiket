@@ -276,7 +276,13 @@ const STATUS_LABEL: Record<OrderStatus, { label: string; color: string; bg: stri
   qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF8585" },
   qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft", hex: "#FFC53D" },
   operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FFA39E" },
+  // Sefa 19 May v68 (DB↔TS sync): 5 yeni statü
+  human_review: { label: "İnsan inceleme", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FFA39E" },
+  human_review_failed: { label: "Düzeltme iste", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft", hex: "#CF1322" },
+  proof_generating: { label: "Prova hazırlanıyor", color: "text-lacivert", bg: "bg-gri-100", hex: "#94A3B8" },
   proof_pending: { label: "Prova", color: "text-lacivert", bg: "bg-gri-100", hex: "#1F2A4D" },
+  ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#1D4ED8" },
+  fason_assigned: { label: "Fasona atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#2563EB" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft", hex: "#52C41A" },
   shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100", hex: "#597EF7" },
   delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft", hex: "#389E0D" },

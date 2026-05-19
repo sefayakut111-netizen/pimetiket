@@ -108,7 +108,13 @@ export function aggregateStatus(orders: CustomerOrder[]): StatusCount {
     qc_pending: 0,
     qc_flagged: 0,
     operator_review: 0,
+    // Sefa 19 May v68 (DB↔TS sync): 5 yeni statü
+    human_review: 0,
+    human_review_failed: 0,
+    proof_generating: 0,
     proof_pending: 0,
+    ready_to_ship: 0,
+    fason_assigned: 0,
     in_production: 0,
     shipped: 0,
     delivered: 0,
