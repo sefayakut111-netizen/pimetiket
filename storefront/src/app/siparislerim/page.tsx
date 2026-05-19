@@ -123,8 +123,15 @@ function toCustomerStatus(s: OrderStatus): CustomerStatus {
     case "qc_pending":
     case "qc_flagged":
     case "operator_review":
+    case "human_review":
+    case "human_review_failed":
+    case "proof_generating":
     case "proof_pending":
       return "qc_pending";
+    // Mig 059: müşteri onayladı → üretim aşamasına gir
+    case "proof_approved":
+    case "ready_to_ship":
+    case "fason_assigned":
     case "in_production":
       return "in_production";
     case "shipped":

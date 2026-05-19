@@ -113,6 +113,7 @@ export function aggregateStatus(orders: CustomerOrder[]): StatusCount {
     human_review_failed: 0,
     proof_generating: 0,
     proof_pending: 0,
+    proof_approved: 0,
     ready_to_ship: 0,
     fason_assigned: 0,
     in_production: 0,

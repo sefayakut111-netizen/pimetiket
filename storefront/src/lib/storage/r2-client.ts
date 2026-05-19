@@ -340,6 +340,34 @@ export const r2KeyBuilders = {
 
   monthlyBackup: (yearMonth: string, type: "postgres" | "storage") =>
     `backups/${yearMonth}/${type}-snapshot.${type === "postgres" ? "sql.gz" : "tar.gz"}`,
+
+  // ============================================================
+  // Sefa 19 May v68 — Müşteri baskı onay akışı (Migration 059)
+  // ============================================================
+
+  /**
+   * Müşterinin baskı onay sayfasında POC ile ürettiği SVG bıçak çizgisi.
+   * Her item için 1+ draft, sonunda 1 approved versiyon.
+   * Path: customer-cutlines/{orderId}/{itemId}/{timestamp}.svg
+   */
+  cutlineDesign: (orderId: string, itemId: string, timestamp: number) =>
+    `customer-cutlines/${orderId}/${itemId}/${timestamp}.svg`,
+
+  /**
+   * POC canvas snapshot — preview thumbnail.
+   * Onay sayfasında liste yanında küçük görsel için.
+   * Path: customer-cutlines/{orderId}/{itemId}/{timestamp}-preview.png
+   */
+  cutlinePreview: (orderId: string, itemId: string, timestamp: number) =>
+    `customer-cutlines/${orderId}/${itemId}/${timestamp}-preview.png`,
+
+  /**
+   * Final print-ready PDF (Faz 4'te server-side üretilecek).
+   * Şimdilik SVG yeterli; bu key sadece reservation.
+   * Path: customer-proofs/{orderId}/{itemId}/print-ready.pdf
+   */
+  printReadyPdf: (orderId: string, itemId: string) =>
+    `customer-proofs/${orderId}/${itemId}/print-ready.pdf`,
 };
 
 /** Filename sanitize — path traversal + special char prevention */

@@ -191,6 +191,8 @@ function statusToPhaseIndex(status: OrderStatus): number {
       return 4;
     case "proof_pending":
       return 4;
+    case "proof_approved":
+      return 5;
     case "in_production":
       return 5;
     case "shipped":
@@ -229,6 +231,13 @@ function statusMeta(
         soft: "var(--color-sari-soft)",
         pim: "inspect",
       };
+    case "proof_approved":
+      return {
+        label: "Onayın alındı — üretime geçildi",
+        color: "var(--color-yesil)",
+        soft: "var(--color-yesil-soft)",
+        pim: "happy",
+      };
     case "in_production":
       return {
         label: c.statusInProduction,
@@ -255,6 +264,18 @@ function statusMeta(
         label: c.statusCancelled,
         color: "var(--color-kirmizi)",
         soft: "var(--color-gri-100)",
+        pim: "inspect",
+      };
+    // Sefa 19 May v68: DB enum'da olup eski switch'te eksik kalan 4 değer
+    case "human_review":
+    case "human_review_failed":
+    case "proof_generating":
+    case "ready_to_ship":
+    case "fason_assigned":
+      return {
+        label: c.statusInControl,
+        color: "var(--color-sari)",
+        soft: "var(--color-sari-soft)",
         pim: "inspect",
       };
   }

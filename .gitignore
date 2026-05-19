@@ -43,6 +43,9 @@ yarn-error.log*
 Thumbs.db
 desktop.ini
 ehthumbs.db
+__MACOSX/
+**/__MACOSX/
+._*
 
 # Reference (zip'ler git'e gitmesin, çok büyük)
 reference/*.zip

@@ -1,0 +1,349 @@
+/**
+ * POST /api/orders/[id]/proof/[itemId]/save-edit
+ *
+ * Sefa 19 May v68 (Migration 059):
+ * Sefa'nın POC'u (pim_etiket_poc.html, CutlineDesigner) müşterinin
+ * düzenlediği bıçak SVG'sini kaydeder.
+ *
+ * Akış:
+ *   1. Müşteri /onay/[id]/duzenle/[itemId] sayfasında POC ile bıçağı oynar
+ *   2. "Kaydet" → bu endpoint
+ *   3. SVG R2'ye upload (customer-cutlines/{orderId}/{itemId}/{ts}.svg)
+ *   4. cutline_designs satırı insert (status='draft')
+ *   5. order_items.proof_status = 'edited'
+ *   6. Geri dön → onay sayfasında "tekrar onayla" butonu çıkar
+ *
+ * Body (multipart YOK — JSON):
+ *   {
+ *     svg: string,           // ham SVG metni (R2'ye yazılacak)
+ *     preview_png_base64?: string,  // opsiyonel canvas snapshot
+ *     source: 'raster' | 'vector' | 'vector-with-cutline' | 'psd',
+ *     mode: 'contour' | 'hull' | 'rect' | 'circle',
+ *     offset_mm?: number,
+ *     smoothness?: number,
+ *     dpi?: number,
+ *     width_mm?: number,
+ *     height_mm?: number,
+ *     pim_feedback?: string,
+ *     pim_severity?: 'ok' | 'warn' | 'err',
+ *
+ *     // POC v2 (Mig 060) — malzeme + beyaz plan + tier
+ *     material_type?: 'paper' | 'transparent' | 'metallic' | 'holographic',
+ *     white_plan_mode?: 'off' | 'full' | 'smart' | 'ai' | 'custom',
+ *     white_plan_path_count?: number,
+ *     has_custom_white_plan?: boolean,
+ *     tier?: 'pro' | 'standard' | 'improve',
+ *     detected_cut_contour_names?: string[],
+ *   }
+ *
+ * NOT: SVG max ~2MB sınırı vardır (Next.js body limit). POC v2 artık
+ * White + CutContour iki spot color grubu olarak SVG'de yazıyor —
+ * boyut hâlâ 50-300KB civarında.
+ */
+
+import { NextResponse } from "next/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { uploadToR2, r2KeyBuilders } from "@/lib/storage/r2-client";
+
+interface Body {
+  svg?: unknown;
+  preview_png_base64?: unknown;
+  source?: unknown;
+  mode?: unknown;
+  offset_mm?: unknown;
+  smoothness?: unknown;
+  dpi?: unknown;
+  width_mm?: unknown;
+  height_mm?: unknown;
+  pim_feedback?: unknown;
+  pim_severity?: unknown;
+  // POC v2 (Mig 060)
+  material_type?: unknown;
+  white_plan_mode?: unknown;
+  white_plan_path_count?: unknown;
+  has_custom_white_plan?: unknown;
+  tier?: unknown;
+  detected_cut_contour_names?: unknown;
+}
+
+const ALLOWED_SOURCES = new Set([
+  "raster",
+  "vector",
+  "vector-with-cutline",
+  "psd",
+]);
+const ALLOWED_MODES = new Set(["contour", "hull", "rect", "circle"]);
+const ALLOWED_SEVERITY = new Set(["ok", "warn", "err"]);
+// POC v2 enum'ları
+const ALLOWED_MATERIALS = new Set([
+  "paper",
+  "transparent",
+  "metallic",
+  "holographic",
+]);
+const ALLOWED_WHITE_MODES = new Set([
+  "off",
+  "full",
+  "smart",
+  "ai",
+  "custom",
+]);
+const ALLOWED_TIERS = new Set(["pro", "standard", "improve"]);
+
+const MAX_SVG_SIZE = 2 * 1024 * 1024; // 2 MB
+const MAX_PREVIEW_PNG_SIZE = 1 * 1024 * 1024; // 1 MB
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  const { id: orderId, itemId } = await params;
+  if (!orderId || !itemId) {
+    return NextResponse.json({ error: "ID eksik" }, { status: 400 });
+  }
+
+  let body: Body;
+  try {
+    body = (await req.json()) as Body;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Validation
+  const svg = typeof body.svg === "string" ? body.svg : null;
+  if (!svg || !svg.includes("<svg") || svg.length > MAX_SVG_SIZE) {
+    return NextResponse.json(
+      { error: "SVG geçersiz veya çok büyük (>2MB)" },
+      { status: 400 }
+    );
+  }
+  const source = typeof body.source === "string" ? body.source : "";
+  const mode = typeof body.mode === "string" ? body.mode : "";
+  if (!ALLOWED_SOURCES.has(source) || !ALLOWED_MODES.has(mode)) {
+    return NextResponse.json(
+      { error: "source/mode geçersiz" },
+      { status: 400 }
+    );
+  }
+  const pimSeverity =
+    typeof body.pim_severity === "string" &&
+    ALLOWED_SEVERITY.has(body.pim_severity)
+      ? body.pim_severity
+      : null;
+
+  // POC v2 alanları — opsiyonel, geçersizse null'a düşür
+  const materialType =
+    typeof body.material_type === "string" &&
+    ALLOWED_MATERIALS.has(body.material_type)
+      ? body.material_type
+      : null;
+  const whitePlanMode =
+    typeof body.white_plan_mode === "string" &&
+    ALLOWED_WHITE_MODES.has(body.white_plan_mode)
+      ? body.white_plan_mode
+      : null;
+  const whitePlanPathCount =
+    typeof body.white_plan_path_count === "number" &&
+    body.white_plan_path_count >= 0 &&
+    body.white_plan_path_count < 10000
+      ? Math.floor(body.white_plan_path_count)
+      : 0;
+  const hasCustomWhitePlan = body.has_custom_white_plan === true;
+  const tier =
+    typeof body.tier === "string" && ALLOWED_TIERS.has(body.tier)
+      ? body.tier
+      : null;
+  // detected_cut_contour_names: string[] max 10 öğe, her biri max 100 char
+  const detectedCutNames = (() => {
+    if (!Array.isArray(body.detected_cut_contour_names)) return [];
+    return body.detected_cut_contour_names
+      .filter((x: unknown): x is string => typeof x === "string")
+      .slice(0, 10)
+      .map((s: string) => s.slice(0, 100));
+  })();
+
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const admin = createAdminClient();
+
+  // Auth + status check
+  const { data: order } = await admin
+    .from("orders")
+    .select("user_id, status")
+    .eq("id", orderId)
+    .maybeSingle();
+  const orderRow = order as { user_id: string; status: string } | null;
+  if (!orderRow) {
+    return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
+  }
+  if (orderRow.user_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (orderRow.status !== "proof_pending") {
+    return NextResponse.json(
+      { error: `Düzenleme bu aşamada yapılamaz (${orderRow.status})` },
+      { status: 400 }
+    );
+  }
+
+  // Item gerçekten bu siparişe mi ait?
+  const { data: itemRow } = await admin
+    .from("order_items")
+    .select("id")
+    .eq("id", itemId)
+    .eq("order_id", orderId)
+    .maybeSingle();
+  if (!itemRow) {
+    return NextResponse.json(
+      { error: "Sipariş kalemi bulunamadı" },
+      { status: 404 }
+    );
+  }
+
+  // R2 upload — SVG
+  const timestamp = Date.now();
+  const svgKey = r2KeyBuilders.cutlineDesign(orderId, itemId, timestamp);
+  const upload = await uploadToR2({
+    key: svgKey,
+    body: svg,
+    contentType: "image/svg+xml",
+    metadata: {
+      "order-id": orderId,
+      "item-id": itemId,
+      "user-id": user.id,
+    },
+  });
+  if (!upload.success) {
+    return NextResponse.json(
+      { error: "SVG depolanamadı", detail: upload.error },
+      { status: 500 }
+    );
+  }
+
+  // R2 upload — preview PNG (opsiyonel)
+  let previewKey: string | null = null;
+  const previewB64 =
+    typeof body.preview_png_base64 === "string"
+      ? body.preview_png_base64.replace(/^data:image\/png;base64,/, "")
+      : null;
+  if (previewB64) {
+    try {
+      const previewBuf = Buffer.from(previewB64, "base64");
+      if (previewBuf.length <= MAX_PREVIEW_PNG_SIZE) {
+        previewKey = r2KeyBuilders.cutlinePreview(orderId, itemId, timestamp);
+        const previewUpload = await uploadToR2({
+          key: previewKey,
+          body: previewBuf,
+          contentType: "image/png",
+        });
+        if (!previewUpload.success) previewKey = null;
+      }
+    } catch (err) {
+      console.warn("[proof/save-edit] preview decode failed:", err);
+    }
+  }
+
+  // cutline_designs INSERT
+  const cdInsert = {
+    order_id: orderId,
+    order_item_id: itemId,
+    user_id: user.id,
+    svg_url: svgKey,
+    preview_png_url: previewKey,
+    source,
+    mode,
+    offset_mm:
+      typeof body.offset_mm === "number" ? body.offset_mm : null,
+    smoothness:
+      typeof body.smoothness === "number" ? body.smoothness : null,
+    dpi: typeof body.dpi === "number" ? body.dpi : null,
+    width_mm:
+      typeof body.width_mm === "number" ? body.width_mm : null,
+    height_mm:
+      typeof body.height_mm === "number" ? body.height_mm : null,
+    pim_feedback:
+      typeof body.pim_feedback === "string"
+        ? body.pim_feedback.slice(0, 2000)
+        : null,
+    pim_severity: pimSeverity,
+    status: "draft",
+    // POC v2 (Mig 060)
+    material_type: materialType,
+    white_plan_mode: whitePlanMode,
+    white_plan_path_count: whitePlanPathCount,
+    has_custom_white_plan: hasCustomWhitePlan,
+    tier,
+    detected_cut_contour_names: detectedCutNames,
+  };
+
+  const { data: cd, error: cdErr } = await admin
+    .from("cutline_designs")
+    .insert(cdInsert as never)
+    .select("id")
+    .single();
+  if (cdErr) {
+    console.error("[proof/save-edit] cutline_designs insert:", cdErr);
+    return NextResponse.json(
+      { error: "Bıçak kaydı oluşturulamadı" },
+      { status: 500 }
+    );
+  }
+  const cutlineId = (cd as { id: string }).id;
+
+  // Önceki draft'ları superseded yap
+  await admin
+    .from("cutline_designs")
+    .update({ status: "superseded" } as never)
+    .eq("order_item_id", itemId)
+    .eq("status", "draft")
+    .neq("id", cutlineId);
+
+  // order_items proof_status = 'edited' + son cutline reference
+  await admin
+    .from("order_items")
+    .update({
+      proof_status: "edited",
+      proof_edited_at: new Date().toISOString(),
+      cutline_design_id: cutlineId,
+    } as never)
+    .eq("id", itemId)
+    .eq("order_id", orderId);
+
+  // order_events
+  await admin.from("order_events").insert([
+    {
+      order_id: orderId,
+      event_type: "proof_item_edited",
+      status_after: orderRow.status,
+      actor_id: user.id,
+      actor_role: "customer",
+      summary: `Müşteri bıçak çizgisini düzenledi (${mode}, ${source}${tier ? `, tier:${tier}` : ""}${materialType && materialType !== "paper" ? `, ${materialType}` : ""})`,
+      detail: {
+        item_id: itemId,
+        cutline_id: cutlineId,
+        mode,
+        source,
+        material_type: materialType,
+        white_plan_mode: whitePlanMode,
+        tier,
+      },
+    },
+  ] as never);
+
+  return NextResponse.json({
+    ok: true,
+    cutlineId,
+    svgKey,
+    previewKey,
+    tier,
+    materialType,
+    whitePlanMode,
+  });
+}

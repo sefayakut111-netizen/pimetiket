@@ -30,9 +30,10 @@ export type OrderStatus =
   | "human_review" // İnsan incelemesinde (operator_review alias'ı, Mig 039)
   | "human_review_failed" // İnceleme reddetti — müşteriye düzeltme iste (Mig 039)
 
-  // Prova
+  // Prova / Baskı Onay (Mig 059 — POC entegrasyonu)
   | "proof_generating" // Prova hazırlanıyor (otomatik render, Mig 039)
-  | "proof_pending" // Prova hazır, müşteri onayı bekleniyor
+  | "proof_pending" // Müşteri baskı önizleme onay sayfasında (/onay/[id])
+  | "proof_approved" // Tüm itemler müşteri tarafından onaylandı (Mig 059)
 
   // Üretim
   | "ready_to_ship" // AI QC + prova geçti, üretime hazır (Mig 039)

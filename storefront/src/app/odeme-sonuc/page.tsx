@@ -245,12 +245,16 @@ function OdemeSonucInner() {
           </ol>
         </Card>
 
+        {/* Sefa 19 May v68 (Migration 059):
+            Primer CTA artık baskı onay sayfasına gider — müşteri ödeme
+            sonrası önce baskı önizlemelerini onaylamalı. Sipariş detayı
+            ikincil aksiyon. */}
         <div className="mt-8 flex gap-3 justify-center flex-wrap">
-          <Button variant="primary" size="lg" href={`/siparis/${orderId}`}>
-            <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
+          <Button variant="primary" size="lg" href={`/onay/${orderId}`}>
+            Baskı önizlemesini onayla →
           </Button>
-          <Button variant="secondary" size="lg" href="/panelim">
-            {t.orderSuccess.backToPanel}
+          <Button variant="secondary" size="lg" href={`/siparis/${orderId}`}>
+            <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
           </Button>
         </div>
 

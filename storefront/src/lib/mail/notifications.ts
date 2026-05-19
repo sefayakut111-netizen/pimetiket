@@ -45,6 +45,19 @@ import {
   type ShipmentStatusProps,
   type ShipmentStatusKind,
 } from "./templates/shipment-status";
+// Sefa 19 May v68 (Migration 059 — baskı onay akışı, 3 yeni mail):
+import {
+  OrderProofRequiredEmail,
+  type OrderProofRequiredProps,
+} from "./templates/order-proof-required";
+import {
+  OrderProofReminderEmail,
+  type OrderProofReminderProps,
+} from "./templates/order-proof-reminder";
+import {
+  OrderProofApprovedEmail,
+  type OrderProofApprovedProps,
+} from "./templates/order-proof-approved";
 
 // ============================================================
 // Pref check helper
@@ -499,6 +512,183 @@ export async function sendShipmentStatus(args: {
     tags: [
       { name: "category", value: "transactional" },
       { name: "type", value: `shipment_${args.status}` },
+    ],
+  });
+
+  return { ok: result.ok, reason: result.error };
+}
+
+// ============================================================
+// Sefa 19 May v68 (Migration 059 — baskı onay akışı):
+// 8) Order proof required — paid → proof_pending tetikleyici
+// ============================================================
+//
+// Çağrı: /api/payment/callback success branch'inde fire-and-forget.
+// DB trigger zaten 'proof_pending' state'ine geçirir; bu mail müşteriye
+// "onay sayfasına git" çağrısıdır.
+
+export async function sendOrderProofRequired(args: {
+  userId: string;
+  orderId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  // Order updates kategorisinde — yasal/işlemsel, opt-out olsa bile gider
+  // (ödeme sonrası kritik aksiyon talebi — kontrat akışı parçası)
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("address, total")
+    .eq("id", args.orderId)
+    .single();
+
+  const { count: itemCount } = await admin
+    .from("order_items")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", args.orderId);
+
+  if (!order) return { ok: false, reason: "order_not_found" };
+
+  const orderData = order as unknown as {
+    address: { name: string };
+    total: number;
+  };
+  const customerName = orderData.address?.name ?? "Müşteri";
+
+  const props: OrderProofRequiredProps = {
+    customerName,
+    orderId: args.orderId,
+    itemCount: itemCount ?? 1,
+    totalLabel: orderData.total
+      ? `${Number(orderData.total).toLocaleString("tr-TR")} TL`
+      : undefined,
+  };
+
+  const html = await render(OrderProofRequiredEmail(props));
+  const text = `Baskı onayını bekliyoruz — ${args.orderId}. Onay sayfası: ${
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
+  }/onay/${args.orderId}`;
+
+  const result = await sendMail({
+    to: email,
+    subject: `Baskı önizlemen hazır — ${args.orderId}`,
+    html,
+    text,
+    tags: [
+      { name: "category", value: "transactional" },
+      { name: "type", value: "proof_required" },
+    ],
+  });
+
+  return { ok: result.ok, reason: result.error };
+}
+
+// ============================================================
+// 9) Order proof reminder — cron tetiklemeli (24sa onay yok)
+// ============================================================
+
+export async function sendOrderProofReminder(args: {
+  userId: string;
+  orderId: string;
+  pendingCount: number;
+  hoursSincePaid: number;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("address")
+    .eq("id", args.orderId)
+    .single();
+  const customerName =
+    (order as unknown as { address: { name: string } } | null)?.address?.name ??
+    "Müşteri";
+
+  const props: OrderProofReminderProps = {
+    customerName,
+    orderId: args.orderId,
+    pendingCount: args.pendingCount,
+    hoursSincePaid: args.hoursSincePaid,
+  };
+
+  const html = await render(OrderProofReminderEmail(props));
+  const text = `Baskı onayı hatırlatma — ${args.orderId}. ${args.pendingCount} ürün bekliyor: ${
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
+  }/onay/${args.orderId}`;
+
+  const result = await sendMail({
+    to: email,
+    subject: `Baskı onayını bekliyoruz — ${args.orderId}`,
+    html,
+    text,
+    tags: [
+      { name: "category", value: "transactional" },
+      { name: "type", value: "proof_reminder" },
+    ],
+  });
+
+  return { ok: result.ok, reason: result.error };
+}
+
+// ============================================================
+// 10) Order proof approved — fn_finalize_proof sonrası
+// ============================================================
+
+export async function sendOrderProofApproved(args: {
+  userId: string;
+  orderId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("address, estimated_delivery")
+    .eq("id", args.orderId)
+    .single();
+  const { count: itemCount } = await admin
+    .from("order_items")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", args.orderId);
+
+  if (!order) return { ok: false, reason: "order_not_found" };
+
+  const orderData = order as unknown as {
+    address: { name: string };
+    estimated_delivery: string | null;
+  };
+  const customerName = orderData.address?.name ?? "Müşteri";
+
+  const props: OrderProofApprovedProps = {
+    customerName,
+    orderId: args.orderId,
+    itemCount: itemCount ?? 1,
+    estimatedDelivery: orderData.estimated_delivery
+      ? new Date(orderData.estimated_delivery).toLocaleDateString("tr-TR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : null,
+  };
+
+  const html = await render(OrderProofApprovedEmail(props));
+  const text = `Teşekkürler — onayın alındı, üretim başladı. ${args.orderId}: ${
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
+  }/siparis/${args.orderId}`;
+
+  const result = await sendMail({
+    to: email,
+    subject: `Üretime geçtik 🎉 — ${args.orderId}`,
+    html,
+    text,
+    tags: [
+      { name: "category", value: "transactional" },
+      { name: "type", value: "proof_approved" },
     ],
   });
 

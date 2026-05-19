@@ -25,7 +25,10 @@ import {
   verifyCallback,
   isPayTrConfigured,
 } from "@/lib/payment/paytr";
-import { sendOrderConfirmation } from "@/lib/mail/notifications";
+import {
+  sendOrderConfirmation,
+  sendOrderProofRequired,
+} from "@/lib/mail/notifications";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 
@@ -362,6 +365,18 @@ export async function POST(req: NextRequest) {
     orderId,
   }).catch((err) =>
     console.error("[payment/callback] order mail failed:", err)
+  );
+
+  // 14a) Sefa 19 May v68 (Migration 059 — baskı onay akışı):
+  // Migration 059'daki trg_auto_advance_to_proof_pending trigger orders.status
+  // 'paid' → 'proof_pending' yapar. Burada müşteriye onay sayfasına git
+  // mailini fire-and-forget yolluyoruz. Trigger fail olursa mail yine
+  // dönüş bilgisi verir; müşteri sipariş sayfasından erişebilir.
+  void sendOrderProofRequired({
+    userId: intent.user_id,
+    orderId,
+  }).catch((err) =>
+    console.error("[payment/callback] proof_required mail failed:", err)
   );
 
   // 14b) Design QC agent (Sefa kuralı 16 May v3 — fire-and-forget).
