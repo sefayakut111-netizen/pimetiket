@@ -204,13 +204,14 @@ export default function AdminTasarimlarPage() {
           </div>
         </Card>
 
-        {/* Sonuç */}
+        {/* Sonuç — Sefa 20 May v68: grid → yatay satır liste (15+ tasarımda
+            kalabalıkı önler, lineer scan kolaylığı). Mobile 2 satıra düşer. */}
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="space-y-2">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div
                 key={i}
-                className="rounded-xl bg-gri-100 aspect-[3/4] animate-pulse"
+                className="rounded-xl bg-gri-100 h-[76px] animate-pulse"
               />
             ))}
           </div>
@@ -235,7 +236,7 @@ export default function AdminTasarimlarPage() {
             </p>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="space-y-2">
             {filtered.map((d) => {
               const meta = d.status in STATUS_LABEL
                 ? STATUS_LABEL[d.status as keyof typeof STATUS_LABEL]
@@ -251,82 +252,109 @@ export default function AdminTasarimlarPage() {
                 <Link
                   key={d.id}
                   href={`/admin/siparisler/${d.orderId}`}
-                  className="group rounded-xl bg-white ring-1 ring-gri-200 overflow-hidden hover:-translate-y-0.5 hover:ring-pim-mercan transition-all"
+                  className="group flex items-center gap-3 rounded-xl bg-white ring-1 ring-gri-200 hover:ring-pim-mercan hover:bg-gri-50 transition-colors p-2.5"
                 >
-                  {/* Preview */}
-                  <div className="aspect-[4/3] bg-gri-50 relative overflow-hidden grid place-items-center">
+                  {/* Thumbnail 64×56 */}
+                  <div className="relative w-16 h-14 rounded-lg bg-gri-50 overflow-hidden grid place-items-center shrink-0">
                     {d.previewUrl && isImage ? (
                       <Image
                         src={d.previewUrl}
                         alt={d.originalName}
                         fill
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        sizes="64px"
                         className="object-contain"
                         unoptimized
                       />
                     ) : (
-                      <div className="flex flex-col items-center gap-2 text-gri-500">
-                        <Icon.Doc size={32} />
-                        <span className="text-[10.5px] uppercase tracking-[0.04em] font-semibold">
-                          {d.mimeType.split("/")[1] || "dosya"}
+                      <div className="flex flex-col items-center text-gri-500">
+                        <Icon.Doc size={20} />
+                        <span className="text-[8.5px] uppercase tracking-[0.04em] font-bold mt-0.5">
+                          {d.mimeType.split("/")[1]?.slice(0, 4) || "dsy"}
                         </span>
                       </div>
                     )}
-                    {/* Status badge */}
+                  </div>
+
+                  {/* Orta blok — dosya + müşteri + sipariş + config */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span
+                        className="text-[13px] font-semibold text-lacivert truncate group-hover:text-pim-mercan max-w-[220px] md:max-w-[300px]"
+                        title={d.originalName}
+                      >
+                        {d.originalName}
+                      </span>
+                      <span className="text-[11px] text-gri-500 truncate">
+                        · {d.customerName}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gri-700 mt-0.5 truncate flex items-center gap-2 flex-wrap">
+                      <span className="font-mono">{d.orderId}</span>
+                      {d.productConfig && (
+                        <>
+                          <span className="text-gri-400">·</span>
+                          <span className="text-gri-700">{d.productConfig}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sağ blok — status + flags + boyut + tarih (md+: yan yana,
+                      mobile: ikinci satıra düşer) */}
+                  <div className="hidden md:flex items-center gap-3 shrink-0">
+                    {/* Flag rozetleri */}
+                    {errFlags > 0 && (
+                      <span
+                        className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi text-white text-[10px] font-bold"
+                        title={`${errFlags} hata`}
+                      >
+                        ✕ {errFlags}
+                      </span>
+                    )}
+                    {warnFlags > 0 && (
+                      <span
+                        className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari text-white text-[10px] font-bold"
+                        title={`${warnFlags} uyarı`}
+                      >
+                        ! {warnFlags}
+                      </span>
+                    )}
+                    {/* Status */}
                     <span
                       className={cn(
-                        "absolute top-2 left-2 inline-flex items-center h-[20px] px-2 rounded-full text-[10.5px] font-bold",
+                        "inline-flex items-center h-[22px] px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap",
                         meta.bg,
                         meta.color
                       )}
                     >
                       {meta.label}
                     </span>
-                    {(errFlags > 0 || warnFlags > 0) && (
-                      <div className="absolute top-2 right-2 flex gap-1">
-                        {errFlags > 0 && (
-                          <span
-                            className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi text-white text-[10px] font-bold"
-                            title={`${errFlags} hata`}
-                          >
-                            ✕ {errFlags}
-                          </span>
-                        )}
-                        {warnFlags > 0 && (
-                          <span
-                            className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari text-white text-[10px] font-bold"
-                            title={`${warnFlags} uyarı`}
-                          >
-                            ! {warnFlags}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {/* Boyut */}
+                    <span className="text-[11px] text-gri-700 tabular-nums w-[60px] text-right">
+                      {formatSize(d.sizeBytes)}
+                    </span>
+                    {/* Tarih + version */}
+                    <span className="text-[11px] text-gri-500 tabular-nums w-[100px] text-right">
+                      {formatDate(d.uploadedAt)}
+                      <span className="ml-1 text-gri-400">v{d.version}</span>
+                    </span>
+                    <Icon.ChevR size={12} className="text-gri-400 group-hover:text-pim-mercan" />
                   </div>
 
-                  {/* Meta */}
-                  <div className="p-3">
-                    <div
-                      className="text-[12.5px] font-semibold text-lacivert truncate group-hover:text-pim-mercan"
-                      title={d.originalName}
+                  {/* Mobile sağ blok — sadece status + tarih kısaca */}
+                  <div className="md:hidden flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={cn(
+                        "inline-flex items-center h-[20px] px-2 rounded-full text-[10px] font-bold",
+                        meta.bg,
+                        meta.color
+                      )}
                     >
-                      {d.originalName}
-                    </div>
-                    <div className="text-[11px] text-gri-500 mt-0.5 truncate">
-                      {d.customerName}
-                    </div>
-                    <div className="text-[11px] text-gri-700 mt-1.5 flex items-center justify-between">
-                      <span className="font-mono">{d.orderId}</span>
-                      <span>{formatSize(d.sizeBytes)}</span>
-                    </div>
-                    {d.productConfig && (
-                      <div className="text-[10.5px] text-gri-500 mt-0.5 truncate">
-                        {d.productConfig}
-                      </div>
-                    )}
-                    <div className="text-[10.5px] text-gri-500 mt-1.5">
-                      {formatDate(d.uploadedAt)} · v{d.version}
-                    </div>
+                      {meta.label}
+                    </span>
+                    <span className="text-[10.5px] text-gri-500 tabular-nums">
+                      {formatSize(d.sizeBytes)}
+                    </span>
                   </div>
                 </Link>
               );
