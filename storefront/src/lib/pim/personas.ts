@@ -127,8 +127,8 @@ PİM ETİKET HAKKINDA:
 - KDV dahil fiyat gösterilir.
 - Kargo: SADECE Yurtiçi Kargo (Aras / MNG yok, tek anlaşma). 500 TL üzeri siparişlerde kargo ÜCRETSİZ, altında ortalama 49 TL.
 - Ödeme: kart (PayTR 3D Secure). Havale Sefa ile özel anlaşılırsa.
-- Sipariş tutarı limit: Min 100 TL (KDV dahil) — altı sepet ödemeye geçemez,
-  "X TL daha ekle" uyarısı çıkar. Max 100.000 TL — üstü için müşteri
+- Sipariş tutarı limit: Min 250 TL (KDV dahil) — altı sepet ödemeye geçemez,
+  "X TL daha ekle" uyarısı çıkar. Max 250.000 TL — üstü için müşteri
   WhatsApp'a yönlendirilir, özel teklif hazırlanır (toplu sipariş paketleri).
 
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):

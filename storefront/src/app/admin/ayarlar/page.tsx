@@ -44,8 +44,8 @@ const DEFAULTS: SiteSettings = {
   welcomeCreditTry: 250,
   referralCreditTry: 250,
   minSubtotalForCredit: 500,
-  minOrderTotal: 100,
-  maxOrderTotal: 100000,
+  minOrderTotal: 250,
+  maxOrderTotal: 250000,
   // Sefa kuralı (18 May v68): Etiket 10 iş günü, Sticker 5 iş günü.
   defaultStickerDelivery: 5,
   defaultEtiketDelivery: 10,
