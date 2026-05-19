@@ -1,72 +1,36 @@
 /**
  * POST /api/admin/customers/[id]/grant-credit
  *
- * Müşteriye manuel kontör/kredi ver (loyalty grant).
- * - Migration 046 loyalty_grants tablosuna log
- * - Migration 030 loyalty_gift_credits tablosuna ekleme yapar (varsa)
+ * **DEVRE DIŞI — 410 Gone.**
  *
- * Body: { amount_try: number, reason: string }
+ * Sefa 19 May v68 (Agent denetim P0 #4):
+ * Anayasa "Cüzdan vizyonu yok" (Mig 015 ile kaldırıldı). Hediye kredi
+ * de cüzdan demek — müşteri bakiye görürdü, anayasa kuralı delinirdi.
+ * Endpoint hiç tamamlanmamıştı zaten (loyalty_gift_credits'e yazmıyordu
+ * TODO ile bırakılmıştı), kullanılırsa sessiz başarı dönüp müşteri
+ * krediyi göremezdi.
  *
- * Limit: 1-1000 TL arası, sebep zorunlu (2-200 char).
+ * Müşteriye iyi niyet jesti için → /admin/kuponlar (tek kullanım kod,
+ * expire date, min sepet, vs.).
+ *
+ * loyalty_grants tablosu silinmiyor (geçmiş audit izi korunsun).
  */
 
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function POST() {
   const auth = await assertAdmin();
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as {
-    amount_try?: number;
-    reason?: string;
-  };
-  const amount = Number(body.amount_try ?? 0);
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 1000) {
-    return NextResponse.json(
-      { error: "invalid_amount", hint: "1-1000 TL arası" },
-      { status: 400 }
-    );
-  }
-  const reason = (body.reason ?? "").trim();
-  if (reason.length < 2 || reason.length > 200) {
-    return NextResponse.json(
-      { error: "invalid_reason", hint: "2-200 karakter sebep gerekli" },
-      { status: 400 }
-    );
-  }
-
-  const admin = createAdminClient();
-  const { error: logError } = await admin
-    .from("loyalty_grants")
-    .insert([
-      {
-        user_id: id,
-        admin_id: auth.user.id,
-        amount_try: amount,
-        reason,
-        status: "granted",
-      },
-    ] as never);
-
-  if (logError) {
-    return NextResponse.json(
-      { error: "log_failed", detail: logError.message },
-      { status: 500 }
-    );
-  }
-
-  // TODO: loyalty_gift_credits tablosuna da insert (kullanıcı bakiyesi)
-  // Migration 030'da fn_grant_gift_credit RPC varsa onu çağır.
-
-  return NextResponse.json({
-    ok: true,
-    amount_try: amount,
-    reason,
-  });
+  return NextResponse.json(
+    {
+      error: "feature_disabled",
+      detail:
+        "Hediye kredi devre dışı (Anayasa: cüzdan vizyonu yok). " +
+        "Müşteriye iyi niyet jesti için /admin/kuponlar'dan tek kullanımlık kupon üret.",
+      replacement: "/admin/kuponlar",
+    },
+    { status: 410 }
+  );
 }

@@ -153,7 +153,7 @@ function telLink(phone: string | null): string {
   return `tel:${e164}`;
 }
 
-type ModalKind = "email" | "credit" | "tag" | "suspend" | "note" | null;
+type ModalKind = "email" | "tag" | "suspend" | "note" | null;
 
 export default function AdminMusteriDetailPage({
   params,
@@ -226,19 +226,8 @@ export default function AdminMusteriDetailPage({
     } else toast.error(j.error ?? "Hata");
   };
 
-  const handleCredit = async (amount: number, reason: string) => {
-    const r = await fetch(`/api/admin/customers/${id}/grant-credit`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ amount_try: amount, reason }),
-    });
-    const j = (await r.json()) as { ok?: boolean; error?: string };
-    if (j.ok) {
-      toast.success(`${amount} TL kontör verildi`);
-      setModalKind(null);
-      await refresh();
-    } else toast.error(j.error ?? "Hata");
-  };
+  // Sefa 19 May v68 (P0 #4): handleCredit kaldırıldı — Anayasa "cüzdan
+  // vizyonu yok". Müşteriye iyi niyet jesti için /admin/kuponlar.
 
   const handleTag = async (tag: string) => {
     const r = await fetch(`/api/admin/customers/${id}/tags`, {
@@ -596,9 +585,11 @@ export default function AdminMusteriDetailPage({
                   onClick={() => setModalKind("email")}
                 />
                 <ActionBtn
-                  icon="🎁"
-                  label="Kontör ver"
-                  onClick={() => setModalKind("credit")}
+                  icon="🎟️"
+                  label="Kupon ver"
+                  onClick={() => {
+                    window.open("/admin/kuponlar", "_blank");
+                  }}
                 />
                 <ActionBtn
                   icon={hasVip ? "⭐" : "☆"}
@@ -798,12 +789,6 @@ export default function AdminMusteriDetailPage({
           email={o.email}
           onClose={() => setModalKind(null)}
           onSave={(sub, body) => void handleEmail(sub, body)}
-        />
-      )}
-      {modalKind === "credit" && (
-        <CreditModal
-          onClose={() => setModalKind(null)}
-          onSave={(amount, reason) => void handleCredit(amount, reason)}
         />
       )}
       {modalKind === "tag" && (
@@ -1026,72 +1011,8 @@ function EmailModal({
   );
 }
 
-function CreditModal({
-  onClose,
-  onSave,
-}: {
-  onClose: () => void;
-  onSave: (amount: number, reason: string) => void;
-}) {
-  const [amount, setAmount] = useState(50);
-  const [reason, setReason] = useState("");
-  const PRESETS = [10, 25, 50, 100, 250];
-  return (
-    <ModalShell title="🎁 Kontör ver" onClose={onClose}>
-      <div className="text-[12.5px] font-semibold text-gri-700 mb-2">
-        Miktar (TL)
-      </div>
-      <div className="flex gap-2 flex-wrap mb-3">
-        {PRESETS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setAmount(p)}
-            className={cn(
-              "px-3 h-10 rounded-full text-[13px] font-semibold transition-colors",
-              amount === p
-                ? "bg-pim-mercan text-white"
-                : "bg-gri-100 text-gri-700 hover:bg-gri-200"
-            )}
-          >
-            {p} TL
-          </button>
-        ))}
-      </div>
-      <input
-        type="number"
-        value={amount}
-        onChange={(e) => setAmount(Number(e.target.value))}
-        min={1}
-        max={1000}
-        className="w-full px-3 h-11 rounded-[12px] bg-white ring-1 ring-gri-200 text-[14px] focus:outline-none focus:ring-pim-mercan mb-3 tabular-nums"
-      />
-      <div className="text-[12.5px] font-semibold text-gri-700 mb-2">
-        Sebep
-      </div>
-      <input
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder="Örn: doğum günü hediyesi, şikayet özür, kampanya"
-        className="w-full px-3 h-11 rounded-[12px] bg-white ring-1 ring-gri-200 text-[14px] focus:outline-none focus:ring-pim-mercan"
-      />
-      <div className="mt-5 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          İptal
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => onSave(amount, reason)}
-          disabled={
-            amount < 1 || amount > 1000 || reason.trim().length < 2
-          }
-        >
-          {amount} TL ver
-        </Button>
-      </div>
-    </ModalShell>
-  );
-}
+// Sefa 19 May v68 (P0 #4): CreditModal kaldırıldı (Anayasa "cüzdan
+// vizyonu yok"). Müşteriye iyi niyet jesti için /admin/kuponlar.
 
 function TagModal({
   existing,
