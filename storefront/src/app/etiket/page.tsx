@@ -63,6 +63,12 @@ import {
   type EtiketCoatingId,
   type EtiketCustomId,
 } from "@/lib/etiket-customer-pricing";
+// Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar canlı config → /etiket
+// Client-safe import.
+import { getLivePricingConfig } from "@/lib/pricing-config-client";
+import type { ProfileConfig } from "@/lib/pricing-config-types";
+import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
+import { deriveScopeFromProduct } from "@/lib/pricing-calc";
 import { addToCustomerCart } from "@/lib/customer-cart";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 // Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
@@ -458,6 +464,40 @@ export default function EtiketPage() {
   const [formFactor, setFormFactor] = useState<FormFactor>("rulo");
   const [material, setMaterial] = useState<EtiketMaterialId>("kuse");
   const [coating, setCoating] = useState<EtiketCoatingId>("yok");
+
+  // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
+  //   - formFactor değişince scope (etiket_rulo vs etiket_tabaka) yeniden çek
+  //   - Material/Coating/Customization name+desc admin'den öncelikli
+  //   - Fiyat hesabı quoteEtiketFromConfig'le (config varsa)
+  const [adminConfig, setAdminConfig] = useState<ProfileConfig | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const scope = deriveScopeFromProduct("etiket", formFactor);
+    setAdminConfig(null); // formFactor değişince eski config bypass
+    void getLivePricingConfig(scope).then((cfg) => {
+      if (!cancelled) setAdminConfig(cfg);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [formFactor]);
+
+  /** Admin live_config'ten name/desc override helper.
+   *  bucket: "material" | "coating" | "customization"
+   *  fallback: i18n string (locale === "en" ? *_en : *) */
+  const adminText = (
+    bucket: "material" | "coating" | "customization",
+    id: string,
+    field: "name" | "desc"
+  ): string | undefined => {
+    if (!adminConfig) return undefined;
+    if (bucket === "material") {
+      return adminConfig.materials.find((m) => m.id === id)?.[field];
+    }
+    return adminConfig.options?.[bucket]?.items.find((i) => i.id === id)?.[
+      field
+    ];
+  };
   // Sefa kuralı (15 May v3): Rulo özelleştirmede birden fazla seçilebilir.
   // "yok" tek seçimdir; başka seçim eklenince "yok" çıkar. Pricing engine
   // şu an tek customization alır → multi seçimde ilki gönderilir + multiplier
@@ -635,8 +675,9 @@ export default function EtiketPage() {
   // Backwards compat için primaryCustom da gönderiliyor (ilk seçim).
   const primaryCustom: EtiketCustomId = customs[0] ?? "yok";
 
-  // Engine ile canlı quote (multi-customization aktif)
-  const quote = quoteCustomerEtiket({
+  // Faz 2: admin live_config varsa kullan, yoksa eski engine fallback.
+  // Bridge null dönerse (config eksik / material ID admin'de yok) eski engine.
+  const etiketQuoteInput = {
     width,
     height,
     qty,
@@ -644,7 +685,10 @@ export default function EtiketPage() {
     coating,
     customization: primaryCustom,
     customizations: customs,
-  });
+  };
+  const quote =
+    (adminConfig && quoteEtiketFromConfig(adminConfig, etiketQuoteInput)) ??
+    quoteCustomerEtiket(etiketQuoteInput);
 
   const rawTotal = quote.ok ? quote.total : 0;
   const rawUnit = quote.ok ? quote.unitPrice : 0;
@@ -1059,20 +1103,20 @@ export default function EtiketPage() {
                       surface={m.surface}
                       fallback={m.swatch}
                       className="w-full aspect-[2/1] mb-2.5"
-                      label={locale === "en" ? m.name_en : m.name}
+                      label={adminText("material", m.id, "name") ?? (locale === "en" ? m.name_en : m.name)}
                     />
                     {/* Sefa 18 May v68 (Sefa feedback): sağ üst Icon.Info "i"
                         ikonu kaldırıldı — tooltip için zaten title yanında "?"
                         gösterilir. Başlık satırına min-h ekle ki 1 ya da 2
                         satır olsa da içerikler eşit hizada üstten başlasın. */}
                     <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
-                      <span>{locale === "en" ? m.name_en : m.name}</span>
+                      <span>{adminText("material", m.id, "name") ?? (locale === "en" ? m.name_en : m.name)}</span>
                       {"tooltip" in m && m.tooltip ? (
                         <InfoTooltip text={m.tooltip} />
                       ) : null}
                     </div>
                     <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
-                      {locale === "en" ? m.desc_en : m.desc}
+                      {adminText("material", m.id, "desc") ?? (locale === "en" ? m.desc_en : m.desc)}
                     </div>
                     {/* Opsiyonel uyarı notu (örn kraft) */}
                     {"note" in m && (
@@ -1134,14 +1178,14 @@ export default function EtiketPage() {
                     <MaterialSwatch
                       surface={c.surface}
                       className="w-full aspect-[2/1] mb-2"
-                      label={locale === "en" ? c.name_en : c.name}
+                      label={adminText("coating", c.id, "name") ?? (locale === "en" ? c.name_en : c.name)}
                     />
                     <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
-                      <span>{locale === "en" ? c.name_en : c.name}</span>
+                      <span>{adminText("coating", c.id, "name") ?? (locale === "en" ? c.name_en : c.name)}</span>
                       {c.tooltip ? <InfoTooltip text={c.tooltip} /> : null}
                     </div>
                     <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
-                      {locale === "en" ? c.desc_en : c.desc}
+                      {adminText("coating", c.id, "desc") ?? (locale === "en" ? c.desc_en : c.desc)}
                     </div>
                   </SelectableCard>
                 ))}
@@ -1206,14 +1250,14 @@ export default function EtiketPage() {
                       <MaterialSwatch
                         surface={c.surface}
                         className="w-full aspect-[2/1] mb-2"
-                        label={locale === "en" ? c.name_en : c.name}
+                        label={adminText("customization", c.id, "name") ?? (locale === "en" ? c.name_en : c.name)}
                       />
                       <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
-                        <span>{locale === "en" ? c.name_en : c.name}</span>
+                        <span>{adminText("customization", c.id, "name") ?? (locale === "en" ? c.name_en : c.name)}</span>
                         {c.tooltip ? <InfoTooltip text={c.tooltip} /> : null}
                       </div>
                       <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
-                        {locale === "en" ? c.desc_en : c.desc}
+                        {adminText("customization", c.id, "desc") ?? (locale === "en" ? c.desc_en : c.desc)}
                       </div>
                     </SelectableCard>
                   );

@@ -72,6 +72,12 @@ import {
   type StickerMaterial,
   type StickerFinish,
 } from "@/lib/sticker-customer-pricing";
+// Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar canlı config → /sticker
+// Client-safe import (pricing-config.ts'in server-only createAdminClient
+// referansı bundle'a sızmasın).
+import { getLivePricingConfig } from "@/lib/pricing-config-client";
+import type { ProfileConfig } from "@/lib/pricing-config-types";
+import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
 import { addToCustomerCart } from "@/lib/customer-cart";
 
 // ============================================================
@@ -154,6 +160,21 @@ export default function StickerPage() {
   const toast = useToast();
   const { t, locale } = useT();
 
+  // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
+  //   - name/desc override edilir (admin'den gelen önceliklidir)
+  //   - fiyat hesabı quoteStickerFromConfig'le yapılır
+  //   - config yüklenene kadar i18n + eski engine fallback
+  const [adminConfig, setAdminConfig] = useState<ProfileConfig | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getLivePricingConfig("sticker").then((cfg) => {
+      if (!cancelled) setAdminConfig(cfg);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // i18n'a bağlı array'ler — Sefa kuralı (16 May denetim #1):
   // dil değiştiğinde shape/material/finish name+desc çevrilir.
   const SHAPES = SHAPE_IDS.map((id) => ({
@@ -176,44 +197,57 @@ export default function StickerPage() {
             : t.sticker.shapeContourDesc,
   }));
 
-  const MATERIALS = MATERIAL_IDS.map((id) => ({
-    id,
-    name:
+  // Faz 2: ad/açıklama admin live_config > i18n fallback
+  const MATERIALS = MATERIAL_IDS.map((id) => {
+    const fromAdmin = adminConfig?.materials.find((m) => m.id === id);
+    const i18nName =
       id === "vinil"
         ? t.sticker.materialVinil
         : id === "transparan"
           ? t.sticker.materialTransparan
           : id === "holo"
             ? t.sticker.materialHolo
-            : t.sticker.materialSimli,
-    desc:
+            : t.sticker.materialSimli;
+    const i18nDesc =
       id === "vinil"
         ? t.sticker.materialVinilDesc
         : id === "transparan"
           ? t.sticker.materialTransparanDesc
           : id === "holo"
             ? t.sticker.materialHoloDesc
-            : t.sticker.materialSimliDesc,
-    swatch: MATERIAL_SWATCHES[id],
-    surface: MATERIAL_SURFACES[id] as SurfaceId,
-  }));
+            : t.sticker.materialSimliDesc;
+    return {
+      id,
+      name: fromAdmin?.name ?? i18nName,
+      desc: fromAdmin?.desc ?? i18nDesc,
+      swatch: MATERIAL_SWATCHES[id],
+      surface: MATERIAL_SURFACES[id] as SurfaceId,
+    };
+  });
 
-  const FINISHES = FINISH_IDS.map((id) => ({
-    id,
-    name:
+  const FINISHES = FINISH_IDS.map((id) => {
+    const fromAdmin = adminConfig?.options?.finish?.items.find(
+      (i) => i.id === id
+    );
+    const i18nName =
       id === "parlak"
         ? t.sticker.finishParlak
         : id === "mat"
           ? t.sticker.finishMat
-          : t.sticker.finishNone,
-    desc:
+          : t.sticker.finishNone;
+    const i18nDesc =
       id === "parlak"
         ? t.sticker.finishParlakDesc
         : id === "mat"
           ? t.sticker.finishMatDesc
-          : t.sticker.finishNoneDesc,
-    surface: FINISH_SURFACES[id] as SurfaceId,
-  }));
+          : t.sticker.finishNoneDesc;
+    return {
+      id,
+      name: fromAdmin?.name ?? i18nName,
+      desc: fromAdmin?.desc ?? i18nDesc,
+      surface: FINISH_SURFACES[id] as SurfaceId,
+    };
+  });
 
   // A/B test: sticker CTA varyantı. PostHog'da `sticker_cta_v2` flag'ı
   // tanımlandığında otomatik aktifleşir. Variants:
@@ -448,15 +482,19 @@ export default function StickerPage() {
       ? SHAPES.filter((s) => s.id !== "die")
       : SHAPES;
 
-  // Engine ile canlı quote — tek tasarım için fiyat
-  const quote = quoteCustomerSticker({
+  // Faz 2: admin live_config varsa kullan, yoksa eski engine fallback.
+  // Bridge null dönerse (config eksik / material ID admin'de yok) eski engine.
+  const quoteInput = {
     width,
     height,
     material,
     finish,
     qty: tier,
     cut: cutMode,
-  });
+  };
+  const quote =
+    (adminConfig && quoteStickerFromConfig(adminConfig, quoteInput)) ??
+    quoteCustomerSticker(quoteInput);
 
   // Sefa Madde 9: toplam fiyat = quote × designCount × iskonto
   // (her tasarım için ayrı baskı + tasarım sayısı iskonto v4)
