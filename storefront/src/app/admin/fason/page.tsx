@@ -144,9 +144,9 @@ export default function AdminFasonPage() {
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <Eyebrow>Fason yönetimi</Eyebrow>
+            <Eyebrow>Üretim Partnerleri</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              Üretim ortakları
+              Üretim Partnerleri
             </h1>
             <p className="mt-1.5 text-base text-gri-700">
               {stats.total} ortak · {stats.active} aktif
@@ -161,7 +161,7 @@ export default function AdminFasonPage() {
             </p>
           </div>
           <Button variant="primary" onClick={() => setShowAdd(true)}>
-            <Icon.Plus size={14} /> Yeni fason ekle
+            <Icon.Plus size={14} /> Yeni partner ekle
           </Button>
         </div>
 
@@ -242,10 +242,10 @@ export default function AdminFasonPage() {
             {!loading && filtered.length === 0 && (
               <Card padding="p-8" className="text-center">
                 <div className="text-gri-700 mb-3">
-                  Bu filtreye uyan fason ortak yok.
+                  Bu filtreye uyan üretim partneri yok.
                 </div>
                 <Button variant="secondary" onClick={() => setShowAdd(true)}>
-                  <Icon.Plus size={14} /> İlk fason&apos;u ekle
+                  <Icon.Plus size={14} /> İlk partneri ekle
                 </Button>
               </Card>
             )}
@@ -568,7 +568,7 @@ function AddPartnerModal({
   };
 
   return (
-    <Modal open={true} onClose={onClose} title="Yeni fason ortağı">
+    <Modal open={true} onClose={onClose} title="Yeni üretim partneri">
       <div className="space-y-3">
         <div>
           <label htmlFor={nameId} className="text-[12.5px] font-semibold mb-1 block">

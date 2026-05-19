@@ -96,7 +96,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/siparis-ekle": "Manuel sipariş ekle",
   "/admin/ai-qc": "AI QC kuyruğu",
   "/admin/prova": "Prova akışı",
-  "/admin/fason": "Fason atama",
+  "/admin/fason": "Üretim Partnerleri",
   "/admin/musteriler": "Müşteriler",
   "/admin/finans": "Finans — Mali tablo",
   "/admin/tasarimlar": "Tasarım kütüphanesi",
@@ -274,7 +274,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           },
           {
             href: "/admin/fason",
-            label: "Fason",
+            label: "Üretim Partnerleri",
             icon: <Icon.Truck size={16} />,
             badge: badges.fason,
           },

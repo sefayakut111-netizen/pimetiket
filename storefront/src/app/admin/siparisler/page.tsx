@@ -55,7 +55,7 @@ const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: strin
   proof_pending: { label: "Müşteri onayı bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
   proof_approved: { label: "Müşteri onayladı", color: "text-yesil", bg: "bg-yesil-soft" },
   ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  fason_assigned: { label: "Fasona atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
+  fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
   shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
   delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft" },
@@ -126,7 +126,7 @@ const SAVED_VIEWS: SavedView[] = [
     id: "unassigned",
     label: "Üretime atanmamış",
     emoji: "🏭",
-    description: "Ödeme alındı ama henüz fason atanmadı",
+    description: "Ödeme alındı ama henüz üretim partneri atanmadı",
     apply: (orders) => orders.filter((o) => o.status === "paid"),
   },
   {

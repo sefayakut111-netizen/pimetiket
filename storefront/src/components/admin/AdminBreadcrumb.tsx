@@ -28,7 +28,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   tasarimlar: "Tasarımlar",
   "ai-qc": "AI QC",
   prova: "Prova",
-  fason: "Fason",
+  fason: "Üretim Partnerleri",
   kargo: "Kargo",
   aboneler: "Aboneler",
   galeri: "Galeri",

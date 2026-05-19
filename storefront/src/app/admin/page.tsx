@@ -156,7 +156,7 @@ function detectAlerts(orders: CustomerOrder[]): AlertItem[] {
       level: "warn",
       message: `${unassigned} ödenmiş sipariş henüz üretime atanmadı`,
       href: "/admin/fason",
-      cta: "Fason atama",
+      cta: "Partnere ata",
     });
   }
 
@@ -239,7 +239,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
       emoji: "🏭",
       title: "Üretime atanacak",
       count: unassigned,
-      hint: "Fason ata + teslim tarihi belirle",
+      hint: "Üretim partnerine ata + teslim tarihi belirle",
       href: "/admin/fason",
       urgent: unassigned >= 5,
     });
@@ -284,7 +284,7 @@ const STATUS_LABEL: Record<OrderStatus, { label: string; color: string; bg: stri
   proof_pending: { label: "Müşteri onayı", color: "text-lacivert", bg: "bg-gri-100", hex: "#1F2A4D" },
   proof_approved: { label: "Müşteri onayladı", color: "text-yesil", bg: "bg-yesil-soft", hex: "#15803D" },
   ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#1D4ED8" },
-  fason_assigned: { label: "Fasona atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#2563EB" },
+  fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#2563EB" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft", hex: "#52C41A" },
   shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100", hex: "#597EF7" },
   delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft", hex: "#389E0D" },

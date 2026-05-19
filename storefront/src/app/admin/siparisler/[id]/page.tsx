@@ -38,7 +38,7 @@ const STATUS_META: Record<OrderStatus, { label: string; color: string; bg: strin
   proof_pending: { label: "Müşteri baskı onayı bekleniyor", color: "text-lacivert", bg: "bg-gri-100" },
   proof_approved: { label: "Müşteri tüm baskıları onayladı", color: "text-yesil", bg: "bg-yesil-soft" },
   ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  fason_assigned: { label: "Fasona atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
+  fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
   in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
   shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
   delivered: { label: "Teslim edildi", color: "text-yesil", bg: "bg-yesil-soft" },
@@ -588,7 +588,7 @@ export default function AdminOrderDetailPage({
                     </span>
                     <div className="flex-1">
                       <h2 className="text-[15px] font-semibold">
-                        Fason'a gönder
+                        Üretim partnerine gönder
                       </h2>
                       <p className="text-[12px] text-gri-700 mt-0.5">
                         Sistem performans skoru + uygunluğa göre öneriyor. Tek
@@ -609,7 +609,7 @@ export default function AdminOrderDetailPage({
                       }}
                       className="w-full h-10 rounded-lg bg-pim-mercan-tint text-pim-mercan text-[13px] font-semibold hover:bg-pim-mercan/15"
                     >
-                      Önerilen fasonları getir
+                      Önerilen partnerleri getir
                     </button>
                   ) : (
                     <>
@@ -702,7 +702,7 @@ export default function AdminOrderDetailPage({
                       >
                         {assigning
                           ? "Atanıyor..."
-                          : "Fason'a gönder"}
+                          : "Partnere gönder"}
                       </Button>
                     </>
                   )}
@@ -717,7 +717,7 @@ export default function AdminOrderDetailPage({
                   </span>
                   <div className="flex-1">
                     <h2 className="text-[15px] font-semibold text-yesil">
-                      Fason'a atandı: {assignmentInfo.fasonName}
+                      Partnere atandı: {assignmentInfo.fasonName}
                     </h2>
                     <p className="text-[12px] text-yesil/85 mt-0.5">
                       Mail kuyruğa alındı (Resend gelince gönderilecek). Şimdilik
