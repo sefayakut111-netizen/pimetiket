@@ -1,21 +1,26 @@
 /**
  * Pim Etiket — Kargo Etiketi PDF Üretici (100 × 150 mm termal).
  *
- * Sefa 19 May v68 (Faz A — sözleşme öncesi):
- *   - Yurtiçi Kargo sözleşmesi henüz yok → tracking_number opsiyonel.
- *   - Tracking var: gerçek barkod (Code128).
- *   - Tracking yok: geçici cargoKey (PIM-{orderId}-{rand4}) — şubeye götür,
- *     şubeden barkod al, AdminTrackingForm'a gir, etiketi yeniden indir.
+ * Sefa 19 May v68:
+ *   - Faz A: jsPDF + Latin1 (Türkçe karakterler ASCII'ye düşüyordu)
+ *   - Madde 4 (refactor): pdf-lib + fontkit + Noto Sans TR TTF embed
+ *     → Ş, ğ, İ, ç gerçek render edilir, asciiFold() artık yok.
  *
- * Format: 100 × 150 mm — Yurtiçi standart termal etiket boyutu.
- * Font: jsPDF default Helvetica (Latin1) — Türkçe karakterler için
- *   asciiFold() helper'ı çağrılır.
+ * Format: 100 × 150 mm — Yurtici standart termal etiket boyutu.
+ * Engine: pdf-lib (Unicode native) + bwip-js Code128 barkod.
+ * Font: Noto Sans Regular + Bold (OFL, ticari kullanım serbest).
  *
- * Bağımlılık: jspdf (var) + bwip-js (Mig 19 May v68 install).
+ * pdf-lib coordinate sistemi BOTTOM-UP — y=0 sayfa altında.
+ * mm cinsinden layout için yMm() helper'ı kullanılır.
  */
 
-import jsPDF from "jspdf";
+import { PDFDocument, rgb } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import bwipjs from "bwip-js/node";
+import {
+  NOTOSANS_REGULAR_BASE64,
+  NOTOSANS_BOLD_BASE64,
+} from "./fonts/noto-sans-base64";
 
 // ============================================================
 // Tipler
@@ -23,7 +28,7 @@ import bwipjs from "bwip-js/node";
 export interface LabelData {
   /** Sipariş ID (örn. "00000123") — etiket üzerinde gösterilir */
   orderCode: string;
-  /** Yurtiçi'den gelen tracking number. Yoksa cargoKey kullanılır. */
+  /** Yurtici'den gelen tracking number. Yoksa cargoKey kullanılır. */
   trackingNumber: string | null;
   /** Manuel/geçici cargoKey (tracking yokken barkod için). */
   cargoKey: string;
@@ -53,28 +58,9 @@ export interface LabelData {
 // Helpers
 // ============================================================
 
-/**
- * Türkçe karakterleri ASCII'ye düşür — jsPDF default Helvetica
- * (Latin1/WinAnsi) Ş/Ğ/İ/ç gibi bazı karakterleri render edemiyor.
- *
- * NOT: Sözleşme sonrası TTF embed ile gerçek Türkçe support eklenecek.
- */
-function asciiFold(s: string): string {
-  if (!s) return "";
-  return s
-    .replace(/Ş/g, "S")
-    .replace(/ş/g, "s")
-    .replace(/Ğ/g, "G")
-    .replace(/ğ/g, "g")
-    .replace(/İ/g, "I")
-    .replace(/ı/g, "i")
-    .replace(/Ö/g, "O")
-    .replace(/ö/g, "o")
-    .replace(/Ü/g, "U")
-    .replace(/ü/g, "u")
-    .replace(/Ç/g, "C")
-    .replace(/ç/g, "c");
-}
+/** mm → pt (PDF point). 1 mm = 2.834645669 pt. */
+const MM = 2.834645669;
+const mm = (v: number) => v * MM;
 
 /** Adres satırını maksimum karakter sayısına böl (basit word-wrap). */
 function wrap(text: string, max: number): string[] {
@@ -120,119 +106,212 @@ async function buildBarcodePng(text: string): Promise<Uint8Array> {
 // ============================================================
 /**
  * 100 × 150 mm tek sayfalık kargo etiketi PDF üret.
- * Dönüş: Uint8Array (NextResponse'a doğrudan stream'lenebilir).
+ * Dönüş: Uint8Array.
  */
 export async function generateShippingLabel(
   data: LabelData
 ): Promise<Uint8Array> {
-  const W = 100;
-  const H = 150;
+  const W_MM = 100;
+  const H_MM = 150;
+  const W = mm(W_MM);
+  const H = mm(H_MM);
 
-  const doc = new jsPDF({
-    unit: "mm",
-    format: [W, H],
-    orientation: "portrait",
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+
+  // Noto Sans TR embed (Türkçe karakterler için)
+  const regularBytes = Uint8Array.from(
+    Buffer.from(NOTOSANS_REGULAR_BASE64, "base64")
+  );
+  const boldBytes = Uint8Array.from(
+    Buffer.from(NOTOSANS_BOLD_BASE64, "base64")
+  );
+  const font = await pdfDoc.embedFont(regularBytes, { subset: true });
+  const bold = await pdfDoc.embedFont(boldBytes, { subset: true });
+
+  const page = pdfDoc.addPage([W, H]);
+
+  // y koordinatları pdf-lib'de BOTTOM-UP. Layout üst-aşağı düşünüyoruz
+  // — yT mm "üstten aşağı" değerini alıp pt cinsinden tabandan dönüştürür.
+  const yT = (yFromTopMm: number) => H - mm(yFromTopMm);
+  const BLACK = rgb(0, 0, 0);
+  const WHITE = rgb(1, 1, 1);
+  const GRAY = rgb(0.47, 0.47, 0.47);
+  const RED_WARN = rgb(0.7, 0.16, 0.16);
+
+  // ====================================================
+  // Header — "PIM ETIKET" + "YURTİÇİ KARGO" + tarih
+  // ====================================================
+  page.drawText("PIM ETIKET", {
+    x: mm(6),
+    y: yT(10),
+    size: 14,
+    font: bold,
+    color: BLACK,
   });
 
-  // ====================================================
-  // Header
-  // ====================================================
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("PIM ETIKET", 6, 8);
+  const dateText = data.createdAt.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const headerRightText = "YURTİÇİ KARGO";
+  const headerRightW = font.widthOfTextAtSize(headerRightText, 8);
+  page.drawText(headerRightText, {
+    x: W - mm(6) - headerRightW,
+    y: yT(7),
+    size: 8,
+    font,
+    color: BLACK,
+  });
+  const dateW = font.widthOfTextAtSize(dateText, 8);
+  page.drawText(dateText, {
+    x: W - mm(6) - dateW,
+    y: yT(11),
+    size: 8,
+    font,
+    color: BLACK,
+  });
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("YURTICI KARGO", W - 6, 6, { align: "right" });
-  doc.text(
-    data.createdAt.toLocaleDateString("tr-TR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }),
-    W - 6,
-    10,
-    { align: "right" }
-  );
-
-  doc.setLineWidth(0.5);
-  doc.line(6, 12, W - 6, 12);
+  // Üst ayraç çizgisi
+  page.drawLine({
+    start: { x: mm(6), y: yT(14) },
+    end: { x: W - mm(6), y: yT(14) },
+    thickness: 0.5,
+    color: BLACK,
+  });
 
   // ====================================================
   // Gönderen
   // ====================================================
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.text("GONDEREN", 6, 17);
-  doc.setTextColor(0, 0, 0);
+  page.drawText("GÖNDEREN", {
+    x: mm(6),
+    y: yT(19),
+    size: 7,
+    font,
+    color: GRAY,
+  });
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(asciiFold(data.sender.name), 6, 22);
+  page.drawText(data.sender.name, {
+    x: mm(6),
+    y: yT(24),
+    size: 10,
+    font: bold,
+    color: BLACK,
+  });
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  const senderAddrLines = wrap(asciiFold(data.sender.address), 55);
-  let y = 26;
+  const senderAddrLines = wrap(data.sender.address, 55);
+  let y = 28;
   for (const line of senderAddrLines) {
-    doc.text(line, 6, y);
+    page.drawText(line, { x: mm(6), y: yT(y), size: 8, font, color: BLACK });
     y += 3.5;
   }
-  doc.text(asciiFold(data.sender.city), 6, y);
+  page.drawText(data.sender.city, {
+    x: mm(6),
+    y: yT(y),
+    size: 8,
+    font,
+    color: BLACK,
+  });
   y += 3.5;
-  doc.text(formatPhone(data.sender.phone), 6, y);
+  page.drawText(formatPhone(data.sender.phone), {
+    x: mm(6),
+    y: yT(y),
+    size: 8,
+    font,
+    color: BLACK,
+  });
 
   // ====================================================
   // Alıcı banner (siyah arka plan)
   // ====================================================
-  y = 44;
-  doc.setFillColor(0, 0, 0);
-  doc.rect(6, y, W - 12, 6, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255);
-  doc.text("ALICI", 8, y + 4.2);
-  doc.setTextColor(0, 0, 0);
+  const bannerYTop = 46;
+  page.drawRectangle({
+    x: mm(6),
+    y: yT(bannerYTop + 6), // bottom-up: y = bannerYTop + height
+    width: W - mm(12),
+    height: mm(6),
+    color: BLACK,
+  });
+  page.drawText("ALICI", {
+    x: mm(8),
+    y: yT(bannerYTop + 4.2),
+    size: 10,
+    font: bold,
+    color: WHITE,
+  });
 
   // ====================================================
   // Alıcı bilgileri
   // ====================================================
-  y += 11;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text(asciiFold(data.receiver.name), 6, y);
+  page.drawText(data.receiver.name, {
+    x: mm(6),
+    y: yT(57),
+    size: 13,
+    font: bold,
+    color: BLACK,
+  });
 
-  y += 6;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(formatPhone(data.receiver.phone), 6, y);
+  page.drawText(formatPhone(data.receiver.phone), {
+    x: mm(6),
+    y: yT(63),
+    size: 10,
+    font,
+    color: BLACK,
+  });
 
-  y += 5;
-  doc.setFontSize(9);
-  const recvAddrLines = wrap(asciiFold(data.receiver.address), 50);
+  const recvAddrLines = wrap(data.receiver.address, 50);
+  let ry = 68;
   for (const line of recvAddrLines.slice(0, 3)) {
-    doc.text(line, 6, y);
-    y += 4;
+    page.drawText(line, { x: mm(6), y: yT(ry), size: 9, font, color: BLACK });
+    ry += 4;
   }
 
-  y += 1;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text(asciiFold(data.receiver.city).toUpperCase(), 6, y);
+  ry += 1;
+  page.drawText(data.receiver.city.toLocaleUpperCase("tr-TR"), {
+    x: mm(6),
+    y: yT(ry),
+    size: 12,
+    font: bold,
+    color: BLACK,
+  });
 
   // ====================================================
   // Sipariş bilgi şeridi
   // ====================================================
-  y = 110;
-  doc.setLineWidth(0.3);
-  doc.line(6, y, W - 6, y);
+  const infoY = 110;
+  page.drawLine({
+    start: { x: mm(6), y: yT(infoY) },
+    end: { x: W - mm(6), y: yT(infoY) },
+    thickness: 0.3,
+    color: BLACK,
+  });
 
-  y += 5;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(`Siparis: ${data.orderCode}`, 6, y);
-  doc.text(`${data.cargoCount} koli`, W / 2, y, { align: "center" });
-  doc.text(`${data.totalKg.toFixed(1)} kg`, W - 6, y, { align: "right" });
+  page.drawText(`Sipariş: ${data.orderCode}`, {
+    x: mm(6),
+    y: yT(infoY + 5),
+    size: 8,
+    font,
+    color: BLACK,
+  });
+  const middleText = `${data.cargoCount} koli`;
+  const middleW = font.widthOfTextAtSize(middleText, 8);
+  page.drawText(middleText, {
+    x: W / 2 - middleW / 2,
+    y: yT(infoY + 5),
+    size: 8,
+    font,
+    color: BLACK,
+  });
+  const rightText = `${data.totalKg.toFixed(1)} kg`;
+  const rightW = font.widthOfTextAtSize(rightText, 8);
+  page.drawText(rightText, {
+    x: W - mm(6) - rightW,
+    y: yT(infoY + 5),
+    size: 8,
+    font,
+    color: BLACK,
+  });
 
   // ====================================================
   // Barkod
@@ -242,55 +321,76 @@ export async function generateShippingLabel(
 
   try {
     const png = await buildBarcodePng(barcodeValue);
-    const base64 = Buffer.from(png).toString("base64");
-    const dataUrl = `data:image/png;base64,${base64}`;
+    const barcodeImg = await pdfDoc.embedPng(png);
 
-    y += 4;
-    const barcodeW = 75;
-    const barcodeH = 15;
-    const barcodeX = (W - barcodeW) / 2;
-    doc.addImage(dataUrl, "PNG", barcodeX, y, barcodeW, barcodeH);
+    const barcodeWMm = 75;
+    const barcodeHMm = 15;
+    const barcodeXMm = (W_MM - barcodeWMm) / 2;
+    const barcodeYTopMm = infoY + 9;
 
-    y += barcodeH + 4;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(barcodeValue, W / 2, y, { align: "center" });
+    page.drawImage(barcodeImg, {
+      x: mm(barcodeXMm),
+      y: yT(barcodeYTopMm + barcodeHMm),
+      width: mm(barcodeWMm),
+      height: mm(barcodeHMm),
+    });
+
+    const barcodeTextY = barcodeYTopMm + barcodeHMm + 4;
+    const codeW = bold.widthOfTextAtSize(barcodeValue, 11);
+    page.drawText(barcodeValue, {
+      x: W / 2 - codeW / 2,
+      y: yT(barcodeTextY),
+      size: 11,
+      font: bold,
+      color: BLACK,
+    });
 
     if (!hasRealTracking) {
-      y += 4;
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(6.5);
-      doc.setTextColor(180, 40, 40);
-      doc.text(
-        "GECICI - Yurtici subesinden barkod alindiktan sonra yeniden yazdirin",
-        W / 2,
-        y,
-        { align: "center" }
-      );
-      doc.setTextColor(0, 0, 0);
+      const warnText =
+        "GEÇİCİ — Yurtiçi şubesinden barkod alındıktan sonra yeniden yazdırın";
+      const warnW = font.widthOfTextAtSize(warnText, 6.5);
+      page.drawText(warnText, {
+        x: W / 2 - warnW / 2,
+        y: yT(barcodeTextY + 4),
+        size: 6.5,
+        font,
+        color: RED_WARN,
+      });
     }
   } catch (err) {
     // Barkod üretilemese de etiket basılsın (text fallback)
-    y += 6;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(barcodeValue, W / 2, y, { align: "center" });
+    const fbW = bold.widthOfTextAtSize(barcodeValue, 11);
+    page.drawText(barcodeValue, {
+      x: W / 2 - fbW / 2,
+      y: yT(infoY + 15),
+      size: 11,
+      font: bold,
+      color: BLACK,
+    });
     console.warn("[label] barcode generation failed:", err);
   }
 
   // ====================================================
   // Footer
   // ====================================================
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.text(
-    asciiFold(data.description ?? "Icerik: Sticker / Etiket"),
-    6,
-    H - 4
-  );
-  doc.text("pimetiket.com", W - 6, H - 4, { align: "right" });
+  const footerText = data.description ?? "İçerik: Sticker / Etiket";
+  page.drawText(footerText, {
+    x: mm(6),
+    y: mm(4),
+    size: 7,
+    font,
+    color: GRAY,
+  });
 
-  const arrayBuffer = doc.output("arraybuffer");
-  return new Uint8Array(arrayBuffer);
+  const siteText = "pimetiket.com";
+  const siteW = font.widthOfTextAtSize(siteText, 7);
+  page.drawText(siteText, {
+    x: W - mm(6) - siteW,
+    y: mm(4),
+    size: 7,
+    font,
+    color: GRAY,
+  });
+
+  return await pdfDoc.save();
 }

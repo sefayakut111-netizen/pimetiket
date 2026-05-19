@@ -995,12 +995,18 @@ export default function StickerPage() {
                 )}
               </div>
 
-              {/* Preset chip'leri — TEK seçim yöntemi */}
+              {/* Preset chip'leri — TEK seçim yöntemi
+                  Faz 2 (Sefa 19 May v68): adminConfig.tiers > STICKER_PRESETS */}
               <div className="flex gap-2 mt-4 flex-wrap items-center">
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
                 </span>
-                {STICKER_PRESETS.map((q) => {
+                {(adminConfig?.tiers
+                  ? [...adminConfig.tiers]
+                      .sort((a, b) => a.qty - b.qty)
+                      .map((t) => t.qty)
+                  : STICKER_PRESETS
+                ).map((q) => {
                   const active = touchedSteps.has(6) && tier === q;
                   const popular = q === STICKER_POPULAR_PRESET;
                   return (

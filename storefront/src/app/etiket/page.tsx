@@ -637,8 +637,14 @@ export default function EtiketPage() {
   const qtyStep =
     formFactor === "rulo" ? ETIKET_QTY_STEP : ETIKET_TABAKA_QTY_STEP;
   const snapQty = formFactor === "rulo" ? snapEtiketQty : snapTabakaQty;
-  const qtyPresets: readonly number[] =
-    formFactor === "rulo" ? ETIKET_PRESETS : ETIKET_TABAKA_PRESETS;
+  // Faz 2 (Sefa 19 May v68): adminConfig.tiers > ETIKET_PRESETS/ETIKET_TABAKA_PRESETS
+  const qtyPresets: readonly number[] = adminConfig?.tiers
+    ? [...adminConfig.tiers]
+        .sort((a, b) => a.qty - b.qty)
+        .map((t) => t.qty)
+    : formFactor === "rulo"
+      ? ETIKET_PRESETS
+      : ETIKET_TABAKA_PRESETS;
   const popularPreset =
     formFactor === "rulo"
       ? ETIKET_POPULAR_PRESET
