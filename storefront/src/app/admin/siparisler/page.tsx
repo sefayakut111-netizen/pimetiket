@@ -153,11 +153,15 @@ function toAdminOrderRow(o: CustomerOrder): AdminOrder {
   let date = "—";
   try {
     if (o.createdAtIso) {
+      // Sefa 19 May v68 bug fix: timeZone explicit yoksa server UTC,
+      // client TR (UTC+3) → React #418 hydration mismatch → satır düşürülüyor.
+      // Hem server hem client'ı Istanbul'a sabitle.
       date = new Date(o.createdAtIso).toLocaleString("tr-TR", {
         day: "numeric",
         month: "short",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "Europe/Istanbul",
       });
     }
   } catch {
