@@ -29,8 +29,8 @@ export type OrderStatus =
   // AI QC akışı
   | "qc_pending" // Dosya yüklendi, AI ön kontrol + operatör sırasında
   | "qc_flagged" // AI flag'ledi, manuel inceleme gerek
-  | "operator_review" // Operatör inceliyor
-  | "human_review" // İnsan incelemesinde (operator_review alias'ı, Mig 039)
+  | "operator_review" // Operatör inceliyor — SADECE manuel atama (admin /siparisler/[id]); otomatik trigger YOK. Mig 039 sonrası tercih: human_review.
+  | "human_review" // İnsan incelemesinde — qc_flagged sonrası otomatik trigger ile gelen state (operator_review'un modern karşılığı)
   | "human_review_failed" // İnceleme reddetti — müşteriye düzeltme iste (Mig 039)
 
   // Prova / Baskı Onay (Mig 059 — POC entegrasyonu)

@@ -150,6 +150,7 @@ stateDiagram-v2
     qc_pending --> human_review: AI mixed/error
 
     qc_flagged --> human_review: Admin yönlendirir
+    paid --> operator_review: Manuel admin atama (legacy alias)
     operator_review --> proof_generating: Admin onay
     human_review --> proof_generating: Admin ✓
     human_review --> human_review_failed: Düzeltme istek

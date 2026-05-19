@@ -19,7 +19,7 @@
 
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
@@ -314,6 +314,9 @@ export default function ProofApprovalPage({
   const [bgGenItemId, setBgGenItemId] = useState<string | null>(null);
   const [bgGenDesignFileId, setBgGenDesignFileId] = useState<string | null>(null);
   const [bgGenError, setBgGenError] = useState<string | null>(null);
+  // Sefa 20 May v68 (Frontend agent P1 #13): postMessage origin + source check
+  // için iframe ref. Aksi halde 3. parti pencere fake message gönderebilir.
+  const bgIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -548,6 +551,14 @@ export default function ProofApprovalPage({
   // Hidden POC iframe'inden gelen mesajları yakala (auto cutline akışı)
   useEffect(() => {
     const handler = async (e: MessageEvent) => {
+      // Sefa 20 May v68 (Frontend agent P1 #13): origin + source check.
+      // Kötü niyetli bir window.postMessage spoofing'ini engeller.
+      // POC aynı origin'de servis ediliyor (/poc.html), bu yüzden
+      // window.location.origin ile karşılaştırılır.
+      if (e.origin !== window.location.origin) return;
+      if (bgIframeRef.current && e.source !== bgIframeRef.current.contentWindow)
+        return;
+
       const d = e.data as
         | {
             type: string;
@@ -1236,6 +1247,7 @@ export default function ProofApprovalPage({
           Görünmez ama sandbox attribute ile güvenli. */}
       {bgGenSrc && (
         <iframe
+          ref={bgIframeRef}
           src={bgGenSrc}
           title="Otomatik bıçak üretimi"
           className="pointer-events-none fixed left-[-9999px] top-0 h-[1px] w-[1px]"
