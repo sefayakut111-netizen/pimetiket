@@ -329,7 +329,29 @@ function AdminSiparislerPageInner() {
             Sipariş yönetimi
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {orders.length} sipariş — filtrele ve durum güncelle
+            {filtered.length === orders.length ? (
+              <>{orders.length} sipariş — filtrele ve durum güncelle</>
+            ) : (
+              <>
+                <strong className="text-lacivert">{filtered.length}</strong>
+                /{orders.length} sipariş gösteriliyor
+                <span className="ml-2 text-[12.5px] text-gri-500">
+                  ({orders.length - filtered.length} tanesi filtrelerle
+                  gizleniyor)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilter("all");
+                    setSearch("");
+                    setActiveView(null);
+                  }}
+                  className="ml-3 text-[12.5px] font-semibold text-pim-mercan hover:underline"
+                >
+                  ↻ Tüm filtreleri temizle
+                </button>
+              </>
+            )}
           </p>
         </div>
 
