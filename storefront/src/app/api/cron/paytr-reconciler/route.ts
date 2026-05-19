@@ -24,6 +24,10 @@ import * as Sentry from "@sentry/nextjs";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { queryPaymentStatus, isPayTrConfigured } from "@/lib/payment/paytr";
+import {
+  sendOrderConfirmation,
+  sendOrderProofRequired,
+} from "@/lib/mail/notifications";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -187,9 +191,36 @@ export async function GET(req: Request) {
         }
 
         summary.recovered += 1;
+        const recoveredOrderId =
+          (finalizeResult as Array<{ order_id: string }> | null)?.[0]
+            ?.order_id ?? null;
         console.log(
-          `[paytr_reconciler] recovered: intent=${intent.id} → order=${JSON.stringify(finalizeResult)}`
+          `[paytr_reconciler] recovered: intent=${intent.id} → order=${recoveredOrderId}`
         );
+
+        // Sefa 20 May v68 (P0 #3): Recover edilen sipariş için mail
+        // gönder — callback ile aynı pattern. Müşteri tarayıcısı kapalıydı
+        // veya webhook miss oldu, sipariş onay maili yok → şimdi gönder.
+        if (recoveredOrderId) {
+          void sendOrderConfirmation({
+            userId: intent.user_id,
+            orderId: recoveredOrderId,
+          }).catch((err) =>
+            console.error(
+              "[paytr_reconciler] order_confirmation mail failed:",
+              err
+            )
+          );
+          void sendOrderProofRequired({
+            userId: intent.user_id,
+            orderId: recoveredOrderId,
+          }).catch((err) =>
+            console.error(
+              "[paytr_reconciler] proof_required mail failed:",
+              err
+            )
+          );
+        }
       }
     } catch (err) {
       summary.errors += 1;
