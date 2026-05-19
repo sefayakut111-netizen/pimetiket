@@ -105,31 +105,48 @@ export async function PUT(req: Request) {
     );
   }
 
-  // Önce draft kaydet (audit için)
-  const r = await saveDraftPricingConfig(
-    scope,
-    payload as never,
-    auth.user.id,
-    auth.user.email ?? "admin",
-    body.note
-  );
+  // Sefa 19 May v68: try/catch + detail response — kör 500 yerine sebep
+  try {
+    // Önce draft kaydet (audit için)
+    const r = await saveDraftPricingConfig(
+      scope,
+      payload as never,
+      auth.user.id,
+      auth.user.email ?? "admin",
+      body.note
+    );
 
-  if (!r.ok) {
+    if (!r.ok) {
+      return NextResponse.json(
+        { error: "save_failed", detail: r.error },
+        { status: 500 }
+      );
+    }
+
+    // Hemen live'e yayınla (single-step) — Sefa 19 May v68: RPC bypass
+    const { publishPricingConfig } = await import("@/lib/pricing-config");
+    const pub = await publishPricingConfig(
+      scope,
+      auth.user.id,
+      auth.user.email ?? "admin",
+      body.note
+    );
+    if (!pub.ok) {
+      return NextResponse.json(
+        { error: "publish_failed", detail: pub.error },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[PUT /api/admin/pricing] unexpected:", err);
     return NextResponse.json(
-      { error: "save_failed", detail: r.error },
+      {
+        error: "unexpected",
+        detail: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
-
-  // Hemen live'e yayınla (single-step)
-  const { publishPricingConfig } = await import("@/lib/pricing-config");
-  const pub = await publishPricingConfig(scope, body.note);
-  if (!pub.ok) {
-    return NextResponse.json(
-      { error: "publish_failed", detail: pub.error },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ ok: true });
 }

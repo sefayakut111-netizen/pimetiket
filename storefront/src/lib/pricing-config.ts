@@ -185,16 +185,71 @@ export async function saveDraftPricingConfig(
   return { ok: true };
 }
 
+/**
+ * Sefa 19 May v68: RPC bypass edildi.
+ *
+ * Eski versiyon `fn_publish_pricing_config` RPC çağırıyordu. RPC içinde
+ * `auth.uid()` ile yetki check'i vardı. createAdminClient (service role)
+ * ile çağrı yapıldığında auth.uid() NULL döner → RPC içinde
+ * "raise exception 'forbidden'" → 500.
+ *
+ * Çözüm: RPC bypass + direkt update. assertAdmin zaten endpoint
+ * seviyesinde yetki kontrolü yaptığı için RPC'nin tekrar check'ine
+ * gerek yok.
+ */
 export async function publishPricingConfig(
   scope: ScopeName,
+  adminId: string,
+  adminEmail: string,
   note?: string
 ): Promise<{ ok: boolean; error?: string }> {
   const admin = createAdminClient();
-  const { error } = await admin.rpc(
-    "fn_publish_pricing_config" as never,
-    { p_scope: scope, p_note: note ?? null } as never
-  );
-  if (error) return { ok: false, error: error.message };
+
+  // 1. Mevcut draft'ı oku
+  const { data: row, error: readErr } = await admin
+    .from("pricing_config")
+    .select("draft_config")
+    .eq("scope", scope)
+    .single();
+  if (readErr) return { ok: false, error: `read_failed: ${readErr.message}` };
+  if (!row) return { ok: false, error: "scope_not_found" };
+
+  const draft = (row as { draft_config: ScopeConfig }).draft_config;
+  const now = new Date().toISOString();
+
+  // 2. Live'a kopyala
+  const { error: updErr } = await admin
+    .from("pricing_config")
+    .update({
+      live_config: draft,
+      live_updated_at: now,
+      live_updated_by: adminId,
+      live_updated_by_email: adminEmail,
+      live_published_at: now,
+    } as never)
+    .eq("scope", scope);
+  if (updErr) return { ok: false, error: `update_failed: ${updErr.message}` };
+
+  // 3. History snapshot (audit)
+  const { error: histErr } = await admin
+    .from("pricing_config_history")
+    .insert([
+      {
+        scope,
+        action: "publish",
+        config_snapshot: draft,
+        changed_by: adminId,
+        changed_by_email: adminEmail,
+        note: note ?? null,
+      },
+    ] as never);
+  if (histErr) {
+    // History başarısız ama publish başardı — kritik değil, log yap
+    console.warn(
+      `[publishPricingConfig] history insert failed (publish ok): ${histErr.message}`
+    );
+  }
+
   invalidatePricingCache(scope);
   return { ok: true };
 }

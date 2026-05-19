@@ -31,7 +31,12 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as { note?: string };
 
-  const r = await publishPricingConfig(scope, body.note);
+  const r = await publishPricingConfig(
+    scope,
+    auth.user.id,
+    auth.user.email ?? "admin",
+    body.note
+  );
   if (!r.ok) {
     return NextResponse.json(
       { error: "publish_failed", detail: r.error },
