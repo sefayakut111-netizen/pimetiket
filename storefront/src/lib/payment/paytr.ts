@@ -451,6 +451,120 @@ export async function refundPayment(
 }
 
 // ============================================================
+// queryPaymentStatus — PayTR Durum Sorgu API
+// Sefa 20 May v68 (Agent denetim P0 #1 — reconciler için)
+//
+// IPN miss durumunda: ödemenin gerçekten başarılı olup olmadığını
+// PayTR'den senkron sorgu ile doğrular. Müşteri tarayıcısı kapanmış
+// veya webhook ulaşmamış olabilir → bu API ile recover edilir.
+//
+// Endpoint: https://www.paytr.com/odeme/durum-sorgu
+// Hash: sha256(merchant_id + merchant_oid + merchant_salt + merchant_key) base64
+// ============================================================
+
+interface QueryStatusResult {
+  ok: boolean;
+  status?: "success" | "waiting" | "failed";
+  paymentAmountKurus?: number;
+  paymentTotalKurus?: number;
+  installmentCount?: number;
+  reason?: string;
+  errCode?: number;
+}
+
+function computeQueryHash(params: {
+  merchantId: string;
+  merchantKey: string;
+  merchantSalt: string;
+  merchantOid: string;
+}): string {
+  const raw =
+    params.merchantId + params.merchantOid + params.merchantSalt;
+  return crypto
+    .createHmac("sha256", params.merchantKey)
+    .update(raw)
+    .digest("base64");
+}
+
+export async function queryPaymentStatus(
+  merchantOid: string
+): Promise<QueryStatusResult> {
+  const cfg = getConfig();
+  const paytrToken = computeQueryHash({
+    merchantId: cfg.merchantId,
+    merchantKey: cfg.merchantKey,
+    merchantSalt: cfg.merchantSalt,
+    merchantOid,
+  });
+
+  const params = new URLSearchParams({
+    merchant_id: cfg.merchantId,
+    merchant_oid: merchantOid,
+    paytr_token: paytrToken,
+  });
+
+  let res: Response;
+  try {
+    res = await fetch("https://www.paytr.com/odeme/durum-sorgu", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "user-agent": "PimEtiket/1.0",
+      },
+      body: params.toString(),
+    });
+  } catch (err) {
+    console.error("[paytr/query] network error:", merchantOid, err);
+    return { ok: false, reason: "network_error" };
+  }
+
+  if (!res.ok) {
+    return { ok: false, reason: `http_${res.status}` };
+  }
+
+  let data: {
+    status: string;
+    payment_amount?: string | number;
+    payment_total?: string | number;
+    installment_count?: string | number;
+    reason?: string;
+    err_msg?: string;
+    err_no?: number;
+  };
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, reason: "invalid_json" };
+  }
+
+  // status: 'success' | 'waiting' | 'failed'
+  if (data.status === "success") {
+    return {
+      ok: true,
+      status: "success",
+      paymentAmountKurus: Number(data.payment_amount ?? 0),
+      paymentTotalKurus: Number(data.payment_total ?? 0),
+      installmentCount: Number(data.installment_count ?? 1),
+    };
+  }
+  if (data.status === "waiting") {
+    return { ok: true, status: "waiting" };
+  }
+  if (data.status === "failed") {
+    return {
+      ok: true,
+      status: "failed",
+      reason: data.reason ?? data.err_msg ?? "failed",
+      errCode: data.err_no,
+    };
+  }
+  return {
+    ok: false,
+    reason: `unknown_status:${data.status}`,
+  };
+}
+
+// ============================================================
 // Helper — sepet item builder (cart_items'tan PayTR formatına)
 // ============================================================
 

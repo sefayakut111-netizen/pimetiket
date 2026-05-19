@@ -13,6 +13,10 @@
       "schedule": "5 2 * * *"
     },
     {
+      "path": "/api/cron/paytr-reconciler",
+      "schedule": "30 3 * * *"
+    },
+    {
       "path": "/api/cron/purge-expired-designs",
       "schedule": "0 4 * * *"
     },
