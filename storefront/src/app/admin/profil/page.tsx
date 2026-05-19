@@ -22,6 +22,7 @@ import Link from "next/link";
 import { Card, Eyebrow, Input, Button, useToast, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { fmtDateTime } from "@/lib/format-date";
 
 interface ProfileInfo {
   id: string;
@@ -207,16 +208,9 @@ export default function AdminProfilPage() {
     toast.success("Diğer oturumlar kapatıldı");
   }
 
-  function formatDateTime(iso: string | null): string {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleString("tr-TR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
+  // Sefa 20 May v68: hydration-safe helper (Europe/Istanbul zorunlu)
+  const formatDateTime = (iso: string | null) =>
+    fmtDateTime(iso, { day: "2-digit", year: "numeric" });
 
   if (loading) {
     return (

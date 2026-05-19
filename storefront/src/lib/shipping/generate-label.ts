@@ -17,10 +17,9 @@
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import bwipjs from "bwip-js/node";
-import {
-  NOTOSANS_REGULAR_BASE64,
-  NOTOSANS_BOLD_BASE64,
-} from "./fonts/noto-sans-base64";
+// Sefa 20 May v68 (DevOps agent P2): noto-sans-base64.ts ~1.6MB.
+// Static import → her cold-start'ta parse cezası. Dynamic import ile
+// font sadece generateShippingLabel çağrılınca yüklenir.
 
 // ============================================================
 // Tipler
@@ -119,7 +118,10 @@ export async function generateShippingLabel(
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
 
-  // Noto Sans TR embed (Türkçe karakterler için)
+  // Noto Sans TR embed (Türkçe karakterler için) — lazy load
+  const { NOTOSANS_REGULAR_BASE64, NOTOSANS_BOLD_BASE64 } = await import(
+    "./fonts/noto-sans-base64"
+  );
   const regularBytes = Uint8Array.from(
     Buffer.from(NOTOSANS_REGULAR_BASE64, "base64")
   );

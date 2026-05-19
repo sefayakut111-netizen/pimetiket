@@ -103,16 +103,8 @@ const SEGMENT_META: Record<
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
-function fmtDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("tr-TR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+// Sefa 20 May v68 (Frontend P1 #9): hydration-safe helper'a geçildi
+import { fmtDateTime } from "@/lib/format-date";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—";

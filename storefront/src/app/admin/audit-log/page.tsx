@@ -12,6 +12,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { fmtDateTime } from "@/lib/format-date";
 import {
   listAuditEntries,
   refreshAuditLog,
@@ -162,13 +163,8 @@ export default function AdminAuditLogPage() {
               </thead>
               <tbody className="divide-y divide-gri-100">
                 {filtered.map((e) => {
-                  const dt = new Date(e.createdAtIso);
-                  const date = dt.toLocaleString("tr-TR", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                  // Sefa 20 May v68: hydration-safe (Europe/Istanbul)
+                  const date = fmtDateTime(e.createdAtIso);
                   return (
                     <tr key={e.id} className="hover:bg-gri-50">
                       <td className="px-4 py-3 text-gri-700 text-[12.5px] tabular-nums whitespace-nowrap">
