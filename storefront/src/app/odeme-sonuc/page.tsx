@@ -85,7 +85,7 @@ function OdemeSonucInner() {
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
 
   const status = sp.get("status") ?? "success";
-  const orderId = sp.get("order") ?? "PE-2026-00000000";
+  const orderId = sp.get("order") ?? "00000000";
 
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   useEffect(() => {

@@ -83,13 +83,14 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
-// Sefa kuralı (19 May v68): Sipariş ID'leri sadece rakamdan oluşur —
-// telefon/WhatsApp dictation, kargo etiketi, fatura, üretici RIP sistemi
-// için harf/rakam karışıklığı (B/P/D, I/1, O/0) çözüldü.
+// Sefa kuralı (19 May v68): Sipariş ID = 8 haneli saf rakam.
+// Önceki "PE-YIL-XXX" formatı kaldırıldı (Sefa: "pe leri de tireleri
+// de kaldır"). Yıl bilgisi created_at kolonunda zaten var.
 //
-// Format: PE-2026-12345678 (10^8 = 100 milyon kombinasyon).
-// Yıl başına 1M sipariş varsayımında doğum günü paradoksu ile çakışma
-// olasılığı ~%0.05 — DB unique constraint zaten korur, retry mantığı yok.
+// Format: 12345678 (10^8 = 100 milyon kombinasyon).
+// Telefon/WhatsApp dictation, kargo etiketi, fatura, RIP sistemi için
+// en pratik form — harf yok, prefix yok, tire yok.
+// Çakışma: yıl başına 1M sipariş bile ~%0.05 (DB unique constraint korur).
 const NUMERIC_ALPHABET = "0123456789";
 
 function numericId8(): string {
@@ -98,7 +99,6 @@ function numericId8(): string {
     crypto.getRandomValues(bytes);
     let out = "";
     for (let i = 0; i < 8; i++) {
-      // 256 % 10 = 6 → ilk 6 rakam çok hafif bias ama insan gözüyle görülmez
       out += NUMERIC_ALPHABET[bytes[i] % 10];
     }
     return out;
@@ -111,10 +111,9 @@ function numericId8(): string {
   return out;
 }
 
-/** PE-{YIL}-{8 rakam} formatında sipariş id üret. Örn: PE-2026-48372651 */
+/** 8 haneli saf rakam sipariş id üret. Örn: 48372651 */
 export function generateOrderId(): string {
-  const year = new Date().getFullYear();
-  return `PE-${year}-${numericId8()}`;
+  return numericId8();
 }
 
 /** Bugünden N gün sonrası ISO date (sadece tarih). */
