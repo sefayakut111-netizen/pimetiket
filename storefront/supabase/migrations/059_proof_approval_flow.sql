@@ -105,7 +105,9 @@ create index if not exists cutline_designs_status_idx
 alter table public.cutline_designs enable row level security;
 
 -- Müşteri kendi siparişinin cutline'larını okur
-create policy if not exists cutline_designs_owner_select
+-- NOT: PostgreSQL ≤14 'create policy if not exists' desteklemez → drop+create
+drop policy if exists cutline_designs_owner_select on public.cutline_designs;
+create policy cutline_designs_owner_select
   on public.cutline_designs for select
   using (
     user_id = auth.uid()
@@ -117,7 +119,8 @@ create policy if not exists cutline_designs_owner_select
   );
 
 -- Müşteri kendi siparişine cutline INSERT edebilir (sadece kendi user_id ile)
-create policy if not exists cutline_designs_owner_insert
+drop policy if exists cutline_designs_owner_insert on public.cutline_designs;
+create policy cutline_designs_owner_insert
   on public.cutline_designs for insert
   with check (
     user_id = auth.uid()
@@ -130,7 +133,8 @@ create policy if not exists cutline_designs_owner_insert
   );
 
 -- Müşteri kendi draft cutline'ını günceller
-create policy if not exists cutline_designs_owner_update
+drop policy if exists cutline_designs_owner_update on public.cutline_designs;
+create policy cutline_designs_owner_update
   on public.cutline_designs for update
   using (
     user_id = auth.uid()
@@ -170,12 +174,14 @@ create index if not exists proof_help_requests_user_idx
 alter table public.proof_help_requests enable row level security;
 
 -- Müşteri sadece kendi ticket'larını görür
-create policy if not exists proof_help_requests_owner_select
+drop policy if exists proof_help_requests_owner_select on public.proof_help_requests;
+create policy proof_help_requests_owner_select
   on public.proof_help_requests for select
   using (user_id = auth.uid());
 
 -- Müşteri kendi siparişine ticket açar
-create policy if not exists proof_help_requests_owner_insert
+drop policy if exists proof_help_requests_owner_insert on public.proof_help_requests;
+create policy proof_help_requests_owner_insert
   on public.proof_help_requests for insert
   with check (
     user_id = auth.uid()
