@@ -46,13 +46,11 @@ const EXTRA = {
     postPayHint:
       "Ödeme sonrası 3 gün içinde tasarım dosyalarını yüklemen yeterli.",
     locale: "tr-TR",
-    // Sefa 17 May P1-14: /etiket konfigüratörü ile aynı hassasiyet
-    // (smart precision — exact 2-decimal ise 2 göster, yoksa 4)
-    decimal: (n: number) => {
-      const two = Math.round(n * 100) / 100;
-      if (Math.abs(two - n) < 0.0005) return n.toFixed(2).replace(".", ",");
-      return n.toFixed(4).replace(".", ",");
-    },
+    // Sefa 19 May v68 (UX agent P1 #12): birim fiyat HER ZAMAN 2 basamak.
+    // Eski: smart precision (2 ya da 4) — sticker konfigüratöründe 2'ye
+    // sabitlendi ama sepete inmemişti, "0,2510" gibi 4-basamak görünüm
+    // güven kırıcıydı. Tutarsızlık giderildi.
+    decimal: (n: number) => n.toFixed(2).replace(".", ","),
   },
   en: {
     toastRemoved: "Removed from cart",
@@ -64,11 +62,7 @@ const EXTRA = {
     postPayHint:
       "Upload your design files within 3 days after payment — that's all.",
     locale: "en-US",
-    decimal: (n: number) => {
-      const two = Math.round(n * 100) / 100;
-      if (Math.abs(two - n) < 0.0005) return n.toFixed(2);
-      return n.toFixed(4);
-    },
+    decimal: (n: number) => n.toFixed(2),
   },
 };
 
