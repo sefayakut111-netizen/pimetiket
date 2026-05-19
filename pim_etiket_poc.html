@@ -1245,17 +1245,103 @@
       flex-wrap: wrap;
     }
   }
+
+  /* === 19 May UX düzeltmeleri === */
+  /* POC rozeti sadece dev modunda görünür (embed ve production hostlarında gizli) */
+  body:not(.is-dev) .poc-tag { display: none; }
+
+  /* Seçim sinyali — kart aktifken sağ üstte check ikonu */
+  .material-btn.active,
+  .mode-btn.active { position: relative; }
+  .material-btn.active::after,
+  .mode-btn.active::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.85;
+  }
+
+  /* Yardım butonu daha belirgin — buton görünümü */
+  .btn-help {
+    border: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    font-weight: 500;
+  }
+  .btn-help:hover {
+    background: var(--surface-2) !important;
+    border-color: var(--text-muted) !important;
+  }
+
+  /* Tier rozeti tooltip'i olduğunu işaret et */
+  .tier-badge { cursor: help; }
+
+  /* Lejant item gizleme — JS aktif/pasif olarak yönetir */
+  .legend-item.hidden { display: none; }
+
+  /* Dosya paneli — panel solid border + upload-zone dashed border çakışmasını kaldır.
+     Upload-zone tek başına görsel kart rolünü üstlenir. */
+  .panel.panel-upload {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .panel.panel-upload .panel-title {
+    padding-left: 4px;
+    margin-bottom: 10px;
+  }
+  /* Dashed pattern köşelerde daha temiz görünsün, üst kenarda label ile aralık olsun */
+  .panel.panel-upload .upload-zone {
+    border-width: 1.5px;
+  }
+
+  /* === EMBED / PRODUCTION MODU ===
+     POC artık /onay/[orderId]/duzenle/[itemId] içinde embed olarak açılacak.
+     Müşteri kendi dosyasını yüklemez (zaten sipariş anında yüklemiş),
+     dışa aktaramaz (sistem manifeste taşır). Sadece is-dev modunda görünür. */
+  body.is-embed .panel-upload,
+  body.is-embed .panel-export,
+  body:not(.is-dev):not(.is-embed) .panel-upload,
+  body:not(.is-dev):not(.is-embed) .panel-export {
+    display: none;
+  }
 </style>
 </head>
 <body>
+<script>
+  // POC iki modda çalışır:
+  //   - is-dev: localhost / file:// — Sefa standalone test, tüm araçlar görünür
+  //   - is-embed: iframe içinde (?orderId=X) — müşteri akışı, upload + SVG indir gizli
+  //
+  // is-embed önceliklidir; is-dev ile çakışırsa is-embed kazanır
+  // (yani Sefa localhost'ta /onay/duzenle/X'i açtığında da müşteri görünümü görür).
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const embedded = window.parent && window.parent !== window;
+    const hasOrderId = params.has('orderId') && params.has('itemId');
+
+    if (embedded || hasOrderId || params.get('embed') === '1') {
+      document.body.classList.add('is-embed');
+    } else if (
+      ['localhost', '127.0.0.1', '::1'].includes(location.hostname) ||
+      location.protocol === 'file:'
+    ) {
+      document.body.classList.add('is-dev');
+    }
+  })();
+</script>
 
 <header>
   <div class="logo">
     <div class="logo-mark">P</div>
     <span>Pim Etiket</span>
-    <span class="poc-tag">POC · Bıçak Üretici</span>
+    <span class="poc-tag" title="Geliştirme ortamı — production'da gizlidir">POC · Bıçak Üretici</span>
   </div>
-  <div id="cvStatus">
+  <div id="cvStatus" title="Sistem hazırlık durumu">
     <span class="dot"></span>
     <span class="text">OpenCV yükleniyor...</span>
   </div>
@@ -1264,7 +1350,7 @@
 <main>
   <aside class="sidebar">
     <!-- Upload -->
-    <div class="panel">
+    <div class="panel panel-upload">
       <div class="panel-title">Dosya</div>
       <label class="upload-zone" id="uploadZone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1379,19 +1465,19 @@
     <!-- Görünürlük -->
     <div class="panel">
       <div class="panel-title">Katmanlar</div>
-      <div class="toggle-row">
+      <div class="toggle-row" title="Pembe kesikli çizgi — kesim makinesinin takip edeceği yol">
         <span>Bıçak çizgisi</span>
         <div class="toggle on" data-layer="cut"></div>
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row" title="Şeffaf/metalize folyoda renklerin doğru çıkması için tasarımın altına basılan beyaz mürekkep katmanı">
         <span>Beyaz plan</span>
         <div class="toggle" data-layer="white"></div>
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row" title="Bleed (taşma payı) — renkli alanın kesim çizgisinin 2 mm dışına taşması; kenarda beyaz çizgi oluşmasın diye">
         <span>Bleed (taşma)</span>
         <div class="toggle" data-layer="bleed"></div>
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row" title="Safe zone (güvenli alan) — yazı/önemli detayların kesim çizgisinin 2 mm içinde kalması; bıçak kayarsa bir şey kesilmesin diye">
         <span>Safe zone</span>
         <div class="toggle" data-layer="safe"></div>
       </div>
@@ -1411,9 +1497,9 @@
       </div>
     </div>
 
-    <!-- Çıktı -->
-    <div class="panel">
-      <div class="panel-title">Çıktı</div>
+    <!-- Çıktı — sadece dev modunda (production'da müşteri dosya indirmez) -->
+    <div class="panel panel-export">
+      <div class="panel-title">Çıktı (dev)</div>
       <button class="btn secondary" id="exportSvg" disabled>SVG indir</button>
     </div>
 
@@ -1437,14 +1523,17 @@
       <div>
         <strong style="font-size:14px;">Canlı önizleme</strong>
       </div>
-      <div class="legend">
-        <div class="legend-item">
+      <div class="legend" id="legend">
+        <div class="legend-item" data-legend="cut">
           <span class="legend-swatch" style="border-top-color: var(--cut);"></span> Bıçak
         </div>
-        <div class="legend-item">
+        <div class="legend-item hidden" data-legend="white">
+          <span class="legend-swatch" style="border-top-color: #ffffff; background:#f3f3f3;"></span> Beyaz plan
+        </div>
+        <div class="legend-item hidden" data-legend="bleed">
           <span class="legend-swatch" style="border-top-color: var(--bleed);"></span> Bleed
         </div>
-        <div class="legend-item">
+        <div class="legend-item hidden" data-legend="safe">
           <span class="legend-swatch" style="border-top-color: var(--safe);"></span> Safe
         </div>
       </div>
@@ -1457,16 +1546,16 @@
       </div>
       <canvas id="canvas" class="hidden"></canvas>
 
-      <!-- Onay sonrası overlay -->
+      <!-- Kaydetme sonrası overlay -->
       <div class="approval-overlay" id="approvalOverlay">
         <div class="approval-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-        <h2>Bıçak onaylandı</h2>
-        <p>Sepete ekleniyor, üretim aşamasına geçiyoruz.</p>
-        <button class="btn-edit" onclick="resetApproval()">Geri al</button>
+        <h2>Bıçak kaydedildi</h2>
+        <p id="approvalMsg">Onay sayfasına dönülüyor…</p>
+        <button class="btn-edit" onclick="resetApproval()">Düzenlemeye devam</button>
       </div>
     </div>
 
@@ -1492,9 +1581,11 @@
         </button>
         <button class="btn-approve" id="btnApprove" disabled>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
           </svg>
-          Bıçağı onayla
+          Kaydet ve dön
         </button>
       </div>
     </div>
@@ -1555,12 +1646,97 @@ function onOpenCvReady() {
   if (typeof updateLibStatus === 'function') {
     updateLibStatus();
   }
+  // Embed/headless mode: URL paramından design fetch et + otomatik işle
+  if (typeof tryHeadlessAutoLoad === 'function') {
+    tryHeadlessAutoLoad();
+  }
 }
 
 // OpenCV.js initialization module
 var Module = {
   onRuntimeInitialized: onOpenCvReady
 };
+
+// ============================================================
+// HEADLESS / EMBED AUTO-LOAD
+// ============================================================
+// Parent storefront /onay sayfasına gelince hidden iframe ile POC açar,
+// URL paramında design URL geçer. POC otomatik fetch + işle + autoSave=1
+// ise btnApprove tetiklenir → postMessage('pim-cutline-saved').
+//
+// Desteklenen paramlar:
+//   designUrl  — fetch edilecek tasarım dosyası (signed URL)
+//   designName — dosya adı (uzantı tespit için, default "design.png")
+//   designMime — MIME (varsa, yoksa fetch sırasında Content-Type'dan)
+//   material   — paper / transparent / metallic / holographic
+//   mode       — contour / hull / rect / circle (default contour)
+//   autoSave   — '1' ise işlem tamamlanınca btnApprove tetiklenir
+let __pendingAutoSave = false;
+async function tryHeadlessAutoLoad() {
+  const params = new URLSearchParams(location.search);
+  const designUrl = params.get('designUrl');
+  if (!designUrl) return;
+
+  // Material preset
+  const materialPreset = params.get('material');
+  if (materialPreset) {
+    const btn = document.querySelector(`.material-btn[data-material="${materialPreset}"]`);
+    if (btn) btn.click();
+  }
+
+  // Mode preset
+  const modePreset = params.get('mode');
+  if (modePreset) {
+    const btn = document.querySelector(`.mode-btn[data-mode="${modePreset}"]`);
+    if (btn) btn.click();
+  }
+
+  // Auto save flag — processImage zinciri tamamlanınca btnApprove.click()
+  __pendingAutoSave = params.get('autoSave') === '1';
+
+  try {
+    showLoading('Tasarım indiriliyor…');
+    const res = await fetch(designUrl, { credentials: 'omit' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const name = params.get('designName') || 'design.png';
+    const mime = params.get('designMime') || blob.type || 'image/png';
+    const file = new File([blob], name, { type: mime });
+    handleFile(file);
+  } catch (err) {
+    console.error('[PimEtiket] headless auto-load failed:', err);
+    hideLoading();
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'pim-cutline-auto-failed',
+        error: err && err.message ? err.message : 'fetch_failed'
+      }, '*');
+    }
+  }
+}
+
+// processImage zincirinin sonunda autoSave tetiklenecek — flagi check eden
+// global flush hook. processImage senkron, generatePimComment zincirinden
+// sonra burayı çağırırız.
+function flushHeadlessAutoSave() {
+  if (!__pendingAutoSave) return;
+  __pendingAutoSave = false;
+  // currentPaths boşsa save edemeyiz — Pim hata branch'i zaten parent'a
+  // anlamlı mesaj iletmiş olur (mevcut onMessage handler).
+  if (!currentPaths || currentPaths.length === 0) {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'pim-cutline-auto-failed',
+        error: 'cutline_empty'
+      }, '*');
+    }
+    return;
+  }
+  // 200ms gecikme — render + Pim AI yorumu DOM'a yazılsın
+  setTimeout(() => {
+    document.getElementById('btnApprove').click();
+  }, 200);
+}
 
 // ============================================================
 // DOSYA YÜKLEME
@@ -1951,9 +2127,14 @@ function processImage(img, file) {
   updateMetadataDisplay();
   generateCutline();
   generateWhitePlan();
+  updateLegend();
   render();
   generatePimComment();
+  // Status indicator'ı "Hazır" yeşil noktaya geçir — dosya yüklendi, motor hazır
+  if (typeof window.updateLibStatus === 'function') window.updateLibStatus();
   hideLoading();
+  // Headless mode: autoSave=1 ile çağrıldıysa btnApprove'a otomatik tıkla
+  if (typeof flushHeadlessAutoSave === 'function') flushHeadlessAutoSave();
 }
 
 // ============================================================
@@ -2661,6 +2842,17 @@ function runPreflight() {
       `<div class="status ${i.level === 'err' ? 'err' : 'warn'}" style="margin-bottom:6px;">${i.msg}</div>`
     ).join('');
   }
+
+  // Onay butonu — err level varsa veya bıçak üretilemediyse engelle
+  const hasBlockingError = issues.some(i => i.level === 'err') || currentPaths.length === 0;
+  const btnApprove = document.getElementById('btnApprove');
+  if (btnApprove) {
+    btnApprove.disabled = hasBlockingError;
+    btnApprove.title = hasBlockingError
+      ? 'Önce bıçak çizgisi sorununu çöz — yukarıdaki kırmızı uyarıya bak'
+      : 'Bıçağı onayla ve üretim aşamasına geç';
+    if (hasBlockingError) btnApprove.classList.remove('highlighted');
+  }
 }
 
 // ============================================================
@@ -2739,14 +2931,36 @@ function generatePimComment() {
   const dpi = imageMetadata.dpi;
   const partCount = currentPaths.length;
   const coverage = imageMetadata.cutCoverage || 0;
+  const hasBlockingError = partCount === 0;
+
+  // HATA DURUMU — tier'dan bağımsız tek tutarlı mesaj
+  // (statusBox kırmızı uyarı veriyor, onay butonu disabled — Pim de bunu söylemeli)
+  if (hasBlockingError) {
+    document.getElementById('btnApprove').classList.remove('highlighted');
+    let errMsg = 'Bıçak çizgisi üretemedim — görselin şeffaf arka planı yok ya da kontur tespit edilemedi.';
+    let errAction = '';
+    if (currentFileSource === 'raster') {
+      errMsg += ' AI ile arka planı kaldırırsam mükemmel sonuç alırız, deneyelim mi?';
+      errAction = `<button class="pim-action" onclick="performBackgroundRemoval()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.813 1.9a2 2 0 0 1 1.287 1.288L12 21l1.9-5.813a2 2 0 0 1 1.287-1.287L21 12l-5.813-1.9a2 2 0 0 1-1.287-1.287Z"/>
+        </svg>
+        Evet, arka planı kaldır
+      </button>`;
+    }
+    document.getElementById('pimText').innerHTML = errMsg + errAction;
+    document.getElementById('pimComment').style.display = 'flex';
+    return;
+  }
 
   const tierInfo = classifyTier();
 
   let msg = '';
   let actionBtn = '';
 
-  // Tier rozeti
-  const tierBadge = `<div class="tier-badge ${tierInfo.tier}">${tierInfo.label}</div>`;
+  // Tier rozeti — title attribute ile açıklama
+  const tierTip = 'Tasarım kalite sınıflandırması — Profesyonel: gömülü bıçaklı dosya · Standart: temiz kaliteli görsel · İyileştirme: arka plan/DPI düzeltmesi önerilir';
+  const tierBadge = `<div class="tier-badge ${tierInfo.tier}" title="${tierTip}">${tierInfo.label}</div>`;
 
   // PROFESYONEL — minimal, güven veren, "onayla" odaklı
   if (tierInfo.tier === 'pro') {
@@ -2794,7 +3008,7 @@ function generatePimComment() {
     } else if (offsetMm < 1) {
       msg = `Kesim mesafesi ${offsetMm.toFixed(1)}mm — biraz dar. Kesim makinesi 0.3mm'lik tolerans ile çalışıyor, 2mm önerilir.`;
     } else {
-      let baseMsg = `${currentFileSource === 'vector' ? 'Vektörel' : 'Yüksek kaliteli'} bir dosya yüklemişsin. Bıçağı temiz ürettim, baskıya hazır görünüyor.`;
+      let baseMsg = `${currentFileSource === 'vector' ? 'Vektörel' : 'Yüksek kaliteli'} bir dosya yüklemişsin. Bıçak temiz üretildi, baskıya hazır görünüyor.`;
       if (materialType !== 'paper' && whitePlanPaths.length > 0) {
         baseMsg += ` ${materialLabel(materialType)} seçtin, beyaz planı ${whitePlanMode === 'full' ? 'tam kaplama' : 'akıllı (smart)'} modunda ürettim — sol panelden "Beyaz plan" toggle'ı ile önizleyebilirsin.`;
       }
@@ -2883,15 +3097,45 @@ document.getElementById('btnEdit').addEventListener('click', () => {
   }
 });
 
-// "Bıçağı onayla" — onay overlay göster
+// "Kaydet ve dön" — SVG + meta + preview PNG'yi parent onay sayfasına yolla.
+// Müşteri akışı: /onay/[orderId]/duzenle/[itemId] iframe'i bu POC'u host eder;
+// parent storefront save-edit endpoint'ine POST eder, cutline_designs'a yazar.
 document.getElementById('btnApprove').addEventListener('click', () => {
   if (!currentMat) return;
+  const svg = buildCutlineSvg();
+  if (!svg) return;
+  const meta = buildCutlineMeta();
+  const preview_png_base64 = buildPreviewPng();
+
+  const isEmbedded = window.parent && window.parent !== window;
+  const approvalMsg = document.getElementById('approvalMsg');
+  const payload = { type: 'pim-cutline-saved', svg, meta, preview_png_base64 };
+
+  if (isEmbedded) {
+    // Storefront parent dinler ve save-edit endpoint'ine POST eder
+    window.parent.postMessage(payload, '*');
+    if (approvalMsg) approvalMsg.textContent = 'Onay sayfasına dönülüyor…';
+  } else {
+    // Standalone dev — sistem entegrasyonu yok, sadece konsola düş
+    console.log('[PimEtiket] Cutline saved (standalone dev):', { svg: svg.slice(0, 200) + '…', meta });
+    if (approvalMsg) approvalMsg.textContent = 'Standalone test — parent bağlı değil, konsola düştü.';
+  }
   document.getElementById('approvalOverlay').classList.add('show');
-  // Gerçek sistemde burada sepete ekleme / order workflow tetiklenir
-  console.log('[PimEtiket] Bıçak onaylandı, sipariş akışına geçildi');
 });
 
-// Onay sonrası "Geri al" — overlay'i kaldır, kullanıcı düzenleyebilir
+// Parent'tan kabul/red bildirimi — embedded mode'da save-edit başarısız olursa
+// parent bize {type:'pim-cutline-save-failed', error} yollayabilir.
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type === 'pim-cutline-save-failed') {
+    document.getElementById('approvalOverlay').classList.remove('show');
+    if (typeof showStatus === 'function') {
+      showStatus('Kaydetme başarısız: ' + (e.data.error || 'Bilinmeyen hata'), 'err');
+    }
+  }
+});
+
+// Parent'ın kayıt iptal mesajı veya kullanıcı "Düzenlemeye devam" derse overlay kapansın
 window.resetApproval = function() {
   document.getElementById('approvalOverlay').classList.remove('show');
 };
@@ -2942,11 +3186,21 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
   });
 });
 
+// Lejantı aktif katmanlara göre güncelle (sadece açık olanlar görünür)
+function updateLegend() {
+  document.querySelectorAll('#legend .legend-item').forEach(item => {
+    const key = item.dataset.legend;
+    const shouldShow = layers[key] === true;
+    item.classList.toggle('hidden', !shouldShow);
+  });
+}
+
 // Layer toggles
 document.querySelectorAll('.toggle').forEach(t => {
   t.addEventListener('click', () => {
     t.classList.toggle('on');
     layers[t.dataset.layer] = t.classList.contains('on');
+    updateLegend();
     render();
   });
 });
@@ -2978,6 +3232,7 @@ document.querySelectorAll('.material-btn').forEach(btn => {
     }
 
     updateWhiteNote();
+    updateLegend();
 
     if (currentMat) {
       generateWhitePlan();
@@ -3089,11 +3344,10 @@ updateOffsetNote();
 // ============================================================
 // SVG EXPORT (CutContour spot color uyumlu)
 // ============================================================
-document.getElementById('exportSvg').addEventListener('click', () => {
-  if (!currentPaths || currentPaths.length === 0 || !currentMat) {
-    showStatus('Önce bir görsel yükleyin', 'warn');
-    return;
-  }
+// Mevcut state'ten SVG string'i üretir. Hem "SVG indir" (dev) hem "Kaydet ve dön"
+// (production, parent postMessage) ortak kullanır.
+function buildCutlineSvg() {
+  if (!currentPaths || currentPaths.length === 0 || !currentMat) return null;
 
   const inverseScale = 1 / imageMetadata.scale;
   const w = imageMetadata.originalW;
@@ -3176,6 +3430,72 @@ ${whitePaths}  </g>` : '';
 ${svgPaths}  </g>
 </svg>`;
 
+  return svg;
+}
+
+// Mevcut state'in cutline_designs tablosuna yazılacak metadata özeti.
+// /api/orders/[id]/proof/[itemId]/save-edit endpoint body shape'iyle uyumlu.
+function buildCutlineMeta() {
+  const tierInfo = (typeof classifyTier === 'function' && imageMetadata) ? classifyTier() : null;
+  const pimText = document.getElementById('pimText');
+  const pimFeedback = pimText ? pimText.textContent.trim().slice(0, 2000) : null;
+  // tier → severity türetimi: pro/standard = ok, improve = warn, currentPaths boş = err
+  let severity = 'ok';
+  if (!currentPaths || currentPaths.length === 0) severity = 'err';
+  else if (tierInfo && tierInfo.tier === 'improve') severity = 'warn';
+
+  return {
+    // Endpoint body shape (snake_case)
+    source: currentFileSource || 'raster',
+    mode: currentMode,
+    offset_mm: parseFloat(document.getElementById('offsetSlider').value),
+    smoothness: parseInt(document.getElementById('smoothSlider').value),
+    dpi: imageMetadata ? imageMetadata.dpi : null,
+    width_mm: imageMetadata ? parseFloat(imageMetadata.widthMm) : null,
+    height_mm: imageMetadata ? parseFloat(imageMetadata.heightMm) : null,
+    pim_feedback: pimFeedback,
+    pim_severity: severity,
+    material_type: materialType,
+    white_plan_mode: whitePlanMode,
+    white_plan_path_count: whitePlanPaths.length,
+    has_custom_white_plan: hasCustomWhitePlan,
+    tier: tierInfo ? tierInfo.tier : null,
+    detected_cut_contour_names: detectedCutContourNames,
+    // Ek diagnostik (endpoint kaydetmez, parent isterse görür)
+    path_count: currentPaths.length,
+    timestamp: new Date().toISOString()
+  };
+}
+
+// Canvas snapshot — preview_png_base64 için (opsiyonel). max 1MB.
+function buildPreviewPng() {
+  const canvas = document.getElementById('canvas');
+  if (!canvas || canvas.classList.contains('hidden')) return null;
+  try {
+    // 0.6 quality + maks 800px boyut — file size <1MB için yeterli
+    const maxW = 800;
+    const scale = canvas.width > maxW ? maxW / canvas.width : 1;
+    if (scale < 1) {
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.round(canvas.width * scale);
+      tmp.height = Math.round(canvas.height * scale);
+      tmp.getContext('2d').drawImage(canvas, 0, 0, tmp.width, tmp.height);
+      return tmp.toDataURL('image/png');
+    }
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('[PimEtiket] preview PNG üretilemedi:', err);
+    return null;
+  }
+}
+
+// "SVG indir" — sadece dev panelinde görünür
+document.getElementById('exportSvg').addEventListener('click', () => {
+  const svg = buildCutlineSvg();
+  if (!svg) {
+    showStatus('Önce bir görsel yükleyin', 'warn');
+    return;
+  }
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -3183,7 +3503,6 @@ ${svgPaths}  </g>
   a.download = `pim-cutline-${Date.now()}.svg`;
   a.click();
   URL.revokeObjectURL(url);
-
   showStatus('SVG indirildi', 'ok');
 });
 
@@ -3246,17 +3565,30 @@ function showStatus(msg, level = 'warn') {
 
   function updateLibStatus() {
     const status = document.getElementById('cvStatus');
+    const text = status.querySelector('.text');
+
+    // Bir dosya yüklenip işlenmişse, o dosya için gerekli motor zaten hazır demektir.
+    // Diğer motorların pending kalması kullanıcıya gösterilmez — yanıltıcı olur.
+    if (typeof currentFile !== 'undefined' && currentFile && cvReady) {
+      status.classList.add('ready');
+      text.textContent = 'Hazır';
+      return;
+    }
+
     if (cvReady && pdfJsReady && psdReady) {
       status.classList.add('ready');
-      status.querySelector('.text').textContent = 'Hazır';
+      text.textContent = 'Hazır';
     } else {
+      status.classList.remove('ready');
       const pending = [];
       if (!cvReady) pending.push('OpenCV');
       if (!pdfJsReady) pending.push('PDF');
       if (!psdReady) pending.push('PSD');
-      status.querySelector('.text').textContent = pending.join(', ') + ' yükleniyor...';
+      text.textContent = pending.join(', ') + ' yükleniyor...';
     }
   }
+  // Diğer kodun çağırabilmesi için global'e expose et
+  window.updateLibStatus = updateLibStatus;
 </script>
 
 <!-- OpenCV.js (yaklaşık 9MB - ilk yüklemede biraz bekleyebilir) -->
