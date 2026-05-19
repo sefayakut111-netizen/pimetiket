@@ -936,6 +936,37 @@ export default function AdminOrderDetailPage({
               </div>
             </Card>
 
+            {/* Sefa 19 May: Kargo etiketi PDF (100×150mm termal).
+                tracking yoksa geçici cargoKey ile basılır — şubeye götür,
+                barkod al, AdminTrackingForm'a gir, yeniden indir. */}
+            {order.status !== "cancelled" && (
+              <Card padding="p-5">
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan shrink-0">
+                    <Icon.Doc size={18} />
+                  </span>
+                  <div className="flex-1">
+                    <h2 className="text-[15px] font-semibold">
+                      Kargo Etiketi
+                    </h2>
+                    <p className="text-[12px] text-gri-700 mt-0.5 leading-relaxed">
+                      100 × 150 mm termal etiket (PDF). Paketin üzerine
+                      yapıştır, şubeye götür. Şubeden barkod aldıktan sonra
+                      aşağıdaki forma gir ve etiketi yeniden indir.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={`/api/admin/shipping/label/${order.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 h-10 rounded-lg bg-pim-mercan text-white text-[13px] font-semibold hover:bg-pim-mercan/90"
+                >
+                  <Icon.Doc size={14} /> PDF indir
+                </a>
+              </Card>
+            )}
+
             {/* Sefa 18 May: Yurtiçi Kargo manuel tracking + durum geçmişi */}
             <AdminTrackingForm orderId={order.id} />
           </div>
