@@ -69,9 +69,14 @@ export function useSequentialSteps({
       return !prerequisiteForFirst;
     }
     // Sonraki adımlar — bir öncekinin touched olduğunu kontrol
+    // Sefa 21 May v68 fix: önceden prev === stepIds[0] durumda SADECE
+    // prerequisiteForFirst'e bakıyordu (touched'a değil) → Step 1 seçilmeden
+    // Step 2 açık görünüyordu. Şimdi:
+    //   - Eğer ilk step prereq'i karşılanmadıysa → locked (önce o tamamlansın)
+    //   - Aksi halde prev step touched mı kontrol et (gerçek sıralı kilit)
     const prev = stepIds[idx - 1];
-    if (prev === stepIds[0] && prerequisiteForFirst !== undefined) {
-      return !prerequisiteForFirst;
+    if (prev === stepIds[0] && prerequisiteForFirst === false) {
+      return true; // ilk step prereq tamamlanmamış
     }
     return !touchedSteps.has(prev);
   };

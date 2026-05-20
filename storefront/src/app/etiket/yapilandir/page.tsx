@@ -440,18 +440,21 @@ const FORM_FACTORS: {
 //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → Step 3 çıkar (gizli, ASLA
 //     touched olmaz, sequential lock sonraki step'leri ASLA açmaz idi).
 //   Stepper ve useSequentialSteps gizli step'leri görmemeli.
+// Sefa 21 May v68 test: "etiket'te adetten önce tasarım yükleme adı geliyor,
+// bu yanlış. adetten sonra gelmeli." → 8 (Adet) önce, 7 (Tasarım) sonra.
+// Sequential lock 6 → 8 → 7 sırasıyla açar. JSX'te de FormSection swap.
 const STEP_IDS_FULL: readonly number[] = (() => {
   const ids: number[] = [];
   if (SHOW_ETIKET_FORM_FACTOR_PICKER) ids.push(0);
   ids.push(1, 2);
   if (SHOW_ETIKET_CUSTOMIZATION_STEP) ids.push(3);
-  ids.push(4, 5, 6, 7, 8);
+  ids.push(4, 5, 6, 8, 7); // Adet (8) → Tasarım (7)
   return ids;
 })();
 // Tabaka modu zaten customization step yok (mevcut davranış korundu).
 const STEP_IDS_TABAKA: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
-  ? [0, 1, 2, 6, 7, 8]
-  : [1, 2, 6, 7, 8];
+  ? [0, 1, 2, 6, 8, 7]
+  : [1, 2, 6, 8, 7];
 
 /** Rulo sarım fiziksel parametreleri (Sefa kuralı 15 May v3).
  *  Göbek çapı: rulonun iç çapı (mm). Endüstri standardı:
@@ -2161,52 +2164,11 @@ function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Step 7 — Tasarım dosyaları (Sefa kuralı 15 May v3):
-                Boyut altına eklenir, max 50 dosya, her biri 30 MB.
-                Stepper'a DAHİL (numaralı). Tasarım adedi input ile
-                fiyat tier mantığına bağlanabilir (sonraki commit).
-                Mig 061: Tasarım zorunlu değil — boş bırakırsan ödeme sonrası
-                /siparis/[id]/tasarim-yukle sayfasından yükleyebilirsin. */}
-            <FormSection
-              id="step-7"
-              number={uiStepNumber(7)}
-              title="Tasarımlar"
-              hint="Tasarımın hazırsa şimdi yükle; değilse boş bırak, ödeme sonrası yükleyebilirsin."
-              locked={isStepLocked(7)}
-              lockMessage={getLockMessage(7)}
-            >
-              <MultiDesignUploader
-                designCount={designCount}
-                onDesignCountChange={(n) => {
-                  setDesignCount(n);
-                  markTouched(7);
-                }}
-                designs={designs}
-                onDesignsChange={(d) => {
-                  setDesigns(d);
-                  markTouched(7);
-                }}
-                qtyPerDesign={qty}
-                productLabel="etiket"
-              />
-              {designDiscountPct > 0 && (
-                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
-                  ✨ {designCount} tasarım için{" "}
-                  <strong>%{designDiscountPct} iskonto</strong> uygulanıyor —
-                  fiyat kartında görünür
-                </p>
-              )}
-              {designs.length === 0 && (
-                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3 text-[12px] leading-relaxed text-lacivert">
-                  <strong>Sonra yükleme akışı aktif:</strong> Tasarımsız da
-                  sepete ekleyebilirsin. Ödeme yaptıktan sonra "Tasarımını
-                  yükle" sayfasına yönlendirileceksin (ve hatırlatma mail'i
-                  alacaksın).
-                </div>
-              )}
-            </FormSection>
-
-            {/* Step 6 — Adet (serbest input + preset chip'ler).
+            {/* Sefa 21 May v68 test: Adet (step-8) ÖNCE, Tasarım (step-7)
+                SONRA gelir. Adet seçimi tasarım upload deneyiminden önce
+                gerekli (fiyat ve iskonto açısından). FormSection JSX order
+                + STEP_IDS_FULL array order ikisi de bu sıraya göre.
+                Step 6 — Adet (serbest input + preset chip'ler).
                 Hint formFactor'a göre dinamik (rulo 1000+, tabaka 100+). */}
             <FormSection
               id="step-8"
@@ -2333,6 +2295,49 @@ function EtiketPage() {
                   );
                 })}
               </div>
+            </FormSection>
+
+            {/* Step 7 — Tasarım dosyaları (Adet'ten SONRA, Sefa 21 May v68):
+                Boyut altına eklenir, max 50 dosya, her biri 30 MB.
+                Mig 061: Tasarım zorunlu değil — boş bırakırsan ödeme sonrası
+                /siparis/[id]/tasarim-yukle sayfasından yükleyebilirsin. */}
+            <FormSection
+              id="step-7"
+              number={uiStepNumber(7)}
+              title="Tasarımlar"
+              hint="Tasarımın hazırsa şimdi yükle; değilse boş bırak, ödeme sonrası yükleyebilirsin."
+              locked={isStepLocked(7)}
+              lockMessage={getLockMessage(7)}
+            >
+              <MultiDesignUploader
+                designCount={designCount}
+                onDesignCountChange={(n) => {
+                  setDesignCount(n);
+                  markTouched(7);
+                }}
+                designs={designs}
+                onDesignsChange={(d) => {
+                  setDesigns(d);
+                  markTouched(7);
+                }}
+                qtyPerDesign={qty}
+                productLabel="etiket"
+              />
+              {designDiscountPct > 0 && (
+                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
+                  ✨ {designCount} tasarım için{" "}
+                  <strong>%{designDiscountPct} iskonto</strong> uygulanıyor —
+                  fiyat kartında görünür
+                </p>
+              )}
+              {designs.length === 0 && (
+                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3 text-[12px] leading-relaxed text-lacivert">
+                  <strong>Sonra yükleme akışı aktif:</strong> Tasarımsız da
+                  sepete ekleyebilirsin. Ödeme yaptıktan sonra "Tasarımını
+                  yükle" sayfasına yönlendirileceksin (ve hatırlatma mail'i
+                  alacaksın).
+                </div>
+              )}
             </FormSection>
 
             {/* Price card — Intersection observer için ref'li wrapper */}
