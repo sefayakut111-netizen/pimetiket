@@ -353,96 +353,96 @@ function SheetIcon() {
 // 11 kart verisi
 // ============================================================
 
-const TEKIL_CARDS: StickerCard[] = [
+// Sefa 20 May v68: tek grid (eski 2 section birleşti).
+// Tüm sticker tipleri tek liste — sticker sayfası dahil.
+// Kart adlarında "sticker" suffix'i (Sefa kararı).
+const STICKER_CARDS: StickerCard[] = [
   {
     query: "cut=diecut&shape=diecut",
-    titleTr: "Özel kesim",
-    titleEn: "Die cut",
+    titleTr: "Özel kesim sticker",
+    titleEn: "Die cut sticker",
     descTr: "Tasarımın çevresinden kontur kesim",
     descEn: "Custom contour cut around design",
     svg: <DieCutIcon />,
   },
   {
     query: "cut=diecut&shape=circle",
-    titleTr: "Yuvarlak",
-    titleEn: "Circle",
+    titleTr: "Yuvarlak sticker",
+    titleEn: "Circle sticker",
     descTr: "Daire formunda sticker",
     descEn: "Round sticker",
     svg: <CircleIcon />,
   },
   {
     query: "cut=diecut&shape=rectangle",
-    titleTr: "Dikdörtgen",
-    titleEn: "Rectangle",
+    titleTr: "Dikdörtgen sticker",
+    titleEn: "Rectangle sticker",
     descTr: "Klasik dikdörtgen — düz veya yumuşak köşe",
     descEn: "Rectangle — sharp or rounded corner",
     svg: <RectangleIcon />,
   },
   {
     query: "cut=diecut&shape=square",
-    titleTr: "Kare",
-    titleEn: "Square",
+    titleTr: "Kare sticker",
+    titleEn: "Square sticker",
     descTr: "Eş kenarlı kare — düz veya yumuşak köşe",
     descEn: "Square — sharp or rounded corner",
     svg: <SquareIcon />,
   },
   {
     query: "cut=diecut&shape=oval",
-    titleTr: "Oval",
-    titleEn: "Oval",
+    titleTr: "Oval sticker",
+    titleEn: "Oval sticker",
     descTr: "Oval/elips sticker",
     descEn: "Oval sticker",
     svg: <OvalIcon />,
   },
   {
     query: "cut=diecut&shape=bumper",
-    titleTr: "Bumper (Tampon)",
-    titleEn: "Bumper",
-    descTr: "Uzun-yatay, otomobil tampon stickerı (280×80mm)",
-    descEn: "Long horizontal, car bumper sticker (280×80mm)",
+    titleTr: "Bumper sticker",
+    titleEn: "Bumper sticker",
+    descTr: "Uzun-yatay, otomobil tampon stickerı",
+    descEn: "Long horizontal car bumper sticker",
     svg: <BumperIcon />,
   },
   {
     query: "cut=kisscut&shape=diecut",
-    titleTr: "Yarı kesim (Kiss cut)",
-    titleEn: "Kiss cut",
+    titleTr: "Yarı kesim sticker",
+    titleEn: "Kiss cut sticker",
     descTr: "Arka kağıt kesilmez, tek tek sökülür",
     descEn: "Backing stays intact, peel individually",
     svg: <KissCutIcon />,
   },
   {
     query: "cut=diecut&shape=diecut&material=transparan",
-    titleTr: "Şeffaf",
-    titleEn: "Clear",
+    titleTr: "Şeffaf sticker",
+    titleEn: "Clear sticker",
     descTr: "Transparan zemin — sadece tasarım görünür",
     descEn: "Transparent — design only visible",
     svg: <ClearIcon />,
   },
   {
     query: "cut=diecut&shape=diecut&material=holo",
-    titleTr: "Holografik",
-    titleEn: "Holographic",
+    titleTr: "Holografik sticker",
+    titleEn: "Holographic sticker",
     descTr: "Gökkuşağı yansıtmalı premium",
     descEn: "Rainbow reflective premium",
     svg: <HoloIcon />,
   },
   {
     query: "cut=diecut&shape=diecut&material=simli",
-    titleTr: "Simli (Glitter)",
-    titleEn: "Glitter",
+    titleTr: "Simli sticker",
+    titleEn: "Glitter sticker",
     descTr: "Parıltılı metalik dokulu",
     descEn: "Sparkly metallic texture",
     svg: <GlitterIcon />,
   },
-];
-
-const TABAKA_CARDS: StickerCard[] = [
   {
     query: "cut=tabaka&shape=square",
-    titleTr: "Sticker tabaka",
-    titleEn: "Sticker sheets",
-    descTr: "Karma şekiller — A4/A3 tabaka üstü",
-    descEn: "Mixed shapes on sheet",
+    titleTr: "Sticker sayfası",
+    titleEn: "Sticker sheet",
+    descTr: "Karma şekiller, tek sayfada",
+    descEn: "Mixed shapes on a single sheet",
     svg: <SheetIcon />,
   },
 ];
@@ -497,33 +497,11 @@ export default function StickerGridPage() {
           </h1>
         </header>
 
-        {/* ÜST SECTION — Tekil sticker (10 kart) */}
+        {/* Sefa 20 May v68: tek grid (eski 2 section birleşti — section
+            başlıkları kaldırıldı). 11 sticker kartı tek listede sıralanır. */}
         <section className="mb-12">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="h-px flex-1 bg-gri-200" />
-            <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
-              {isEn ? "Individual stickers" : "Tekil sticker"}
-            </h2>
-            <div className="h-px flex-1 bg-gri-200" />
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-            {TEKIL_CARDS.map((card) => (
-              <StickerProductCard key={card.query} card={card} isEn={isEn} />
-            ))}
-          </div>
-        </section>
-
-        {/* ALT SECTION — Sticker tabaka (1 kart) */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="h-px flex-1 bg-gri-200" />
-            <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
-              {isEn ? "Sheet stickers" : "Sticker tabaka"}
-            </h2>
-            <div className="h-px flex-1 bg-gri-200" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-            {TABAKA_CARDS.map((card) => (
+            {STICKER_CARDS.map((card) => (
               <StickerProductCard key={card.query} card={card} isEn={isEn} />
             ))}
           </div>
