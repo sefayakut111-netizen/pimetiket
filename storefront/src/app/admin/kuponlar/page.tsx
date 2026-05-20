@@ -99,7 +99,12 @@ export default function AdminKuponlarPage() {
       toast.error("Kod boş olamaz");
       return;
     }
-    const code = draft.code.trim().toUpperCase().replace(/\s+/g, "");
+    // Sefa 21 May v68 (site denetim P2 #18): TR locale upper — "i" → "İ"
+    // doğru çevrilsin (default toUpperCase Türkçe büyük "İ"yi vermez).
+    const code = draft.code
+      .trim()
+      .toLocaleUpperCase("tr-TR")
+      .replace(/\s+/g, "");
     if (coupons.some((c) => c.code === code)) {
       toast.error("Bu kod zaten var");
       return;
@@ -178,7 +183,7 @@ export default function AdminKuponlarPage() {
                     onChange={(e) =>
                       setDraft({
                         ...draft,
-                        code: e.target.value.toUpperCase(),
+                        code: e.target.value.toLocaleUpperCase("tr-TR"),
                       })
                     }
                     placeholder="HOSGELDIN10"

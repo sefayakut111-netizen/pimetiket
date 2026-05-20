@@ -117,31 +117,34 @@ export default function AdminAbonelerPage() {
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
               Aboneler
             </h1>
-            {/* Sefa 21 May v68 (admin denetim P2 #16): dangling separator
-                bug fix — pendingWelcome=0 ve sablonlarCount=0 ise "0 aktif
-                abone · " sonu açıkta kalıyordu. Şimdi sadece dolu kısımlar
-                · ile birleştirilir. */}
-            <p className="mt-1.5 text-base text-gri-700">
-              {[
-                `${data.length} aktif abone`,
-                pendingWelcome > 0 ? `${pendingWelcome} welcome mail bekliyor` : null,
-                sablonlarCount > 0 ? `${sablonlarCount} şablon kaydı` : null,
-              ]
-                .filter(Boolean)
-                .map((s, i, arr) => (
-                  <span
-                    key={i}
-                    className={
-                      i === 1 && pendingWelcome > 0
-                        ? "text-sari-koyu font-semibold"
-                        : ""
-                    }
-                  >
-                    {s}
-                    {i < arr.length - 1 ? " · " : ""}
-                  </span>
-                ))}
-            </p>
+            {/* Sefa 21 May v68 (admin denetim P2 #16 + site denetim P1 #8):
+                dangling separator bug fix + loading sırasında "0 aktif abone"
+                flash'ını önle. */}
+            {loading ? (
+              <div className="mt-2 h-5 w-[220px] rounded bg-gri-100 animate-pulse" />
+            ) : (
+              <p className="mt-1.5 text-base text-gri-700">
+                {[
+                  `${data.length} aktif abone`,
+                  pendingWelcome > 0 ? `${pendingWelcome} welcome mail bekliyor` : null,
+                  sablonlarCount > 0 ? `${sablonlarCount} şablon kaydı` : null,
+                ]
+                  .filter(Boolean)
+                  .map((s, i, arr) => (
+                    <span
+                      key={i}
+                      className={
+                        i === 1 && pendingWelcome > 0
+                          ? "text-sari-koyu font-semibold"
+                          : ""
+                      }
+                    >
+                      {s}
+                      {i < arr.length - 1 ? " · " : ""}
+                    </span>
+                  ))}
+              </p>
+            )}
           </div>
           <a href={csvUrl} download>
             <Button variant="secondary" size="md">
@@ -206,7 +209,7 @@ export default function AdminAbonelerPage() {
 
         {/* Tablo */}
         {loading ? (
-          <Skeleton.AdminTable rows={8} />
+          <Skeleton.AdminTable rows={4} />
         ) : error ? (
           <Card padding="p-10" className="text-center">
             <Icon.Info size={32} className="text-kirmizi mx-auto mb-2" />

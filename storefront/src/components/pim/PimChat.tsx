@@ -97,8 +97,17 @@ export function PimChat() {
     if (!memory) return;
     if (memory.history.length === 0) return;
     if (messages.length > 0) return; // useChat zaten dolu
+    // Sefa 21 May v68 (site denetim P1 #9): ardışık duplicate kullanıcı
+    // mesajlarını filtrele — eski memory'de aynı soru çift baloncuk olarak
+    // saklanabiliyordu (double-submit, network retry, vs.).
+    const deduped: typeof memory.history = [];
+    for (const m of memory.history) {
+      const prev = deduped[deduped.length - 1];
+      if (prev && prev.role === m.role && prev.content === m.content) continue;
+      deduped.push(m);
+    }
     // PimMessage → UIMessage çevirisi (parts[type=text])
-    const restored = memory.history.map((m) => ({
+    const restored = deduped.map((m) => ({
       id: m.id,
       role: m.role,
       parts: [{ type: "text" as const, text: m.content }],

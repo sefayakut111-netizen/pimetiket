@@ -162,12 +162,18 @@ export default function AdminTasarimlarPage() {
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
             Tasarımlar
           </h1>
-          <p className="mt-1.5 text-base text-gri-700">
-            {designs.length} aktif tasarım dosyası ·{" "}
-            {qcDone.length > 0
-              ? `AI ✓ oranı: %${passRate.toFixed(0)}`
-              : "AI kontrolü bekliyor"}
-          </p>
+          {/* Sefa 21 May v68 (site denetim P1 #6): loading sırasında
+              "0 aktif tasarım" flash etmesin → skeleton göster */}
+          {loading ? (
+            <div className="mt-2 h-5 w-[220px] rounded bg-gri-100 animate-pulse" />
+          ) : (
+            <p className="mt-1.5 text-base text-gri-700">
+              {designs.length} aktif tasarım dosyası ·{" "}
+              {qcDone.length > 0
+                ? `AI ✓ oranı: %${passRate.toFixed(0)}`
+                : "AI kontrolü bekliyor"}
+            </p>
+          )}
         </div>
 
         {/* Filtre + arama */}

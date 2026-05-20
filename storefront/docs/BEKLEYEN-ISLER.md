@@ -97,16 +97,41 @@ service_role çağrı yapıyor. Lokalde çalışıyor görünüyor.
 
 Düzelme: Bekleyen — production logs gerek.
 
-## 🟠 Admin P1/P2 düzeltmeleri (zaman bulunca)
+## 🟠 Admin P1/P2 düzeltmeleri — TAMAMLANDI (21 May 2026 v68)
 
-- **Kargo sayfası komple veri yok** (P1 #5) — endpoint bağlantısı veya RPC eksik
-- **Tasarımlar ilk "0" sonra gerçek** (P1 #6) — skeleton/`—` placeholder
-- **Manuel sipariş KDV yanlış** (P2 #9) — `total = subtotal × 1.20 + shipping`
-- **Istanbul/İstanbul dupe** (P2 #10) — city normalize (dropdown)
-- **Üretim akışı Toplam 4 ≠ adım toplamı 2** (P2 #11)
-- **PayTR aktif değil ama Kart %100** (P2 #12) — banner vs rakam çelişkisi
-- **Sidebar badge tutarsız** (P2 #13)
-- **Son siparişler kronolojik değil** (P2 #14)
-- **İadeler tab 5 / stat 4** (P2 #15)
-- **Aboneler dangling separator** (P2 #16)
-- **Breadcrumb küçük harf** (P2 #17)
+Tüm admin denetim P1+P2 (P2 #12 PayTR hariç) commit'lendi:
+- ✅ P2 #9 KDV, #10 city normalize, #11 üretim toplam, #13 sidebar badge
+- ✅ P2 #14 kronolojik sort, #15 İadeler tab/stat, #16 separator, #17 breadcrumb
+- ✅ P2 #18 HOSGELDIN10 TR locale
+- ✅ P1 #5 Kargo empty state, #6 Tasarımlar loading, #7 Ürünler skeleton, #8 Aboneler skeleton
+
+P2 #12 PayTR aktif değil ama Kart %100 — **Sefa kararı: bu alana dokunulmadı** (manuel test sonrası ele alınacak).
+
+---
+
+## 🔴 Site denetim raporu (21 May 2026 v68) — ATLANAN/NOT EDİLEN
+
+### DB encoding cleanup (Site P0 #1 takip)
+**Sorun:** /etiket ve /sticker liste sayfalarındaki kart başlık/açıklamaları DB'de bozuk Türkçe karakter ("�zel", "Sil�etine") olarak saklı. Migration 074 INSERT encoding hatası.
+
+**Yapılan:** Client-side guard eklendi (page.tsx) — bozuk karakter algılanırsa fallback hardcoded array kullanılıyor, kullanıcı bozuk metin görmüyor.
+
+**Bekleyen:** Migration 075 — `product_cards` tablosundaki bozuk satırları UPDATE ile düzelt. Sefa onayı sonrası uygulanacak. Pattern:
+```sql
+UPDATE product_cards SET title_tr = '...doğru metin...' WHERE id = '...';
+```
+
+### Bumper render bug (Site P2 #18)
+**Sorun:** `/sticker/yapilandir?form=&shape=bumper` URL'inde sayfa render olmuyor, sadece comment article dönüyor.
+
+**Reprod gerek:** Lokalde tekrarlanmadı (cutMode=diecut default, shape=bumper valid). Production'da test edilmeli — belki SSR cache veya hidration sorunu.
+
+### /yorumlar ve /galeri içerik dolumu
+**Sorun:** Her iki sayfa da DB'den çekiyor, gerçek müşteri verisi gelene kadar boş kalıyor.
+
+**Karar:** Boş state'leri açıklayıcı — fallback yok (TKHK m.61 yanıltıcı reklam riski). İlk gerçek yorum/galeri öğesi gelince otomatik dolar. Geçici nav gizleme YOK (Sefa istemedi).
+
+### Şablonlar 60+ tutarlılık (Site P1 #10)
+**Sorun:** "60+ hazır şablon" ifadesi 3 yerde yazılı ama 12 kategoride somut sayım yapılmamış.
+
+**Karar:** "60+" pazarlama ifadesi, gerçek şablon sayısı arttıkça güncellenecek. Şu an müdahale edilmedi.

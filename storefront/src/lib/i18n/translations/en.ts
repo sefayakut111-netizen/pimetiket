@@ -90,6 +90,7 @@ export const en: TranslationDict = {
     finishTitle: "Finish",
     sizeTitle: "Size",
     qtyTitle: "Quantity",
+    designTitle: "Design",
     customizationTitle: "Customization",
     addToCart: "Add to cart",
     cartAdded: "Added to cart 🛒 — open the cart from the top menu",
@@ -283,7 +284,7 @@ export const en: TranslationDict = {
     sendLabel: "Send",
   },
   footer: {
-    tagline: "Smart digital printing ecosystem",
+    tagline: "One stop for labels and stickers",
     newsletterEyebrow: "Pim's notebook",
     newsletterTitle: "Read the print guide first",
     newsletterDesc:

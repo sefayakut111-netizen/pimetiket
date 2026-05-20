@@ -236,6 +236,15 @@ export default function EtiketGridPage() {
         const cards = (j.cards as DbProductCard[])
           .map(dbCardToEtiketCard)
           .filter((c): c is EtiketCard => c !== null);
+        // Sefa 21 May v68 (site denetim P0 #1): DB INSERT'lerinde Türkçe
+        // karakter bozuk geldiyse (U+FFFD replacement char veya bozuk
+        // mojibake "�") fallback hardcoded array'i kullan, kullanıcıya
+        // bozuk metin gösterme.
+        const hasBrokenEncoding = cards.some((c) => /[�]/.test(c.titleTr) || /[�]/.test(c.descTr));
+        if (hasBrokenEncoding) {
+          console.warn("[etiket] DB kart metinlerinde bozuk karakter — fallback kullanılıyor");
+          return;
+        }
         const rulo = cards.filter((c) => c.form === "rulo");
         const tabaka = cards.filter((c) => c.form === "tabaka");
         if (rulo.length > 0) setRuloCards(rulo);

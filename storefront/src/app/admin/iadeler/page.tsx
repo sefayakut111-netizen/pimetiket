@@ -97,6 +97,7 @@ export default function AdminIadelerPage() {
   // KPI'lar
   const pending = items.filter((r) => r.status === "pending").length;
   const approved = items.filter((r) => r.status === "approved").length;
+  const rejected = items.filter((r) => r.status === "rejected").length;
   const refunded = items.filter((r) => r.status === "refunded").length;
   const totalRefund = items
     .filter((r) => r.status === "refunded")
@@ -116,11 +117,13 @@ export default function AdminIadelerPage() {
           </p>
         </div>
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {/* KPI strip — Sefa 21 May v68 (site denetim P2 #15): Reddedildi
+            kartı eklendi; tab listesi (5) ile uyumlu */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
           {[
             { label: "İncelemede", value: pending, accent: "text-sari-koyu", bg: "bg-sari-soft" },
             { label: "Onaylı", value: approved, accent: "text-yesil", bg: "bg-yesil-soft" },
+            { label: "Reddedildi", value: rejected, accent: "text-kirmizi", bg: "bg-kirmizi/10" },
             { label: "İade tamamlandı", value: refunded, accent: "text-yesil", bg: "bg-yesil-soft" },
             { label: "Toplam iade tutarı", value: `${Math.round(totalRefund).toLocaleString("tr-TR")} ₺`, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
           ].map((k) => (

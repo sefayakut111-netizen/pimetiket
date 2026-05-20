@@ -237,6 +237,13 @@ function readInitialShape(searchParams: URLSearchParams): ShapeId {
   const shape = searchParams.get("shape");
   // "diecut" alias of "die" — grid bunu yolluyor
   if (shape === "diecut") return "die";
+  // Sefa 21 May v68 (site denetim P0 #2): shape param malzeme/finish değeri
+  // taşıyorsa (örn ?shape=holo/transparent/glitter — derin link veya eski
+  // share URL) bunlar shape DEĞİL, default die-cut'a düş ve material'ı
+  // readInitialMaterial üstlensin.
+  if (shape === "holo" || shape === "transparan" || shape === "transparent" || shape === "glitter" || shape === "simli") {
+    return "die";
+  }
   if (shape && (SHAPE_IDS as readonly string[]).includes(shape)) {
     return shape as ShapeId;
   }
@@ -250,6 +257,13 @@ function readInitialMaterial(
   if (mat === "vinil" || mat === "transparan" || mat === "holo" || mat === "simli") {
     return mat;
   }
+  // Sefa 21 May v68 (site denetim P0 #2): shape parametresi malzeme adı
+  // ile gelmişse onu material'a çevir. ?shape=holo → material=holo,
+  // ?shape=glitter → simli, ?shape=transparent → transparan.
+  const shapeAsMaterial = searchParams.get("shape");
+  if (shapeAsMaterial === "holo") return "holo";
+  if (shapeAsMaterial === "simli" || shapeAsMaterial === "glitter") return "simli";
+  if (shapeAsMaterial === "transparan" || shapeAsMaterial === "transparent") return "transparan";
   return null;
 }
 
@@ -420,39 +434,21 @@ function StickerPage() {
     ctaVariant === "test"
       ? `${t.config.addToCart} · 5 iş günü içinde kargoda`
       : t.config.addToCart;
-  // 1. ADIM: Kesim tipi (Sefa kuralı — şekilden ÖNCE)
-  // Sefa 20 May v68: URL ?cut=... pre-fill (gridden geliyor)
+  // Sefa 21 May v68 (site denetim P0 #2): useSearchParams initial state'te
+  // kullanılır (typeof window check'i SSR'da boş döndürüyor + ilk render
+  // yanlış title flashı doğuruyordu).
+  const initialParams = new URLSearchParams(searchParams.toString());
   const [cutMode, setCutMode] = useState<CutMode>(() =>
-    readInitialCutMode(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    )
+    readInitialCutMode(initialParams)
   );
-  // 2. ADIM: Şekil
-  // Sefa 20 May v68: URL ?shape=... pre-fill (gridden geliyor)
   const [shape, setShape] = useState<ShapeId>(() =>
-    readInitialShape(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    )
+    readInitialShape(initialParams)
   );
-  // ?corner=rounded veya shape=bumper → softCorners=true
   const [softCorners, setSoftCorners] = useState<boolean>(() =>
-    readInitialCorner(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    )
+    readInitialCorner(initialParams)
   );
-  // URL ?material=... pre-fill (Holographic/Glitter/Clear kartlarından)
   const [material, setMaterial] = useState<StickerMaterial>(() => {
-    const initial = readInitialMaterial(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    );
+    const initial = readInitialMaterial(initialParams);
     return initial ?? "vinil";
   });
   const [finish, setFinish] = useState<StickerFinish>("parlak");
@@ -617,7 +613,10 @@ function StickerPage() {
       t.config.finishTitle,
       t.config.sizeTitle,
       t.config.qtyTitle,
-      t.nav.dashboard === "Panel" ? "Tasarım" : "Design"
+      // Sefa 21 May v68 (site denetim P1 #5): proper i18n key (locale
+      // hack'i yerine designTitle eklendi — sidebar artık "Design"
+      // göstermiyor TR'de).
+      t.config.designTitle
     );
     return labels;
   })();
@@ -2442,7 +2441,7 @@ function StickerPreview({
                     width: Math.min(minDim * scale * 1.2, 360),
                     height: Math.min(minDim * scale * 1.2, 360),
                   }}
-                  aria-label="Tasarım önizleme alanı — kontur kesim"
+                  aria-label="Tasarım önizleme alanı"
                 >
                   <div className="opacity-60">
                     <Icon.Plus
@@ -2452,8 +2451,21 @@ function StickerPreview({
                     <div className="text-[12.5px] font-semibold text-lacivert">
                       Tasarımını yükle
                     </div>
+                    {/* Sefa 21 May v68 (site denetim P2 #11): üst metin
+                        her zaman "Kontur kesim" diyordu, kare/yuvarlak
+                        şekilde de yanlış görünüyordu. Şekle göre dinamik. */}
                     <div className="text-[10.5px] text-gri-700 mt-0.5">
-                      Kontur kesim · alanın etrafı kesilir
+                      {shape === "die" || shape === "die" + "cut"
+                        ? "Kontur kesim · tasarımın silüetine kesilir"
+                        : shape === "circle"
+                          ? "Yuvarlak kesim · alanın dairesel kesilir"
+                          : shape === "oval"
+                            ? "Oval kesim"
+                            : shape === "bumper"
+                              ? "Bumper — uzun yatay kesim"
+                              : shape === "rectangle"
+                                ? "Dikdörtgen kesim"
+                                : "Kare kesim"}
                     </div>
                   </div>
                 </div>

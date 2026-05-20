@@ -178,19 +178,40 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let auditorCounts = { pending: 0, critical: 0 };
+    let adminOrders: CustomerOrder[] = [];
+
+    // Sefa 21 May v68 (site denetim P2 #13): Sidebar badge'i admin-wide
+    // /api/admin/orders/list'ten çeker; daha önce listCustomerOrders
+    // local cache döndüğü için badge sayfa-bazlı tutarsız görünüyordu.
+    const fetchAdminOrders = async () => {
+      try {
+        const res = await fetch("/api/admin/orders/list?limit=500", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { orders?: CustomerOrder[] };
+        adminOrders = json.orders ?? [];
+        refresh();
+      } catch {
+        // sessiz — fallback olarak local cache okumaya geri dön
+        adminOrders = listCustomerOrders();
+        refresh();
+      }
+    };
 
     const refresh = () => {
       setBadges(
         aggregateBadges(
-          listCustomerOrders(),
+          adminOrders,
           auditorCounts.pending,
           auditorCounts.critical
         )
       );
     };
 
-    refresh();
-    window.addEventListener("pim_customer_orders_updated", refresh);
+    void fetchAdminOrders();
+    const ordersInterval = setInterval(fetchAdminOrders, 60_000);
+    window.addEventListener("pim_customer_orders_updated", fetchAdminOrders);
 
     // Sefa 16 May v3: Auditor pending count'u 60sn'de bir çek.
     // /api/admin/auditors response içinde pending özet var.
@@ -220,8 +241,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     const interval = setInterval(fetchAuditorCounts, 60_000);
 
     return () => {
-      window.removeEventListener("pim_customer_orders_updated", refresh);
+      window.removeEventListener("pim_customer_orders_updated", fetchAdminOrders);
       clearInterval(interval);
+      clearInterval(ordersInterval);
     };
   }, []);
 

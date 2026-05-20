@@ -583,6 +583,7 @@ export default function AdminDashboardPage() {
     { status: "delivered" as OrderStatus, label: "Teslim", count: statusDistribution.delivered, href: "/admin/siparisler?status=delivered" },
   ];
   const maxFunnel = Math.max(...funnel.map((s) => s.count), 1);
+  const funnelTotal = funnel.reduce((sum, s) => sum + s.count, 0);
 
   // Quick actions
   const QUICK_ACTIONS = [
@@ -841,7 +842,7 @@ export default function AdminDashboardPage() {
               </p>
             </div>
             <span className="text-[12px] text-gri-500">
-              Toplam: {orders.length}
+              Akıştaki toplam: {funnelTotal}
             </span>
           </div>
           <div className="p-4">

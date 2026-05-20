@@ -602,27 +602,20 @@ function EtiketPage() {
   //  - Varsayılan: Kuşe Etiket + Kaplama yok (1. sıra)
   //  - Adet: minimum'dan başlasın (rulo→1000, tabaka→250)
   // Sefa 20 May v68 (Aşama A + C): URL'den form + shape param oku, pre-fill
+  // Sefa 21 May v68 (site denetim P0 #2): useSearchParams hook'unu initial
+  // state'te kullan — `typeof window` kontrolü SSR'da search param'ı
+  // gönderiyordu boş ve default ("rectangle Rulo Etiket") hidration flash
+  // ediyordu, sonra useEffect ile düzelirken kullanıcı yanlış başlık
+  // görüyordu. Hook initial render'da doğru değeri verir.
+  const initialParams = new URLSearchParams(searchParams.toString());
   const [formFactor, setFormFactor] = useState<FormFactor>(() =>
-    readInitialFormFactor(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    )
+    readInitialFormFactor(initialParams)
   );
   const [shape, setShape] = useState<EtiketShape>(() =>
-    readInitialShape(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    )
+    readInitialShape(initialParams)
   );
-  // Sefa 20 May v68: köşe stili — kare/dikdörtgen için "Düz" veya "Yumuşak"
   const [cornerStyle, setCornerStyle] = useState<CornerStyle>(() =>
-    readInitialCornerStyle(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search
-      )
-    )
+    readInitialCornerStyle(initialParams)
   );
   // searchParams değişirse (client-side nav) sync — kullanıcı farklı karttan
   // yeni girerse formFactor + shape + cornerStyle yeniden eşleşir
@@ -841,6 +834,10 @@ function EtiketPage() {
   //   - SHOW_ETIKET_FORM_FACTOR_PICKER=false → stepFormFactor çıkar
   //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → stepFeature çıkar
   //   STEP_IDS_FULL ile birebir eşleşmeli, yoksa sequential lock kırılır.
+  // Sefa 21 May v68 (site denetim P0 #3): stepLabels sırası stepIds ile
+  // birebir aynı olmalı. stepIds Boyut→Adet→Tasarım (6,8,7); label sıralaması
+  // da aynı sırada — sidebar stepper "Tasarım önce, Adet sonra" yanlış
+  // gösteriyordu, kilit mesajı da yanlış prev step söylüyordu.
   const STEP_LABELS_FULL_I18N: readonly string[] = (() => {
     const labels: string[] = [];
     if (SHOW_ETIKET_FORM_FACTOR_PICKER) labels.push(t.etiket.stepFormFactor);
@@ -850,8 +847,8 @@ function EtiketPage() {
       t.etiket.stepWinding,
       t.etiket.stepWindingDetail,
       t.etiket.stepSize,
-      t.etiket.stepDesign,
-      t.etiket.stepQty
+      t.etiket.stepQty,
+      t.etiket.stepDesign
     );
     return labels;
   })();
@@ -861,15 +858,15 @@ function EtiketPage() {
         t.etiket.stepMaterial,
         t.etiket.stepCoating,
         t.etiket.stepSize,
-        t.etiket.stepDesign,
         t.etiket.stepQty,
+        t.etiket.stepDesign,
       ]
     : [
         t.etiket.stepMaterial,
         t.etiket.stepCoating,
         t.etiket.stepSize,
-        t.etiket.stepDesign,
         t.etiket.stepQty,
+        t.etiket.stepDesign,
       ];
   const stepLabels =
     formFactor === "rulo" ? STEP_LABELS_FULL_I18N : STEP_LABELS_TABAKA_I18N;
@@ -1243,9 +1240,12 @@ function EtiketPage() {
       <SchemaJsonLd
         data={[
           productSchema({
-            name: "Rulodan etiket — özel baskı",
+            // Sefa 21 May v68 (site denetim P0 #4 + P1 #6): "Rulodan" →
+            // "Rulo etiket"; "transparent" → "şeffaf"; teslim süresi
+            // 5 → 10 iş günü (site geneli ve Anayasa md 2.1 ile uyumlu).
+            name: "Rulo etiket — özel baskı",
             description:
-              "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/transparent. AI dosya kontrolü ile 5 iş günü içinde kargoda. 1.000 adetten başlar.",
+              "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/şeffaf. AI dosya kontrolü ile 10 iş günü içinde kargoda. 1.000 adetten başlar.",
             category: "Etiket / Label",
             priceFrom: 850,
           }),

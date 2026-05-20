@@ -542,6 +542,15 @@ export default function StickerGridPage() {
         const mapped = (j.cards as DbProductCard[])
           .map(dbCardToStickerCard)
           .filter((c): c is StickerCard => c !== null);
+        // Sefa 21 May v68 (site denetim P0 #1): bozuk Türkçe karakter
+        // (U+FFFD / "�") gelirse fallback'i koru.
+        const broken = mapped.some(
+          (c) => /[�]/.test(c.titleTr) || /[�]/.test(c.descTr)
+        );
+        if (broken) {
+          console.warn("[sticker] DB kart metinlerinde bozuk karakter — fallback kullanılıyor");
+          return;
+        }
         if (mapped.length > 0) setCards(mapped);
       })
       .catch(() => {

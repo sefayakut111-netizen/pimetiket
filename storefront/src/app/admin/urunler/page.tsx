@@ -191,7 +191,22 @@ export default function AdminUrunlerPage() {
         {/* List */}
         <Card padding="p-0" className="overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center text-gri-500">Yükleniyor...</div>
+            // Sefa 21 May v68 (site denetim P1 #7): "Yükleniyor..." metni
+            // yerine satır skeleton'ı — algılanan bekleme süresi düşer.
+            <ul className="divide-y divide-gri-100">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <li key={i} className="p-4 md:p-5">
+                  <div className="grid grid-cols-[64px_1fr_auto] md:grid-cols-[80px_1fr_auto] gap-4 items-start">
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg bg-gri-100 animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-[60%] rounded bg-gri-100 animate-pulse" />
+                      <div className="h-3 w-[80%] rounded bg-gri-100 animate-pulse" />
+                    </div>
+                    <div className="h-6 w-[80px] rounded bg-gri-100 animate-pulse" />
+                  </div>
+                </li>
+              ))}
+            </ul>
           ) : tabCards.length === 0 ? (
             <div className="p-12 text-center text-gri-500">Kart yok</div>
           ) : (

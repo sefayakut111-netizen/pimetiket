@@ -113,7 +113,7 @@ export default function BlogIndexPage() {
                     <span>·</span>
                     <span>{formatDate(p.publishedAt)}</span>
                     <span>·</span>
-                    <span>{p.readMinutes} dk</span>
+                    <span>{p.readMinutes} dk okuma</span>
                   </div>
                 </div>
               </Card>

@@ -69,7 +69,7 @@ const COPY = {
     founderNote:
       "Mühendislik geçmişimle 75 yıllık aile ticaret birikimini birleştirerek Pim Etiket'i hayata geçirdim.",
     founderText:
-      " — Pim Etiket'i kurarken hedefim, sektörün online'a geçişinde herkesin — küçük marka veya kurumsal — adil bir başlangıca sahip olması idi. Sen de bizimle çalışmak istersen ",
+      " Hedefim, sektörün online'a geçişinde herkesin — küçük marka veya kurumsal — adil bir başlangıca sahip olması. Bizimle çalışmak istersen ",
     founderLink: "iletişim",
     founderEnd: " sayfasından bana ulaşabilirsin.",
     ctaTitle: "Bizimle çalışmaya hazır mısın?",

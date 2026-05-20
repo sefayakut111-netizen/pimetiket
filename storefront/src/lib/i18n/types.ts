@@ -112,6 +112,7 @@ export type TranslationDict = {
     finishTitle: string;
     sizeTitle: string;
     qtyTitle: string;
+    designTitle: string;
     customizationTitle: string;
     addToCart: string;
     cartAdded: string;

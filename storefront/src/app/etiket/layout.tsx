@@ -6,15 +6,18 @@ import type { ReactNode } from "react";
 // zor; primary TR title + alternates ile EN keyword'leri ekledik.
 // SEO için ana title TR (Türkiye odaklı), EN aramalar için EN versiyon
 // description'da da bulunur.
+// Sefa 21 May v68 (site denetim P2 #12 + #4): "roll labels" yerine
+// "rulo + tabaka" — bu sayfa hem rulo hem tabaka grid'i içeriyor.
+// Teslim süresi 5 → 10 iş günü (site geneli).
 export const metadata: Metadata = {
-  title: "Etiket bastır — özel rulo etiket baskı · Custom roll labels",
+  title: "Etiket bastır — rulo ve tabaka etiket baskı · Custom labels",
   description:
-    "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/transparan. AI dosya kontrolü, 5 iş günü kargoda. 1.000 adetten. — Custom roll labels with AI file check, 5 business day shipping.",
+    "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/şeffaf. AI dosya kontrolü, 10 iş günü kargoda. 1.000 adetten. — Custom roll and sheet labels with AI file check.",
   alternates: { canonical: "/etiket" },
   openGraph: {
     title: "Etiket bastır — Pim Etiket",
     description:
-      "Vinil, kuşe, transparan etiket. 1.000 adetten, 5 iş günü içinde kargoda. AI dosya kontrolü.",
+      "Vinil, kuşe, şeffaf etiket. 1.000 adetten, 10 iş günü içinde kargoda. AI dosya kontrolü.",
     type: "website",
     url: "/etiket",
   },
@@ -22,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Etiket bastır — Pim Etiket",
     description:
-      "Vinil, kuşe, transparan etiket. 1.000 adetten, 5 iş günü içinde kargoda.",
+      "Vinil, kuşe, şeffaf etiket. 1.000 adetten, 10 iş günü içinde kargoda.",
   },
 };
 

@@ -90,6 +90,7 @@ export const tr: TranslationDict = {
     finishTitle: "Yüzey",
     sizeTitle: "Boyut",
     qtyTitle: "Adet",
+    designTitle: "Tasarım",
     customizationTitle: "Özelleştirme",
     addToCart: "Sepete ekle",
     cartAdded: "Sepete eklendi 🛒 — sepete gitmek için üst menü",
@@ -283,7 +284,9 @@ export const tr: TranslationDict = {
     sendLabel: "Gönder",
   },
   footer: {
-    tagline: "Akıllı dijital baskı ekosistemi",
+    // Sefa 21 May v68 (site denetim P2 #20): hero "Akıllı dijital baskı
+    // ekosistemi" eyebrow ile footer tagline aynıydı — footer'da varyasyon.
+    tagline: "Etiket ve sticker için tek durak",
     newsletterEyebrow: "Pim'in defteri",
     newsletterTitle: "Etiket rehberini ilk sen oku",
     newsletterDesc:

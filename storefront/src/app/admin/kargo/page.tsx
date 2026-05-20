@@ -536,9 +536,21 @@ export default function AdminKargoPage() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-3 py-10 text-center text-gri-500"
+                    className="px-3 py-12 text-center"
                   >
-                    Bu filtrede kargo yok.
+                    <div className="mx-auto max-w-[360px] text-gri-700">
+                      <div className="text-[28px] mb-2">📦</div>
+                      <div className="text-[14px] font-semibold text-lacivert">
+                        {total === 0 && statusFilter === "all"
+                          ? "Henüz kargo gönderimi yok"
+                          : "Bu filtrede kargo yok"}
+                      </div>
+                      <div className="mt-1 text-[12.5px] text-gri-500">
+                        {total === 0 && statusFilter === "all"
+                          ? "İlk sipariş kargoya verildiğinde burada görünür."
+                          : "Filtreleri sıfırlamayı dene ya da tarih aralığını genişlet."}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (

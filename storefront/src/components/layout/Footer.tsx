@@ -178,14 +178,14 @@ export function Footer() {
                 />
                 <span>
                   E-postamın yeni şablon ve duyurular için saklanmasına izin
-                  veriyorum.{" "}
+                  veriyorum (
                   <Link
                     href="/kvkk"
                     className="text-pim-mercan font-semibold hover:underline"
                   >
                     KVKK aydınlatma
                   </Link>
-                  . Üyelikten her an çıkabilirim.
+                  ). Üyelikten her an çıkabilirim.
                 </span>
               </label>
             </form>
