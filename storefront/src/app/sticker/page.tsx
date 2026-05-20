@@ -28,8 +28,33 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
+import {
+  getStickerCardSvg,
+  DieCutIcon as RegistryDieCutIcon,
+  CircleIcon as RegistryCircleIcon,
+  RectangleIcon as RegistryRectangleIcon,
+  SquareIcon as RegistrySquareIcon,
+  OvalIcon as RegistryOvalIcon,
+  BumperIcon as RegistryBumperIcon,
+  KissCutIcon as RegistryKissCutIcon,
+  ClearIcon as RegistryClearIcon,
+  HoloIcon as RegistryHoloIcon,
+  GlitterIcon as RegistryGlitterIcon,
+  SheetIcon as RegistrySheetIcon,
+} from "@/lib/sticker-card-svg-registry";
+import type { ProductCard as DbProductCard } from "@/lib/product-cards";
+import { buildCardQueryString } from "@/lib/product-cards";
+
+// Sefa 21 May v68 Mig 074: Registry'den gelen ikonlar — eski inline tanımlar
+// hala bu dosyada (uzun edit'i azaltmak için), ama registry source-of-truth.
+// Voiding to avoid unused-import warnings if local fns are removed later.
+void RegistryDieCutIcon; void RegistryCircleIcon; void RegistryRectangleIcon;
+void RegistrySquareIcon; void RegistryOvalIcon; void RegistryBumperIcon;
+void RegistryKissCutIcon; void RegistryClearIcon; void RegistryHoloIcon;
+void RegistryGlitterIcon; void RegistrySheetIcon;
 
 interface StickerCard {
   /** URL query param'ları */
@@ -483,9 +508,49 @@ function StickerProductCard({
 // Sayfa component
 // ============================================================
 
+// Sefa 21 May v68 Mig 074: DB card → STICKER_CARDS UI format
+function dbCardToStickerCard(db: DbProductCard): StickerCard | null {
+  const SvgComponent = getStickerCardSvg(db.svg_id);
+  const queryStr = buildCardQueryString(db.query_params);
+  return {
+    // Eski format: query string (ön ek "?" olmadan)
+    query: queryStr.startsWith("?") ? queryStr.slice(1) : queryStr,
+    titleTr: db.title_tr,
+    titleEn: db.title_en,
+    descTr: db.desc_tr,
+    descEn: db.desc_en,
+    svg: <SvgComponent />,
+  };
+}
+
 export default function StickerGridPage() {
   const { locale } = useT();
   const isEn = locale === "en";
+
+  // Sefa 21 May v68 Mig 074: DB'den admin yönetimli kartlar.
+  // İlk render fallback STICKER_CARDS, hidrate olunca DB değerleri.
+  const [cards, setCards] = useState<StickerCard[]>(STICKER_CARDS);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/product-cards?product_type=sticker", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j || !Array.isArray(j.cards) || j.cards.length === 0) {
+          return;
+        }
+        const mapped = (j.cards as DbProductCard[])
+          .map(dbCardToStickerCard)
+          .filter((c): c is StickerCard => c !== null);
+        if (mapped.length > 0) setCards(mapped);
+      })
+      .catch(() => {
+        /* DB fail → fallback hardcoded kalır */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
@@ -509,7 +574,7 @@ export default function StickerGridPage() {
             başlıkları kaldırıldı). 11 sticker kartı tek listede sıralanır. */}
         <section className="mb-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-            {STICKER_CARDS.map((card) => (
+            {cards.map((card) => (
               <StickerProductCard key={card.query} card={card} isEn={isEn} />
             ))}
           </div>

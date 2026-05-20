@@ -21,9 +21,11 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
+import type { ProductCard as DbProductCard } from "@/lib/product-cards";
 
 interface EtiketCard {
   /** URL query param: shape */
@@ -40,6 +42,25 @@ interface EtiketCard {
   descEn: string;
   /** Görsel path (SVG veya ileride PNG) — public/'tan göreceli */
   imageSrc: string;
+}
+
+/**
+ * DB'den gelen ProductCard → mevcut UI EtiketCard formatı.
+ * Sefa 21 May v68 Mig 074: admin değişiklikleri burada yansır.
+ */
+function dbCardToEtiketCard(db: DbProductCard): EtiketCard | null {
+  const form = (db.query_params.form as "rulo" | "tabaka") ?? "rulo";
+  const shape = (db.query_params.shape as string) ?? "diecut";
+  if (!db.image_src) return null;
+  return {
+    shape,
+    form,
+    titleTr: db.title_tr,
+    titleEn: db.title_en,
+    descTr: db.desc_tr,
+    descEn: db.desc_en,
+    imageSrc: db.image_src,
+  };
 }
 
 // ============================================================
@@ -198,6 +219,36 @@ export default function EtiketGridPage() {
   const { locale } = useT();
   const isEn = locale === "en";
 
+  // Sefa 21 May v68 Mig 074: DB'den admin yönetimli kartlar.
+  // İlk render fallback (hardcoded RULO_CARDS/TABAKA_CARDS) ile başlar
+  // — flicker yok, hidrate olunca DB değerleri ile değiştirilir.
+  const [ruloCards, setRuloCards] = useState<EtiketCard[]>(RULO_CARDS);
+  const [tabakaCards, setTabakaCards] = useState<EtiketCard[]>(TABAKA_CARDS);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/product-cards?product_type=etiket", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j || !Array.isArray(j.cards) || j.cards.length === 0) {
+          return;
+        }
+        const cards = (j.cards as DbProductCard[])
+          .map(dbCardToEtiketCard)
+          .filter((c): c is EtiketCard => c !== null);
+        const rulo = cards.filter((c) => c.form === "rulo");
+        const tabaka = cards.filter((c) => c.form === "tabaka");
+        if (rulo.length > 0) setRuloCards(rulo);
+        if (tabaka.length > 0) setTabakaCards(tabaka);
+      })
+      .catch(() => {
+        /* DB fail → fallback hardcoded kalır */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
@@ -233,7 +284,7 @@ export default function EtiketGridPage() {
                 : "Bobin halinde sarılı, makineyle hızlıca yapıştırılır. 1.000 adetten başlar — kozmetik, gıda, içecek gibi seri üretimde tercih edilir."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {RULO_CARDS.map((card) => (
+              {ruloCards.map((card) => (
                 <ProductCard
                   key={`${card.form}-${card.shape}`}
                   card={card}
@@ -258,7 +309,7 @@ export default function EtiketGridPage() {
                 : "Sayfa halinde gelir, elle yapıştırılır. 250 adetten başlar — butik tiraj, hediye paketi ve etkinlikler için ideal."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {TABAKA_CARDS.map((card) => (
+              {tabakaCards.map((card) => (
                 <ProductCard
                   key={`${card.form}-${card.shape}`}
                   card={card}
