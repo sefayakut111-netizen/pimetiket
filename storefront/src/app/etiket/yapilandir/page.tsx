@@ -482,14 +482,15 @@ function readInitialFormFactor(searchParams: URLSearchParams): FormFactor {
   return "rulo"; // varsayılan + bilinmeyen değerlerde
 }
 
-/** Etiket şekli — Aşama A grid kartlarından gelen değerler. */
+/** Etiket şekli — Aşama A grid kartlarından gelen değerler.
+ *  Sefa 20 May v68: "rounded" kaldırıldı; kare/dikdörtgen içinde
+ *  cornerStyle ayrı state olarak yönetilir (Düz / Yumuşak). */
 type EtiketShape =
   | "diecut"
   | "clear"
   | "circle"
   | "square"
   | "rectangle"
-  | "rounded"
   | "oval"
   | "sheet";
 
@@ -499,22 +500,40 @@ const VALID_SHAPES: readonly EtiketShape[] = [
   "circle",
   "square",
   "rectangle",
-  "rounded",
   "oval",
   "sheet",
 ];
 
+/** Köşe stili — yalnız kare/dikdörtgen için. */
+type CornerStyle = "sharp" | "rounded";
+
 function readInitialShape(searchParams: URLSearchParams): EtiketShape {
   const shape = searchParams.get("shape");
+  // Sefa 20 May v68 geri uyumluluk: eski "?shape=rounded" link'leri
+  // "rectangle"'a yönlendirilir (cornerStyle 'rounded' olarak ayarlanır).
+  if (shape === "rounded") return "rectangle";
   if (shape && (VALID_SHAPES as readonly string[]).includes(shape)) {
     return shape as EtiketShape;
   }
   return "rectangle"; // varsayılan: mevcut davranış (2 input)
 }
 
+/** ?corner=rounded → rounded, varsayılan sharp.
+ *  Eski "?shape=rounded" link'lerinde de cornerStyle otomatik rounded. */
+function readInitialCornerStyle(searchParams: URLSearchParams): CornerStyle {
+  if (searchParams.get("corner") === "rounded") return "rounded";
+  if (searchParams.get("shape") === "rounded") return "rounded";
+  return "sharp";
+}
+
 /** Şekil tek değer mi gerektiriyor (kare/daire) — orantı kilidi */
 function isSingleDimensionShape(shape: EtiketShape): boolean {
   return shape === "square" || shape === "circle";
+}
+
+/** Şekil köşe stili destekliyor mu (kare/dikdörtgen) */
+function supportsCornerStyle(shape: EtiketShape): boolean {
+  return shape === "square" || shape === "rectangle";
 }
 
 /** Şekil etiketi — TR/EN, PriceCard özeti + cart config string için */
@@ -531,13 +550,18 @@ function shapeLabel(shape: EtiketShape, locale: string): string {
       return isEn ? "Square" : "Kare";
     case "rectangle":
       return isEn ? "Rectangle" : "Dikdörtgen";
-    case "rounded":
-      return isEn ? "Rounded" : "Köşe-yuvarlak";
     case "oval":
       return isEn ? "Oval" : "Oval";
     case "sheet":
       return isEn ? "Sheet" : "Tabaka";
   }
+}
+
+/** Köşe stili etiketi — sadece kare/dikdörtgen için anlamlı */
+function cornerLabel(corner: CornerStyle, locale: string): string {
+  const isEn = locale === "en";
+  if (corner === "rounded") return isEn ? "Rounded corner" : "Yumuşak köşe";
+  return isEn ? "Sharp corner" : "Düz köşe";
 }
 
 // Suspense boundary için: useSearchParams Next 16'da Suspense ister.
@@ -571,16 +595,32 @@ function EtiketPage() {
       )
     )
   );
+  // Sefa 20 May v68: köşe stili — kare/dikdörtgen için "Düz" veya "Yumuşak"
+  const [cornerStyle, setCornerStyle] = useState<CornerStyle>(() =>
+    readInitialCornerStyle(
+      new URLSearchParams(
+        typeof window === "undefined" ? "" : window.location.search
+      )
+    )
+  );
   // searchParams değişirse (client-side nav) sync — kullanıcı farklı karttan
-  // yeni girerse formFactor + shape yeniden eşleşir
+  // yeni girerse formFactor + shape + cornerStyle yeniden eşleşir
   useEffect(() => {
     const form = searchParams.get("form");
     if (form === "rulo" || form === "tabaka") {
       setFormFactor(form);
     }
     const sp = searchParams.get("shape");
-    if (sp && (VALID_SHAPES as readonly string[]).includes(sp)) {
+    // Eski "rounded" link'i → rectangle + cornerStyle rounded
+    if (sp === "rounded") {
+      setShape("rectangle");
+      setCornerStyle("rounded");
+    } else if (sp && (VALID_SHAPES as readonly string[]).includes(sp)) {
       setShape(sp as EtiketShape);
+    }
+    const corner = searchParams.get("corner");
+    if (corner === "rounded" || corner === "sharp") {
+      setCornerStyle(corner);
     }
   }, [searchParams]);
   const [material, setMaterial] = useState<EtiketMaterialId>("kuse");
@@ -1016,7 +1056,7 @@ function EtiketPage() {
       title: `Etiket · ${matName} + ${coatName}${
         designCount > 1 ? ` (${designCount} tasarım)` : ""
       }${hasNoDesign ? " · 📎 Tasarım sonra yüklenecek" : ""}`,
-      config: `${shapeLabel(shape, "tr")} · ${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
+      config: `${shapeLabel(shape, "tr")}${supportsCornerStyle(shape) ? ` (${cornerLabel(cornerStyle, "tr").toLowerCase()})` : ""} · ${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
       width,
       height,
       qty: totalEtiketCount, // toplam etiket = qty × designCount
@@ -1764,6 +1804,58 @@ function EtiketPage() {
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
             >
+              {/* Sefa 20 May v68: Köşe stili seçici — sadece kare/dikdörtgen
+                  için anlamlı. "Düz" varsayılan, "Yumuşak" yumuşak köşe
+                  (rounded). Köşe-yuvarlak grid kartı iptal edildi, yerine
+                  bu inline chip seçici geldi. */}
+              {supportsCornerStyle(shape) && (
+                <div className="mb-4">
+                  <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
+                    Köşe stili
+                  </div>
+                  <div className="inline-flex rounded-full bg-gri-100 p-1 ring-1 ring-gri-200">
+                    {(["sharp", "rounded"] as const).map((opt) => {
+                      const active = cornerStyle === opt;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setCornerStyle(opt)}
+                          aria-pressed={active}
+                          className={cn(
+                            "px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all inline-flex items-center gap-1.5",
+                            active
+                              ? "bg-white text-pim-mercan shadow-sm ring-1 ring-pim-mercan"
+                              : "text-gri-700 hover:text-lacivert"
+                          )}
+                        >
+                          {/* Mini ikon: düz köşe = kare, yumuşak = rounded */}
+                          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                            <rect
+                              x="2"
+                              y="2"
+                              width="10"
+                              height="10"
+                              rx={opt === "rounded" ? 3 : 0.5}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            />
+                          </svg>
+                          {locale === "en"
+                            ? opt === "rounded"
+                              ? "Rounded"
+                              : "Sharp"
+                            : opt === "rounded"
+                              ? "Yumuşak"
+                              : "Düz"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Sefa 20 May v68 (Aşama C): shape'e göre dinamik boyut.
                   Kare/Daire → orantı kilitli tek input (w=h otomatik).
                   Diğerleri → mevcut 2 input. */}
@@ -2120,6 +2212,16 @@ function EtiketPage() {
                     label: locale === "en" ? "Shape" : "Şekil",
                     value: shapeLabel(shape, locale),
                   },
+                  // Sefa 20 May v68: köşe stili — sadece kare/dikdörtgen için
+                  ...(supportsCornerStyle(shape)
+                    ? [
+                        {
+                          icon: cornerStyle === "rounded" ? "🔘" : "▫️",
+                          label: locale === "en" ? "Corner" : "Köşe",
+                          value: cornerLabel(cornerStyle, locale),
+                        },
+                      ]
+                    : []),
                   ...(rollsNeeded > 0
                     ? [
                         {

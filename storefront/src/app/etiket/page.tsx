@@ -309,19 +309,12 @@ const RULO_CARDS: EtiketCard[] = [
     form: "rulo",
     titleTr: "Dikdörtgen rulo",
     titleEn: "Rectangle roll",
-    descTr: "Klasik dikdörtgen",
-    descEn: "Rectangle labels",
+    descTr: "Klasik dikdörtgen — düz veya yumuşak köşe",
+    descEn: "Rectangle — sharp or rounded corner",
     svg: <RollIllustration stickerShape="rectangle" />,
   },
-  {
-    shape: "rounded",
-    form: "rulo",
-    titleTr: "Köşe-yuvarlak rulo",
-    titleEn: "Rounded corner roll",
-    descTr: "Yumuşak köşe dikdörtgen",
-    descEn: "Soft-corner rectangle",
-    svg: <RollIllustration stickerShape="rounded" />,
-  },
+  // Sefa 20 May v68: Köşe-yuvarlak rulo iptal — bunun yerine kare/dikdörtgen
+  // konfigüratöründe "Düz / Yumuşak köşe" seçeneği var.
   {
     shape: "oval",
     form: "rulo",
@@ -366,19 +359,12 @@ const TABAKA_CARDS: EtiketCard[] = [
     form: "tabaka",
     titleTr: "Dikdörtgen tabaka",
     titleEn: "Rectangle sheet labels",
-    descTr: "Tabaka üstü dikdörtgen",
-    descEn: "Rectangle on sheet",
+    descTr: "Tabaka üstü dikdörtgen — düz veya yumuşak köşe",
+    descEn: "Rectangle on sheet — sharp or rounded",
     svg: <SheetIllustration stickerShape="rectangle" />,
   },
-  {
-    shape: "rounded",
-    form: "tabaka",
-    titleTr: "Köşe-yuvarlak tabaka",
-    titleEn: "Rounded corner sheet labels",
-    descTr: "Yumuşak köşe tabaka",
-    descEn: "Rounded corner on sheet",
-    svg: <SheetIllustration stickerShape="rounded" />,
-  },
+  // Sefa 20 May v68: Köşe-yuvarlak tabaka iptal — kare/dikdörtgen
+  // konfigüratöründe köşe seçeneği var.
   {
     shape: "square",
     form: "tabaka",
