@@ -201,15 +201,15 @@ export default function EtiketGridPage() {
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Header — Sefa 20 May v68: kısa alt açıklama (sayfa girişi). */}
+        {/* Header — Sefa 20 May v68: yaratıcı + bilgilendirici alt açıklama. */}
         <header className="mb-10 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-lacivert">
             {isEn ? "Choose your label type" : "Etiket tipini seç"}
           </h1>
-          <p className="mt-2 text-sm text-gri-700">
+          <p className="mt-3 text-[15px] text-gri-700 max-w-2xl mx-auto leading-relaxed">
             {isEn
-              ? "Pick a shape — material, size, and quantity come next."
-              : "Şeklini seç, sonraki adımda malzeme ve adet düzenlersin."}
+              ? "Choose the form that becomes your brand's face. Material, size, coating, and quantity — all yours in the next step."
+              : "Markanın yüzü olacak formu seç. Sonraki adımda malzeme, boyut, kaplama ve adet — hepsi senin elinde."}
           </p>
         </header>
 
@@ -227,8 +227,10 @@ export default function EtiketGridPage() {
               </h2>
               <div className="h-px flex-1 bg-gri-200" />
             </div>
-            <p className="text-center text-xs text-gri-600 mb-5">
-              {isEn ? "Starts at 1,000 pcs" : "1.000 adetten başlar"}
+            <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
+              {isEn
+                ? "Wound on a core, applied quickly by machine. Starts at 1,000 pcs — preferred for serial production in cosmetics, food, beverages."
+                : "Bobin halinde sarılı, makineyle hızlıca yapıştırılır. 1.000 adetten başlar — kozmetik, gıda, içecek gibi seri üretimde tercih edilir."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {RULO_CARDS.map((card) => (
@@ -250,8 +252,10 @@ export default function EtiketGridPage() {
               </h2>
               <div className="h-px flex-1 bg-gri-200" />
             </div>
-            <p className="text-center text-xs text-gri-600 mb-5">
-              {isEn ? "Starts at 250 pcs" : "250 adetten başlar"}
+            <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
+              {isEn
+                ? "Comes on sheets, applied by hand. Starts at 250 pcs — ideal for boutique runs, gift packaging, and events."
+                : "Sayfa halinde gelir, elle yapıştırılır. 250 adetten başlar — butik tiraj, hediye paketi ve etkinlikler için ideal."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {TABAKA_CARDS.map((card) => (
