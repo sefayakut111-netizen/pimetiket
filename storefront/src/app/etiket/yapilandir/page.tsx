@@ -2181,7 +2181,7 @@ function EtiketPage() {
                   ariaLabel="Etiket adedi (slider)"
                   ticks={
                     formFactor === "rulo"
-                      ? [1000, 2000, 5000, 10000, 25000, 50000]
+                      ? [1000, 2000, 5000, 10000, 15000, 25000]
                       : [250, 500, 1000, 2500, 5000, 10000]
                   }
                   showTickLabels

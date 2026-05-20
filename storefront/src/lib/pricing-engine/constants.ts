@@ -144,7 +144,8 @@ export const LOT_PREFIX_ETIKET = "B";
 // ============================================================
 
 export const ETIKET_MIN_QTY = 1000;
-export const ETIKET_MAX_QTY = 50000;
+// Sefa 20 May v68: max 50.000 → 25.000 (yüksek talepler manuel teklif).
+export const ETIKET_MAX_QTY = 25000;
 export const ETIKET_GAP_DEFAULT = 6;
 
 /**
@@ -171,7 +172,7 @@ export const ETIKET_TIERS: EtiketTier[] = [
   { qty: 5000, multiplier: 1.00, label: "referans" },
   { qty: 10000, multiplier: 0.95, label: "−%5 indirim" },
   { qty: 20000, multiplier: 0.90, label: "−%10 indirim" },
-  { qty: 50000, multiplier: 0.82, label: "−%18 indirim" },
+  { qty: 25000, multiplier: 0.88, label: "−%12 indirim" },
 ];
 
 /** Etiket malzemesi — fason rate multiplier */

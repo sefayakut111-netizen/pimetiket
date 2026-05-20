@@ -102,15 +102,15 @@ const stickerTool = tool({
 
 const etiketTool = tool({
   description:
-    "Etiket fiyatı hesapla. Rulo etiket (tabaka YOK). Min 1000 adet, max 50000. Boyut serbest (W×H mm).",
+    "Etiket fiyatı hesapla. Rulo etiket (tabaka YOK). Min 1000 adet, max 25000. Boyut serbest (W×H mm).",
   inputSchema: z.object({
     width: z.number().min(5).max(520).describe("Etiket genişliği mm"),
     height: z.number().min(5).max(1470).describe("Etiket yüksekliği mm"),
     qty: z
       .number()
       .min(1000)
-      .max(50000)
-      .describe("Sipariş adedi (1K/2K/5K/10K/20K/50K önerilen)"),
+      .max(25000)
+      .describe("Sipariş adedi (1K/2K/5K/10K/20K/25K önerilen)"),
     material_id: z
       .enum(["kraft", "beyaz", "ultra", "metalik"])
       .default("kraft")

@@ -153,7 +153,7 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
     { qty: 5000, multiplier: 1.00, label: "referans" },
     { qty: 10000, multiplier: 0.95, label: "-%5 indirim" },
     { qty: 20000, multiplier: 0.90, label: "-%10 indirim" },
-    { qty: 50000, multiplier: 0.82, label: "-%18 indirim" },
+    { qty: 25000, multiplier: 0.88, label: "-%12 indirim" },
   ],
   operation: { setup: 80, packaging_per_unit: 0.015, cargo: 80, fee_pct: 2.5 },
   margin: { pct: 50 },
