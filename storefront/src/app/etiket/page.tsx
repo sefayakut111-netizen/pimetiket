@@ -201,12 +201,16 @@ export default function EtiketGridPage() {
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Header — Sefa 20 May v68: alt açıklama paragrafı kaldırıldı,
-            başlık tek başına yeterli. */}
+        {/* Header — Sefa 20 May v68: kısa alt açıklama (sayfa girişi). */}
         <header className="mb-10 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-lacivert">
             {isEn ? "Choose your label type" : "Etiket tipini seç"}
           </h1>
+          <p className="mt-2 text-sm text-gri-700">
+            {isEn
+              ? "Pick a shape — material, size, and quantity come next."
+              : "Şeklini seç, sonraki adımda malzeme ve adet düzenlersin."}
+          </p>
         </header>
 
         {/* Sefa 20 May v68: 2 sütunlu layout — sol RULO, sağ TABAKA.
@@ -216,13 +220,16 @@ export default function EtiketGridPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 lg:divide-x lg:divide-gri-200 mb-12">
           {/* SOL SÜTUN — Rulo etiket (6 kart) */}
           <section className="lg:pr-8">
-            <div className="flex items-center gap-3 mb-5">
+            <div className="flex items-center gap-3 mb-2">
               <div className="h-px flex-1 bg-gri-200" />
               <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
                 {isEn ? "Roll labels" : "Rulo etiket"}
               </h2>
               <div className="h-px flex-1 bg-gri-200" />
             </div>
+            <p className="text-center text-xs text-gri-600 mb-5">
+              {isEn ? "Starts at 1,000 pcs" : "1.000 adetten başlar"}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {RULO_CARDS.map((card) => (
                 <ProductCard
@@ -236,13 +243,16 @@ export default function EtiketGridPage() {
 
           {/* SAĞ SÜTUN — Tabaka etiket (5 kart) */}
           <section className="lg:pl-8">
-            <div className="flex items-center gap-3 mb-5">
+            <div className="flex items-center gap-3 mb-2">
               <div className="h-px flex-1 bg-gri-200" />
               <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
                 {isEn ? "Sheet labels" : "Tabaka etiket"}
               </h2>
               <div className="h-px flex-1 bg-gri-200" />
             </div>
+            <p className="text-center text-xs text-gri-600 mb-5">
+              {isEn ? "Starts at 250 pcs" : "250 adetten başlar"}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {TABAKA_CARDS.map((card) => (
                 <ProductCard
