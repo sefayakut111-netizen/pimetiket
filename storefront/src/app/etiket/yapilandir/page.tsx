@@ -1739,16 +1739,16 @@ function EtiketPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-xl bg-pim-mercan-tint ring-1 ring-pim-mercan px-4 py-3 inline-flex items-center gap-3">
-                    <div className="text-2xl font-bold text-pim-mercan">
+                  /* Sefa 20 May v68: kompakt pill — eski 2xl badge çok
+                     büyüktü, sayfada görsel ağırlık dengelensin. */
+                  <div className="inline-flex items-center gap-2 rounded-full bg-pim-mercan-tint ring-1 ring-pim-mercan/40 px-3 py-1.5 text-[13px]">
+                    <span className="font-bold text-pim-mercan tabular-nums">
                       {ETIKET_DEFAULT_CORE_SIZE}mm
-                    </div>
-                    <div className="text-[13px] text-lacivert">
-                      <div className="font-semibold">Standart</div>
-                      <div className="text-gri-700 text-[12px]">
-                        3 inç — endüstri standardı
-                      </div>
-                    </div>
+                    </span>
+                    <span className="text-gri-500">·</span>
+                    <span className="text-gri-700">
+                      3 inç, endüstri standardı
+                    </span>
                   </div>
                 )}
               </div>
