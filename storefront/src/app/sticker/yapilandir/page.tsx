@@ -786,7 +786,29 @@ function StickerPage() {
             </span>
           </div>
           <h1 className="text-[26px] md:text-[40px] font-semibold tracking-tight leading-tight text-lacivert">
-            {t.sticker.pageTitle}
+            {/* Sefa 20 May v68: dinamik ürün başlığı — cut/material/shape
+                önceliklerine göre. Örn: "Özel Kesim Sticker", "Holografik
+                Sticker", "Yarı Kesim Sticker", "Sticker Sayfası". */}
+            {(() => {
+              const isEn = locale === "en";
+              if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Sticker Sayfası";
+              if (cutMode === "kisscut") return isEn ? "Kiss-Cut Sticker" : "Yarı Kesim Sticker";
+              if (material === "holo") return isEn ? "Holographic Sticker" : "Holografik Sticker";
+              if (material === "simli") return isEn ? "Glitter Sticker" : "Simli Sticker";
+              if (material === "transparan") return isEn ? "Clear Sticker" : "Şeffaf Sticker";
+              if (shape === "bumper") return "Bumper Sticker";
+              const shapeMap: Record<string, [string, string]> = {
+                diecut: ["Die-Cut", "Özel Kesim"],
+                die: ["Die-Cut", "Özel Kesim"],
+                ozel: ["Die-Cut", "Özel Kesim"],
+                circle: ["Circle", "Yuvarlak"],
+                square: ["Square", "Kare"],
+                rectangle: ["Rectangle", "Dikdörtgen"],
+                oval: ["Oval", "Oval"],
+              };
+              const [en, tr] = shapeMap[shape] ?? ["Die-Cut", "Özel Kesim"];
+              return isEn ? `${en} Sticker` : `${tr} Sticker`;
+            })()}
           </h1>
         </div>
       </div>

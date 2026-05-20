@@ -1159,7 +1159,11 @@ function EtiketPage() {
             </span>
           </div>
           <h1 className="text-[26px] md:text-[40px] font-semibold tracking-tight leading-tight text-lacivert">
-            {t.etiket.pageTitle}
+            {/* Sefa 20 May v68: dinamik ürün başlığı — şekil + form + Etiket.
+                Örn: "Özel Kesim Rulo Etiket", "Yuvarlak Tabaka Etiket". */}
+            {locale === "en"
+              ? `${shapeLabel(shape, "en")} ${formFactor === "rulo" ? "Roll" : "Sheet"} Label`
+              : `${shapeLabel(shape, "tr")} ${formFactor === "rulo" ? "Rulo" : "Tabaka"} Etiket`}
           </h1>
         </div>
       </div>
