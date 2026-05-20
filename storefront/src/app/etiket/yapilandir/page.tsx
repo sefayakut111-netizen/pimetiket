@@ -64,6 +64,14 @@ import {
   type EtiketCoatingId,
   type EtiketCustomId,
 } from "@/lib/etiket-customer-pricing";
+// Sefa 20 May v68 (Aşama B): müşteri gizleme flag'leri
+import {
+  HIDDEN_ETIKET_MATERIALS,
+  HIDDEN_ETIKET_COATINGS,
+  SHOW_ETIKET_CUSTOMIZATION_STEP,
+  SHOW_ETIKET_CORE_SIZE_PICKER,
+  ETIKET_DEFAULT_CORE_SIZE,
+} from "@/lib/etiket-feature-flags";
 // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar canlı config → /etiket
 // Client-safe import.
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
@@ -1162,6 +1170,8 @@ function EtiketPage() {
                   .filter((m) =>
                     (m.modes as readonly string[]).includes(formFactor)
                   )
+                  // Sefa 20 May v68 (Aşama B): kraft + ultra clear gizli
+                  .filter((m) => !HIDDEN_ETIKET_MATERIALS.includes(m.id))
                   .map((m) => (
                   <SelectableCard
                     key={m.id}
@@ -1240,6 +1250,8 @@ function EtiketPage() {
                   .filter((c) =>
                     (c.modes as readonly string[]).includes(formFactor)
                   )
+                  // Sefa 20 May v68 (Aşama B): soft touch gizli
+                  .filter((c) => !HIDDEN_ETIKET_COATINGS.includes(c.id))
                   .map((c) => (
                   <SelectableCard
                     key={c.id}
@@ -1276,8 +1288,11 @@ function EtiketPage() {
             {/* Step 3 — Özelleştirme (sadece RULO modunda görünür).
                 Tabaka etikette emboss/yaldız/spot UV yok — Sefa kuralı.
                 Sefa kuralı (15 May v3): Multi-select — birden fazla
-                özellik kombine edilebilir (örn Emboss + Spot UV). */}
-            {formFactor === "rulo" && (
+                özellik kombine edilebilir (örn Emboss + Spot UV).
+                Sefa 20 May v68 (Aşama B): SHOW_ETIKET_CUSTOMIZATION_STEP
+                false ise hiç render etme. Müşteri ileride açılmak üzere
+                gizlendi. Kod silinmedi — flag toggle yeterli. */}
+            {formFactor === "rulo" && SHOW_ETIKET_CUSTOMIZATION_STEP && (
             <FormSection
               id="step-3"
               number={uiStepNumber(3)}
@@ -1525,51 +1540,67 @@ function EtiketPage() {
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
             >
-              {/* Göbek çapı */}
+              {/* Göbek çapı — Sefa 20 May v68 (Aşama B):
+                  Picker gizli, 76mm sabit badge gösterilir. 25/40mm gizlendi
+                  (üretim partneri endüstri standardı 76mm istiyor).
+                  SHOW_ETIKET_CORE_SIZE_PICKER true yapılırsa eski 3-buton
+                  grid'i geri gelir. */}
               <div>
                 <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
                   Göbek çapı
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {CORE_SIZES.map((c) => {
-                    const active = touchedSteps.has(5) && coreSize === c.id;
-                    return (
-                      <div key={c.id} className="relative">
-                        {/* Sefa 18 May v52: 76mm önerilen → yuvarlak mercan
-                            standart PopulerBadge (Sefa 18 May v68) */}
-                        {c.id === 76 && (
-                          <PopulerBadge tooltip="Endüstri standardı (3 inch)" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCoreSize(c.id);
-                            markTouched(5);
-                          }}
-                          aria-pressed={active}
-                          className={cn(
-                            "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
-                            active
-                              ? "bg-pim-mercan-tint ring-pim-mercan"
-                              : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                {SHOW_ETIKET_CORE_SIZE_PICKER ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {CORE_SIZES.map((c) => {
+                      const active = touchedSteps.has(5) && coreSize === c.id;
+                      return (
+                        <div key={c.id} className="relative">
+                          {c.id === 76 && (
+                            <PopulerBadge tooltip="Endüstri standardı (3 inch)" />
                           )}
-                        >
-                          <div
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCoreSize(c.id);
+                              markTouched(5);
+                            }}
+                            aria-pressed={active}
                             className={cn(
-                              "font-semibold text-[14px]",
-                              active ? "text-pim-mercan" : "text-lacivert"
+                              "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                              active
+                                ? "bg-pim-mercan-tint ring-pim-mercan"
+                                : "bg-white ring-gri-200 hover:ring-pim-mercan"
                             )}
                           >
-                            {c.label}
-                          </div>
-                          <div className="text-[11px] text-gri-700 mt-0.5">
-                            {c.desc}
-                          </div>
-                        </button>
+                            <div
+                              className={cn(
+                                "font-semibold text-[14px]",
+                                active ? "text-pim-mercan" : "text-lacivert"
+                              )}
+                            >
+                              {c.label}
+                            </div>
+                            <div className="text-[11px] text-gri-700 mt-0.5">
+                              {c.desc}
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-pim-mercan-tint ring-1 ring-pim-mercan px-4 py-3 inline-flex items-center gap-3">
+                    <div className="text-2xl font-bold text-pim-mercan">
+                      {ETIKET_DEFAULT_CORE_SIZE}mm
+                    </div>
+                    <div className="text-[13px] text-lacivert">
+                      <div className="font-semibold">Standart</div>
+                      <div className="text-gri-700 text-[12px]">
+                        3 inç — endüstri standardı
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Sarım adeti */}
