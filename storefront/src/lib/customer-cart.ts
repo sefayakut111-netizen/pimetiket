@@ -301,7 +301,13 @@ async function dbInsert(
     .single();
   if (error) {
     console.error("[cart] dbInsert error:", error);
-    return null;
+    // Sefa 20 May v68 (debug): toast'a detayı verecek hata mesajı taşı
+    // (cart_items üretim hatası tespiti için geçici). Stabil olunca geri al.
+    const detail = `${error.code ?? "?"} · ${error.message ?? "Bilinmeyen hata"}`;
+    if (typeof window !== "undefined") {
+      console.error("[cart] payload:", insertValues[0]);
+    }
+    throw new Error(`DB hatası: ${detail}`);
   }
   return rowToItem(data as DbRow);
 }
@@ -414,9 +420,16 @@ export async function addToCustomerCart(
   }
 
   if (user) {
-    const inserted = await dbInsert(user.id, item);
-    if (!inserted) return { ok: false, reason: "Kaydedilemedi, tekrar dene." };
-    cache = [...cache, inserted];
+    try {
+      const inserted = await dbInsert(user.id, item);
+      if (!inserted) return { ok: false, reason: "Kaydedilemedi, tekrar dene." };
+      cache = [...cache, inserted];
+    } catch (err) {
+      // Sefa 20 May v68 (debug): gerçek DB hatası kullanıcıya toast'ta
+      // gösterilsin. Stabil olunca geri al.
+      const msg = err instanceof Error ? err.message : "Kaydedilemedi";
+      return { ok: false, reason: msg };
+    }
   } else {
     const fresh: CustomerCartItem = {
       ...item,
