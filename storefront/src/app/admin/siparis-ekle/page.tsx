@@ -57,11 +57,16 @@ export default function AdminCreateOrderPage() {
   const [notes, setNotes] = useState("");
 
   // Hesap
+  // Sefa 21 May v68 (admin denetim P2 #9): "KDV dahil" yazıyordu ama hesap
+  // KDV eklemiyordu. Birim fiyat KDV hariç varsayım — KDV %20 ekleniyor.
+  // Finans ile tutarlı (cirolar 1.20 ile brütleştirilir).
+  const VAT_RATE = 0.2;
   const qtyNum = Number(qty) || 0;
   const unitNum = Number(unit) || 0;
   const subtotal = qtyNum * unitNum;
+  const vat = Math.round(subtotal * VAT_RATE);
   const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 49;
-  const total = subtotal + shipping;
+  const total = subtotal + vat + shipping;
 
   const validate = (): string | null => {
     if (!name.trim()) return "Müşteri adı zorunlu";
@@ -435,7 +440,8 @@ export default function AdminCreateOrderPage() {
           <Card padding="p-5">
             <h2 className="text-[15px] font-semibold mb-4">Özet</h2>
             <div className="space-y-2 mb-5">
-              <Row label="Ara toplam" value={`${subtotal.toLocaleString("tr-TR")} ₺`} />
+              <Row label="Ara toplam (KDV hariç)" value={`${subtotal.toLocaleString("tr-TR")} ₺`} />
+              <Row label="KDV (%20)" value={`${vat.toLocaleString("tr-TR")} ₺`} />
               <Row
                 label="Kargo"
                 value={shipping === 0 ? "Ücretsiz" : `${shipping} ₺`}

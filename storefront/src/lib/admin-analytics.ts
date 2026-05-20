@@ -173,10 +173,41 @@ export interface TopCity {
   revenue: number;
 }
 
+/**
+ * Sefa 21 May v68 (admin denetim P2 #10): Şehir adı normalize.
+ * Kullanıcı "Istanbul" ve "İstanbul" yazdığında ayrı satır görünüyordu.
+ * Normalize: trim + tek boşluk + tutarlı I/İ + title case fallback.
+ * Display: TR title case (İSTANBUL → İstanbul).
+ */
+function normalizeCity(raw: string): string {
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "Bilinmiyor";
+  // Lowercase TR-aware key: I → i (ASCII), İ → i (Türkçe)
+  const lower = trimmed.toLocaleLowerCase("tr-TR");
+  // "istanbul" varyantlarını tek key'e indir
+  const aliases: Record<string, string> = {
+    istanbul: "İstanbul",
+    ankara: "Ankara",
+    izmir: "İzmir",
+    bursa: "Bursa",
+    antalya: "Antalya",
+  };
+  if (aliases[lower]) return aliases[lower];
+  // Generic Title Case (TR locale)
+  return trimmed
+    .split(" ")
+    .map(
+      (w) =>
+        w.charAt(0).toLocaleUpperCase("tr-TR") +
+        w.slice(1).toLocaleLowerCase("tr-TR")
+    )
+    .join(" ");
+}
+
 export function topCities(orders: CustomerOrder[], limit = 5): TopCity[] {
   const map = new Map<string, TopCity>();
   for (const o of orders) {
-    const city = (o.address.city || "Bilinmiyor").trim();
+    const city = normalizeCity(o.address.city || "Bilinmiyor");
     const existing = map.get(city);
     if (existing) {
       existing.count++;

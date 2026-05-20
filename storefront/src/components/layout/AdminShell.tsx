@@ -115,15 +115,19 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/yedekler": "Yedekler",
   "/admin/galeri": "Galeri yönetimi",
   "/admin/urunler": "Ürün kartları",
+  "/admin/kargo": "Kargo yönetimi",
   "/admin/ayarlar": "Ayarlar",
 };
 
 function getPageTitle(pathname: string): string {
   if (PATH_TITLES[pathname]) return PATH_TITLES[pathname];
-  // /admin/foo/bar → "foo / bar"
+  // /admin/foo/bar → "Foo / Bar" (Sefa 21 May v68 P2 #17: capitalize)
   const segs = pathname.split("/").filter(Boolean).slice(1);
   if (segs.length === 0) return "Operatör paneli";
-  return segs.join(" / ").replace(/-/g, " ");
+  return segs
+    .map((s) => s.replace(/-/g, " "))
+    .map((s) => s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1))
+    .join(" / ");
 }
 
 export function AdminShell({ children }: { children: ReactNode }) {

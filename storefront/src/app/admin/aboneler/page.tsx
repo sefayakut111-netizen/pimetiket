@@ -117,14 +117,30 @@ export default function AdminAbonelerPage() {
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
               Aboneler
             </h1>
+            {/* Sefa 21 May v68 (admin denetim P2 #16): dangling separator
+                bug fix — pendingWelcome=0 ve sablonlarCount=0 ise "0 aktif
+                abone · " sonu açıkta kalıyordu. Şimdi sadece dolu kısımlar
+                · ile birleştirilir. */}
             <p className="mt-1.5 text-base text-gri-700">
-              {data.length} aktif abone ·{" "}
-              {pendingWelcome > 0 && (
-                <span className="text-sari-koyu font-semibold">
-                  {pendingWelcome} welcome mail bekliyor
-                </span>
-              )}
-              {sablonlarCount > 0 && ` · ${sablonlarCount} şablon kaydı`}
+              {[
+                `${data.length} aktif abone`,
+                pendingWelcome > 0 ? `${pendingWelcome} welcome mail bekliyor` : null,
+                sablonlarCount > 0 ? `${sablonlarCount} şablon kaydı` : null,
+              ]
+                .filter(Boolean)
+                .map((s, i, arr) => (
+                  <span
+                    key={i}
+                    className={
+                      i === 1 && pendingWelcome > 0
+                        ? "text-sari-koyu font-semibold"
+                        : ""
+                    }
+                  >
+                    {s}
+                    {i < arr.length - 1 ? " · " : ""}
+                  </span>
+                ))}
             </p>
           </div>
           <a href={csvUrl} download>

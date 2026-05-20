@@ -492,7 +492,16 @@ export default function AdminDashboardPage() {
   const ops = useMemo(() => operationalMetrics(orders), [orders]);
   const insights = useMemo(() => generateInsights(orders), [orders]);
 
-  const recent = orders.slice(0, 5);
+  // Sefa 21 May v68 (admin denetim P2 #14): orders kaynak sıralaması statü
+  // bazlı olabiliyordu — Son siparişler kullanıcının beklediği kronoloji
+  // (createdAt DESC) ile gözüksün diye explicit sort.
+  const recent = useMemo(
+    () =>
+      [...orders]
+        .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+        .slice(0, 5),
+    [orders]
+  );
 
   const dateLabel = now
     ? now
