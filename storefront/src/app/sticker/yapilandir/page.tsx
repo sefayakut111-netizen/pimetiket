@@ -88,7 +88,11 @@ import { gridColsForCount } from "@/lib/grid-cols";
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
-import { addToCustomerCart, removeFromCustomerCart } from "@/lib/customer-cart";
+import {
+  addToCustomerCart,
+  removeFromCustomerCart,
+  listCustomerCart,
+} from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
 import { quantizeForCart } from "@/lib/pricing-quantize";
 
@@ -479,26 +483,8 @@ function StickerPage() {
     else if (corner === "sharp") setSoftCorners(false);
   }, [searchParams]);
 
-  // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? localStorage'daki
-  // intent'i oku, state'leri en son ayarlarla restore et, intent'i temizle.
-  // Sadece mount'ta bir kez çalışır.
-  useEffect(() => {
-    const intent = loadEditIntent();
-    if (!intent || intent.item.product !== "sticker") return;
-    const it = intent.item;
-    if (it.material) setMaterial(it.material);
-    if (it.finish) setFinish(it.finish);
-    if (it.width) setWidth(it.width);
-    if (it.height) setHeight(it.height);
-    if (it.softCorners !== undefined) setSoftCorners(it.softCorners);
-    // qty = tier × designCount → tier = qty / designCount
-    const designCnt = it.designCount ?? 1;
-    setTier(Math.max(25, Math.round(it.qty / designCnt)));
-    if (designCnt > 1) setDesignCount(designCnt);
-    setEditingItemId(intent.editingItemId);
-    clearEditIntent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // editIntent useEffect aşağıda — `editingItemId` state declaration'ı
+  // önce gelmesi gerekiyor (TDZ).
 
   // Müşteri serbest qty seçer — 25'er artış, 25-1000 aralık.
   // findTier en yakın STICKER_TIERS multiplier'ını otomatik uygular.
@@ -507,6 +493,38 @@ function StickerPage() {
   // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? editingItemId
   // varsa "Sepete Ekle" sonrası eskiyi siler (replace pattern).
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  // Sefa 20-21 May v68 test #3: URL ?edit=ID + cart lookup + localStorage
+  // fallback. State'leri en son ayarlarla restore eder. [searchParams,
+  // editingItemId] dep — edit ID URL'de iken tekrar tetiklenirse no-op.
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    if (editingItemId === editId) return;
+
+    const items = listCustomerCart();
+    let it = items.find((i) => i.id === editId);
+    if (!it) {
+      const intent = loadEditIntent();
+      if (intent && intent.editingItemId === editId) it = intent.item;
+    }
+    if (!it || it.product !== "sticker") return;
+
+    if (it.material) setMaterial(it.material);
+    if (it.finish) setFinish(it.finish);
+    if (it.width) setWidth(it.width);
+    if (it.height) setHeight(it.height);
+    if (it.softCorners !== undefined) setSoftCorners(it.softCorners);
+    if (it.cut === "tabaka" || it.cut === "diecut") setCutMode(it.cut);
+    const designCnt = it.designCount ?? 1;
+    setTier(Math.max(25, Math.round(it.qty / designCnt)));
+    if (designCnt > 1) setDesignCount(designCnt);
+
+    setTouchedSteps(new Set([1, 2, 3, 4, 5, 6, 7]));
+    setEditingItemId(editId);
+    clearEditIntent();
+  }, [searchParams, editingItemId]);
+
   // Sefa 20 May v68: bumper sticker varsayılan 280×80mm (klasik tampon),
   // diğerleri 75×75. URL ?shape=... ve useEffect ile sync.
   const initialDims =

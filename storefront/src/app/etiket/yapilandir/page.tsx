@@ -81,7 +81,11 @@ import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
 import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
 import { deriveScopeFromProduct } from "@/lib/pricing-calc";
-import { addToCustomerCart, removeFromCustomerCart } from "@/lib/customer-cart";
+import {
+  addToCustomerCart,
+  removeFromCustomerCart,
+  listCustomerCart,
+} from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
 import { quantizeForCart } from "@/lib/pricing-quantize";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
@@ -729,15 +733,24 @@ function EtiketPage() {
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
   const primaryDesign = designs[0] ?? null;
 
-  // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? editingItemId
-  // varsa "Sepete Ekle" sonrası eskiyi siler (replace pattern).
+  // Sefa 20-21 May v68 test #3: Sepetten "Düzenle" — URL ?edit=ID + cart
+  // lookup + localStorage intent fallback. State restore + editingItemId
+  // ile "Sepete Ekle"de eski item silinir (replace pattern).
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
-  // Sepetten "Düzenle" intent restore — mount'ta bir kez.
   useEffect(() => {
-    const intent = loadEditIntent();
-    if (!intent || intent.item.product !== "etiket") return;
-    const it = intent.item;
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    if (editingItemId === editId) return; // zaten uygulandı
+
+    const items = listCustomerCart();
+    let it = items.find((i) => i.id === editId);
+    if (!it) {
+      const intent = loadEditIntent();
+      if (intent && intent.editingItemId === editId) it = intent.item;
+    }
+    if (!it || it.product !== "etiket") return;
+
     if (it.materialId) setMaterial(it.materialId as EtiketMaterialId);
     if (it.coatingId) setCoating(it.coatingId as EtiketCoatingId);
     if (it.width) setWidth(it.width);
@@ -746,10 +759,13 @@ function EtiketPage() {
     const designCnt = it.designCount ?? 1;
     setQty(Math.max(ETIKET_MIN_QTY, Math.round(it.qty / designCnt)));
     if (designCnt > 1) setDesignCount(designCnt);
-    setEditingItemId(intent.editingItemId);
+
+    // Tüm adımları touched işaretle (lock guard düşmesin)
+    setTouchedSteps(new Set([1, 2, 3, 4, 5, 6, 7, 8]));
+
+    setEditingItemId(editId);
     clearEditIntent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, editingItemId]);
 
   // Sefa 18 May v68 (5): 3D / Eskiz toggle state
   const [previewView, setPreviewView] = useState<PreviewView>("3d");

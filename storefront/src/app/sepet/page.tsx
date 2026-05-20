@@ -132,14 +132,16 @@ export default function SepetPage() {
   const x = locale === "en" ? EXTRA.en : EXTRA.tr;
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
 
-  // Sefa 20 May v68 test #3: Düzenle pattern — item snapshot localStorage'a
-  // yaz, konfigüratöre yönlendir. Konfigüratör mount'ta loadEditIntent ile
-  // state'i geri yükler.
+  // Sefa 20-21 May v68: Düzenle pattern — URL ?edit=ID + localStorage backup.
+  // URL params üzerinden item ID konfigüratöre gelir, mount'ta listCustomerCart
+  // ile aranır. localStorage intent fallback (cart cache hidrate olmadıysa).
+  // Eski useEffect chain race condition'ı (searchParams useEffect editIntent'i
+  // resetliyordu) bu pattern'le çözüldü.
   const handleEdit = (item: CustomerCartItem) => {
     setEditIntent(item);
-    const target =
+    const base =
       item.product === "etiket" ? "/etiket/yapilandir" : "/sticker/yapilandir";
-    router.push(target);
+    router.push(`${base}?edit=${encodeURIComponent(item.id)}`);
   };
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
