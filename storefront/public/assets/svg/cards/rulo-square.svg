@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="130" viewBox="0 0 220 130" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>Kare rulo etiket — kare sticker</title>
+  <defs>
+    <linearGradient id="rulo-s-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F0EDE3"/>
+    </linearGradient>
+    <linearGradient id="rulo-s-sticker" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8585"/>
+      <stop offset="100%" stop-color="#FF6B5B"/>
+    </linearGradient>
+    <filter id="rulo-s-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g filter="url(#rulo-s-shadow)">
+    <ellipse cx="65" cy="68" rx="48" ry="46" fill="url(#rulo-s-body)" stroke="#1F1B2D" stroke-width="2"/>
+    <ellipse cx="65" cy="68" rx="42" ry="40" fill="none" stroke="#1F1B2D" stroke-width="0.6" opacity="0.25"/>
+    <ellipse cx="65" cy="68" rx="35" ry="33" fill="none" stroke="#1F1B2D" stroke-width="0.6" opacity="0.18"/>
+    <ellipse cx="65" cy="68" rx="14" ry="13" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.5"/>
+    <ellipse cx="65" cy="68" rx="6" ry="5.5" fill="#1F1B2D" opacity="0.15"/>
+    <path d="M 35 50 Q 50 45 70 46" fill="none" stroke="#FFFFFF" stroke-width="1.4" opacity="0.7"/>
+  </g>
+
+  <!-- 2 kare sticker (stacked, hafif döndürülmüş) -->
+  <g filter="url(#rulo-s-shadow)">
+    <rect x="150" y="72" width="36" height="36" rx="2" fill="#FFB5A8" stroke="#1F1B2D" stroke-width="1.5" opacity="0.6" transform="rotate(6 168 90)"/>
+    <rect x="138" y="42" width="40" height="40" rx="2" fill="url(#rulo-s-sticker)" stroke="#1F1B2D" stroke-width="1.8" transform="rotate(-4 158 62)"/>
+    <rect x="143" y="47" width="10" height="10" rx="1" fill="#FFFFFF" opacity="0.35" transform="rotate(-4 148 52)"/>
+  </g>
+</svg>

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="130" viewBox="0 0 220 130" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>Kare tabaka etiket — A4 kağıt + kare grid</title>
+  <defs>
+    <linearGradient id="tabaka-s-paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F4F1E6"/>
+    </linearGradient>
+    <linearGradient id="tabaka-s-sticker" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF8585"/>
+      <stop offset="100%" stop-color="#FF6B5B"/>
+    </linearGradient>
+    <filter id="tabaka-s-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g opacity="0.5" transform="rotate(-3 110 70)">
+    <rect x="50" y="20" width="120" height="96" rx="3" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.4"/>
+  </g>
+
+  <g filter="url(#tabaka-s-shadow)" transform="rotate(-7 110 70)">
+    <rect x="44" y="14" width="124" height="100" rx="3" fill="url(#tabaka-s-paper)" stroke="#1F1B2D" stroke-width="2"/>
+
+    <!-- 3×3 = 9 kare -->
+    <g fill="url(#tabaka-s-sticker)" stroke="#1F1B2D" stroke-width="1.2">
+      <rect x="58" y="24" width="22" height="22" rx="2"/><rect x="96" y="24" width="22" height="22" rx="2"/><rect x="134" y="24" width="22" height="22" rx="2"/>
+      <rect x="58" y="54" width="22" height="22" rx="2"/><rect x="96" y="54" width="22" height="22" rx="2"/><rect x="134" y="54" width="22" height="22" rx="2"/>
+      <rect x="58" y="84" width="22" height="22" rx="2"/><rect x="96" y="84" width="22" height="22" rx="2"/><rect x="134" y="84" width="22" height="22" rx="2"/>
+    </g>
+  </g>
+</svg>
