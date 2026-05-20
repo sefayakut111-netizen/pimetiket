@@ -375,32 +375,18 @@ export default function SepetPage() {
                         )}
                       </div>
                     )}
-                    {/* Sefa 17 May P2-26: tap target 44px WCAG mobil min */}
-                    <div className="flex items-center gap-3 mt-3 flex-wrap">
-                      <div className="inline-flex items-center gap-2 ring-1 ring-gri-200 rounded-full bg-white">
-                        <button
-                          type="button"
-                          onClick={() => updateQty(item, -1)}
-                          className="w-11 h-11 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-l-full text-[18px] font-semibold active:scale-95 transition-transform"
-                          aria-label={x.decreaseQty}
-                        >
-                          −
-                        </button>
-                        <span className="text-[14px] font-semibold min-w-[64px] text-center tabular-nums">
-                          {fmt(item.qty)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateQty(item, 1)}
-                          className="w-11 h-11 grid place-items-center text-gri-700 hover:bg-gri-100 rounded-r-full text-[18px] font-semibold active:scale-95 transition-transform"
-                          aria-label={x.increaseQty}
-                        >
-                          +
-                        </button>
-                      </div>
-                      {/* Sefa-3: "Birim 3,64 ₺" net etiket — sadece "× X ₺"
-                          karışıklığı bitti. */}
-                      <span className="text-[12.5px] text-gri-700 tabular-nums">
+                    {/* Sefa 20 May v68 (test geri bildirim): Sepette adet
+                        stepper [- 1000 +] kaldırıldı — tier'a göre iskonto
+                        uygulanıyor, sepette linear hesap yanıltıcı. Adet
+                        değişikliği "Düzenle" ile konfigüratörde yapılır.
+                        Salt okunur "Adet: X · Birim: Y" etiketi kaldı. */}
+                    <div className="flex items-center gap-3 mt-3 flex-wrap text-[12.5px] tabular-nums">
+                      <span>
+                        <span className="text-gri-500">Adet:</span>{" "}
+                        <strong className="text-lacivert">{fmt(item.qty)}</strong>
+                      </span>
+                      <span className="text-gri-300" aria-hidden="true">·</span>
+                      <span>
                         <span className="text-gri-500">{x.unitLabel}:</span>{" "}
                         <strong className="text-lacivert">{x.decimal(item.unit)} {x.currency}</strong>
                       </span>

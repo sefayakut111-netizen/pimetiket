@@ -1116,6 +1116,16 @@ function EtiketPage() {
     // Eski "policy: ödeme sonrası 3 gün" gizliydi → cart title'da açık
     // göster ki müşteri sepete bakınca "tasarımı yüklemem lazım" anlasın.
     const hasNoDesign = designs.length === 0;
+
+    // Sefa 20 May v68 (test "önizleme gözükmüyor"): Native image için
+    // kalıcı Supabase URL üret. Yoksa sayfa refresh sonrası blob URL invalid.
+    let _resolvedPreviewUrl: string | undefined;
+    if (primary) {
+      const { persistDesignPreview } = await import("@/lib/design-preview");
+      const url = await persistDesignPreview(primary.file, primary.id);
+      _resolvedPreviewUrl = url ?? undefined;
+    }
+
     const result = await addToCustomerCart({
       product: "etiket",
       title: `Etiket · ${matName} + ${coatName}${
@@ -1134,13 +1144,8 @@ function EtiketPage() {
       // PendingDesign local-only (Supabase tempId yok) — "local-{id}" formatında.
       // Sipariş sonrası detay sayfasında gerçek upload yapılır (sticker pattern).
       designTempId: primary ? `local-${primary.id}` : undefined,
-      // Sefa 20 May v68 Migration 072: Sepette gerçek tasarım önizlemesi.
-      // generatedPreviewUrl render edilmiş PNG (PDF/AI/PSD için pdfjs/ag-psd
-      // ile üretildi, native image için orijinal blob URL). null ise sepet UI
-      // fallback logo gösterir (PDF/AI/PSD rozeti).
-      designPreviewUrl:
-        primary?.generatedPreviewUrl ??
-        (primary?.kind === "image" ? primary?.previewUrl : undefined),
+      // Sefa 20 May v68 (test): persistDesignPreview ile kalıcı Supabase URL
+      designPreviewUrl: _resolvedPreviewUrl,
       designFileName: primary?.name,
       designMimeType: primary?.mimeType,
       // Multi-design metadata (Sefa 15 May v6): designCount + tüm dosyalar

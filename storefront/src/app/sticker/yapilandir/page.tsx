@@ -1526,6 +1526,24 @@ function StickerPage() {
                 // Çoklu tasarım için title'da designCount belirt
                 const titleSuffix =
                   designCount > 1 ? ` (${designCount} tasarım)` : "";
+
+                // Sefa 20 May v68 (test): Native image/PSD/PDF için kalıcı
+                // Supabase URL üret. design.generatedPreviewUrl varsa onu kullan
+                // (DesignDropZone zaten Supabase'e yüklüyor), yoksa designs[0]
+                // için persistDesignPreview ile yükle.
+                let _resolvedPreviewUrl: string | undefined =
+                  design?.generatedPreviewUrl;
+                if (!_resolvedPreviewUrl && designs[0]) {
+                  const { persistDesignPreview } = await import(
+                    "@/lib/design-preview"
+                  );
+                  const url = await persistDesignPreview(
+                    designs[0].file,
+                    designs[0].id
+                  );
+                  _resolvedPreviewUrl = url ?? undefined;
+                }
+
                 const result = await addToCustomerCart({
                   product: "sticker",
                   title: `Sticker · ${matName} + ${finName}${titleSuffix}`,
@@ -1545,18 +1563,11 @@ function StickerPage() {
                   finish,
                   hediyeAdet: overrunCount * designCount,
                   designTempId: design?.tempId,
-                  // Sefa 20 May v68 Migration 072: Sepette gerçek tasarım
-                  // önizlemesi göster. Öncelik:
-                  //   1. Primary design'ın render edilmiş preview URL'i
-                  //   2. designs[0] (MultiDesignUploader) generatedPreviewUrl
-                  //   3. designs[0] orijinal blob URL (native image için)
-                  //   4. null → sepet UI fallback logo (PDF/AI/PSD rozeti)
-                  designPreviewUrl:
-                    design?.generatedPreviewUrl ??
-                    designs[0]?.generatedPreviewUrl ??
-                    (designs[0]?.kind === "image"
-                      ? designs[0]?.previewUrl
-                      : undefined),
+                  // Sefa 20 May v68 (test geri bildirim "önizleme gözükmüyor"):
+                  // Native image (PNG/JPG) için blob URL session-scope; sayfa
+                  // refresh sonrası 404. _resolvedPreviewUrl yukarıda
+                  // persistDesignPreview ile auth varsa kalıcı Supabase URL.
+                  designPreviewUrl: _resolvedPreviewUrl,
                   designFileName: design?.fileName ?? designs[0]?.name,
                   designMimeType: design?.mimeType ?? designs[0]?.mimeType,
                   // Multi-design metadata (Sefa 15 May v5):

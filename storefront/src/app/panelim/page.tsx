@@ -516,49 +516,9 @@ export default function PanelimPage() {
           </div>
         </div>
 
-        {/* QUICK ACTIONS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-          <QuickAction
-            icon={<Icon.Roll size={20} />}
-            title={c.qaNewEtiket}
-            desc={c.qaNewEtiketDesc}
-            href="/etiket"
-            primary
-          />
-          <QuickAction
-            icon={<Icon.Sticker size={20} />}
-            title={c.qaNewSticker}
-            desc={c.qaNewStickerDesc}
-            href="/sticker"
-          />
-          <QuickAction
-            icon={<Icon.Bolt size={20} />}
-            title={c.qaReorder}
-            desc={
-              lastEtiketItem
-                ? c.qaReorderEtiket(
-                    lastEtiketItem.title.split("·").slice(1).join("·").trim() ||
-                      c.qaReorderRepeat
-                  )
-                : lastStickerItem
-                  ? c.qaReorderSticker(
-                      lastStickerItem.title
-                        .split("·")
-                        .slice(1)
-                        .join("·")
-                        .trim() || c.qaReorderRepeat
-                    )
-                  : c.qaReorderSoon
-            }
-            onClick={
-              lastReorderTarget
-                ? () => handleQuickReorder(lastReorderTarget)
-                : undefined
-            }
-            href={lastReorderTarget ? undefined : "/etiket"}
-            disabled={reordering}
-          />
-        </div>
+        {/* Sefa 20 May v68 (test geri bildirim): "Yeni etiket / Yeni sticker
+            / Tekrar sipariş" 3 kart bloğu kaldırıldı — anasayfa hero ve
+            üst nav'da zaten aynı CTA'lar var, duplicate. */}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
           {/* MAIN */}
@@ -721,28 +681,8 @@ export default function PanelimPage() {
               )}
             </section>
 
-            {/* AI suggestion — son etiket varsa upsell */}
-            {hydrated && lastEtiketItem && (
-              <div className="rounded-lg p-5 bg-gradient-to-br from-lacivert to-lacivert-soft text-white flex gap-4 items-center flex-wrap sm:flex-nowrap">
-                <PimMini pose="think" size={56} />
-                <div className="flex-1 min-w-[180px]">
-                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-white/60">
-                    {c.aiForYou}
-                  </div>
-                  <div className="font-semibold text-[15px] mt-1 leading-snug">
-                    {c.aiUpsell(lastEtiketQty.toLocaleString(c.locale))}
-                  </div>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  href="/etiket"
-                  className="!bg-white !text-lacivert !ring-0 shrink-0"
-                >
-                  {c.reprint} <Icon.ArrowR size={14} />
-                </Button>
-              </div>
-            )}
+            {/* Sefa 20 May v68 (test geri bildirim): "SANA ÖZEL — Son etiket
+                siparişin X adet'ti..." upsell kartı kaldırıldı (gereksiz). */}
           </div>
 
           {/* SIDE */}

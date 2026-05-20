@@ -91,6 +91,54 @@ export async function generatePreview(file: File): Promise<DesignPreviewResult> 
 }
 
 /**
+ * Tek-çağrı yardımcı: File → Supabase Storage'a yüklenmiş kalıcı PNG URL.
+ *
+ * Sefa 20 May v68 (test geri bildirim): "önizleme gözükmüyor".
+ * Sebep: MultiDesignUploader'da native image (PNG/JPG) için sadece blob URL
+ * üretiliyordu (URL.createObjectURL). Auth modda DB'ye blob URL yazılıyor,
+ * sayfa refresh sonrası blob URL session yok → sepet UI önizleme 404.
+ *
+ * Çözüm: Bu helper hem native image (file'ı direkt yükle) hem PDF/PSD/AI
+ * (render + yükle) için tek-çağrı kalıcı URL döner. Auth yoksa blob URL
+ * (session boyunca geçerli) döner.
+ *
+ * Sticker/Etiket konfigüratörü addToCustomerCart önce bu helper'ı çağırır.
+ */
+export async function persistDesignPreview(
+  file: File,
+  designId: string
+): Promise<string | null> {
+  try {
+    const { getCurrentUser } = await import("@/lib/supabase/auth-bridge");
+    const user = await getCurrentUser();
+
+    const kind = detectKind(file);
+    let blob: Blob | null = null;
+
+    if (kind === "image") {
+      // Native image — dosyanın kendisi preview
+      blob = file;
+    } else {
+      // PDF/PSD/AI/EPS — render gerek
+      const result = await generatePreview(file);
+      if (result.ok && result.blob) blob = result.blob;
+    }
+
+    if (!blob) return null;
+
+    // Auth yoksa blob URL (session) — guest checkout
+    if (!user) return URL.createObjectURL(blob);
+
+    // Auth varsa Supabase Storage'a yükle, kalıcı URL al
+    const url = await uploadPreviewToStorage(blob, designId, user.id);
+    // Upload başarısızsa blob URL fallback (kullanıcı session içinde önizler)
+    return url ?? URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Preview Blob → Supabase Storage upload. Public URL döner.
  * Bucket: `design-previews` (Migration 072 referansı, public read).
  *
