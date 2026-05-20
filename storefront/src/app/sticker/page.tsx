@@ -497,8 +497,8 @@ export default function StickerGridPage() {
           </h1>
           <p className="mt-3 text-[15px] text-gri-700 max-w-2xl mx-auto leading-relaxed">
             {isEn
-              ? "Choose the form that becomes your brand's voice. Starts at 25 pcs — flexible production for prototypes, gifts, events, and collections. Material, size, and quantity all yours in the next step."
-              : "Markanın sesi olacak formu seç. 25 adetten başlar — prototip, hediye, etkinlik ve koleksiyon için esnek üretim. Malzeme, boyut ve adet sonraki adımda senin elinde."}
+              ? "Pick the form that reflects you — starts at 25 pcs. Prototypes, gifts, events, collections, hobby: useful across many spaces. Material, size, and quantity in the next step — customization is all yours."
+              : "Seni yansıtacak formu seç — 25 adetten başlayabilirsin. Prototip, hediye, etkinlik, koleksiyon ve hobi: birçok alanda yanında. Malzeme, boyut ve adet sonraki adımda — özelleştirme tamamen sende."}
           </p>
         </header>
 
