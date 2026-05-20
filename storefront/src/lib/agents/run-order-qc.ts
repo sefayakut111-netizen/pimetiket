@@ -12,7 +12,16 @@
  *
  * Hata olursa: order.status değişmez (paid kalır), Sentry log düşer.
  * Admin /admin/ai-qc kuyruğunda manuel re-run yapabilir.
+ *
+ * Sefa 20 May v68 (P1 #7 döngü guard):
+ *   orders.qc_attempt_count >= QC_MAX_ATTEMPTS ise AI atlanır:
+ *   status = operator_review (insan-only kuyruk). Sonsuz döngü
+ *   senaryosu — müşteri bozuk dosya yükler, AI hep "kotu" der,
+ *   admin reject, döngü başa — kırılır.
  */
+
+/** P1 #7: AI deneme limiti — bunu geçen sipariş insan-only kuyruğa düşer. */
+const QC_MAX_ATTEMPTS = 3;
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import * as Sentry from "@sentry/nextjs";
@@ -39,7 +48,7 @@ interface RunOrderQCResult {
   orderId: string;
   ranCount: number;
   verdictCounts: Record<"iyi" | "normal" | "kotu" | "error", number>;
-  aggregateVerdict: "ready_to_proof" | "needs_review";
+  aggregateVerdict: "ready_to_proof" | "needs_review" | "escalated_max_attempts";
 }
 
 /**
@@ -54,6 +63,41 @@ export async function runOrderDesignQC(
   admin: SupabaseClient,
   orderId: string
 ): Promise<RunOrderQCResult> {
+  // 0) P1 #7 — Sonsuz döngü guard: 3 attempt'tan sonra AI atlanır,
+  // sipariş insan-only kuyruğa düşer (operator_review).
+  const { data: orderRow } = await admin
+    .from("orders")
+    .select("qc_attempt_count")
+    .eq("id", orderId)
+    .maybeSingle();
+  const currentAttempts =
+    ((orderRow as unknown as { qc_attempt_count?: number } | null)
+      ?.qc_attempt_count ?? 0);
+
+  if (currentAttempts >= QC_MAX_ATTEMPTS) {
+    // Escalate — AI'a gitmeden insan kuyruğuna at
+    await admin
+      .from("orders")
+      .update({ status: "operator_review" } as never)
+      .eq("id", orderId);
+    await admin.from("order_events").insert([
+      {
+        order_id: orderId,
+        event_type: "qc_escalated_max_attempts",
+        status_after: "operator_review",
+        actor_role: "system",
+        summary: `AI ${currentAttempts} kez çalıştı — insan kuyruğuna escalate edildi (sonsuz döngü guard).`,
+        detail: { attempts: currentAttempts, max_attempts: QC_MAX_ATTEMPTS },
+      },
+    ] as never);
+    return {
+      orderId,
+      ranCount: 0,
+      verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+      aggregateVerdict: "escalated_max_attempts",
+    };
+  }
+
   // 1) Order items
   const { data: itemsData, error: itemsErr } = await admin
     .from("order_items")
@@ -176,14 +220,36 @@ export async function runOrderDesignQC(
     ? "ready_to_proof"
     : "needs_review";
 
-  // 5) Order status update
+  // 5) Order status update + P1 #7 attempt counter increment
+  const nextAttemptCount = currentAttempts + 1;
   const nextStatus =
     aggregateVerdict === "ready_to_proof" ? "proof_generating" : "human_review";
 
   await admin
     .from("orders")
-    .update({ status: nextStatus } as never)
+    .update({
+      status: nextStatus,
+      qc_attempt_count: nextAttemptCount,
+    } as never)
     .eq("id", orderId);
+
+  // Eğer bu son izin verilen attempt ise (counter şimdi maks'e ulaştı) ve
+  // sonuç "needs_review" ise admin görsün — sıradaki re-run direkt escalate olacak.
+  if (
+    aggregateVerdict === "needs_review" &&
+    nextAttemptCount >= QC_MAX_ATTEMPTS
+  ) {
+    await admin.from("order_events").insert([
+      {
+        order_id: orderId,
+        event_type: "qc_attempt_limit_reached",
+        status_after: nextStatus,
+        actor_role: "system",
+        summary: `AI ${nextAttemptCount}/${QC_MAX_ATTEMPTS} attempt — sonraki çağrı escalate olur.`,
+        detail: { attempts: nextAttemptCount, verdict_counts: verdictCounts },
+      },
+    ] as never);
+  }
 
   return {
     orderId,

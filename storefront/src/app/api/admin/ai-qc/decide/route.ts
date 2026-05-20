@@ -64,6 +64,7 @@ export async function POST(req: Request) {
       "human_review",
       "human_review_failed",
       "proof_generating",
+      "operator_review", // P1 #7 — escalate edilmiş sipariş kararı
     ] as never)
     .select("id, status")
     .single();

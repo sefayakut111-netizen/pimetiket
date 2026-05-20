@@ -74,6 +74,7 @@ export async function GET() {
       "human_review",
       "human_review_failed",
       "proof_generating",
+      "operator_review", // P1 #7 — qc_attempt limit aşıldı, AI atlandı
     ] as never)
     .order("created_at", { ascending: false })
     .limit(50);
