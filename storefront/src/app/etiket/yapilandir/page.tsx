@@ -88,6 +88,7 @@ import {
 } from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
 import { quantizeForCart } from "@/lib/pricing-quantize";
+import { buildSummaryItems } from "@/lib/order-summary";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 // Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
 // import { ProductInfoSection } from "@/components/ProductInfoSection";
@@ -759,6 +760,8 @@ function EtiketPage() {
     if (it.width) setWidth(it.width);
     if (it.height) setHeight(it.height);
     if (it.winding) setWinding(it.winding);
+    if (it.coreSize) setCoreSize(it.coreSize);
+    if (it.rollLabelCount) setRollLabelCount(it.rollLabelCount);
     const designCnt = it.designCount ?? 1;
     setQty(Math.max(ETIKET_MIN_QTY, Math.round(it.qty / designCnt)));
     if (designCnt > 1) setDesignCount(designCnt);
@@ -1160,6 +1163,11 @@ function EtiketPage() {
       coatingId: coating,
       customizationId: primaryCustom,
       winding,
+      // Sefa 21 May v68 Mig 073: rulo göbek + adet/rulo structured kayıt
+      // (eskiden sadece config string'inde tutuluyordu, sipariş detay özet
+      // için yapılandırılmış kayıt gerekli — order-summary.ts helper).
+      coreSize: formFactor === "rulo" ? coreSize : undefined,
+      rollLabelCount: formFactor === "rulo" ? rollLabelCount : undefined,
       // PendingDesign local-only (Supabase tempId yok) — "local-{id}" formatında.
       // Sipariş sonrası detay sayfasında gerçek upload yapılır (sticker pattern).
       designTempId: primary ? `local-${primary.id}` : undefined,
@@ -2355,19 +2363,18 @@ function EtiketPage() {
                     · KDV dahil
                   </>
                 }
-                /* Sefa 18 May v62: İşlem özeti — toplam rulo + toplam adet
-                   (caller locale-aware string'ler oluşturur) */
-                /* v63: labels kısaltıldı — eyebrow "İşlem özeti" zaten
-                   "Toplam" sözünü taşıyor, içeride tekrar gerek yok */
+                /* Sefa 21 May v68: İŞLEM ÖZETİ — buildSummaryItems helper
+                   tek-doğru-kaynak. Malzeme, Kaplama, Özelleştirme, Boyut,
+                   Sarım, Göbek, Rulodaki adet, Toplam adet, Tasarım sayısı.
+                   Sipariş detay sayfasında aynı helper kullanılır → tutarlı. */
                 summaryItems={[
-                  // Sefa 20 May v68 (Aşama C): şekil iz — kullanıcı gridten
-                  // gelen seçimini özet'te görsün
+                  // Şekil + Köşe + Rulo adedi: helper kapsamı dışında
+                  // (configurator-only state'ler) — manuel ekleniyor
                   {
                     icon: "🔷",
                     label: locale === "en" ? "Shape" : "Şekil",
                     value: shapeLabel(shape, locale),
                   },
-                  // Sefa 20 May v68: köşe stili — sadece kare/dikdörtgen için
                   ...(supportsCornerStyle(shape)
                     ? [
                         {
@@ -2377,26 +2384,36 @@ function EtiketPage() {
                         },
                       ]
                     : []),
+                  // Helper'dan gelen tüm cart-item alanları
+                  ...buildSummaryItems(
+                    {
+                      id: "preview",
+                      product: "etiket",
+                      title: "",
+                      config: "",
+                      width,
+                      height,
+                      qty: totalEtiketCount,
+                      unit,
+                      total,
+                      materialId: material,
+                      coatingId: coating,
+                      customizationId: primaryCustom,
+                      winding,
+                      coreSize: formFactor === "rulo" ? coreSize : undefined,
+                      rollLabelCount:
+                        formFactor === "rulo" ? rollLabelCount : undefined,
+                      designCount: designCount > 1 ? designCount : undefined,
+                      addedAt: 0,
+                    },
+                    locale === "en" ? "en" : "tr"
+                  ),
                   ...(rollsNeeded > 0
                     ? [
                         {
                           icon: "📦",
-                          label: locale === "en" ? "Roll count" : "Rulo adedi",
+                          label: locale === "en" ? "Roll count" : "Toplam rulo",
                           value: `${rollsNeeded} ${locale === "en" ? "rolls" : "rulo"}`,
-                        },
-                      ]
-                    : []),
-                  {
-                    icon: "📋",
-                    label: locale === "en" ? "Label count" : "Etiket adedi",
-                    value: `${totalEtiketCount.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitLabel}`,
-                  },
-                  ...(designCount > 1
-                    ? [
-                        {
-                          icon: "🎨",
-                          label: locale === "en" ? "Designs" : "Tasarım",
-                          value: `${designCount}`,
                         },
                       ]
                     : []),

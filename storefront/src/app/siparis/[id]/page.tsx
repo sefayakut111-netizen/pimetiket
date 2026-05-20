@@ -21,6 +21,8 @@ import {
   type CustomerOrder,
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { DesignThumb } from "@/components/cart/DesignThumb";
+import { buildSummaryItems } from "@/lib/order-summary";
 import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
@@ -722,28 +724,65 @@ export default function SiparisDetailPage({
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-4">{c.summaryTitle}</h3>
               <ul className="flex flex-col gap-3 text-[13px]">
-                {order.items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
-                  >
-                    <div className="flex justify-between gap-3 items-baseline">
-                      <span className="font-semibold text-lacivert text-[13.5px] truncate flex-1 min-w-0">
-                        {item.title}
-                      </span>
-                      <span className="font-semibold tabular-nums shrink-0">
-                        {fmt(item.total)} {c.currency}
-                      </span>
-                    </div>
-                    <div className="text-[12px] text-gri-500 mt-1 leading-relaxed">
-                      {item.config}
-                    </div>
-                    <div className="text-[12px] text-gri-700 mt-1 tabular-nums">
-                      {item.qty.toLocaleString(c.locale)} {c.pcs} ×{" "}
-                      {fmtUnit(item.unit)} {c.currency}
-                    </div>
-                  </li>
-                ))}
+                {/* Sefa 21 May v68: Sipariş özetinde DesignThumb (gerçek
+                    tasarım önizlemesi) + buildSummaryItems (basamak basamak
+                    özet — konfigüratör İşlem Özeti ile aynı format). */}
+                {order.items.map((item) => {
+                  const summaryItems = buildSummaryItems(
+                    item,
+                    c.locale === "en-US" ? "en" : "tr"
+                  );
+                  return (
+                    <li
+                      key={item.id}
+                      className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
+                    >
+                      <div className="flex gap-3 items-start">
+                        <DesignThumb
+                          previewUrl={item.designPreviewUrl}
+                          fileName={item.designFileName}
+                          mimeType={item.designMimeType}
+                          product={item.product}
+                          size="sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between gap-3 items-baseline">
+                            <span className="font-semibold text-lacivert text-[13.5px] truncate flex-1 min-w-0">
+                              {item.title}
+                            </span>
+                            <span className="font-semibold tabular-nums shrink-0">
+                              {fmt(item.total)} {c.currency}
+                            </span>
+                          </div>
+                          {/* Basamak basamak özet — her bir konfigüratör
+                              seçimi tek satır */}
+                          {summaryItems.length > 0 && (
+                            <ul className="mt-1.5 space-y-0.5 text-[11.5px] text-gri-700">
+                              {summaryItems.map((s, i) => (
+                                <li key={i} className="flex items-start gap-1.5">
+                                  <span aria-hidden="true" className="shrink-0">
+                                    {s.icon}
+                                  </span>
+                                  <span>
+                                    <span className="text-gri-500">
+                                      {s.label}:
+                                    </span>{" "}
+                                    <span className="font-medium text-lacivert">
+                                      {s.value}
+                                    </span>
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="text-[11.5px] text-gri-500 mt-1.5 tabular-nums">
+                            {fmtUnit(item.unit)} {c.currency} × {item.qty.toLocaleString(c.locale)} {c.pcs}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
               <div className="mt-4 pt-3 border-t border-gri-200 space-y-1.5 text-[13px]">
                 <div className="flex justify-between">

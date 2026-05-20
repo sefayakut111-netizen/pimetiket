@@ -95,6 +95,7 @@ import {
 } from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
 import { quantizeForCart } from "@/lib/pricing-quantize";
+import { buildSummaryItems } from "@/lib/order-summary";
 
 // ============================================================
 // Configuration data
@@ -1528,6 +1529,31 @@ function StickerPage() {
               variant="bold"
               topLabel="SEÇİMİN"
               total={total}
+              // Sefa 21 May v68: İŞLEM ÖZETİ — tüm basamakların özeti.
+              // buildSummaryItems helper (src/lib/order-summary.ts) cart
+              // item objesinden üretir; sipariş detay sayfasında da aynı
+              // helper kullanılır (tek-doğru-kaynak).
+              summaryItems={buildSummaryItems(
+                {
+                  id: "preview",
+                  product: "sticker",
+                  title: "",
+                  config: "",
+                  width,
+                  height,
+                  qty: tier * designCount,
+                  unit: currentUnit,
+                  total,
+                  shape: mapShapeToLegacy(shape),
+                  cut: mapCutToLegacy(cutMode),
+                  softCorners,
+                  material,
+                  finish,
+                  designCount: designCount > 1 ? designCount : undefined,
+                  addedAt: 0,
+                },
+                locale
+              )}
               unitPrice={
                 <>
                   {designCount > 1 ? (

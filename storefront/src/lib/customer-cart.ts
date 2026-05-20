@@ -66,6 +66,10 @@ export interface CustomerCartItem {
   customizationId?: string;
   /** Etiket sarım yönü 1-8 */
   winding?: number;
+  /** Sefa 21 May v68 Mig 073: Rulo göbek çapı mm (25, 40, 76) */
+  coreSize?: number;
+  /** Sefa 21 May v68 Mig 073: 1 rulodaki etiket sayısı */
+  rollLabelCount?: number;
 
   // Pre-purchase tasarım — sepete eklemeden önce yüklenmiş tasarım dosyası
   // (design_temp_uploads.id). Ödeme sonrası design_files'a promote edilir.
@@ -199,6 +203,9 @@ interface DbRow {
   coating_id: string | null;
   customization_id: string | null;
   winding: number | null;
+  // Migration 073 (Sefa 21 May v68): rulo göbek + adet/rulo
+  core_size: number | null;
+  roll_label_count: number | null;
   design_temp_id: string | null;
   // Migration 038 (Sefa 15 May v5): multi-design metadata
   design_count: number | null;
@@ -231,6 +238,8 @@ function rowToItem(r: DbRow): CustomerCartItem {
     coatingId: r.coating_id ?? undefined,
     customizationId: r.customization_id ?? undefined,
     winding: r.winding ?? undefined,
+    coreSize: r.core_size ?? undefined,
+    rollLabelCount: r.roll_label_count ?? undefined,
     designTempId: r.design_temp_id ?? undefined,
     designCount: r.design_count ?? undefined,
     additionalDesigns:
@@ -282,16 +291,18 @@ function itemToInsert(
         ? it.designTempId
         : null,
     // Migration 038 multi-design metadata (Sefa 15 May v5) +
-    // Migration 072 design preview (Sefa 20 May v68).
+    // Migration 072 design preview (Sefa 20 May v68) +
+    // Migration 073 rulo göbek/adet (Sefa 21 May v68).
     // Database types henüz regenerate edilmediği için extra alanlar
     // CartInsert tipinin dışında — extra field cast ile geçirilir.
-    // Sefa migration sonrası `supabase gen types` çalıştırınca cast kalkar.
     ...({
       design_count: it.designCount ?? null,
       additional_designs: it.additionalDesigns ?? null,
       design_preview_url: it.designPreviewUrl ?? null,
       design_file_name: it.designFileName ?? null,
       design_mime_type: it.designMimeType ?? null,
+      core_size: it.coreSize ?? null,
+      roll_label_count: it.rollLabelCount ?? null,
     } as Partial<CartInsert>),
   };
 }

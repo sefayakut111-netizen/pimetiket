@@ -207,6 +207,13 @@ function rowsToOrder(
       coatingId: meta.coatingId,
       customizationId: meta.customizationId,
       winding: meta.winding,
+      // Sefa 21 May v68 Mig 073: rulo + design alanları meta'dan geri yüklenir
+      coreSize: meta.coreSize,
+      rollLabelCount: meta.rollLabelCount,
+      designCount: meta.designCount,
+      designPreviewUrl: meta.designPreviewUrl,
+      designFileName: meta.designFileName,
+      designMimeType: meta.designMimeType,
       addedAt: ts,
     };
   });
@@ -300,6 +307,9 @@ async function dbCreate(
     qty: i.qty,
     unit: i.unit,
     total: i.total,
+    // Sefa 21 May v68 Mig 073: meta'ya coreSize/rollLabelCount/design*
+    // alanları eklendi → /siparis detay sayfası buildSummaryItems ile
+    // basamak basamak özet gösterir, DesignThumb preview render eder.
     meta: {
       shape: i.shape,
       cut: i.cut,
@@ -311,6 +321,12 @@ async function dbCreate(
       coatingId: i.coatingId,
       customizationId: i.customizationId,
       winding: i.winding,
+      coreSize: i.coreSize,
+      rollLabelCount: i.rollLabelCount,
+      designCount: i.designCount,
+      designPreviewUrl: i.designPreviewUrl,
+      designFileName: i.designFileName,
+      designMimeType: i.designMimeType,
     },
   }));
 
