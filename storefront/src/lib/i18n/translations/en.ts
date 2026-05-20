@@ -56,7 +56,7 @@ export const en: TranslationDict = {
       "DPI, CMYK, bleed — if anything's missing, we flag it before production.",
     pillar3Title: "Fast delivery",
     pillar3Desc:
-      "We ship within 5 business days. Transparent production tracking.",
+      "Labels ship within 10, stickers within 5 business days. Transparent production tracking.",
     productEtiketSub: "Roll labels — cosmetics, food, beverages, perfume.",
     productStickerSub: "Single die-cut or sheet labels — laptop, notebook, campaign.",
     productPriceLabel: "price, starting from",
@@ -71,7 +71,7 @@ export const en: TranslationDict = {
     step3: "Approve the proof",
     step3Desc: "See your product print-ready before production.",
     step4: "Receive",
-    step4Desc: "On its way within 5-10 days.",
+    step4Desc: "Labels 10, stickers 5 business days to ship.",
     faqEyebrow: "Frequently asked",
     faqTitle: 'Answer is usually "yes, we got you".',
     faqHelp:

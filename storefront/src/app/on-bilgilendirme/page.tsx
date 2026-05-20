@@ -62,10 +62,9 @@ export default function OnBilgilendirmePage() {
           <a href="/iletisim">/iletisim</a>
         </li>
       </ul>
-      <p className="text-[12.5px] text-gri-700 italic">
-        Not: Şirket ünvanı resmî değişiklik sürecindedir. Vergi numarası ve
-        vergi dairesi sabittir; bağlayıcı kimlik vergi numarasıdır.
-      </p>
+      {/* Sefa 21 May v68 (UX denetim P3 #15): "Şirket ünvanı değişiklik
+          sürecindedir" notu kullanıcıya gösterilmemeli — iç doküman olarak
+          kalmalı. Resmi ünvan kesinleştiğinde buradan kaldırıldı. */}
 
       <h2>2. Sözleşme Konusu Mal/Hizmet ve Temel Nitelikleri</h2>
       <p>
@@ -133,16 +132,25 @@ export default function OnBilgilendirmePage() {
           aracılığıyla gönderilir.
         </li>
         <li>
-          <strong>Tahmini teslim süresi:</strong> Ürünler 5 (beş) iş günü
-          içinde kargoya verilir; kargonun ALICI&rsquo;ya ulaşması teslim
-          adresine göre 1-3 iş günü sürebilir. Süre, ALICI&rsquo;nın
-          tasarım dosyasını yüklemesinden ve kalite kontrolünden geçtikten
-          sonra başlar.
+          <strong>Tahmini teslim süresi (Sefa 21 May v68 standart):</strong>
+          <ul>
+            <li>
+              <strong>Etiket siparişleri</strong>: en geç{" "}
+              <strong>10 (on) iş günü</strong> içinde kargoya verilir.
+            </li>
+            <li>
+              <strong>Sticker siparişleri</strong>: en geç{" "}
+              <strong>5 (beş) iş günü</strong> içinde kargoya verilir.
+            </li>
+          </ul>
+          Kargonun ALICI&rsquo;ya ulaşması teslim adresine göre 1-3 iş günü
+          sürebilir. Süre, ALICI&rsquo;nın tasarım dosyasını yüklemesinden
+          ve kalite kontrolünden geçtikten sonra başlar.
         </li>
         <li>
-          ALICI&rsquo;nın 3 (üç) gün içinde tasarım dosyasını yüklememesi
-          halinde sipariş tek taraflı iptal edilir; ödenen tutar ALICI&rsquo;ya
-          iade edilir.
+          ALICI&rsquo;nın 3 (üç) iş günü içinde tasarım dosyasını
+          yüklememesi halinde sipariş tek taraflı iptal edilir; ödenen tutar
+          ALICI&rsquo;ya iade edilir.
         </li>
         <li>
           Yasal teslimat süresi en geç 30 (otuz) gündür; bu sürenin aşılması

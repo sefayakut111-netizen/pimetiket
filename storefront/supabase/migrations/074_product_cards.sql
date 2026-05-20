@@ -150,7 +150,7 @@ values
   ('sticker', 'glitter', 'Simli Sticker', 'Glitter Sticker',
    'Parıltılı dokulu — çocuk, hediye', 'Sparkly texture — kids, gifts',
    10, '{"cut":"diecut","shape":"diecut","material":"simli"}'::jsonb, null, 'glitter'),
-  ('sticker', 'sheet', 'Sticker Sayfası', 'Sticker Sheet',
+  ('sticker', 'sheet', 'Karma Sticker Sayfası', 'Mixed Sticker Sheet',
    'Karma şekiller, tek sayfada', 'Mixed shapes on a single sheet',
    11, '{"cut":"tabaka","shape":"square"}'::jsonb, null, 'sheet')
 on conflict (product_type, key) do nothing;

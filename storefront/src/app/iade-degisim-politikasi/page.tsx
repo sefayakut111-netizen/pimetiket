@@ -94,9 +94,11 @@ export default function IadeDegisimPolitikasiPage() {
             </ul>
             <p>
               Bu durumlarda <strong className="text-lacivert">ücretsiz yenileme</strong>{" "}
-              veya tam para iadesi sunarız. Talep, ürün eline geçtikten 7 gün
-              içinde yapılmalıdır. Kanıt olarak fotoğraf ve sipariş numarası
-              yeterlidir.
+              veya tam para iadesi sunarız. Talep, ürün eline geçtikten{" "}
+              <strong className="text-lacivert">30 gün içinde</strong> yapılmalıdır
+              (TKHK m.10 ayıplı mal bildirimi). En geç 7 iş günü içinde
+              başlatırsan daha hızlı çözeriz. Kanıt olarak fotoğraf ve sipariş
+              numarası yeterlidir.
             </p>
           </Section>
 
@@ -179,10 +181,8 @@ export default function IadeDegisimPolitikasiPage() {
 
           <Section title="8. Sorularını kim cevaplar?">
             <p>
-              Soru olursa Pim&rsquo;e WhatsApp ya da iletişim formundan yaz.
-              Sefa veya operatör ekibi 1-2 iş günü içinde döner. Acil
-              durumlarda (yarın etkinlik var, baskı eksik) WhatsApp en hızlı
-              kanal.
+              Soru olursa Pim&rsquo;e iletişim formundan yaz.
+              Sefa 1-2 iş günü içinde döner.
             </p>
           </Section>
         </div>

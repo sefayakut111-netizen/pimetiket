@@ -145,9 +145,9 @@ export default function GizlilikPage() {
           işleme; AB ve global edge node&rsquo;lar).
         </li>
         <li>
-          <strong>E-posta gönderim</strong>: Google Workspace (info@pimetiket.com
-          gelen kutusu) ve Resend (transactional sipariş/iade bildirimi —
-          aktivasyon sürüyor).
+          <strong>E-posta gönderim</strong>: Google Workspace
+          (info@pimetiket.com gelen kutusu) ve Resend Inc. (ABD —
+          transactional sipariş/iade/hatırlatma bildirimleri için aktif).
         </li>
         <li>
           <strong>Yapay zeka asistanı</strong>: OpenAI API (Pim sohbet için

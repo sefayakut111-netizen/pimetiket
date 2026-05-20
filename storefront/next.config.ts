@@ -147,11 +147,9 @@ const nextConfig: NextConfig = {
         destination: "/iade-degisim-politikasi",
         permanent: true,
       },
-      {
-        source: "/cayma-hakki",
-        destination: "/iade-degisim-politikasi",
-        permanent: true,
-      },
+      // Sefa 21 May v68 (UX denetim P2 #10): /cayma-hakki redirect kaldırıldı.
+      // Cayma hakkı ayrı bir hukuki kavram (TKHK m.15) ve src/app/cayma-hakki/
+      // page.tsx zaten var — başlık + içerik tam. SEO + hukuki şeffaflık.
     ];
   },
 };

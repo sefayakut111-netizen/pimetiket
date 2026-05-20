@@ -262,8 +262,15 @@ export function TopBar() {
                 <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white text-[12px] font-bold">
                   {initials || <Icon.User size={12} />}
                 </span>
+                {/* Sefa 21 May v68 (UX denetim P0 #1): displayName e-posta
+                    ise (admin@pimetiket.com gibi) header'da gösterme,
+                    "Hesabım" fallback. Güvenlik + brute-force riski (denetim
+                    raporu) + kişisel veri gereksiz teşhir. E-posta sadece
+                    dropdown menü içinde görünür (orada bilinçli açma). */}
                 <span className="hidden sm:inline text-[13px] font-semibold text-lacivert max-w-[100px] truncate">
-                  {displayName?.split(" ")[0] ?? t.nav.profile}
+                  {displayName && !displayName.includes("@")
+                    ? displayName.split(" ")[0]
+                    : t.nav.profile}
                 </span>
                 <Icon.ChevR
                   size={12}

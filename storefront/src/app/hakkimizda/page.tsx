@@ -34,7 +34,7 @@ const COPY = {
     story4post: " katıldık.",
     storyPromise: "Sana ne vaat ediyoruz?",
     story5:
-      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok, “5 iş günü” diyince 10. günü beklemek yok.",
+      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok — söylediğimiz teslim gününü bekletmiyoruz: etiket 10, sticker 5 iş günü içinde kargoda.",
     story6: "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 75 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası.",
     pimWhoEyebrow: "Pim kim?",
     pimWhoTitle: "Selam, ben Pim. Bu işin kargasıyım.",
@@ -52,15 +52,15 @@ const COPY = {
       "Sen sadece yaz — bağlamı kendim anlarım, gerekirse Sefa'ya da iletirim.",
     valuesEyebrow: "Değerlerimiz",
     valuesTitle: "Pim'in altında saklanan dört söz.",
-    val1Title: "Düşük adetten esnek",
+    val1Title: "Esnek adet",
     val1Desc:
-      "Stoklamadan, az miktarda da kaliteden ödün vermeden bastırırsın. 1000 etiketten başlıyoruz.",
+      "Stoklamadan, az miktarda da kaliteden ödün vermeden bastırırsın. Rulo etiket 1.000, tabaka etiket 250, sticker 25 adetten başlar.",
     val2Title: "AI dosyana bakar",
     val2Desc:
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler. Pre-press hatası elinde patlamaz.",
     val3Title: "Kapına teslim",
     val3Desc:
-      "5 iş günü içinde kargoda. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
+      "Etiket 10, sticker 5 iş günü içinde kargoda. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
     val4Title: "Açık ve dürüst fiyat",
     val4Desc:
       "Konfigüratörde gördüğün anlık fiyat sepete düştüğünde aynı kalır. Sürpriz ek yok.",

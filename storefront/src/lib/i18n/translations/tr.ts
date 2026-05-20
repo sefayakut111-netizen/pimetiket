@@ -56,7 +56,7 @@ export const tr: TranslationDict = {
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler.",
     pillar3Title: "Hızlı teslim",
     pillar3Desc:
-      "5 iş günü içinde kargoda. Şeffaf üretim takibi.",
+      "Etiket 10, sticker 5 iş günü içinde kargoda. Şeffaf üretim takibi.",
     productEtiketSub: "Rulodan etiket — kozmetik, gıda, içecek, parfüm.",
     productStickerSub: "Tekli ya da tabakada — laptop, defter, kampanya.",
     productPriceLabel: "fiyatı, başlangıç",
@@ -71,7 +71,7 @@ export const tr: TranslationDict = {
     step3: "Provayı onayla",
     step3Desc: "Basılacak ürününü baskıya hazır halde gör.",
     step4: "Teslim al",
-    step4Desc: "5-10 gün arasında kargoda.",
+    step4Desc: "Etiket 10, sticker 5 iş günü içinde kargoda.",
     faqEyebrow: "Sıkça sorulanlar",
     faqTitle: 'Cevap genelde "evet, hallederiz".',
     faqHelp:

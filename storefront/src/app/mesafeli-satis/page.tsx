@@ -68,8 +68,22 @@ export default function MesafeliSatisPage() {
           gösterilir; sözleşmenin esaslı unsurudur.
         </li>
         <li>
-          Tahmini teslim süresi: ürünler 5 (beş) iş günü içinde kargoya
-          verilir, kargo süresi şehre göre 1-3 iş günü sürer. Üretim süresi
+          ALICI&rsquo;nın 3 (üç) iş günü içinde tasarım dosyasını
+          yüklemesi gerekir; yüklenmezse sipariş tek taraflı iptal edilir.
+        </li>
+        <li>
+          Tahmini teslim süresi (Sefa 21 May v68 standart):
+          <ul>
+            <li>
+              <strong>Etiket siparişleri</strong>: en geç{" "}
+              <strong>10 (on) iş günü</strong> içinde kargoya verilir.
+            </li>
+            <li>
+              <strong>Sticker siparişleri</strong>: en geç{" "}
+              <strong>5 (beş) iş günü</strong> içinde kargoya verilir.
+            </li>
+          </ul>
+          Kargo süresi şehre göre 1-3 iş günü sürer. Üretim süresi
           ALICI&rsquo;nın tasarım dosyasını yüklemesinden sonra başlar.
         </li>
       </ul>
@@ -88,10 +102,10 @@ export default function MesafeliSatisPage() {
           tutarı iade etme hakkını saklı tutar.
         </li>
         <li>
-          AI destekli otomatik kalite kontrolü ve operatör manuel kontrolü
-          sonrasında dosya uygun bulunmazsa, ALICI&rsquo;ya düzeltme talebi
-          iletilir. Düzeltilmiş dosya yüklenmediği takdirde sipariş işleme
-          alınmaz.
+          AI destekli otomatik kalite kontrolü ve SATICI&rsquo;nın manuel
+          incelemesi sonrasında dosya uygun bulunmazsa, ALICI&rsquo;ya
+          düzeltme talebi iletilir. Düzeltilmiş dosya yüklenmediği takdirde
+          sipariş işleme alınmaz.
         </li>
       </ul>
 

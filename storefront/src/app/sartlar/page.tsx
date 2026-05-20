@@ -85,8 +85,9 @@ export default function SartlarPage() {
         <li>Yasaklı ürünlerin tanıtımını yapan içerik</li>
       </ul>
       <p>
-        AI destekli ön kontrol ve operatör manuel kontrolü bu kuralların
-        uygulanmasını sağlar; nihai red yetkisi Pim Etiket&rsquo;tedir.
+        AI destekli ön kontrol ve Sefa&rsquo;nın manuel incelemesi bu
+        kuralların uygulanmasını sağlar; nihai red yetkisi Pim
+        Etiket&rsquo;tedir.
       </p>
 
       <h2>5. Fikri Mülkiyet ve Kopyalama Yasağı</h2>
@@ -169,7 +170,9 @@ export default function SartlarPage() {
       <p>
         Kullanıcı olarak siz de hesabınızı istediğiniz zaman silebilirsiniz.
         Hesap silme talebiniz <a href="/iletisim">iletişim</a> kanallarından
-        iletilebilir.
+        iletilebilir. Silme talebinden sonra <strong>48 saatlik geri alma
+        süresi</strong> tanınır — bu süre içinde tekrar giriş yaparsanız
+        hesap silinmez (Sefa 21 May v68: KVKK metniyle eşitlendi).
       </p>
 
       <h2>8. Değişiklikler</h2>
