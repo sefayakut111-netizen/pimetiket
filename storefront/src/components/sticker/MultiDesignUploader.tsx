@@ -354,9 +354,10 @@ export function MultiDesignUploader({
           <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong>
           {" · "}max 30 MB/dosya
         </p>
-        {/* Sefa 20 May v68: "Tasarımları şimdi yüklemek zorunda değilsin"
-            bilgi mesajı kaldırıldı — aynı içerik konfigüratör sayfasında
-            "Sonra yükleme akışı aktif:" panel'inde tekrar ediyordu. */}
+        {/* Sefa 20 May v68: "💡 Tasarımları şimdi yüklemek zorunda
+            değilsin..." satırı kaldırıldı — aynı içerik konfigüratör
+            sayfasında "Sonra yükleme akışı aktif:" baloncuğunda
+            zaten gösteriliyor (duplicate temizlendi). */}
       </div>
 
       {/* Lightbox modal */}
