@@ -209,45 +209,50 @@ export default function EtiketGridPage() {
           </h1>
         </header>
 
-        {/* ÜST SECTION — Rulo etiket (6 kart) */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="h-px flex-1 bg-gri-200" />
-            <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
-              {isEn ? "Roll labels" : "Rulo etiket"}
-            </h2>
-            <div className="h-px flex-1 bg-gri-200" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-            {RULO_CARDS.map((card) => (
-              <ProductCard
-                key={`${card.form}-${card.shape}`}
-                card={card}
-                isEn={isEn}
-              />
-            ))}
-          </div>
-        </section>
+        {/* Sefa 20 May v68: 2 sütunlu layout — sol RULO, sağ TABAKA.
+            lg+: yan yana (2-col), her sütun içinde 2-col kart grid.
+            sm/md: alt alta (mobile-first). */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 mb-12">
+          {/* SOL SÜTUN — Rulo etiket (6 kart) */}
+          <section>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px flex-1 bg-gri-200" />
+              <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+                {isEn ? "Roll labels" : "Rulo etiket"}
+              </h2>
+              <div className="h-px flex-1 bg-gri-200" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {RULO_CARDS.map((card) => (
+                <ProductCard
+                  key={`${card.form}-${card.shape}`}
+                  card={card}
+                  isEn={isEn}
+                />
+              ))}
+            </div>
+          </section>
 
-        {/* ALT SECTION — Tabaka etiket (5 kart) */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="h-px flex-1 bg-gri-200" />
-            <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
-              {isEn ? "Sheet labels" : "Tabaka etiket"}
-            </h2>
-            <div className="h-px flex-1 bg-gri-200" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-            {TABAKA_CARDS.map((card) => (
-              <ProductCard
-                key={`${card.form}-${card.shape}`}
-                card={card}
-                isEn={isEn}
-              />
-            ))}
-          </div>
-        </section>
+          {/* SAĞ SÜTUN — Tabaka etiket (5 kart) */}
+          <section>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px flex-1 bg-gri-200" />
+              <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+                {isEn ? "Sheet labels" : "Tabaka etiket"}
+              </h2>
+              <div className="h-px flex-1 bg-gri-200" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {TABAKA_CARDS.map((card) => (
+                <ProductCard
+                  key={`${card.form}-${card.shape}`}
+                  card={card}
+                  isEn={isEn}
+                />
+              ))}
+            </div>
+          </section>
+        </div>
 
         {/* Alt CTA — sticker yönlendirme */}
         <div className="mt-12 text-center">
