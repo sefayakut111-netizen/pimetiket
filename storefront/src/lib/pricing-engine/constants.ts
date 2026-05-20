@@ -171,6 +171,7 @@ export const ETIKET_TIERS: EtiketTier[] = [
   { qty: 2000, multiplier: 1.05, label: "+%5 zam" },
   { qty: 5000, multiplier: 1.00, label: "referans" },
   { qty: 10000, multiplier: 0.95, label: "−%5 indirim" },
+  { qty: 15000, multiplier: 0.92, label: "−%8 indirim" },
   { qty: 20000, multiplier: 0.90, label: "−%10 indirim" },
   { qty: 25000, multiplier: 0.88, label: "−%12 indirim" },
 ];
