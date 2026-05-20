@@ -1807,18 +1807,20 @@ function EtiketPage() {
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
             >
-              {/* Sefa 20 May v68: Köşe stili seçici — sadece kare/dikdörtgen
-                  için anlamlı. "Düz" varsayılan, "Yumuşak" yumuşak köşe
-                  (rounded). Köşe-yuvarlak grid kartı iptal edildi, yerine
-                  bu inline chip seçici geldi. */}
+              {/* Sefa 20 May v68 (2. revize): Köşe seçeneği — sticker
+                  CornerStyleCard pattern'ine paralel. L ikonu + başlık +
+                  alt başlık. 2 kart yan yana, aktif olan mercan border. */}
               {supportsCornerStyle(shape) && (
                 <div className="mb-4">
                   <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
-                    Köşe stili
+                    {locale === "en" ? "Corner option" : "Köşe seçeneği"}
                   </div>
-                  <div className="inline-flex rounded-full bg-gri-100 p-1 ring-1 ring-gri-200">
+                  <div className="grid grid-cols-2 gap-3">
                     {(["sharp", "rounded"] as const).map((opt) => {
                       const active = cornerStyle === opt;
+                      const stroke = active
+                        ? "var(--color-pim-mercan)"
+                        : "var(--color-lacivert)";
                       return (
                         <button
                           key={opt}
@@ -1826,32 +1828,64 @@ function EtiketPage() {
                           onClick={() => setCornerStyle(opt)}
                           aria-pressed={active}
                           className={cn(
-                            "px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all inline-flex items-center gap-1.5",
+                            "p-4 rounded-xl ring-[1.5px] text-left transition-all flex items-center gap-3",
                             active
-                              ? "bg-white text-pim-mercan shadow-sm ring-1 ring-pim-mercan"
-                              : "text-gri-700 hover:text-lacivert"
+                              ? "ring-pim-mercan bg-pim-mercan-tint/40 shadow-1"
+                              : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
                           )}
                         >
-                          {/* Mini ikon: düz köşe = kare, yumuşak = rounded */}
-                          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-                            <rect
-                              x="2"
-                              y="2"
-                              width="10"
-                              height="10"
-                              rx={opt === "rounded" ? 3 : 0.5}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                            />
+                          {/* L köşe ikonu — düz vs yumuşatılmış */}
+                          <svg
+                            width="32"
+                            height="32"
+                            viewBox="0 0 32 32"
+                            aria-hidden="true"
+                            className="shrink-0"
+                          >
+                            {opt === "sharp" ? (
+                              <path
+                                d="M 4 28 L 4 4 L 28 4"
+                                fill="none"
+                                stroke={stroke}
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                              />
+                            ) : (
+                              <path
+                                d="M 4 28 L 4 12 Q 4 4 12 4 L 28 4"
+                                fill="none"
+                                stroke={stroke}
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            )}
                           </svg>
-                          {locale === "en"
-                            ? opt === "rounded"
-                              ? "Rounded"
-                              : "Sharp"
-                            : opt === "rounded"
-                              ? "Yumuşak"
-                              : "Düz"}
+                          <div className="min-w-0">
+                            <div
+                              className={cn(
+                                "font-bold text-[14px] leading-tight",
+                                active ? "text-pim-mercan" : "text-lacivert"
+                              )}
+                            >
+                              {locale === "en"
+                                ? opt === "sharp"
+                                  ? "Sharp corner"
+                                  : "Rounded corner"
+                                : opt === "sharp"
+                                  ? "Düz köşe"
+                                  : "Yumuşatılmış köşe"}
+                            </div>
+                            <div className="text-[12px] text-gri-700 leading-tight mt-0.5">
+                              {locale === "en"
+                                ? opt === "sharp"
+                                  ? "Crisp corner"
+                                  : "Soft rounded corner"
+                                : opt === "sharp"
+                                  ? "Keskin köşe"
+                                  : "Yuvarlatılmış köşe"}
+                            </div>
+                          </div>
                         </button>
                       );
                     })}
