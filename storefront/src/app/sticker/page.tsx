@@ -30,7 +30,6 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
-import { gridColsForCount } from "@/lib/grid-cols";
 
 interface StickerCard {
   /** URL query param'ları */
@@ -507,10 +506,9 @@ export default function StickerGridPage() {
         <div className="h-px bg-gri-200 max-w-5xl mx-auto mb-8" />
 
         {/* Sefa 20 May v68: tek grid (eski 2 section birleşti — section
-            başlıkları kaldırıldı). 11 sticker kartı tek listede sıralanır.
-            Grid sütun sayısı kart sayısına göre dinamik (gridColsForCount). */}
+            başlıkları kaldırıldı). 11 sticker kartı tek listede sıralanır. */}
         <section className="mb-12">
-          <div className={`${gridColsForCount(STICKER_CARDS.length)} gap-4 md:gap-5`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
             {STICKER_CARDS.map((card) => (
               <StickerProductCard key={card.query} card={card} isEn={isEn} />
             ))}

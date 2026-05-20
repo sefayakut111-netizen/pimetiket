@@ -80,6 +80,8 @@ import {
   SHOW_STICKER_CUT_MODE_PICKER,
   SHOW_STICKER_SHAPE_PICKER,
 } from "@/lib/sticker-feature-flags";
+// Sefa 20 May v68: kart sayısına göre dinamik grid sütun helper
+import { gridColsForCount } from "@/lib/grid-cols";
 // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar canlı config → /sticker
 // Client-safe import (pricing-config.ts'in server-only createAdminClient
 // referansı bundle'a sızmasın).
@@ -993,10 +995,9 @@ function StickerPage() {
               locked={isStepLocked(3)}
               lockMessage={getLockMessage(3)}
             >
-              {/* Sefa 18 May v68: kart boyutu etiket kaplama ile parity —
-                  4 öğe → 4 kolon (md+), mobile 2 kolon. Eski 2 kolon kartlar
-                  çok büyük görünüyordu, kompakt 4'lü grid daha dengeli. */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              {/* Sefa 20 May v68: grid kart sayısına göre dinamik
+                  (gridColsForCount). Kart sayısı = sütun sayısı, boş hücre yok. */}
+              <div className={`${gridColsForCount(MATERIALS.length)} gap-2.5`}>
                 {MATERIALS.map((m) => (
                   <SelectableCard
                     key={m.id}
@@ -1043,7 +1044,7 @@ function StickerPage() {
               locked={isStepLocked(4)}
               lockMessage={getLockMessage(4)}
             >
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className={`${gridColsForCount(FINISHES.length)} gap-2.5`}>
                 {FINISHES.map((f) => (
                   <SelectableCard
                     key={f.id}

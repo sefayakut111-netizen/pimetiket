@@ -73,6 +73,8 @@ import {
   ETIKET_DEFAULT_CORE_SIZE,
   SHOW_ETIKET_FORM_FACTOR_PICKER,
 } from "@/lib/etiket-feature-flags";
+// Sefa 20 May v68: kart sayısına göre dinamik grid sütun helper
+import { gridColsForCount } from "@/lib/grid-cols";
 // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar canlı config → /etiket
 // Client-safe import.
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
@@ -1308,11 +1310,12 @@ function EtiketPage() {
               locked={isStepLocked(1)}
               lockMessage={getLockMessage(1)}
             >
-              {/* Sefa 18 May v68: sticker'a paralel — 2 → 3 kolon (md+).
-                  6 etiket malzemesi 3×2 grid'e oturur, kartlar kompakt
-                  + okunur. Mobile 2 kolon korunur. */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                {orderedIds(
+              {/* Sefa 20 May v68: grid kart sayısına göre dinamik (gridColsForCount).
+                  HIDDEN_ETIKET_MATERIALS + formFactor filtresi sonrası görünür
+                  kart sayısı, sütun sayısı = kart sayısı → kutu doldurulur,
+                  boş hücre kalmaz. */}
+              {(() => {
+                const visibleMaterials = orderedIds(
                   MATERIALS.map((m) => m.id),
                   "materials"
                 )
@@ -1320,9 +1323,10 @@ function EtiketPage() {
                   .filter((m) =>
                     (m.modes as readonly string[]).includes(formFactor)
                   )
-                  // Sefa 20 May v68 (Aşama B): kraft + ultra clear gizli
-                  .filter((m) => !HIDDEN_ETIKET_MATERIALS.includes(m.id))
-                  .map((m) => (
+                  .filter((m) => !HIDDEN_ETIKET_MATERIALS.includes(m.id));
+                return (
+                  <div className={`${gridColsForCount(visibleMaterials.length)} gap-2.5`}>
+                    {visibleMaterials.map((m) => (
                   <SelectableCard
                     key={m.id}
                     selected={touchedSteps.has(1) && material === m.id}
@@ -1366,7 +1370,9 @@ function EtiketPage() {
                     )}
                   </SelectableCard>
                 ))}
-              </div>
+                  </div>
+                );
+              })()}
               <a
                 href="/malzemeler#etiket-malzemeleri"
                 target="_blank"
@@ -1389,10 +1395,11 @@ function EtiketPage() {
               locked={isStepLocked(2)}
               lockMessage={getLockMessage(2)}
             >
-              {/* Sefa 18 May v68: 4 kaplama → 4 kolon tek satır (md+),
-                  mobile 2 kolon. Sticker yüzeyiyle aynı kompakt his. */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                {orderedIds(
+              {/* Sefa 20 May v68: grid kart sayısına göre dinamik. HIDDEN +
+                  formFactor sonrası görünür kart sayısı = sütun sayısı,
+                  kutu boş hücre olmadan doldurulur. */}
+              {(() => {
+                const visibleCoatings = orderedIds(
                   COATINGS.map((c) => c.id),
                   "coating"
                 )
@@ -1400,9 +1407,10 @@ function EtiketPage() {
                   .filter((c) =>
                     (c.modes as readonly string[]).includes(formFactor)
                   )
-                  // Sefa 20 May v68 (Aşama B): soft touch gizli
-                  .filter((c) => !HIDDEN_ETIKET_COATINGS.includes(c.id))
-                  .map((c) => (
+                  .filter((c) => !HIDDEN_ETIKET_COATINGS.includes(c.id));
+                return (
+                  <div className={`${gridColsForCount(visibleCoatings.length)} gap-2.5`}>
+                    {visibleCoatings.map((c) => (
                   <SelectableCard
                     key={c.id}
                     selected={touchedSteps.has(2) && coating === c.id}
@@ -1432,7 +1440,9 @@ function EtiketPage() {
                     </div>
                   </SelectableCard>
                 ))}
-              </div>
+                  </div>
+                );
+              })()}
             </FormSection>
 
             {/* Step 3 — Özelleştirme (sadece RULO modunda görünür).

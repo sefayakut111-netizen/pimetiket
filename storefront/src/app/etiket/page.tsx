@@ -24,7 +24,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
-import { gridColsForCount } from "@/lib/grid-cols";
 
 interface EtiketCard {
   /** URL query param: shape */
@@ -233,7 +232,7 @@ export default function EtiketGridPage() {
                 ? "Wound on a core, applied quickly by machine. Starts at 1,000 pcs — preferred for serial production in cosmetics, food, beverages."
                 : "Bobin halinde sarılı, makineyle hızlıca yapıştırılır. 1.000 adetten başlar — kozmetik, gıda, içecek gibi seri üretimde tercih edilir."}
             </p>
-            <div className={`${gridColsForCount(RULO_CARDS.length)} gap-4`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {RULO_CARDS.map((card) => (
                 <ProductCard
                   key={`${card.form}-${card.shape}`}
@@ -258,7 +257,7 @@ export default function EtiketGridPage() {
                 ? "Comes on sheets, applied by hand. Starts at 250 pcs — ideal for boutique runs, gift packaging, and events."
                 : "Sayfa halinde gelir, elle yapıştırılır. 250 adetten başlar — butik tiraj, hediye paketi ve etkinlikler için ideal."}
             </p>
-            <div className={`${gridColsForCount(TABAKA_CARDS.length)} gap-4`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {TABAKA_CARDS.map((card) => (
                 <ProductCard
                   key={`${card.form}-${card.shape}`}
