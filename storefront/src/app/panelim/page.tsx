@@ -653,15 +653,18 @@ export default function PanelimPage() {
                                 </div>
                               ))}
                             </div>
+                            {/* Sefa 20 May v68 (test): Sol alt = aktif phase
+                                adı (en son nerede kaldıysa). Sağ alt eski
+                                "DETAY →" linki kaldırıldı (sağ üstte "Detay"
+                                buton zaten var) → yerine SON phase adı
+                                statik gösterilir (akış hedefi belli olsun,
+                                örn "TESLİM EDİLDİ"). */}
                             <div className="flex justify-between mt-1.5">
                               <span className="text-[11.5px] text-gri-700 font-semibold uppercase tracking-[0.04em]">
                                 {c.phases[phase]}
                               </span>
-                              <span
-                                className="text-[11.5px] font-bold uppercase tracking-[0.04em]"
-                                style={{ color: meta.color }}
-                              >
-                                {c.detailArrow}
+                              <span className="text-[11.5px] text-gri-500 font-semibold uppercase tracking-[0.04em]">
+                                {c.phases[c.phases.length - 1]}
                               </span>
                             </div>
                           </div>
