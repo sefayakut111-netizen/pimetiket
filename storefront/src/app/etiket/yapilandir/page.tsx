@@ -464,15 +464,73 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 // Page
 // ============================================================
 
-// Sefa 20 May v68 (Konfigüratör reform Aşama A):
+// Sefa 20 May v68 (Konfigüratör reform Aşama A + C):
 // /etiket grid sayfasından gelen URL query param'larını okur.
 // URL: /etiket/yapilandir?form=rulo&shape=square
 //   - form: "rulo" | "tabaka" → formFactor pre-fill
-//   - shape: (Aşama C'de dinamik boyut için kullanılacak — şu an no-op)
+//   - shape: dinamik boyut input için (kare/daire = orantı kilitli tek input)
 function readInitialFormFactor(searchParams: URLSearchParams): FormFactor {
   const form = searchParams.get("form");
   if (form === "tabaka") return "tabaka";
   return "rulo"; // varsayılan + bilinmeyen değerlerde
+}
+
+/** Etiket şekli — Aşama A grid kartlarından gelen değerler. */
+type EtiketShape =
+  | "diecut"
+  | "clear"
+  | "circle"
+  | "square"
+  | "rectangle"
+  | "rounded"
+  | "oval"
+  | "sheet";
+
+const VALID_SHAPES: readonly EtiketShape[] = [
+  "diecut",
+  "clear",
+  "circle",
+  "square",
+  "rectangle",
+  "rounded",
+  "oval",
+  "sheet",
+];
+
+function readInitialShape(searchParams: URLSearchParams): EtiketShape {
+  const shape = searchParams.get("shape");
+  if (shape && (VALID_SHAPES as readonly string[]).includes(shape)) {
+    return shape as EtiketShape;
+  }
+  return "rectangle"; // varsayılan: mevcut davranış (2 input)
+}
+
+/** Şekil tek değer mi gerektiriyor (kare/daire) — orantı kilidi */
+function isSingleDimensionShape(shape: EtiketShape): boolean {
+  return shape === "square" || shape === "circle";
+}
+
+/** Şekil etiketi — TR/EN, PriceCard özeti + cart config string için */
+function shapeLabel(shape: EtiketShape, locale: string): string {
+  const isEn = locale === "en";
+  switch (shape) {
+    case "diecut":
+      return isEn ? "Die-cut" : "Özel kesim";
+    case "clear":
+      return isEn ? "Clear" : "Şeffaf";
+    case "circle":
+      return isEn ? "Circle" : "Yuvarlak";
+    case "square":
+      return isEn ? "Square" : "Kare";
+    case "rectangle":
+      return isEn ? "Rectangle" : "Dikdörtgen";
+    case "rounded":
+      return isEn ? "Rounded" : "Köşe-yuvarlak";
+    case "oval":
+      return isEn ? "Oval" : "Oval";
+    case "sheet":
+      return isEn ? "Sheet" : "Tabaka";
+  }
 }
 
 // Suspense boundary için: useSearchParams Next 16'da Suspense ister.
@@ -491,7 +549,7 @@ function EtiketPage() {
   // Sefa kuralları (15 May v2):
   //  - Varsayılan: Kuşe Etiket + Kaplama yok (1. sıra)
   //  - Adet: minimum'dan başlasın (rulo→1000, tabaka→250)
-  // Sefa 20 May v68 (Aşama A): URL'den form param oku, pre-fill
+  // Sefa 20 May v68 (Aşama A + C): URL'den form + shape param oku, pre-fill
   const [formFactor, setFormFactor] = useState<FormFactor>(() =>
     readInitialFormFactor(
       new URLSearchParams(
@@ -499,12 +557,23 @@ function EtiketPage() {
       )
     )
   );
+  const [shape, setShape] = useState<EtiketShape>(() =>
+    readInitialShape(
+      new URLSearchParams(
+        typeof window === "undefined" ? "" : window.location.search
+      )
+    )
+  );
   // searchParams değişirse (client-side nav) sync — kullanıcı farklı karttan
-  // yeni girerse formFactor yeniden eşleşir
+  // yeni girerse formFactor + shape yeniden eşleşir
   useEffect(() => {
     const form = searchParams.get("form");
     if (form === "rulo" || form === "tabaka") {
       setFormFactor(form);
+    }
+    const sp = searchParams.get("shape");
+    if (sp && (VALID_SHAPES as readonly string[]).includes(sp)) {
+      setShape(sp as EtiketShape);
     }
   }, [searchParams]);
   const [material, setMaterial] = useState<EtiketMaterialId>("kuse");
@@ -914,7 +983,7 @@ function EtiketPage() {
       title: `Etiket · ${matName} + ${coatName}${
         designCount > 1 ? ` (${designCount} tasarım)` : ""
       }${hasNoDesign ? " · 📎 Tasarım sonra yüklenecek" : ""}`,
-      config: `${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
+      config: `${shapeLabel(shape, "tr")} · ${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,
       width,
       height,
       qty: totalEtiketCount, // toplam etiket = qty × designCount
@@ -1657,59 +1726,96 @@ function EtiketPage() {
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
             >
-              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
-                <label className="block">
-                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
-                    Genişlik (mm)
-                  </span>
-                  {/* Sefa 18 May v64: touched değilse value boş gözüksün
-                      (kullanıcı bilinçli seçim yapsın) */}
-                  <input
-                    type="number"
-                    value={touchedSteps.has(6) ? width : ""}
-                    placeholder="örn. 60"
-                    autoComplete="off"
-                    onChange={(e) => {
-                      setWidth(Math.max(5, Number(e.target.value) || 5));
-                      markTouched(6);
-                    }}
-                    min={5}
-                    max={520}
-                    step={1}
-                    className={cn(
-                      "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
-                      presetPulseAt
-                        ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
-                        : "ring-gri-200"
-                    )}
-                  />
-                </label>
-                <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
-                <label className="block">
-                  <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
-                    Yükseklik (mm)
-                  </span>
-                  <input
-                    type="number"
-                    value={touchedSteps.has(6) ? height : ""}
-                    placeholder="örn. 80"
-                    autoComplete="off"
-                    onChange={(e) => {
-                      setHeight(Math.max(5, Number(e.target.value) || 5));
-                      markTouched(6);
-                    }}
-                    min={5}
-                    max={1470}
-                    step={1}
-                    className={cn(
-                      "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
-                      presetPulseAt
-                        ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
-                        : "ring-gri-200"
-                    )}
-                  />
-                </label>
-              </div>
+              {/* Sefa 20 May v68 (Aşama C): shape'e göre dinamik boyut.
+                  Kare/Daire → orantı kilitli tek input (w=h otomatik).
+                  Diğerleri → mevcut 2 input. */}
+              {isSingleDimensionShape(shape) ? (
+                <div className="max-w-xs">
+                  <label className="block">
+                    <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block inline-flex items-center gap-1.5">
+                      {shape === "circle" ? "Çap (mm)" : "Kenar (mm)"}
+                      <span className="px-1.5 py-0.5 rounded bg-pim-mercan-tint text-pim-mercan text-[10px] font-bold uppercase tracking-wide">
+                        Orantı kilitli
+                      </span>
+                    </span>
+                    <input
+                      type="number"
+                      value={touchedSteps.has(6) ? width : ""}
+                      placeholder={shape === "circle" ? "örn. 50" : "örn. 60"}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const v = Math.max(5, Number(e.target.value) || 5);
+                        setWidth(v);
+                        setHeight(v); // orantı kilidi — kare/daire için w=h
+                        markTouched(6);
+                      }}
+                      min={5}
+                      max={520}
+                      step={1}
+                      className={cn(
+                        "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                        presetPulseAt
+                          ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                          : "ring-gri-200"
+                      )}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                  <label className="block">
+                    <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
+                      {shape === "oval" ? "Uzun eksen (mm)" : "Genişlik (mm)"}
+                    </span>
+                    {/* Sefa 18 May v64: touched değilse value boş gözüksün
+                        (kullanıcı bilinçli seçim yapsın) */}
+                    <input
+                      type="number"
+                      value={touchedSteps.has(6) ? width : ""}
+                      placeholder="örn. 60"
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setWidth(Math.max(5, Number(e.target.value) || 5));
+                        markTouched(6);
+                      }}
+                      min={5}
+                      max={520}
+                      step={1}
+                      className={cn(
+                        "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                        presetPulseAt
+                          ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                          : "ring-gri-200"
+                      )}
+                    />
+                  </label>
+                  <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
+                  <label className="block">
+                    <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
+                      {shape === "oval" ? "Kısa eksen (mm)" : "Yükseklik (mm)"}
+                    </span>
+                    <input
+                      type="number"
+                      value={touchedSteps.has(6) ? height : ""}
+                      placeholder="örn. 80"
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setHeight(Math.max(5, Number(e.target.value) || 5));
+                        markTouched(6);
+                      }}
+                      min={5}
+                      max={1470}
+                      step={1}
+                      className={cn(
+                        "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                        presetPulseAt
+                          ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                          : "ring-gri-200"
+                      )}
+                    />
+                  </label>
+                </div>
+              )}
 
               {/* Hızlı boyut chip'leri — Sefa kararı 18 May v49:
                   "En çok tercih edilen ölçüler (mm)" başlığı + güncel liste.
@@ -1735,7 +1841,14 @@ function EtiketPage() {
                   { w: 100, h: 100, label: "100×100" },
                   { w: 100, h: 150, label: "100×150" },
                   { w: 150, h: 200, label: "150×200" },
-                ].map((preset) => {
+                ]
+                  // Sefa 20 May v68 (Aşama C): kare/daire ise sadece eşit
+                  // kenar preset'ler gösterilsin (orantı bozulmasın). Daire
+                  // için label "30mm çap" stiline çevirelim render'da.
+                  .filter((p) =>
+                    isSingleDimensionShape(shape) ? p.w === p.h : true
+                  )
+                  .map((preset) => {
                   const active =
                     touchedSteps.has(6) &&
                     width === preset.w &&
@@ -1962,6 +2075,13 @@ function EtiketPage() {
                 /* v63: labels kısaltıldı — eyebrow "İşlem özeti" zaten
                    "Toplam" sözünü taşıyor, içeride tekrar gerek yok */
                 summaryItems={[
+                  // Sefa 20 May v68 (Aşama C): şekil iz — kullanıcı gridten
+                  // gelen seçimini özet'te görsün
+                  {
+                    icon: "🔷",
+                    label: locale === "en" ? "Shape" : "Şekil",
+                    value: shapeLabel(shape, locale),
+                  },
                   ...(rollsNeeded > 0
                     ? [
                         {
