@@ -261,7 +261,14 @@ function itemToInsert(
     coating_id: it.coatingId ?? null,
     customization_id: it.customizationId ?? null,
     winding: it.winding ?? null,
-    design_temp_id: it.designTempId ?? null,
+    // Sefa 20 May v68 (bug fix): cart_items.design_temp_id UUID kolonu.
+    // PendingDesign local-only id "local-{uuid}" prefix ile gelir (henüz
+    // upload yok) — UUID'yi bozar (22P02). Local id ise null gönder, gerçek
+    // upload sonra additionalDesigns JSONB üzerinden bağlanır.
+    design_temp_id:
+      it.designTempId && !it.designTempId.startsWith("local-")
+        ? it.designTempId
+        : null,
     // Migration 038 multi-design metadata (Sefa 15 May v5).
     // Database types henüz regenerate edilmediği için extra alanlar
     // CartInsert tipinin dışında — extra field cast ile geçirilir.
@@ -300,14 +307,8 @@ async function dbInsert(
     .select("*")
     .single();
   if (error) {
-    console.error("[cart] dbInsert error:", error);
-    // Sefa 20 May v68 (debug): toast'a detayı verecek hata mesajı taşı
-    // (cart_items üretim hatası tespiti için geçici). Stabil olunca geri al.
-    const detail = `${error.code ?? "?"} · ${error.message ?? "Bilinmeyen hata"}`;
-    if (typeof window !== "undefined") {
-      console.error("[cart] payload:", insertValues[0]);
-    }
-    throw new Error(`DB hatası: ${detail}`);
+    console.error("[cart] dbInsert error:", error, "payload:", insertValues[0]);
+    return null;
   }
   return rowToItem(data as DbRow);
 }
@@ -420,16 +421,9 @@ export async function addToCustomerCart(
   }
 
   if (user) {
-    try {
-      const inserted = await dbInsert(user.id, item);
-      if (!inserted) return { ok: false, reason: "Kaydedilemedi, tekrar dene." };
-      cache = [...cache, inserted];
-    } catch (err) {
-      // Sefa 20 May v68 (debug): gerçek DB hatası kullanıcıya toast'ta
-      // gösterilsin. Stabil olunca geri al.
-      const msg = err instanceof Error ? err.message : "Kaydedilemedi";
-      return { ok: false, reason: msg };
-    }
+    const inserted = await dbInsert(user.id, item);
+    if (!inserted) return { ok: false, reason: "Kaydedilemedi, tekrar dene." };
+    cache = [...cache, inserted];
   } else {
     const fresh: CustomerCartItem = {
       ...item,
