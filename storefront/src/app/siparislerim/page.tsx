@@ -25,17 +25,14 @@ import {
   fetchShipmentsByOrderIds,
   type CustomerShipment,
 } from "@/lib/shipping/customer-shipment";
-
-// Müşteri view: ödeme öncesi state'leri (paid/qc_*) tek "kontrolde"
-// olarak gösterilir, daha basit. Admin daha granuler görür.
-// Mig 061: awaiting_upload ayrı bucket — müşteri aksiyon alması gerekiyor.
-type CustomerStatus =
-  | "awaiting_upload"
-  | "qc_pending"
-  | "in_production"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+// Sefa 20 May v68 (P1 #9 — ICE 18.7): müşteri-facing status mapping.
+// 16 internal enum → 9 anlaşılır grup (paid, awaiting_upload, reviewing,
+// proof_generating, proof_pending, in_production, shipped, delivered, cancelled).
+import {
+  getCustomerStatusInfo,
+  CUSTOMER_STATUS_FILTER_GROUPS,
+  type CustomerStatusGroup,
+} from "@/lib/customer-status";
 
 interface Order {
   id: string;
@@ -43,7 +40,7 @@ interface Order {
   title: string;
   qty: number;
   total: number;
-  status: CustomerStatus;
+  status: OrderStatus;
 }
 
 const COPY = {
@@ -118,34 +115,9 @@ const COPY = {
   },
 };
 
-/** Backend OrderStatus → customer-friendly bucket. */
-function toCustomerStatus(s: OrderStatus): CustomerStatus {
-  switch (s) {
-    case "awaiting_upload":
-      return "awaiting_upload";
-    case "paid":
-    case "qc_pending":
-    case "qc_flagged":
-    case "operator_review":
-    case "human_review":
-    case "human_review_failed":
-    case "proof_generating":
-    case "proof_pending":
-      return "qc_pending";
-    // Mig 059: müşteri onayladı → üretim aşamasına gir
-    case "proof_approved":
-    case "ready_to_ship":
-    case "fason_assigned":
-    case "in_production":
-      return "in_production";
-    case "shipped":
-      return "shipped";
-    case "delivered":
-      return "delivered";
-    case "cancelled":
-      return "cancelled";
-  }
-}
+// Sefa 20 May v68 (P1 #9): toCustomerStatus + CustomerStatus type
+// silindi — lib/customer-status.ts içindeki getCustomerStatusInfo full
+// mapping yapar (16 enum → 9 grup + label + color + Pim pose + CTA).
 
 // Type re-export — gelecek import'lar için (lib/order.ts kanonik)
 export type { OrderStatus };
@@ -154,7 +126,7 @@ export default function SiparislerimPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
 
-  const [filter, setFilter] = useState<CustomerStatus | "all">("all");
+  const [filter, setFilter] = useState<CustomerStatusGroup | "all">("all");
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -166,51 +138,12 @@ export default function SiparislerimPage() {
 
   const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
 
-  const STATUS_META: Record<
-    CustomerStatus,
-    { label: string; color: string; bg: string }
-  > = {
-    awaiting_upload: {
-      label: "Tasarım yüklemen lazım",
-      color: "text-pim-mercan",
-      bg: "bg-pim-mercan-tint",
-    },
-    qc_pending: {
-      label: c.statusQcPending,
-      color: "text-sari",
-      bg: "bg-sari-soft",
-    },
-    in_production: {
-      label: c.statusInProduction,
-      color: "text-pim-mercan",
-      bg: "bg-pim-mercan-tint",
-    },
-    shipped: {
-      label: c.statusShipped,
-      color: "text-lacivert",
-      bg: "bg-gri-100",
-    },
-    delivered: {
-      label: c.statusDelivered,
-      color: "text-yesil",
-      bg: "bg-yesil-soft",
-    },
-    cancelled: {
-      label: c.statusCancelled,
-      color: "text-kirmizi",
-      bg: "bg-gri-100",
-    },
-  };
-
-  const FILTER_OPTIONS: { id: CustomerStatus | "all"; label: string }[] = [
-    { id: "all", label: c.filterAll },
-    { id: "awaiting_upload", label: "Tasarım yüklenecek" },
-    { id: "qc_pending", label: c.statusQcPending },
-    { id: "in_production", label: c.statusInProduction },
-    { id: "shipped", label: c.statusShipped },
-    { id: "delivered", label: c.statusDelivered },
-    { id: "cancelled", label: c.statusCancelled },
-  ];
+  // Sefa 20 May v68: STATUS_META + FILTER_OPTIONS lib/customer-status.ts'e
+  // taşındı. Render'da getCustomerStatusInfo(status) çağrılır.
+  const FILTER_OPTIONS = CUSTOMER_STATUS_FILTER_GROUPS.map((g) => ({
+    id: g.id,
+    label: locale === "en" ? g.labelEn : g.labelTr,
+  }));
 
   /** CustomerOrder → list view row */
   function toOrderRow(o: CustomerOrder): Order {
@@ -227,7 +160,7 @@ export default function SiparislerimPage() {
       title,
       qty: totalQty,
       total: o.total,
-      status: toCustomerStatus(o.status),
+      status: o.status,
     };
   }
 
@@ -261,7 +194,12 @@ export default function SiparislerimPage() {
 
   const filtered = useMemo(() => {
     return orders.filter((o) => {
-      if (filter !== "all" && o.status !== filter) return false;
+      // Sefa 20 May v68 (P1 #9): group bazlı filtre (16 enum → 9 grup)
+      if (
+        filter !== "all" &&
+        getCustomerStatusInfo(o.status).group !== filter
+      )
+        return false;
       if (search.length > 0) {
         const q = search.toLowerCase();
         return (
@@ -369,7 +307,12 @@ export default function SiparislerimPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {filtered.map((o) => {
-              const s = STATUS_META[o.status];
+              const info = getCustomerStatusInfo(o.status);
+              const s = {
+                label: locale === "en" ? info.labelEn : info.label,
+                color: info.color,
+                bg: info.bg,
+              };
               // Sefa 17 May — kargo bilgisi varsa kartın altına satır ekle
               const ship = shipments.get(o.id);
               const showShipRow =
