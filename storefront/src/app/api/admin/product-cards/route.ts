@@ -62,7 +62,12 @@ export async function GET(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ cards: data ?? [] });
+  // Sefa 21 May v68 (admin denetim P0 #4): Explicit UTF-8 charset — bazı
+  // CDN/proxy katmanları Content-Type'ı düşürünce Türkçe karakter bozuluyordu.
+  return NextResponse.json(
+    { cards: data ?? [] },
+    { headers: { "Content-Type": "application/json; charset=utf-8" } }
+  );
 }
 
 export async function PATCH(req: Request) {

@@ -38,5 +38,9 @@ export async function GET(req: Request) {
     // Sessizce fail — caller fallback array kullanır
     return NextResponse.json({ cards: [], error: error.message }, { status: 200 });
   }
-  return NextResponse.json({ cards: data ?? [] });
+  // Explicit UTF-8 charset (Sefa 21 May v68 admin denetim P0 #4)
+  return NextResponse.json(
+    { cards: data ?? [] },
+    { headers: { "Content-Type": "application/json; charset=utf-8" } }
+  );
 }

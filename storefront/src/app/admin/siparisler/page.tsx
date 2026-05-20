@@ -522,10 +522,14 @@ function AdminSiparislerPageInner() {
           </div>
         )}
 
-        {/* Table — Sefa 18 May v68 (admin UX denetim): sticky thead */}
+        {/* Sefa 21 May v68 (admin UX denetim P0 #2): sticky thead'in ilk tr
+            ile ~9px overlap'i vardı (ilk sipariş gizli kalıyordu). Sticky
+            kaldırıldı — tablo zaten kısa (genelde <20 satır), sticky thead
+            faydadan çok bug üretiyordu. Büyük listelerde scroll-padding-top
+            ile geri eklenir. */}
         <Card padding="p-0" className="overflow-x-auto">
           <table className="w-full text-[13px] text-left">
-            <thead className="sticky top-14 z-20 border-b border-gri-200 bg-gri-50">
+            <thead className="border-b border-gri-200 bg-gri-50">
               <tr>
                 <th className="px-3 py-3 w-[40px]">
                   <input

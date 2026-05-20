@@ -78,3 +78,35 @@ Canlı yanıt sorunu varsa:
 - Blog "1 dk okuma" göstergesi içerik uzaması ile otomatik düzelir
 - Anasayfa "Nasıl çalışır" akış sırası: "Konfigüre → Öde → Tasarımı yükle
   → Provayı onayla → Teslim al" (eski "yükle → öde" çelişkisi)
+
+---
+
+## 🔴 Admin denetim raporu (21 May 2026 — production debug gerek)
+
+### Müşteriler CRM API (P0 #3 — production-only sorun?)
+**Frontend + Backend kod tutarlı**, DB'de `v_admin_customers` view'da 3 müşteri var,
+service_role çağrı yapıyor. Lokalde çalışıyor görünüyor.
+
+**Sefa production'da "Müşteri verisi şu an çekilemiyor" hatası alıyor.**
+
+**Debug adımları:**
+1. Vercel deploy logs (Functions tab) — `/api/admin/customers` çağrısı kontrol
+2. Console error: "view query failed" log'u dikkate al
+3. ENV vars: `SUPABASE_SERVICE_ROLE_KEY` Vercel'de set mi?
+4. Migration 046'nın view DEFINER ayarları production'a aynen geçti mi?
+
+Düzelme: Bekleyen — production logs gerek.
+
+## 🟠 Admin P1/P2 düzeltmeleri (zaman bulunca)
+
+- **Kargo sayfası komple veri yok** (P1 #5) — endpoint bağlantısı veya RPC eksik
+- **Tasarımlar ilk "0" sonra gerçek** (P1 #6) — skeleton/`—` placeholder
+- **Manuel sipariş KDV yanlış** (P2 #9) — `total = subtotal × 1.20 + shipping`
+- **Istanbul/İstanbul dupe** (P2 #10) — city normalize (dropdown)
+- **Üretim akışı Toplam 4 ≠ adım toplamı 2** (P2 #11)
+- **PayTR aktif değil ama Kart %100** (P2 #12) — banner vs rakam çelişkisi
+- **Sidebar badge tutarsız** (P2 #13)
+- **Son siparişler kronolojik değil** (P2 #14)
+- **İadeler tab 5 / stat 4** (P2 #15)
+- **Aboneler dangling separator** (P2 #16)
+- **Breadcrumb küçük harf** (P2 #17)
