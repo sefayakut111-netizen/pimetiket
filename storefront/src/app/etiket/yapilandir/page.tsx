@@ -1028,6 +1028,34 @@ function EtiketPage() {
   // tasarım bağlar → designs[0] cart'a, designs[1..N] design_metadata
   // alanına serileştirilir (cart genişlemesi sonraki commit'te).
   const handleAddToCart = useCallback(async () => {
+    // Sefa 20 May v68: zorunlu step kontrolü — touched değilse o adıma
+    // scroll + flash + toast. Tasarım step (7) opsiyonel (sonra yükleme
+    // akışı aktif).
+    const OPTIONAL_STEPS = new Set([7]);
+    const missingStepId = stepIds.find(
+      (id) => !OPTIONAL_STEPS.has(id) && !touchedSteps.has(id)
+    );
+    if (missingStepId != null) {
+      const idx = stepIds.indexOf(missingStepId);
+      const label = stepLabels[idx] ?? "önceki";
+      toast.error(
+        locale === "en"
+          ? `Complete "${label}" first.`
+          : `Önce "${label}" adımını seç.`
+      );
+      scrollToStep(idx + 1);
+      // DOM flash — kart kenarında 2.5sn mercan halka animasyonu
+      const el = document.getElementById(`step-${missingStepId}`);
+      if (el) {
+        el.classList.add("ring-2", "ring-pim-mercan", "ring-offset-2", "transition-all");
+        el.style.boxShadow = "0 0 0 4px var(--color-pim-mercan-tint)";
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-pim-mercan", "ring-offset-2");
+          el.style.boxShadow = "";
+        }, 2500);
+      }
+      return;
+    }
     if (!quote.ok) {
       toast.error(quote.reason ?? "Geçersiz seçim");
       return;
@@ -1126,6 +1154,11 @@ function EtiketPage() {
     designs,
     designCount,
     formFactor,
+    stepIds,
+    stepLabels,
+    touchedSteps,
+    scrollToStep,
+    locale,
   ]);
 
   return (

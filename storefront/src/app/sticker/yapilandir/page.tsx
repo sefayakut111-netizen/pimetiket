@@ -1399,6 +1399,32 @@ function StickerPage() {
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={ctaLabel}
               onCta={async () => {
+                // Sefa 20 May v68: zorunlu step kontrolü — touched değilse
+                // o adıma scroll + flash + toast. Tasarım (7) opsiyonel.
+                const OPTIONAL_STEPS = new Set([7]);
+                const missingStepId = stepIds.find(
+                  (id) => !OPTIONAL_STEPS.has(id) && !touchedSteps.has(id)
+                );
+                if (missingStepId != null) {
+                  const idx = stepIds.indexOf(missingStepId);
+                  const label = stepLabels[idx] ?? "önceki";
+                  toast.error(
+                    locale === "en"
+                      ? `Complete "${label}" first.`
+                      : `Önce "${label}" adımını seç.`
+                  );
+                  scrollToStep(idx + 1);
+                  const el = document.getElementById(`step-${missingStepId}`);
+                  if (el) {
+                    el.classList.add("ring-2", "ring-pim-mercan", "ring-offset-2", "transition-all");
+                    el.style.boxShadow = "0 0 0 4px var(--color-pim-mercan-tint)";
+                    setTimeout(() => {
+                      el.classList.remove("ring-2", "ring-pim-mercan", "ring-offset-2");
+                      el.style.boxShadow = "";
+                    }, 2500);
+                  }
+                  return;
+                }
                 if (!quote.ok) {
                   toast.error(quote.reason ?? "Geçersiz seçim");
                   return;
