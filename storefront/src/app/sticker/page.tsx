@@ -199,14 +199,19 @@ export default function StickerPage() {
 
   // Faz 2 (Sefa 19 May v68): ad/açıklama + SIRA admin live_config > i18n fallback.
   // Admin /admin/fiyatlar'da ↑↓ ile sıralanmış malzemeler aynı sırayla render.
-  // Admin'de bilinmeyen ID varsa atla (UI-only swatch/surface yok).
-  const orderedMaterialIds: readonly StickerMaterial[] = adminConfig?.materials
-    ? (adminConfig.materials
-        .map((m) => m.id as StickerMaterial)
-        .filter((id) =>
-          (MATERIAL_IDS as readonly string[]).includes(id)
-        ) as readonly StickerMaterial[])
-    : MATERIAL_IDS;
+  // Sefa 20 May v68 (graceful fallback): admin'de eksik/typo'lu module id'leri
+  // sıralanmış admin id'lerinin SONUNA eklenir — müşteri tarafında kapalı set
+  // her zaman görünür kalır.
+  const orderedMaterialIds: readonly StickerMaterial[] = (() => {
+    if (!adminConfig?.materials) return MATERIAL_IDS;
+    const adminFiltered = adminConfig.materials
+      .map((m) => m.id as StickerMaterial)
+      .filter((id) => (MATERIAL_IDS as readonly string[]).includes(id));
+    const missing = MATERIAL_IDS.filter(
+      (id) => !(adminFiltered as readonly string[]).includes(id)
+    );
+    return [...adminFiltered, ...missing] as readonly StickerMaterial[];
+  })();
   const MATERIALS = orderedMaterialIds.map((id) => {
     const fromAdmin = adminConfig?.materials.find((m) => m.id === id);
     const i18nName =
@@ -235,14 +240,18 @@ export default function StickerPage() {
   });
 
   // Sefa 19 May v68: finiş sırası da admin'den (varsa)
-  const orderedFinishIds: readonly StickerFinish[] = adminConfig?.options?.finish
-    ?.items
-    ? (adminConfig.options.finish.items
-        .map((i) => i.id as StickerFinish)
-        .filter((id) =>
-          (FINISH_IDS as readonly string[]).includes(id)
-        ) as readonly StickerFinish[])
-    : FINISH_IDS;
+  // Sefa 20 May v68 (graceful fallback): eksik module id'ler sona eklenir
+  const orderedFinishIds: readonly StickerFinish[] = (() => {
+    const items = adminConfig?.options?.finish?.items;
+    if (!items) return FINISH_IDS;
+    const adminFiltered = items
+      .map((i) => i.id as StickerFinish)
+      .filter((id) => (FINISH_IDS as readonly string[]).includes(id));
+    const missing = FINISH_IDS.filter(
+      (id) => !(adminFiltered as readonly string[]).includes(id)
+    );
+    return [...adminFiltered, ...missing] as readonly StickerFinish[];
+  })();
   const FINISHES = orderedFinishIds.map((id) => {
     const fromAdmin = adminConfig?.options?.finish?.items.find(
       (i) => i.id === id

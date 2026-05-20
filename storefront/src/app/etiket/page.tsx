@@ -500,7 +500,15 @@ export default function EtiketPage() {
   };
 
   /** Sefa 19 May v68: admin'in ↑↓ ile belirlediği sıralama.
-   *  Admin config varsa o sırayla, yoksa modül const sırasıyla. */
+   *  Admin config varsa o sırayla, yoksa modül const sırasıyla.
+   *
+   *  Sefa 20 May v68 (graceful fallback fix):
+   *  Admin'de eksik kalan veya ID typo'lu (örn 'spot_uv' vs 'spotuv')
+   *  module id'leri SİLİNMEZ — sıralanmış admin id'lerinin SONUNA
+   *  eklenir. Kapalı set yaklaşımı: müşteri sayfasında tüm hardcoded
+   *  seçenekler her zaman görünür, admin sadece sıralama + name/desc
+   *  değiştirir.
+   */
   const orderedIds = <T extends string>(
     moduleIds: readonly T[],
     bucket: "materials" | "coating" | "customization"
@@ -509,11 +517,13 @@ export default function EtiketPage() {
       bucket === "materials"
         ? adminConfig?.materials?.map((m) => m.id)
         : adminConfig?.options?.[bucket]?.items.map((i) => i.id);
-    if (!adminIds) return moduleIds;
+    if (!adminIds || adminIds.length === 0) return moduleIds;
     const filtered = adminIds.filter((id) =>
       (moduleIds as readonly string[]).includes(id)
     ) as T[];
-    return filtered.length > 0 ? filtered : moduleIds;
+    // Module'da olup admin'de olmayan id'leri SONA EKLE (graceful fallback)
+    const missing = moduleIds.filter((id) => !filtered.includes(id));
+    return [...filtered, ...missing];
   };
   // Sefa kuralı (15 May v3): Rulo özelleştirmede birden fazla seçilebilir.
   // "yok" tek seçimdir; başka seçim eklenince "yok" çıkar. Pricing engine
