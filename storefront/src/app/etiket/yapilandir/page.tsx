@@ -64,13 +64,14 @@ import {
   type EtiketCoatingId,
   type EtiketCustomId,
 } from "@/lib/etiket-customer-pricing";
-// Sefa 20 May v68 (Aşama B): müşteri gizleme flag'leri
+// Sefa 20 May v68 (Aşama B + B+): müşteri gizleme flag'leri
 import {
   HIDDEN_ETIKET_MATERIALS,
   HIDDEN_ETIKET_COATINGS,
   SHOW_ETIKET_CUSTOMIZATION_STEP,
   SHOW_ETIKET_CORE_SIZE_PICKER,
   ETIKET_DEFAULT_CORE_SIZE,
+  SHOW_ETIKET_FORM_FACTOR_PICKER,
 } from "@/lib/etiket-feature-flags";
 // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar canlı config → /etiket
 // Client-safe import.
@@ -426,8 +427,14 @@ const FORM_FACTORS: {
 // Sefa 17 May v40: Etiket türü FormSection olarak eklendi (id=step-0,
 // stepper'da ADIM 1). Mevcut step-1..step-8 DOM id'leri korundu, UI
 // numaraları otomatik +1 kaydı (uiStepNumber idx + 1 → step-0 için 1).
-const STEP_IDS_FULL: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-const STEP_IDS_TABAKA: readonly number[] = [0, 1, 2, 6, 7, 8];
+// Sefa 20 May v68 (Aşama B+): SHOW_ETIKET_FORM_FACTOR_PICKER=false ise
+// Step 0 çıkarılır → ADIM numaraları "Malzeme"den başlar.
+const STEP_IDS_FULL: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
+  ? [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  : [1, 2, 3, 4, 5, 6, 7, 8];
+const STEP_IDS_TABAKA: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
+  ? [0, 1, 2, 6, 7, 8]
+  : [1, 2, 6, 7, 8];
 
 /** Rulo sarım fiziksel parametreleri (Sefa kuralı 15 May v3).
  *  Göbek çapı: rulonun iç çapı (mm). Endüstri standardı:
@@ -681,7 +688,12 @@ function EtiketPage() {
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
     () => new Set()
   );
-  const [formFactorTouched, setFormFactorTouched] = useState(false);
+  // Sefa 20 May v68 (Aşama B+): Form factor picker gizliyse müşteri URL'den
+  // pre-fill ile zaten geldi → formFactorTouched her zaman true varsay (Step 1
+  // Malzeme locked kalmasın). Picker açıksa eski davranış: kullanıcı seçmeli.
+  const [formFactorTouched, setFormFactorTouched] = useState(
+    !SHOW_ETIKET_FORM_FACTOR_PICKER
+  );
   // Sefa 18 May v60: Sepete eklendi pop-up'ı (toast yerine modal)
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
@@ -728,25 +740,46 @@ function EtiketPage() {
 
   // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
   // Sefa 16 May denetim #1: i18n — labels artık t.etiket.step*'ten geliyor.
-  const STEP_LABELS_FULL_I18N: readonly string[] = [
-    t.etiket.stepFormFactor,
-    t.etiket.stepMaterial,
-    t.etiket.stepCoating,
-    t.etiket.stepFeature,
-    t.etiket.stepWinding,
-    t.etiket.stepWindingDetail,
-    t.etiket.stepSize,
-    t.etiket.stepDesign,
-    t.etiket.stepQty,
-  ];
-  const STEP_LABELS_TABAKA_I18N: readonly string[] = [
-    t.etiket.stepFormFactor,
-    t.etiket.stepMaterial,
-    t.etiket.stepCoating,
-    t.etiket.stepSize,
-    t.etiket.stepDesign,
-    t.etiket.stepQty,
-  ];
+  // Sefa 20 May v68 (Aşama B+): SHOW_ETIKET_FORM_FACTOR_PICKER=false ise
+  // stepFormFactor (Etiket türü) etiketi çıkarılır → labels Malzeme'den başlar.
+  const STEP_LABELS_FULL_I18N: readonly string[] = SHOW_ETIKET_FORM_FACTOR_PICKER
+    ? [
+        t.etiket.stepFormFactor,
+        t.etiket.stepMaterial,
+        t.etiket.stepCoating,
+        t.etiket.stepFeature,
+        t.etiket.stepWinding,
+        t.etiket.stepWindingDetail,
+        t.etiket.stepSize,
+        t.etiket.stepDesign,
+        t.etiket.stepQty,
+      ]
+    : [
+        t.etiket.stepMaterial,
+        t.etiket.stepCoating,
+        t.etiket.stepFeature,
+        t.etiket.stepWinding,
+        t.etiket.stepWindingDetail,
+        t.etiket.stepSize,
+        t.etiket.stepDesign,
+        t.etiket.stepQty,
+      ];
+  const STEP_LABELS_TABAKA_I18N: readonly string[] = SHOW_ETIKET_FORM_FACTOR_PICKER
+    ? [
+        t.etiket.stepFormFactor,
+        t.etiket.stepMaterial,
+        t.etiket.stepCoating,
+        t.etiket.stepSize,
+        t.etiket.stepDesign,
+        t.etiket.stepQty,
+      ]
+    : [
+        t.etiket.stepMaterial,
+        t.etiket.stepCoating,
+        t.etiket.stepSize,
+        t.etiket.stepDesign,
+        t.etiket.stepQty,
+      ];
   const stepLabels =
     formFactor === "rulo" ? STEP_LABELS_FULL_I18N : STEP_LABELS_TABAKA_I18N;
   const stepIds =
@@ -1137,7 +1170,11 @@ function EtiketPage() {
           <div className="flex flex-col gap-5">
 
             {/* Step 0 — Etiket türü (Sefa 17 May v40: form factor seçimi
-                FormSection olarak kutu içine alındı, ADIM 1 numaralı) */}
+                FormSection olarak kutu içine alındı, ADIM 1 numaralı).
+                Sefa 20 May v68 (Aşama B+): SHOW_ETIKET_FORM_FACTOR_PICKER
+                false → bu adım render edilmez. Form factor URL ?form= ile
+                pre-fill ediliyor, müşteri /etiket grid kartından geliyor. */}
+            {SHOW_ETIKET_FORM_FACTOR_PICKER && (
             <FormSection
               id="step-0"
               number={uiStepNumber(0)}
@@ -1195,6 +1232,7 @@ function EtiketPage() {
                 })}
               </div>
             </FormSection>
+            )}
 
             {/* Mobile horizontal stepper — sadece mobile/tablet (lg altı).
                 Desktop'ta sağdaki dikey rail görünür (VerticalStepProgress).

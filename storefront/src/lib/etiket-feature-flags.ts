@@ -17,6 +17,23 @@
  */
 
 // ============================================================
+// ETİKET TÜRÜ (Step 0) — Rulo / Tabaka seçici
+// ============================================================
+
+/**
+ * Etiket türü (Rulo / Tabaka) picker.
+ *
+ * Sefa kararı 20 May v68 (Aşama A+B sonrası): Müşteri /etiket grid
+ * sayfasından zaten "form=rulo" veya "form=tabaka" parametresiyle
+ * geliyor. Konfigüratörde tekrar Step 0 göstermek redundant —
+ * gizledik. URL paramı state'i pre-fill eder, formFactor değişmesi
+ * için müşteri /etiket'ten farklı kart seçer.
+ *
+ * Yarın istenirse: bu flag'i true yap, ADIM 1 olarak geri gelir.
+ */
+export const SHOW_ETIKET_FORM_FACTOR_PICKER = false;
+
+// ============================================================
 // MALZEME (Step 1)
 // ============================================================
 
