@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="220" height="130" viewBox="0 0 220 130" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <title>Yuvarlak tabaka etiket — A4 kağıt + daire grid</title>
+  <title>Yuvarlak tabaka etiket — dikey A4 + 3×4 daire grid</title>
   <defs>
     <linearGradient id="tabaka-c-paper" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#FFFFFF"/>
@@ -17,21 +17,21 @@
     </filter>
   </defs>
 
-  <!-- Arkadaki ikinci kağıt (stacked feel) -->
-  <g opacity="0.5" transform="rotate(-3 110 70)">
-    <rect x="50" y="20" width="120" height="96" rx="3" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.4"/>
+  <!-- Arka kağıt (stacked effect, hafif kayık) -->
+  <g opacity="0.5" transform="rotate(-2 110 65)">
+    <rect x="75" y="14" width="78" height="106" rx="3" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.4"/>
   </g>
 
-  <!-- Ön kağıt -->
-  <g filter="url(#tabaka-c-shadow)" transform="rotate(-7 110 70)">
-    <rect x="44" y="14" width="124" height="100" rx="3" fill="url(#tabaka-c-paper)" stroke="#1F1B2D" stroke-width="2"/>
+  <!-- Ön kağıt — DİKEY, hafif rotation -->
+  <g filter="url(#tabaka-c-shadow)" transform="rotate(-4 110 65)">
+    <rect x="70" y="10" width="80" height="110" rx="3" fill="url(#tabaka-c-paper)" stroke="#1F1B2D" stroke-width="2"/>
 
-    <!-- 3×4 = 12 daire -->
+    <!-- 3 sütun × 4 satır = 12 daire, eşit aralıklı -->
     <g fill="url(#tabaka-c-sticker)" stroke="#1F1B2D" stroke-width="1.2">
-      <circle cx="68" cy="32" r="9"/><circle cx="106" cy="32" r="9"/><circle cx="144" cy="32" r="9"/>
-      <circle cx="68" cy="56" r="9"/><circle cx="106" cy="56" r="9"/><circle cx="144" cy="56" r="9"/>
-      <circle cx="68" cy="80" r="9"/><circle cx="106" cy="80" r="9"/><circle cx="144" cy="80" r="9"/>
-      <circle cx="68" cy="104" r="9"/><circle cx="106" cy="104" r="9"/><circle cx="144" cy="104" r="9"/>
+      <circle cx="86" cy="26" r="7"/><circle cx="110" cy="26" r="7"/><circle cx="134" cy="26" r="7"/>
+      <circle cx="86" cy="50" r="7"/><circle cx="110" cy="50" r="7"/><circle cx="134" cy="50" r="7"/>
+      <circle cx="86" cy="74" r="7"/><circle cx="110" cy="74" r="7"/><circle cx="134" cy="74" r="7"/>
+      <circle cx="86" cy="98" r="7"/><circle cx="110" cy="98" r="7"/><circle cx="134" cy="98" r="7"/>
     </g>
   </g>
 </svg>
