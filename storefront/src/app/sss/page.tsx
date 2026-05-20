@@ -106,7 +106,7 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
       summary:
         "Bankanızın kart taksitlendirme kampanyaları PayTR ödeme ekranında otomatik olarak listelenir.",
       detail:
-        "Pim Etiket, taksit işlemleri için ek komisyon talep etmez. Ödeme sayfasında kartınızın bağlı olduğu bankanın güncel taksit kampanyası otomatik olarak gösterilir. Tek çekim ödeme seçeneği her durumda mevcuttur. 500 TL altındaki siparişlerde bazı bankaların kart politikası gereği taksit seçeneği görüntülenmeyebilir.",
+        "Pim Etiket, taksit işlemleri için ek komisyon talep etmez. Ödeme sayfasında kartınızın bağlı olduğu bankanın güncel taksit kampanyası otomatik olarak gösterilir. Tek çekim ödeme seçeneği her durumda mevcuttur. 500 ₺ altındaki siparişlerde bazı bankaların kart politikası gereği taksit seçeneği görüntülenmeyebilir.",
     },
     {
       q: "Fatura nasıl ve ne zaman kesilir?",
@@ -380,9 +380,9 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
     {
       q: "Kargo ücreti ne kadar, ücretsiz kargo limiti var mı?",
       summary:
-        "500 TL ve üzeri siparişlerde kargo ücretsizdir; bu limitin altındaki siparişlere kargo ücreti uygulanır.",
+        "500 ₺ ve üzeri siparişlerde kargo ücretsizdir; bu limitin altındaki siparişlere kargo ücreti uygulanır.",
       detail:
-        "500 TL altı siparişlerde Yurtiçi Kargo standart ücreti (yaklaşık 45-60 TL) sepete eklenir. Tüm gönderimlerimiz Yurtiçi Kargo aracılığıyla, Türkiye geneli kapı teslim şeklinde yapılır. Adres erişiminin zor olduğu bölgelerde (uzak ada/dağ köyleri) ek ücret çıkması durumunda sipariş onayı sonrasında bilgilendirilirsiniz.",
+        "500 ₺ altı siparişlerde Yurtiçi Kargo standart ücreti (yaklaşık 45-60 ₺) sepete eklenir. Tüm gönderimlerimiz Yurtiçi Kargo aracılığıyla, Türkiye geneli kapı teslim şeklinde yapılır. Adres erişiminin zor olduğu bölgelerde (uzak ada/dağ köyleri) ek ücret çıkması durumunda sipariş onayı sonrasında bilgilendirilirsiniz.",
     },
     {
       q: "Gizli ücret veya sürpriz masraf var mı?",

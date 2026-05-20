@@ -76,7 +76,7 @@ export default function AdminIadelerPage() {
 
   const handleRefund = (r: ReturnRequest) => {
     const amount = prompt(
-      "İade tutarı (TL):",
+      "İade tutarı (₺):",
       "0"
     );
     if (amount == null) return;
@@ -88,10 +88,10 @@ export default function AdminIadelerPage() {
     updateReturnStatus(
       r.id,
       "refunded",
-      `${parsed.toLocaleString("tr-TR")} TL karta iade edildi.`,
+      `${parsed.toLocaleString("tr-TR")} ₺ karta iade edildi.`,
       parsed
     );
-    toast.success(`${parsed.toLocaleString("tr-TR")} TL iade edildi`);
+    toast.success(`${parsed.toLocaleString("tr-TR")} ₺ iade edildi`);
   };
 
   // KPI'lar
@@ -122,7 +122,7 @@ export default function AdminIadelerPage() {
             { label: "İncelemede", value: pending, accent: "text-sari-koyu", bg: "bg-sari-soft" },
             { label: "Onaylı", value: approved, accent: "text-yesil", bg: "bg-yesil-soft" },
             { label: "İade tamamlandı", value: refunded, accent: "text-yesil", bg: "bg-yesil-soft" },
-            { label: "Toplam iade tutarı", value: `${Math.round(totalRefund).toLocaleString("tr-TR")} TL`, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+            { label: "Toplam iade tutarı", value: `${Math.round(totalRefund).toLocaleString("tr-TR")} ₺`, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
           ].map((k) => (
             <Card key={k.label} padding="p-4">
               <div className="flex items-center gap-3">
@@ -275,7 +275,7 @@ export default function AdminIadelerPage() {
                           <>
                             {" · "}
                             <span className="text-yesil font-semibold">
-                              İade: {r.refundAmount.toLocaleString("tr-TR")} TL
+                              İade: {r.refundAmount.toLocaleString("tr-TR")} ₺
                             </span>
                           </>
                         )}

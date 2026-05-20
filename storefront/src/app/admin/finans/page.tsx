@@ -7,7 +7,7 @@
  *   - Ödeme yöntemi dağılımı (kart vs havale)
  *   - Top 5 ürün karışımı (ciro bazlı)
  *   - Top 10 müşteri (LTV)
- *   - Top kuponlar (kullanım sayısı + indirim TL)
+ *   - Top kuponlar (kullanım sayısı + indirim ₺)
  *   - PayTR uzlaşma yer tutucu (mali pencere açılınca aktifleşecek)
  *   - KDV %20 ayrımı
  *

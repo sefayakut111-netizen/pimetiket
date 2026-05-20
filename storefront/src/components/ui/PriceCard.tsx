@@ -81,7 +81,7 @@ export function PriceCard({
               key={Math.round(total)}
               className="animate-count-pulse text-[32px] font-bold tracking-tight mt-1"
             >
-              {fmt(total)} <span className="text-lg opacity-70">TL</span>
+              {fmt(total)} <span className="text-lg opacity-70">₺</span>
             </div>
             <div className="text-[13px] text-white/70 mt-1">{unitPrice}</div>
           </div>
@@ -141,7 +141,7 @@ export function PriceCard({
             className="animate-count-pulse text-[38px] font-bold tracking-tight leading-none"
           >
             {fmt(total)}{" "}
-            <span className="text-[22px] font-semibold text-gri-700">TL</span>
+            <span className="text-[22px] font-semibold text-gri-700">₺</span>
           </div>
           <div className="text-[13px] text-gri-700 mt-1.5">{unitPrice}</div>
         </div>

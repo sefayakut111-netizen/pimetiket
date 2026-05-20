@@ -87,7 +87,7 @@ const COPY = {
     title: "Sipariş özeti ve ödeme",
     summary: "Sipariş özeti",
     cartEmptyRedirect: "Sepetin boş — yönlendiriliyor…",
-    currency: "TL",
+    currency: "₺",
     times: "×",
     locale: "tr-TR",
 
@@ -147,12 +147,12 @@ const COPY = {
     couponRpcError:
       "Şu an kupon kontrolü yapamıyoruz. Birkaç saniye sonra tekrar dene.",
     couponAppliedPercent: (pct: number, discount: string) =>
-      `✓ Kupon uygulandı — %${pct} indirim (-${discount} TL)`,
+      `✓ Kupon uygulandı — %${pct} indirim (-${discount} ₺)`,
     couponAppliedFixed: (discount: string) =>
-      `✓ Kupon uygulandı — ${discount} TL indirim`,
+      `✓ Kupon uygulandı — ${discount} ₺ indirim`,
     couponAppliedFreeShip: "✓ Kupon uygulandı — Kargo ücretsiz",
     couponMinSubtotal: (n: number) =>
-      `Min sepet tutarı ${n} TL — bu indirimden faydalanmıyor.`,
+      `Min sepet tutarı ${n} ₺ — bu indirimden faydalanmıyor.`,
     couponUserLimit: "Bu kuponu zaten kullandın.",
     couponTotalLimit: "Bu kuponun kullanım limiti doldu.",
     couponDefault: "Kupon uygulanamadı, tekrar dene.",
@@ -178,7 +178,7 @@ const COPY = {
     fasonDisclaimer:
       "Pim Etiket anlaşmalı baskı atölyemizle çalışır. Tasarımın ve kargo bilgilerin yalnızca bu sipariş için atölyeye iletilir, 30 gün sonra imha edilir.",
     fasonDisclaimerLink: "Detay",
-    proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} TL`,
+    proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} ₺`,
     processing: "Yönlendiriliyor...",
     cartItems: "Sepetinde",
   },

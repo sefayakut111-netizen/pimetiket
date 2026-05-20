@@ -128,7 +128,7 @@ export async function sendOrderConfirmationSms(args: {
     to: args.phone,
     message: `Pim Etiket: Siparisin alindi! ${args.orderId} - ${Math.round(
       args.total
-    ).toLocaleString("en-US")} TL. Detay: ${SITE}/siparis/${args.orderId}`,
+    ).toLocaleString("en-US")} ₺. Detay: ${SITE}/siparis/${args.orderId}`,
     transactional: true,
   });
 }

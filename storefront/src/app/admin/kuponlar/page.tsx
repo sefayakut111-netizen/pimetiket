@@ -1,7 +1,7 @@
 /**
  * Pim Etiket — /admin/kuponlar
  *
- * Promo kodu yönetimi: kod, indirim tipi (%/TL), eşik, kullanım limiti,
+ * Promo kodu yönetimi: kod, indirim tipi (%/₺), eşik, kullanım limiti,
  * tarih aralığı, aktif/pasif.
  */
 
@@ -21,9 +21,9 @@ interface Coupon {
   id: string;
   code: string;
   type: DiscountType;
-  /** percent: 0-100, fixed: TL */
+  /** percent: 0-100, fixed: ₺ */
   value: number;
-  /** Minimum sepet eşiği (TL) */
+  /** Minimum sepet eşiği (₺) */
   minSubtotal: number;
   /** Maksimum kullanım sayısı (null = sınırsız) */
   maxUses: number | null;
@@ -214,7 +214,7 @@ export default function AdminKuponlarPage() {
                           : "text-gri-700"
                       )}
                     >
-                      Sabit (TL)
+                      Sabit (₺)
                     </button>
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export default function AdminKuponlarPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <label className="block">
                   <span className="text-[13px] font-semibold mb-1.5 block">
-                    Değer ({draft.type === "percent" ? "%" : "TL"})
+                    Değer ({draft.type === "percent" ? "%" : "₺"})
                   </span>
                   <Input
                     type="number"
@@ -237,7 +237,7 @@ export default function AdminKuponlarPage() {
                 </label>
                 <label className="block">
                   <span className="text-[13px] font-semibold mb-1.5 block">
-                    Minimum sepet (TL)
+                    Minimum sepet (₺)
                   </span>
                   <Input
                     type="number"
@@ -351,10 +351,10 @@ export default function AdminKuponlarPage() {
                       {c.code}
                     </td>
                     <td className="px-4 py-3 font-semibold text-lacivert tabular-nums">
-                      {c.type === "percent" ? `%${c.value}` : `${c.value} TL`}
+                      {c.type === "percent" ? `%${c.value}` : `${c.value} ₺`}
                     </td>
                     <td className="px-4 py-3 text-gri-700 tabular-nums">
-                      {c.minSubtotal > 0 ? `${c.minSubtotal} TL+` : "Yok"}
+                      {c.minSubtotal > 0 ? `${c.minSubtotal} ₺+` : "Yok"}
                     </td>
                     <td className="px-4 py-3 text-gri-700 tabular-nums">
                       {c.usedCount}

@@ -20,7 +20,7 @@ import { Button, Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 const fmtKurus = (n: number) =>
-  (n / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 }) + " TL";
+  (n / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 }) + " ₺";
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();

@@ -23,11 +23,11 @@ export interface PayTrTokenRequest {
   merchant_oid: string;
   /** Müşteri e-posta */
   email: string;
-  /** Tutar kuruş cinsinden (199.99 TL → 19999) */
+  /** Tutar kuruş cinsinden (199.99 ₺ → 19999) */
   payment_amount: number;
   /** HMAC-SHA256 base64 token */
   paytr_token: string;
-  /** Sepet base64 JSON: [["Ürün adı", "fiyat (TL.kuruş string)", adet], ...] */
+  /** Sepet base64 JSON: [["Ürün adı", "fiyat (₺.kuruş string)", adet], ...] */
   user_basket: string;
   /** Taksit izin verilmiyor: 1, izin: 0 */
   no_installment: 0 | 1;
@@ -42,8 +42,8 @@ export interface PayTrTokenRequest {
   merchant_fail_url: string;
   /** Token timeout dk (default 30) */
   timeout_limit?: number;
-  /** TL veya USD/EUR */
-  currency: "TL" | "USD" | "EUR" | "GBP" | "RUB";
+  /** ₺ veya USD/EUR */
+  currency: "₺" | "USD" | "EUR" | "GBP" | "RUB";
   /** Test mode: 1 (sandbox), 0 (production) */
   test_mode: 0 | 1;
   /** Debug mode (0/1) */

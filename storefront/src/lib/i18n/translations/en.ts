@@ -191,7 +191,7 @@ export const en: TranslationDict = {
     proceedToCheckout: "Proceed to checkout",
     continueShopping: "Continue shopping",
     freeShippingHint: (remaining) =>
-      `💡 Free shipping over 1,500 TL — ${remaining} TL to go.`,
+      `💡 Free shipping over 1,500 ₺ — ${remaining} ₺ to go.`,
     summary: "Order summary",
     // Sefa 18 May v60: Added-to-cart popup
     successTitle: "Added to cart 🎉",
@@ -229,7 +229,7 @@ export const en: TranslationDict = {
     cvv: "CVV",
     accept:
       "I have read and accept the Distance Sales Agreement. I understand that since this is a personalized product, I do not have a right to withdraw.",
-    payNow: (amount) => `Pay ${amount} TL`,
+    payNow: (amount) => `Pay ${amount} ₺`,
     processing: "Processing...",
   },
   orderSuccess: {

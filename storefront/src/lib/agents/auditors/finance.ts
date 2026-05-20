@@ -368,7 +368,7 @@ export class FinanceAuditor extends AuditorBase {
       this.info(
         "coupon_expiry",
         `${rows.length} kupon süresi yaklaşıyor`,
-        `Önümüzdeki ${TUNE.couponExpiryWarningDays} gün içinde sona erecek **${rows.length}** aktif kupon var:\n\n${rows.map((c) => `- **${c.code}** (${c.value}${c.kind === "percent" ? "%" : " TL"}) — ${formatDate(c.expires_at)}`).join("\n")}`,
+        `Önümüzdeki ${TUNE.couponExpiryWarningDays} gün içinde sona erecek **${rows.length}** aktif kupon var:\n\n${rows.map((c) => `- **${c.code}** (${c.value}${c.kind === "percent" ? "%" : " ₺"}) — ${formatDate(c.expires_at)}`).join("\n")}`,
         {
           count: rows.length,
           coupons: rows.map((c) => ({
@@ -546,7 +546,7 @@ function formatTl(n: number): string {
   return n.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }) + " TL";
+  }) + " ₺";
 }
 
 function formatDate(iso: string): string {

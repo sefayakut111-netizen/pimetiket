@@ -632,12 +632,12 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
         </div>
         <div className="text-[28px] font-bold tracking-tight tabular-nums leading-none">
           {fmtTL(result.total_kdv_dahil)}{" "}
-          <span className="text-pim-mercan text-[20px] font-semibold">TL</span>
+          <span className="text-pim-mercan text-[20px] font-semibold">₺</span>
         </div>
         <div className="text-[11.5px] text-white/70 mt-1.5 tabular-nums">
           {result.qty.toLocaleString("tr-TR")} adet ×{" "}
           <strong className="text-white">
-            {fmtTL(result.unit_price_kdv_dahil)} TL/adet
+            {fmtTL(result.unit_price_kdv_dahil)} ₺/adet
           </strong>
         </div>
 

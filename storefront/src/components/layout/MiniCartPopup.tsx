@@ -85,12 +85,12 @@ export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
                   </div>
                   <div className="text-[11.5px] text-gri-500 tabular-nums">
                     {item.qty.toLocaleString("tr-TR")} ×{" "}
-                    {item.unit.toFixed(2).replace(".", ",")} TL
+                    {item.unit.toFixed(2).replace(".", ",")} ₺
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="font-semibold text-[13px] tabular-nums">
-                    {fmt(item.total)} TL
+                    {fmt(item.total)} ₺
                   </div>
                 </div>
               </li>
@@ -104,7 +104,7 @@ export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
 
           {shipping > 0 && (
             <div className="px-3 py-2 bg-sari-soft text-sari-koyu text-[11.5px] leading-tight">
-              💡 {fmt(FREE_SHIPPING_THRESHOLD - subtotal)} TL
+              💡 {fmt(FREE_SHIPPING_THRESHOLD - subtotal)} ₺
             </div>
           )}
 
@@ -112,7 +112,7 @@ export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
             <div className="flex justify-between text-[13px] mb-1">
               <span className="text-gri-700">{t.cart.subtotal}</span>
               <span className="font-semibold tabular-nums">
-                {fmt(subtotal)} TL
+                {fmt(subtotal)} ₺
               </span>
             </div>
             <div className="flex justify-between text-[13px] mb-3">
@@ -121,14 +121,14 @@ export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
                 {shipping === 0 ? (
                   <span className="text-yesil">{t.cart.free}</span>
                 ) : (
-                  `${fmt(shipping)} TL`
+                  `${fmt(shipping)} ₺`
                 )}
               </span>
             </div>
             <div className="flex justify-between text-[14px] mb-3 pb-3 border-b border-gri-200">
               <span className="font-semibold">{t.cart.total}</span>
               <span className="text-[16px] font-bold tabular-nums">
-                {fmt(total)} TL
+                {fmt(total)} ₺
               </span>
             </div>
             <Link

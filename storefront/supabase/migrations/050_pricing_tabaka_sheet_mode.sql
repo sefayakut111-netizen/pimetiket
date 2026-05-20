@@ -5,12 +5,12 @@
 -- hesaplama yapıyoruz, 1 adet tabaka fiyatından".
 --
 -- ÖNCEKİ (Migration 048 + 049):
---   etiket_tabaka.materials[*].m2_cost_try → TL/m² fiyat
+--   etiket_tabaka.materials[*].m2_cost_try → ₺/m² fiyat
 --   Hesap: m2_cost × area_m2 × qty (rulo ile aynı mantık — YANLIŞ)
 --
 -- YENİ (bu migration):
 --   etiket_tabaka.pricing_mode = "sheet"
---   etiket_tabaka.materials[*].sheet_cost_try → TL/tabaka (23×31 cm 1 tabaka)
+--   etiket_tabaka.materials[*].sheet_cost_try → ₺/tabaka (23×31 cm 1 tabaka)
 --   Hesap: sheet_cost × sheets_needed (geometriden hesap)
 --
 -- Müşteri tarafında tabaka geometrisi (kaç adet 1 tabakaya sığar) zaten

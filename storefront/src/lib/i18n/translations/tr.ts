@@ -190,7 +190,7 @@ export const tr: TranslationDict = {
     proceedToCheckout: "Ödemeye geç",
     continueShopping: "Alışverişe devam et",
     freeShippingHint: (remaining) =>
-      `💡 1.500 TL üzeri alışverişlerde kargo ücretsiz — ${remaining} TL kaldı.`,
+      `💡 1.500 ₺ üzeri alışverişlerde kargo ücretsiz — ${remaining} ₺ kaldı.`,
     summary: "Sipariş özeti",
     // Sefa 18 May v60: Sepete eklendi pop-up'ı
     successTitle: "Sepete eklendi 🎉",
@@ -228,7 +228,7 @@ export const tr: TranslationDict = {
     cvv: "CVV",
     accept:
       "Mesafeli Satış Sözleşmesi'ni okudum, kabul ediyorum. Kişiselleştirilmiş ürün olduğu için cayma hakkımın bulunmadığını biliyorum.",
-    payNow: (amount) => `${amount} TL'yi öde`,
+    payNow: (amount) => `${amount} ₺'yi öde`,
     processing: "İşleniyor...",
   },
   orderSuccess: {

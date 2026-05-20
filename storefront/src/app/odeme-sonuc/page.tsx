@@ -39,7 +39,7 @@ const EXTRA = {
       </>
     ),
     times: "×",
-    currency: "TL",
+    currency: "₺",
     locale: "tr-TR",
   },
   en: {

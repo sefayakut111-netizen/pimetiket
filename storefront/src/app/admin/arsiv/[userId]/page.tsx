@@ -1,329 +1,464 @@
 /**
- * Pim Etiket — /admin/arsiv/[userId]
+ * Pim Etiket — /admin/ai-qc (v2 — Supabase backed)
  *
- * Sefa 18 May v68 (R2 cold storage admin panel):
- * Bir müşterinin R2 arşivindeki tüm dosyalarını listeler. Admin bir
- * dosyaya tıklayınca → modal açılır → "İndirme sebebi" zorunlu →
- * onay sonrası 1 saatlik signed URL açılır + archive_events'e audit log
- * düşer (KVKK m.11/h).
+ * Sefa kuralı (16 May v3 baskı onay akışı):
+ *   Müşteri ödeme yapar → Design QC agent fire-and-forget çalışır →
+ *   verdict'e göre order.status = "human_review" veya "proof_generating".
+ *   Bu sayfa "human_review" / "human_review_failed" siparişlerini sunar,
+ *   operatör approve → ready_to_ship, reject → human_review_failed.
  *
- * Yapı:
- *   - Üstte müşteri özeti (geri linkiyle)
- *   - Kategori gruplaması (Profile / Orders / Designs / Reviews / Returns)
- *   - Her satırda: dosya adı, boyut, son değişiklik, "İndir" butonu
- *   - Modal: dosya bilgisi + reason text + "Aç" / "İptal"
+ * Migration 039 ile gelen design_quality_checks audit tablosu kullanılır.
+ * Eski localStorage prototip kaldırıldı.
  */
 
 "use client";
 
-import { useEffect, useState, use } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import {
-  Card,
-  Eyebrow,
-  Skeleton,
-  Button,
-  useToast,
-  Modal,
-} from "@/components/ui";
+import { Button, Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import type { ArchiveFileItem } from "@/app/api/admin/archive/files/route";
 
-const CATEGORY_META: Record<
-  ArchiveFileItem["category"],
-  { label: string; emoji: string }
-> = {
-  profile: { label: "Profil snapshot", emoji: "👤" },
-  order: { label: "Sipariş kayıtları", emoji: "📦" },
-  design: { label: "Tasarım dosyaları", emoji: "🎨" },
-  review: { label: "Yorumlar", emoji: "⭐" },
-  return: { label: "İadeler", emoji: "↩️" },
-  other: { label: "Diğer", emoji: "📄" },
+const fmtKurus = (n: number) =>
+  (n / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 }) + " ₺";
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60_000);
+  if (min < 1) return "Az önce";
+  if (min < 60) return `${min} dk önce`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} sa önce`;
+  const day = Math.floor(hr / 24);
+  return `${day} gün önce`;
+}
+
+interface QCRun {
+  runId: string;
+  verdict: "iyi" | "normal" | "kotu" | "error";
+  score: number | null;
+  fileType: string | null;
+  effectiveDpi: number | null;
+  findings: Array<{
+    severity: "info" | "warning" | "error";
+    category: string;
+    message: string;
+    actionable?: string;
+  }> | null;
+  fileId: string | null;
+  fileName: string | null;
+  createdAt: string;
+}
+
+interface QueueItem {
+  orderId: string;
+  status: string;
+  createdAt: string;
+  totalKurus: number;
+  customerName: string;
+  items: Array<{
+    product: string;
+    title: string;
+    width: number;
+    height: number;
+    qty: number;
+  }>;
+  qcRuns: QCRun[];
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  human_review: "Manuel İnceleme",
+  human_review_failed: "Reddedildi (müşteriye)",
+  proof_generating: "Prova Üretiliyor",
 };
 
-function formatBytes(b: number): string {
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / 1024 / 1024).toFixed(2)} MB`;
-}
+const VERDICT_COLORS: Record<string, string> = {
+  iyi: "bg-yesil text-white",
+  normal: "bg-saman text-lacivert",
+  kotu: "bg-kirmizi text-white",
+  error: "bg-gri-700 text-white",
+};
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("tr-TR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Istanbul",
-  });
-}
+const VERDICT_LABELS: Record<string, string> = {
+  iyi: "✓ İYİ",
+  normal: "~ NORMAL",
+  kotu: "✗ KÖTÜ",
+  error: "! HATA",
+};
 
-export default function ArchiveCustomerDetailPage({
-  params,
-}: {
-  params: Promise<{ userId: string }>;
-}) {
-  const { userId } = use(params);
-  const toast = useToast();
-
-  const [files, setFiles] = useState<ArchiveFileItem[]>([]);
-  const [totalSize, setTotalSize] = useState(0);
-  const [dryRun, setDryRun] = useState(false);
+export default function AdminAiQcPage() {
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deciding, setDeciding] = useState(false);
+  const [note, setNote] = useState("");
 
-  // Modal state
-  const [modalFile, setModalFile] = useState<ArchiveFileItem | null>(null);
-  const [reason, setReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const fetchQueue = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/ai-qc/queue", {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as { ok?: boolean; queue?: QueueItem[] };
+      if (data.ok && Array.isArray(data.queue)) {
+        setQueue(data.queue);
+        setActiveIdx((i) =>
+          Math.max(0, Math.min(i, data.queue!.length - 1))
+        );
+      }
+    } catch (err) {
+      console.error("[ai-qc] queue fetch failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/admin/archive/files?userId=${userId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (data.error) {
-          toast.error(data.error);
-          return;
-        }
-        setFiles(data.files ?? []);
-        setTotalSize(data.total_size_bytes ?? 0);
-        setDryRun(data.dry_run ?? false);
-      })
-      .catch((e) => {
-        if (!cancelled) toast.error(`Yükleme hatası: ${e.message}`);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, toast]);
+    void fetchQueue();
+  }, [fetchQueue]);
 
-  async function openSignedUrl() {
-    if (!modalFile) return;
-    if (!reason.trim()) {
-      toast.error("İndirme sebebi zorunlu (KVKK audit için)");
-      return;
-    }
-
-    setSubmitting(true);
+  const decide = async (decision: "approve" | "reject") => {
+    const order = queue[activeIdx];
+    if (!order || deciding) return;
+    setDeciding(true);
     try {
-      const res = await fetch("/api/admin/archive/signed-url", {
+      const res = await fetch("/api/admin/ai-qc/decide", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          r2Key: modalFile.key,
-          reason: reason.trim(),
-          ttlSeconds: 3600,
+          orderId: order.orderId,
+          decision,
+          note: note.trim() || undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        toast.error(data.error ?? "Signed URL alınamadı");
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!data.ok) {
+        alert(`Karar uygulanamadı: ${data.error ?? "unknown"}`);
         return;
       }
-      window.open(data.url, "_blank", "noopener,noreferrer");
-      toast.success("Dosya yeni sekmede açıldı");
-      setModalFile(null);
-      setReason("");
-    } catch (e) {
-      toast.error(`Hata: ${(e as Error).message}`);
+      setNote("");
+      await fetchQueue();
+    } catch (err) {
+      console.error("[ai-qc] decide failed:", err);
+      alert("Karar uygulanamadı (ağ hatası)");
     } finally {
-      setSubmitting(false);
+      setDeciding(false);
     }
+  };
+
+  if (loading) {
+    return (
+      <main className="py-12">
+        <div className="mx-auto max-w-[600px] px-6 text-center">
+          <div className="animate-pulse text-gri-700">
+            QC kuyruğu yükleniyor…
+          </div>
+        </div>
+      </main>
+    );
   }
 
-  // Kategoriye göre gruplama
-  const grouped = files.reduce(
-    (acc, f) => {
-      (acc[f.category] ??= []).push(f);
-      return acc;
-    },
-    {} as Record<ArchiveFileItem["category"], ArchiveFileItem[]>
-  );
+  if (queue.length === 0) {
+    return (
+      <main className="py-12">
+        <div className="mx-auto max-w-[760px] px-6">
+          {/* Üst — başarı kutlama */}
+          <div className="text-center mb-10">
+            <Pim pose="happy" size={140} />
+            <h1 className="mt-4 text-[28px] font-semibold tracking-tight">
+              Kuyruk temiz! 🎉
+            </h1>
+            <p className="mt-3 text-base text-gri-700 leading-relaxed">
+              Manuel inceleme bekleyen sipariş yok. Yeni QC flag&rsquo;i
+              geldiğinde burada görünür.
+            </p>
+          </div>
+
+          {/* Sefa 18 May v68 (admin UX denetim — empty state mikro tur):
+              AI QC nasıl çalışır 4-step özet. Yeni operatörlerin
+              ilk girişte ne yapacaklarını anlaması için. */}
+          <div className="rounded-2xl bg-white ring-1 ring-gri-200 p-6">
+            <h2 className="text-[15px] font-semibold mb-4 text-lacivert">
+              📚 AI QC nasıl çalışır?
+            </h2>
+            <ol className="space-y-3 text-[13.5px] text-gri-700 leading-relaxed">
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-mavi-soft text-mavi-koyu font-bold flex items-center justify-center text-[12px]">1</span>
+                <div>
+                  <strong className="text-lacivert">Müşteri sipariş veriyor</strong> + tasarım yüklüyor (PDF/AI/PSD/PNG).
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-mavi-soft text-mavi-koyu font-bold flex items-center justify-center text-[12px]">2</span>
+                <div>
+                  <strong className="text-lacivert">AI motor kontrol ediyor:</strong> DPI ≥300, CMYK renk uzayı, bleed 2-3mm, font outline, mürekkep doygunluğu (&lt;%320), kontur kesim hatları.
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-sari-soft text-sari-koyu font-bold flex items-center justify-center text-[12px]">3</span>
+                <div>
+                  <strong className="text-lacivert">Sorun bulursa</strong> burada flag oluşur — sen manuel inceler, onayla / düzeltme iste / üretime geç seçeneklerini görürsün.
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-yesil-soft text-yesil-koyu font-bold flex items-center justify-center text-[12px]">4</span>
+                <div>
+                  <strong className="text-lacivert">Sorun yoksa otomatik</strong> üretim hattına aktarılır + müşteriye "Tasarım onaylandı" maili gider.
+                </div>
+              </li>
+            </ol>
+
+            <div className="mt-6 pt-4 border-t border-gri-200">
+              <h3 className="text-[12.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-2">
+                💡 Operatör ipuçları
+              </h3>
+              <ul className="space-y-1.5 text-[12.5px] text-gri-700">
+                <li>• DPI flag: müşteriye "300 DPI ile tekrar yükle" iste, override etme</li>
+                <li>• CMYK flag: Canva Free RGB→CMYK otomatik döner, %5-10 sapma kabul edilebilir</li>
+                <li>• Bleed flag: kritik içerik kesim çizgisinden 3mm içeride mi? Değilse düzelt iste</li>
+                <li>• Font outline: PDF font gömülmemişse mutlaka düzelt iste (üretimde değişir)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const active = queue[activeIdx];
+  const product =
+    active.items.length === 1
+      ? active.items[0].title
+      : `${active.items.length} ürün`;
 
   return (
-    <main className="mx-auto max-w-[1280px] px-4 py-6 md:px-6">
-      <Link
-        href="/admin/arsiv"
-        className="mb-4 inline-flex items-center gap-1 text-[13px] text-gri-700 hover:text-pim-mercan"
-      >
-        ← Arşiv listesine dön
-      </Link>
-
-      <div className="mb-6">
-        <Eyebrow>R2 Cold Storage</Eyebrow>
-        <h1 className="mt-1 text-2xl font-bold text-lacivert md:text-3xl">
-          Müşteri Arşiv Dosyaları
-        </h1>
-        <p className="mt-1 text-sm text-gri-700">
-          User UUID:{" "}
-          <code className="rounded bg-gri-100 px-1.5 py-0.5 text-[12px]">
-            {userId}
-          </code>
-        </p>
-      </div>
-
-      {/* Özet kutu */}
-      <Card className="mb-4 grid grid-cols-2 gap-4 p-4 md:grid-cols-4">
-        <div>
-          <div className="text-[12px] text-gri-700">Toplam dosya</div>
-          <div className="text-2xl font-bold text-lacivert">
-            {loading ? <Skeleton className="h-7 w-12" /> : files.length}
-          </div>
-        </div>
-        <div>
-          <div className="text-[12px] text-gri-700">Toplam boyut</div>
-          <div className="text-2xl font-bold text-lacivert">
-            {loading ? (
-              <Skeleton className="h-7 w-20" />
-            ) : (
-              formatBytes(totalSize)
-            )}
-          </div>
-        </div>
-        <div>
-          <div className="text-[12px] text-gri-700">Mod</div>
-          <div
-            className={cn(
-              "text-sm font-medium",
-              dryRun ? "text-sari-koyu" : "text-yesil-koyu"
-            )}
-          >
-            {dryRun ? "🧪 DRY_RUN (test)" : "🔥 Canlı R2"}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[12px] text-gri-700">Erişim</div>
-          <div className="text-sm font-medium text-gri-700">
-            Audit log düşer
-          </div>
-        </div>
-      </Card>
-
-      {/* Kategori grupları */}
-      {loading ? (
-        <Card className="p-6">
-          <Skeleton className="h-32 w-full" />
-        </Card>
-      ) : files.length === 0 ? (
-        <Card className="p-10 text-center">
-          <div className="mb-2 text-4xl">📭</div>
-          <h2 className="text-lg font-semibold text-lacivert">
-            Arşivde dosya yok
-          </h2>
-          <p className="mt-1 text-sm text-gri-700">
-            Bu müşteri için R2'de hiçbir dosya bulunamadı. Müşteri henüz
-            arşivlenmemiş veya DRY_RUN modunda işaretlenmiş olabilir.
+    <main className="py-8 pb-20">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        <div className="mb-6">
+          <Eyebrow>AI QC kuyruğu</Eyebrow>
+          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+            Manuel inceleme kuyruğu
+          </h1>
+          <p className="mt-1.5 text-base text-gri-700">
+            {queue.length} sipariş AI ön kontrolünden geçti, operatör kararı
+            bekliyor.
           </p>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {(Object.keys(grouped) as ArchiveFileItem["category"][]).map(
-            (cat) => (
-              <Card key={cat}>
-                <div className="border-b border-gri-200 px-4 py-3">
-                  <h3 className="text-sm font-semibold text-lacivert">
-                    {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label} (
-                    {grouped[cat].length})
-                  </h3>
-                </div>
-                <div className="divide-y divide-gri-100">
-                  {grouped[cat].map((f) => (
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+          {/* Queue list */}
+          <Card padding="p-2">
+            <div className="flex flex-col gap-1">
+              {queue.map((q, i) => {
+                const latestVerdict = q.qcRuns[0]?.verdict;
+                return (
+                  <button
+                    key={q.orderId}
+                    type="button"
+                    onClick={() => setActiveIdx(i)}
+                    className={cn(
+                      "text-left p-3 rounded-lg transition-colors",
+                      activeIdx === i
+                        ? "bg-lacivert text-white"
+                        : "hover:bg-gri-100"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-mono text-[12px] opacity-80">
+                        {q.orderId.slice(0, 8)}
+                      </span>
+                      {latestVerdict && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center h-[18px] px-1.5 rounded-full text-[10px] font-bold",
+                            VERDICT_COLORS[latestVerdict] ?? VERDICT_COLORS.error
+                          )}
+                        >
+                          {VERDICT_LABELS[latestVerdict] ?? latestVerdict}
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-semibold text-[13px] truncate">
+                      {q.customerName}
+                    </div>
                     <div
-                      key={f.key}
-                      className="flex items-center gap-4 px-4 py-3 hover:bg-gri-50"
+                      className={cn(
+                        "text-[11.5px] mt-0.5",
+                        activeIdx === i ? "text-white/70" : "text-gri-700"
+                      )}
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-lacivert">
-                          {f.relative_path}
+                      {STATUS_LABELS[q.status] ?? q.status} ·{" "}
+                      {timeAgo(q.createdAt)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Detail */}
+          <div className="flex flex-col gap-4">
+            {/* Order header */}
+            <Card padding="p-6">
+              <div className="flex justify-between items-start gap-4 flex-wrap">
+                <div>
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 font-mono">
+                    {active.orderId}
+                  </div>
+                  <h2 className="text-xl font-semibold mt-1">
+                    {active.customerName}
+                  </h2>
+                  <div className="text-[13px] text-gri-700 mt-1">{product}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
+                    Sipariş tutarı
+                  </div>
+                  <div className="text-xl font-bold mt-1 tabular-nums">
+                    {fmtKurus(active.totalKurus)}
+                  </div>
+                  <div className="text-[12px] text-gri-700 mt-0.5">
+                    {timeAgo(active.createdAt)}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* QC Results */}
+            {active.qcRuns.length > 0 ? (
+              <Card padding="p-6">
+                <h3 className="font-semibold text-base mb-3">
+                  AI QC Sonuçları ({active.qcRuns.length} dosya)
+                </h3>
+                <div className="space-y-4">
+                  {active.qcRuns.map((run) => (
+                    <div
+                      key={run.runId}
+                      className="rounded-lg ring-1 ring-gri-200 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-[13px] text-lacivert truncate">
+                            {run.fileName ?? "—"}
+                          </div>
+                          <div className="text-[11.5px] text-gri-700 mt-0.5">
+                            {run.fileType ?? "?"}
+                            {run.effectiveDpi != null && (
+                              <> · {Math.round(run.effectiveDpi)} DPI</>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-[12px] text-gri-500">
-                          {formatBytes(f.size_bytes)} ·{" "}
-                          {formatDate(f.last_modified)}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {run.score != null && (
+                            <span className="font-mono text-[12px] tabular-nums">
+                              {run.score}/100
+                            </span>
+                          )}
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[22px] px-2 rounded-full text-[11px] font-bold",
+                              VERDICT_COLORS[run.verdict] ??
+                                VERDICT_COLORS.error
+                            )}
+                          >
+                            {VERDICT_LABELS[run.verdict] ?? run.verdict}
+                          </span>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setModalFile(f)}
-                      >
-                        📥 İndir
-                      </Button>
+                      {Array.isArray(run.findings) &&
+                        run.findings.length > 0 && (
+                          <ul className="mt-2 space-y-1.5">
+                            {run.findings.map((f, idx) => (
+                              <li
+                                key={idx}
+                                className="text-[12.5px] leading-relaxed flex items-start gap-2"
+                              >
+                                <span
+                                  className={cn(
+                                    "shrink-0 w-1.5 h-1.5 rounded-full mt-1.5",
+                                    f.severity === "error"
+                                      ? "bg-kirmizi"
+                                      : f.severity === "warning"
+                                        ? "bg-saman"
+                                        : "bg-gri-500"
+                                  )}
+                                />
+                                <span>
+                                  <strong className="text-lacivert">
+                                    {f.category}:
+                                  </strong>{" "}
+                                  {f.message}
+                                  {f.actionable && (
+                                    <em className="block text-gri-700 mt-0.5">
+                                      → {f.actionable}
+                                    </em>
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                     </div>
                   ))}
                 </div>
               </Card>
-            )
-          )}
-        </div>
-      )}
+            ) : (
+              <Card padding="p-6">
+                <div className="text-center py-6">
+                  <Icon.Box
+                    size={40}
+                    className="text-gri-500 mx-auto mb-2"
+                  />
+                  <div className="font-semibold text-lacivert">
+                    Tasarım dosyası yok
+                  </div>
+                  <div className="text-[13px] text-gri-700 mt-1 max-w-[400px] mx-auto leading-relaxed">
+                    Müşteri henüz dosya yüklemedi. 3 gün içinde yüklemezse
+                    sipariş otomatik geri çekilir.
+                  </div>
+                </div>
+              </Card>
+            )}
 
-      {/* Modal */}
-      {modalFile && (
-        <Modal
-          open={true}
-          onClose={() => {
-            setModalFile(null);
-            setReason("");
-          }}
-          title="Arşivden Dosya İndir"
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg bg-gri-50 p-3">
-              <div className="text-[12px] text-gri-700">Dosya</div>
-              <div className="break-all text-sm font-medium text-lacivert">
-                {modalFile.relative_path}
-              </div>
-              <div className="mt-1 text-[12px] text-gri-500">
-                {formatBytes(modalFile.size_bytes)} ·{" "}
-                {formatDate(modalFile.last_modified)}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-[12.5px] font-medium text-lacivert">
-                İndirme sebebi <span className="text-kirmizi">*</span>
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                placeholder="Örn: Müşteri WhatsApp talebi #1234 — eski sipariş PE-2026-... için tasarım dosyası"
-                className="w-full rounded-lg border border-gri-200 px-3 py-2 text-sm focus:border-pim-mercan focus:outline-none focus:ring-2 focus:ring-pim-mercan/20"
-              />
-              <p className="mt-1 text-[11.5px] text-gri-500">
-                KVKK m.11/h gereği bu erişim audit log'a kaydedilir. Sebep
-                belirtmek zorunludur.
+            {/* Decision */}
+            <Card padding="p-6">
+              <h3 className="font-semibold text-base mb-3">Operatör kararı</h3>
+              <p className="text-[13px] text-gri-700 mb-3 leading-relaxed">
+                <strong>Onayla</strong> → sipariş baskıya gönderilir (
+                <code>ready_to_ship</code>).{" "}
+                <strong>Reddet</strong> → müşteriye düzeltme bildirimi gider (
+                <code>human_review_failed</code>).
               </p>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setModalFile(null);
-                  setReason("");
-                }}
-                disabled={submitting}
-              >
-                İptal
-              </Button>
-              <Button
-                onClick={openSignedUrl}
-                disabled={submitting || !reason.trim()}
-              >
-                {submitting ? "Hazırlanıyor..." : "Aç (1 saat geçerli)"}
-              </Button>
-            </div>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Müşteriye iletilecek not (opsiyonel — reddederken faydalı)"
+                rows={3}
+                className="w-full px-3 py-2 mb-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[13px] text-lacivert placeholder:text-gri-500 focus:outline-none focus:ring-pim-mercan focus:bg-white"
+              />
+              <div className="flex flex-wrap gap-3 items-center">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => void decide("approve")}
+                  disabled={deciding}
+                  className="!bg-yesil hover:!bg-yesil-koyu"
+                >
+                  <Icon.Check size={16} />{" "}
+                  {deciding ? "..." : "Onayla → Baskıya"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => void decide("reject")}
+                  disabled={deciding}
+                >
+                  Reddet → Müşteriye geri
+                </Button>
+              </div>
+            </Card>
           </div>
-        </Modal>
-      )}
+        </div>
+      </div>
     </main>
   );
 }

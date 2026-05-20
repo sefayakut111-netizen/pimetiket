@@ -43,7 +43,7 @@ export function QuickReorderWidget() {
   const { locale } = useT();
   const fmt = (n: number) =>
     Math.round(n).toLocaleString(locale === "en" ? "en-US" : "tr-TR") +
-    (locale === "en" ? " TRY" : " TL");
+    (locale === "en" ? " TRY" : " ₺");
   const [lastOrder, setLastOrder] = useState<CustomerOrder | null>(null);
   const [orderCount, setOrderCount] = useState(0);
 

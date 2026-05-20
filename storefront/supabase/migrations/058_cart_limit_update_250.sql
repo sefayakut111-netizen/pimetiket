@@ -12,6 +12,6 @@ alter table public.site_settings
   alter column max_order_total_try set default 250000.00;
 
 comment on column public.site_settings.min_order_total_try is
-  'Minimum sipariş tutarı (TL, KDV dahil). Default 250 TL (Sefa 19 May).';
+  'Minimum sipariş tutarı (₺, KDV dahil). Default 250 ₺ (Sefa 19 May).';
 comment on column public.site_settings.max_order_total_try is
-  'Maksimum sipariş tutarı (TL, KDV dahil). Default 250.000 TL (Sefa 19 May).';
+  'Maksimum sipariş tutarı (₺, KDV dahil). Default 250.000 ₺ (Sefa 19 May).';

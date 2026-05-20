@@ -7,7 +7,7 @@
  * Sefa "ne değişti?" sorusunu görsel bir liste ile cevaplar.
  *
  * Örnek output:
- *   - "Vinil m² maliyet: 500 → 600 TL"
+ *   - "Vinil m² maliyet: 500 → 600 ₺"
  *   - "Mat finiş %: +10% → +15%"
  *   - "Margin: 50% → 55%"
  *   - "Tier 250 adet çarpan: 1.00 → 0.95"
@@ -38,7 +38,7 @@ export function diffProfileConfig(
 
   // Materials — sheet mode için sheet_cost_try, area mode için m2_cost_try
   const isSheetMode = newCfg.pricing_mode === "sheet" || oldCfg.pricing_mode === "sheet";
-  const costUnit = isSheetMode ? "TL/tabaka" : "TL/m²";
+  const costUnit = isSheetMode ? "₺/tabaka" : "₺/m²";
   const costLabel = isSheetMode ? "tabaka maliyet" : "m² maliyet";
   const getCost = (m: { m2_cost_try?: number; sheet_cost_try?: number }): number | undefined =>
     isSheetMode ? m.sheet_cost_try : m.m2_cost_try;
@@ -60,8 +60,8 @@ export function diffProfileConfig(
       diffs.push({
         section: "materials",
         label: `${newMat.name} ${costLabel}`,
-        old_value: `${oldCost ?? "?"} TL`,
-        new_value: `${newCost ?? "?"} TL`,
+        old_value: `${oldCost ?? "?"} ₺`,
+        new_value: `${newCost ?? "?"} ₺`,
       });
     }
     if (oldMat.name !== newMat.name) {

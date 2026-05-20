@@ -4,7 +4,7 @@
  * Sefa 17 May v2: 3 profil (Sticker / Rulo Etiket / Tabaka Etiket).
  *
  * Her profil:
- *   - Materials (m² maliyet TL)
+ *   - Materials (m² maliyet ₺)
  *   - Options (groups: finish/coating/customization, toplamsal %)
  *   - Tiers (adet kademesi, çarpansal)
  *   - Operation (setup/packaging/cargo/fee%)
@@ -104,11 +104,11 @@ function calcSheetsNeeded(width_mm: number, height_mm: number, qty: number): num
 }
 
 function fmtMoney(n: number): string {
-  return Math.round(n).toLocaleString("tr-TR") + " TL";
+  return Math.round(n).toLocaleString("tr-TR") + " ₺";
 }
 
 function fmtMoney2(n: number): string {
-  return n.toFixed(2).replace(".", ",") + " TL";
+  return n.toFixed(2).replace(".", ",") + " ₺";
 }
 
 function fmtDateTime(iso: string | null): string {
@@ -591,13 +591,13 @@ export default function FiyatlarPage() {
               <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
                 {isSheetMode ? (
                   <>
-                    Her malzeme için <strong>TL/tabaka</strong> (23×31 cm 1
+                    Her malzeme için <strong>₺/tabaka</strong> (23×31 cm 1
                     tabaka) maliyeti. Sistem geometriye göre kaç tabaka
                     gerektiğini hesaplar.
                   </>
                 ) : (
                   <>
-                    Her malzeme için <strong>TL/m²</strong> birim maliyeti.
+                    Her malzeme için <strong>₺/m²</strong> birim maliyeti.
                     Atölye tarifesinden direkt girersin.
                   </>
                 )}
@@ -609,7 +609,7 @@ export default function FiyatlarPage() {
                   <span>Ad</span>
                   <span>Açıklama</span>
                   <span className="text-right">
-                    {isSheetMode ? "Tabaka mal. (TL)" : "m² maliyet (TL)"}
+                    {isSheetMode ? "Tabaka mal. (₺)" : "m² maliyet (₺)"}
                   </span>
                 </div>
                 {draft.materials.map((m, i) => {
@@ -854,19 +854,19 @@ export default function FiyatlarPage() {
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <NumField
-                  label="Setup (TL)"
+                  label="Setup (₺)"
                   value={draft.operation.setup}
                   step={5}
                   onChange={(v) => updateOperationField("setup", v)}
                 />
                 <NumField
-                  label="Paketleme (TL/adet)"
+                  label="Paketleme (₺/adet)"
                   value={draft.operation.packaging_per_unit}
                   step={0.005}
                   onChange={(v) => updateOperationField("packaging_per_unit", v)}
                 />
                 <NumField
-                  label="Kargo (TL)"
+                  label="Kargo (₺)"
                   value={draft.operation.cargo}
                   step={5}
                   onChange={(v) => updateOperationField("cargo", v)}
@@ -944,8 +944,8 @@ export default function FiyatlarPage() {
                     <option key={m.id} value={m.id}>
                       {m.name} (
                       {isSheetMode
-                        ? `${m.sheet_cost_try ?? "?"} TL/tabaka`
-                        : `${m.m2_cost_try ?? "?"} TL/m²`}
+                        ? `${m.sheet_cost_try ?? "?"} ₺/tabaka`
+                        : `${m.m2_cost_try ?? "?"} ₺/m²`}
                       )
                     </option>
                   ))}
@@ -1062,7 +1062,7 @@ export default function FiyatlarPage() {
                         {fmtMoney(previewResult.final)}
                       </div>
                       <div className="text-[11px] text-gri-700">
-                        Birim: {previewResult.unit_price.toFixed(2)} TL/adet
+                        Birim: {previewResult.unit_price.toFixed(2)} ₺/adet
                       </div>
                     </div>
                   </div>

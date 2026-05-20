@@ -478,13 +478,13 @@ export default function EtiketFiyatHesaplaPage() {
                   <NumInput
                     value={fasonRate}
                     onChange={setFasonRate}
-                    suffix="TL / m²"
+                    suffix="₺ / m²"
                     step={5}
                   />
                 </Field>
                 {result.ok && (
                   <div className="mt-2 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] tabular-nums">
-                    Efektif rate: <strong>{result.effectiveRate.toFixed(2)} TL/m²</strong>
+                    Efektif rate: <strong>{result.effectiveRate.toFixed(2)} ₺/m²</strong>
                     {" "}· (×{result.multipliers.material.toFixed(2)} mat × {result.multipliers.coating.toFixed(2)} kap × {result.multipliers.customization.toFixed(2)} öz)
                   </div>
                 )}
@@ -498,22 +498,22 @@ export default function EtiketFiyatHesaplaPage() {
                 </SectionTitle>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Kağıt / Folio">
-                    <NumInput value={paper} onChange={setPaper} suffix="TL/m²" />
+                    <NumInput value={paper} onChange={setPaper} suffix="₺/m²" />
                   </Field>
                   <Field label="Mürekkep">
-                    <NumInput value={ink} onChange={setInk} suffix="TL/m²" />
+                    <NumInput value={ink} onChange={setInk} suffix="₺/m²" />
                   </Field>
                   <Field label="Kaplama">
-                    <NumInput value={coating} onChange={setCoating} suffix="TL/m²" />
+                    <NumInput value={coating} onChange={setCoating} suffix="₺/m²" />
                   </Field>
                   <Field label="İşçilik">
-                    <NumInput value={labor} onChange={setLabor} suffix="TL/m²" />
+                    <NumInput value={labor} onChange={setLabor} suffix="₺/m²" />
                   </Field>
                   <Field label="Genel Gider">
-                    <NumInput value={overhead} onChange={setOverhead} suffix="TL/m²" />
+                    <NumInput value={overhead} onChange={setOverhead} suffix="₺/m²" />
                   </Field>
                   <Field label="Amortisman">
-                    <NumInput value={depreciation} onChange={setDepreciation} suffix="TL/m²" />
+                    <NumInput value={depreciation} onChange={setDepreciation} suffix="₺/m²" />
                   </Field>
                 </div>
               </Card>
@@ -523,13 +523,13 @@ export default function EtiketFiyatHesaplaPage() {
               <SectionTitle accent="turuncu">② Operasyon</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Hazırlık" hint="tek seferlik">
-                  <NumInput value={setup} onChange={setSetup} suffix="TL" step={10} />
+                  <NumInput value={setup} onChange={setSetup} suffix="₺" step={10} />
                 </Field>
                 <Field label="Paketleme" hint="rulo başına">
-                  <NumInput value={packaging} onChange={setPackaging} suffix="TL/rulo" step={5} />
+                  <NumInput value={packaging} onChange={setPackaging} suffix="₺/rulo" step={5} />
                 </Field>
                 <Field label="Kargo" hint="yurtiçi">
-                  <NumInput value={cargo} onChange={setCargo} suffix="TL" step={10} />
+                  <NumInput value={cargo} onChange={setCargo} suffix="₺" step={10} />
                 </Field>
                 <Field label="İşlem Ücreti" hint="ödeme komisyonu">
                   <NumInput value={feePct} onChange={setFeePct} suffix="%" step={0.5} />
@@ -579,7 +579,7 @@ export default function EtiketFiyatHesaplaPage() {
                       <div className="text-[44px] md:text-[52px] font-bold leading-none tracking-tight tabular-nums">
                         {fmt(Math.round(result.cost.total))}{" "}
                         <span className="text-pim-mercan text-[36px] font-semibold">
-                          TL
+                          ₺
                         </span>
                       </div>
                       <div className="mt-2 text-[13px] text-white/70">
@@ -602,15 +602,15 @@ export default function EtiketFiyatHesaplaPage() {
 
                   {/* VAT line */}
                   <div className="relative mt-6 pt-5 border-t border-white/15 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <VatCell label="Maliyet" value={`${fmt(result.cost.baseCost)} TL`} />
+                    <VatCell label="Maliyet" value={`${fmt(result.cost.baseCost)} ₺`} />
                     <VatCell
                       label="Net Kar (Sefa)"
-                      value={`${fmt(result.cost.actualProfit)} TL`}
+                      value={`${fmt(result.cost.actualProfit)} ₺`}
                       subtitle={`%${result.cost.actualMarkupPct.toFixed(0)} markup`}
                       warning={!!result.cost.marginWarning}
                     />
-                    <VatCell label="PSP Komisyon" value={`${fmt(result.cost.processingFee)} TL`} />
-                    <VatCell label="KDV" value={`${fmt(result.cost.vatAmount)} TL`} />
+                    <VatCell label="PSP Komisyon" value={`${fmt(result.cost.processingFee)} ₺`} />
+                    <VatCell label="KDV" value={`${fmt(result.cost.vatAmount)} ₺`} />
                   </div>
 
                   {result.cost.marginWarning && (
@@ -1224,7 +1224,7 @@ function BreakdownRow({
         )}
       >
         {negative ? "−" : ""}
-        {fmt(Math.abs(item.amount))} TL
+        {fmt(Math.abs(item.amount))} ₺
       </div>
     </div>
   );

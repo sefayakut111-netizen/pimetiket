@@ -245,8 +245,8 @@ export async function POST(req: NextRequest) {
       actor_id: auth.user.id,
       actor_role: auth.role,
       summary: isPartial
-        ? `${refundAmount.toFixed(2)} TL kısmi iade yapıldı (PayTR).`
-        : `Tam iade yapıldı (${refundAmount.toFixed(2)} TL, PayTR).`,
+        ? `${refundAmount.toFixed(2)} ₺ kısmi iade yapıldı (PayTR).`
+        : `Tam iade yapıldı (${refundAmount.toFixed(2)} ₺, PayTR).`,
       detail: {
         refundAmount,
         reason: body.reason ?? null,

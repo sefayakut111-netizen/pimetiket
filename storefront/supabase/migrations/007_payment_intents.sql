@@ -30,7 +30,7 @@ create table if not exists public.payment_intents (
   user_id uuid not null references auth.users(id) on delete cascade,
   -- iyzico token (CheckoutForm Initialize'den dönen)
   iyzico_token text,
-  -- Tutar (TL, KDV dahil) — iyzico'da bu kadar tahsil edilecek
+  -- Tutar (₺, KDV dahil) — iyzico'da bu kadar tahsil edilecek
   card_amount numeric(10, 2) not null check (card_amount >= 0),
   wallet_amount numeric(10, 2) not null default 0 check (wallet_amount >= 0),
   total_amount numeric(10, 2) generated always as (card_amount + wallet_amount) stored,

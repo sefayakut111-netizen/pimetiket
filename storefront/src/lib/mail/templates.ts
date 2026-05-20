@@ -255,7 +255,7 @@ function renderAutoRefundStaleProof(input: MailTemplateInput): MailRendered {
     </p>
 
     <table role="presentation" style="width: 100%; margin: 16px 0; font-size: 13px;">
-      <tr><td style="padding: 6px 0; color: #57534e;">İade tutarı</td><td style="padding: 6px 0; font-weight: 600;">${refundAmount} TL</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">İade tutarı</td><td style="padding: 6px 0; font-weight: 600;">${refundAmount} ₺</td></tr>
       <tr><td style="padding: 6px 0; color: #57534e;">Karta yansıma</td><td style="padding: 6px 0;">3–10 iş günü</td></tr>
     </table>
 
@@ -270,7 +270,7 @@ function renderAutoRefundStaleProof(input: MailTemplateInput): MailRendered {
     bize ulaş, hızlıca yardımcı olalım.
   `;
 
-  const text = `Sipariş iptal edildi — ${orderId}\n\n36 saat içinde prova onayı alınamadığı için sipariş iptal edildi. İade tutarı: ${refundAmount} TL · 3–10 iş günü içinde karta yansır.`;
+  const text = `Sipariş iptal edildi — ${orderId}\n\n36 saat içinde prova onayı alınamadığı için sipariş iptal edildi. İade tutarı: ${refundAmount} ₺ · 3–10 iş günü içinde karta yansır.`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }
@@ -374,7 +374,7 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
     <h1 style="font-size: 18px; margin: 0 0 12px;">${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı 👀</h1>
     <p style="font-size: 14px; line-height: 1.6; color: #292524;">
       Birkaç gün önce sepete ${itemCount} ürün eklemiştin ama ödeme tamamlanmadı.
-      Toplam tutarın: <strong>${total.toLocaleString("tr-TR")} TL</strong>.
+      Toplam tutarın: <strong>${total.toLocaleString("tr-TR")} ₺</strong>.
     </p>
 
     ${
@@ -410,7 +410,7 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
     Hatırlatma almak istemiyorsan <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
   `;
 
-  const text = `${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı.\n\nSepette ${itemCount} ürün, toplam ${total.toLocaleString("tr-TR")} TL.${couponCode ? `\n\n%10 indirim kodu: ${couponCode} (7 gün geçerli)` : ""}\n\nSepete dön: ${SITE_URL}/sepet`;
+  const text = `${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı.\n\nSepette ${itemCount} ürün, toplam ${total.toLocaleString("tr-TR")} ₺.${couponCode ? `\n\n%10 indirim kodu: ${couponCode} (7 gün geçerli)` : ""}\n\nSepete dön: ${SITE_URL}/sepet`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }

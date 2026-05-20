@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       code,
       kind: "percent",
       value: 10,
-      max_discount: 500, // max 500 TL indirim
+      max_discount: 500, // max 500 ₺ indirim
       min_subtotal: 100,
       total_uses_limit: 1,
       per_user_limit: 1,

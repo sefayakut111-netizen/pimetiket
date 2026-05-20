@@ -5,7 +5,7 @@
 --   1. VIP statüsü — 3+ tamamlanmış sipariş veren müşteri
 --   2. Referans kodu — arkadaşına davet, ikiniz de %10
 --   3. Tekrar baskı indirimi — geçmiş sipariş üzerinden %10
---   4. Yorum bonusu — yayınlanan yoruma 100 TL kupon
+--   4. Yorum bonusu — yayınlanan yoruma 100 ₺ kupon
 --
 -- Tümü mevcut `coupons` altyapısını kullanır (gri alan riski yok,
 -- E-Para lisansı gerek değil).
@@ -243,12 +243,12 @@ create index if not exists order_items_reprint_source_idx
   where reprint_source_order_id is not null;
 
 -- ---------- 4. YORUM BONUSU ----------
--- reviews.bonus_coupon_code: yorum yayınlandığında oluşan 100 TL kupon
+-- reviews.bonus_coupon_code: yorum yayınlandığında oluşan 100 ₺ kupon
 
 alter table public.reviews
   add column if not exists bonus_coupon_code text;
 
--- Trigger: yorum status 'published' olunca 100 TL kupon oluştur
+-- Trigger: yorum status 'published' olunca 100 ₺ kupon oluştur
 create or replace function public.fn_apply_review_bonus()
 returns trigger
 language plpgsql
@@ -267,7 +267,7 @@ begin
     -- Benzersiz kupon kodu
     v_code := 'YORUM-' || upper(substring(encode(gen_random_bytes(4), 'hex') from 1 for 6));
 
-    -- Coupons tablosuna ekle (100 TL fixed, 90 gün, kullanıcıya özel limit yok ama tek kullanımlık)
+    -- Coupons tablosuna ekle (100 ₺ fixed, 90 gün, kullanıcıya özel limit yok ama tek kullanımlık)
     insert into public.coupons (
       code, kind, value, max_discount, min_subtotal,
       total_uses_limit, per_user_limit,
@@ -276,7 +276,7 @@ begin
       v_code, 'fixed', 100, 100, 200,
       1, 1,
       now(), now() + interval '90 days',
-      'Yorum bonus — bir sonraki siparişte 100 TL', true
+      'Yorum bonus — bir sonraki siparişte 100 ₺', true
     );
 
     -- Review'a kupon kodu ekle

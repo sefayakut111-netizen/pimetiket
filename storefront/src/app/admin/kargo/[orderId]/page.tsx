@@ -1,476 +1,321 @@
 /**
- * Pim Etiket — /admin/kargo/[orderId]
+ * Pim Etiket — /admin/iadeler
  *
- * Sefa 18 May v68 (kargo paneli detay sayfası):
- *   - Tüm timeline event'leri (kronolojik)
- *   - Manual poll butonu
- *   - Yurtiçi sitesinde aç
- *   - Müşteriye yeniden mail
- *   - Manual override (durum düzelt) modal
+ * Admin RMA yönetimi: iade taleplerini incele, onayla / reddet / iade et.
  */
 
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import {
-  Card,
-  Eyebrow,
-  Skeleton,
-  Button,
-  useToast,
-  Modal,
-  Input,
-} from "@/components/ui";
+import { Pim } from "@/components/Pim";
+import { Icon } from "@/components/Icon";
+import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  listReturns,
+  updateReturnStatus,
+  RETURN_REASON_LABEL,
+  STATUS_LABEL,
+  type ReturnRequest,
+  type ReturnStatus,
+} from "@/lib/customer-return";
 
-interface AssignmentInfo {
-  id: string;
-  tracking_company: string | null;
-  tracking_number: string | null;
-  tracking_url: string | null;
-  tracking_status: string | null;
-  tracking_last_polled_at: string | null;
-  tracking_delivered_at: string | null;
-  shipped_at: string | null;
-  status: string;
-}
+const STATUS_FILTERS: { id: ReturnStatus | "all"; label: string }[] = [
+  { id: "all", label: "Tümü" },
+  { id: "pending", label: "İncelemede" },
+  { id: "approved", label: "Onaylı" },
+  { id: "rejected", label: "Reddedildi" },
+  { id: "refunded", label: "İade tamamlandı" },
+];
 
-interface StatusEvent {
-  status: string;
-  description: string | null;
-  location: string | null;
-  event_time: string;
-}
-
-const STATUS_META: Record<
-  string,
-  { tr: string; emoji: string; color: string; bg: string }
-> = {
-  created: { tr: "İşleme alındı", emoji: "📝", color: "text-gri-700", bg: "bg-gri-100" },
-  picked_up: { tr: "Kargo alındı", emoji: "📦", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  in_transit: { tr: "Yolda", emoji: "🚚", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  out_for_delivery: { tr: "Dağıtımda", emoji: "🛵", color: "text-sari-koyu", bg: "bg-sari-soft" },
-  delivered: { tr: "Teslim edildi", emoji: "✅", color: "text-yesil-koyu", bg: "bg-yesil-soft" },
-  failed: { tr: "Başarısız", emoji: "⚠️", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft" },
-  returned: { tr: "İade edildi", emoji: "↩️", color: "text-mor", bg: "bg-mor/10" },
-  cancelled: { tr: "İptal", emoji: "❌", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft" },
+const STATUS_META: Record<ReturnStatus, { color: string; bg: string }> = {
+  pending: { color: "text-sari-koyu", bg: "bg-sari-soft" },
+  approved: { color: "text-yesil", bg: "bg-yesil-soft" },
+  rejected: { color: "text-kirmizi", bg: "bg-kirmizi/10" },
+  refunded: { color: "text-yesil", bg: "bg-yesil-soft" },
 };
 
-const OVERRIDE_STATUSES = [
-  "created",
-  "picked_up",
-  "in_transit",
-  "out_for_delivery",
-  "delivered",
-  "failed",
-  "returned",
-  "cancelled",
-] as const;
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("tr-TR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Istanbul",
-  });
-}
-
-export default function AdminKargoDetailPage({
-  params,
-}: {
-  params: Promise<{ orderId: string }>;
-}) {
-  const { orderId } = use(params);
+export default function AdminIadelerPage() {
   const toast = useToast();
-
-  const [loading, setLoading] = useState(true);
-  const [assignment, setAssignment] = useState<AssignmentInfo | null>(null);
-  const [events, setEvents] = useState<StatusEvent[]>([]);
-  const [polling, setPolling] = useState(false);
-
-  // Override modal
-  const [showOverride, setShowOverride] = useState(false);
-  const [overrideStatus, setOverrideStatus] = useState<string>("in_transit");
-  const [overrideDescription, setOverrideDescription] = useState("");
-  const [overrideLocation, setOverrideLocation] = useState("");
-  const [overrideReason, setOverrideReason] = useState("");
-  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
-
-  async function fetchData() {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}/tracking`);
-      const data = await res.json();
-      setAssignment(data.assignment ?? null);
-      setEvents(data.events ?? []);
-    } catch (e) {
-      toast.error(`Yükleme hatası: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [items, setItems] = useState<ReturnRequest[]>([]);
+  const [filter, setFilter] = useState<ReturnStatus | "all">("all");
 
   useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
+    const refresh = () => setItems(listReturns());
+    refresh();
+    window.addEventListener("pim_customer_returns_updated", refresh);
+    return () =>
+      window.removeEventListener("pim_customer_returns_updated", refresh);
+  }, []);
 
-  async function handlePollNow() {
-    if (!assignment?.tracking_number) {
-      toast.error("Takip numarası yok");
+  const filtered = useMemo(() => {
+    if (filter === "all") return items;
+    return items.filter((r) => r.status === filter);
+  }, [items, filter]);
+
+  const handleApprove = (r: ReturnRequest) => {
+    const note = prompt(
+      "Onay notu (müşteriye görünür):",
+      "İade talebin onaylandı. Ürünü kargoyla geri gönder, eline ulaşınca para iadesi başlatılacak."
+    );
+    if (note == null) return;
+    updateReturnStatus(r.id, "approved", note);
+    toast.success(`${r.id.slice(0, 8)}… onaylandı`);
+  };
+
+  const handleReject = (r: ReturnRequest) => {
+    const note = prompt(
+      "Red sebebi (müşteriye görünür):",
+      "Müşterinin sağladığı görseller üretim hatasına işaret etmiyor. Detay için iletişim formundan ulaşabilirsin."
+    );
+    if (note == null) return;
+    updateReturnStatus(r.id, "rejected", note);
+    toast.info(`${r.id.slice(0, 8)}… reddedildi`);
+  };
+
+  const handleRefund = (r: ReturnRequest) => {
+    const amount = prompt(
+      "İade tutarı (₺):",
+      "0"
+    );
+    if (amount == null) return;
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      toast.error("Geçerli bir tutar gir");
       return;
     }
-    setPolling(true);
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}/tracking`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carrierCode: "yurtici",
-          trackingNumber: assignment.tracking_number,
-        }),
-      });
-      const data = await res.json();
-      const poll = data.yurticiPoll;
-      if (poll?.success) {
-        toast.success(`Poll tamam: ${poll.eventCount} event`);
-      } else if (poll?.dryRun) {
-        toast.info("DRY_RUN — gerçek API çağrılmadı");
-      } else {
-        toast.error(poll?.error ?? "Poll başarısız");
-      }
-      await fetchData();
-    } finally {
-      setPolling(false);
-    }
-  }
+    updateReturnStatus(
+      r.id,
+      "refunded",
+      `${parsed.toLocaleString("tr-TR")} ₺ karta iade edildi.`,
+      parsed
+    );
+    toast.success(`${parsed.toLocaleString("tr-TR")} ₺ iade edildi`);
+  };
 
-  async function handleOverride() {
-    if (!overrideStatus || !overrideDescription.trim() || !overrideReason.trim()) {
-      toast.error("Status, açıklama ve sebep zorunlu");
-      return;
-    }
-    setOverrideSubmitting(true);
-    try {
-      const res = await fetch(
-        `/api/admin/shipments/${orderId}/override`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: overrideStatus,
-            description: overrideDescription.trim(),
-            location: overrideLocation.trim() || undefined,
-            reason: overrideReason.trim(),
-          }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error ?? "Override başarısız");
-        return;
-      }
-      toast.success(`Durum ${overrideStatus} olarak override edildi`);
-      setShowOverride(false);
-      setOverrideDescription("");
-      setOverrideLocation("");
-      setOverrideReason("");
-      await fetchData();
-    } finally {
-      setOverrideSubmitting(false);
-    }
-  }
-
-  const meta = assignment?.tracking_status
-    ? STATUS_META[assignment.tracking_status]
-    : null;
+  // KPI'lar
+  const pending = items.filter((r) => r.status === "pending").length;
+  const approved = items.filter((r) => r.status === "approved").length;
+  const refunded = items.filter((r) => r.status === "refunded").length;
+  const totalRefund = items
+    .filter((r) => r.status === "refunded")
+    .reduce((s, r) => s + (r.refundAmount ?? 0), 0);
 
   return (
-    <main className="mx-auto max-w-[1100px] px-4 py-6 md:px-6">
-      <Link
-        href="/admin/kargo"
-        className="mb-4 inline-flex items-center gap-1 text-[13px] text-gri-700 hover:text-pim-mercan"
-      >
-        ← Kargo listesine dön
-      </Link>
-
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <Eyebrow>Yurtiçi Kargo</Eyebrow>
-          <h1 className="mt-1 text-2xl font-bold text-lacivert md:text-3xl font-mono">
-            {orderId}
+    <main className="py-8 pb-20">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        <div className="mb-6">
+          <Eyebrow>Müşteri hizmetleri</Eyebrow>
+          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
+            İade yönetimi
           </h1>
-          <p className="mt-1 text-sm text-gri-700">
-            <Link
-              href={`/admin/siparisler/${orderId}`}
-              className="text-pim-mercan hover:underline"
-            >
-              Sipariş detayına git →
-            </Link>
+          <p className="mt-1.5 text-base text-gri-700">
+            {items.length} iade talebi · {pending} incelemede ·{" "}
+            {refunded} tamamlandı
           </p>
         </div>
-      </div>
 
-      {loading ? (
-        <Card className="p-6">
-          <Skeleton className="h-32 w-full" />
-        </Card>
-      ) : !assignment?.tracking_number ? (
-        <Card className="p-10 text-center">
-          <div className="mb-2 text-4xl">📭</div>
-          <h2 className="text-lg font-semibold text-lacivert">
-            Bu sipariş için kargo bilgisi yok
-          </h2>
-          <p className="mt-1 text-sm text-gri-700">
-            <Link
-              href={`/admin/siparisler/${orderId}`}
-              className="text-pim-mercan hover:underline"
-            >
-              Sipariş detay sayfasından kargo bilgisi gir →
-            </Link>
-          </p>
-        </Card>
-      ) : (
-        <>
-          {/* Özet kart */}
-          <Card className="mb-4 p-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <div className="text-[11px] text-gri-700">Kargo şirketi</div>
-                <div className="mt-1 text-sm font-semibold text-lacivert">
-                  {assignment.tracking_company ?? "Yurtiçi Kargo"}
+        {/* KPI strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            { label: "İncelemede", value: pending, accent: "text-sari-koyu", bg: "bg-sari-soft" },
+            { label: "Onaylı", value: approved, accent: "text-yesil", bg: "bg-yesil-soft" },
+            { label: "İade tamamlandı", value: refunded, accent: "text-yesil", bg: "bg-yesil-soft" },
+            { label: "Toplam iade tutarı", value: `${Math.round(totalRefund).toLocaleString("tr-TR")} ₺`, accent: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
+          ].map((k) => (
+            <Card key={k.label} padding="p-4">
+              <div className="flex items-center gap-3">
+                <div className={cn("grid place-items-center w-10 h-10 rounded-xl shrink-0", k.bg, k.accent)}>
+                  <Icon.Box size={16} />
+                </div>
+                <div>
+                  <div className="text-[11.5px] uppercase tracking-[0.04em] text-gri-700 font-semibold">
+                    {k.label}
+                  </div>
+                  <div className={cn("text-2xl font-bold tabular-nums", k.accent)}>
+                    {k.value}
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="text-[11px] text-gri-700">Takip no</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <code className="rounded bg-gri-100 px-2 py-0.5 font-mono text-[12.5px]">
-                    {assignment.tracking_number}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        assignment.tracking_number ?? ""
-                      );
-                      toast.success("Kopyalandı");
-                    }}
-                    className="text-[11px] font-semibold text-pim-mercan hover:underline"
-                  >
-                    Kopyala
-                  </button>
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] text-gri-700">Durum</div>
-                {meta ? (
-                  <span
-                    className={cn(
-                      "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium",
-                      meta.bg,
-                      meta.color
-                    )}
-                  >
-                    {meta.emoji} {meta.tr}
-                  </span>
-                ) : (
-                  <span className="text-gri-500">—</span>
-                )}
-              </div>
-              <div className="md:col-span-3 text-[11.5px] text-gri-500 border-t border-gri-100 pt-3">
-                Kargoya verildi: {formatDateTime(assignment.shipped_at)} · Son
-                poll: {formatDateTime(assignment.tracking_last_polled_at)}
-                {assignment.tracking_delivered_at && (
-                  <>
-                    {" "}· Teslim:{" "}
-                    <span className="font-semibold text-yesil-koyu">
-                      {formatDateTime(assignment.tracking_delivered_at)}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+            </Card>
+          ))}
+        </div>
 
-            {/* Aksiyon butonları */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={handlePollNow}
-                disabled={polling}
+        {/* Filter chips */}
+        <Card padding="p-4" className="mb-5">
+          <div className="flex flex-wrap gap-2">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-[13px] font-semibold transition-colors",
+                  filter === f.id
+                    ? "bg-lacivert text-white"
+                    : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                )}
               >
-                {polling ? "Sorgulanıyor..." : "🔄 Şimdi sorgula"}
-              </Button>
-              {assignment.tracking_url && (
-                <a
-                  href={assignment.tracking_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button size="sm" variant="secondary">
-                    Yurtiçi'de aç →
-                  </Button>
-                </a>
-              )}
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setShowOverride(true)}
-              >
-                ⚠️ Durum override
-              </Button>
-            </div>
-          </Card>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </Card>
 
-          {/* Timeline */}
-          <Card className="p-5">
-            <h3 className="mb-4 text-sm font-semibold uppercase text-gri-700">
-              Durum geçmişi ({events.length})
+        {/* List */}
+        {filtered.length === 0 ? (
+          <Card padding="p-10" className="text-center">
+            <Pim pose="happy" size={120} />
+            <h3 className="mt-4 text-xl font-semibold">
+              {items.length === 0
+                ? "İade talebi yok 🎉"
+                : "Bu filtrede sonuç yok"}
             </h3>
-            {events.length === 0 ? (
-              <p className="text-sm text-gri-500 py-4">
-                Henüz event çekilmedi. "Şimdi sorgula" butonuna basabilirsin.
-              </p>
-            ) : (
-              <ol className="relative space-y-3 pl-6 border-l-2 border-gri-200">
-                {events.map((ev, i) => {
-                  const m = STATUS_META[ev.status];
-                  const isLast = i === events.length - 1;
-                  return (
-                    <li
-                      key={`${ev.status}-${ev.event_time}-${i}`}
-                      className="relative"
-                    >
-                      <span
-                        className={cn(
-                          "absolute -left-[33px] top-1 flex h-6 w-6 items-center justify-center rounded-full text-[12px] ring-2 ring-white",
-                          m?.bg ?? "bg-gri-100",
-                          isLast ? "ring-pim-mercan" : ""
-                        )}
-                      >
-                        {m?.emoji ?? "📍"}
-                      </span>
-                      <div className="rounded-lg border border-gri-200 p-3">
-                        <div
+            <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
+              {items.length === 0
+                ? "Müşteriler iade açtığında burada görünür."
+                : "Filtreyi değiştirmeyi dene."}
+            </p>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map((r) => {
+              const meta = STATUS_META[r.status];
+              const date = new Date(r.createdAtIso).toLocaleString("tr-TR", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Europe/Istanbul",
+              });
+              // Sefa 18 May v68 (admin UX denetim): SLA yaş rozeti
+              // <24h yeşil, 24-72h sarı, >72h kırmızı (TKHK m.30 gün limit)
+              const ageHours =
+                (Date.now() - new Date(r.createdAtIso).getTime()) /
+                (1000 * 60 * 60);
+              const isPending = r.status === "pending";
+              const slaMeta = !isPending
+                ? null
+                : ageHours < 24
+                  ? { tr: "Yeni", bg: "bg-yesil-soft", color: "text-yesil-koyu" }
+                  : ageHours < 72
+                    ? { tr: `${Math.floor(ageHours)}sa`, bg: "bg-sari-soft", color: "text-sari-koyu" }
+                    : { tr: `⚠️ ${Math.floor(ageHours / 24)}g+`, bg: "bg-kirmizi-soft", color: "text-kirmizi-koyu" };
+              return (
+                <Card key={r.id} padding="p-5">
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+                        <span className="font-mono text-[12px] text-gri-700">
+                          {r.id.slice(0, 8)}…
+                        </span>
+                        <span className="text-[12px] text-gri-500">·</span>
+                        <Link
+                          href={`/siparis/${r.orderId}`}
+                          className="font-mono text-[12px] text-pim-mercan hover:underline"
+                        >
+                          {r.orderId}
+                        </Link>
+                        <span
                           className={cn(
-                            "text-[13px] font-semibold",
-                            m?.color ?? "text-lacivert"
+                            "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
+                            meta.bg,
+                            meta.color
                           )}
                         >
-                          {m?.tr ?? ev.status}
-                        </div>
-                        {ev.description && (
-                          <div className="mt-0.5 text-[12.5px] text-gri-700">
-                            {ev.description}
-                            {ev.location && (
-                              <span className="text-gri-500">
-                                {" "}· {ev.location}
-                              </span>
+                          {STATUS_LABEL[r.status]}
+                        </span>
+                        {slaMeta && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
+                              slaMeta.bg,
+                              slaMeta.color
                             )}
-                          </div>
+                            title="SLA yaşı — TKHK m.30 gün sınır"
+                          >
+                            {slaMeta.tr}
+                          </span>
                         )}
-                        <div className="mt-1 text-[11.5px] text-gri-500">
-                          {formatDateTime(ev.event_time)}
-                        </div>
                       </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </Card>
-        </>
-      )}
-
-      {/* Override Modal */}
-      {showOverride && (
-        <Modal
-          open={true}
-          onClose={() => setShowOverride(false)}
-          title="Durum Manuel Override"
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg bg-sari-soft p-3 text-[12.5px] text-sari-koyu">
-              ⚠️ Bu işlem Yurtiçi API'nin gönderdiği durum yerine manuel bir
-              kayıt oluşturur. Sadece istisnai durumlarda kullan. Audit log
-              tutulur (kim, ne zaman, neden).
-            </div>
-
-            <div>
-              <label className="mb-1 block text-[12.5px] font-medium text-lacivert">
-                Yeni durum
-              </label>
-              <select
-                value={overrideStatus}
-                onChange={(e) => setOverrideStatus(e.target.value)}
-                className="w-full rounded-lg border border-gri-200 px-3 py-2 text-sm"
-              >
-                {OVERRIDE_STATUSES.map((s) => {
-                  const m = STATUS_META[s];
-                  return (
-                    <option key={s} value={s}>
-                      {m.emoji} {m.tr}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-[12.5px] font-medium text-lacivert">
-                Açıklama <span className="text-kirmizi">*</span>
-              </label>
-              <Input
-                value={overrideDescription}
-                onChange={(e) => setOverrideDescription(e.target.value)}
-                placeholder="örn: Müşteri telefonla teslim aldığını bildirdi"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-[12.5px] font-medium text-lacivert">
-                Lokasyon (opsiyonel)
-              </label>
-              <Input
-                value={overrideLocation}
-                onChange={(e) => setOverrideLocation(e.target.value)}
-                placeholder="örn: Üsküdar Şubesi"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-[12.5px] font-medium text-lacivert">
-                Sebep (audit için) <span className="text-kirmizi">*</span>
-              </label>
-              <textarea
-                value={overrideReason}
-                onChange={(e) => setOverrideReason(e.target.value)}
-                rows={3}
-                placeholder="örn: Yurtiçi sistemde durum güncellenmedi ama müşteri WhatsApp'tan teslim aldığını söyledi"
-                className="w-full rounded-lg border border-gri-200 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setShowOverride(false)}
-                disabled={overrideSubmitting}
-              >
-                İptal
-              </Button>
-              <Button onClick={handleOverride} disabled={overrideSubmitting}>
-                {overrideSubmitting ? "Kaydediliyor..." : "Override et"}
-              </Button>
-            </div>
+                      <div className="font-semibold text-base text-lacivert">
+                        {r.customerName}{" "}
+                        <span className="text-gri-500 font-normal text-[13px]">
+                          · {r.customerEmail}
+                        </span>
+                      </div>
+                      <div className="text-[13px] text-gri-700 mt-1 font-semibold">
+                        {RETURN_REASON_LABEL[r.reason]}
+                      </div>
+                      <div className="text-[13.5px] text-gri-700 mt-2 leading-relaxed">
+                        {r.description}
+                      </div>
+                      {r.attachments.length > 0 && (
+                        <div className="flex gap-1.5 flex-wrap mt-2.5">
+                          {r.attachments.map((f) => (
+                            <span
+                              key={f}
+                              className="inline-flex items-center gap-1 h-7 px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-mono"
+                            >
+                              <Icon.Box size={11} /> {f}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {r.adminNote && (
+                        <div className="mt-2.5 px-3 py-2 rounded-lg bg-gri-50 text-[12.5px] text-gri-700 leading-relaxed">
+                          <strong className="text-lacivert">Senin notun: </strong>
+                          {r.adminNote}
+                        </div>
+                      )}
+                      <div className="text-[11.5px] text-gri-500 mt-2 tabular-nums">
+                        Açıldı: {date}
+                        {r.refundAmount && (
+                          <>
+                            {" · "}
+                            <span className="text-yesil font-semibold">
+                              İade: {r.refundAmount.toLocaleString("tr-TR")} ₺
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {r.status === "pending" && (
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleApprove(r)}
+                          className="!bg-yesil hover:!bg-yesil-koyu"
+                        >
+                          <Icon.Check size={12} /> Onayla
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleReject(r)}
+                        >
+                          Reddet
+                        </Button>
+                      </div>
+                    )}
+                    {r.status === "approved" && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleRefund(r)}
+                      >
+                        <Icon.Check size={12} /> İade et
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-        </Modal>
-      )}
+        )}
+      </div>
     </main>
   );
 }

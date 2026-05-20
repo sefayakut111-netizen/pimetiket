@@ -255,7 +255,7 @@ export default function AdminMusterilerPage() {
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
             {kpi
-              ? `${kpi.total} kayıtlı kullanıcı · ${repeatPlusVip} tekrar eden (${repeatRate}%) · ${fmt(kpi.total_revenue)} TL toplam ciro`
+              ? `${kpi.total} kayıtlı kullanıcı · ${repeatPlusVip} tekrar eden (${repeatRate}%) · ${fmt(kpi.total_revenue)} ₺ toplam ciro`
               : "—"}
           </p>
         </div>
@@ -589,7 +589,7 @@ export default function AdminMusterilerPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-right font-semibold tabular-nums">
-                        {fmt(c.total_revenue)} TL
+                        {fmt(c.total_revenue)} ₺
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex gap-1 flex-wrap">

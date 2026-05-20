@@ -7,7 +7,7 @@
  * Mantık:
  *   - Customer kendi seçimleriyle (boyut, malzeme, yüzey, adet) basit fiyat görür
  *   - Material + finish multiplier'ları fason rate'e bindirilir
- *     (hidden surcharge — customer "vinil + holografik = +X TL" görmez,
+ *     (hidden surcharge — customer "vinil + holografik = +X ₺" görmez,
  *      sadece final fiyatın farklı olduğunu görür)
  *   - Engine'in fee gross-up + tier + KDV hesabı uygulanır
  *   - Cüzdan +%2 indirimi (PRICING_FINANCE_REVIEW.md #13) destekli

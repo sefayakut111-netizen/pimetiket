@@ -144,7 +144,7 @@ export default function AdminRaporlarPage() {
             Raporlar
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {totalOrders} sipariş · {fmt(totalRevenue)} TL ciro · {fmt(totalQty)}{" "}
+            {totalOrders} sipariş · {fmt(totalRevenue)} ₺ ciro · {fmt(totalQty)}{" "}
             adet basıldı
           </p>
         </div>
@@ -152,9 +152,9 @@ export default function AdminRaporlarPage() {
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Toplam ciro", value: `${fmt(totalRevenue)} TL`, accent: "text-pim-mercan" },
+            { label: "Toplam ciro", value: `${fmt(totalRevenue)} ₺`, accent: "text-pim-mercan" },
             { label: "Toplam sipariş", value: totalOrders, accent: "text-lacivert" },
-            { label: "Ortalama sepet", value: `${fmt(avgOrder)} TL`, accent: "text-yesil" },
+            { label: "Ortalama sepet", value: `${fmt(avgOrder)} ₺`, accent: "text-yesil" },
             { label: "İptal oranı", value: `%${cancelRate}`, accent: cancelRate > 5 ? "text-kirmizi" : "text-gri-700" },
           ].map((k) => (
             <Card key={k.label} padding="p-5">
@@ -197,7 +197,7 @@ export default function AdminRaporlarPage() {
                       <div
                         className="w-full rounded-t-md bg-gradient-to-t from-pim-mercan to-pim-mercan-soft relative group"
                         style={{ height: `${h}%` }}
-                        title={`${m.label}: ${fmt(m.revenue)} TL`}
+                        title={`${m.label}: ${fmt(m.revenue)} ₺`}
                       >
                         <div className="absolute inset-x-0 -top-7 text-center text-[11px] font-semibold text-lacivert opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
                           {fmt(m.revenue)}

@@ -310,7 +310,7 @@ export default function FiyatHesaplaTabakaPage() {
                   >
                     {config.materials.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} — {m.sheet_cost_try ?? m.m2_cost_try} TL/tabaka
+                        {m.name} — {m.sheet_cost_try ?? m.m2_cost_try} ₺/tabaka
                       </option>
                     ))}
                   </select>
@@ -341,7 +341,7 @@ export default function FiyatHesaplaTabakaPage() {
                 kalıcı yansıtmak için <strong>/admin/fiyatlar</strong>'ı kullan.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Field label="Setup (TL)">
+                <Field label="Setup (₺)">
                   <input
                     type="number"
                     value={config.operation.setup}
@@ -366,7 +366,7 @@ export default function FiyatHesaplaTabakaPage() {
                     className="w-full px-3 h-10 rounded-lg bg-white ring-1 ring-gri-200 text-[14px] tabular-nums focus:outline-none focus:ring-pim-mercan"
                   />
                 </Field>
-                <Field label="Kargo (TL)">
+                <Field label="Kargo (₺)">
                   <input
                     type="number"
                     value={config.operation.cargo}
@@ -456,12 +456,12 @@ export default function FiyatHesaplaTabakaPage() {
                   Müşteri görür
                 </div>
                 <div className="text-[36px] font-bold tabular-nums text-saman-koyu leading-none">
-                  {fmt(priceResult.final, 0)} TL
+                  {fmt(priceResult.final, 0)} ₺
                 </div>
                 <div className="text-[13px] text-gri-700 mt-1">
                   Birim:{" "}
                   <strong className="font-mono">
-                    {priceResult.unit_price.toFixed(2)} TL/adet
+                    {priceResult.unit_price.toFixed(2)} ₺/adet
                   </strong>
                 </div>
                 <div className="mt-4 pt-4 border-t border-saman/20 space-y-1.5 text-[12px] font-mono">

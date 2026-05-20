@@ -251,7 +251,7 @@ export function getSeedProfiles(): SaveProfileArgs[] {
   return [
     {
       name: "Standart Fason",
-      notes: "Default 250 sticker referans, %75 markup, fason 120 TL/m²",
+      notes: "Default 250 sticker referans, %75 markup, fason 120 ₺/m²",
       input: getDefaultInput(),
     },
     {

@@ -167,7 +167,7 @@ export interface CreateTokenInput {
   merchantOid: string;
   /** Müşteri e-postası */
   email: string;
-  /** TL cinsinden tutar (örn: 199.99). Otomatik kuruşa çevrilir. */
+  /** ₺ cinsinden tutar (örn: 199.99). Otomatik kuruşa çevrilir. */
   amountTL: number;
   basket: PayTrBasketItem[];
   userIp: string;
@@ -182,8 +182,8 @@ export interface CreateTokenInput {
   noInstallment?: 0 | 1;
   /** Max taksit (0 = limitsiz, 1 = peşin). Default 12. */
   maxInstallment?: number;
-  /** Currency. Default TL. */
-  currency?: "TL" | "USD" | "EUR";
+  /** Currency. Default ₺. */
+  currency?: "₺" | "USD" | "EUR";
   /** Token timeout dakika. Default 30. */
   timeoutLimit?: number;
 }
@@ -215,12 +215,12 @@ export async function createCheckoutToken(
     "base64"
   );
 
-  // TL → kuruş
+  // ₺ → kuruş
   const paymentAmount = Math.round(input.amountTL * 100);
 
   const noInstallment = input.noInstallment ?? 0;
   const maxInstallment = input.maxInstallment ?? 12;
-  const currency = input.currency ?? "TL";
+  const currency = input.currency ?? "₺";
 
   const paytrToken = computeTokenHash({
     merchantId: cfg.merchantId,
@@ -382,7 +382,7 @@ export function verifyCallback(
 
 export interface RefundInput {
   merchantOid: string;
-  /** İade tutarı TL (kısmi iade için < total). */
+  /** İade tutarı ₺ (kısmi iade için < total). */
   returnAmountTL: number;
 }
 
@@ -571,7 +571,7 @@ export async function queryPaymentStatus(
 export function buildBasket(
   items: Array<{ title: string; total: number; qty: number }>
 ): PayTrBasketItem[] {
-  // PayTR fiyat formatı: "199.99" string TL.kuruş
+  // PayTR fiyat formatı: "199.99" string ₺.kuruş
   // total = qty × unit, ama PayTR sepet item'ında **birim fiyat × qty**
   // toplamı total ile uyumlu olmalı. Biz total'ı qty 1 ile geçiyoruz
   // (basit yaklaşım — qty bilgisi item başlığında zaten var).

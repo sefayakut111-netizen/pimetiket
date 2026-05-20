@@ -51,7 +51,7 @@ const COPY = {
       diger: "Diğer",
     } as Record<ReturnReason, string>,
     locale: "tr-TR",
-    currency: "TL",
+    currency: "₺",
   },
   en: {
     eyebrow: "My account",

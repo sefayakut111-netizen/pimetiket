@@ -154,7 +154,7 @@ function computeProductionItems(
       items: [
         {
           name: "Fason Üretim",
-          formula: `${totalM2.toFixed(3)} m² × ${rates.rate} TL/m²`,
+          formula: `${totalM2.toFixed(3)} m² × ${rates.rate} ₺/m²`,
           amount: cost,
         },
       ],
@@ -178,7 +178,7 @@ function computeProductionItems(
     const c = totalM2 * rate;
     items.push({
       name,
-      formula: `${totalM2.toFixed(3)} m² × ${rate} TL/m²`,
+      formula: `${totalM2.toFixed(3)} m² × ${rate} ₺/m²`,
       amount: c,
     });
     total += c;
@@ -215,7 +215,7 @@ function computeOperationItems(
     },
     {
       name: isBigMode ? "Paketleme (büyük koli)" : "Paketleme",
-      formula: `${envelopeCount} ${isBigMode ? "koli" : "zarf"} × ${packagingPerUnit} TL`,
+      formula: `${envelopeCount} ${isBigMode ? "koli" : "zarf"} × ${packagingPerUnit} ₺`,
       amount: packagingTotal,
     },
     {

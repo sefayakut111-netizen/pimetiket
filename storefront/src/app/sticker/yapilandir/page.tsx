@@ -1385,11 +1385,11 @@ function StickerPage() {
                       <strong className="text-white">
                         {totalStickerCount.toLocaleString("tr-TR")}
                       </strong>{" "}
-                      sticker · {fmtUnit(currentUnit)} TL/adet · KDV dahil
+                      sticker · {fmtUnit(currentUnit)} ₺/adet · KDV dahil
                     </>
                   ) : (
                     <>
-                      {tier} adet × {fmtUnit(currentUnit)} TL · KDV dahil
+                      {tier} adet × {fmtUnit(currentUnit)} ₺ · KDV dahil
                     </>
                   )}
                 </>
@@ -1560,7 +1560,7 @@ function StickerPage() {
       >
         <div className="flex-1 min-w-0">
           <div className="text-[18px] font-bold text-pim-mercan tabular-nums leading-none">
-            {fmt(total)} TL
+            {fmt(total)} ₺
           </div>
           <div className="text-[11px] text-gri-700 mt-0.5 truncate">
             {totalStickerCount.toLocaleString("tr-TR")} sticker · {width}×{height}mm · KDV dahil

@@ -277,7 +277,7 @@ select
   'loyalty' as kind,
   case when lg.status = 'granted' then 'Kontör verildi'
        else 'Kontör iptal edildi' end as title,
-  lg.amount_try::text || ' TL — ' || lg.reason as detail,
+  lg.amount_try::text || ' ₺ — ' || lg.reason as detail,
   '🎁' as emoji
   from public.loyalty_grants lg
 order by created_at desc;

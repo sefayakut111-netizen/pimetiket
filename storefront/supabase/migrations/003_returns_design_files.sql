@@ -37,7 +37,7 @@ create table if not exists public.returns (
   status public.return_status not null default 'pending',
   -- Admin notu (red mesajı, onay açıklaması)
   admin_note text,
-  -- İade tutarı (TL, KDV dahil)
+  -- İade tutarı (₺, KDV dahil)
   refund_amount numeric(10, 2) check (refund_amount is null or refund_amount >= 0),
   -- Refund payment kaydı (varsa)
   refund_payment_id uuid references public.payments(id) on delete set null,

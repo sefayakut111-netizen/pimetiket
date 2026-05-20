@@ -342,7 +342,7 @@ export class CustomerHealthAuditor extends AuditorBase {
       n.toLocaleString("tr-TR", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
-      }) + " TL";
+      }) + " ₺";
 
     if (deviation < -0.2) {
       findings.push(
@@ -436,7 +436,7 @@ export class CustomerHealthAuditor extends AuditorBase {
     const b2bShare = totalRevenue > 0 ? b2bRevenue / totalRevenue : 0;
 
     const fmtTl = (n: number) =>
-      n.toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " TL";
+      n.toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " ₺";
 
     findings.push(
       this.info(

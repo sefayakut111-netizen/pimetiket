@@ -290,7 +290,7 @@ const DEMO_AUDIT: AuditEntry[] = [
     action: "settings.update",
     actor: "Sefa",
     targetId: "site_settings",
-    summary: "Kargo ücreti 49 TL olarak güncellendi",
+    summary: "Kargo ücreti 49 ₺ olarak güncellendi",
     ip: "85.108.x.x",
     createdAt: Date.now() - dayMs(5),
     createdAtIso: new Date(Date.now() - dayMs(5)).toISOString(),

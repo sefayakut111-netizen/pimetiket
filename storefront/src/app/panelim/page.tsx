@@ -764,7 +764,7 @@ export default function PanelimPage() {
                       c2.kind === "percent"
                         ? `%${c2.value}`
                         : c2.kind === "fixed"
-                          ? `${c2.value} TL`
+                          ? `${c2.value} ₺`
                           : "Ücretsiz kargo";
                     return (
                       <div
@@ -791,7 +791,7 @@ export default function PanelimPage() {
                         <div className="text-[11.5px] text-gri-700 mt-0.5 leading-snug">
                           <strong>{valueText} indirim</strong>
                           {c2.min_subtotal && c2.min_subtotal > 0
-                            ? ` · min ${c2.min_subtotal} TL`
+                            ? ` · min ${c2.min_subtotal} ₺`
                             : ""}
                         </div>
                         {c2.description && (

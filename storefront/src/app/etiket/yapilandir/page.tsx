@@ -464,8 +464,8 @@ const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 /**
  * Birim fiyat formatlama — smart precision.
  *
- * Audit 15 May (Sefa raporu): "2,32 TL/adet × 2.000 = 4.640 TL ama
- * gösterilen 4.631 TL → 9 TL diskrepans". Kök: birim fiyat aslında
+ * Audit 15 May (Sefa raporu): "2,32 ₺/adet × 2.000 = 4.640 ₺ ama
+ * gösterilen 4.631 ₺ → 9 ₺ diskrepans". Kök: birim fiyat aslında
  * 2,3155 ama toFixed(2) ile 2,32'ye yuvarlanıyor → müşteri matematiği
  * tutturamıyor → güven kaybı.
  *
@@ -474,7 +474,7 @@ const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
  * unit × qty = total tam tutar.
  */
 /** Sefa 18 May v68 (UX uzman 3.7): Birim fiyatlar 2 ondalığa yuvarlandı.
- *  "2,5079 TL" → "2,51 TL" — 4 basamak okunaklılığı bozuyordu, kuruş
+ *  "2,5079 ₺" → "2,51 ₺" — 4 basamak okunaklılığı bozuyordu, kuruş
  *  hassasiyeti (2 ondalık) Türk müşterisi için yeterli ve standart. */
 const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
@@ -2286,7 +2286,7 @@ function EtiketPage() {
                   <>
                     Birim fiyat{" "}
                     <strong className="text-lacivert">
-                      {fmtUnit(unit)} TL/adet
+                      {fmtUnit(unit)} ₺/adet
                     </strong>{" "}
                     · KDV dahil
                   </>
@@ -2399,7 +2399,7 @@ function EtiketPage() {
       >
         <div className="flex-1 min-w-0">
           <div className="text-[18px] font-bold text-pim-mercan tabular-nums leading-none">
-            {fmt(total)} TL
+            {fmt(total)} ₺
           </div>
           <div className="text-[11px] text-gri-700 mt-0.5 truncate">
             {totalEtiketCount.toLocaleString("tr-TR")} etiket

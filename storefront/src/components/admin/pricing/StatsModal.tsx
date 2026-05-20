@@ -215,8 +215,8 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                 <HeroStat
                   label="Toplam Ciro"
                   value={fmt(agg.totalRevenue)}
-                  unit="TL"
-                  subtitle={`Net Kar: ${fmt(agg.totalActualProfit)} TL · ${agg.count} sipariş`}
+                  unit="₺"
+                  subtitle={`Net Kar: ${fmt(agg.totalActualProfit)} ₺ · ${agg.count} sipariş`}
                 />
               </div>
 
@@ -236,7 +236,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                 <HeroStat
                   label="Ortalama Birim"
                   value={fmt(agg.avgUnitPrice, 2)}
-                  unit="TL/adet"
+                  unit="₺/adet"
                   subtitle={`Tüm zamanlar`}
                 />
               </div>
@@ -262,7 +262,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                           {m.m2.toFixed(2)} m²
                         </span>
                         <span className="font-semibold">
-                          {fmt(m.revenue)} TL
+                          {fmt(m.revenue)} ₺
                         </span>
                         <span className="font-bold text-yesil">
                           +{fmt(m.profit)}
@@ -334,7 +334,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
                           })}
                         </span>
                         <span className="font-semibold">
-                          {fmt(r.total)} TL
+                          {fmt(r.total)} ₺
                         </span>
                       </div>
                     );

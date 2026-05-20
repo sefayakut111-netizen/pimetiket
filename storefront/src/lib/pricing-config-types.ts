@@ -14,9 +14,9 @@ export type ScopeName =
 export interface MaterialItem {
   id: string;
   name: string;
-  /** Sticker + Rulo Etiket için: TL/m² maliyet */
+  /** Sticker + Rulo Etiket için: ₺/m² maliyet */
   m2_cost_try?: number;
-  /** Tabaka Etiket için: TL/tabaka maliyet (23×31 cm 1 tabaka) */
+  /** Tabaka Etiket için: ₺/tabaka maliyet (23×31 cm 1 tabaka) */
   sheet_cost_try?: number;
   desc?: string;
 }

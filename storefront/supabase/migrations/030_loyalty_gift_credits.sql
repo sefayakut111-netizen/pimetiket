@@ -1,13 +1,13 @@
 -- ============================================================
--- Pim Etiket — Migration 030: 250 TL Hediye Çeki Sistemi
+-- Pim Etiket — Migration 030: 250 ₺ Hediye Çeki Sistemi
 --
 -- Sefa kararı 11 May (3 madde):
---   1. Yeni üyeliklere ilk siparişte 250 TL indirim çeki (HOSGELDIN-XXX)
---   2. Üye davet eden, karşı taraf ilk siparişini verdiğinde 250 TL
+--   1. Yeni üyeliklere ilk siparişte 250 ₺ indirim çeki (HOSGELDIN-XXX)
+--   2. Üye davet eden, karşı taraf ilk siparişini verdiğinde 250 ₺
 --      hediye çeki (referans tamamlanınca)
---   3. Hediye çekleri MIN 500 TL sepet üzerinde kullanılabilir
+--   3. Hediye çekleri MIN 500 ₺ sepet üzerinde kullanılabilir
 --
--- Migration 016'daki %10 referral kuponları yerine 250 TL fixed.
+-- Migration 016'daki %10 referral kuponları yerine 250 ₺ fixed.
 -- Yeni: fn_setup_new_user_welcome — auth.users insert trigger ile
 -- yeni kullanıcıya HOSGELDIN kuponu açar.
 --
@@ -19,7 +19,7 @@
 
 -- ---------- fn_setup_new_user_welcome ----------
 -- auth.users insert trigger'ı ile yeni kullanıcıya HOSGELDIN-XXX
--- 250 TL kupon oluştur. site_settings'ten miktar okur.
+-- 250 ₺ kupon oluştur. site_settings'ten miktar okur.
 create or replace function public.fn_setup_new_user_welcome()
 returns trigger
 language plpgsql
@@ -52,7 +52,7 @@ begin
     v_code, 'fixed', v_amount, null, v_min,
     1, 1,
     now(), now() + interval '90 days',
-    'Hoşgeldin hediye çeki — ilk siparişte ' || v_amount || ' TL indirim',
+    'Hoşgeldin hediye çeki — ilk siparişte ' || v_amount || ' ₺ indirim',
     true,
     new.id
   )
@@ -76,7 +76,7 @@ create trigger on_auth_user_created_welcome
   for each row execute function public.fn_setup_new_user_welcome();
 
 -- ---------- fn_complete_referral_v2 ----------
--- Migration 016'daki %10 percent kupon → 250 TL fixed kupon.
+-- Migration 016'daki %10 percent kupon → 250 ₺ fixed kupon.
 -- Hem referrer'a hem referred'a aynı miktar.
 create or replace function public.fn_complete_referral(p_referred_user_id uuid)
 returns void
@@ -105,7 +105,7 @@ begin
   v_amount := coalesce(v_amount, 250);
   v_min := coalesce(v_min, 500);
 
-  -- referrer için 250 TL fixed kupon
+  -- referrer için 250 ₺ fixed kupon
   v_coupon_referrer := 'REF-VIP-' || upper(substring(encode(gen_random_bytes(4), 'hex') from 1 for 6));
   insert into public.coupons (
     code, kind, value, max_discount, min_subtotal,
@@ -116,7 +116,7 @@ begin
     v_coupon_referrer, 'fixed', v_amount, null, v_min,
     1, 1,
     now(), now() + interval '180 days',
-    'Davet ettiğin arkadaş ilk siparişini verdi — ' || v_amount || ' TL hediye',
+    'Davet ettiğin arkadaş ilk siparişini verdi — ' || v_amount || ' ₺ hediye',
     true,
     v_referral.referrer_user_id
   )
@@ -133,7 +133,7 @@ $$;
 grant execute on function public.fn_complete_referral(uuid) to authenticated;
 
 -- ---------- fn_apply_referral_code_v2 ----------
--- Yeni kullanıcı referans kod kullandığında 250 TL kupon ver (eski %10 yerine)
+-- Yeni kullanıcı referans kod kullandığında 250 ₺ kupon ver (eski %10 yerine)
 create or replace function public.fn_apply_referral_code(
   p_new_user_id uuid,
   p_referral_code text
@@ -171,7 +171,7 @@ begin
   v_amount := coalesce(v_amount, 250);
   v_min := coalesce(v_min, 500);
 
-  -- Yeni kullanıcıya 250 TL fixed kupon (HOSGELDIN dışında ekstra)
+  -- Yeni kullanıcıya 250 ₺ fixed kupon (HOSGELDIN dışında ekstra)
   v_coupon_referred := 'REF-NEW-' || upper(substring(encode(gen_random_bytes(4), 'hex') from 1 for 6));
   insert into public.coupons (
     code, kind, value, max_discount, min_subtotal,
@@ -182,7 +182,7 @@ begin
     v_coupon_referred, 'fixed', v_amount, null, v_min,
     1, 1,
     now(), now() + interval '90 days',
-    'Referans bonusu — ' || v_amount || ' TL hediye',
+    'Referans bonusu — ' || v_amount || ' ₺ hediye',
     true,
     p_new_user_id
   );

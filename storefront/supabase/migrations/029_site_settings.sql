@@ -3,11 +3,11 @@
 --
 -- Admin /admin/ayarlar üzerinden değiştirilen runtime config'ler.
 -- Şu an:
---   - shipping_fee_try          : Standart kargo bedeli (TL)
---   - free_shipping_threshold   : Üzerinde ücretsiz kargo eşiği (TL)
---   - welcome_credit_try        : Yeni üye hoşgeldin çeki (TL)
---   - referral_credit_try       : Referans tamamlanınca çek (TL)
---   - min_subtotal_for_credit   : Hediye çekleri min sepet (TL)
+--   - shipping_fee_try          : Standart kargo bedeli (₺)
+--   - free_shipping_threshold   : Üzerinde ücretsiz kargo eşiği (₺)
+--   - welcome_credit_try        : Yeni üye hoşgeldin çeki (₺)
+--   - referral_credit_try       : Referans tamamlanınca çek (₺)
+--   - min_subtotal_for_credit   : Hediye çekleri min sepet (₺)
 --
 -- Sefa kuralı: tüm bu değerler /admin/ayarlar form'undan değiştirilebilir.
 -- Singleton row (id=1) — birden fazla satır olmasın.

@@ -110,8 +110,8 @@ export interface CustomerCartSummary {
   itemCount: number;
 }
 
-// Kargo eşiği — 500 TL üzeri ücretsiz (Sefa kararı 18 May — KB ve SSS
-// ile senkron). Eski 1000 TL değeri Pim AI + /sss'le tutarsızdı.
+// Kargo eşiği — 500 ₺ üzeri ücretsiz (Sefa kararı 18 May — KB ve SSS
+// ile senkron). Eski 1000 ₺ değeri Pim AI + /sss'le tutarsızdı.
 // Bu sabit varsayılan; admin /admin/ayarlar üzerinden site_settings
 // tablosundan güncelleyebilir (Migration 029).
 export const FREE_SHIPPING_THRESHOLD = 500;

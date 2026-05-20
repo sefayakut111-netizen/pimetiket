@@ -1,223 +1,236 @@
-/**
- * Pim Etiket — Baskı Onay Tamamlandı (Teşekkür) Sayfası
- * /onay/[orderId]/tamamlandi
- *
- * Sefa 19 May v68 (Migration 059):
- * fn_finalize_proof RPC orders.status='proof_approved' yaptıktan sonra
- * müşteri buraya yönlendirilir. Üretim aşamaları + tahmini teslim
- * gösterilir. /siparis/[orderId] sayfasına link verilir.
- */
+import { LegalLayout } from "@/components/legal/LegalLayout";
 
-"use client";
+export const metadata = {
+  title: "Ön Bilgilendirme Formu",
+  description:
+    "6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca tüketiciye sunulan zorunlu ön bilgilendirme.",
+  alternates: { canonical: "/on-bilgilendirme" },
+};
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button, Card, Skeleton } from "@/components/ui";
-
-interface OrderInfo {
-  id: string;
-  status: string;
-  total: number;
-  itemCount: number;
-  estimatedDelivery?: string | null;
-}
-
-export default function ProofCompletedPage({
-  params,
-}: {
-  params: Promise<{ orderId: string }>;
-}) {
-  const { orderId } = use(params);
-  const router = useRouter();
-
-  const [info, setInfo] = useState<OrderInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(`/api/orders/${orderId}/proof`, {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          order: { id: string; status: string; total: number };
-          items: Array<{ id: string }>;
-        };
-        if (cancelled) return;
-
-        // Sadece proof_approved (ve sonrası) durumlarda göster
-        if (data.order.status === "proof_pending") {
-          router.replace(`/onay/${orderId}`);
-          return;
-        }
-
-        setInfo({
-          id: data.order.id,
-          status: data.order.status,
-          total: data.order.total,
-          itemCount: data.items.length,
-        });
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, router]);
-
-  if (loading) {
-    return (
-      <main className="container py-12">
-        <Skeleton className="mx-auto mb-4 h-20 w-20 rounded-full" />
-        <Skeleton className="mx-auto mb-2 h-8 w-72" />
-        <Skeleton className="mx-auto h-4 w-96" />
-      </main>
-    );
-  }
-
+export default function OnBilgilendirmePage() {
   return (
-    <main className="container py-12">
-      <div className="mx-auto max-w-2xl text-center">
-        {/* Animasyonlu yeşil tik */}
-        <div
-          className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-full bg-yesil text-white"
-          style={{
-            animation: "scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-          }}
-        >
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </div>
+    <LegalLayout
+      title="Ön Bilgilendirme Formu"
+      lastUpdated="10 Mayıs 2026"
+      currentPath="/on-bilgilendirme"
+    >
+      <p>
+        İşbu Ön Bilgilendirme Formu, 6502 sayılı Tüketicinin Korunması Hakkında
+        Kanun ve Mesafeli Sözleşmeler Yönetmeliği&rsquo;nin{" "}
+        <strong>5. maddesi</strong> uyarınca, ALICI&rsquo;nın siparişe ilişkin
+        sözleşme ve ödemenin esaslı unsurları hakkında, sipariş onayından önce
+        bilgilendirilmesi amacıyla düzenlenmiştir. ALICI, ödeme aşamasındaki
+        kutucuğu işaretleyerek işbu formu ve Mesafeli Satış
+        Sözleşmesi&rsquo;ni okuduğunu, anladığını ve kabul ettiğini beyan eder.
+      </p>
 
-        <h1 className="mb-3 text-3xl font-bold text-lacivert">
-          Teşekkürler! Üretim başladı 🎉
-        </h1>
-        <p className="mb-8 text-base text-gri-700">
-          {info
-            ? `${info.itemCount} ürünün baskı önizlemesini onayladın.`
-            : "Tüm baskı önizlemeleri onaylandı."}{" "}
-          Tasarımların artık matbaa hattına aktarıldı. En geç 2 iş günü
-          içinde kargoya veriyoruz.
-        </p>
+      <h2>1. Satıcı Bilgileri</h2>
+      <ul>
+        <li>
+          <strong>Ünvan:</strong> SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED
+          ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
+        </li>
+        <li>
+          <strong>Vergi Dairesi / No:</strong> Doğanbey Vergi Dairesi /
+          7580607612
+        </li>
+        <li>
+          <strong>Mersis No:</strong> 0758060761200001
+        </li>
+        <li>
+          <strong>Ticaret Sicil No:</strong> 493212
+        </li>
+        <li>
+          <strong>Ana Faaliyet:</strong> 464903 — Kırtasiye Ürünleri Toptan
+          Ticareti
+        </li>
+        <li>
+          <strong>Adres:</strong> Workinton Ankara Söğütözü, Beştepeler Mah.
+          Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510
+          Çankaya/Ankara
+        </li>
+        <li>
+          <strong>E-posta:</strong>{" "}
+          <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
+        </li>
+        <li>
+          <strong>Web sitesi:</strong>{" "}
+          <a href="https://pimetiket.com">pimetiket.com</a>
+        </li>
+        <li>
+          <strong>Şikayet ve iletişim:</strong>{" "}
+          <a href="/iletisim">/iletisim</a>
+        </li>
+      </ul>
+      <p className="text-[12.5px] text-gri-700 italic">
+        Not: Şirket ünvanı resmî değişiklik sürecindedir. Vergi numarası ve
+        vergi dairesi sabittir; bağlayıcı kimlik vergi numarasıdır.
+      </p>
 
-        {/* Üretim aşamaları */}
-        <Card className="mb-6 p-6 text-left">
-          <h2 className="mb-4 text-base font-semibold text-lacivert">
-            📦 Bundan sonraki adımlar
-          </h2>
-          <ol className="space-y-3">
-            <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yesil text-white text-sm">
-                ✓
-              </span>
-              <div>
-                <div className="font-medium text-lacivert">Onayın alındı</div>
-                <div className="text-sm text-gri-700">
-                  Şimdi · Tasarımların kilitlendi, üretim sıramıza girdi
-                </div>
-              </div>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
-              </span>
-              <div>
-                <div className="font-medium text-lacivert">
-                  Operatör son göz kontrolü
-                </div>
-                <div className="text-sm text-gri-700">
-                  1-2 saat · Matbaa standartlarına uygun mu son bir bak
-                </div>
-              </div>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
-              </span>
-              <div>
-                <div className="font-medium text-lacivert">Üretim hattı</div>
-                <div className="text-sm text-gri-700">
-                  1-2 iş günü · Baskı + kesim + kalite kontrol
-                </div>
-              </div>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
-              </span>
-              <div>
-                <div className="font-medium text-lacivert">Kargoya verildi</div>
-                <div className="text-sm text-gri-700">
-                  Mail bildirimi geleceğin gün · Yurtiçi Kargo takip linki
-                </div>
-              </div>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
-              </span>
-              <div>
-                <div className="font-medium text-lacivert">Teslimat</div>
-                <div className="text-sm text-gri-700">
-                  3-5 iş günü · Adresinde
-                </div>
-              </div>
-            </li>
-          </ol>
-        </Card>
+      <h2>2. Sözleşme Konusu Mal/Hizmet ve Temel Nitelikleri</h2>
+      <p>
+        Sözleşmenin konusu, ALICI&rsquo;nın pimetiket.com üzerinden, kendi
+        tasarımı veya konfigürasyonu ile sipariş ettiği{" "}
+        <strong>kişiye özel olarak üretilen etiket ve sticker</strong>{" "}
+        ürünlerinin satışıdır. Ürünlere ait;
+      </p>
+      <ul>
+        <li>Malzeme (kraft, beyaz kuşe, transparan, sticker, vb.)</li>
+        <li>Kaplama (mat, parlak, metalik)</li>
+        <li>Ölçü (mm × mm) ve adet</li>
+        <li>Sarım yönü (rulo siparişlerinde)</li>
+        <li>ALICI tarafından yüklenen tasarım dosyası</li>
+      </ul>
+      <p>
+        gibi tüm temel nitelikler, ürün konfigüratörü ve sipariş özet ekranı
+        üzerinden ALICI&rsquo;nın onayına sunulur.
+      </p>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button
-            href={`/siparis/${orderId}`}
-            variant="primary"
-            size="md"
-          >
-            Sipariş takibimi aç
-          </Button>
-          <Button href="/etiket" variant="secondary" size="md">
-            Yeni sipariş ver
-          </Button>
-        </div>
+      <h2>3. Toplam Fiyat ve Vergiler</h2>
+      <ul>
+        <li>
+          Sipariş özetinde gösterilen toplam tutar,{" "}
+          <strong>tüm vergiler (KDV %20) dahil</strong> Türk Lirası (₺)
+          cinsindendir.
+        </li>
+        <li>
+          ALICI&rsquo;dan sipariş onayı sırasında bu tutar dışında ek bir bedel
+          talep edilmez.
+        </li>
+        <li>
+          Kargo bedeli — varsa — sepet/ödeme adımında ayrıca gösterilir;
+          sipariş tutarına göre ücretsiz kargo eşiği uygulanabilir.
+        </li>
+        <li>
+          Fiyat ve özelliklerin kesinleşmesi, ALICI&rsquo;nın siparişi
+          onaylayıp ödemeyi tamamlamasıyla gerçekleşir.
+        </li>
+      </ul>
 
-        <p className="mt-8 text-sm text-gri-700">
-          Sorun yaşadıysan{" "}
-          <a
-            href="mailto:info@pimetiket.com"
-            className="text-pim-mercan underline"
-          >
-            info@pimetiket.com
-          </a>{" "}
-          veya{" "}
-          <Link href="/iletisim" className="text-pim-mercan underline">
-            Pim sohbet
-          </Link>{" "}
-          asistanından ulaşabilirsin.
-        </p>
-      </div>
+      <h2>4. Ödeme Şekli ve Bilgileri</h2>
+      <ul>
+        <li>
+          Ödeme; <strong>kredi kartı veya banka kartı ile 3D Secure</strong>{" "}
+          (yetkilendirilmiş ödeme kuruluşu PayTR Ödeme Hizmetleri A.Ş.
+          altyapısı) üzerinden alınır.
+        </li>
+        <li>
+          Kart bilgileri PayTR&rsquo;nin PCI-DSS sertifikalı güvenli sayfasında
+          işlenir; Pim Etiket bu bilgileri saklamaz, görmez.
+        </li>
+        <li>Tek çekim ve banka taksit seçenekleri sunulabilir.</li>
+        <li>
+          Sipariş onayı, ödemenin başarılı şekilde tahsil edilmesiyle birlikte
+          oluşur.
+        </li>
+      </ul>
 
-      <style>{`
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.5); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
-    </main>
+      <h2>5. Teslimat ve Süresi</h2>
+      <ul>
+        <li>
+          Ürün, ALICI&rsquo;nın sipariş aşamasında belirttiği teslimat adresine
+          anlaşmalı kargo firması (örn. Aras Kargo / Yurtiçi Kargo / MNG)
+          aracılığıyla gönderilir.
+        </li>
+        <li>
+          <strong>Tahmini teslim süresi:</strong> Ürünler 5 (beş) iş günü
+          içinde kargoya verilir; kargonun ALICI&rsquo;ya ulaşması teslim
+          adresine göre 1-3 iş günü sürebilir. Süre, ALICI&rsquo;nın
+          tasarım dosyasını yüklemesinden ve kalite kontrolünden geçtikten
+          sonra başlar.
+        </li>
+        <li>
+          ALICI&rsquo;nın 3 (üç) gün içinde tasarım dosyasını yüklememesi
+          halinde sipariş tek taraflı iptal edilir; ödenen tutar ALICI&rsquo;ya
+          iade edilir.
+        </li>
+        <li>
+          Yasal teslimat süresi en geç 30 (otuz) gündür; bu sürenin aşılması
+          halinde ALICI sözleşmeyi feshedebilir, ödediği tutarı iade alabilir.
+        </li>
+      </ul>
+
+      <h2>6. Cayma Hakkının Bulunmadığı Hususu</h2>
+      <p>
+        <strong>
+          Pim Etiket üzerinden verilen tüm siparişler ALICI&rsquo;nın istek ve
+          kişisel ihtiyaçlarına göre, kendisi tarafından sağlanan tasarım ve
+          özellikler doğrultusunda münhasıran üretildiğinden,
+        </strong>{" "}
+        Mesafeli Sözleşmeler Yönetmeliği&rsquo;nin{" "}
+        <strong>15. maddesi 1. fıkrası (b) bendi</strong> uyarınca{" "}
+        <strong>tüketici cayma hakkını kullanamaz</strong>. Bu durum sipariş
+        özetinde ve sözleşmenin yürürlüğe girmesi öncesinde ALICI&rsquo;ya
+        açıkça bildirilir.
+      </p>
+      <p>
+        Bu istisna; ürünün ayıplı, hatalı veya sipariş edilenden farklı çıkması
+        halindeki <strong>yasal ayıplı mal hükümlerini etkilemez</strong>;
+        ALICI&rsquo;nın bu çerçevedeki hakları saklıdır (bkz. madde 7).
+      </p>
+
+      <h2>7. Ayıplı Mal ve İade Koşulları</h2>
+      <ul>
+        <li>
+          Üretim hatası, baskı bozukluğu, kargo hasarı veya sipariş edilen
+          özelliklerden farklı ürün gönderimi durumlarında ALICI, teslim
+          tarihinden itibaren <strong>7 (yedi) gün</strong> içinde fotoğraflı
+          bildirim ile <a href="/iletisim">iletisim</a> kanallarımızdan
+          başvurarak;
+        </li>
+        <li>Ücretsiz yeniden üretim, veya</li>
+        <li>Ödenen tutarın iadesi</li>
+        <li>
+          haklarından birini seçebilir. Ayrıntılı koşullar{" "}
+          <a href="/iade-degisim-politikasi">İade & Değişim Politikası</a>{" "}
+          sayfasındadır.
+        </li>
+      </ul>
+
+      <h2>8. Şikayet ve Uyuşmazlık Çözüm Mercileri</h2>
+      <p>
+        ALICI, sözleşmeden doğan uyuşmazlıklarda; Gümrük ve Ticaret
+        Bakanlığı&rsquo;nın her yıl belirlediği parasal sınırlar dahilinde
+        ikametgahının veya mal/hizmeti satın aldığı yerin{" "}
+        <strong>Tüketici Hakem Heyeti&rsquo;ne</strong>, parasal sınırın
+        üzerindeki uyuşmazlıklarda ise <strong>Tüketici Mahkemesi&rsquo;ne</strong>{" "}
+        başvurabilir.
+      </p>
+      <p>
+        Şikayetlerinizi öncelikle{" "}
+        <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>{" "}
+        adresine veya <a href="/iletisim">/iletisim</a> sayfasındaki kanallarımıza
+        iletebilirsiniz; tarafımıza ulaşan başvurular en geç 15 gün içinde
+        yanıtlanır.
+      </p>
+
+      <h2>9. Kişisel Verilerin Korunması</h2>
+      <p>
+        ALICI&rsquo;nın sipariş, ödeme, teslimat ve iletişim sürecinde
+        verdiği kişisel veriler, 6698 sayılı Kişisel Verilerin Korunması
+        Kanunu kapsamında işlenir. Aydınlatma metni{" "}
+        <a href="/kvkk">/kvkk</a>, gizlilik uygulamaları{" "}
+        <a href="/gizlilik">/gizlilik</a>, çerez kullanımı{" "}
+        <a href="/cerez">/cerez</a> sayfalarında detaylıca açıklanmıştır.
+      </p>
+
+      <h2>10. Sözleşme Süresi ve Yürürlük</h2>
+      <p>
+        İşbu ön bilgilendirme formu, ALICI&rsquo;nın sipariş ve ödeme
+        akışındaki onay kutucuklarını işaretleyip ödeme adımını
+        tamamlamasıyla birlikte; aynı anda yürürlüğe girecek olan{" "}
+        <a href="/mesafeli-satis">Mesafeli Satış Sözleşmesi</a>&rsquo;nin
+        ayrılmaz parçası niteliğindedir. Sözleşme, ürünlerin teslimi ve
+        karşılıklı yükümlülüklerin yerine getirilmesi ile sona erer.
+      </p>
+
+      <h2>11. Yasal Dayanak</h2>
+      <ul>
+        <li>6502 sayılı Tüketicinin Korunması Hakkında Kanun</li>
+        <li>Mesafeli Sözleşmeler Yönetmeliği (R.G. 27.11.2014/29188)</li>
+        <li>6698 sayılı Kişisel Verilerin Korunması Kanunu</li>
+        <li>5651 sayılı İnternet Ortamında Yapılan Yayınlar Kanunu</li>
+      </ul>
+    </LegalLayout>
   );
 }

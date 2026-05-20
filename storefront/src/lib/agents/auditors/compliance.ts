@@ -6,7 +6,7 @@
  * 5 kontrol:
  *   A. KVKK silme talepleri SLA (30 gün)
  *   B. 90 gün+ tasarım dosyaları (retention)
- *   C. E-fatura zorunluluk eşiği (yıllık ciro 3M TL)
+ *   C. E-fatura zorunluluk eşiği (yıllık ciro 3M ₺)
  *   D. Çerez consent oranı (>%30 hedef)
  *   E. Yasal metin yaş kontrolü (1+ yıl)
  */
@@ -227,7 +227,7 @@ export class ComplianceAuditor extends AuditorBase {
         (isOver ? this.critical : this.warning).bind(this)(
           "einvoice_threshold",
           `Yıllık ciro e-fatura eşiğinin %${(pctOfThreshold * 100).toFixed(0)}'ı`,
-          `Bu yıl toplam ciro: **${yearlyTotal.toLocaleString("tr-TR")} TL**. E-fatura zorunluluk eşiği: ${TUNE.einvoiceThresholdTl.toLocaleString("tr-TR")} TL.\n\n${isOver ? "**Eşik aşıldı** — e-fatura sistemine geçiş zorunlu (GİB).\nMali müşavirinle ivedi görüş." : "Önümüzdeki aylarda eşiği aşma riski var. E-fatura entegrasyon planlaması yapılmalı."}`,
+          `Bu yıl toplam ciro: **${yearlyTotal.toLocaleString("tr-TR")} ₺**. E-fatura zorunluluk eşiği: ${TUNE.einvoiceThresholdTl.toLocaleString("tr-TR")} ₺.\n\n${isOver ? "**Eşik aşıldı** — e-fatura sistemine geçiş zorunlu (GİB).\nMali müşavirinle ivedi görüş." : "Önümüzdeki aylarda eşiği aşma riski var. E-fatura entegrasyon planlaması yapılmalı."}`,
           {
             yearlyTotal,
             threshold: TUNE.einvoiceThresholdTl,

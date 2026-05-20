@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
     okUrl: `${siteUrl}/api/payment/callback?return=ok&oid=${merchantOid}`,
     failUrl: `${siteUrl}/api/payment/callback?return=fail&oid=${merchantOid}`,
     timeoutLimit: 30,
-    currency: "TL",
+    currency: "₺",
     maxInstallment: 12,
     noInstallment: 0,
   });

@@ -145,7 +145,7 @@ export default function AdminCreateOrderPage() {
       const json = (await res.json()) as { orderId: string };
 
       toast.success(
-        `Sipariş oluşturuldu — ${json.orderId} · ${total.toLocaleString("tr-TR")} TL`
+        `Sipariş oluşturuldu — ${json.orderId} · ${total.toLocaleString("tr-TR")} ₺`
       );
       router.push(`/admin/siparisler/${json.orderId}`);
     } catch (e) {
@@ -385,7 +385,7 @@ export default function AdminCreateOrderPage() {
                     disabled={loading}
                   />
                 </Field>
-                <Field label="Birim fiyat (TL)" required>
+                <Field label="Birim fiyat (₺)" required>
                   <Input
                     value={unit}
                     onChange={(e) =>
@@ -435,16 +435,16 @@ export default function AdminCreateOrderPage() {
           <Card padding="p-5">
             <h2 className="text-[15px] font-semibold mb-4">Özet</h2>
             <div className="space-y-2 mb-5">
-              <Row label="Ara toplam" value={`${subtotal.toLocaleString("tr-TR")} TL`} />
+              <Row label="Ara toplam" value={`${subtotal.toLocaleString("tr-TR")} ₺`} />
               <Row
                 label="Kargo"
-                value={shipping === 0 ? "Ücretsiz" : `${shipping} TL`}
+                value={shipping === 0 ? "Ücretsiz" : `${shipping} ₺`}
                 accent={shipping === 0 ? "text-yesil" : ""}
               />
               <div className="h-px bg-gri-200 my-2" />
               <Row
                 label="Toplam (KDV dahil)"
-                value={`${total.toLocaleString("tr-TR")} TL`}
+                value={`${total.toLocaleString("tr-TR")} ₺`}
                 bold
               />
             </div>

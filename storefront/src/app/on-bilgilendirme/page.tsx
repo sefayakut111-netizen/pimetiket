@@ -90,7 +90,7 @@ export default function OnBilgilendirmePage() {
       <ul>
         <li>
           Sipariş özetinde gösterilen toplam tutar,{" "}
-          <strong>tüm vergiler (KDV %20) dahil</strong> Türk Lirası (TL)
+          <strong>tüm vergiler (KDV %20) dahil</strong> Türk Lirası (₺)
           cinsindendir.
         </li>
         <li>

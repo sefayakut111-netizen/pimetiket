@@ -216,9 +216,9 @@ export default function HomePage() {
 
       {/* Sefa kararı 17 May v11: QuickReorderWidget + Product Cards
           section'ları kaldırıldı.
-          - "YENİDEN BASTIR" card (sticker · kare · 50×50mm · 1.520 TL) →
+          - "YENİDEN BASTIR" card (sticker · kare · 50×50mm · 1.520 ₺) →
             kullanıcı zaten /panelim'de geçmiş siparişlerini görüyor
-          - Etiket / Sticker product cards (2,05 TL/adet · 30,55 TL/adet) →
+          - Etiket / Sticker product cards (2,05 ₺/adet · 30,55 ₺/adet) →
             hero'da iki büyük CTA buton ("Etiket bastır" + "Sticker bastır")
             zaten aynı yere yönlendiriyor; duplicate.
           Yeni akış: Hero → How it works → Reviews → FAQ */}

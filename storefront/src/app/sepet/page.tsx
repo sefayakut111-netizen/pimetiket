@@ -44,9 +44,9 @@ const EXTRA = {
     decreaseQty: "Adet azalt",
     increaseQty: "Adet artır",
     giftSticker: (n: number) => `+${n} hediye sticker`,
-    unitPrice: (unit: string) => `× ${unit} TL`,
+    unitPrice: (unit: string) => `× ${unit} ₺`,
     unitLabel: "Birim",
-    currency: "TL",
+    currency: "₺",
     postPayHint:
       "Ödeme sonrası 3 gün içinde tasarım dosyalarını yüklemen yeterli.",
     locale: "tr-TR",
@@ -75,7 +75,7 @@ const EXTRA = {
     deliveryNote:
       "Tasarımı zamanında yüklersen kargo bu süre içinde elinde.",
     shippingFreeFull: (curr: string, threshold: string) =>
-      `Kargo bedava (${curr}/${threshold} TL)`,
+      `Kargo bedava (${curr}/${threshold} ₺)`,
     mobileCheckoutTotal: "Toplam",
   },
   en: {
@@ -406,7 +406,7 @@ export default function SepetPage() {
                           +
                         </button>
                       </div>
-                      {/* Sefa-3: "Birim 3,64 TL" net etiket — sadece "× X TL"
+                      {/* Sefa-3: "Birim 3,64 ₺" net etiket — sadece "× X ₺"
                           karışıklığı bitti. */}
                       <span className="text-[12.5px] text-gri-700 tabular-nums">
                         <span className="text-gri-500">{x.unitLabel}:</span>{" "}
@@ -530,17 +530,17 @@ export default function SepetPage() {
                       />
                     </div>
                     <div className="mt-1 flex justify-between text-[10.5px] tabular-nums">
-                      <span>{fmt(subtotal)} TL</span>
-                      <span>{fmt(FREE_SHIPPING_THRESHOLD)} TL</span>
+                      <span>{fmt(subtotal)} ₺</span>
+                      <span>{fmt(FREE_SHIPPING_THRESHOLD)} ₺</span>
                     </div>
                   </div>
                 )}
                 {/* Sefa-8: Kargo bedava — sadece kutlama değil, gerçek
-                    rakamlar göster (X/Y TL). */}
+                    rakamlar göster (X/Y ₺). */}
                 {shipping === 0 && subtotal > 0 && (
                   <div
                     className="bg-yesil-soft text-yesil p-2.5 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5"
-                    aria-label={`Kargo bedava: ${fmt(subtotal)} TL, eşik ${fmt(FREE_SHIPPING_THRESHOLD)} TL`}
+                    aria-label={`Kargo bedava: ${fmt(subtotal)} ₺, eşik ${fmt(FREE_SHIPPING_THRESHOLD)} ₺`}
                   >
                     <span aria-hidden="true">🎉</span>
                     {x.shippingFreeFull(fmt(subtotal), fmt(FREE_SHIPPING_THRESHOLD))}
@@ -564,10 +564,10 @@ export default function SepetPage() {
               {minOrderTotal > 0 && total < minOrderTotal && total > 0 && (
                 <div className="mt-4 rounded-lg bg-sari-soft p-3 ring-1 ring-sari/30 text-[12.5px] text-sari-koyu">
                   <div className="font-semibold mb-1">
-                    ⚠️ Minimum sipariş tutarı {fmt(minOrderTotal)} TL
+                    ⚠️ Minimum sipariş tutarı {fmt(minOrderTotal)} ₺
                   </div>
                   <p className="leading-relaxed">
-                    Sepete <strong>{fmt(minOrderTotal - total)} TL</strong> daha
+                    Sepete <strong>{fmt(minOrderTotal - total)} ₺</strong> daha
                     eklemen gerekiyor. Adet yükselt veya yeni ürün ekle.
                   </p>
                 </div>
@@ -578,7 +578,7 @@ export default function SepetPage() {
                     📞 Toplu sipariş — WhatsApp'a yönlendir
                   </div>
                   <p className="leading-relaxed mb-2">
-                    Sepetin {fmt(maxOrderTotal)} TL'yi aştı. Bu büyüklükteki
+                    Sepetin {fmt(maxOrderTotal)} ₺'yi aştı. Bu büyüklükteki
                     siparişler için <strong>özel teklif</strong> hazırlıyoruz —
                     daha iyi fiyat + kişisel destek.
                   </p>

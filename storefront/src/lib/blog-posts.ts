@@ -77,8 +77,8 @@ Hangi malzemenin sana uygun olduğunu bilmiyorsan Pim'e bir 60 saniyelik soru-ce
     body: `Sticker Mule Amerika'nın küresel sticker baskı devlerinden biri. Türkiye'den de sipariş verilebiliyor ama gümrük, kargo ve para birimi karışıklığı işi karmaşıklaştırıyor.
 
 **Maliyet karşılaştırması (50 adet, 75×75mm vinil):**
-- Sticker Mule: ~$15 (yaklaşık 500 TL) + ~$25 kargo + gümrük → toplam 1.000-1.200 TL
-- Pim Etiket: ~800 TL, kargo 49 TL (1500 TL üzeri ücretsiz), gümrük yok
+- Sticker Mule: ~$15 (yaklaşık 500 ₺) + ~$25 kargo + gümrük → toplam 1.000-1.200 ₺
+- Pim Etiket: ~800 ₺, kargo 49 ₺ (1500 ₺ üzeri ücretsiz), gümrük yok
 
 **Teslim süresi:**
 - Sticker Mule: 7-12 gün (üretim + uluslararası kargo + gümrük)

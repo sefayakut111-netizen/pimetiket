@@ -210,13 +210,13 @@ export default function AdminAyarlarPage() {
             <h2 className="text-lg font-semibold mb-4">Kargo</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <NumberField
-                label="Kargo ücreti (TL)"
+                label="Kargo ücreti (₺)"
                 value={settings.shippingFee}
                 onChange={(v) => update("shippingFee", v)}
                 hint="Ücretsiz eşiğin altındaki siparişlere uygulanır"
               />
               <NumberField
-                label="Ücretsiz kargo eşiği (TL)"
+                label="Ücretsiz kargo eşiği (₺)"
                 value={settings.freeShippingThreshold}
                 onChange={(v) => update("freeShippingThreshold", v)}
                 hint="Bu tutar üstünde kargo ücretsiz"
@@ -231,18 +231,18 @@ export default function AdminAyarlarPage() {
             </h2>
             <p className="text-[12.5px] text-gri-700 mb-4 leading-relaxed">
               Sepet bu aralığın dışına çıkarsa kullanıcıya uyarı gösterilir.
-              Min altında "X TL daha ekle"; max üstünde "toplu sipariş için
+              Min altında "X ₺ daha ekle"; max üstünde "toplu sipariş için
               WhatsApp" yönlendirmesi. KDV dahil tutar üzerinden kontrol edilir.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <NumberField
-                label="Minimum sipariş tutarı (TL)"
+                label="Minimum sipariş tutarı (₺)"
                 value={settings.minOrderTotal}
                 onChange={(v) => update("minOrderTotal", v)}
                 hint="Altındaki sepet ödemeye geçemez (0 = limit yok)"
               />
               <NumberField
-                label="Maksimum sipariş tutarı (TL)"
+                label="Maksimum sipariş tutarı (₺)"
                 value={settings.maxOrderTotal}
                 onChange={(v) => update("maxOrderTotal", v)}
                 hint="Üstündeki sepet WhatsApp'a yönlendirilir (0 = limit yok)"
@@ -260,19 +260,19 @@ export default function AdminAyarlarPage() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <NumberField
-                label="Hoşgeldin çeki (TL)"
+                label="Hoşgeldin çeki (₺)"
                 value={settings.welcomeCreditTry}
                 onChange={(v) => update("welcomeCreditTry", v)}
                 hint="Yeni üye ilk siparişte"
               />
               <NumberField
-                label="Referans çeki (TL)"
+                label="Referans çeki (₺)"
                 value={settings.referralCreditTry}
                 onChange={(v) => update("referralCreditTry", v)}
                 hint="Davet eden + davet edilen"
               />
               <NumberField
-                label="Min sepet (TL)"
+                label="Min sepet (₺)"
                 value={settings.minSubtotalForCredit}
                 onChange={(v) => update("minSubtotalForCredit", v)}
                 hint="Çek kullanım eşiği"

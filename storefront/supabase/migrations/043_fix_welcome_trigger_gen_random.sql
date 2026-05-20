@@ -47,7 +47,7 @@ begin
     v_code, 'fixed', v_amount, null, v_min,
     1, 1,
     now(), now() + interval '90 days',
-    'Hoşgeldin hediye çeki — ilk siparişte ' || v_amount || ' TL indirim',
+    'Hoşgeldin hediye çeki — ilk siparişte ' || v_amount || ' ₺ indirim',
     true,
     new.id
   )

@@ -25,7 +25,7 @@ import {
 // Helpers
 // ============================================================
 
-const TL = (n: number, decimals = 0) =>
+const fmt = (n: number, decimals = 0) =>
   n.toLocaleString("tr-TR", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -168,10 +168,10 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
     }
   }
 
-  künye.push(["Müşteri Sipariş Adedi", `${TL(requestedQty)} adet`]);
+  künye.push(["Müşteri Sipariş Adedi", `${fmt(requestedQty)} adet`]);
   künye.push([
     "Üretilecek Adet",
-    `${TL(fit.producedQty)} adet${
+    `${fmt(fit.producedQty)} adet${
       fit.producedQty > requestedQty
         ? ` (+${fit.producedQty - requestedQty} fire/hediye payı)`
         : ""
@@ -531,7 +531,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(31, 41, 55);
-    pdf.text(`${TL(item.amount)} TL`, A4_W - M, y, { align: "right" });
+    pdf.text(`${fmt(item.amount)} ₺`, A4_W - M, y, { align: "right" });
     y += 6;
   });
 
@@ -541,7 +541,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(31, 41, 55);
   pdf.text("Üretim Ara Toplam", M, y);
-  pdf.text(`${TL(cost.productionCost)} TL`, A4_W - M, y, { align: "right" });
+  pdf.text(`${fmt(cost.productionCost)} ₺`, A4_W - M, y, { align: "right" });
   y += 12;
 
   // ② Operasyon
@@ -561,7 +561,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(31, 41, 55);
-    pdf.text(`${TL(item.amount)} TL`, A4_W - M, y, { align: "right" });
+    pdf.text(`${fmt(item.amount)} ₺`, A4_W - M, y, { align: "right" });
     y += 6;
   });
 
@@ -570,7 +570,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.rect(M - 2, y - 4, A4_W - 2 * M + 4, 8, "F");
   pdf.setFont("helvetica", "bold");
   pdf.text("Operasyon Ara Toplam", M, y);
-  pdf.text(`${TL(cost.operationCost)} TL`, A4_W - M, y, { align: "right" });
+  pdf.text(`${fmt(cost.operationCost)} ₺`, A4_W - M, y, { align: "right" });
   y += 12;
 
   // Toplam Maliyet (lacivert blok)
@@ -580,7 +580,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
   pdf.text("TOPLAM MALİYET", M, y + 1);
-  pdf.text(`${TL(cost.baseCost)} TL`, A4_W - M, y + 1, { align: "right" });
+  pdf.text(`${fmt(cost.baseCost)} ₺`, A4_W - M, y + 1, { align: "right" });
   y += 14;
 
   // ③ Kar + Tier + KDV
@@ -594,20 +594,20 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   y += 8;
   pdf.setFontSize(9);
   const breakdown: Array<[string, string]> = [
-    [`Kar Marjı (markup ×${cost.tierMultiplier === 1 ? "1.00" : cost.tierMultiplier.toFixed(2)})`, `${TL(cost.intendedProfit)} TL (intended)`],
-    [`Net Kar (Sefa cebine giren)`, `${TL(cost.actualProfit)} TL (actual)`],
-    [`PSP Komisyonu (gross-up)`, `${TL(cost.processingFee)} TL`],
+    [`Kar Marjı (markup ×${cost.tierMultiplier === 1 ? "1.00" : cost.tierMultiplier.toFixed(2)})`, `${fmt(cost.intendedProfit)} ₺ (intended)`],
+    [`Net Kar (Sefa cebine giren)`, `${fmt(cost.actualProfit)} ₺ (actual)`],
+    [`PSP Komisyonu (gross-up)`, `${fmt(cost.processingFee)} ₺`],
   ];
 
   if (Math.abs(cost.tierMultiplier - 1) > 0.001) {
     const sign = cost.tierAdjustment > 0 ? "+" : "−";
     breakdown.push([
       `Tier Ayarı (×${cost.tierMultiplier.toFixed(2)})`,
-      `${sign}${TL(Math.abs(cost.tierAdjustment))} TL`,
+      `${sign}${fmt(Math.abs(cost.tierAdjustment))} ₺`,
     ]);
   }
 
-  breakdown.push(["KDV (%20)", `${TL(cost.vatAmount)} TL`]);
+  breakdown.push(["KDV (%20)", `${fmt(cost.vatAmount)} ₺`]);
 
   breakdown.forEach(([k, v]) => {
     pdf.setFont("helvetica", "normal");
@@ -628,12 +628,12 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFontSize(13);
   pdf.setFont("helvetica", "bold");
   pdf.text("MÜŞTERİ TOPLAM FİYATI (KDV DAHİL)", M, y + 1);
-  pdf.text(`${TL(cost.total)} TL`, A4_W - M, y + 1, { align: "right" });
+  pdf.text(`${fmt(cost.total)} ₺`, A4_W - M, y + 1, { align: "right" });
   y += 8;
   pdf.setFontSize(8);
   pdf.setFont("helvetica", "normal");
   pdf.text(
-    `${TL(requestedQty)} adet × ${TL(cost.unitPrice, 2)} TL/adet`,
+    `${fmt(requestedQty)} adet × ${fmt(cost.unitPrice, 2)} ₺/adet`,
     M,
     y + 1
   );

@@ -66,7 +66,7 @@ const COPY = {
     resetFilter: "Filtreyi sıfırla",
     multiOrder: (n: number) => `${n} ürünlük sipariş`,
     pcs: "adet",
-    currency: "TL",
+    currency: "₺",
     reorder: "Tekrar sipariş",
     detail: "Detay",
     // Sefa 17 May — kargo badge

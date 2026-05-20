@@ -118,7 +118,7 @@ create table if not exists public.payments (
     'capture',
     'void'
   )),
-  -- Tutar (TL, KDV dahil) — refund için negatif değil pozitif tutulur,
+  -- Tutar (₺, KDV dahil) — refund için negatif değil pozitif tutulur,
   -- action ayrımı yeter
   amount numeric(10, 2) not null check (amount > 0),
   currency text not null default 'TRY',

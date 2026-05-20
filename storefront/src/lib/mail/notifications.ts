@@ -158,7 +158,7 @@ export async function sendOrderConfirmation(args: {
   const html = await render(OrderConfirmationEmail(props));
   const text = `Siparişin alındı! ${args.orderId} — ${props.total.toLocaleString(
     "tr-TR"
-  )} TL. Detay: ${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/siparis/${args.orderId}`;
+  )} ₺. Detay: ${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/siparis/${args.orderId}`;
 
   const result = await sendMail({
     to: email,
@@ -561,7 +561,7 @@ export async function sendOrderProofRequired(args: {
     orderId: args.orderId,
     itemCount: itemCount ?? 1,
     totalLabel: orderData.total
-      ? `${Number(orderData.total).toLocaleString("tr-TR")} TL`
+      ? `${Number(orderData.total).toLocaleString("tr-TR")} ₺`
       : undefined,
   };
 

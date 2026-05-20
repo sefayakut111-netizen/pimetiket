@@ -1,6 +1,6 @@
 -- Pim Etiket — Migration 057: free_shipping_threshold 1000 → 500
 -- Sefa 18 May v68 (senkronizasyon denetimi):
--- Pim AI KB + /sss + anasayfa hepsi 500 TL diyordu ama DB default 1000'di.
+-- Pim AI KB + /sss + anasayfa hepsi 500 ₺ diyordu ama DB default 1000'di.
 -- Eğer site_settings'te admin tarafından değiştirilmemişse, default'u 500'e çek.
 
 update public.site_settings

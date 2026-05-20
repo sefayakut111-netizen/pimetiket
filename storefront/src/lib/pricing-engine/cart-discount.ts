@@ -51,7 +51,7 @@ export interface CartLineResult extends CartLineInput {
   groupCount: number;
   /** Uygulanan grup indirimi 0-1 */
   groupDiscountPct: number;
-  /** Mutlak TL indirim — KDV-hariç matrah üzerinden */
+  /** Mutlak ₺ indirim — KDV-hariç matrah üzerinden */
   groupDiscountAmount: number;
   /** İndirim sonrası matrah (KDV hariç) */
   finalSubtotal: number;

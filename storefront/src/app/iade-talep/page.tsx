@@ -71,7 +71,7 @@ const COPY = {
     loading: "Yükleniyor…",
     multiOrder: (n: number) => `${n} ürünlük sipariş`,
     pcs: "adet",
-    currency: "TL",
+    currency: "₺",
     remove: "Kaldır",
     mockAdded: (file: string) =>
       `${file} eklendi (mock — gerçek upload Faz 2)`,

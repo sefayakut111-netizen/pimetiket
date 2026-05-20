@@ -89,7 +89,7 @@ export function OrderConfirmationEmail({
                 color: COLORS.lacivert,
               }}
             >
-              {fmt(item.total)} TL
+              {fmt(item.total)} ₺
             </td>
           </Row>
         ))}
@@ -106,7 +106,7 @@ export function OrderConfirmationEmail({
               fontWeight: 600,
             }}
           >
-            {fmt(subtotal)} TL
+            {fmt(subtotal)} ₺
           </td>
         </Row>
         <Row>
@@ -122,7 +122,7 @@ export function OrderConfirmationEmail({
               paddingTop: 4,
             }}
           >
-            {shipping === 0 ? "Ücretsiz" : `${fmt(shipping)} TL`}
+            {shipping === 0 ? "Ücretsiz" : `${fmt(shipping)} ₺`}
           </td>
         </Row>
         <Hr style={{ borderColor: COLORS.lacivert, margin: "12px 0 8px", borderWidth: 2 }} />
@@ -144,7 +144,7 @@ export function OrderConfirmationEmail({
               fontWeight: 700,
             }}
           >
-            {fmt(total)} TL
+            {fmt(total)} ₺
           </td>
         </Row>
       </Section>

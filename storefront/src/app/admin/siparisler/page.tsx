@@ -133,7 +133,7 @@ const SAVED_VIEWS: SavedView[] = [
     id: "high-value",
     label: "Yüksek tutar",
     emoji: "💰",
-    description: "5.000 TL ve üstü — özel ilgi",
+    description: "5.000 ₺ ve üstü — özel ilgi",
     apply: (orders) => orders.filter((o) => o.total >= 5000),
   },
 ];
@@ -615,7 +615,7 @@ function AdminSiparislerPageInner() {
                       </td>
                       <td className="px-4 py-3 text-gri-700">{o.product}</td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                        {fmt(o.total)} TL
+                        {fmt(o.total)} ₺
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -670,7 +670,7 @@ function AdminSiparislerPageInner() {
           <p className="mt-3 text-[12px] text-gri-500 text-right">
             {filtered.length} sipariş · Toplam{" "}
             <span className="font-semibold text-lacivert">
-              {fmt(filtered.reduce((s, o) => s + o.total, 0))} TL
+              {fmt(filtered.reduce((s, o) => s + o.total, 0))} ₺
             </span>
           </p>
         )}

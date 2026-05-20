@@ -214,7 +214,7 @@ export default function AdminProvaPage() {
                         <span className="text-gri-500">· {config}</span>
                       </div>
                       <div className="text-[12px] text-gri-500 mt-1 tabular-nums">
-                        Sipariş: {timeAgo(p.createdAt)} · {fmt(p.total)} TL
+                        Sipariş: {timeAgo(p.createdAt)} · {fmt(p.total)} ₺
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">

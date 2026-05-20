@@ -1,27 +1,40 @@
 /**
- * POST /api/me/kvkk-requests/[id]/cancel
+ * POST /api/loyalty/reprint-coupon
  *
- * Müşteri 48 saat grace period içinde silme talebini geri alır.
- * - pending / confirmed status'lardan birinde ise iptal edilebilir
- * - processing / completed / cancelled / rejected ise iptal edilemez
+ * Müşteri "Tekrar bastır" tıkladığında otomatik %10 tekrar baskı kuponu
+ * oluşturur. 30 gün geçerli, tek kullanımlık.
+ *
+ * Body: { sourceOrderId: string }
+ *   - Kullanıcı bu siparişin sahibi olmalı
+ *   - 1 sipariş için 1 reprint kuponu (idempotent — aynı sourceOrderId
+ *     için aynı kupon döner)
+ *
+ * Response: { code: string, value: number }
  */
 
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
-import { logServerAudit } from "@/lib/audit-log-server";
 
-export const dynamic = "force-dynamic";
+interface BodyShape {
+  sourceOrderId?: unknown;
+}
 
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  if (!id) {
-    return NextResponse.json({ error: "ID eksik" }, { status: 400 });
+export async function POST(req: Request) {
+  let body: BodyShape;
+  try {
+    body = (await req.json()) as BodyShape;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const sourceOrderId =
+    typeof body.sourceOrderId === "string" ? body.sourceOrderId.trim() : "";
+  if (!sourceOrderId) {
+    return NextResponse.json({ error: "sourceOrderId yok" }, { status: 400 });
+  }
+
+  // Auth
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -30,62 +43,80 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    return NextResponse.json(
+      { error: "Sunucu yapılandırması eksik" },
+      { status: 500 }
+    );
+  }
   const admin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Mevcut kaydı oku — sadece kendi talebi + iptal edilebilir status
-  const { data: existing } = await admin
-    .from("kvkk_requests")
-    .select("id, user_id, status, kind")
-    .eq("id", id)
+  // Order kullanıcıya ait mi?
+  const { data: order } = await admin
+    .from("orders")
+    .select("id, user_id")
+    .eq("id", sourceOrderId)
     .maybeSingle();
-  const row = existing as {
-    id: string;
-    user_id: string;
-    status: string;
-    kind: string;
-  } | null;
-  if (!row) {
-    return NextResponse.json({ error: "Talep bulunamadı" }, { status: 404 });
-  }
-  if (row.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (!["pending", "confirmed"].includes(row.status)) {
+  if (!order || (order as { user_id: string | null }).user_id !== user.id) {
     return NextResponse.json(
-      { error: "Bu talep artık iptal edilemez (işlem başladı)" },
-      { status: 409 }
+      { error: "Bu siparişin sahibi değilsin" },
+      { status: 403 }
     );
   }
 
-  const { error } = await admin
-    .from("kvkk_requests")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  if (error) {
-    console.error("[kvkk-cancel]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // Daha önce bu sipariş için reprint kuponu oluşturuldu mu?
+  // Description'da sipariş id'yi tutuyoruz, böyle bul
+  const description = `Tekrar baskı — ${sourceOrderId}`;
+  const { data: existing } = await admin
+    .from("coupons")
+    .select("code, value")
+    .eq("description", description)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (existing) {
+    return NextResponse.json({
+      code: (existing as { code: string }).code,
+      value: (existing as { value: number }).value,
+      reused: true,
+    });
   }
 
-  await logServerAudit(admin, {
-    actorId: user.id,
-    actorEmail: user.email ?? null,
-    actorRole: "customer",
-    action: "profile.delete",
-    targetType: "kvkk_request",
-    targetId: id,
-    summary: `KVKK talebi iptal edildi: ${row.kind}`,
-    detail: { kind: row.kind, previous_status: row.status },
-    ipAddress: req.headers.get("x-forwarded-for"),
-    userAgent: req.headers.get("user-agent"),
-  });
+  // Yeni REPRINT kuponu
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const code = `REPRINT-${random}`;
 
-  return NextResponse.json({ ok: true });
+  const { error: insertErr } = await admin.from("coupons").insert([
+    {
+      code,
+      kind: "percent",
+      value: 10,
+      max_discount: 500, // max 500 ₺ indirim
+      min_subtotal: 100,
+      total_uses_limit: 1,
+      per_user_limit: 1,
+      starts_at: new Date().toISOString(),
+      expires_at: new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+      description,
+      is_active: true,
+    },
+  ]);
+  if (insertErr) {
+    console.error("[reprint-coupon] insert error:", insertErr);
+    return NextResponse.json(
+      { error: "Kupon oluşturulamadı" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    code,
+    value: 10,
+    reused: false,
+  });
 }

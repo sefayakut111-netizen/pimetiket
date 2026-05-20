@@ -246,11 +246,11 @@ export function CartPanel({ onGeneratePDF }: CartPanelProps) {
                   <div className="text-right tabular-nums">
                     {hasGroupDiscount && (
                       <div className="text-[11px] text-gri-500 line-through">
-                        {fmt(line.preGroupTotal)} TL
+                        {fmt(line.preGroupTotal)} ₺
                       </div>
                     )}
                     <div className="font-bold text-[15px] tabular-nums">
-                      {fmt(line.finalTotal)} TL
+                      {fmt(line.finalTotal)} ₺
                     </div>
                   </div>
 
@@ -273,33 +273,33 @@ export function CartPanel({ onGeneratePDF }: CartPanelProps) {
               <div className="flex justify-between items-baseline">
                 <span className="text-gri-700">Ara Toplam (KDV hariç)</span>
                 <span className="tabular-nums font-medium">
-                  {fmt(summary.result.subtotalBeforeDiscount)} TL
+                  {fmt(summary.result.subtotalBeforeDiscount)} ₺
                 </span>
               </div>
               {summary.result.groupDiscountTotal > 0 && (
                 <div className="flex justify-between items-baseline text-yesil font-semibold">
                   <span>Grup İndirimleri</span>
                   <span className="tabular-nums">
-                    −{fmt(summary.result.groupDiscountTotal)} TL
+                    −{fmt(summary.result.groupDiscountTotal)} ₺
                   </span>
                 </div>
               )}
               <div className="flex justify-between items-baseline">
                 <span className="text-gri-700">Matrah</span>
                 <span className="tabular-nums font-medium">
-                  {fmt(summary.result.subtotalAfterDiscount)} TL
+                  {fmt(summary.result.subtotalAfterDiscount)} ₺
                 </span>
               </div>
               <div className="flex justify-between items-baseline">
                 <span className="text-gri-700">KDV</span>
                 <span className="tabular-nums font-medium">
-                  {fmt(summary.result.vatTotal)} TL
+                  {fmt(summary.result.vatTotal)} ₺
                 </span>
               </div>
               <div className="flex justify-between items-baseline pt-2 mt-2 border-t-2 border-lacivert/20">
                 <span className="font-bold text-[14px]">GENEL TOPLAM</span>
                 <span className="tabular-nums font-bold text-[24px] text-pim-mercan-koyu">
-                  {fmt(summary.result.total)} TL
+                  {fmt(summary.result.total)} ₺
                 </span>
               </div>
               <div className="text-[11px] text-gri-500 text-center mt-1.5 tabular-nums">

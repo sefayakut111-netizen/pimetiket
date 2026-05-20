@@ -9,7 +9,7 @@
 -- ---------- 1) coupons ----------
 create type public.coupon_kind as enum (
   'percent',     -- %X indirim (max ile sınırlı olabilir)
-  'fixed',       -- Sabit X TL indirim
+  'fixed',       -- Sabit X ₺ indirim
   'free_ship'    -- Kargo ücretsiz
 );
 
@@ -19,10 +19,10 @@ create table if not exists public.coupons (
   code text not null unique,
   kind public.coupon_kind not null,
   -- percent → 0-100 arası (5 = %5)
-  -- fixed   → TL miktarı (50 = 50 TL)
+  -- fixed   → ₺ miktarı (50 = 50 ₺)
   -- free_ship → 0 (yalnız bayrak)
   value numeric(10, 2) not null check (value >= 0),
-  -- percent kuponu için max indirim TL — null = sınırsız
+  -- percent kuponu için max indirim ₺ — null = sınırsız
   max_discount numeric(10, 2),
   -- Min sepet tutarı — bu altındaysa kupon uygulanmaz
   min_subtotal numeric(10, 2) not null default 0,
