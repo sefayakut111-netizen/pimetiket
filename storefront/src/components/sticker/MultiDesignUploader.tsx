@@ -18,15 +18,29 @@
  * State parent component'ten geliyor (controlled).
  */
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Icon } from "@/components/Icon";
 import { Modal } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  generatePreview,
+  detectKind,
+  type DesignFileKind,
+} from "@/lib/design-preview";
 
 export interface PendingDesign {
   id: string;
   file: File;
+  /** Orijinal dosya blob URL (yine de tutarız — lightbox/download için) */
   previewUrl: string;
+  /** Sefa 20 May v68: Render edilmiş preview (PDF/AI/PSD için PNG dataURL/blob URL).
+   *  Native image (PNG/JPG/SVG/WebP) için previewUrl ile aynı.
+   *  null ise render başarısız → fallback logo gösterilir. */
+  generatedPreviewUrl: string | null;
+  /** Tanımlanan dosya tipi — fallback logo seçimi için */
+  kind: DesignFileKind;
+  /** Preview render durumu */
+  previewStatus: "pending" | "ready" | "failed";
   name: string;
   sizeBytes: number;
   mimeType: string;
@@ -47,10 +61,18 @@ interface Props {
   productLabel?: string;
 }
 
-// Sefa 18 May v54: Tüm uploader'lar standart kural —
-// 50 dosya × 30 MB her biri, PDF/PNG/AI/PSD/EPS.
+// Sefa 18 May v54 + 20 May v68: PDF/PNG/JPG/AI/PSD/EPS — JPG eklendi
+// (kullanıcı sıkça yüklüyor, fotoğraf bazlı tasarım).
 // AI/PSD/EPS için tarayıcı MIME döndürmez → uzantı kontrolü baz alınır.
-const ALLOWED_EXTENSIONS = [".pdf", ".png", ".ai", ".psd", ".eps"] as const;
+const ALLOWED_EXTENSIONS = [
+  ".pdf",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".ai",
+  ".psd",
+  ".eps",
+] as const;
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
 
 function getExt(name: string): string {
@@ -63,8 +85,30 @@ function isAcceptedFile(file: File): boolean {
   return (ALLOWED_EXTENSIONS as readonly string[]).includes(ext);
 }
 
-function isImage(mime: string): boolean {
-  return mime === "image/png";
+/**
+ * Fallback logo — preview üretilemediği dosya tipleri için (EPS, başarısız
+ * AI render, vb.). Native image değilse her zaman fallback'e de hazırız —
+ * ama generatedPreviewUrl varsa onu öncelikli kullanırız.
+ */
+function FormatBadge({ kind }: { kind: DesignFileKind }) {
+  const config = {
+    pdf: { bg: "#E33", text: "PDF", color: "#fff" },
+    ai: { bg: "#330000", text: "Ai", color: "#FF9A00" },
+    psd: { bg: "#001E36", text: "Ps", color: "#31A8FF" },
+    eps: { bg: "#5A5A5A", text: "EPS", color: "#fff" },
+    image: { bg: "#888", text: "IMG", color: "#fff" },
+    unknown: { bg: "#999", text: "?", color: "#fff" },
+  }[kind];
+  return (
+    <div
+      className="w-full h-full flex flex-col items-center justify-center rounded"
+      style={{ background: config.bg, color: config.color }}
+    >
+      <div className="font-bold text-[28px] leading-none tracking-tight">
+        {config.text}
+      </div>
+    </div>
+  );
 }
 
 export function MultiDesignUploader({
@@ -79,6 +123,12 @@ export function MultiDesignUploader({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [lightbox, setLightbox] = useState<PendingDesign | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Sefa 20 May v68: Async preview render sırasında designs state stale
+  // kalabilir (kullanıcı yeni dosya eklerse). Latest snapshot için ref.
+  const designsRef = useRef<PendingDesign[]>(designs);
+  useEffect(() => {
+    designsRef.current = designs;
+  }, [designs]);
   // Sefa 18 May v67: 'tasarım kısmında adet yazmasın, kullanıcı yazsın'
   // designCount input ilk başta boş gözüksün → touched mantığı
   const [designCountTouched, setDesignCountTouched] = useState(false);
@@ -104,7 +154,7 @@ export function MultiDesignUploader({
     for (const file of arr.slice(0, remaining)) {
       if (!isAcceptedFile(file)) {
         setError(
-          `${file.name}: Sadece PDF, PNG, AI, PSD, EPS dosyaları kabul ediliyor.`
+          `${file.name}: Sadece PDF, PNG, JPG, AI, PSD, EPS dosyaları kabul ediliyor.`
         );
         continue;
       }
@@ -127,18 +177,67 @@ export function MultiDesignUploader({
         typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : Math.random().toString(36).slice(2);
+      const kind = detectKind(file);
       accepted.push({
         id: uid,
         file,
         previewUrl,
+        // Native image (PNG/JPG/SVG/WebP) için preview = orijinal blob URL
+        // (zaten render edilir). PDF/AI/PSD için async render bekliyor → null,
+        // sonra setDesigns ile güncellenir.
+        generatedPreviewUrl: kind === "image" ? previewUrl : null,
+        kind,
+        previewStatus: kind === "image" ? "ready" : "pending",
         name: file.name,
         sizeBytes: file.size,
         mimeType: file.type,
       });
     }
     if (accepted.length > 0) {
-      onDesignsChange([...designs, ...accepted]);
+      const merged = [...designs, ...accepted];
+      onDesignsChange(merged);
+
+      // Sefa 20 May v68: Async preview generation — non-blocking.
+      // Her PDF/AI/PSD için arka planda render başlat; sonuç hazır olunca
+      // designs state'i güncelle (parent setDesigns callback). EPS/unknown
+      // direkt failed → fallback badge.
+      const needsRender = accepted.filter(
+        (d) => d.previewStatus === "pending"
+      );
+      void Promise.allSettled(
+        needsRender.map(async (d) => {
+          const result = await generatePreview(d.file);
+          // Latest designs state'i parent'tan yeniden almak için snapshot al
+          // değil — burada onDesignsChange ile mevcut listeyi güncelliyoruz.
+          // Race condition: kullanıcı arada bir tasarımı silebilir → o
+          // durumda d.id artık listede yok, güncelleme no-op.
+          updateDesignPreview(d.id, result.blob, result.ok);
+        })
+      );
     }
+  };
+
+  // Preview render sonucu state'i güncelle — latest snapshot via ref
+  // (async race condition için, yukarıda useEffect ile sync ediliyor)
+  const updateDesignPreview = (
+    id: string,
+    previewBlob: Blob | null,
+    ok: boolean
+  ) => {
+    const latest = designsRef.current;
+    onDesignsChange(
+      latest.map((d) => {
+        if (d.id !== id) return d;
+        const url = previewBlob ? URL.createObjectURL(previewBlob) : null;
+        return {
+          ...d,
+          generatedPreviewUrl: url,
+          previewStatus: ok
+            ? ("ready" as const)
+            : ("failed" as const),
+        };
+      })
+    );
   };
 
   const removeDesign = (id: string) => {
@@ -277,18 +376,21 @@ export function MultiDesignUploader({
                 className="w-full h-full rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan bg-white"
                 aria-label={`${d.name} önizle`}
               >
-                {isImage(d.mimeType) ? (
+                {d.previewStatus === "pending" ? (
+                  // Render bekliyor — küçük spinner
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gri-50 text-gri-500">
+                    <div className="w-5 h-5 border-2 border-pim-mercan border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[9px] mt-1 uppercase">Render</span>
+                  </div>
+                ) : d.generatedPreviewUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    src={d.previewUrl}
+                    src={d.generatedPreviewUrl}
                     alt={d.name}
                     className="w-full h-full object-contain"
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gri-500 p-1">
-                    <span className="text-[28px] leading-none mb-0.5">📄</span>
-                    <span className="text-[10px] uppercase">PDF</span>
-                  </div>
+                  <FormatBadge kind={d.kind} />
                 )}
               </button>
               <button
@@ -322,7 +424,7 @@ export function MultiDesignUploader({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
+          accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.eps,application/pdf,image/png,image/jpeg,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -351,7 +453,7 @@ export function MultiDesignUploader({
             sayaç 0/{designCount} ile çelişiyordu (designCount=1 iken "50"
             karışıklık yaratıyordu). Limit sayacı sayaç bölümünde dinamik. */}
         <p className="text-[11.5px] text-gri-700 mt-2 leading-relaxed">
-          <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong>
+          <strong className="text-lacivert">PDF · PNG · JPG · AI · PSD · EPS</strong>
           {" · "}max 30 MB/dosya
         </p>
         {/* Sefa 20 May v68: "💡 Tasarımları şimdi yüklemek zorunda
@@ -369,18 +471,27 @@ export function MultiDesignUploader({
           maxWidthClassName="max-w-[840px]"
         >
           <div className="aspect-[16/10] bg-gri-100 rounded-lg overflow-hidden flex items-center justify-center">
-            {isImage(lightbox.mimeType) ? (
+            {lightbox.previewStatus === "pending" ? (
+              <div className="text-center text-gri-700">
+                <div className="w-10 h-10 border-3 border-pim-mercan border-t-transparent rounded-full animate-spin mx-auto" />
+                <div className="mt-3 text-[13px]">Preview üretiliyor…</div>
+              </div>
+            ) : lightbox.generatedPreviewUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={lightbox.previewUrl}
+                src={lightbox.generatedPreviewUrl}
                 alt={lightbox.name}
                 className="w-full h-full object-contain"
               />
             ) : (
               <div className="text-center text-gri-700">
-                <div className="text-[64px]">📄</div>
-                <div className="mt-2 text-[13px]">
-                  PDF önizlemesi konfigüratörde yok.
+                <div className="w-24 h-24 mx-auto">
+                  <FormatBadge kind={lightbox.kind} />
+                </div>
+                <div className="mt-3 text-[13px]">
+                  {lightbox.kind === "eps"
+                    ? "EPS önizlemesi konfigüratörde yok."
+                    : "Önizleme üretilemedi (dosya korumalı veya bozuk olabilir)."}
                   <br />
                   Sipariş detayında tam görüntü.
                 </div>

@@ -1102,8 +1102,15 @@ function EtiketPage() {
       // PendingDesign local-only (Supabase tempId yok) — "local-{id}" formatında.
       // Sipariş sonrası detay sayfasında gerçek upload yapılır (sticker pattern).
       designTempId: primary ? `local-${primary.id}` : undefined,
-      designPreviewUrl: primary?.previewUrl,
+      // Sefa 20 May v68 Migration 072: Sepette gerçek tasarım önizlemesi.
+      // generatedPreviewUrl render edilmiş PNG (PDF/AI/PSD için pdfjs/ag-psd
+      // ile üretildi, native image için orijinal blob URL). null ise sepet UI
+      // fallback logo gösterir (PDF/AI/PSD rozeti).
+      designPreviewUrl:
+        primary?.generatedPreviewUrl ??
+        (primary?.kind === "image" ? primary?.previewUrl : undefined),
       designFileName: primary?.name,
+      designMimeType: primary?.mimeType,
       // Multi-design metadata (Sefa 15 May v6): designCount + tüm dosyalar
       // (primary dahil, sticker pattern'ine paralel).
       designCount: designCount > 1 ? designCount : undefined,

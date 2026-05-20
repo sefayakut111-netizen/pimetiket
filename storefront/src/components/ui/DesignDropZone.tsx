@@ -32,7 +32,14 @@ import {
 
 export interface DesignTempState {
   tempId: string;
+  /** Orijinal dosya signed URL (raw PDF/AI/PSD bile dahil) — sipariş aşamasında
+   *  ham dosya gerekiyor (kesim, baskı). Tarayıcı bunu önizleyemez. */
   previewUrl: string;
+  /** Sefa 20 May v68 Migration 072: Render edilmiş PNG preview URL —
+   *  Supabase Storage public bucket (design-previews). PDF/AI/PSD için pdfjs
+   *  ve ag-psd ile client-side üretilir, sepette gerçek tasarımı gösterir.
+   *  null ise render başarısız → sepet UI fallback logo gösterir. */
+  generatedPreviewUrl?: string;
   fileName: string;
   sizeBytes: number;
   mimeType: string;
@@ -78,13 +85,13 @@ export function DesignDropZone({
       );
       return;
     }
-    // Sefa 18 May v54: PDF/PNG/AI/PSD/EPS. AI/PSD/EPS bazı tarayıcılarda
-    // boş mime döndürür → uzantı kontrolü fallback.
+    // Sefa 18 May v54 + 20 May v68: PDF/PNG/JPG/AI/PSD/EPS. AI/PSD/EPS bazı
+    // tarayıcılarda boş mime döndürür → uzantı kontrolü fallback.
     if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
       const ext = file.name.split(".").pop()?.toLowerCase();
-      if (!ext || !["pdf", "png", "ai", "psd", "eps"].includes(ext)) {
+      if (!ext || !["pdf", "png", "jpg", "jpeg", "ai", "psd", "eps"].includes(ext)) {
         toast.error(
-          `Desteklenmeyen format: PDF, PNG, AI, PSD, EPS kabul edilir.`
+          `Desteklenmeyen format: PDF, PNG, JPG, AI, PSD, EPS kabul edilir.`
         );
         return;
       }
@@ -163,9 +170,40 @@ export function DesignDropZone({
       };
       setProgress(100);
 
+      // Sefa 20 May v68 Migration 072: Client-side preview generation
+      // (PDF/AI → pdfjs, PSD → ag-psd, native image → orijinal blob).
+      // Üretilen PNG design-previews bucket'a public yüklenir, sepet UI'da
+      // <img src> ile gösterilir. Başarısızsa generatedPreviewUrl undefined
+      // kalır, sepet fallback logo (PDF/AI/PSD rozeti) gösterir.
+      let generatedPreviewUrl: string | undefined;
+      try {
+        const { generatePreview, uploadPreviewToStorage } = await import(
+          "@/lib/design-preview"
+        );
+        const result = await generatePreview(file);
+        if (result.ok && result.blob) {
+          // Auth zaten gerekli (yukarıda check edildi)
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const url = await uploadPreviewToStorage(
+              result.blob,
+              comp.tempId,
+              user.id
+            );
+            if (url) generatedPreviewUrl = url;
+          }
+        }
+      } catch (err) {
+        // Preview render başarısız — sessizce devam (fallback logo gösterilir)
+        console.warn("[design-dropzone] preview generation failed:", err);
+      }
+
       onChange({
         tempId: comp.tempId,
         previewUrl: comp.previewUrl ?? "",
+        generatedPreviewUrl,
         fileName: file.name,
         sizeBytes: file.size,
         mimeType: file.type,
@@ -269,7 +307,7 @@ export function DesignDropZone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
+          accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.eps,application/pdf,image/png,image/jpeg,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
           onChange={onInputChange}
           disabled={uploading}
         />
@@ -334,7 +372,7 @@ export function DesignDropZone({
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.png,.ai,.psd,.eps,application/pdf,image/png,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
+        accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.eps,application/pdf,image/png,image/jpeg,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
         onChange={onInputChange}
         disabled={uploading}
       />

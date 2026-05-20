@@ -1464,8 +1464,20 @@ function StickerPage() {
                   finish,
                   hediyeAdet: overrunCount * designCount,
                   designTempId: design?.tempId,
-                  designPreviewUrl: design?.previewUrl,
-                  designFileName: design?.fileName,
+                  // Sefa 20 May v68 Migration 072: Sepette gerçek tasarım
+                  // önizlemesi göster. Öncelik:
+                  //   1. Primary design'ın render edilmiş preview URL'i
+                  //   2. designs[0] (MultiDesignUploader) generatedPreviewUrl
+                  //   3. designs[0] orijinal blob URL (native image için)
+                  //   4. null → sepet UI fallback logo (PDF/AI/PSD rozeti)
+                  designPreviewUrl:
+                    design?.generatedPreviewUrl ??
+                    designs[0]?.generatedPreviewUrl ??
+                    (designs[0]?.kind === "image"
+                      ? designs[0]?.previewUrl
+                      : undefined),
+                  designFileName: design?.fileName ?? designs[0]?.name,
+                  designMimeType: design?.mimeType ?? designs[0]?.mimeType,
                   // Multi-design metadata (Sefa 15 May v5):
                   // Sticker'da PendingDesign local-only (Supabase upload yok)
                   // — sadece designCount metadata gönder + sipariş sonrası

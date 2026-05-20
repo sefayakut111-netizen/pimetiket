@@ -70,10 +70,14 @@ export interface CustomerCartItem {
   // Pre-purchase tasarım — sepete eklemeden önce yüklenmiş tasarım dosyası
   // (design_temp_uploads.id). Ödeme sonrası design_files'a promote edilir.
   designTempId?: string;
-  /** Mockup için signed URL — guest mode'da blob, auth'da Supabase 1h URL */
+  /** Render edilmiş preview PNG URL — Supabase Storage (auth) veya blob URL (guest).
+   *  Sefa 20 May v68 Migration 072: PDF/AI → pdfjs, PSD → ag-psd, PNG/JPG → orijinal.
+   *  null/undefined ise sepet UI fallback logo gösterir (PDF/AI/PSD/EPS rozeti). */
   designPreviewUrl?: string;
   /** Tasarım dosya adı — sepet kartında "marka-logo.pdf" göstermek için */
   designFileName?: string;
+  /** Orijinal dosya MIME — preview yoksa hangi logo gösterileceğini belirler */
+  designMimeType?: string;
 
   // Multi-design metadata (Sefa kuralı 15 May v4):
   // Kullanıcı 1 sipariş için N farklı tasarım yükleyebilir (max 50).
@@ -199,6 +203,10 @@ interface DbRow {
   // Migration 038 (Sefa 15 May v5): multi-design metadata
   design_count: number | null;
   additional_designs: unknown | null; // jsonb array
+  // Migration 072 (Sefa 20 May v68): design preview
+  design_preview_url: string | null;
+  design_file_name: string | null;
+  design_mime_type: string | null;
   added_at: string;
 }
 
@@ -231,6 +239,10 @@ function rowToItem(r: DbRow): CustomerCartItem {
       r.additional_designs.length > 0
         ? (r.additional_designs as CustomerCartItem["additionalDesigns"])
         : undefined,
+    // Migration 072 (Sefa 20 May v68): design preview
+    designPreviewUrl: r.design_preview_url ?? undefined,
+    designFileName: r.design_file_name ?? undefined,
+    designMimeType: r.design_mime_type ?? undefined,
     addedAt: new Date(r.added_at).getTime(),
   };
 }
@@ -269,14 +281,17 @@ function itemToInsert(
       it.designTempId && !it.designTempId.startsWith("local-")
         ? it.designTempId
         : null,
-    // Migration 038 multi-design metadata (Sefa 15 May v5).
+    // Migration 038 multi-design metadata (Sefa 15 May v5) +
+    // Migration 072 design preview (Sefa 20 May v68).
     // Database types henüz regenerate edilmediği için extra alanlar
     // CartInsert tipinin dışında — extra field cast ile geçirilir.
-    // Sefa migration 038'i push edip `supabase gen types` çalıştırınca
-    // cast kalkar.
+    // Sefa migration sonrası `supabase gen types` çalıştırınca cast kalkar.
     ...({
       design_count: it.designCount ?? null,
       additional_designs: it.additionalDesigns ?? null,
+      design_preview_url: it.designPreviewUrl ?? null,
+      design_file_name: it.designFileName ?? null,
+      design_mime_type: it.designMimeType ?? null,
     } as Partial<CartInsert>),
   };
 }

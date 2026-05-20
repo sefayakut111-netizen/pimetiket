@@ -13,8 +13,9 @@
  * Validation (server-side, Sefa kuralı 18 May v54):
  *   - max size: 30 MB / dosya
  *   - max count: 50 dosya / sipariş (MultiDesignDropZone tarafında)
- *   - allowed format: PDF, PNG, AI, PSD, EPS
- *   - JPEG ve SVG kaldırıldı (Sefa kararı v54 — sade liste).
+ *   - allowed format: PDF, PNG, JPG, AI, PSD, EPS
+ *   - SVG kaldırıldı (Sefa kararı v54 — sade liste).
+ *   - JPG geri eklendi (Sefa 20 May v68 — kullanıcı sıkça yüklüyor).
  *   - magic-byte check (mime spoofing'e karşı, AI ön-kontrol esnasında)
  */
 
@@ -24,12 +25,15 @@ export const ALLOWED_MIME_TYPES = [
   "application/postscript", // EPS + AI (Adobe AI dosyalarını da bazen tetikler)
   "image/vnd.adobe.photoshop",
   "image/png",
+  "image/jpeg", // Sefa 20 May v68: kullanıcı sıkça yüklüyor (fotoğraf tasarım)
 ] as const;
 
 /** Tarayıcı .ai/.psd/.eps için MIME döndürmediği durumda uzantı bazlı kontrol */
 export const ALLOWED_EXTENSIONS = [
   ".pdf",
   ".png",
+  ".jpg",
+  ".jpeg",
   ".ai",
   ".psd",
   ".eps",
@@ -65,6 +69,8 @@ export function getExtensionFromMime(mime: string): string {
       return "psd";
     case "image/png":
       return "png";
+    case "image/jpeg":
+      return "jpg";
     default:
       return "bin";
   }
