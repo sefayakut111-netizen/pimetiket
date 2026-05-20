@@ -1128,16 +1128,21 @@ function StickerPage() {
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
             >
-              {/* Sefa 20 May v68: köşe seçici Step 2'den buraya taşındı.
-                  Sadece kare/dikdörtgen/bumper için. */}
+              {/* Sefa 20 May v68 (test geri bildirim): Köşe seçeneği — eski
+                  L-ikon kart formatı geri getirildi (etiket ile paralel,
+                  commit 2aa0c83 pattern). Pill chip → 2 büyük kart yan yana. */}
               {supportsCornerStyle(shape) && (
                 <div className="mb-4">
-                  <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
-                    {t.sticker.cornerTitle}
+                  <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-lacivert mb-2">
+                    {locale === "en" ? "Corner option" : "Köşe seçeneği"}
                   </div>
-                  <div className="inline-flex rounded-full bg-gri-100 p-1 ring-1 ring-gri-200">
+                  <div className="grid grid-cols-2 gap-3">
                     {(["sharp", "soft"] as const).map((opt) => {
-                      const active = opt === "soft" ? softCorners : !softCorners;
+                      const active =
+                        opt === "soft" ? softCorners : !softCorners;
+                      const stroke = active
+                        ? "var(--color-pim-mercan)"
+                        : "var(--color-lacivert)";
                       return (
                         <button
                           key={opt}
@@ -1145,25 +1150,64 @@ function StickerPage() {
                           onClick={() => setSoftCorners(opt === "soft")}
                           aria-pressed={active}
                           className={cn(
-                            "px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all inline-flex items-center gap-1.5",
+                            "p-4 rounded-xl ring-[1.5px] text-left transition-all flex items-center gap-3",
                             active
-                              ? "bg-white text-pim-mercan shadow-sm ring-1 ring-pim-mercan"
-                              : "text-gri-700 hover:text-lacivert"
+                              ? "ring-pim-mercan bg-pim-mercan-tint/40 shadow-1"
+                              : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
                           )}
                         >
-                          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-                            <rect
-                              x="2"
-                              y="2"
-                              width="10"
-                              height="10"
-                              rx={opt === "soft" ? 3 : 0.5}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                            />
+                          {/* L köşe ikonu — düz vs yumuşatılmış */}
+                          <svg
+                            width="32"
+                            height="32"
+                            viewBox="0 0 32 32"
+                            aria-hidden="true"
+                            className="shrink-0"
+                          >
+                            {opt === "sharp" ? (
+                              <path
+                                d="M 4 28 L 4 4 L 28 4"
+                                fill="none"
+                                stroke={stroke}
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                              />
+                            ) : (
+                              <path
+                                d="M 4 28 L 4 12 Q 4 4 12 4 L 28 4"
+                                fill="none"
+                                stroke={stroke}
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            )}
                           </svg>
-                          {opt === "soft" ? "Yumuşak" : "Düz"}
+                          <div className="min-w-0">
+                            <div
+                              className={cn(
+                                "font-bold text-[14px] leading-tight",
+                                active ? "text-pim-mercan" : "text-lacivert"
+                              )}
+                            >
+                              {locale === "en"
+                                ? opt === "sharp"
+                                  ? "Sharp corner"
+                                  : "Rounded corner"
+                                : opt === "sharp"
+                                  ? "Düz köşe"
+                                  : "Yumuşatılmış köşe"}
+                            </div>
+                            <div className="text-[12px] text-gri-700 leading-tight mt-0.5">
+                              {locale === "en"
+                                ? opt === "sharp"
+                                  ? "Crisp corner"
+                                  : "Soft rounded corner"
+                                : opt === "sharp"
+                                  ? "Keskin köşe"
+                                  : "Yuvarlatılmış köşe"}
+                            </div>
+                          </div>
                         </button>
                       );
                     })}
