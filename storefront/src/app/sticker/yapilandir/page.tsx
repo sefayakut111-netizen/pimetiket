@@ -88,7 +88,8 @@ import { gridColsForCount } from "@/lib/grid-cols";
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
-import { addToCustomerCart } from "@/lib/customer-cart";
+import { addToCustomerCart, removeFromCustomerCart } from "@/lib/customer-cart";
+import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
 
 // ============================================================
 // Configuration data
@@ -477,9 +478,34 @@ function StickerPage() {
     else if (corner === "sharp") setSoftCorners(false);
   }, [searchParams]);
 
+  // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? localStorage'daki
+  // intent'i oku, state'leri en son ayarlarla restore et, intent'i temizle.
+  // Sadece mount'ta bir kez çalışır.
+  useEffect(() => {
+    const intent = loadEditIntent();
+    if (!intent || intent.item.product !== "sticker") return;
+    const it = intent.item;
+    if (it.material) setMaterial(it.material);
+    if (it.finish) setFinish(it.finish);
+    if (it.width) setWidth(it.width);
+    if (it.height) setHeight(it.height);
+    if (it.softCorners !== undefined) setSoftCorners(it.softCorners);
+    // qty = tier × designCount → tier = qty / designCount
+    const designCnt = it.designCount ?? 1;
+    setTier(Math.max(25, Math.round(it.qty / designCnt)));
+    if (designCnt > 1) setDesignCount(designCnt);
+    setEditingItemId(intent.editingItemId);
+    clearEditIntent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Müşteri serbest qty seçer — 25'er artış, 25-1000 aralık.
   // findTier en yakın STICKER_TIERS multiplier'ını otomatik uygular.
   const [tier, setTier] = useState<number>(250);
+
+  // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? editingItemId
+  // varsa "Sepete Ekle" sonrası eskiyi siler (replace pattern).
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   // Sefa 20 May v68: bumper sticker varsayılan 280×80mm (klasik tampon),
   // diğerleri 75×75. URL ?shape=... ve useEffect ile sync.
   const initialDims =
@@ -1498,6 +1524,13 @@ function StickerPage() {
                 if (!result.ok) {
                   toast.error(result.reason);
                   return;
+                }
+                // Sefa 20 May v68 test #3: Düzenle akışı — yeni item eklendi,
+                // eski item'ı sepetten sil (replace pattern). editingItemId
+                // null'a çek ki tekrar submit'te yeniden silmesin.
+                if (editingItemId) {
+                  await removeFromCustomerCart(editingItemId);
+                  setEditingItemId(null);
                 }
                 // Sefa 18 May v60-v61: toast yerine modal popup; locale-aware
                 const summary =

@@ -126,8 +126,9 @@ export function DesignThumb({
     );
   }
 
-  // Fallback — ürün ikonu (hiç dosya yüklenmemiş veya tanınmayan format)
-  const iconSize = size === "sm" ? 22 : 28;
+  // Fallback — ürün ikonu (Sefa 20 May v68 test #4: tasarım yoksa ürün
+  // ikonu görünmeli — vurgulu boyutta). iconSize sm=28, md=44 büyütüldü.
+  const iconSize = size === "sm" ? 28 : 44;
   return (
     <div
       className={`grid place-items-center ${sizeClass} rounded-lg shrink-0 overflow-hidden ${

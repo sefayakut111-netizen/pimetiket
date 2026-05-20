@@ -182,7 +182,7 @@ export const en: TranslationDict = {
     empty: "Your cart is empty",
     emptyDesc:
       "Start configuring a label or sticker — your cart will show up here.",
-    itemsInCart: (n) => `${n} items in cart`,
+    itemsInCart: (n) => `${n} Items in Cart`,
     subtotal: "Subtotal",
     shipping: "Shipping",
     free: "Free 🎉",

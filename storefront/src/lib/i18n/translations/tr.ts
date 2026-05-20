@@ -181,7 +181,7 @@ export const tr: TranslationDict = {
     empty: "Sepetin boş",
     emptyDesc:
       "Etiket veya sticker konfigüre etmeye başla — sepetin burada görünecek.",
-    itemsInCart: (n) => `${n} ürün sepetinde`,
+    itemsInCart: (n) => `${n} Ürün Sepetinde`,
     subtotal: "Ara toplam",
     shipping: "Kargo",
     free: "Ücretsiz 🎉",

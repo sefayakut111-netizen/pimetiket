@@ -28,6 +28,8 @@ import {
   FREE_SHIPPING_THRESHOLD,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
+import { setEditIntent } from "@/lib/cart-edit-intent";
+import { useRouter } from "next/navigation";
 import {
   STICKER_MIN_QTY,
   STICKER_QTY_STEP,
@@ -72,8 +74,9 @@ const EXTRA = {
       sticker: "3-5 iş günü",
       etiket: "5-7 iş günü",
     } as Record<"sticker" | "etiket", string>,
+    // Sefa 20 May v68 (test geri bildirim #9): metin onay tarihi vurgusu
     deliveryNote:
-      "Tasarımı zamanında yüklersen kargo bu süre içinde elinde.",
+      "Tasarım onay tarihiniz baz alınarak güncelleme yapılacaktır.",
     shippingFreeFull: (curr: string, threshold: string) =>
       `Kargo bedava (${curr}/${threshold} ₺)`,
     mobileCheckoutTotal: "Toplam",
@@ -119,9 +122,12 @@ const EXTRA = {
 const VAT_RATE = 0.2;
 
 /**
- * Config string'ini chip'lere böl + "Özelleştirme yok" gibi gürültüleri filtrele.
- * "Özel kesim · 15×40mm · 1.000 adet · Özelleştirme yok · Sarım 1" → 4 chip
- * (Sefa-4 + Sefa-4 son).
+ * Config string'ini chip'lere böl + gürültüleri filtrele.
+ *
+ * Sefa 20 May v68 (test geri bildirim #6): Sarım yönü, göbek çapı ve
+ * rulodaki adet bilgisi fiyata etken DEĞİL, sadece üretim teknik bilgisi.
+ * Sepette gösterilmesin — kullanıcı sadece fiyatlandırma kalemlerini görsün.
+ * Bu bilgiler sipariş detayında ve üretim partnerinde tam görünür.
  */
 function parseConfigChips(config: string): string[] {
   return config
@@ -129,14 +135,29 @@ function parseConfigChips(config: string): string[] {
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
     // "Özelleştirme yok" negatif bilgi — gürültü, gizle
-    .filter((s) => !/özelleştirme\s*yok/i.test(s));
+    .filter((s) => !/özelleştirme\s*yok/i.test(s))
+    // Sefa 20 May v68 #6: Sarım/Göbek/rulodaki adet fiyata etken değil
+    .filter((s) => !/^sarım\s/i.test(s))
+    .filter((s) => !/göbek/i.test(s))
+    .filter((s) => !/adet\/rulo/i.test(s));
 }
 
 export default function SepetPage() {
   const toast = useToast();
+  const router = useRouter();
   const { t, locale } = useT();
   const x = locale === "en" ? EXTRA.en : EXTRA.tr;
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
+
+  // Sefa 20 May v68 test #3: Düzenle pattern — item snapshot localStorage'a
+  // yaz, konfigüratöre yönlendir. Konfigüratör mount'ta loadEditIntent ile
+  // state'i geri yükler.
+  const handleEdit = (item: CustomerCartItem) => {
+    setEditIntent(item);
+    const target =
+      item.product === "etiket" ? "/etiket/yapilandir" : "/sticker/yapilandir";
+    router.push(target);
+  };
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   // Sefa 18 May v68 Migration 053: min/max sipariş tutarı limit
@@ -293,37 +314,8 @@ export default function SepetPage() {
           </div>
         </div>
 
-        {/* Sefa 20 May v68 UX paket B Madde #10: "Nasıl çalışır" info-box —
-            ödeme sonrası tasarım yükleme akışını sürpriz olmasın diye sepetin
-            üstünde net göster. 4 adım inline, mobile'da 2x2 grid. */}
-        <Card padding="p-4 sm:p-5" className="mb-5 bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/20">
-          <div className="flex items-start gap-3">
-            <div className="text-[20px] shrink-0" aria-hidden="true">💡</div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[14px] text-lacivert mb-2.5">
-                {x.howItWorksTitle}
-              </div>
-              <ol className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                {x.steps.map((step, i) => (
-                  <li
-                    key={step.n}
-                    className="flex items-start gap-2 text-[12.5px] leading-snug"
-                  >
-                    <span className="shrink-0 inline-grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] font-bold tabular-nums">
-                      {step.n}
-                    </span>
-                    <span className="text-gri-700">
-                      {step.label}
-                      {i < x.steps.length - 1 && (
-                        <span className="hidden md:inline ml-1.5 text-gri-500" aria-hidden="true">→</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </Card>
+        {/* Sefa 20 May v68 (test geri bildirim #2): "Nasıl çalışır" info-box
+            kaldırıldı — sepette gereksiz alan kaplıyordu. */}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
           {/* CART ITEMS */}
@@ -416,28 +408,30 @@ export default function SepetPage() {
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end justify-between min-h-[80px]">
                     <div>
-                      {/* Sefa-3: Toplam — büyük + altta "Birim × Adet" hesap */}
+                      {/* Sefa-3 + 20 May test #5: Toplam büyük + altta
+                          "X ₺ × Y adet" net birimli hesap (önceden "3,64 × 100"
+                          → "3,64 ₺ × 100 adet"). */}
                       <div className="text-xl font-bold tabular-nums">
                         {fmt(item.total)} {x.currency}
                       </div>
                       <div className="text-[10.5px] text-gri-500 tabular-nums">
-                        {x.decimal(item.unit)} × {fmt(item.qty)}
+                        {x.decimal(item.unit)} {x.currency} × {fmt(item.qty)} adet
                       </div>
                     </div>
                     <div className="flex items-center gap-1 mt-2">
-                      {/* Sefa-11: Düzenle butonu — ürün kartında, konfigüratöre yönlendirir */}
-                      <Link
-                        href={
-                          item.product === "etiket"
-                            ? "/etiket/yapilandir"
-                            : "/sticker/yapilandir"
-                        }
+                      {/* Sefa-11 + 20 May test #3: Düzenle butonu — item
+                          snapshot localStorage'a yazılıp konfigüratöre yönlendirir.
+                          Konfigüratör mount'ta loadEditIntent ile state'i geri
+                          yükler, "Sepete Ekle" eskiyi sil + yeniyi ekle (replace). */}
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
                         aria-label={`${item.title} düzenle`}
                         className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-pim-mercan hover:bg-pim-mercan/5 font-semibold transition-colors"
                       >
                         <Icon.Edit size={13} />
                         {x.editLink}
-                      </Link>
+                      </button>
                       <button
                         type="button"
                         onClick={() => remove(item)}
@@ -630,22 +624,45 @@ export default function SepetPage() {
                 </div>
               </div>
 
-              {/* Sefa-6: Trust rozetleri — SSL + PayTR + iade politika */}
-              <div className="mt-3 pt-3 border-t border-gri-200">
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] text-gri-700">
-                  <span className="inline-flex items-center gap-1">
-                    <Icon.Shield size={13} className="text-yesil" />
+              {/* Sefa-6 + 20 May test #7/#8: Trust rozetleri — ödeme
+                  sayfasındaki yeşil rounded rozet + PayTR logo pattern'i.
+                  "36 saat iade garantisi" linki kaldırıldı. */}
+              <div className="mt-4 pt-3 border-t border-gri-200">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-yesil-soft text-yesil text-[12.5px] font-semibold">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
                     SSL
                   </span>
-                  <span className="text-gri-300" aria-hidden="true">·</span>
-                  <span className="font-semibold tracking-tight">PayTR</span>
-                  <span className="text-gri-300" aria-hidden="true">·</span>
-                  <Link
-                    href="/sss"
-                    className="hover:text-pim-mercan hover:underline"
+                  <span
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-gri-100 ring-1 ring-gri-200"
+                    aria-label="PayTR ile güvenli ödeme"
+                    title="PayTR ile güvenli ödeme"
                   >
-                    36 saat iade garantisi
-                  </Link>
+                    <span className="text-[11px] font-semibold text-gri-700 uppercase tracking-[0.04em]">
+                      Ödeme altyapısı
+                    </span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/logos/paytr/paytr-color.svg"
+                      alt="PayTR"
+                      width="52"
+                      height="14"
+                      style={{ height: "14px", width: "auto" }}
+                    />
+                  </span>
                 </div>
               </div>
             </Card>
