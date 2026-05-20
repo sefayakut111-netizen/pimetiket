@@ -427,11 +427,20 @@ const FORM_FACTORS: {
 // Sefa 17 May v40: Etiket türü FormSection olarak eklendi (id=step-0,
 // stepper'da ADIM 1). Mevcut step-1..step-8 DOM id'leri korundu, UI
 // numaraları otomatik +1 kaydı (uiStepNumber idx + 1 → step-0 için 1).
-// Sefa 20 May v68 (Aşama B+): SHOW_ETIKET_FORM_FACTOR_PICKER=false ise
-// Step 0 çıkarılır → ADIM numaraları "Malzeme"den başlar.
-const STEP_IDS_FULL: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
-  ? [0, 1, 2, 3, 4, 5, 6, 7, 8]
-  : [1, 2, 3, 4, 5, 6, 7, 8];
+// Sefa 20 May v68 (Aşama B+/sequential lock fix):
+//   - SHOW_ETIKET_FORM_FACTOR_PICKER=false → Step 0 çıkar
+//   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → Step 3 çıkar (gizli, ASLA
+//     touched olmaz, sequential lock sonraki step'leri ASLA açmaz idi).
+//   Stepper ve useSequentialSteps gizli step'leri görmemeli.
+const STEP_IDS_FULL: readonly number[] = (() => {
+  const ids: number[] = [];
+  if (SHOW_ETIKET_FORM_FACTOR_PICKER) ids.push(0);
+  ids.push(1, 2);
+  if (SHOW_ETIKET_CUSTOMIZATION_STEP) ids.push(3);
+  ids.push(4, 5, 6, 7, 8);
+  return ids;
+})();
+// Tabaka modu zaten customization step yok (mevcut davranış korundu).
 const STEP_IDS_TABAKA: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
   ? [0, 1, 2, 6, 7, 8]
   : [1, 2, 6, 7, 8];
@@ -780,30 +789,24 @@ function EtiketPage() {
 
   // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
   // Sefa 16 May denetim #1: i18n — labels artık t.etiket.step*'ten geliyor.
-  // Sefa 20 May v68 (Aşama B+): SHOW_ETIKET_FORM_FACTOR_PICKER=false ise
-  // stepFormFactor (Etiket türü) etiketi çıkarılır → labels Malzeme'den başlar.
-  const STEP_LABELS_FULL_I18N: readonly string[] = SHOW_ETIKET_FORM_FACTOR_PICKER
-    ? [
-        t.etiket.stepFormFactor,
-        t.etiket.stepMaterial,
-        t.etiket.stepCoating,
-        t.etiket.stepFeature,
-        t.etiket.stepWinding,
-        t.etiket.stepWindingDetail,
-        t.etiket.stepSize,
-        t.etiket.stepDesign,
-        t.etiket.stepQty,
-      ]
-    : [
-        t.etiket.stepMaterial,
-        t.etiket.stepCoating,
-        t.etiket.stepFeature,
-        t.etiket.stepWinding,
-        t.etiket.stepWindingDetail,
-        t.etiket.stepSize,
-        t.etiket.stepDesign,
-        t.etiket.stepQty,
-      ];
+  // Sefa 20 May v68 (Aşama B+/sequential lock fix):
+  //   - SHOW_ETIKET_FORM_FACTOR_PICKER=false → stepFormFactor çıkar
+  //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → stepFeature çıkar
+  //   STEP_IDS_FULL ile birebir eşleşmeli, yoksa sequential lock kırılır.
+  const STEP_LABELS_FULL_I18N: readonly string[] = (() => {
+    const labels: string[] = [];
+    if (SHOW_ETIKET_FORM_FACTOR_PICKER) labels.push(t.etiket.stepFormFactor);
+    labels.push(t.etiket.stepMaterial, t.etiket.stepCoating);
+    if (SHOW_ETIKET_CUSTOMIZATION_STEP) labels.push(t.etiket.stepFeature);
+    labels.push(
+      t.etiket.stepWinding,
+      t.etiket.stepWindingDetail,
+      t.etiket.stepSize,
+      t.etiket.stepDesign,
+      t.etiket.stepQty
+    );
+    return labels;
+  })();
   const STEP_LABELS_TABAKA_I18N: readonly string[] = SHOW_ETIKET_FORM_FACTOR_PICKER
     ? [
         t.etiket.stepFormFactor,
