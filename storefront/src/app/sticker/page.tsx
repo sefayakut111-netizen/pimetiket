@@ -491,7 +491,7 @@ export default function StickerGridPage() {
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header — Sefa 20 May v68: yaratıcı alt açıklama + min adet bilgisi */}
-        <header className="mb-10 text-center">
+        <header className="mb-6 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-lacivert">
             {isEn ? "Choose your sticker type" : "Sticker tipini seç"}
           </h1>
@@ -501,6 +501,9 @@ export default function StickerGridPage() {
               : "Markanın sesi olacak formu seç. 25 adetten başlar — prototip, hediye, etkinlik ve koleksiyon için esnek üretim. Malzeme, boyut ve adet sonraki adımda senin elinde."}
           </p>
         </header>
+
+        {/* Sefa 20 May v68: başlık ile ürünler arasında ince ayırıcı çizgi */}
+        <div className="h-px bg-gri-200 max-w-5xl mx-auto mb-8" />
 
         {/* Sefa 20 May v68: tek grid (eski 2 section birleşti — section
             başlıkları kaldırıldı). 11 sticker kartı tek listede sıralanır. */}
