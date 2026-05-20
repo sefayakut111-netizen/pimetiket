@@ -32,6 +32,7 @@ import {
   ValidatedInput,
   useToast,
 } from "@/components/ui";
+import { DesignThumb } from "@/components/cart/DesignThumb";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import { validateTcKimlik, validateVkn } from "@/lib/validation";
@@ -158,7 +159,8 @@ const COPY = {
     couponDefault: "Kupon uygulanamadı, tekrar dene.",
 
     // Summary
-    subtotal: "Ara toplam",
+    subtotal: "Ara toplam (KDV hariç)",
+    vatLabel: "KDV (%20)",
     couponLabel: (code: string) => `Kupon: ${code}`,
     shipping: "Kargo",
     free: "Ücretsiz",
@@ -167,6 +169,18 @@ const COPY = {
     fullTotal: "Toplam:",
     vatIncluded: "KDV dahil",
 
+    // Sefa 20 May v68 UX paket A:
+    estDelivery: "Tahmini teslimat",
+    deliveryDays: {
+      sticker: "3-5 iş günü",
+      etiket: "5-7 iş günü",
+    } as Record<"sticker" | "etiket", string>,
+    deliveryNote:
+      "Tasarımı zamanında yüklersen kargo bu süre içinde elinde.",
+    paymentMethodsTitle: "Kabul edilen ödeme araçları",
+    paymentMethodsNote:
+      "Taksit seçeneklerin PayTR güvenli ödeme ekranında görünür.",
+
     // Action
     accept: {
       before: "",
@@ -174,9 +188,10 @@ const COPY = {
       after: "'ni okudum, kabul ediyorum.",
     },
     acceptCopyright:
-      "Yüklediğim tasarımın telif sahibi benim veya kullanma yetkim var. Başkasının fikri mülkiyetini ihlal etmediğimi taahhüt ediyorum.",
+      "Yükleyeceğim tasarımın telif sahibi benim veya kullanma yetkim var. Başkasının fikri mülkiyetini ihlal etmediğimi taahhüt ediyorum.",
+    // Sefa 20 May v68 #27: "anlaşmalı baskı atölyesi" → "üretim partneri" (Pim Etiket terminolojisi)
     fasonDisclaimer:
-      "Pim Etiket anlaşmalı baskı atölyemizle çalışır. Tasarımın ve kargo bilgilerin yalnızca bu sipariş için atölyeye iletilir, 30 gün sonra imha edilir.",
+      "Pim Etiket, anlaşmalı üretim partneriyle çalışır. Tasarımın ve kargo bilgilerin yalnızca bu sipariş için partnere iletilir, 30 gün sonra imha edilir.",
     fasonDisclaimerLink: "Detay",
     proceed: (amount: string) => `Güvenli ödemeye geç — ${amount} ₺`,
     processing: "Yönlendiriliyor...",
@@ -252,7 +267,8 @@ const COPY = {
     couponTotalLimit: "Coupon usage limit reached.",
     couponDefault: "Coupon couldn't be applied, try again.",
 
-    subtotal: "Subtotal",
+    subtotal: "Subtotal (VAT excl.)",
+    vatLabel: "VAT (20%)",
     couponLabel: (code: string) => `Coupon: ${code}`,
     shipping: "Shipping",
     free: "Free",
@@ -261,15 +277,26 @@ const COPY = {
     fullTotal: "Total:",
     vatIncluded: "VAT included",
 
+    estDelivery: "Est. delivery",
+    deliveryDays: {
+      sticker: "3-5 business days",
+      etiket: "5-7 business days",
+    } as Record<"sticker" | "etiket", string>,
+    deliveryNote: "Ships within this window if you upload the design on time.",
+    paymentMethodsTitle: "Accepted payment methods",
+    paymentMethodsNote:
+      "Installment options appear on PayTR's secure payment screen.",
+
     accept: {
       before: "I've read and accept the ",
       linkText: "Distance Sales Contract",
       after: ".",
     },
     acceptCopyright:
-      "I own or have rights to use the design I'm uploading. I confirm I'm not infringing on anyone else's intellectual property.",
+      "I own or will have rights to use the design I'm uploading. I confirm I'm not infringing on anyone else's intellectual property.",
+    // Sefa 20 May v68 #27: production partner terminology
     fasonDisclaimer:
-      "Pim Etiket works with a contracted print workshop. Your design and shipping info are sent to the workshop only for this order, destroyed within 30 days.",
+      "Pim Etiket works with a contracted production partner. Your design and shipping info are sent to the partner only for this order, destroyed within 30 days.",
     fasonDisclaimerLink: "Details",
     proceed: (amount: string) => `Pay securely — ${amount} TRY`,
     processing: "Redirecting...",
@@ -1498,26 +1525,31 @@ export default function OdemePage() {
                 {hydrated && cartItems.length === 0 && (
                   <div className="text-gri-500">{c.cartEmptyRedirect}</div>
                 )}
+                {/* Sefa 20 May v68 UX paket A #4: DesignThumb — sepetle aynı
+                    3-öncelikli component. PDF/PSD/AI yüklendiyse gerçek
+                    preview, yoksa format rozeti, yoksa ürün ikonu. */}
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex justify-between gap-3">
+                  <div key={item.id} className="flex justify-between gap-3 items-start">
                     <div className="flex gap-2.5 min-w-0 flex-1">
-                      {item.designPreviewUrl && (
-                        <div className="grid place-items-center w-9 h-9 rounded bg-white ring-1 ring-gri-200 shrink-0 overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.designPreviewUrl}
-                            alt=""
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                      )}
+                      <DesignThumb
+                        previewUrl={item.designPreviewUrl}
+                        fileName={item.designFileName}
+                        mimeType={item.designMimeType}
+                        product={item.product}
+                        size="sm"
+                      />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate font-semibold text-lacivert text-[12.5px]">
                           {item.title}
                         </span>
-                        <span className="block truncate text-[11.5px] text-gri-500">
-                          {item.config} · {c.times}
-                          {item.qty.toLocaleString(c.locale)}
+                        {/* Sefa 20 May v68 UX paket A #25: adet tipografi
+                            tutardan ayrıştırıldı — küçük gri "1.000 adet"
+                            ayrı satırda, fiyat ana satırda */}
+                        <span className="block text-[11.5px] text-gri-500 leading-tight">
+                          {item.config}
+                        </span>
+                        <span className="block text-[11px] text-gri-500 mt-0.5 tabular-nums">
+                          {item.qty.toLocaleString(c.locale)} adet
                         </span>
                       </div>
                     </div>
@@ -1600,10 +1632,18 @@ export default function OdemePage() {
                   )}
                 </div>
 
+                {/* Sefa 20 May v68 UX paket A #17: KDV kırılımı (B2B kritik).
+                    Birim fiyatlar zaten KDV dahil → ara toplam ondan çıkartılır. */}
                 <div className="flex justify-between border-t border-gri-200 pt-3">
                   <span className="text-gri-700">{c.subtotal}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(subtotal)} {c.currency}
+                    {fmt(subtotal / 1.2)} {c.currency}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gri-700">{c.vatLabel}</span>
+                  <span className="font-semibold tabular-nums">
+                    {fmt(subtotal - subtotal / 1.2)} {c.currency}
                   </span>
                 </div>
                 {couponDiscount > 0 && (
@@ -1637,11 +1677,30 @@ export default function OdemePage() {
                   </span>
                 </span>
               </div>
-              {/* Sefa 17 May Dalga 3 #16: KDV dahil notu büyütüldü
-                  11.5px → 13px + font-medium ile okunabilirlik arttı */}
               <div className="text-[13px] font-medium text-gri-700 text-right">
                 {c.vatIncluded}
               </div>
+
+              {/* Sefa 20 May v68 UX paket A #3: Tahmini teslimat — ürün-spesifik.
+                  Karışık sepette (sticker + etiket) en uzun süre gösterilir. */}
+              {cartItems.length > 0 && (
+                <div className="mt-4 flex items-start gap-2 bg-gri-50 rounded-lg p-3">
+                  <Icon.Package size={18} className="text-pim-mercan shrink-0 mt-0.5" />
+                  <div className="text-[12px] leading-relaxed">
+                    <div className="font-semibold text-lacivert">
+                      {c.estDelivery}:{" "}
+                      <span className="text-pim-mercan">
+                        {cartItems.some((i) => i.product === "etiket")
+                          ? c.deliveryDays.etiket
+                          : c.deliveryDays.sticker}
+                      </span>
+                    </div>
+                    <div className="text-gri-700 text-[11px] mt-0.5">
+                      {c.deliveryNote}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Accept + submit
                   Sefa 17 May P2-28: checkbox tap target 14×14 → 20×20
@@ -1775,6 +1834,40 @@ export default function OdemePage() {
                     style={{ height: "14px", width: "auto" }}
                   />
                 </span>
+              </div>
+
+              {/* Sefa 20 May v68 UX paket A #2: Kabul edilen kart markaları +
+                  taksit PayTR bilgisi. Taksit Pim Etiket'te yok — PayTR
+                  ekranında otomatik geliyor. */}
+              <div className="mt-4 pt-4 border-t border-gri-200">
+                <div className="text-[11.5px] font-semibold text-gri-700 mb-2 text-center uppercase tracking-wider">
+                  {c.paymentMethodsTitle}
+                </div>
+                <div className="flex items-center justify-center gap-2 flex-wrap mb-2">
+                  {/* Visa */}
+                  <span className="inline-grid place-items-center h-7 px-2.5 rounded bg-white ring-1 ring-gri-200" aria-label="Visa">
+                    <span className="font-bold text-[13px]" style={{ color: "#1A1F71", letterSpacing: "0.05em" }}>VISA</span>
+                  </span>
+                  {/* MasterCard */}
+                  <span className="inline-grid place-items-center h-7 px-2 rounded bg-white ring-1 ring-gri-200" aria-label="Mastercard">
+                    <svg width="32" height="20" viewBox="0 0 32 20" aria-hidden="true">
+                      <circle cx="12" cy="10" r="8" fill="#EB001B" />
+                      <circle cx="20" cy="10" r="8" fill="#F79E1B" />
+                      <path d="M16 4.5a8 8 0 0 1 0 11 8 8 0 0 1 0-11z" fill="#FF5F00" />
+                    </svg>
+                  </span>
+                  {/* Troy */}
+                  <span className="inline-grid place-items-center h-7 px-2.5 rounded bg-white ring-1 ring-gri-200" aria-label="Troy">
+                    <span className="font-bold text-[13px] tracking-tight" style={{ color: "#00ADEF" }}>troy</span>
+                  </span>
+                  {/* American Express */}
+                  <span className="inline-grid place-items-center h-7 px-2.5 rounded bg-white ring-1 ring-gri-200" aria-label="American Express">
+                    <span className="font-bold text-[10px] leading-tight text-center" style={{ color: "#2E77BB" }}>AMERICAN<br/>EXPRESS</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-gri-500 text-center leading-relaxed">
+                  💳 {c.paymentMethodsNote}
+                </p>
               </div>
             </Card>
           </div>
