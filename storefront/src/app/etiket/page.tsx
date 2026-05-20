@@ -1,18 +1,20 @@
 /**
  * /etiket — Görsel ürün filtresi (StickerMule pattern).
  *
- * Sefa 20 May v68 (Konfigüratör reform Aşama A):
- * Müşteri /etiket'e gelince eskiden direkt konfigüratör vardı (8 step).
- * Artık önce görsel grid: 8 kart → tıkla → /etiket/yapilandir?form=...&shape=...
+ * Sefa 20 May v68 (Konfigüratör reform Aşama A + grid v2):
+ * 2 section: üst Rulo etiket (7 şekil), alt Tabaka etiket (6 şekil).
+ * Tıkla → /etiket/yapilandir?form=...&shape=...
  *
  * Tasarım kararları:
- *   - Hover'da pim-mercan border + hafif elevate (Sefa pattern)
+ *   - Hover'da pim-mercan border + shadow (Sefa pattern)
  *   - SVG silüet inline — kahverengi yerine palet (mercan/lacivert)
+ *   - Rulo: silindir + üst kısımda şekil silüetleri
+ *   - Tabaka: A4 kağıt + üzerinde şekil grid (3×4 daire, 2×3 die-cut vb.)
  *   - 4-col md, 2-col sm, 1-col mobile
  *   - "Aradığını bulamadın mı?" CTA altta — sticker'a yönlendirir
  *
  * Şekil/form eşlemesi şu an URL param olarak iletilir; /etiket/yapilandir
- * page useSearchParams ile pre-fill yapar (Aşama C'de).
+ * page useSearchParams ile pre-fill yapar.
  */
 
 "use client";
@@ -38,22 +40,19 @@ interface EtiketCard {
 }
 
 // ============================================================
-// SVG ikon yardımcıları — basit silüet, ileride gerçek mockup ile değişir
+// RULO silüet — silindir + üst kısımda şekilli sticker'lar
 // ============================================================
 
-// Rulo silindir (etiket rulo) — temel görsel
-function RollIllustration({
-  stickerShape,
-}: {
-  stickerShape:
-    | "diecut"
-    | "clear"
-    | "circle"
-    | "square"
-    | "rectangle"
-    | "rounded"
-    | "oval";
-}) {
+type RollShape =
+  | "diecut"
+  | "clear"
+  | "circle"
+  | "square"
+  | "rectangle"
+  | "rounded"
+  | "oval";
+
+function RollIllustration({ stickerShape }: { stickerShape: RollShape }) {
   return (
     <svg
       viewBox="0 0 180 130"
@@ -64,7 +63,7 @@ function RollIllustration({
       <ellipse cx="50" cy="80" rx="45" ry="42" fill="#FFFFFF" stroke="#1A1F36" strokeWidth="2" />
       <ellipse cx="50" cy="80" rx="12" ry="11" fill="#F4F4F6" stroke="#1A1F36" strokeWidth="1.5" />
       <path d="M 50 38 Q 95 38 95 80 Q 95 122 50 122" fill="none" stroke="#1A1F36" strokeWidth="2" />
-      {/* Üst etiketler (stacked silhouettes) */}
+      {/* Sağ tarafta etiketler (stacked silhouettes) */}
       {stickerShape === "diecut" && (
         <g fill="#FF8585" stroke="#1A1F36" strokeWidth="1.5">
           <path d="M 110 58 q 8 -10 18 -6 q 8 -6 14 4 q 12 0 8 14 q 8 4 -2 14 q 4 14 -10 12 q -8 8 -16 -2 q -16 4 -14 -10 q -10 -8 -2 -16 q -4 -10 4 -10 z" />
@@ -110,11 +109,143 @@ function RollIllustration({
   );
 }
 
-// Tabaka (sheet) silüet
-function SheetIllustration() {
+// ============================================================
+// TABAKA silüet — A4 kağıt + üzerinde şekilli grid
+// ============================================================
+
+type SheetShape =
+  | "diecut"
+  | "circle"
+  | "square"
+  | "rectangle"
+  | "rounded"
+  | "oval";
+
+function SheetIllustration({ stickerShape }: { stickerShape: SheetShape }) {
+  /** Şekil bazlı grid layout */
+  const renderShapes = () => {
+    const fill = "#FF8585";
+    const stroke = "#1A1F36";
+    const strokeWidth = 1.2;
+
+    switch (stickerShape) {
+      case "circle":
+        // 3×4 = 12 daire
+        return (
+          <g fill={fill} stroke={stroke} strokeWidth={strokeWidth}>
+            {[0, 1, 2, 3].map((row) =>
+              [0, 1, 2].map((col) => (
+                <circle
+                  key={`${row}-${col}`}
+                  cx={52 + col * 28}
+                  cy={32 + row * 20}
+                  r="8"
+                />
+              ))
+            )}
+          </g>
+        );
+
+      case "diecut":
+        // 2×3 = 6 die-cut silüet (basit blob)
+        return (
+          <g fill={fill} stroke={stroke} strokeWidth={strokeWidth}>
+            {[0, 1, 2].map((row) =>
+              [0, 1].map((col) => {
+                const cx = 62 + col * 40;
+                const cy = 35 + row * 25;
+                return (
+                  <path
+                    key={`${row}-${col}`}
+                    d={`M ${cx - 10} ${cy - 6} q 4 -8 12 -4 q 6 -4 10 4 q 6 4 -2 10 q 0 8 -10 6 q -10 4 -10 -4 q -8 -2 0 -12 z`}
+                  />
+                );
+              })
+            )}
+          </g>
+        );
+
+      case "oval":
+        // 2×4 = 8 oval
+        return (
+          <g fill={fill} stroke={stroke} strokeWidth={strokeWidth}>
+            {[0, 1, 2, 3].map((row) =>
+              [0, 1].map((col) => (
+                <ellipse
+                  key={`${row}-${col}`}
+                  cx={64 + col * 42}
+                  cy={32 + row * 20}
+                  rx="14"
+                  ry="7"
+                />
+              ))
+            )}
+          </g>
+        );
+
+      case "rectangle":
+        // 2×4 = 8 yatay dikdörtgen
+        return (
+          <g fill={fill} stroke={stroke} strokeWidth={strokeWidth}>
+            {[0, 1, 2, 3].map((row) =>
+              [0, 1].map((col) => (
+                <rect
+                  key={`${row}-${col}`}
+                  x={50 + col * 42}
+                  y={26 + row * 20}
+                  width="32"
+                  height="14"
+                  rx="2"
+                />
+              ))
+            )}
+          </g>
+        );
+
+      case "rounded":
+        // 2×4 = 8 yumuşak köşeli dikdörtgen
+        return (
+          <g fill={fill} stroke={stroke} strokeWidth={strokeWidth}>
+            {[0, 1, 2, 3].map((row) =>
+              [0, 1].map((col) => (
+                <rect
+                  key={`${row}-${col}`}
+                  x={50 + col * 42}
+                  y={26 + row * 20}
+                  width="32"
+                  height="14"
+                  rx="7"
+                />
+              ))
+            )}
+          </g>
+        );
+
+      case "square":
+      default:
+        // 3×3 = 9 kare
+        return (
+          <g fill={fill} stroke={stroke} strokeWidth={strokeWidth}>
+            {[0, 1, 2].map((row) =>
+              [0, 1, 2].map((col) => (
+                <rect
+                  key={`${row}-${col}`}
+                  x={50 + col * 28}
+                  y={30 + row * 26}
+                  width="22"
+                  height="22"
+                  rx="2"
+                />
+              ))
+            )}
+          </g>
+        );
+    }
+  };
+
   return (
     <svg viewBox="0 0 180 130" className="w-full h-32" aria-hidden="true">
-      {/* A4 kağıt — biraz eğik */}
+      {/* A4 kağıt — biraz eğik (StickerMule pattern) */}
       <g transform="rotate(-6 90 65)">
         <rect
           x="32"
@@ -126,32 +257,17 @@ function SheetIllustration() {
           stroke="#1A1F36"
           strokeWidth="2"
         />
-        {/* Üzerinde 3×3 etiket gridi */}
-        {[0, 1, 2].map((row) =>
-          [0, 1, 2].map((col) => (
-            <rect
-              key={`${row}-${col}`}
-              x={42 + col * 32}
-              y={28 + row * 28}
-              width="26"
-              height="22"
-              rx="2"
-              fill="#FF8585"
-              stroke="#1A1F36"
-              strokeWidth="1.2"
-            />
-          ))
-        )}
+        {renderShapes()}
       </g>
     </svg>
   );
 }
 
 // ============================================================
-// Kart verisi — 8 kart (StickerMule mini)
+// Kart verisi
 // ============================================================
 
-const CARDS: EtiketCard[] = [
+const RULO_CARDS: EtiketCard[] = [
   {
     shape: "diecut",
     form: "rulo",
@@ -215,20 +331,94 @@ const CARDS: EtiketCard[] = [
     descEn: "Oval labels",
     svg: <RollIllustration stickerShape="oval" />,
   },
+];
+
+const TABAKA_CARDS: EtiketCard[] = [
   {
-    shape: "sheet",
+    shape: "circle",
     form: "tabaka",
-    titleTr: "Tabaka etiket",
-    titleEn: "Sheet labels",
-    descTr: "A4/A3 tabaka kesim",
-    descEn: "A4/A3 sheet labels",
-    svg: <SheetIllustration />,
+    titleTr: "Yuvarlak tabaka",
+    titleEn: "Circle sheet labels",
+    descTr: "Tabaka üstü daire kesim",
+    descEn: "Round labels on sheet",
+    svg: <SheetIllustration stickerShape="circle" />,
+  },
+  {
+    shape: "diecut",
+    form: "tabaka",
+    titleTr: "Özel kesim tabaka",
+    titleEn: "Die-cut sheet labels",
+    descTr: "Tabaka üstü kontur kesim",
+    descEn: "Contour cut on sheet",
+    svg: <SheetIllustration stickerShape="diecut" />,
+  },
+  {
+    shape: "oval",
+    form: "tabaka",
+    titleTr: "Oval tabaka",
+    titleEn: "Oval sheet labels",
+    descTr: "Tabaka üstü oval",
+    descEn: "Oval labels on sheet",
+    svg: <SheetIllustration stickerShape="oval" />,
+  },
+  {
+    shape: "rectangle",
+    form: "tabaka",
+    titleTr: "Dikdörtgen tabaka",
+    titleEn: "Rectangle sheet labels",
+    descTr: "Tabaka üstü dikdörtgen",
+    descEn: "Rectangle on sheet",
+    svg: <SheetIllustration stickerShape="rectangle" />,
+  },
+  {
+    shape: "rounded",
+    form: "tabaka",
+    titleTr: "Köşe-yuvarlak tabaka",
+    titleEn: "Rounded corner sheet labels",
+    descTr: "Yumuşak köşe tabaka",
+    descEn: "Rounded corner on sheet",
+    svg: <SheetIllustration stickerShape="rounded" />,
+  },
+  {
+    shape: "square",
+    form: "tabaka",
+    titleTr: "Kare tabaka",
+    titleEn: "Square sheet labels",
+    descTr: "Tabaka üstü kare",
+    descEn: "Square labels on sheet",
+    svg: <SheetIllustration stickerShape="square" />,
   },
 ];
 
 // ============================================================
 // Sayfa component
 // ============================================================
+
+/** Tek kart — Link wrapper, hover state */
+function ProductCard({
+  card,
+  isEn,
+}: {
+  card: EtiketCard;
+  isEn: boolean;
+}) {
+  return (
+    <Link
+      href={`/etiket/yapilandir?form=${card.form}&shape=${card.shape}`}
+      className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
+    >
+      <div className="bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl py-3 mb-3 transition-colors">
+        {card.svg}
+      </div>
+      <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
+        {isEn ? card.titleEn : card.titleTr}
+      </h3>
+      <p className="text-sm text-gri-600 mt-1">
+        {isEn ? card.descEn : card.descTr}
+      </p>
+    </Link>
+  );
+}
 
 export default function EtiketGridPage() {
   const { locale } = useT();
@@ -249,26 +439,45 @@ export default function EtiketGridPage() {
           </p>
         </header>
 
-        {/* Grid: 4-col md, 2-col sm, 1-col mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-          {CARDS.map((card) => (
-            <Link
-              key={`${card.form}-${card.shape}`}
-              href={`/etiket/yapilandir?form=${card.form}&shape=${card.shape}`}
-              className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
-            >
-              <div className="bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl py-3 mb-3 transition-colors">
-                {card.svg}
-              </div>
-              <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
-                {isEn ? card.titleEn : card.titleTr}
-              </h3>
-              <p className="text-sm text-gri-600 mt-1">
-                {isEn ? card.descEn : card.descTr}
-              </p>
-            </Link>
-          ))}
-        </div>
+        {/* ÜST SECTION — Rulo etiket (7 kart) */}
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-px flex-1 bg-gri-200" />
+            <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+              {isEn ? "Roll labels" : "Rulo etiket"}
+            </h2>
+            <div className="h-px flex-1 bg-gri-200" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+            {RULO_CARDS.map((card) => (
+              <ProductCard
+                key={`${card.form}-${card.shape}`}
+                card={card}
+                isEn={isEn}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ALT SECTION — Tabaka etiket (6 kart) */}
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-px flex-1 bg-gri-200" />
+            <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+              {isEn ? "Sheet labels" : "Tabaka etiket"}
+            </h2>
+            <div className="h-px flex-1 bg-gri-200" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+            {TABAKA_CARDS.map((card) => (
+              <ProductCard
+                key={`${card.form}-${card.shape}`}
+                card={card}
+                isEn={isEn}
+              />
+            ))}
+          </div>
+        </section>
 
         {/* Alt CTA — sticker yönlendirme */}
         <div className="mt-12 text-center">
