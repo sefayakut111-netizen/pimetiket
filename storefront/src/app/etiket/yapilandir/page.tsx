@@ -83,6 +83,7 @@ import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
 import { deriveScopeFromProduct } from "@/lib/pricing-calc";
 import { addToCustomerCart, removeFromCustomerCart } from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
+import { quantizeForCart } from "@/lib/pricing-quantize";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 // Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
 // import { ProductInfoSection } from "@/components/ProductInfoSection";
@@ -949,8 +950,16 @@ function EtiketPage() {
   const designDiscountPct = designCountDiscountPct(designCount);
   const designDiscountFactor = 1 - designDiscountPct / 100;
   const totalEtiketCount = qty * designCount;
-  const total = rawTotal * designCount * designDiscountFactor;
-  const unit = rawUnit * designDiscountFactor;
+  // Sefa 20 May v68 test (fiyat tutarsızlığı fix): quantizeForCart ile
+  // konfigüratör hesabı sepetle tutarlı (unit × qty linear). Detay:
+  // src/lib/pricing-quantize.ts
+  const _rawUnitWithDiscount = rawUnit * designDiscountFactor;
+  const _quantizedEtiket = quantizeForCart(_rawUnitWithDiscount, totalEtiketCount);
+  const total = _quantizedEtiket.total;
+  const unit = _quantizedEtiket.unit;
+  // Backward-compat (raw değerler) — display'de kullanılmıyor ama
+  // referans olarak kalsın
+  void rawTotal;
 
   // Tier savings — 1K (min) baseline ile karşılaştır
   const tierSavings = quote.ok

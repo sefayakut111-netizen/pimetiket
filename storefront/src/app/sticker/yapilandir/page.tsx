@@ -90,6 +90,7 @@ import type { ProfileConfig } from "@/lib/pricing-config-types";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
 import { addToCustomerCart, removeFromCustomerCart } from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
+import { quantizeForCart } from "@/lib/pricing-quantize";
 
 // ============================================================
 // Configuration data
@@ -761,9 +762,19 @@ function StickerPage() {
   // Sefa Madde 9: toplam fiyat = quote × designCount × iskonto
   // (her tasarım için ayrı baskı + tasarım sayısı iskonto v4)
   const perDesignTotal = quote.ok ? quote.total : 0;
-  const total = perDesignTotal * designCount * designDiscountFactor;
-  const currentUnit =
+  const rawTotal = perDesignTotal * designCount * designDiscountFactor;
+  const rawUnit =
     (quote.ok ? quote.unitPrice : 0) * designDiscountFactor;
+  // Sefa 20 May v68 test (fiyat tutarsızlığı fix): Konfigüratör hesabı ile
+  // sepet hesabı arasında 1-2 ₺ yuvarlama farkı vardı (raw round vs unit×qty
+  // linear). quantizeForCart ile her yerde tek-doğru-kaynak: 2 ondalık unit
+  // × tam qty = round total. PriceCard, "Sepete Ekle" payload ve sepet
+  // listesi artık her zaman aynı rakamı gösterir.
+  const quantized = quantizeForCart(rawUnit, tier * designCount);
+  const total = quantized.total;
+  const currentUnit = quantized.unit;
+  // Backward-compat: bazı log/UI yerlerinde raw değer hala kullanılıyor olabilir
+  void rawTotal;
   const overrunCount = quote.ok ? quote.overrunCount : 0;
   const totalStickerCount = tier * designCount;
   // Tasarruf hesabı: en küçük tier (25) baseline alınır
