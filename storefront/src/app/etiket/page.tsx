@@ -210,11 +210,12 @@ export default function EtiketGridPage() {
         </header>
 
         {/* Sefa 20 May v68: 2 sütunlu layout — sol RULO, sağ TABAKA.
-            lg+: yan yana (2-col), her sütun içinde 2-col kart grid.
-            sm/md: alt alta (mobile-first). */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 mb-12">
+            lg+: yan yana (2-col), her sütun içinde 2-col kart grid + ortada
+            ince dikey ayırıcı çizgi (lg:divide-x).
+            sm/md: alt alta (mobile-first), gap ile ayrılır, çizgi yok. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 lg:divide-x lg:divide-gri-200 mb-12">
           {/* SOL SÜTUN — Rulo etiket (6 kart) */}
-          <section>
+          <section className="lg:pr-8">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-px flex-1 bg-gri-200" />
               <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
@@ -234,7 +235,7 @@ export default function EtiketGridPage() {
           </section>
 
           {/* SAĞ SÜTUN — Tabaka etiket (5 kart) */}
-          <section>
+          <section className="lg:pl-8">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-px flex-1 bg-gri-200" />
               <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
