@@ -100,6 +100,19 @@ export function QtySlider({
           appearance: none;
           outline: none;
         }
+        /* Sefa 20 May v68: thumb dikey hizalama — track 6px high,
+           thumb 22px → margin-top -8px ile track ortasına yerleşir.
+           Webkit'te thumb default merkez bug'ı bazı tarayıcılarda. */
+        .pim-qty-slider::-webkit-slider-runnable-track {
+          height: 6px;
+          background: transparent;
+          border-radius: 3px;
+        }
+        .pim-qty-slider::-moz-range-track {
+          height: 6px;
+          background: transparent;
+          border-radius: 3px;
+        }
         .pim-qty-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
@@ -111,6 +124,7 @@ export function QtySlider({
           box-shadow: 0 1px 6px rgba(31, 41, 55, 0.25);
           cursor: pointer;
           transition: transform 100ms;
+          margin-top: -8px;
         }
         .pim-qty-slider::-webkit-slider-thumb:hover {
           transform: scale(1.1);
