@@ -413,16 +413,12 @@ export default function EtiketGridPage() {
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
+        {/* Header — Sefa 20 May v68: alt açıklama paragrafı kaldırıldı,
+            başlık tek başına yeterli. */}
         <header className="mb-10 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-lacivert mb-3">
+          <h1 className="text-3xl md:text-4xl font-bold text-lacivert">
             {isEn ? "Choose your label type" : "Etiket tipini seç"}
           </h1>
-          <p className="text-gri-700 text-base max-w-2xl mx-auto">
-            {isEn
-              ? "Pick a shape to start configuring. Material, coating, size, and quantity come next."
-              : "Şekli seç, sonraki adımda malzeme/boyut/adet düzenlersin. 1.000 adetten başlar, 5 iş günü kargoda."}
-          </p>
         </header>
 
         {/* ÜST SECTION — Rulo etiket (7 kart) */}
