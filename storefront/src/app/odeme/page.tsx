@@ -784,44 +784,23 @@ export default function OdemePage() {
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] pt-10 md:pt-14 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        {/* Sefa 20 May v68 UX paket B #11: "← Sepete dön" linki sol üstte */}
-        <Link
-          href="/sepet"
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-pim-mercan hover:underline mb-3"
-        >
-          <span aria-hidden="true">←</span>
-          {locale === "en" ? "Back to cart" : "Sepete dön"}
-        </Link>
-
         {/* Sefa 17 May UX denetim K#1: sticky topbar başlığı kesiyordu,
             pt-10 md:pt-14 + sayfa header'a margin-top eklendi.
-            Sefa 20 May v68 UX paket B #10: 3-adım stepper eklendi. */}
+            Sefa 20 May v68 (test): 3-adım stepper kaldırıldı, yerine
+            büyükçe "Sepete dön" linki — geri dönüş yolu daha vurgulu. */}
         <div className="mb-5 md:mb-7">
           <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight text-lacivert">
             {c.title}
           </h1>
 
-          {/* Sefa-10: 3-adım progress (Sepet ✓ · Bilgiler [aktif] · Ödeme) */}
-          <ol
-            className="mt-4 flex items-center gap-2 text-[12px]"
-            aria-label={locale === "en" ? "Checkout steps" : "Ödeme adımları"}
+          <Link
+            href="/sepet"
+            className="mt-4 inline-flex items-center gap-2 text-[15px] md:text-[16px] font-bold text-pim-mercan hover:underline"
           >
-            <li className="inline-flex items-center gap-2 text-yesil font-semibold">
-              <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-yesil text-white text-[11px]" aria-hidden="true">✓</span>
-              <span>{locale === "en" ? "Cart" : "Sepet"}</span>
-            </li>
-            <span className="flex-1 h-px bg-gri-300 max-w-[40px]" aria-hidden="true" />
-            <li className="inline-flex items-center gap-2 text-pim-mercan font-bold" aria-current="step">
-              <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white text-[11px] font-bold tabular-nums">2</span>
-              <span>{locale === "en" ? "Details" : "Bilgiler"}</span>
-            </li>
-            <span className="flex-1 h-px bg-gri-300 max-w-[40px]" aria-hidden="true" />
-            <li className="inline-flex items-center gap-2 text-gri-500">
-              <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-gri-200 text-gri-700 text-[11px] font-semibold tabular-nums">3</span>
-              <span>{locale === "en" ? "Payment" : "Ödeme"}</span>
-            </li>
-          </ol>
+            <span aria-hidden="true">←</span>
+            {locale === "en" ? "Back to cart" : "Sepete dön"}
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
@@ -1779,8 +1758,10 @@ export default function OdemePage() {
                 </span>
               </label>
 
-              {/* Fason üretim disclaimer (KVKK m.5/2-c bilgilendirme)
-                  Sefa 17 May P2-25: "Detay →" linki spesifik anchor'a */}
+              {/* Sefa 20 May v68 (test): "Pim Etiket anlaşmalı üretim partneri
+                  ..." disclaimer kaldırıldı (gereksiz, KVKK bildirimi
+                  zaten gizlilik politikasında detayda var). */}
+              {false && (
               <div className="mt-3 px-3 py-2.5 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[12px] text-gri-700 leading-relaxed flex items-start gap-2">
                 <span aria-hidden="true">🏭</span>
                 <span>
@@ -1795,6 +1776,7 @@ export default function OdemePage() {
                   </Link>
                 </span>
               </div>
+              )}
 
               {/* Telif taahhüdü — Sefa 17 May P2-28: aynı tap target */}
               <label htmlFor="accept-copyright-cb" className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3 min-h-[44px] py-1">
@@ -1808,42 +1790,10 @@ export default function OdemePage() {
                 <span>{c.acceptCopyright}</span>
               </label>
 
-              {/* Sefa 17 May UX K#3: butonun neden disabled olduğunu göster.
-                  Sefa 20 May v68 UX paket B #16: Her madde tıklanabilir →
-                  ilgili form alanına smooth scroll + focus. */}
-              {!canSubmit && submitMissing.length > 0 && (
-                <div className="mt-3 rounded-lg bg-saman/15 ring-1 ring-saman/30 px-3 py-2 text-[12.5px] text-saman-koyu">
-                  <strong>Eksik:</strong>{" "}
-                  {submitMissing.map((m, i) => {
-                    const anchor = getAnchorForMissing(m);
-                    return (
-                      <span key={i}>
-                        {i > 0 && " · "}
-                        {anchor ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const el = document.getElementById(anchor);
-                              if (el) {
-                                el.scrollIntoView({
-                                  behavior: "smooth",
-                                  block: "center",
-                                });
-                                (el as HTMLElement).focus?.();
-                              }
-                            }}
-                            className="underline underline-offset-2 hover:no-underline font-semibold cursor-pointer"
-                          >
-                            {m}
-                          </button>
-                        ) : (
-                          m
-                        )}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
+              {/* Sefa 20 May v68 (test): "Eksik: ..." satırı kaldırıldı —
+                  buton zaten disabled görünür, kullanıcı kafası karışmasın.
+                  submitMissing değişkeni submit guard'da hala kullanılıyor
+                  (boş form submit'i engeller + ilk eksik alana scroll). */}
 
               <Button
                 variant="primary"

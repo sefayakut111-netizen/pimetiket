@@ -1226,7 +1226,48 @@ function StickerPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+              {/* Sefa 20 May v68 (test): Yuvarlak sticker (shape=circle)
+                  için tek input "Çap (mm)" — width=height orantı kilidi
+                  otomatik. Genişlik değiştirilince Yükseklik aynı set.
+                  Daire için dikdörtgen ölçü girilemez. */}
+              {shape === "circle" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
+                      Çap (mm)
+                    </span>
+                    <input
+                      type="number"
+                      value={width}
+                      onChange={(e) => {
+                        const v = Math.max(
+                          STICKER_MIN_DIM,
+                          Math.min(
+                            STICKER_MAX_W,
+                            Number(e.target.value) || STICKER_MIN_DIM
+                          )
+                        );
+                        setWidth(v);
+                        setHeight(v); // orantı kilidi — daire eş kenar
+                        markTouched(5);
+                      }}
+                      min={STICKER_MIN_DIM}
+                      max={STICKER_MAX_W}
+                      step={1}
+                      className={cn(
+                        "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
+                        presetPulseAt
+                          ? "ring-pim-mercan ring-2 shadow-[0_0_0_4px_var(--color-pim-mercan-tint)]"
+                          : "ring-gri-200"
+                      )}
+                    />
+                  </label>
+                  <div className="hidden sm:flex items-end pb-2 text-[11.5px] text-gri-500">
+                    ⓘ Daire için çap = genişlik = yükseklik (orantı kilidi)
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                     Genişlik (mm)
@@ -1272,17 +1313,28 @@ function StickerPage() {
                     )}
                   />
                 </label>
-              </div>
+                </div>
+              )}
 
-              {/* Hızlı boyut chip'leri — Sefa kararı 18 May v49:
-                  "En çok tercih edilen ölçüler (mm)" başlığı + 15 boyut
-                  (etiket sayfası ile tutarlı). */}
+              {/* Sefa 20 May v68 (test): Boyut preset chip'leri shape'e göre.
+                  Yuvarlak için 30×30...90×90 (cm cinsinden 3×3...9×9 mantığı,
+                  mm'ye çevrilmiş), diğer şekiller için tam mevcut liste. */}
               <div className="mt-4">
                 <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-gri-700 mb-2">
                   En çok tercih edilen ölçüler (mm)
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                {[
+                {(shape === "circle"
+                  ? [
+                      { w: 30, h: 30, label: "30×30" },
+                      { w: 40, h: 40, label: "40×40" },
+                      { w: 50, h: 50, label: "50×50" },
+                      { w: 60, h: 60, label: "60×60" },
+                      { w: 70, h: 70, label: "70×70" },
+                      { w: 80, h: 80, label: "80×80" },
+                      { w: 90, h: 90, label: "90×90" },
+                    ]
+                  : [
                   { w: 15, h: 40, label: "15×40" },
                   { w: 20, h: 50, label: "20×50" },
                   { w: 30, h: 30, label: "30×30" },
@@ -1298,7 +1350,7 @@ function StickerPage() {
                   { w: 100, h: 100, label: "100×100" },
                   { w: 100, h: 150, label: "100×150" },
                   { w: 150, h: 200, label: "150×200" },
-                ].map((preset) => {
+                ]).map((preset) => {
                   const active =
                     touchedSteps.has(5) &&
                     width === preset.w &&
