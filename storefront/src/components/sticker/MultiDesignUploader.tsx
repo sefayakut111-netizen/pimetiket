@@ -354,17 +354,9 @@ export function MultiDesignUploader({
           <strong className="text-lacivert">PDF · PNG · AI · PSD · EPS</strong>
           {" · "}max 30 MB/dosya
         </p>
-        {/* Sefa 18 May v64: Eksik dosya / hiç dosya yüklenmemiş durumda
-            bilgi mesajı — sepete eklemeyi engellemiyoruz, sadece bilgilendiriyoruz */}
-        <p className="mt-1.5 text-[11.5px] text-gri-700 leading-relaxed">
-          {designs.length < designCount && (
-            <>
-              💡 Tasarımları şimdi yüklemek zorunda değilsin. Eksik kalanları{" "}
-              <strong className="text-lacivert">sipariş onayından sonra</strong>{" "}
-              detay sayfasından veya tek PDF içinde yükleyebilirsin.
-            </>
-          )}
-        </p>
+        {/* Sefa 20 May v68: "Tasarımları şimdi yüklemek zorunda değilsin"
+            bilgi mesajı kaldırıldı — aynı içerik konfigüratör sayfasında
+            "Sonra yükleme akışı aktif:" panel'inde tekrar ediyordu. */}
       </div>
 
       {/* Lightbox modal */}
