@@ -21,6 +21,7 @@
 
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
 
@@ -166,14 +167,17 @@ function ProductCard({
       href={`/etiket/yapilandir?form=${card.form}&shape=${card.shape}`}
       className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
-      <div className="bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl py-3 mb-3 transition-colors flex items-center justify-center min-h-[140px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      {/* Sefa 20 May v68: aspect-[220/130] reservation → CLS=0.
+          Next/Image otomatik AVIF/WebP + srcset + lazy. Sizes prop ile
+          mobile'da 50vw, tablet 33vw, desktop 25vw (4-col grid). */}
+      <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors aspect-[220/130] overflow-hidden">
+        <Image
           src={card.imageSrc}
           alt={isEn ? card.titleEn : card.titleTr}
+          fill
           loading="lazy"
-          decoding="async"
-          className="w-full h-32 object-contain"
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
+          className="object-contain p-3"
         />
       </div>
       <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">

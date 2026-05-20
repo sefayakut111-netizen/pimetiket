@@ -463,7 +463,10 @@ function StickerProductCard({
       href={`/sticker/yapilandir?${card.query}`}
       className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
-      <div className="bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl py-3 mb-3 transition-colors flex items-center justify-center min-h-[140px]">
+      {/* Sefa 20 May v68: aspect-[200/130] reservation → CLS=0.
+          İnline SVG'ler stretch eder, Midjourney PNG geldiğinde aynı
+          aspect kalır, layout shift yok. */}
+      <div className="bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors flex items-center justify-center aspect-[200/130] overflow-hidden">
         {card.svg}
       </div>
       <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">

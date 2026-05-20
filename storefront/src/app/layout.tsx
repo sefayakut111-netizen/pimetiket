@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui";
@@ -19,6 +19,19 @@ const nunito = Nunito({
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
+
+// Sefa 20 May v68: explicit viewport export. Mobile Safari/Chrome'da
+// initial scale + theme color brand kimliği. PWA install için temel.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#1F2937" },
+  ],
+  colorScheme: "light",
+};
 
 // generateMetadata async — admin panelinden yüklenen og_default görseli
 // varsa Open Graph + Twitter card'a otomatik enjekte edilir.
@@ -51,6 +64,19 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: "Pim Etiket",
     authors: [{ name: "Pim Etiket" }],
     generator: "Next.js",
+    // Sefa 20 May v68: PWA manifest + favicon + Apple touch
+    manifest: "/manifest.json",
+    icons: {
+      icon: [
+        { url: "/pim/pim-etiket-mark-dark.svg", type: "image/svg+xml" },
+      ],
+      apple: [
+        // SVG'yi Apple touch icon olarak da sunarız; ileride 180×180 PNG
+        // üretilince yerine geçer.
+        { url: "/pim/pim-etiket-mark-dark.svg", sizes: "180x180" },
+      ],
+      shortcut: ["/pim/pim-etiket-mark-dark.svg"],
+    },
     keywords: [
       "AI etiket baskı",
       "yapay zeka destekli dijital baskı",
