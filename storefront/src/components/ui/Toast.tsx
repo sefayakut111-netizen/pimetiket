@@ -25,10 +25,19 @@ import { cn } from "@/lib/cn";
 
 export type ToastVariant = "success" | "warning" | "error" | "info";
 
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface ToastItem {
   id: number;
   variant: ToastVariant;
   message: string;
+  /** Sefa 20 May v68 UX paket C #5: Undo action (sepetten kaldırma sonrası) */
+  action?: ToastAction;
+  /** Kendi TTL'i (undoable için 5sn) */
+  ttlMs?: number;
 }
 
 interface ToastApi {
@@ -36,6 +45,9 @@ interface ToastApi {
   warning: (msg: string) => void;
   error: (msg: string) => void;
   info: (msg: string) => void;
+  /** Sefa 20 May v68 UX paket C #5: "X kaldırıldı · ↩ Geri al" pattern.
+   *  Default TTL 5sn (undo için daha uzun). */
+  undoable: (msg: string, onUndo: () => void, ttlMs?: number) => void;
 }
 
 interface ToastCtxValue {
@@ -67,16 +79,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
 
   const push = useCallback(
-    (variant: ToastVariant, message: string) => {
+    (
+      variant: ToastVariant,
+      message: string,
+      opts?: { action?: ToastAction; ttlMs?: number }
+    ) => {
       const id = nextId++;
       setItems((arr) => {
-        const next = [...arr, { id, variant, message }];
-        // FIFO — eskileri at, max stack koru
+        const next = [
+          ...arr,
+          { id, variant, message, action: opts?.action, ttlMs: opts?.ttlMs },
+        ];
         return next.length > MAX_STACK ? next.slice(-MAX_STACK) : next;
       });
       window.setTimeout(() => {
         setItems((arr) => arr.filter((t) => t.id !== id));
-      }, TTL_MS);
+      }, opts?.ttlMs ?? TTL_MS);
     },
     []
   );
@@ -86,6 +104,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     warning: (m) => push("warning", m),
     error: (m) => push("error", m),
     info: (m) => push("info", m),
+    undoable: (m, onUndo, ttlMs = 5000) =>
+      push("info", m, {
+        action: { label: "Geri al", onClick: onUndo },
+        ttlMs,
+      }),
   };
 
   return (
@@ -126,23 +149,45 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
 function ToastCard({ item }: { item: ToastItem }) {
   // Mount animation — fade-up + slight scale
   const [mounted, setMounted] = useState(false);
+  const [actionFired, setActionFired] = useState(false);
   useEffect(() => {
     const id = window.setTimeout(() => setMounted(true), 10);
     return () => window.clearTimeout(id);
   }, []);
 
+  const handleAction = () => {
+    if (actionFired || !item.action) return;
+    setActionFired(true);
+    item.action.onClick();
+  };
+
   return (
     <div
       className={cn(
-        "pointer-events-auto inline-flex items-start gap-2.5 px-3.5 py-2.5",
-        "rounded-xl ring-1 shadow-1 max-w-[320px] text-[13px] font-medium",
+        "pointer-events-auto inline-flex items-center gap-2.5 px-3.5 py-2.5",
+        "rounded-xl ring-1 shadow-1 max-w-[360px] text-[13px] font-medium",
         "transition-all duration-200 ease-out",
         mounted ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4",
         VARIANT_CLASS[item.variant]
       )}
     >
-      <span className="shrink-0 mt-px">{VARIANT_ICON[item.variant]}</span>
-      <span className="leading-snug">{item.message}</span>
+      <span className="shrink-0">{VARIANT_ICON[item.variant]}</span>
+      <span className="leading-snug flex-1">{item.message}</span>
+      {item.action && (
+        <button
+          type="button"
+          onClick={handleAction}
+          disabled={actionFired}
+          className={cn(
+            "shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12.5px] font-bold",
+            "underline underline-offset-2 hover:no-underline",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+          aria-label={item.action.label}
+        >
+          <span aria-hidden="true">↩</span> {item.action.label}
+        </button>
+      )}
     </div>
   );
 }

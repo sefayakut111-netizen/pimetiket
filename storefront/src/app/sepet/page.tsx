@@ -21,6 +21,7 @@ import {
   listCustomerCart,
   removeFromCustomerCart,
   updateCustomerCartQty,
+  addToCustomerCart,
   summarizeCustomerCart,
   refreshCustomerCart,
   ensureAuthBindings,
@@ -39,10 +40,12 @@ import {
 const EXTRA = {
   tr: {
     toastRemoved: "Sepetten çıkarıldı",
+    toastUndo: "Geri al",
     decreaseQty: "Adet azalt",
     increaseQty: "Adet artır",
     giftSticker: (n: number) => `+${n} hediye sticker`,
     unitPrice: (unit: string) => `× ${unit} TL`,
+    unitLabel: "Birim",
     currency: "TL",
     postPayHint:
       "Ödeme sonrası 3 gün içinde tasarım dosyalarını yüklemen yeterli.",
@@ -52,20 +55,82 @@ const EXTRA = {
     // sabitlendi ama sepete inmemişti, "0,2510" gibi 4-basamak görünüm
     // güven kırıcıydı. Tutarsızlık giderildi.
     decimal: (n: number) => n.toFixed(2).replace(".", ","),
+    // Sefa 20 May v68 (UX uzman paket B):
+    howItWorksTitle: "Nasıl çalışır?",
+    steps: [
+      { n: "1", label: "Sipariş ver" },
+      { n: "2", label: "Tasarım yükle (3 gün)" },
+      { n: "3", label: "Onayla" },
+      { n: "4", label: "Üret + Kargola" },
+    ],
+    editLink: "Düzenle",
+    continueShoppingLabel: "Alışverişe devam:",
+    subtotalNoVat: "Ara toplam (KDV hariç)",
+    vatLabel: "KDV (%20)",
+    estDelivery: "Tahmini teslimat",
+    deliveryDays: {
+      sticker: "3-5 iş günü",
+      etiket: "5-7 iş günü",
+    } as Record<"sticker" | "etiket", string>,
+    deliveryNote:
+      "Tasarımı zamanında yüklersen kargo bu süre içinde elinde.",
+    shippingFreeFull: (curr: string, threshold: string) =>
+      `Kargo bedava (${curr}/${threshold} TL)`,
+    mobileCheckoutTotal: "Toplam",
   },
   en: {
     toastRemoved: "Removed from cart",
+    toastUndo: "Undo",
     decreaseQty: "Decrease quantity",
     increaseQty: "Increase quantity",
     giftSticker: (n: number) => `+${n} gift stickers`,
     unitPrice: (unit: string) => `× ${unit} TRY`,
+    unitLabel: "Unit",
     currency: "TRY",
     postPayHint:
       "Upload your design files within 3 days after payment — that's all.",
     locale: "en-US",
     decimal: (n: number) => n.toFixed(2),
+    howItWorksTitle: "How it works",
+    steps: [
+      { n: "1", label: "Place order" },
+      { n: "2", label: "Upload design (3 days)" },
+      { n: "3", label: "Approve" },
+      { n: "4", label: "Print + Ship" },
+    ],
+    editLink: "Edit",
+    continueShoppingLabel: "Keep shopping:",
+    subtotalNoVat: "Subtotal (VAT excl.)",
+    vatLabel: "VAT (20%)",
+    estDelivery: "Est. delivery",
+    deliveryDays: {
+      sticker: "3-5 business days",
+      etiket: "5-7 business days",
+    } as Record<"sticker" | "etiket", string>,
+    deliveryNote: "Ships within this window if you upload the design on time.",
+    shippingFreeFull: (curr: string, threshold: string) =>
+      `Free shipping (${curr}/${threshold} TRY)`,
+    mobileCheckoutTotal: "Total",
   },
 };
+
+// Sefa 20 May v68 UX paket B Madde #9: KDV kırılımı.
+// Birim fiyatlar zaten KDV dahil → çıkar.
+const VAT_RATE = 0.2;
+
+/**
+ * Config string'ini chip'lere böl + "Özelleştirme yok" gibi gürültüleri filtrele.
+ * "Özel kesim · 15×40mm · 1.000 adet · Özelleştirme yok · Sarım 1" → 4 chip
+ * (Sefa-4 + Sefa-4 son).
+ */
+function parseConfigChips(config: string): string[] {
+  return config
+    .split(/\s·\s/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    // "Özelleştirme yok" negatif bilgi — gürültü, gizle
+    .filter((s) => !/özelleştirme\s*yok/i.test(s));
+}
 
 export default function SepetPage() {
   const toast = useToast();
@@ -149,9 +214,17 @@ export default function SepetPage() {
     void updateCustomerCartQty(item.id, next);
   };
 
-  const remove = (id: string) => {
-    void removeFromCustomerCart(id);
-    toast.info(x.toastRemoved);
+  // Sefa 20 May v68 UX paket C #5: Modal confirm yerine undo snackbar.
+  // Item kaldırılır, toast'ta "Geri al" 5 sn aktif kalır; tıklanırsa
+  // item tekrar eklenir (id ve addedAt yeni, ama aynı config).
+  const remove = (item: CustomerCartItem) => {
+    void removeFromCustomerCart(item.id);
+    toast.undoable(`${item.title} ${x.toastRemoved.toLowerCase()}`, () => {
+      // Item'ı yeniden ekle — id ve addedAt yeniden üretilir
+      const { id: _id, addedAt: _addedAt, ...rest } = item;
+      void _id; void _addedAt;
+      void addToCustomerCart(rest);
+    });
   };
 
   // Hydration guard — Sefa 16 May denetim #10:
@@ -206,7 +279,7 @@ export default function SepetPage() {
   }
 
   return (
-    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-6 md:py-8 pb-32 lg:pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-5 md:mb-7 flex items-end justify-between gap-4 flex-wrap">
           <div>
@@ -219,6 +292,38 @@ export default function SepetPage() {
             <Pim pose="happy" size={80} bob={false} />
           </div>
         </div>
+
+        {/* Sefa 20 May v68 UX paket B Madde #10: "Nasıl çalışır" info-box —
+            ödeme sonrası tasarım yükleme akışını sürpriz olmasın diye sepetin
+            üstünde net göster. 4 adım inline, mobile'da 2x2 grid. */}
+        <Card padding="p-4 sm:p-5" className="mb-5 bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/20">
+          <div className="flex items-start gap-3">
+            <div className="text-[20px] shrink-0" aria-hidden="true">💡</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-[14px] text-lacivert mb-2.5">
+                {x.howItWorksTitle}
+              </div>
+              <ol className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                {x.steps.map((step, i) => (
+                  <li
+                    key={step.n}
+                    className="flex items-start gap-2 text-[12.5px] leading-snug"
+                  >
+                    <span className="shrink-0 inline-grid place-items-center w-5 h-5 rounded-full bg-pim-mercan text-white text-[11px] font-bold tabular-nums">
+                      {step.n}
+                    </span>
+                    <span className="text-gri-700">
+                      {step.label}
+                      {i < x.steps.length - 1 && (
+                        <span className="hidden md:inline ml-1.5 text-gri-500" aria-hidden="true">→</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
           {/* CART ITEMS */}
@@ -241,16 +346,24 @@ export default function SepetPage() {
                     <div className="font-semibold text-base truncate">
                       {item.title}
                     </div>
-                    <div className="text-[13px] text-gri-700 mt-1 leading-relaxed">
-                      {item.config}
+                    {/* Sefa 20 May v68 UX paket B Madde #4: Config artık chip
+                        listesi — taranabilir; "Özelleştirme yok" gibi negatif
+                        gürültü filtrelendi (parseConfigChips). */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {parseConfigChips(item.config).map((chunk, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[11.5px] text-gri-700 bg-gri-100 leading-tight tabular-nums"
+                        >
+                          {chunk}
+                        </span>
+                      ))}
                     </div>
                     {item.designFileName && (
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         <div className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
                           ✓ Tasarım yüklendi
                         </div>
-                        {/* Multi-design metadata (Sefa 15 May v4):
-                            additionalDesigns varsa ek tasarım sayısı göster */}
                         {item.additionalDesigns &&
                           item.additionalDesigns.length > 0 && (
                             <div
@@ -260,7 +373,6 @@ export default function SepetPage() {
                               +{item.additionalDesigns.length} tasarım
                             </div>
                           )}
-                        {/* designCount alanı kullanıcı belirttiği — yüklenenden farklı olabilir */}
                         {item.designCount && item.designCount > 1 && (
                           <div
                             className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-krem ring-1 ring-gri-200 text-lacivert text-[11px] font-semibold"
@@ -271,11 +383,8 @@ export default function SepetPage() {
                         )}
                       </div>
                     )}
-                    {/* +hediye chip kaldırıldı (Sefa kuralı 11 May) —
-                        overrun adet backend'de depo etiketi olarak kalır */}
-                    {/* Sefa 17 May P2-26: tap target 32→44px (WCAG 2.1
-                        mobil minimum), font 16→18 görünürlük */}
-                    <div className="flex items-center gap-3 mt-3">
+                    {/* Sefa 17 May P2-26: tap target 44px WCAG mobil min */}
+                    <div className="flex items-center gap-3 mt-3 flex-wrap">
                       <div className="inline-flex items-center gap-2 ring-1 ring-gri-200 rounded-full bg-white">
                         <button
                           type="button"
@@ -297,50 +406,70 @@ export default function SepetPage() {
                           +
                         </button>
                       </div>
-                      <span className="text-[13px] text-gri-700">
-                        {x.unitPrice(x.decimal(item.unit))}
+                      {/* Sefa-3: "Birim 3,64 TL" net etiket — sadece "× X TL"
+                          karışıklığı bitti. */}
+                      <span className="text-[12.5px] text-gri-700 tabular-nums">
+                        <span className="text-gri-500">{x.unitLabel}:</span>{" "}
+                        <strong className="text-lacivert">{x.decimal(item.unit)} {x.currency}</strong>
                       </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end justify-between min-h-[80px]">
-                    <div className="text-xl font-bold">
-                      {fmt(item.total)} {x.currency}
+                    <div>
+                      {/* Sefa-3: Toplam — büyük + altta "Birim × Adet" hesap */}
+                      <div className="text-xl font-bold tabular-nums">
+                        {fmt(item.total)} {x.currency}
+                      </div>
+                      <div className="text-[10.5px] text-gri-500 tabular-nums">
+                        {x.decimal(item.unit)} × {fmt(item.qty)}
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `"${item.title}" sepetten çıkarılsın mı?`
-                          )
-                        ) {
-                          remove(item.id);
+                    <div className="flex items-center gap-1 mt-2">
+                      {/* Sefa-11: Düzenle butonu — ürün kartında, konfigüratöre yönlendirir */}
+                      <Link
+                        href={
+                          item.product === "etiket"
+                            ? "/etiket/yapilandir"
+                            : "/sticker/yapilandir"
                         }
-                      }}
-                      aria-label={`${item.title} sepetten kaldır`}
-                      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-gri-500 hover:text-kirmizi hover:bg-kirmizi/5 font-semibold transition-colors"
-                    >
-                      <Icon.X size={13} />
-                      {t.common.remove}
-                    </button>
+                        aria-label={`${item.title} düzenle`}
+                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-pim-mercan hover:bg-pim-mercan/5 font-semibold transition-colors"
+                      >
+                        <Icon.Edit size={13} />
+                        {x.editLink}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => remove(item)}
+                        aria-label={`${item.title} sepetten kaldır`}
+                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-gri-500 hover:text-kirmizi hover:bg-kirmizi/5 font-semibold transition-colors"
+                      >
+                        <Icon.X size={13} />
+                        {t.common.remove}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </Card>
             ))}
 
-            {/* Continue shopping */}
-            <div className="flex gap-4 mt-2">
+            {/* Sefa-11: Alışverişe devam CTA — "← Etiket / ← Sticker" küçük
+                belirsiz linkler yerine, etiketli grup buton */}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <span className="text-[12.5px] text-gri-500">
+                {x.continueShoppingLabel}
+              </span>
               <Link
                 href="/etiket"
-                className="text-[13px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
+                className="inline-flex items-center gap-1 h-8 px-3 rounded-full text-[12.5px] font-semibold text-pim-mercan ring-1 ring-pim-mercan/30 hover:bg-pim-mercan-tint transition-colors"
               >
-                ← {t.nav.etiket}
+                <Icon.Roll size={13} /> {t.nav.etiket}
               </Link>
               <Link
                 href="/sticker"
-                className="text-[13px] font-semibold text-pim-mercan hover:underline inline-flex items-center gap-1"
+                className="inline-flex items-center gap-1 h-8 px-3 rounded-full text-[12.5px] font-semibold text-pim-mercan ring-1 ring-pim-mercan/30 hover:bg-pim-mercan-tint transition-colors"
               >
-                ← {t.nav.sticker}
+                <Icon.Sticker size={13} /> {t.nav.sticker}
               </Link>
             </div>
           </div>
@@ -350,15 +479,23 @@ export default function SepetPage() {
             <Card padding="p-6">
               <h3 className="font-semibold text-lg mb-4">{t.cart.summary}</h3>
               <div className="space-y-2.5 text-[14px]">
+                {/* Sefa-9: KDV kırılımı — birim fiyatlar zaten KDV dahil,
+                    geri çıkarıyoruz. B2B muhasebe için kritik. */}
                 <div className="flex justify-between">
-                  <span className="text-gri-700">{t.cart.subtotal}</span>
-                  <span className="font-semibold">
-                    {fmt(subtotal)} {x.currency}
+                  <span className="text-gri-700">{x.subtotalNoVat}</span>
+                  <span className="font-semibold tabular-nums">
+                    {fmt(subtotal / (1 + VAT_RATE))} {x.currency}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gri-700">{x.vatLabel}</span>
+                  <span className="font-semibold tabular-nums">
+                    {fmt(subtotal - subtotal / (1 + VAT_RATE))} {x.currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gri-700">{t.cart.shipping}</span>
-                  <span className="font-semibold">
+                  <span className="font-semibold tabular-nums">
                     {shipping === 0 ? (
                       <span className="text-yesil">{t.cart.free}</span>
                     ) : (
@@ -398,15 +535,21 @@ export default function SepetPage() {
                     </div>
                   </div>
                 )}
+                {/* Sefa-8: Kargo bedava — sadece kutlama değil, gerçek
+                    rakamlar göster (X/Y TL). */}
                 {shipping === 0 && subtotal > 0 && (
-                  <div className="bg-yesil-soft text-yesil p-2.5 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5">
-                    🎉 Kargo bedava — eşiği geçtin!
+                  <div
+                    className="bg-yesil-soft text-yesil p-2.5 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5"
+                    aria-label={`Kargo bedava: ${fmt(subtotal)} TL, eşik ${fmt(FREE_SHIPPING_THRESHOLD)} TL`}
+                  >
+                    <span aria-hidden="true">🎉</span>
+                    {x.shippingFreeFull(fmt(subtotal), fmt(FREE_SHIPPING_THRESHOLD))}
                   </div>
                 )}
               </div>
               <div className="mt-4 pt-4 border-t-2 border-lacivert flex justify-between items-baseline">
                 <span className="font-semibold">{t.cart.total}</span>
-                <span className="text-2xl font-bold">
+                <span className="text-2xl font-bold tabular-nums">
                   {fmt(total)}{" "}
                   <span className="text-base font-semibold text-gri-700">
                     {x.currency}
@@ -467,11 +610,82 @@ export default function SepetPage() {
               >
                 {t.cart.proceedToCheckout} <Icon.ArrowR />
               </Button>
-              <p className="text-[11.5px] text-gri-500 text-center mt-3 leading-relaxed">
-                {x.postPayHint}
-              </p>
+
+              {/* Sefa-7: Tahmini teslimat — ürün tipine göre. Sticker
+                  3-5, etiket 5-7. Karışık sepette en uzun süreyi gösterir. */}
+              <div className="mt-4 flex items-start gap-2 bg-gri-50 rounded-lg p-3">
+                <Icon.Package size={18} className="text-pim-mercan shrink-0 mt-0.5" />
+                <div className="text-[12px] leading-relaxed">
+                  <div className="font-semibold text-lacivert">
+                    {x.estDelivery}:{" "}
+                    <span className="text-pim-mercan">
+                      {cart.some((i) => i.product === "etiket")
+                        ? x.deliveryDays.etiket
+                        : x.deliveryDays.sticker}
+                    </span>
+                  </div>
+                  <div className="text-gri-700 text-[11px] mt-0.5">
+                    {x.deliveryNote}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sefa-6: Trust rozetleri — SSL + PayTR + iade politika */}
+              <div className="mt-3 pt-3 border-t border-gri-200">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] text-gri-700">
+                  <span className="inline-flex items-center gap-1">
+                    <Icon.Shield size={13} className="text-yesil" />
+                    SSL
+                  </span>
+                  <span className="text-gri-300" aria-hidden="true">·</span>
+                  <span className="font-semibold tracking-tight">PayTR</span>
+                  <span className="text-gri-300" aria-hidden="true">·</span>
+                  <Link
+                    href="/sss"
+                    className="hover:text-pim-mercan hover:underline"
+                  >
+                    36 saat iade garantisi
+                  </Link>
+                </div>
+              </div>
             </Card>
           </div>
+        </div>
+      </div>
+
+      {/* Sefa-12: Mobile sticky bottom bar — Toplam + Ödemeye geç.
+          lg breakpoint üstünde gizli (sticky özet kart var). Aşağıdaki
+          padding-bottom main'de pb-20 zaten var, bottom bar yer bırakır. */}
+      <div
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gri-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
+        role="region"
+        aria-label="Mobil sepet özeti"
+      >
+        <div className="px-4 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-[10.5px] text-gri-500 uppercase tracking-wider">
+              {x.mobileCheckoutTotal}
+            </div>
+            <div className="text-[18px] font-bold tabular-nums leading-tight">
+              {fmt(total)} <span className="text-[13px] font-semibold text-gri-700">{x.currency}</span>
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="md"
+            href={
+              minOrderTotal > 0 && total < minOrderTotal
+                ? "#"
+                : "/odeme"
+            }
+            className={
+              minOrderTotal > 0 && total < minOrderTotal
+                ? "opacity-50 pointer-events-none"
+                : ""
+            }
+          >
+            {t.cart.proceedToCheckout} <Icon.ArrowR />
+          </Button>
         </div>
       </div>
     </main>

@@ -233,6 +233,32 @@ const Menu = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+// Sefa 20 May v68 UX paket B: Düzenle (kalem) — sepet kartında
+// "Düzenle" butonu için. Lucide pencil benzeri stilize.
+const Edit = ({ size = 20, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="2" className={className}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+// Sefa 20 May v68 UX paket C: Trust rozetleri için Shield
+const Shield = ({ size = 20, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.8" className={className}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+// Sefa 20 May v68 UX paket C: Tahmini teslimat için (paket)
+const Package = ({ size = 20, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.8" className={className}>
+    <path d="M16.5 9.4 7.55 4.24" />
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <path d="M3.27 6.96 12 12.01l8.73-5.05" />
+    <path d="M12 22.08V12" />
+  </svg>
+);
+
 export const Icon = {
   Sparkle,
   Box,
@@ -262,6 +288,9 @@ export const Icon = {
   Users,
   Refresh,
   Menu,
+  Edit,
+  Shield,
+  Package,
 };
 
 export type IconName = keyof typeof Icon;
