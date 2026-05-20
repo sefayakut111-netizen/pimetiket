@@ -114,6 +114,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/kvkk-talepleri": "KVKK talepleri",
   "/admin/yedekler": "Yedekler",
   "/admin/galeri": "Galeri yönetimi",
+  "/admin/urunler": "Ürün kartları",
   "/admin/ayarlar": "Ayarlar",
 };
 
@@ -311,6 +312,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {
         label: "İçerik",
         items: [
+          // Sefa 21 May v68 Mig 074: Ürün kartları yönetimi
+          {
+            href: "/admin/urunler",
+            label: "Ürünler",
+            icon: <Icon.Tag size={16} />,
+          },
           {
             href: "/admin/aboneler",
             label: "Aboneler",
