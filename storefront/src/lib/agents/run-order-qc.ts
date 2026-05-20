@@ -26,6 +26,7 @@ const QC_MAX_ATTEMPTS = 3;
 import type { SupabaseClient } from "@supabase/supabase-js";
 import * as Sentry from "@sentry/nextjs";
 import { runDesignQC, mimeToFormat } from "./design-qc";
+import { isAiCircuitOpen } from "./circuit-breaker";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 
 interface OrderItemForQC {
@@ -95,6 +96,35 @@ export async function runOrderDesignQC(
       ranCount: 0,
       verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
       aggregateVerdict: "escalated_max_attempts",
+    };
+  }
+
+  // 0.5) P1 #8 — OpenAI circuit breaker. Son 10dk hata oranı eşiği geçtiyse
+  // AI'a hiç gitme, direkt human_review (insan kuyruğu). Müşteri "ödedim
+  // hiçbir şey olmuyor" senaryosu önlendi.
+  const circuit = await isAiCircuitOpen(admin);
+  if (circuit.open) {
+    await admin
+      .from("orders")
+      .update({ status: "human_review" } as never)
+      .eq("id", orderId);
+    await admin.from("order_events").insert([
+      {
+        order_id: orderId,
+        event_type: "ai_circuit_open_fallback",
+        status_after: "human_review",
+        actor_role: "system",
+        summary: `AI circuit OPEN — son ${circuit.windowMin}dk hata oranı %${Math.round(
+          circuit.failureRate * 100
+        )} (${circuit.errorRuns}/${circuit.totalRuns}). İnsan kuyruğuna fallback.`,
+        detail: { ...circuit },
+      },
+    ] as never);
+    return {
+      orderId,
+      ranCount: 0,
+      verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+      aggregateVerdict: "needs_review",
     };
   }
 
