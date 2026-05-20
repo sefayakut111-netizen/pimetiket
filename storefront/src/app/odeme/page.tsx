@@ -33,6 +33,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { DesignThumb } from "@/components/cart/DesignThumb";
+import { filterConfigString } from "@/lib/cart-config-filter";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import { validateTcKimlik, validateVkn } from "@/lib/validation";
@@ -1557,10 +1558,12 @@ export default function OdemePage() {
                           {item.title}
                         </span>
                         {/* Sefa 20 May v68 UX paket A #25: adet tipografi
-                            tutardan ayrıştırıldı — küçük gri "1.000 adet"
-                            ayrı satırda, fiyat ana satırda */}
+                            tutardan ayrıştırıldı.
+                            Sefa 21 May (test): filterConfigString — fiyata
+                            etki etmeyen Sarım/Göbek/rulodaki adet/Özelleştirme
+                            yok kaldırıldı (sepetle aynı, kalabalık önlendi). */}
                         <span className="block text-[11.5px] text-gri-500 leading-tight">
-                          {item.config}
+                          {filterConfigString(item.config)}
                         </span>
                         <span className="block text-[11px] text-gri-500 mt-0.5 tabular-nums">
                           {item.qty.toLocaleString(c.locale)} adet

@@ -29,6 +29,7 @@ import {
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 import { setEditIntent } from "@/lib/cart-edit-intent";
+import { parseConfigChips } from "@/lib/cart-config-filter";
 import { useRouter } from "next/navigation";
 import {
   STICKER_MIN_QTY,
@@ -121,26 +122,8 @@ const EXTRA = {
 // Birim fiyatlar zaten KDV dahil → çıkar.
 const VAT_RATE = 0.2;
 
-/**
- * Config string'ini chip'lere böl + gürültüleri filtrele.
- *
- * Sefa 20 May v68 (test geri bildirim #6): Sarım yönü, göbek çapı ve
- * rulodaki adet bilgisi fiyata etken DEĞİL, sadece üretim teknik bilgisi.
- * Sepette gösterilmesin — kullanıcı sadece fiyatlandırma kalemlerini görsün.
- * Bu bilgiler sipariş detayında ve üretim partnerinde tam görünür.
- */
-function parseConfigChips(config: string): string[] {
-  return config
-    .split(/\s·\s/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    // "Özelleştirme yok" negatif bilgi — gürültü, gizle
-    .filter((s) => !/özelleştirme\s*yok/i.test(s))
-    // Sefa 20 May v68 #6: Sarım/Göbek/rulodaki adet fiyata etken değil
-    .filter((s) => !/^sarım\s/i.test(s))
-    .filter((s) => !/göbek/i.test(s))
-    .filter((s) => !/adet\/rulo/i.test(s));
-}
+// Sefa 21 May v68: parseConfigChips ortak helper'a taşındı
+// (src/lib/cart-config-filter.ts) — sepet + ödeme aynı filter kullanır.
 
 export default function SepetPage() {
   const toast = useToast();
