@@ -363,6 +363,10 @@ export default function OdemePage() {
   const [savingInvoice, setSavingInvoice] = useState(false);
 
   // Coupon
+  // Sefa 20 May v68 UX paket B #12: Kupon collapse — default kapalı,
+  // "İndirim kodun var mı?" linkine tıklayınca açılır. Kupon zaten
+  // uygulanmışsa otomatik açık tut.
+  const [couponExpanded, setCouponExpanded] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponResult, setCouponResult] = useState<CouponValidateResult | null>(
     null
@@ -780,13 +784,44 @@ export default function OdemePage() {
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] pt-10 md:pt-14 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        {/* Sefa 20 May v68 UX paket B #11: "← Sepete dön" linki sol üstte */}
+        <Link
+          href="/sepet"
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-pim-mercan hover:underline mb-3"
+        >
+          <span aria-hidden="true">←</span>
+          {locale === "en" ? "Back to cart" : "Sepete dön"}
+        </Link>
+
         {/* Sefa 17 May UX denetim K#1: sticky topbar başlığı kesiyordu,
-            pt-10 md:pt-14 + sayfa header'a margin-top eklendi. */}
+            pt-10 md:pt-14 + sayfa header'a margin-top eklendi.
+            Sefa 20 May v68 UX paket B #10: 3-adım stepper eklendi. */}
         <div className="mb-5 md:mb-7">
           <Eyebrow>{c.eyebrow}</Eyebrow>
           <h1 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight text-lacivert">
             {c.title}
           </h1>
+
+          {/* Sefa-10: 3-adım progress (Sepet ✓ · Bilgiler [aktif] · Ödeme) */}
+          <ol
+            className="mt-4 flex items-center gap-2 text-[12px]"
+            aria-label={locale === "en" ? "Checkout steps" : "Ödeme adımları"}
+          >
+            <li className="inline-flex items-center gap-2 text-yesil font-semibold">
+              <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-yesil text-white text-[11px]" aria-hidden="true">✓</span>
+              <span>{locale === "en" ? "Cart" : "Sepet"}</span>
+            </li>
+            <span className="flex-1 h-px bg-gri-300 max-w-[40px]" aria-hidden="true" />
+            <li className="inline-flex items-center gap-2 text-pim-mercan font-bold" aria-current="step">
+              <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white text-[11px] font-bold tabular-nums">2</span>
+              <span>{locale === "en" ? "Details" : "Bilgiler"}</span>
+            </li>
+            <span className="flex-1 h-px bg-gri-300 max-w-[40px]" aria-hidden="true" />
+            <li className="inline-flex items-center gap-2 text-gri-500">
+              <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-gri-200 text-gri-700 text-[11px] font-semibold tabular-nums">3</span>
+              <span>{locale === "en" ? "Payment" : "Ödeme"}</span>
+            </li>
+          </ol>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
@@ -1004,11 +1039,11 @@ export default function OdemePage() {
                       </div>
                     </div>
                   </div>
-                  {/* Statik ülke gösterimi */}
+                  {/* Sefa 20 May v68 UX paket B #21: "yurt dışı henüz aktif değil"
+                      negatif notu kaldırıldı (gereksiz bilişsel yük). */}
                   <div className="text-[11.5px] text-gri-500 inline-flex items-center gap-1.5">
                     <span>📍 Teslimat ülkesi:</span>
                     <span className="font-semibold text-lacivert">🇹🇷 Türkiye</span>
-                    <span className="text-gri-500">(yurt dışına gönderim henüz aktif değil)</span>
                   </div>
                   <div>
                     <label
@@ -1559,78 +1594,10 @@ export default function OdemePage() {
                   </div>
                 ))}
 
-                {/* Sefa 17 May Dalga 2 #9: kupon inline (eski ayrı card kaldırıldı) */}
-                <div className="border-t border-gri-200 pt-3">
-                  <div className="flex gap-2">
-                    <Input
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value.toUpperCase());
-                        setCouponResult(null);
-                      }}
-                      placeholder={c.couponPh}
-                      aria-label={c.couponTitle}
-                      className="flex-1 uppercase tracking-wider !text-[12.5px] !h-10"
-                      disabled={couponChecking || couponResult?.ok === true}
-                    />
-                    {couponResult?.ok ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setCouponCode("");
-                          setCouponResult(null);
-                        }}
-                      >
-                        {c.couponRemove}
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={onCheckCoupon}
-                        disabled={couponChecking || couponCode.trim().length < 2}
-                      >
-                        {couponChecking ? "..." : c.couponApply}
-                      </Button>
-                    )}
-                  </div>
-                  {/* Sefa 17 May P0-2: Hata + başarı mesajı her durum
-                      için açık feedback (eski versiyonda %/fixed indirim
-                      kupon kabul edildiğinde sadece line item görünüyordu,
-                      kullanıcı "uygulandı mı?" diye anlayamıyordu). */}
-                  {couponResult && !couponResult.ok && (
-                    <div className="mt-2 rounded-lg bg-kirmizi/10 ring-1 ring-kirmizi/20 px-3 py-2 text-[12.5px] leading-relaxed text-kirmizi-koyu">
-                      ⚠{" "}
-                      {couponResult.reason === "invalid_or_expired"
-                        ? c.couponInvalid
-                        : couponResult.reason === "min_subtotal"
-                          ? c.couponMinSubtotal(couponResult.minSubtotal ?? 0)
-                          : couponResult.reason === "user_limit_reached"
-                            ? c.couponUserLimit
-                            : couponResult.reason === "total_limit_reached"
-                              ? c.couponTotalLimit
-                              : couponResult.reason === "rpc_error" ||
-                                  couponResult.reason === "invalid_response"
-                                ? c.couponRpcError
-                                : c.couponDefault}
-                    </div>
-                  )}
-                  {couponResult?.ok && (
-                    <div className="mt-2 rounded-lg bg-yesil-soft/60 ring-1 ring-yesil/30 px-3 py-2 text-[12.5px] text-yesil-koyu font-semibold leading-relaxed">
-                      {couponResult.kind === "free_ship"
-                        ? c.couponAppliedFreeShip
-                        : couponResult.kind === "percent"
-                          ? c.couponAppliedPercent(
-                              Math.round(
-                                (couponResult.discount / subtotal) * 100
-                              ),
-                              fmt(couponResult.discount)
-                            )
-                          : c.couponAppliedFixed(fmt(couponResult.discount))}
-                    </div>
-                  )}
-                </div>
+                {/* Sefa 20 May v68 UX paket B #12: Kupon ara toplam'ın altına
+                    taşındı + collapse. Eski yer (ürünler ile ara toplam arası)
+                    akışı bölüyordu. Şimdi "İndirim kodun var mı?" link altta,
+                    tıklanınca açılır. Kupon zaten uygulanmışsa otomatik açık. */}
 
                 {/* Sefa 20 May v68 UX paket A #17: KDV kırılımı (B2B kritik).
                     Birim fiyatlar zaten KDV dahil → ara toplam ondan çıkartılır. */}
@@ -1665,6 +1632,91 @@ export default function OdemePage() {
                       `${fmt(effectiveShipping)} ${c.currency}`
                     )}
                   </span>
+                </div>
+
+                {/* Sefa 20 May v68 UX paket B #12: Kupon collapse */}
+                <div className="pt-2">
+                  {!couponExpanded && !couponResult?.ok ? (
+                    <button
+                      type="button"
+                      onClick={() => setCouponExpanded(true)}
+                      className="text-[12.5px] text-pim-mercan font-semibold hover:underline inline-flex items-center gap-1"
+                      aria-expanded={false}
+                      aria-controls="coupon-form"
+                    >
+                      <span aria-hidden="true">🎁</span>
+                      {c.couponTitle}
+                    </button>
+                  ) : (
+                    <div id="coupon-form">
+                      <div className="flex gap-2">
+                        <Input
+                          value={couponCode}
+                          onChange={(e) => {
+                            setCouponCode(e.target.value.toUpperCase());
+                            setCouponResult(null);
+                          }}
+                          placeholder={c.couponPh}
+                          aria-label={c.couponTitle}
+                          className="flex-1 uppercase tracking-wider !text-[12.5px] !h-10"
+                          disabled={couponChecking || couponResult?.ok === true}
+                        />
+                        {couponResult?.ok ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setCouponCode("");
+                              setCouponResult(null);
+                              setCouponExpanded(false);
+                            }}
+                          >
+                            {c.couponRemove}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={onCheckCoupon}
+                            disabled={couponChecking || couponCode.trim().length < 2}
+                          >
+                            {couponChecking ? "..." : c.couponApply}
+                          </Button>
+                        )}
+                      </div>
+                      {couponResult && !couponResult.ok && (
+                        <div className="mt-2 rounded-lg bg-kirmizi/10 ring-1 ring-kirmizi/20 px-3 py-2 text-[12.5px] leading-relaxed text-kirmizi-koyu">
+                          ⚠{" "}
+                          {couponResult.reason === "invalid_or_expired"
+                            ? c.couponInvalid
+                            : couponResult.reason === "min_subtotal"
+                              ? c.couponMinSubtotal(couponResult.minSubtotal ?? 0)
+                              : couponResult.reason === "user_limit_reached"
+                                ? c.couponUserLimit
+                                : couponResult.reason === "total_limit_reached"
+                                  ? c.couponTotalLimit
+                                  : couponResult.reason === "rpc_error" ||
+                                      couponResult.reason === "invalid_response"
+                                    ? c.couponRpcError
+                                    : c.couponDefault}
+                        </div>
+                      )}
+                      {couponResult?.ok && (
+                        <div className="mt-2 rounded-lg bg-yesil-soft/60 ring-1 ring-yesil/30 px-3 py-2 text-[12.5px] text-yesil-koyu font-semibold leading-relaxed">
+                          {couponResult.kind === "free_ship"
+                            ? c.couponAppliedFreeShip
+                            : couponResult.kind === "percent"
+                              ? c.couponAppliedPercent(
+                                  Math.round(
+                                    (couponResult.discount / subtotal) * 100
+                                  ),
+                                  fmt(couponResult.discount)
+                                )
+                              : c.couponAppliedFixed(fmt(couponResult.discount))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1706,8 +1758,9 @@ export default function OdemePage() {
                   Sefa 17 May P2-28: checkbox tap target 14×14 → 20×20
                   (label ile beraber clickable area zaten geniş, ama
                   checkbox'ın kendisi de görünür ve dokunulabilir olsun) */}
-              <label className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-5 min-h-[44px] py-1">
+              <label htmlFor="accept-satis-cb" className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-5 min-h-[44px] py-1">
                 <input
+                  id="accept-satis-cb"
                   type="checkbox"
                   checked={acceptSatis}
                   onChange={(e) => setAcceptSatis(e.target.checked)}
@@ -1744,8 +1797,9 @@ export default function OdemePage() {
               </div>
 
               {/* Telif taahhüdü — Sefa 17 May P2-28: aynı tap target */}
-              <label className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3 min-h-[44px] py-1">
+              <label htmlFor="accept-copyright-cb" className="flex items-start gap-3 text-[13px] text-gri-700 leading-relaxed cursor-pointer mt-3 min-h-[44px] py-1">
                 <input
+                  id="accept-copyright-cb"
                   type="checkbox"
                   checked={acceptCopyright}
                   onChange={(e) => setAcceptCopyright(e.target.checked)}
@@ -1754,10 +1808,40 @@ export default function OdemePage() {
                 <span>{c.acceptCopyright}</span>
               </label>
 
-              {/* Sefa 17 May UX K#3: butonun neden disabled olduğunu göster */}
+              {/* Sefa 17 May UX K#3: butonun neden disabled olduğunu göster.
+                  Sefa 20 May v68 UX paket B #16: Her madde tıklanabilir →
+                  ilgili form alanına smooth scroll + focus. */}
               {!canSubmit && submitMissing.length > 0 && (
                 <div className="mt-3 rounded-lg bg-saman/15 ring-1 ring-saman/30 px-3 py-2 text-[12.5px] text-saman-koyu">
-                  <strong>Eksik:</strong> {submitMissing.join(" · ")}
+                  <strong>Eksik:</strong>{" "}
+                  {submitMissing.map((m, i) => {
+                    const anchor = getAnchorForMissing(m);
+                    return (
+                      <span key={i}>
+                        {i > 0 && " · "}
+                        {anchor ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const el = document.getElementById(anchor);
+                              if (el) {
+                                el.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "center",
+                                });
+                                (el as HTMLElement).focus?.();
+                              }
+                            }}
+                            className="underline underline-offset-2 hover:no-underline font-semibold cursor-pointer"
+                          >
+                            {m}
+                          </button>
+                        ) : (
+                          m
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1882,6 +1966,20 @@ export default function OdemePage() {
 // ============================================================
 // Helpers
 // ============================================================
+
+/**
+ * Sefa 20 May v68 UX paket B #16: Eksiklik bildirimi tıklanabilir.
+ * Her eksik madde için ilgili form alanının id'sini döner.
+ */
+function getAnchorForMissing(label: string): string | null {
+  if (label === "teslimat adresi") return "addr-first-name";
+  if (label.startsWith("TC kimlik")) return "tc-checkout";
+  if (label.startsWith("kurumsal fatura")) return "inv-vkn";
+  if (label === "Mesafeli Satış Sözleşmesi onayı") return "accept-satis-cb";
+  if (label === "Telif hakkı onayı") return "accept-copyright-cb";
+  if (label === "fatura bilgisi") return "invoice-section";
+  return null;
+}
 
 function isNewAddressFilled(a: {
   firstName?: string;
