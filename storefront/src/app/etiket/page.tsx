@@ -985,11 +985,7 @@ export default function EtiketPage() {
               height={height}
               view={previewView}
               onViewChange={setPreviewView}
-              footnote={
-                primaryDesign
-                  ? t.etiket.livePreviewWithFile
-                  : t.etiket.livePreviewNoFile
-              }
+              footnote={t.etiket.livePreviewNoFile}
             >
               <EtiketLivePreview
                 formFactor={formFactor}
@@ -1000,7 +996,10 @@ export default function EtiketPage() {
                 width={width}
                 height={height}
                 view={previewView}
-                designUrl={primaryDesign?.previewUrl ?? null}
+                /* Sefa 20 May v68: etiket önizlemesi sadece boyut + malzeme
+                 * gösterir; tasarım yüklense bile preview'a basılmaz —
+                 * gerçek baskı /onay sayfasında prova ile gösterilir. */
+                designUrl={null}
                 /* Sefa 18 May v67: gerçek geometri — tabaka grid'i
                  * "kaç adet sığar"a göre çizer (sabit 6 değil). */
                 geometryCols={quote.ok ? quote.geometry.cols : undefined}
