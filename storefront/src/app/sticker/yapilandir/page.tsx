@@ -557,30 +557,29 @@ function StickerPage() {
     [cutMode, designs]
   );
   // Sefa 16 May denetim #1: i18n. EN locale'de İngilizce stepper.
-  // Sefa 20 May v68 (Sticker reform): SHOW_STICKER_CUT_MODE_PICKER=false
-  // ise stepLabels'tan Kesim Tipi çıkar. Step 2 (Şekil) hâlâ render edilir
-  // çünkü köşe seçici onun içinde — sadece kartlar gizli.
-  const stepLabels = SHOW_STICKER_CUT_MODE_PICKER
-    ? ([
-        t.sticker.cutTypeTitle,
-        t.sticker.shapeTitle,
-        t.config.materialTitle,
-        t.config.finishTitle,
-        t.config.sizeTitle,
-        t.config.qtyTitle,
-        t.nav.dashboard === "Panel" ? "Tasarım" : "Design",
-      ] as const)
-    : ([
-        t.sticker.shapeTitle,
-        t.config.materialTitle,
-        t.config.finishTitle,
-        t.config.sizeTitle,
-        t.config.qtyTitle,
-        t.nav.dashboard === "Panel" ? "Tasarım" : "Design",
-      ] as const);
-  const stepIds: readonly number[] = SHOW_STICKER_CUT_MODE_PICKER
-    ? [1, 2, 3, 4, 5, 6, 7]
-    : [2, 3, 4, 5, 6, 7];
+  // Sefa 20 May v68 (2. revize): SHOW_STICKER_SHAPE_PICKER=false ise
+  // Step 2 (Şekil) FormSection da gizlendi (köşe seçici Step 5'e taşındı).
+  // stepIds + stepLabels'tan da çıkar → sequential lock + stepper UI temizlenir.
+  const stepLabels = (() => {
+    const labels: string[] = [];
+    if (SHOW_STICKER_CUT_MODE_PICKER) labels.push(t.sticker.cutTypeTitle);
+    if (SHOW_STICKER_SHAPE_PICKER) labels.push(t.sticker.shapeTitle);
+    labels.push(
+      t.config.materialTitle,
+      t.config.finishTitle,
+      t.config.sizeTitle,
+      t.config.qtyTitle,
+      t.nav.dashboard === "Panel" ? "Tasarım" : "Design"
+    );
+    return labels;
+  })();
+  const stepIds: readonly number[] = (() => {
+    const ids: number[] = [];
+    if (SHOW_STICKER_CUT_MODE_PICKER) ids.push(1);
+    if (SHOW_STICKER_SHAPE_PICKER) ids.push(2);
+    ids.push(3, 4, 5, 6, 7);
+    return ids;
+  })();
   const uiStepNumber = (domStepId: number): number => {
     const idx = stepIds.indexOf(domStepId);
     return idx === -1 ? 0 : idx + 1;
@@ -888,31 +887,24 @@ function StickerPage() {
             </FormSection>
             )}
 
-            {/* Step 2 — Şekil seçici. Sefa 20 May v68: gridden ?shape=...
-                pre-fill ile geliyor. SHOW_STICKER_SHAPE_PICKER false ise
-                kartlar gizlenir, ama köşe seçici (kare/dikdörtgen/bumper)
-                ve "özel oran" yardım metni kalır (alt bölümler). */}
+            {/* Step 2 — Şekil seçici. Sefa 20 May v68 (2. revize):
+                SHOW_STICKER_SHAPE_PICKER false ise tüm FormSection gizli.
+                Köşe seçici Step 5 (Boyut) içine taşındı. Şekil gridten
+                ?shape=... ile pre-fill geliyor, müşteri tekrar görmek
+                zorunda değil. */}
+            {SHOW_STICKER_SHAPE_PICKER && (
             <FormSection
               id="step-2"
               number={uiStepNumber(2)}
-              title={
-                SHOW_STICKER_SHAPE_PICKER
-                  ? t.sticker.shapeTitle
-                  : supportsCornerStyle(shape)
-                    ? t.sticker.cornerTitle
-                    : t.sticker.shapeTitle
-              }
+              title={t.sticker.shapeTitle}
               hint={
-                SHOW_STICKER_SHAPE_PICKER
-                  ? cutMode === "tabaka"
-                    ? t.sticker.shapeHintTabaka
-                    : t.sticker.shapeHintDieCut
-                  : ""
+                cutMode === "tabaka"
+                  ? t.sticker.shapeHintTabaka
+                  : t.sticker.shapeHintDieCut
               }
               locked={isStepLocked(2)}
               lockMessage={getLockMessage(2)}
             >
-              {SHOW_STICKER_SHAPE_PICKER && (
               <div
                 className={cn(
                   "grid gap-2.5",
@@ -957,8 +949,7 @@ function StickerPage() {
                   </SelectableCard>
                 ))}
               </div>
-              )}
-              {shape === "ozel" && SHOW_STICKER_SHAPE_PICKER && (
+              {shape === "ozel" && (
                 <div className="mt-3 px-3.5 py-2.5 rounded-lg bg-pim-mercan-tint/40 ring-1 ring-pim-mercan-soft text-[12.5px] text-lacivert leading-relaxed">
                   <strong className="text-pim-mercan-koyu">Özel oran:</strong>{" "}
                   Standart kare/yuvarlak yerine kendi oranını seç (60×80,
@@ -967,28 +958,8 @@ function StickerPage() {
                 </div>
               )}
 
-              {/* Köşe seçeneği — kare/dikdörtgen/bumper için alt-toggle.
-                  Sefa 20 May v68: supportsCornerStyle() ile rectangle ve
-                  bumper de kapsam altında (eski sadece kare+ozel idi). */}
-              {supportsCornerStyle(shape) && (
-                <div className="mt-3">
-                  <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
-                    {t.sticker.cornerTitle}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <CornerStyleCard
-                      kind="sharp"
-                      selected={!softCorners}
-                      onClick={() => setSoftCorners(false)}
-                    />
-                    <CornerStyleCard
-                      kind="soft"
-                      selected={softCorners}
-                      onClick={() => setSoftCorners(true)}
-                    />
-                  </div>
-                </div>
-              )}
+              {/* Sefa 20 May v68: Köşe seçici Step 5 (Boyut) içine taşındı.
+                  Eskiden burada idi. */}
 
               {/* Sefa 18 May v68: panel metni daha akıcı + somut.
                   Eski: "Kontur kesim ile mümkün olanlar / ve dahası ..."
@@ -1013,6 +984,7 @@ function StickerPage() {
                 </div>
               )}
             </FormSection>
+            )}
 
             <FormSection
               id="step-3"
@@ -1107,6 +1079,49 @@ function StickerPage() {
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
             >
+              {/* Sefa 20 May v68: köşe seçici Step 2'den buraya taşındı.
+                  Sadece kare/dikdörtgen/bumper için. */}
+              {supportsCornerStyle(shape) && (
+                <div className="mb-4">
+                  <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-gri-700 mb-2">
+                    {t.sticker.cornerTitle}
+                  </div>
+                  <div className="inline-flex rounded-full bg-gri-100 p-1 ring-1 ring-gri-200">
+                    {(["sharp", "soft"] as const).map((opt) => {
+                      const active = opt === "soft" ? softCorners : !softCorners;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setSoftCorners(opt === "soft")}
+                          aria-pressed={active}
+                          className={cn(
+                            "px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all inline-flex items-center gap-1.5",
+                            active
+                              ? "bg-white text-pim-mercan shadow-sm ring-1 ring-pim-mercan"
+                              : "text-gri-700 hover:text-lacivert"
+                          )}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                            <rect
+                              x="2"
+                              y="2"
+                              width="10"
+                              height="10"
+                              rx={opt === "soft" ? 3 : 0.5}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            />
+                          </svg>
+                          {opt === "soft" ? "Yumuşak" : "Düz"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
