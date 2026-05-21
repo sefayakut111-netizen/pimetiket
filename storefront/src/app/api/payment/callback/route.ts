@@ -234,7 +234,6 @@ export async function POST(req: NextRequest) {
   const estimatedDelivery = addDaysIso(
     intent.snapshot.items.some((i) => i.product === "etiket") ? 10 : 5
   );
-  const candidateOrderId = generateOrderId();
   const paymentMeta = {
     method: "card",
     masked,
@@ -245,16 +244,37 @@ export async function POST(req: NextRequest) {
     merchantOid,
   };
 
-  const { data: rpcData, error: rpcErr } = await admin.rpc(
-    "fn_finalize_paid_order" as never,
-    {
-      p_merchant_oid: merchantOid,
-      p_order_id: candidateOrderId,
-      p_items: itemsPayload,
-      p_payment_meta: paymentMeta,
-      p_estimated_delivery: estimatedDelivery,
-    } as never
-  );
+  // Mig 078: client DDMMYYYY+rand4 üretir, RPC bunu kullanır. Çakışma
+  // (unique_violation, PG kodu 23505) durumunda yeni ID ile 3 kez retry.
+  // Pratik çakışma olasılığı ~0% (günde 1-10 sipariş × 10K kombinasyon)
+  // ama defansif olarak retry koymak güvenli.
+  let candidateOrderId = generateOrderId();
+  let rpcData: unknown = null;
+  let rpcErr: { message?: string; code?: string } | null = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { data: d, error: e } = await admin.rpc(
+      "fn_finalize_paid_order" as never,
+      {
+        p_merchant_oid: merchantOid,
+        p_order_id: candidateOrderId,
+        p_items: itemsPayload,
+        p_payment_meta: paymentMeta,
+        p_estimated_delivery: estimatedDelivery,
+      } as never
+    );
+    rpcData = d;
+    rpcErr = e as { message?: string; code?: string } | null;
+
+    // unique_violation (23505) → yeni ID üret, tekrar dene
+    if (rpcErr && rpcErr.code === "23505" && attempt < 3) {
+      console.warn(
+        `[payment/callback] order_id çakışması (attempt ${attempt}): ${candidateOrderId} → yeni üretiliyor`
+      );
+      candidateOrderId = generateOrderId();
+      continue;
+    }
+    break;
+  }
 
   if (rpcErr) {
     // Audit P0 (4-agent 15 May): RPC silently swallowed → şikayet
