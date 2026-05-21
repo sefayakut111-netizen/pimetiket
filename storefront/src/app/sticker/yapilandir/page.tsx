@@ -1180,6 +1180,41 @@ function StickerPage() {
                   <path d="M7 17L17 7M17 7H7M17 7V17" />
                 </svg>
               </a>
+
+              {/* Sefa 22 May v68 Faz 3a — Transparan material seçilince
+                  beyaz plan bilgi kartı. Müşteri "şeffaf etiket = arkadaki
+                  yazılar görünür mü?" sorusunun cevabını burada görür.
+                  Manuel upload akışı Faz 3b'de prova sayfasında. */}
+              {material === "transparan" && (
+                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      className="inline-block w-5 h-5 rounded shrink-0 mt-0.5 border border-gri-300"
+                      style={{ backgroundColor: "white" }}
+                      aria-hidden
+                    />
+                    <div className="flex-1 text-[12.5px] text-lacivert leading-relaxed">
+                      <div className="font-semibold text-[13px] mb-1">
+                        Beyaz plan otomatik hazırlanır
+                      </div>
+                      <p className="text-gri-700">
+                        Şeffaf etikette tasarımının opaque (görünür)
+                        alanları için sistem otomatik olarak beyaz alt
+                        katman üretir — böylece renkler dolgun çıkar,
+                        arkadaki yazı/yüzey rengi karışmaz.
+                      </p>
+                      <p className="mt-1.5 text-gri-700">
+                        İleri tasarımcıysan ve kendi beyaz planını
+                        yüklemek istiyorsan, sipariş sonrası{" "}
+                        <strong className="text-pim-mercan">
+                          Prova sayfasında
+                        </strong>{" "}
+                        manuel beyaz plan yükleyebilirsin.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </FormSection>
 
             <FormSection
