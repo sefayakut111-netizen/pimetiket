@@ -20,9 +20,12 @@ import { Icon } from "@/components/Icon";
 import { Card, Input, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
+// Sefa 22 May v68: updateCustomerOrderStatus kaldırıldı — auth mode'da
+// no-op olduğu için admin "Uygula" sessizce başarısız oluyordu. Artık
+// POST /api/admin/orders/[id]/status çağrılıyor (handleStatusChange +
+// applyBulkStatus). listCustomerOrders sadece initial render fallback.
 import {
   listCustomerOrders,
-  updateCustomerOrderStatus,
   type CustomerOrder,
 } from "@/lib/customer-order";
 import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
@@ -62,14 +65,20 @@ const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: strin
   cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100" },
 };
 
+// Sefa 22 May v68: Filtre isimleri daha açıklayıcı + "Tasarım bekleniyor"
+// ve "İptal" eklendi. Sefa geri bildirimi: "üretim prova kargo neyi
+// yansıttığı belli değil" → her chip'in ne anlama geldiği netleşti.
 const FILTERS: { id: AdminStatus | "all"; label: string }[] = [
   { id: "all", label: "Tümü" },
-  { id: "paid", label: "Yeni" },
-  { id: "qc_flagged", label: "AI flag (acil)" },
-  { id: "operator_review", label: "Operatör" },
-  { id: "proof_pending", label: "Prova" },
-  { id: "in_production", label: "Üretim" },
-  { id: "shipped", label: "Kargo" },
+  { id: "paid", label: "Yeni (ödendi)" },
+  { id: "awaiting_upload", label: "Tasarım bekleniyor" },
+  { id: "qc_flagged", label: "AI sorun (acil)" },
+  { id: "operator_review", label: "Operatör inceliyor" },
+  { id: "proof_pending", label: "Müşteri onayı bekliyor" },
+  { id: "in_production", label: "Üretimde" },
+  { id: "shipped", label: "Kargoda" },
+  { id: "delivered", label: "Teslim edildi" },
+  { id: "cancelled", label: "İptal edildi" },
 ];
 
 /** Tüm AdminStatus'lar — durum güncelleme dropdown'u için */
@@ -238,11 +247,22 @@ function AdminSiparislerPageInner() {
     };
   }, []);
 
+  // Sefa 22 May v68: Tek satır status değiştirme de aynı bug'dan
+  // muzdaripti — updateCustomerOrderStatus auth mode'da no-op.
+  // POST /api/admin/orders/[id]/status ile gerçek update.
   const handleStatusChange = useCallback(
-    (id: string, status: AdminStatus) => {
-      updateCustomerOrderStatus(id, status);
-      // Hemen local'i göster, sonra DB fresh çek
-      setOrders(listCustomerOrders().map(toAdminOrderRow));
+    async (id: string, status: AdminStatus) => {
+      const res = await fetch(`/api/admin/orders/${id}/status`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status, note: "Tek satır güncelleme (admin)" }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        alert(`Güncelleme başarısız: ${j.error ?? res.status}`);
+        return;
+      }
+      // Fresh çek
       void fetchAllOrdersForAdmin({ limit: 500 }).then((all) =>
         setOrders(all.map(toAdminOrderRow))
       );
@@ -304,8 +324,12 @@ function AdminSiparislerPageInner() {
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
-  /** Toplu durum güncelle */
-  const applyBulkStatus = useCallback(() => {
+  /** Toplu durum güncelle — Sefa 22 May v68:
+   *  Önceki kod updateCustomerOrderStatus() çağırıyordu — bu helper auth
+   *  mode'da NO-OP (console.warn'a yazıp dönüyor). Yani admin "Uygula"ya
+   *  tıklıyordu, hiçbir şey olmuyordu. Doğru endpoint: POST /api/admin/
+   *  orders/[id]/status (service_role + admin role guard). */
+  const applyBulkStatus = useCallback(async () => {
     if (!bulkStatus || selected.size === 0) return;
     const targetLabel = STATUS_META[bulkStatus].label;
     if (
@@ -316,10 +340,36 @@ function AdminSiparislerPageInner() {
       return;
     }
     const count = selected.size;
-    selected.forEach((id) => {
-      updateCustomerOrderStatus(id, bulkStatus);
-    });
-    setOrders(listCustomerOrders().map(toAdminOrderRow));
+    const ids = Array.from(selected);
+
+    // Paralel istek (max 5 eşzamanlı — Vercel function rate'i koru)
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += 5) {
+      const batch = ids.slice(i, i + 5);
+      const results = await Promise.allSettled(
+        batch.map((id) =>
+          fetch(`/api/admin/orders/${id}/status`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              status: bulkStatus,
+              note: "Toplu güncelleme (admin panel)",
+            }),
+          })
+        )
+      );
+      for (const r of results) {
+        if (r.status === "rejected" || !r.value.ok) failed++;
+      }
+    }
+
+    if (failed > 0) {
+      alert(
+        `${count - failed}/${count} sipariş güncellendi. ${failed} hata oluştu.`
+      );
+    }
+
+    // Liste yenile
     void fetchAllOrdersForAdmin({ limit: 500 }).then((all) =>
       setOrders(all.map(toAdminOrderRow))
     );
