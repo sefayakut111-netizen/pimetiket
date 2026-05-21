@@ -38,7 +38,19 @@ import type {
   StickerFinish,
 } from "@/lib/sticker-customer-pricing";
 
-type ShapeId = "square" | "circle" | "ozel" | "die";
+// Sefa 21 May v68 (konfigüratör denetim #5): preview ShapeId genişletildi
+// — oval, rectangle, bumper için özel render (önceden hepsi "ozel" olarak
+// mapleniyor ve tek görselle gösteriliyordu). "diecut" sticker
+// yapilandir'daki alias (== "die") — TS uyumluluğu için burada da kabul.
+type ShapeId =
+  | "square"
+  | "circle"
+  | "ozel"
+  | "die"
+  | "diecut"
+  | "rectangle"
+  | "oval"
+  | "bumper";
 
 const STICKER_SURFACE: Record<StickerMaterial, SurfaceId> = {
   vinil: "opakpp",
@@ -54,7 +66,9 @@ const FINISH_SHEEN: Record<StickerFinish, number> = {
 };
 
 interface StickerLivePreviewProps {
-  cutMode: "diecut" | "tabaka";
+  // Sefa 21 May v68 (konfigüratör denetim #5): kisscut artık preview'da
+  // ayrı render — taşıyıcı kağıt outline ile gösterilir.
+  cutMode: "diecut" | "tabaka" | "kisscut";
   shape: ShapeId;
   softCorners: boolean;
   material: StickerMaterial;
@@ -105,22 +119,29 @@ export function StickerLivePreview({
   const stickerHeightPx = height * scale;
 
   // Şekil → border-radius
-  // Sefa 18 May v68: "Düz köşe" seçilince tam keskin köşe (0px).
-  // Eski: square düz=4, ozel düz=12 → görsel olarak hala yuvarlatılmış
-  // gözüküyordu. Şimdi: square düz=0, ozel düz=0, yumuşatılmış olanlar
-  // belirgin radius alır (square 16, ozel 36).
-  const radius =
-    shape === "circle"
-      ? "50%"
+  // Sefa 21 May v68 (konfigüratör denetim #5): oval/bumper/rectangle için
+  // ayrı render (eski "ozel" mapping tüm farklı şekilleri aynı görselle
+  // gösteriyordu).
+  const radius: string | number =
+    shape === "circle" || shape === "oval"
+      ? "50%" // oval ellipse — width × height farkı korunur, radius 50%
       : shape === "square"
         ? softCorners
           ? 16
           : 0
-        : shape === "ozel"
+        : shape === "rectangle"
           ? softCorners
-            ? 36
+            ? 12
             : 0
-          : 0;
+          : shape === "bumper"
+            ? softCorners
+              ? 24
+              : 6 // bumper yatay, hafif radius görsel hissi
+            : shape === "ozel"
+              ? softCorners
+                ? 36
+                : 0
+              : 0;
 
   // Sefa 18 May v68 (5): View modları
   // - "3d"     → perspective + rotation (gerçekçi sunum)
@@ -242,11 +263,11 @@ export function StickerLivePreview({
   // dış kontur olarak görünür (Sticker Mule pattern). Diğer şekillerde
   // (kare/yuvarlak/özel oran) renderSingleSticker normal akış.
   // ─────────────────────────────────────────────────────────────
-  if (cutMode === "diecut") {
+  if (cutMode === "diecut" || cutMode === "kisscut") {
     // ÖZEL: shape === "die" + tasarım yok → karga silüetine göre kesim
     // (kontur tasarımın alfa kanalını takip eder).
     // Sefa 18 May v68 (2): Tüm kargalar lacivert (dark mark) — auto-contrast yok.
-    if (shape === "die") {
+    if (shape === "die" || shape === "diecut") {
       const maskotSrc = "/pim/pim-etiket-mark-dark.svg";
       // Sefa 18 May v68: NET kalın beyaz kontur (diğer şekillerle aynı).
       // Eski drop-shadow blur'lu halo veriyordu → bulanık.
@@ -307,16 +328,40 @@ export function StickerLivePreview({
       );
     }
 
-    // Diğer şekiller (kare/yuvarlak/özel oran) — normal sticker + cut path
+    // Sefa 21 May v68 (konfigüratör denetim #5): kiss-cut için sticker'ın
+    // etrafında taşıyıcı kağıt outline. cutMode==="kisscut" iken görsel
+    // farklı: backing kağıt dikdörtgen + içinde sticker (cut path).
+    const isKissCut = cutMode === "kisscut";
+    const cutLabel = isKissCut ? "Yarı kesim" : "Kontur kesim";
+
+    // Yuvarlak/kare/oval/bumper/dikdörtgen — normal sticker + cut path
+    const stickerBlock = renderSingleSticker("die-single", {
+      withCutPath: true,
+      withShadow: !isKissCut, // kisscut backing zaten kağıt hissi verir
+    });
+
     return (
       <div style={view3dWrap} className="relative">
         <div style={view3dInner} className="flex flex-col items-center gap-3">
-          {renderSingleSticker("die-single", {
-            withCutPath: true,
-            withShadow: true,
-          })}
+          {isKissCut ? (
+            <div
+              className="relative bg-krem-soft ring-1 ring-gri-300 rounded-md"
+              style={{
+                padding: 18,
+                boxShadow: "0 8px 20px rgba(0,0,0,0.10)",
+              }}
+              title="Taşıyıcı kağıt — sticker tek tek soyulur"
+            >
+              {stickerBlock}
+            </div>
+          ) : (
+            stickerBlock
+          )}
           <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
-            Kontur kesim · {Math.round(width)}×{Math.round(height)} mm
+            {cutLabel} ·{" "}
+            {shape === "circle"
+              ? `Ø ${Math.round(width)} mm`
+              : `${Math.round(width)}×${Math.round(height)} mm`}
           </span>
         </div>
       </div>

@@ -36,8 +36,14 @@ export interface SequentialStepsConfig {
   stepIds: readonly number[];
   /** Step başlıkları, stepIds ile aynı sırada (lock mesajında kullanılır). */
   stepLabels: readonly string[];
-  /** Kullanıcının dokunduğu step'ler (her seçimde markTouched çağrılır). */
+  /** Kullanıcının dokunduğu step'ler (her seçimde markTouched çağrılır).
+   *  Stepper UI'da "TAMAM" göstergesi için kullanılır. */
   touchedSteps: Set<number>;
+  /** Sefa 21 May v68 (konfigüratör denetim #2/#10): URL pre-fill ile
+   *  kilidi açılan ama henüz kullanıcının seçim yapmadığı adımlar. Lock
+   *  hesabında touched + unlocked birleştirilir; "TAMAM" göstergesi
+   *  sadece touched'a bakar. Default boş Set. */
+  unlockedSteps?: Set<number>;
   /** İlk adım (stepIds[0]) için opsiyonel ön koşul.
    *  Örn. /etiket'te step-0 etiket türü → formFactorTouched gereklidir
    *  (touchedSteps dışında ayrı state). */
@@ -57,6 +63,7 @@ export function useSequentialSteps({
   stepIds,
   stepLabels,
   touchedSteps,
+  unlockedSteps,
   prerequisiteForFirst,
   locale,
 }: SequentialStepsConfig): SequentialStepsResult {
@@ -68,17 +75,16 @@ export function useSequentialSteps({
       if (prerequisiteForFirst === undefined) return false;
       return !prerequisiteForFirst;
     }
-    // Sonraki adımlar — bir öncekinin touched olduğunu kontrol
-    // Sefa 21 May v68 fix: önceden prev === stepIds[0] durumda SADECE
-    // prerequisiteForFirst'e bakıyordu (touched'a değil) → Step 1 seçilmeden
-    // Step 2 açık görünüyordu. Şimdi:
-    //   - Eğer ilk step prereq'i karşılanmadıysa → locked (önce o tamamlansın)
-    //   - Aksi halde prev step touched mı kontrol et (gerçek sıralı kilit)
+    // Sonraki adımlar — bir öncekinin touched veya unlocked olduğunu
+    // kontrol. URL pre-fill'den gelen adımlar unlockedSteps'te yer alır
+    // (lock'u açar) ama TAMAM göstergesi vermez (touched değil).
     const prev = stepIds[idx - 1];
     if (prev === stepIds[0] && prerequisiteForFirst === false) {
       return true; // ilk step prereq tamamlanmamış
     }
-    return !touchedSteps.has(prev);
+    const prevSatisfied =
+      touchedSteps.has(prev) || (unlockedSteps?.has(prev) ?? false);
+    return !prevSatisfied;
   };
 
   const lockMessage = (domStepId: number): string => {

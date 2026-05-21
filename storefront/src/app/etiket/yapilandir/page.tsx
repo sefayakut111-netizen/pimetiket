@@ -18,7 +18,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
@@ -804,20 +804,21 @@ function EtiketPage() {
   // "seçim yaptıkça çalışmıyor". Scroll-based active + touch-based done.
   // Sefa 15 May v4: varsayılan seçim de touched değilse görsel seçili
   // değil. Form factor için ayrı flag: formFactorTouched.
-  const [touchedSteps, setTouchedSteps] = useState<Set<number>>(() => {
-    const initial = new Set<number>();
-    // Sefa 21 May v68 (ürün denetim P0 #5 + P1 #6): URL'den material/shape
-    // geldiyse Malzeme (1) ve Boyut/Şekil için touched işaretle → "seçili"
-    // kart görünür, sequential lock sonraki adımları açar.
+  // Sefa 21 May v68 (konfigüratör denetim #2 + #10 — kendi bug fix'i):
+  // touchedSteps SADECE kullanıcı seçimleri (TAMAM yeşil onay için).
+  // URL pre-fill'den gelen adımlar unlockedSteps'e gider (lock açılır
+  // ama TAMAM göstermez).
+  const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
+    () => new Set()
+  );
+  const unlockedSteps = useMemo(() => {
+    const set = new Set<number>();
     if (initialParams.get("material") || initialParams.get("shape") === "clear") {
-      initial.add(1);
+      set.add(1);
     }
-    if (initialParams.get("shape")) {
-      // shape gelirse boyut adımı pre-fill var → touched
-      initial.add(6);
-    }
-    return initial;
-  });
+    if (initialParams.get("shape")) set.add(6);
+    return set;
+  }, [initialParams]);
   // Sefa 20 May v68 (Aşama B+): Form factor picker gizliyse müşteri URL'den
   // pre-fill ile zaten geldi → formFactorTouched her zaman true varsay (Step 1
   // Malzeme locked kalmasın). Picker açıksa eski davranış: kullanıcı seçmeli.
@@ -927,6 +928,7 @@ function EtiketPage() {
       stepIds,
       stepLabels,
       touchedSteps,
+      unlockedSteps,
       prerequisiteForFirst: formFactorTouched,
       locale,
     });
@@ -1335,6 +1337,8 @@ function EtiketPage() {
             >
               <EtiketLivePreview
                 formFactor={formFactor}
+                shape={shape}
+                cornerStyle={cornerStyle}
                 material={material}
                 coating={coating}
                 customs={customs}
@@ -2473,6 +2477,24 @@ function EtiketPage() {
                 deliveryDate={teslim}
                 ctaLabel={t.config.addToCart}
                 onCta={handleAddToCart}
+                /* Sefa 21 May v68 (konfigüratör denetim #4): zorunlu
+                   adımlar tamamlanmadıkça PriceCard'da "tahmini fiyat"
+                   bandı gösterilir; #1 sessiz fail için ek görsel uyarı. */
+                pendingStepsCount={
+                  stepIds.filter(
+                    (id) =>
+                      id !== 7 /* Tasarım opsiyonel */ &&
+                      !touchedSteps.has(id)
+                  ).length
+                }
+                firstPendingStepLabel={(() => {
+                  const firstPending = stepIds.find(
+                    (id) => id !== 7 && !touchedSteps.has(id)
+                  );
+                  if (firstPending == null) return undefined;
+                  const idx = stepIds.indexOf(firstPending);
+                  return stepLabels[idx];
+                })()}
                 /* Sefa 18 May v62: footnote kaldırıldı — KDV bilgisi
                    unitPrice'da, teslim ve özet zaten kart içinde var. */
                 footnote={null}
@@ -2542,6 +2564,10 @@ function EtiketPage() {
           type="button"
           onClick={handleAddToCart}
           disabled={!quote.ok}
+          // Sefa 21 May v68 (konfigüratör denetim #6): unique aria-label
+          // — PriceCard ana buton ile karışmasın (screen reader iki kez
+          // "Sepete ekle" okumaz).
+          aria-label="Sepete ekle — sticky mobile bar"
           className={cn(
             "shrink-0 inline-flex items-center gap-1.5",
             "bg-pim-mercan text-white font-bold text-[14px]",

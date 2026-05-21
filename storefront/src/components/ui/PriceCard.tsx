@@ -34,6 +34,11 @@ interface PriceCardProps {
   /** Sefa 18 May v62: İşlem özeti satırları (örn rulo + toplam adet).
    *  Caller içeriği belirler, locale-aware string'ler. */
   summaryItems?: SummaryItem[];
+  /** Sefa 21 May v68 (konfigüratör denetim #4): henüz tamamlanmamış
+   *  zorunlu adım sayısı + ilk adımın adı. Pozitif ise özet ve fiyat
+   *  varsayılan değerlere göre tahmini olarak gösterildiği belirtilir. */
+  pendingStepsCount?: number;
+  firstPendingStepLabel?: string;
 }
 
 /**
@@ -56,6 +61,8 @@ export function PriceCard({
   footnote,
   className,
   summaryItems,
+  pendingStepsCount,
+  firstPendingStepLabel,
 }: PriceCardProps) {
   const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
@@ -154,6 +161,18 @@ export function PriceCard({
           </Pill>
         )}
       </div>
+
+      {/* Sefa 21 May v68 (konfigüratör denetim #4): henüz tamamlanmamış
+          zorunlu adımlar varken özet ve fiyat varsayılan değerlerle
+          tahmini gösterildiği için kullanıcıya uyar. */}
+      {pendingStepsCount && pendingStepsCount > 0 ? (
+        <div className="mb-4 rounded-lg bg-sari-soft ring-1 ring-sari/30 px-3.5 py-2.5 text-[12.5px] text-lacivert">
+          <span className="font-semibold">⚠️ Tahmini fiyat</span> —{" "}
+          <strong>{pendingStepsCount} adım</strong> seçilmedi
+          {firstPendingStepLabel ? ` (önce "${firstPendingStepLabel}")` : ""}.
+          Seçimini tamamladıkça gerçek fiyat oluşur.
+        </div>
+      ) : null}
 
       {/* Sefa 18 May v62: İşlem özeti — caller satır listesi geçer.
           v63 UX/A11y reviewer fix:

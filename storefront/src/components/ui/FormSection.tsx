@@ -79,13 +79,17 @@ export function FormSection({
           )}
         </div>
       </div>
-      {/* Locked iken içerik tıklanamaz; WCAG kontrast için opacity 0.6
-          (eski 0.4 fail idi). Metinler hala okunabilir kontrast'ta. */}
+      {/* Locked iken içerik tıklanamaz; WCAG kontrast için opacity 0.6.
+          Sefa 21 May v68 (konfigüratör denetim #3): inert attribute eklendi
+          — pointer-events-none klavyeden Tab ile focus'u engellemiyordu;
+          inert tüm interaction'ı kapatır + form input'lar submit'e dahil
+          edilmez. */}
       <div
         className={cn(
           locked && "opacity-60 pointer-events-none select-none"
         )}
         aria-hidden={locked || undefined}
+        {...(locked ? { inert: true } : {})}
       >
         {children}
       </div>

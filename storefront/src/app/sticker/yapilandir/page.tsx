@@ -19,7 +19,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
@@ -548,22 +548,63 @@ function StickerPage() {
   // 7 adım: Kesim → Şekil → Malzeme → Yüzey → Boyut → Adet → Tasarım
   // Sefa 20 May v68: cut+shape picker'lar gizliyse, gridden geldiği için
   // step 1 ve 2 "touched" varsayılır (sequential locked guard düşmesin).
+  // Sefa 21 May v68 (konfigüratör denetim #2/#10 — kendi bug fix'i):
+  // touchedSteps SADECE kullanıcı seçimleri için. Picker gizli ise
+  // (flag false) o adım "tamamlanmış" varsayılır (kullanıcının yapacağı
+  // bir şey yok). URL pre-fill'den gelenler unlockedSteps'e gider.
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(() => {
     const initial = new Set<number>();
     if (!SHOW_STICKER_CUT_MODE_PICKER) initial.add(1);
     if (!SHOW_STICKER_SHAPE_PICKER) initial.add(2);
-    // Sefa 21 May v68 (ürün denetim P0 #5): URL'den material/shape/cut
-    // geldiyse ilgili adımları touched işaretle → kart "seçili" görünür,
-    // sequential lock sonraki adımları açar. /sticker grid'den gelindiğinde
-    // kullanıcı malzeme/şekil seçmiş varsayılır.
-    if (initialParams.get("material")) initial.add(3);
-    if (initialParams.get("shape")) {
-      initial.add(2);
-      initial.add(1); // shape gönderildiyse cut da default'a oturmuş kabul
-    }
-    if (initialParams.get("cut")) initial.add(1);
     return initial;
   });
+  const unlockedSteps = useMemo(() => {
+    const set = new Set<number>();
+    if (initialParams.get("material")) set.add(3);
+    if (initialParams.get("shape")) {
+      set.add(2);
+      set.add(1);
+    }
+    if (initialParams.get("cut")) set.add(1);
+    return set;
+  }, [initialParams]);
+
+  // Sefa 21 May v68 (konfigüratör denetim #8): geçersiz URL parametresi
+  // ile geldiyse kullanıcıya bilgilendirici toast — sessizce default'a
+  // düşmesin. Mount'ta bir kez kontrol.
+  useEffect(() => {
+    const cutParam = initialParams.get("cut");
+    const shapeParam = initialParams.get("shape");
+    const matParam = initialParams.get("material");
+    const validCuts = ["tabaka", "diecut", "kisscut"];
+    const validShapes = [
+      "diecut",
+      "die",
+      "circle",
+      "square",
+      "rectangle",
+      "oval",
+      "bumper",
+      "holo",
+      "transparan",
+      "transparent",
+      "glitter",
+      "simli",
+    ];
+    const validMaterials = ["vinil", "transparan", "holo", "simli"];
+    const bad: string[] = [];
+    if (cutParam && !validCuts.includes(cutParam)) bad.push(`cut=${cutParam}`);
+    if (shapeParam && !validShapes.includes(shapeParam))
+      bad.push(`shape=${shapeParam}`);
+    if (matParam && !validMaterials.includes(matParam))
+      bad.push(`material=${matParam}`);
+    if (bad.length > 0) {
+      toast.info(
+        `Bilinmeyen seçim (${bad.join(", ")}) — varsayılan Kare Sticker yüklendi. Üstte ürünü değiştirebilirsin.`
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Sefa 18 May v60: Sepete eklendi pop-up'ı
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
@@ -648,6 +689,7 @@ function StickerPage() {
       stepIds,
       stepLabels,
       touchedSteps,
+      unlockedSteps,
       locale,
     });
 
@@ -902,8 +944,12 @@ function StickerPage() {
               }
             >
               <StickerLivePreview
-                cutMode={mapCutToLegacy(cutMode)}
-                shape={mapShapeToLegacy(shape)}
+                // Sefa 21 May v68 (konfigüratör denetim #5): preview artık
+                // tüm shape/cut tiplerini ayrı render edebiliyor — legacy
+                // mapping kaldırıldı, kisscut + rectangle/oval/bumper olduğu
+                // gibi gönderilir.
+                cutMode={cutMode}
+                shape={shape}
                 softCorners={softCorners}
                 material={material}
                 finish={finish}
@@ -1642,6 +1688,19 @@ function StickerPage() {
               }
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
               footnote="KDV dahil fiyat · Açık ve net, sürpriz ücret yok"
+              pendingStepsCount={
+                stepIds.filter(
+                  (id) => id !== 7 && !touchedSteps.has(id)
+                ).length
+              }
+              firstPendingStepLabel={(() => {
+                const firstPending = stepIds.find(
+                  (id) => id !== 7 && !touchedSteps.has(id)
+                );
+                if (firstPending == null) return undefined;
+                const idx = stepIds.indexOf(firstPending);
+                return stepLabels[idx];
+              })()}
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={ctaLabel}
               onCta={async () => {

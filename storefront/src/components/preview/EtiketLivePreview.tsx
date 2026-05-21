@@ -68,8 +68,24 @@ const YALDIZ_OVERLAY: Record<string, string> = {
   holo: "linear-gradient(135deg,#FFB7E5 0%, #B7E8FF 50%, #FFE8B7 100%)",
 };
 
+/** Sefa 21 May v68 (konfigüratör denetim #5): etiket şekli — render'da
+ *  yuvarlak/oval/özel kesim için clip-path veya borderRadius uygulanır. */
+type EtiketShape =
+  | "diecut"
+  | "clear"
+  | "circle"
+  | "square"
+  | "rectangle"
+  | "oval"
+  | "sheet";
+
 interface EtiketLivePreviewProps {
   formFactor: "rulo" | "tabaka";
+  /** Sefa 21 May v68: önizleme şekle göre dinamik render — yuvarlak çap
+   *  100% borderRadius, oval ellipse, kare/dikdörtgen düz, "Özel kesim"
+   *  dashed outline. URL'den shape geliyorsa burada uygulanır. */
+  shape?: EtiketShape;
+  cornerStyle?: "sharp" | "rounded";
   material: EtiketMaterialId;
   coating: EtiketCoatingId;
   /** Çoklu özelleştirme — yaldız + spot UV kombinasyonu */
@@ -92,6 +108,8 @@ interface EtiketLivePreviewProps {
 
 export function EtiketLivePreview({
   formFactor,
+  shape,
+  cornerStyle,
   material,
   coating,
   customs,
@@ -109,12 +127,36 @@ export function EtiketLivePreview({
   const isDarkMaterial = MATERIAL_IS_DARK[material] === true;
   const isTransparentMaterial = material === "ultra" || material === "seffaf";
 
+  // Sefa 21 May v68 (konfigüratör denetim #5): şekil → preview render
+  //   - circle/square: eş kenar zorlanır (width = height)
+  //   - oval: width × height korunur ama radius 50% (ellipse)
+  //   - rectangle: cornerStyle sharp → 6, rounded → 14
+  //   - diecut: tasarımın silüetine kesim — dashed outline
+  //   - clear: dikdörtgen + şeffaf checker zaten var
+  const effectiveShape: EtiketShape = shape ?? "rectangle";
+  const isCircle = effectiveShape === "circle";
+  const isOval = effectiveShape === "oval";
+  const isSquare = effectiveShape === "square";
+  const isDiecut = effectiveShape === "diecut";
+  // Square/circle için eş kenar — width/height farklı geldiyse en küçük al
+  const renderW = isCircle || isSquare ? Math.min(width, height) : width;
+  const renderH = isCircle || isSquare ? Math.min(width, height) : height;
   // Tek etiket boyutu — px cinsinden hedef ölçek
   // Maks 280px hedef, en uzun kenara göre normalize
-  const maxDim = Math.max(width, height);
+  const maxDim = Math.max(renderW, renderH);
   const scale = Math.min(280 / maxDim, 4);
-  const labelWidthPx = width * scale;
-  const labelHeightPx = height * scale;
+  const labelWidthPx = renderW * scale;
+  const labelHeightPx = renderH * scale;
+  // Şekle göre borderRadius
+  const shapeRadius = isCircle
+    ? "50%"
+    : isOval
+      ? "50%"
+      : effectiveShape === "rectangle" && cornerStyle === "rounded"
+        ? "14px"
+        : isSquare && cornerStyle === "rounded"
+          ? "10px"
+          : "6px";
 
   // Sefa 18 May v68 (5): View modları
   // - "3d"     → perspective rotateX (yumuşak, gerçekçi)
@@ -148,12 +190,14 @@ export function EtiketLivePreview({
       className={
         isSketch
           ? "relative overflow-hidden ring-1 ring-pim-mercan"
-          : "relative overflow-hidden ring-1 ring-black/[0.08]"
+          : isDiecut
+            ? "relative overflow-hidden ring-2 ring-dashed ring-pim-mercan/60"
+            : "relative overflow-hidden ring-1 ring-black/[0.08]"
       }
       style={{
         width: labelWidthPx,
         height: labelHeightPx,
-        borderRadius: 6,
+        borderRadius: shapeRadius,
         boxShadow: isSketch
           ? "none"
           : material === "metalik"
@@ -294,10 +338,15 @@ export function EtiketLivePreview({
             style={{ width: stripWidth }}
           />
 
-          {/* Sefa 18 May v68: alt yazı sticker formatıyla aynı —
-              "RULO · 60×80 MM" sade, 2 parça. */}
+          {/* Sefa 21 May v68 (konfigüratör denetim #7): yuvarlak/kare
+              için tek-boyut format; oval/dikdörtgen iki boyut. */}
           <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
-            Rulo · {Math.round(width)}×{Math.round(height)} mm
+            Rulo ·{" "}
+            {isCircle
+              ? `Ø ${Math.round(renderW)} mm`
+              : isSquare
+                ? `${Math.round(renderW)}×${Math.round(renderW)} mm`
+                : `${Math.round(renderW)}×${Math.round(renderH)} mm`}
           </span>
         </div>
       </div>
@@ -392,10 +441,12 @@ export function EtiketLivePreview({
                 className={
                   isSketch
                     ? "relative overflow-hidden ring-1 ring-pim-mercan"
-                    : "relative overflow-hidden ring-1 ring-black/[0.08]"
+                    : isDiecut
+                      ? "relative overflow-hidden ring-2 ring-dashed ring-pim-mercan/60"
+                      : "relative overflow-hidden ring-1 ring-black/[0.08]"
                 }
                 style={{
-                  borderRadius: 3,
+                  borderRadius: shapeRadius,
                   boxShadow: isSketch ? "none" : "0 1px 3px rgba(0,0,0,0.08)",
                   background: isSketch
                     ? "rgba(255, 107, 91, 0.18)"
