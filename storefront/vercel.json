@@ -1,6 +1,11 @@
 {
   "crons": [
     {
+      "_comment": "Sefa 21 May v68 — Admin günlük özet maili (TR 09:00 = UTC 06:00)",
+      "path": "/api/cron/admin-daily-summary",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/auto-refund",
       "schedule": "0 2 * * *"
     },

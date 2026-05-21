@@ -417,7 +417,9 @@ export default function AdminMusterilerPage() {
           </div>
         )}
 
-        {/* Error — Sefa 18 May v68: Friendly mesaj + hint */}
+        {/* Error — Sefa 18 May v68: Friendly mesaj + hint
+            Sefa 21 May v68: Diagnostic endpoint link eklendi — kullanıcı
+            tıklayınca tek istek ile root cause görür (auth/env/view). */}
         {error && (
           <Card padding="p-4" className="mb-5 !bg-kirmizi/5 ring-kirmizi/20">
             <div className="flex items-start gap-3">
@@ -427,7 +429,7 @@ export default function AdminMusterilerPage() {
                   Müşteri verisi şu an çekilemiyor
                 </strong>
                 <p className="text-gri-700 leading-relaxed">{error}</p>
-                <div className="mt-2 flex gap-3 text-[12px]">
+                <div className="mt-2 flex flex-wrap gap-3 text-[12px]">
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
@@ -435,6 +437,15 @@ export default function AdminMusterilerPage() {
                   >
                     🔄 Yeniden dene
                   </button>
+                  <a
+                    href="/api/admin/customers/diagnostic"
+                    target="_blank"
+                    rel="noopener"
+                    className="text-pim-mercan font-semibold hover:underline"
+                    title="Hangi katmanda sorun var (auth/env/view) — JSON döner"
+                  >
+                    🔍 Root cause (diagnostic) →
+                  </a>
                   <Link
                     href="/admin/audit-log"
                     className="text-pim-mercan font-semibold hover:underline"
@@ -442,6 +453,25 @@ export default function AdminMusterilerPage() {
                     Audit log →
                   </Link>
                 </div>
+                <details className="mt-3 text-[11.5px] text-gri-700">
+                  <summary className="cursor-pointer font-semibold">
+                    Olası çözümler
+                  </summary>
+                  <ul className="mt-2 space-y-1 list-disc pl-5">
+                    <li>
+                      <strong>42P01</strong> → <code>v_admin_customers</code>{" "}
+                      view yok, Migration 046 push edilmemiş
+                    </li>
+                    <li>
+                      <strong>42501</strong> → permission denied, service role
+                      key yanlış
+                    </li>
+                    <li>
+                      <strong>generic 500</strong> → view stale (üst migration
+                      şemayı değiştirdi)
+                    </li>
+                  </ul>
+                </details>
               </div>
             </div>
           </Card>

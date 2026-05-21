@@ -464,6 +464,121 @@ function renderCustomerReviewRequest(input: MailTemplateInput): MailRendered {
   return { subject, html: shellHtml(subject, body, footer), text };
 }
 
+// ============================================================
+// admin_new_order — Sefa'ya yeni sipariş bildirimi (ANLIK)
+// Sefa 21 May v68: payment-callback başarılı sonra tetiklenir,
+// Sefa /admin'i sürekli açık tutmak zorunda kalmasın.
+// ============================================================
+function renderAdminNewOrder(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const orderId = escape(p.order_id);
+  const customerEmail = escape(p.customer_email ?? "—");
+  const customerName = escape(p.customer_name ?? "Yeni müşteri");
+  const total = escape(p.total_text ?? "—");
+  const items = escape(p.items_summary ?? "—");
+  const hasDesign = Boolean(p.has_design);
+  const adminLink = `${SITE_URL}/admin/siparisler/${orderId}`;
+
+  const subject = `🛒 Yeni sipariş ${orderId} — ${total}`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px; color: #FF6B5B;">🛒 Yeni sipariş geldi</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px;">
+      <strong>${customerName}</strong> az önce sipariş verdi.
+      ${hasDesign ? "Tasarım yüklü." : "<strong>Tasarım sonra yüklenecek</strong> (awaiting_upload)."}
+    </p>
+
+    <table role="presentation" style="width: 100%; margin: 20px 0; font-size: 13px;">
+      <tr><td style="padding: 6px 0; color: #57534e;">Sipariş No</td><td style="padding: 6px 0; font-weight: 600;">${orderId}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">Müşteri</td><td style="padding: 6px 0;">${customerEmail}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">Toplam</td><td style="padding: 6px 0; font-weight: 600;">${total}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">İçerik</td><td style="padding: 6px 0;">${items}</td></tr>
+    </table>
+
+    <div style="margin: 24px 0;">
+      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Sipariş detayını aç →
+      </a>
+    </div>
+  `;
+
+  const footer = `
+    Bu mail Pim Etiket admin bildirim sisteminden gönderildi.
+    Bildirimi durdurmak için <code>ADMIN_NOTIFICATION_EMAIL</code> env'ini Vercel'den kaldır.
+  `;
+
+  const text = `Yeni sipariş ${orderId} — ${total}\n\n${customerName} (${customerEmail})\nİçerik: ${items}\n${hasDesign ? "Tasarım yüklü" : "Tasarım sonra yüklenecek"}\n\nDetay: ${adminLink}`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
+// admin_daily_summary — Sefa'ya günlük operasyon özeti (TR 09:00)
+// Sefa 21 May v68: kahvesini içerken günün durumunu görür.
+// ============================================================
+function renderAdminDailySummary(input: MailTemplateInput): MailRendered {
+  const p = input.payload as Record<string, number | string>;
+  const newOrders = Number(p.newOrders24h) || 0;
+  const revenue = Math.round(Number(p.revenue24h) || 0).toLocaleString("tr-TR");
+  const awaitingUpload = Number(p.awaitingUpload) || 0;
+  const awaitingUploadStale = Number(p.awaitingUploadStale) || 0;
+  const aiQc = Number(p.aiQcQueue) || 0;
+  const proof = Number(p.proofPending) || 0;
+  const production = Number(p.inProduction) || 0;
+  const shipped = Number(p.shipped24h) || 0;
+  const capacityWarn = Number(p.partnerCapacityWarn) || 0;
+  const adminLink = `${SITE_URL}/admin`;
+
+  const subject = `📊 Günlük özet — ${newOrders} yeni sipariş · ${revenue} ₺`;
+
+  // Kritik uyarı banner'ı (varsa)
+  const hasAlerts = awaitingUploadStale > 0 || capacityWarn > 0;
+  const alertBanner = hasAlerts
+    ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #78350f;">
+        <strong>⚠️ Dikkat:</strong>
+        ${awaitingUploadStale > 0 ? `${awaitingUploadStale} sipariş 24+ saattir tasarım bekliyor. ` : ""}
+        ${capacityWarn > 0 ? `${capacityWarn} üretim partneri kapasitesinin %85+'inde. ` : ""}
+      </div>`
+    : "";
+
+  const body = `
+    <h1 style="font-size: 20px; margin: 0 0 4px; color: #0f172a;">📊 Pim Etiket — Günlük Özet</h1>
+    <p style="font-size: 13px; color: #64748b; margin: 0 0 20px;">Son 24 saatin operasyon özeti</p>
+
+    ${alertBanner}
+
+    <h2 style="font-size: 14px; color: #FF6B5B; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">💰 Sipariş & Ciro</h2>
+    <table role="presentation" style="width: 100%; font-size: 13px; margin-bottom: 12px;">
+      <tr><td style="padding: 4px 0; color: #57534e;">Yeni sipariş</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${newOrders}</td></tr>
+      <tr><td style="padding: 4px 0; color: #57534e;">Ciro (24sa)</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${revenue} ₺</td></tr>
+      <tr><td style="padding: 4px 0; color: #57534e;">Kargolanan (24sa)</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${shipped}</td></tr>
+    </table>
+
+    <h2 style="font-size: 14px; color: #FF6B5B; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">📦 Aktif Kuyruklar</h2>
+    <table role="presentation" style="width: 100%; font-size: 13px;">
+      <tr><td style="padding: 4px 0; color: #57534e;">Tasarım bekleyen</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${awaitingUpload}${awaitingUploadStale > 0 ? ` <span style="color:#f59e0b;">(${awaitingUploadStale} stale)</span>` : ""}</td></tr>
+      <tr><td style="padding: 4px 0; color: #57534e;">AI QC kuyruğu</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${aiQc}</td></tr>
+      <tr><td style="padding: 4px 0; color: #57534e;">Müşteri prova onayı</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${proof}</td></tr>
+      <tr><td style="padding: 4px 0; color: #57534e;">Üretimde</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${production}</td></tr>
+    </table>
+
+    <div style="margin: 28px 0;">
+      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Admin paneline git →
+      </a>
+    </div>
+  `;
+
+  const footer = `
+    Bu mail her sabah 09:00'da otomatik gönderilir.
+    Durdurmak için <code>ADMIN_NOTIFICATION_EMAIL</code> env'ini Vercel'den kaldır.
+  `;
+
+  const text = `Pim Etiket — Günlük Özet (son 24sa)\n\nYeni sipariş: ${newOrders}\nCiro: ${revenue} ₺\nKargolanan: ${shipped}\n\nKuyruklar:\n- Tasarım bekleyen: ${awaitingUpload} (${awaitingUploadStale} stale)\n- AI QC: ${aiQc}\n- Prova onayı: ${proof}\n- Üretimde: ${production}\n\n${capacityWarn > 0 ? `⚠️ ${capacityWarn} partner %85+ doluluk\n\n` : ""}Admin: ${adminLink}`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
 const RENDERERS: Record<string, (input: MailTemplateInput) => MailRendered> = {
   fason_new_assignment: renderFasonNewAssignment,
   customer_in_production: renderCustomerInProduction,
@@ -473,6 +588,8 @@ const RENDERERS: Record<string, (input: MailTemplateInput) => MailRendered> = {
   lead_welcome: renderLeadWelcome,
   customer_abandoned_cart: renderCustomerAbandonedCart,
   customer_review_request: renderCustomerReviewRequest,
+  admin_new_order: renderAdminNewOrder,
+  admin_daily_summary: renderAdminDailySummary,
 };
 
 export function renderMailTemplate(
