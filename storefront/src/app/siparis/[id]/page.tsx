@@ -107,6 +107,7 @@ const COPY = {
     designTitle: "Tasarım dosyası",
     uploadCta: "Dosya yükle",
     uploading: "Yükleniyor...",
+    uploadCtaNewVersion: "Yeni versiyon yükle",
     designEmptyTitle: "Henüz tasarım yüklemedin",
     designEmptyDesc:
       "PDF, AI, EPS, PSD, PNG, JPG, SVG kabul ederim. Yükledikten sonra Pim AI saniyeler içinde DPI / CMYK / boşluk kontrolü yapar.",
@@ -117,8 +118,8 @@ const COPY = {
     confirmRemove: "Bu dosya silinsin mi?",
     mockUploadNote: (
       <>
-        Mock yükleme — gerçek dosya storage Faz 2&rsquo;de Supabase Storage ile
-        aktif olacak.
+        Dosya değiştirmek için <strong>Yeni versiyon yükle</strong>&rsquo;ye
+        basabilirsin. Önceki dosya geçmişte tutulur (24 ay).
       </>
     ),
     flagDpiOk: "Çözünürlük 320 DPI — baskı için yeterli",
@@ -206,6 +207,7 @@ const COPY = {
     designTitle: "Design file",
     uploadCta: "Upload file",
     uploading: "Uploading...",
+    uploadCtaNewVersion: "Upload new version",
     designEmptyTitle: "No design uploaded yet",
     designEmptyDesc:
       "Accepts PDF, AI, EPS, PSD, PNG, JPG, SVG. Once uploaded, Pim AI runs DPI / CMYK / margin checks in seconds.",
@@ -216,8 +218,8 @@ const COPY = {
     confirmRemove: "Delete this file?",
     mockUploadNote: (
       <>
-        Mock upload — real file storage will be active in Phase 2 with Supabase
-        Storage.
+        To change the file, click <strong>Upload new version</strong>. The
+        previous file is kept in history (24 months).
       </>
     ),
     flagDpiOk: "Resolution 320 DPI — sufficient for print",
@@ -248,11 +250,19 @@ function statusToPhaseIndex(status: OrderStatus): number {
   switch (status) {
     case "paid":
       return 1;
+    // Sefa 22 May v68 — Mig 061: ödedi ama tasarım yok, dosya bekleniyor.
+    // Faz 1'de kal (ödendi current), kullanıcı "tasarım yükle" CTA görmeli.
+    case "awaiting_upload":
+      return 1;
     case "qc_pending":
       return 3;
     case "qc_flagged":
     case "operator_review":
       return 4;
+    // Sefa 22 May v68 — Mig 062: bıçak otomatik üretiliyor ara state.
+    // Operatör onayı sonrası, prova bekleniyor öncesi = faz 5'in başında.
+    case "proof_generating":
+      return 5;
     case "proof_pending":
       return 5;
     case "proof_approved":
@@ -599,6 +609,50 @@ export default function SiparisDetailPage({
               </ol>
             </Card>
 
+            {/* Sefa 22 May v68 — Proof onay CTA bölümü.
+                Tasarım yüklendiyse (qc_passed) + status bıçak akışında ise
+                (proof_generating veya proof_pending), müşteri /onay sayfasına
+                geçiş için belirgin CTA görmeli. Eskiden bu sayfa ile /onay
+                arasında köprü yoktu — müşteri "bıçak akışı nasıl ilerleyecek"
+                anlamıyordu. */}
+            {(order.status === "proof_generating" ||
+              order.status === "proof_pending") && (
+              <Card padding="p-6" className="border-2 border-pim-mercan/40 bg-pim-mercan-tint/20">
+                <div className="flex gap-4 items-start">
+                  <PimMini pose="inspect" size={56} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
+                      {order.status === "proof_generating"
+                        ? "Bıçak çiziliyor"
+                        : "Onay bekleniyor"}
+                    </div>
+                    <h3 className="font-semibold text-[18px] mt-1 text-lacivert">
+                      {order.status === "proof_generating"
+                        ? "Tasarımının bıçak çizimi hazırlanıyor"
+                        : "Bıçak çizimin hazır — onayını bekliyor"}
+                    </h3>
+                    <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
+                      {order.status === "proof_generating"
+                        ? "AI ön-kontrol geçildi, otomatik bıçak çizimi 5 dakika içinde hazır olur. Onay sayfasına geçince ilerlemeyi canlı görebilirsin."
+                        : "Bıçak çizimini incele, gerekirse düzenle veya onayla. Onay sonrası sipariş üretime gönderilir."}
+                    </p>
+                    <div className="mt-4">
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        href={`/onay/${order.id}`}
+                      >
+                        <Icon.Eye size={16} />{" "}
+                        {order.status === "proof_generating"
+                          ? "İlerlemeyi gör →"
+                          : "Bıçağı onayla →"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Proof canvas — current phase'e göre */}
             {phaseIdx === 5 && !proofApproved && (
               <Card padding="" className="!p-0 overflow-hidden">
@@ -724,9 +778,11 @@ export default function SiparisDetailPage({
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-4">{c.summaryTitle}</h3>
               <ul className="flex flex-col gap-3 text-[13px]">
-                {/* Sefa 21 May v68: Sipariş özetinde DesignThumb (gerçek
-                    tasarım önizlemesi) + buildSummaryItems (basamak basamak
-                    özet — konfigüratör İşlem Özeti ile aynı format). */}
+                {/* Sefa 22 May v68: Font boyutları büyütüldü (13.5→14.5,
+                    11.5→13). Tasarım önizlemesi için design-url endpoint
+                    fallback'i — cart item designPreviewUrl boş ise (örn.
+                    sipariş sonrası /tasarim-yukle'den yükleme) design_files'
+                    tan signed URL alır. SiparisOzetiDesignThumb wrapper. */}
                 {order.items.map((item) => {
                   const summaryItems = buildSummaryItems(
                     item,
@@ -738,26 +794,27 @@ export default function SiparisDetailPage({
                       className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
                     >
                       <div className="flex gap-3 items-start">
-                        <DesignThumb
-                          previewUrl={item.designPreviewUrl}
+                        <SiparisOzetiDesignThumb
+                          orderId={order.id}
+                          itemId={item.id}
+                          fallbackPreviewUrl={item.designPreviewUrl}
                           fileName={item.designFileName}
                           mimeType={item.designMimeType}
                           product={item.product}
-                          size="sm"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between gap-3 items-baseline">
-                            <span className="font-semibold text-lacivert text-[13.5px] truncate flex-1 min-w-0">
+                            <span className="font-semibold text-lacivert text-[14.5px] truncate flex-1 min-w-0">
                               {item.title}
                             </span>
-                            <span className="font-semibold tabular-nums shrink-0">
+                            <span className="font-semibold tabular-nums shrink-0 text-[14.5px]">
                               {fmt(item.total)} {c.currency}
                             </span>
                           </div>
                           {/* Basamak basamak özet — her bir konfigüratör
                               seçimi tek satır */}
                           {summaryItems.length > 0 && (
-                            <ul className="mt-1.5 space-y-0.5 text-[11.5px] text-gri-700">
+                            <ul className="mt-2 space-y-1 text-[13px] text-gri-700 leading-relaxed">
                               {summaryItems.map((s, i) => (
                                 <li key={i} className="flex items-start gap-1.5">
                                   <span aria-hidden="true" className="shrink-0">
@@ -775,7 +832,7 @@ export default function SiparisDetailPage({
                               ))}
                             </ul>
                           )}
-                          <div className="text-[11.5px] text-gri-500 mt-1.5 tabular-nums">
+                          <div className="text-[12.5px] text-gri-500 mt-2 tabular-nums">
                             {fmtUnit(item.unit)} {c.currency} × {item.qty.toLocaleString(c.locale)} {c.pcs}
                           </div>
                         </div>
@@ -1099,6 +1156,70 @@ function dbRowToUploaded(r: DbFileRow): UploadedFile & { id: string; status: str
 }
 
 // ============================================================
+// SiparisOzetiDesignThumb — Sipariş özeti kartında thumbnail.
+// Sefa 22 May v68: Cart item designPreviewUrl boş ise (ödeme sonrası
+// /siparis/[id]/tasarim-yukle'den yükleme), DB'de design_files var ama
+// item.designPreviewUrl undefined. design-url endpoint'inden signed URL
+// alıp DesignThumb'a fallback verir.
+// ============================================================
+function SiparisOzetiDesignThumb({
+  orderId,
+  itemId,
+  fallbackPreviewUrl,
+  fileName,
+  mimeType,
+  product,
+}: {
+  orderId: string;
+  itemId: string;
+  fallbackPreviewUrl?: string;
+  fileName?: string;
+  mimeType?: string;
+  product: "sticker" | "etiket";
+}) {
+  const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
+  const [fetchedMime, setFetchedMime] = useState<string | undefined>(undefined);
+  const [fetchedName, setFetchedName] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (fallbackPreviewUrl) return; // cart preview varsa fetch yapma
+    let active = true;
+    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url`, {
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { url?: string; mimeType?: string; fileName?: string } | null) => {
+        if (!active || !data?.url) return;
+        // Raster mime ise direkt göster, vector (PDF/AI) ise fallback rozet
+        const isRaster =
+          data.mimeType?.startsWith("image/") &&
+          !data.mimeType.includes("svg");
+        if (isRaster) {
+          setFetchedUrl(data.url);
+        }
+        setFetchedMime(data.mimeType);
+        setFetchedName(data.fileName);
+      })
+      .catch(() => {
+        /* sessiz fail, fallback ürün ikonu gösterilir */
+      });
+    return () => {
+      active = false;
+    };
+  }, [orderId, itemId, fallbackPreviewUrl]);
+
+  return (
+    <DesignThumb
+      previewUrl={fallbackPreviewUrl ?? fetchedUrl ?? undefined}
+      fileName={fileName ?? fetchedName}
+      mimeType={mimeType ?? fetchedMime}
+      product={product}
+      size="sm"
+    />
+  );
+}
+
+// ============================================================
 // DesignFileThumb — raster tasarımlar için preview thumbnail.
 // Sefa 21 May v68 (E sorun fix): /siparis/[id] sayfasında dosya yüklenmiş
 // ama önizleme gözükmüyordu — sadece Icon.Box rendered. Bu component
@@ -1334,7 +1455,11 @@ function DesignUploadCard({
         <h2 className="text-xl font-semibold">{c.designTitle}</h2>
         <label className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold cursor-pointer hover:bg-pim-mercan-koyu transition-colors">
           <Icon.Plus size={14} />
-          {analyzing ? c.uploading : c.uploadCta}
+          {analyzing
+            ? c.uploading
+            : files.length > 0
+              ? c.uploadCtaNewVersion
+              : c.uploadCta}
           <input
             type="file"
             className="hidden"
