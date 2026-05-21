@@ -673,23 +673,37 @@ export default function SiparisDetailPage({
                     <strong className="text-lacivert">{c.proofColorWarn}</strong>{" "}
                     {c.proofColorWarnText}
                   </p>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      variant="primary"
-                      onClick={() => void respondToProof("approve")}
-                      disabled={proofResponding}
-                      className="!bg-yesil hover:!bg-yesil-koyu"
-                    >
-                      <Icon.Check size={14} /> {c.proofApprove}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => void respondToProof("request_change")}
-                      disabled={proofResponding}
-                    >
-                      {c.proofRequestChange}
-                    </Button>
-                  </div>
+                  {/* Sefa 22 May v68: Butonlar SADECE proof_pending'de aktif.
+                      proof_generating'de bıçak hala hazırlanıyor — backend
+                      endpoint zaten sadece proof_pending kabul ediyor (400
+                      dönüyordu, UI sessiz fail). */}
+                  {order.status === "proof_generating" ? (
+                    <div className="flex items-center gap-2 text-[13px] text-gri-700 bg-gri-50 rounded-lg p-3">
+                      <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
+                      <span>
+                        Bıçak çizimi hala hazırlanıyor — birkaç dakika sonra
+                        onay butonları aktif olur.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="primary"
+                        onClick={() => void respondToProof("approve")}
+                        disabled={proofResponding}
+                        className="!bg-yesil hover:!bg-yesil-koyu"
+                      >
+                        <Icon.Check size={14} /> {c.proofApprove}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => void respondToProof("request_change")}
+                        disabled={proofResponding}
+                      >
+                        {c.proofRequestChange}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             )}
