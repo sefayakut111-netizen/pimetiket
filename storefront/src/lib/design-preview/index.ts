@@ -139,39 +139,60 @@ export async function persistDesignPreview(
 }
 
 /**
- * Preview Blob → Supabase Storage upload. Public URL döner.
- * Bucket: `design-previews` (Migration 072 referansı, public read).
+ * Preview Blob → Server-side proxy upload. Public URL döner.
  *
- * Sefa 20 May v68: Bucket henüz yok ise (storage migration ileride) bu
- * fonksiyon sessizce null döner — sepet UI orijinal dosya yüklendiğinde
- * blob URL ile çalışmaya devam eder, kalıcı önizleme sonra eklenir.
+ * Sefa 21 May v68 — REFACTOR:
+ *   Önceki versiyon doğrudan supabase.storage.upload() çağırıyordu.
+ *   @supabase/ssr browser client'ın Authorization header'ı storage'a
+ *   geçmediği için auth.uid() NULL dönüyor → RLS policy fail
+ *   ("new row violates row-level security policy") → blob URL fallback
+ *   → session-only → F5 sonrası kayboluyor.
+ *
+ *   Yeni mimari: /api/cart/upload-preview endpoint'ine multipart POST
+ *   yapılır. Server tarafı service_role ile storage'a yazar (RLS bypass).
+ *   Auth + MIME + size + path validation server tarafında.
+ *
+ * Bucket: `design-previews` (Migration 072 referansı, public read).
+ * userId argümanı geriye uyumluluk için tutuldu (auth endpoint'te kontrol
+ * edilir — null/undefined ise server 401 döner).
  */
 export async function uploadPreviewToStorage(
   previewBlob: Blob,
   designId: string,
   userId: string | null
 ): Promise<string | null> {
-  if (!userId) return null; // guest mode → kalıcı storage yok, blob URL kullanılır
+  if (!userId) return null; // guest mode → endpoint zaten 401 dönecek; blob URL'e düşelim
 
   try {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const path = `${userId}/${designId}.png`;
-    const { error } = await supabase.storage
-      .from("design-previews")
-      .upload(path, previewBlob, {
-        contentType: "image/png",
-        upsert: true,
-        cacheControl: "31536000", // 1 yıl — preview değişmez
-      });
-    if (error) {
-      console.warn("[design-preview] upload error:", error.message);
+    const form = new FormData();
+    // Server endpoint image/png bekliyor; Blob'un type'ı doğru olmalı
+    const namedBlob =
+      previewBlob.type === "image/png"
+        ? previewBlob
+        : new Blob([previewBlob], { type: "image/png" });
+    form.append("file", namedBlob, `${designId}.png`);
+    form.append("design_id", designId);
+
+    const resp = await fetch("/api/cart/upload-preview", {
+      method: "POST",
+      body: form,
+      // credentials default 'same-origin' → cookie session geçer
+    });
+
+    if (!resp.ok) {
+      const errBody = (await resp.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      console.warn(
+        "[design-preview] upload error:",
+        resp.status,
+        errBody?.error ?? "(no body)"
+      );
       return null;
     }
-    const { data } = supabase.storage
-      .from("design-previews")
-      .getPublicUrl(path);
-    return data.publicUrl;
+
+    const data = (await resp.json()) as { ok: boolean; url?: string };
+    return data.ok && data.url ? data.url : null;
   } catch (err) {
     console.warn("[design-preview] upload exception:", err);
     return null;
