@@ -21,6 +21,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
+import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
 // kaldırıldı, Pim sadece PimChat floating button'da tek tutarlı persona.
 import { Icon } from "@/components/Icon";
@@ -2143,15 +2144,14 @@ function EtiketPage() {
                     <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                       {shape === "oval" ? "Uzun eksen (mm)" : "Genişlik (mm)"}
                     </span>
-                    {/* Sefa 18 May v64: touched değilse value boş gözüksün
-                        (kullanıcı bilinçli seçim yapsın) */}
-                    <input
-                      type="number"
-                      value={touchedSteps.has(6) ? width : ""}
+                    {/* Sefa 18 May v64: touched değilse value boş gözüksün.
+                        Sefa 21 May v68: clamp on blur (silme bug fix). */}
+                    <ClampedNumberInput
+                      value={touchedSteps.has(6) ? width : undefined}
                       placeholder="örn. 60"
                       autoComplete="off"
-                      onChange={(e) => {
-                        setWidth(Math.max(5, Number(e.target.value) || 5));
+                      onChange={(v) => {
+                        setWidth(v);
                         markTouched(6);
                       }}
                       min={5}
@@ -2170,13 +2170,12 @@ function EtiketPage() {
                     <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                       {shape === "oval" ? "Kısa eksen (mm)" : "Yükseklik (mm)"}
                     </span>
-                    <input
-                      type="number"
-                      value={touchedSteps.has(6) ? height : ""}
+                    <ClampedNumberInput
+                      value={touchedSteps.has(6) ? height : undefined}
                       placeholder="örn. 80"
                       autoComplete="off"
-                      onChange={(e) => {
-                        setHeight(Math.max(5, Number(e.target.value) || 5));
+                      onChange={(v) => {
+                        setHeight(v);
                         markTouched(6);
                       }}
                       min={5}

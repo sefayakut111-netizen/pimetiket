@@ -86,6 +86,7 @@ import { gridColsForCount } from "@/lib/grid-cols";
 // Client-safe import (pricing-config.ts'in server-only createAdminClient
 // referansı bundle'a sızmasın).
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
+import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
 import {
@@ -1374,11 +1375,13 @@ function StickerPage() {
                         ? "Uzun kenar (mm)"
                         : "Genişlik (mm)"}
                   </span>
-                  <input
-                    type="number"
+                  {/* Sefa 21 May v68: ClampedNumberInput — onBlur'da clamp.
+                      Önce keystroke'ta clamp ediyordu, kullanıcı 252→25 silmek
+                      isteyince anında 60'a (MIN) snap oluyordu. */}
+                  <ClampedNumberInput
                     value={width}
-                    onChange={(e) => {
-                      setWidth(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_W, Number(e.target.value) || STICKER_MIN_DIM)));
+                    onChange={(v) => {
+                      setWidth(v);
                       markTouched(5);
                     }}
                     min={STICKER_MIN_DIM}
@@ -1401,11 +1404,10 @@ function StickerPage() {
                         ? "Kısa kenar (mm)"
                         : "Yükseklik (mm)"}
                   </span>
-                  <input
-                    type="number"
+                  <ClampedNumberInput
                     value={height}
-                    onChange={(e) => {
-                      setHeight(Math.max(STICKER_MIN_DIM, Math.min(STICKER_MAX_H, Number(e.target.value) || STICKER_MIN_DIM)));
+                    onChange={(v) => {
+                      setHeight(v);
                       markTouched(5);
                     }}
                     min={STICKER_MIN_DIM}
