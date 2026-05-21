@@ -72,6 +72,29 @@ Sadece `supabase.auth.getUser()` çağırıyor, admin role check yok. RLS reddet
 
 **Detay:** Bu analiz `LAUNCH-READINESS-21MAY.md`'ye eklenmedi — Sefa "şimdi yapma, note al" dedi. Acil değil ama launch öncesi düzeltilmeli.
 
+---
+
+## 🔍 SEO Sprint — yarım kaldı (21 May akşam)
+
+**Detay:** `docs/SEO-DURUM-21MAY.md` (full rapor)
+
+**Yapıldı (commits c0c0340, 9022e4e, 1d26084):**
+- og:image dinamik üretim (/etiket 40KB ✅, /sticker 72KB ✅)
+- Schema.org Product (/etiket + /sticker)
+- Organization zenginleştirme (legalName + vatID + tam adres)
+- ISR (TTFB 1.2s → 0.4s)
+
+**Bekleyen:**
+- 🟡 Anasayfa og:image v3 verify (deploy yeni) — ScheduleWakeup ile otomatik
+- 🟠 **A seçeneği:** `/admin/ayarlar`'a SEO/iletişim sekmesi (30 dk)
+  - Migration 078: `site_settings`'e 7 yeni kolon (social_*, phone, support_email)
+  - layout.tsx env yerine DB'den okur
+  - Schema sameAs + contactPoint otomatik dolar
+- 🟢 Sefa: `NEXT_PUBLIC_SOCIAL_LINKS` env (geçici, A yapılırsa gereksiz)
+- 🟢 Sefa: `/admin/gorseller` → og_default slot özel görsel yükleme (opsiyonel)
+
+**Sefa kararı:** "şimdilik beklesin" — başka konuya geçildi (21 May akşam).
+
 ### Akşam başlarken neye bak
 
 1. **`docs/LAUNCH-READINESS-21MAY.md`** — bugünkü iş özeti
