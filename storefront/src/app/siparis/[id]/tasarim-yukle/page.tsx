@@ -60,42 +60,51 @@ export default function TasarimYuklePage({
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/orders/${orderId}/upload-status`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        if (res.status === 403 || res.status === 404) {
-          setForbidden(true);
+  // Sefa 21 May v68 — Polling: upload sonrası DB trigger
+  // (awaiting_upload → proof_pending) yarış durumuna karşı, load() çağrısı
+  // hasDesign=true ya da status=proof_pending getirene kadar 2sn aralıkla
+  // 5 kez dene. Aksi halde "ekran donuyor" hissi (yönlendirme tetiklenmez).
+  const load = useCallback(
+    async (opts?: { silent?: boolean }): Promise<OrderInfo | null> => {
+      try {
+        if (!opts?.silent) setLoading(true);
+        const res = await fetch(`/api/orders/${orderId}/upload-status`, {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          if (res.status === 403 || res.status === 404) {
+            setForbidden(true);
+          }
+          return null;
         }
-        return;
-      }
-      const data = (await res.json()) as OrderInfo;
-      setOrder(data);
+        const data = (await res.json()) as OrderInfo;
+        setOrder(data);
 
-      // Status yanlışsa yönlendir
-      if (data.status === "proof_pending") {
-        router.replace(`/onay/${orderId}`);
-        return;
+        // Status yanlışsa yönlendir
+        if (data.status === "proof_pending") {
+          router.replace(`/onay/${orderId}`);
+          return data;
+        }
+        if (data.status === "proof_approved") {
+          router.replace(`/onay/${orderId}/tamamlandi`);
+          return data;
+        }
+        if (data.status !== "awaiting_upload" && data.status !== "paid") {
+          // ileri state — sipariş detayına dön
+          router.replace(`/siparis/${orderId}`);
+          return data;
+        }
+        return data;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        toast.error(`Sipariş yüklenemedi: ${msg}`);
+        return null;
+      } finally {
+        if (!opts?.silent) setLoading(false);
       }
-      if (data.status === "proof_approved") {
-        router.replace(`/onay/${orderId}/tamamlandi`);
-        return;
-      }
-      if (data.status !== "awaiting_upload" && data.status !== "paid") {
-        // ileri state — sipariş detayına dön
-        router.replace(`/siparis/${orderId}`);
-        return;
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      toast.error(`Sipariş yüklenemedi: ${msg}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [orderId, router, toast]);
+    },
+    [orderId, router, toast]
+  );
 
   useEffect(() => {
     void load();
@@ -169,7 +178,35 @@ export default function TasarimYuklePage({
       }
 
       toast.success(`${item.title}: tasarım yüklendi`);
-      await load();
+
+      // Sefa 21 May v68 — Optimistic update: hasDesign=true işaretle hemen
+      // (UI'da "✓ Tasarım yüklendi" rozeti anında görünsün).
+      setOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              items: prev.items.map((i) =>
+                i.id === item.id ? { ...i, hasDesign: true } : i
+              ),
+            }
+          : prev
+      );
+
+      // Polling: DB trigger orders.status'i `proof_pending`'e geçirene
+      // kadar bekle. Race condition yok; trigger AFTER INSERT (Mig 061)
+      // ama Supabase replication veya transaction visibility gecikmesi
+      // 1-3 sn olabilir. 2sn aralıkla 5 kez dene (max 10 sn).
+      let fresh = await load({ silent: true });
+      let attempts = 0;
+      while (
+        fresh &&
+        fresh.status === "awaiting_upload" &&
+        attempts < 5
+      ) {
+        await new Promise((r) => setTimeout(r, 2000));
+        attempts++;
+        fresh = await load({ silent: true });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       toast.error(`Yükleme başarısız: ${msg}`);

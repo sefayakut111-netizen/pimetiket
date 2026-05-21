@@ -1031,6 +1031,12 @@ interface UploadedFile {
   uploadedAt: number;
   /** AI flagleri — mock */
   flags: Array<{ kind: "ok" | "warning" | "error"; message: string }>;
+  /**
+   * Sefa 21 May v68 — Önizleme için: storage_path + mime_type ile
+   * signed URL üretip image render edilebilir (raster mime'lar için).
+   */
+  storagePath?: string;
+  mimeType?: string;
 }
 
 const STORAGE_KEY_FILES = "pim_design_files_v1";
@@ -1087,7 +1093,72 @@ function dbRowToUploaded(r: DbFileRow): UploadedFile & { id: string; status: str
     uploadedAt: new Date(r.uploaded_at).getTime(),
     flags,
     status: r.status,
+    storagePath: r.storage_path,
+    mimeType: r.mime_type,
   };
+}
+
+// ============================================================
+// DesignFileThumb — raster tasarımlar için preview thumbnail.
+// Sefa 21 May v68 (E sorun fix): /siparis/[id] sayfasında dosya yüklenmiş
+// ama önizleme gözükmüyordu — sadece Icon.Box rendered. Bu component
+// storagePath ile Supabase Storage'tan signed URL alır, image render eder.
+// SVG/PDF/AI/EPS (vector) için fallback Icon.Box kalır.
+// ============================================================
+function DesignFileThumb({
+  storagePath,
+  mimeType,
+  fileName,
+}: {
+  storagePath?: string;
+  mimeType?: string;
+  fileName: string;
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [errored, setErrored] = useState(false);
+  const isRaster =
+    mimeType?.startsWith("image/") &&
+    !mimeType?.includes("svg"); // SVG raster değil
+
+  useEffect(() => {
+    if (!isRaster || !storagePath) return;
+    let active = true;
+    const supabase = createSupabaseClient();
+    void supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(storagePath, 600) // 10 dk
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error || !data?.signedUrl) {
+          setErrored(true);
+          return;
+        }
+        setSignedUrl(data.signedUrl);
+      })
+      .catch(() => {
+        if (active) setErrored(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [storagePath, isRaster]);
+
+  if (!isRaster || errored || !signedUrl) {
+    return (
+      <div className="grid place-items-center w-11 h-11 rounded-lg bg-pim-mercan-tint text-pim-mercan shrink-0">
+        <Icon.Box size={20} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={signedUrl}
+      alt={`${fileName} önizleme`}
+      loading="lazy"
+      className="w-11 h-11 rounded-lg object-cover ring-1 ring-gri-200 shrink-0 bg-white"
+    />
+  );
 }
 
 function DesignUploadCard({
@@ -1301,9 +1372,11 @@ function DesignUploadCard({
                 key={f.name}
                 className="flex items-start gap-3 p-4 rounded-lg bg-gri-50 ring-1 ring-gri-200"
               >
-                <div className="grid place-items-center w-11 h-11 rounded-lg bg-pim-mercan-tint text-pim-mercan shrink-0">
-                  <Icon.Box size={20} />
-                </div>
+                <DesignFileThumb
+                  storagePath={f.storagePath}
+                  mimeType={f.mimeType}
+                  fileName={f.name}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-[14px] truncate">
