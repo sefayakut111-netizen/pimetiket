@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 /**
  * MaskotPlaceholder — Pim Etiket karga maskotu (default tasarım yokken).
  *
@@ -52,11 +54,15 @@ export function MaskotPlaceholder({
       role="img"
       aria-label={label}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* Sefa 21 May v68 (Image migration faz 3b): Next/Image unoptimized
+          (SVG karga, Next optimizer SVG'yi PNG'ye çevirmesin). */}
+      <Image
         src={src}
         alt=""
         aria-hidden="true"
+        width={300}
+        height={300}
+        unoptimized
         style={{
           width: `${sizePct}%`,
           height: `${sizePct}%`,

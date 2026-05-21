@@ -8,6 +8,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { getProductReviews, type Review, type ProductType } from "@/lib/reviews";
 import { Eyebrow } from "@/components/ui";
@@ -115,20 +116,16 @@ function ProductReviewCard({ review }: { review: Review }) {
           {review.photos.slice(0, 2).map((photo, i) => (
             <div
               key={i}
-              className="w-10 h-10 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-white"
+              className="relative w-10 h-10 rounded-lg overflow-hidden ring-1 ring-gri-200 bg-white"
             >
               {photo.url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={photo.url}
                   alt={`Yorum fotoğrafı ${i + 1}`}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="40px"
                   loading="lazy"
-                  onError={(e) => {
-                    // Sefa kuralı (16 May denetim #2): Storage 404 fallback —
-                    // bozuk avatarlar yerine initials chip
-                    e.currentTarget.style.display = "none";
-                  }}
+                  className="object-cover"
                 />
               ) : null}
             </div>

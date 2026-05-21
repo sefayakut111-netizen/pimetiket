@@ -17,6 +17,7 @@
  */
 
 import type { CSSProperties } from "react";
+import Image from "next/image";
 
 export type SurfaceId =
   | "kuse"
@@ -88,14 +89,18 @@ export function MaterialSwatch({
         aria-label={label}
         aria-hidden={label ? undefined : true}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        {/* Sefa 21 May v68 (Image migration faz 3b): Next/Image — SVG
+            unoptimized (Next optimizer SVG'leri PNG'ye çevirmesin, doku
+            detayları kaybolmasın). fill ile container'a tam oturur. */}
+        <Image
           src={`/assets/svg/surfaces/${surface}.svg`}
           alt=""
           aria-hidden="true"
+          fill
+          unoptimized
           loading="lazy"
           decoding="async"
-          className={`absolute inset-0 w-full h-full ${objectFitClass}`}
+          className={objectFitClass}
         />
       </div>
     );
