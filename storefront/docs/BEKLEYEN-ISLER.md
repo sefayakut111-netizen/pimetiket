@@ -23,12 +23,54 @@ maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 ### Bugün başarıyla biten — geri dönmeye gerek yok
 
 - ✅ Resend mail altyapısı (`/admin/mail-health` 3/3 yeşil)
+- ✅ Resend uçtan uca canlı test (21 May 19:12 — 2 mail Gmail'e düştü, webhook delivered event geldi)
 - ✅ Migration 075, 076, 072 prod'a uygulandı
 - ✅ Sticker konfigüratör → sepet → preview kalıcılığı (Pikachu test başarılı)
 - ✅ Server-side upload proxy (`/api/cart/upload-preview`)
 - ✅ KVKK uyumlu unsubscribe (RFC 8058)
 - ✅ 4 P0 launch blocker düzeltildi
-- ✅ 7 yeni doküman + 13 commit
+- ✅ 7 yeni doküman + 14 commit
+
+---
+
+## 🔐 Admin paneli auth tutarsızlığı (21 May akşam analizi)
+
+**Bulgu:** 23 admin endpoint test edildi (canlı, no auth):
+
+| Kategori | Sayı | Status |
+|---|---|---|
+| ✅ `assertAdmin` pattern sağlam | 17 | 403 |
+| 🟡 Zayıf auth (user check var, admin role check yok) | 6 | 401 |
+| 🔴 **PUBLIC — auth yok** | 1 | 200 |
+
+### 🔴 P0 — `/api/admin/settings` GET PUBLIC
+```typescript
+// src/app/api/admin/settings/route.ts
+export async function GET() {  // ← AUTH CHECK YOK
+  // sızan veri: kargo ücreti, kredi miktarı, updated_by user_id (PII leak)
+}
+// PATCH'te assertPermission var, GET unutulmuş
+```
+**Fix:** GET fonksiyonuna 3 satır `const auth = await assertAdmin(); if (!auth) return forbidden;` ekle.
+
+### 🟡 P1 — 6 endpoint zayıf auth (RLS bağımlı, tutarsız)
+
+| Endpoint | Sayfa |
+|---|---|
+| `/api/admin/customer-stats` | `/admin` dashboard |
+| `/api/admin/funnel-metrics` | `/admin` dashboard |
+| `/api/admin/reviews` | `/admin/yorumlar` |
+| `/api/admin/backups` | `/admin/yedekler` |
+| `/api/admin/product-cards` | `/admin/urunler` |
+| `/api/admin/kvkk-requests` | `/admin/kvkk-talepleri` |
+
+Sadece `supabase.auth.getUser()` çağırıyor, admin role check yok. RLS reddetse de tutarsızlık + saldırı yüzeyi.
+
+**Fix:** Her birini `assertAdmin` pattern'ine çevir (~15 dk toplam).
+
+**Veri akışı kopukluğu:** YOK — tüm admin sayfaları doğru endpoint'lere bağlı, fetch'ler doğru target'a gidiyor. Sorun **veri akışı değil, güvenlik tutarsızlığı**.
+
+**Detay:** Bu analiz `LAUNCH-READINESS-21MAY.md`'ye eklenmedi — Sefa "şimdi yapma, note al" dedi. Acil değil ama launch öncesi düzeltilmeli.
 
 ### Akşam başlarken neye bak
 
