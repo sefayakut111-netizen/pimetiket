@@ -2,7 +2,21 @@
 -- Pim Etiket — Migration 077: design-previews RLS gevşetme
 -- ============================================================
 --
--- Sefa 21 May v68 — E2E test kök neden analizi:
+-- ⚠️ APPLY NOTU (Sefa 21 May v68):
+--   Supabase yönetilen ortamda storage.objects sahibi
+--   `supabase_storage_admin` rolüdür. Hem Management API hem Dashboard
+--   SQL Editor `set role supabase_storage_admin` switch'ine izin
+--   vermedi (42501: permission denied to set role).
+--
+--   Bu nedenle bu migration PROD'a Storage → Policies UI üzerinden
+--   manuel uygulandı (21 May 2026). Dosya repo'da:
+--     1) tarihsel kaynak kayıt
+--     2) ileride yeni Supabase ortamına klonlanırsa CLI (`supabase db
+--        push`, postgres superuser) ile çalışacak
+--   amacıyla bekletiliyor.
+--
+-- ============================================================
+-- E2E test kök neden analizi:
 --   Migration 072 storage RLS path-strict policy kullanıyordu:
 --     (storage.foldername(name))[1] = auth.uid()::text
 --
