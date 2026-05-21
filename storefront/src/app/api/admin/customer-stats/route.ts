@@ -10,27 +10,17 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Role check — sadece admin/staff
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-    const role = (profile as { role?: string } | null)?.role;
-    if (role !== "admin" && role !== "staff") {
+    // Sefa 21 May v68: inline auth check → assertAdmin helper'a refactor.
+    // Tutarlılık (admin tarafı tüm endpoint'lerde aynı pattern) + DRY.
+    const auth = await assertAdmin();
+    if (!auth) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    const supabase = await createClient();
 
     // Tarih aralıkları (server time)
     const now = new Date();

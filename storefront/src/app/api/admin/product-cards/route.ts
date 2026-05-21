@@ -7,28 +7,19 @@
 
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Sefa 21 May v68: inline auth → assertAdmin helper (tutarlılık).
+ * GET + PATCH ortak guard'i sağlar; service_role admin client da burada
+ * oluşturulur ki her endpoint tekrarlamasın.
+ */
 async function requireAdmin() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return {
-      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertAdmin();
+  if (!auth) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     };
