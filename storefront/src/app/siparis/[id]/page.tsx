@@ -738,7 +738,11 @@ export default function SiparisDetailPage({
             )}
 
             {/* File upload card */}
-            <DesignUploadCard orderId={order.id} c={c} />
+            <DesignUploadCard
+              orderId={order.id}
+              orderItemId={order.items[0]?.id}
+              c={c}
+            />
 
             {/* Tasarım versiyon geçmişi — 2+ versiyon varsa otomatik gösterir */}
             <OrderDesignHistory orderId={order.id} />
@@ -1368,9 +1372,20 @@ function DesignFileThumb({
 
 function DesignUploadCard({
   orderId,
+  orderItemId,
   c,
 }: {
   orderId: string;
+  /**
+   * Sefa 22 May v68: orderItemId zorunlu — design_files.order_item_id
+   * NULL kayıt edilirse:
+   *  - SiparisOzetiDesignThumb endpoint filter ile bulamaz (önizleme yok)
+   *  - upload-status hasDesign hesabı bozulur
+   *  - Çoklu ürünlü siparişte hangi tasarım hangi ürüne ait belli olmaz
+   * /siparis/[id]/page'de tek-item kullanım için ilk item geçilir.
+   * /siparis/[id]/tasarim-yukle ise her item için ayrı buton sağlar.
+   */
+  orderItemId?: string;
   c: typeof COPY.tr | typeof COPY.en;
 }) {
   const [files, setFiles] = useState<Array<UploadedFile & { id?: string; status?: string }>>([]);
@@ -1435,11 +1450,15 @@ function DesignUploadCard({
     setAnalyzing(true);
     try {
       // 1) /api/design/upload-init
+      // Sefa 22 May v68 fix: orderItemId GEÇİRİLİYOR. Önceden eksikti →
+      // design_files.order_item_id NULL kayıt → sipariş özeti thumbnail
+      // bulamıyordu (Sefa test sipariş #210520262967 keşif).
       const initRes = await fetch("/api/design/upload-init", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           orderId,
+          orderItemId,
           originalName: file.name,
           sizeBytes: file.size,
           mimeType: file.type,
