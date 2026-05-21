@@ -552,6 +552,16 @@ function StickerPage() {
     const initial = new Set<number>();
     if (!SHOW_STICKER_CUT_MODE_PICKER) initial.add(1);
     if (!SHOW_STICKER_SHAPE_PICKER) initial.add(2);
+    // Sefa 21 May v68 (ürün denetim P0 #5): URL'den material/shape/cut
+    // geldiyse ilgili adımları touched işaretle → kart "seçili" görünür,
+    // sequential lock sonraki adımları açar. /sticker grid'den gelindiğinde
+    // kullanıcı malzeme/şekil seçmiş varsayılır.
+    if (initialParams.get("material")) initial.add(3);
+    if (initialParams.get("shape")) {
+      initial.add(2);
+      initial.add(1); // shape gönderildiyse cut da default'a oturmuş kabul
+    }
+    if (initialParams.get("cut")) initial.add(1);
     return initial;
   });
   // Sefa 18 May v60: Sepete eklendi pop-up'ı
@@ -814,9 +824,11 @@ function StickerPage() {
       <SchemaJsonLd
         data={[
           productSchema({
+            // Sefa 21 May v68 (ürün denetim P2 #20): "Die-cut/holo" karışık
+            // dil → tam Türkçe terimler.
             name: "Sticker — özel baskı",
             description:
-              "Die-cut veya tabaka. Vinil/transparan/holo/simli. Laptop, defter, kampanya için. AI dosya kontrolü ile 5 iş günü içinde kargoda. 25 adetten başlar.",
+              "Özel kesim veya tabaka. Vinil, şeffaf, holografik, simli. Laptop, defter, kampanya için. AI dosya kontrolü ile 5 iş günü içinde kargoda. 25 adetten başlar.",
             category: "Sticker",
             priceFrom: 113,
           }),
@@ -846,7 +858,7 @@ function StickerPage() {
                 Sticker", "Yarı Kesim Sticker", "Sticker Sayfası". */}
             {(() => {
               const isEn = locale === "en";
-              if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Sticker Sayfası";
+              if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Tabaka Sticker";
               if (cutMode === "kisscut") return isEn ? "Kiss-Cut Sticker" : "Yarı Kesim Sticker";
               if (material === "holo") return isEn ? "Holographic Sticker" : "Holografik Sticker";
               if (material === "simli") return isEn ? "Glitter Sticker" : "Simli Sticker";
@@ -1178,6 +1190,14 @@ function StickerPage() {
                           type="button"
                           onClick={() => setSoftCorners(opt === "soft")}
                           aria-pressed={active}
+                          // Sefa 21 May v68 (ürün denetim P2 #19): "Düz" ve
+                          // "Keskin" kullanıcıya benzer geliyor; tooltip ile
+                          // farkı açıkla.
+                          title={
+                            opt === "sharp"
+                              ? "90° keskin köşe — kart hissi"
+                              : "Yuvarlatılmış köşe (~5 mm yarıçap) — yumuşak görünüm"
+                          }
                           className={cn(
                             "p-4 rounded-xl ring-[1.5px] text-left transition-all flex items-center gap-3",
                             active
@@ -1244,15 +1264,18 @@ function StickerPage() {
                 </div>
               )}
 
-              {/* Sefa 20 May v68 (test): Yuvarlak sticker (shape=circle)
-                  için tek input "Çap (mm)" — width=height orantı kilidi
-                  otomatik. Genişlik değiştirilince Yükseklik aynı set.
-                  Daire için dikdörtgen ölçü girilemez. */}
-              {shape === "circle" ? (
+              {/* Sefa 21 May v68 (ürün denetim P0 #3 + #4): Boyut input
+                  şekle göre dinamik etiketlenir.
+                    - circle  → tek input "Çap"
+                    - square  → tek input "Kenar" (eş kenar orantı kilidi)
+                    - oval    → "Uzun eksen × Kısa eksen"
+                    - bumper  → "Uzun kenar × Kısa kenar"
+                    - diğer   → "Genişlik × Yükseklik" (mevcut) */}
+              {shape === "circle" || shape === "square" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block">
                     <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
-                      Çap (mm)
+                      {shape === "circle" ? "Çap (mm)" : "Kenar (mm)"}
                     </span>
                     <input
                       type="number"
@@ -1266,7 +1289,7 @@ function StickerPage() {
                           )
                         );
                         setWidth(v);
-                        setHeight(v); // orantı kilidi — daire eş kenar
+                        setHeight(v); // orantı kilidi — daire/kare eş kenar
                         markTouched(5);
                       }}
                       min={STICKER_MIN_DIM}
@@ -1281,14 +1304,20 @@ function StickerPage() {
                     />
                   </label>
                   <div className="hidden sm:flex items-end pb-2 text-[11.5px] text-gri-500">
-                    ⓘ Daire için çap = genişlik = yükseklik (orantı kilidi)
+                    ⓘ {shape === "circle"
+                      ? "Daire için çap = genişlik = yükseklik (orantı kilidi)"
+                      : "Kare için kenar = genişlik = yükseklik (orantı kilidi)"}
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
-                    Genişlik (mm)
+                    {shape === "oval"
+                      ? "Uzun eksen (mm)"
+                      : shape === "bumper"
+                        ? "Uzun kenar (mm)"
+                        : "Genişlik (mm)"}
                   </span>
                   <input
                     type="number"
@@ -1311,7 +1340,11 @@ function StickerPage() {
                 <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
-                    Yükseklik (mm)
+                    {shape === "oval"
+                      ? "Kısa eksen (mm)"
+                      : shape === "bumper"
+                        ? "Kısa kenar (mm)"
+                        : "Yükseklik (mm)"}
                   </span>
                   <input
                     type="number"
@@ -1342,6 +1375,13 @@ function StickerPage() {
                   En çok tercih edilen ölçüler (mm)
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                {/* Sefa 21 May v68 (ürün denetim P0 #2 + #4): preset
+                    listesi şekle göre kendi anlamlı setine sahip.
+                      - circle: çap (30-90 mm)
+                      - square: eş kenar (30-150 mm)
+                      - bumper: uzun yatay formatlar (150-300 mm)
+                      - oval:   uzun×kısa eksen oranlı (60-120 mm)
+                      - die/rectangle/diğer: genel dikdörtgen 15 ölçü */}
                 {(shape === "circle"
                   ? [
                       { w: 30, h: 30, label: "30×30" },
@@ -1351,6 +1391,36 @@ function StickerPage() {
                       { w: 70, h: 70, label: "70×70" },
                       { w: 80, h: 80, label: "80×80" },
                       { w: 90, h: 90, label: "90×90" },
+                    ]
+                  : shape === "square"
+                  ? [
+                      { w: 30, h: 30, label: "30×30" },
+                      { w: 40, h: 40, label: "40×40" },
+                      { w: 50, h: 50, label: "50×50" },
+                      { w: 60, h: 60, label: "60×60" },
+                      { w: 70, h: 70, label: "70×70" },
+                      { w: 80, h: 80, label: "80×80" },
+                      { w: 100, h: 100, label: "100×100" },
+                      { w: 150, h: 150, label: "150×150" },
+                    ]
+                  : shape === "bumper"
+                  ? [
+                      { w: 150, h: 50, label: "150×50" },
+                      { w: 200, h: 50, label: "200×50" },
+                      { w: 220, h: 60, label: "220×60" },
+                      { w: 250, h: 75, label: "250×75" },
+                      { w: 280, h: 80, label: "280×80" },
+                      { w: 300, h: 100, label: "300×100" },
+                    ]
+                  : shape === "oval"
+                  ? [
+                      { w: 50, h: 30, label: "50×30" },
+                      { w: 60, h: 40, label: "60×40" },
+                      { w: 70, h: 50, label: "70×50" },
+                      { w: 80, h: 50, label: "80×50" },
+                      { w: 100, h: 60, label: "100×60" },
+                      { w: 120, h: 70, label: "120×70" },
+                      { w: 150, h: 90, label: "150×90" },
                     ]
                   : [
                   { w: 15, h: 40, label: "15×40" },
@@ -1571,7 +1641,7 @@ function StickerPage() {
                 </>
               }
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
-              footnote="KDV dahil fiyat · Şeffaf, sürpriz ücret yok"
+              footnote="KDV dahil fiyat · Açık ve net, sürpriz ücret yok"
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={ctaLabel}
               onCta={async () => {

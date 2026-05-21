@@ -41,14 +41,10 @@ export function QtySlider({
   const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
     onChange(Number(e.target.value));
   const listId = useId();
-  const formatTick = (n: number): string => {
-    if (n >= 1000) {
-      const k = n / 1000;
-      // 1K, 2K, 5K, 10K, 25K, 50K — tam sayı ise sade
-      return Number.isInteger(k) ? `${k}K` : `${k.toFixed(1)}K`;
-    }
-    return `${n}`;
-  };
+  // Sefa 21 May v68 (ürün denetim P2 #22): slider tic'leri "1K/2.5K" idi,
+  // preset chip'leri "1.000/2.500" — tutarsız. Slider da tr-TR formatı:
+  // 1.000 / 2.500 / 10.000 (binlik nokta).
+  const formatTick = (n: number): string => n.toLocaleString("tr-TR");
 
   return (
     <>

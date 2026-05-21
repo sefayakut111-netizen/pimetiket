@@ -86,7 +86,10 @@ export function PriceCard({
             <div className="text-[13px] text-white/70 mt-1">{unitPrice}</div>
           </div>
           {savingsLabel && (
-            <span className="inline-flex items-center h-8 px-3.5 rounded-full bg-pim-mercan text-white text-[13px] font-semibold">
+            <span
+              className="inline-flex items-center h-8 px-3.5 rounded-full bg-pim-mercan text-white text-[13px] font-semibold cursor-help"
+              title="En küçük adetin birim fiyatına göre indirim. Daha fazla adet = daha düşük birim fiyat."
+            >
               {savingsLabel}
             </span>
           )}

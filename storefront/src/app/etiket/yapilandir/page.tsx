@@ -341,10 +341,11 @@ function snapTabakaQty(n: number): number {
 }
 
 function upsellFor(qty: number): { msg: string; to: number } | null {
-  if (qty < 2000) return { msg: "+1000 adet ekle, %4 daha tasarruf", to: 2000 };
-  if (qty < 5000) return { msg: "5000'e çık, %6 daha tasarruf", to: 5000 };
-  if (qty < 10000) return { msg: "10000'e çık, %6 daha tasarruf", to: 10000 };
-  if (qty < 20000) return { msg: "20000'e çık, %7 daha tasarruf", to: 20000 };
+  // Sefa 21 May v68 (ürün denetim P1 #12): binlik ayraç tutarlı (1.000)
+  if (qty < 2000) return { msg: "+1.000 adet ekle, %4 daha tasarruf", to: 2000 };
+  if (qty < 5000) return { msg: "5.000'e çık, %6 daha tasarruf", to: 5000 };
+  if (qty < 10000) return { msg: "10.000'e çık, %6 daha tasarruf", to: 10000 };
+  if (qty < 20000) return { msg: "20.000'e çık, %7 daha tasarruf", to: 20000 };
   return null;
 }
 
@@ -533,10 +534,27 @@ function readInitialShape(searchParams: URLSearchParams): EtiketShape {
   // Sefa 20 May v68 geri uyumluluk: eski "?shape=rounded" link'leri
   // "rectangle"'a yönlendirilir (cornerStyle 'rounded' olarak ayarlanır).
   if (shape === "rounded") return "rectangle";
+  // Sefa 21 May v68 (ürün denetim P1 #6): "clear" bir şekil değil malzeme.
+  // ?shape=clear gelse formu rectangle yap, material'ı readInitialMaterial
+  // üstlensin (seffaf).
+  if (shape === "clear") return "rectangle";
   if (shape && (VALID_SHAPES as readonly string[]).includes(shape)) {
     return shape as EtiketShape;
   }
   return "rectangle"; // varsayılan: mevcut davranış (2 input)
+}
+
+/** Sefa 21 May v68 (ürün denetim P1 #6 + #8): ?shape=clear ile gelen
+ *  müşteri "Şeffaf Rulo Etiket" sayfasından geldi → material default
+ *  "seffaf" olsun (kullanıcı el ile değişene kadar). */
+function readInitialMaterial(searchParams: URLSearchParams): EtiketMaterialId | null {
+  const shape = searchParams.get("shape");
+  if (shape === "clear") return "seffaf";
+  const mat = searchParams.get("material");
+  if (mat === "kuse" || mat === "kraft" || mat === "beyaz" || mat === "seffaf" || mat === "ultra") {
+    return mat;
+  }
+  return null;
 }
 
 /** ?corner=rounded → rounded, varsayılan sharp.
@@ -558,11 +576,14 @@ function supportsCornerStyle(shape: EtiketShape): boolean {
 }
 
 /** Şekil etiketi — TR/EN, PriceCard özeti + cart config string için */
+// Sefa 21 May v68 (ürün denetim P1 #7): liste sayfasında "Özel Kesim Rulo
+// Etiket" (Title Case), konfigüratörde "Özel kesim Rulo Etiket" küçük
+// "kesim" idi — Title Case birleştirildi (tüm shape adları kelime başı büyük).
 function shapeLabel(shape: EtiketShape, locale: string): string {
   const isEn = locale === "en";
   switch (shape) {
     case "diecut":
-      return isEn ? "Die-cut" : "Özel kesim";
+      return isEn ? "Die-Cut" : "Özel Kesim";
     case "clear":
       return isEn ? "Clear" : "Şeffaf";
     case "circle":
@@ -637,7 +658,9 @@ function EtiketPage() {
       setCornerStyle(corner);
     }
   }, [searchParams]);
-  const [material, setMaterial] = useState<EtiketMaterialId>("kuse");
+  const [material, setMaterial] = useState<EtiketMaterialId>(
+    () => readInitialMaterial(initialParams) ?? "kuse"
+  );
   const [coating, setCoating] = useState<EtiketCoatingId>("yok");
 
   // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
@@ -711,7 +734,13 @@ function EtiketPage() {
   // (rulo modunda). Sadece operasyonel bilgi, fason'a iletilir.
   const [coreSize, setCoreSize] = useState<number>(76); // mm — 3" endüstri standardı
   const [rollLabelCount, setRollLabelCount] = useState<number>(500);
-  const [qty, setQty] = useState<number>(ETIKET_MIN_QTY); // 1000 (rulo başlangıç)
+  // Sefa 21 May v68 (ürün denetim P2 #18): tabaka modunda default qty 1000
+  // → 250 (formFactor=tabaka URL'inden gelen kullanıcı için min seviye).
+  const [qty, setQty] = useState<number>(() =>
+    readInitialFormFactor(initialParams) === "tabaka"
+      ? ETIKET_TABAKA_MIN_QTY
+      : ETIKET_MIN_QTY
+  );
   const [width, setWidth] = useState<number>(60);
   const [height, setHeight] = useState<number>(80);
   // Sefa 18 May v68 (CRO denetim — Preset feedback fix):
@@ -775,9 +804,20 @@ function EtiketPage() {
   // "seçim yaptıkça çalışmıyor". Scroll-based active + touch-based done.
   // Sefa 15 May v4: varsayılan seçim de touched değilse görsel seçili
   // değil. Form factor için ayrı flag: formFactorTouched.
-  const [touchedSteps, setTouchedSteps] = useState<Set<number>>(
-    () => new Set()
-  );
+  const [touchedSteps, setTouchedSteps] = useState<Set<number>>(() => {
+    const initial = new Set<number>();
+    // Sefa 21 May v68 (ürün denetim P0 #5 + P1 #6): URL'den material/shape
+    // geldiyse Malzeme (1) ve Boyut/Şekil için touched işaretle → "seçili"
+    // kart görünür, sequential lock sonraki adımları açar.
+    if (initialParams.get("material") || initialParams.get("shape") === "clear") {
+      initial.add(1);
+    }
+    if (initialParams.get("shape")) {
+      // shape gelirse boyut adımı pre-fill var → touched
+      initial.add(6);
+    }
+    return initial;
+  });
   // Sefa 20 May v68 (Aşama B+): Form factor picker gizliyse müşteri URL'den
   // pre-fill ile zaten geldi → formFactorTouched her zaman true varsay (Step 1
   // Malzeme locked kalmasın). Picker açıksa eski davranış: kullanıcı seçmeli.
@@ -1810,7 +1850,7 @@ function EtiketPage() {
               id="step-5"
               number={uiStepNumber(5)}
               title="Sarım detayı"
-              hint="Göbek çapı ve rulo başına etiket adeti — makine uyumu için."
+              hint="Göbek çapı ve rulo başına etiket adedi — makine uyumu için."
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
             >
@@ -1880,7 +1920,7 @@ function EtiketPage() {
               {/* Sarım adeti */}
               <div className="mt-4">
                 <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
-                  Bir rulodaki etiket adeti
+                  Bir rulodaki etiket adedi
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {ROLL_LABEL_COUNTS.map((q) => {
@@ -2399,7 +2439,11 @@ function EtiketPage() {
                       materialId: material,
                       coatingId: coating,
                       customizationId: primaryCustom,
-                      winding,
+                      // Sefa 21 May v68 (ürün denetim P0 #1): tabaka modunda
+                      // rulo'ya özgü alanları (sarım, göbek, rulo/adet)
+                      // göndermeyelim → "Sarım yönü" / "Toplam rulo" satırları
+                      // tabaka özetinde sızmasın.
+                      winding: formFactor === "rulo" ? winding : undefined,
                       coreSize: formFactor === "rulo" ? coreSize : undefined,
                       rollLabelCount:
                         formFactor === "rulo" ? rollLabelCount : undefined,
@@ -2408,7 +2452,7 @@ function EtiketPage() {
                     },
                     locale === "en" ? "en" : "tr"
                   ),
-                  ...(rollsNeeded > 0
+                  ...(formFactor === "rulo" && rollsNeeded > 0
                     ? [
                         {
                           icon: "📦",

@@ -54,7 +54,12 @@ export function deliveryEstimate({ kind, qty }: DeliveryInput): string {
   const shippingDays = 2; // ortalama kargo (İstanbul 1, diğer iller 2-3)
   const totalBusinessDays = productionDays + shippingDays;
 
-  // İş günü hesabı — weekend + TR resmi tatil atlama
-  const target = addBusinessDays(new Date(), totalBusinessDays);
+  // Sefa 21 May v68 (ürün denetim P1 #10): "today" bugünün başlangıcı —
+  // saat bilgisi addBusinessDays içinde gün geçişi anlarında tarih atlamasına
+  // sebep oluyordu (aynı tür sticker'da bir varyant 3 Haz, biri 4 Haz). Saat
+  // sıfırlanarak hesaplandı → aynı gün açılan tüm varyantlar aynı tarihi gösterir.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = addBusinessDays(today, totalBusinessDays);
   return `${target.getDate()} ${MONTHS_TR[target.getMonth()]} ${target.getFullYear()}`;
 }

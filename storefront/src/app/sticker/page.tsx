@@ -463,11 +463,14 @@ const STICKER_CARDS: StickerCard[] = [
     svg: <GlitterIcon />,
   },
   {
+    // Sefa 21 May v68 (ürün denetim P2 #15 + #16): "Sticker Sayfası" web
+    // sayfası izlenimi veriyor; "karma şekiller" iddiası teknik olarak
+    // tek şekil. Daha açıklayıcı isim: "Tabaka Sticker".
     query: "cut=tabaka&shape=square",
-    titleTr: "Sticker Sayfası",
+    titleTr: "Tabaka Sticker",
     titleEn: "Sticker Sheet",
-    descTr: "Karma şekiller, tek sayfada",
-    descEn: "Mixed shapes on a single sheet",
+    descTr: "Aynı tasarımdan çok adet — tek tabakada",
+    descEn: "Many copies of one design — on a single sheet",
     svg: <SheetIcon />,
   },
 ];

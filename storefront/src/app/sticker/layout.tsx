@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+// Sefa 21 May v68 (ürün denetim P2 #14): title 3 ürün vurguluyordu (die-cut,
+// holo, transparan). Sayfa 11 ürün gösteriyor — title daha kapsayıcı.
 export const metadata: Metadata = {
-  title: "Sticker bastır — die-cut, holo, transparan",
+  title: "Sticker bastır — özel kesim, holografik, simli ve şeffaf sticker",
   description:
-    "25 adetten başlayan tekli die-cut veya tabakada sticker baskı. Vinil/holo/transparan/simli. AI dosya kontrolü ile 5 iş günü içinde kargoda.",
+    "25 adetten başlayan özel kesim, kare, yuvarlak, oval, bumper, yarı kesim ve karma sticker. Vinil, holografik, şeffaf, simli. AI dosya kontrolü ile 5 iş günü içinde kargoda.",
   alternates: { canonical: "/sticker" },
   openGraph: {
     title: "Sticker bastır — Pim Etiket",
     description:
-      "Die-cut, tabaka, vinil, holo, transparan. 25 adetten, 5 iş günü içinde kargoda.",
+      "Özel kesim, holografik, şeffaf, simli sticker. 25 adetten, 5 iş günü içinde kargoda.",
     type: "website",
     url: "/sticker",
   },
