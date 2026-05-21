@@ -1757,6 +1757,27 @@ function StickerPage() {
                 const titleSuffix =
                   designCount > 1 ? ` (${designCount} tasarım)` : "";
 
+                // Sefa 22 May v68 — C sorun fix (etiket paralel): tasarımsız
+                // sepete ekle BİLİNÇLİ olsun. Native confirm — modal eklemeden
+                // hızlı UX guard. Bilinçsiz "atlama" sonucu awaiting_upload
+                // sipariş açılmasını önler. İptal → tasarım step'ine kaydır.
+                const hasNoDesign = designs.length === 0;
+                if (hasNoDesign) {
+                  const confirmed = window.confirm(
+                    "Tasarım yüklemeden devam etmek istiyor musun?\n\n" +
+                      "Ödeme sonrası 'Tasarımını yükle' sayfasına yönlendirileceksin (3 gün süre, hatırlatma mail'i alacaksın).\n\n" +
+                      "TAMAM = Sonra yükleyeceğim, sepete ekle\n" +
+                      "İPTAL = Önce tasarımı yükleyeceğim (geri dön)"
+                  );
+                  if (!confirmed) {
+                    const designStepId = stepIds.find((id) => id === 7);
+                    if (designStepId !== undefined) {
+                      scrollToStep(designStepId);
+                    }
+                    return;
+                  }
+                }
+
                 // Sefa 20 May v68 (test): Native image/PSD/PDF için kalıcı
                 // Supabase URL üret. design.generatedPreviewUrl varsa onu kullan
                 // (DesignDropZone zaten Supabase'e yüklüyor), yoksa designs[0]

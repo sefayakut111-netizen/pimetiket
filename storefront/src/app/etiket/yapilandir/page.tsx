@@ -1197,6 +1197,26 @@ function EtiketPage() {
     // göster ki müşteri sepete bakınca "tasarımı yüklemem lazım" anlasın.
     const hasNoDesign = designs.length === 0;
 
+    // Sefa 22 May v68 — C sorun fix: tasarımsız sepete ekle BİLİNÇLİ
+    // olsun. Modal yok, native confirm yeterli (hızlı, mobile uyumlu).
+    // Bilinçsiz "atlama" sonucu awaiting_upload sipariş açılmasını önler.
+    if (hasNoDesign) {
+      const confirmed = window.confirm(
+        "Tasarım yüklemeden devam etmek istiyor musun?\n\n" +
+          "Ödeme sonrası 'Tasarımını yükle' sayfasına yönlendirileceksin (3 gün süre, hatırlatma mail'i alacaksın).\n\n" +
+          "TAMAM = Sonra yükleyeceğim, sepete ekle\n" +
+          "İPTAL = Önce tasarımı yükleyeceğim (geri dön)"
+      );
+      if (!confirmed) {
+        // Tasarım step'ine kaydır — kullanıcı yüklemesi için
+        const designStepId = stepIds.find((id) => id === 7);
+        if (designStepId !== undefined) {
+          scrollToStep(designStepId);
+        }
+        return;
+      }
+    }
+
     // Sefa 20 May v68 (test "önizleme gözükmüyor"): Native image için
     // kalıcı Supabase URL üret. Yoksa sayfa refresh sonrası blob URL invalid.
     let _resolvedPreviewUrl: string | undefined;
