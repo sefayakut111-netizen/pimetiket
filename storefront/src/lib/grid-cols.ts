@@ -14,9 +14,12 @@
 export function gridColsForCount(count: number): string {
   switch (count) {
     case 1:
-      return "grid grid-cols-1";
     case 2:
-      return "grid grid-cols-1 sm:grid-cols-2";
+      // Sefa 21 May v68 (görsel feedback): 1-2 kart varken 3 sütunlu grid
+      // gibi davransın — boş alan sağda kalsın, kartlar normal genişlikte
+      // gözüksün. Eski: 1 kart full-width, 2 kart 50/50 (gereksiz büyük
+      // ve dengesiz hissi veriyordu).
+      return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
     case 3:
       return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
     case 4:
