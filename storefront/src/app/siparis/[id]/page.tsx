@@ -653,49 +653,21 @@ export default function SiparisDetailPage({
               </Card>
             )}
 
-            {/* Proof canvas — current phase'e göre */}
-            {phaseIdx === 5 && !proofApproved && (
-              <Card padding="" className="!p-0 overflow-hidden">
-                <div className="bg-gradient-to-br from-pim-mercan-tint to-krem-soft p-6 border-b border-gri-200">
-                  <div className="flex gap-4 items-start">
-                    <PimMini pose="inspect" size={56} />
-                    <div className="flex-1">
-                      <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
-                        {c.proofActionRequired}
-                      </div>
-                      <h3 className="font-semibold text-xl mt-1.5">
-                        {c.proofTitle}
-                      </h3>
-                      <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
-                        {c.proofDesc}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {/* Mock proof canvas */}
-                <div className="bg-gri-100 p-4 md:p-8 grid place-items-center min-h-[280px]">
-                  <div className="bg-white rounded-lg shadow-2 p-6 max-w-[360px] w-full">
-                    <div className="aspect-[4/5] bg-krem rounded-md grid place-items-center mb-3">
-                      <div className="text-center">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-lacivert/60 mb-1">
-                          {order.items[0]?.title.split("·")[0].trim() ?? "—"}
-                        </div>
-                        <div className="text-[22px] font-bold text-lacivert">
-                          {order.address.name.split(" ")[0]}
-                        </div>
-                        <div className="text-[10px] text-gri-700 mt-1">
-                          {c.proofMockChips}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-gri-500">
-                      <span>
-                        {order.items[0]?.width}×{order.items[0]?.height}mm
-                      </span>
-                      <span>{c.proofPreviewSize}</span>
-                    </div>
-                  </div>
-                </div>
+            {/* Sefa 22 May v68: Proof kartı SADELEŞTİRİLDİ.
+                - Pim Mercan gradient header KALDIRILDI (üstteki "Bıçak
+                  çiziliyor / İlerlemeyi gör" CTA kartı ile dublicate idi)
+                - Mock canvas (bej kutu "Sefa" yazılı) KALDIRILDI →
+                  ProofPreviewBox: gerçek tasarım thumbnail + ölçü +
+                  beyaz plan layer toggle
+                - Renk uyarısı + Onayla/Değişiklik iste butonları KALDI */}
+            {phaseIdx === 5 && !proofApproved && order.items[0] && (
+              <Card padding="" className="!p-0 overflow-hidden bg-gri-100">
+                <ProofPreviewBox
+                  orderId={order.id}
+                  itemId={order.items[0].id}
+                  width={order.items[0].width}
+                  height={order.items[0].height}
+                />
                 <div className="p-6 border-t border-gri-200 bg-white">
                   <p className="text-[13px] text-gri-700 leading-relaxed mb-4">
                     <strong className="text-lacivert">{c.proofColorWarn}</strong>{" "}
@@ -1153,6 +1125,118 @@ function dbRowToUploaded(r: DbFileRow): UploadedFile & { id: string; status: str
     storagePath: r.storage_path,
     mimeType: r.mime_type,
   };
+}
+
+// ============================================================
+// ProofPreviewBox — Prova kartında büyük tasarım thumbnail + ölçü
+// + beyaz plan layer toggle.
+// Sefa 22 May v68: Mock canvas (bej kutu "Sefa" yazılı) kaldırıldı,
+// yerine gerçek tasarım thumbnail render edilir. Beyaz plan toggle
+// raster + şeffaf sticker tasarımları için arka plan'ı beyaz vs.
+// checkered patterned arasında değiştirir.
+// ============================================================
+function ProofPreviewBox({
+  orderId,
+  itemId,
+  width,
+  height,
+}: {
+  orderId: string;
+  itemId: string;
+  width: number;
+  height: number;
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [mimeType, setMimeType] = useState<string | undefined>(undefined);
+  const [whiteBg, setWhiteBg] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url`, {
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: { url?: string; mimeType?: string } | null) => {
+          if (!active || !data?.url) return;
+          setSignedUrl(data.url);
+          setMimeType(data.mimeType);
+        }
+      )
+      .catch(() => {
+        /* sessiz fail */
+      });
+    return () => {
+      active = false;
+    };
+  }, [orderId, itemId]);
+
+  const isRaster =
+    mimeType?.startsWith("image/") && !mimeType?.includes("svg");
+
+  // Checker pattern (şeffaflık göstermek için)
+  const checkerStyle = {
+    backgroundImage:
+      "linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)",
+    backgroundSize: "16px 16px",
+    backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+    backgroundColor: "white",
+  };
+
+  return (
+    <div className="p-4 md:p-8 grid place-items-center min-h-[280px]">
+      <div className="w-full max-w-[360px]">
+        {/* Tasarım önizleme — gerçek thumbnail */}
+        <div
+          className="aspect-square rounded-md grid place-items-center mb-3 overflow-hidden border border-gri-200"
+          style={whiteBg ? { backgroundColor: "white" } : checkerStyle}
+        >
+          {signedUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={signedUrl}
+              alt="Tasarım önizlemesi"
+              className="max-w-full max-h-full object-contain"
+              loading="lazy"
+            />
+          ) : (
+            <div className="text-[12px] text-gri-500">Tasarım yükleniyor…</div>
+          )}
+        </div>
+
+        {/* Ölçü etiketi + beyaz plan toggle */}
+        <div className="flex items-center justify-between gap-3 text-[12.5px]">
+          <span className="font-semibold text-lacivert tabular-nums">
+            {width} × {height} mm
+          </span>
+          {isRaster && (
+            <button
+              type="button"
+              onClick={() => setWhiteBg((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[12px] font-semibold transition-colors",
+                whiteBg
+                  ? "bg-lacivert text-white"
+                  : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+              )}
+              aria-pressed={whiteBg}
+              title="Tasarımın arka planı beyaz mı şeffaf mı kontrol et"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "inline-block w-3 h-3 rounded-sm border",
+                  whiteBg ? "bg-white border-gri-300" : "border-gri-400"
+                )}
+                style={!whiteBg ? checkerStyle : undefined}
+              />
+              {whiteBg ? "Beyaz plan: Açık" : "Beyaz plan: Kapalı"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ============================================================
