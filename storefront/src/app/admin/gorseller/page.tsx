@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import {
@@ -331,11 +332,12 @@ function SlotCard({
       {/* Görsel önizleme alanı */}
       <div className="relative aspect-[4/3] bg-gri-50 grid place-items-center overflow-hidden">
         {item?.publicUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={item.publicUrl}
             alt={item.altText ?? slot.label}
-            className="w-full h-full object-contain"
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="object-contain"
           />
         ) : (
           <div className="text-center text-gri-500">

@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Input, Modal, useToast, Skeleton } from "@/components/ui";
@@ -184,14 +185,12 @@ export default function AdminGaleriPage() {
               >
                 {/* Thumbnail */}
                 <div className="aspect-[4/3] bg-gri-100 relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={publicUrlOf(item.image_path)}
                     alt={item.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 240px"
+                    className="object-cover"
                   />
                   {!item.is_published && (
                     <span className="absolute top-2 left-2 inline-flex items-center h-[22px] px-2 rounded-full bg-gri-700 text-white text-[11px] font-semibold">
@@ -406,10 +405,12 @@ function GalleryEditor({
           </label>
           {imagePath ? (
             <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={publicUrlOf(imagePath)}
                 alt=""
+                width={600}
+                height={200}
+                sizes="(max-width: 768px) 100vw, 600px"
                 className="w-full max-h-[200px] object-cover rounded-lg ring-1 ring-gri-200"
               />
               <button
