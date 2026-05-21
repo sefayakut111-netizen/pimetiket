@@ -2,6 +2,25 @@
 -- Migration 075 — product_cards encoding cleanup + isim güncellemesi
 -- ============================================================
 --
+-- ⏳ APPLY ONAYI BEKLİYOR (Sefa kuralı: production DB write per-action onay)
+--
+-- Sefa "Migration 075'i uygula" diyince:
+--   Option A) Supabase Dashboard → SQL Editor → bu dosyayı paste + Run
+--   Option B) `npx supabase db push --linked` (tüm pending migrations)
+--   Option C) `psql $SUPABASE_DB_URL -f 075_product_cards_encoding_fix.sql`
+--
+-- Tahmini süre: <2 saniye (22 UPDATE statement, indexed key).
+-- Rollback: yok — UPDATE'ler idempotent, tekrar çalıştırılabilir, eski
+-- bozuk değerleri istersen `git show acea2b1 -- src/app/sticker/page.tsx`
+-- ile geri çıkarabilirsin.
+--
+-- Doğrulama (apply sonrası):
+--   SELECT key, title_tr FROM product_cards
+--   WHERE title_tr LIKE '%' || chr(65533) || '%';
+--   -- Boş dönmeli (replacement char artık yok).
+--
+-- ============================================================
+--
 -- Sefa 21 May v68 (Site denetim P0 #1 + Ürün denetim P2 #15 takip):
 --
 -- Migration 074 production'a uygulanırken bazı Türkçe karakterler
