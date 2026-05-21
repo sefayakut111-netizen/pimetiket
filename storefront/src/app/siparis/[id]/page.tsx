@@ -1349,6 +1349,14 @@ function ProofPreviewBox({
               disabled={!isRaster}
             />
           </div>
+          {/* Sefa 22 May v68 Faz 3b — Manuel beyaz plan upload.
+              Default otomatik beyaz plan kullanılır (alpha channel mask).
+              İleri tasarımcı kendi beyaz planını yüklemek istiyorsa: */}
+          <WhitePlanUploader
+            orderId={orderId}
+            itemId={itemId}
+            disabled={!isRaster}
+          />
         </div>
 
         <div className="border-t border-gri-200 pt-3">
@@ -1464,6 +1472,161 @@ function ProofPreviewBox({
           <Canvas heightClass="h-[400px] md:h-[480px]" />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// WhitePlanUploader — Faz 3b (Sefa 22 May v68)
+// ------------------------------------------------------------
+// İleri tasarımcı/ajans için manuel beyaz plan yükleme.
+// Default akış: otomatik beyaz plan (alpha channel mask, Faz 4'te
+// üretici tarafında üretilir). Bu component opt-in — küçük bir
+// expander altında, çoğu müşteri görmez ama gören için fonksiyonel.
+//
+// Upload akışı:
+//   POST /api/design/upload-init { kind: "white" }
+//   → storage_path: orderId/_white/uuid.png (subfolder ayırma)
+//   → design_files.ai_check.kind = "white" meta
+//   PUT signed URL
+//   POST /api/design/upload-complete { fileId }
+// ============================================================
+function WhitePlanUploader({
+  orderId,
+  itemId,
+  disabled,
+}: {
+  orderId: string;
+  itemId: string;
+  disabled?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(file: File) {
+    if (file.size > 30 * 1024 * 1024) {
+      setError("Dosya 30 MB'tan büyük olamaz");
+      return;
+    }
+    setError(null);
+    setUploading(true);
+    try {
+      const initRes = await fetch("/api/design/upload-init", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          orderItemId: itemId,
+          originalName: file.name,
+          sizeBytes: file.size,
+          mimeType: file.type,
+          kind: "white",
+        }),
+      });
+      if (!initRes.ok) {
+        const e = (await initRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error || `init_failed_${initRes.status}`);
+      }
+      const init = (await initRes.json()) as {
+        uploadUrl: string;
+        token: string;
+        storagePath: string;
+        fileId: string;
+      };
+
+      const supabase = createSupabaseClient();
+      const { error: uploadErr } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .uploadToSignedUrl(init.storagePath, init.token, file);
+      if (uploadErr) throw new Error(`upload_failed: ${uploadErr.message}`);
+
+      const compRes = await fetch("/api/design/upload-complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fileId: init.fileId }),
+      });
+      if (!compRes.ok) {
+        const e = (await compRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error || `complete_failed_${compRes.status}`);
+      }
+
+      setUploadedFile(file.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (disabled) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gri-200">
+      {!expanded && !uploadedFile && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="text-[11.5px] text-pim-mercan font-semibold hover:underline"
+        >
+          + Kendi beyaz planımı yüklerim (ileri seviye)
+        </button>
+      )}
+
+      {expanded && !uploadedFile && (
+        <div className="space-y-2">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500">
+            Manuel beyaz plan
+          </div>
+          <p className="text-[11.5px] text-gri-700 leading-relaxed">
+            Tasarımının beyaz baskı katmanı için PNG/PDF yükle. Beyaz
+            (görünür) alanlar siyahla maskelenmiş olmalı.
+          </p>
+          <input
+            type="file"
+            accept=".png,.jpg,.jpeg,.pdf"
+            disabled={uploading}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleFile(f);
+            }}
+            className="block w-full text-[11.5px] text-gri-700 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-pim-mercan file:text-white file:text-[11px] file:font-semibold file:cursor-pointer hover:file:bg-pim-mercan-koyu"
+          />
+          {uploading && (
+            <div className="text-[11px] text-pim-mercan">Yükleniyor…</div>
+          )}
+          {error && (
+            <div className="text-[11px] text-kirmizi">⚠ {error}</div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setExpanded(false);
+              setError(null);
+            }}
+            className="text-[11px] text-gri-500 hover:text-gri-700"
+          >
+            Vazgeç
+          </button>
+        </div>
+      )}
+
+      {uploadedFile && (
+        <div className="space-y-1">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500">
+            Manuel beyaz plan
+          </div>
+          <div className="flex items-center gap-1.5 text-[11.5px] text-yesil">
+            <span>✓</span>
+            <span className="font-semibold truncate">{uploadedFile}</span>
+          </div>
+          <p className="text-[10.5px] text-gri-500 leading-relaxed">
+            Otomatik beyaz plan yerine bu dosya kullanılacak. Üretim
+            ekibimiz kontrol eder.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

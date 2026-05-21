@@ -33,6 +33,14 @@ const InitBodySchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE),
   mimeType: z.enum(ALLOWED_MIME_TYPES),
   orderItemId: z.string().uuid().optional(),
+  /**
+   * Sefa 22 May v68 Faz 3b — Dosya kategorisi:
+   *  - "design" (default): normal tasarım dosyası (renk + bıçak)
+   *  - "white": beyaz plan dosyası (şeffaf sticker alt katmanı,
+   *    ileri kullanıcı manuel upload). Storage path "_white/"
+   *    subfolder'a gider, design_files.ai_check.kind="white" meta.
+   */
+  kind: z.enum(["design", "white"]).optional(),
 });
 
 const ACCEPTED_ORDER_STATUSES = [
@@ -112,10 +120,12 @@ export async function POST(req: NextRequest) {
     version = (top?.version ?? 0) + 1;
   }
 
-  // 5) Storage path
+  // 5) Storage path — Faz 3b: kind=white → _white/ subfolder
   const fileId = crypto.randomUUID();
   const ext = getExtensionFromMime(body.mimeType);
-  const storagePath = `${body.orderId}/${fileId}.${ext}`;
+  const kind = body.kind ?? "design";
+  const subfolder = kind === "white" ? "_white/" : "";
+  const storagePath = `${body.orderId}/${subfolder}${fileId}.${ext}`;
 
   // 6) Signed upload URL (Supabase Storage)
   // service_role ile Bucket policy bypass — guard zaten yukarıda yapıldı.
@@ -133,6 +143,8 @@ export async function POST(req: NextRequest) {
 
   // 7) design_files placeholder (status=uploaded olacak ama upload-complete'te
   // file size + sha256 ile finalize edilir)
+  // Faz 3b: kind=white için ai_check.kind meta'sını set et — UI/üretici
+  // bu dosyayı normal tasarımdan ayırır.
   const { error: insertErr } = await admin.from("design_files").insert([
     {
       id: fileId,
@@ -145,6 +157,7 @@ export async function POST(req: NextRequest) {
       mime_type: body.mimeType,
       version,
       status: "uploaded",
+      ai_check: kind === "white" ? { kind: "white", flags: [] } : null,
     },
   ] as never);
 
