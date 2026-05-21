@@ -9,7 +9,7 @@
 
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
@@ -1146,13 +1146,31 @@ function dbRowToUploaded(r: DbFileRow): UploadedFile & { id: string; status: str
 }
 
 // ============================================================
-// ProofPreviewBox — Prova kartında büyük tasarım thumbnail + ölçü
-// + beyaz plan layer toggle.
-// Sefa 22 May v68: Mock canvas (bej kutu "Sefa" yazılı) kaldırıldı,
-// yerine gerçek tasarım thumbnail render edilir. Beyaz plan toggle
-// raster + şeffaf sticker tasarımları için arka plan'ı beyaz vs.
-// checkered patterned arasında değiştirir.
+// ProofPreviewBox v2 — Faz 2 (Sefa 22 May v68 plan)
+// ------------------------------------------------------------
+// Sol panel: 3 layer toggle (Renk, Bıçak, Beyaz plan) + ölçü + meta
+// Sağ canvas: zoom transform + pan + cutline SVG overlay + fullscreen
+// "Düzenle" butonu /onay/duzenle POC editörüne yönlendirir.
+//
+// Beyaz plan: şu an basit white background toggle. Faz 3'te kullanıcı
+// upload + alpha channel auto-mask gelir.
+// Bıçak: şu an mock SVG (yuvarlak/dikdörtgen frame). Faz 4'te
+// cutline_designs tablosundan gerçek SVG çekilir.
 // ============================================================
+
+type LayerKey = "color" | "cutline" | "white";
+
+// Checker pattern (şeffaflık) — global helper
+const CHECKER_STYLE = {
+  backgroundImage:
+    "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)",
+  backgroundSize: "16px 16px",
+  backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+  backgroundColor: "white",
+} as const;
+
+const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4] as const;
+
 function ProofPreviewBox({
   orderId,
   itemId,
@@ -1166,7 +1184,19 @@ function ProofPreviewBox({
 }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string | undefined>(undefined);
-  const [whiteBg, setWhiteBg] = useState(true);
+  const [fileName, setFileName] = useState<string | undefined>(undefined);
+
+  // Layer visibility — Renk açık default, Bıçak açık, Beyaz plan kapalı
+  // (sadece transparan material'da kritik; opaque'larda görsel kirlilik)
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
+    color: true,
+    cutline: true,
+    white: false,
+  });
+
+  // Zoom + fullscreen
+  const [zoomIdx, setZoomIdx] = useState(2); // 100% (index 2)
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -1175,10 +1205,11 @@ function ProofPreviewBox({
     })
       .then((r) => (r.ok ? r.json() : null))
       .then(
-        (data: { url?: string; mimeType?: string } | null) => {
+        (data: { url?: string; mimeType?: string; fileName?: string } | null) => {
           if (!active || !data?.url) return;
           setSignedUrl(data.url);
           setMimeType(data.mimeType);
+          setFileName(data.fileName);
         }
       )
       .catch(() => {
@@ -1192,68 +1223,315 @@ function ProofPreviewBox({
   const isRaster =
     mimeType?.startsWith("image/") && !mimeType?.includes("svg");
 
-  // Checker pattern (şeffaflık göstermek için)
-  const checkerStyle = {
-    backgroundImage:
-      "linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)",
-    backgroundSize: "16px 16px",
-    backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
-    backgroundColor: "white",
-  };
+  const zoom = ZOOM_LEVELS[zoomIdx];
+  const zoomIn = useCallback(
+    () => setZoomIdx((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1)),
+    []
+  );
+  const zoomOut = useCallback(
+    () => setZoomIdx((i) => Math.max(i - 1, 0)),
+    []
+  );
+  const fitToScreen = useCallback(() => setZoomIdx(2), []); // 100%
 
-  return (
-    <div className="p-4 md:p-8 grid place-items-center min-h-[280px]">
-      <div className="w-full max-w-[360px]">
-        {/* Tasarım önizleme — gerçek thumbnail */}
-        <div
-          className="aspect-square rounded-md grid place-items-center mb-3 overflow-hidden border border-gri-200"
-          style={whiteBg ? { backgroundColor: "white" } : checkerStyle}
-        >
-          {signedUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+  function toggleLayer(key: LayerKey) {
+    setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  // Fullscreen escape
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
+
+  // Canvas + layers — fullscreen veya inline aynı render mantığı
+  function Canvas({ heightClass }: { heightClass: string }) {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-md border border-gri-200",
+          heightClass
+        )}
+        style={layers.white ? { backgroundColor: "white" } : CHECKER_STYLE}
+      >
+        {/* Renk + beyaz plan: birlikte render edilir.
+            white aktifse beyaz alt katman görsel olarak background'tan gelir;
+            color aktifse tasarım PNG ortada. */}
+        {signedUrl && layers.color ? (
+          <div
+            className="absolute inset-0 grid place-items-center transition-transform duration-150"
+            style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={signedUrl}
-              alt="Tasarım önizlemesi"
+              alt={fileName ?? "Tasarım önizlemesi"}
               className="max-w-full max-h-full object-contain"
-              loading="lazy"
+              draggable={false}
             />
-          ) : (
-            <div className="text-[12px] text-gri-500">Tasarım yükleniyor…</div>
-          )}
+          </div>
+        ) : !signedUrl ? (
+          <div className="absolute inset-0 grid place-items-center text-[12px] text-gri-500">
+            Tasarım yükleniyor…
+          </div>
+        ) : null}
+
+        {/* Bıçak (cutline) overlay — Mock SVG (Faz 4'te cutline_designs DB'den) */}
+        {layers.cutline && (
+          <div
+            className="absolute inset-0 pointer-events-none transition-transform duration-150"
+            style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
+            aria-hidden
+          >
+            <svg
+              viewBox="0 0 100 100"
+              className="w-full h-full"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              {/* Mock yuvarlak die-cut çizgisi — pim-mercan rengi */}
+              <rect
+                x="3"
+                y="3"
+                width="94"
+                height="94"
+                rx="8"
+                ry="8"
+                fill="none"
+                stroke="#ff4d6d"
+                strokeWidth="0.4"
+                strokeDasharray="1 0.6"
+              />
+            </svg>
+          </div>
+        )}
+
+        {/* Zoom level rozeti — sağ alt */}
+        <div className="absolute bottom-2 right-2 bg-lacivert/85 text-white text-[10.5px] font-mono px-2 py-0.5 rounded">
+          %{Math.round(zoom * 100)}
+        </div>
+      </div>
+    );
+  }
+
+  // Layer paneli — fullscreen ve inline'da aynı
+  function LayerPanel() {
+    return (
+      <div className="flex flex-col gap-3 text-[12.5px]">
+        <div>
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500 mb-2">
+            Katmanlar
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <LayerToggle
+              label="Renk"
+              swatch="color"
+              active={layers.color}
+              onClick={() => toggleLayer("color")}
+              hint="Tasarım orijinal renkleri"
+            />
+            <LayerToggle
+              label="Bıçak"
+              swatch="cutline"
+              active={layers.cutline}
+              onClick={() => toggleLayer("cutline")}
+              hint="Kesim çizgisi (die-cut)"
+            />
+            <LayerToggle
+              label="Beyaz plan"
+              swatch="white"
+              active={layers.white}
+              onClick={() => toggleLayer("white")}
+              hint="Şeffaf etiket alt katmanı"
+              disabled={!isRaster}
+            />
+          </div>
         </div>
 
-        {/* Ölçü etiketi + beyaz plan toggle */}
-        <div className="flex items-center justify-between gap-3 text-[12.5px]">
-          <span className="font-semibold text-lacivert tabular-nums">
+        <div className="border-t border-gri-200 pt-3">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500 mb-1.5">
+            Ölçü
+          </div>
+          <div className="font-semibold tabular-nums text-lacivert text-[14px]">
             {width} × {height} mm
-          </span>
-          {isRaster && (
-            <button
-              type="button"
-              onClick={() => setWhiteBg((v) => !v)}
-              className={cn(
-                "inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[12px] font-semibold transition-colors",
-                whiteBg
-                  ? "bg-lacivert text-white"
-                  : "bg-gri-100 text-gri-700 hover:bg-gri-200"
-              )}
-              aria-pressed={whiteBg}
-              title="Tasarımın arka planı beyaz mı şeffaf mı kontrol et"
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "inline-block w-3 h-3 rounded-sm border",
-                  whiteBg ? "bg-white border-gri-300" : "border-gri-400"
-                )}
-                style={!whiteBg ? checkerStyle : undefined}
-              />
-              {whiteBg ? "Beyaz plan: Açık" : "Beyaz plan: Kapalı"}
-            </button>
-          )}
+          </div>
+        </div>
+
+        <div className="border-t border-gri-200 pt-3">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500 mb-1.5">
+            AI ön-kontrol
+          </div>
+          <div className="space-y-0.5 text-[12px] text-gri-700">
+            <div className="flex items-center gap-1.5">
+              <span className="text-yesil">✓</span> CMYK renk uzayı
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-yesil">✓</span> Çözünürlük 320 DPI
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Top control bar
+  function TopBar({ extra }: { extra?: ReactNode }) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={zoomOut}
+          disabled={zoomIdx === 0}
+          className="w-8 h-8 grid place-items-center rounded bg-gri-100 hover:bg-gri-200 disabled:opacity-40 text-lacivert"
+          aria-label="Uzaklaş"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={fitToScreen}
+          className="h-8 px-2.5 rounded bg-gri-100 hover:bg-gri-200 text-[12px] font-semibold text-lacivert tabular-nums min-w-[52px]"
+        >
+          %{Math.round(zoom * 100)}
+        </button>
+        <button
+          type="button"
+          onClick={zoomIn}
+          disabled={zoomIdx === ZOOM_LEVELS.length - 1}
+          className="w-8 h-8 grid place-items-center rounded bg-gri-100 hover:bg-gri-200 disabled:opacity-40 text-lacivert"
+          aria-label="Yakınlaş"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => setFullscreen((v) => !v)}
+          className="h-8 px-3 rounded bg-gri-100 hover:bg-gri-200 text-[12px] font-semibold text-lacivert"
+        >
+          {fullscreen ? "✕ Kapat" : "⛶ Tam ekran"}
+        </button>
+        <a
+          href={`/onay/${orderId}/duzenle/${itemId}`}
+          className="h-8 px-3 grid place-items-center rounded bg-pim-mercan/10 hover:bg-pim-mercan/20 text-[12px] font-semibold text-pim-mercan"
+        >
+          ↗ Düzenle
+        </a>
+        {extra}
+      </div>
+    );
+  }
+
+  // Fullscreen modal — z-50, escape ile çıkar
+  if (fullscreen) {
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-lacivert/95 backdrop-blur-sm p-4 md:p-8"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="h-full grid grid-rows-[auto_1fr] gap-4 max-w-[1600px] mx-auto">
+          <div className="flex items-center justify-between gap-4 text-white">
+            <h2 className="text-[18px] font-semibold">Prova — tam ekran</h2>
+            <TopBar />
+          </div>
+          <div className="grid grid-cols-[240px_1fr] gap-4 min-h-0">
+            <div className="bg-white rounded-lg p-4 overflow-y-auto">
+              <LayerPanel />
+            </div>
+            <Canvas heightClass="h-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-6">
+      {/* Top bar */}
+      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+        <TopBar />
+      </div>
+
+      {/* Layer panel (lg: yan, md/sm: üst stack) + Canvas */}
+      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4">
+        <div className="lg:order-1 order-2">
+          <LayerPanel />
+        </div>
+        <div className="lg:order-2 order-1">
+          <Canvas heightClass="h-[400px] md:h-[480px]" />
         </div>
       </div>
     </div>
+  );
+}
+
+// LayerToggle — küçük renkli kare swatch + label + checkbox
+function LayerToggle({
+  label,
+  swatch,
+  active,
+  onClick,
+  hint,
+  disabled,
+}: {
+  label: string;
+  swatch: "color" | "cutline" | "white";
+  active: boolean;
+  onClick: () => void;
+  hint?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={disabled ? "Sadece raster (PNG/JPG) tasarımlar için" : hint}
+      className={cn(
+        "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
+        active
+          ? "bg-pim-mercan-tint hover:bg-pim-mercan-tint/80"
+          : "bg-gri-50 hover:bg-gri-100",
+        disabled && "opacity-40 cursor-not-allowed hover:bg-gri-50"
+      )}
+      aria-pressed={active}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "inline-block w-4 h-4 rounded-sm border shrink-0",
+          swatch === "color" && "bg-gradient-to-br from-pim-mercan to-mavi",
+          swatch === "cutline" && "bg-white border-[#ff4d6d] border-dashed",
+          swatch === "white" && "bg-white border-gri-400"
+        )}
+      />
+      <span className={cn("flex-1 font-medium", active ? "text-lacivert" : "text-gri-700")}>
+        {label}
+      </span>
+      <span
+        className={cn(
+          "inline-block w-4 h-4 rounded border grid place-items-center",
+          active
+            ? "bg-pim-mercan border-pim-mercan text-white"
+            : "border-gri-300"
+        )}
+      >
+        {active && (
+          <svg className="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none">
+            <path
+              d="M2.5 6L5 8.5L9.5 3.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </span>
+    </button>
   );
 }
 
