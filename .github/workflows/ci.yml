@@ -1,0 +1,89 @@
+# Pim Etiket — Continuous Integration
+#
+# PR + main push'ta otomatik lint + tsc + build kontrolü.
+# Regression önler: TS hatası ya da lint ihlali main'e girmeden yakalanır.
+#
+# Job stratejisi:
+#   - lint:      ESLint (eslint.config.mjs) — paralel
+#   - typecheck: npx tsc --noEmit — paralel
+#   - build:    next build — sıralı, fail-soft (env eksikse hata yutar)
+#
+# Sefa 21 May v68: Agent denetim önerisi #1 — solo founder için
+# regression sigortası. Manuel commit/push akışı bozulmadan, GitHub UI'da
+# "checks failed" rozeti ile uyarı verir.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Aynı branch için art arda push'larda eskileri iptal et
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: storefront
+
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: storefront/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+
+  typecheck:
+    name: TypeScript noEmit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: storefront/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+  build:
+    name: Next build (advisory)
+    needs: [lint, typecheck]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Build env vars eksikse fail-soft (continue-on-error true).
+    # Vercel zaten preview build'i otomatik çalıştırıyor — CI'da build
+    # advisory sigorta, lint/typecheck zorunlu.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: storefront/package-lock.json
+      - run: npm ci
+      - name: Build
+        # Build sırasında public env vars gerekli (Next.js inline'lar).
+        # Placeholder değerler — production'a sızmaz, sadece type check için.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SITE_URL: https://pimetiket.com
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role
+        run: npm run build
