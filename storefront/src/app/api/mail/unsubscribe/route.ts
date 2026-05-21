@@ -95,9 +95,16 @@ export async function POST(req: Request) {
   const token = getToken(req);
   const result = await processUnsubscribe(token);
   if (!result.ok) {
+    // Sefa 21 May v68 — Smoke test BUG #2 fix:
+    // missing_token + invalid_token client error (4xx),
+    // db_error sunucu hatası (5xx). Mail client retry mantığı için kritik.
+    const status =
+      result.err === "missing_token" || result.err === "invalid_token"
+        ? 400
+        : 500;
     return NextResponse.json(
       { ok: false, error: result.err },
-      { status: result.err === "invalid_token" ? 400 : 500 }
+      { status }
     );
   }
   // Mail client'ları sadece 200 + JSON bekler

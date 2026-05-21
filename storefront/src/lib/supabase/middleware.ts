@@ -37,9 +37,31 @@ const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/admin", // staff role check ileride; şimdilik login zorunlu
 ];
 
+/**
+ * Sefa 21 May v68 — Public path exception listesi.
+ *
+ * PROTECTED_PATHS prefix-match yapıyor; bazı sub-path'ler login GEREKTİRMEZ
+ * (mail unsubscribe confirm, yorum token sayfaları gibi).
+ *
+ * KRİTİK: `/bildirim-tercihleri/cikis` mail'den linkle gelen müşteriler için.
+ * Müşterinin hesabı olmayabilir (lead mail), login zorunluluğu KVKK m.5/1
+ * "açık rıza geri çekme" hakkını engeller + spam complaint rate'i yükseltir.
+ */
+const PUBLIC_PATHS: ReadonlyArray<string> = [
+  "/bildirim-tercihleri/cikis", // unsubscribe confirm sayfası
+];
+
 const AUTH_PATHS: ReadonlyArray<string> = ["/auth", "/sifre-sifirla"];
 
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+}
+
 function isProtected(pathname: string): boolean {
+  // Public exception önceliklidir
+  if (isPublic(pathname)) return false;
   return PROTECTED_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/") || pathname === p.replace(/\/$/, "")
   );
