@@ -34,6 +34,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Validation
 // ============================================================
 
+// Sefa 21 May v68 — Tüm optional string field'larında `.nullish()` kullanılır.
+// Sebep: Cart item'da bir ürün tipi için irrelevant alan `null` olarak gelir
+// (örn. etiket ürününde shape/cut/material/finish = null). Zod'da `.optional()`
+// sadece `T | undefined` kabul eder, `null` reddeder → 400 invalid_body.
+// `.nullish()` = `T | null | undefined` → defansif, üretici-tarafı kırılmaz.
 const CartItemSchema = z.object({
   id: z.string(),
   product: z.enum(["sticker", "etiket"]),
@@ -44,24 +49,24 @@ const CartItemSchema = z.object({
   qty: z.number().int().positive(),
   unit: z.number().nonnegative(),
   total: z.number().nonnegative(),
-  meta: z.record(z.string(), z.unknown()).optional(),
-  designTempId: z.string().uuid().optional(),
-  designPreviewUrl: z.string().optional(),
-  designFileName: z.string().optional(),
-  shape: z.string().optional(),
-  cut: z.string().optional(),
-  softCorners: z.boolean().optional(),
-  material: z.string().optional(),
-  finish: z.string().optional(),
-  hediyeAdet: z.number().optional(),
-  materialId: z.string().optional(),
-  coatingId: z.string().optional(),
-  customizationId: z.string().optional(),
-  winding: z.number().optional(),
+  meta: z.record(z.string(), z.unknown()).nullish(),
+  designTempId: z.string().uuid().nullish(),
+  designPreviewUrl: z.string().nullish(),
+  designFileName: z.string().nullish(),
+  shape: z.string().nullish(),
+  cut: z.string().nullish(),
+  softCorners: z.boolean().nullish(),
+  material: z.string().nullish(),
+  finish: z.string().nullish(),
+  hediyeAdet: z.number().nullish(),
+  materialId: z.string().nullish(),
+  coatingId: z.string().nullish(),
+  customizationId: z.string().nullish(),
+  winding: z.number().nullish(),
 });
 
 const AddressSchema = z.object({
-  label: z.string().nullable().optional(),
+  label: z.string().nullish(),
   name: z.string().min(1),
   addr: z.string().min(1),
   city: z.string().min(1),
@@ -70,10 +75,10 @@ const AddressSchema = z.object({
 
 const InvoiceSchema = z.object({
   type: z.enum(["individual", "corporate"]),
-  tc: z.string().optional(),
-  vkn: z.string().optional(),
-  companyName: z.string().optional(),
-  taxOffice: z.string().optional(),
+  tc: z.string().nullish(),
+  vkn: z.string().nullish(),
+  companyName: z.string().nullish(),
+  taxOffice: z.string().nullish(),
 });
 
 const InitBodySchema = z.object({
@@ -83,7 +88,7 @@ const InitBodySchema = z.object({
   subtotal: z.number().nonnegative(),
   shipping: z.number().nonnegative(),
   total: z.number().positive(),
-  couponCode: z.string().optional(),
+  couponCode: z.string().nullish(),
   // FSEK m.66 telif ihlali davası ispatı için zorunlu (Sefa kuralı 12 May).
   // Müşteri /odeme'deki "tasarımım telif sahibim ben" checkbox'ını
   // işaretlemeden submit edemez (client-side guard). Server-side burada
