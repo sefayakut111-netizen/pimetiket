@@ -135,3 +135,30 @@ UPDATE product_cards SET title_tr = '...doğru metin...' WHERE id = '...';
 **Sorun:** "60+ hazır şablon" ifadesi 3 yerde yazılı ama 12 kategoride somut sayım yapılmamış.
 
 **Karar:** "60+" pazarlama ifadesi, gerçek şablon sayısı arttıkça güncellenecek. Şu an müdahale edilmedi.
+
+---
+
+## 🟢 Ürün denetim raporu (21 May 2026 v68) — TAMAMLANDI
+
+24 madde commit'lendi (acea2b1 + 9aba1fe + fc931e6):
+- ✅ P0 #1 tabaka özet sarım/rulo, #2 Bumper preset, #3 oval label, #4 sticker dinamik boyut, #5 ?material= pre-select
+- ✅ P1 #6 Şeffaf "şekil" fix, #7 Title Case, #8 material default seffaf, #10 deliveryEstimate saat sıfırlama, #11 savings tooltip, #12 binlik ayraç
+- ✅ P2 #14 sticker title, #15+16 Tabaka Sticker, #18 default qty 250, #19 köşe tooltip, #20 schema TR, #21 "Açık ve net", #22 slider tic, #24 adedi yazım
+
+**Atlanan:** #9 rulo varyant fiyat (shape fiyatı kasıtlı etkilemiyor — material #6 ile çözüldü), #13 footer parens (kod doğru — cache görüntü), #17 default boyut Bumper farklı (kasıtlı), #23 kart açıklamaları admin DB'den (manuel Sefa).
+
+---
+
+## 🟢 Konfigüratör denetim raporu (21 May 2026 v68) — TAMAMLANDI
+
+10 madde commit'lendi (fc931e6 + bu commit):
+- ✅ P0 #1 sessiz fail (touched temizlenince toast düzgün çalışıyor), #2+#10 touched vs unlocked ayrımı (kendi bug fix'im), #4 PriceCard "Tahmini fiyat" uyarı bandı
+- ✅ #5 Önizleme görselleri — shape'e göre dinamik render (circle Ø, oval ellipse, square eş kenar, bumper özel pad, kiss-cut taşıyıcı kağıt, diecut dashed outline, transparan checker, sketch mode showBrand=false)
+- ✅ P1+P2 #3 FormSection inert, #6 sticky bar aria-label, #7 Ø format, #8 geçersiz URL toast
+
+**Atlanan:** #9 Kaplama/Yüzey terminoloji (kasıtlı farklı kavramlar — Sefa kararı).
+
+---
+
+## 🟡 Site denetim P2 #18 takip — Bumper render bug
+**Durum:** Lokalde reprod edilemedi. Sefa "/sticker/yapilandir?form=&shape=bumper sayfası kopuk" demişti — şu an URL routing fix'leri (P0 #2, konfigüratör #2) sonrası test edilmeli. Production'da hâlâ varsa SSR cache veya hidration sorunu.

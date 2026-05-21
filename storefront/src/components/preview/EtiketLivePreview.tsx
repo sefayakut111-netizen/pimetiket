@@ -231,7 +231,12 @@ export function EtiketLivePreview({
         />
       )}
 
-      {/* Layer 3 — Tasarım veya karga placeholder */}
+      {/* Layer 3 — Tasarım veya karga placeholder.
+          Sefa 21 May v68 (konfigüratör denetim #5): Eskiz modunda
+          showBrand=false (karga + "Pim Etiket" yazısı küçük etikette
+          sığmıyor, "Pim Etike" şeklinde kesiliyordu). Sketch modu sade
+          karga, 3D modu ise tam markalı. Yuvarlak/oval şekilde sizePct
+          küçültülür (radius içinde kalsın). */}
       {designUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -243,8 +248,8 @@ export function EtiketLivePreview({
       ) : (
         <MaskotPlaceholder
           theme={isDarkMaterial ? "dark" : "light"}
-          sizePct={72}
-          showBrand
+          sizePct={isCircle || isOval ? 56 : 72}
+          showBrand={!isSketch}
         />
       )}
 

@@ -290,14 +290,40 @@ export function StickerLivePreview({
       // (bumper için 100×40, kare için 75×75). Eski Math.min kare zorluyordu
       // → bumper'da karga sol köşede kalıyordu. Şimdi container bumper aspect
       // + karga w/h %100 → preserveAspectRatio meet ile tam ortalı.
+      // Sefa 21 May v68 (konfigüratör denetim #5 takip): bumper gibi çok
+      // yatay sticker'larda Pim mark SVG'si alt sınırdan taşıyordu —
+      // padding'i yatay/dikey ayrı ayarla (bumper için %15 vertical inset).
+      const isBumperAspect = width > height * 2;
+      const maskotPadding = isBumperAspect
+        ? `${Math.round(stickerHeightPx * 0.18)}px ${Math.round(stickerWidthPx * 0.05)}px`
+        : "4px";
+      // Şeffaf sticker → arka plana checker pattern (transparency hint)
+      const showTransparentBg = isTransparent;
       return (
         <div style={view3dWrap} className="relative">
           <div style={view3dInner} className="flex flex-col items-center gap-3">
+            {showTransparentBg && (
+              <div
+                aria-hidden
+                className="absolute"
+                style={{
+                  width: stickerWidthPx,
+                  height: stickerHeightPx,
+                  backgroundImage:
+                    "linear-gradient(45deg, rgba(200,210,220,0.55) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,210,220,0.55) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,210,220,0.55) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,210,220,0.55) 75%)",
+                  backgroundSize: "10px 10px",
+                  backgroundPosition: "0 0, 0 5px, 5px -5px, -5px 0px",
+                  borderRadius: 4,
+                  zIndex: 0,
+                }}
+              />
+            )}
             <div
               className="relative grid place-items-center"
               style={{
                 width: stickerWidthPx,
                 height: stickerHeightPx,
+                overflow: "hidden",
                 filter: dieCutFilter,
               }}
             >
@@ -316,10 +342,11 @@ export function StickerLivePreview({
                   alt=""
                   aria-hidden="true"
                   className="w-full h-full object-contain"
-                  style={{ padding: 4 }}
+                  style={{ padding: maskotPadding }}
                 />
               )}
             </div>
+            {/* shape die/diecut branch'i — yuvarlak ihtimali yok */}
             <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
               Kontur kesim · {Math.round(width)}×{Math.round(height)} mm
             </span>
