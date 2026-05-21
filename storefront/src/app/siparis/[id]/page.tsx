@@ -1427,25 +1427,10 @@ function DesignUploadCard({
     }, 1500);
   };
 
-  const handleRemove = async (file: UploadedFile & { id?: string }) => {
-    if (!confirm(c.confirmRemove)) return;
-    if (isLoggedInSync() && file.id) {
-      const supabase = createSupabaseClient();
-      const { error } = await supabase
-        .from("design_files")
-        .delete()
-        .eq("id", file.id);
-      if (error) {
-        alert(`Silinemedi: ${error.message}`);
-        return;
-      }
-      await refreshDb();
-    } else {
-      const next = files.filter((f) => f.name !== file.name);
-      setFiles(next);
-      saveFiles(orderId, next as UploadedFile[]);
-    }
-  };
+  // Sefa 22 May v68: handleRemove kaldırıldı — müşteri tasarım silemez,
+  // sadece "Yeni versiyon yükle" ile değiştirebilir (versiyon geçmişi
+  // OrderDesignHistory accordion'da kalır). saveFiles import'u kaldırıldı,
+  // useState/refreshDb akışı korundu (yeni versiyon kayıtları için).
 
   if (!hydrated) return null;
 
@@ -1550,14 +1535,12 @@ function DesignUploadCard({
                     ))}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(f)}
-                  className="text-gri-500 hover:text-kirmizi text-[12px] font-semibold shrink-0"
-                  aria-label={c.remove}
-                >
-                  {c.remove}
-                </button>
+                {/* Sefa 22 May v68: "Kaldır" butonu kaldırıldı. Müşteri
+                    tasarımı silemez (kazara silinme + üretim akışı koruması);
+                    değiştirmek isterse üstteki "Yeni versiyon yükle" butonu
+                    yeni versiyon olarak kayıt yapar, eskisi geçmişte tutulur
+                    (Mig 003 superseded mantığı + OrderDesignHistory accordion).
+                */}
               </div>
             );
           })}
