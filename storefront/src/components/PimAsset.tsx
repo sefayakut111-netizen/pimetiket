@@ -19,6 +19,7 @@
  * component'i kullanıyor; yeni set'te "detailed" karşılığı yok).
  */
 
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 export type PimVariant = "detailed" | "icon" | "logo";
@@ -79,11 +80,16 @@ export function PimAsset({
       )}
       style={{ width: w, height: h }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* Sefa 21 May v68 (Image migration #2): <img> → Next/Image.
+          SVG'ler unoptimized — Next optimizer SVG'leri PNG'ye çevirmesin
+          (gradient/clip-path detayları kaybolmasın). */}
+      <Image
         src={src}
         alt=""
+        width={Math.round(w)}
+        height={Math.round(h)}
         draggable={false}
+        unoptimized
         style={{
           width: "100%",
           height: "100%",

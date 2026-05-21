@@ -6,6 +6,8 @@
  * Security rozetleri (3D Secure / SSL / PayTR / KVKK) sağda kalır.
  */
 
+import Image from "next/image";
+
 interface PaymentBadgesProps {
   /** "© 2026 Pim Etiket — Tüm hakları saklıdır." şeklinde tam string */
   copyrightText: string;
@@ -80,14 +82,16 @@ export function PaymentBadges({ copyrightText }: PaymentBadgesProps) {
           <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-white/55">
             Ödeme altyapısı
           </span>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          {/* Sefa 21 May v68 (Image migration #2): <img> → Next/Image —
+              CLS=0 (Next.js width/height attribute'ı reserve eder),
+              AVIF/WebP otomatik dönüşüm. */}
+          <Image
             src="/logos/paytr/paytr-white.svg"
             alt="PayTR"
-            width="56"
-            height="14"
+            width={56}
+            height={14}
             className="opacity-95"
-            style={{ height: "14px", width: "auto" }}
+            unoptimized
           />
         </div>
 

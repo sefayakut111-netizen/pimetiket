@@ -172,19 +172,22 @@ export default function HomePage() {
 
             {/* Görsel — geniş yumuşak mask + warm drop shadow.
                 Sefa 17 May v33: next/image ile otomatik WebP/AVIF + responsive
-                sizes + priority (LCP image). Local fallback için Image, DB
-                URL'i için <img> (Supabase Storage remote pattern config
-                yapılana kadar). */}
+                sizes + priority (LCP image).
+                Sefa 21 May v68 (Image migration #2): Supabase Storage
+                remote pattern next.config'te aktif → DB URL'i de Next/Image
+                ile (AVIF/WebP otomatik dönüşüm + lazy + CLS=0). */}
             <div className="relative z-10 w-full max-w-[640px] aspect-[5/4]">
               {homeHero ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={homeHero.publicUrl}
                   alt={
                     homeHero.altText ??
                     "Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
                   }
-                  className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 640px"
+                  className="object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
                   style={{
                     WebkitMaskImage:
                       "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",

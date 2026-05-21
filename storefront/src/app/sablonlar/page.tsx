@@ -19,6 +19,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow } from "@/components/ui";
@@ -237,11 +238,12 @@ export default function SablonlarPage() {
           </div>
           <div className="relative aspect-square max-w-[360px] mx-auto md:ml-auto">
             {heroImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={heroImage.publicUrl}
                 alt={heroImage.altText ?? "Pim Etiket şablon paketi"}
-                className="absolute inset-0 w-full h-full object-contain rounded-3xl"
+                fill
+                sizes="(max-width: 768px) 100vw, 360px"
+                className="object-contain rounded-3xl"
               />
             ) : (
               <div className="absolute inset-0 grid place-items-center">
