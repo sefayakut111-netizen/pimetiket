@@ -34,6 +34,11 @@
 --
 -- ============================================================
 
+-- Supabase yönetilen ortamda storage.objects tablosunun sahibi
+-- `supabase_storage_admin` rolüdür. postgres rolü DROP/CREATE POLICY
+-- yapamaz → set role ile geçici geçiş.
+set local role supabase_storage_admin;
+
 -- Eski path-strict policies'i drop et
 drop policy if exists "design_previews_owner_insert" on storage.objects;
 drop policy if exists "design_previews_owner_update" on storage.objects;
@@ -64,6 +69,9 @@ comment on policy "design_previews_auth_insert" on storage.objects is
   'public bucket için yalnızca authenticated rol kontrolü. designId UUID '
   'olduğu için cross-user yazma pratikte zor; gerekirse server-side proxy '
   'endpoint ile sıkılaştırılır.';
+
+-- Role'u eski haline çevir (transaction-local zaten otomatik biter)
+reset role;
 
 -- ============================================================
 -- Migration 077 sonu
