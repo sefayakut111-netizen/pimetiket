@@ -38,6 +38,10 @@ export const viewport: Viewport = {
 // Next.js fetch cache: aynı render içinde tekrar çağrılmaz; sayfalar arası
 // 60 sn (Supabase REST default) cache'lenir.
 export async function generateMetadata(): Promise<Metadata> {
+  // Sefa 21 May v68: DB'de og_default varsa onu kullan, YOKSA `images`
+  // field'ını tamamen omit et — Next.js o zaman `opengraph-image.tsx`
+  // file convention'a düşer (her route'un kendi dinamik PNG'si).
+  // Önceden boş array gönderiliyordu, bu file convention'ı bloke ediyordu.
   const og = await getSiteImage("og_default");
   const ogImages = og
     ? [
@@ -48,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
           alt: og.altText ?? "Pim Etiket",
         },
       ]
-    : [];
+    : undefined;
 
   // Sefa 17 May v33: Description + OG güncellendi (hero copy ile uyumlu —
   // "ekosistemi" + AI sohbet odaklı). Keywords genişletildi, "İstanbul
@@ -140,20 +144,33 @@ const SOCIAL_LINKS = (process.env.NEXT_PUBLIC_SOCIAL_LINKS ?? "")
   .map((s) => s.trim())
   .filter((s) => s.length > 0 && s.startsWith("https://"));
 
+// Sefa 21 May v68 SEO Sprint: Organization schema zenginleştirildi.
+// Tam adres (Mesafeli Satış sözleşmesinden), legalName, vatID + email.
+// Google Knowledge Graph "Şirket Bilgileri" panel için kritik.
+// Telefon eklenecek (BEKLEYEN-ISLER.md — Sefa numarayı verince).
 const ORGANIZATION_LD = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "Pim Etiket",
+  legalName: "SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ",
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
     "AI destekli dijital baskı ekosistemi. Etiket ve sticker çözümleri — Türkiye geneli teslimat.",
+  email: "info@pimetiket.com",
+  vatID: "7580607612",
   address: {
     "@type": "PostalAddress",
+    streetAddress:
+      "Workinton Ankara Söğütözü, Beştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28",
+    addressLocality: "Çankaya",
     addressRegion: "Ankara",
+    postalCode: "06510",
     addressCountry: "TR",
   },
   sameAs: SOCIAL_LINKS,
+  // Telefon BEKLEYEN — Sefa numarayı verince:
+  // contactPoint: { "@type": "ContactPoint", telephone: "+90-XXX-...", contactType: "customer support" }
 };
 
 const WEBSITE_LD = {
