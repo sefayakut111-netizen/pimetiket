@@ -34,6 +34,8 @@ const COLORS = {
 };
 
 export default async function OpengraphImage() {
+  // Sefa 21 May v68: linear-gradient Satori'de bazen render fail —
+  // solid lacivert kullanıyoruz, mercan accent köşede.
   return new ImageResponse(
     (
       <div
@@ -44,7 +46,7 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 80,
-          background: `linear-gradient(135deg, ${COLORS.lacivert} 0%, #2D3A50 100%)`,
+          backgroundColor: COLORS.lacivert,
           fontFamily: "sans-serif",
           color: COLORS.beyaz,
         }}
