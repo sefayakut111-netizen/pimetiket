@@ -74,3 +74,8 @@ ALL_MIGRATIONS_022_032.sql
 # Supabase CLI geçici dosyalar
 supabase/.temp/
 supabase/.branches/
+
+# Analiz/rapor geçici dosyalar (madge çıktısı — her çalıştırmada yeniden üretilir)
+deps.json
+deps.svg
+deps.png
