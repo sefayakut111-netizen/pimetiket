@@ -46,12 +46,20 @@ interface BaseLayoutProps {
   children: React.ReactNode;
   /** Mail footer'da unsubscribe link — opsiyonel kategori (marketing/blog) */
   unsubscribeCategory?: "marketing" | "blog";
+  /**
+   * Token-li unsubscribe URL. Yoksa generic /bildirim-tercihleri linki
+   * basılır (login gerektirir). Sefa 21 May v68:
+   * `enqueueMail` çağrısı sırasında `lib/mail/unsubscribe.ts` →
+   * `buildUnsubscribeUrl(email, cat)` üretip payload'a koymalı.
+   */
+  unsubscribeUrl?: string;
 }
 
 export function BaseLayout({
   preview,
   children,
   unsubscribeCategory,
+  unsubscribeUrl,
 }: BaseLayoutProps) {
   return (
     <Html lang="tr">
@@ -144,15 +152,27 @@ export function BaseLayout({
               >
                 Bu maili almak istemiyorsan{" "}
                 <Link
+                  href={
+                    unsubscribeUrl ?? `${SITE_URL}/bildirim-tercihleri`
+                  }
+                  style={{
+                    color: COLORS.pimMercan,
+                    textDecoration: "underline",
+                  }}
+                >
+                  tek tıkla çıkar
+                </Link>
+                {" · "}
+                <Link
                   href={`${SITE_URL}/bildirim-tercihleri`}
                   style={{
                     color: COLORS.pimMercan,
                     textDecoration: "underline",
                   }}
                 >
-                  bildirim tercihlerinden
-                </Link>{" "}
-                kapatabilirsin.
+                  tüm tercihler
+                </Link>
+                .
               </Text>
             )}
           </Section>

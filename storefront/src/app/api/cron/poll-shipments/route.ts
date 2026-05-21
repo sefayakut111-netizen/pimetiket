@@ -176,23 +176,23 @@ export async function GET(req: NextRequest) {
         if (userId) {
           const notif = await import("@/lib/mail/notifications");
 
+          // Sefa 21 May v68 — Faz 2: order_delivered maili iptal.
+          // Yurtıçi teslim anında müşteriye SMS atıyor + 7 gün sonra
+          // request-reviews cron'u "yorum yaz" maili gönderiyor (teslim
+          // onayı + yorum CTA tek mailde). Burada mail göndermiyoruz.
+          // justDelivered branch: sadece DB update + audit log
           if (justDelivered && apiResult.deliveredAt) {
-            void notif.sendOrderDelivered({
-              userId,
-              orderId: row.order_id,
-              deliveredAt: apiResult.deliveredAt.toLocaleString("tr-TR", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              carrierLabel: row.tracking_company ?? "Yurtiçi Kargo",
-            });
+            // Mail gönderimi YOK — bilinçli olarak iptal edildi
+            console.log(
+              `[poll-shipments] ${row.order_id} delivered — mail skip (review_request 7gün sonra gönderir)`
+            );
           } else if (
             statusChanged &&
             (newStatus === "in_transit" ||
-              newStatus === "out_for_delivery" ||
+              // Sefa 21 May v68 — Faz 1: out_for_delivery maili iptal.
+              // Yurtıçi 1-2 gün sonra zaten kullanıcıya SMS gönderiyor;
+              // bilgi tekrarı + mail fatigue önleme.
+              // newStatus === "out_for_delivery" ||  // KAPALI
               newStatus === "failed" ||
               newStatus === "returned")
           ) {

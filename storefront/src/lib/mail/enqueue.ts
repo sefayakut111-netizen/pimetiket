@@ -37,11 +37,21 @@ export interface EnqueueMailParams {
   targetId?: string;
   /** Subject override (template'in default'u kullanılacaksa null bırak) */
   subject?: string;
+  /**
+   * Idempotency key — aynı tetikten 2. enqueue çağrısı duplicate yaratmaz.
+   * Örnek: `abandoned_cart:${cartId}:${YYYY-MM-DD}`,
+   *        `admin_new_order:${orderId}:${adminEmail}`.
+   * NOT: Migration 076 ile UNIQUE constraint var.
+   */
+  idempotencyKey?: string;
 }
 
 export interface EnqueueResult {
   ok: boolean;
+  /** Yeni veya mevcut outbox kaydının id'si */
   id?: string;
+  /** Suppression listesi nedeniyle gönderim engellendi mi? */
+  suppressed?: boolean;
   error?: string;
 }
 
@@ -58,13 +68,18 @@ export async function enqueueMail(
       p_target_type: params.targetType ?? null,
       p_target_id: params.targetId ?? null,
       p_subject: params.subject ?? null,
+      p_idempotency_key: params.idempotencyKey ?? null,
     } as never);
 
     if (error) {
       console.error("[mail/enqueue] rpc error:", error);
       return { ok: false, error: error.message };
     }
-    return { ok: true, id: String(data ?? "") };
+    // RPC null döndürürse → suppression nedeniyle engellenmiş
+    if (data === null || data === undefined || String(data) === "") {
+      return { ok: true, suppressed: true };
+    }
+    return { ok: true, id: String(data) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown_error";
     console.error("[mail/enqueue] exception:", msg);

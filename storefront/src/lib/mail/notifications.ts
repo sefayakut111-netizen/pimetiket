@@ -1,19 +1,35 @@
 /**
  * Mail bildirim helper'ları — server-only.
  *
+ * Sefa 21 May v68 — REFACTOR:
+ *   Önceki sürüm doğrudan sendMail() çağırıyordu → suppression,
+ *   idempotency, retry, webhook tracking, observability YOKTU.
+ *
+ *   Yeni sürüm: React Email render edilmiş HTML+subject+text payload'da
+ *   enqueueMail()'e gönderilir. Cron (process-mail-outbox) çıkışı
+ *   `_prerendered` template key'i ile bypass render edip Resend'e gönderir.
+ *
+ *   Kazançlar:
+ *     - mail_suppressions kontrol edilir (bounce/complaint blokları)
+ *     - idempotency_key duplicate önler
+ *     - Resend down → outbox'ta birikir, geri çekilir (exp backoff)
+ *     - Resend webhook delivered/opened/bounce → outbox satırına yazılır
+ *     - /admin/mail-health'de görünür
+ *
  * Her event tipi için bir fonksiyon. notification_prefs tablosuna bakıp
- * kullanıcı opt-in mı kontrol eder, sonra Resend ile gönderir.
+ * kullanıcı opt-in mı kontrol eder, sonra outbox'a enqueue eder.
  *
  * Çağrıldığı yerler:
  *   - sendOrderConfirmation: /api/payment/callback success
  *   - sendProofReady: admin/prova approve endpoint (P1)
  *   - sendShippingUpdate: admin/siparisler "kargoya ver" endpoint (P1)
+ *   - vd. (her helper'ın açıklamasına bak)
  */
 
 import "server-only";
 
 import { render } from "@react-email/render";
-import { sendMail } from "./resend";
+import { enqueueMail } from "./enqueue";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   OrderConfirmationEmail,
@@ -59,6 +75,9 @@ import {
   type OrderProofApprovedProps,
 } from "./templates/order-proof-approved";
 
+const SITE_URL_FALLBACK =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
+
 // ============================================================
 // Pref check helper
 // ============================================================
@@ -90,6 +109,50 @@ async function getUserEmail(userId: string): Promise<string | null> {
   const admin = createAdminClient();
   const { data } = await admin.auth.admin.getUserById(userId);
   return data?.user?.email ?? null;
+}
+
+// ============================================================
+// Sefa 21 May v68 — Tek noktada outbox enqueue helper.
+// React Email'den render edilmiş HTML + subject + text → outbox.
+// ============================================================
+async function enqueuePrerendered(args: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  /** Mail kategorisi — customer (transactional), lead (marketing) */
+  category?: "customer" | "lead" | "admin" | "fason";
+  /** orders.id (PE-2026-XXXX) → resend tag + observability link */
+  orderId?: string;
+  /** auth.users.id → audit trail */
+  userId?: string;
+  /** "order_confirmation", "proof_ready", vb. — idempotency için */
+  kind: string;
+  /** Tag listesi yerine kullanıcı id'siyle birleşik unique key */
+  idempotencyKey?: string;
+}): Promise<{ ok: boolean; suppressed?: boolean; error?: string }> {
+  const result = await enqueueMail({
+    to: args.to,
+    templateKey: "_prerendered",
+    category: args.category ?? "customer",
+    targetType: args.orderId ? "order" : args.userId ? "user" : undefined,
+    targetId: args.orderId ?? args.userId,
+    subject: args.subject,
+    payload: {
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+      _kind: args.kind,
+      _user_id: args.userId,
+      _order_id: args.orderId,
+    },
+    idempotencyKey:
+      args.idempotencyKey ??
+      (args.orderId
+        ? `${args.kind}:${args.orderId}:${args.to.toLowerCase()}`
+        : undefined),
+  });
+  return result;
 }
 
 // ============================================================
@@ -156,22 +219,22 @@ export async function sendOrderConfirmation(args: {
   };
 
   const html = await render(OrderConfirmationEmail(props));
+  const subject = `Siparişin alındı 🎉 — ${args.orderId}`;
   const text = `Siparişin alındı! ${args.orderId} — ${props.total.toLocaleString(
     "tr-TR"
-  )} ₺. Detay: ${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/siparis/${args.orderId}`;
+  )} ₺. Detay: ${SITE_URL_FALLBACK}/siparis/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Siparişin alındı 🎉 — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "order_confirmation" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "order_confirmation",
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================
@@ -214,22 +277,20 @@ export async function sendProofReady(args: {
   };
 
   const html = await render(ProofReadyEmail(props));
-  const text = `Provan hazır — ${args.orderId}. İncele: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/siparis/${args.orderId}`;
+  const subject = `Provan hazır — ${args.orderId}`;
+  const text = `Provan hazır — ${args.orderId}. İncele: ${SITE_URL_FALLBACK}/siparis/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Provan hazır — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "proof_ready" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "proof_ready",
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================
@@ -277,22 +338,22 @@ export async function sendShippingUpdate(args: {
   };
 
   const html = await render(ShippingUpdateEmail(props));
-  const text = `Siparişin yola çıktı! ${args.carrierName} ${args.trackingNumber}. Detay: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/siparis/${args.orderId}`;
+  const subject = `Siparişin yola çıktı 🚚 — ${args.orderId}`;
+  const text = `Siparişin yola çıktı! ${args.carrierName} ${args.trackingNumber}. Detay: ${SITE_URL_FALLBACK}/siparis/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Siparişin yola çıktı 🚚 — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "shipping_update" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "shipping_update",
+    // Tracking no kombinasyonu — aynı kargo için 2× shipping update gitmesin
+    idempotencyKey: `shipping_update:${args.orderId}:${args.trackingNumber}`,
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================
@@ -335,22 +396,24 @@ export async function sendQcRejected(args: {
   };
 
   const html = await render(QcRejectedEmail(props));
-  const text = `${customerName}, tasarımda düzeltme gerekiyor. Sebep: ${args.reason}. Detay: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/siparis/${args.orderId}`;
+  const subject = `Tasarım düzeltmesi gerekiyor — ${args.orderId}`;
+  const text = `${customerName}, tasarımda düzeltme gerekiyor. Sebep: ${args.reason}. Detay: ${SITE_URL_FALLBACK}/siparis/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Tasarım düzeltmesi gerekiyor — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "qc_rejected" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "qc_rejected",
+    // QC her denemede yeni mail gitsin — fileName ile tekilleştir
+    idempotencyKey: args.fileName
+      ? `qc_rejected:${args.orderId}:${args.fileName}`
+      : `qc_rejected:${args.orderId}:${Date.now()}`,
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 /**
@@ -385,22 +448,20 @@ export async function sendQcFlagged(args: {
   };
 
   const html = await render(QcFlaggedEmail(props));
-  const text = `${customerName}, tasarımın operatör incelemesinde. 1-3 saat içinde sonuç. Detay: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/siparis/${args.orderId}`;
+  const subject = `Tasarım inceleniyor — ${args.orderId}`;
+  const text = `${customerName}, tasarımın operatör incelemesinde. 1-3 saat içinde sonuç. Detay: ${SITE_URL_FALLBACK}/siparis/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Tasarım inceleniyor — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "qc_flagged" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "qc_flagged",
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 /**
@@ -437,22 +498,20 @@ export async function sendOrderDelivered(args: {
   };
 
   const html = await render(OrderDeliveredEmail(props));
-  const text = `Siparişin teslim edildi: ${args.orderId}. Yorum bırak: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/siparis/${args.orderId}#yorum`;
+  const subject = `Siparişin teslim edildi ✅ — ${args.orderId}`;
+  const text = `Siparişin teslim edildi: ${args.orderId}. Yorum bırak: ${SITE_URL_FALLBACK}/siparis/${args.orderId}#yorum`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Siparişin teslim edildi ✅ — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "order_delivered" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "order_delivered",
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 /**
@@ -502,20 +561,22 @@ export async function sendShipmentStatus(args: {
   };
 
   const html = await render(ShipmentStatusEmail(props));
+  const subject = SUBJECT_BY_STATUS[args.status];
   const text = `${args.description}${args.location ? ` (${args.location})` : ""}. Takip: ${args.trackingNumber}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: SUBJECT_BY_STATUS[args.status],
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: `shipment_${args.status}` },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: `shipment_${args.status}`,
+    // Aynı tracking + status için tek mail
+    idempotencyKey: `shipment_${args.status}:${args.orderId}:${args.trackingNumber}`,
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================
@@ -566,22 +627,20 @@ export async function sendOrderProofRequired(args: {
   };
 
   const html = await render(OrderProofRequiredEmail(props));
-  const text = `Baskı onayını bekliyoruz — ${args.orderId}. Onay sayfası: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/onay/${args.orderId}`;
+  const subject = `Baskı önizlemen hazır — ${args.orderId}`;
+  const text = `Baskı onayını bekliyoruz — ${args.orderId}. Onay sayfası: ${SITE_URL_FALLBACK}/onay/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Baskı önizlemen hazır — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "proof_required" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "proof_required",
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================
@@ -615,22 +674,23 @@ export async function sendOrderProofReminder(args: {
   };
 
   const html = await render(OrderProofReminderEmail(props));
-  const text = `Baskı onayı hatırlatma — ${args.orderId}. ${args.pendingCount} ürün bekliyor: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/onay/${args.orderId}`;
+  const subject = `Baskı onayını bekliyoruz — ${args.orderId}`;
+  const text = `Baskı onayı hatırlatma — ${args.orderId}. ${args.pendingCount} ürün bekliyor: ${SITE_URL_FALLBACK}/onay/${args.orderId}`;
 
-  const result = await sendMail({
+  // Hatırlatma günde 1× — aynı gün 2× tetiklenmesin
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Baskı onayını bekliyoruz — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "proof_reminder" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "proof_reminder",
+    idempotencyKey: `proof_reminder:${args.orderId}:${today}`,
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================
@@ -677,20 +737,18 @@ export async function sendOrderProofApproved(args: {
   };
 
   const html = await render(OrderProofApprovedEmail(props));
-  const text = `Teşekkürler — onayın alındı, üretim başladı. ${args.orderId}: ${
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"
-  }/siparis/${args.orderId}`;
+  const subject = `Üretime geçtik 🎉 — ${args.orderId}`;
+  const text = `Teşekkürler — onayın alındı, üretim başladı. ${args.orderId}: ${SITE_URL_FALLBACK}/siparis/${args.orderId}`;
 
-  const result = await sendMail({
+  const result = await enqueuePrerendered({
     to: email,
-    subject: `Üretime geçtik 🎉 — ${args.orderId}`,
+    subject,
     html,
     text,
-    tags: [
-      { name: "category", value: "transactional" },
-      { name: "type", value: "proof_approved" },
-    ],
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "proof_approved",
   });
 
-  return { ok: result.ok, reason: result.error };
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }

@@ -13,12 +13,18 @@
  *   - forbidden: sahip değil
  *   - order_not_found
  *
- * Başarı sonrası fire-and-forget: sendOrderProofApproved maili.
+ * Sefa 21 May v68 — Faz 2: sendOrderProofApproved maili iptal edildi.
+ * Müşteri butona bastığı an UI zaten "✅ Onayın alındı, üretime aldık,
+ * ~5 iş günü içinde kargoda" feedback'i veriyor (response.newStatus +
+ * /siparis/[id] sayfa refresh). Mail tekrarı = mail fatigue.
+ *
+ * Eski davranış için kod altta yorum olarak duruyor (geri açmak için
+ * tek import + tek void çağrısı yeter).
  */
 
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { sendOrderProofApproved } from "@/lib/mail/notifications";
+// Faz 2 iptali: import { sendOrderProofApproved } from "@/lib/mail/notifications";
 
 export async function POST(
   _req: Request,
@@ -65,13 +71,15 @@ export async function POST(
     );
   }
 
-  // Fire-and-forget mail
-  void sendOrderProofApproved({ userId: user.id, orderId }).catch((err) =>
-    console.error("[proof/finalize] mail error:", err)
-  );
+  // Sefa 21 May v68 — Faz 2: mail iptal. Müşteri UI'da onay aldı.
+  // void sendOrderProofApproved({ userId: user.id, orderId }).catch((err) =>
+  //   console.error("[proof/finalize] mail error:", err)
+  // );
 
   return NextResponse.json({
     ok: true,
     newStatus: result.new_status,
+    message:
+      "✅ Onayın alındı. Üretime aldık — ~5 iş günü içinde kargoda olacak.",
   });
 }

@@ -23,6 +23,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { renderMailTemplate } from "@/lib/mail/templates";
 import { assertCronAuth } from "@/lib/cron-auth";
+import {
+  buildUnsubscribeUrl,
+  buildListUnsubscribeHeader,
+} from "@/lib/mail/unsubscribe";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +38,8 @@ interface OutboxRow {
   subject: string | null;
   payload: Record<string, unknown>;
   attempts: number;
+  /** Sefa 21 May v68 — unsubscribe URL + List-Unsubscribe için */
+  category: "fason" | "customer" | "lead" | "admin" | null;
 }
 
 const MAX_ATTEMPTS = 6;
@@ -72,7 +78,9 @@ export async function GET(req: Request) {
   // Pending veya retry zamanı gelen kayıtları çek
   const { data: rows, error: selectErr } = await admin
     .from("fason_mail_outbox")
-    .select("id, assignment_id, template_key, to_email, subject, payload, attempts")
+    .select(
+      "id, assignment_id, template_key, to_email, subject, payload, attempts, category"
+    )
     .in("status", ["pending", "failed"])
     .lt("attempts", MAX_ATTEMPTS)
     .or(`next_retry_at.is.null,next_retry_at.lte.${new Date().toISOString()}`)
@@ -92,7 +100,35 @@ export async function GET(req: Request) {
   let unknownTemplate = 0;
 
   for (const row of queue) {
-    const rendered = renderMailTemplate(row.template_key, row.payload ?? {});
+    // Sefa 21 May v68 — Lead/marketing kategorisi için token-li
+    // unsubscribe URL üret + List-Unsubscribe header ekle. Transactional
+    // mailler (customer/admin/fason) için zorunlu değil (KVKK m.5/2-c).
+    const isMarketing = row.category === "lead";
+    let unsubscribeUrl: string | undefined;
+    let listUnsubHeader:
+      | { listUnsubscribe: string; listUnsubscribePost: string }
+      | undefined;
+    if (isMarketing && row.to_email) {
+      try {
+        unsubscribeUrl = buildUnsubscribeUrl(row.to_email, "marketing");
+        listUnsubHeader = buildListUnsubscribeHeader(
+          row.to_email,
+          "marketing"
+        );
+      } catch (e) {
+        // UNSUBSCRIBE_SECRET yoksa silent — template fallback kullanır
+        console.warn(
+          "[cron/process-mail-outbox] unsubscribe url build skipped:",
+          e instanceof Error ? e.message : e
+        );
+      }
+    }
+
+    const renderPayload = {
+      ...(row.payload ?? {}),
+      ...(unsubscribeUrl ? { _unsubscribe_url: unsubscribeUrl } : {}),
+    };
+    const rendered = renderMailTemplate(row.template_key, renderPayload);
 
     // Template tanımsızsa hard-fail (retry yapmaya gerek yok)
     if (!rendered) {
@@ -149,19 +185,29 @@ export async function GET(req: Request) {
         continue;
       }
 
+      // Resend body — List-Unsubscribe header'ı sadece marketing için
+      const resendBody: Record<string, unknown> = {
+        from: fromAddress,
+        to: row.to_email,
+        subject: row.subject ?? rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
+      };
+      if (listUnsubHeader) {
+        resendBody.headers = {
+          "List-Unsubscribe": listUnsubHeader.listUnsubscribe,
+          // RFC 8058 — Gmail/Yahoo One-Click
+          "List-Unsubscribe-Post": listUnsubHeader.listUnsubscribePost,
+        };
+      }
+
       const resp = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${resendKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          from: fromAddress,
-          to: row.to_email,
-          subject: row.subject ?? rendered.subject,
-          html: rendered.html,
-          text: rendered.text,
-        }),
+        body: JSON.stringify(resendBody),
       });
 
       if (!resp.ok) {

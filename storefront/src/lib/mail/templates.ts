@@ -343,13 +343,19 @@ function renderLeadWelcome(input: MailTemplateInput): MailRendered {
     </div>
   `;
 
+  // Sefa 21 May v68 — token-li unsubscribe URL (cron processor inject eder)
+  const unsubUrl =
+    typeof p._unsubscribe_url === "string" && p._unsubscribe_url
+      ? p._unsubscribe_url
+      : `${SITE_URL}/bildirim-tercihleri`;
+
   const footer = `
     Yeni şablon eklendikçe sana haber veririz, spam atmayız.
-    Aboneliği iptal etmek için <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
+    <a href="${unsubUrl}">Tek tıkla çık</a> · <a href="${SITE_URL}/bildirim-tercihleri">tüm tercihler</a>.
     KVKK aydınlatma: <a href="${SITE_URL}/kvkk">pimetiket.com/kvkk</a>.
   `;
 
-  const text = `Hoş geldin!\n\nPim Etiket şablon kütüphanesine kaydoldun.${downloadUrl ? `\n\nZIP indir: ${downloadUrl}` : "\n\nŞablonlar hazır olunca mail atacağız (24 saat içinde)."}\n\nEtiket yapılandır: ${SITE_URL}/etiket\nSticker yapılandır: ${SITE_URL}/sticker`;
+  const text = `Hoş geldin!\n\nPim Etiket şablon kütüphanesine kaydoldun.${downloadUrl ? `\n\nZIP indir: ${downloadUrl}` : "\n\nŞablonlar hazır olunca mail atacağız (24 saat içinde)."}\n\nEtiket yapılandır: ${SITE_URL}/etiket\nSticker yapılandır: ${SITE_URL}/sticker\n\nAboneliği iptal et: ${unsubUrl}`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }
@@ -405,12 +411,17 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
     </p>
   `;
 
+  const unsubUrl =
+    typeof p._unsubscribe_url === "string" && p._unsubscribe_url
+      ? p._unsubscribe_url
+      : `${SITE_URL}/bildirim-tercihleri`;
+
   const footer = `
     Bu mail, açık bir sipariş için hatırlatma olarak gönderildi.
-    Hatırlatma almak istemiyorsan <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
+    <a href="${unsubUrl}">Tek tıkla çık</a> · <a href="${SITE_URL}/bildirim-tercihleri">tüm tercihler</a>.
   `;
 
-  const text = `${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı.\n\nSepette ${itemCount} ürün, toplam ${total.toLocaleString("tr-TR")} ₺.${couponCode ? `\n\n%10 indirim kodu: ${couponCode} (7 gün geçerli)` : ""}\n\nSepete dön: ${SITE_URL}/sepet`;
+  const text = `${customerName ? `${customerName}, sepetin` : "Sepetin"} kapanmadı.\n\nSepette ${itemCount} ürün, toplam ${total.toLocaleString("tr-TR")} ₺.${couponCode ? `\n\n%10 indirim kodu: ${couponCode} (7 gün geçerli)` : ""}\n\nSepete dön: ${SITE_URL}/sepet\n\nAboneliği iptal et: ${unsubUrl}`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }
@@ -454,12 +465,17 @@ function renderCustomerReviewRequest(input: MailTemplateInput): MailRendered {
     </p>
   `;
 
+  const unsubUrl =
+    typeof p._unsubscribe_url === "string" && p._unsubscribe_url
+      ? p._unsubscribe_url
+      : `${SITE_URL}/bildirim-tercihleri`;
+
   const footer = `
     Bu mail teslim aldığın sipariş için gönderildi.
-    Yorum istemeyi kapatmak için <a href="${SITE_URL}/bildirim-tercihleri">bildirim tercihleri</a>.
+    <a href="${unsubUrl}">Tek tıkla çık</a> · <a href="${SITE_URL}/bildirim-tercihleri">tüm tercihler</a>.
   `;
 
-  const text = `${customerName ? `${customerName}, deneyimini` : "Deneyimini"} paylaşır mısın?\n\n${productName} (${orderId}) için yorum yaz: ${reviewLink}\n\nSorun varsa: info@pimetiket.com`;
+  const text = `${customerName ? `${customerName}, deneyimini` : "Deneyimini"} paylaşır mısın?\n\n${productName} (${orderId}) için yorum yaz: ${reviewLink}\n\nSorun varsa: info@pimetiket.com\n\nAboneliği iptal et: ${unsubUrl}`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }
@@ -579,7 +595,23 @@ function renderAdminDailySummary(input: MailTemplateInput): MailRendered {
   return { subject, html: shellHtml(subject, body, footer), text };
 }
 
-const RENDERERS: Record<string, (input: MailTemplateInput) => MailRendered> = {
+// Sefa 21 May v68 — Prerendered template bypass.
+// notifications.ts'in 10 müşteri mail helper'ı React Email render edip
+// outbox'a `_prerendered` key + payload.{subject,html,text} yazar.
+// Cron bu key'i görünce render bypass eder, direkt gönderir.
+function renderPrerendered(input: MailTemplateInput): MailRendered | null {
+  const p = input.payload;
+  const subject = typeof p.subject === "string" ? p.subject : "";
+  const html = typeof p.html === "string" ? p.html : "";
+  const text = typeof p.text === "string" ? p.text : "";
+  if (!subject || (!html && !text)) return null;
+  return { subject, html, text };
+}
+
+const RENDERERS: Record<
+  string,
+  (input: MailTemplateInput) => MailRendered | null
+> = {
   fason_new_assignment: renderFasonNewAssignment,
   customer_in_production: renderCustomerInProduction,
   customer_shipped: renderCustomerShipped,
@@ -590,6 +622,8 @@ const RENDERERS: Record<string, (input: MailTemplateInput) => MailRendered> = {
   customer_review_request: renderCustomerReviewRequest,
   admin_new_order: renderAdminNewOrder,
   admin_daily_summary: renderAdminDailySummary,
+  // Sefa 21 May v68 — caller-rendered React Email helpers için bypass
+  _prerendered: renderPrerendered,
 };
 
 export function renderMailTemplate(
