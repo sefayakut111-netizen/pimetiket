@@ -135,7 +135,10 @@ const COPY = {
       { id: "konfigure", label: "Konfigüre" },
       { id: "odeme", label: "Ödendi" },
       { id: "dosya", label: "Dosya yüklendi" },
-      { id: "ai", label: "AI kontrol" },
+      // Sefa 22 May v68: "AI kontrol" → "Yapay zekâ kontrolü"
+      // (sans-serif font'larda büyük "I" ve küçük "l" karışıyordu —
+      // ekranda "Al kontrol" gibi okunuyordu)
+      { id: "ai", label: "Yapay zekâ kontrolü" },
       { id: "operator", label: "Operatör onayı" },
       { id: "prova", label: "Prova bekleniyor" },
       { id: "uretim", label: "Üretimde" },
@@ -398,8 +401,18 @@ export default function SiparisDetailPage({
     })();
   }, [id]);
 
+  // Sefa 22 May v68 — Tekrar sipariş duplicate guard:
+  // Önce her tıklama sepete tekrar ürün ekliyordu (sınırsız), ilk tıklamada
+  // yönlendirme yoktu, sonraki tıklamalarda /sepet'e gidiyordu (tutarsız).
+  // Şimdi: confirm dialog + her başarılı eklemede /sepet'e zorunlu redirect.
   const handleReorder = async () => {
     if (!order) return;
+    if (reordering) return; // double-click guard
+    const confirmed = window.confirm(
+      `Bu siparişin ürünlerini sepete eklemek istiyor musun?\n\n` +
+        `${order.items.length} ürün eklenecek. Sepette varsa üzerine ekleme yapılır.`
+    );
+    if (!confirmed) return;
     setReordering(true);
     try {
       const r = await reorderFromOrder(order);
@@ -484,6 +497,20 @@ export default function SiparisDetailPage({
     month: "long",
     year: "numeric",
   });
+  // Sefa 22 May v68 — Tahmini teslim mantığı düzeltildi:
+  // Önce dosya yüklenmeden + AI/operatör/prova geçmeden kesin tarih
+  // göstermek yanlış (sepetteki "tasarım onayı baz alınır" mesajıyla
+  // çelişiyordu). Sadece proof_approved + sonraki state'lerde gerçek
+  // tarih, öncesinde "Tasarım onayından sonra" mesajı.
+  const isPreProductionStatus =
+    order.status === "paid" ||
+    order.status === "awaiting_upload" ||
+    order.status === "qc_pending" ||
+    order.status === "qc_flagged" ||
+    order.status === "operator_review" ||
+    order.status === "proof_generating" ||
+    order.status === "proof_pending";
+
   const deliveryDate = order.estimatedDelivery
     ? new Date(order.estimatedDelivery).toLocaleDateString(c.locale, {
         day: "numeric",
@@ -491,6 +518,9 @@ export default function SiparisDetailPage({
         year: "numeric",
       })
     : "-";
+  const deliveryDisplay = isPreProductionStatus
+    ? "Tasarım onayından sonra hesaplanır"
+    : deliveryDate;
   // Phase: status'a bakar, ama dosya zaten yüklendiyse "Dosya yüklendi"
   // adımını minimum aktif say (status trigger yansımamış olabilir — race
   // koşulu veya Migration sıralaması — UI gerçekliği yansıtmalı).
@@ -542,7 +572,7 @@ export default function SiparisDetailPage({
               <span>·</span>
               <span>
                 {c.estDelivery}:{" "}
-                <strong className="text-lacivert">{deliveryDate}</strong>
+                <strong className="text-lacivert">{deliveryDisplay}</strong>
               </span>
             </div>
           </div>
@@ -608,6 +638,42 @@ export default function SiparisDetailPage({
                 })}
               </ol>
             </Card>
+
+            {/* Sefa 22 May v68 — Üst CTA: paid/awaiting_upload durumunda
+                "Tasarımını yükle" büyük buton. Eskiden bu kart yoktu —
+                küçük "+ Dosya yükle" butonu sağda kayboluyordu, kullanıcı
+                ne yapacağını bilmiyordu. */}
+            {(order.status === "paid" ||
+              order.status === "awaiting_upload") && (
+              <Card padding="p-6" className="border-2 border-pim-mercan/40 bg-pim-mercan-tint/20">
+                <div className="flex gap-4 items-start">
+                  <PimMini pose="inspect" size={56} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
+                      Sıradaki adım
+                    </div>
+                    <h3 className="font-semibold text-[18px] mt-1 text-lacivert">
+                      Tasarım dosyanı yükle
+                    </h3>
+                    <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
+                      Ödemen alındı. Tasarım dosyanı yüklediğinde AI ön-kontrol
+                      saniyeler içinde yapılır, operatörümüz inceler, bıçak
+                      çizimi otomatik hazırlanır. 3 gün içinde yüklemen
+                      gerekiyor (aksi halde sipariş iptal edilir).
+                    </p>
+                    <div className="mt-4">
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        href={`/siparis/${order.id}/tasarim-yukle`}
+                      >
+                        <Icon.Plus size={16} /> Tasarımını yükle →
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Sefa 22 May v68 — Proof onay CTA bölümü.
                 Tasarım yüklendiyse (qc_passed) + status bıçak akışında ise
@@ -1021,10 +1087,18 @@ export default function SiparisDetailPage({
                 <div>{order.address.addr}</div>
                 <div>{order.address.city}</div>
                 <div>{order.address.phone}</div>
-                {/* Henüz kargoya verilmemiş bilgisi */}
+                {/* Henüz kargoya verilmemiş bilgisi — Sefa 22 May v68:
+                    "ℹ" gri-italik soluk gözüküyordu, gözden kaçabiliyordu.
+                    Pim-mercan tint + kontrastlı text + ikon vurgusu. */}
                 {!shipment && order.status !== "delivered" && (
-                  <div className="mt-3 pt-3 border-t border-gri-200 text-[11.5px] text-gri-500 italic leading-relaxed">
-                    ℹ {c.shipmentNotShipped}
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-pim-mercan-tint/40 px-3 py-2.5 text-[12.5px] text-lacivert leading-relaxed">
+                    <span
+                      className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-pim-mercan text-white text-[10px] font-bold shrink-0 mt-0.5"
+                      aria-hidden
+                    >
+                      i
+                    </span>
+                    <span>{c.shipmentNotShipped}</span>
                   </div>
                 )}
               </div>
@@ -1996,7 +2070,12 @@ function DesignUploadCard({
     <Card padding="p-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">{c.designTitle}</h2>
-        <label className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold cursor-pointer hover:bg-pim-mercan-koyu transition-colors">
+        {/* Sefa 22 May v68: htmlFor + id eklendi (a11y — ekran okuyucu).
+            Önceden label içinde gömülü input vardı, htmlFor bağlama yoktu. */}
+        <label
+          htmlFor={`design-upload-${orderId}`}
+          className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold cursor-pointer hover:bg-pim-mercan-koyu transition-colors"
+        >
           <Icon.Plus size={14} />
           {analyzing
             ? c.uploading
@@ -2004,11 +2083,13 @@ function DesignUploadCard({
               ? c.uploadCtaNewVersion
               : c.uploadCta}
           <input
+            id={`design-upload-${orderId}`}
             type="file"
             className="hidden"
             accept=".pdf,.ai,.eps,.psd,.png,.jpg,.jpeg,.svg"
             onChange={handleRealUpload}
             disabled={analyzing}
+            aria-label={c.uploadCta}
           />
         </label>
       </div>

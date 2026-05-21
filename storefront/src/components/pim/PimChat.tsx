@@ -51,9 +51,21 @@ export function PimChat() {
   const [persona, setPersona] = useState<PimPersona>("welcome");
   const [unread, setUnread] = useState(0);
   // Sefa 17 May v30: Otomatik açılıp kapanan teaser bubble.
-  // 5sn açık + 5sn kapalı sonsuz döngü. Kullanıcı × ile kapatabilir.
+  // Sefa 22 May v68 — Spam fix: teaserDismissed sessionStorage'a
+  // persist edilir. Önce her sayfa açılışta tekrar geliyordu, kapatma
+  // unutuluyordu. Şimdi: bir kez × tıklarsan o session boyunca gizli.
   const [showTeaser, setShowTeaser] = useState(false);
-  const [teaserDismissed, setTeaserDismissed] = useState(false);
+  const [teaserDismissed, setTeaserDismissedState] = useState(false);
+  const setTeaserDismissed = useCallback((value: boolean) => {
+    setTeaserDismissedState(value);
+    if (typeof window !== "undefined" && value) {
+      try {
+        sessionStorage.setItem("pim_teaser_dismissed", "1");
+      } catch {
+        /* sessionStorage full / disabled — sessiz fail */
+      }
+    }
+  }, []);
 
   // Sefa 21 May v68 (KVKK m.9 sınır ötesi açık rıza):
   // Pim sohbeti OpenAI (ABD) altyapısı kullanıyor → KVKK m.9 açık rıza
@@ -73,12 +85,22 @@ export function PimChat() {
   // Mount'ta memory'yi oku (sadece client). Sefa 21 May v68: KVKK m.9
   // sınır ötesi rıza ChatConsentModal'da alınır; memory + sohbet sadece
   // accepted iken aktif.
+  // Sefa 22 May v68: sessionStorage'dan teaserDismissed durumunu yükle —
+  // önce kapatınca tekrar tekrar geliyordu, spam hissi vardı.
   useEffect(() => {
     const mem = readMemory();
     setMemory(mem);
     // KVKK chat consent kaydını oku
     const record = readChatConsent();
     setConsent(record ? record.value : "needs-prompt");
+    // Teaser dismiss flag (session-scoped)
+    try {
+      if (sessionStorage.getItem("pim_teaser_dismissed") === "1") {
+        setTeaserDismissedState(true);
+      }
+    } catch {
+      /* sessionStorage disabled — fallback: normal teaser döngüsü */
+    }
   }, []);
 
   const handleConsentDecision = useCallback((value: ChatConsentValue) => {
