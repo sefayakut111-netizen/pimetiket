@@ -19,20 +19,19 @@ import {
   type AuditorRunRow,
 } from "@/lib/agents/_shared/types";
 
-interface RunSummary
-  extends Pick<
-    AuditorRunRow,
-    | "id"
-    | "auditor_name"
-    | "started_at"
-    | "finished_at"
-    | "duration_ms"
-    | "status"
-    | "findings_count"
-    | "critical_count"
-    | "warning_count"
-    | "summary"
-  > {}
+type RunSummary = Pick<
+  AuditorRunRow,
+  | "id"
+  | "auditor_name"
+  | "started_at"
+  | "finished_at"
+  | "duration_ms"
+  | "status"
+  | "findings_count"
+  | "critical_count"
+  | "warning_count"
+  | "summary"
+>;
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
