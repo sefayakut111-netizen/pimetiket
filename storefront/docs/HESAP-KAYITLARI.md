@@ -67,7 +67,7 @@
 
 | Servis | Email | Plan | Login | Notlar |
 |---|---|---|---|---|
-| **PayTR** | ? | Standart | https://www.paytr.com/magaza | Merchant ID gerekli · Test modunda aktif, canlı bekleniyor |
+| **PayTR** | ? | Standart | https://www.paytr.com/magaza | **Mağaza No: 703934** · Key + Salt → Vercel env (`PAYTR_MERCHANT_KEY` + `PAYTR_MERCHANT_SALT`) · Test modunda aktif (`PAYTR_TEST_MODE=1`) · 22 May 2026 entegre |
 | **Paraşüt** (fatura) | ? | ? | https://parasut.com | _Henüz entegre değil — Sefa ileride bağlayacak_ |
 
 ---
