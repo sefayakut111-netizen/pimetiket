@@ -3,6 +3,43 @@
 Sefa'nın aldığı UX/yasal denetim raporundan (21 May 2026 v68) ertelenen
 maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 
+---
+
+## 📅 21 Mayıs akşamı — devam edilecek işler
+
+> Bugün ~8 saatlik Resend + sticker akışı testi sonrası mola.
+> Detay: `docs/LAUNCH-READINESS-21MAY.md`
+
+### Sıradaki (öncelik sırası)
+
+| # | İş | Durum | Süre | Ne lazım? |
+|---|---|---|---|---|
+| 1 | **Telefon numarası** (footer + KVKK + iletişim, 6 dosya) | ⏳ bekliyor | 5 dk | Sefa numarayı verecek (aşağıda detay) |
+| 2 | **PayTR canlıya geçiş** (test → live env) | ⏳ bekliyor | 10 dk | Vercel env değişimi + Sefa onayı |
+| 3 | **Yurtıçi Kargo anlaşma** (USERNAME/PASSWORD) | 🔄 dış bağımlılık | bağımsız | Yurtıçi ile görüşme |
+| 4 | **Storage test PNG temizlik** (199 KB, zararsız) | 🟢 opsiyonel | 30 sn | Sefa Dashboard → Storage → design-previews → `73c4bcab.../90213029-...png` sil |
+| 5 | **Paraşüt fatura entegrasyonu** | ❌ ileride | — | Sefa hariç tutuyor |
+
+### Bugün başarıyla biten — geri dönmeye gerek yok
+
+- ✅ Resend mail altyapısı (`/admin/mail-health` 3/3 yeşil)
+- ✅ Migration 075, 076, 072 prod'a uygulandı
+- ✅ Sticker konfigüratör → sepet → preview kalıcılığı (Pikachu test başarılı)
+- ✅ Server-side upload proxy (`/api/cart/upload-preview`)
+- ✅ KVKK uyumlu unsubscribe (RFC 8058)
+- ✅ 4 P0 launch blocker düzeltildi
+- ✅ 7 yeni doküman + 13 commit
+
+### Akşam başlarken neye bak
+
+1. **`docs/LAUNCH-READINESS-21MAY.md`** — bugünkü iş özeti
+2. **`docs/MIGRATIONS-APPLIED.md`** — DB apply durumu
+3. **`docs/BEKLEYEN-ISLER.md`** (bu dosya) — sıradaki adımlar
+4. **Vercel** → en son deployment "Ready" mi?
+5. **/admin/mail-health** → 3/3 yeşil duruyor mu?
+
+---
+
 ## 🔴 Acil (yasal)
 
 ### Telefon numarası eklenmesi
