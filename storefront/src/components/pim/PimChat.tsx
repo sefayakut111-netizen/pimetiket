@@ -13,7 +13,8 @@
  * (AdminShell zaten ayrı).
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -31,6 +32,11 @@ import {
   setDisplayName,
   type PimMemory,
 } from "@/lib/pim/memory";
+import {
+  readChatConsent,
+  writeChatConsent,
+  type ChatConsentValue,
+} from "@/lib/pim/chat-consent";
 import { addToCustomerCart } from "@/lib/customer-cart";
 
 // Sefa kararı (UX audit): kullanıcı persona seçmez, hazır cevap chip'i
@@ -49,11 +55,39 @@ export function PimChat() {
   const [showTeaser, setShowTeaser] = useState(false);
   const [teaserDismissed, setTeaserDismissed] = useState(false);
 
-  // Mount'ta memory'yi oku (sadece client). Sefa kuralı: "beni hatırla"
-  // sorusu sormayız, KVKK m.5/2-c hizmetin parçası varsayılan açık.
+  // Sefa 21 May v68 (KVKK m.9 sınır ötesi açık rıza):
+  // Pim sohbeti OpenAI (ABD) altyapısı kullanıyor → KVKK m.9 açık rıza
+  // şart. İlk açılışta consent modal, kullanıcı kabul edene kadar chat
+  // panel render olmaz.
+  //
+  // State değerleri:
+  //   null         — henüz okunmadı (SSR/mount öncesi)
+  //   "needs-prompt" — karar verilmemiş, panel açılınca modal gösterilir
+  //   "accepted"   — chat tam çalışır
+  //   "declined"   — chat hiç açılmaz, kullanıcı butonu görür ama
+  //                  tıklayınca tekrar prompt çıkar
+  const [consent, setConsent] = useState<
+    "needs-prompt" | "accepted" | "declined" | null
+  >(null);
+
+  // Mount'ta memory'yi oku (sadece client). Sefa 21 May v68: KVKK m.9
+  // sınır ötesi rıza ChatConsentModal'da alınır; memory + sohbet sadece
+  // accepted iken aktif.
   useEffect(() => {
     const mem = readMemory();
     setMemory(mem);
+    // KVKK chat consent kaydını oku
+    const record = readChatConsent();
+    setConsent(record ? record.value : "needs-prompt");
+  }, []);
+
+  const handleConsentDecision = useCallback((value: ChatConsentValue) => {
+    writeChatConsent(value);
+    setConsent(value);
+    if (value === "declined") {
+      // Panel'i hemen kapat
+      setOpen(false);
+    }
   }, []);
 
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -71,7 +105,9 @@ export function PimChat() {
       },
     }),
     onFinish: ({ message }) => {
-      // Sefa kuralı: opt-in YOK, KVKK m.5/2-c hizmetin parçası
+      // Sefa 21 May v68: KVKK m.9 sınır ötesi (OpenAI ABD) açık rıza
+      // ChatConsentModal'da alınıyor; bu noktaya gelinmişse zaten
+      // "accepted" — memory yazımı güvenli.
       const text = extractText(message);
       if (text) {
         appendMessage({
@@ -282,7 +318,16 @@ export function PimChat() {
         <span className="sr-only">Pim ile konuş</span>
       </button>
 
-      {/* Chat panel */}
+      {/* Sefa 21 May v68 (KVKK m.9): consent gerekli — panel açıkken
+          consent verilmediyse modal göster, chat panel'i kapalı tut. */}
+      {open && consent !== "accepted" && consent !== null && (
+        <ChatConsentModal
+          onDecision={handleConsentDecision}
+          onClose={() => setOpen(false)}
+        />
+      )}
+
+      {/* Chat panel — sadece consent accepted iken render */}
       <div
         role="dialog"
         aria-modal="false"
@@ -292,7 +337,7 @@ export function PimChat() {
           "w-[min(380px,calc(100vw-2.5rem))] h-[min(560px,calc(100vh-7rem))]",
           "flex flex-col rounded-2xl bg-white shadow-2 ring-1 ring-gri-200 overflow-hidden",
           "transition-all duration-200 ease-out origin-bottom-right",
-          open
+          open && consent === "accepted"
             ? "opacity-100 scale-100 translate-y-0"
             : "opacity-0 scale-95 translate-y-3 pointer-events-none"
         )}
@@ -820,4 +865,101 @@ function extractText(m: unknown): string {
       .join("");
   }
   return "";
+}
+
+// ============================================================
+// ChatConsentModal — KVKK m.9 sınır ötesi açık rıza prompt'u
+// Sefa 21 May v68: Pim sohbeti OpenAI (ABD) altyapısı kullandığı için
+// kullanıcıdan açık rıza gerekli. Kabul edene kadar chat panel açılmaz.
+// ============================================================
+
+function ChatConsentModal({
+  onDecision,
+  onClose,
+}: {
+  onDecision: (value: ChatConsentValue) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[9000] flex items-end sm:items-center justify-center bg-lacivert/40 backdrop-blur-[2px] p-4 animate-fade-up"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="chat-consent-title"
+      onClick={(e) => {
+        // Backdrop tıklaması = kapat (karar verilmemiş)
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative max-w-[460px] w-full bg-white rounded-2xl shadow-2 ring-1 ring-black/[0.06] overflow-hidden">
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 border-b border-gri-100">
+          <div className="flex items-start gap-3">
+            <span className="grid place-items-center w-10 h-10 rounded-full bg-pim-mercan-tint shrink-0">
+              <span className="text-[20px]" aria-hidden>
+                💬
+              </span>
+            </span>
+            <div className="flex-1">
+              <h3
+                id="chat-consent-title"
+                className="text-[16px] font-semibold text-lacivert leading-snug"
+              >
+                Pim sohbeti — KVKK aydınlatma
+              </h3>
+              <p className="mt-1 text-[12.5px] text-gri-700 leading-relaxed">
+                Sohbete başlamadan önce kısa bir izin gerekiyor.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-3 text-[13.5px] text-lacivert leading-relaxed">
+          <p>
+            Pim asistanı yapay zekâ tabanlıdır. Yazdığın sorular ve verdiğimiz
+            yanıtlar <strong>OpenAI (ABD)</strong> altyapısı üzerinde işlenir.
+            Bu, KVKK madde 9 kapsamında <strong>yurt dışına veri aktarımı</strong>{" "}
+            sayılır; senin açık rızana bağlıdır.
+          </p>
+          <p className="text-[12.5px] text-gri-700">
+            Kabul edersen sohbet açılır. Vazgeçersen Pim butonu görünür kalır
+            ama sohbet etkin değildir. Kararını her zaman değiştirebilirsin —
+            tarayıcı ayarlarından <code>pim_ai_chat_consent_v1</code> kaydını
+            silmen yeterli. Detay için{" "}
+            <Link
+              href="/kvkk"
+              className="text-pim-mercan font-semibold hover:underline"
+            >
+              KVKK aydınlatma metni
+            </Link>
+            .
+          </p>
+          <ul className="text-[12px] text-gri-700 space-y-1 list-disc pl-5">
+            <li>Sohbet içeriği kişisel hesabımıza atfedilmez (anonim sayılır)</li>
+            <li>Sipariş bilgilerin sohbete dahil edilmez</li>
+            <li>Verilerin reklam için kullanılmaz</li>
+          </ul>
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 py-4 bg-gri-50 flex flex-wrap gap-2 justify-end border-t border-gri-100">
+          <button
+            type="button"
+            onClick={() => onDecision("declined")}
+            className="h-10 px-5 rounded-full bg-white ring-1 ring-lacivert text-[13.5px] font-semibold text-lacivert hover:bg-lacivert/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lacivert focus-visible:ring-offset-2 transition-colors"
+          >
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            onClick={() => onDecision("accepted")}
+            className="h-10 px-5 rounded-full bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan-koyu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2 transition-colors"
+          >
+            Kabul ediyorum
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

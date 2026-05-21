@@ -215,28 +215,32 @@ export function CookieConsent({ forceOpen, onClose }: CookieConsentProps) {
             </div>
           )}
 
-          {/* Actions */}
+          {/* Actions — Sefa 21 May v68 (WCAG audit):
+              - Reddet butonu Kabul ile eşit boyut + belirginlik (dark pattern
+                önleme, GDPR rehberi: "Reject" tek tıkla erişilebilir olmalı)
+              - "Ayrı ayrı seç" link gibi değil, görünür ghost buton (ring)
+              - Tüm butonlara focus-visible ring (klavye navigasyonu) */}
           <div className="px-5 py-4 bg-gri-50 flex flex-wrap gap-2 justify-end">
             {!showSettings ? (
               <>
                 <button
                   type="button"
                   onClick={() => setShowSettings(true)}
-                  className="text-[13px] font-semibold text-gri-700 hover:text-pim-mercan px-3 py-2"
+                  className="h-10 px-4 rounded-full text-[13.5px] font-semibold text-gri-700 ring-1 ring-transparent hover:ring-gri-300 hover:text-lacivert focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lacivert transition-colors"
                 >
                   {c.settings}
                 </button>
                 <button
                   type="button"
                   onClick={handleRejectAll}
-                  className="h-10 px-4 rounded-full bg-white ring-1 ring-gri-200 text-[13.5px] font-semibold text-lacivert hover:ring-pim-mercan hover:text-pim-mercan transition-colors"
+                  className="h-10 px-5 rounded-full bg-white ring-1 ring-lacivert text-[13.5px] font-semibold text-lacivert hover:bg-lacivert/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lacivert focus-visible:ring-offset-2 transition-colors"
                 >
                   {c.reject}
                 </button>
                 <button
                   type="button"
                   onClick={handleAcceptAll}
-                  className="h-10 px-5 rounded-full bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
+                  className="h-10 px-5 rounded-full bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan-koyu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2 transition-colors"
                 >
                   {c.accept}
                 </button>
@@ -246,14 +250,14 @@ export function CookieConsent({ forceOpen, onClose }: CookieConsentProps) {
                 <button
                   type="button"
                   onClick={() => setShowSettings(false)}
-                  className="text-[13px] font-semibold text-gri-700 hover:text-pim-mercan px-3 py-2"
+                  className="h-10 px-4 rounded-full text-[13.5px] font-semibold text-gri-700 ring-1 ring-transparent hover:ring-gri-300 hover:text-lacivert focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lacivert transition-colors"
                 >
                   ← {c.back}
                 </button>
                 <button
                   type="button"
                   onClick={handleSave}
-                  className="h-10 px-5 rounded-full bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
+                  className="h-10 px-5 rounded-full bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan-koyu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2 transition-colors"
                 >
                   {c.save}
                 </button>

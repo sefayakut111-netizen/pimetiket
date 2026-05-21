@@ -89,13 +89,37 @@ service_role çağrı yapıyor. Lokalde çalışıyor görünüyor.
 
 **Sefa production'da "Müşteri verisi şu an çekilemiyor" hatası alıyor.**
 
-**Debug adımları:**
-1. Vercel deploy logs (Functions tab) — `/api/admin/customers` çağrısı kontrol
-2. Console error: "view query failed" log'u dikkate al
-3. ENV vars: `SUPABASE_SERVICE_ROLE_KEY` Vercel'de set mi?
-4. Migration 046'nın view DEFINER ayarları production'a aynen geçti mi?
+**Sefa için debug playbook (öncelik sırasıyla):**
 
-Düzelme: Bekleyen — production logs gerek.
+**1. Tarayıcı DevTools — Network tab (en hızlı yol):**
+   - `/admin/musteriler` sayfasını aç
+   - Network filtre `customers` yaz
+   - `/api/admin/customers` request'in **Response** body'sine bak — JSON içinde `code` ve `detail` field'ları var
+   - **Bu JSON'u kopyala bana paste'le, 30 saniyede çözerim**
+
+**2. Vercel Functions log:**
+   - Vercel dashboard → Project → Functions
+   - `/api/admin/customers` arat
+   - Son hata satırı: `[admin/customers] view query failed: ...`
+
+**3. ENV vars kontrol:**
+   - Vercel Project Settings → Environment Variables
+   - Production scope'da olmalı:
+     - `SUPABASE_SERVICE_ROLE_KEY` ✓
+     - `NEXT_PUBLIC_SUPABASE_URL` ✓
+   - Eksikse Supabase Dashboard → Settings → API → service_role key kopyala, Vercel'e ekle, **yeniden deploy**
+
+**4. Migration 046 view (en az olası):**
+   - Supabase SQL Editor: `select count(*) from v_admin_customers;`
+   - Hata dönüyorsa view eksik → `npx supabase db push --linked`
+   - 0 dönüyorsa view var ama veri yok (boş prod DB) — beklenen davranış
+
+**Beklenen 3 olası code:**
+   - `42P01` → view yok, Migration 046 push gerek
+   - `42501` → permission denied, service role key yanlış
+   - generic 500 → view stale (üst migration'lar şemayı değiştirdi)
+
+Düzelme: Sefa Network tab'dan response JSON paylaşana kadar bekliyor.
 
 ## 🟠 Admin P1/P2 düzeltmeleri — TAMAMLANDI (21 May 2026 v68)
 
