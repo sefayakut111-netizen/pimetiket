@@ -56,6 +56,14 @@ async function assertAdmin() {
 }
 
 export async function GET() {
+  // Sefa 21 May v68: GET artık admin-only.
+  // Müşteri tarafı /api/public/settings kullanır (PII gizli, müşteri-görür
+  // alanlar). Admin endpoint tüm field'ları döndürür (updated_by dahil).
+  const auth = await assertAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const admin = serviceClient();
   const { data, error } = await admin
     .from("site_settings")

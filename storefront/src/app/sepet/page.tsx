@@ -169,8 +169,10 @@ export default function SepetPage() {
     //   4) Sadece "auth'ı yeni yenileme" gibi kenar senaryoda
     //      300ms eşik + skeleton.
     refresh();
-    // Site settings (min/max sepet) fetch — public GET endpoint
-    void fetch("/api/admin/settings", { cache: "no-store" })
+    // Sefa 21 May v68: müşteri tarafı /api/public/settings kullanır.
+    // /api/admin/settings GET artık auth gerektiriyor — sadece müşteri-görür
+    // alanları (min/max order, kargo ücreti vb) döndüren ayrı endpoint.
+    void fetch("/api/public/settings", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (json?.settings) {
