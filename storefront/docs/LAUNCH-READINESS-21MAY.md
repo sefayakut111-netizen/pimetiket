@@ -7,18 +7,37 @@
 
 ## 📊 Yönetici Özeti
 
-- ✅ **13 commit** push edildi
+- ✅ **14 commit** push edildi
 - ✅ **~3000+ LOC** yeni kod
 - ✅ **4 P0 launch blocker** bulundu ve düzeltildi
 - ✅ **3 migration** production'a uygulandı (075, 076, 072)
 - ✅ **5 yeni doküman** eklendi
 - ✅ **Tüm E2E akış doğrulandı** — Pikachu test ile sticker → sepet → preview → F5 persist
+- ✅ **Resend uçtan uca canlı kanıtlandı** — Lead form → Gmail mailbox → webhook delivered event (akşam, 21 May 19:12 TRT)
 
 ---
 
 ## 🎯 Tamamlanan Üç Büyük İş Paketi
 
-### 1️⃣ Resend Mail Altyapısı (tam aktif)
+### 1️⃣ Resend Mail Altyapısı (tam aktif + canlı kanıtlanmış)
+
+> **Akşam testi (21 May 19:12 TRT):** Lead form üzerinden 2 abonelik
+> kaydı (`sefayakut111@gmail.com` + `sefayakut111+test@gmail.com`)
+> oluşturuldu. Cron tetiklendi → 2 mail Resend'e gitti
+> (`95de2c1b-58f9-4e8b-8062-348dde6fae6e` + `94f98e0c-645b-4f29-875e-3863f6c6b309`)
+> → Gmail mailbox'ına düştü → webhook `email.delivered` event'i bizim
+> DB'ye yansıdı (`delivered_at` set). Sefa mailleri gözüyle gördü.
+>
+> **Yol boyunca çözülen 2 dolaylı sorun:**
+> 1. **Resend domain "Failed" durumdaydı** — 16 May'de DNS verified
+>    olmuş ama Resend background validation cache "Failed" olarak takılı
+>    kalmış. Cloudflare DNS kayıtları (SPF/DKIM/MX) Google DNS 8.8.8.8'den
+>    canlı sorgulandı, hepsi mevcuttu. "Restart" butonu cache'i temizledi
+>    → 21 May 19:06 TRT domain Verified.
+> 2. **`next_retry_at` future timestamp** — UPDATE sırasında belirlenen
+>    `NOW()` cron'un select query'sindeki `NOW()`tan önde olduğu için
+>    cron mailleri görmedi. `next_retry_at = NULL` yapıldı, sonraki cron
+>    çalıştırmasında 2 mail başarıyla gönderildi.
 
 **Bileşenler:**
 - ✅ Resend hesabı + domain verified + webhook aktif (`pimetiket@gmail.com`)
@@ -126,12 +145,15 @@ a67add0 fix(storage): Migration 077 — design-previews RLS path-strict → auth
 | Metric | Değer |
 |---|---|
 | Vercel deployment | 🟢 Ready (commit `5c9f05c`) |
-| Resend bağlantı | 🟢 3/3 yeşil pill |
+| Resend bağlantı | 🟢 3/3 yeşil pill + domain Verified |
+| Resend uçtan uca canlı test | 🟢 2 mail gönderildi, 2 delivered (akşam) |
 | Database migrations | 075 ✅ 076 ✅ 072 ✅ 077 N/A |
-| Mail outbox son 24sa | 0 mail (yeni sistem) |
+| Mail outbox son 24sa | 2 sent + 2 delivered (lead_welcome test) |
+| Webhook delivered events | ✅ DB'ye yansıyor |
 | Suppression list | 0 (temiz) |
 | Cart items son 1 saat | 1 (test, sonra silindi) |
 | Storage `design-previews` | 1 PNG (test, manual cleanup beklenir) |
+| email_subscribers (akşam testi) | 2 satır (`sefayakut111@gmail.com` + `sefayakut111+test@...`) |
 
 ---
 
