@@ -84,7 +84,7 @@ export function HomeReviews({ limit = 9 }: Props) {
         <div className="text-center mb-10 md:mb-12">
           <Eyebrow>Müşteri yorumları</Eyebrow>
           <h2 className="mt-3 text-[24px] md:text-[36px] font-semibold tracking-tight leading-tight">
-            Pim Etiket&rsquo;le Bastıran Kişiler Ne Diyor?
+            Pim Etiket&rsquo;i Tercih Edenler Ne Diyor?
           </h2>
         </div>
 
