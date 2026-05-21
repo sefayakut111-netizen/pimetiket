@@ -146,11 +146,19 @@ export async function POST(req: NextRequest) {
     const json = await req.json();
     body = InitBodySchema.parse(json);
   } catch (err) {
+    // Zod hatasıysa sadece path + ilk message'ı al (URL'e sığsın, debug
+    // edilebilsin). Sefa 21 May v68 — fail page'de detail görünüyor.
+    let detail = "validation_failed";
+    if (err instanceof z.ZodError) {
+      const first = err.issues[0];
+      const path = first?.path?.join(".") || "?";
+      detail = `${path}: ${first?.message ?? "unknown"}`;
+      console.error("[payment/init] Zod validation failed:", err.issues);
+    } else if (err instanceof Error) {
+      detail = err.message.slice(0, 200);
+    }
     return NextResponse.json(
-      {
-        error: "invalid_body",
-        detail: err instanceof Error ? err.message : "validation_failed",
-      },
+      { error: "invalid_body", detail },
       { status: 400 }
     );
   }
