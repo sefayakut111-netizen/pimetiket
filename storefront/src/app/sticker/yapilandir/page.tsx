@@ -1652,13 +1652,16 @@ function StickerPage() {
 
             <div ref={priceCardRef}>
             <PriceCard
-              variant="bold"
-              topLabel="SEÇİMİN"
+              /* Sefa 21 May v68: /etiket konfigüratör pattern'ine taşındı.
+                 variant=bold (lacivert SEÇİMİN) → variant=quiet (krem TOPLAM)
+                 unitPrice "X adet × Y ₺" → "Birim fiyat Y ₺/adet"
+                 footnote kaldırıldı (KDV bilgisi unitPrice'da, özet kart içinde)
+                 Multi-design adet bilgisi İŞLEM ÖZETİ'nde otomatik. */
+              variant="quiet"
+              topLabel="TOPLAM"
               total={total}
-              // Sefa 21 May v68: İŞLEM ÖZETİ — tüm basamakların özeti.
-              // buildSummaryItems helper (src/lib/order-summary.ts) cart
-              // item objesinden üretir; sipariş detay sayfasında da aynı
-              // helper kullanılır (tek-doğru-kaynak).
+              // İŞLEM ÖZETİ — buildSummaryItems helper (tek-doğru-kaynak).
+              // Sipariş detay sayfasında da aynı helper kullanılır.
               summaryItems={buildSummaryItems(
                 {
                   id: "preview",
@@ -1682,23 +1685,15 @@ function StickerPage() {
               )}
               unitPrice={
                 <>
-                  {designCount > 1 ? (
-                    <>
-                      {designCount} tasarım × {tier} adet ={" "}
-                      <strong className="text-white">
-                        {totalStickerCount.toLocaleString("tr-TR")}
-                      </strong>{" "}
-                      sticker · {fmtUnit(currentUnit)} ₺/adet · KDV dahil
-                    </>
-                  ) : (
-                    <>
-                      {tier} adet × {fmtUnit(currentUnit)} ₺ · KDV dahil
-                    </>
-                  )}
+                  Birim fiyat{" "}
+                  <strong className="text-lacivert">
+                    {fmtUnit(currentUnit)} ₺/adet
+                  </strong>{" "}
+                  · KDV dahil
                 </>
               }
               savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
-              footnote="KDV dahil fiyat · Açık ve net, sürpriz ücret yok"
+              footnote={null}
               pendingStepsCount={
                 stepIds.filter(
                   (id) => id !== 7 && !touchedSteps.has(id)
