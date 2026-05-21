@@ -346,9 +346,12 @@ export function StickerLivePreview({
                 />
               )}
             </div>
-            {/* shape die/diecut branch'i — yuvarlak ihtimali yok */}
+            {/* shape die/diecut branch'i — yuvarlak ihtimali yok.
+                Sefa 21 May v68 (sistem denetim #6): cutMode kissCut iken
+                "Yarı kesim" göster (eski hep "Kontur kesim" diyordu). */}
             <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
-              Kontur kesim · {Math.round(width)}×{Math.round(height)} mm
+              {cutMode === "kisscut" ? "Yarı kesim" : "Kontur kesim"} ·{" "}
+              {Math.round(width)}×{Math.round(height)} mm
             </span>
           </div>
         </div>
@@ -520,11 +523,20 @@ export function StickerLivePreview({
             </div>
           </div>
         </div>
-        {/* Alt yazı: format standardı */}
+        {/* Alt yazı: format standardı.
+            Sefa 21 May v68 (sistem denetim #5): "ad/tabaka" rakamına
+            tooltip — kullanıcı "230×310'a 12 sığması lazım, 6 nasıl?"
+            diye düşünebilir. Margin + gap açıklaması net olsun. */}
         <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
           Tabaka · {Math.round(width)}×{Math.round(height)} mm ·{" "}
           {isCapped ? "≈" : ""}
-          <span className="text-pim-mercan">{realPerSheet}</span> ad/tabaka
+          <span
+            className="text-pim-mercan cursor-help"
+            title="Tabaka 230×310 mm, kenar boşluğu 20 mm + sticker arası boşluk 6 mm hesaba dahil. Üretim toleransı için zorunlu."
+          >
+            {realPerSheet}
+          </span>{" "}
+          ad/tabaka
         </span>
       </div>
     </div>

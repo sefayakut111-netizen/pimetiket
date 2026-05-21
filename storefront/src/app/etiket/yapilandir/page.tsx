@@ -663,6 +663,18 @@ function EtiketPage() {
   );
   const [coating, setCoating] = useState<EtiketCoatingId>("yok");
 
+  // Sefa 21 May v68 (sistem denetim #4): shape kare/yuvarlak'a geçince
+  // height'i width ile eşitle — kullanıcı boyut adımına geçmeden default
+  // tutarlı (60×60 yerine 60×80 görünme bug fix).
+  useEffect(() => {
+    if (shape === "square" || shape === "circle") {
+      if (width !== height) {
+        setHeight(width);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shape]);
+
   // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
   //   - formFactor değişince scope (etiket_rulo vs etiket_tabaka) yeniden çek
   //   - Material/Coating/Customization name+desc admin'den öncelikli
@@ -741,8 +753,14 @@ function EtiketPage() {
       ? ETIKET_TABAKA_MIN_QTY
       : ETIKET_MIN_QTY
   );
+  // Sefa 21 May v68 (sistem denetim #4): shape="square"/"circle" iken
+  // default eş kenar (60×60). Eski 60×80 (dikdörtgen) yuvarlak/kare
+  // ürününde kafa karıştırıyordu.
   const [width, setWidth] = useState<number>(60);
-  const [height, setHeight] = useState<number>(80);
+  const [height, setHeight] = useState<number>(() => {
+    const initShape = readInitialShape(initialParams);
+    return initShape === "square" || initShape === "circle" ? 60 : 80;
+  });
   // Sefa 18 May v68 (CRO denetim — Preset feedback fix):
   // Preset chip tıklanınca input'lara 700ms pulse animasyonu — kullanıcı
   // değişikliği fark etsin. Eski versiyon: input doldu ama görsel feedback
@@ -1281,16 +1299,26 @@ function EtiketPage() {
     <main className="bg-gri-50 min-h-[calc(100vh-64px)] animate-fade-up">
       <SchemaJsonLd
         data={[
-          productSchema({
-            // Sefa 21 May v68 (site denetim P0 #4 + P1 #6): "Rulodan" →
-            // "Rulo etiket"; "transparent" → "şeffaf"; teslim süresi
-            // 5 → 10 iş günü (site geneli ve Anayasa md 2.1 ile uyumlu).
-            name: "Rulo etiket — özel baskı",
-            description:
-              "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/şeffaf. AI dosya kontrolü ile 10 iş günü içinde kargoda. 1.000 adetten başlar.",
-            category: "Etiket / Label",
-            priceFrom: 850,
-          }),
+          // Sefa 21 May v68 (sistem denetim #3): formFactor'a göre dinamik
+          // schema — tabaka sayfası rulo schema'sı kullanıyordu (1.000
+          // adet + Vinil yanlıştı). Şimdi rulo vs tabaka ayrı.
+          productSchema(
+            formFactor === "rulo"
+              ? {
+                  name: "Rulo etiket — özel baskı",
+                  description:
+                    "Kozmetik, gıda, içecek, parfüm etiketleri. Kuşe / Opak PP / Şeffaf / Metalize. AI dosya kontrolü ile 10 iş günü içinde kargoda. 1.000 adetten başlar.",
+                  category: "Etiket / Label",
+                  priceFrom: 850,
+                }
+              : {
+                  name: "Tabaka etiket — düşük adet özel baskı",
+                  description:
+                    "Butik ürün, el yapımı, hediye paketleri için tabaka etiket. Kuşe / Kraft / Opak PP. AI dosya kontrolü ile 10 iş günü içinde kargoda. 250 adetten başlar.",
+                  category: "Etiket / Label",
+                  priceFrom: 350,
+                }
+          ),
           breadcrumbSchema([
             { label: "Anasayfa", url: "/" },
             { label: "Etiket", url: "/etiket" },
@@ -1487,7 +1515,13 @@ function EtiketPage() {
                     {visibleMaterials.map((m) => (
                   <SelectableCard
                     key={m.id}
-                    selected={touchedSteps.has(1) && material === m.id}
+                    // Sefa 21 May v68 (sistem denetim #12): URL pre-fill
+                    // (unlockedSteps) ile gelen seçim de "selected ring"
+                    // göstersin — kart visual preselect.
+                    selected={
+                      (touchedSteps.has(1) || unlockedSteps.has(1)) &&
+                      material === m.id
+                    }
                     onClick={() => {
                       setMaterial(m.id);
                       markTouched(1);
@@ -1594,7 +1628,14 @@ function EtiketPage() {
                       {c.tooltip ? <InfoTooltip text={c.tooltip} /> : null}
                     </div>
                     <div className="text-[13px] text-gri-700 mt-0.5 line-clamp-2 min-h-[2.5em]">
-                      {adminText("coating", c.id, "desc") ?? (locale === "en" ? c.desc_en : c.desc)}
+                      {/* Sefa 21 May v68 (sistem denetim #10): malzeme
+                          plastik/film ise "Kaplamasız" için "doğal kâğıt
+                          dokusu" mantıksız — alternatif metin. */}
+                      {c.id === "yok" &&
+                      (material === "seffaf" || material === "ultra" || material === "beyaz")
+                        ? "Düz yüzey — ek bir film kaplaması yok."
+                        : adminText("coating", c.id, "desc") ??
+                          (locale === "en" ? c.desc_en : c.desc)}
                     </div>
                   </SelectableCard>
                 ))}

@@ -186,3 +186,20 @@ UPDATE product_cards SET title_tr = '...doğru metin...' WHERE id = '...';
 
 ## 🟡 Site denetim P2 #18 takip — Bumper render bug
 **Durum:** Lokalde reprod edilemedi. Sefa "/sticker/yapilandir?form=&shape=bumper sayfası kopuk" demişti — şu an URL routing fix'leri (P0 #2, konfigüratör #2) sonrası test edilmeli. Production'da hâlâ varsa SSR cache veya hidration sorunu.
+
+---
+
+## 🟠 Sistem denetim #2 — Yuvarlak Rulo Etiket malzeme listesi farklı (admin içerik)
+**Tespit:** Yuvarlak Rulo Etiket konfigüratöründe malzemeler "Kuşe / Beyaz semi-glos / Metalik / Şeffaf Etiket" — diğer rulo varyantlarında "Kuşe / Opak PP / Şeffaf / Metalize". **Opak PP yok**, isimler farklı.
+
+**Sebep:** Material isimleri `adminText("material", id, "name")` ile admin `live_config`'ten override geliyor. Yani DB'de Sefa'nın `/admin/fiyatlar` sayfasından girdiği isimler.
+
+**Kod bug değil — içerik:** Sefa muhtemelen admin'de 1-2 malzeme adını manuel değiştirmiş veya yuvarlak için ayrı config oluşturmuş.
+
+**Aksiyon:** Sefa `/admin/fiyatlar` → "etiket_rulo" scope → Materials sekmesinden 4 malzeme adını normalize etmeli:
+- `kuse` → "Kuşe Etiket"
+- `beyaz` → "Opak PP Etiket"
+- `seffaf` → "Şeffaf Etiket"
+- `metalik` → "Metalize Etiket"
+
+Default JS array zaten bu isimleri taşıyor, admin override'ı silmek de yeter (boş `name` field).

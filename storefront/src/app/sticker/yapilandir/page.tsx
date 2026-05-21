@@ -485,7 +485,10 @@ function StickerPage() {
 
   // Müşteri serbest qty seçer — 25'er artış, 25-1000 aralık.
   // findTier en yakın STICKER_TIERS multiplier'ını otomatik uygular.
-  const [tier, setTier] = useState<number>(250);
+  // Sefa 21 May v68 (sistem denetim #18): sticker default tier
+  // 250 → 25. /sticker liste sayfası ve SSS "25 adetten başlar" diyor;
+  // konfigüratör default'u da onunla aynı olsun.
+  const [tier, setTier] = useState<number>(25);
 
   // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? editingItemId
   // varsa "Sepete Ekle" sonrası eskiyi siler (replace pattern).
@@ -641,7 +644,7 @@ function StickerPage() {
       setSoftCorners(false);
       setMaterial("vinil");
       setFinish("parlak");
-      setTier(250);
+      setTier(25);
       setWidth(75);
       setHeight(75);
       setDesign(null);
@@ -1136,7 +1139,13 @@ function StickerPage() {
                 {MATERIALS.map((m) => (
                   <SelectableCard
                     key={m.id}
-                    selected={touchedSteps.has(3) && material === m.id}
+                    // Sefa 21 May v68 (sistem denetim #12): URL pre-fill
+                    // (?material=) ile gelen seçim de "selected ring"
+                    // göstersin — kart visual preselect.
+                    selected={
+                      (touchedSteps.has(3) || unlockedSteps.has(3)) &&
+                      material === m.id
+                    }
                     onClick={() => {
                       setMaterial(m.id);
                       markTouched(3);

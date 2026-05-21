@@ -75,16 +75,23 @@ export function useSequentialSteps({
       if (prerequisiteForFirst === undefined) return false;
       return !prerequisiteForFirst;
     }
-    // Sonraki adımlar — bir öncekinin touched veya unlocked olduğunu
-    // kontrol. URL pre-fill'den gelen adımlar unlockedSteps'te yer alır
-    // (lock'u açar) ama TAMAM göstergesi vermez (touched değil).
+    // Sonraki adımlar — bir öncekinin touched olduğunu kontrol.
+    //
+    // Sefa 21 May v68 (sistem denetim #12 fix): unlockedSteps lock için
+    // KULLANILMIYOR artık. URL pre-fill kullanıcının seçimi sayılmaz;
+    // kart UI'da "selected ring" gösterir (caller bunu kendisi yönetir)
+    // ama lock kapalı kalır — kullanıcı kartı kendisi onaylayana kadar
+    // bir sonraki adıma geçmez. Eski davranış: "Şeffaf Rulo'da Kaplama
+    // adımı malzeme seçilmeden kilitsiz" şikayetine yol açıyordu.
+    //
+    // unlockedSteps parametresi geriye uyum için imzada kalıyor (gelecek
+    // ihtiyaç için), ama lock hesabında dikkate alınmaz.
+    void unlockedSteps;
     const prev = stepIds[idx - 1];
     if (prev === stepIds[0] && prerequisiteForFirst === false) {
       return true; // ilk step prereq tamamlanmamış
     }
-    const prevSatisfied =
-      touchedSteps.has(prev) || (unlockedSteps?.has(prev) ?? false);
-    return !prevSatisfied;
+    return !touchedSteps.has(prev);
   };
 
   const lockMessage = (domStepId: number): string => {
