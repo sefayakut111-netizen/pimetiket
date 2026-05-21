@@ -106,6 +106,13 @@ function OdemeSonucInner() {
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
             {isPspUnavailable ? x.pspUnavailableDesc : x.failDesc}
           </p>
+          {/* Sefa 21 May v68 — PayTR debug: müşteri bildirirken kopyalasın */}
+          {!isPspUnavailable && reason && (
+            <p className="mt-4 text-[12px] text-gri-500 font-mono break-all">
+              <span className="font-semibold text-gri-700">teknik kod:</span>{" "}
+              {reason}
+            </p>
+          )}
           <div className="mt-6 flex gap-3 justify-center flex-wrap">
             {isPspUnavailable ? (
               <>

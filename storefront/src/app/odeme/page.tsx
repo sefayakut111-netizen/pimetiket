@@ -741,7 +741,14 @@ export default function OdemePage() {
           router.push("/odeme-sonuc?status=fail&reason=psp_unavailable");
           return;
         }
-        throw new Error(data.error ?? `payment_init_failed_${res.status}`);
+        // PayTR alt-reason + err code da error mesajına eklensin —
+        // /odeme-sonuc?reason= üzerinde Sefa debug görsün (21 May v68 fix)
+        const baseErr = data.error ?? `payment_init_failed_${res.status}`;
+        const detail =
+          data.reason || data.code
+            ? ` (${[data.reason, data.code].filter(Boolean).join(":")})`
+            : "";
+        throw new Error(`${baseErr}${detail}`);
       }
 
       const { paymentPageUrl } = await res.json();
