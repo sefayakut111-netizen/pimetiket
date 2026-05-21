@@ -182,8 +182,12 @@ export interface CreateTokenInput {
   noInstallment?: 0 | 1;
   /** Max taksit (0 = limitsiz, 1 = peşin). Default 12. */
   maxInstallment?: number;
-  /** Currency. Default ₺. */
-  currency?: "₺" | "USD" | "EUR";
+  /**
+   * Currency. Default TL.
+   * PayTR API string kodlar bekler: TL / EUR / USD / GBP / RUB.
+   * "₺" sembolü GEÇERSİZ → "Geçersiz parametre(ler)" hatası (21 May v68 fix).
+   */
+  currency?: "TL" | "USD" | "EUR";
   /** Token timeout dakika. Default 30. */
   timeoutLimit?: number;
 }
@@ -220,7 +224,19 @@ export async function createCheckoutToken(
 
   const noInstallment = input.noInstallment ?? 0;
   const maxInstallment = input.maxInstallment ?? 12;
-  const currency = input.currency ?? "₺";
+  // PayTR currency kodu: TL / EUR / USD (sembol DEĞİL — 21 May v68 fix)
+  const currency = input.currency ?? "TL";
+
+  // PayTR user_phone: sadece rakam, max 20 char.
+  // "+90 555 123 45 67" → "905551234567". Boşluk/parantez/+ kaldır.
+  // Aksi halde "Geçersiz parametre(ler)" hatası (21 May v68 fix).
+  const cleanPhone = input.userPhone.replace(/\D/g, "").slice(0, 20);
+
+  // PayTR user_name: max 60 char (PayTR docs).
+  const cleanName = input.userName.slice(0, 60);
+
+  // PayTR email basit validation — boşsa fallback.
+  const cleanEmail = input.email.trim() || "no-reply@pimetiket.com";
 
   const paytrToken = computeTokenHash({
     merchantId: cfg.merchantId,
@@ -228,7 +244,7 @@ export async function createCheckoutToken(
     merchantSalt: cfg.merchantSalt,
     userIp: input.userIp,
     merchantOid: input.merchantOid,
-    email: input.email,
+    email: cleanEmail,
     paymentAmount,
     userBasketBase64: basketBase64,
     noInstallment,
@@ -242,15 +258,15 @@ export async function createCheckoutToken(
     merchant_id: cfg.merchantId,
     user_ip: input.userIp,
     merchant_oid: input.merchantOid,
-    email: input.email,
+    email: cleanEmail,
     payment_amount: paymentAmount,
     paytr_token: paytrToken,
     user_basket: basketBase64,
     no_installment: noInstallment,
     max_installment: maxInstallment,
-    user_name: input.userName,
-    user_address: input.userAddress,
-    user_phone: input.userPhone,
+    user_name: cleanName,
+    user_address: input.userAddress.slice(0, 400),
+    user_phone: cleanPhone,
     merchant_ok_url: input.okUrl,
     merchant_fail_url: input.failUrl,
     timeout_limit: input.timeoutLimit ?? 30,

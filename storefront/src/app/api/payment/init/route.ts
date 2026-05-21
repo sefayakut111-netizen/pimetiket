@@ -221,7 +221,9 @@ export async function POST(req: NextRequest) {
     okUrl: `${siteUrl}/api/payment/callback?return=ok&oid=${merchantOid}`,
     failUrl: `${siteUrl}/api/payment/callback?return=fail&oid=${merchantOid}`,
     timeoutLimit: 30,
-    currency: "₺",
+    // PayTR currency kodu (sembol DEĞİL) — "₺" "Geçersiz parametre"
+    // hatasına yol açıyordu. Sefa 21 May v68 fix.
+    currency: "TL",
     maxInstallment: 12,
     noInstallment: 0,
   });

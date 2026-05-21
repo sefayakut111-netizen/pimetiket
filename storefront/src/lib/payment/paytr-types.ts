@@ -42,8 +42,8 @@ export interface PayTrTokenRequest {
   merchant_fail_url: string;
   /** Token timeout dk (default 30) */
   timeout_limit?: number;
-  /** ₺ veya USD/EUR */
-  currency: "₺" | "USD" | "EUR" | "GBP" | "RUB";
+  /** PayTR currency kodu: TL/USD/EUR/GBP/RUB. Sembol değil, kod string. */
+  currency: "TL" | "USD" | "EUR" | "GBP" | "RUB";
   /** Test mode: 1 (sandbox), 0 (production) */
   test_mode: 0 | 1;
   /** Debug mode (0/1) */
