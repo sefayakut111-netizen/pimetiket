@@ -1,236 +1,360 @@
-import { LegalLayout } from "@/components/legal/LegalLayout";
+/**
+ * Pim Etiket — Bıçak Düzenleme Sayfası
+ * /onay/[orderId]/duzenle/[itemId]
+ *
+ * Sefa 19 May v68 (Migration 059):
+ * Bu sayfa Sefa'nın geliştirdiği POC'un (pim_etiket_poc.html) Next.js
+ * mount noktasıdır. CutlineDesigner component'i React'e port edilince
+ * `<CutlineDesigner />` ile bu placeholder'ın yerine geçecek.
+ *
+ * Sözleşme (CutlineDesigner için — POC v2 ile uyumlu):
+ *   props: {
+ *     orderId: string
+ *     itemId: string
+ *     itemTitle: string
+ *     // Konfigüratör adımında belirlenen malzeme (POC sadece görsel olarak gösterir):
+ *     itemMaterial?: 'paper' | 'transparent' | 'metallic' | 'holographic'
+ *     originalFileUrl: string | null  // signed URL'den okunan orijinal tasarım
+ *     onSaveAndApprove: (cutlineId: string) => void
+ *     onSave: (cutlineId: string) => void
+ *     onCancel: () => void
+ *   }
+ *
+ *   Save akışı: POC SVG export → POST /api/orders/[id]/proof/[itemId]/save-edit
+ *   Body (POC v2 — Mig 060):
+ *     {
+ *       svg, preview_png_base64, source, mode,
+ *       offset_mm, smoothness, dpi, width_mm, height_mm,
+ *       pim_feedback, pim_severity,
+ *       material_type, white_plan_mode, white_plan_path_count,
+ *       has_custom_white_plan, tier, detected_cut_contour_names
+ *     }
+ *   Response: { ok, cutlineId, svgKey, previewKey, tier, materialType, whitePlanMode }
+ *
+ *   Approve akışı: yukarıdaki sonra POST .../approve { cutlineId }
+ *
+ *   PIM AI YORUMU (gerçek GPT-4o-mini — POC'un kural-tabanlı yorumu yerine):
+ *     POC v2'de generatePimComment() çağrısı yerine, dosya yüklendiğinde +
+ *     her slider değiştiğinde (debounce edilmiş ~600ms) şu endpoint çağrılır:
+ *
+ *     POST /api/pim/cutline-feedback
+ *     Body: {
+ *       orderId, itemId,
+ *       source, tier, material_type, white_plan_mode,
+ *       mode, offset_mm, dpi, part_count, coverage,
+ *       detected_cut_contour_names, issue_hints, white_plan_path_count
+ *     }
+ *     Response: {
+ *       ok: true,
+ *       feedback: "Mehmet, vektörel dosya yüklemişsin — temiz bir bıçak çıkardım.",
+ *       severity: "ok" | "warn" | "err",
+ *       suggested_action: "approve" | "bg_remove" | "increase_dpi" | "edit_cutline" | "request_help" | "none"
+ *     }
+ *
+ *     Bu yanıt POC'taki pimText ve pimComment alanlarına yazılır.
+ *     suggested_action'a göre Pim aksiyon butonu gösterilir
+ *     (örn. bg_remove → "Evet, arka planı kaldır" butonu).
+ *     Backend rate limit: dakikada 20.
+ *
+ * Şu an PLACEHOLDER — Sefa POC'u entegre edince doğrudan
+ * <CutlineDesigner /> mount edilecek.
+ */
 
-export const metadata = {
-  title: "Ön Bilgilendirme Formu",
-  description:
-    "6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca tüketiciye sunulan zorunlu ön bilgilendirme.",
-  alternates: { canonical: "/on-bilgilendirme" },
-};
+"use client";
 
-export default function OnBilgilendirmePage() {
+import { use, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
+import { PimMini } from "@/components/Pim";
+
+interface ProofItem {
+  id: string;
+  title: string;
+  width: number;
+  height: number;
+  qty: number;
+  proof_status: string;
+}
+
+interface ProofSummaryLite {
+  order: { id: string; status: string };
+  items: ProofItem[];
+}
+
+// POC iframe'inden gelen message payload shape (pim_etiket_poc.html ile uyumlu)
+interface CutlineSavedPayload {
+  type: "pim-cutline-saved";
+  svg: string;
+  meta: {
+    source: "raster" | "vector" | "vector-with-cutline" | "psd";
+    mode: "contour" | "hull" | "rect" | "circle";
+    offset_mm: number | null;
+    smoothness: number | null;
+    dpi: number | null;
+    width_mm: number | null;
+    height_mm: number | null;
+    pim_feedback: string | null;
+    pim_severity: "ok" | "warn" | "err" | null;
+    material_type: "paper" | "transparent" | "metallic" | "holographic" | null;
+    white_plan_mode: "off" | "full" | "smart" | "ai" | "custom" | null;
+    white_plan_path_count: number;
+    has_custom_white_plan: boolean;
+    tier: "pro" | "standard" | "improve" | null;
+    detected_cut_contour_names: string[];
+  };
+  preview_png_base64: string | null;
+}
+
+export default function ProofEditPage({
+  params,
+}: {
+  params: Promise<{ orderId: string; itemId: string }>;
+}) {
+  const { orderId, itemId } = use(params);
+  const router = useRouter();
+  const toast = useToast();
+  const searchParams = useSearchParams();
+  const designFileId = searchParams.get("design_file_id"); // Mig 063
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const [item, setItem] = useState<ProofItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/proof`, {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          if (res.status === 403 || res.status === 404) {
+            setForbidden(true);
+          }
+          return;
+        }
+        const data = (await res.json()) as ProofSummaryLite;
+        if (cancelled) return;
+        if (data.order.status !== "proof_pending") {
+          router.replace(`/siparis/${orderId}`);
+          return;
+        }
+        const found = data.items.find((i) => i.id === itemId);
+        if (!found) {
+          setForbidden(true);
+          return;
+        }
+        setItem(found);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        toast.error(msg);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, itemId, router, toast]);
+
+  // Item yüklendikten sonra design-url fetch et + iframe src state'ini kur.
+  // POC tarafı autoSave=0 ile — müşteri elle "Kaydet ve dön" basacak.
+  useEffect(() => {
+    if (!item) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const qs = designFileId ? `?design_file_id=${designFileId}` : "";
+        const res = await fetch(
+          `/api/orders/${orderId}/items/${itemId}/design-url${qs}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) {
+          toast.error("Tasarım yüklenemedi — manuel düzenleme yapamayız");
+          return;
+        }
+        const j = (await res.json()) as {
+          url: string;
+          mimeType: string;
+          fileName: string;
+        };
+        if (cancelled) return;
+        // Konfigüratör material → POC material mapping (vinil/transparan/holo/simli)
+        const mapMaterial = (m: unknown): string => {
+          if (typeof m !== "string") return "paper";
+          const k = m.toLowerCase();
+          if (k === "transparan" || k === "transparent") return "transparent";
+          if (k === "holo" || k === "holographic") return "holographic";
+          if (k === "simli" || k === "metallic") return "metallic";
+          return "paper";
+        };
+        const meta = (item as unknown as { meta?: Record<string, unknown> })
+          .meta;
+        const material = mapMaterial(meta?.material_type ?? meta?.material);
+
+        const params = new URLSearchParams({
+          embed: "1",
+          designUrl: j.url,
+          designName: j.fileName,
+          designMime: j.mimeType,
+          material,
+          mode: "contour",
+          autoSave: "0",
+          orderId,
+          itemId,
+        });
+        if (designFileId) params.set("designFileId", designFileId);
+        setIframeSrc(`/poc.html?${params.toString()}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        toast.error(`POC açılamadı: ${msg}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [item, orderId, itemId, designFileId, toast]);
+
+  // POC iframe'den 'pim-cutline-saved' mesajını yakala → save-edit POST → /onay'a dön
+  useEffect(() => {
+    if (!item) return;
+
+    const handler = async (e: MessageEvent) => {
+      // Yalnız kendi iframe'imizden gelen mesajı kabul et
+      if (iframeRef.current && e.source !== iframeRef.current.contentWindow) return;
+      const data = e.data as CutlineSavedPayload | undefined;
+      if (!data || data.type !== "pim-cutline-saved") return;
+      if (saving) return;
+      setSaving(true);
+
+      try {
+        const res = await fetch(
+          `/api/orders/${orderId}/proof/${itemId}/save-edit`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              svg: data.svg,
+              preview_png_base64: data.preview_png_base64,
+              design_file_id: designFileId, // Mig 063 — multi-design proof
+              ...data.meta,
+            }),
+          }
+        );
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          const err = j.error || `HTTP ${res.status}`;
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: "pim-cutline-save-failed", error: err },
+            "*"
+          );
+          toast.error("Bıçak kaydedilemedi: " + err);
+          setSaving(false);
+          return;
+        }
+        toast.success("Bıçak kaydedildi");
+        router.push(`/onay/${orderId}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: "pim-cutline-save-failed", error: msg },
+          "*"
+        );
+        toast.error("Bıçak kaydedilemedi: " + msg);
+        setSaving(false);
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [item, orderId, itemId, router, toast, saving, designFileId]);
+
+  if (loading) {
+    return (
+      <main className="container py-8">
+        <Skeleton className="mb-2 h-6 w-48" />
+        <Skeleton className="h-[500px]" />
+      </main>
+    );
+  }
+
+  if (forbidden || !item) {
+    return (
+      <main className="container py-12">
+        <Card className="p-8 text-center">
+          <h1 className="mb-2 text-lg font-semibold">
+            Bu ürün düzenleme aşamasında değil
+          </h1>
+          <p className="mb-4 text-sm text-gri-700">
+            Sipariş zaten onaylanmış veya bu ürün sana ait değil olabilir.
+          </p>
+          <Button href={`/onay/${orderId}`} variant="primary" size="md">
+            Onay sayfasına dön
+          </Button>
+        </Card>
+      </main>
+    );
+  }
+
   return (
-    <LegalLayout
-      title="Ön Bilgilendirme Formu"
-      lastUpdated="10 Mayıs 2026"
-      currentPath="/on-bilgilendirme"
-    >
-      <p>
-        İşbu Ön Bilgilendirme Formu, 6502 sayılı Tüketicinin Korunması Hakkında
-        Kanun ve Mesafeli Sözleşmeler Yönetmeliği&rsquo;nin{" "}
-        <strong>5. maddesi</strong> uyarınca, ALICI&rsquo;nın siparişe ilişkin
-        sözleşme ve ödemenin esaslı unsurları hakkında, sipariş onayından önce
-        bilgilendirilmesi amacıyla düzenlenmiştir. ALICI, ödeme aşamasındaki
-        kutucuğu işaretleyerek işbu formu ve Mesafeli Satış
-        Sözleşmesi&rsquo;ni okuduğunu, anladığını ve kabul ettiğini beyan eder.
-      </p>
+    <main className="container py-6">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <Eyebrow>SİPARİŞ #{orderId}</Eyebrow>
+          <h1 className="mt-1 text-2xl font-bold text-lacivert">
+            Bıçağı düzenle: {item.title}
+          </h1>
+          <p className="mt-1 text-sm text-gri-700">
+            {item.qty} ad · {item.width}×{item.height}mm
+          </p>
+        </div>
+        <Button
+          href={`/onay/${orderId}`}
+          variant="ghost"
+          size="sm"
+        >
+          ← Onay sayfasına dön
+        </Button>
+      </div>
 
-      <h2>1. Satıcı Bilgileri</h2>
-      <ul>
-        <li>
-          <strong>Ünvan:</strong> SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED
-          ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
-        </li>
-        <li>
-          <strong>Vergi Dairesi / No:</strong> Doğanbey Vergi Dairesi /
-          7580607612
-        </li>
-        <li>
-          <strong>Mersis No:</strong> 0758060761200001
-        </li>
-        <li>
-          <strong>Ticaret Sicil No:</strong> 493212
-        </li>
-        <li>
-          <strong>Ana Faaliyet:</strong> 464903 — Kırtasiye Ürünleri Toptan
-          Ticareti
-        </li>
-        <li>
-          <strong>Adres:</strong> Workinton Ankara Söğütözü, Beştepeler Mah.
-          Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510
-          Çankaya/Ankara
-        </li>
-        <li>
-          <strong>E-posta:</strong>{" "}
-          <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
-        </li>
-        <li>
-          <strong>Web sitesi:</strong>{" "}
-          <a href="https://pimetiket.com">pimetiket.com</a>
-        </li>
-        <li>
-          <strong>Şikayet ve iletişim:</strong>{" "}
-          <a href="/iletisim">/iletisim</a>
-        </li>
-      </ul>
-      <p className="text-[12.5px] text-gri-700 italic">
-        Not: Şirket ünvanı resmî değişiklik sürecindedir. Vergi numarası ve
-        vergi dairesi sabittir; bağlayıcı kimlik vergi numarasıdır.
-      </p>
+      <Card className="mb-4 flex items-start gap-3 bg-pim-mercan-tint/30 p-4">
+        <PimMini pose="inspect" size={48} />
+        <p className="text-sm leading-relaxed text-lacivert">
+          Bıçak çizgisini istediğin gibi ayarlayabilirsin. "Kaydet ve dön"
+          dersen taslak olarak kalır, sonra onay sayfasında "Onayla"
+          diyebilirsin.
+        </p>
+      </Card>
 
-      <h2>2. Sözleşme Konusu Mal/Hizmet ve Temel Nitelikleri</h2>
-      <p>
-        Sözleşmenin konusu, ALICI&rsquo;nın pimetiket.com üzerinden, kendi
-        tasarımı veya konfigürasyonu ile sipariş ettiği{" "}
-        <strong>kişiye özel olarak üretilen etiket ve sticker</strong>{" "}
-        ürünlerinin satışıdır. Ürünlere ait;
-      </p>
-      <ul>
-        <li>Malzeme (kraft, beyaz kuşe, transparan, sticker, vb.)</li>
-        <li>Kaplama (mat, parlak, metalik)</li>
-        <li>Ölçü (mm × mm) ve adet</li>
-        <li>Sarım yönü (rulo siparişlerinde)</li>
-        <li>ALICI tarafından yüklenen tasarım dosyası</li>
-      </ul>
-      <p>
-        gibi tüm temel nitelikler, ürün konfigüratörü ve sipariş özet ekranı
-        üzerinden ALICI&rsquo;nın onayına sunulur.
-      </p>
+      {/* POC v2 iframe mount — design-url fetch hazır olunca yüklenir */}
+      <div className="overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
+        {iframeSrc ? (
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            title="Bıçak düzenleyici"
+            className="block h-[calc(100vh-220px)] min-h-[640px] w-full"
+            // POC esm.run'dan @imgly/background-removal indiriyor, allow-scripts şart
+            sandbox="allow-scripts allow-same-origin allow-downloads"
+          />
+        ) : (
+          <div className="grid h-[calc(100vh-220px)] min-h-[640px] place-items-center bg-gri-100 text-sm text-gri-700">
+            Tasarım yükleniyor…
+          </div>
+        )}
+      </div>
 
-      <h2>3. Toplam Fiyat ve Vergiler</h2>
-      <ul>
-        <li>
-          Sipariş özetinde gösterilen toplam tutar,{" "}
-          <strong>tüm vergiler (KDV %20) dahil</strong> Türk Lirası (₺)
-          cinsindendir.
-        </li>
-        <li>
-          ALICI&rsquo;dan sipariş onayı sırasında bu tutar dışında ek bir bedel
-          talep edilmez.
-        </li>
-        <li>
-          Kargo bedeli — varsa — sepet/ödeme adımında ayrıca gösterilir;
-          sipariş tutarına göre ücretsiz kargo eşiği uygulanabilir.
-        </li>
-        <li>
-          Fiyat ve özelliklerin kesinleşmesi, ALICI&rsquo;nın siparişi
-          onaylayıp ödemeyi tamamlamasıyla gerçekleşir.
-        </li>
-      </ul>
-
-      <h2>4. Ödeme Şekli ve Bilgileri</h2>
-      <ul>
-        <li>
-          Ödeme; <strong>kredi kartı veya banka kartı ile 3D Secure</strong>{" "}
-          (yetkilendirilmiş ödeme kuruluşu PayTR Ödeme Hizmetleri A.Ş.
-          altyapısı) üzerinden alınır.
-        </li>
-        <li>
-          Kart bilgileri PayTR&rsquo;nin PCI-DSS sertifikalı güvenli sayfasında
-          işlenir; Pim Etiket bu bilgileri saklamaz, görmez.
-        </li>
-        <li>Tek çekim ve banka taksit seçenekleri sunulabilir.</li>
-        <li>
-          Sipariş onayı, ödemenin başarılı şekilde tahsil edilmesiyle birlikte
-          oluşur.
-        </li>
-      </ul>
-
-      <h2>5. Teslimat ve Süresi</h2>
-      <ul>
-        <li>
-          Ürün, ALICI&rsquo;nın sipariş aşamasında belirttiği teslimat adresine
-          anlaşmalı kargo firması (örn. Aras Kargo / Yurtiçi Kargo / MNG)
-          aracılığıyla gönderilir.
-        </li>
-        <li>
-          <strong>Tahmini teslim süresi:</strong> Ürünler 5 (beş) iş günü
-          içinde kargoya verilir; kargonun ALICI&rsquo;ya ulaşması teslim
-          adresine göre 1-3 iş günü sürebilir. Süre, ALICI&rsquo;nın
-          tasarım dosyasını yüklemesinden ve kalite kontrolünden geçtikten
-          sonra başlar.
-        </li>
-        <li>
-          ALICI&rsquo;nın 3 (üç) gün içinde tasarım dosyasını yüklememesi
-          halinde sipariş tek taraflı iptal edilir; ödenen tutar ALICI&rsquo;ya
-          iade edilir.
-        </li>
-        <li>
-          Yasal teslimat süresi en geç 30 (otuz) gündür; bu sürenin aşılması
-          halinde ALICI sözleşmeyi feshedebilir, ödediği tutarı iade alabilir.
-        </li>
-      </ul>
-
-      <h2>6. Cayma Hakkının Bulunmadığı Hususu</h2>
-      <p>
-        <strong>
-          Pim Etiket üzerinden verilen tüm siparişler ALICI&rsquo;nın istek ve
-          kişisel ihtiyaçlarına göre, kendisi tarafından sağlanan tasarım ve
-          özellikler doğrultusunda münhasıran üretildiğinden,
-        </strong>{" "}
-        Mesafeli Sözleşmeler Yönetmeliği&rsquo;nin{" "}
-        <strong>15. maddesi 1. fıkrası (b) bendi</strong> uyarınca{" "}
-        <strong>tüketici cayma hakkını kullanamaz</strong>. Bu durum sipariş
-        özetinde ve sözleşmenin yürürlüğe girmesi öncesinde ALICI&rsquo;ya
-        açıkça bildirilir.
-      </p>
-      <p>
-        Bu istisna; ürünün ayıplı, hatalı veya sipariş edilenden farklı çıkması
-        halindeki <strong>yasal ayıplı mal hükümlerini etkilemez</strong>;
-        ALICI&rsquo;nın bu çerçevedeki hakları saklıdır (bkz. madde 7).
-      </p>
-
-      <h2>7. Ayıplı Mal ve İade Koşulları</h2>
-      <ul>
-        <li>
-          Üretim hatası, baskı bozukluğu, kargo hasarı veya sipariş edilen
-          özelliklerden farklı ürün gönderimi durumlarında ALICI, teslim
-          tarihinden itibaren <strong>7 (yedi) gün</strong> içinde fotoğraflı
-          bildirim ile <a href="/iletisim">iletisim</a> kanallarımızdan
-          başvurarak;
-        </li>
-        <li>Ücretsiz yeniden üretim, veya</li>
-        <li>Ödenen tutarın iadesi</li>
-        <li>
-          haklarından birini seçebilir. Ayrıntılı koşullar{" "}
-          <a href="/iade-degisim-politikasi">İade & Değişim Politikası</a>{" "}
-          sayfasındadır.
-        </li>
-      </ul>
-
-      <h2>8. Şikayet ve Uyuşmazlık Çözüm Mercileri</h2>
-      <p>
-        ALICI, sözleşmeden doğan uyuşmazlıklarda; Gümrük ve Ticaret
-        Bakanlığı&rsquo;nın her yıl belirlediği parasal sınırlar dahilinde
-        ikametgahının veya mal/hizmeti satın aldığı yerin{" "}
-        <strong>Tüketici Hakem Heyeti&rsquo;ne</strong>, parasal sınırın
-        üzerindeki uyuşmazlıklarda ise <strong>Tüketici Mahkemesi&rsquo;ne</strong>{" "}
-        başvurabilir.
-      </p>
-      <p>
-        Şikayetlerinizi öncelikle{" "}
-        <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>{" "}
-        adresine veya <a href="/iletisim">/iletisim</a> sayfasındaki kanallarımıza
-        iletebilirsiniz; tarafımıza ulaşan başvurular en geç 15 gün içinde
-        yanıtlanır.
-      </p>
-
-      <h2>9. Kişisel Verilerin Korunması</h2>
-      <p>
-        ALICI&rsquo;nın sipariş, ödeme, teslimat ve iletişim sürecinde
-        verdiği kişisel veriler, 6698 sayılı Kişisel Verilerin Korunması
-        Kanunu kapsamında işlenir. Aydınlatma metni{" "}
-        <a href="/kvkk">/kvkk</a>, gizlilik uygulamaları{" "}
-        <a href="/gizlilik">/gizlilik</a>, çerez kullanımı{" "}
-        <a href="/cerez">/cerez</a> sayfalarında detaylıca açıklanmıştır.
-      </p>
-
-      <h2>10. Sözleşme Süresi ve Yürürlük</h2>
-      <p>
-        İşbu ön bilgilendirme formu, ALICI&rsquo;nın sipariş ve ödeme
-        akışındaki onay kutucuklarını işaretleyip ödeme adımını
-        tamamlamasıyla birlikte; aynı anda yürürlüğe girecek olan{" "}
-        <a href="/mesafeli-satis">Mesafeli Satış Sözleşmesi</a>&rsquo;nin
-        ayrılmaz parçası niteliğindedir. Sözleşme, ürünlerin teslimi ve
-        karşılıklı yükümlülüklerin yerine getirilmesi ile sona erer.
-      </p>
-
-      <h2>11. Yasal Dayanak</h2>
-      <ul>
-        <li>6502 sayılı Tüketicinin Korunması Hakkında Kanun</li>
-        <li>Mesafeli Sözleşmeler Yönetmeliği (R.G. 27.11.2014/29188)</li>
-        <li>6698 sayılı Kişisel Verilerin Korunması Kanunu</li>
-        <li>5651 sayılı İnternet Ortamında Yapılan Yayınlar Kanunu</li>
-      </ul>
-    </LegalLayout>
+      {saving && (
+        <div className="mt-4 rounded-lg bg-pim-mercan-tint/30 p-3 text-center text-sm text-lacivert">
+          Bıçak kaydediliyor, lütfen bekle…
+        </div>
+      )}
+    </main>
   );
 }
