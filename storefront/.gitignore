@@ -79,3 +79,7 @@ supabase/.branches/
 deps.json
 deps.svg
 deps.png
+# Test materyallerini gitignore'a ekle (telif + boyut)
+
+test-assets/
+!test-assets/README.md
