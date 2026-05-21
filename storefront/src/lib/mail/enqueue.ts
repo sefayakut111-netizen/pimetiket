@@ -79,10 +79,50 @@ export async function enqueueMail(
     if (data === null || data === undefined || String(data) === "") {
       return { ok: true, suppressed: true };
     }
+
+    // Sefa 22 May v68 — B sorun fix:
+    // Vercel Hobby plan günlük cron'a izin veriyor (02:05'te bir kez).
+    // Mail anında çıksın diye enqueue sonrası process endpoint'ini
+    // fire-and-forget tetikle. Cron daily kalır (yedek mekanizma).
+    void triggerMailProcess();
+
     return { ok: true, id: String(data) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown_error";
     console.error("[mail/enqueue] exception:", msg);
     return { ok: false, error: msg };
+  }
+}
+
+/**
+ * Process-mail-outbox cron endpoint'ini eş zamanlı tetikler.
+ * Fire-and-forget — caller bekletilmez, hata loglanır ama atılmaz.
+ *
+ * NOT: CRON_SECRET zorunlu (assertCronAuth). Env yoksa istek 401 alır,
+ * sessizce log'lanır — bir sonraki cron run mail'i alır.
+ */
+async function triggerMailProcess(): Promise<void> {
+  try {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      // Env yoksa cron'u tetiklemiyoruz, ama enqueue başarılı —
+      // mail kuyrukta, gece cron'u alır.
+      return;
+    }
+    // Fire-and-forget, response bekletmiyoruz
+    await fetch(`${siteUrl}/api/cron/process-mail-outbox`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${cronSecret}` },
+      // Vercel function timeout'unu uzatma
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (err) {
+    // Network error vs — sessiz fail. Cron yedek olarak çalışır.
+    console.warn(
+      "[mail/enqueue] process trigger failed (will run on cron):",
+      err instanceof Error ? err.message : err
+    );
   }
 }
