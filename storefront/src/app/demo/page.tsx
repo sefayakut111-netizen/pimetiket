@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast, Skeleton } from "@/components/ui";
@@ -124,11 +125,13 @@ export default function DemoPage() {
         {/* Hero */}
         <div className="text-center mb-10">
           {demoHero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={demoHero.publicUrl}
               alt={demoHero.altText ?? "Pim Etiket demo"}
-              className="mx-auto max-w-[480px] aspect-video h-auto object-cover rounded-2xl shadow-2"
+              width={480}
+              height={270}
+              sizes="(max-width: 768px) 100vw, 480px"
+              className="mx-auto h-auto object-cover rounded-2xl shadow-2"
             />
           ) : (
             <Pim pose="excited" size={140} />

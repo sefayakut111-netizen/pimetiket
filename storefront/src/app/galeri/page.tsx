@@ -13,6 +13,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Modal } from "@/components/ui";
@@ -165,16 +166,14 @@ export default function GaleriPage() {
                 onClick={() => setActive(item)}
                 className="group block text-left rounded-2xl bg-white overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan-soft hover:shadow-2 transition-all"
               >
-                <div className="aspect-[4/3] bg-gri-100 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <div className="relative aspect-[4/3] bg-gri-100 overflow-hidden">
+                  <Image
                     src={publicUrlOf(item.image_path)}
                     alt={item.title}
+                    fill
                     loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
                 <div className="p-4">
@@ -213,12 +212,13 @@ export default function GaleriPage() {
           title={active.title}
           maxWidthClassName="max-w-[860px]"
         >
-          <div className="aspect-[16/10] bg-gri-100 rounded-lg overflow-hidden mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative aspect-[16/10] bg-gri-100 rounded-lg overflow-hidden mb-4">
+            <Image
               src={publicUrlOf(active.image_path)}
               alt={active.title}
-              className="w-full h-full object-contain"
+              fill
+              sizes="(max-width: 768px) 100vw, 860px"
+              className="object-contain"
             />
           </div>
           <div className="space-y-3">

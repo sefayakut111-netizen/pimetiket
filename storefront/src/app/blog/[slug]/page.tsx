@@ -7,6 +7,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
@@ -159,10 +160,12 @@ export default async function BlogPostPage({ params }: Props) {
           className={`${post.coverColor} rounded-2xl grid place-items-center min-h-[240px] mb-7 overflow-hidden`}
         >
           {defaultHero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={defaultHero.publicUrl}
               alt={defaultHero.altText ?? post.title}
+              width={1200}
+              height={630}
+              sizes="(max-width: 768px) 100vw, 800px"
               className="w-full h-full object-cover max-h-[360px]"
             />
           ) : (

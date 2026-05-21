@@ -13,6 +13,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
   getProductReviews,
@@ -235,19 +236,15 @@ function ReviewCard({
                 type="button"
                 onClick={() => onPhotoClick?.(photo.url!)}
                 aria-label="Fotoğrafı büyüt"
-                className="w-16 h-16 rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan bg-gri-100 transition-all cursor-zoom-in"
+                className="relative w-16 h-16 rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan bg-gri-100 transition-all cursor-zoom-in"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={photo.url}
                   alt=""
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="64px"
                   loading="lazy"
-                  onError={(e) => {
-                    const wrap = (e.currentTarget as HTMLImageElement)
-                      .parentElement;
-                    if (wrap) (wrap as HTMLElement).style.display = "none";
-                  }}
+                  className="object-cover"
                 />
               </button>
             ) : null

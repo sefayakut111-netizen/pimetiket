@@ -19,6 +19,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow, useToast } from "@/components/ui";
@@ -386,11 +387,12 @@ function AuthInner() {
       <div className="mx-auto max-w-[440px] px-6">
         <div className="text-center mb-6">
           {authHero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={authHero.publicUrl}
               alt={authHero.altText ?? "Pim Etiket"}
-              className="mx-auto max-w-[160px] h-auto object-contain"
+              width={160}
+              height={160}
+              className="mx-auto h-auto object-contain"
             />
           ) : (
             <Pim pose="wave" size={120} />
