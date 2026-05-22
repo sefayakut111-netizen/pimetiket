@@ -212,24 +212,39 @@ function OdemeSonucInner() {
             {t.orderSuccess.nextStepsTitle}
           </h3>
           <ol className="space-y-4">
-            {/* Sefa 22 May v68 — Status-aware step gösterimi:
-                - awaiting_upload → 1. adım aktif (kırmızı), 2-3 bekliyor
-                - paid/qc_*/operator_review → 1. ✓, 2. aktif (Pim çalışıyor)
-                - proof_generating/proof_pending → 1. ✓, 2. aktif (onayında)
-                - proof_approved+/in_production+ → 1. ✓, 2. ✓, 3. aktif */}
+            {/* Sefa 22 May v68 — 4 adımlı status-aware step gösterimi:
+                1. Tasarım dosyası yükle
+                2. AI ön-kontrol + bıçak çizimi (otomatik, sistem yapar)
+                3. Provayı incele ve onayla
+                4. Üretim + kapına teslim
+
+                Status → aktif step:
+                - awaiting_upload → 1
+                - paid/qc_*/operator_review/proof_generating → 2
+                - proof_pending → 3
+                - proof_approved/in_production/ready_to_ship/fason_assigned/
+                  shipped → 4
+                - delivered → tümü done */}
             {(() => {
               const s = order?.status ?? "awaiting_upload";
-              const designDone = s !== "awaiting_upload";
-              const proofDone =
-                s === "proof_approved" ||
-                s === "in_production" ||
-                s === "ready_to_ship" ||
-                s === "fason_assigned" ||
-                s === "shipped" ||
-                s === "delivered";
-              const proofActive =
-                designDone && !proofDone;
-              const shipActive = proofDone;
+              const activeStep =
+                s === "awaiting_upload"
+                  ? 1
+                  : s === "paid" ||
+                      s === "qc_pending" ||
+                      s === "qc_passed" ||
+                      s === "qc_flagged" ||
+                      s === "qc_warned" ||
+                      s === "human_review" ||
+                      s === "human_review_failed" ||
+                      s === "operator_review" ||
+                      s === "proof_generating"
+                    ? 2
+                    : s === "proof_pending"
+                      ? 3
+                      : s === "delivered"
+                        ? 5 // hepsi done
+                        : 4; // proof_approved, in_production, shipped, vs.
 
               function StepIcon({
                 state,
@@ -259,64 +274,85 @@ function OdemeSonucInner() {
                 );
               }
 
-              const step1State = designDone ? "done" : "active";
-              const step2State = proofDone
-                ? "done"
-                : proofActive
-                  ? "active"
-                  : "waiting";
-              const step3State = shipActive ? "active" : "waiting";
+              function stateFor(num: number): "done" | "active" | "waiting" {
+                if (num < activeStep) return "done";
+                if (num === activeStep) return "active";
+                return "waiting";
+              }
 
-              // Step 2 label dinamik: proof_generating → "Bıçak hazırlanıyor"
-              const step2DynamicTitle =
+              // Dinamik step 2 başlığı — status'a göre nuance
+              const step2Title =
                 s === "proof_generating"
                   ? "Bıçak çizimi hazırlanıyor"
-                  : s === "proof_pending"
-                    ? "Provanı incele ve onayla"
-                    : s === "qc_flagged"
-                      ? "AI ön-kontrol uyarısı"
-                      : t.orderSuccess.step2Title;
-              const step2DynamicDesc =
+                  : s === "qc_flagged" || s === "qc_warned"
+                    ? "AI ön-kontrol uyarısı"
+                    : s === "operator_review" || s === "human_review"
+                      ? "Operatör inceliyor"
+                      : "Sistem hazırlığı (AI + bıçak)";
+              const step2Desc =
                 s === "proof_generating"
                   ? "AI ön-kontrol geçti, otomatik bıçak çizimi 5 dakika içinde hazır. Sipariş detayında ilerlemeyi izleyebilirsin."
-                  : s === "proof_pending"
-                    ? "Bıçak çizimi hazır. Sipariş detayında inceleyip onaylayabilirsin."
-                    : t.orderSuccess.step2Desc;
+                  : s === "operator_review" || s === "human_review"
+                    ? "Operatörümüz tasarımını manuel kontrol ediyor. 24 saat içinde sonuçlanır."
+                    : "AI ön-kontrol + otomatik bıçak çizimi hazırlanır. Genelde 5-30 dakika sürer.";
+
+              // Dinamik step 4 başlığı
+              const step4Title =
+                s === "shipped"
+                  ? "Kargoda"
+                  : s === "in_production"
+                    ? "Üretimde"
+                    : "Üretim ve kapına teslim";
+              const step4Desc =
+                s === "shipped"
+                  ? "Sipariş kargoya verildi. Detayda kargo takip numarasını görebilirsin."
+                  : s === "in_production"
+                    ? "Sipariş baskıda. 5 iş günü içinde kargoya verilir."
+                    : "Prova onayı sonrası baskı → 5 iş günü kargo → kapına teslim.";
 
               return (
                 <>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={step1State} num={1} />
+                    <StepIcon state={stateFor(1)} num={1} />
                     <div>
                       <div className="font-semibold text-base">
-                        {designDone ? "Tasarım yüklendi" : t.orderSuccess.step1Title}
+                        {stateFor(1) === "done"
+                          ? "Tasarım yüklendi"
+                          : t.orderSuccess.step1Title}
                       </div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                        {designDone
-                          ? "AI ön-kontrolden geçti, sistem işliyor."
+                        {stateFor(1) === "done"
+                          ? "Sistem ön-kontrolü için tasarımını teslim aldı."
                           : t.orderSuccess.step1Desc}
                       </p>
                     </div>
                   </li>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={step2State} num={2} />
+                    <StepIcon state={stateFor(2)} num={2} />
                     <div>
-                      <div className="font-semibold text-base">
-                        {step2DynamicTitle}
-                      </div>
+                      <div className="font-semibold text-base">{step2Title}</div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                        {step2DynamicDesc}
+                        {step2Desc}
                       </p>
                     </div>
                   </li>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={step3State} num={3} />
+                    <StepIcon state={stateFor(3)} num={3} />
                     <div>
                       <div className="font-semibold text-base">
-                        {t.orderSuccess.step3Title}
+                        {t.orderSuccess.step2Title}
                       </div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                        {t.orderSuccess.step3Desc}
+                        {t.orderSuccess.step2Desc}
+                      </p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3.5 items-start">
+                    <StepIcon state={stateFor(4)} num={4} />
+                    <div>
+                      <div className="font-semibold text-base">{step4Title}</div>
+                      <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
+                        {step4Desc}
                       </p>
                     </div>
                   </li>
