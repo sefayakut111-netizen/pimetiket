@@ -296,19 +296,32 @@ function OdemeSonucInner() {
                     ? "Operatörümüz tasarımını manuel kontrol ediyor. 24 saat içinde sonuçlanır."
                     : "AI ön-kontrol + otomatik bıçak çizimi hazırlanır. Genelde 5-30 dakika sürer.";
 
-              // Dinamik step 4 başlığı
+              // Dinamik step 4 başlığı — Sefa 22 May v68:
+              // "Kapına teslim" yerine sipariş aşamasını net yansıt.
               const step4Title =
-                s === "shipped"
-                  ? "Kargoda"
-                  : s === "in_production"
-                    ? "Üretimde"
-                    : "Üretim ve kapına teslim";
+                s === "delivered"
+                  ? "Teslim edildi"
+                  : s === "shipped"
+                    ? "Kargoda — yolda"
+                    : s === "in_production" ||
+                        s === "fason_assigned" ||
+                        s === "ready_to_ship"
+                      ? "İşleminiz üretiliyor"
+                      : s === "proof_approved"
+                        ? "Üretime alındı"
+                        : "Üretim ve kapına teslim";
               const step4Desc =
-                s === "shipped"
-                  ? "Sipariş kargoya verildi. Detayda kargo takip numarasını görebilirsin."
-                  : s === "in_production"
-                    ? "Sipariş baskıda. 5 iş günü içinde kargoya verilir."
-                    : "Prova onayı sonrası baskı → 5 iş günü kargo → kapına teslim.";
+                s === "delivered"
+                  ? "Sipariş teslim edildi. Tekrar siparişin için panelime gel."
+                  : s === "shipped"
+                    ? "Sipariş kargoya verildi. Detayda kargo takip numarasını görebilirsin."
+                    : s === "in_production" ||
+                        s === "fason_assigned" ||
+                        s === "ready_to_ship"
+                      ? "Üretim atölyemizde baskıda. 5 iş günü içinde kargoya verilir."
+                      : s === "proof_approved"
+                        ? "Onayın alındı, üretim kuyruğuna düştü. Kısa süre içinde baskı başlar."
+                        : "Prova onayı sonrası baskı → 5 iş günü kargo → kapına teslim.";
 
               return (
                 <>
@@ -338,13 +351,26 @@ function OdemeSonucInner() {
                   </li>
                   <li className="flex gap-3.5 items-start">
                     <StepIcon state={stateFor(3)} num={3} />
-                    <div>
+                    <div className="flex-1">
                       <div className="font-semibold text-base">
                         {t.orderSuccess.step2Title}
                       </div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
                         {t.orderSuccess.step2Desc}
                       </p>
+                      {/* Sefa 22 May v68: Step 3 aktif olunca inline buton —
+                          müşteri direkt prova sayfasına gitsin. */}
+                      {stateFor(3) === "active" && (
+                        <div className="mt-2.5">
+                          <Button
+                            variant="primary"
+                            size="md"
+                            href={`/siparis/${orderId}`}
+                          >
+                            Provayı İncele →
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </li>
                   <li className="flex gap-3.5 items-start">
