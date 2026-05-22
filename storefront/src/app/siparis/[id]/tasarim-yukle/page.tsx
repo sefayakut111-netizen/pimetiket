@@ -23,6 +23,7 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
+import { cn } from "@/lib/cn";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import {
   ALLOWED_MIME_TYPES,
@@ -36,7 +37,11 @@ interface OrderItem {
   qty: number;
   width: number;
   height: number;
-  hasDesign: boolean; // design_files'ta kayıt var mı
+  hasDesign: boolean; // design_files'ta kayit var mi (en az 1)
+  // Sefa 22 May v68 — Multi-design destek:
+  designsRequired: number; // kac tasarim gerekli (meta.designCount, default 1)
+  designsUploaded: number; // su ana kadar kac yuklendi
+  designsComplete: boolean; // designsUploaded >= designsRequired
 }
 
 interface OrderInfo {
@@ -110,14 +115,19 @@ export default function TasarimYuklePage({
     void load();
   }, [load]);
 
-  // Tüm itemler hasDesign=true olduğunda /onay'a yönlendir
+  // Sefa 22 May v68 — Multi-design: TÜM tasarımlar tamamlandığında
+  // (designsUploaded >= designsRequired her item için) /siparis detaya yönlendir.
+  // Önceden hasDesign=true yeterliydi (eksik upload'da bile yönlendiriyordu).
   useEffect(() => {
     if (!order) return;
-    const allDone = order.items.length > 0 && order.items.every((i) => i.hasDesign);
+    const allDone =
+      order.items.length > 0 &&
+      order.items.every((i) => i.designsComplete);
     if (allDone) {
-      // DB trigger 'awaiting_upload → proof_pending' işlemini yaptı — biraz bekle, sonra yönlendir
-      toast.success("Tüm tasarımlar yüklendi, onay sayfasına yönlendiriliyor…");
-      const t = setTimeout(() => router.push(`/onay/${orderId}`), 1500);
+      toast.success(
+        "Tum tasarimlar yuklendi, siparis detayina yonlendiriliyor..."
+      );
+      const t = setTimeout(() => router.push(`/siparis/${orderId}`), 1500);
       return () => clearTimeout(t);
     }
   }, [order, orderId, router, toast]);
@@ -177,17 +187,28 @@ export default function TasarimYuklePage({
         throw new Error(e.error || `complete_failed_${compRes.status}`);
       }
 
-      toast.success(`${item.title}: tasarım yüklendi`);
+      const slotInfo =
+        item.designsRequired > 1
+          ? ` (${item.designsUploaded + 1}/${item.designsRequired})`
+          : "";
+      toast.success(`${item.title}${slotInfo}: tasarim yuklendi`);
 
-      // Sefa 21 May v68 — Optimistic update: hasDesign=true işaretle hemen
-      // (UI'da "✓ Tasarım yüklendi" rozeti anında görünsün).
+      // Sefa 22 May v68 — Optimistic update: designsUploaded++ ve
+      // hasDesign/designsComplete derive et.
       setOrder((prev) =>
         prev
           ? {
               ...prev,
-              items: prev.items.map((i) =>
-                i.id === item.id ? { ...i, hasDesign: true } : i
-              ),
+              items: prev.items.map((i) => {
+                if (i.id !== item.id) return i;
+                const newUploaded = (i.designsUploaded ?? 0) + 1;
+                return {
+                  ...i,
+                  designsUploaded: newUploaded,
+                  designsComplete: newUploaded >= i.designsRequired,
+                  hasDesign: true,
+                };
+              }),
             }
           : prev
       );
@@ -243,7 +264,17 @@ export default function TasarimYuklePage({
     );
   }
 
-  const pendingCount = order.items.filter((i) => !i.hasDesign).length;
+  // Sefa 22 May v68: Bekleyen sayım — designsComplete olmayanları say.
+  // Multi-design: 3 tasarım gerekiyor 1 yüklü → hala "1 bekliyor".
+  const pendingCount = order.items.filter((i) => !i.designsComplete).length;
+  const totalRequired = order.items.reduce(
+    (s, i) => s + (i.designsRequired ?? 1),
+    0
+  );
+  const totalUploaded = order.items.reduce(
+    (s, i) => s + (i.designsUploaded ?? 0),
+    0
+  );
 
   return (
     <main className="container py-6">
@@ -253,7 +284,17 @@ export default function TasarimYuklePage({
           Tasarımlarını yükle
         </h1>
         <p className="mt-1 text-sm text-gri-700">
-          {order.items.length} ürün · {pendingCount} tasarım bekleniyor
+          {order.items.length} urun ·{" "}
+          <strong className="text-lacivert tabular-nums">
+            {totalUploaded}/{totalRequired}
+          </strong>{" "}
+          tasarim yuklendi
+          {pendingCount > 0 && (
+            <span className="text-pim-mercan font-semibold">
+              {" "}
+              · {pendingCount} kalan
+            </span>
+          )}
         </p>
       </div>
 
@@ -273,23 +314,98 @@ export default function TasarimYuklePage({
       </Card>
 
       <div className="grid gap-4">
-        {order.items.map((item) => (
-          <Card key={item.id} className="p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex-1">
-                <h3 className="font-semibold text-lacivert">{item.title}</h3>
-                <p className="mt-1 text-sm text-gri-700">
-                  {item.qty} ad · {item.width}×{item.height} mm
-                </p>
-                {item.hasDesign && (
-                  <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-yesil-soft px-3 py-1 text-xs font-medium text-yesil">
-                    ✓ Tasarım yüklendi
+        {order.items.map((item) => {
+          const required = item.designsRequired ?? 1;
+          const uploaded = item.designsUploaded ?? 0;
+          const remaining = Math.max(0, required - uploaded);
+          const isMulti = required > 1;
+          const isComplete = item.designsComplete;
+          const isUploading = uploadingItemId === item.id;
+
+          // Buton label dinamik:
+          // - Multi-design + bazi tasarim var: "Tasarim X/Y yukle"
+          // - Tek tasarim: "Tasarim yukle"
+          // - Tamamlandi: rozet, buton yok
+          const buttonLabel = isUploading
+            ? "Yukleniyor..."
+            : isMulti
+              ? `Tasarim ${uploaded + 1}/${required} yukle`
+              : "Tasarim yukle";
+
+          return (
+            <Card key={item.id} className="p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lacivert">{item.title}</h3>
+                  <p className="mt-1 text-sm text-gri-700">
+                    {item.qty} ad · {item.width}×{item.height} mm
+                    {isMulti && (
+                      <>
+                        {" "}
+                        · <strong>{required} farkli tasarim</strong>
+                      </>
+                    )}
                   </p>
-                )}
-              </div>
-              <div className="shrink-0">
-                {!item.hasDesign ? (
-                  <>
+
+                  {/* Progress: yuklenmis tasarim sayisi (multi-design) */}
+                  {isMulti && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {Array.from({ length: required }).map((_, idx) => (
+                          <span
+                            key={idx}
+                            className={cn(
+                              "block w-7 h-2 rounded-full",
+                              idx < uploaded ? "bg-yesil" : "bg-gri-200"
+                            )}
+                            aria-hidden
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[12px] font-semibold text-gri-700 tabular-nums">
+                        {uploaded} / {required}
+                      </span>
+                    </div>
+                  )}
+
+                  {isComplete && (
+                    <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-yesil-soft px-3 py-1 text-xs font-medium text-yesil">
+                      ✓ {isMulti ? `${required} tasarim yuklendi` : "Tasarim yuklendi"}
+                    </p>
+                  )}
+                </div>
+                <div className="shrink-0">
+                  {!isComplete ? (
+                    <>
+                      <input
+                        ref={(el) => {
+                          fileInputs.current[item.id] = el;
+                        }}
+                        type="file"
+                        accept={ALLOWED_MIME_TYPES.join(",")}
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void handleFileSelect(item, f);
+                          // Reset input → ayni dosya tekrar secilebilsin
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => fileInputs.current[item.id]?.click()}
+                        disabled={isUploading}
+                      >
+                        {buttonLabel}
+                      </Button>
+                      {isMulti && remaining > 0 && uploaded > 0 && (
+                        <p className="mt-1.5 text-[11.5px] text-gri-500 text-right">
+                          {remaining} tasarim kaldi
+                        </p>
+                      )}
+                    </>
+                  ) : (
                     <input
                       ref={(el) => {
                         fileInputs.current[item.id] = el;
@@ -297,36 +413,13 @@ export default function TasarimYuklePage({
                       type="file"
                       accept={ALLOWED_MIME_TYPES.join(",")}
                       className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handleFileSelect(item, f);
-                      }}
                     />
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => fileInputs.current[item.id]?.click()}
-                      disabled={uploadingItemId === item.id}
-                    >
-                      {uploadingItemId === item.id
-                        ? "Yükleniyor…"
-                        : "Tasarım yükle"}
-                    </Button>
-                  </>
-                ) : (
-                  <input
-                    ref={(el) => {
-                      fileInputs.current[item.id] = el;
-                    }}
-                    type="file"
-                    accept={ALLOWED_MIME_TYPES.join(",")}
-                    className="hidden"
-                  />
                 )}
               </div>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-6 rounded-lg border border-gri-200 bg-gri-100/50 p-4 text-xs text-gri-700">

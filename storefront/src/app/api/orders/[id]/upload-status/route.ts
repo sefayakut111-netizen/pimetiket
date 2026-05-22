@@ -63,10 +63,10 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Item'ları çek
+  // Item'lari cek — meta'dan designCount al (multi-design destek)
   const { data: items } = await admin
     .from("order_items")
-    .select("id, title, qty, width, height")
+    .select("id, title, qty, width, height, meta")
     .eq("order_id", orderId);
   const itemRows =
     (items as Array<{
@@ -75,30 +75,47 @@ export async function GET(
       qty: number;
       width: number;
       height: number;
+      meta: { designCount?: number } | null;
     }> | null) ?? [];
 
-  // Her item için design_files var mı? — Tek sorgu, ardından map
+  // Her item icin design_files SAYISI (multi-design icin)
+  // Sefa 22 May v68 — onceki kod sadece "var mi" bool donduruyordu;
+  // simdi N tasarim slot'u icin "kac yuklendi / kac gerekli" rapor.
   const { data: dfs } = await admin
     .from("design_files")
     .select("order_item_id")
     .eq("order_id", orderId)
     .in("status", USABLE_DESIGN_STATUSES as unknown as string[]);
-  const itemsWithDesign = new Set(
-    ((dfs as Array<{ order_item_id: string | null }> | null) ?? [])
-      .map((d) => d.order_item_id)
-      .filter((id): id is string => typeof id === "string")
-  );
+  const designCountByItem = new Map<string, number>();
+  for (const d of ((dfs as Array<{ order_item_id: string | null }> | null) ??
+    [])) {
+    if (typeof d.order_item_id === "string") {
+      designCountByItem.set(
+        d.order_item_id,
+        (designCountByItem.get(d.order_item_id) ?? 0) + 1
+      );
+    }
+  }
 
   return NextResponse.json({
     id: orderRow.id,
     status: orderRow.status,
-    items: itemRows.map((it) => ({
-      id: it.id,
-      title: it.title,
-      qty: it.qty,
-      width: it.width,
-      height: it.height,
-      hasDesign: itemsWithDesign.has(it.id),
-    })),
+    items: itemRows.map((it) => {
+      const designsRequired = Math.max(1, it.meta?.designCount ?? 1);
+      const designsUploaded = designCountByItem.get(it.id) ?? 0;
+      return {
+        id: it.id,
+        title: it.title,
+        qty: it.qty,
+        width: it.width,
+        height: it.height,
+        // Eski API uyumu — boolean: en az 1 tasarim varsa true
+        hasDesign: designsUploaded > 0,
+        // Multi-design destek (Sefa 22 May v68)
+        designsRequired,
+        designsUploaded,
+        designsComplete: designsUploaded >= designsRequired,
+      };
+    }),
   });
 }
