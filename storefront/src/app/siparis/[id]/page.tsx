@@ -1328,6 +1328,7 @@ function ProofPreviewBox({
   // auto-load, OpenCV başlayınca otomatik bıçak + beyaz plan üretir.
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [iframeError, setIframeError] = useState<string | null>(null);
 
   // POC URL — designUrl + headless + layers seti
   const pocSrc = signedUrl
@@ -1350,9 +1351,18 @@ function ProofPreviewBox({
         return;
       const msg = e.data;
       if (!msg || typeof msg !== "object") return;
-      if (msg.type === "pim-poc-ready") setIframeReady(true);
+      if (msg.type === "pim-poc-ready") {
+        setIframeReady(true);
+        setIframeError(null);
+        console.log("[ProofPreviewBox] POC ready");
+      }
       if (msg.type === "pim-poc-loaded") {
-        // POC tasarımı yükledi — ek aksiyon yok şu an
+        console.log("[ProofPreviewBox] POC tasarım yükledi:", msg);
+        setIframeError(null);
+      }
+      if (msg.type === "pim-poc-error") {
+        console.error("[ProofPreviewBox] POC error:", msg.error);
+        setIframeError(String(msg.error));
       }
     }
     window.addEventListener("message", onMsg);
@@ -1402,6 +1412,16 @@ function ProofPreviewBox({
         ) : (
           <div className="absolute inset-0 grid place-items-center text-[12px] text-gri-500">
             Tasarım yükleniyor…
+          </div>
+        )}
+
+        {/* Error mesajı — POC iframe'den gelen pim-poc-error */}
+        {iframeError && (
+          <div className="absolute top-2 left-2 right-2 bg-kirmizi-soft border border-kirmizi/40 text-kirmizi text-[11.5px] px-3 py-2 rounded shadow-1">
+            <strong>POC hata:</strong> {iframeError}
+            <div className="text-[10px] text-gri-700 mt-1">
+              Browser Console&apos;u aç (F12), &quot;[pim-poc]&quot; satırlarına bak.
+            </div>
           </div>
         )}
 

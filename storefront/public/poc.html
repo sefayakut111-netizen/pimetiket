@@ -1662,16 +1662,55 @@ window.addEventListener('message', (e) => {
 });
 
 // Auto-load: designUrl varsa OpenCV hazır olunca fetch + handleFile
-async function pimAutoLoadDesign() {
-  if (!PIM_PARAMS.designUrl) return;
+// Sefa 22 May v68 — Verbose logging + canvas üzerine görsel hata mesajı.
+function pimShowError(message) {
+  console.error('[pim-poc]', message);
   try {
-    const res = await fetch(PIM_PARAMS.designUrl, { mode: 'cors' });
-    if (!res.ok) throw new Error('fetch_failed_' + res.status);
+    const canvas = document.getElementById('canvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      canvas.width = 600;
+      canvas.height = 200;
+      ctx.fillStyle = '#fef2f2';
+      ctx.fillRect(0, 0, 600, 200);
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Tasarım yüklenemedi', 300, 90);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(String(message).slice(0, 80), 300, 120);
+    }
+  } catch (e) {}
+  pimPostToParent({ type: 'pim-poc-error', error: String(message) });
+}
+
+async function pimAutoLoadDesign() {
+  if (!PIM_PARAMS.designUrl) {
+    console.log('[pim-poc] designUrl yok, auto-load atlandı');
+    return;
+  }
+  console.log('[pim-poc] auto-load başlıyor:', PIM_PARAMS.designUrl);
+  try {
+    // Önce CORS no-cors deneyimi yapsak da blob alamayız (opaque).
+    // Direkt cors mode + Supabase response Access-Control-Allow-Origin: *
+    // beklentisi. Fail ise hata mesajını net göster.
+    let res;
+    try {
+      res = await fetch(PIM_PARAMS.designUrl, { mode: 'cors' });
+    } catch (fetchErr) {
+      throw new Error('CORS_BLOCKED: ' + (fetchErr.message || fetchErr));
+    }
+    console.log('[pim-poc] fetch OK, status:', res.status);
+    if (!res.ok) throw new Error('HTTP_' + res.status);
     const blob = await res.blob();
+    console.log('[pim-poc] blob alındı:', blob.size, 'bytes, type:', blob.type);
+    if (blob.size === 0) throw new Error('EMPTY_BLOB');
     // Dosya adını URL'den çıkar
     const urlObj = new URL(PIM_PARAMS.designUrl);
     const name = urlObj.pathname.split('/').pop() || 'design.png';
     const file = new File([blob], name, { type: blob.type || 'image/png' });
+    console.log('[pim-poc] handleFile çağrılıyor:', name);
     if (typeof handleFile === 'function') {
       handleFile(file);
       // Auto-load sonrası parent'a sinyal — handleFile async sürebilir
@@ -1683,9 +1722,11 @@ async function pimAutoLoadDesign() {
           height: currentMat ? currentMat.rows : 0,
         });
       }, 2000);
+    } else {
+      throw new Error('handleFile_not_defined');
     }
   } catch (err) {
-    pimPostToParent({ type: 'pim-poc-error', error: String(err) });
+    pimShowError(err.message || err);
   }
 }
 
