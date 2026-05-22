@@ -212,19 +212,19 @@ function OdemeSonucInner() {
             {t.orderSuccess.nextStepsTitle}
           </h3>
           <ol className="space-y-4">
-            {/* Sefa 22 May v68 — 4 adımlı status-aware step gösterimi:
-                1. Tasarım dosyası yükle
-                2. AI ön-kontrol + bıçak çizimi (otomatik, sistem yapar)
-                3. Provayı incele ve onayla
-                4. Üretim + kapına teslim
+            {/* Sefa 22 May v68 - 4 adimli status-aware step gosterimi:
+                1. Tasarim dosyasi yukle
+                2. AI on-kontrol + bicak cizimi (otomatik, sistem yapar)
+                3. Provayi incele ve onayla
+                4. Uretim + kapina teslim
 
-                Status → aktif step:
-                - awaiting_upload → 1
-                - paid/qc_*/operator_review/proof_generating → 2
-                - proof_pending → 3
+                Status -> aktif step:
+                - awaiting_upload -> 1
+                - paid/qc_x/operator_review/proof_generating -> 2
+                - proof_pending -> 3
                 - proof_approved/in_production/ready_to_ship/fason_assigned/
-                  shipped → 4
-                - delivered → tümü done */}
+                  shipped -> 4
+                - delivered -> tumu done */}
             {(() => {
               const s = order?.status ?? "awaiting_upload";
               const activeStep =
@@ -388,10 +388,10 @@ function OdemeSonucInner() {
           </ol>
         </Card>
 
-        {/* Sefa 22 May v68 — CTA tam status-aware:
-            - awaiting_upload → /siparis/[id]/tasarim-yukle (tasarım yükle)
-            - proof_generating/proof_pending → /siparis/[id] (prova izle/onayla)
-            - diğer → sipariş detayı */}
+        {/* Sefa 22 May v68 - CTA tam status-aware:
+            - awaiting_upload -> /siparis/[id]/tasarim-yukle (tasarim yukle)
+            - proof_generating/proof_pending -> /siparis/[id] (prova izle/onayla)
+            - diger -> siparis detayi */}
         <div className="mt-8 flex gap-3 justify-center flex-wrap">
           {order?.status === "awaiting_upload" ? (
             <Button
