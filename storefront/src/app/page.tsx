@@ -156,67 +156,38 @@ export default function HomePage() {
                 kaldırıldı, hero açıklamasında zaten geçiyor. */}
           </div>
 
-          {/* RIGHT — Hero görsel (Sefa 17 May v14)
-              · 5:4 yatay, daha yumuşak edge
-              · Halo + mask krem rengiyle uyumlu (görselin arka plan bej
-                tonu sayfanın krem-soft arka planıyla doğal kaynaşır)
-              · Drop shadow krem-koyu tonunda warm gölge */}
-          <div className="relative flex justify-center items-center min-h-[360px] md:min-h-[460px]">
-            {/* Soft krem halo — görselin arka plan bej tonuyla aynı palette */}
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(ellipse 95% 75% at center, var(--color-krem-soft) 0%, var(--color-krem-soft) 35%, transparent 80%)",
-              }}
-            />
-
-            {/* Görsel — geniş yumuşak mask + warm drop shadow.
-                Sefa 17 May v33: next/image ile otomatik WebP/AVIF + responsive
-                sizes + priority (LCP image).
-                Sefa 21 May v68 (Image migration #2): Supabase Storage
-                remote pattern next.config'te aktif → DB URL'i de Next/Image
-                ile (AVIF/WebP otomatik dönüşüm + lazy + CLS=0). */}
-            {/* Sefa 23 May v68: aspect-[5/4] (kareye yakin) → aspect-[2/1]
-                (uzun ince yatay panoramik). Yeni hero gorselin (sticker +
-                kavanoz + laptop + mug kompozisyonu) merkez aksi yatay,
-                bu oran kompozisyonu kirpmadan tam gosterir. max-w 640 →
-                780 (uzun ince icin biraz daha genis alan). */}
-            <div className="relative z-10 w-full max-w-[780px] aspect-[2/1]">
+          {/* RIGHT — Hero görsel (Sefa 17 May v14, 23 May v68 update)
+              · Sefa 23 May v68 (uçtan uca): max-w-[780px] kaldırıldı,
+                image column tam doldurur ve viewport sağ kenarına kadar
+                bleed eder (negative margin ile container padding'i bypass).
+              · Halo arka plan kaldırıldı (görsel zaten edge-to-edge, halo
+                gerek yok) */}
+          <div className="relative flex items-center min-h-[300px] md:min-h-[420px] md:-mr-8 lg:-mr-[max(0px,calc((100vw-1280px)/2+2rem))]">
+            {/* Görsel — Next/Image otomatik WebP/AVIF + responsive sizes
+                + priority (LCP image). Sefa 23 May v68: mask kaldırıldı
+                (uçtan uca tasarım için temiz dikdörtgen edge daha doğru;
+                soft drop-shadow alttan derinlik veriyor). */}
+            <div className="relative z-10 w-full aspect-[2/1]">
               {homeHero ? (
                 <Image
                   src={homeHero.publicUrl}
                   alt={
                     homeHero.altText ??
-                    "Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
+                    "Pim Etiket — sticker, etiket ve uygulama örnekleri"
                   }
                   fill
                   priority
-                  sizes="(max-width: 768px) 100vw, 640px"
-                  className="object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
-                  style={{
-                    WebkitMaskImage:
-                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
-                    maskImage:
-                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
-                  }}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover rounded-l-2xl md:rounded-l-3xl shadow-[0_20px_50px_-15px_rgba(180,140,90,0.28)]"
                 />
               ) : (
                 <Image
                   src="/hero/home-hero.jpg"
                   alt="Pim Etiket — sticker, etiket, kavanoz, laptop ve mug uygulama örnekleri"
-                  width={1530}
-                  height={1000}
+                  fill
                   priority
-                  sizes="(max-width: 768px) 100vw, 780px"
-                  className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
-                  style={{
-                    WebkitMaskImage:
-                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
-                    maskImage:
-                      "radial-gradient(ellipse 95% 85% at center, black 40%, transparent 95%)",
-                  }}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover rounded-l-2xl md:rounded-l-3xl shadow-[0_20px_50px_-15px_rgba(180,140,90,0.28)]"
                 />
               )}
             </div>
