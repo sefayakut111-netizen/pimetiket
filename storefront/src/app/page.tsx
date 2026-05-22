@@ -104,8 +104,14 @@ export default function HomePage() {
           />
         )}
 
-        {/* Sefa 23 May v68: beyaz gradient overlay kaldirildi (Sefa karari).
-            Gorsel zaten acik bej arka plan, metin overlay olmadan okunabilir. */}
+        {/* Sefa 23 May v68: yazinin arkasi beyaz serit (Sefa karari).
+            Mobile: tum overlay beyaz (banner dar, metin okunsun).
+            Desktop: sol %55 sert kenarli beyaz serit, sag %45 gorsel net.
+            Sert kenar yerine 40px soft fade ile gorsele yumusak gecis. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-white md:bg-transparent md:bg-gradient-to-r md:from-white md:from-50% md:via-white md:via-55% md:to-transparent md:to-62%"
+        />
 
         {/* Metin overlay — sol-vertical center, container içinde */}
         <div className="relative mx-auto max-w-[1280px] min-h-[480px] md:min-h-[600px] px-4 md:px-8 flex items-center">
