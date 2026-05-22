@@ -104,13 +104,8 @@ export default function HomePage() {
           />
         )}
 
-        {/* Sol taraf beyaz fade overlay — metin kontrast için.
-            md+ : sol %50 alanı yumuşatır, sağda görsel görünür kalır.
-            mobile: tüm overlay daha yoğun (metin küçük ekranda okunsun). */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/0 md:from-white md:via-white/70 md:to-transparent"
-        />
+        {/* Sefa 23 May v68: beyaz gradient overlay kaldirildi (Sefa karari).
+            Gorsel zaten acik bej arka plan, metin overlay olmadan okunabilir. */}
 
         {/* Metin overlay — sol-vertical center, container içinde */}
         <div className="relative mx-auto max-w-[1280px] min-h-[480px] md:min-h-[600px] px-4 md:px-8 flex items-center">
