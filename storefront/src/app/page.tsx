@@ -104,18 +104,14 @@ export default function HomePage() {
           />
         )}
 
-        {/* Sefa 23 May v68: yazinin arkasi beyaz serit (Sefa karari).
-            Mobile: tum overlay beyaz (banner dar, metin okunsun).
-            Desktop: sol %55 sert kenarli beyaz serit, sag %45 gorsel net.
-            Sert kenar yerine 40px soft fade ile gorsele yumusak gecis. */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-white md:bg-transparent md:bg-gradient-to-r md:from-white md:from-50% md:via-white md:via-55% md:to-transparent md:to-62%"
-        />
+        {/* Sefa 23 May v68 (revize): "yazilarin altinda serit gibi" —
+            tum sol yari overlay degil, sadece metni saran beyaz card/serit.
+            Overlay div kaldirildi, text wrapper'a bg-white + padding +
+            rounded + soft shadow eklendi. */}
 
         {/* Metin overlay — sol-vertical center, container içinde */}
         <div className="relative mx-auto max-w-[1280px] min-h-[480px] md:min-h-[600px] px-4 md:px-8 flex items-center">
-          <div className="max-w-[560px] py-12">
+          <div className="max-w-[560px] bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-[0_20px_50px_-15px_rgba(60,40,20,0.18)]">
             <Eyebrow>{t.home.eyebrow}</Eyebrow>
             <h1 className="mt-5 text-[34px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
               {t.home.h1Brand}
