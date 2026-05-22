@@ -87,7 +87,9 @@ export default function HomePage() {
           }}
         />
         {/* Uçuşan etiketler kaldırıldı (Sefa kararı 12 May) */}
-        <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-8 md:gap-14 items-center">
+        {/* Sefa 23 May v68: grid [1.1fr_0.9fr] → [0.85fr_1.15fr] (image
+            kolonu daha dominant — "daha büyük hero" Sefa kararı). */}
+        <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[0.85fr_1.15fr] gap-8 md:gap-14 items-center">
           {/* LEFT — copy */}
           <div>
             <Eyebrow>{t.home.eyebrow}</Eyebrow>
@@ -162,12 +164,12 @@ export default function HomePage() {
                 bleed eder (negative margin ile container padding'i bypass).
               · Halo arka plan kaldırıldı (görsel zaten edge-to-edge, halo
                 gerek yok) */}
-          <div className="relative flex items-center min-h-[300px] md:min-h-[420px] md:-mr-8 lg:-mr-[max(0px,calc((100vw-1280px)/2+2rem))]">
+          <div className="relative flex items-center min-h-[360px] md:min-h-[560px] md:-mr-8 lg:-mr-[max(0px,calc((100vw-1280px)/2+2rem))]">
             {/* Görsel — Next/Image otomatik WebP/AVIF + responsive sizes
-                + priority (LCP image). Sefa 23 May v68: mask kaldırıldı
-                (uçtan uca tasarım için temiz dikdörtgen edge daha doğru;
-                soft drop-shadow alttan derinlik veriyor). */}
-            <div className="relative z-10 w-full aspect-[2/1]">
+                + priority (LCP image). Sefa 23 May v68 update: aspect 2/1
+                → 3/2 (görselin gerçek oranı, crop sıfır, daha yüksek = daha
+                "büyük" his). min-h 420 → 560 (geniş kompozisyon yer açar). */}
+            <div className="relative z-10 w-full aspect-[3/2]">
               {homeHero ? (
                 <Image
                   src={homeHero.publicUrl}
