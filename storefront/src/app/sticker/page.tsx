@@ -538,16 +538,20 @@ function StickerProductCard({
 
 // Sefa 21 May v68 Mig 074: DB card → STICKER_CARDS UI format
 function dbCardToStickerCard(db: DbProductCard): StickerCard | null {
+  // Sefa 22 May v68: image_src DB column'u var ama buraya map edilmemişti
+  // → kart hep svg fallback'e düşüyordu (coral blob). Mig 080 ile DB'de
+  // image_src jpg path'leri var; artık öncelikli olarak imageSrc kullan,
+  // svg sadece DB null dönerse fallback olarak.
   const SvgComponent = getStickerCardSvg(db.svg_id);
   const queryStr = buildCardQueryString(db.query_params);
   return {
-    // Eski format: query string (ön ek "?" olmadan)
     query: queryStr.startsWith("?") ? queryStr.slice(1) : queryStr,
     titleTr: db.title_tr,
     titleEn: db.title_en,
     descTr: db.desc_tr,
     descEn: db.desc_en,
     svg: <SvgComponent />,
+    imageSrc: db.image_src ?? undefined,
   };
 }
 

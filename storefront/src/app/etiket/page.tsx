@@ -133,9 +133,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Circle Sheet Label",
     descTr: "Düşük adet daire — hediye, butik",
     descEn: "Low quantity circles — gifts, boutique",
-    // Sefa 22 May v68: yeni Küçültülmüş klasörde tabaka-circle yok →
-    // geçici olarak SVG fallback. Sefa hazırlayınca .jpg'ye geç.
-    imageSrc: "/assets/svg/cards/tabaka-circle.svg",
+    imageSrc: "/assets/img/cards/tabaka-circle.jpg",
   },
   {
     shape: "diecut",
@@ -155,8 +153,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Oval Sheet Label",
     descTr: "Düşük adet oval kesim",
     descEn: "Low quantity oval cut",
-    // Sefa 22 May v68: tabaka-oval PNG için Sefa onayı bekliyor
-    imageSrc: "/assets/svg/cards/tabaka-oval.svg",
+    imageSrc: "/assets/img/cards/tabaka-oval.jpg",
   },
   {
     shape: "rectangle",
