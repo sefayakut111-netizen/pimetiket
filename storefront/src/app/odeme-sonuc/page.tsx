@@ -212,49 +212,124 @@ function OdemeSonucInner() {
             {t.orderSuccess.nextStepsTitle}
           </h3>
           <ol className="space-y-4">
-            <li className="flex gap-3.5 items-start">
-              <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white font-bold text-[13px] shrink-0">
-                1
-              </span>
-              <div>
-                <div className="font-semibold text-base">
-                  {t.orderSuccess.step1Title}
-                </div>
-                <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                  {t.orderSuccess.step1Desc}
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-3.5 items-start">
-              <span className="grid place-items-center w-7 h-7 rounded-full bg-gri-200 text-gri-500 font-bold text-[13px] shrink-0">
-                2
-              </span>
-              <div>
-                <div className="font-semibold text-base">{t.orderSuccess.step2Title}</div>
-                <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                  {t.orderSuccess.step2Desc}
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-3.5 items-start">
-              <span className="grid place-items-center w-7 h-7 rounded-full bg-gri-200 text-gri-500 font-bold text-[13px] shrink-0">
-                3
-              </span>
-              <div>
-                <div className="font-semibold text-base">
-                  {t.orderSuccess.step3Title}
-                </div>
-                <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                  {t.orderSuccess.step3Desc}
-                </p>
-              </div>
-            </li>
+            {/* Sefa 22 May v68 — Status-aware step gösterimi:
+                - awaiting_upload → 1. adım aktif (kırmızı), 2-3 bekliyor
+                - paid/qc_*/operator_review → 1. ✓, 2. aktif (Pim çalışıyor)
+                - proof_generating/proof_pending → 1. ✓, 2. aktif (onayında)
+                - proof_approved+/in_production+ → 1. ✓, 2. ✓, 3. aktif */}
+            {(() => {
+              const s = order?.status ?? "awaiting_upload";
+              const designDone = s !== "awaiting_upload";
+              const proofDone =
+                s === "proof_approved" ||
+                s === "in_production" ||
+                s === "ready_to_ship" ||
+                s === "fason_assigned" ||
+                s === "shipped" ||
+                s === "delivered";
+              const proofActive =
+                designDone && !proofDone;
+              const shipActive = proofDone;
+
+              function StepIcon({
+                state,
+                num,
+              }: {
+                state: "done" | "active" | "waiting";
+                num: number;
+              }) {
+                if (state === "done") {
+                  return (
+                    <span className="grid place-items-center w-7 h-7 rounded-full bg-yesil text-white font-bold text-[13px] shrink-0">
+                      <Icon.Check size={14} />
+                    </span>
+                  );
+                }
+                if (state === "active") {
+                  return (
+                    <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white font-bold text-[13px] shrink-0">
+                      {num}
+                    </span>
+                  );
+                }
+                return (
+                  <span className="grid place-items-center w-7 h-7 rounded-full bg-gri-200 text-gri-500 font-bold text-[13px] shrink-0">
+                    {num}
+                  </span>
+                );
+              }
+
+              const step1State = designDone ? "done" : "active";
+              const step2State = proofDone
+                ? "done"
+                : proofActive
+                  ? "active"
+                  : "waiting";
+              const step3State = shipActive ? "active" : "waiting";
+
+              // Step 2 label dinamik: proof_generating → "Bıçak hazırlanıyor"
+              const step2DynamicTitle =
+                s === "proof_generating"
+                  ? "Bıçak çizimi hazırlanıyor"
+                  : s === "proof_pending"
+                    ? "Provanı incele ve onayla"
+                    : s === "qc_flagged"
+                      ? "AI ön-kontrol uyarısı"
+                      : t.orderSuccess.step2Title;
+              const step2DynamicDesc =
+                s === "proof_generating"
+                  ? "AI ön-kontrol geçti, otomatik bıçak çizimi 5 dakika içinde hazır. Sipariş detayında ilerlemeyi izleyebilirsin."
+                  : s === "proof_pending"
+                    ? "Bıçak çizimi hazır. Sipariş detayında inceleyip onaylayabilirsin."
+                    : t.orderSuccess.step2Desc;
+
+              return (
+                <>
+                  <li className="flex gap-3.5 items-start">
+                    <StepIcon state={step1State} num={1} />
+                    <div>
+                      <div className="font-semibold text-base">
+                        {designDone ? "Tasarım yüklendi" : t.orderSuccess.step1Title}
+                      </div>
+                      <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
+                        {designDone
+                          ? "AI ön-kontrolden geçti, sistem işliyor."
+                          : t.orderSuccess.step1Desc}
+                      </p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3.5 items-start">
+                    <StepIcon state={step2State} num={2} />
+                    <div>
+                      <div className="font-semibold text-base">
+                        {step2DynamicTitle}
+                      </div>
+                      <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
+                        {step2DynamicDesc}
+                      </p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3.5 items-start">
+                    <StepIcon state={step3State} num={3} />
+                    <div>
+                      <div className="font-semibold text-base">
+                        {t.orderSuccess.step3Title}
+                      </div>
+                      <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
+                        {t.orderSuccess.step3Desc}
+                      </p>
+                    </div>
+                  </li>
+                </>
+              );
+            })()}
           </ol>
         </Card>
 
-        {/* Sefa 19 May v68 — Mig 061: Eğer sipariş awaiting_upload durumunda
-            ise (müşteri tasarımsız ödedi) primer CTA tasarım yükleme sayfasına
-            gider. Aksi halde baskı onay sayfasına. */}
+        {/* Sefa 22 May v68 — CTA tam status-aware:
+            - awaiting_upload → /siparis/[id]/tasarim-yukle (tasarım yükle)
+            - proof_generating/proof_pending → /siparis/[id] (prova izle/onayla)
+            - diğer → sipariş detayı */}
         <div className="mt-8 flex gap-3 justify-center flex-wrap">
           {order?.status === "awaiting_upload" ? (
             <Button
@@ -264,14 +339,28 @@ function OdemeSonucInner() {
             >
               Tasarımını yükle →
             </Button>
+          ) : order?.status === "proof_generating" ||
+            order?.status === "proof_pending" ? (
+            <Button
+              variant="primary"
+              size="lg"
+              href={`/siparis/${orderId}`}
+            >
+              {order.status === "proof_generating"
+                ? "Bıçak çizimini izle →"
+                : "Provayı incele ve onayla →"}
+            </Button>
           ) : (
-            <Button variant="primary" size="lg" href={`/onay/${orderId}`}>
-              Baskı önizlemesini onayla →
+            <Button variant="primary" size="lg" href={`/siparis/${orderId}`}>
+              <Icon.Box size={16} /> Sipariş detayı →
             </Button>
           )}
-          <Button variant="secondary" size="lg" href={`/siparis/${orderId}`}>
-            <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
-          </Button>
+          {/* Sekunder: primer CTA sipariş detayına gitmiyorsa, ek olarak göster */}
+          {order?.status === "awaiting_upload" && (
+            <Button variant="secondary" size="lg" href={`/siparis/${orderId}`}>
+              <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
+            </Button>
+          )}
         </div>
 
         <p className="mt-8 text-[13px] text-gri-500 leading-relaxed">
