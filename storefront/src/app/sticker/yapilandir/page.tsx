@@ -904,7 +904,7 @@ function StickerPage() {
                 Sticker", "Yarı Kesim Sticker", "Sticker Sayfası". */}
             {(() => {
               const isEn = locale === "en";
-              if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Tabaka Sticker";
+              if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Sticker Sayfası";
               if (cutMode === "kisscut") return isEn ? "Kiss-Cut Sticker" : "Yarı Kesim Sticker";
               if (material === "holo") return isEn ? "Holographic Sticker" : "Holografik Sticker";
               if (material === "simli") return isEn ? "Glitter Sticker" : "Simli Sticker";

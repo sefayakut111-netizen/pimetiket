@@ -119,12 +119,14 @@ export default function HomePage() {
             <p className="mt-6 text-lg text-gri-700 max-w-[480px] leading-relaxed">
               {t.home.heroDescription}
             </p>
+            {/* Sefa 22 May v68: Sticker önde + primary (Sefa kararı —
+                sticker satışı önceliği). Etiket secondary olarak ikinci. */}
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button variant="primary" size="lg" href="/etiket">
-                <Icon.Roll size={18} /> {t.home.ctaEtiket}
-              </Button>
-              <Button variant="secondary" size="lg" href="/sticker">
+              <Button variant="primary" size="lg" href="/sticker">
                 <Icon.Sticker size={18} /> {t.home.ctaSticker}
+              </Button>
+              <Button variant="secondary" size="lg" href="/etiket">
+                <Icon.Roll size={18} /> {t.home.ctaEtiket}
               </Button>
             </div>
             {/* Sefa kuralı (16 May denetim #23): Oturum açıkken

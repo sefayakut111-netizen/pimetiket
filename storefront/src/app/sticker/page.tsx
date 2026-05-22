@@ -476,11 +476,12 @@ const STICKER_CARDS: StickerCard[] = [
     imageSrc: "/assets/img/cards/sticker-glitter-holo.jpg",
   },
   {
-    // Sefa 21 May v68 (ürün denetim P2 #15 + #16): "Sticker Sayfası" web
-    // sayfası izlenimi veriyor; "karma şekiller" iddiası teknik olarak
-    // tek şekil. Daha açıklayıcı isim: "Tabaka Sticker".
+    // Sefa 22 May v68 (revize): "Tabaka Sticker" → "Sticker Sayfası".
+    // Önceki "web sayfası izlenimi" gerekçesi geri alındı — Sefa müşteri
+    // dilinde "tabaka" yerine "sayfa"yı tercih ediyor (e-ticaret yaygın
+    // kullanım: "sticker sayfası satın al"). Mig 082 ile DB de senkron.
     query: "cut=tabaka&shape=square",
-    titleTr: "Tabaka Sticker",
+    titleTr: "Sticker Sayfası",
     titleEn: "Sticker Sheet",
     descTr: "Aynı tasarımdan çok adet — tek tabakada",
     descEn: "Many copies of one design — on a single sheet",
