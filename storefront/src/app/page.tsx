@@ -178,7 +178,12 @@ export default function HomePage() {
                 Sefa 21 May v68 (Image migration #2): Supabase Storage
                 remote pattern next.config'te aktif → DB URL'i de Next/Image
                 ile (AVIF/WebP otomatik dönüşüm + lazy + CLS=0). */}
-            <div className="relative z-10 w-full max-w-[640px] aspect-[5/4]">
+            {/* Sefa 23 May v68: aspect-[5/4] (kareye yakin) → aspect-[2/1]
+                (uzun ince yatay panoramik). Yeni hero gorselin (sticker +
+                kavanoz + laptop + mug kompozisyonu) merkez aksi yatay,
+                bu oran kompozisyonu kirpmadan tam gosterir. max-w 640 →
+                780 (uzun ince icin biraz daha genis alan). */}
+            <div className="relative z-10 w-full max-w-[780px] aspect-[2/1]">
               {homeHero ? (
                 <Image
                   src={homeHero.publicUrl}
@@ -199,12 +204,12 @@ export default function HomePage() {
                 />
               ) : (
                 <Image
-                  src="/hero/home-hero.png"
-                  alt="Pim Etiket — bal kavanozu, rulo etiket ve sticker örnekleri"
-                  width={1200}
-                  height={960}
+                  src="/hero/home-hero.jpg"
+                  alt="Pim Etiket — sticker, etiket, kavanoz, laptop ve mug uygulama örnekleri"
+                  width={1530}
+                  height={1000}
                   priority
-                  sizes="(max-width: 768px) 100vw, 640px"
+                  sizes="(max-width: 768px) 100vw, 780px"
                   className="w-full h-full object-cover drop-shadow-[0_25px_45px_rgba(180,140,90,0.18)]"
                   style={{
                     WebkitMaskImage:
