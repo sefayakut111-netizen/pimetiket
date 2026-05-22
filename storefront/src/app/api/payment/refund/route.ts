@@ -21,7 +21,20 @@ const RefundBodySchema = z.object({
   amount: z.number().positive().optional(),
   reason: z.string().max(500).optional(),
   returnId: z.string().uuid().optional(),
+  // Sefa 22 May v68 — "Baskıdan sonra iade yok" kuralını admin override
+  // edebilir (paketleme hatası, kargo kaybı vs özel durumlar).
+  // force=true → POST_PRODUCTION_STATUSES kontrolü atlanır, audit log'da işaretlenir.
+  force: z.boolean().optional(),
 });
+
+// Sefa 22 May v68 — Anayasa kuralı: baskıdan sonra iade yok.
+// Bu statüler 422 döner (force=true ile bypass edilebilir).
+const POST_PRODUCTION_STATUSES = new Set([
+  "in_production",
+  "shipped",
+  "out_for_delivery",
+  "delivered",
+]);
 
 interface PaymentRow {
   id: string;
@@ -64,8 +77,43 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Başarılı charge'ı bul (PayTR'de psp_transaction_id = merchant_oid)
   const admin = createAdminClient();
+
+  // Sefa 22 May v68 — "Baskıdan sonra iade yok" enforcement.
+  // Sipariş status'ünü çek; in_production / shipped+ ise force flag istemeden
+  // reddet. Admin gerçekten istiyorsa force=true + reason ile geçer.
+  const { data: orderRow } = await admin
+    .from("orders")
+    .select("status")
+    .eq("id", body.orderId)
+    .maybeSingle();
+  const orderStatus =
+    (orderRow as { status?: string } | null)?.status ?? null;
+  if (!orderStatus) {
+    return NextResponse.json({ error: "order_not_found" }, { status: 404 });
+  }
+  if (POST_PRODUCTION_STATUSES.has(orderStatus) && !body.force) {
+    return NextResponse.json(
+      {
+        error: "post_production_refund_blocked",
+        status: orderStatus,
+        hint: "Baskı sonrası iade kuralı gereği reddedildi. Gerçekten gerekiyorsa istek body'sine force=true ve reason ekleyerek tekrar dene; audit log'da işaretlenir.",
+      },
+      { status: 422 }
+    );
+  }
+  // force kullanılırsa reason mecburi (audit için)
+  if (body.force && (!body.reason || body.reason.trim().length < 10)) {
+    return NextResponse.json(
+      {
+        error: "force_requires_reason",
+        hint: "force=true ile baskı sonrası iade için reason (>=10 char) zorunlu.",
+      },
+      { status: 400 }
+    );
+  }
+
+  // Başarılı charge'ı bul (PayTR'de psp_transaction_id = merchant_oid)
   const { data: charges, error: chargeErr } = await admin
     .from("payments")
     .select("*")
@@ -237,22 +285,32 @@ export async function POST(req: NextRequest) {
   }
 
   // order_events log
+  const isPostProductionForced =
+    body.force === true && POST_PRODUCTION_STATUSES.has(orderStatus);
   await admin.from("order_events").insert([
     {
       order_id: body.orderId,
-      event_type: "refunded",
+      event_type: isPostProductionForced
+        ? "refunded_force_post_production"
+        : "refunded",
       status_after: null,
       actor_id: auth.user.id,
       actor_role: auth.role,
-      summary: isPartial
-        ? `${refundAmount.toFixed(2)} ₺ kısmi iade yapıldı (PayTR).`
-        : `Tam iade yapıldı (${refundAmount.toFixed(2)} ₺, PayTR).`,
+      summary: isPostProductionForced
+        ? `⚠️ FORCE: ${orderStatus} durumunda baskı sonrası iade (${refundAmount.toFixed(2)} ₺). Gerekçe: ${body.reason}`
+        : isPartial
+          ? `${refundAmount.toFixed(2)} ₺ kısmi iade yapıldı (PayTR).`
+          : `Tam iade yapıldı (${refundAmount.toFixed(2)} ₺, PayTR).`,
       detail: {
         refundAmount,
         reason: body.reason ?? null,
         provider: "paytr",
         merchantOid: charge.psp_transaction_id,
         actorEmail: auth.user.email ?? null,
+        // Sefa 22 May v68 — Anayasa kuralı bypass işaretle (denetim için kritik)
+        force: body.force === true,
+        statusAtRefund: orderStatus,
+        postProductionForced: isPostProductionForced,
       },
     },
   ] as never);

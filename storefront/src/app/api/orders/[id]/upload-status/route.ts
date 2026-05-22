@@ -66,7 +66,7 @@ export async function GET(
   // Item'lari cek — meta'dan designCount al (multi-design destek)
   const { data: items } = await admin
     .from("order_items")
-    .select("id, title, qty, width, height, meta")
+    .select("id, title, qty, width, height, product, config, unit, meta")
     .eq("order_id", orderId);
   const itemRows =
     (items as Array<{
@@ -75,6 +75,9 @@ export async function GET(
       qty: number;
       width: number;
       height: number;
+      product: string;
+      config: string;
+      unit: number;
       meta: { designCount?: number } | null;
     }> | null) ?? [];
 
@@ -97,6 +100,47 @@ export async function GET(
     }
   }
 
+  // Sefa 22 May v68 — Faz 2: qc_failed tasarımları ayrıca getir.
+  // Müşteri "neden yüklemem sayılmadı?" sorusunu yanıtlayabilsin.
+  // ai_check.flags içinden ilk error mesajını çıkarıyoruz.
+  const { data: failedDfs } = await admin
+    .from("design_files")
+    .select("id, order_item_id, original_name, ai_check, uploaded_at")
+    .eq("order_id", orderId)
+    .eq("status", "qc_failed")
+    .order("uploaded_at", { ascending: false });
+  type FailedRow = {
+    id: string;
+    order_item_id: string | null;
+    original_name: string;
+    ai_check: {
+      flags?: Array<{ kind?: string; message?: string }>;
+      kind?: string;
+    } | null;
+    uploaded_at: string;
+  };
+  const failedByItem = new Map<
+    string,
+    Array<{ id: string; name: string; reason: string; uploadedAt: string }>
+  >();
+  for (const f of ((failedDfs as FailedRow[] | null) ?? [])) {
+    if (typeof f.order_item_id !== "string") continue;
+    const errFlag =
+      f.ai_check?.flags?.find((x) => x.kind === "error") ??
+      f.ai_check?.flags?.find((x) => x.kind === "warning");
+    const reason =
+      errFlag?.message?.trim() ||
+      "AI ön-kontrolü dosyada sorun buldu (DPI/CMYK/bleed). Düzeltilmiş dosyayı tekrar yükle.";
+    const arr = failedByItem.get(f.order_item_id) ?? [];
+    arr.push({
+      id: f.id,
+      name: f.original_name,
+      reason,
+      uploadedAt: f.uploaded_at,
+    });
+    failedByItem.set(f.order_item_id, arr);
+  }
+
   return NextResponse.json({
     id: orderRow.id,
     status: orderRow.status,
@@ -109,12 +153,18 @@ export async function GET(
         qty: it.qty,
         width: it.width,
         height: it.height,
+        // Sefa 22 May v68 Faz 2 stretch — redistribute compatibility için
+        product: it.product,
+        config: it.config,
+        unit: Number(it.unit),
         // Eski API uyumu — boolean: en az 1 tasarim varsa true
         hasDesign: designsUploaded > 0,
         // Multi-design destek (Sefa 22 May v68)
         designsRequired,
         designsUploaded,
         designsComplete: designsUploaded >= designsRequired,
+        // Sefa 22 May v68 — Faz 2: AI kontrolde takılan dosyalar
+        failedDesigns: failedByItem.get(it.id) ?? [],
       };
     }),
   });

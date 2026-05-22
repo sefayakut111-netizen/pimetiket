@@ -2950,6 +2950,25 @@ function classifyTier() {
 function materialLabel(m) {
   return { paper: 'Normal kağıt', transparent: 'Şeffaf folyo', metallic: 'Metalize', holographic: 'Holografik' }[m] || m;
 }
+// Sefa 22 May v68 (Faz 3 POC entegrasyonu):
+// Aynı dosya için vision-fallback bir kez tetiklensin (debounce).
+// Yeni dosya yüklendiğinde sıfırla → pimAutoLoadDesign / handleFile içinde.
+let pimVisionFallbackSent = false;
+
+function pimRequestVisionFallback(kind, metadata) {
+  if (pimVisionFallbackSent) return;
+  if (!PIM_PARAMS.designUrl || !PIM_PARAMS.orderId || !PIM_PARAMS.itemId) {
+    // Standalone modda fallback yok — endpoint için orderId/itemId şart.
+    return;
+  }
+  pimVisionFallbackSent = true;
+  pimPostToParent({
+    type: 'pim-vision-fallback-needed',
+    kind: kind,
+    metadata: metadata,
+  });
+}
+
 function generatePimComment() {
   if (!imageMetadata) return;
   const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
@@ -2981,6 +3000,10 @@ function generatePimComment() {
     if (tierInfo.suggestedAction === 'bg-remove' && currentFileSource === 'raster') {
       if (coverage > 0.95) {
         msg = 'Bıçak görselin tüm kenarlarını takip ediyor, yani arka planı temiz ayıramadım. AI ile arka planı kaldırırsam çok daha temiz bir bıçak çıkar. Bunu deneyelim mi?';
+        // Faz 3 — Pim Vision 2. katman fallback
+        pimRequestVisionFallback('bg_not_separable', {
+          partCount, coverage, dpi, hasAlpha: !!imageMetadata.hasAlpha,
+        });
       } else if (!imageMetadata.hasAlpha) {
         msg = 'JPG/beyaz arka planlı görsel yüklemişsin. Otomatik tespit ettim ama saçaklar olabilir. AI ile arka planı kaldırırsam mükemmel sonuç alırız. Deneyelim mi?';
       } else {
@@ -3004,8 +3027,16 @@ function generatePimComment() {
 
     if (partCount === 0) {
       msg = 'Bıçak üretemedim. Görselin tamamen şeffaf arka plana sahip olduğundan emin misin?';
+      // Faz 3 — Pim Vision 2. katman fallback
+      pimRequestVisionFallback('no_contours', {
+        partCount, coverage, dpi, hasAlpha: !!imageMetadata.hasAlpha,
+      });
     } else if (partCount > 8) {
       msg = `${partCount} ayrı parça tespit ettim. Hepsi ayrı sticker olarak mı kesilsin, yoksa "Çevresel" modunu seçip tek parça mı yapayım?`;
+      // Faz 3 — çoklu obje karmaşıklığı için Vision yorum
+      pimRequestVisionFallback('complex_multi_object', {
+        partCount, coverage, dpi, hasAlpha: !!imageMetadata.hasAlpha,
+      });
     } else if (offsetMm === 0) {
       msg = `Sıfır kesim seçtin — bıçak görselin tam üstünden geçecek. Kesim makinesinin kayma toleransı için bıçağı otomatik 0.3mm içerden geçirdim, kenarlarda boşluk görünmez.`;
     } else if (offsetMm < 1) {

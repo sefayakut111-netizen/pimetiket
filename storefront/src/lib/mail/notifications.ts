@@ -74,6 +74,11 @@ import {
   OrderProofApprovedEmail,
   type OrderProofApprovedProps,
 } from "./templates/order-proof-approved";
+// Sefa 22 May v68 (Faz 4 — Uzman akışı):
+import {
+  ProofHelpResolvedEmail,
+  type ProofHelpResolvedProps,
+} from "./templates/proof-help-resolved";
 
 const SITE_URL_FALLBACK =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
@@ -751,4 +756,67 @@ export async function sendOrderProofApproved(args: {
   });
 
   return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+// ============================================================
+// 11) Proof help resolved — Sefa 22 May v68 Faz 4
+// ============================================================
+// Operatör /admin/yardim-talepleri'nden cevap yazıp "Çözüldü" işaretledi.
+// Müşteri bu mail ile bilgilendirilir. proof_help_request_id idempotency'de
+// kullanılır (aynı ticket için tek mail).
+
+export async function sendProofHelpResolved(args: {
+  userId: string;
+  orderId: string;
+  helpRequestId: string;
+  itemTitle: string;
+  originalMessage: string;
+  resolutionNote: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  // KVKK: yasal bildirim sayılır (sipariş güncellemesi) → order_updates pref
+  const optedIn = await getEmailPref(args.userId, "email_order_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  // Müşteri adı orders.address'tan
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("address")
+    .eq("id", args.orderId)
+    .single();
+  const customerName =
+    ((order as { address?: { name?: string } } | null)?.address?.name) ??
+    "Müşteri";
+
+  const props: ProofHelpResolvedProps = {
+    customerName,
+    orderId: args.orderId,
+    itemTitle: args.itemTitle,
+    originalMessage: args.originalMessage,
+    resolutionNote: args.resolutionNote,
+  };
+
+  const html = await render(ProofHelpResolvedEmail(props));
+  const subject = `Yardım talebine cevap geldi — ${args.orderId}`;
+  const text = `Operatör cevabı:\n\n${args.resolutionNote}\n\nProvaya dön: ${SITE_URL_FALLBACK}/onay/${args.orderId}`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "proof_help_resolved",
+    // Aynı ticket için tek mail — admin tekrar resolve etse de yeniden tetiklenmez
+    idempotencyKey: `proof_help_resolved:${args.helpRequestId}`,
+  });
+
+  return {
+    ok: result.ok,
+    reason: result.suppressed ? "suppressed" : result.error,
+  };
 }

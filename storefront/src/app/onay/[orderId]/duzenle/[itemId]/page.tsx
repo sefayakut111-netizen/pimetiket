@@ -66,6 +66,7 @@ import { use, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
+import { useVisionFallback } from "@/lib/hooks/useVisionFallback";
 
 interface ProofItem {
   id: string;
@@ -116,6 +117,13 @@ export default function ProofEditPage({
   const searchParams = useSearchParams();
   const designFileId = searchParams.get("design_file_id"); // Mig 063
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Sefa 22 May v68 Faz 3 — Vision fallback ortak hook (sayfa içi banner).
+  const { visionFallback, dismiss: dismissVisionFallback } = useVisionFallback({
+    orderId,
+    itemId,
+    iframeRef,
+  });
 
   const [item, setItem] = useState<ProofItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -331,6 +339,58 @@ export default function ProofEditPage({
           diyebilirsin.
         </p>
       </Card>
+
+      {/* Sefa 22 May v68 Faz 3 — Vision fallback banner (POC partCount=0 vb).
+          iframe'in üstünde sticky görünür, X ile kapatılabilir. */}
+      {visionFallback && (
+        <div
+          className={
+            "mb-3 rounded-xl border px-4 py-3 text-[13px] " +
+            (visionFallback.severity === "err"
+              ? "border-kirmizi/40 bg-kirmizi-soft text-kirmizi"
+              : "border-pim-mercan/40 bg-pim-mercan-tint text-lacivert")
+          }
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pim-mercan text-white text-[12px] font-bold"
+              aria-hidden
+            >
+              {visionFallback.loading ? "…" : "AI"}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold">
+                {visionFallback.loading
+                  ? "Pim Vision tanı koyuyor"
+                  : visionFallback.fallback
+                    ? "Pim önerisi"
+                    : "Pim Vision tanısı"}
+              </div>
+              <p className="mt-1 leading-relaxed">
+                {visionFallback.pim_message}
+              </p>
+              {!visionFallback.loading && visionFallback.diagnosis && (
+                <details className="mt-1.5 text-[12px]">
+                  <summary className="cursor-pointer text-gri-700 hover:text-lacivert">
+                    Teknik tanı
+                  </summary>
+                  <p className="mt-1 text-gri-700">
+                    {visionFallback.diagnosis}
+                  </p>
+                </details>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={dismissVisionFallback}
+              className="text-gri-700 hover:text-lacivert text-[18px] leading-none"
+              aria-label="Kapat"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* POC v2 iframe mount — design-url fetch hazır olunca yüklenir */}
       <div className="overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">

@@ -75,7 +75,8 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Die-Cut Roll Label",
     descTr: "Logo veya tasarımın silüetine kesim",
     descEn: "Cut to your design's silhouette",
-    imageSrc: "/assets/svg/cards/rulo-diecut.svg",
+    // Sefa 22 May v68: SVG silüetler yerine gerçek illüstrasyon PNG'leri
+    imageSrc: "/assets/img/cards/rulo-diecut.png",
   },
   {
     shape: "clear",
@@ -84,7 +85,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Clear Roll Label",
     descTr: "Saydam zemin — cam şişe, parfüm",
     descEn: "Transparent base — glass bottles, perfume",
-    imageSrc: "/assets/svg/cards/rulo-clear.svg",
+    imageSrc: "/assets/img/cards/rulo-clear.png",
   },
   {
     shape: "circle",
@@ -93,7 +94,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Circle Roll Label",
     descTr: "Daire — kapak, kozmetik klasiği",
     descEn: "Circle — cap, cosmetics classic",
-    imageSrc: "/assets/svg/cards/rulo-circle.svg",
+    imageSrc: "/assets/img/cards/rulo-circle.png",
   },
   {
     shape: "square",
@@ -102,7 +103,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Square Roll Label",
     descTr: "Eş kenar — düz veya yumuşak köşe",
     descEn: "Equal sides — sharp or rounded corner",
-    imageSrc: "/assets/svg/cards/rulo-square.svg",
+    imageSrc: "/assets/img/cards/rulo-square.png",
   },
   {
     shape: "rectangle",
@@ -111,7 +112,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Rectangle Roll Label",
     descTr: "Yaygın etiket formu — düz veya yumuşak köşe",
     descEn: "Most common label form — sharp or rounded",
-    imageSrc: "/assets/svg/cards/rulo-rectangle.svg",
+    imageSrc: "/assets/img/cards/rulo-rectangle.png",
   },
   {
     shape: "oval",
@@ -120,7 +121,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Oval Roll Label",
     descTr: "Elips — vintage, şık duruş",
     descEn: "Ellipse — vintage, elegant",
-    imageSrc: "/assets/svg/cards/rulo-oval.svg",
+    imageSrc: "/assets/img/cards/rulo-oval.png",
   },
 ];
 
@@ -132,7 +133,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Circle Sheet Label",
     descTr: "Düşük adet daire — hediye, butik",
     descEn: "Low quantity circles — gifts, boutique",
-    imageSrc: "/assets/svg/cards/tabaka-circle.svg",
+    imageSrc: "/assets/img/cards/tabaka-circle.png",
   },
   {
     shape: "diecut",
@@ -141,7 +142,9 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Die-Cut Sheet Label",
     descTr: "Düşük adet kontur — el yapımı, butik",
     descEn: "Low quantity contour — handmade, boutique",
-    imageSrc: "/assets/svg/cards/tabaka-diecut.svg",
+    // Sefa 22 May v68: 21.11.29 (çıplak Pim silüetli) tercih edildi.
+    // 21.14.25 (outline'lı) tabaka-diecut-alt.png olarak yedek kalıyor.
+    imageSrc: "/assets/img/cards/tabaka-diecut.png",
   },
   {
     shape: "oval",
@@ -150,6 +153,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Oval Sheet Label",
     descTr: "Düşük adet oval kesim",
     descEn: "Low quantity oval cut",
+    // Sefa 22 May v68: tabaka-oval PNG için Sefa onayı bekliyor
     imageSrc: "/assets/svg/cards/tabaka-oval.svg",
   },
   {
@@ -159,7 +163,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Rectangle Sheet Label",
     descTr: "Düşük adet — düz veya yumuşak köşe",
     descEn: "Low quantity — sharp or rounded corner",
-    imageSrc: "/assets/svg/cards/tabaka-rectangle.svg",
+    imageSrc: "/assets/img/cards/tabaka-rectangle.png",
   },
   {
     shape: "square",
@@ -168,7 +172,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Square Sheet Label",
     descTr: "Düşük adet — düz veya yumuşak köşe",
     descEn: "Low quantity — sharp or rounded corner",
-    imageSrc: "/assets/svg/cards/tabaka-square.svg",
+    imageSrc: "/assets/img/cards/tabaka-square.png",
   },
 ];
 

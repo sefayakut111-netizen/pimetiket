@@ -26,6 +26,7 @@ import { buildSummaryItems } from "@/lib/order-summary";
 import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
+import { useVisionFallback } from "@/lib/hooks/useVisionFallback";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE,
@@ -1292,6 +1293,14 @@ function ProofPreviewBox({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [iframeError, setIframeError] = useState<string | null>(null);
+  // Sefa 22 May v68 Faz 3 — Vision fallback ortak hook.
+  // POC partCount=0 / coverage>0.95 signal'ı → /api/pim/cutline-vision-fallback
+  // → diagnosis + suggested_action + pim_message banner olarak gösterilir.
+  const { visionFallback, dismiss: dismissVisionFallback } = useVisionFallback({
+    orderId,
+    itemId,
+    iframeRef,
+  });
 
   // POC URL — designUrl + headless + layers seti
   const pocSrc = signedUrl
@@ -1327,6 +1336,8 @@ function ProofPreviewBox({
         console.error("[ProofPreviewBox] POC error:", msg.error);
         setIframeError(String(msg.error));
       }
+      // Sefa 22 May v68 Faz 3 — Vision fallback artık useVisionFallback
+      // hook'u içinde işleniyor (kod tekrarı /onay/duzenle ile birleşti).
     }
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
@@ -1384,6 +1395,59 @@ function ProofPreviewBox({
             <strong>POC hata:</strong> {iframeError}
             <div className="text-[10px] text-gri-700 mt-1">
               Browser Console&apos;u aç (F12), &quot;[pim-poc]&quot; satırlarına bak.
+            </div>
+          </div>
+        )}
+
+        {/* Sefa 22 May v68 Faz 3 — Vision AI tanı banner'ı.
+            POC partCount=0 vb. tetikleyince /api/pim/cutline-vision-fallback
+            gerçek görsele bakıp daha akıllı bir öneri verir. */}
+        {visionFallback && (
+          <div
+            className={
+              "absolute top-2 left-2 right-2 rounded shadow-1 text-[12px] px-3 py-2 border " +
+              (visionFallback.severity === "err"
+                ? "bg-kirmizi-soft border-kirmizi/40 text-kirmizi"
+                : "bg-pim-mercan-tint border-pim-mercan/40 text-lacivert")
+            }
+          >
+            <div className="flex items-start gap-2">
+              <span
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-pim-mercan text-white text-[11px] font-bold"
+                aria-hidden
+              >
+                {visionFallback.loading ? "…" : "AI"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold">
+                  {visionFallback.loading
+                    ? "Pim Vision tanı koyuyor"
+                    : visionFallback.fallback
+                      ? "Pim önerisi"
+                      : "Pim Vision tanısı"}
+                </div>
+                <p className="mt-1 leading-relaxed">
+                  {visionFallback.pim_message}
+                </p>
+                {!visionFallback.loading && visionFallback.diagnosis && (
+                  <details className="mt-1.5 text-[11px]">
+                    <summary className="cursor-pointer text-gri-700 hover:text-lacivert">
+                      Teknik tanı
+                    </summary>
+                    <p className="mt-1 text-gri-700">
+                      {visionFallback.diagnosis}
+                    </p>
+                  </details>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={dismissVisionFallback}
+                className="text-gri-700 hover:text-lacivert text-[16px] leading-none"
+                aria-label="Kapat"
+              >
+                ×
+              </button>
             </div>
           </div>
         )}

@@ -30,6 +30,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useT } from "@/lib/i18n/context";
 import {
   getStickerCardSvg,
@@ -67,8 +68,10 @@ interface StickerCard {
   descTr: string;
   /** Açıklama EN */
   descEn: string;
-  /** Inline SVG component (geçici — Midjourney PNG sonra geçer) */
+  /** Inline SVG fallback (PNG yoksa kullanılır) */
   svg: React.ReactNode;
+  /** Sefa 22 May v68 — gerçek illüstrasyon PNG'si. Varsa svg'yi geçer. */
+  imageSrc?: string;
 }
 
 // ============================================================
@@ -389,6 +392,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Logo veya tasarımın silüetine kesim",
     descEn: "Cut to your design's silhouette",
     svg: <DieCutIcon />,
+    imageSrc: "/assets/img/cards/sticker-diecut.png",
   },
   {
     query: "cut=diecut&shape=circle",
@@ -397,6 +401,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Daire form — laptop, su şişesi, marka",
     descEn: "Circle form — laptop, water bottle, logo",
     svg: <CircleIcon />,
+    imageSrc: "/assets/img/cards/sticker-circle.png",
   },
   {
     query: "cut=diecut&shape=rectangle",
@@ -405,6 +410,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Yaygın form — düz veya yumuşak köşe",
     descEn: "Most common form — sharp or rounded corner",
     svg: <RectangleIcon />,
+    imageSrc: "/assets/img/cards/sticker-rectangle.png",
   },
   {
     query: "cut=diecut&shape=square",
@@ -413,6 +419,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Eş kenar — düz veya yumuşak köşe",
     descEn: "Equal sides — sharp or rounded corner",
     svg: <SquareIcon />,
+    imageSrc: "/assets/img/cards/sticker-square.png",
   },
   {
     query: "cut=diecut&shape=oval",
@@ -421,6 +428,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Elips — vintage, organik form",
     descEn: "Ellipse — vintage, organic",
     svg: <OvalIcon />,
+    imageSrc: "/assets/img/cards/sticker-oval.png",
   },
   {
     query: "cut=diecut&shape=bumper",
@@ -429,6 +437,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Uzun yatay — hobi, laptop",
     descEn: "Long horizontal — hobby, laptop",
     svg: <BumperIcon />,
+    imageSrc: "/assets/img/cards/sticker-bumper.png",
   },
   {
     query: "cut=kisscut&shape=diecut",
@@ -437,6 +446,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Çevresi sağlam kağıttan tek tek çıkarılır",
     descEn: "Sticker cut, backing intact — peel individually",
     svg: <KissCutIcon />,
+    imageSrc: "/assets/img/cards/sticker-kisscut.png",
   },
   {
     query: "cut=diecut&shape=diecut&material=transparan",
@@ -445,6 +455,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Saydam zemin — cam, arka plan görünsün",
     descEn: "Transparent base — glass, background visible",
     svg: <ClearIcon />,
+    imageSrc: "/assets/img/cards/sticker-clear.png",
   },
   {
     query: "cut=diecut&shape=diecut&material=holo",
@@ -453,6 +464,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Gökkuşağı yansıma — premium, etkinlik",
     descEn: "Rainbow reflection — premium, events",
     svg: <HoloIcon />,
+    imageSrc: "/assets/img/cards/sticker-hologram.png",
   },
   {
     query: "cut=diecut&shape=diecut&material=simli",
@@ -461,6 +473,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Parıltılı dokulu — çocuk, hediye",
     descEn: "Sparkly texture — kids, gifts",
     svg: <GlitterIcon />,
+    imageSrc: "/assets/img/cards/sticker-glitter-holo.png",
   },
   {
     // Sefa 21 May v68 (ürün denetim P2 #15 + #16): "Sticker Sayfası" web
@@ -472,6 +485,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Aynı tasarımdan çok adet — tek tabakada",
     descEn: "Many copies of one design — on a single sheet",
     svg: <SheetIcon />,
+    imageSrc: "/assets/img/cards/sticker-sheet.png",
   },
 ];
 
@@ -492,10 +506,20 @@ function StickerProductCard({
       className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
       {/* Sefa 20 May v68: aspect-[200/130] reservation → CLS=0.
-          İnline SVG'ler stretch eder, Midjourney PNG geldiğinde aynı
-          aspect kalır, layout shift yok. */}
-      <div className="bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors flex items-center justify-center aspect-[200/130] overflow-hidden">
-        {card.svg}
+          Sefa 22 May v68: imageSrc varsa Next/Image (otomatik AVIF/WebP +
+          srcset), yoksa eski inline SVG fallback. */}
+      <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors flex items-center justify-center aspect-[200/130] overflow-hidden">
+        {card.imageSrc ? (
+          <Image
+            src={card.imageSrc}
+            alt={isEn ? card.titleEn : card.titleTr}
+            fill
+            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+            className="object-contain p-2"
+          />
+        ) : (
+          card.svg
+        )}
       </div>
       <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
         {isEn ? card.titleEn : card.titleTr}

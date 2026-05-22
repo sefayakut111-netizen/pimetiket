@@ -49,12 +49,15 @@ interface AdminBadges {
   // Sefa 16 May v3 — Domain denetçi agent sistemi
   auditorsPending: number;
   auditorsCritical: number;
+  // Sefa 22 May v68 Faz 4 — Proof yardım ticket'ları (open + in_progress)
+  helpRequests: number;
 }
 
 function aggregateBadges(
   orders: CustomerOrder[],
   auditorsPending: number = 0,
-  auditorsCritical: number = 0
+  auditorsCritical: number = 0,
+  helpRequests: number = 0
 ): AdminBadges {
   let active = 0;
   let aiQc = 0;
@@ -73,6 +76,7 @@ function aggregateBadges(
     fason,
     auditorsPending,
     auditorsCritical,
+    helpRequests,
   };
 }
 
@@ -140,6 +144,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     fason: 0,
     auditorsPending: 0,
     auditorsCritical: 0,
+    helpRequests: 0,
   });
   const [switching, setSwitching] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -179,6 +184,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     let auditorCounts = { pending: 0, critical: 0 };
     let adminOrders: CustomerOrder[] = [];
+    let helpRequestsCount = 0;
 
     // Sefa 21 May v68 (site denetim P2 #13): Sidebar badge'i admin-wide
     // /api/admin/orders/list'ten çeker; daha önce listCustomerOrders
@@ -204,7 +210,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
         aggregateBadges(
           adminOrders,
           auditorCounts.pending,
-          auditorCounts.critical
+          auditorCounts.critical,
+          helpRequestsCount
         )
       );
     };
@@ -240,10 +247,28 @@ export function AdminShell({ children }: { children: ReactNode }) {
     void fetchAuditorCounts();
     const interval = setInterval(fetchAuditorCounts, 60_000);
 
+    // Sefa 22 May v68 Faz 4 — Proof yardım ticket sayısı (open + in_progress)
+    const fetchHelpRequests = async () => {
+      try {
+        const res = await fetch("/api/admin/help-requests?status=active", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { items?: Array<{ id: string }> };
+        helpRequestsCount = json.items?.length ?? 0;
+        refresh();
+      } catch {
+        // sessiz
+      }
+    };
+    void fetchHelpRequests();
+    const helpInterval = setInterval(fetchHelpRequests, 60_000);
+
     return () => {
       window.removeEventListener("pim_customer_orders_updated", fetchAdminOrders);
       clearInterval(interval);
       clearInterval(ordersInterval);
+      clearInterval(helpInterval);
     };
   }, []);
 
@@ -329,6 +354,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/tasarimlar",
             label: "Tasarımlar",
             icon: <Icon.Doc size={16} />,
+          },
+          // Sefa 22 May v68 Faz 4 — Uzman akışı: proof yardım ticket'ları
+          {
+            href: "/admin/yardim-talepleri",
+            label: "Yardım Talepleri",
+            icon: <Icon.ChatBubble size={16} />,
+            badge: badges.helpRequests,
+            badgeAccent: badges.helpRequests > 0,
           },
         ],
       },

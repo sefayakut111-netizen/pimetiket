@@ -314,6 +314,22 @@ export default function ProofApprovalPage({
   const [bgGenItemId, setBgGenItemId] = useState<string | null>(null);
   const [bgGenDesignFileId, setBgGenDesignFileId] = useState<string | null>(null);
   const [bgGenError, setBgGenError] = useState<string | null>(null);
+  // Sefa 22 May v68 Faz 4b — Resolved/dismissed help_request'ler.
+  // fn_proof_summary sadece open/in_progress döner; bu state operatörün cevabını
+  // gösterir → müşteri /onay'da operatör notunu okuyabilir.
+  const [helpHistory, setHelpHistory] = useState<
+    Record<
+      string,
+      Array<{
+        id: string;
+        message: string;
+        status: string;
+        createdAt: string;
+        resolvedAt: string | null;
+        resolutionNote: string | null;
+      }>
+    >
+  >({});
 
   const load = useCallback(async () => {
     try {
@@ -352,6 +368,37 @@ export default function ProofApprovalPage({
           void markViewed(orderId, firstPending.id);
         }
       }
+
+      // Sefa 22 May v68 Faz 4b — Help history fetch (resolved + dismissed).
+      // Paralel ama bağımsız — patlarsa sayfa açılmaya devam etsin.
+      fetch(`/api/orders/${orderId}/help-requests`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j: { items?: Array<{
+          id: string;
+          itemId: string;
+          message: string;
+          status: string;
+          createdAt: string;
+          resolvedAt: string | null;
+          resolutionNote: string | null;
+        }> }) => {
+          const map: typeof helpHistory = {};
+          for (const t of j.items ?? []) {
+            if (!map[t.itemId]) map[t.itemId] = [];
+            map[t.itemId].push({
+              id: t.id,
+              message: t.message,
+              status: t.status,
+              createdAt: t.createdAt,
+              resolvedAt: t.resolvedAt,
+              resolutionNote: t.resolutionNote,
+            });
+          }
+          setHelpHistory(map);
+        })
+        .catch(() => {
+          /* sessizce geç — kritik değil */
+        });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       setLoadError(msg);
@@ -1128,6 +1175,49 @@ export default function ProofApprovalPage({
                     </p>
                   </div>
                 )}
+
+                {/* Sefa 22 May v68 Faz 4b — Resolved/dismissed history.
+                    Müşteri operatörün cevabını burada görür ve karar verir.
+                    Sadece resolution_note dolu olanları göster (anlamlı). */}
+                {(helpHistory[activeItem.id] ?? [])
+                  .filter((t) => t.status === "resolved" && t.resolutionNote)
+                  .map((t) => (
+                    <div
+                      key={t.id}
+                      className="border-t border-yesil/30 bg-yesil-soft/40 p-4"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Eyebrow>OPERATÖRÜMÜZÜN CEVABI</Eyebrow>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-yesil px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                          ✓ Çözüldü
+                        </span>
+                      </div>
+                      <p
+                        className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-lacivert"
+                      >
+                        {t.resolutionNote}
+                      </p>
+                      <details className="mt-3 text-xs text-gri-700">
+                        <summary className="cursor-pointer font-medium hover:text-lacivert">
+                          Başta yazdığın soru
+                        </summary>
+                        <p className="mt-1 whitespace-pre-wrap italic">
+                          “{t.message}”
+                        </p>
+                      </details>
+                      <p className="mt-2 text-[11px] text-gri-700">
+                        {t.resolvedAt &&
+                          new Date(t.resolvedAt).toLocaleString("tr-TR", {
+                            day: "numeric",
+                            month: "long",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                        · Şimdi karar verebilirsin: onayla, düzenle, ya da
+                        yeniden yardım iste.
+                      </p>
+                    </div>
+                  ))}
               </Card>
 
               {/* Action bar */}
