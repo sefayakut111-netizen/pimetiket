@@ -95,9 +95,6 @@ export type TranslationDict = {
     step3Desc: string;
     step4: string;
     step4Desc: string;
-    // Sefa 22 May v68 — 5. adım eklendi (Başla/Hazırla/Prova/Öde/Kargo)
-    step5: string;
-    step5Desc: string;
     faqEyebrow: string;
     faqTitle: string;
     faqHelp: string;
