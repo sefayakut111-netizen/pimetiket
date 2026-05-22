@@ -675,49 +675,12 @@ export default function SiparisDetailPage({
               </Card>
             )}
 
-            {/* Sefa 22 May v68 — Proof onay CTA bölümü.
-                Tasarım yüklendiyse (qc_passed) + status bıçak akışında ise
-                (proof_generating veya proof_pending), müşteri /onay sayfasına
-                geçiş için belirgin CTA görmeli. Eskiden bu sayfa ile /onay
-                arasında köprü yoktu — müşteri "bıçak akışı nasıl ilerleyecek"
-                anlamıyordu. */}
-            {(order.status === "proof_generating" ||
-              order.status === "proof_pending") && (
-              <Card padding="p-6" className="border-2 border-pim-mercan/40 bg-pim-mercan-tint/20">
-                <div className="flex gap-4 items-start">
-                  <PimMini pose="inspect" size={56} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
-                      {order.status === "proof_generating"
-                        ? "Bıçak çiziliyor"
-                        : "Onay bekleniyor"}
-                    </div>
-                    <h3 className="font-semibold text-[18px] mt-1 text-lacivert">
-                      {order.status === "proof_generating"
-                        ? "Tasarımının bıçak çizimi hazırlanıyor"
-                        : "Bıçak çizimin hazır — onayını bekliyor"}
-                    </h3>
-                    <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
-                      {order.status === "proof_generating"
-                        ? "AI ön-kontrol geçildi, otomatik bıçak çizimi 5 dakika içinde hazır olur. Onay sayfasına geçince ilerlemeyi canlı görebilirsin."
-                        : "Bıçak çizimini incele, gerekirse düzenle veya onayla. Onay sonrası sipariş üretime gönderilir."}
-                    </p>
-                    <div className="mt-4">
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        href={`/onay/${order.id}`}
-                      >
-                        <Icon.Eye size={16} />{" "}
-                        {order.status === "proof_generating"
-                          ? "İlerlemeyi gör →"
-                          : "Bıçağı onayla →"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
+            {/* Sefa 22 May v68 (kaldırıldı) — "Bıçak çiziliyor / İlerlemeyi
+                gör" CTA kartı KALDIRILDI. Faz 4 inline POC iframe sonrası
+                bu kart prova kartı ile dublicate oluyordu: prova kartında
+                zaten gerçek bıçak çizimi inline gösteriliyor, Onayla/
+                Değişiklik iste butonları altta, "↗ Düzenle" linki POC editöre
+                yönlendiriyor. Ekstra CTA kafa karıştırıcıydı. */}
 
             {/* Sefa 22 May v68: Proof kartı SADELEŞTİRİLDİ.
                 - Pim Mercan gradient header KALDIRILDI (üstteki "Bıçak
