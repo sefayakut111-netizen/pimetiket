@@ -64,11 +64,14 @@ export default function HomePage() {
 
   // PILLARS array kaldırıldı (Sefa kararı 17 May v10) — section silindi
 
+  // Sefa 22 May v68 — 5-adim motto sistemi:
+  // Basla / Hazirla / Prova / Ode / Kargo — her birinin soylem + duygu esi
   const STEPS = [
     { n: "01", t: t.home.step1, d: t.home.step1Desc },
     { n: "02", t: t.home.step2, d: t.home.step2Desc },
     { n: "03", t: t.home.step3, d: t.home.step3Desc },
     { n: "04", t: t.home.step4, d: t.home.step4Desc },
+    { n: "05", t: t.home.step5, d: t.home.step5Desc },
   ];
 
   const FAQS = locale === "en" ? FAQ_QUESTIONS_EN : FAQ_QUESTIONS_TR;
@@ -247,7 +250,7 @@ export default function HomePage() {
               aria-hidden
               className="hidden md:block absolute left-[12.5%] right-[12.5%] top-9 h-0.5 flow-line z-0"
             />
-            <div className="relative grid grid-cols-2 md:grid-cols-4 gap-6 z-10">
+            <div className="relative grid grid-cols-2 md:grid-cols-5 gap-6 z-10">
               {STEPS.map((s, i) => (
                 <div key={i} className="text-center">
                   {/* step-circle-anim → sırayla pulse (0s, 0.85s, 1.7s, 2.55s) */}
