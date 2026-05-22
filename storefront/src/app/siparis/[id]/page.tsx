@@ -9,7 +9,7 @@
 
 "use client";
 
-import { use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
@@ -1322,69 +1322,91 @@ function ProofPreviewBox({
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen]);
 
-  // Canvas + layers — fullscreen veya inline aynı render mantığı
+  // Sefa 22 May v68 Faz 4 — POC iframe entegrasyonu.
+  // Mock SVG bıçak overlay'i KALDIRILDI. POC HTML (/poc.html?headless=1)
+  // inline iframe olarak göstereriz. signedUrl varsa designUrl param ile
+  // auto-load, OpenCV başlayınca otomatik bıçak + beyaz plan üretir.
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeReady, setIframeReady] = useState(false);
+
+  // POC URL — designUrl + headless + layers seti
+  const pocSrc = signedUrl
+    ? `/poc.html?${new URLSearchParams({
+        designUrl: signedUrl,
+        orderId,
+        itemId,
+        headless: "1",
+        layers: ["cut"]
+          .concat(layers.cutline ? [] : [])
+          .filter(Boolean)
+          .join(","),
+      }).toString()}`
+    : null;
+
+  // POC iframe'den ready/saved/error mesajlarını dinle
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (!iframeRef.current || e.source !== iframeRef.current.contentWindow)
+        return;
+      const msg = e.data;
+      if (!msg || typeof msg !== "object") return;
+      if (msg.type === "pim-poc-ready") setIframeReady(true);
+      if (msg.type === "pim-poc-loaded") {
+        // POC tasarımı yükledi — ek aksiyon yok şu an
+      }
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
+  // Layer toggle değişince iframe'e bildir (POC tarafında gerçek katman aç/kapa)
+  useEffect(() => {
+    if (!iframeReady || !iframeRef.current?.contentWindow) return;
+    const win = iframeRef.current.contentWindow;
+    // Pim Renk = POC'da hep aktif (tasarım her zaman gözükür);
+    // Pim Bıçak → POC "cut" layer;
+    // Pim Beyaz plan → POC "white" layer.
+    win.postMessage(
+      { type: "pim-toggle-layer", layer: "cut", on: layers.cutline },
+      "*"
+    );
+    win.postMessage(
+      { type: "pim-toggle-layer", layer: "white", on: layers.white },
+      "*"
+    );
+  }, [iframeReady, layers.cutline, layers.white]);
+
   function Canvas({ heightClass }: { heightClass: string }) {
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-md border border-gri-200",
+          "relative overflow-hidden rounded-md border border-gri-200 bg-white",
           heightClass
         )}
-        style={layers.white ? { backgroundColor: "white" } : CHECKER_STYLE}
       >
-        {/* Renk + beyaz plan: birlikte render edilir.
-            white aktifse beyaz alt katman görsel olarak background'tan gelir;
-            color aktifse tasarım PNG ortada. */}
-        {signedUrl && layers.color ? (
-          <div
-            className="absolute inset-0 grid place-items-center transition-transform duration-150"
-            style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={signedUrl}
-              alt={fileName ?? "Tasarım önizlemesi"}
-              className="max-w-full max-h-full object-contain"
-              draggable={false}
-            />
-          </div>
-        ) : !signedUrl ? (
+        {pocSrc ? (
+          <iframe
+            ref={iframeRef}
+            src={pocSrc}
+            title="Bıçak çizimi önizleme"
+            className="absolute inset-0 w-full h-full"
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: "center",
+              border: "none",
+            }}
+            // POC same-origin iframe (kendi public/ assetimiz) — sandbox gevşek
+            // postMessage çalışsın diye allow-scripts + same-origin
+            sandbox="allow-scripts allow-same-origin"
+          />
+        ) : (
           <div className="absolute inset-0 grid place-items-center text-[12px] text-gri-500">
             Tasarım yükleniyor…
-          </div>
-        ) : null}
-
-        {/* Bıçak (cutline) overlay — Mock SVG (Faz 4'te cutline_designs DB'den) */}
-        {layers.cutline && (
-          <div
-            className="absolute inset-0 pointer-events-none transition-transform duration-150"
-            style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
-            aria-hidden
-          >
-            <svg
-              viewBox="0 0 100 100"
-              className="w-full h-full"
-              preserveAspectRatio="xMidYMid meet"
-            >
-              {/* Mock yuvarlak die-cut çizgisi — pim-mercan rengi */}
-              <rect
-                x="3"
-                y="3"
-                width="94"
-                height="94"
-                rx="8"
-                ry="8"
-                fill="none"
-                stroke="#ff4d6d"
-                strokeWidth="0.4"
-                strokeDasharray="1 0.6"
-              />
-            </svg>
           </div>
         )}
 
         {/* Zoom level rozeti — sağ alt */}
-        <div className="absolute bottom-2 right-2 bg-lacivert/85 text-white text-[10.5px] font-mono px-2 py-0.5 rounded">
+        <div className="absolute bottom-2 right-2 bg-lacivert/85 text-white text-[10.5px] font-mono px-2 py-0.5 rounded pointer-events-none">
           %{Math.round(zoom * 100)}
         </div>
       </div>

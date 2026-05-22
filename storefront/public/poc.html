@@ -1245,6 +1245,35 @@
       flex-wrap: wrap;
     }
   }
+
+  /* ============================================================
+   * PIM HEADLESS MODE (Sefa 22 May v68 Faz 4)
+   * URL ?headless=1 → toolbar/sidebar/action-bar gizle
+   * Sadece canvas + minimal layer overlays görünür.
+   * Parent iframe inline kullanım için. ============================ */
+  html.pim-headless body {
+    background: var(--surface);
+  }
+  html.pim-headless header,
+  html.pim-headless .sidebar,
+  html.pim-headless .upload-zone,
+  html.pim-headless .action-bar,
+  html.pim-headless #helpModal,
+  html.pim-headless #approvalOverlay {
+    display: none !important;
+  }
+  html.pim-headless main {
+    display: block;
+    padding: 0;
+    grid-template-columns: 1fr;
+  }
+  html.pim-headless .canvas-wrap {
+    height: 100%;
+    min-height: 280px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+  }
 </style>
 </head>
 <body>
@@ -1548,12 +1577,159 @@ let whitePlanPaths = [];           // beyaz plan path'leri (canvas koordinatlar�
 let hasCustomWhitePlan = false;    // PDF/AI/PSD içinde white spot color bulundu mu
 
 // ============================================================
+// PIM ENTEGRASYON BOOTSTRAP (Sefa 22 May v68 — Faz 4)
+// ============================================================
+// URL parametreleri:
+//   ?designUrl=<encoded url>   — tasarım dosyası URL (auto-load)
+//   ?material=<paper|transparent|metallic|holographic>
+//   ?orderId=<id> & ?itemId=<id>  — postMessage payload'ında geri döner
+//   ?headless=1                 — toolbar/sidebar gizle, sadece canvas
+//   ?layers=cut,white           — başlangıç katman seti
+//
+// postMessage (parent ↔ iframe):
+//   parent → iframe: { type:'pim-toggle-layer', layer, on }
+//                    { type:'pim-set-white-mode', mode }
+//                    { type:'pim-request-export' }
+//   iframe → parent: { type:'pim-poc-ready', orderId, itemId }
+//                    { type:'pim-poc-loaded', source, width, height }
+//                    { type:'pim-cutline-saved', svg, orderId, itemId }
+//                    { type:'pim-poc-error', error }
+// ============================================================
+const PIM_PARAMS = (() => {
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    return {
+      designUrl: sp.get('designUrl'),
+      material: sp.get('material'),
+      orderId: sp.get('orderId'),
+      itemId: sp.get('itemId'),
+      headless: sp.get('headless') === '1',
+      layers: (sp.get('layers') || '').split(',').filter(Boolean),
+    };
+  } catch (e) {
+    return { headless: false };
+  }
+})();
+
+// Headless mode CSS — toolbar/sidebar gizle (parent iframe minimal göstersin)
+if (PIM_PARAMS.headless) {
+  document.documentElement.classList.add('pim-headless');
+}
+
+// Parent'a sinyal — POC ready
+function pimPostToParent(payload) {
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        { ...payload, orderId: PIM_PARAMS.orderId, itemId: PIM_PARAMS.itemId },
+        '*' // origin check parent tarafında yapılır
+      );
+    }
+  } catch (e) {
+    /* sessiz fail */
+  }
+}
+
+// Parent'tan komut dinle (layer toggle vb)
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (!msg || typeof msg !== 'object') return;
+  try {
+    if (msg.type === 'pim-toggle-layer') {
+      const valid = ['cut', 'white', 'bleed', 'safe'];
+      if (valid.includes(msg.layer)) {
+        layers[msg.layer] = !!msg.on;
+        // Sync UI toggle
+        const t = document.querySelector(`.toggle[data-layer="${msg.layer}"]`);
+        if (t) t.classList.toggle('on', !!msg.on);
+        if (typeof render === 'function') render();
+      }
+    } else if (msg.type === 'pim-set-white-mode') {
+      const valid = ['off', 'full', 'smart', 'ai', 'custom'];
+      if (valid.includes(msg.mode)) {
+        whitePlanMode = msg.mode;
+        const btn = document.querySelector(`.white-mode-btn[data-wmode="${msg.mode}"]`);
+        if (btn) btn.click();
+      }
+    } else if (msg.type === 'pim-request-export') {
+      // Export SVG yapıp parent'a yolla (save handler tetikle)
+      const btn = document.getElementById('btnApprove');
+      if (btn) btn.click();
+    }
+  } catch (err) {
+    pimPostToParent({ type: 'pim-poc-error', error: String(err) });
+  }
+});
+
+// Auto-load: designUrl varsa OpenCV hazır olunca fetch + handleFile
+async function pimAutoLoadDesign() {
+  if (!PIM_PARAMS.designUrl) return;
+  try {
+    const res = await fetch(PIM_PARAMS.designUrl, { mode: 'cors' });
+    if (!res.ok) throw new Error('fetch_failed_' + res.status);
+    const blob = await res.blob();
+    // Dosya adını URL'den çıkar
+    const urlObj = new URL(PIM_PARAMS.designUrl);
+    const name = urlObj.pathname.split('/').pop() || 'design.png';
+    const file = new File([blob], name, { type: blob.type || 'image/png' });
+    if (typeof handleFile === 'function') {
+      handleFile(file);
+      // Auto-load sonrası parent'a sinyal — handleFile async sürebilir
+      setTimeout(() => {
+        pimPostToParent({
+          type: 'pim-poc-loaded',
+          source: currentFileSource,
+          width: currentMat ? currentMat.cols : 0,
+          height: currentMat ? currentMat.rows : 0,
+        });
+      }, 2000);
+    }
+  } catch (err) {
+    pimPostToParent({ type: 'pim-poc-error', error: String(err) });
+  }
+}
+
+// Ready sinyali — DOM yüklendiğinde gönder
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    pimPostToParent({ type: 'pim-poc-ready' });
+  });
+} else {
+  pimPostToParent({ type: 'pim-poc-ready' });
+}
+
+// ============================================================
 // OPENCV.JS BAŞLATMA
 // ============================================================
 function onOpenCvReady() {
   cvReady = true;
   if (typeof updateLibStatus === 'function') {
     updateLibStatus();
+  }
+  // Pim entegrasyon — designUrl varsa auto-load (Sefa 22 May v68 Faz 4)
+  // OpenCV + PDF + PSD hepsi ready olmasa bile raster için cvReady yeterli.
+  // PDF/AI/PSD için handleFile zaten ready'i bekler ve uyarı verir.
+  if (PIM_PARAMS.designUrl) {
+    // Material set
+    if (PIM_PARAMS.material) {
+      const matBtn = document.querySelector(
+        `.material-btn[data-material="${PIM_PARAMS.material}"]`
+      );
+      if (matBtn) matBtn.click();
+    }
+    // Başlangıç katmanları
+    if (PIM_PARAMS.layers.length > 0) {
+      ['cut', 'white', 'bleed', 'safe'].forEach((lyr) => {
+        const wanted = PIM_PARAMS.layers.includes(lyr);
+        if (layers[lyr] !== wanted) {
+          layers[lyr] = wanted;
+          const t = document.querySelector(`.toggle[data-layer="${lyr}"]`);
+          if (t) t.classList.toggle('on', wanted);
+        }
+      });
+    }
+    // Auto-load tasarım
+    pimAutoLoadDesign();
   }
 }
 
