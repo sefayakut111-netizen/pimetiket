@@ -75,23 +75,40 @@ export default function HomePage() {
   return (
     <main className="animate-fade-up">
       {/* ============================== HERO ============================== */}
-      <section className="relative overflow-hidden pt-10 md:pt-16 pb-12 md:pb-20">
-        {/* Hero bg — krem-soft soft gradient. Görselin (bal kavanozu)
-            açık bej arka planı sayfayla kaynaşıyor (Sefa 17 May v14). */}
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(1100px 560px at 75% 38%, var(--color-krem-soft) 0%, var(--color-krem-soft) 25%, transparent 70%)",
-          }}
-        />
-        {/* Uçuşan etiketler kaldırıldı (Sefa kararı 12 May) */}
-        {/* Sefa 23 May v68: grid [1.1fr_0.9fr] → [0.85fr_1.15fr] (image
-            kolonu daha dominant — "daha büyük hero" Sefa kararı). */}
-        <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[0.85fr_1.15fr] gap-8 md:gap-14 items-center">
-          {/* LEFT — copy */}
-          <div>
+      {/* Sefa 23 May v68 (full-bleed banner refactor):
+          Önceki 2-kolon (sol metin + sağ image) yapı → tek kolon, üstte
+          full-width banner image + altta metin/CTA. Yeni görsel 2.5:1
+          banner formatı, soldan sağa ekrani kapliyor (Sefa istegi). */}
+      <section className="relative overflow-hidden">
+        {/* Full-bleed banner — viewport edge'inden edge'ine */}
+        <div className="relative w-full aspect-[5/2] md:aspect-[12/5] max-h-[520px]">
+          {homeHero ? (
+            <Image
+              src={homeHero.publicUrl}
+              alt={
+                homeHero.altText ??
+                "Pim Etiket — sticker, etiket ve uygulama örnekleri"
+              }
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+          ) : (
+            <Image
+              src="/hero/home-hero.jpg"
+              alt="Pim Etiket — sticker, etiket, kavanoz, laptop ve mug uygulama örnekleri"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+          )}
+        </div>
+
+        {/* Altta hero copy + CTA — container içinde, banner'ın hemen altı */}
+        <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 pt-10 md:pt-16 pb-12 md:pb-20">
+          <div className="max-w-[680px]">
             <Eyebrow>{t.home.eyebrow}</Eyebrow>
             <h1 className="mt-5 text-[34px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
               {t.home.h1Brand}
@@ -156,43 +173,6 @@ export default function HomePage() {
                 (Düşük adetten esnek / AI dosya kontrolü / Türkiye geneli teslimat).
                 3 PILLAR card ile aynı mesaj duplicate ediyordu → ikisi de
                 kaldırıldı, hero açıklamasında zaten geçiyor. */}
-          </div>
-
-          {/* RIGHT — Hero görsel (Sefa 17 May v14, 23 May v68 update)
-              · Sefa 23 May v68 (uçtan uca): max-w-[780px] kaldırıldı,
-                image column tam doldurur ve viewport sağ kenarına kadar
-                bleed eder (negative margin ile container padding'i bypass).
-              · Halo arka plan kaldırıldı (görsel zaten edge-to-edge, halo
-                gerek yok) */}
-          <div className="relative flex items-center min-h-[360px] md:min-h-[560px] md:-mr-8 lg:-mr-[max(0px,calc((100vw-1280px)/2+2rem))]">
-            {/* Görsel — Next/Image otomatik WebP/AVIF + responsive sizes
-                + priority (LCP image). Sefa 23 May v68 update: aspect 2/1
-                → 3/2 (görselin gerçek oranı, crop sıfır, daha yüksek = daha
-                "büyük" his). min-h 420 → 560 (geniş kompozisyon yer açar). */}
-            <div className="relative z-10 w-full aspect-[3/2]">
-              {homeHero ? (
-                <Image
-                  src={homeHero.publicUrl}
-                  alt={
-                    homeHero.altText ??
-                    "Pim Etiket — sticker, etiket ve uygulama örnekleri"
-                  }
-                  fill
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover rounded-l-2xl md:rounded-l-3xl shadow-[0_20px_50px_-15px_rgba(180,140,90,0.28)]"
-                />
-              ) : (
-                <Image
-                  src="/hero/home-hero.jpg"
-                  alt="Pim Etiket — sticker, etiket, kavanoz, laptop ve mug uygulama örnekleri"
-                  fill
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover rounded-l-2xl md:rounded-l-3xl shadow-[0_20px_50px_-15px_rgba(180,140,90,0.28)]"
-                />
-              )}
-            </div>
           </div>
         </div>
       </section>
