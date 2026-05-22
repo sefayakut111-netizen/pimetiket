@@ -392,7 +392,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Logo veya tasarımın silüetine kesim",
     descEn: "Cut to your design's silhouette",
     svg: <DieCutIcon />,
-    imageSrc: "/assets/img/cards/sticker-diecut.png",
+    imageSrc: "/assets/img/cards/sticker-diecut.jpg",
   },
   {
     query: "cut=diecut&shape=circle",
@@ -401,7 +401,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Daire form — laptop, su şişesi, marka",
     descEn: "Circle form — laptop, water bottle, logo",
     svg: <CircleIcon />,
-    imageSrc: "/assets/img/cards/sticker-circle.png",
+    imageSrc: "/assets/img/cards/sticker-circle.jpg",
   },
   {
     query: "cut=diecut&shape=rectangle",
@@ -410,7 +410,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Yaygın form — düz veya yumuşak köşe",
     descEn: "Most common form — sharp or rounded corner",
     svg: <RectangleIcon />,
-    imageSrc: "/assets/img/cards/sticker-rectangle.png",
+    imageSrc: "/assets/img/cards/sticker-rectangle.jpg",
   },
   {
     query: "cut=diecut&shape=square",
@@ -419,7 +419,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Eş kenar — düz veya yumuşak köşe",
     descEn: "Equal sides — sharp or rounded corner",
     svg: <SquareIcon />,
-    imageSrc: "/assets/img/cards/sticker-square.png",
+    imageSrc: "/assets/img/cards/sticker-square.jpg",
   },
   {
     query: "cut=diecut&shape=oval",
@@ -428,7 +428,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Elips — vintage, organik form",
     descEn: "Ellipse — vintage, organic",
     svg: <OvalIcon />,
-    imageSrc: "/assets/img/cards/sticker-oval.png",
+    imageSrc: "/assets/img/cards/sticker-oval.jpg",
   },
   {
     query: "cut=diecut&shape=bumper",
@@ -437,7 +437,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Uzun yatay — hobi, laptop",
     descEn: "Long horizontal — hobby, laptop",
     svg: <BumperIcon />,
-    imageSrc: "/assets/img/cards/sticker-bumper.png",
+    imageSrc: "/assets/img/cards/sticker-bumper.jpg",
   },
   {
     query: "cut=kisscut&shape=diecut",
@@ -446,7 +446,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Çevresi sağlam kağıttan tek tek çıkarılır",
     descEn: "Sticker cut, backing intact — peel individually",
     svg: <KissCutIcon />,
-    imageSrc: "/assets/img/cards/sticker-kisscut.png",
+    imageSrc: "/assets/img/cards/sticker-kisscut.jpg",
   },
   {
     query: "cut=diecut&shape=diecut&material=transparan",
@@ -455,7 +455,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Saydam zemin — cam, arka plan görünsün",
     descEn: "Transparent base — glass, background visible",
     svg: <ClearIcon />,
-    imageSrc: "/assets/img/cards/sticker-clear.png",
+    imageSrc: "/assets/img/cards/sticker-clear.jpg",
   },
   {
     query: "cut=diecut&shape=diecut&material=holo",
@@ -464,7 +464,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Gökkuşağı yansıma — premium, etkinlik",
     descEn: "Rainbow reflection — premium, events",
     svg: <HoloIcon />,
-    imageSrc: "/assets/img/cards/sticker-hologram.png",
+    imageSrc: "/assets/img/cards/sticker-hologram.jpg",
   },
   {
     query: "cut=diecut&shape=diecut&material=simli",
@@ -473,7 +473,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Parıltılı dokulu — çocuk, hediye",
     descEn: "Sparkly texture — kids, gifts",
     svg: <GlitterIcon />,
-    imageSrc: "/assets/img/cards/sticker-glitter-holo.png",
+    imageSrc: "/assets/img/cards/sticker-glitter-holo.jpg",
   },
   {
     // Sefa 21 May v68 (ürün denetim P2 #15 + #16): "Sticker Sayfası" web
@@ -485,7 +485,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Aynı tasarımdan çok adet — tek tabakada",
     descEn: "Many copies of one design — on a single sheet",
     svg: <SheetIcon />,
-    imageSrc: "/assets/img/cards/sticker-sheet.png",
+    imageSrc: "/assets/img/cards/sticker-sheet.jpg",
   },
 ];
 
@@ -505,17 +505,18 @@ function StickerProductCard({
       href={`/sticker/yapilandir?${card.query}`}
       className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
-      {/* Sefa 20 May v68: aspect-[200/130] reservation → CLS=0.
-          Sefa 22 May v68: imageSrc varsa Next/Image (otomatik AVIF/WebP +
-          srcset), yoksa eski inline SVG fallback. */}
-      <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors flex items-center justify-center aspect-[200/130] overflow-hidden">
+      {/* Sefa 20 May v68: aspect reservation → CLS=0.
+          Sefa 22 May v68: 200/130 (1.54) → 3/2 (1.5) — Sefa'nın illüstrasyon
+          JPG'leri ~3:2 oran. imageSrc varsa Next/Image object-cover (kart tam
+          dolar), yoksa eski inline SVG fallback (object-contain p-2). */}
+      <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors flex items-center justify-center aspect-[3/2] overflow-hidden">
         {card.imageSrc ? (
           <Image
             src={card.imageSrc}
             alt={isEn ? card.titleEn : card.titleTr}
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-            className="object-contain p-2"
+            className="object-cover"
           />
         ) : (
           card.svg

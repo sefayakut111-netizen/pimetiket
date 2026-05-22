@@ -76,7 +76,7 @@ const RULO_CARDS: EtiketCard[] = [
     descTr: "Logo veya tasarımın silüetine kesim",
     descEn: "Cut to your design's silhouette",
     // Sefa 22 May v68: SVG silüetler yerine gerçek illüstrasyon PNG'leri
-    imageSrc: "/assets/img/cards/rulo-diecut.png",
+    imageSrc: "/assets/img/cards/rulo-diecut.jpg",
   },
   {
     shape: "clear",
@@ -85,7 +85,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Clear Roll Label",
     descTr: "Saydam zemin — cam şişe, parfüm",
     descEn: "Transparent base — glass bottles, perfume",
-    imageSrc: "/assets/img/cards/rulo-clear.png",
+    imageSrc: "/assets/img/cards/rulo-clear.jpg",
   },
   {
     shape: "circle",
@@ -94,7 +94,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Circle Roll Label",
     descTr: "Daire — kapak, kozmetik klasiği",
     descEn: "Circle — cap, cosmetics classic",
-    imageSrc: "/assets/img/cards/rulo-circle.png",
+    imageSrc: "/assets/img/cards/rulo-circle.jpg",
   },
   {
     shape: "square",
@@ -103,7 +103,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Square Roll Label",
     descTr: "Eş kenar — düz veya yumuşak köşe",
     descEn: "Equal sides — sharp or rounded corner",
-    imageSrc: "/assets/img/cards/rulo-square.png",
+    imageSrc: "/assets/img/cards/rulo-square.jpg",
   },
   {
     shape: "rectangle",
@@ -112,7 +112,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Rectangle Roll Label",
     descTr: "Yaygın etiket formu — düz veya yumuşak köşe",
     descEn: "Most common label form — sharp or rounded",
-    imageSrc: "/assets/img/cards/rulo-rectangle.png",
+    imageSrc: "/assets/img/cards/rulo-rectangle.jpg",
   },
   {
     shape: "oval",
@@ -121,7 +121,7 @@ const RULO_CARDS: EtiketCard[] = [
     titleEn: "Oval Roll Label",
     descTr: "Elips — vintage, şık duruş",
     descEn: "Ellipse — vintage, elegant",
-    imageSrc: "/assets/img/cards/rulo-oval.png",
+    imageSrc: "/assets/img/cards/rulo-oval.jpg",
   },
 ];
 
@@ -133,7 +133,9 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Circle Sheet Label",
     descTr: "Düşük adet daire — hediye, butik",
     descEn: "Low quantity circles — gifts, boutique",
-    imageSrc: "/assets/img/cards/tabaka-circle.png",
+    // Sefa 22 May v68: yeni Küçültülmüş klasörde tabaka-circle yok →
+    // geçici olarak SVG fallback. Sefa hazırlayınca .jpg'ye geç.
+    imageSrc: "/assets/svg/cards/tabaka-circle.svg",
   },
   {
     shape: "diecut",
@@ -144,7 +146,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     descEn: "Low quantity contour — handmade, boutique",
     // Sefa 22 May v68: 21.11.29 (çıplak Pim silüetli) tercih edildi.
     // 21.14.25 (outline'lı) tabaka-diecut-alt.png olarak yedek kalıyor.
-    imageSrc: "/assets/img/cards/tabaka-diecut.png",
+    imageSrc: "/assets/img/cards/tabaka-diecut.jpg",
   },
   {
     shape: "oval",
@@ -163,7 +165,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Rectangle Sheet Label",
     descTr: "Düşük adet — düz veya yumuşak köşe",
     descEn: "Low quantity — sharp or rounded corner",
-    imageSrc: "/assets/img/cards/tabaka-rectangle.png",
+    imageSrc: "/assets/img/cards/tabaka-rectangle.jpg",
   },
   {
     shape: "square",
@@ -172,7 +174,7 @@ const TABAKA_CARDS: EtiketCard[] = [
     titleEn: "Square Sheet Label",
     descTr: "Düşük adet — düz veya yumuşak köşe",
     descEn: "Low quantity — sharp or rounded corner",
-    imageSrc: "/assets/img/cards/tabaka-square.png",
+    imageSrc: "/assets/img/cards/tabaka-square.jpg",
   },
 ];
 
@@ -192,17 +194,18 @@ function ProductCard({
       href={`/etiket/yapilandir?form=${card.form}&shape=${card.shape}`}
       className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
-      {/* Sefa 20 May v68: aspect-[220/130] reservation → CLS=0.
-          Next/Image otomatik AVIF/WebP + srcset + lazy. Sizes prop ile
-          mobile'da 50vw, tablet 33vw, desktop 25vw (4-col grid). */}
-      <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors aspect-[220/130] overflow-hidden">
+      {/* Sefa 20 May v68: aspect reservation → CLS=0.
+          Sefa 22 May v68: 220/130 (1.69) → 3/2 (1.5) — Sefa'nın illüstrasyon
+          PNG'leri ~3:2 oran, kutu uygun. object-contain → object-cover +
+          padding kaldırıldı → görsel kart'a tam sığar, daha "premium" his. */}
+      <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors aspect-[3/2] overflow-hidden">
         <Image
           src={card.imageSrc}
           alt={isEn ? card.titleEn : card.titleTr}
           fill
           loading="lazy"
           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
-          className="object-contain p-3"
+          className="object-cover"
         />
       </div>
       <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
