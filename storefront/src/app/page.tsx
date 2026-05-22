@@ -75,40 +75,46 @@ export default function HomePage() {
   return (
     <main className="animate-fade-up">
       {/* ============================== HERO ============================== */}
-      {/* Sefa 23 May v68 (full-bleed banner refactor):
-          Önceki 2-kolon (sol metin + sağ image) yapı → tek kolon, üstte
-          full-width banner image + altta metin/CTA. Yeni görsel 2.5:1
-          banner formatı, soldan sağa ekrani kapliyor (Sefa istegi). */}
-      <section className="relative overflow-hidden">
-        {/* Full-bleed banner — viewport edge'inden edge'ine */}
-        <div className="relative w-full aspect-[5/2] md:aspect-[12/5] max-h-[520px]">
-          {homeHero ? (
-            <Image
-              src={homeHero.publicUrl}
-              alt={
-                homeHero.altText ??
-                "Pim Etiket — sticker, etiket ve uygulama örnekleri"
-              }
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-            />
-          ) : (
-            <Image
-              src="/hero/home-hero.jpg"
-              alt="Pim Etiket — sticker, etiket, kavanoz, laptop ve mug uygulama örnekleri"
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-            />
-          )}
-        </div>
+      {/* Sefa 23 May v68 (overlay refactor):
+          Önceki: banner üstte, metin altta. Yeni: metin banner'ın
+          ÜZERINDE (sol tarafta vertical center). Banner full-bleed +
+          beyaz gradient sol overlay metin okunabilirliği için. */}
+      <section className="relative w-full min-h-[480px] md:min-h-[600px] overflow-hidden">
+        {/* Full-bleed banner görsel — section'un arka planı */}
+        {homeHero ? (
+          <Image
+            src={homeHero.publicUrl}
+            alt={
+              homeHero.altText ??
+              "Pim Etiket — sticker, etiket ve uygulama örnekleri"
+            }
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover -z-10"
+          />
+        ) : (
+          <Image
+            src="/hero/home-hero.jpg"
+            alt="Pim Etiket — sticker, etiket, kavanoz, laptop ve mug uygulama örnekleri"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover -z-10"
+          />
+        )}
 
-        {/* Altta hero copy + CTA — container içinde, banner'ın hemen altı */}
-        <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 pt-10 md:pt-16 pb-12 md:pb-20">
-          <div className="max-w-[680px]">
+        {/* Sol taraf beyaz fade overlay — metin kontrast için.
+            md+ : sol %50 alanı yumuşatır, sağda görsel görünür kalır.
+            mobile: tüm overlay daha yoğun (metin küçük ekranda okunsun). */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/0 md:from-white md:via-white/70 md:to-transparent"
+        />
+
+        {/* Metin overlay — sol-vertical center, container içinde */}
+        <div className="relative mx-auto max-w-[1280px] min-h-[480px] md:min-h-[600px] px-4 md:px-8 flex items-center">
+          <div className="max-w-[560px] py-12">
             <Eyebrow>{t.home.eyebrow}</Eyebrow>
             <h1 className="mt-5 text-[34px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
               {t.home.h1Brand}
