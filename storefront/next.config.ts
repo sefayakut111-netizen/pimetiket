@@ -62,15 +62,21 @@ const securityHeaders = [
       // Inline JS Next.js bootstrap için.
       // PostHog (eu.i.posthog.com): /static/array.js yükleme + session replay worker.
       // Sentry (browser.sentry-cdn.com): replay & profiling worker'ları.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://browser.sentry-cdn.com",
-      "script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.googletagmanager.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://browser.sentry-cdn.com",
+      // Sefa 23 May v68: POC iframe (/poc.html) bicak editor 4 CDN'den script
+      // cekiyor — OpenCV.js (docs.opencv.org), PDF.js (cdnjs.cloudflare.com),
+      // ag-psd PSD parser (cdn.jsdelivr.net), @imgly/background-removal
+      // (esm.run). CSP block'lanirsa POC'da "Bir gorsel yukle" bos kaliyor.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://browser.sentry-cdn.com https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev",
+      "script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.googletagmanager.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://browser.sentry-cdn.com https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev",
       // Resimler: Supabase Storage signed URL + dataURL + PostHog session replay snapshots
       "img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       // Supabase REST + WS, PayTR API, PostHog event ingestion, Sentry error ingestion
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.paytr.com https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://eu.sentry.io https://*.ingest.de.sentry.io",
-      // Session replay worker (PostHog) için
-      "worker-src 'self' blob:",
+      // Sefa 23 May v68: POC iframe WASM/asset fetch'i — OpenCV.wasm,
+      // background-removal model dosyalari (esm.run -> jsdelivr CDN).
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.paytr.com https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://eu.sentry.io https://*.ingest.de.sentry.io https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev https://huggingface.co https://*.huggingface.co",
+      // Session replay worker (PostHog) + POC PDF.js worker (cdnjs)
+      "worker-src 'self' blob: https://cdnjs.cloudflare.com",
       // PayTR hosted checkout iframe
       "frame-src 'self' https://www.paytr.com",
       "frame-ancestors 'self'",
