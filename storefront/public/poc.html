@@ -3458,19 +3458,19 @@ function showStatus(msg, level = 'warn') {
 </script>
 
 <!-- PDF.js — PDF/AI dosyaları için -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <!-- ag-psd — PSD dosyaları için (window.agPsd olarak global'e gelir) -->
 <script src="https://cdn.jsdelivr.net/npm/ag-psd@28.0.0/dist/bundle.js"></script>
 <script>
   // PDF.js worker konfigürasyonu
   if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     pdfJsReady = true;
     updateLibStatus();
   } else {
     const checkPdfJs = setInterval(() => {
       if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         pdfJsReady = true;
         updateLibStatus();
         clearInterval(checkPdfJs);
