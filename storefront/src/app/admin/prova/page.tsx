@@ -13,6 +13,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
@@ -35,6 +37,70 @@ function timeAgo(timestamp: number): string {
   if (hr < 24) return `${hr} saat önce`;
   const day = Math.floor(hr / 24);
   return `${day} gün önce`;
+}
+
+// Sefa 23 May v68: /admin/prova kartlarda müşteri tasarımı thumbnail.
+// design-url endpoint signed URL döner (5 dk TTL). Admin/staff bypass
+// endpoint tarafında eklendi (aynı commit).
+function DesignThumb({
+  orderId,
+  itemId,
+  fallbackIsEtiket,
+}: {
+  orderId: string;
+  itemId: string;
+  fallbackIsEtiket: boolean;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.url) setUrl(d.url);
+        else setError(true);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, itemId]);
+
+  // Tasarım var ve raster: göster. SVG / PDF olabilir, Image yine deniyor.
+  if (url && !error) {
+    return (
+      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gri-100 shrink-0">
+        <Image
+          src={url}
+          alt="Tasarım"
+          fill
+          sizes="80px"
+          className="object-contain"
+          unoptimized
+          onError={() => setError(true)}
+        />
+      </div>
+    );
+  }
+  // Fallback: tasarım yok veya yüklenemedi → tip ikonu
+  return (
+    <div
+      className={cn(
+        "grid place-items-center w-20 h-20 rounded-lg shrink-0",
+        fallbackIsEtiket ? "bg-krem" : "bg-pim-mercan-tint"
+      )}
+    >
+      {fallbackIsEtiket ? (
+        <Icon.Roll size={32} className="text-lacivert" />
+      ) : (
+        <Icon.Sticker size={32} className="text-pim-mercan" />
+      )}
+    </div>
+  );
 }
 
 export default function AdminProvaPage() {
@@ -224,22 +290,9 @@ export default function AdminProvaPage() {
               const isEtiket = p.items.some((i) => i.product === "etiket");
               return (
                 <Card key={p.id} padding="p-5">
-                  <div className="grid grid-cols-1 md:grid-cols-[80px_1fr_auto] gap-4 items-start">
-                    {/* Thumb */}
-                    <div
-                      className={cn(
-                        "grid place-items-center w-20 h-20 rounded-lg shrink-0",
-                        isEtiket ? "bg-krem" : "bg-pim-mercan-tint"
-                      )}
-                    >
-                      {isEtiket ? (
-                        <Icon.Roll size={32} className="text-lacivert" />
-                      ) : (
-                        <Icon.Sticker size={32} className="text-pim-mercan" />
-                      )}
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                      <div className="flex items-center gap-2.5 mb-2 flex-wrap">
                         <span className="font-mono text-[12.5px] text-gri-700">
                           {p.id}
                         </span>
@@ -257,6 +310,29 @@ export default function AdminProvaPage() {
                       <div className="text-[12px] text-gri-500 mt-1 tabular-nums">
                         Sipariş: {timeAgo(p.createdAt)} · {fmt(p.total)} ₺
                       </div>
+
+                      {/* Sefa 23 May v68: Her order_item için thumbnail strip
+                          + "Tam ekran incele" link. Tıklanınca yeni tab'da
+                          /siparis/[id] açılır — admin tasarım + cutline +
+                          büyük önizleme görür. */}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {p.items.map((it) => (
+                          <DesignThumb
+                            key={it.id}
+                            orderId={p.id}
+                            itemId={it.id}
+                            fallbackIsEtiket={it.product === "etiket"}
+                          />
+                        ))}
+                      </div>
+                      <Link
+                        href={`/siparis/${p.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline"
+                      >
+                        Tam ekran incele (tasarım + bıçak) →
+                      </Link>
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
                       <Button

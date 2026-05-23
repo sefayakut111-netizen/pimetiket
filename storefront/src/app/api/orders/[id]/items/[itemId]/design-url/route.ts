@@ -67,7 +67,17 @@ export async function GET(
     return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
   }
   if (orderRow.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Sefa 23 May v68: admin/staff bypass — /admin/prova sayfasinda
+    // operatör müşterinin tasarımını inceleyebilmeli.
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    const role = (profile as { role?: string } | null)?.role;
+    if (role !== "admin" && role !== "staff") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   // design_file: spesifik ID istendiyse onu; yoksa en güncel
