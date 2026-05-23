@@ -74,13 +74,44 @@ export async function GET(
   if (orderRow.user_id !== user.id) {
     // Sefa 23 May v68: admin/staff bypass — /admin/prova sayfasinda
     // operatör müşterinin tasarımını inceleyebilmeli.
+    // + partner bypass (P3): partner kendisine atanmış sipariş için
+    // tasarım dosyasını indirebilmeli. Cross-tenant guard: assignment kontrolü.
     const { data: profile } = await admin
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
     const role = (profile as { role?: string } | null)?.role;
-    if (role !== "admin" && role !== "staff") {
+    if (role === "admin" || role === "staff") {
+      // OK — admin/staff her siparişin tasarımına erişebilir
+    } else if (role === "partner") {
+      // Partner sadece kendisine atanmış sipariş için
+      const { data: contactRow } = await admin
+        .from("partner_contacts")
+        .select("partner_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const partnerId = (contactRow as { partner_id: string } | null)
+        ?.partner_id;
+      if (!partnerId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const { data: asgRow } = await admin
+        .from("order_assignments")
+        .select("fason_partner_id")
+        .eq("order_id", canonicalOrderId)
+        .order("assigned_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const asgPartnerId = (asgRow as { fason_partner_id: string } | null)
+        ?.fason_partner_id;
+      if (asgPartnerId !== partnerId) {
+        return NextResponse.json(
+          { error: "not_your_order" },
+          { status: 403 }
+        );
+      }
+    } else {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
