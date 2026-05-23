@@ -4,7 +4,7 @@
  * Sefa 19 May v68 (Migration 059):
  * Baskı onay sayfası (/onay/[orderId]) için tek-shot data fetch.
  * fn_proof_summary RPC ile sipariş + tüm itemler + her item'ın son
- * cutline draft'ı + açık help_request bir kerede gelir.
+ * cutline draft'ı + açık helprequest bir kerede gelir.
  *
  * Auth: sipariş sahibi (RPC kendi içinde auth.uid() kontrol eder)
  */
@@ -14,7 +14,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: rawOrderId } = await params;
@@ -42,8 +42,32 @@ export async function GET(
   if (!orderRow) {
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
+  // Sefa 23 May v68: admin/staff bypass. Eski davranis: sahibi degilse 403.
+  // Yeni: admin/staff /onay/duzenle sayfasini acabilmeli (musteri tasarimina
+  // bicak rotuse). RPC fn_proof_summary auth.uid() kullaniyor ve admin'le
+  // çağrılamaz — bu yüzden admin için aynı response shape'i raw query ile
+  // /api/admin/orders/[id]/proof endpoint'inden ileri sar (proxy).
   if (orderRow.user_id !== user.id) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    const role = (profile as { role?: string } | null)?.role;
+    if (role !== "admin" && role !== "staff") {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+    // Admin yolu: internal admin endpoint'ini cagir (ayni cookie ile)
+    const adminProofUrl = new URL(
+      `/api/admin/orders/${orderRow.id}/proof`,
+      new URL(req.url)
+    );
+    const proxyRes = await fetch(adminProofUrl.toString(), {
+      headers: { cookie: req.headers.get("cookie") ?? "" },
+      cache: "no-store",
+    });
+    const proxyData = await proxyRes.json().catch(() => ({}));
+    return NextResponse.json(proxyData, { status: proxyRes.status });
   }
   const orderId = orderRow.id; // canonical
 
