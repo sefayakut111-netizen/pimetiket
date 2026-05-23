@@ -1,0 +1,349 @@
+# Pim Etiket — Partner Pricing Matrix Mimarisi
+
+**Yazıldı:** 23 Mayıs 2026 (Sefa kararı)
+**Durum:** ⏳ Plan onaylandı, implementasyon beklemede
+**Sahibi:** Sefa Yakut
+
+---
+
+## 1. Hedef (TL;DR)
+
+Üretim partnerlerinden gelen fiyatları temel alan, **anchor noktası + lineer interpolasyon** ile aradaki değerleri otomatik hesaplayan bir fiyat sistemi.
+
+3 ürün tipi için 2 farklı yaklaşım:
+
+| Ürün | Model | Veri kaynağı |
+|---|---|---|
+| **Etiket Rulo** | Model C — 2D matris (boyut × adet) | Partner tablo |
+| **Etiket Tabaka** | Model C — 2D matris (boyut × adet) | Partner tablo |
+| **Sticker** | m² × rate × tier (mevcut sistem) | Partner m² fiyatı |
+
+---
+
+## 2. Mevcut sistem (kısa)
+
+Detay: bkz. konuşma transkriptindeki "Pim Etiket Fiyat Motoru — Akademi" özeti.
+
+- **Eski motor** (`src/lib/pricing-engine/*`) — m² × rate × hardcoded malzeme çarpanları
+- **Yeni motor** (`src/lib/pricing-calc.ts`) — DB-driven, sheet/area modu
+- **Bridge** (`src/lib/customer-pricing-from-config.ts`) — geometri eski, fiyat yeni
+- **Maliyet motoru** — `cost.ts`, fason vs üretim modu (üretim modu şu an kullanılmıyor)
+
+**Uyumsuzluk:** Mevcut sistem partner'in 2D fiyat tablosunu temsil edemez. Tek bir `rate` × m² mantığı var.
+
+---
+
+## 3. Yeni model — Model C (2D matris + lineer fill)
+
+### 3.1 Anchor noktaları
+
+**Boyut ekseni (varsayılan):** 3×3, 5×5, 7×7, 10×10, 15×15 mm
+**Adet ekseni (varsayılan):** 100, 500, 1.000, 5.000, 10.000
+
+Bu noktalar **konfigüre edilebilir** — admin panelinden eklenip çıkarılır.
+
+### 3.2 Partner matrisi örneği
+
+```
+KUŞE RULO ETİKET (₺/adet)
+─────────────────────────────────────────────────
+            100      500    1.000   5.000   10.000
+   3×3      0.40    0.28    0.20    0.12     0.09
+   5×5      0.65    0.50    0.35    0.22     0.17
+   7×7      0.85    0.68    0.55    0.35     0.27
+  10×10     1.20    0.95    0.85    0.55     0.42
+  15×15     1.80    1.55    1.50    1.10     0.85
+```
+
+**25 hücre / malzeme**. Hibrit modelde malzeme başına 1 matris (aşağıda).
+
+### 3.3 Bilinear interpolasyon — örnek hesap
+
+Müşteri **6×6 mm / 750 adet** girer:
+
+1. **Boyut:** 5×5 ↔ 7×7 arası → 6×6 ortada (`t_size = 0.5`)
+2. **Adet:** 500 ↔ 1.000 arası → 750 ortada (`t_qty = 0.5`)
+3. **4 köşe hücre:**
+   ```
+                500ad   1000ad
+       5×5      0.50    0.35
+       7×7      0.68    0.55
+   ```
+4. **Önce adet:**
+   - 5×5: `0.50 + (0.35-0.50) × 0.5 = 0.425`
+   - 7×7: `0.68 + (0.55-0.68) × 0.5 = 0.615`
+5. **Sonra boyut:**
+   - `0.425 + (0.615-0.425) × 0.5 = 0.520 ₺/adet`
+6. **Toplam partner fiyatı:** `0.520 × 750 = 390 ₺`
+
+### 3.4 Anchor dışı davranış (clamp policy)
+
+| Durum | Politika |
+|---|---|
+| Boyut min altı (örn 2×2 < 3×3) | Min anchor (3×3) ile clamp **VEYA** "Teklif iste" formu |
+| Boyut max üstü (örn 20×20 > 15×15) | "Teklif iste" formu (zorunlu) |
+| Adet min altı (örn 50 < 100) | Min anchor (100) ile clamp |
+| Adet max üstü (örn 50.000 > 10.000) | "Toplu sipariş teklif iste" |
+
+Sefa kararı sonradan kesinleşecek (varsayılan: clamp altı, teklif üstü).
+
+---
+
+## 4. Hibrit kaplama modeli
+
+Her **malzeme** kendi matrisini taşır, **kaplama/özelleştirme** üzerine sabit % olarak eklenir.
+
+### 4.1 Matris sayısı
+
+**Etiket Rulo malzemeleri:** kuşe, beyaz (Opak PP), şeffaf, ultra, metalik → **5 matris**
+**Etiket Tabaka malzemeleri:** kuşe-tabaka, beyaz-tabaka, kraft-tabaka, şeffaf-tabaka → **4 matris**
+
+**Toplam:** 9 matris × 25 hücre = **225 hücre** (yönetilebilir)
+
+### 4.2 Kaplama yüzdeleri (matris üzerine eklenir)
+
+| Modifier | Default % | Etki |
+|---|---:|---|
+| `coating_mat` | +15% | Mat kaplama |
+| `coating_glossy` | +15% | Parlak kaplama |
+| `coating_soft` | +30% | Soft touch |
+| `finish_foil` | +50% | Yaldız |
+| `finish_emboss` | +30% | Emboss |
+| `finish_spotuv` | +25% | Spot UV |
+
+**Birden fazla seçilirse:** TOPLAMSAL `(1 + Σpct/100)` — eski motorda çarpımsal idi, yeni modelde toplamsal.
+
+Örn: Mat + Yaldız + Spot UV = `1 + 0.15 + 0.50 + 0.25 = 1.90` → +%90 zammet.
+
+(Eski motor: `1.15 × 1.50 × 1.25 = 2.16` → +%116 idi.)
+
+---
+
+## 5. Markup (karlılık) katmanı
+
+**Global tek % — ilk faz**
+
+Admin paneli: `admin_config.markup_pct = 50` (örn). Tüm partner fiyatlarına uygulanır.
+
+```
+müşteri_fiyat_ham = partner_fiyat × (1 + kaplama_pct/100) × (1 + markup_pct/100)
+```
+
+Üstüne PayTR fee gross-up + KDV (mevcut sistem — değişiklik yok).
+
+**Faz 2'de:** Ürün bazlı veya matris bazlı markup'a genişletilebilir. Şimdilik **global tek %** ile başlanır.
+
+---
+
+## 6. Sticker — m² × rate (değişmez)
+
+Mevcut sistem korunur, geometri motoru aynı:
+
+```
+totalM2 = sticker_geometry(qty, w, h, cut_mode)
+unit_cost = totalM2 × material_rate × tier_multiplier
++ operationCost (setup + packaging + cargo)
++ markup
++ fee gross-up + KDV
+```
+
+**Tier sistemi (`STICKER_TIERS`):** Değişmez.
+- 25 → 1.30, 50 → 1.20, 100 → 1.10, **250 → 1.00**, 500 → 0.90, 1000 → 0.80
+
+**Niye matris değil?** Sticker'da boyut serbest, müşteri 50×50 veya 73×42 girer. Matris model her boyutu anchor'a clamp eder — sticker UX bozulur.
+
+---
+
+## 7. DB Schema (Mig 085 önerisi)
+
+```sql
+-- 1) Anchor noktaları (axes)
+create table public.partner_pricing_axes (
+  id uuid primary key default gen_random_uuid(),
+  product_type text not null check (product_type in ('etiket_rulo', 'etiket_tabaka')),
+  kind text not null check (kind in ('size', 'qty')),
+  value integer not null,
+  display_order integer not null default 0,
+  created_at timestamptz default now(),
+  unique(product_type, kind, value)
+);
+
+-- 2) Matrisler
+create table public.partner_pricing_matrices (
+  id uuid primary key default gen_random_uuid(),
+  product_type text not null check (product_type in ('etiket_rulo', 'etiket_tabaka')),
+  material_key text not null,  -- 'kuse', 'seffaf', 'metalik', ...
+  display_name text not null,
+  active boolean not null default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(product_type, material_key)
+);
+
+-- 3) Hücreler
+create table public.partner_pricing_cells (
+  matrix_id uuid not null references partner_pricing_matrices(id) on delete cascade,
+  size_value integer not null,
+  qty_value integer not null,
+  price_per_unit numeric(10, 4) not null,
+  updated_at timestamptz default now(),
+  primary key (matrix_id, size_value, qty_value)
+);
+
+-- 4) Kaplama/özelleştirme yüzdeleri
+create table public.partner_pricing_modifiers (
+  id uuid primary key default gen_random_uuid(),
+  product_type text not null,  -- 'etiket_rulo' | 'etiket_tabaka' | 'sticker' | '*' (global)
+  modifier_key text not null,  -- 'coating_mat', 'finish_foil', ...
+  display_name text not null,
+  pct_add numeric(5, 2) not null default 0,
+  display_order integer not null default 0,
+  active boolean not null default true,
+  unique(product_type, modifier_key)
+);
+
+-- 5) Global markup
+alter table public.site_settings
+  add column if not exists pricing_markup_pct numeric(5, 2) not null default 50.0;
+```
+
+**RLS:** Sadece admin/staff insert/update. Public read (müşteri bridge bu tabloları okur).
+
+---
+
+## 8. Hesap fonksiyonu spec
+
+**Yeni dosya:** `src/lib/pricing-matrix.ts`
+
+```ts
+interface MatrixQuoteInput {
+  product_type: 'etiket_rulo' | 'etiket_tabaka';
+  material_key: string;       // 'kuse', 'seffaf', ...
+  size_mm: number;            // kare için tek değer (max(w,h))
+  qty: number;
+  modifiers: string[];        // ['coating_mat', 'finish_foil']
+}
+
+interface MatrixQuoteResult {
+  partner_price_per_unit: number;   // matristen + kaplama
+  markup_pct: number;
+  unit_price_pre_fee: number;        // + markup
+  subtotal: number;                  // + PayTR fee gross-up
+  vat_amount: number;
+  total: number;
+  unit_price: number;                // KDV dahil müşteri fiyatı
+  diagnostics: {
+    anchors_used: { size: [number, number]; qty: [number, number] };
+    interpolation: { t_size: number; t_qty: number };
+    cell_corners: [[number, number], [number, number]];
+    base_partner_unit: number;
+    modifier_pct_total: number;
+  };
+}
+
+async function getMatrixQuote(input: MatrixQuoteInput): Promise<MatrixQuoteResult>;
+```
+
+**İmplementasyon adımları:**
+
+1. `partner_pricing_matrices` SELECT (product_type + material_key)
+2. `partner_pricing_axes` SELECT (size + qty listesi)
+3. Anchor clamp: size ve qty min/max sınırlandır (clamp policy)
+4. 4 köşe `partner_pricing_cells` SELECT
+5. Bilinear interpolation
+6. Modifiers `partner_pricing_modifiers` SELECT + topla
+7. `site_settings.pricing_markup_pct` oku
+8. Final formül uygula
+9. `diagnostics` payload'u doldur (admin UI'da görünür olsun)
+
+---
+
+## 9. 3 Fazlı uygulama planı
+
+### Faz 1 — Veri + Hesap (1.5 iş günü)
+
+- ✅ Mig 085 yaz (yukarıdaki schema)
+- ✅ `getMatrixQuote` fonksiyonu yaz
+- ✅ Unit test (örnek matris ile interpolasyon doğrulama)
+- ✅ Seed data: bir test malzemesi için anchor + matris doldur
+
+### Faz 2 — Admin UI (1 iş günü)
+
+`/admin/fiyatlar` sayfasına 4 yeni sekme:
+
+1. **Anchor noktaları** — product_type seç → boyut/adet listesini düzenle
+2. **Matrisler** — product_type + malzeme seç → 5×5 grid input (tıkla, ₺ gir)
+3. **Kaplama yüzdeleri** — sabit % liste düzenleyici
+4. **Markup** — global % input (tek alan)
+
+**Diagnostik panel:** Test boyut/adet/malzeme gir → fonksiyonun döndürdüğü `diagnostics` payload'unu göster (hangi 4 hücre kullanıldı, interpolasyon nasıl çalıştı).
+
+### Faz 3 — Müşteri entegrasyonu + Eski motor emeklilik (1 iş günü)
+
+- `customer-pricing-from-config.ts` bridge — etiket için `getMatrixQuote` çağırsın
+- `/etiket` konfigüratör — boyut + adet + malzeme + kaplama değişince live preview
+- Sticker bridge'i değişmez (mevcut sistem)
+- Eski `pricing-engine/etiket-pricing.ts` `@deprecated` işaretle
+- 1-2 hafta gözle, kullanılmıyorsa sil
+
+**Toplam:** ~3.5 iş günü.
+
+---
+
+## 10. Açık sorular (Sefa onayı bekliyor)
+
+| Soru | Mevcut varsayım | Karar lazım mı? |
+|---|---|---|
+| Boyut anchor listesi (kaç nokta?) | 3×3, 5×5, 7×7, 10×10, 15×15 | Partner görüşüldükten sonra netleşecek |
+| Adet anchor listesi | 100, 500, 1.000, 5.000, 10.000 | Partner görüşüldükten sonra netleşecek |
+| Clamp altı (örn 2×2) politika | "Teklif iste" formu | İlk versiyonda min clamp, sonra "teklif iste" |
+| Clamp üstü (örn 20×20) politika | "Teklif iste" formu | ✅ Zorunlu |
+| Markup gelecekte ürün bazlı mı? | Faz 1: global, Faz 2+: genişlet | İhtiyaca göre |
+| Dikdörtgen boyutlar (5×10)? | Tek değer = max(w, h) ile clamp | Dikkat — alan farkını yansıtmaz, partner ile teyit gerek |
+
+**Önemli:** Dikdörtgen boyut konusu — partner "10×5 = 10×10 yarı fiyatı mı?" gibi sorulara cevap vermesi gerek. Belki **alan bazlı** interpolasyon? (Boyut ekseni `width × height` çarpımı?) Bu noktada partner görüşmesinden sonra revize edilebilir.
+
+---
+
+## 11. Geriye uyumluluk + emeklilik planı
+
+**Eski motor (`pricing-engine/etiket-pricing.ts`)** — Faz 3 sonrası `@deprecated`. 2 hafta canlı sistemde paralel kalır (fallback olarak):
+
+```ts
+// customer-pricing-from-config.ts
+try {
+  return await getMatrixQuote({...});
+} catch (err) {
+  console.warn('[pricing-matrix] fallback to legacy engine', err);
+  return await quoteEtiket({...});  // eski motor
+}
+```
+
+2 hafta sonra fallback kaldırılır, eski dosyalar silinir. Sticker fonksiyonları KORUNur (zaten matris dışı).
+
+---
+
+## 12. Risk listesi
+
+| Risk | Şiddet | Önlem |
+|---|---|---|
+| Partner yanlış değer girer (örn 1000 yerine 100₺) | Yüksek | Admin UI uyarı: "Bu hücre komşulardan %500 daha yüksek/düşük" |
+| Anchor dışı boyut → müşteri yanılsama | Orta | UI'da "Bu boyut için tahmini fiyat" rozet + diagnostic erişimi |
+| Markup çok düşük → zarar | Yüksek | `actualProfit < baseCost × 0.10` uyarısı (mevcut sistem benzeri) |
+| 25 hücreyi her malzeme için doldurma sıkıcı | Düşük | "CSV import" özelliği (Faz 2 bonus) |
+| Eski siparişlerin fiyat snapshot'ı | Kritik | order_items.unit_price zaten kayıtlı, yeni motor mevcut siparişleri etkilemez |
+
+---
+
+## 13. Sırada ne var?
+
+Bu doc'a göre **Faz 1**'den başlanacak. Sefa "Pricing matrix Faz 1'i başlat" derse:
+
+1. Mig 085 yaz (yukarıdaki schema)
+2. `src/lib/pricing-matrix.ts` skeleton + unit test
+3. Sefa onayı → "uygula 085"
+4. Faz 2'ye geç (admin UI)
+
+---
+
+**Doc revizyon notu:** Bu plan 23 May 2026 Sefa onayıyla netleşti. Partner görüşmelerinden sonra anchor değerleri ve clamp politikası revize edilebilir.
