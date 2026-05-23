@@ -54,6 +54,52 @@ export async function GET(
       .eq("id", user.id)
       .maybeSingle();
     const role = (profile as { role?: string } | null)?.role;
+
+    // Partner bypass (P4): partner kendine atanmış siparişin proof'unu görsün
+    // — POC editör mount edebilmek için lazım. Cross-tenant guard zorunlu.
+    if (role === "partner") {
+      const { data: contactRow } = await admin
+        .from("partner_contacts")
+        .select("partner_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const partnerId = (contactRow as { partner_id: string } | null)
+        ?.partner_id;
+      if (!partnerId) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+      const { data: asgRow } = await admin
+        .from("order_assignments")
+        .select("fason_partner_id")
+        .eq("order_id", orderRow.id)
+        .order("assigned_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const asgPartnerId = (asgRow as { fason_partner_id: string } | null)
+        ?.fason_partner_id;
+      if (asgPartnerId !== partnerId) {
+        return NextResponse.json({ error: "not_your_order" }, { status: 403 });
+      }
+      // Partner için /api/partner/orders/[id] endpoint'ine proxy
+      // (PII redacted, partner shape).
+      const partnerProofUrl = new URL(
+        `/api/partner/orders/${orderRow.id}`,
+        new URL(req.url)
+      );
+      const proxyRes = await fetch(partnerProofUrl.toString(), {
+        headers: { cookie: req.headers.get("cookie") ?? "" },
+        cache: "no-store",
+      });
+      const proxyData = (await proxyRes.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >;
+      // partner endpoint shape farklı (PII redacted) — /onay/duzenle page
+      // çoğunlukla `order.status` ve `items[].id` kullanıyor, bu ikisi var.
+      // Eksik field'lar için /onay/duzenle partner için extra guard koyacak.
+      return NextResponse.json(proxyData, { status: proxyRes.status });
+    }
+
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }

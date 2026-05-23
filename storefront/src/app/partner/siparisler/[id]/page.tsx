@@ -17,7 +17,7 @@
 
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 
@@ -278,6 +278,8 @@ interface ItemCardProps {
 function ItemCard({ item, orderId, actionLoading, onDecide }: ItemCardProps) {
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
+  const [uploadMode, setUploadMode] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const badge = STATUS_BADGE[item.proof_status] ?? {
     label: item.proof_status,
     cls: "bg-gri-100 text-gri-700",
@@ -402,6 +404,19 @@ function ItemCard({ item, orderId, actionLoading, onDecide }: ItemCardProps) {
                 </Button>
               </div>
             </div>
+          ) : uploadMode ? (
+            <UploadRevisionForm
+              orderId={orderId}
+              itemId={item.id}
+              uploading={uploading}
+              setUploading={setUploading}
+              onDone={() => {
+                setUploadMode(false);
+                // Sayfa refresh için trick — parent setData yenileyecek
+                window.location.reload();
+              }}
+              onCancel={() => setUploadMode(false)}
+            />
           ) : (
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
@@ -423,18 +438,130 @@ function ItemCard({ item, orderId, actionLoading, onDecide }: ItemCardProps) {
                 ✗ Red
               </Button>
               <Button
+                href={`/partner/siparisler/${orderId}/duzenle/${item.id}`}
                 variant="ghost"
                 size="md"
-                disabled
-                title="Revize akışı P4-P5'te aktif olacak"
+                className="border border-pim-mercan/30 text-pim-mercan hover:bg-pim-mercan-tint"
               >
-                ✏️ Revize (yakında)
+                ✏️ Editörle revize
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setUploadMode(true)}
+                className="border border-lacivert/30 text-lacivert hover:bg-gri-100"
+              >
+                📤 Dosya yükle
               </Button>
             </div>
           )}
         </div>
       </div>
     </Card>
+  );
+}
+
+/* Partner kendi revize dosyasını yükle — P5 form */
+interface UploadFormProps {
+  orderId: string;
+  itemId: string;
+  uploading: boolean;
+  setUploading: (v: boolean) => void;
+  onDone: () => void;
+  onCancel: () => void;
+}
+function UploadRevisionForm({
+  orderId,
+  itemId,
+  uploading,
+  setUploading,
+  onDone,
+  onCancel,
+}: UploadFormProps) {
+  const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState("");
+
+  async function handleUpload() {
+    if (!file) {
+      toast.error("Önce bir dosya seç");
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      if (note.trim()) fd.append("note", note.trim());
+      const res = await fetch(
+        `/api/partner/orders/${orderId}/items/${itemId}/upload-revision`,
+        { method: "POST", body: fd }
+      );
+      const j = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok || !j.ok) {
+        toast.error(j.message ?? j.error ?? "Dosya yüklenemedi");
+        setUploading(false);
+        return;
+      }
+      toast.success("Revize yüklendi — müşteri yeniden inceleyecek");
+      onDone();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      toast.error("Yükleme hatası: " + msg);
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/20 p-4">
+      <p className="text-xs font-semibold text-lacivert">
+        📤 Revize dosyanı yükle (max 50MB · PNG/JPG/SVG/PDF/AI/PSD)
+      </p>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg,.svg,.pdf,.ai,.psd,image/png,image/jpeg,image/svg+xml,application/pdf,application/postscript,application/illustrator,application/x-photoshop"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        disabled={uploading}
+        className="block w-full text-sm text-gri-700 file:mr-3 file:rounded file:border-0 file:bg-pim-mercan file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+      />
+      {file && (
+        <p className="text-[11px] text-gri-700">
+          Seçilen: <strong>{file.name}</strong> (
+          {Math.round(file.size / 1024)}KB · {file.type})
+        </p>
+      )}
+      <textarea
+        className="w-full rounded-lg border border-gri-200 px-3 py-2 text-sm"
+        rows={2}
+        placeholder="Revize notu (opsiyonel) — örn: 'arka plan rengini koyulaştırdım, kontur kalınlaştı'"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        disabled={uploading}
+      />
+      <div className="flex gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!file || uploading}
+          onClick={handleUpload}
+        >
+          {uploading ? "Yükleniyor..." : "Yükle ve gönder"}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={uploading}
+        >
+          Vazgeç
+        </Button>
+      </div>
+    </div>
   );
 }
 

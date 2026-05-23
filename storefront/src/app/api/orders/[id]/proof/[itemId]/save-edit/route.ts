@@ -195,21 +195,67 @@ export async function POST(
   if (!orderRow) {
     return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
   }
+
+  // Sefa 23 May v68 (Partner P4): partner bypass — partner kendine
+  // atanmış sipariş için bıçağı revize edebilir. Cross-tenant guard +
+  // status check farklı (proof_pending değil, in_production veya
+  // partner_review sonrası).
+  let isPartner = false;
   if (orderRow.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    const role = (profile as { role?: string } | null)?.role;
+    if (role === "partner") {
+      const { data: contactRow } = await admin
+        .from("partner_contacts")
+        .select("partner_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const partnerId = (contactRow as { partner_id: string } | null)
+        ?.partner_id;
+      if (!partnerId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const { data: asgRow } = await admin
+        .from("order_assignments")
+        .select("fason_partner_id")
+        .eq("order_id", orderId)
+        .order("assigned_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const asgPartnerId = (asgRow as { fason_partner_id: string } | null)
+        ?.fason_partner_id;
+      if (asgPartnerId !== partnerId) {
+        return NextResponse.json(
+          { error: "not_your_order" },
+          { status: 403 }
+        );
+      }
+      isPartner = true;
+    } else {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
+
   // Mig 062: proof_generating de geçerli — hidden iframe POC otomatik üretirken
   // bu state'te olur. Cutline INSERT'i fn_advance_after_cutline ile
   // otomatik proof_pending'e geçirir.
+  // Partner için status check yapma — order in_production veya başka state'te
+  // olabilir (partner zaten karar verme yetkisine sahip).
   const isAuto = body.auto === true;
-  const allowedStatuses = isAuto
-    ? ["proof_generating", "proof_pending"]
-    : ["proof_pending"];
-  if (!allowedStatuses.includes(orderRow.status)) {
-    return NextResponse.json(
-      { error: `Düzenleme bu aşamada yapılamaz (${orderRow.status})` },
-      { status: 400 }
-    );
+  if (!isPartner) {
+    const allowedStatuses = isAuto
+      ? ["proof_generating", "proof_pending"]
+      : ["proof_pending"];
+    if (!allowedStatuses.includes(orderRow.status)) {
+      return NextResponse.json(
+        { error: `Düzenleme bu aşamada yapılamaz (${orderRow.status})` },
+        { status: 400 }
+      );
+    }
   }
 
   // Item gerçekten bu siparişe mi ait?
@@ -337,13 +383,26 @@ export async function POST(
 
   // order_items proof_status:
   //   - auto = pending (henüz müşteri görmedi)
-  //   - manual = edited (müşteri ayarladı)
+  //   - manual customer = edited (müşteri ayarladı)
+  //   - manual partner (Sefa P4) = partner_revised (müşteri tekrar görsün)
+  const newProofStatus = isAuto
+    ? "pending"
+    : isPartner
+      ? "partner_revised"
+      : "edited";
   await admin
     .from("order_items")
     .update({
-      proof_status: isAuto ? "pending" : "edited",
+      proof_status: newProofStatus,
       proof_edited_at: new Date().toISOString(),
       cutline_design_id: cutlineId,
+      ...(isPartner
+        ? {
+            partner_decided_by: user.id,
+            partner_decided_at: new Date().toISOString(),
+            partner_decision_note: "POC editör ile revize",
+          }
+        : {}),
     } as never)
     .eq("id", itemId)
     .eq("order_id", orderId);
@@ -352,13 +411,19 @@ export async function POST(
   await admin.from("order_events").insert([
     {
       order_id: orderId,
-      event_type: isAuto ? "proof_auto_generated" : "proof_item_edited",
+      event_type: isAuto
+        ? "proof_auto_generated"
+        : isPartner
+          ? "partner_revised_item"
+          : "proof_item_edited",
       status_after: orderRow.status,
       actor_id: user.id,
-      actor_role: isAuto ? "system" : "customer",
+      actor_role: isAuto ? "system" : isPartner ? "partner" : "customer",
       summary: isAuto
         ? `Otomatik bıçak üretildi (${mode}, ${source}${tier ? `, tier:${tier}` : ""})`
-        : `Müşteri bıçak çizgisini düzenledi (${mode}, ${source}${tier ? `, tier:${tier}` : ""}${materialType && materialType !== "paper" ? `, ${materialType}` : ""})`,
+        : isPartner
+          ? `Partner bıçak çizgisini revize etti (${mode}, ${source}${tier ? `, tier:${tier}` : ""})`
+          : `Müşteri bıçak çizgisini düzenledi (${mode}, ${source}${tier ? `, tier:${tier}` : ""}${materialType && materialType !== "paper" ? `, ${materialType}` : ""})`,
       detail: {
         item_id: itemId,
         cutline_id: cutlineId,
