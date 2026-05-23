@@ -50,14 +50,16 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Admin gate
+  // Sefa 23 May v68: admin gate → profiles.role (admins tablo NULL,
+  // proje genelinde profiles.role kullaniliyor)
   const admin = createAdminClient();
-  const { data: adminCheck } = await admin
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", user.id)
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
     .maybeSingle();
-  if (!adminCheck) {
+  const role = (profile as { role?: string } | null)?.role;
+  if (role !== "admin" && role !== "staff") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -393,7 +393,7 @@ export default function AdminProvaDetailPage({
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-pim-mercan/10 hover:bg-pim-mercan/20 text-[12px] font-semibold text-pim-mercan"
                             >
-                              <Icon.Pencil size={12} /> Bıçağı düzenle
+                              <Icon.Edit size={12} /> Bıçağı düzenle
                             </Link>
                             {df.cutline?.preview_png_url && (
                               <a

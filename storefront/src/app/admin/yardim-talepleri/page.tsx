@@ -276,13 +276,13 @@ export default function AdminYardimTalepleriPage() {
                         setDraftNote("");
                       }}
                     >
-                      <Icon.Pencil size={14} /> Cevap yaz
+                      <Icon.Edit size={14} /> Cevap yaz
                     </Button>
                     <Link
                       href={`/admin/siparisler/${t.orderId}`}
                       className="inline-flex items-center gap-1 text-[12.5px] font-medium text-lacivert hover:underline"
                     >
-                      <Icon.ArrowRight size={14} /> Sipariş detayını aç
+                      <Icon.ArrowR size={14} /> Sipariş detayını aç
                     </Link>
                   </div>
                 )}

@@ -29,14 +29,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Admin gate — app_metadata.role veya admins tablosu üzerinden
+  // Sefa 23 May v68: admin gate — profiles.role uzerinden (admins tablo
+  // bos veya esit degil; codebase'in geri kalani profiles.role kullaniyor).
   const admin = createAdminClient();
-  const { data: adminCheck } = await admin
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", user.id)
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
     .maybeSingle();
-  if (!adminCheck) {
+  const role = (profile as { role?: string } | null)?.role;
+  if (role !== "admin" && role !== "staff") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
