@@ -636,6 +636,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
             {switching ? "…" : "Müşteri görünümü"}
             <Icon.ArrowR size={14} className="ml-auto opacity-70" />
           </button>
+          {/* Sefa 23 May v68 (Partner P*): üretim partneri panelini admin
+              gözüyle açan kısayol. /admin/fason'a yönlendir — oradan partner
+              seçilip OTP/magic-link ile login edilir. */}
+          <Link
+            href="/admin/fason"
+            className="w-full flex items-center gap-2 h-9 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[12.5px] font-semibold transition-colors"
+            title="Üretim partneri panelini incele — analiz/test için"
+          >
+            <Icon.Box size={14} />
+            Partner görünümü
+            <Icon.ArrowR size={14} className="ml-auto opacity-70" />
+          </Link>
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/5">
             <span className="grid place-items-center w-8 h-8 rounded-full bg-pim-mercan font-bold text-[13px] shrink-0">
               S
@@ -688,6 +700,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <Icon.Eye size={12} />
               {switching ? "…" : "Müşteri görünümü"}
             </button>
+            {/* Sefa 23 May v68 — Partner görünümü (admin partner panelini
+                incelemek için kısayol). /admin/fason listesine yönlendirir. */}
+            <Link
+              href="/admin/fason"
+              className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-lacivert/10 text-lacivert text-[12.5px] font-semibold hover:bg-lacivert/15 transition-colors"
+              title="Üretim partneri panelini incele"
+            >
+              <Icon.Box size={12} />
+              Partner görünümü
+            </Link>
           </div>
         </header>
 
