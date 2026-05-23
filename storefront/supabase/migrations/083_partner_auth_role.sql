@@ -39,33 +39,21 @@ create index if not exists partner_contacts_user_id_idx
 create index if not exists partner_contacts_email_lower_idx
   on public.partner_contacts(lower(email));
 
--- 2) profiles.role CHECK constraint — 'partner' ekle
--- Mevcut constraint varsa drop + yeniden oluştur; yoksa direkt oluştur.
+-- 2) user_role ENUM tipine 'partner' değeri ekle
+-- profiles.role aslında PostgreSQL ENUM (user_role) — CHECK constraint değil.
+-- ALTER TYPE ADD VALUE Postgres 12+'da transaction içinde çalışır ama
+-- subsequent statement aynı tx'te yeni value'yu kullanamaz. Burada sadece
+-- enum genişletmesi var, sonradan kullanan kod var değil — güvenli.
 do $$
-declare
-  constraint_name text;
 begin
-  -- Mevcut role CHECK constraint'in adını bul
-  select tc.constraint_name into constraint_name
-  from information_schema.table_constraints tc
-  join information_schema.constraint_column_usage ccu
-    on tc.constraint_name = ccu.constraint_name
-   and tc.table_schema = ccu.table_schema
-  where tc.table_schema = 'public'
-    and tc.table_name = 'profiles'
-    and tc.constraint_type = 'CHECK'
-    and ccu.column_name = 'role'
-  limit 1;
-
-  if constraint_name is not null then
-    execute format('alter table public.profiles drop constraint %I', constraint_name);
+  if not exists (
+    select 1 from pg_enum
+    where enumtypid = 'public.user_role'::regtype
+      and enumlabel = 'partner'
+  ) then
+    alter type public.user_role add value 'partner';
   end if;
 end$$;
-
--- Yeni CHECK — 4 rol: customer, staff, admin, partner
-alter table public.profiles
-  add constraint profiles_role_check
-  check (role in ('customer', 'staff', 'admin', 'partner'));
 
 -- 3) Audit kolaylığı: partner_contacts'a son login zamanı (opsiyonel ama UI'da yararlı)
 alter table public.partner_contacts
@@ -77,6 +65,6 @@ alter table public.partner_contacts
 -- Rollback (acil durum):
 --   alter table public.partner_contacts drop column if exists user_id;
 --   alter table public.partner_contacts drop column if exists last_login_at;
---   alter table public.profiles drop constraint if exists profiles_role_check;
---   alter table public.profiles add constraint profiles_role_check
---     check (role in ('customer', 'staff', 'admin'));
+--   NOT: Enum'dan değer KALDIRMAK Postgres'te native desteklenmez.
+--   "partner" değeri kullanılmıyorsa zararı yok. Tamamen silmek için
+--   yeni tip yarat + sütunu cast et + eskiyi drop et (riskli, manuel).
