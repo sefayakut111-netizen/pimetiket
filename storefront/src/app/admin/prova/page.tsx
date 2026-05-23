@@ -326,9 +326,7 @@ export default function AdminProvaPage() {
                         ))}
                       </div>
                       <Link
-                        href={`/siparis/${p.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={`/admin/prova/${p.id}`}
                         className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline"
                       >
                         Tam ekran incele (tasarım + bıçak) →
