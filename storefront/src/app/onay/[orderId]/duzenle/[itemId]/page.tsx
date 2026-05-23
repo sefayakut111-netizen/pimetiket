@@ -80,6 +80,9 @@ interface ProofItem {
 interface ProofSummaryLite {
   order: { id: string; status: string };
   items: ProofItem[];
+  // Sefa 23 May v68: admin proxy yanitinda viewer_role doluyor.
+  // Musteri akisinda undefined kalir — status check normal calisir.
+  viewer_role?: string | null;
 }
 
 // POC iframe'inden gelen message payload shape (pim_etiket_poc.html ile uyumlu)
@@ -130,6 +133,9 @@ export default function ProofEditPage({
   const [forbidden, setForbidden] = useState(false);
   const [saving, setSaving] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  // Sefa 23 May v68: design-url hata mesajini iframe alaninda goster
+  // (toast kaybolup gidiyor, "Bir gorsel yukle" bos ekranda neden anlasilmiyor).
+  const [designLoadError, setDesignLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,7 +153,11 @@ export default function ProofEditPage({
         }
         const data = (await res.json()) as ProofSummaryLite;
         if (cancelled) return;
-        if (data.order.status !== "proof_pending") {
+        // Sefa 23 May v68: admin/staff status'ten bagimsiz edit edebilmeli
+        // (operator proof_pending sonrasi da bicagi duzeltebilir).
+        const isAdminViewer =
+          data.viewer_role === "admin" || data.viewer_role === "staff";
+        if (!isAdminViewer && data.order.status !== "proof_pending") {
           router.replace(`/siparis/${orderId}`);
           return;
         }
@@ -178,11 +188,14 @@ export default function ProofEditPage({
     (async () => {
       try {
         const qs = designFileId ? `?design_file_id=${designFileId}` : "";
-        const res = await fetch(
-          `/api/orders/${orderId}/items/${itemId}/design-url${qs}`,
-          { cache: "no-store" }
-        );
+        const designUrlEndpoint = `/api/orders/${orderId}/items/${itemId}/design-url${qs}`;
+        console.log("[onay/duzenle] design-url fetch:", designUrlEndpoint);
+        const res = await fetch(designUrlEndpoint, { cache: "no-store" });
         if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          const errMsg = `design-url ${res.status}: ${body.slice(0, 200) || "(no body)"}`;
+          console.error("[onay/duzenle]", errMsg);
+          setDesignLoadError(errMsg);
           toast.error("Tasarım yüklenemedi — manuel düzenleme yapamayız");
           return;
         }
@@ -192,6 +205,18 @@ export default function ProofEditPage({
           fileName: string;
         };
         if (cancelled) return;
+        console.log("[onay/duzenle] design-url ok:", {
+          fileName: j.fileName,
+          mimeType: j.mimeType,
+          urlLength: j.url?.length ?? 0,
+        });
+        if (!j.url) {
+          const errMsg = "design-url response.url bos — Supabase signed URL uretilemedi";
+          console.error("[onay/duzenle]", errMsg);
+          setDesignLoadError(errMsg);
+          toast.error("Tasarım URL üretilemedi");
+          return;
+        }
         // Konfigüratör material → POC material mapping (vinil/transparan/holo/simli)
         const mapMaterial = (m: unknown): string => {
           if (typeof m !== "string") return "paper";
@@ -403,6 +428,25 @@ export default function ProofEditPage({
             // POC esm.run'dan @imgly/background-removal indiriyor, allow-scripts şart
             sandbox="allow-scripts allow-same-origin allow-downloads"
           />
+        ) : designLoadError ? (
+          <div className="grid h-[calc(100vh-220px)] min-h-[640px] place-items-center bg-kirmizi-soft p-6 text-center">
+            <div className="max-w-lg">
+              <div className="mb-2 text-base font-semibold text-kirmizi">
+                Tasarım yüklenemedi
+              </div>
+              <p className="text-sm text-lacivert mb-3">
+                POC editöre tasarımı geçiremedik. Lütfen aşağıdaki hata mesajını
+                Sefa&apos;ya iletin.
+              </p>
+              <pre className="overflow-auto rounded bg-white p-3 text-left text-[11px] text-gri-700 whitespace-pre-wrap break-all">
+                {designLoadError}
+              </pre>
+              <p className="mt-3 text-[11px] text-gri-700">
+                orderId: {orderId} · itemId: {itemId}
+                {designFileId ? ` · designFileId: ${designFileId}` : ""}
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="grid h-[calc(100vh-220px)] min-h-[640px] place-items-center bg-gri-100 text-sm text-gri-700">
             Tasarım yükleniyor…

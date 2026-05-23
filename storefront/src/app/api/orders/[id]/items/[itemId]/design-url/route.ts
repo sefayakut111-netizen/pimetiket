@@ -56,16 +56,21 @@ export async function GET(
 
   const admin = createAdminClient();
 
-  // Auth: order + item bu müşteriye ait mi
+  // Auth: order + item bu müşteriye ait mi.
+  // Sefa 23 May v68: orderId URL'den mixed-case gelebilir (PE-2026-eAMNAqXJ vs
+  // pe-2026-eamnaqxj). DB'deki canonical ID'yi ilike ile bul ve aşağıdaki tüm
+  // sorgularda kullanacağımız `canonicalOrderId`'yi sabitle. .eq order_id ile
+  // case-sensitive sorgu, mixed-case URL'de design_file bulunmamasına yol açıyordu.
   const { data: order } = await admin
     .from("orders")
-    .select("user_id")
-    .eq("id", orderId)
+    .select("id, user_id")
+    .ilike("id", orderId)
     .maybeSingle();
-  const orderRow = order as { user_id: string } | null;
+  const orderRow = order as { id: string; user_id: string } | null;
   if (!orderRow) {
     return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
   }
+  const canonicalOrderId = orderRow.id;
   if (orderRow.user_id !== user.id) {
     // Sefa 23 May v68: admin/staff bypass — /admin/prova sayfasinda
     // operatör müşterinin tasarımını inceleyebilmeli.
@@ -84,7 +89,7 @@ export async function GET(
   const baseQuery = admin
     .from("design_files")
     .select("storage_path, mime_type, original_name, status")
-    .eq("order_id", orderId)
+    .eq("order_id", canonicalOrderId)
     .eq("order_item_id", itemId)
     .neq("status", "superseded");
   const { data: df } = designFileId

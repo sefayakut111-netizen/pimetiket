@@ -289,5 +289,8 @@ export async function GET(
     },
     items: itemsJson,
     summary,
+    // Sefa 23 May v68: /onay/duzenle admin'i status'ten bağımsız edit
+    // edebilmeli — viewer_role bunu işaretler.
+    viewer_role: role,
   });
 }
