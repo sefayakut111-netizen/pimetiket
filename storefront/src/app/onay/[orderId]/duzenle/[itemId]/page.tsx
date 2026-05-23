@@ -136,6 +136,12 @@ export default function ProofEditPage({
   // Sefa 23 May v68: design-url hata mesajini iframe alaninda goster
   // (toast kaybolup gidiyor, "Bir gorsel yukle" bos ekranda neden anlasilmiyor).
   const [designLoadError, setDesignLoadError] = useState<string | null>(null);
+  // POC iframe icindeki olaylari banner'da goster (pim-poc-ready, -loaded, -error).
+  // Sefa C senaryosu: POC'da hata var ama parent gormuyordu — postMessage bridge.
+  const [pocStatus, setPocStatus] = useState<{
+    state: "loading" | "ready" | "loaded" | "error" | "timeout";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,6 +249,7 @@ export default function ProofEditPage({
         });
         if (designFileId) params.set("designFileId", designFileId);
         setIframeSrc(`/poc.html?${params.toString()}`);
+        setPocStatus({ state: "loading", message: "POC iframe yukleniyor..." });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         toast.error(`POC açılamadı: ${msg}`);
@@ -252,6 +259,58 @@ export default function ProofEditPage({
       cancelled = true;
     };
   }, [item, orderId, itemId, designFileId, toast]);
+
+  // Sefa 23 May v68 C senaryosu: POC iframe status mesajlarini banner'a yansit.
+  // POC pim-poc-ready/-loaded/-error mesajlari yolluyordu ama parent dinlemiyordu.
+  // 12sn icinde pim-poc-loaded gelmezse timeout uyarisi goster.
+  useEffect(() => {
+    if (!iframeSrc) return;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let loaded = false;
+    const handler = (e: MessageEvent) => {
+      if (iframeRef.current && e.source !== iframeRef.current.contentWindow) return;
+      const data = e.data as { type?: string; error?: string; source?: string } | undefined;
+      if (!data || typeof data.type !== "string") return;
+      if (data.type === "pim-poc-ready") {
+        console.log("[onay/duzenle] POC ready");
+        setPocStatus({ state: "ready", message: "POC hazir, tasarim cekiliyor..." });
+      } else if (data.type === "pim-poc-loaded") {
+        console.log("[onay/duzenle] POC loaded:", data);
+        loaded = true;
+        setPocStatus({
+          state: "loaded",
+          message: `Tasarim yuklendi (source=${data.source ?? "?"})`,
+        });
+        // 3sn sonra banner'i gizle (basariliyi sUrekli gostermek gereksiz)
+        setTimeout(() => setPocStatus(null), 3000);
+      } else if (data.type === "pim-poc-error") {
+        console.error("[onay/duzenle] POC error:", data.error);
+        setPocStatus({
+          state: "error",
+          message: `POC hatasi: ${data.error ?? "(bos)"}`,
+        });
+      }
+    };
+    window.addEventListener("message", handler);
+    timeoutHandle = setTimeout(() => {
+      if (!loaded) {
+        console.warn("[onay/duzenle] 12sn doldu, POC tasarim yuklemedi");
+        setPocStatus((prev) =>
+          prev?.state === "loaded"
+            ? prev
+            : {
+                state: "timeout",
+                message:
+                  "12 saniyedir POC tasarim yuklemedi. CORS/sandbox sorunu olabilir. Console'da [pim-poc] hatasini kontrol et.",
+              }
+        );
+      }
+    }, 12000);
+    return () => {
+      window.removeEventListener("message", handler);
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    };
+  }, [iframeSrc]);
 
   // POC iframe'den 'pim-cutline-saved' mesajını yakala → save-edit POST → /onay'a dön
   useEffect(() => {
@@ -414,6 +473,27 @@ export default function ProofEditPage({
               ×
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Sefa 23 May v68 — POC iframe status banner (postMessage'den).
+          Loading -> sari, ready -> mavi, loaded -> yesil (3sn sonra kaybolur),
+          error/timeout -> kirmizi (sticky). */}
+      {pocStatus && (
+        <div
+          className={
+            "mb-3 rounded-xl border px-4 py-2 text-[12.5px] " +
+            (pocStatus.state === "error" || pocStatus.state === "timeout"
+              ? "border-kirmizi/40 bg-kirmizi-soft text-kirmizi"
+              : pocStatus.state === "loaded"
+                ? "border-yesil/40 bg-yesil-soft text-yesil"
+                : pocStatus.state === "ready"
+                  ? "border-pim-mercan/40 bg-pim-mercan-tint text-lacivert"
+                  : "border-sari/40 bg-sari-soft text-lacivert")
+          }
+        >
+          <span className="font-semibold capitalize">{pocStatus.state}:</span>{" "}
+          {pocStatus.message}
         </div>
       )}
 
