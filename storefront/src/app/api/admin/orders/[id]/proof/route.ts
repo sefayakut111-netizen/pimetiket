@@ -118,7 +118,9 @@ export async function GET(
   };
   const items = (itemsRaw as ItemRow[] | null) ?? [];
 
-  // Design files (per item, non-superseded)
+  // Design files (per item, non-superseded). itemIds bossa skip — UUID
+  // kolonuna dummy string ("__none__") .in() ile gecmek PG'de 22P02
+  // invalid_text_representation hatasi firlatir, endpoint 500 doner.
   const itemIds = items.map((i) => i.id);
   type DesignRow = {
     id: string;
@@ -129,23 +131,6 @@ export async function GET(
     version: number;
     status: string;
   };
-  const { data: dfsRaw } = await admin
-    .from("design_files")
-    .select(
-      "id, order_item_id, original_name, mime_type, size_bytes, version, status"
-    )
-    .in("order_item_id", itemIds.length > 0 ? itemIds : ["__none__"])
-    .neq("status", "superseded")
-    .order("version", { ascending: true });
-  const designsByItem = new Map<string, DesignRow[]>();
-  for (const d of ((dfsRaw as DesignRow[] | null) ?? [])) {
-    const arr = designsByItem.get(d.order_item_id) ?? [];
-    arr.push(d);
-    designsByItem.set(d.order_item_id, arr);
-  }
-
-  // Cutlines (per design_file, non-superseded)
-  const designIds = (dfsRaw as DesignRow[] | null)?.map((d) => d.id) ?? [];
   type CutlineRow = {
     id: string;
     design_file_id: string | null;
@@ -169,42 +154,6 @@ export async function GET(
     detected_cut_contour_names: string[] | null;
     created_at: string;
   };
-  const cutlineCols =
-    "id, design_file_id, order_item_id, svg_url, preview_png_url, source, mode, offset_mm, dpi, width_mm, height_mm, pim_feedback, pim_severity, status, material_type, white_plan_mode, white_plan_path_count, has_custom_white_plan, tier, detected_cut_contour_names, created_at";
-  const { data: cdsRaw } = await admin
-    .from("cutline_designs")
-    .select(cutlineCols)
-    .in("design_file_id", designIds.length > 0 ? designIds : ["__none__"])
-    .neq("status", "superseded")
-    .order("created_at", { ascending: false });
-  const cutlineByDesign = new Map<string, CutlineRow>();
-  for (const c of ((cdsRaw as CutlineRow[] | null) ?? [])) {
-    if (c.design_file_id && !cutlineByDesign.has(c.design_file_id)) {
-      cutlineByDesign.set(c.design_file_id, c);
-    }
-  }
-  // Item-bağlı cutline (geriye uyumluluk — Mig 062 öncesi)
-  const { data: itemCdsRaw } = await admin
-    .from("cutline_designs")
-    .select(cutlineCols)
-    .in("order_item_id", itemIds.length > 0 ? itemIds : ["__none__"])
-    .is("design_file_id", null)
-    .neq("status", "superseded")
-    .order("created_at", { ascending: false });
-  const cutlineByItem = new Map<string, CutlineRow>();
-  for (const c of ((itemCdsRaw as CutlineRow[] | null) ?? [])) {
-    if (c.order_item_id && !cutlineByItem.has(c.order_item_id)) {
-      cutlineByItem.set(c.order_item_id, c);
-    }
-  }
-
-  // Open help requests
-  const { data: hrsRaw } = await admin
-    .from("proof_help_requests")
-    .select("id, order_item_id, message, status, created_at, resolution_note")
-    .in("order_item_id", itemIds.length > 0 ? itemIds : ["__none__"])
-    .in("status", ["open", "in_progress"])
-    .order("created_at", { ascending: false });
   type HrRow = {
     id: string;
     order_item_id: string;
@@ -213,9 +162,69 @@ export async function GET(
     created_at: string;
     resolution_note: string | null;
   };
+
+  const designsByItem = new Map<string, DesignRow[]>();
+  const cutlineByDesign = new Map<string, CutlineRow>();
+  const cutlineByItem = new Map<string, CutlineRow>();
   const hrByItem = new Map<string, HrRow>();
-  for (const h of ((hrsRaw as HrRow[] | null) ?? [])) {
-    if (!hrByItem.has(h.order_item_id)) hrByItem.set(h.order_item_id, h);
+
+  if (itemIds.length > 0) {
+    const { data: dfsRaw } = await admin
+      .from("design_files")
+      .select(
+        "id, order_item_id, original_name, mime_type, size_bytes, version, status"
+      )
+      .in("order_item_id", itemIds)
+      .neq("status", "superseded")
+      .order("version", { ascending: true });
+    for (const d of ((dfsRaw as DesignRow[] | null) ?? [])) {
+      const arr = designsByItem.get(d.order_item_id) ?? [];
+      arr.push(d);
+      designsByItem.set(d.order_item_id, arr);
+    }
+
+    const designIds = (dfsRaw as DesignRow[] | null)?.map((d) => d.id) ?? [];
+    const cutlineCols =
+      "id, design_file_id, order_item_id, svg_url, preview_png_url, source, mode, offset_mm, dpi, width_mm, height_mm, pim_feedback, pim_severity, status, material_type, white_plan_mode, white_plan_path_count, has_custom_white_plan, tier, detected_cut_contour_names, created_at";
+
+    if (designIds.length > 0) {
+      const { data: cdsRaw } = await admin
+        .from("cutline_designs")
+        .select(cutlineCols)
+        .in("design_file_id", designIds)
+        .neq("status", "superseded")
+        .order("created_at", { ascending: false });
+      for (const c of ((cdsRaw as CutlineRow[] | null) ?? [])) {
+        if (c.design_file_id && !cutlineByDesign.has(c.design_file_id)) {
+          cutlineByDesign.set(c.design_file_id, c);
+        }
+      }
+    }
+
+    // Item-bağlı cutline (geriye uyumluluk — Mig 062 öncesi)
+    const { data: itemCdsRaw } = await admin
+      .from("cutline_designs")
+      .select(cutlineCols)
+      .in("order_item_id", itemIds)
+      .is("design_file_id", null)
+      .neq("status", "superseded")
+      .order("created_at", { ascending: false });
+    for (const c of ((itemCdsRaw as CutlineRow[] | null) ?? [])) {
+      if (c.order_item_id && !cutlineByItem.has(c.order_item_id)) {
+        cutlineByItem.set(c.order_item_id, c);
+      }
+    }
+
+    // Open help requests
+    const { data: hrsRaw } = await admin
+      .from("proof_help_requests")
+      .select("id, order_item_id, message, status, created_at, resolution_note")
+      .in("order_item_id", itemIds)
+      .in("status", ["open", "in_progress"])
+      .order("created_at", { ascending: false });
+    for (const h of ((hrsRaw as HrRow[] | null) ?? [])) {
+      if (!hrByItem.has(h.order_item_id)) hrByItem.set(h.order_item_id, h);
+    }
   }
 
   // Shape JSON (fn_proof_summary ile aynı)

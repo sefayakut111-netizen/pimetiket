@@ -304,12 +304,8 @@ export default function AdminProvaDetailPage({
         {data && data.items.length > 0 && (
           <div className="grid gap-5">
             {data.items.map((item) => {
-              const designsCount = item.designs.length;
-              const required =
-                typeof (item as unknown as { meta?: { designCount?: number } })
-                  .designs !== "undefined"
-                  ? Math.max(1, designsCount)
-                  : 1;
+              const designs = item.designs ?? [];
+              const designsCount = designs.length;
               return (
                 <Card key={item.id} className="p-5">
                   <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
@@ -348,7 +344,7 @@ export default function AdminProvaDetailPage({
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {item.designs.map((df, idx) => (
+                      {designs.map((df, idx) => (
                         <div
                           key={df.design_file_id}
                           className="border border-gri-200 rounded-lg p-3"
