@@ -11,7 +11,7 @@ import { VIEW_MODE_COOKIE, parseViewMode, type ViewMode } from "@/lib/view-mode"
 
 export interface UserRoleInfo {
   userId: string | null;
-  role: "customer" | "staff" | "admin" | null;
+  role: "customer" | "staff" | "admin" | "partner" | null;
   viewMode: ViewMode;
   /** admin/staff ama view_mode=customer ise true */
   isImpersonating: boolean;
@@ -47,7 +47,9 @@ export async function getCurrentUserRole(): Promise<UserRoleInfo> {
         ? "admin"
         : rawRole === "staff"
           ? "staff"
-          : "customer";
+          : rawRole === "partner"
+            ? "partner"
+            : "customer";
 
     const isImpersonating =
       (role === "admin" || role === "staff") && viewMode === "customer";

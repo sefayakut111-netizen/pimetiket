@@ -119,6 +119,57 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // 1a) /partner için role check — sadece 'partner' rolü girebilir
+  // (Sefa 23 May v68 Partner P1). admin/staff istisna YOK — impersonation
+  // için ayrı bir mekanizma planlanıyor (Faz 2).
+  if (user && pathname.startsWith("/partner") && pathname !== "/partner/giris") {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      const role = (profile as { role?: string } | null)?.role;
+      if (role !== "partner") {
+        // Yetkili değil — partner girişine yönlendir
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/partner/giris";
+        redirectUrl.searchParams.set("error", "not_partner");
+        return NextResponse.redirect(redirectUrl);
+      }
+    } catch {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/partner/giris";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+  // /partner login değil ve user yoksa → /partner/giris
+  if (!user && pathname.startsWith("/partner") && pathname !== "/partner/giris") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/partner/giris";
+    redirectUrl.searchParams.set("next", pathname + request.nextUrl.search);
+    return NextResponse.redirect(redirectUrl);
+  }
+  // Login olmuş partner /partner/giris'e giderse → /partner (dashboard)
+  if (user && pathname === "/partner/giris") {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      const role = (profile as { role?: string } | null)?.role;
+      if (role === "partner") {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/partner";
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+    } catch {
+      // Sessiz fail — giriş sayfasında kalsın
+    }
+  }
+
   // 1b) /admin için role check + view_mode (impersonation)
   // - admin/staff dışı kullanıcı asla giremez
   // - admin/staff ama cookie pim_view_mode=customer ise → "müşteri görünümünde"
