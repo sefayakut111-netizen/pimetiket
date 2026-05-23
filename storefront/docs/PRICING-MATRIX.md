@@ -37,55 +37,67 @@ Detay: bkz. konuşma transkriptindeki "Pim Etiket Fiyat Motoru — Akademi" öze
 
 ### 3.1 Anchor noktaları
 
-**Boyut ekseni (varsayılan):** 3×3, 5×5, 7×7, 10×10, 15×15 mm
-**Adet ekseni (varsayılan):** 100, 500, 1.000, 5.000, 10.000
+**Etiket Rulo:**
+- Boyut ekseni: 3×3, 5×5, 7×7, 10×10, 15×15 mm (varsayılan — partner görüşmesinden sonra revize)
+- **Adet ekseni: 1.000 / 3.000 / 5.000 / 10.000** ✅ Sefa onaylı (23 May)
+- **Min sipariş: 1.000 adet — kati kural.** Altı reddedilir, müşteri sticker'a yönlendirilir.
+
+**Etiket Tabaka:**
+- Boyut + adet ekseni partner görüşmesinden sonra netleşecek (Sefa karar verecek)
+
+**Sticker:** Anchor yok (mevcut m² × rate × tier sistemi).
 
 Bu noktalar **konfigüre edilebilir** — admin panelinden eklenip çıkarılır.
 
-### 3.2 Partner matrisi örneği
+### 3.2 Partner matrisi örneği (Etiket Rulo)
 
 ```
-KUŞE RULO ETİKET (₺/adet)
+KUŞE RULO ETİKET (₺/adet) — Sefa onaylı 4 adet kademesi
 ─────────────────────────────────────────────────
-            100      500    1.000   5.000   10.000
-   3×3      0.40    0.28    0.20    0.12     0.09
-   5×5      0.65    0.50    0.35    0.22     0.17
-   7×7      0.85    0.68    0.55    0.35     0.27
-  10×10     1.20    0.95    0.85    0.55     0.42
-  15×15     1.80    1.55    1.50    1.10     0.85
+            1.000   3.000   5.000   10.000
+   3×3      0.20    0.15    0.12    0.09
+   5×5      0.35    0.27    0.22    0.17
+   7×7      0.55    0.42    0.35    0.27
+  10×10     0.85    0.65    0.55    0.42
+  15×15     1.50    1.25    1.10    0.85
 ```
 
-**25 hücre / malzeme**. Hibrit modelde malzeme başına 1 matris (aşağıda).
+**20 hücre / malzeme** (5 boyut × 4 adet). Hibrit modelde malzeme başına 1 matris (aşağıda).
 
 ### 3.3 Bilinear interpolasyon — örnek hesap
 
-Müşteri **6×6 mm / 750 adet** girer:
+Müşteri **6×6 mm / 4.000 adet** girer:
 
 1. **Boyut:** 5×5 ↔ 7×7 arası → 6×6 ortada (`t_size = 0.5`)
-2. **Adet:** 500 ↔ 1.000 arası → 750 ortada (`t_qty = 0.5`)
+2. **Adet:** 3.000 ↔ 5.000 arası → 4.000 ortada (`t_qty = 0.5`)
 3. **4 köşe hücre:**
    ```
-                500ad   1000ad
-       5×5      0.50    0.35
-       7×7      0.68    0.55
+                3000ad   5000ad
+       5×5      0.27     0.22
+       7×7      0.42     0.35
    ```
 4. **Önce adet:**
-   - 5×5: `0.50 + (0.35-0.50) × 0.5 = 0.425`
-   - 7×7: `0.68 + (0.55-0.68) × 0.5 = 0.615`
+   - 5×5: `0.27 + (0.22-0.27) × 0.5 = 0.245`
+   - 7×7: `0.42 + (0.35-0.42) × 0.5 = 0.385`
 5. **Sonra boyut:**
-   - `0.425 + (0.615-0.425) × 0.5 = 0.520 ₺/adet`
-6. **Toplam partner fiyatı:** `0.520 × 750 = 390 ₺`
+   - `0.245 + (0.385-0.245) × 0.5 = 0.315 ₺/adet`
+6. **Toplam partner fiyatı:** `0.315 × 4.000 = 1.260 ₺`
+7. **+ markup %50:** `1.260 × 1.50 = 1.890 ₺` (matrah)
+8. **+ PayTR fee + KDV** → müşteri liste fiyatı
 
 ### 3.4 Anchor dışı davranış (clamp policy)
+
+**Etiket Rulo:**
 
 | Durum | Politika |
 |---|---|
 | Boyut min altı (örn 2×2 < 3×3) | Min anchor (3×3) ile clamp **VEYA** "Teklif iste" formu |
 | Boyut max üstü (örn 20×20 > 15×15) | "Teklif iste" formu (zorunlu) |
-| Adet min altı (örn 50 < 100) | Min anchor (100) ile clamp |
-| Adet max üstü (örn 50.000 > 10.000) | "Toplu sipariş teklif iste" |
+| **Adet < 1.000** | ❌ **REDDET** — UI: "Rulo etiket için min 1.000 adet. Daha az için Sticker'a bak" + sticker'a yönlendir |
+| 1.000 ≤ adet ≤ 10.000 (ara) | Lineer interpolasyon (1.000↔3.000↔5.000↔10.000 anchor'ları) |
+| Adet > 10.000 (max üstü) | "Toplu sipariş için teklif iste" formu |
 
-Sefa kararı sonradan kesinleşecek (varsayılan: clamp altı, teklif üstü).
+**Önemli:** Rulo etikette **min 1.000 adet kati kural**. Müşteri 500 adet denerse engellenir + sticker önerilir.
 
 ---
 
@@ -95,10 +107,10 @@ Her **malzeme** kendi matrisini taşır, **kaplama/özelleştirme** üzerine sab
 
 ### 4.1 Matris sayısı
 
-**Etiket Rulo malzemeleri:** kuşe, beyaz (Opak PP), şeffaf, ultra, metalik → **5 matris**
-**Etiket Tabaka malzemeleri:** kuşe-tabaka, beyaz-tabaka, kraft-tabaka, şeffaf-tabaka → **4 matris**
+**Etiket Rulo malzemeleri:** kuşe, beyaz (Opak PP), şeffaf, ultra, metalik → **5 matris** × 20 hücre = 100 hücre
+**Etiket Tabaka malzemeleri:** kuşe-tabaka, beyaz-tabaka, kraft-tabaka, şeffaf-tabaka → **4 matris** (boyut/adet TBD)
 
-**Toplam:** 9 matris × 25 hücre = **225 hücre** (yönetilebilir)
+**Toplam (rulo):** 100 hücre. Tabaka için boyut+adet anchor netleşince eklenir.
 
 ### 4.2 Kaplama yüzdeleri (matris üzerine eklenir)
 
