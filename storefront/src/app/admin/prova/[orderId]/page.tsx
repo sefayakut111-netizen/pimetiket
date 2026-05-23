@@ -18,7 +18,6 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pim } from "@/components/Pim";
@@ -113,14 +112,12 @@ function DesignPreview({
     return <div className="aspect-[4/3] bg-gri-100 rounded-lg animate-pulse" />;
   }
   return (
-    <div className="relative aspect-[4/3] bg-checkered rounded-lg overflow-hidden border border-gri-200">
-      <Image
+    <div className="relative aspect-[4/3] bg-gri-50 rounded-lg overflow-hidden border border-gri-200">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={url}
         alt="Tasarım önizleme"
-        fill
-        sizes="(max-width:768px) 100vw, 50vw"
-        className="object-contain p-3"
-        unoptimized
+        className="absolute inset-0 w-full h-full object-contain p-3"
         onError={() => setError(true)}
       />
     </div>
