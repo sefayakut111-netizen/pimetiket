@@ -110,11 +110,31 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
-/** Translation hook — t.nav.home gibi tip-güvenli erişim. */
+/** Translation hook — t.nav.home gibi tip-güvenli erişim.
+ *
+ * Sefa 23 May v68: throw yerine default fallback (TR). LanguageProvider
+ * dışında çağrılırsa (örn. SSR error boundary, RSC parent, isolated
+ * test) sayfa crash etmesin — default TR translation ile çalışsın.
+ * Console'a warn at, dev modda fark edilir. Production'da silent
+ * recovery (Sentry "useT must be used within a LanguageProvider"
+ * hatası birden fazla page'i crash ediyordu).
+ */
 export function useT(): I18nContextValue {
   const ctx = useContext(I18nContext);
   if (!ctx) {
-    throw new Error("useT must be used within a LanguageProvider");
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[useT] LanguageProvider eksik — TR default'a fallback. " +
+          "Bu durum hydration sirasında veya error boundary'de olabilir."
+      );
+    }
+    return {
+      locale: DEFAULT_LOCALE,
+      t: TRANSLATIONS[DEFAULT_LOCALE],
+      setLocale: () => {
+        /* no-op */
+      },
+    };
   }
   return ctx;
 }

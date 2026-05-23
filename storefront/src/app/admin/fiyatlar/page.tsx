@@ -714,10 +714,10 @@ export default function FiyatlarPage() {
                     <span>Açıklama</span>
                     <span className="text-right">% Ekleme</span>
                   </div>
-                  {group.items.map((it: OptionItem, idx: number) => {
+                  {(group.items ?? []).map((it: OptionItem, idx: number) => {
                     const changed = isItemChanged("option", it.id, group_id);
                     const isFirst = idx === 0;
-                    const isLast = idx === group.items.length - 1;
+                    const isLast = idx === (group.items?.length ?? 0) - 1;
                     return (
                     <div
                       key={it.id}
@@ -970,7 +970,7 @@ export default function FiyatlarPage() {
                       className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px]"
                     >
                       <option value="">— seçilmedi —</option>
-                      {group.items.map((it: OptionItem) => (
+                      {(group.items ?? []).map((it: OptionItem) => (
                         <option key={it.id} value={it.id}>
                           {it.name} (+{it.pct_add}%)
                         </option>
@@ -978,7 +978,7 @@ export default function FiyatlarPage() {
                     </select>
                   ) : (
                     <div className="space-y-1">
-                      {group.items.map((it: OptionItem) => {
+                      {(group.items ?? []).map((it: OptionItem) => {
                         const arr = (previewOptions[gid] as string[]) ?? [];
                         const checked = arr.includes(it.id);
                         return (
