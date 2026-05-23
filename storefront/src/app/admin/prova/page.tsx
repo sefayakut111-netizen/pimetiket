@@ -74,18 +74,59 @@ export default function AdminProvaPage() {
   ).length;
   const flagged = allOrders.filter((o) => o.status === "qc_flagged").length;
 
-  const handleApprove = (order: CustomerOrder) => {
-    updateCustomerOrderStatus(order.id, "in_production");
-    toast.success(`${order.id} → Üretime alındı`);
+  // Sefa 23 May v68: updateCustomerOrderStatus kaldırıldı — auth mode'da
+  // no-op olduğu için butonlar sessizce başarısız oluyordu (Sefa "tuşlar
+  // çalışmıyor"). Artık POST /api/admin/orders/[id]/status çağrılıyor
+  // (aynı pattern /admin/siparisler'de geçen turda uygulanmıştı).
+  const callStatusApi = async (
+    orderId: string,
+    status: string,
+    note: string
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status, note }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(`Güncelleme başarısız: ${j.error ?? res.status}`);
+        return false;
+      }
+      // Optimistic: local store'u da güncelle (page refresh tetiklesin)
+      updateCustomerOrderStatus(orderId, status as never);
+      // Re-fetch admin list — useEffect listener yakalar
+      window.dispatchEvent(new Event("pim_customer_orders_updated"));
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "bilinmeyen hata";
+      toast.error(`Ağ hatası: ${msg}`);
+      return false;
+    }
+  };
+
+  const handleApprove = async (order: CustomerOrder) => {
+    const ok = await callStatusApi(
+      order.id,
+      "in_production",
+      "Prova kuyruğundan üretime al (admin)"
+    );
+    if (ok) toast.success(`${order.id} → Üretime alındı`);
   };
 
   const handleReminder = (order: CustomerOrder) => {
     toast.info(`${order.id} müşterisine hatırlatma yollandı (mock)`);
   };
 
-  const handleCancel = (order: CustomerOrder) => {
-    updateCustomerOrderStatus(order.id, "cancelled");
-    toast.info(`${order.id} iptal edildi`);
+  const handleCancel = async (order: CustomerOrder) => {
+    if (!confirm(`${order.id} siparişini iptal etmek istiyor musun?`)) return;
+    const ok = await callStatusApi(
+      order.id,
+      "cancelled",
+      "Prova kuyruğundan iptal (admin)"
+    );
+    if (ok) toast.info(`${order.id} iptal edildi`);
   };
 
   return (
