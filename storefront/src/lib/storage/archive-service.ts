@@ -19,7 +19,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { uploadToR2, r2KeyBuilders, IS_DRY_RUN } from "./r2-client";
+import {
+  uploadToR2Archive,
+  r2KeyBuilders,
+  IS_ARCHIVE_DRY_RUN,
+} from "./r2-client";
 
 export interface ArchiveResult {
   userId: string;
@@ -65,7 +69,7 @@ export async function archiveCustomer(
   const result: ArchiveResult = {
     userId,
     success: false,
-    dryRun: IS_DRY_RUN,
+    dryRun: IS_ARCHIVE_DRY_RUN,
     itemsArchived: {
       profile: false,
       orders: 0,
@@ -82,7 +86,7 @@ export async function archiveCustomer(
     // ─────────────────────────────────────────────────────────
     // 1. Status'u 'archiving' yap (race condition koruması)
     // ─────────────────────────────────────────────────────────
-    if (!IS_DRY_RUN) {
+    if (!IS_ARCHIVE_DRY_RUN) {
       const { error: lockErr } = await supabase
         .from("profiles")
         .update({ archive_status: "archiving" })
@@ -105,7 +109,7 @@ export async function archiveCustomer(
     if (profile) {
       const key = r2KeyBuilders.customerSnapshot(userId);
       const body = JSON.stringify(profile, null, 2);
-      const r = await uploadToR2({
+      const r = await uploadToR2Archive({
         key,
         body,
         contentType: "application/json",
@@ -130,7 +134,7 @@ export async function archiveCustomer(
       // Order JSON
       const orderKey = r2KeyBuilders.orderDetails(userId, order.id);
       const orderBody = JSON.stringify(order, null, 2);
-      const r1 = await uploadToR2({
+      const r1 = await uploadToR2Archive({
         key: orderKey,
         body: orderBody,
         contentType: "application/json",
@@ -148,7 +152,7 @@ export async function archiveCustomer(
       if (events?.length) {
         const eventsKey = r2KeyBuilders.orderEvents(userId, order.id);
         const eventsBody = JSON.stringify(events, null, 2);
-        const r2 = await uploadToR2({
+        const r2 = await uploadToR2Archive({
           key: eventsKey,
           body: eventsBody,
           contentType: "application/json",
@@ -178,7 +182,7 @@ export async function archiveCustomer(
 
         let buffer: Buffer;
 
-        if (IS_DRY_RUN) {
+        if (IS_ARCHIVE_DRY_RUN) {
           // Dry-run: gerçek indirme yapma, placeholder buffer kullan
           buffer = Buffer.from(
             JSON.stringify({ dryRun: true, designFileId: df.id })
@@ -206,7 +210,7 @@ export async function archiveCustomer(
           df.original_name ?? `file-${df.id}`
         );
 
-        const upload = await uploadToR2({
+        const upload = await uploadToR2Archive({
           key: r2Key,
           body: buffer,
           contentType: df.mime_type ?? "application/octet-stream",
@@ -222,7 +226,7 @@ export async function archiveCustomer(
           continue;
         }
 
-        if (!IS_DRY_RUN) {
+        if (!IS_ARCHIVE_DRY_RUN) {
           // Postgres'i güncelle
           await supabase
             .from("design_files")
@@ -257,7 +261,7 @@ export async function archiveCustomer(
     if (reviews?.length) {
       const key = r2KeyBuilders.reviewSnapshot(userId);
       const body = JSON.stringify(reviews, null, 2);
-      const r = await uploadToR2({
+      const r = await uploadToR2Archive({
         key,
         body,
         contentType: "application/json",
@@ -266,7 +270,7 @@ export async function archiveCustomer(
         result.itemsArchived.reviews = reviews.length;
         result.totalBytes += r.size ?? body.length;
 
-        if (!IS_DRY_RUN) {
+        if (!IS_ARCHIVE_DRY_RUN) {
           await supabase
             .from("reviews")
             .update({
@@ -289,7 +293,7 @@ export async function archiveCustomer(
     if (returns?.length) {
       const key = r2KeyBuilders.returnSnapshot(userId);
       const body = JSON.stringify(returns, null, 2);
-      const r = await uploadToR2({
+      const r = await uploadToR2Archive({
         key,
         body,
         contentType: "application/json",
@@ -298,7 +302,7 @@ export async function archiveCustomer(
         result.itemsArchived.returns = returns.length;
         result.totalBytes += r.size ?? body.length;
 
-        if (!IS_DRY_RUN) {
+        if (!IS_ARCHIVE_DRY_RUN) {
           await supabase
             .from("returns")
             .update({
@@ -314,7 +318,7 @@ export async function archiveCustomer(
     // ─────────────────────────────────────────────────────────
     // 7. Profil + Orders status'unu 'cold' yap
     // ─────────────────────────────────────────────────────────
-    if (!IS_DRY_RUN) {
+    if (!IS_ARCHIVE_DRY_RUN) {
       await supabase
         .from("profiles")
         .update({
@@ -336,7 +340,7 @@ export async function archiveCustomer(
     // ─────────────────────────────────────────────────────────
     // 8. Audit log
     // ─────────────────────────────────────────────────────────
-    if (!IS_DRY_RUN) {
+    if (!IS_ARCHIVE_DRY_RUN) {
       await supabase.from("archive_events").insert({
         event_type: "archived_to_cold",
         resource_type: "customer_bundle",
@@ -356,7 +360,7 @@ export async function archiveCustomer(
     result.errors.push((err as Error).message);
 
     // Rollback: status'u 'hot'a al
-    if (!IS_DRY_RUN) {
+    if (!IS_ARCHIVE_DRY_RUN) {
       await supabase
         .from("profiles")
         .update({ archive_status: "hot" })

@@ -94,6 +94,22 @@ export default function ArchiveAdminPage() {
   const [customers, setCustomers] = useState<ArchiveCustomerRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [r2Status, setR2Status] = useState<{
+    hotPathOk: boolean;
+    archiveDryRun: boolean;
+    hasCredentials: boolean;
+    endpoint: string | null;
+    probeError?: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/archive/r2-status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setR2Status(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Search debounce
   useEffect(() => {
@@ -155,6 +171,20 @@ export default function ArchiveAdminPage() {
           Arşivlenmiş müşteri verilerini görüntüleyin, dosyalarına erişin,
           gerekirse manuel arşivleme veya geri alma yapın.
         </p>
+        {r2Status && (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-gri-200 bg-white px-3 py-1 text-xs">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                r2Status.hotPathOk ? "bg-yesil" : "bg-kirmizi"
+              )}
+            />
+            <span>
+              R2 hot path: {r2Status.hotPathOk ? "bağlı" : "hata"}
+              {r2Status.archiveDryRun ? " · arşiv DRY_RUN" : " · arşiv aktif"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* KPI özeti */}

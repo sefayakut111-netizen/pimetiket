@@ -21,6 +21,8 @@ const TUNE = {
   orphanCartDays: 90,
   oldFailedIntentDays: 30,
   oldFailedRunDays: 30,
+  staleUploadHours: 24,
+  orphanPreviewDays: 7,
 };
 
 export class DataHygieneAuditor extends AuditorBase {
@@ -47,6 +49,14 @@ export class DataHygieneAuditor extends AuditorBase {
     const oldRuns = await this.checkOldFailedRuns();
     findings.push(...oldRuns.findings);
     metrics.oldRuns = oldRuns.metrics;
+
+    const staleUploads = await this.checkStaleIncompleteUploads();
+    findings.push(...staleUploads.findings);
+    metrics.staleUploads = staleUploads.metrics;
+
+    const orphanPreviews = await this.checkOrphanDesignPreviews();
+    findings.push(...orphanPreviews.findings);
+    metrics.orphanPreviews = orphanPreviews.metrics;
 
     const counts = countFindings(findings);
     return {
@@ -194,6 +204,65 @@ export class DataHygieneAuditor extends AuditorBase {
     );
 
     return { findings, metrics: { count } };
+  }
+
+  // E) Yarım upload-init (complete edilmemiş design_files)
+  private async checkStaleIncompleteUploads() {
+    const findings: AuditorFinding[] = [];
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - TUNE.staleUploadHours);
+
+    const { count } = await this.admin
+      .from("design_files")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "uploaded")
+      .is("sha256", null)
+      .lt("created_at", cutoff.toISOString());
+
+    if (!count || count === 0) {
+      return { findings, metrics: { count: 0 } };
+    }
+
+    findings.push(
+      this.warning(
+        "stale_incomplete_uploads",
+        `${count} yarım design upload`,
+        `**${count}** design_files satırı \`uploaded\` durumunda ve ${TUNE.staleUploadHours}h+ complete edilmemiş. \`/api/cron/cleanup-stale-uploads\` ile temizlenebilir.`,
+        { count, threshold_hours: TUNE.staleUploadHours },
+        {
+          type: "cleanup_stale_uploads",
+          payload: { reason: "auditor_recommendation" },
+          title: "Yarım upload'ları temizle",
+          description: "upload-init without upload-complete orphan kayıtları.",
+        }
+      )
+    );
+
+    return { findings, metrics: { count } };
+  }
+
+  // F) design-previews orphan sayımı (cart referansı yok)
+  private async checkOrphanDesignPreviews() {
+    const findings: AuditorFinding[] = [];
+
+    const { count: cartPreviewCount } = await this.admin
+      .from("cart_items")
+      .select("*", { count: "exact", head: true })
+      .not("design_preview_url", "is", null);
+
+    findings.push(
+      this.info(
+        "design_preview_refs",
+        `Cart preview referansları: ${cartPreviewCount ?? 0}`,
+        `Aktif cart_items.design_preview_url sayısı: **${cartPreviewCount ?? 0}**. Orphan temizlik: \`/api/cron/cleanup-orphan-previews\` (${TUNE.orphanPreviewDays}d+).`,
+        {
+          cart_preview_refs: cartPreviewCount ?? 0,
+          orphan_threshold_days: TUNE.orphanPreviewDays,
+        }
+      )
+    );
+
+    return { findings, metrics: { cartPreviewRefs: cartPreviewCount ?? 0 } };
   }
 }
 

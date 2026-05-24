@@ -14,7 +14,7 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   listR2ObjectsDetailed,
   r2KeyBuilders,
-  IS_DRY_RUN,
+  getR2Config,
 } from "@/lib/storage/r2-client";
 
 export const runtime = "nodejs";
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
       total_count: files.length,
       total_size_bytes: files.reduce((s, f) => s + f.size_bytes, 0),
       prefix,
-      dry_run: IS_DRY_RUN,
+      r2: getR2Config(),
     });
   } catch (err) {
     console.error("[admin/archive/files] R2 list failed:", err);

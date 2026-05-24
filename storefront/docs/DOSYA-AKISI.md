@@ -5,7 +5,9 @@
 > Bu dokümanın amacı: ileride bir şey değiştiğinde (örn. R2'ye taşıma, yeni
 > bucket eklemek) etkilenen yerleri tek bakışta görmek.
 
-**Versiyon:** v1.0 · **Tarih:** 21 Mayıs 2026
+**Versiyon:** v1.1 · **Tarih:** 25 Mayıs 2026
+
+**Kod kaynağı (bucket/path sabitleri):** [`src/lib/storage/buckets.ts`](../src/lib/storage/buckets.ts)
 
 ---
 
@@ -16,10 +18,10 @@ Bir müşteri etiket sipariş ederse dosyaları **5 storage konumundan** geçer:
 ```
 Browser localStorage ──► Supabase Storage ──► Supabase DB (metadata)
                               │
-                              ├── designs/         (orijinal upload)
-                              ├── cutlines/        (kesim çizgisi SVG)
+                              ├── designs/         (orijinal upload — Supabase)
                               ├── design-previews/ (sepet thumbnail)
                               └── gallery/         (admin için)
+                              Cutline SVG ──► Cloudflare R2 customer-cutlines/
                                        │
                                        ▼ (90 gün hareketsizlik)
                               Cloudflare R2 archive
@@ -59,7 +61,7 @@ Browser localStorage ──► Supabase Storage ──► Supabase DB (metadata)
 |------|-------|
 | PayTR iframe çıkışı + IPN success | Sipariş `paid` olur |
 | Sepet ürünleri `orders.items_snapshot`'a kopyalanır | Sadece JSON metadata (config, qty, price) |
-| Trigger `paid → proof_pending` veya `awaiting_upload` | Bağlıdır: müşteri tasarım yükledi mi? |
+| Trigger `paid → awaiting_upload` veya `qc_pending` | Bağlıdır: sepette tasarım dosyası var mı? (Mig 061) |
 
 ---
 
@@ -70,9 +72,9 @@ Browser localStorage ──► Supabase Storage ──► Supabase DB (metadata)
 | Olay | Dosya | Nerede saklanır |
 |------|-------|----------------|
 | Müşteri `/siparis/[orderId]/tasarim-yukle` sayfasını açar | — | — |
-| Dosya seçer (PDF/PNG/JPG/SVG, max ~25MB) | `etiket-v3.pdf` | **`designs/PE-2026-1234/{uuid}.pdf`** |
-| Upload tamamlanır | SHA-256 hash hesaplanır | `design_files` tablosuna kayıt |
-| AI ön-kontrol (boyut/format/DPI) tetiklenir | — | `design_files.status = uploaded` |
+| Dosya seçer (PDF/PNG/JPG/AI/PSD/EPS, max 30 MB) | `etiket-v3.pdf` | **`designs/PE-2026-1234/{uuid}.pdf`** |
+| Upload tamamlanır (`upload-init` → PUT → `upload-complete`) | SHA-256 hash hesaplanır | `design_files` tablosuna kayıt |
+| AI ön-kontrol tetiklenir | — | `orders.status → qc_pending`, `runOrderDesignQC` |
 
 **Tablo:** `design_files`
 ```sql
@@ -84,9 +86,9 @@ sha256,              -- duplicate detection + integrity
 version,             -- 1, 2, 3... (aynı item için tekrar yükleme)
 status               -- uploaded → qc_pending → qc_passed | qc_flagged
 ```
-**Migration:** `003_returns_design_files.sql`
+**API:** `POST /api/design/upload-init` → client PUT (signed URL) → `POST /api/design/upload-complete`
 
-**Geçici upload (sepete eklerken):** `design_temp_uploads` tablosu — 24 saat sonra otomatik temizlenir (Migration 008).
+**İzin verilen formatlar (kod):** PDF, PNG, JPG, AI, PSD, EPS — SVG kaldırıldı (Sefa v54). Kaynak: [`design-files.ts`](../src/lib/storage/design-files.ts)
 
 ---
 
@@ -96,21 +98,22 @@ status               -- uploaded → qc_pending → qc_passed | qc_flagged
 
 | Olay | Dosya nereye gider? |
 |------|---------------------|
-| Cron veya post-upload trigger | `designs/...` dosyasına Supabase **signed URL** üretilir (5dk geçerli) |
+| Cron veya post-upload trigger | `designs/...` dosyasına Supabase **signed URL** üretilir (1 saat geçerli) |
 | OpenAI Vision'a POST | URL → görsel analiz (DPI, çözünürlük, transparency, format) |
-| Sonuç DB'ye yazılır | `design_files.status = qc_passed / qc_flagged` |
+| Sonuç DB'ye yazılır | `design_quality_checks` INSERT; sipariş `proof_generating` veya `human_review` |
 
-**Endpoint:** `/api/agents/design-qc`
-**Statü geçişleri:**
-- `qc_passed` → akış devam (proof üretimi)
-- `qc_flagged` → operatör review (`/admin/ai-qc`)
-- `qc_rejected` → müşteriye mail + dosya tekrar iste
+**Endpoint:** `/api/agents/design-qc` + `runOrderDesignQC`
+**Statü geçişleri (orders):**
+- Tüm dosyalar iyi → `proof_generating` → cutline POC → `proof_pending`
+- Sorun var → `human_review` → operatör (`/admin/ai-qc`)
+- Red → `human_review_failed` → müşteriye yeni yükleme
 
 ---
 
 ### Aşama E — Cutline POC (kesim çizgisi üretimi)
 
-**Konum:** **Supabase Storage: `cutlines/`** + **Tablo: `cutline_designs`**
+**Konum:** **Cloudflare R2: `customer-cutlines/`** + **Tablo: `cutline_designs`**
+(Supabase `cutlines/` bucket legacy/override için; birincil depo R2.)
 
 | Olay | Dosya nereye gider? |
 |------|---------------------|
@@ -214,8 +217,9 @@ Fason bu JSON'u alıp dosyaları çeker, üretime alır.
 
 | Bucket | Public? | Limit | Kim yazar? | Lifecycle |
 |--------|---------|-------|------------|-----------|
-| **`designs`** | ❌ Signed URL | ~25 MB | Müşteri (sipariş için), Admin (sipariş için) | 24 ay rolling → R2 → KVKK purge |
-| **`cutlines`** | ❌ Signed URL | ~5 MB | Müşteri (POC sonucu), Admin (override) | designs ile aynı |
+| **`designs`** | ❌ Signed URL | 30 MB | Müşteri (sipariş için), Admin | 24 ay rolling → R2 → KVKK purge |
+| **`cutlines`** | ❌ Signed URL | ~5 MB | Admin override (legacy) | designs ile aynı |
+| **R2 `customer-cutlines/`** | ❌ Signed URL | ~5 MB | POC / save-edit | designs ile aynı |
 | **`design-previews`** | ✅ Public | 5 MB | Müşteri (sepet thumbnail) | Sepet temizlenince orphan |
 | **`review-photos`** | ✅ Public | 5 MB | Müşteri (delivered+7gün) | KVKK m.5/1 — sonsuz tutulur |
 | **`gallery`** | ✅ Public | 10 MB | Admin (anasayfa galeri) | Süresiz |
@@ -269,27 +273,28 @@ flowchart TD
   C -->|/odeme + PayTR| D[orders.paid]
   D -->|trigger| E{Tasarım var mı?}
   E -->|HAYIR| F[awaiting_upload]
-  E -->|EVET| G[proof_pending]
-  F -->|/siparis/X/tasarim-yukle| H[designs/]
+  E -->|EVET| G[qc_pending]
+  F -->|/siparis/X/tasarim-yukle| H[upload-init + designs/]
   H --> I[design_files INSERT]
-  I --> J[AI QC pipeline]
-  J -->|passed| K[/onay sayfası açılır]
-  J -->|flagged| L[/admin/ai-qc kuyruğu]
-  J -->|rejected| M[Müşteriye mail: dosya tekrar iste]
-  K -->|headless iframe| N[Cutline POC]
-  N -->|SVG üretir| O[cutlines/ R2]
+  I --> J[runOrderDesignQC]
+  J -->|tüm iyi| K[proof_generating]
+  J -->|sorun| L[human_review / admin/ai-qc]
+  J -->|red| M[human_review_failed]
+  K -->|headless POC iframe| N[Cutline POC]
+  N -->|SVG| O[customer-cutlines R2]
   O --> P[cutline_designs INSERT]
-  P -->|Müşteri onayla| Q[proof_approved]
-  Q --> R[in_production]
-  R -->|Admin manifest| S[Print Job JSON]
-  S -->|Fason indirir| T[Üretim]
-  T -->|Admin kargo| U[shipping label PDF]
-  U --> V[Yurtıçi pickup]
-  V -->|tracking events| W[shipped → delivered]
-  W -->|7gün sonra| X[Yorum yaz maili]
-  X -->|opsiyonel| Y[review-photos/]
-  
-  W -.->|90 gün hareketsiz| Z1[R2 archive cold storage]
+  P --> Q[proof_pending]
+  Q -->|Müşteri onayla| R[proof_approved]
+  R --> S[ready_to_ship / in_production]
+  S -->|Admin manifest| T[Print Job JSON]
+  T -->|Fason indirir| U[Üretim]
+  U -->|Admin kargo| V[shipping label PDF]
+  V --> W[Yurtiçi pickup]
+  W -->|tracking| X[shipped → delivered]
+  X -->|7gün sonra| Y[Yorum yaz maili]
+  Y -->|opsiyonel| Z[review-photos/]
+
+  X -.->|90 gün hareketsiz| Z1[R2 archive cold storage]
   Z1 -.->|24 ay rolling| Z2[KVKK hard delete]
 ```
 
@@ -308,6 +313,7 @@ flowchart TD
 | 90 gün uyuyan müşterinin dosyası? | Cloudflare R2 cold storage'da — istenince signed URL ile geri çekilir (`/api/admin/archive/signed-url`) |
 | AI QC neye bakar? | OpenAI Vision — DPI, çözünürlük, format, transparency, görsel hata |
 | AI QC dosyayı saklıyor mu? | Hayır — OpenAI API stateless, signed URL gönderir, sonra unutulur |
+| Upload zinciri otomatik doğrulama? | `npm run verify:upload-chain` (statik); `--live` ile `design_files` + `cutline_designs` örnekleme |
 
 ---
 
@@ -317,7 +323,7 @@ flowchart TD
 |------|------|-----------|
 | OpenAI Vision down | AI QC kuyrukta birikir | Manuel `/admin/ai-qc` review fallback + circuit breaker (Mig sonrası 10dk rolling) |
 | R2 down | Cutline kaydı fail | `cutline_designs.svg_url` NULL, müşteri tekrar dene |
-| Supabase Storage 25MB limit | Büyük PSD'ler reddedilir | Upload formunda "ZIP olarak gönder" CTA |
+| Supabase Storage 30 MB limit | Büyük PSD'ler reddedilir | Upload formunda "ZIP olarak gönder" CTA; ileride R2 direct upload |
 | KVKK purge bug → silinmemesi gerekenler | Hukuki risk | Daily audit `cron/auditors/data_hygiene` (Pazartesi/Salı) |
 | Müşteri dosyayı tekrar indirmek ister | Storage'dan silinmiş olabilir | 24 ay içinde signed URL üretilebilir; sonrası "üzgünüz, KVKK ile sildik" |
 | Duplicate upload | İki kez aynı dosya | SHA-256 hash kontrolü `design_files.sha256` |
@@ -330,9 +336,7 @@ flowchart TD
 - [ ] Drag&drop ile çoklu dosya upload (şu an tek tek)
 - [ ] PDF preview generation server-side (şu an tarayıcıda render)
 - [ ] CDN edge cache `design-previews/` için (şu an direct Supabase Storage)
-- [ ] R2 ile direct upload (büyük PSD'ler için Supabase 25MB sınırını aşmak)
+- [ ] R2 ile direct upload (30MB üstü PSD için)
 
----
-
-**Son güncelleme:** 21 Mayıs 2026
+**Son güncelleme:** 25 Mayıs 2026
 **İlgili belgeler:** `SIPARIS-AKISI-SNAPSHOT.md`, `ADMIN-AKISI-SNAPSHOT.md`, `SISTEM-AKISLARI.md`

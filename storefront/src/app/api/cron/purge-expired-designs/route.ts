@@ -20,6 +20,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { logServerAudit } from "@/lib/audit-log-server";
+import {
+  deleteR2Keys,
+  isR2StorageKey,
+  normalizeR2Key,
+} from "@/lib/storage/purge-r2";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +68,10 @@ export async function GET(req: Request) {
     // Batch 100'er — Supabase Storage delete limit
     for (let i = 0; i < marked.length; i += 100) {
       const batch = marked.slice(i, i + 100);
-      const paths = batch.map((r) => r.storage_path);
+      const paths = batch
+        .map((r) => r.storage_path)
+        .filter((p) => p && !isR2StorageKey(p));
+      if (paths.length === 0) continue;
       const { data: delData, error: delErr } = await admin.storage
         .from(STORAGE_BUCKET)
         .remove(paths);
@@ -74,6 +82,48 @@ export async function GET(req: Request) {
         storageDeleted += (delData as { name: string }[])?.length ?? 0;
       }
     }
+  }
+
+  // ---- 2b) R2 cold archive + cutline key silme ----
+  let r2Deleted = 0;
+  let r2Errors = 0;
+  if (marked.length > 0) {
+    const designIds = marked.map((m) => m.design_id);
+    const orderIds = [...new Set(marked.map((m) => m.order_id))];
+
+    const { data: fileRows } = await admin
+      .from("design_files")
+      .select("id, archive_path, storage_path")
+      .in("id", designIds);
+
+    const { data: cutlineRows } = await admin
+      .from("cutline_designs")
+      .select("svg_url, preview_png_url")
+      .in("order_id", orderIds);
+
+    const r2Keys: string[] = [];
+    for (const row of fileRows ?? []) {
+      const fr = row as {
+        archive_path: string | null;
+        storage_path: string | null;
+      };
+      if (fr.archive_path) r2Keys.push(fr.archive_path);
+      if (fr.storage_path && isR2StorageKey(fr.storage_path)) {
+        r2Keys.push(fr.storage_path);
+      }
+    }
+    for (const row of cutlineRows ?? []) {
+      const cr = row as {
+        svg_url: string | null;
+        preview_png_url: string | null;
+      };
+      if (cr.svg_url) r2Keys.push(normalizeR2Key(cr.svg_url));
+      if (cr.preview_png_url) r2Keys.push(normalizeR2Key(cr.preview_png_url));
+    }
+
+    const r2Result = await deleteR2Keys(r2Keys);
+    r2Deleted = r2Result.deleted;
+    r2Errors = r2Result.errors;
   }
 
   // ---- 3) Pim sohbet anonimleştirme (stub — tablo gelince çalışır) ----
@@ -113,11 +163,13 @@ export async function GET(req: Request) {
       action: "settings.update",
       targetType: "cron_run",
       targetId: "purge-expired-designs",
-      summary: `Daily purge: ${marked.length} tasarım soft-delete, ${storageDeleted} storage sil, ${legalWarn30Day} sipariş 30 gün içinde yasal süre doluyor`,
+      summary: `Daily purge: ${marked.length} tasarım soft-delete, ${storageDeleted} storage sil, ${r2Deleted} R2 sil, ${legalWarn30Day} sipariş 30 gün içinde yasal süre doluyor`,
       detail: {
         designs_marked: marked.length,
         storage_deleted: storageDeleted,
         storage_errors: storageErrors,
+        r2_deleted: r2Deleted,
+        r2_errors: r2Errors,
         pim_anonymized: pimAnonymized,
         legal_candidates: legalCandidateCount,
         legal_warn_30day: legalWarn30Day,
@@ -130,6 +182,8 @@ export async function GET(req: Request) {
     designs_marked: marked.length,
     storage_deleted: storageDeleted,
     storage_errors: storageErrors,
+    r2_deleted: r2Deleted,
+    r2_errors: r2Errors,
     pim_anonymized: pimAnonymized,
     legal_candidates: legalCandidateCount,
     legal_warn_30day: legalWarn30Day,

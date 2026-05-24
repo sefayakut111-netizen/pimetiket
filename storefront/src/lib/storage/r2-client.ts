@@ -25,6 +25,7 @@ import {
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { r2CutlinePreviewKey, r2CutlineSvgKey } from "./buckets";
 
 // ============================================================
 // Configuration
@@ -37,10 +38,15 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  */
 const R2_BUCKET = process.env.R2_BUCKET ?? "pim-etiket-archive";
 
-/** DRY_RUN modu — gerçek yazma yapmaz, sadece log basar. İlk hafta için
- *  güvenlik kalkanı. Sefa ENV'de R2_ARCHIVE_DRY_RUN=false yapınca aktif olur. */
-export const IS_DRY_RUN =
+/**
+ * Yalnızca cold archive cron / archive-service için.
+ * Hot path (cutline, manifest, purge, KVKK delete) bu flag'den etkilenmez.
+ */
+export const IS_ARCHIVE_DRY_RUN =
   (process.env.R2_ARCHIVE_DRY_RUN ?? "true").toLowerCase() === "true";
+
+/** @deprecated IS_ARCHIVE_DRY_RUN kullanın */
+export const IS_DRY_RUN = IS_ARCHIVE_DRY_RUN;
 
 /** Lazy client — env vars set edilmeden import edilirse crash etmesin */
 let _r2Client: S3Client | null = null;
@@ -105,10 +111,7 @@ export interface R2UploadResult {
 }
 
 /**
- * R2'ye dosya yükler. Buffer, Uint8Array veya string destekler.
- *
- * DRY_RUN modunda gerçek upload yapmaz, sadece log basar (sadece success
- * + dryRun flag döner).
+ * Hot path R2 upload — cutline, fason contract vb. DRY_RUN'dan etkilenmez.
  */
 export async function uploadToR2(params: {
   key: string;
@@ -120,14 +123,6 @@ export async function uploadToR2(params: {
     typeof params.body === "string"
       ? Buffer.byteLength(params.body, "utf-8")
       : params.body.length;
-
-  if (IS_DRY_RUN) {
-    console.log(
-      `[r2-client:DRY_RUN] upload key="${params.key}" size=${size}B ` +
-        `contentType="${params.contentType ?? "application/octet-stream"}"`
-    );
-    return { success: true, key: params.key, size, dryRun: true };
-  }
 
   try {
     await getClient().send(
@@ -151,6 +146,30 @@ export async function uploadToR2(params: {
 }
 
 /**
+ * Cold archive transfer — IS_ARCHIVE_DRY_RUN=true iken gerçek yazmaz.
+ */
+export async function uploadToR2Archive(params: {
+  key: string;
+  body: Buffer | Uint8Array | string;
+  contentType?: string;
+  metadata?: Record<string, string>;
+}): Promise<R2UploadResult> {
+  const size =
+    typeof params.body === "string"
+      ? Buffer.byteLength(params.body, "utf-8")
+      : params.body.length;
+
+  if (IS_ARCHIVE_DRY_RUN) {
+    console.log(
+      `[r2-client:ARCHIVE_DRY_RUN] upload key="${params.key}" size=${size}B`
+    );
+    return { success: true, key: params.key, size, dryRun: true };
+  }
+
+  return uploadToR2(params);
+}
+
+/**
  * Signed URL üretir (presigned). Müşteri/Cowork erişimi için.
  * Varsayılan TTL 1 saat.
  */
@@ -158,10 +177,23 @@ export async function getSignedDownloadUrl(
   key: string,
   expiresInSeconds = 3600
 ): Promise<string> {
-  if (IS_DRY_RUN) {
-    return `https://dry-run.pimetiket.local/${key}?expires=${expiresInSeconds}`;
-  }
   const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+  return await getSignedUrl(getClient(), command, {
+    expiresIn: expiresInSeconds,
+  });
+}
+
+/** Büyük dosya direct upload için presigned PUT URL */
+export async function getSignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = 3600
+): Promise<string> {
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    ContentType: contentType,
+  });
   return await getSignedUrl(getClient(), command, {
     expiresIn: expiresInSeconds,
   });
@@ -172,9 +204,6 @@ export async function getSignedDownloadUrl(
  * Restore akışında kullanılır.
  */
 export async function downloadFromR2(key: string): Promise<Buffer> {
-  if (IS_DRY_RUN) {
-    throw new Error("[r2-client:DRY_RUN] downloadFromR2 dry-run'da çalışmaz");
-  }
   const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
   const response = await getClient().send(command);
   const chunks: Uint8Array[] = [];
@@ -191,11 +220,8 @@ export async function downloadFromR2(key: string): Promise<Buffer> {
  */
 export async function deleteFromR2(
   key: string
-): Promise<{ success: boolean; dryRun?: boolean }> {
-  if (IS_DRY_RUN) {
-    console.log(`[r2-client:DRY_RUN] delete key="${key}"`);
-    return { success: true, dryRun: true };
-  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!key?.trim()) return { success: false, error: "empty_key" };
   try {
     await getClient().send(
       new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })
@@ -216,9 +242,6 @@ export async function getR2ObjectInfo(key: string): Promise<{
   size?: number;
   lastModified?: Date;
 }> {
-  if (IS_DRY_RUN) {
-    return { exists: true, size: 0, lastModified: new Date() };
-  }
   try {
     const response = await getClient().send(
       new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key })
@@ -238,10 +261,6 @@ export async function getR2ObjectInfo(key: string): Promise<{
  * KVKK silme akışında kullanıcı arşivinin tamamını silmek için.
  */
 export async function listR2Objects(prefix: string): Promise<string[]> {
-  if (IS_DRY_RUN) {
-    console.log(`[r2-client:DRY_RUN] list prefix="${prefix}"`);
-    return [];
-  }
   const keys: string[] = [];
   let continuationToken: string | undefined;
   do {
@@ -274,10 +293,6 @@ export interface R2ObjectInfo {
 export async function listR2ObjectsDetailed(
   prefix: string
 ): Promise<R2ObjectInfo[]> {
-  if (IS_DRY_RUN) {
-    console.log(`[r2-client:DRY_RUN] list-detailed prefix="${prefix}"`);
-    return [];
-  }
   const items: R2ObjectInfo[] = [];
   let continuationToken: string | undefined;
   do {
@@ -351,15 +366,10 @@ export const r2KeyBuilders = {
    * Path: customer-cutlines/{orderId}/{itemId}/{timestamp}.svg
    */
   cutlineDesign: (orderId: string, itemId: string, timestamp: number) =>
-    `customer-cutlines/${orderId}/${itemId}/${timestamp}.svg`,
+    r2CutlineSvgKey(orderId, itemId, timestamp),
 
-  /**
-   * POC canvas snapshot — preview thumbnail.
-   * Onay sayfasında liste yanında küçük görsel için.
-   * Path: customer-cutlines/{orderId}/{itemId}/{timestamp}-preview.png
-   */
   cutlinePreview: (orderId: string, itemId: string, timestamp: number) =>
-    `customer-cutlines/${orderId}/${itemId}/${timestamp}-preview.png`,
+    r2CutlinePreviewKey(orderId, itemId, timestamp),
 
   /**
    * Final print-ready PDF (Faz 4'te server-side üretilecek).
@@ -382,9 +392,10 @@ function sanitizeFilename(name: string): string {
 export function getR2Config() {
   return {
     bucket: R2_BUCKET,
-    dryRun: IS_DRY_RUN,
+    archiveDryRun: IS_ARCHIVE_DRY_RUN,
     hasCredentials: Boolean(
       process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
     ),
+    endpoint: process.env.R2_ENDPOINT ?? null,
   };
 }

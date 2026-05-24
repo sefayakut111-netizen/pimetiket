@@ -6,10 +6,9 @@
  *   - AI ön-kontrol pipeline'ı tetikler (P0-5.5 stub)
  *   - order_events 'file_uploaded' log
  *
- * Body: { fileId, sha256?, magicByteOk? }
+ * Body: { fileId, sha256? }
  *
- * Magic-byte check şu an stub — ileride server-side dosyayı download
- * edip ilk N byte'ını analiz ederiz (PDF: %PDF, PNG: 89 50 4E 47, vs).
+ * Magic-byte check: storage/R2'dan ilk 512 byte indirilir, MIME iddiası doğrulanır.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -18,6 +17,9 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import type { AllowedMime } from "@/lib/storage/design-files";
+import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { isR2StorageKey } from "@/lib/storage/purge-r2";
+import { deleteFromR2, downloadFromR2 } from "@/lib/storage/r2-client";
 import type {
   Enums,
   Json,
@@ -79,6 +81,68 @@ export async function POST(req: NextRequest) {
   const fileRow = file as unknown as DesignFileRow;
   if (fileRow.user_id !== user.id) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  // Magic-byte doğrulama (sync — upload-complete hot path)
+  try {
+    let headerBytes: Uint8Array;
+    if (isR2StorageKey(fileRow.storage_path)) {
+      const buf = await downloadFromR2(fileRow.storage_path);
+      headerBytes = buf.subarray(0, Math.min(512, buf.length));
+    } else {
+      const { data: blob, error: dlErr } = await admin.storage
+        .from(STORAGE_BUCKET)
+        .download(fileRow.storage_path);
+      if (dlErr || !blob) {
+        return NextResponse.json(
+          { error: "magic_byte_check_failed", detail: dlErr?.message },
+          { status: 500 }
+        );
+      }
+      headerBytes = new Uint8Array(await blob.slice(0, 512).arrayBuffer());
+    }
+
+    const magic = detectMimeFromMagicBytes(
+      headerBytes,
+      fileRow.mime_type as AllowedMime
+    );
+    if (!magic.matchesClaim) {
+      if (isR2StorageKey(fileRow.storage_path)) {
+        await deleteFromR2(fileRow.storage_path);
+      } else {
+        await admin.storage
+          .from(STORAGE_BUCKET)
+          .remove([fileRow.storage_path]);
+      }
+      await admin
+        .from("design_files")
+        .update({
+          status: "rejected" as Enums<"design_file_status">,
+          ai_check: {
+            flags: [
+              {
+                kind: "error",
+                message: `Dosya içeriği MIME ile uyumsuz (iddia: ${fileRow.mime_type}, gerçek: ${magic.label}).`,
+              },
+            ],
+          } as Json,
+        } satisfies TablesUpdate<"design_files">)
+        .eq("id", body.fileId);
+      return NextResponse.json(
+        {
+          error: "mime_mismatch",
+          claimed: fileRow.mime_type,
+          detected: magic.detected,
+        },
+        { status: 400 }
+      );
+    }
+  } catch (err) {
+    console.error("[design/upload-complete] magic-byte error:", err);
+    return NextResponse.json(
+      { error: "magic_byte_check_failed" },
+      { status: 500 }
+    );
   }
 
   // 2) Status'u 'analyzing'e geçir + sha256 set et

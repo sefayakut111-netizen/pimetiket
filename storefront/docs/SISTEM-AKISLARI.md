@@ -257,24 +257,24 @@ Müşteri tasarım yükler, AI gpt-4o ile kontrol edilir.
 
 ```mermaid
 flowchart TD
-    Start([Müşteri tasarım yükler]) --> Upload[/api/orders/orderId/upload-design<br/>multipart form]
-    Upload --> Validate{Validation}
+    Start([Müşteri tasarım yükler]) --> Init[POST /api/design/upload-init]
+    Init --> ClientPut[Client PUT signed URL<br/>Supabase Storage designs/]
+    ClientPut --> Complete[POST /api/design/upload-complete]
+    Complete --> Validate{Validation}
     Validate -->|Format/boyut sorunlu| Err400[400 Bad Request]
-    Validate -->|OK| R2Upload[R2 storage upload<br/>key: designs/userId/orderId/file]
-    R2Upload --> DBInsert[INSERT design_files<br/>status='uploaded'<br/>order_item_id link]
+    Validate -->|OK| DBInsert[design_files status uploaded<br/>order_item_id link]
     DBInsert --> Trigger{Sipariş status?}
-    Trigger -->|awaiting_upload| StatusUp[trigger:<br/>orders.status='qc_pending'<br/>Mig 061]
-    Trigger -->|paid| StatusUp
-    StatusUp --> QCRunner[runOrderDesignQC<br/>fire-and-forget<br/>Promise.allSettled paralel<br/>Mig P1]
+    Trigger -->|awaiting_upload veya paid| StatusUp[orders.status qc_pending<br/>Mig 061]
+    StatusUp --> QCRunner[runOrderDesignQC<br/>fire-and-forget paralel]
 
     QCRunner --> ForEach[Her design_file için]
-    ForEach --> SignedUrl[R2 signed URL 1 saat]
+    ForEach --> SignedUrl[Supabase signed URL 1 saat]
     SignedUrl --> OpenAI[OpenAI gpt-4o<br/>vision + structured output]
     OpenAI --> Verdict{Verdict}
-    Verdict -->|iyi| Pass[design_quality_checks INSERT<br/>verdict='iyi']
-    Verdict -->|normal| Mid[verdict='normal']
-    Verdict -->|kotu| Fail[verdict='kotu']
-    Verdict -->|exception| Err[verdict='error'<br/>Sentry captureException]
+    Verdict -->|iyi| Pass[design_quality_checks INSERT<br/>verdict iyi]
+    Verdict -->|normal| Mid[verdict normal]
+    Verdict -->|kotu| Fail[verdict kotu]
+    Verdict -->|exception| Err[verdict error<br/>Sentry captureException]
 
     Pass --> Aggregate[Tüm dosyalar bitti<br/>aggregate verdict]
     Mid --> Aggregate
@@ -282,8 +282,8 @@ flowchart TD
     Err --> Aggregate
 
     Aggregate --> AllGood{Hepsi iyi?}
-    AllGood -->|Evet| ProofGen[orders.status='proof_generating']
-    AllGood -->|Hayır| HumanRev[orders.status='human_review'<br/>admin /admin/ai-qc inceler]
+    AllGood -->|Evet| ProofGen[orders.status proof_generating]
+    AllGood -->|Hayır| HumanRev[orders.status human_review<br/>admin /admin/ai-qc inceler]
 
     ProofGen --> CutlineFlow[Cutline akışı<br/>bkz. §6]
     HumanRev --> AdminDecide{Admin kararı}
@@ -293,6 +293,8 @@ flowchart TD
     Err400 --> EndError([Müşteri tekrar dener])
     FailedAsk --> Start
 ```
+
+**Upload zinciri (kod):** [`src/lib/storage/buckets.ts`](../src/lib/storage/buckets.ts) · `UPLOAD_CHAIN_ENDPOINTS`
 
 **AI QC ne bakıyor:**
 - DPI, çözünürlük, taşma (bleed)

@@ -21,6 +21,18 @@
       "schedule": "30 3 * * *"
     },
     {
+      "path": "/api/cron/cleanup-temp-designs",
+      "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-stale-uploads",
+      "schedule": "45 3 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-orphan-previews",
+      "schedule": "0 4 * * 0"
+    },
+    {
       "path": "/api/cron/purge-expired-designs",
       "schedule": "0 4 * * *"
     },

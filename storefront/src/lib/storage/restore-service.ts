@@ -7,7 +7,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { getSignedDownloadUrl, IS_DRY_RUN } from "./r2-client";
+import { getSignedDownloadUrl, IS_ARCHIVE_DRY_RUN } from "./r2-client";
 
 function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -74,21 +74,19 @@ export async function getArchivedDesignFileUrl(params: {
   const expiresAt = new Date(Date.now() + ttl * 1000);
 
   // Audit log
-  if (!IS_DRY_RUN) {
-    await supabase.from("archive_events").insert({
-      event_type: "cold_access",
-      resource_type: "design_file",
-      resource_id: params.designFileId,
-      user_id: file.user_id,
-      actor_id: params.requesterId,
-      actor_type: params.requesterType,
-      archive_path: file.archive_path,
-      reason: params.reason ?? "Müşteri panel indirme talebi",
-      metadata: { ttl_seconds: ttl, original_name: file.original_name },
-    });
-  }
+  await supabase.from("archive_events").insert({
+    event_type: "cold_access",
+    resource_type: "design_file",
+    resource_id: params.designFileId,
+    user_id: file.user_id,
+    actor_id: params.requesterId,
+    actor_type: params.requesterType,
+    archive_path: file.archive_path,
+    reason: params.reason ?? "Müşteri panel indirme talebi",
+    metadata: { ttl_seconds: ttl, original_name: file.original_name },
+  });
 
-  return { url, expiresAt, dryRun: IS_DRY_RUN };
+  return { url, expiresAt };
 }
 
 /**
@@ -105,8 +103,10 @@ export async function restoreCustomerToHot(
 ): Promise<{ success: boolean; error?: string; dryRun?: boolean }> {
   const supabase = makeServiceClient();
 
-  if (IS_DRY_RUN) {
-    console.log(`[restore-service:DRY_RUN] restore user=${userId} reason="${reason}"`);
+  if (IS_ARCHIVE_DRY_RUN) {
+    console.log(
+      `[restore-service:ARCHIVE_DRY_RUN] restore user=${userId} reason="${reason}"`
+    );
     return { success: true, dryRun: true };
   }
 

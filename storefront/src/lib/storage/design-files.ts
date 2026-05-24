@@ -19,6 +19,8 @@
  *   - magic-byte check (mime spoofing'e karşı, AI ön-kontrol esnasında)
  */
 
+import { SUPABASE_STORAGE_BUCKETS } from "./buckets";
+
 export const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "application/illustrator",
@@ -41,9 +43,11 @@ export const ALLOWED_EXTENSIONS = [
 
 export type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
 
-export const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
+export const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB — Supabase Storage limiti
+/** R2 direct upload üst sınırı (büyük PSD vb.) */
+export const MAX_R2_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 export const MAX_FILES_PER_ORDER = 50; // Sefa 18 May v54
-export const STORAGE_BUCKET = "designs";
+export const STORAGE_BUCKET = SUPABASE_STORAGE_BUCKETS.designs;
 
 export function isAllowedMime(mime: string): mime is AllowedMime {
   return (ALLOWED_MIME_TYPES as readonly string[]).includes(mime);

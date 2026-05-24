@@ -29,7 +29,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { archiveCustomer } from "@/lib/storage/archive-service";
-import { IS_DRY_RUN } from "@/lib/storage/r2-client";
+import { IS_ARCHIVE_DRY_RUN } from "@/lib/storage/r2-client";
 import { assertCronAuth } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
 
   const summary = {
     timestamp: new Date().toISOString(),
-    dryRun: IS_DRY_RUN,
+    dryRun: IS_ARCHIVE_DRY_RUN,
     candidatesFound: candidates?.length ?? 0,
     batchProcessed: batch.length,
     successfullyArchived: results.filter((r) => r.success).length,

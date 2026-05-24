@@ -42,6 +42,5 @@ if ("error" in result) {
 console.log("✓ Signed URL üretildi");
 console.log(`  URL:       ${result.url}`);
 console.log(`  Süresi:    ${result.expiresAt.toISOString()}`);
-console.log(`  Dry-run:   ${result.dryRun ? "evet" : "hayır"}`);
 console.log();
 console.log("Bu URL'i tarayıcıda aç — dosya inmeli (1 saat geçerli).");

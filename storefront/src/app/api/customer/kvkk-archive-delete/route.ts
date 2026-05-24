@@ -21,7 +21,6 @@ import {
   deleteFromR2,
   listR2Objects,
   r2KeyBuilders,
-  IS_DRY_RUN,
 } from "@/lib/storage/r2-client";
 
 export const runtime = "nodejs";
@@ -107,24 +106,19 @@ export async function POST(req: NextRequest) {
     });
 
     // 4. Profil status'unu 'deleted' yap (kayıt kalır, kişisel veri sıfırlanır)
-    if (!IS_DRY_RUN) {
-      await serviceClient
-        .from("profiles")
-        .update({
-          archive_status: "deleted",
-          archive_path: null,
-        })
-        .eq("id", targetUserId);
-    }
+    await serviceClient
+      .from("profiles")
+      .update({
+        archive_status: "deleted",
+        archive_path: null,
+      })
+      .eq("id", targetUserId);
 
     return NextResponse.json({
       success: true,
-      dryRun: IS_DRY_RUN,
       deletedKeys: keys.length,
       failedDeletes: deleteResults.filter((d) => !d.success).length,
-      message: IS_DRY_RUN
-        ? "DRY_RUN modunda — gerçek silme yapılmadı, log basıldı"
-        : "KVKK silme tamamlandı, arşiv temizlendi",
+      message: "KVKK silme tamamlandı, arşiv temizlendi",
     });
   } catch (err) {
     console.error("[kvkk-archive-delete] failed:", err);

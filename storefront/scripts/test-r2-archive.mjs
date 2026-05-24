@@ -28,7 +28,8 @@ if (!userId) {
 }
 
 console.log(`[test] Müşteri arşivleme başlatılıyor: ${userId}`);
-console.log(`[test] DRY_RUN mode: ${process.env.R2_ARCHIVE_DRY_RUN !== "false"}`);
+console.log(`[test] Archive DRY_RUN: ${process.env.R2_ARCHIVE_DRY_RUN !== "false"}`);
+console.log(`[test] Hot path (cutline/manifest) her zaman gerçek R2 kullanır.`);
 console.log();
 
 const result = await archiveCustomer(userId, "Manuel test çağrısı");
