@@ -1,9 +1,18 @@
-# Bekleyen İşler
+## 🔜 Denetçi sistemi — sonraki tur (25 May 2026)
 
-Sefa'nın aldığı UX/yasal denetim raporundan (21 May 2026 v68) ertelenen
-maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
+> Auditor fix oturumundan (snooze, security RPC, finance cron, digest stale, tokens_used, ApprovalCard deep link) kalan geniş işler.
+
+| # | İş | Öncelik | Not |
+|---|---|---|---|
+| 1 | **Pim Chat maliyet izleme** | P2 | `design_quality_checks` dışında chat token/cost log tablosu veya mevcut observability; Ai Cost denetçisine Pim Chat kırılımı |
+| 2 | **Aksiyon rollback** | P2 | `extend-coupon-expiry`, `cancel-no-design-order`, `block_ip` vb. için reverse handler + admin UI "geri al" |
+| 3 | Deploy sonrası smoke | P1 | `node scripts/verify-auditor-fixes.mjs` + Vercel Crons finance `0 6 * * *` |
+| 4 | Test ödeme → `tokens_used` | P1 | Yeni QC kayıtlarında kolon dolu mu (eski kayıtlar null kalabilir) |
+
+**Doğrulama script'i:** `scripts/verify-auditor-fixes.mjs`
 
 ---
+
 
 ## ✅ 23 Mayıs 2026 — API entegrasyon analizi & dayanıklılık (commit + push)
 
@@ -43,9 +52,11 @@ maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 
 ---
 
-## ✅ 24 Mayıs 2026 — Şema & TypeScript agent altyapısı (kod, migration apply değil)
+## ✅ 24 Mayıs 2026 — Şema & TypeScript agent altyapısı — **KAPATILDI**
 
-> Bu bölüm **kod tabanı ve dokümantasyon** güncellemesidir. Yeni SQL migration apply edilmedi.
+> **Oturum logu:** [`SESSION-LOG-2026-05-24.md`](../SESSION-LOG-2026-05-24.md)  
+> **Kalıcı rehber:** [`docs/SCHEMA-TYPES-AGENT-GUIDE.md`](SCHEMA-TYPES-AGENT-GUIDE.md)  
+> **Git:** `886933c` + `c8b7d0e` → `origin/main`
 
 | İş | Durum | Referans |
 |---|---|---|
@@ -55,32 +66,30 @@ maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 | Agent kuralları (sefaRules vs şema) | ✅ | `CLAUDE.md` |
 | Kalıcı sistem rehberi | ✅ | `docs/SCHEMA-TYPES-AGENT-GUIDE.md` |
 | Manifest `schemaMigrations` alanları | ✅ | `smart-context/manifest.json` |
-| TS hata düzeltmeleri (10→0) | ✅ | `SESSION-LOG-2026-05-24.md` |
+| TS hata düzeltmeleri (10→0) | ✅ | oturum log Paket B |
+| `admin/designs` enum hizalama | ✅ | `design-file-status.ts` |
+| `Tables<>` + RPC `as never` (yüksek trafik) | ✅ | oturum log Paket F |
+| Auth lookup + admin mail helper | ✅ | `auth-user-lookup.ts`, `admin-recipients.ts` |
+| Smoke test checklist | ✅ | `docs/SCHEMA-SMOKE-TEST.md` |
+| Mig 085–089 apply script | ✅ | `scripts/apply-migrations-085-089.mjs` |
+| Commit + push | ✅ | `c8b7d0e` |
 
-**Açık:** — (24 May oturumu commit edildi)
+### Tamamlanan — 24 May 2026 (ana + follow-up)
 
-### Bugün başarıyla biten — 24 May 2026 (şema & types oturumu)
+- ✅ `types.ts` remote regenerate (~4053 satır, 89 migration uyumlu)
+- ✅ `npm run supabase:types` · `design-file-status.ts` tek kaynak
+- ✅ Agent kuralları, Smart Context şema alanları, domain referansı
+- ✅ Payment/agents/proof/design `as never` temizliği (~52 dosya, `c8b7d0e`)
+- ✅ `profiles.email` hatası giderildi (mailer, notify-sefa, lock-admin-account)
+- ✅ Mig apply tooling + smoke test dokümantasyonu
 
-- ✅ `types.ts` remote şemadan regenerate (~4053 satır, 89 migration uyumlu)
-- ✅ `npm run supabase:types` package script
-- ✅ 10 TypeScript hatası düzeltildi (`tsc --noEmit` temiz)
-- ✅ `CLAUDE.md` — şema ≠ ürün + sefaRules + modüler komut şablonu
-- ✅ `docs/DOMAIN-SCHEMA-REFERENCE.md` — domain → migration → tablo haritası
-- ✅ `docs/SCHEMA-TYPES-AGENT-GUIDE.md` — kalıcı sistem kaydı
-- ✅ `manifest.json` — `schemaMigrations` / `schemaTables` / `typeRefs`
-- ✅ `smart-context.mjs` — CLI şema çıktısı
-- ✅ Git commit — şema/types oturumu + design status filter + Tables<> RPC temizliği
-- ✅ `admin/designs` UI — `design_file_status` enum hizalama (`analyzing` dahil)
-- ✅ `Tables<>` yaygınlaştırma — yüksek trafik lib/API'lerde RPC `as never` kaldırıldı
+### Deploy bekleyen (bu başlık dışı — infra)
 
-### Sıradaki (şema oturumundan kalan)
-
-| # | İş | Öncelik | Durum |
-|---|---|---|---|
-| 1 | Migration 085–089 remote apply + types regen | P1 | ⏳ script hazır |
-| 2 | Kalan `as never` (~150 dosya) | P3 | 🔄 ~70 azaltıldı |
-| 3 | Smoke test checklist | P2 | ✅ `docs/SCHEMA-SMOKE-TEST.md` |
-| 4 | `admin-recipients` + `auth-user-lookup` helper | P2 | ✅ |
+| # | İş | Öncelik |
+|---|---|---|
+| 1 | Migration **085–089** remote apply + `supabase:types` | P1 deploy |
+| 2 | Kalan `as never` (~150 dosya) | P3 teknik borç |
+| 3 | Manuel smoke (`SCHEMA-SMOKE-TEST.md`) | P2 deploy sonrası |
 
 ---
 

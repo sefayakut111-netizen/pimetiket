@@ -14,6 +14,7 @@
 ## ⏳ Bekleyen apply — Migration 085–089 (23 May güvenlik oturumu)
 
 > **Durum:** SQL dosyaları repo'da; production'a henüz apply edilmedi.  
+> **Şema oturumu:** KAPATILDI (`SESSION-LOG-2026-05-24.md`) — apply deploy adımı.  
 > **Apply script:** `node scripts/apply-migrations-085-089.mjs` (SUPABASE_ACCESS_TOKEN gerekli)  
 > **Smoke test:** `docs/SCHEMA-SMOKE-TEST.md` §5
 

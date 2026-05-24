@@ -2,7 +2,7 @@
 
 > **Sistem kaydı:** 24 Mayıs 2026 Cursor oturumu  
 > **Oturum detayı:** `SESSION-LOG-2026-05-24.md`  
-> **Durum:** Kayıtlı — commit `886933c`, push `origin/main` (24 May 2026)
+> **Durum:** **KAPATILDI** — `886933c` + `c8b7d0e` push edildi (24 May 2026)
 
 Bu dosya, veritabanı şeması + `types.ts` + agent kuralları + modüler domain geliştirmenin **tek giriş noktasıdır**. Claude Code, Cursor ve `/baglam` bu rehberi referans alır.
 
@@ -139,24 +139,35 @@ Domain detayları: **`docs/DOMAIN-SCHEMA-REFERENCE.md`**
 
 ---
 
-## 7. Tamamlanan işler (24 May 2026 oturumu)
+## 7. Oturum durumu — **KAPATILDI** (24 May 2026)
+
+### Ana oturum (`886933c`)
 
 | # | İş | Durum |
 |---|---|---|
-| 1 | Git commit + push (`886933c`) | ✅ |
+| 1 | Git commit + push | ✅ |
 | 2 | `admin/designs` UI — status filter enum | ✅ |
 | 3 | `Tables<>` + RPC `as never` (yüksek trafik) | ✅ |
 | 4 | `supabase/README.md` header (89 mig) | ✅ |
 | 5 | `design-file-status.ts` tek kaynak | ✅ |
 
-### Opsiyonel devam (teknik borç)
+### Follow-up (`c8b7d0e`)
 
 | # | İş | Durum |
 |---|---|---|
-| 1 | Migration 085–089 remote apply | ⏳ `scripts/apply-migrations-085-089.mjs` |
-| 2 | Kalan `as never` (~150) | 🔄 agents/proof/design temizlendi |
-| 3 | Smoke test checklist | ✅ `docs/SCHEMA-SMOKE-TEST.md` |
-| 4 | `admin-recipients` + `auth-user-lookup` | ✅ |
+| 1 | Dokümantasyon senkronu | ✅ |
+| 2 | `admin-recipients` + `auth-user-lookup` | ✅ |
+| 3 | `as never` geniş temizlik (payment/agents/proof/design) | ✅ |
+| 4 | Mig 085–089 apply script | ✅ |
+| 5 | `docs/SCHEMA-SMOKE-TEST.md` | ✅ |
+
+### Deploy bekleyen (başlık dışı)
+
+| # | İş | Not |
+|---|---|---|
+| 1 | Migration 085–089 remote apply | `node scripts/apply-migrations-085-089.mjs` |
+| 2 | Kalan `as never` (~150) | P3 teknik borç |
+| 3 | Manuel smoke test | `docs/SCHEMA-SMOKE-TEST.md` |
 
 ---
 
