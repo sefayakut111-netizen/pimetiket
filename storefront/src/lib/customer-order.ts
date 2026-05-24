@@ -14,6 +14,8 @@
 import type { CustomerCartItem } from "./customer-cart";
 import type { OrderStatus } from "./order";
 import { createClient } from "./supabase/client";
+import type { Json } from "./supabase/types";
+import type { Tables } from "./supabase/types";
 import {
   getCurrentUser,
   isLoggedInSync,
@@ -152,33 +154,8 @@ function writeLocal(orders: CustomerOrder[]): void {
 // DB helpers (auth mode)
 // ============================================================
 
-interface DbOrderRow {
-  id: string;
-  user_id: string;
-  status: OrderStatus;
-  subtotal: number;
-  shipping: number;
-  total: number;
-  address: CustomerOrderAddress;
-  invoice: CustomerOrderInvoice;
-  payment: CustomerOrderPayment;
-  estimated_delivery: string | null;
-  created_at: string;
-}
-
-interface DbOrderItemRow {
-  id: string;
-  order_id: string;
-  product: "sticker" | "etiket";
-  title: string;
-  config: string;
-  width: number;
-  height: number;
-  qty: number;
-  unit: number;
-  total: number;
-  meta: Record<string, unknown>;
-}
+type DbOrderRow = Tables<"orders">;
+type DbOrderItemRow = Tables<"order_items">;
 
 function rowsToOrder(
   o: DbOrderRow,
@@ -189,7 +166,7 @@ function rowsToOrder(
     const meta = (i.meta ?? {}) as Partial<CustomerCartItem>;
     return {
       id: i.id,
-      product: i.product,
+      product: i.product as CustomerCartItem["product"],
       title: i.title,
       config: i.config,
       width: i.width,
@@ -221,9 +198,9 @@ function rowsToOrder(
     id: o.id,
     status: o.status,
     items: cartItems,
-    address: o.address,
-    invoice: o.invoice,
-    payment: o.payment,
+    address: o.address as unknown as CustomerOrderAddress,
+    invoice: o.invoice as unknown as CustomerOrderInvoice,
+    payment: o.payment as unknown as CustomerOrderPayment,
     subtotal: Number(o.subtotal),
     shipping: Number(o.shipping),
     total: Number(o.total),
@@ -246,7 +223,7 @@ async function dbList(userId: string): Promise<CustomerOrder[]> {
   }
   if (!orders || orders.length === 0) return [];
 
-  const orderIds = (orders as DbOrderRow[]).map((o) => o.id);
+  const orderIds = orders.map((o) => o.id);
   const { data: itemsRaw, error: itemsErr } = await supabase
     .from("order_items")
     .select("*")
@@ -255,8 +232,8 @@ async function dbList(userId: string): Promise<CustomerOrder[]> {
     console.error("[orders] dbList items error:", itemsErr);
     return [];
   }
-  const items = (itemsRaw ?? []) as DbOrderItemRow[];
-  return (orders as DbOrderRow[]).map((o) =>
+  const items = itemsRaw ?? [];
+  return orders.map((o) =>
     rowsToOrder(o, items.filter((i) => i.order_id === o.id))
   );
 }
@@ -277,16 +254,13 @@ async function dbGet(orderId: string): Promise<CustomerOrder | null> {
 
   // Gerçek (canonical) ID'yi DB row'undan al — order_items lookup için
   // bu ID kullanılmalı, kullanıcının yazdığı değil
-  const canonicalId = (order as DbOrderRow).id;
+  const canonicalId = order.id;
 
   const { data: items } = await supabase
     .from("order_items")
     .select("*")
     .eq("order_id", canonicalId);
-  return rowsToOrder(
-    order as DbOrderRow,
-    (items ?? []) as DbOrderItemRow[]
-  );
+  return rowsToOrder(order, items ?? []);
 }
 
 /**
@@ -330,18 +304,18 @@ async function dbCreate(
     },
   }));
 
-  const { error } = await supabase.rpc("fn_create_order" as never, {
+  const { error } = await supabase.rpc("fn_create_order", {
     p_order_id: orderId,
     p_user_id: userId,
     p_subtotal: payload.subtotal,
     p_shipping: payload.shipping,
     p_total: payload.total,
-    p_address: payload.address,
-    p_invoice: payload.invoice,
-    p_payment: payload.payment,
-    p_estimated_delivery: payload.estimatedDelivery ?? null,
-    p_items: itemsJson,
-  } as never);
+    p_address: payload.address as unknown as Json,
+    p_invoice: payload.invoice as unknown as Json,
+    p_payment: payload.payment as unknown as Json,
+    p_estimated_delivery: payload.estimatedDelivery ?? "",
+    p_items: itemsJson as Json,
+  });
   if (error) {
     console.error("[orders] dbCreate error:", error);
     return null;

@@ -1,0 +1,36 @@
+---
+description: Pim Etiket çekirdek kurallar ve Akıllı Bağlam sistemi — her oturumda geçerli
+alwaysApply: true
+---
+
+# Pim Etiket — Akıllı Bağlam
+
+Codebase: `pim-etiket/core/storefront/` (Next.js 16.2.6, React 19, Supabase).
+
+## Smart Context kullanımı
+
+Domain'e göre otomatik bağlam filtreleme aktif. Manifest tek kaynak:
+`smart-context/manifest.json`
+
+CLI: `npm run context -- --path <dosya>` veya `--git-diff` veya `--query "konu"`
+
+Claude: `/baglam [dosya veya konu]`
+
+## Sefa kuralları (asla ihlal etme)
+
+- Cüzdan/puan/üyelik indirimi YASAK · Persona dropdown YASAK · Tek akıllı Pim
+- Dalkavuk ("mükemmel seçim", "harika") YASAK
+- "Süresiz" YASAK · Yapay empati YASAK · "Bursa" YASAK
+- Bot menüsü (1/2/3/4) ve hazır chip YASAK
+- Next.js API kullanmadan önce `node_modules/next/dist/docs/` oku
+
+## Kod konvansiyonları
+
+- UI: `@/components/ui` primitives önce, Tailwind tek stil kaynağı
+- i18n: `useT()` — hardcoded Türkçe string atma
+- Supabase: ORM yok, direkt client + RPC
+- State: localStorage + DB hibrit (bilinçli karar)
+
+## Hub dosyalar (dikkatli dokun)
+
+`components/ui/index.ts`, `Icon.tsx`, `lib/cn.ts`, `lib/supabase/*`, `lib/i18n/context.tsx`

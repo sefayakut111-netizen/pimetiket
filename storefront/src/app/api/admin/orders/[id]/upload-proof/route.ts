@@ -15,13 +15,15 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import type { AllowedMime } from "@/lib/storage/design-files";
 
 const MAX_SIZE = 30 * 1024 * 1024;
 const ALLOWED_MIMES = [
   "application/pdf",
   "image/png",
   "image/jpeg",
-];
+] as const;
 
 function getExtension(mime: string): string {
   switch (mime) {
@@ -80,7 +82,7 @@ export async function POST(
       { status: 400 }
     );
   }
-  if (!ALLOWED_MIMES.includes(file.type)) {
+  if (!(ALLOWED_MIMES as readonly string[]).includes(file.type)) {
     return NextResponse.json(
       { error: `Format desteklenmiyor (${file.type}). PDF/PNG/JPG kabul edilir` },
       { status: 400 }
@@ -130,12 +132,37 @@ export async function POST(
     );
   }
 
+  // Magic-byte doğrulama — Sefa 23 May v68 (P1.2):
+  // Client MIME (file.type) yalnız iddia; bytes'tan canonical MIME oku.
+  // Yanlış uzantı + zararlı içerik (PDF iddiasıyla .exe gibi) bypass'ını engeller.
+  const fileBytes = await file.arrayBuffer();
+  const headerBytes = new Uint8Array(fileBytes).slice(0, 64);
+  const magic = detectMimeFromMagicBytes(
+    headerBytes,
+    file.type as AllowedMime
+  );
+  if (!magic.matchesClaim) {
+    console.warn("[upload-proof] magic-byte reject", {
+      orderId,
+      claimed: file.type,
+      detected: magic.detected,
+      label: magic.label,
+      adminUserId: user.id,
+    });
+    return NextResponse.json(
+      {
+        error: "file_content_mismatch",
+        detail: `Dosya içeriği MIME ile uyumsuz (iddia: ${file.type}, gerçek: ${magic.label}). Dosya kabul edilmedi.`,
+      },
+      { status: 400 }
+    );
+  }
+
   // Storage'a yükle
   const ext = getExtension(file.type);
   const ts = Date.now();
   const storagePath = `proofs/${orderId}/${ts}.${ext}`;
 
-  const fileBytes = await file.arrayBuffer();
   const { error: uploadErr } = await admin.storage
     .from("designs")
     .upload(storagePath, fileBytes, {

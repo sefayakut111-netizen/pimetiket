@@ -7,7 +7,24 @@
 > apply'ları burada belgelenir. CLI tracking (`supabase_migrations.schema_migrations`)
 > kullanılmıyor (her migration manuel apply edildi).
 
-**Son güncelleme:** 21 Mayıs 2026
+**Son güncelleme:** 24 Mayıs 2026
+
+---
+
+## 📦 TypeScript tipleri (24 May 2026)
+
+| Alan | Değer |
+|---|---|
+| Dosya | `src/lib/supabase/types.ts` |
+| Kaynak | Remote Supabase CLI (`project-id: ucmpwxnoaqjpzhijnxtp`) |
+| Komut | `npm run supabase:types` |
+| Satır | ~4053 (89 migration ile uyumlu) |
+| Doğrulama | `npx tsc --noEmit` exit 0 |
+
+**Agent rehberi:** `docs/SCHEMA-TYPES-AGENT-GUIDE.md`  
+**Oturum kaydı:** `SESSION-LOG-2026-05-24.md`
+
+Migration push sonrası checklist: `db apply` → `npm run supabase:types` → `npx tsc --noEmit`
 
 ---
 

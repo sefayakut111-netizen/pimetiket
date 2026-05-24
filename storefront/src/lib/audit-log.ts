@@ -14,6 +14,7 @@
  */
 
 import { createClient } from "./supabase/client";
+import type { Enums, Json, Tables } from "./supabase/types";
 import { getCurrentUser } from "./supabase/auth-bridge";
 
 const STORAGE_KEY = "pim_audit_log_v1";
@@ -23,28 +24,7 @@ const MAX_ENTRIES = 500;
 // Types
 // ============================================================
 
-export type AuditAction =
-  | "order.status_change"
-  | "order.cancel"
-  | "order.refund"
-  | "return.approve"
-  | "return.reject"
-  | "return.refund"
-  | "coupon.create"
-  | "coupon.update"
-  | "coupon.delete"
-  | "review.approve"
-  | "review.reject"
-  | "review.delete"
-  | "staff.invite"
-  | "staff.remove"
-  | "staff.role_change"
-  | "settings.update"
-  | "design_file.approve"
-  | "design_file.reject"
-  | "auth.login"
-  | "auth.logout"
-  | "profile.delete";
+export type AuditAction = Enums<"audit_action">;
 
 export const ACTION_LABEL: Record<AuditAction, string> = {
   "order.status_change": "Sipariş statüsü güncellendi",
@@ -84,22 +64,9 @@ export interface AuditEntry {
   createdAtIso: string;
 }
 
-interface DbRow {
-  id: string;
-  actor_id: string | null;
-  actor_email: string | null;
-  actor_role: string | null;
-  action: AuditAction;
-  target_type: string | null;
-  target_id: string | null;
-  summary: string;
-  detail: Record<string, unknown> | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-}
+type AuditRow = Tables<"audit_log">;
 
-function rowToEntry(r: DbRow): AuditEntry {
+function rowToEntry(r: AuditRow): AuditEntry {
   const ts = new Date(r.created_at).getTime();
   return {
     id: r.id,
@@ -109,7 +76,7 @@ function rowToEntry(r: DbRow): AuditEntry {
     targetId: r.target_id ?? undefined,
     summary: r.summary,
     detail: r.detail ? JSON.stringify(r.detail) : undefined,
-    ip: r.ip_address ?? undefined,
+    ip: r.ip_address != null ? String(r.ip_address) : undefined,
     createdAt: ts,
     createdAtIso: r.created_at,
   };
@@ -181,7 +148,7 @@ async function dbList(): Promise<AuditEntry[]> {
     console.error("[audit] dbList error:", error);
     return [];
   }
-  return (data as DbRow[]).map(rowToEntry);
+  return (data ?? []).map(rowToEntry);
 }
 
 async function dbLog(
@@ -195,13 +162,13 @@ async function dbLog(
 ): Promise<boolean> {
   const supabase = createClient();
   // SADECE auth.* + profile.delete client-side allowed (fn_log_audit guard)
-  const { error } = await supabase.rpc("fn_log_audit" as never, {
+  const { error } = await supabase.rpc("fn_log_audit", {
     p_action: action,
-    p_target_type: payload.targetType ?? null,
-    p_target_id: payload.targetId ?? null,
+    p_target_type: payload.targetType ?? undefined,
+    p_target_id: payload.targetId ?? undefined,
     p_summary: payload.summary,
-    p_detail: (payload.detail ?? {}) as never,
-  } as never);
+    p_detail: (payload.detail ?? {}) as Json,
+  });
   if (error) {
     console.error("[audit] dbLog error:", error);
     return false;

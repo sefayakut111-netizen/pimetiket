@@ -53,11 +53,11 @@ export async function recordSuppression(
     const { data, error } = await admin.rpc("fn_record_suppression", {
       p_email: params.email.toLowerCase().trim(),
       p_type: params.type,
-      p_reason: params.reason ?? null,
-      p_source_message_id: params.sourceMessageId ?? null,
-      p_source_event_id: params.sourceEventId ?? null,
-      p_blocked_categories: params.blockedCategories ?? null,
-    } as never);
+      p_reason: params.reason ?? undefined,
+      p_source_message_id: params.sourceMessageId ?? undefined,
+      p_source_event_id: params.sourceEventId ?? undefined,
+      p_blocked_categories: params.blockedCategories ?? undefined,
+    });
 
     if (error) {
       console.error("[mail/suppression] rpc error:", error);
@@ -80,7 +80,7 @@ export async function isSuppressed(
     const { data, error } = await admin.rpc("fn_is_suppressed", {
       p_email: email.toLowerCase().trim(),
       p_category: category,
-    } as never);
+    });
     if (error) {
       console.error("[mail/suppression] check error:", error);
       // Fail-open: hata varsa engelleme — mail kuyrukta hata loglar

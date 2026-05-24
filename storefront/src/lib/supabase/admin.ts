@@ -15,8 +15,9 @@
 import "server-only";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./types";
 
-let _admin: ReturnType<typeof createSupabaseClient> | null = null;
+let _admin: ReturnType<typeof createSupabaseClient<Database>> | null = null;
 
 export function createAdminClient() {
   if (_admin) return _admin;
@@ -30,7 +31,7 @@ export function createAdminClient() {
     );
   }
 
-  _admin = createSupabaseClient(url, serviceKey, {
+  _admin = createSupabaseClient<Database>(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

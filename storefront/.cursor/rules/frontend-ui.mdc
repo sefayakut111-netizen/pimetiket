@@ -1,0 +1,27 @@
+---
+description: React component, Tailwind 4, UI primitives, layout
+globs: src/components/**,src/app/globals.css,src/app/layout.tsx
+alwaysApply: false
+---
+
+# Frontend UI Bağlamı
+
+## Okuma önceliği
+
+1. `src/components/ui/index.ts` — mevcut primitives listesi
+2. `.claude/agents/frontend.md`
+
+## Palet (hex dışında kullanma)
+
+pim-mercan, lacivert, gri-50/100/200/500/700, yesil*, kirmizi*, sari*, mavi*, mor, krem
+
+## Kurallar
+
+- Önce `@/components/ui` primitive → Tailwind utility → inline style YASAK
+- `cn()` ile koşullu class; `use client` sadece interactivity gerektiğinde
+- Pim inline avatar YASAK — sadece PimChat floating button
+- Suspense: `useSearchParams` kullanan sayfa `<Suspense>` sarmalı
+
+## Claude agent
+
+`.claude/agents/frontend.md`, `ux-ui.md`

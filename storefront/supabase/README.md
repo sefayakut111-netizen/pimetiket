@@ -1,8 +1,10 @@
 # Pim Etiket — Supabase Setup
 
-Faz 1 backend altyapısı: **Auth + DB + Storage**.
+Faz 1+ backend altyapısı: **Auth + DB + Storage**.
 
-Bu klasör 6 migration içerir; toplam **15 tablo + 2 view + 4 stored function**.
+> **Güncel (24 May 2026):** `supabase/migrations/` → **89 migration**. TypeScript tipleri: `npm run supabase:types` → `src/lib/supabase/types.ts`. Agent rehberi: `docs/SCHEMA-TYPES-AGENT-GUIDE.md` · Domain haritası: `docs/DOMAIN-SCHEMA-REFERENCE.md`
+
+Bu README'nin aşağıdaki Faz 1 özeti (6 migration, 15 tablo) **tarihsel**dir — kurulum adımları hâlâ geçerli, sayılar güncel değil.
 
 ---
 
@@ -185,11 +187,16 @@ Connection string için: Dashboard → Project Settings → Database → Connect
 Migration'ları push ettikten sonra TypeScript tiplerini regenerate edebilirsin:
 
 ```bash
-npx supabase gen types typescript --linked > src/lib/supabase/types.ts
+npm run supabase:types
+# veya:
+npx supabase gen types typescript --project-id ucmpwxnoaqjpzhijnxtp > src/lib/supabase/types.ts
 ```
 
-Şu an `types.ts` el yazımı (migration SQL ile uyumlu); CLI ile regenerate etmek
-optional ama auto-update sağlar.
+Sonra tip kontrolü: `npx tsc --noEmit`
+
+**Not (24 May 2026):** `types.ts` remote şemadan CLI ile üretilir (~4053 satır). Tablo şemada görünmesi özellik aktif anlamına gelmez — `CLAUDE.md` sefaRules önceliklidir. Ayrıntı: `docs/SCHEMA-TYPES-AGENT-GUIDE.md`
+
+Şu an dosya otomatik regenerate edilmiş durumda; migration push sonrası yeniden çalıştır.
 
 ---
 

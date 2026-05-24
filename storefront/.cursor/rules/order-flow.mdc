@@ -1,0 +1,29 @@
+---
+description: Sipariş, ödeme, sepet, onay akışları
+globs: src/app/odeme/**,src/app/siparis/**,src/app/onay/**,src/lib/customer-*.ts,src/app/api/orders/**,src/app/api/checkout/**,src/app/api/payment/**
+alwaysApply: false
+---
+
+# Sipariş & Ödeme Bağlamı
+
+## Okuma önceliği
+
+1. `docs/SIPARIS-AKISI-SNAPSHOT.md`
+2. `docs/AKIS-V2-SEFA-22MAY.md`
+3. `docs/DOMAIN-SCHEMA-REFERENCE.md` → order domain migration listesi
+4. `src/lib/customer-cart.ts`, `src/lib/customer-order.ts`
+5. `src/lib/supabase/types.ts` → yalnızca `orders`, `payments`, `payment_intents`, `cart_items`
+
+## Status akışı
+
+paid → awaiting_upload/qc_pending → proof_pending → proof_approved → ready_to_ship → in_production → shipped → delivered
+
+## Kurallar
+
+- Mega-component'ler: `odeme/page.tsx`, `siparis/[id]/page.tsx` — küçük diff tercih et
+- PayTR entegrasyonu — refund API mock olabilir
+- `toLocaleString` için `timeZone: "Europe/Istanbul"` zorunlu
+
+## Claude agent
+
+`.claude/agents/backend.md`, `frontend.md`, `product.md`

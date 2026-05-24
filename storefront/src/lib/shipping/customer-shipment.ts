@@ -81,10 +81,9 @@ export async function fetchMyShipmentTimeline(
   if (!user) return [];
 
   const supabase = createClient();
-  const { data, error } = await supabase.rpc(
-    "fn_get_my_shipment_timeline" as never,
-    { p_order_id: orderId } as never
-  );
+  const { data, error } = await supabase.rpc("fn_get_my_shipment_timeline", {
+    p_order_id: orderId,
+  });
 
   if (error) {
     console.warn("[shipment timeline] fetch error:", error.message);
@@ -120,10 +119,9 @@ export async function fetchMyOrderShipment(
   if (!user) return null;
 
   const supabase = createClient();
-  const { data, error } = await supabase.rpc(
-    "fn_get_my_order_shipment" as never,
-    { p_order_id: orderId } as never
-  );
+  const { data, error } = await supabase.rpc("fn_get_my_order_shipment", {
+    p_order_id: orderId,
+  });
 
   if (error) {
     // Sefa: bilinçli sessiz dön — order bulunamadıysa veya RPC yoksa

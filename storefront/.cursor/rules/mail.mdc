@@ -1,0 +1,22 @@
+---
+description: E-posta şablonları, Resend, bildirim orchestrator
+globs: src/lib/mail/**,src/app/api/mail/**,src/app/api/cron/mail/**
+alwaysApply: false
+---
+
+# Mail Bağlamı
+
+## Okuma önceliği
+
+1. `docs/RESEND-SETUP.md`
+2. `src/lib/mail/notifications.ts`
+
+## Kurallar
+
+- React Email component'leri `@react-email/components`
+- Marka tonu: esnaf samimiyeti, "sen" hitap, dalkavuk YASAK
+- TR locale default; template'lerde hardcoded "Siz" YASAK
+
+## Claude agent
+
+`.claude/agents/backend.md`, `marka-sesi.md`

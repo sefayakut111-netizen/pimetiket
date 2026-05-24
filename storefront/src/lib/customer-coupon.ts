@@ -35,10 +35,10 @@ export async function validateCoupon(
   subtotal: number
 ): Promise<CouponValidateResult> {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("fn_validate_coupon" as never, {
+  const { data, error } = await supabase.rpc("fn_validate_coupon", {
     p_code: code.trim(),
     p_subtotal: subtotal,
-  } as never);
+  });
 
   if (error) {
     console.error("[coupon] validate RPC error:", error);

@@ -29,6 +29,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -88,7 +89,10 @@ export async function GET() {
     .from("order_assignments")
     .select("id", { count: "exact", head: true })
     .eq("fason_partner_id", partnerId)
-    .in("status", PENDING_REVIEW_STATUSES as unknown as string[]);
+    .in(
+      "status",
+      [...PENDING_REVIEW_STATUSES] as Enums<"assignment_status">[]
+    );
 
   // 2) Üretimde
   const { count: inProduction } = await admin
@@ -163,7 +167,7 @@ export async function GET() {
     .from("order_assignments")
     .select("id, order_id, estimated_delivery, status, assigned_at")
     .eq("fason_partner_id", partnerId)
-    .in("status", ACTIVE_STATUSES as unknown as string[])
+    .in("status", [...ACTIVE_STATUSES] as Enums<"assignment_status">[])
     .order("estimated_delivery", { ascending: true, nullsFirst: false })
     .limit(5);
 

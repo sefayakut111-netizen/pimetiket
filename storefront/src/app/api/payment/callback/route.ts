@@ -249,19 +249,16 @@ export async function POST(req: NextRequest) {
   // Pratik çakışma olasılığı ~0% (günde 1-10 sipariş × 10K kombinasyon)
   // ama defansif olarak retry koymak güvenli.
   let candidateOrderId = generateOrderId();
-  let rpcData: unknown = null;
+  let rpcData: { order_id: string; was_duplicate: boolean }[] | null = null;
   let rpcErr: { message?: string; code?: string } | null = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const { data: d, error: e } = await admin.rpc(
-      "fn_finalize_paid_order" as never,
-      {
+    const { data: d, error: e } = await admin.rpc("fn_finalize_paid_order", {
         p_merchant_oid: merchantOid,
         p_order_id: candidateOrderId,
         p_items: itemsPayload,
         p_payment_meta: paymentMeta,
         p_estimated_delivery: estimatedDelivery,
-      } as never
-    );
+      });
     rpcData = d;
     rpcErr = e as { message?: string; code?: string } | null;
 
@@ -292,20 +289,16 @@ export async function POST(req: NextRequest) {
       },
     });
     // Intent kaydına failure_reason yaz — admin sonradan görsün
-    // (Supabase typegen schema'da failure_reason yok → as never cast)
     await admin
       .from("payment_intents")
       .update({
         failure_reason: `RPC error: ${rpcErr.message ?? "unknown"}`,
-      } as never)
-      .eq("merchant_oid", merchantOid);
+      })
+      .eq("id", merchantOid);
     return new NextResponse("OK"); // PayTR retry yapmasın
   }
 
-  const rpcRow = (rpcData as Array<{
-    order_id: string;
-    was_duplicate: boolean;
-  }>)?.[0];
+  const rpcRow = rpcData?.[0];
   const orderId = rpcRow?.order_id ?? candidateOrderId;
   const wasDuplicate = rpcRow?.was_duplicate ?? false;
 
@@ -359,9 +352,9 @@ export async function POST(req: NextRequest) {
       .neq("id", orderId);
     if (priorOrders === 0 || priorOrders === null) {
       // İlk sipariş — referral tamamla
-      await admin.rpc("fn_complete_referral" as never, {
+      await admin.rpc("fn_complete_referral", {
         p_referred_user_id: intent.user_id,
-      } as never);
+      });
     }
   } catch (err) {
     console.error("[payment/callback] referral completion error:", err);
@@ -405,8 +398,8 @@ export async function POST(req: NextRequest) {
   // PayTR retry'lamasın diye await ETMEYİZ.
   void runOrderDesignQC(admin, orderId).catch((err) => {
     console.error("[payment/callback] design QC failed:", err);
-    // Sentry zaten run-order-qc içinde capture ediyor; order paid'de kalır,
-    // admin manuel /admin/ai-qc'tan re-run yapabilir.
+    // runOrderDesignQC iç sarmalayıcı fatal hatalarda human_review atar;
+    // bu catch yalnızca escalation'ın da patladığı edge case için.
   });
 
   // 14c) Admin anlık sipariş bildirimi (Sefa 21 May v68 — admin operasyon

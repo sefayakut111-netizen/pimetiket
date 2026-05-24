@@ -43,10 +43,9 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase.rpc(
-    "fn_finalize_proof" as never,
-    { p_order_id: orderId } as never
-  );
+  const { data, error } = await supabase.rpc("fn_finalize_proof", {
+    p_order_id: orderId,
+  });
 
   if (error) {
     console.error("[proof/finalize] RPC error:", error);

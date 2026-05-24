@@ -18,16 +18,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-export const runtime = "nodejs";
-
-const USABLE_DESIGN_STATUSES = [
-  "uploaded",
-  "analyzing",
-  "qc_warned",
-  "qc_passed",
-  "approved",
-] as const;
+import type { Enums } from "@/lib/supabase/types";
+import { USABLE_DESIGN_STATUSES } from "@/lib/design-file-status";
 
 export async function GET(
   _req: Request,
@@ -88,7 +80,10 @@ export async function GET(
     .from("design_files")
     .select("order_item_id")
     .eq("order_id", orderId)
-    .in("status", USABLE_DESIGN_STATUSES as unknown as string[]);
+    .in(
+      "status",
+      [...USABLE_DESIGN_STATUSES] as Enums<"design_file_status">[]
+    );
   const designCountByItem = new Map<string, number>();
   for (const d of ((dfs as Array<{ order_item_id: string | null }> | null) ??
     [])) {

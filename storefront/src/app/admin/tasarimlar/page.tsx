@@ -4,7 +4,7 @@
  * Tasarım kütüphanesi — admin/staff için tüm müşteri yüklemeleri.
  *
  * İçerik:
- *   - Status filtreleri (uploaded / qc_passed / qc_warned / qc_failed / approved)
+ *   - Status filtreleri (uploaded / analyzing / qc_* / approved)
  *   - Grid: 4 sütun thumbnail kart
  *   - Her kart: önizleme, müşteri, sipariş, ürün, AI flag rozeti, tarih
  *   - Karta tıklayınca sipariş detayına gider
@@ -23,54 +23,13 @@ import { Pim } from "@/components/Pim";
 import { Card, Input, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { AdminDesignRow } from "@/app/api/admin/designs/route";
+import {
+  DESIGN_FILE_STATUS_FILTERS,
+  DESIGN_FILE_STATUS_META,
+  type DesignFileStatusFilter,
+} from "@/lib/design-file-status";
 
-type StatusFilter =
-  | "all"
-  | "uploaded"
-  | "qc_passed"
-  | "qc_warned"
-  | "qc_failed"
-  | "approved";
-
-const STATUS_LABEL: Record<
-  Exclude<StatusFilter, "all">,
-  { label: string; color: string; bg: string }
-> = {
-  uploaded: {
-    label: "Yüklendi",
-    color: "text-lacivert",
-    bg: "bg-gri-100",
-  },
-  qc_passed: {
-    label: "AI ✓",
-    color: "text-yesil",
-    bg: "bg-yesil-soft",
-  },
-  qc_warned: {
-    label: "Uyarı",
-    color: "text-sari-koyu",
-    bg: "bg-sari-soft",
-  },
-  qc_failed: {
-    label: "Sorunlu",
-    color: "text-kirmizi",
-    bg: "bg-gri-100",
-  },
-  approved: {
-    label: "Onaylı",
-    color: "text-yesil",
-    bg: "bg-yesil-soft",
-  },
-};
-
-const FILTERS: { id: StatusFilter; label: string }[] = [
-  { id: "all", label: "Tümü" },
-  { id: "uploaded", label: "Yüklendi" },
-  { id: "qc_passed", label: "AI ✓" },
-  { id: "qc_warned", label: "Uyarı" },
-  { id: "qc_failed", label: "Sorunlu" },
-  { id: "approved", label: "Onaylı" },
-];
+type StatusFilter = DesignFileStatusFilter;
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -179,7 +138,7 @@ export default function AdminTasarimlarPage() {
         {/* Filtre + arama */}
         <Card padding="p-4" className="mb-5">
           <div className="flex flex-wrap gap-2 items-center">
-            {FILTERS.map((f) => (
+            {DESIGN_FILE_STATUS_FILTERS.map((f) => (
               <button
                 key={f.id}
                 type="button"
@@ -244,9 +203,16 @@ export default function AdminTasarimlarPage() {
         ) : (
           <div className="space-y-2">
             {filtered.map((d) => {
-              const meta = d.status in STATUS_LABEL
-                ? STATUS_LABEL[d.status as keyof typeof STATUS_LABEL]
-                : { label: d.status, color: "text-gri-700", bg: "bg-gri-100" };
+              const meta =
+                d.status in DESIGN_FILE_STATUS_META
+                  ? DESIGN_FILE_STATUS_META[
+                      d.status as keyof typeof DESIGN_FILE_STATUS_META
+                    ]
+                  : {
+                      label: d.status,
+                      color: "text-gri-700",
+                      bg: "bg-gri-100",
+                    };
               const errFlags = d.aiCheckFlags.filter(
                 (f) => f.kind === "error"
               ).length;

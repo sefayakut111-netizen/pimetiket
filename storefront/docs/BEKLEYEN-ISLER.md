@@ -5,6 +5,44 @@ maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 
 ---
 
+## ✅ 24 Mayıs 2026 — Şema & TypeScript agent altyapısı (kod, migration apply değil)
+
+> Bu bölüm **kod tabanı ve dokümantasyon** güncellemesidir. Yeni SQL migration apply edilmedi.
+
+| İş | Durum | Referans |
+|---|---|---|
+| `types.ts` remote regenerate | ✅ | `src/lib/supabase/types.ts` |
+| `npm run supabase:types` script | ✅ | `package.json` |
+| Modüler domain şema referansı | ✅ | `docs/DOMAIN-SCHEMA-REFERENCE.md` |
+| Agent kuralları (sefaRules vs şema) | ✅ | `CLAUDE.md` |
+| Kalıcı sistem rehberi | ✅ | `docs/SCHEMA-TYPES-AGENT-GUIDE.md` |
+| Manifest `schemaMigrations` alanları | ✅ | `smart-context/manifest.json` |
+| TS hata düzeltmeleri (10→0) | ✅ | `SESSION-LOG-2026-05-24.md` |
+
+**Açık:** — (24 May oturumu commit edildi)
+
+### Bugün başarıyla biten — 24 May 2026 (şema & types oturumu)
+
+- ✅ `types.ts` remote şemadan regenerate (~4053 satır, 89 migration uyumlu)
+- ✅ `npm run supabase:types` package script
+- ✅ 10 TypeScript hatası düzeltildi (`tsc --noEmit` temiz)
+- ✅ `CLAUDE.md` — şema ≠ ürün + sefaRules + modüler komut şablonu
+- ✅ `docs/DOMAIN-SCHEMA-REFERENCE.md` — domain → migration → tablo haritası
+- ✅ `docs/SCHEMA-TYPES-AGENT-GUIDE.md` — kalıcı sistem kaydı
+- ✅ `manifest.json` — `schemaMigrations` / `schemaTables` / `typeRefs`
+- ✅ `smart-context.mjs` — CLI şema çıktısı
+- ✅ Git commit — şema/types oturumu + design status filter + Tables<> RPC temizliği
+- ✅ `admin/designs` UI — `design_file_status` enum hizalama (`analyzing` dahil)
+- ✅ `Tables<>` yaygınlaştırma — yüksek trafik lib/API'lerde RPC `as never` kaldırıldı
+
+### Sıradaki (şema oturumundan kalan)
+
+| # | İş | Öncelik |
+|---|---|---|
+| — | (Tamamlandı) | — |
+
+---
+
 ## 📅 21 Mayıs akşamı — devam edilecek işler
 
 > Bugün ~8 saatlik Resend + sticker akışı testi sonrası mola.

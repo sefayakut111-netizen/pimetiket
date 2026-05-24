@@ -99,7 +99,7 @@ export async function GET() {
   }
 
   const partnerRows =
-    (partners as Array<{ id: string }> | null) ?? [];
+    ((partners ?? []) as unknown as Array<{ id: string }>);
   const partnerIds = partnerRows.map((p) => p.id);
 
   // Contacts + capabilities batch fetch

@@ -1,0 +1,22 @@
+---
+description: Fiyat motoru — pricing-engine, admin fiyat sayfaları, kupon
+globs: src/lib/pricing-engine/**,src/lib/pricing-*.ts,src/app/admin/fiyat-**,src/app/api/**/pricing/**
+alwaysApply: false
+---
+
+# Fiyat Motoru Bağlamı
+
+## Okuma önceliği
+
+1. `docs/PRICING-MATRIX.md`
+2. `src/lib/pricing-engine/index.ts`
+
+## Kurallar
+
+- Tek kaynak: `pricing_config` DB tablosu — müşteri ve admin aynı config
+- Fiyat değişikliği hem engine hem admin UI'da regression test et
+- Kupon/sadakat: cüzdan YASAK; VIP, referans, reprint, yorum bonusu aktif
+
+## Claude agent
+
+`.claude/agents/backend.md`, `architect.md`

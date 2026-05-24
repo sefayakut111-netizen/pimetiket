@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -80,7 +81,10 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (statuses && statuses.length > 0) {
-    orderQuery = orderQuery.in("status", statuses);
+    orderQuery = orderQuery.in(
+      "status",
+      statuses as Enums<"order_status">[]
+    );
   }
 
   const { data: orderRows, error: orderErr } = await orderQuery;

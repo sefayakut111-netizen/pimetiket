@@ -59,12 +59,12 @@ export async function POST(req: Request) {
 
   try {
     const admin = createAdminClient();
-    await admin.rpc("fn_log_failed_login" as never, {
+    await admin.rpc("fn_log_failed_login", {
       p_email: body.email,
       p_ip: ip,
-      p_user_agent: userAgent,
-      p_reason: body.reason,
-    } as never);
+      p_user_agent: userAgent ?? undefined,
+      p_reason: body.reason ?? undefined,
+    });
     return NextResponse.json({ ok: true });
   } catch {
     // RPC hatası kullanıcı akışını bozmaz, sessiz fail

@@ -39,7 +39,19 @@ export async function GET(req: NextRequest) {
   }
 
   const url = new URL(req.url);
-  const status = url.searchParams.get("status") ?? "cold";
+  const statusParam = url.searchParams.get("status") ?? "cold";
+  type ArchiveStatus = ArchiveCustomerRow["archive_status"];
+  const ARCHIVE_STATUSES: ArchiveStatus[] = [
+    "hot",
+    "archiving",
+    "cold",
+    "restoring",
+    "deleted",
+  ];
+  const status =
+    statusParam === "all" || ARCHIVE_STATUSES.includes(statusParam as ArchiveStatus)
+      ? statusParam
+      : "cold";
   const search = url.searchParams.get("search")?.trim() ?? "";
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
   const offset = Math.max(Number(url.searchParams.get("offset") ?? 0), 0);
@@ -56,7 +68,7 @@ export async function GET(req: NextRequest) {
     .order("archived_at", { ascending: false, nullsFirst: false });
 
   if (status !== "all") {
-    query = query.eq("archive_status", status);
+    query = query.eq("archive_status", status as ArchiveStatus);
   }
 
   if (search) {

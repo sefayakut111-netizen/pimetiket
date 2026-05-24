@@ -1,0 +1,23 @@
+---
+description: Admin paneli, partner/fason, admin API routes
+globs: src/app/admin/**,src/app/api/admin/**,src/components/admin/**,src/app/partner/**,src/app/api/partner/**
+alwaysApply: false
+---
+
+# Admin & Partner Bağlamı
+
+## Okuma önceliği
+
+1. `docs/ADMIN-AKISI-SNAPSHOT.md`
+2. `docs/RUNBOOK.md`
+3. `src/lib/supabase/assert-admin.ts`
+
+## Kurallar
+
+- Her admin endpoint `assert-admin` guard kullanmalı
+- Service role: `lib/supabase/admin.ts` — sadece server-side
+- Fason aktarım: `.claude/proposals/fason-aktarim-yaklasim-D.md`
+
+## Claude agent
+
+`.claude/agents/backend.md`, `frontend.md`, `qa.md`

@@ -232,9 +232,7 @@ function OdemeSonucInner() {
                   ? 1
                   : s === "paid" ||
                       s === "qc_pending" ||
-                      s === "qc_passed" ||
                       s === "qc_flagged" ||
-                      s === "qc_warned" ||
                       s === "human_review" ||
                       s === "human_review_failed" ||
                       s === "operator_review" ||
@@ -284,7 +282,7 @@ function OdemeSonucInner() {
               const step2Title =
                 s === "proof_generating"
                   ? "Bıçak çizimi hazırlanıyor"
-                  : s === "qc_flagged" || s === "qc_warned"
+                  : s === "qc_flagged"
                     ? "AI ön-kontrol uyarısı"
                     : s === "operator_review" || s === "human_review"
                       ? "Operatör inceliyor"

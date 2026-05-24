@@ -1,0 +1,22 @@
+---
+description: KVKK, mesafeli satış, cayma, gizlilik, cookie consent
+globs: src/app/kvkk/**,src/app/mesafeli/**,src/app/cayma/**,src/app/gizlilik/**,src/components/CookieConsent.tsx
+alwaysApply: false
+---
+
+# Yasal & KVKK Bağlamı
+
+## Kurallar
+
+- "Süresiz" / "hiç bitmez" YASAK → "Hesap aktif olduğu sürece"
+- Pim hafızası KVKK Bölüm 6'da listeli (6 ay anonim, 24 ay sil)
+- Cookie consent: `pim_locale` localStorage ile locale tespiti
+- Yasal metin değişikliği → `.claude/legal-drafts/` kontrol et
+
+## Claude agent
+
+`.claude/agents/guvenlik-uyum.md`, `marka-sesi.md`
+
+## Denetim
+
+`/denetle guvenlik+marka` — yasal sayfa değişikliklerinde zorunlu

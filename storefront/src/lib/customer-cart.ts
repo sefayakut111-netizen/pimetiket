@@ -16,7 +16,7 @@
  */
 
 import { createClient } from "./supabase/client";
-import type { Database } from "./supabase/types";
+import type { Json, Tables, TablesInsert } from "./supabase/types";
 import {
   getCurrentUser,
   isLoggedInSync,
@@ -182,45 +182,13 @@ function clearLocal(): void {
 // DB helpers (auth mode)
 // ============================================================
 
-interface DbRow {
-  id: string;
-  user_id: string;
-  product: CustomerProduct;
-  title: string;
-  config: string;
-  width: number;
-  height: number;
-  qty: number;
-  unit: number;
-  total: number;
-  shape: string | null;
-  cut: string | null;
-  soft_corners: boolean | null;
-  material: string | null;
-  finish: string | null;
-  hediye_adet: number | null;
-  material_id: string | null;
-  coating_id: string | null;
-  customization_id: string | null;
-  winding: number | null;
-  // Migration 073 (Sefa 21 May v68): rulo göbek + adet/rulo
-  core_size: number | null;
-  roll_label_count: number | null;
-  design_temp_id: string | null;
-  // Migration 038 (Sefa 15 May v5): multi-design metadata
-  design_count: number | null;
-  additional_designs: unknown | null; // jsonb array
-  // Migration 072 (Sefa 20 May v68): design preview
-  design_preview_url: string | null;
-  design_file_name: string | null;
-  design_mime_type: string | null;
-  added_at: string;
-}
+type CartRow = Tables<"cart_items">;
+type CartInsert = TablesInsert<"cart_items">;
 
-function rowToItem(r: DbRow): CustomerCartItem {
+function rowToItem(r: CartRow): CustomerCartItem {
   return {
     id: r.id,
-    product: r.product,
+    product: r.product as CustomerProduct,
     title: r.title,
     config: r.config,
     width: r.width,
@@ -256,8 +224,6 @@ function rowToItem(r: DbRow): CustomerCartItem {
   };
 }
 
-type CartInsert = Database["public"]["Tables"]["cart_items"]["Insert"];
-
 function itemToInsert(
   it: Omit<CustomerCartItem, "id" | "addedAt">,
   userId: string
@@ -290,20 +256,13 @@ function itemToInsert(
       it.designTempId && !it.designTempId.startsWith("local-")
         ? it.designTempId
         : null,
-    // Migration 038 multi-design metadata (Sefa 15 May v5) +
-    // Migration 072 design preview (Sefa 20 May v68) +
-    // Migration 073 rulo göbek/adet (Sefa 21 May v68).
-    // Database types henüz regenerate edilmediği için extra alanlar
-    // CartInsert tipinin dışında — extra field cast ile geçirilir.
-    ...({
-      design_count: it.designCount ?? null,
-      additional_designs: it.additionalDesigns ?? null,
-      design_preview_url: it.designPreviewUrl ?? null,
-      design_file_name: it.designFileName ?? null,
-      design_mime_type: it.designMimeType ?? null,
-      core_size: it.coreSize ?? null,
-      roll_label_count: it.rollLabelCount ?? null,
-    } as Partial<CartInsert>),
+    design_count: it.designCount ?? null,
+    additional_designs: (it.additionalDesigns ?? null) as Json | null,
+    design_preview_url: it.designPreviewUrl ?? null,
+    design_file_name: it.designFileName ?? null,
+    design_mime_type: it.designMimeType ?? null,
+    core_size: it.coreSize ?? null,
+    roll_label_count: it.rollLabelCount ?? null,
   };
 }
 
@@ -318,7 +277,7 @@ async function dbList(userId: string): Promise<CustomerCartItem[]> {
     console.error("[cart] dbList error:", error);
     return [];
   }
-  return (data as DbRow[]).map(rowToItem);
+  return (data ?? []).map(rowToItem);
 }
 
 async function dbInsert(
@@ -326,24 +285,24 @@ async function dbInsert(
   item: Omit<CustomerCartItem, "id" | "addedAt">
 ): Promise<CustomerCartItem | null> {
   const supabase = createClient();
-  const insertValues = [itemToInsert(item, userId)];
+  const insertValues = itemToInsert(item, userId);
   const { data, error } = await supabase
     .from("cart_items")
-    .insert(insertValues as never)
+    .insert(insertValues)
     .select("*")
     .single();
   if (error) {
-    console.error("[cart] dbInsert error:", error, "payload:", insertValues[0]);
+    console.error("[cart] dbInsert error:", error, "payload:", insertValues);
     return null;
   }
-  return rowToItem(data as DbRow);
+  return rowToItem(data);
 }
 
 async function dbUpdateQty(id: string, qty: number, total: number): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("cart_items")
-    .update({ qty, total } as never)
+    .update({ qty, total })
     .eq("id", id);
   if (error) console.error("[cart] dbUpdateQty error:", error);
 }

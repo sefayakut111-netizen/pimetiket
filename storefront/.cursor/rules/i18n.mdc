@@ -1,0 +1,22 @@
+---
+description: TR/EN çeviri, locale provider, LanguageSwitcher
+globs: src/lib/i18n/**,src/components/LanguageSwitcher.tsx
+alwaysApply: false
+---
+
+# i18n Bağlamı
+
+## Okuma önceriği
+
+1. `src/lib/i18n/context.tsx` — `useT()` hook
+2. `src/lib/i18n/translations/tr.ts`, `en.ts`
+
+## Kurallar
+
+- Hardcoded Türkçe string YASAK — `t.section.key` kullan
+- Yeni key hem `tr.ts` hem `en.ts`'e ekle
+- Locale: localStorage `pim_locale`, default `tr`
+
+## Claude agent
+
+`.claude/agents/frontend.md`, `marka-sesi.md`

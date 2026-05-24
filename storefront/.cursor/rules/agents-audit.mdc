@@ -1,0 +1,23 @@
+---
+description: Auditor agent altyapısı, admin denetim paneli
+globs: src/lib/agents/**,src/app/api/admin/auditors/**,src/app/admin/auditors/**
+alwaysApply: false
+---
+
+# Auditor Agent Bağlamı
+
+## Okuma önceliği
+
+1. `src/lib/agents/_shared/types.ts`
+2. `src/lib/agents/_shared/proposal.ts`
+3. `docs/SISTEM-BAGIMLILIK-HARITASI.md` (circular dep bölümü)
+
+## Kurallar
+
+- Circular dep agent altyapısında kasıtlı — kırma
+- Circuit breaker: `src/lib/agents/circuit-breaker.ts`
+- Claude denetim: `/denetle` komutu (Smart Trigger)
+
+## Claude agent
+
+`.claude/agents/architect.md`, `muhendis.md`

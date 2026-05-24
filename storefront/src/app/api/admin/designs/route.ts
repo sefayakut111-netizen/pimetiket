@@ -13,21 +13,13 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { DESIGN_FILE_STATUS_VALUES } from "@/lib/design-file-status";
 
 // Audit P0 (4-agent, 15 May): inline RBAC + raw URLSearchParams →
 // assertAdmin() + Zod query validation. Limit cap'leniyor, status enum'a
 // kısıtlı; istemci serbest karakter gönderemez.
 const QuerySchema = z.object({
-  status: z
-    .enum([
-      "uploaded",
-      "qc_pending",
-      "qc_passed",
-      "qc_flagged",
-      "qc_failed",
-      "manual_review",
-    ])
-    .optional(),
+  status: z.enum(DESIGN_FILE_STATUS_VALUES).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 

@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "description": "Akıllı Bağlam (Smart Context) — Cursor ve Claude ortak manifest",
+  "core": {
+    "alwaysRead": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "sefaRules": [
+      "Cüzdan / puan / üyelik indirimi YASAK (Migration 015 kaldırdı)",
+      "Tasarımcı Pim / Kargocu Pim persona dropdown YASAK — tek akıllı Pim",
+      "Dalkavuk: mükemmel seçim / harika / süper YASAK",
+      "Süresiz / hiç bitmez YASAK — TKHK m.61",
+      "Yapay empati YASAK",
+      "Bursa lokasyon referansı YASAK (İstanbul + Ankara fason)",
+      "Bot menüsü (1/2/3/4) ve hazır cevap chip YASAK",
+      "Next.js 16.2.6 custom — API kullanmadan önce node_modules/next/dist/docs/ oku"
+    ],
+    "hubs": [
+      "src/components/ui/index.ts",
+      "src/components/Icon.tsx",
+      "src/lib/cn.ts",
+      "src/lib/supabase/server.ts",
+      "src/lib/supabase/admin.ts",
+      "src/lib/supabase/assert-admin.ts",
+      "src/lib/i18n/context.tsx"
+    ]
+  },
+  "domains": [
+    {
+      "id": "pricing",
+      "label": "Fiyat Motoru",
+      "globs": [
+        "src/lib/pricing-engine/**",
+        "src/lib/pricing-cart.ts",
+        "src/lib/pricing-calc.ts",
+        "src/app/admin/fiyat-**",
+        "src/app/api/**/pricing/**",
+        "src/app/api/admin/pricing/**"
+      ],
+      "keywords": ["fiyat", "pricing", "maliyet", "kupon", "indirim", "tier"],
+      "docs": ["docs/PRICING-MATRIX.md", "docs/SISTEM-BAGIMLILIK-HARITASI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": ["src/lib/pricing-engine/index.ts", "src/lib/pricing-cart.ts"],
+      "schemaMigrations": ["005_coupons_reviews.sql", "029_site_settings.sql", "047_pricing_config.sql", "048_pricing_3_profiles.sql", "049_pricing_match_configurator.sql", "050_pricing_tabaka_sheet_mode.sql"],
+      "schemaTables": ["pricing_config", "pricing_config_history", "coupons", "coupon_uses", "site_settings"],
+      "typeRefs": ["Tables<'pricing_config'>", "Tables<'coupons'>", "Enums<'coupon_kind'>", "Functions<'fn_validate_coupon'>", "Functions<'fn_apply_coupon'>"],
+      "claudeAgents": ["backend", "architect"],
+      "cursorRule": "pricing.mdc"
+    },
+    {
+      "id": "pim",
+      "label": "Pim AI Asistan",
+      "globs": [
+        "src/lib/pim/**",
+        "src/components/pim/**",
+        "src/components/Pim.tsx",
+        "src/app/api/pim/**"
+      ],
+      "keywords": ["pim", "persona", "chat", "asistan", "memory", "hafıza"],
+      "docs": ["../docs/PIM_AGENT.md", "docs/SISTEM-AKISLARI.md"],
+      "hubs": ["src/lib/pim/personas.ts", "src/lib/pim/memory.ts", "src/app/api/pim/chat/route.ts"],
+      "claudeAgents": ["ai-llm", "marka-sesi"],
+      "cursorRule": "pim-chat.mdc"
+    },
+    {
+      "id": "order",
+      "label": "Sipariş & Ödeme",
+      "globs": [
+        "src/app/odeme/**",
+        "src/app/odeme-sonuc/**",
+        "src/app/siparis/**",
+        "src/app/siparislerim/**",
+        "src/app/onay/**",
+        "src/lib/customer-order.ts",
+        "src/lib/customer-cart.ts",
+        "src/app/api/orders/**",
+        "src/app/api/checkout/**",
+        "src/app/api/payment/**"
+      ],
+      "keywords": ["sipariş", "order", "ödeme", "paytr", "checkout", "sepet", "cart"],
+      "docs": ["docs/SIPARIS-AKISI-SNAPSHOT.md", "docs/SISTEM-AKISLARI.md", "docs/AKIS-V2-SEFA-22MAY.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": ["src/lib/customer-order.ts", "src/lib/customer-cart.ts"],
+      "schemaMigrations": ["001_initial_schema.sql", "002_invoice_events_payments.sql", "007_payment_intents.sql", "009_paytr_provider.sql", "015_drop_wallet.sql", "019_order_events_constraint.sql", "033_payment_finalize_atomic.sql", "061_awaiting_upload_state.sql", "065_order_id_sequence.sql", "069_payment_refund_idempotency.sql", "070_proof_pending_sla_kaskad.sql", "078_order_id_date_stamped.sql"],
+      "schemaTables": ["cart_items", "orders", "order_items", "order_events", "payments", "payment_intents"],
+      "typeRefs": ["Tables<'orders'>", "Tables<'order_items'>", "Tables<'payments'>", "Tables<'payment_intents'>", "Enums<'order_status'>", "Enums<'payment_intent_status'>", "Functions<'fn_finalize_paid_order'>", "Functions<'fn_create_order'>"],
+      "claudeAgents": ["backend", "frontend", "product"],
+      "cursorRule": "order-flow.mdc"
+    },
+    {
+      "id": "configurator",
+      "label": "Etiket/Sticker Konfigüratör",
+      "globs": [
+        "src/app/etiket/**",
+        "src/app/sticker/**",
+        "public/poc.html",
+        "src/lib/cutline/**",
+        "src/lib/design-preview/**",
+        "src/app/api/cutline/**",
+        "src/app/api/pim/cutline-feedback/**"
+      ],
+      "keywords": ["etiket", "sticker", "konfigüratör", "cutline", "bıçak", "white plan", "beyaz plan"],
+      "docs": ["docs/DOSYA-AKISI.md", "docs/AKIS-V2-SEFA-22MAY.md", "docs/TEST-MATERYALLERI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": ["src/app/etiket/yapilandir/page.tsx", "src/app/sticker/yapilandir/page.tsx"],
+      "schemaMigrations": ["003_returns_design_files.sql", "008_design_temp_uploads.sql", "038_cart_items_multi_design.sql", "039_design_quality_checks.sql", "059_proof_approval_flow.sql", "060_cutline_poc_v2_columns.sql", "062_auto_cutline_state.sql", "063_multi_design_proof.sql", "071_qc_attempt_guard.sql", "072_cart_design_preview.sql"],
+      "schemaTables": ["design_files", "design_temp_uploads", "design_quality_checks", "cutline_designs", "cart_items"],
+      "typeRefs": ["Tables<'design_files'>", "Tables<'cutline_designs'>", "Enums<'design_file_status'>"],
+      "claudeAgents": ["frontend", "ux-ui", "ai-llm"],
+      "cursorRule": "configurator.mdc"
+    },
+    {
+      "id": "admin",
+      "label": "Admin Paneli",
+      "globs": [
+        "src/app/admin/**",
+        "src/app/api/admin/**",
+        "src/components/admin/**"
+      ],
+      "keywords": ["admin", "panel", "operatör", "fason", "prova"],
+      "docs": ["docs/ADMIN-AKISI-SNAPSHOT.md", "docs/RUNBOOK.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": ["src/lib/supabase/assert-admin.ts", "src/lib/supabase/admin.ts"],
+      "schemaMigrations": ["004_notifications_audit.sql", "022_audit_log_admin_read.sql", "046_customer_admin_crm.sql", "054_rbac_admin_roles.sql", "055_staff_permission.sql", "056_settings_permission.sql", "087_customer_audit_actions.sql"],
+      "schemaTables": ["admin_role_permissions", "customer_notes", "customer_tags", "customer_invoice_profiles", "audit_log", "v_admin_customers"],
+      "typeRefs": ["Tables<'admin_role_permissions'>", "Tables<'audit_log'>", "Enums<'admin_role_v2'>", "Enums<'audit_action'>"],
+      "claudeAgents": ["backend", "frontend", "qa"],
+      "cursorRule": "admin-panel.mdc"
+    },
+    {
+      "id": "database",
+      "label": "Veritabanı & Migration",
+      "globs": [
+        "supabase/migrations/**",
+        "supabase/**/*.sql",
+        "src/lib/supabase/**",
+        "scripts/migrate.mjs",
+        "scripts/push-migrations.*"
+      ],
+      "keywords": ["migration", "supabase", "rpc", "rls", "schema", "sql"],
+      "docs": ["docs/MIGRATIONS-APPLIED.md", "docs/SISTEM-BAGIMLILIK-HARITASI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md", "docs/SCHEMA-TYPES-AGENT-GUIDE.md"],
+      "hubs": ["src/lib/supabase/server.ts", "src/lib/supabase/admin.ts"],
+      "schemaMigrations": ["supabase/migrations/*.sql"],
+      "schemaTables": ["(tüm public tablolar — types.ts)"],
+      "typeRefs": ["Database", "Tables", "TablesInsert", "Enums", "Constants"],
+      "claudeAgents": ["backend", "architect", "muhendis"],
+      "cursorRule": "database.mdc"
+    },
+    {
+      "id": "auth",
+      "label": "Kimlik Doğrulama",
+      "globs": [
+        "src/app/auth/**",
+        "src/lib/supabase/auth-bridge.ts",
+        "src/app/api/auth/**",
+        "src/middleware.ts"
+      ],
+      "keywords": ["auth", "login", "session", "jwt", "kayıt"],
+      "docs": ["docs/LAUNCH-READINESS-21MAY.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": ["src/lib/supabase/auth-bridge.ts", "src/lib/supabase/server.ts"],
+      "schemaMigrations": ["001_initial_schema.sql", "002_invoice_events_payments.sql", "011_user_roles.sql", "042_email_verification_sync.sql", "088_auth_user_email_lookup.sql"],
+      "schemaTables": ["profiles"],
+      "typeRefs": ["Tables<'profiles'>", "Enums<'user_role'>"],
+      "claudeAgents": ["backend", "guvenlik-uyum"],
+      "cursorRule": "database.mdc"
+    },
+    {
+      "id": "mail",
+      "label": "E-posta & Bildirim",
+      "globs": [
+        "src/lib/mail/**",
+        "src/app/api/mail/**",
+        "src/app/api/cron/mail/**"
+      ],
+      "keywords": ["mail", "email", "resend", "bildirim", "template"],
+      "docs": ["docs/RESEND-SETUP.md", "docs/SISTEM-AKISLARI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": ["src/lib/mail/notifications.ts"],
+      "schemaMigrations": ["004_notifications_audit.sql", "034_email_subscribers.sql", "035_mail_outbox_generic.sql", "037_mail_outbox_target_id_text.sql", "076_mail_suppressions_and_observability.sql"],
+      "schemaTables": ["notification_prefs", "fason_mail_outbox", "mail_suppressions", "email_subscribers"],
+      "typeRefs": ["Tables<'fason_mail_outbox'>", "Tables<'mail_suppressions'>", "Functions<'fn_enqueue_mail'>"],
+      "claudeAgents": ["backend", "marka-sesi"],
+      "cursorRule": "mail.mdc"
+    },
+    {
+      "id": "legal",
+      "label": "Yasal & KVKK",
+      "globs": [
+        "src/app/kvkk/**",
+        "src/app/mesafeli/**",
+        "src/app/cayma/**",
+        "src/app/gizlilik/**",
+        "src/app/kullanim/**",
+        "src/components/CookieConsent.tsx",
+        ".claude/legal-drafts/**"
+      ],
+      "keywords": ["kvkk", "yasal", "mesafeli", "cayma", "gizlilik", "telif"],
+      "docs": ["docs/LAUNCH-READINESS-21MAY.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": [],
+      "schemaMigrations": ["027_kvkk_requests.sql"],
+      "schemaTables": ["kvkk_requests"],
+      "typeRefs": ["Tables<'kvkk_requests'>", "Enums<'kvkk_request_kind'>", "Enums<'kvkk_request_status'>"],
+      "claudeAgents": ["guvenlik-uyum", "marka-sesi"],
+      "cursorRule": "legal.mdc"
+    },
+    {
+      "id": "i18n",
+      "label": "Çoklu Dil (i18n)",
+      "globs": [
+        "src/lib/i18n/**",
+        "src/components/LanguageSwitcher.tsx"
+      ],
+      "keywords": ["i18n", "locale", "çeviri", "translation", "en", "tr"],
+      "docs": [],
+      "hubs": ["src/lib/i18n/context.tsx"],
+      "claudeAgents": ["frontend", "marka-sesi"],
+      "cursorRule": "i18n.mdc"
+    },
+    {
+      "id": "agents",
+      "label": "Auditor Agent Sistemi",
+      "globs": [
+        "src/lib/agents/**",
+        "src/app/api/admin/auditors/**",
+        "src/app/admin/auditors/**"
+      ],
+      "keywords": ["auditor", "agent", "denetim", "circuit-breaker", "openai", "api entegrasyon"],
+      "docs": [
+        "docs/SISTEM-BAGIMLILIK-HARITASI.md",
+        "docs/API-INTEGRATION-FIXES.md",
+        "docs/DOMAIN-SCHEMA-REFERENCE.md"
+      ],
+      "hubs": [
+        "src/lib/agents/_shared/types.ts",
+        "src/lib/agents/_shared/proposal.ts",
+        "src/lib/http/external-timeouts.ts",
+        "src/lib/agents/run-order-qc.ts"
+      ],
+      "schemaMigrations": ["040_auditor_framework.sql", "041_auditor_helpers.sql"],
+      "schemaTables": ["auditor_runs", "auditor_findings", "auditor_pending_actions", "auditor_action_log", "auth_failed_logins"],
+      "typeRefs": ["Tables<'auditor_runs'>", "Tables<'auditor_findings'>"],
+      "claudeAgents": ["architect", "muhendis"],
+      "cursorRule": "agents-audit.mdc"
+    },
+    {
+      "id": "partner",
+      "label": "Fason / Partner Paneli",
+      "globs": [
+        "src/app/partner/**",
+        "src/app/api/partner/**"
+      ],
+      "keywords": ["partner", "fason", "üretici"],
+      "docs": ["docs/RUNBOOK.md", ".claude/proposals/fason-aktarim-yaklasim-D.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
+      "hubs": [],
+      "schemaMigrations": ["018_fason_aktarim.sql", "020_fason_tokens_outbox.sql", "024_fn_assign_order_to_fason.sql", "067_partner_extension.sql", "068_partner_auto_assign.sql", "083_partner_auth_role.sql", "084_partner_proof_status.sql", "086_partner_contract_alignment.sql", "089_fason_token_hash.sql"],
+      "schemaTables": ["fason_partners", "partner_contacts", "partner_capabilities", "order_assignments", "fason_access_tokens", "fason_link_access_log"],
+      "typeRefs": ["Tables<'fason_partners'>", "Tables<'order_assignments'>", "Enums<'assignment_status'>", "Functions<'fn_assign_order_to_fason'>"],
+      "claudeAgents": ["backend", "product"],
+      "cursorRule": "admin-panel.mdc"
+    },
+    {
+      "id": "frontend-ui",
+      "label": "UI & Component",
+      "globs": [
+        "src/components/**",
+        "src/app/globals.css",
+        "src/app/layout.tsx"
+      ],
+      "keywords": ["component", "ui", "tailwind", "styling", "layout"],
+      "docs": ["docs/SISTEM-BAGIMLILIK-HARITASI.md"],
+      "hubs": ["src/components/ui/index.ts", "src/components/Icon.tsx", "src/lib/cn.ts"],
+      "claudeAgents": ["frontend", "ux-ui"],
+      "cursorRule": "frontend-ui.mdc"
+    }
+  ]
+}

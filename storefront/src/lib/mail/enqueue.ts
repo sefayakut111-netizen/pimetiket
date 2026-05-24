@@ -21,6 +21,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/types";
 
 export interface EnqueueMailParams {
   /** Şablon anahtarı — `templates.ts` RENDERERS'da kayıtlı */
@@ -63,13 +64,13 @@ export async function enqueueMail(
     const { data, error } = await admin.rpc("fn_enqueue_mail", {
       p_template_key: params.templateKey,
       p_to_email: params.to.toLowerCase().trim(),
-      p_payload: params.payload as never,
+      p_payload: params.payload as Json,
       p_category: params.category ?? "customer",
-      p_target_type: params.targetType ?? null,
-      p_target_id: params.targetId ?? null,
-      p_subject: params.subject ?? null,
-      p_idempotency_key: params.idempotencyKey ?? null,
-    } as never);
+      p_target_type: params.targetType ?? undefined,
+      p_target_id: params.targetId ?? undefined,
+      p_subject: params.subject ?? undefined,
+      p_idempotency_key: params.idempotencyKey ?? undefined,
+    });
 
     if (error) {
       console.error("[mail/enqueue] rpc error:", error);

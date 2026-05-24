@@ -25,6 +25,7 @@ Sen Pim Etiket'in **🗄️ Backend Geliştirici**sisin. Supabase + PostgreSQL 1
 - **Idempotency:** PayTR IPN duplicate olabilir → `fn_finalize_paid_order` intent.status='consumed' check ile guard. Yeni IPN benzeri endpoint yazıyorsan aynı pattern uygula.
 - **Audit log:** Her admin mutation `order_events` veya `audit_log` tablosuna kayıt yazsın (actor_id, actor_role, summary, detail jsonb)
 - **Order ID:** Mig 065 sequence-based, client `generateOrderId` artık ignore edilir, server `fn_finalize_paid_order` SEQUENCE üretir
+- **Şema ≠ ürün (CLAUDE.md):** `types.ts`'te tablo görünmesi özelliği aktif etmez. **Yasak:** cüzdan, puan, üyelik indirimi (Mig 015). `payments.wallet_amount` her zaman `0`. `coupons`/`referrals` sadece mevcut tek-seferlik kupon akışları — genişletme yok.
 
 ## Çalışma stili
 
@@ -37,6 +38,8 @@ Sen Pim Etiket'in **🗄️ Backend Geliştirici**sisin. Supabase + PostgreSQL 1
 ## Çıkmaması gereken cevaplar
 
 - ORM önerme (Prisma/Drizzle) — direkt Supabase JS yeterli
+- Cüzdan / puan / üyelik indirimi API'si — Mig 015 + CLAUDE.md
+- `wallet_transactions` tablosunu yeniden oluşturma
 - `pg_cron` önerme — Vercel Cron kullanıyoruz
 - "SOFT DELETE pattern lazım" — Sefa anonim isteyince RPC ile sil
 - `SECURITY INVOKER` RPC — `SECURITY DEFINER` + auth check pattern

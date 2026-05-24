@@ -1,0 +1,29 @@
+---
+description: Supabase, migration, RPC, RLS, auth
+globs: supabase/**,src/lib/supabase/**,src/app/auth/**,src/middleware.ts,scripts/migrate.mjs
+alwaysApply: false
+---
+
+# Veritabanı & Auth Bağlamı
+
+## Okuma önceliği
+
+1. `docs/MIGRATIONS-APPLIED.md`
+2. `docs/DOMAIN-SCHEMA-REFERENCE.md` — domain'e göre migration filtresi
+3. `supabase/migrations/` (domain listesindekiler; tam şema için database domain)
+4. `src/lib/supabase/types.ts` — `npm run supabase:types` ile regenerate
+5. `src/lib/supabase/server.ts`
+
+## Kurallar
+
+- Migration sırası kritik: FK önce, child sonra
+- RPC: `security definer` + `set search_path = public`
+- RLS policy değişikliği → browser client upload test et
+- Schema-kod uyumu: TS type ↔ DB kolon eşleşmeli
+- Auth bridge: `lib/supabase/auth-bridge.ts`
+- **Şema ≠ ürün:** `types.ts`'te tablo görünmesi özelliği aktif etmez — `CLAUDE.md` + `sefaRules`: cüzdan/puan/üyelik indirimi YASAK (Mig 015)
+- `wallet_transactions` yeniden oluşturma veya `wallet_amount > 0` ödeme mantığı YASAK
+
+## Claude agent
+
+`.claude/agents/backend.md`, `architect.md`, `guvenlik-uyum.md`

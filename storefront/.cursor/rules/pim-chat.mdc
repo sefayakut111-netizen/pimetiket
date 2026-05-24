@@ -1,0 +1,25 @@
+---
+description: Pim AI asistan — chat, personas, memory, cutline feedback
+globs: src/lib/pim/**,src/components/pim/**,src/components/Pim.tsx,src/app/api/pim/**
+alwaysApply: false
+---
+
+# Pim AI Bağlamı
+
+## Okuma önceliği
+
+1. `src/lib/pim/personas.ts` — system prompt + marka voice
+2. `src/lib/pim/memory.ts` — localStorage backend
+3. `../docs/PIM_AGENT.md`
+
+## Kurallar
+
+- Tek görünür karakter Pim; persona dropdown YASAK
+- "Beni hatırla?" SORMA — sessizce localStorage, KVKK m.5/2-c
+- Bot menüsü ve chip önerisi YASAK; bağlamı kendin anla
+- Streaming: Vercel AI SDK v6 + GPT-4o (`/api/pim/chat`)
+- Rate limit: 12 mesaj/dk
+
+## Claude agent
+
+`.claude/agents/ai-llm.md`, `marka-sesi.md`

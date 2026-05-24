@@ -26,6 +26,7 @@ import {
   type PendingActionStatus,
   type ActionResult,
 } from "./types";
+import type { Enums } from "@/lib/supabase/types";
 
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
@@ -49,15 +50,18 @@ async function getAdminRecipients(): Promise<string[]> {
   }
 
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data: profiles } = await admin
     .from("profiles")
-    .select("email")
-    .in("role", ["admin", "staff"] as never);
+    .select("id")
+    .in("role", ["admin", "staff"] as Enums<"user_role">[]);
 
-  const rows = (data ?? []) as Array<{ email: string | null }>;
-  return rows
-    .map((r) => r.email)
-    .filter((e): e is string => !!e && e.includes("@"));
+  const emails: string[] = [];
+  for (const p of profiles ?? []) {
+    const { data: userData } = await admin.auth.admin.getUserById(p.id);
+    const email = userData?.user?.email;
+    if (email?.includes("@")) emails.push(email);
+  }
+  return emails;
 }
 
 // ============================================================

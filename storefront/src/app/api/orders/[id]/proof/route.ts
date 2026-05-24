@@ -117,10 +117,9 @@ export async function GET(
   }
   const orderId = orderRow.id; // canonical
 
-  const { data, error } = await supabase.rpc(
-    "fn_proof_summary" as never,
-    { p_order_id: orderId } as never
-  );
+  const { data, error } = await supabase.rpc("fn_proof_summary", {
+    p_order_id: orderId,
+  });
 
   if (error) {
     console.error("[GET /orders/proof] RPC error:", error);

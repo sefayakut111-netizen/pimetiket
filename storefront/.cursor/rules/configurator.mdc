@@ -1,0 +1,24 @@
+---
+description: Etiket/sticker konfigüratör, cutline, POC, white plan
+globs: src/app/etiket/**,src/app/sticker/**,public/poc.html,src/lib/cutline/**,src/lib/design-preview/**,src/app/api/cutline/**
+alwaysApply: false
+---
+
+# Konfigüratör Bağlamı
+
+## Okuma önceliği
+
+1. `docs/DOSYA-AKISI.md`
+2. `docs/AKIS-V2-SEFA-22MAY.md`
+3. `public/poc.html` (cutline POC, postMessage)
+
+## Kurallar
+
+- /etiket ve /sticker pattern'leri paralel — birinde fix, diğerini kontrol et
+- White plan modları: off / full / smart / ai / custom
+- Mega-component uyarısı: yapilandir sayfaları 2700+ satır — minimal diff
+- i18n: `t.etiket.*`, `t.sticker.*`, `t.config.*`
+
+## Claude agent
+
+`.claude/agents/frontend.md`, `ux-ui.md`
