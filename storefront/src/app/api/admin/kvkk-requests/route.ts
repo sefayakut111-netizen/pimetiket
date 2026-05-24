@@ -10,8 +10,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ const VALID_STATUS = [
 
 export async function GET(req: Request) {
   // Sefa 21 May v68: inline auth → assertAdmin helper (tutarlılık)
-  const auth = await assertAdmin();
+  const auth = await assertPermission("kvkk", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

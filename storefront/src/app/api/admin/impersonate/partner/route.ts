@@ -30,7 +30,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findAuthUserIdByEmail } from "@/lib/auth-user-lookup";
 import { z } from "zod";
@@ -43,7 +43,7 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   // Auth
-  const auth = await assertAdmin();
+  const auth = await assertPermission("fason", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

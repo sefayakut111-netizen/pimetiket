@@ -27,8 +27,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
@@ -43,42 +43,43 @@ const ACTIVE_STATUSES = [
 const PENDING_REVIEW_STATUSES = ["assigned", "sent"] as const;
 
 export async function GET() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-  const { data: profileRow } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profileRow as { role?: string } | null)?.role;
-  if (role !== "partner") {
+  const ctx = await resolvePartnerContext();
+  if (!ctx) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // user_id → fason_partners.id
-  const { data: contactRow } = await admin
-    .from("partner_contacts")
-    .select("partner_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const contact = contactRow as { partner_id: string } | null;
-  if (!contact) {
-    return NextResponse.json(
-      { error: "partner_link_missing" },
-      { status: 404 }
-    );
+  const now = new Date();
+
+  if (ctx.isGenericPreview) {
+    return NextResponse.json({
+      preview: true,
+      generic: true,
+      stats: {
+        pending_review: 0,
+        in_production: 0,
+        completed_this_month: 0,
+        cancelled_this_month: 0,
+        issue_open: 0,
+      },
+      production_summary: {
+        items_count: 0,
+        orders_count: 0,
+        product_breakdown: [],
+      },
+      urgent_queue: [],
+      period: {
+        month_start: new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+        ).toISOString(),
+        now: now.toISOString(),
+      },
+    });
   }
-  const partnerId = contact.partner_id;
+
+  const admin = createAdminClient();
+  const partnerId = ctx.partnerId!;
 
   // Ay başı (UTC) — istatistik referansı
-  const now = new Date();
   const monthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
   );
@@ -217,6 +218,8 @@ export async function GET() {
   });
 
   return NextResponse.json({
+    preview: ctx.isPreview,
+    previewPartnerName: ctx.previewPartnerName ?? null,
     stats: {
       pending_review: pendingReview ?? 0,
       in_production: inProduction ?? 0,

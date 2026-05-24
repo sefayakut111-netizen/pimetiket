@@ -13,8 +13,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { randomBytes } from "crypto";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateShippingLabel } from "@/lib/shipping/generate-label";
 
@@ -34,7 +34,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("shipments", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

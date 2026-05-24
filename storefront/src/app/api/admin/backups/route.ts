@@ -1,3 +1,4 @@
+import { assertPermission } from "@/lib/supabase/assert-permission";
 /**
  * GET /api/admin/backups
  *
@@ -12,7 +13,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +34,8 @@ interface R2ListXmlObject {
 export async function GET() {
   // Sefa 21 May v68: inline auth → assertAdmin helper.
   // Backups kritik — staff yetmez, sadece admin role.
-  const auth = await assertAdmin();
-  if (!auth || auth.role !== "admin") {
+  const auth = await assertPermission("backups", "view");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

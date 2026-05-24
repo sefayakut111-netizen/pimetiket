@@ -456,43 +456,6 @@ function PartnerCard({
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  // Sefa 23 May v68 — "Bu partner olarak gez" magic-link
-  const [impersonating, setImpersonating] = useState(false);
-  async function handleImpersonate(e: React.MouseEvent | React.KeyboardEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    if (impersonating) return;
-    if (
-      !confirm(
-        `${partner.name} olarak partner panelini açacaksın.\n\nÖNEMLİ: Yeni sekmede açılacak ama aynı tarayıcı session'ı kullanılır. Admin oturumun geçici olarak partner'a dönebilir. Incognito penceresinde test etmeni öneririm.\n\nDevam edilsin mi?`
-      )
-    )
-      return;
-    setImpersonating(true);
-    try {
-      const res = await fetch("/api/admin/impersonate/partner", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partner_id: partner.id }),
-      });
-      const j = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        url?: string;
-        message?: string;
-        error?: string;
-      };
-      if (!res.ok || !j.ok || !j.url) {
-        alert("Impersonation hatası: " + (j.message ?? j.error ?? `HTTP ${res.status}`));
-        return;
-      }
-      window.open(j.url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      alert("Hata: " + (err instanceof Error ? err.message : "Bilinmeyen"));
-    } finally {
-      setImpersonating(false);
-    }
-  }
-
   const scorePct =
     partner.cached_score == null ? null : Math.round(partner.cached_score * 100);
 
@@ -614,24 +577,6 @@ function PartnerCard({
               ⚠ Sözleşmesiz
             </span>
           )}
-        </div>
-
-        {/* Sefa 23 May v68 — "Bu partner olarak gez" magic-link button.
-            Wrapper button içinde nested button olamaz; <span role="button">
-            ile stopPropagation kullanıyoruz. */}
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label={`${partner.name} olarak partner panelini aç`}
-          onClick={handleImpersonate}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") handleImpersonate(e);
-          }}
-          className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-lacivert/10 px-3 py-2 text-[12px] font-semibold text-lacivert hover:bg-lacivert/15 cursor-pointer transition-colors"
-        >
-          {impersonating
-            ? "Magic-link üretiliyor..."
-            : "📦 Bu partner olarak gez (yeni sekme)"}
         </div>
       </Card>
     </button>

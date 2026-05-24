@@ -16,8 +16,8 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export const runtime = "nodejs";
 
@@ -69,7 +69,7 @@ function dateRangeStart(range: string): string | null {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("shipments", "view");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(req.url);

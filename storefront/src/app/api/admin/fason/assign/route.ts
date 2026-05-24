@@ -17,6 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
@@ -68,22 +69,11 @@ export async function POST(req: Request) {
   }
 
   // Auth — admin/staff
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("fason", "update");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -100,7 +90,7 @@ export async function POST(req: Request) {
     {
       p_order_id: orderId,
       p_fason_partner_id: fasonPartnerId,
-      p_admin_user_id: user.id,
+      p_admin_user_id: auth.user.id,
       p_estimated_delivery: estimatedDelivery,
       p_notes: notes,
       p_token_days: 14,
@@ -156,9 +146,9 @@ export async function POST(req: Request) {
 
   // Audit log (RPC dışı — asıl iş başarılı)
   await logServerAudit(admin, {
-    actorId: user.id,
-    actorEmail: user.email ?? null,
-    actorRole: role === "admin" ? "admin" : "staff",
+    actorId: auth.user.id,
+    actorEmail: auth.user.email ?? null,
+    actorRole: auth.role === "admin" ? "admin" : "staff",
     action: "order.status_change",
     targetType: "order",
     targetId: orderId,

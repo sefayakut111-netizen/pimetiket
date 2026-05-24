@@ -25,9 +25,9 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { executePendingAction } from "@/lib/agents/_shared/proposal";
 import { sendActionAppliedNotification } from "@/lib/agents/_shared/mailer";
 import type {
@@ -60,7 +60,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("auditors", "approve");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

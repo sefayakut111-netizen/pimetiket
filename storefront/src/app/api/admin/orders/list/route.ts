@@ -18,7 +18,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/lib/supabase/types";
 
@@ -53,7 +53,7 @@ interface DbItemRow {
 }
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("orders", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

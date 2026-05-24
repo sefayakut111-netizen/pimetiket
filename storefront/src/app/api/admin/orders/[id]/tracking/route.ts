@@ -22,8 +22,8 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 
@@ -45,7 +45,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("orders", "view");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id: orderId } = await params;
@@ -93,7 +93,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("orders", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id: orderId } = await params;

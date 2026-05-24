@@ -13,13 +13,13 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
 import type { AuditorPendingActionRow } from "@/lib/agents/_shared/types";
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("auditors", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

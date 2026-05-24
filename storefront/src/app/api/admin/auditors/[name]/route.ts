@@ -23,8 +23,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import {
   AUDITOR_NAMES,
   type AuditorName,
@@ -37,7 +37,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ name: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("auditors", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

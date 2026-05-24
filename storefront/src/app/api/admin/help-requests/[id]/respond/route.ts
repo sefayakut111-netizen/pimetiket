@@ -20,6 +20,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendProofHelpResolved } from "@/lib/mail/notifications";
@@ -41,25 +42,8 @@ export async function POST(
     return NextResponse.json({ error: "ID eksik" }, { status: 400 });
   }
 
-  // Auth
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Sefa 23 May v68: admin gate → profiles.role (admins tablo NULL,
-  // proje genelinde profiles.role kullaniliyor)
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("help_requests", "update");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -78,6 +62,8 @@ export async function POST(
     );
   }
   const { resolutionNote, action } = parsed.data;
+
+  const admin = createAdminClient();
 
   // Help request fetch
   const { data: hrRow } = await admin
@@ -110,7 +96,7 @@ export async function POST(
     .update({
       status: action,
       resolution_note: resolutionNote,
-      resolved_by: user.id,
+      resolved_by: auth.user.id,
       resolved_at: new Date().toISOString(),
     } as never)
     .eq("id", helpRequestId);
@@ -139,7 +125,7 @@ export async function POST(
           ? "proof_help_resolved"
           : "proof_help_dismissed",
       status_after: null,
-      actor_id: user.id,
+      actor_id: auth.user.id,
       actor_role: "admin",
       summary: `Yardım talebi ${action} edildi: ${resolutionNote.slice(0, 80)}...`,
       detail: {

@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type ProductType = "roll_label" | "sheet_label" | "sticker";
@@ -31,7 +31,7 @@ function legacySpecialtyToProductType(s: string | null): ProductType | null {
 }
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("fason", "view");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(req.url);

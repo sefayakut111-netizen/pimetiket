@@ -32,8 +32,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 
 export const runtime = "nodejs";
@@ -69,31 +69,21 @@ export async function POST(
     return NextResponse.json({ error: "ID eksik" }, { status: 400 });
   }
 
-  // Auth
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-  const { data: profileRow } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profileRow as { role?: string } | null)?.role;
-  if (role !== "partner") {
+  // Auth — preview modunda yazma yasak
+  const ctx = await resolvePartnerContext();
+  if (!ctx || ctx.isPreview || !ctx.partnerId) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // user_id → partner
+  const admin = createAdminClient();
+  const partnerId = ctx.partnerId;
+  const userId = ctx.userId;
+
   const { data: contactRow } = await admin
     .from("partner_contacts")
     .select("partner_id, name")
-    .eq("user_id", user.id)
+    .eq("partner_id", partnerId)
+    .limit(1)
     .maybeSingle();
   const contact = contactRow as { partner_id: string; name: string } | null;
   if (!contact) {
@@ -102,7 +92,6 @@ export async function POST(
       { status: 404 }
     );
   }
-  const partnerId = contact.partner_id;
 
   // Canonical order + cross-tenant guard
   const { data: orderRow } = await admin
@@ -261,7 +250,7 @@ export async function POST(
     .from("order_items")
     .update({
       proof_status: "partner_revised",
-      partner_decided_by: user.id,
+      partner_decided_by: userId,
       partner_decided_at: new Date().toISOString(),
       partner_decision_note: note ?? "Partner kendi dosyasıyla revize",
     } as never)
@@ -272,7 +261,7 @@ export async function POST(
     {
       order_id: order.id,
       event_type: "partner_uploaded_revision",
-      actor_id: user.id,
+      actor_id: userId,
       actor_role: "partner",
       summary: `${contact.name} (partner) ${item.title} için kendi dosyasıyla revize yükledi (v${nextVersion})`,
       detail: {

@@ -15,8 +15,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import { getSlotMeta } from "@/lib/site-image-slots";
@@ -34,7 +34,7 @@ const ALLOWED_MIME = [
 // GET — Tüm slot kayıtlarını listele
 // ============================================================
 export async function GET() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("site_images", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -92,7 +92,7 @@ export async function GET() {
 // POST — Upload (multipart)
 // ============================================================
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("site_images", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -263,7 +263,7 @@ const PatchSchema = z.object({
 });
 
 export async function PATCH(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("site_images", "update");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -311,7 +311,7 @@ export async function PATCH(req: Request) {
 // DELETE — Slot görselini sil (storage + DB)
 // ============================================================
 export async function DELETE(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("site_images", "delete");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

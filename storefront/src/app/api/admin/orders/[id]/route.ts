@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -19,22 +20,11 @@ export async function GET(
   }
 
   // Auth check
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("orders", "view");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

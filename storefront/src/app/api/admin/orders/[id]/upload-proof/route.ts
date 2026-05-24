@@ -13,6 +13,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
@@ -48,22 +49,11 @@ export async function POST(
   }
 
   // Auth
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("proof", "update");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
 
   // Parse form data
   let formData: FormData;
@@ -147,7 +137,7 @@ export async function POST(
       claimed: file.type,
       detected: magic.detected,
       label: magic.label,
-      adminUserId: user.id,
+      adminUserId: auth.user.id,
     });
     return NextResponse.json(
       {
@@ -183,7 +173,7 @@ export async function POST(
     .update({
       proof_storage_path: storagePath,
       proof_uploaded_at: new Date().toISOString(),
-      proof_uploaded_by: user.id,
+      proof_uploaded_by: auth.user.id,
       status: "proof_pending",
     })
     .eq("id", orderId);
@@ -203,8 +193,8 @@ export async function POST(
       order_id: orderId,
       event_type: "proof_uploaded",
       status_after: "proof_pending",
-      actor_id: user.id,
-      actor_role: role,
+      actor_id: auth.user.id,
+      actor_role: auth.role,
       summary: `Operatör prova dosyası yükledi: ${file.name}`,
       detail: {
         fileName: file.name,

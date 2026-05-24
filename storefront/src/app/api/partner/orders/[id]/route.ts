@@ -30,8 +30,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 
 export const runtime = "nodejs";
 
@@ -45,39 +45,22 @@ export async function GET(
   }
 
   // 1) Auth
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await resolvePartnerContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (ctx.isGenericPreview) {
+    return NextResponse.json(
+      {
+        error: "preview_no_order_data",
+        message: "Arayüz denetim modunda sipariş detayı gösterilmez.",
+      },
+      { status: 403 }
+    );
   }
 
   const admin = createAdminClient();
-  const { data: profileRow } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profileRow as { role?: string } | null)?.role;
-  if (role !== "partner") {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
-  // user_id → fason_partners.id
-  const { data: contactRow } = await admin
-    .from("partner_contacts")
-    .select("partner_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const contact = contactRow as { partner_id: string } | null;
-  if (!contact) {
-    return NextResponse.json(
-      { error: "partner_link_missing" },
-      { status: 404 }
-    );
-  }
-  const partnerId = contact.partner_id;
+  const partnerId = ctx.partnerId!;
 
   // 2) Canonical order lookup (case-insensitive)
   const { data: orderRow } = await admin

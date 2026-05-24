@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
@@ -29,22 +30,11 @@ export async function POST(
     return NextResponse.json({ error: "ID eksik" }, { status: 400 });
   }
 
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("kvkk", "update");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
 
   let body: BodyShape;
   try {
@@ -98,7 +88,7 @@ export async function POST(
     .from("kvkk_requests")
     .update({
       status: nextStatus,
-      processed_by: user.id,
+      processed_by: auth.user.id,
       processed_at: new Date().toISOString(),
       admin_note: note,
     })
@@ -110,9 +100,9 @@ export async function POST(
   }
 
   await logServerAudit(admin, {
-    actorId: user.id,
-    actorEmail: user.email ?? null,
-    actorRole: role === "admin" ? "admin" : "staff",
+    actorId: auth.user.id,
+    actorEmail: auth.user.email ?? null,
+    actorRole: auth.role === "admin" ? "admin" : "staff",
     action: "profile.delete",
     targetType: "kvkk_request",
     targetId: id,

@@ -13,7 +13,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   recordSuppression,
@@ -32,7 +32,7 @@ interface AddBody {
 }
 
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("mail_health", "create");
   if (!auth) {
     return NextResponse.json(
       { ok: false, error: "forbidden" },
@@ -82,7 +82,7 @@ interface DeleteBody {
 }
 
 export async function DELETE(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("mail_health", "delete");
   if (!auth) {
     return NextResponse.json(
       { ok: false, error: "forbidden" },

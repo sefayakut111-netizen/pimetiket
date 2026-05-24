@@ -14,7 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 
 interface ManualOrderItem {
   product: "etiket" | "sticker";
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   // Auth — audit P0 (4-agent 15 May): inline RBAC kaldırıldı, ortak
   // assertAdmin() helper'ı kullanılıyor (Cookie-based session, service_role
   // header'da DEĞİL).
-  const auth = await assertAdmin();
+  const auth = await assertPermission("manual_order", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

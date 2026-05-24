@@ -9,8 +9,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { sendMail, isResendConfigured } from "@/lib/mail/resend";
 import {
   AUDITOR_LABELS,
@@ -51,7 +51,7 @@ function escapeHtml(s: string): string {
 }
 
 export async function POST() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("auditors", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

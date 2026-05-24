@@ -16,8 +16,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
 import {
   AUDITOR_NAMES,
@@ -49,7 +49,7 @@ interface PendingCountViewRow {
 }
 
 export async function GET() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("auditors", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

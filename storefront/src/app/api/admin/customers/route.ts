@@ -1,3 +1,4 @@
+import { assertPermission } from "@/lib/supabase/assert-permission";
 /**
  * GET /api/admin/customers
  *
@@ -14,8 +15,6 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
-
 const DAY = 24 * 60 * 60 * 1000;
 
 export interface AdminCustomerRow {
@@ -62,7 +61,7 @@ function deriveSegment(
 }
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("customers", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

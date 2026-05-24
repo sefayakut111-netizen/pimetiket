@@ -18,8 +18,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 interface OrderRow {
   id: string;
@@ -59,7 +59,7 @@ interface FileRow {
 }
 
 export async function GET() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("ai_qc", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

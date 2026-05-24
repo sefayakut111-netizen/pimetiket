@@ -6,8 +6,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 interface ReviewRow {
   id: string;
@@ -29,7 +29,7 @@ interface ReviewRow {
 
 export async function GET() {
   // Sefa 21 May v68: inline auth → assertAdmin helper (tutarlılık)
-  const auth = await assertAdmin();
+  const auth = await assertPermission("reviews", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

@@ -9,8 +9,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import type { AdminCustomerWithSegment } from "@/app/api/admin/customers/route";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -44,7 +44,7 @@ function escapeCsv(value: unknown): string {
 }
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("customers", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

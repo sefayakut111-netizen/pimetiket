@@ -1,23 +1,22 @@
 /**
- * View Mode — admin/staff kullanıcılarının "müşteri görünümü" testleri.
+ * View Mode — admin/staff kullanıcılarının "müşteri görünümü" ve "partner analiz" testleri.
  *
- * Kullanım:
- *   - Sefa admin olarak login. Default: view_mode=admin (yani admin paneli açık)
- *   - Sidebar'da "Müşteri görünümüne geç" → cookie pim_view_mode=customer
- *   - Cookie set olunca middleware /admin'i ENGELLER (sanki customer'mış gibi)
- *   - Customer sayfalarında üst banner: "Müşteri görünümü · Admin'e dön"
- *   - Çıkış / "Admin'e dön" → cookie silinir
+ * Modlar:
+ *   - admin (default) — tam admin paneli
+ *   - customer — müşteri storefront (/panelim)
+ *   - partner — ortak partner arayüz denetimi (/partner), admin oturumu korunur
  *
- * Güvenlik: Cookie SADECE UI/UX. Asıl yetki kontrolü her zaman DB.role'den.
- * Customer rolü bu cookie'yi set etse bile DB.role='customer' olduğu için
- * admin paneli zaten açılmaz. Middleware role check her durumda doğrular.
+ * Güvenlik: Cookie SADECE UI routing. Asıl yetki kontrolü DB.role + fn_has_permission.
  */
+
 export const VIEW_MODE_COOKIE = "pim_view_mode";
 
-export type ViewMode = "admin" | "customer";
+export type ViewMode = "admin" | "customer" | "partner";
 
 export function parseViewMode(value: string | undefined | null): ViewMode {
-  return value === "customer" ? "customer" : "admin";
+  if (value === "customer") return "customer";
+  if (value === "partner") return "partner";
+  return "admin";
 }
 
 export function isImpersonatingCustomer(
@@ -25,4 +24,11 @@ export function isImpersonatingCustomer(
   viewMode: ViewMode
 ): boolean {
   return (role === "admin" || role === "staff") && viewMode === "customer";
+}
+
+export function isImpersonatingPartner(
+  role: string | null | undefined,
+  viewMode: ViewMode
+): boolean {
+  return (role === "admin" || role === "staff") && viewMode === "partner";
 }

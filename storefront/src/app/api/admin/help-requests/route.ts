@@ -15,33 +15,18 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Sefa 23 May v68: admin gate — profiles.role uzerinden (admins tablo
-  // bos veya esit degil; codebase'in geri kalani profiles.role kullaniyor).
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("help_requests", "view");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const admin = createAdminClient();
   const url = new URL(req.url);
   const statusParam = url.searchParams.get("status") ?? "active";
   const STATUS_FILTER: Record<string, string[] | null> = {

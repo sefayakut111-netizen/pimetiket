@@ -18,6 +18,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveAdminPathModule } from "@/lib/admin-rbac";
 import { VIEW_MODE_COOKIE, parseViewMode } from "@/lib/view-mode";
 
 const PROTECTED_PATHS: ReadonlyArray<string> = [
@@ -138,9 +139,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // 1a) /partner için role check — sadece 'partner' rolü girebilir
-  // (Sefa 23 May v68 Partner P1). admin/staff istisna YOK — impersonation
-  // için ayrı bir mekanizma planlanıyor (Faz 2).
+  // 1a) /partner — partner rolü VEYA admin/staff partner preview cookie
   if (user && pathname.startsWith("/partner") && pathname !== "/partner/giris") {
     try {
       const { data: profile } = await supabase
@@ -149,8 +148,13 @@ export async function updateSession(request: NextRequest) {
         .eq("id", user.id)
         .maybeSingle();
       const role = (profile as { role?: string } | null)?.role;
-      if (role !== "partner") {
-        // Yetkili değil — partner girişine yönlendir
+      const viewMode = parseViewMode(
+        request.cookies.get(VIEW_MODE_COOKIE)?.value
+      );
+      const isPartnerPreview =
+        (role === "admin" || role === "staff") && viewMode === "partner";
+
+      if (role !== "partner" && !isPartnerPreview) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/partner/giris";
         redirectUrl.searchParams.set("error", "not_partner");
@@ -252,15 +256,39 @@ export async function updateSession(request: NextRequest) {
         // AAL check başarısız olursa admin'e izin ver (Supabase MFA env'i yoksa)
       }
 
-      // Admin ama "müşteri görünümü" cookie aktif → /admin'i bloke et
       const viewMode = parseViewMode(
         request.cookies.get(VIEW_MODE_COOKIE)?.value
       );
+
+      // Admin ama "müşteri görünümü" cookie aktif → /admin'i bloke et
       if (viewMode === "customer") {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/panelim";
         redirectUrl.search = "";
         return NextResponse.redirect(redirectUrl);
+      }
+
+      // Admin ama "partner analiz" modu → /admin'i bloke et
+      if (viewMode === "partner") {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/partner";
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // Modül bazlı route guard (RBAC)
+      const pathModule = resolveAdminPathModule(pathname);
+      if (pathModule) {
+        const { data: hasPerm, error: permErr } = await supabase.rpc(
+          "fn_has_permission",
+          { p_module: pathModule, p_action: "view" }
+        );
+        if (!permErr && hasPerm !== true) {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = "/admin";
+          redirectUrl.searchParams.set("denied", pathModule);
+          return NextResponse.redirect(redirectUrl);
+        }
       }
     } catch {
       // DB hatası olursa güvenli taraf — admin'e izin verme

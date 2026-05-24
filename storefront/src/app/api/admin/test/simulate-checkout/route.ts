@@ -6,14 +6,14 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   runCheckoutSimulation,
   cleanupSimulatorData,
 } from "@/lib/test-simulator";
 
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("manual_order", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

@@ -11,7 +11,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { DESIGN_FILE_STATUS_VALUES } from "@/lib/design-file-status";
 
@@ -44,7 +44,7 @@ export interface AdminDesignRow {
 
 export async function GET(req: Request) {
   try {
-    const auth = await assertAdmin();
+    const auth = await assertPermission("designs", "view");
     if (!auth) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

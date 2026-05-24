@@ -11,6 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
@@ -50,29 +51,18 @@ export async function PATCH(
   }
 
   // Auth check
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("reviews", "update");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
 
   // Build update payload
   const update: Record<string, unknown> = {};
   if (typeof body.status === "string" && VALID_STATUS.includes(body.status)) {
     update.status = body.status;
     update.moderated_at = new Date().toISOString();
-    update.moderated_by = user.id;
+    update.moderated_by = auth.user.id;
     if (body.status === "published") {
       // Default: published yorumlar anasayfada görünür (admin sonra kapatabilir)
       if (typeof body.showOnHomepage !== "boolean") {
@@ -180,9 +170,9 @@ export async function PATCH(
           : null;
     if (auditAction) {
       await logServerAudit(admin, {
-        actorId: user.id,
-        actorEmail: user.email ?? null,
-        actorRole: role === "admin" ? "admin" : "staff",
+        actorId: auth.user.id,
+        actorEmail: auth.user.email ?? null,
+        actorRole: auth.role === "admin" ? "admin" : "staff",
         action: auditAction,
         targetType: "review",
         targetId: id,

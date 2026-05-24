@@ -6,19 +6,19 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Sefa 21 May v68: inline auth → assertAdmin helper (tutarlılık).
+ * Sefa 21 May v68: inline auth → assertPermission("products", "view") helper (tutarlılık).
  * GET + PATCH ortak guard'i sağlar; service_role admin client da burada
  * oluşturulur ki her endpoint tekrarlamasın.
  */
-async function requireAdmin() {
-  const auth = await assertAdmin();
+async function requireProducts(action: "view" | "update") {
+  const auth = await assertPermission("products", action);
   if (!auth) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
@@ -33,7 +33,7 @@ async function requireAdmin() {
 }
 
 export async function GET(req: Request) {
-  const guard = await requireAdmin();
+  const guard = await requireProducts("view");
   if (guard.error) return guard.error;
 
   const url = new URL(req.url);
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const guard = await requireAdmin();
+  const guard = await requireProducts("update");
   if (guard.error) return guard.error;
 
   let body: {

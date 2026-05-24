@@ -11,6 +11,7 @@ import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { AdminShell } from "./AdminShell";
 import { ViewModeBanner } from "./ViewModeBanner";
+import { PartnerPreviewBanner } from "./PartnerPreviewBanner";
 import { PimChat } from "@/components/pim/PimChat";
 import { ReviewRequestBanner } from "@/components/reviews/ReviewRequestBanner";
 import { bumpSchemaVersionIfNeeded } from "@/lib/cache-invalidate";
@@ -18,6 +19,7 @@ import { bumpSchemaVersionIfNeeded } from "@/lib/cache-invalidate";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
+  const isPartner = pathname?.startsWith("/partner") ?? false;
   const isFason = pathname?.startsWith("/fason/") ?? false;
 
   // Şema bump'ında stale cache temizliği — sadece bir kez boot'ta çalışır
@@ -33,6 +35,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Sadece sipariş güncelleme arayüzü — operasyonel sayfa.
   if (isFason) {
     return <>{children}</>;
+  }
+
+  if (isPartner) {
+    return (
+      <>
+        <PartnerPreviewBanner />
+        <TopBar />
+        <div id="main" tabIndex={-1} className="flex-1 outline-none">
+          {children}
+        </div>
+        <Footer />
+      </>
+    );
   }
 
   return (

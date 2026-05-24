@@ -45,6 +45,7 @@ import {
   formatCurrency,
   formatShortDate,
 } from "@/lib/admin-analytics";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 type TimeRange = "today" | "7d" | "mtd" | "30d";
 
@@ -341,6 +342,7 @@ function formatDuration(seconds: number): string {
 }
 
 export default function AdminDashboardPage() {
+  const { canViewFinancials, canView } = useAdminPermissions();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [range, setRange] = useState<TimeRange>("7d");
@@ -526,15 +528,19 @@ export default function AdminDashboardPage() {
         ? `${updateAgo} sn önce`
         : `${Math.floor(updateAgo / 60)} dk önce`;
 
-  // KPI cards
+  // KPI cards — finans yetkisi olmayan rollere ciro/AOV gizlenir
   const KPIS = [
-    {
-      label: `${RANGE_LABEL[range]} ciro`,
-      value: formatCurrency(revenue),
-      sub: revenueChange.label,
-      trend: revenueChange.trend,
-      accent: "text-yesil",
-    },
+    ...(canViewFinancials
+      ? [
+          {
+            label: `${RANGE_LABEL[range]} ciro`,
+            value: formatCurrency(revenue),
+            sub: revenueChange.label,
+            trend: revenueChange.trend,
+            accent: "text-yesil",
+          },
+        ]
+      : []),
     {
       label: `${RANGE_LABEL[range]} sipariş`,
       value: count.toString(),
@@ -542,13 +548,17 @@ export default function AdminDashboardPage() {
       trend: countChange.trend,
       accent: "text-pim-mercan",
     },
-    {
-      label: "Sepet ortalaması",
-      value: aov > 0 ? formatCurrency(aov) : "—",
-      sub: count > 0 ? `${count} sipariş bazlı` : "veri yok",
-      trend: "flat" as const,
-      accent: "text-lacivert",
-    },
+    ...(canViewFinancials
+      ? [
+          {
+            label: "Sepet ortalaması",
+            value: aov > 0 ? formatCurrency(aov) : "—",
+            sub: count > 0 ? `${count} sipariş bazlı` : "veri yok",
+            trend: "flat" as const,
+            accent: "text-lacivert",
+          },
+        ]
+      : []),
     {
       label: "AI flag bekleyen",
       value: aiFlagged.toString(),
@@ -585,12 +595,19 @@ export default function AdminDashboardPage() {
   const maxFunnel = Math.max(...funnel.map((s) => s.count), 1);
   const funnelTotal = funnel.reduce((sum, s) => sum + s.count, 0);
 
-  // Quick actions
   const QUICK_ACTIONS = [
-    { href: "/admin/siparis-ekle", label: "Manuel sipariş", desc: "Telefon / WhatsApp", icon: <Icon.Plus size={18} />, accent: true },
-    { href: "/admin/fiyat-hesapla", label: "Hızlı teklif", desc: "Etiket/sticker", icon: <Icon.Bolt size={18} /> },
-    { href: "/admin/kuponlar", label: "Kupon ekle", desc: "İndirim kodu", icon: <Icon.Sparkle size={18} /> },
-    { href: "/admin/yorumlar", label: "Yorum onayı", desc: "Bekleyen review", icon: <Icon.Star size={18} /> },
+    ...(canView("manual_order")
+      ? [{ href: "/admin/siparis-ekle", label: "Manuel sipariş", desc: "Telefon / WhatsApp", icon: <Icon.Plus size={18} />, accent: true }]
+      : []),
+    ...(canView("pricing")
+      ? [{ href: "/admin/fiyat-hesapla", label: "Hızlı teklif", desc: "Etiket/sticker", icon: <Icon.Bolt size={18} /> }]
+      : []),
+    ...(canView("coupons")
+      ? [{ href: "/admin/kuponlar", label: "Kupon ekle", desc: "İndirim kodu", icon: <Icon.Sparkle size={18} /> }]
+      : []),
+    ...(canView("reviews")
+      ? [{ href: "/admin/yorumlar", label: "Yorum onayı", desc: "Bekleyen review", icon: <Icon.Star size={18} /> }]
+      : []),
   ];
 
   // Status distribution as horizontal bar
@@ -792,27 +809,36 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Revenue trend + Product mix */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mb-6">
-          <Card padding="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-[15px] font-semibold">Ciro trendi</h2>
-                <p className="text-[12px] text-gri-700">
-                  Son {rangeWindow.days} gün
-                </p>
+        <div
+          className={cn(
+            "grid gap-4 mb-6",
+            canViewFinancials
+              ? "grid-cols-1 lg:grid-cols-[1.6fr_1fr]"
+              : "grid-cols-1"
+          )}
+        >
+          {canViewFinancials && (
+            <Card padding="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-[15px] font-semibold">Ciro trendi</h2>
+                  <p className="text-[12px] text-gri-700">
+                    Son {rangeWindow.days} gün
+                  </p>
+                </div>
+                <span className="text-[13px] font-bold text-yesil tabular-nums">
+                  {formatCurrency(revenue)}
+                </span>
               </div>
-              <span className="text-[13px] font-bold text-yesil tabular-nums">
-                {formatCurrency(revenue)}
-              </span>
-            </div>
-            <LineChart
-              points={revenueSeries}
-              height={140}
-              color="text-yesil"
-              formatY={formatCurrency}
-              emptyLabel="Sipariş geldikçe ciro burada birikir"
-            />
-          </Card>
+              <LineChart
+                points={revenueSeries}
+                height={140}
+                color="text-yesil"
+                formatY={formatCurrency}
+                emptyLabel="Sipariş geldikçe ciro burada birikir"
+              />
+            </Card>
+          )}
 
           <Card padding="p-5">
             <div className="mb-4">
@@ -1143,6 +1169,7 @@ export default function AdminDashboardPage() {
 
         {/* Top customers + Top cities + Status bar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {canViewFinancials && (
           <Card padding="p-0">
             <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between">
               <h2 className="text-[15px] font-semibold">Top müşteriler</h2>
@@ -1191,6 +1218,7 @@ export default function AdminDashboardPage() {
               </ul>
             )}
           </Card>
+          )}
 
           <Card padding="p-0">
             <div className="px-5 py-3.5 border-b border-gri-200">
@@ -1214,8 +1242,10 @@ export default function AdminDashboardPage() {
                         <span className="text-[12px] tabular-nums text-gri-700">
                           <span className="font-semibold text-lacivert">
                             {c.count}
-                          </span>{" "}
-                          · {formatCurrency(c.revenue)}
+                          </span>
+                          {canViewFinancials && (
+                            <> · {formatCurrency(c.revenue)}</>
+                          )}
                         </span>
                       </div>
                       <div className="h-1.5 bg-gri-100 rounded-full overflow-hidden">

@@ -11,8 +11,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ============================================================
@@ -77,7 +77,7 @@ type CreatePartnerInput = z.infer<typeof CreatePartnerSchema>;
 // GET — Liste (contacts + capabilities ile birlikte)
 // ============================================================
 export async function GET() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("fason", "view");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const admin = createAdminClient();
@@ -159,7 +159,7 @@ export async function GET() {
 // POST — Yeni partner (nested body)
 // ============================================================
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("fason", "create");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   let raw: unknown;

@@ -21,7 +21,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -38,7 +38,7 @@ interface OutboxStatRow {
 }
 
 export async function GET() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("mail_health", "view");
   if (!auth) {
     return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   }

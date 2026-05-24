@@ -10,7 +10,7 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   listR2ObjectsDetailed,
   r2KeyBuilders,
@@ -38,7 +38,7 @@ function categorizeKey(relPath: string): ArchiveFileItem["category"] {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("archive", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

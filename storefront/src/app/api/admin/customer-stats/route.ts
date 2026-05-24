@@ -9,14 +9,14 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient } from "@/lib/supabase/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export async function GET() {
   try {
     // Sefa 21 May v68: inline auth check → assertAdmin helper'a refactor.
     // Tutarlılık (admin tarafı tüm endpoint'lerde aynı pattern) + DRY.
-    const auth = await assertAdmin();
+    const auth = await assertPermission("finans", "view");
     if (!auth) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -17,14 +17,14 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { getSignedDownloadUrl } from "@/lib/storage/r2-client";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("archive", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

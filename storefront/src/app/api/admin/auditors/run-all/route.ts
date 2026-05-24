@@ -14,7 +14,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   AUDITOR_NAMES,
   type AuditorName,
@@ -53,7 +53,7 @@ interface AuditorResult {
 }
 
 export async function POST() {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("auditors", "update");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

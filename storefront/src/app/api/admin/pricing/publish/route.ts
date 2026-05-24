@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   publishPricingConfig,
   type ScopeName,
@@ -20,7 +20,7 @@ const VALID_SCOPES: ScopeName[] = [
 ];
 
 export async function POST(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("pricing", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(req.url);

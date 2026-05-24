@@ -16,8 +16,8 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -44,7 +44,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("customers", "update");
   if (!auth) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -117,7 +117,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("customers", "update");
   if (!auth) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }

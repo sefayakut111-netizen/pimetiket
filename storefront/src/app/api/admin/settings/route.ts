@@ -13,7 +13,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
@@ -39,27 +38,11 @@ function serviceClient() {
   });
 }
 
-async function assertAdmin() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") return null;
-  return { user, role: role as "admin" | "staff" };
-}
-
 export async function GET() {
   // Sefa 21 May v68: GET artık admin-only.
   // Müşteri tarafı /api/public/settings kullanır (PII gizli, müşteri-görür
   // alanlar). Admin endpoint tüm field'ları döndürür (updated_by dahil).
-  const auth = await assertAdmin();
+  const auth = await assertPermission("settings", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

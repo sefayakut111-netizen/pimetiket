@@ -41,6 +41,8 @@ import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import type { AdminModule } from "@/lib/admin-rbac";
 
 interface AdminBadges {
   active: number;
@@ -87,6 +89,8 @@ interface NavItem {
   icon: ReactNode;
   badge?: number;
   badgeAccent?: boolean;
+  /** RBAC modülü — null ise her zaman göster (profil vb.) */
+  module?: AdminModule | null;
 }
 
 interface NavGroup {
@@ -151,6 +155,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Sefa 18 May v68 (CRO denetim): Cmd+K global arama palette
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { canView, legacyFullAccess, loading: permLoading } =
+    useAdminPermissions();
 
   // Global Cmd+K / Ctrl+K listener
   useEffect(() => {
@@ -295,17 +301,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {
         label: "Operasyon",
         items: [
-          { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} /> },
+          { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} />, module: "dashboard" },
           {
             href: "/admin/siparisler",
             label: "Siparişler",
             icon: <Icon.Box size={16} />,
             badge: badges.active,
+            module: "orders",
           },
           {
             href: "/admin/siparis-ekle",
             label: "Manuel sipariş",
             icon: <Icon.Plus size={16} />,
+            module: "manual_order",
           },
           {
             href: "/admin/ai-qc",
@@ -313,23 +321,27 @@ export function AdminShell({ children }: { children: ReactNode }) {
             icon: <Icon.Sparkle size={16} />,
             badge: badges.aiQc,
             badgeAccent: badges.aiQc > 0,
+            module: "ai_qc",
           },
           {
             href: "/admin/prova",
             label: "Prova",
             icon: <Icon.Check size={16} />,
             badge: badges.proof,
+            module: "proof",
           },
           {
             href: "/admin/kargo",
             label: "Kargo",
             icon: <Icon.Truck size={16} />,
+            module: "shipments",
           },
           {
             href: "/admin/fason",
             label: "Üretim Partnerleri",
             icon: <Icon.Truck size={16} />,
             badge: badges.fason,
+            module: "fason",
           },
         ],
       },
@@ -340,29 +352,33 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/musteriler",
             label: "Müşteriler",
             icon: <Icon.Users size={16} />,
+            module: "customers",
           },
           {
             href: "/admin/yorumlar",
             label: "Yorumlar",
             icon: <Icon.Star size={16} />,
+            module: "reviews",
           },
           {
             href: "/admin/iadeler",
             label: "İadeler",
             icon: <Icon.Info size={16} />,
+            module: "returns",
           },
           {
             href: "/admin/tasarimlar",
             label: "Tasarımlar",
             icon: <Icon.Doc size={16} />,
+            module: "designs",
           },
-          // Sefa 22 May v68 Faz 4 — Uzman akışı: proof yardım ticket'ları
           {
             href: "/admin/yardim-talepleri",
             label: "Yardım Talepleri",
             icon: <Icon.ChatBubble size={16} />,
             badge: badges.helpRequests,
             badgeAccent: badges.helpRequests > 0,
+            module: "help_requests",
           },
         ],
       },
@@ -372,26 +388,29 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {
         label: "İçerik",
         items: [
-          // Sefa 21 May v68 Mig 074: Ürün kartları yönetimi
           {
             href: "/admin/urunler",
             label: "Ürünler",
             icon: <Icon.Tag size={16} />,
+            module: "products",
           },
           {
             href: "/admin/aboneler",
             label: "Aboneler",
             icon: <Icon.ChatBubble size={16} />,
+            module: "subscribers",
           },
           {
             href: "/admin/galeri",
             label: "Galeri",
             icon: <Icon.Sparkle size={16} />,
+            module: "gallery",
           },
           {
             href: "/admin/gorseller",
             label: "Site Görselleri",
             icon: <Icon.Box size={16} />,
+            module: "site_images",
           },
         ],
       },
@@ -402,23 +421,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/finans",
             label: "Finans",
             icon: <Icon.Wallet size={16} />,
+            module: "finans",
           },
           {
             href: "/admin/kuponlar",
             label: "Kuponlar",
             icon: <Icon.Tag size={16} />,
+            module: "coupons",
           },
           {
             href: "/admin/calisanlar",
             label: "Çalışanlar",
             icon: <Icon.User size={16} />,
+            module: "staff",
           },
-          // Sefa 17 May v5: Tek link "Fiyat hesapla", sayfada 3 profil tab
-          // (Sticker / Rulo Etiket / Tabaka Etiket).
           {
             href: "/admin/fiyat-hesapla",
             label: "Fiyat hesapla",
             icon: <Icon.Bolt size={16} />,
+            module: "pricing",
           },
         ],
       },
@@ -433,61 +454,65 @@ export function AdminShell({ children }: { children: ReactNode }) {
             icon: <Icon.Sparkle size={16} />,
             badge: badges.auditorsPending,
             badgeAccent: badges.auditorsCritical > 0,
+            module: "auditors",
           },
           {
             href: "/admin/raporlar",
             label: "Raporlar",
             icon: <Icon.Doc size={16} />,
+            module: "reports",
           },
           {
             href: "/admin/audit-log",
             label: "Denetim kaydı",
             icon: <Icon.Refresh size={16} />,
+            module: "audit_log",
           },
           {
             href: "/admin/kvkk-talepleri",
             label: "KVKK talepleri",
             icon: <Icon.Info size={16} />,
+            module: "kvkk",
           },
           {
             href: "/admin/yedekler",
             label: "Yedekler",
             icon: <Icon.Box size={16} />,
+            module: "backups",
           },
-          // Sefa 18 May: R2 Cold Storage arşiv yönetimi
           {
             href: "/admin/arsiv",
             label: "Arşiv (R2)",
             icon: <Icon.Box size={16} />,
+            module: "archive",
           },
-          // Sefa 17 May: E2E sipariş simülatörü
-          // Sefa 18 May v68 (admin UX denetim): NEXT_PUBLIC_ALLOW_SIMULATOR
-          // flag ile production'da menüden gizlenir, yanlışlıkla tıklanmasın.
           ...(process.env.NEXT_PUBLIC_ALLOW_SIMULATOR === "true"
             ? [
                 {
                   href: "/admin/test-siparis-simulator",
                   label: "Sipariş simülatörü",
                   icon: <Icon.Refresh size={16} />,
+                  module: "manual_order" as AdminModule,
                 },
               ]
             : []),
-          // Sefa 17 May: Fiyat Yönetimi (Migration 047)
           {
             href: "/admin/fiyatlar",
             label: "Fiyat yönetimi",
             icon: <Icon.Sparkle size={16} />,
+            module: "pricing",
           },
           {
             href: "/admin/ayarlar",
             label: "Ayarlar",
             icon: <Icon.Cog size={16} />,
+            module: "settings",
           },
-          // Sefa 18 May v68 (admin UX denetim — KVKK m.12 2FA)
           {
             href: "/admin/profil",
             label: "Profilim & 2FA",
             icon: <Icon.User size={16} />,
+            module: null,
           },
         ],
       },
@@ -495,12 +520,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
     [badges]
   );
 
+  const filteredNavGroups = useMemo(() => {
+    if (permLoading || legacyFullAccess) return navGroups;
+    return navGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => item.module == null || canView(item.module)
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [navGroups, permLoading, legacyFullAccess, canView]);
+
   const pageTitle = getPageTitle(pathname);
 
-  // Sefa 18 May v68: navGroups → flat commandItems (palette için)
   const commandItems: CommandItem[] = useMemo(
     () =>
-      navGroups.flatMap((g) =>
+      filteredNavGroups.flatMap((g) =>
         g.items.map((it) => ({
           href: it.href,
           label: it.label,
@@ -508,7 +544,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           icon: it.icon,
         }))
       ),
-    [navGroups]
+    [filteredNavGroups]
   );
 
   return (
@@ -576,7 +612,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         {/* Nav (scrollable) */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          {navGroups.map((group) => (
+          {filteredNavGroups.map((group) => (
             <div key={group.label}>
               <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-white/50">
                 {group.label}

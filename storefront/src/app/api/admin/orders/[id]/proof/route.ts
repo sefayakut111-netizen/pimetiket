@@ -25,7 +25,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -39,25 +39,12 @@ export async function GET(
     return NextResponse.json({ error: "ID eksik" }, { status: 400 });
   }
 
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Admin/staff gate
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "staff") {
+  const auth = await assertPermission("proof", "update");
+  if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const admin = createAdminClient();
 
   // Order — case-insensitive lookup
   const { data: orderRow } = await admin
@@ -291,6 +278,6 @@ export async function GET(
     summary,
     // Sefa 23 May v68: /onay/duzenle admin'i status'ten bağımsız edit
     // edebilmeli — viewer_role bunu işaretler.
-    viewer_role: role,
+    viewer_role: auth.role,
   });
 }

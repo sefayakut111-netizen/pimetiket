@@ -22,8 +22,8 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 
 export const runtime = "nodejs";
@@ -32,7 +32,7 @@ export const maxDuration = 300;
 const MAX_BULK = 50;
 
 export async function POST(req: NextRequest) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("shipments", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));

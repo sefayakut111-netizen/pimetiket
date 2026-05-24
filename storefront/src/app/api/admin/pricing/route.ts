@@ -16,7 +16,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   getAdminPricingConfig,
   saveDraftPricingConfig,
@@ -39,7 +39,7 @@ function parseScope(req: Request): ScopeName | null {
 }
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("pricing", "view");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const scope = parseScope(req);
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
  * - cache invalidate
  */
 export async function PUT(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("pricing", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const scope = parseScope(req);
