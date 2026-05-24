@@ -12,6 +12,9 @@
 
 import { AuditorBase } from "../_shared/base";
 import type { AuditorFinding, AuditorRunResult } from "../_shared/types";
+import type { Enums } from "@/lib/supabase/types";
+
+type OrderStatus = Enums<"order_status">;
 
 const TUNE = {
   abandonmentWarningRate: 0.70, // %70+ abandonment uyarı
@@ -77,14 +80,14 @@ export class CustomerHealthAuditor extends AuditorBase {
       .from("product_reviews")
       .select("rating")
       .gte("created_at", thisWeek.toISOString())
-      .eq("is_published", true as never);
+      .eq("is_published", true);
 
     const { data: lastWeekData } = await this.admin
       .from("product_reviews")
       .select("rating")
       .gte("created_at", lastWeek.toISOString())
       .lt("created_at", thisWeek.toISOString())
-      .eq("is_published", true as never);
+      .eq("is_published", true);
 
     const thisRatings = ((thisWeekData ?? []) as Array<{ rating: number }>);
     const lastRatings = ((lastWeekData ?? []) as Array<{ rating: number }>);
@@ -185,7 +188,7 @@ export class CustomerHealthAuditor extends AuditorBase {
     const { data } = await this.admin
       .from("orders")
       .select("user_id, status")
-      .in("status", ["delivered", "shipped"] as never)
+      .in("status", ["delivered", "shipped"] satisfies OrderStatus[])
       .limit(1000);
 
     const rows = (data ?? []) as Array<{ user_id: string; status: string }>;
@@ -246,7 +249,7 @@ export class CustomerHealthAuditor extends AuditorBase {
         "shipped",
         "delivered",
         "in_production",
-      ] as never);
+      ] satisfies OrderStatus[]);
 
     const paidUsers = new Set(
       ((paidData ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
@@ -294,7 +297,7 @@ export class CustomerHealthAuditor extends AuditorBase {
     const lastWeek = new Date();
     lastWeek.setDate(lastWeek.getDate() - 14);
 
-    const successStatuses = [
+    const successStatuses: OrderStatus[] = [
       "paid",
       "shipped",
       "delivered",
@@ -309,7 +312,7 @@ export class CustomerHealthAuditor extends AuditorBase {
       .from("orders")
       .select("total")
       .gte("created_at", thisWeek.toISOString())
-      .in("status", successStatuses as never);
+      .in("status", successStatuses);
 
     // Önceki 7 gün
     const { data: lastData } = await this.admin
@@ -317,7 +320,7 @@ export class CustomerHealthAuditor extends AuditorBase {
       .select("total")
       .gte("created_at", lastWeek.toISOString())
       .lt("created_at", thisWeek.toISOString())
-      .in("status", successStatuses as never);
+      .in("status", successStatuses);
 
     const thisRows = (thisData ?? []) as Array<{ total: number | string }>;
     const lastRows = (lastData ?? []) as Array<{ total: number | string }>;
@@ -403,7 +406,7 @@ export class CustomerHealthAuditor extends AuditorBase {
         "delivered",
         "in_production",
         "ready_to_ship",
-      ] as never)
+      ] satisfies OrderStatus[])
       .limit(500);
 
     const rows = (data ?? []) as Array<{

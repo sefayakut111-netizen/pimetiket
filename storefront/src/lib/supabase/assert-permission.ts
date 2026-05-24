@@ -50,7 +50,7 @@ export async function assertPermission(
     // RPC ile yetki kontrolü (server-side, SECURITY DEFINER)
     const { data: hasPerm, error: rpcErr } = await supabase.rpc(
       "fn_has_permission",
-      { p_module: module, p_action: action } as never
+      { p_module: module, p_action: action }
     );
 
     if (rpcErr || hasPerm !== true) {

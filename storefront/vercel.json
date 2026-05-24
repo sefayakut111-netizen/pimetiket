@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/cron/auditors/finance",
-      "schedule": "0 21 * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/auditors/workflow",

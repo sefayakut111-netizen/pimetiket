@@ -12,6 +12,7 @@
 
 import type { ActionHandler } from "../_shared/proposal";
 import { sendMail, isResendConfigured } from "@/lib/mail/resend";
+import { getAuditorNotifyEmails } from "@/lib/admin-recipients";
 
 interface NotifyPayload {
   subject: string;
@@ -46,25 +47,8 @@ const notifySefa: ActionHandler = async ({ admin, payload }) => {
     };
   }
 
-  // Recipient: env override veya profiles admin'leri
-  const envOverride = process.env.AUDITOR_NOTIFY_EMAILS;
-  let recipients: string[] = [];
-
-  if (envOverride) {
-    recipients = envOverride
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.includes("@"));
-  } else {
-    const { data } = await admin
-      .from("profiles")
-      .select("email")
-      .in("role", ["admin", "staff"] as never);
-    const rows = (data ?? []) as Array<{ email: string | null }>;
-    recipients = rows
-      .map((r) => r.email)
-      .filter((e): e is string => !!e && e.includes("@"));
-  }
+  // Recipient: env override veya admin/staff auth email'leri
+  const recipients = await getAuditorNotifyEmails();
 
   if (recipients.length === 0) {
     return {

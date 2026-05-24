@@ -20,6 +20,7 @@
 import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 import type { ActionResult, AuditorPendingActionRow } from "./types";
 
 // Action handler implementasyonları
@@ -165,10 +166,10 @@ export async function executePendingAction(opts: {
       executed_by: opts.executedBy,
       result: execResult.result,
       affected_rows: execResult.affectedRows ?? null,
-      affected_ids: execResult.affectedIds ?? null,
-      external_call: execResult.externalCall ?? null,
+      affected_ids: (execResult.affectedIds ?? null) as Json | null,
+      external_call: (execResult.externalCall ?? null) as Json | null,
       error: execResult.error ?? null,
-    } as never)
+    } satisfies TablesInsert<"auditor_action_log">)
     .select("id")
     .single();
 
@@ -184,8 +185,8 @@ export async function executePendingAction(opts: {
         result: execResult.result,
         affectedRows: execResult.affectedRows,
         affectedIds: execResult.affectedIds,
-      } as Record<string, unknown>,
-    } as never)
+      } as Json,
+    } satisfies TablesUpdate<"auditor_pending_actions">)
     .eq("id", pending.id);
 
   return {
@@ -210,6 +211,6 @@ async function markFailed(
       status: "failed",
       applied_at: new Date().toISOString(),
       apply_error: errorMsg,
-    } as never)
+    } satisfies TablesUpdate<"auditor_pending_actions">)
     .eq("id", pendingActionId);
 }

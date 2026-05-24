@@ -15,6 +15,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 import { STORAGE_BUCKET } from "./design-files";
 
 interface OrderItemWithDesign {
@@ -40,7 +41,7 @@ interface TempUploadRow {
  * @returns promoted count
  */
 export async function promoteOrderDesigns(args: {
-  admin: SupabaseClient;
+  admin: SupabaseClient<Database>;
   orderId: string;
   userId: string;
   /** order_items array — meta.designTempId varsa promote edilir */
@@ -115,8 +116,8 @@ export async function promoteOrderDesigns(args: {
         sha256: temp.sha256,
         version: 1,
         status: "analyzing",
-      },
-    ] as never);
+      } satisfies TablesInsert<"design_files">,
+    ]);
 
     if (insertErr) {
       console.error("[promote] design_files insert error:", insertErr);
@@ -126,7 +127,7 @@ export async function promoteOrderDesigns(args: {
     // 4) Temp upload row'unu işaretle (promoted_to)
     await admin
       .from("design_temp_uploads")
-      .update({ promoted_to: fileId } as never)
+      .update({ promoted_to: fileId } satisfies TablesUpdate<"design_temp_uploads">)
       .eq("id", temp.id);
 
     // 5) order_events log
@@ -145,8 +146,8 @@ export async function promoteOrderDesigns(args: {
           mimeType: temp.mime_type,
           source: "pre_purchase_upload",
         },
-      },
-    ] as never);
+      } satisfies TablesInsert<"order_events">,
+    ]);
 
     promoted++;
   }

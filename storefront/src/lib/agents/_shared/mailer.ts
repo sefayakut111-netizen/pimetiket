@@ -17,7 +17,7 @@
 
 import "server-only";
 import { sendMail, isResendConfigured } from "@/lib/mail/resend";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuditorNotifyEmails } from "@/lib/admin-recipients";
 import {
   AUDITOR_LABELS,
   AUDITOR_EMOJI,
@@ -26,7 +26,6 @@ import {
   type PendingActionStatus,
   type ActionResult,
 } from "./types";
-import type { Enums } from "@/lib/supabase/types";
 
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
@@ -41,27 +40,7 @@ const SITE_URL = () =>
  * Override: env'de AUDITOR_NOTIFY_EMAILS varsa onu kullan (CSV).
  */
 async function getAdminRecipients(): Promise<string[]> {
-  const envOverride = process.env.AUDITOR_NOTIFY_EMAILS;
-  if (envOverride) {
-    return envOverride
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.includes("@"));
-  }
-
-  const admin = createAdminClient();
-  const { data: profiles } = await admin
-    .from("profiles")
-    .select("id")
-    .in("role", ["admin", "staff"] as Enums<"user_role">[]);
-
-  const emails: string[] = [];
-  for (const p of profiles ?? []) {
-    const { data: userData } = await admin.auth.admin.getUserById(p.id);
-    const email = userData?.user?.email;
-    if (email?.includes("@")) emails.push(email);
-  }
-  return emails;
+  return getAuditorNotifyEmails();
 }
 
 // ============================================================

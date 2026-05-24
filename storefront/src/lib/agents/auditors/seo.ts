@@ -121,7 +121,7 @@ export class SeoAuditor extends AuditorBase {
     const { count } = await this.admin
       .from("blog_posts")
       .select("*", { count: "exact", head: true })
-      .eq("is_published", true as never);
+      .eq("is_published", true);
 
     const published = count ?? 0;
 

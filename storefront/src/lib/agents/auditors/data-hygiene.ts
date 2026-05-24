@@ -115,7 +115,7 @@ export class DataHygieneAuditor extends AuditorBase {
     const { count } = await this.admin
       .from("payment_intents")
       .select("*", { count: "exact", head: true })
-      .eq("status", "failed" as never)
+      .eq("status", "failed")
       .lt("created_at", cutoff.toISOString());
 
     if (!count || count === 0) {
@@ -179,7 +179,7 @@ export class DataHygieneAuditor extends AuditorBase {
     const { count } = await this.admin
       .from("auditor_runs")
       .select("*", { count: "exact", head: true })
-      .eq("status", "failed" as never)
+      .eq("status", "failed")
       .lt("started_at", cutoff.toISOString());
 
     if (!count || count === 0) return { findings, metrics: { count: 0 } };

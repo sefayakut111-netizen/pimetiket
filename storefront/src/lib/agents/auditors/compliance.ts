@@ -17,6 +17,9 @@ import type {
   AuditorRunResult,
   SuggestedAction,
 } from "../_shared/types";
+import type { Enums } from "@/lib/supabase/types";
+
+type OrderStatus = Enums<"order_status">;
 
 const TUNE = {
   kvkkSlaDays: 30,
@@ -94,7 +97,7 @@ export class ComplianceAuditor extends AuditorBase {
     const { data } = await this.admin
       .from("kvkk_requests")
       .select("id, user_id, created_at, request_type, status")
-      .eq("status", "pending" as never)
+      .eq("status", "pending")
       .lt("created_at", warningCutoff.toISOString())
       .order("created_at", { ascending: true })
       .limit(50);
@@ -215,7 +218,7 @@ export class ComplianceAuditor extends AuditorBase {
         "shipped",
         "delivered",
         "in_production",
-      ] as never);
+      ] satisfies OrderStatus[]);
 
     const rows = (data ?? []) as Array<{ total: number | string }>;
     const yearlyTotal = rows.reduce((s, r) => s + Number(r.total || 0), 0);

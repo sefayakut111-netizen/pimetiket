@@ -37,10 +37,9 @@ const processKvkkDeletion: ActionHandler = async ({ admin, payload }) => {
     try {
       // RPC çağrısı: fn_anonymize_user_by_kvkk_request
       // (Migration 022+ ile gelmesi gerek; yoksa graceful skip)
-      const { data, error } = await admin.rpc(
-        "fn_process_kvkk_deletion" as never,
-        { p_request_id: requestId } as never
-      );
+      const { data, error } = await admin.rpc("fn_process_kvkk_deletion", {
+        p_request_id: requestId,
+      });
 
       if (error) {
         results.push({

@@ -32,6 +32,7 @@
 import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { findAuthUserIdByEmail } from "@/lib/auth-user-lookup";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -109,12 +110,7 @@ export async function POST(req: Request) {
   let userId = primary.user_id;
   if (!userId) {
     // Sefa 23 May v68 (P1.6): listUsers paging fix — RPC ile email lookup
-    const { data: lookupRows } = await admin.rpc(
-      "fn_find_auth_user_by_email" as never,
-      { p_email: email } as never
-    );
-    const existingUserId =
-      (lookupRows as Array<{ user_id: string }> | null)?.[0]?.user_id ?? null;
+    const existingUserId = await findAuthUserIdByEmail(admin, email);
 
     if (existingUserId) {
       userId = existingUserId;
@@ -139,7 +135,7 @@ export async function POST(req: Request) {
     }
     await admin
       .from("partner_contacts")
-      .update({ user_id: userId } as never)
+      .update({ user_id: userId })
       .eq("id", primary.id);
   }
 

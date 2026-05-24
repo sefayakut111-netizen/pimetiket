@@ -13,6 +13,7 @@
 
 import { createClient } from "./supabase/client";
 import { getCurrentUser } from "./supabase/auth-bridge";
+import type { TablesInsert, TablesUpdate } from "./supabase/types";
 
 // ============================================================
 // Types
@@ -102,7 +103,7 @@ export async function createMyInvoiceProfile(
   if (!user) return { ok: false, reason: "auth_required" };
   const supabase = createClient();
 
-  const insertVals = {
+  const insertVals: TablesInsert<"customer_invoice_profiles"> = {
     user_id: user.id,
     label: payload.label ?? null,
     vkn: payload.vkn,
@@ -114,7 +115,7 @@ export async function createMyInvoiceProfile(
 
   const { data, error } = await supabase
     .from("customer_invoice_profiles")
-    .insert([insertVals] as never)
+    .insert([insertVals])
     .select("*")
     .single();
 
@@ -137,7 +138,7 @@ export async function updateMyInvoiceProfile(
   const user = await getCurrentUser();
   if (!user) return { ok: false };
   const supabase = createClient();
-  const updates: Record<string, unknown> = {};
+  const updates: TablesUpdate<"customer_invoice_profiles"> = {};
   if (payload.label !== undefined) updates.label = payload.label;
   if (payload.vkn !== undefined) updates.vkn = payload.vkn;
   if (payload.companyName !== undefined)
@@ -149,7 +150,7 @@ export async function updateMyInvoiceProfile(
 
   const { error } = await supabase
     .from("customer_invoice_profiles")
-    .update(updates as never)
+    .update(updates)
     .eq("id", id);
   if (error) {
     console.error("[invoice] update error:", error);

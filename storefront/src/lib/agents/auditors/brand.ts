@@ -74,7 +74,7 @@ export class BrandAuditor extends AuditorBase {
     const { data } = await this.admin
       .from("blog_posts")
       .select("id, slug, title, body_md")
-      .eq("is_published", true as never)
+      .eq("is_published", true)
       .limit(50);
 
     const posts = (data ?? []) as Array<{

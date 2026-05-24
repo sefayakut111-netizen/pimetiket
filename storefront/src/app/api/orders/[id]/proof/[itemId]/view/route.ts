@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { TablesUpdate } from "@/lib/supabase/types";
 
 export async function POST(
   _req: Request,
@@ -58,10 +59,10 @@ export async function POST(
     .update({
       proof_status: "viewed",
       proof_viewed_at: new Date().toISOString(),
-    } as never)
+    } satisfies TablesUpdate<"order_items">)
     .eq("id", itemId)
     .eq("order_id", orderId)
-    .eq("proof_status", "pending" as never);
+    .eq("proof_status", "pending");
 
   if (updErr) {
     console.error("[proof/view] update error:", updErr);

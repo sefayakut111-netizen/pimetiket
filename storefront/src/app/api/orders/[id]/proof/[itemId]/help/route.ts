@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 interface Body {
   message?: unknown;
@@ -101,7 +102,7 @@ export async function POST(
       user_id: user.id,
       message: messageRaw,
       status: "open",
-    } as never)
+    } satisfies TablesInsert<"proof_help_requests">)
     .select("id")
     .single();
   if (hrErr) {
@@ -115,7 +116,7 @@ export async function POST(
   // Item status'a 'help_requested' set et
   await admin
     .from("order_items")
-    .update({ proof_status: "help_requested" } as never)
+    .update({ proof_status: "help_requested" })
     .eq("id", itemId)
     .eq("order_id", orderId);
 
@@ -124,7 +125,7 @@ export async function POST(
     {
       order_id: orderId,
       event_type: "proof_help_requested",
-      status_after: orderRow.status,
+      status_after: orderRow.status as Enums<"order_status">,
       actor_id: user.id,
       actor_role: "customer",
       summary: `Müşteri operatör yardımı istedi: ${messageRaw.slice(0, 80)}...`,
@@ -133,8 +134,8 @@ export async function POST(
         help_request_id: (hr as { id: string }).id,
         message: messageRaw,
       },
-    },
-  ] as never);
+    } satisfies TablesInsert<"order_events">,
+  ]);
 
   return NextResponse.json({
     ok: true,

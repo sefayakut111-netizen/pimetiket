@@ -288,6 +288,7 @@ async function runOrderDesignQCInner(
           model: result.model,
           duration_ms: result.durationMs,
           cost_usd: result.costUsd,
+          tokens_used: result.tokensUsed ?? null,
         } as never);
 
         return result.verdict as VerdictKey;

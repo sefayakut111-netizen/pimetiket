@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
             .from("profiles")
             .update({
               email_verified_at: user.email_confirmed_at,
-            } as never)
+            })
             .eq("id", user.id)
             .is("email_verified_at", null); // sadece null ise update (idempotent)
         } catch {

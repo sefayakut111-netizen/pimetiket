@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 interface Body {
   cutlineId?: unknown;
@@ -81,7 +82,7 @@ export async function POST(
       proof_status: "approved",
       proof_approved_at: now,
       ...(cutlineId ? { cutline_design_id: cutlineId } : {}),
-    } as never)
+    } satisfies TablesUpdate<"order_items">)
     .eq("id", itemId)
     .eq("order_id", orderId);
 
@@ -97,7 +98,7 @@ export async function POST(
   if (cutlineId) {
     await admin
       .from("cutline_designs")
-      .update({ status: "approved", approved_at: now } as never)
+      .update({ status: "approved", approved_at: now })
       .eq("id", cutlineId)
       .eq("order_item_id", itemId)
       .in("status", ["draft", "auto_generated"]);
@@ -106,7 +107,7 @@ export async function POST(
     // cutline'ları approve et (multi-design: her tasarım için ayrı row).
     await admin
       .from("cutline_designs")
-      .update({ status: "approved", approved_at: now } as never)
+      .update({ status: "approved", approved_at: now })
       .eq("order_item_id", itemId)
       .in("status", ["draft", "auto_generated"]);
   }
@@ -123,13 +124,13 @@ export async function POST(
     {
       order_id: orderId,
       event_type: "proof_item_approved",
-      status_after: orderRow.status,
+      status_after: orderRow.status as Enums<"order_status">,
       actor_id: user.id,
       actor_role: "customer",
       summary: `Müşteri item ${itemId.slice(0, 8)}... onayladı`,
       detail: { item_id: itemId, cutline_id: cutlineId },
-    },
-  ] as never);
+    } satisfies TablesInsert<"order_events">,
+  ]);
 
   return NextResponse.json({
     ok: true,

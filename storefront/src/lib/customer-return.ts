@@ -14,6 +14,7 @@ import {
   getCurrentUser,
   isLoggedInSync,
 } from "./supabase/auth-bridge";
+import type { Enums, TablesInsert } from "./supabase/types";
 
 const STORAGE_KEY = "pim_customer_returns_v1";
 const MAX_RETURNS = 100;
@@ -184,10 +185,10 @@ async function dbInsert(
       user_id: userId,
       customer_name: payload.customerName,
       customer_email: payload.customerEmail,
-      reason: payload.reason,
+      reason: payload.reason as Enums<"return_reason">,
       description: payload.description,
       attachments: payload.attachments,
-    } as never)
+    } satisfies TablesInsert<"returns">)
     .select("*")
     .single();
   if (error) {

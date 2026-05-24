@@ -23,6 +23,7 @@ import type {
   AuditorRunResult,
   SuggestedAction,
 } from "../_shared/types";
+import * as Sentry from "@sentry/nextjs";
 
 // ============================================================
 // Tunables — istersen DB tablosuna taşınabilir (Sefa karar verir)
@@ -101,24 +102,44 @@ export class SecurityAuditor extends AuditorBase {
     let failedRows: Array<{ ip: string; email: string; count: number }> = [];
     try {
       const { data, error } = await this.admin.rpc(
-        "fn_recent_failed_logins" as never,
+        "fn_recent_failed_logins",
         {
           p_since: since.toISOString(),
           p_threshold: TUNE.bruteForceFailedLoginsThreshold,
-        } as never
+        }
       );
 
       if (error) {
-        // RPC yoksa graceful skip (henüz oluşturulmamış olabilir)
-        return [];
+        Sentry.captureException(error, {
+          tags: { scope: "auditor.security", check: "brute_force" },
+        });
+        return [
+          this.warning(
+            "brute_force_check_failed",
+            "Brute force kontrolü çalıştırılamadı",
+            `**fn_recent_failed_logins** RPC hatası: ${error.message}. Migration 041 push edildi mi kontrol et — bu kontrol atlandı.`,
+            { error: error.message }
+          ),
+        ];
       }
       failedRows = (data ?? []) as Array<{
         ip: string;
         email: string;
         count: number;
       }>;
-    } catch {
-      return [];
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      Sentry.captureException(err, {
+        tags: { scope: "auditor.security", check: "brute_force" },
+      });
+      return [
+        this.warning(
+          "brute_force_check_failed",
+          "Brute force kontrolü exception",
+          `RPC çağrısı patladı: ${errMsg}. Brute force tespiti bu run'da yapılamadı.`,
+          { error: errMsg }
+        ),
+      ];
     }
 
     return failedRows.map((row) => {
@@ -161,7 +182,19 @@ export class SecurityAuditor extends AuditorBase {
       .ilike("failure_reason", "hash_invalid%")
       .gte("created_at", since.toISOString());
 
-    if (error) return [];
+    if (error) {
+      Sentry.captureException(error, {
+        tags: { scope: "auditor.security", check: "paytr_spoof" },
+      });
+      return [
+        this.warning(
+          "paytr_spoof_check_failed",
+          "PayTR spoof kontrolü çalıştırılamadı",
+          `payment_intents sorgusu başarısız: ${error.message}. Spoof tespiti bu run'da atlandı.`,
+          { error: error.message }
+        ),
+      ];
+    }
 
     const rows = (data ?? []) as Array<{ id: string; failure_reason: string }>;
     if (rows.length < TUNE.paytrSpoofThreshold) return [];

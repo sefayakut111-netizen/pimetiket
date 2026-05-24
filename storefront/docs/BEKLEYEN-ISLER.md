@@ -75,9 +75,12 @@ maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 
 ### Sıradaki (şema oturumundan kalan)
 
-| # | İş | Öncelik |
-|---|---|---|
-| — | (Tamamlandı) | — |
+| # | İş | Öncelik | Durum |
+|---|---|---|---|
+| 1 | Migration 085–089 remote apply + types regen | P1 | ⏳ script hazır |
+| 2 | Kalan `as never` (~150 dosya) | P3 | 🔄 ~70 azaltıldı |
+| 3 | Smoke test checklist | P2 | ✅ `docs/SCHEMA-SMOKE-TEST.md` |
+| 4 | `admin-recipients` + `auth-user-lookup` helper | P2 | ✅ |
 
 ---
 

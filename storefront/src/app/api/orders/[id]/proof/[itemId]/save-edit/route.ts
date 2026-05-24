@@ -45,6 +45,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadToR2, r2KeyBuilders } from "@/lib/storage/r2-client";
+import type { Enums, Json, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 interface Body {
   svg?: unknown;
@@ -316,7 +317,7 @@ export async function POST(
   }
 
   // cutline_designs INSERT
-  const cdInsert = {
+  const cdInsert: TablesInsert<"cutline_designs"> = {
     order_id: orderId,
     order_item_id: itemId,
     design_file_id: designFileId, // Mig 063 — multi-design proof
@@ -347,12 +348,12 @@ export async function POST(
     white_plan_path_count: whitePlanPathCount,
     has_custom_white_plan: hasCustomWhitePlan,
     tier,
-    detected_cut_contour_names: detectedCutNames,
+    detected_cut_contour_names: detectedCutNames as Json | null,
   };
 
   const { data: cd, error: cdErr } = await admin
     .from("cutline_designs")
-    .insert(cdInsert as never)
+    .insert(cdInsert)
     .select("id")
     .single();
   if (cdErr) {
@@ -369,7 +370,7 @@ export async function POST(
   {
     const supersedeQuery = admin
       .from("cutline_designs")
-      .update({ status: "superseded" } as never)
+      .update({ status: "superseded" })
       .eq("order_item_id", itemId)
       .in("status", ["draft", "auto_generated"])
       .neq("id", cutlineId);
@@ -403,7 +404,7 @@ export async function POST(
             partner_decision_note: "POC editör ile revize",
           }
         : {}),
-    } as never)
+    } satisfies TablesUpdate<"order_items">)
     .eq("id", itemId)
     .eq("order_id", orderId);
 
@@ -416,7 +417,7 @@ export async function POST(
         : isPartner
           ? "partner_revised_item"
           : "proof_item_edited",
-      status_after: orderRow.status,
+      status_after: orderRow.status as Enums<"order_status">,
       actor_id: user.id,
       actor_role: isAuto ? "system" : isPartner ? "partner" : "customer",
       summary: isAuto
@@ -434,8 +435,8 @@ export async function POST(
         tier,
         auto: isAuto,
       },
-    },
-  ] as never);
+    } satisfies TablesInsert<"order_events">,
+  ]);
 
   return NextResponse.json({
     ok: true,

@@ -34,6 +34,7 @@
 import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 import {
   sendAuditorReport,
   sendActionApprovalRequest,
@@ -88,7 +89,7 @@ export abstract class AuditorBase {
         critical_count: 0,
         warning_count: 0,
         info_count: 0,
-      } as never)
+      } satisfies TablesInsert<"auditor_runs">)
       .select("id")
       .single();
 
@@ -118,7 +119,7 @@ export abstract class AuditorBase {
           finished_at: new Date().toISOString(),
           duration_ms: durationMs,
           error: errMsg,
-        } as never)
+        } satisfies TablesUpdate<"auditor_runs">)
         .eq("id", runId);
 
       Sentry.captureException(err, {
@@ -134,25 +135,27 @@ export abstract class AuditorBase {
     const durationMs = Date.now() - startedAt;
 
     // 4) Finding'leri toplu insert
-    const findingRows = result.findings.map((f) => ({
-      run_id: runId,
-      auditor_name: this.auditorName,
-      severity: f.severity,
-      category: f.category,
-      title: f.title,
-      description: f.description,
-      data: f.data ?? null,
-      suggested_action_type: f.suggestedAction?.type ?? null,
-      suggested_action_payload: f.suggestedAction?.payload ?? null,
-      suggested_action_description: f.suggestedAction?.description ?? null,
-    }));
+    const findingRows: TablesInsert<"auditor_findings">[] =
+      result.findings.map((f) => ({
+        run_id: runId,
+        auditor_name: this.auditorName,
+        severity: f.severity,
+        category: f.category,
+        title: f.title,
+        description: f.description,
+        data: (f.data ?? null) as Json | null,
+        suggested_action_type: f.suggestedAction?.type ?? null,
+        suggested_action_payload: (f.suggestedAction?.payload ??
+          null) as Json | null,
+        suggested_action_description: f.suggestedAction?.description ?? null,
+      }));
 
     let insertedFindingIds: Array<{ id: string; suggested: boolean; finding: AuditorFinding }> = [];
 
     if (findingRows.length > 0) {
       const { data: inserted, error: findErr } = await this.admin
         .from("auditor_findings")
-        .insert(findingRows as never)
+        .insert(findingRows)
         .select("id");
 
       if (findErr) {
@@ -171,27 +174,28 @@ export abstract class AuditorBase {
     }
 
     // 5) suggestedAction olan finding'leri pending_actions'a düşür
-    const pendingRows = insertedFindingIds
-      .filter((x) => x.suggested && x.finding.suggestedAction)
-      .map((x) => {
-        const sa = x.finding.suggestedAction!;
-        return {
-          finding_id: x.id,
-          run_id: runId,
-          auditor_name: this.auditorName,
-          action_type: sa.type,
-          action_payload: sa.payload,
-          title: sa.title,
-          description: sa.description,
-          severity: x.finding.severity,
-          status: "pending",
-        };
-      });
+    const pendingRows: TablesInsert<"auditor_pending_actions">[] =
+      insertedFindingIds
+        .filter((x) => x.suggested && x.finding.suggestedAction)
+        .map((x) => {
+          const sa = x.finding.suggestedAction!;
+          return {
+            finding_id: x.id,
+            run_id: runId,
+            auditor_name: this.auditorName,
+            action_type: sa.type,
+            action_payload: sa.payload as Json,
+            title: sa.title,
+            description: sa.description,
+            severity: x.finding.severity,
+            status: "pending",
+          };
+        });
 
     if (pendingRows.length > 0) {
       const { error: pendErr } = await this.admin
         .from("auditor_pending_actions")
-        .insert(pendingRows as never);
+        .insert(pendingRows);
 
       if (pendErr) {
         Sentry.captureException(pendErr, {
@@ -217,11 +221,11 @@ export abstract class AuditorBase {
         info_count: counts.info,
         summary: result.summary,
         summary_md: result.summaryMd ?? null,
-        metrics_snapshot: result.metricsSnapshot ?? null,
-      } as never)
+        metrics_snapshot: (result.metricsSnapshot ?? null) as Json | null,
+      } satisfies TablesUpdate<"auditor_runs">)
       .eq("id", runId);
 
-    // 7) Mail bildirimleri (fire-and-forget — mail başarısızlığı run'ı bozmaz)
+    // 7) Mail bildirimleri
     //
     // Strateji (Sefa kuralı 16 May v2):
     //   - HER run'da mail YOK — sadece warning/critical varsa

@@ -30,6 +30,7 @@ import {
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateCartPricing } from "@/lib/payment-validation";
+import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 // ============================================================
 // Validation
@@ -296,12 +297,12 @@ export async function POST(req: NextRequest) {
     {
       id: merchantOid,
       user_id: user.id,
-      iyzico_token: result.token, // legacy alan adı, PayTR token saklıyoruz
+      iyzico_token: result.token,
       card_amount: cardAmount,
-      wallet_amount: 0, // legacy column (Migration 015 sonrası kullanılmıyor)
-      snapshot,
-    },
-  ] as never);
+      wallet_amount: 0,
+      snapshot: snapshot as Json,
+    } satisfies TablesInsert<"payment_intents">,
+  ]);
 
   if (insertErr) {
     console.error("[payment/init] intent insert error:", insertErr);
@@ -319,7 +320,7 @@ export async function POST(req: NextRequest) {
       actor_id: user.id,
       actor_email: user.email ?? null,
       actor_role: "customer",
-      action: "settings.update", // generic — yeni enum eklemeden
+      action: "settings.update",
       target_type: "payment_intent",
       target_id: merchantOid,
       summary: `Telif taahhüt onayı verildi · payment_intent ${merchantOid}`,
@@ -329,11 +330,11 @@ export async function POST(req: NextRequest) {
         accepted_at: copyrightAcceptedAt,
         ip: getClientIp(req),
         user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
-      },
+      } as Json,
       ip_address: getClientIp(req),
       user_agent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
-    },
-  ] as never);
+    } satisfies TablesInsert<"audit_log">,
+  ]);
 
   return NextResponse.json({
     paymentPageUrl: result.iframeUrl,

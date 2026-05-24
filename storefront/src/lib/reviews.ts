@@ -11,6 +11,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { Json, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 // ============================================================
 // Types
@@ -82,7 +83,7 @@ export async function getHomepageReviews(
   const supabase = createClient();
   const { data, error } = await supabase.rpc("get_homepage_reviews", {
     p_limit: limit,
-  } as never);
+  });
   if (error) {
     console.error("[reviews] getHomepageReviews error:", error.message);
     return [];
@@ -104,7 +105,7 @@ export async function getProductReviews(
   const { data, error } = await supabase.rpc("get_product_reviews", {
     p_product_type: productType,
     p_limit: limit,
-  } as never);
+  });
   if (error) {
     console.error("[reviews] getProductReviews error:", error.message);
     return [];
@@ -178,7 +179,7 @@ export async function recordBannerShown(
     .update({
       in_app_shown_count: next,
       last_in_app_shown_at: new Date().toISOString(),
-    } as never)
+    } satisfies TablesUpdate<"review_requests">)
     .eq("id", reviewRequestId);
 }
 
@@ -190,7 +191,7 @@ export async function dismissBanner(
   permanent: boolean = false
 ): Promise<void> {
   const supabase = createClient();
-  const updates: Record<string, unknown> = {
+  const updates: TablesUpdate<"review_requests"> = {
     updated_at: new Date().toISOString(),
   };
   if (permanent) {
@@ -204,7 +205,7 @@ export async function dismissBanner(
   }
   await supabase
     .from("review_requests")
-    .update(updates as never)
+    .update(updates)
     .eq("id", reviewRequestId);
 }
 
@@ -282,10 +283,10 @@ export async function submitReview(
       body: input.body.trim(),
       display_name: input.display_name?.trim() ?? null,
       show_on_homepage: input.show_on_homepage,
-      photos: input.photos,
+      photos: input.photos as unknown as Json,
       product_type: input.product_type,
       status: "pending",
-    } as never)
+    } satisfies TablesInsert<"reviews">)
     .select("id")
     .single();
 
@@ -302,7 +303,7 @@ export async function submitReview(
       review_id: newReview.id,
       completed_at: new Date().toISOString(),
       status: "completed",
-    } as never)
+    } satisfies TablesUpdate<"review_requests">)
     .eq("order_id", input.order_id);
 
   return { ok: true, id: newReview.id };

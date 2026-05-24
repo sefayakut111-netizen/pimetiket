@@ -93,6 +93,7 @@ export interface DesignQCResult extends DesignQCAnalysis {
   durationMs: number;
   model: string;
   costUsd?: number;
+  tokensUsed?: number;
 }
 
 // ============================================================
@@ -224,6 +225,7 @@ export async function runDesignQC(
       ],
       durationMs: duration,
       model: "no-ai-vector-passthrough",
+      tokensUsed: 0,
     };
   }
 
@@ -265,6 +267,7 @@ export async function runDesignQC(
       durationMs: duration,
       model: "gpt-4o",
       costUsd,
+      tokensUsed,
     };
   } catch (err) {
     const duration = Date.now() - start;

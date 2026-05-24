@@ -38,9 +38,9 @@ const expireStaleIntents: ActionHandler = async ({ admin, payload }) => {
     .update({
       status: "failed",
       failure_reason: `auditor_expired: ${reason}`,
-    } as never)
+    })
     .in("id", intentIds)
-    .eq("status", "pending" as never)
+    .eq("status", "pending")
     .select("id");
 
   if (error) {

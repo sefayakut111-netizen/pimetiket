@@ -18,6 +18,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
 import {
   AUDITOR_NAMES,
   type AuditorLatestRunSummary,
@@ -54,6 +55,8 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
+
+  await unsnoozeExpiredActions(admin);
 
   // 1) Tüm auditor'lar için son run
   const { data: runsData, error: runsErr } = await admin

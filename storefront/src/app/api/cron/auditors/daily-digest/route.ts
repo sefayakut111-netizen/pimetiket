@@ -25,6 +25,10 @@ import {
   type AuditorName,
   type AuditorLatestRunSummary,
 } from "@/lib/agents/_shared/types";
+import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
+
+/** Bu süreden uzun çalışmayan denetçiler stale sayılır */
+const STALE_AUDITOR_DAYS = 7;
 
 interface LatestRunRow {
   auditor_name: string;
@@ -51,12 +55,32 @@ function fmtTime(iso: string | null): string {
   return `${diffD} gün önce`;
 }
 
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor(
+    (Date.now() - new Date(iso).getTime()) / (86400_000)
+  );
+}
+
+function getStaleAuditors(
+  summaries: AuditorLatestRunSummary[]
+): AuditorLatestRunSummary[] {
+  return summaries.filter((a) => {
+    if (!a.latestRunId || !a.startedAt) return true;
+    const days = daysSince(a.startedAt);
+    return days !== null && days >= STALE_AUDITOR_DAYS;
+  });
+}
+
 export async function GET(req: Request) {
   // Auth — Sefa 23 May v68 (P1.3): assertCronAuth (timing-safe).
   const guard = assertCronAuth(req);
   if (guard) return guard;
 
   const admin = createAdminClient();
+
+  // Süresi dolmuş ertelenen aksiyonları bekleyen kuyruğa al (digest pending sayısı doğru olsun)
+  await unsnoozeExpiredActions(admin);
 
   // Son run'ları çek
   const { data, error } = await admin
@@ -97,6 +121,7 @@ export async function GET(req: Request) {
   const totalCritical = summaries.reduce((s, a) => s + a.criticalCount, 0);
   const totalWarning = summaries.reduce((s, a) => s + a.warningCount, 0);
   const neverRun = summaries.filter((a) => !a.latestRunId).length;
+  const staleAuditors = getStaleAuditors(summaries);
 
   // Pending action sayısı
   const { count: pendingCount } = await admin
@@ -106,7 +131,9 @@ export async function GET(req: Request) {
 
   // Mail içeriği
   const subject =
-    totalCritical > 0
+    staleAuditors.length > 0
+      ? `⚠️ Pim Etiket Brifing — ${staleAuditors.length} denetçi ${STALE_AUDITOR_DAYS}+ gün çalışmadı`
+      : totalCritical > 0
       ? `🔴 Pim Etiket Günlük Brifing — ${totalCritical} KRİTİK`
       : totalWarning > 0
         ? `🟡 Pim Etiket Günlük Brifing — ${totalWarning} uyarı`
@@ -117,6 +144,7 @@ export async function GET(req: Request) {
     totalCritical,
     totalWarning,
     neverRun,
+    staleAuditors,
     pendingCount: pendingCount ?? 0,
   });
 
@@ -155,6 +183,7 @@ export async function GET(req: Request) {
     totalWarning,
     neverRun,
     pendingCount,
+    staleCount: staleAuditors.length,
   });
 }
 
@@ -167,15 +196,21 @@ function renderHtml(opts: {
   totalCritical: number;
   totalWarning: number;
   neverRun: number;
+  staleAuditors: AuditorLatestRunSummary[];
   pendingCount: number;
 }): string {
+  const staleSet = new Set(opts.staleAuditors.map((a) => a.auditorName));
+
   const rows = opts.summaries
     .map((a) => {
       const emoji = AUDITOR_EMOJI[a.auditorName as AuditorName];
       const label = AUDITOR_LABELS[a.auditorName as AuditorName];
+      const isStale = staleSet.has(a.auditorName);
       const status = !a.latestRunId
-        ? `<span style="color:#94a3b8">— henüz çalışmadı</span>`
-        : a.criticalCount > 0
+        ? `<span style="color:#dc2626;font-weight:600">— henüz çalışmadı</span>`
+        : isStale
+          ? `<span style="color:#dc2626;font-weight:600">⚠ ${STALE_AUDITOR_DAYS}+ gün sessiz</span>`
+          : a.criticalCount > 0
           ? `<span style="color:#dc2626;font-weight:600">${a.criticalCount} kritik</span>`
           : a.warningCount > 0
             ? `<span style="color:#ca8a04;font-weight:600">${a.warningCount} uyarı</span>`
@@ -206,6 +241,17 @@ function renderHtml(opts: {
 </div>`
       : "";
 
+  const staleBanner =
+    opts.staleAuditors.length > 0
+      ? `
+<div style="background:#fee2e2;border-radius:8px;padding:12px 16px;margin:0 0 16px;color:#991b1b;font-size:13px;font-weight:600;">
+  ⚠️ ${opts.staleAuditors.length} denetçi ${STALE_AUDITOR_DAYS}+ gündür çalışmadı: ${opts.staleAuditors
+        .map((a) => AUDITOR_LABELS[a.auditorName])
+        .join(", ")}
+  <a href="${SITE_URL()}/admin/denetciler" style="color:inherit;text-decoration:underline;margin-left:8px;">Kontrol et →</a>
+</div>`
+      : "";
+
   return `
 <div style="font-family:Inter,system-ui,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:32px 16px;">
   <div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -218,6 +264,7 @@ function renderHtml(opts: {
     </h1>
 
     ${pendingBanner}
+    ${staleBanner}
 
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
       ${rows}

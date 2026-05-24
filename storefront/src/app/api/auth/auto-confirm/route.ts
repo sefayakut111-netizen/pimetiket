@@ -25,6 +25,9 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/types";
+import { findAuthUserByEmail } from "@/lib/auth-user-lookup";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const SIGNUP_WINDOW_SECONDS = 60;
@@ -95,16 +98,10 @@ export async function POST(req: Request) {
     // Email ile kullanıcıyı bul. Sefa 23 May v68 (P1.6):
     // listUsers paging hatası kaldırıldı — fn_find_auth_user_by_email RPC
     // ile email-by-email lookup (Mig 088).
-    const { data: lookupRows, error: lookupErr } = await admin.rpc(
-      "fn_find_auth_user_by_email" as never,
-      { p_email: email } as never
+    const lookup = await findAuthUserByEmail(
+      admin as SupabaseClient<Database>,
+      email
     );
-    if (lookupErr) {
-      console.error("[auto-confirm] rpc lookup error:", lookupErr);
-      return genericOk();
-    }
-    const lookup =
-      (lookupRows as Array<{ user_id: string; email_confirmed_at: string | null }> | null)?.[0];
 
     // Kullanıcı yok → generic 200 (enumeration koruması)
     if (!lookup) {

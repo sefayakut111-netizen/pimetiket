@@ -18,6 +18,12 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import type { AllowedMime } from "@/lib/storage/design-files";
+import type {
+  Enums,
+  Json,
+  TablesInsert,
+  TablesUpdate,
+} from "@/lib/supabase/types";
 
 const CompleteBodySchema = z.object({
   fileId: z.string().uuid(),
@@ -81,7 +87,7 @@ export async function POST(req: NextRequest) {
     .update({
       status: "analyzing",
       sha256: body.sha256 ?? null,
-    } as never)
+    } satisfies TablesUpdate<"design_files">)
     .eq("id", body.fileId);
 
   if (updateErr) {
@@ -106,8 +112,8 @@ export async function POST(req: NextRequest) {
         sizeBytes: fileRow.size_bytes,
         mimeType: fileRow.mime_type,
       },
-    },
-  ] as never);
+    } satisfies TablesInsert<"order_events">,
+  ]);
 
   // 4) AI ön-kontrol pipeline tetikle (P0-5.5 — stub)
   // Production'da: queue (BullMQ / Inngest / pg_cron) + worker
@@ -186,7 +192,7 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
           await admin
             .from("design_files")
             .update({
-              status: "rejected",
+              status: "rejected" as Enums<"design_file_status">,
               ai_check: {
                 flags: [
                   {
@@ -194,8 +200,8 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
                     message: `Dosya içeriği MIME ile uyumsuz (iddia: ${meta.mime_type}, gerçek: ${magic.label}).`,
                   },
                 ],
-              } as never,
-            } as never)
+              } as Json,
+            })
             .eq("id", fileId);
           await admin.from("order_events").insert([
             {
@@ -209,8 +215,8 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
                 detected: magic.detected,
                 label: magic.label,
               },
-            },
-          ] as never);
+            } satisfies TablesInsert<"order_events">,
+          ]);
           return; // Bundan sonra AI check yapma
         }
       }
@@ -239,7 +245,7 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
 
   const hasError = flags.some((f) => f.kind === "error");
   const hasWarning = flags.some((f) => f.kind === "warning");
-  const newStatus = hasError
+  const newStatus: Enums<"design_file_status"> = hasError
     ? "qc_failed"
     : hasWarning
       ? "qc_warned"
@@ -249,8 +255,8 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
     .from("design_files")
     .update({
       status: newStatus,
-      ai_check: { flags } as never,
-    } as never)
+      ai_check: { flags } as unknown as Json,
+    } satisfies TablesUpdate<"design_files">)
     .eq("id", fileId);
 
   // Order durumunu da güncelle (qc_pending → qc_flagged eğer warning/error)
@@ -264,7 +270,7 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
       const orderId = (file as unknown as { order_id: string }).order_id;
       await admin
         .from("orders")
-        .update({ status: "qc_flagged" } as never)
+        .update({ status: "qc_flagged" })
         .eq("id", orderId);
       await admin.from("order_events").insert([
         {
@@ -273,9 +279,9 @@ async function runDesignAiCheck(fileId: string): Promise<void> {
           status_after: "qc_flagged",
           actor_role: "system",
           summary: "AI ön-kontrolde uyarı tespit edildi.",
-          detail: { fileId, flags },
-        },
-      ] as never);
+          detail: { fileId, flags: flags as unknown as Json },
+        } satisfies TablesInsert<"order_events">,
+      ]);
     }
   }
 }

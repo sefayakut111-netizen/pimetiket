@@ -11,6 +11,7 @@
 
 import { createClient } from "./supabase/client";
 import { getCurrentUser } from "./supabase/auth-bridge";
+import type { TablesInsert, TablesUpdate } from "./supabase/types";
 
 // ============================================================
 // Profile
@@ -87,13 +88,13 @@ export async function updateMyProfile(
   const user = await getCurrentUser();
   if (!user) return { ok: false, reason: "auth_required" };
   const supabase = createClient();
-  const updates: Record<string, unknown> = {};
+  const updates: TablesUpdate<"profiles"> = {};
   if (payload.displayName !== undefined)
     updates.display_name = payload.displayName;
   if (payload.phone !== undefined) updates.phone = payload.phone;
   const { error } = await supabase
     .from("profiles")
-    .update(updates as never)
+    .update(updates)
     .eq("id", user.id);
   if (error) {
     console.error("[profile] update error:", error);
@@ -121,7 +122,7 @@ export async function updateMyInvoiceInfo(
   const user = await getCurrentUser();
   if (!user) return { ok: false, reason: "auth_required" };
   const supabase = createClient();
-  const updates: Record<string, unknown> = {
+  const updates: TablesUpdate<"profiles"> = {
     invoice_type: info.type,
     tc: info.type === "individual" ? info.tc ?? null : null,
     vkn: info.type === "corporate" ? info.vkn ?? null : null,
@@ -131,7 +132,7 @@ export async function updateMyInvoiceInfo(
   };
   const { error } = await supabase
     .from("profiles")
-    .update(updates as never)
+    .update(updates)
     .eq("id", user.id);
   if (error) {
     console.error("[profile] updateInvoice error:", error);
@@ -216,10 +217,10 @@ export async function createMyAddress(
   if (payload.isDefault) {
     await supabase
       .from("addresses")
-      .update({ is_default: false } as never)
+      .update({ is_default: false })
       .eq("user_id", user.id);
   }
-  const insertVals = {
+  const insertVals: TablesInsert<"addresses"> = {
     user_id: user.id,
     label: payload.label ?? null,
     name: payload.name,
@@ -230,7 +231,7 @@ export async function createMyAddress(
   };
   const { data, error } = await supabase
     .from("addresses")
-    .insert([insertVals] as never)
+    .insert([insertVals])
     .select("*")
     .single();
   if (error || !data) {
@@ -250,10 +251,10 @@ export async function updateMyAddress(
   if (payload.isDefault) {
     await supabase
       .from("addresses")
-      .update({ is_default: false } as never)
+      .update({ is_default: false })
       .eq("user_id", user.id);
   }
-  const updates: Record<string, unknown> = {};
+  const updates: TablesUpdate<"addresses"> = {};
   if (payload.label !== undefined) updates.label = payload.label;
   if (payload.name !== undefined) updates.name = payload.name;
   if (payload.addr !== undefined) updates.addr = payload.addr;
@@ -262,7 +263,7 @@ export async function updateMyAddress(
   if (payload.isDefault !== undefined) updates.is_default = payload.isDefault;
   const { error } = await supabase
     .from("addresses")
-    .update(updates as never)
+    .update(updates)
     .eq("id", id);
   if (error) {
     console.error("[addresses] update error:", error);
@@ -278,11 +279,11 @@ export async function setDefaultAddress(id: string): Promise<{ ok: boolean }> {
   // 2 step: önce hepsini false, sonra bu satırı true
   await supabase
     .from("addresses")
-    .update({ is_default: false } as never)
+    .update({ is_default: false })
     .eq("user_id", user.id);
   const { error } = await supabase
     .from("addresses")
-    .update({ is_default: true } as never)
+    .update({ is_default: true })
     .eq("id", id);
   return { ok: !error };
 }

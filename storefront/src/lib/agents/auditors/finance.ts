@@ -1,7 +1,7 @@
 /**
  * FinanceAuditor — 💰 Muhasebe Denetçisi
  *
- * Günlük 09:00 çalışır (vercel.json). Sefa sabah kahve içerken
+ * Günlük 06:00 UTC (TR 09:00) çalışır (vercel.json).
  * "Gece Hesap Kapanışı" mailini alır.
  *
  * 6 kontrol alanı:
@@ -21,6 +21,9 @@ import type {
   AuditorRunResult,
   SuggestedAction,
 } from "../_shared/types";
+import type { Enums } from "@/lib/supabase/types";
+
+type OrderStatus = Enums<"order_status">;
 
 const TUNE = {
   /** KDV oranı (Pim Etiket dijital baskı için %20) */
@@ -210,7 +213,7 @@ export class FinanceAuditor extends AuditorBase {
         "delivered",
         "in_production",
         "ready_to_ship",
-      ] as never);
+      ] satisfies OrderStatus[]);
 
     const rows = (ordersData ?? []) as Array<{
       subtotal: number | string;
@@ -267,7 +270,7 @@ export class FinanceAuditor extends AuditorBase {
     const { data, error } = await this.admin
       .from("payment_intents")
       .select("id, created_at, card_amount, user_id")
-      .eq("status", "pending" as never)
+      .eq("status", "pending")
       .lt("created_at", cutoff.toISOString())
       .order("created_at", { ascending: true })
       .limit(100);
@@ -342,7 +345,7 @@ export class FinanceAuditor extends AuditorBase {
     const { data, error } = await this.admin
       .from("coupons")
       .select("id, code, expires_at, value, kind")
-      .eq("is_active", true as never)
+      .eq("is_active", true)
       .gt("expires_at", now.toISOString())
       .lt("expires_at", warningCutoff.toISOString())
       .order("expires_at", { ascending: true })

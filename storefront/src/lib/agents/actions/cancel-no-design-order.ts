@@ -18,6 +18,7 @@
  */
 
 import type { ActionHandler } from "../_shared/proposal";
+import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 interface CancelPayload {
   orderIds: string[];
@@ -40,9 +41,9 @@ const cancelNoDesignOrder: ActionHandler = async ({ admin, payload }) => {
     .from("orders")
     .update({
       status: "cancelled",
-    } as never)
+    })
     .in("id", orderIds)
-    .eq("status", "paid" as never)
+    .eq("status", "paid")
     .select("id");
 
   if (error) {
@@ -57,15 +58,18 @@ const cancelNoDesignOrder: ActionHandler = async ({ admin, payload }) => {
   // order_events kayıtları (audit)
   if (updated.length > 0) {
     await admin.from("order_events").insert(
-      updated.map((r) => ({
-        order_id: r.id,
-        event_type: "cancelled_no_design",
-        payload: {
-          reason,
-          auditor: "workflow",
-          requires_manual_refund: true,
-        },
-      })) as never
+      updated.map(
+        (r): TablesInsert<"order_events"> => ({
+          order_id: r.id,
+          event_type: "cancelled_no_design",
+          summary: `Tasarım yüklenmedi — sipariş iptal (${reason})`,
+          detail: {
+            reason,
+            auditor: "workflow",
+            requires_manual_refund: true,
+          } satisfies Json,
+        })
+      )
     );
   }
 

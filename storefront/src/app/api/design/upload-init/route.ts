@@ -26,6 +26,7 @@ import {
   STORAGE_BUCKET,
   getExtensionFromMime,
 } from "@/lib/storage/design-files";
+import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 const InitBodySchema = z.object({
   orderId: z.string().min(1),
@@ -157,9 +158,10 @@ export async function POST(req: NextRequest) {
       mime_type: body.mimeType,
       version,
       status: "uploaded",
-      ai_check: kind === "white" ? { kind: "white", flags: [] } : null,
-    },
-  ] as never);
+      ai_check:
+        kind === "white" ? ({ kind: "white", flags: [] } as Json) : null,
+    } satisfies TablesInsert<"design_files">,
+  ]);
 
   if (insertErr) {
     console.error("[design/upload-init] design_files insert:", insertErr);

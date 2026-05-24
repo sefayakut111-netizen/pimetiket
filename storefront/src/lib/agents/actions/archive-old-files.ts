@@ -65,8 +65,7 @@ const archiveOldFiles: ActionHandler = async ({ admin, payload }) => {
     .from("design_files")
     .update({
       storage_path: null,
-      // archived_at gibi bir kolon yoksa metadata.archived flag
-    } as never)
+    })
     .in("id", files.map((f) => f.id))
     .select("id");
 

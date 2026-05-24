@@ -15,6 +15,7 @@ import { z } from "zod";
 import { refundPayment, isPayTrConfigured } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
+import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 const RefundBodySchema = z.object({
   orderId: z.string().min(1),
@@ -193,9 +194,12 @@ export async function POST(req: NextRequest) {
         currency: "TRY",
         status: "processing", // Mig 069: PayTR call sonuçlanana kadar lock
         idempotency_key: `refund:${body.orderId}:${Date.now()}`,
-        psp_raw: { refund_amount: refundAmount, reason: body.reason } as never,
-      },
-    ] as never)
+        psp_raw: {
+          refund_amount: refundAmount,
+          reason: body.reason ?? null,
+        } satisfies Json,
+      } satisfies TablesInsert<"payments">,
+    ])
     .select("id")
     .single();
 
@@ -233,10 +237,11 @@ export async function POST(req: NextRequest) {
       .update({
         status: "failed",
         psp_raw: {
-          ...{ refund_amount: refundAmount, reason: body.reason },
+          refund_amount: refundAmount,
+          reason: body.reason ?? null,
           paytr_error: { reason: result.reason, code: result.errCode },
-        } as never,
-      } as never)
+        } satisfies Json,
+      })
       .eq("id", placeholderId);
     console.error("[payment/refund] PayTR refund failed:", result);
     return NextResponse.json(
@@ -255,7 +260,7 @@ export async function POST(req: NextRequest) {
     .update({
       status: "success",
       completed_at: new Date().toISOString(),
-    } as never)
+    })
     .eq("id", placeholderId)
     .select("*")
     .single();
@@ -280,7 +285,7 @@ export async function POST(req: NextRequest) {
         refund_payment_id: (refundRow as { id: string }).id,
         refund_amount: refundAmount,
         status: "refunded",
-      } as never)
+      })
       .eq("id", body.returnId);
   }
 
@@ -307,13 +312,12 @@ export async function POST(req: NextRequest) {
         provider: "paytr",
         merchantOid: charge.psp_transaction_id,
         actorEmail: auth.user.email ?? null,
-        // Sefa 22 May v68 — Anayasa kuralı bypass işaretle (denetim için kritik)
         force: body.force === true,
         statusAtRefund: orderStatus,
         postProductionForced: isPostProductionForced,
-      },
-    },
-  ] as never);
+      } satisfies Json,
+    } satisfies TablesInsert<"order_events">,
+  ]);
 
   return NextResponse.json({
     ok: true,

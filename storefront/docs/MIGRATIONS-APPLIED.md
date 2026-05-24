@@ -7,7 +7,34 @@
 > apply'ları burada belgelenir. CLI tracking (`supabase_migrations.schema_migrations`)
 > kullanılmıyor (her migration manuel apply edildi).
 
-**Son güncelleme:** 24 Mayıs 2026
+**Son güncelleme:** 24 Mayıs 2026 (085–089 apply bekliyor)
+
+---
+
+## ⏳ Bekleyen apply — Migration 085–089 (23 May güvenlik oturumu)
+
+> **Durum:** SQL dosyaları repo'da; production'a henüz apply edilmedi.  
+> **Apply script:** `node scripts/apply-migrations-085-089.mjs` (SUPABASE_ACCESS_TOKEN gerekli)  
+> **Smoke test:** `docs/SCHEMA-SMOKE-TEST.md` §5
+
+| # | Migration | Konu |
+|---|---|---|
+| 085 | `085_security_patches.sql` | RPC grant revoke, design-previews DELETE guard, partner_contacts RLS |
+| 086 | `086_partner_contract_alignment.sql` | Partner contract assign guard, fn_find_best_partner |
+| 087 | `087_customer_audit_actions.sql` | `audit_action` customer.* enum değerleri |
+| 088 | `088_auth_user_email_lookup.sql` | `fn_find_auth_user_by_email` RPC |
+| 089 | `089_fason_token_hash.sql` | Fason token SHA256 hash storage |
+
+Apply sonrası checklist:
+```bash
+npm run supabase:types
+npx tsc --noEmit
+```
+
+Verify (088):
+```sql
+SELECT proname FROM pg_proc WHERE proname = 'fn_find_auth_user_by_email';
+```
 
 ---
 

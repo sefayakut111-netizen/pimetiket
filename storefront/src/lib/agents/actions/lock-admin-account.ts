@@ -15,6 +15,7 @@
  */
 
 import type { ActionHandler } from "../_shared/proposal";
+import { findAuthUserIdByEmail } from "@/lib/auth-user-lookup";
 
 interface LockAccountPayload {
   email: string;
@@ -38,16 +39,9 @@ const lockAdminAccount: ActionHandler = async ({ admin, payload }) => {
     };
   }
 
-  // 1) Email → user_id lookup (Supabase Auth Admin API)
-  // listUsers doğrudan email filter desteklemiyor; profiles tablosundan al
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("id, email")
-    .eq("email", email)
-    .maybeSingle();
-
-  const profileRow = profile as { id?: string; email?: string } | null;
-  if (!profileRow?.id) {
+  // 1) Email → user_id lookup (Mig 088 RPC veya listUsers fallback)
+  const userId = await findAuthUserIdByEmail(admin, email);
+  if (!userId) {
     return {
       result: "failed",
       error: `User not found: ${email}`,
@@ -71,9 +65,9 @@ const lockAdminAccount: ActionHandler = async ({ admin, payload }) => {
       };
     }
 
-    const { data, error } = await authAdmin.updateUserById(profileRow.id, {
+    const { data, error } = await authAdmin.updateUserById(userId, {
       ban_duration: `${durationHours}h`,
-    } as never);
+    });
 
     if (error) {
       return {
@@ -87,7 +81,7 @@ const lockAdminAccount: ActionHandler = async ({ admin, payload }) => {
     return {
       result: "success",
       affectedRows: 1,
-      affectedIds: { userId: user?.id ?? profileRow.id, email },
+      affectedIds: { userId: user?.id ?? userId, email },
       externalCall: {
         provider: "supabase_auth",
         bannedUntil: bannedUntil.toISOString(),

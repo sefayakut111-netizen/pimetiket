@@ -70,8 +70,8 @@ const extendCouponExpiry: ActionHandler = async ({ admin, payload }) => {
     .from("coupons")
     .update({
       expires_at: newExpiresAt.toISOString(),
-      is_active: true, // expired ise tekrar aktif
-    } as never)
+      is_active: true,
+    })
     .eq("id", couponId);
 
   if (updateErr) {

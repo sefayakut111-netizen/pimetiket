@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
 import type { AuditorPendingActionRow } from "@/lib/agents/_shared/types";
 
 export async function GET(req: Request) {
@@ -30,6 +31,9 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient();
 
+  // Süresi dolmuş ertelenen aksiyonları bekleyen kuyruğa geri al
+  await unsnoozeExpiredActions(admin);
+
   let query = admin
     .from("auditor_pending_actions")
     .select("*")
@@ -37,10 +41,7 @@ export async function GET(req: Request) {
     .limit(limit);
 
   if (status === "pending") {
-    // Sadece aktif bekleyenler (snooze süresi dolmuş veya yok)
-    query = query
-      .eq("status", "pending" as never)
-      .or("snooze_until.is.null,snooze_until.lt." + new Date().toISOString());
+    query = query.eq("status", "pending" as never);
   } else if (status !== "all") {
     query = query.eq("status", status as never);
   }

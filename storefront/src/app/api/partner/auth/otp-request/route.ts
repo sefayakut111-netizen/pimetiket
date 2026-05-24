@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { findAuthUserIdByEmail } from "@/lib/auth-user-lookup";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -81,11 +82,7 @@ export async function POST(req: Request) {
   let userId = contact.user_id;
   if (!userId) {
     // a) Önce mevcut user var mı? (RPC ile email lookup — paging-free)
-    const { data: lookupRows } = await admin.rpc(
-      "fn_find_auth_user_by_email" as never,
-      { p_email: email } as never
-    );
-    const existingUserId = (lookupRows as Array<{ user_id: string }> | null)?.[0]?.user_id ?? null;
+    const existingUserId = await findAuthUserIdByEmail(admin, email);
 
     if (existingUserId) {
       // b) Mevcut user var — profile role kontrol et

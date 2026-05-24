@@ -17,6 +17,9 @@ import type {
   AuditorRunResult,
   SuggestedAction,
 } from "../_shared/types";
+import type { Enums } from "@/lib/supabase/types";
+
+type OrderStatus = Enums<"order_status">;
 
 const TUNE = {
   proofGeneratingMaxHours: 6,
@@ -91,7 +94,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data: proofData } = await this.admin
       .from("orders")
       .select("id, updated_at, created_at")
-      .eq("status", "proof_generating" as never)
+      .eq("status", "proof_generating")
       .lt("updated_at", proofCutoff.toISOString())
       .limit(50);
 
@@ -135,7 +138,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data: reviewData, count: reviewCount } = await this.admin
       .from("orders")
       .select("id, updated_at", { count: "exact" })
-      .eq("status", "human_review" as never)
+      .eq("status", "human_review")
       .lt("updated_at", reviewCutoff.toISOString())
       .limit(20);
 
@@ -179,7 +182,7 @@ export class WorkflowAuditor extends AuditorBase {
         "human_review",
         "human_review_failed",
         "proof_generating",
-      ] as never);
+      ] satisfies OrderStatus[]);
 
     const queueLen = count ?? 0;
 
@@ -209,7 +212,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data: paidData } = await this.admin
       .from("orders")
       .select("id, created_at")
-      .eq("status", "paid" as never)
+      .eq("status", "paid")
       .lt("created_at", cutoff.toISOString())
       .limit(100);
 
@@ -226,7 +229,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data: filesData } = await this.admin
       .from("design_files")
       .select("order_id")
-      .in("order_id", ids as never);
+      .in("order_id", ids);
 
     const ordersWithFiles = new Set(
       ((filesData ?? []) as Array<{ order_id: string }>).map(
@@ -272,7 +275,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data } = await this.admin
       .from("orders")
       .select("id, created_at, status")
-      .not("status", "in", '("delivered","cancelled")' as never)
+      .not("status", "in", '("delivered","cancelled")')
       .order("created_at", { ascending: true })
       .limit(1);
 
@@ -312,7 +315,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { count } = await this.admin
       .from("orders")
       .select("*", { count: "exact", head: true })
-      .in("status", ["paid", "qc_pending", "in_production", "ready_to_ship"] as never)
+      .in("status", ["paid", "qc_pending", "in_production", "ready_to_ship"] satisfies OrderStatus[])
       .lt("created_at", cutoff.toISOString());
 
     if (count && count > 0) {
@@ -470,7 +473,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data: thisData } = await this.admin
       .from("orders")
       .select("created_at, updated_at")
-      .in("status", ["shipped", "delivered"] as never)
+      .in("status", ["shipped", "delivered"] satisfies OrderStatus[])
       .gte("updated_at", thisWeek.toISOString())
       .limit(200);
 
@@ -478,7 +481,7 @@ export class WorkflowAuditor extends AuditorBase {
     const { data: lastData } = await this.admin
       .from("orders")
       .select("created_at, updated_at")
-      .in("status", ["shipped", "delivered"] as never)
+      .in("status", ["shipped", "delivered"] satisfies OrderStatus[])
       .gte("updated_at", lastWeek.toISOString())
       .lt("updated_at", thisWeek.toISOString())
       .limit(200);

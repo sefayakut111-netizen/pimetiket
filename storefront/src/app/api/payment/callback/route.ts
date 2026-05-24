@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
           data.failed_reason_msg ??
           data.failed_reason_code ??
           "paytr_failed",
-      } as never)
+      })
       .eq("id", merchantOid);
     return new NextResponse("OK");
   }
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
       .update({
         status: "failed",
         failure_reason: "amount_mismatch",
-      } as never)
+      })
       .eq("id", merchantOid);
     return new NextResponse("OK");
   }
@@ -370,7 +370,7 @@ export async function POST(req: NextRequest) {
     .from("payment_intents")
     .update({
       order_id: orderId,
-    } as never)
+    })
     .eq("id", merchantOid);
 
   // 14) Order confirmation maili (fire-and-forget)

@@ -14,6 +14,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button, Card } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
@@ -41,6 +42,20 @@ const SNOOZE_OPTIONS = [
   { days: 7, label: "7 gün" },
   { days: 30, label: "30 gün" },
 ];
+
+/** Payload'dan sipariş ID'lerini çıkar (orderId, orderIds, order_id). */
+function extractOrderIds(payload: Record<string, unknown>): string[] {
+  const ids = new Set<string>();
+  const single = payload.orderId ?? payload.order_id;
+  if (typeof single === "string" && single.trim()) ids.add(single.trim());
+  const list = payload.orderIds ?? payload.order_ids;
+  if (Array.isArray(list)) {
+    for (const id of list) {
+      if (typeof id === "string" && id.trim()) ids.add(id.trim());
+    }
+  }
+  return Array.from(ids);
+}
 
 interface DecisionResult {
   ok: boolean;
@@ -71,6 +86,8 @@ export function ApprovalCard({ action, onDecided }: ApprovalCardProps) {
     null | "approve" | "approve_edit" | "snooze" | "reject"
   >(null);
   const [error, setError] = useState<string | null>(null);
+
+  const linkedOrderIds = extractOrderIds(action.action_payload);
 
   const submitDecision = async (
     decision: "approve" | "approve_with_edit" | "snooze" | "reject",
@@ -186,6 +203,23 @@ export function ApprovalCard({ action, onDecided }: ApprovalCardProps) {
       <p className="text-[13px] text-gri-700 leading-relaxed mb-4 whitespace-pre-wrap">
         {action.description}
       </p>
+
+      {linkedOrderIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <span className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 self-center">
+            İlgili sipariş:
+          </span>
+          {linkedOrderIds.map((orderId) => (
+            <Link
+              key={orderId}
+              href={`/admin/siparisler/${orderId}`}
+              className="inline-flex items-center h-8 px-3 rounded-full bg-pim-mercan/10 text-pim-mercan text-[12.5px] font-semibold hover:bg-pim-mercan/20 transition-colors"
+            >
+              #{orderId} →
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Payload preview */}
       <div className="mb-4">
