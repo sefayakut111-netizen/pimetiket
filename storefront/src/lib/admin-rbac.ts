@@ -111,6 +111,12 @@ export function resolveAdminPathModule(pathname: string): AdminModule | null {
   return "dashboard";
 }
 
+/** Middleware ?denied= banner ve hata mesajları için */
+export function getAdminModuleLabel(module: string): string {
+  const item = ADMIN_NAV_ITEMS.find((i) => i.module === module);
+  return item?.label ?? module;
+}
+
 export function canAccessModule(
   perms: UserPermissionsPayload | null | undefined,
   module: AdminModule,

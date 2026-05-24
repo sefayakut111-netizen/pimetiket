@@ -107,14 +107,43 @@ export const UNASSIGNED_PRODUCTION_STATUSES: readonly OrderStatus[] = [
   "proof_approved",
 ];
 
-/** AI QC kuyruk + dashboard badge statüleri */
+/** AI QC kuyruk + dashboard badge statüleri — tek kaynak (dashboard, AdminShell, queue API) */
 export const AI_QC_ACTIVE_STATUSES: readonly OrderStatus[] = [
+  "qc_pending",
+  "qc_flagged",
   "human_review",
   "human_review_failed",
   "proof_generating",
   "operator_review",
-  "qc_flagged",
 ];
+
+/** Admin sipariş listesi — tek veya çoklu durum filtresi URL'si */
+export function adminOrdersListHref(
+  statuses: OrderStatus | readonly OrderStatus[]
+): string {
+  const arr = Array.isArray(statuses) ? [...statuses] : [statuses];
+  if (arr.length === 0) return "/admin/siparisler";
+  if (arr.length === 1) return `/admin/siparisler?status=${arr[0]}`;
+  return `/admin/siparisler?status=${arr.join(",")}`;
+}
+
+/** ?status= veya ?status=a,b URL'sinden durum filtresi */
+export function parseAdminStatusFilter(
+  raw: string | null,
+  allParams?: string[]
+): OrderStatus[] | null {
+  const parts: string[] = [];
+  if (allParams && allParams.length > 1) {
+    parts.push(...allParams);
+  } else if (raw) {
+    parts.push(...raw.split(","));
+  }
+  if (parts.length === 0 || parts[0] === "all") return null;
+  const valid = parts
+    .map((s) => s.trim())
+    .filter((s): s is OrderStatus => isOrderStatus(s));
+  return valid.length > 0 ? valid : null;
+}
 
 /** Fason atama paneli gösterilecek statüler */
 export const FASON_ASSIGN_ELIGIBLE_STATUSES: readonly OrderStatus[] = [

@@ -20,21 +20,20 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Card } from "@/components/ui";
 import { LineChart, DonutChart, BarChart, HeatMap } from "@/components/charts";
 import type { LinePoint, BarPoint } from "@/components/charts";
 import { cn } from "@/lib/cn";
-import {
-  listCustomerOrders,
-  type CustomerOrder,
-} from "@/lib/customer-order";
+import type { CustomerOrder } from "@/lib/customer-order";
 import type { OrderStatus } from "@/lib/order";
 import {
   AI_QC_ACTIVE_STATUSES,
   UNASSIGNED_PRODUCTION_STATUSES,
+  adminOrdersListHref,
 } from "@/lib/order";
 import {
   buildDailySeries,
@@ -50,6 +49,7 @@ import {
   formatShortDate,
 } from "@/lib/admin-analytics";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { getAdminModuleLabel } from "@/lib/admin-rbac";
 
 type TimeRange = "today" | "7d" | "mtd" | "30d";
 
@@ -170,7 +170,7 @@ function detectAlerts(orders: CustomerOrder[]): AlertItem[] {
       id: "unassigned",
       level: "warn",
       message: `${unassigned} sipariş üretime hazır ama henüz partnere atanmadı`,
-      href: "/admin/siparisler?status=ready_to_ship",
+      href: adminOrdersListHref(UNASSIGNED_PRODUCTION_STATUSES),
       cta: "Sipariş listesi",
     });
   }
@@ -255,7 +255,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
       title: "Partnere atanacak",
       count: unassigned,
       hint: "Üretime hazır siparişleri partnere ata",
-      href: "/admin/siparisler?status=ready_to_ship",
+      href: adminOrdersListHref(UNASSIGNED_PRODUCTION_STATUSES),
       urgent: unassigned >= 5,
     });
   }
@@ -355,8 +355,43 @@ function formatDuration(seconds: number): string {
   return `${day.toFixed(1)}g`;
 }
 
+function aggregateFunnelMetric(
+  metrics: Record<string, FunnelMetric>,
+  statuses: readonly OrderStatus[]
+): FunnelMetric | null {
+  let weightedSum = 0;
+  let totalSamples = 0;
+  for (const s of statuses) {
+    const m = metrics[s];
+    if (m && m.sampleCount > 0) {
+      weightedSum += m.avgSeconds * m.sampleCount;
+      totalSamples += m.sampleCount;
+    }
+  }
+  if (totalSamples === 0) return null;
+  return { avgSeconds: weightedSum / totalSamples, sampleCount: totalSamples };
+}
+
 export default function AdminDashboardPage() {
-  const { canViewFinancials, canView } = useAdminPermissions();
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <AdminDashboardPageInner />
+    </Suspense>
+  );
+}
+
+function AdminDashboardPageInner() {
+  const searchParams = useSearchParams();
+  const deniedModule = searchParams.get("denied");
+  const {
+    canViewFinancials,
+    canView,
+    loading: permLoading,
+  } = useAdminPermissions();
+  const canViewOrders = canView("orders");
+  const canViewCustomers = canView("customers");
+  const canViewAuditors = canView("auditors");
+  const showFinancials = !permLoading && canViewFinancials;
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [range, setRange] = useState<TimeRange>("7d");
@@ -368,37 +403,103 @@ export default function AdminDashboardPage() {
     warning: number;
     total: number;
   }>({ critical: 0, warning: 0, total: 0 });
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [ordersTruncated, setOrdersTruncated] = useState(false);
+
+  const loadOrders = useCallback(async () => {
+    if (!canViewOrders) {
+      setOrders([]);
+      setOrdersLoading(false);
+      setOrdersError(null);
+      setOrdersTruncated(false);
+      return;
+    }
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const res = await fetch("/api/admin/orders/list?limit=500", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        setOrdersError(
+          res.status === 403
+            ? "Sipariş listesine erişim yetkiniz yok."
+            : `Sipariş listesi yüklenemedi (HTTP ${res.status})`
+        );
+        setOrders([]);
+        setOrdersTruncated(false);
+        return;
+      }
+      const data = (await res.json()) as { orders?: CustomerOrder[] };
+      const list = data.orders ?? [];
+      setOrders(list);
+      setOrdersTruncated(list.length >= 500);
+      setLastUpdate(Date.now());
+    } catch {
+      setOrdersError("Bağlantı hatası — sipariş listesi alınamadı.");
+      setOrders([]);
+      setOrdersTruncated(false);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [canViewOrders]);
 
   useEffect(() => {
-    const refresh = () => {
-      // İlk paint için local cache (LocalStorage / kendi user'ı)
-      setOrders(listCustomerOrders());
-      setLastUpdate(Date.now());
+    if (permLoading) return;
 
-      // Sonra gerçek "tüm siparişler" listesini admin API'sinden çek.
-      // assertAdmin guard'lı; admin tarafı tüm müşterilerin siparişlerini görür.
-      fetch("/api/admin/orders/list?limit=500")
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: { orders?: CustomerOrder[] } | null) => {
-          if (data?.orders) {
-            setOrders(data.orders);
-            setLastUpdate(Date.now());
-          }
-        })
-        .catch(() => {
-          /* silently — local cache fallback */
-        });
-    };
-    refresh();
+    void loadOrders();
     setNow(new Date());
-    // Müşteri istatistiklerini çek (auth.users + profiles)
-    fetch("/api/admin/customer-stats")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: CustomerStats | null) => data && setCustomerStats(data))
-      .catch(() => {
-        /* silently — endpoint yoksa eski davranış */
-      });
-    // Funnel ortalama bekleme süreleri
+
+    if (canViewCustomers) {
+      fetch("/api/admin/customer-stats")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: CustomerStats | null) => data && setCustomerStats(data))
+        .catch(() => {
+          /* endpoint yoksa veya yetki yoksa sessiz */
+        });
+    } else {
+      setCustomerStats(null);
+    }
+
+    if (canViewAuditors) {
+      fetch("/api/admin/auditors")
+        .then((r) => (r.ok ? r.json() : null))
+        .then(
+          (data: {
+            ok?: boolean;
+            pending?: {
+              criticalPending: number;
+              warningPending: number;
+              totalPending: number;
+            };
+          } | null) => {
+            if (data?.ok && data.pending) {
+              setAuditorPending({
+                critical: data.pending.criticalPending,
+                warning: data.pending.warningPending,
+                total: data.pending.totalPending,
+              });
+            }
+          }
+        )
+        .catch(() => {
+          /* silently */
+        });
+    }
+
+    const w = globalThis.window;
+    const refresh = () => void loadOrders();
+    w.addEventListener("pim_customer_orders_updated", refresh);
+    const tick = setInterval(() => setNow(new Date()), 30_000);
+    return () => {
+      w.removeEventListener("pim_customer_orders_updated", refresh);
+      clearInterval(tick);
+    };
+  }, [permLoading, loadOrders, canViewCustomers, canViewAuditors]);
+
+  useEffect(() => {
+    if (permLoading || !canViewOrders) return;
     fetch("/api/admin/funnel-metrics")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { metrics?: Record<string, FunnelMetric> } | null) => {
@@ -407,35 +508,7 @@ export default function AdminDashboardPage() {
       .catch(() => {
         /* silently */
       });
-    // Auditor pending action sayımı (üst alert strip için)
-    fetch("/api/admin/auditors")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(
-        (data: {
-          ok?: boolean;
-          pending?: { criticalPending: number; warningPending: number; totalPending: number };
-        } | null) => {
-          if (data?.ok && data.pending) {
-            setAuditorPending({
-              critical: data.pending.criticalPending,
-              warning: data.pending.warningPending,
-              total: data.pending.totalPending,
-            });
-          }
-        }
-      )
-      .catch(() => {
-        /* silently */
-      });
-    const w = globalThis.window;
-    w.addEventListener("pim_customer_orders_updated", refresh);
-    // 30 saniyede bir auto refresh ("last update X sn önce" göstergesini canlı tutar)
-    const tick = setInterval(() => setNow(new Date()), 30_000);
-    return () => {
-      w.removeEventListener("pim_customer_orders_updated", refresh);
-      clearInterval(tick);
-    };
-  }, []);
+  }, [permLoading, canViewOrders]);
 
   const rangeWindow = getRangeWindow(range);
 
@@ -469,9 +542,8 @@ export default function AdminDashboardPage() {
   const revenueChange = formatChange(revenue, prevRevenue);
 
   const alerts = useMemo(() => {
-    const baseAlerts = detectAlerts(orders);
-    // Auditor pending action varsa en üste ekle
-    if (auditorPending.total > 0) {
+    const baseAlerts = canViewOrders ? detectAlerts(orders) : [];
+    if (canViewAuditors && auditorPending.total > 0) {
       baseAlerts.unshift({
         id: "auditor-pending",
         level: auditorPending.critical > 0 ? "critical" : "warn",
@@ -484,8 +556,11 @@ export default function AdminDashboardPage() {
       });
     }
     return baseAlerts;
-  }, [orders, auditorPending]);
-  const todoList = useMemo(() => buildTodoList(orders), [orders]);
+  }, [orders, auditorPending, canViewOrders, canViewAuditors]);
+  const todoList = useMemo(
+    () => (canViewOrders ? buildTodoList(orders) : []),
+    [orders, canViewOrders]
+  );
 
   // Chart datası — daima rangeWindow.days kullan
   const dailySeries = useMemo(
@@ -545,7 +620,7 @@ export default function AdminDashboardPage() {
 
   // KPI cards — finans yetkisi olmayan rollere ciro/AOV gizlenir
   const KPIS = [
-    ...(canViewFinancials
+    ...(showFinancials
       ? [
           {
             label: `${RANGE_LABEL[range]} ciro`,
@@ -563,7 +638,7 @@ export default function AdminDashboardPage() {
       trend: countChange.trend,
       accent: "text-pim-mercan",
     },
-    ...(canViewFinancials
+    ...(showFinancials
       ? [
           {
             label: "Sepet ortalaması",
@@ -575,9 +650,9 @@ export default function AdminDashboardPage() {
         ]
       : []),
     {
-      label: "AI flag bekleyen",
+      label: "AI / operatör kuyruğu",
       value: aiFlagged.toString(),
-      sub: aiFlagged > 0 ? "manuel kontrol" : "kuyruk temiz",
+      sub: aiFlagged > 0 ? "inceleme bekliyor" : "kuyruk temiz",
       trend: "flat" as const,
       accent: aiFlagged > 0 ? "text-sari-koyu" : "text-gri-500",
     },
@@ -600,21 +675,28 @@ export default function AdminDashboardPage() {
   // Production funnel — modern akış (grouped counts)
   const funnel = [
     {
-      status: "paid" as OrderStatus,
+      key: "new",
       label: "Yeni",
-      count:
-        statusDistribution.paid + statusDistribution.awaiting_upload,
-      href: "/admin/siparisler?status=paid",
+      statuses: ["paid", "awaiting_upload"] as const,
+      count: statusDistribution.paid + statusDistribution.awaiting_upload,
+      href: adminOrdersListHref(["paid", "awaiting_upload"]),
     },
     {
-      status: "qc_pending" as OrderStatus,
+      key: "ai-qc",
       label: "AI kontrol",
+      statuses: ["qc_pending", "qc_flagged"] as const,
       count: statusDistribution.qc_pending + statusDistribution.qc_flagged,
-      href: "/admin/siparisler?status=qc_pending",
+      href: adminOrdersListHref(["qc_pending", "qc_flagged"]),
     },
     {
-      status: "human_review" as OrderStatus,
+      key: "review",
       label: "İnceleme",
+      statuses: [
+        "human_review",
+        "operator_review",
+        "proof_generating",
+        "human_review_failed",
+      ] as const,
       count:
         statusDistribution.human_review +
         statusDistribution.operator_review +
@@ -623,36 +705,41 @@ export default function AdminDashboardPage() {
       href: "/admin/ai-qc",
     },
     {
-      status: "proof_pending" as OrderStatus,
+      key: "proof",
       label: "Prova",
+      statuses: ["proof_pending"] as const,
       count: statusDistribution.proof_pending,
       href: "/admin/prova",
     },
     {
-      status: "ready_to_ship" as OrderStatus,
+      key: "ready",
       label: "Üretime hazır",
+      statuses: ["proof_approved", "ready_to_ship"] as const,
       count:
         statusDistribution.proof_approved + statusDistribution.ready_to_ship,
-      href: "/admin/siparisler?status=ready_to_ship",
+      href: adminOrdersListHref(["proof_approved", "ready_to_ship"]),
     },
     {
-      status: "in_production" as OrderStatus,
+      key: "production",
       label: "Üretimde",
+      statuses: ["fason_assigned", "in_production"] as const,
       count:
         statusDistribution.fason_assigned + statusDistribution.in_production,
-      href: "/admin/fason",
+      href: adminOrdersListHref(["fason_assigned", "in_production"]),
     },
     {
-      status: "shipped" as OrderStatus,
+      key: "shipped",
       label: "Kargoda",
+      statuses: ["shipped"] as const,
       count: statusDistribution.shipped,
-      href: "/admin/siparisler?status=shipped",
+      href: adminOrdersListHref("shipped"),
     },
     {
-      status: "delivered" as OrderStatus,
+      key: "delivered",
       label: "Teslim",
+      statuses: ["delivered"] as const,
       count: statusDistribution.delivered,
-      href: "/admin/siparisler?status=delivered",
+      href: adminOrdersListHref("delivered"),
     },
   ];
   const maxFunnel = Math.max(...funnel.map((s) => s.count), 1);
@@ -692,8 +779,16 @@ export default function AdminDashboardPage() {
               {dateLabel}
             </div>
             <p className="mt-1 text-[13.5px] text-gri-700 flex items-center gap-1.5">
-              Tüm metrikler — son güncelleme {updateAgoLabel}
-              <span className="inline-flex w-1.5 h-1.5 rounded-full bg-yesil animate-pulse" />
+              {canViewOrders
+                ? ordersLoading
+                  ? "Sipariş verileri yükleniyor…"
+                  : ordersError
+                    ? "Sipariş verileri yüklenemedi"
+                    : `Tüm metrikler — son güncelleme ${updateAgoLabel}`
+                : "Sipariş metrikleri yetkiniz dışında"}
+              {canViewOrders && !ordersLoading && !ordersError && (
+                <span className="inline-flex w-1.5 h-1.5 rounded-full bg-yesil animate-pulse" />
+              )}
             </p>
           </div>
 
@@ -716,6 +811,58 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
+        {deniedModule && (
+          <div className="mb-6 rounded-xl px-5 py-3.5 ring-1 bg-sari-soft ring-sari/30 text-lacivert text-[13.5px] flex items-center gap-3">
+            <span className="text-[18px] shrink-0" aria-hidden>
+              ⚠️
+            </span>
+            <span>
+              <strong>{getAdminModuleLabel(deniedModule)}</strong> modülüne
+              erişim yetkiniz yok — yönlendirildiniz.
+            </span>
+          </div>
+        )}
+
+        {!permLoading && !canViewOrders && (
+          <Card padding="p-5" className="mb-6 ring-1 ring-gri-200">
+            <h2 className="text-[15px] font-semibold text-lacivert mb-1">
+              Sipariş verileri gizli
+            </h2>
+            <p className="text-[13px] text-gri-700">
+              Bu rol için sipariş KPI, funnel ve liste widget&apos;ları
+              gösterilmiyor. Yetkili bir yöneticiyle iletişime geçin.
+            </p>
+          </Card>
+        )}
+
+        {canViewOrders && ordersError && (
+          <div className="mb-6 rounded-xl px-5 py-3.5 ring-1 bg-kirmizi/5 ring-kirmizi/20 text-kirmizi flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-[13.5px] font-semibold">{ordersError}</span>
+            <button
+              type="button"
+              onClick={() => void loadOrders()}
+              className="text-[12.5px] font-bold underline hover:no-underline"
+            >
+              Tekrar dene
+            </button>
+          </div>
+        )}
+
+        {canViewOrders && ordersLoading && (
+          <Card padding="p-8" className="mb-6 text-center text-gri-700">
+            Sipariş verileri yükleniyor…
+          </Card>
+        )}
+
+        {canViewOrders && ordersTruncated && !ordersLoading && !ordersError && (
+          <div className="mb-6 rounded-xl px-5 py-3.5 ring-1 bg-sari-soft ring-sari/30 text-lacivert text-[13px]">
+            Liste en fazla <strong>500</strong> siparişle sınırlandı — daha eski
+            siparişler KPI, funnel ve grafiklerde görünmeyebilir.
+          </div>
+        )}
+
+        {canViewOrders && !ordersLoading && !ordersError && (
+          <>
         {/* Alert strip */}
         {alerts.length > 0 && (
           <div className="mb-6 flex flex-col gap-2">
@@ -875,12 +1022,12 @@ export default function AdminDashboardPage() {
         <div
           className={cn(
             "grid gap-4 mb-6",
-            canViewFinancials
+            showFinancials
               ? "grid-cols-1 lg:grid-cols-[1.6fr_1fr]"
               : "grid-cols-1"
           )}
         >
-          {canViewFinancials && (
+          {showFinancials && (
             <Card padding="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -938,14 +1085,16 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
               {funnel.map((step, i) => {
                 const intensity = step.count / maxFunnel;
-                const metric = funnelMetrics[step.status];
-                const hasMetric = metric && metric.sampleCount > 0;
-                // Bekleme süresi yüksek mi? 24+ saat bekleyen aşamalar uyarı
+                const metric = aggregateFunnelMetric(
+                  funnelMetrics,
+                  step.statuses
+                );
+                const hasMetric = metric !== null && metric.sampleCount > 0;
                 const slowWarning =
                   hasMetric && metric.avgSeconds > 24 * 3600;
                 return (
                   <Link
-                    key={step.status}
+                    key={step.key}
                     href={step.href}
                     className={cn(
                       "group bg-white ring-1 rounded-xl p-3 transition-all hover:-translate-y-0.5",
@@ -985,13 +1134,15 @@ export default function AdminDashboardPage() {
                           : "text-gri-500"
                       )}
                       title={
-                        hasMetric
+                        hasMetric && metric
                           ? `${metric.sampleCount} sipariş örnekleminden ortalama`
                           : "Henüz veri yok"
                       }
                     >
                       <span className="opacity-70">⏱</span>
-                      {hasMetric ? formatDuration(metric.avgSeconds) : "—"}
+                      {hasMetric && metric
+                        ? formatDuration(metric.avgSeconds)
+                        : "—"}
                     </div>
                   </Link>
                 );
@@ -1064,7 +1215,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Müşteri kayıt istatistikleri (varsa) */}
-        {customerStats !== null && customerStats.total > 0 && (
+        {canViewCustomers && customerStats !== null && customerStats.total > 0 && (
           <Card padding="p-5" className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -1154,7 +1305,12 @@ export default function AdminDashboardPage() {
           </Card>
 
           <div className="grid grid-cols-2 gap-3 content-start">
-            {QUICK_ACTIONS.map((q) => (
+            {QUICK_ACTIONS.length === 0 ? (
+              <Card padding="p-4" className="col-span-2 text-[13px] text-gri-700">
+                Yetkiniz olan hızlı aksiyon bulunmuyor.
+              </Card>
+            ) : (
+              QUICK_ACTIONS.map((q) => (
               <Link
                 key={q.href}
                 href={q.href}
@@ -1189,7 +1345,8 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               </Link>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -1232,7 +1389,7 @@ export default function AdminDashboardPage() {
 
         {/* Top customers + Top cities + Status bar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {canViewFinancials && (
+          {showFinancials && (
           <Card padding="p-0">
             <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between">
               <h2 className="text-[15px] font-semibold">Top müşteriler</h2>
@@ -1306,7 +1463,7 @@ export default function AdminDashboardPage() {
                           <span className="font-semibold text-lacivert">
                             {c.count}
                           </span>
-                          {canViewFinancials && (
+                          {showFinancials && (
                             <> · {formatCurrency(c.revenue)}</>
                           )}
                         </span>
@@ -1384,7 +1541,10 @@ export default function AdminDashboardPage() {
                       </div>
                       <div className="text-[11px] text-gri-700 mt-0.5">
                         <span className="font-mono">{o.id}</span> ·{" "}
-                        {timeAgo(o.createdAt)} · {formatCurrency(o.total)}
+                        {timeAgo(o.createdAt)}
+                        {showFinancials && (
+                          <> · {formatCurrency(o.total)}</>
+                        )}
                       </div>
                     </div>
                     <Icon.ChevR size={12} className="text-gri-500 shrink-0" />
@@ -1394,6 +1554,8 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </Card>
+          </>
+        )}
       </div>
     </main>
   );

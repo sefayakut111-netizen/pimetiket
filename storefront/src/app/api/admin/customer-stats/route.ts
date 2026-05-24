@@ -1,8 +1,7 @@
 /**
  * /api/admin/customer-stats — Admin paneli için müşteri istatistikleri.
  *
- * profiles tablosundan toplam, bu hafta, bu ay yeni kayıt sayısı.
- * Sadece role=admin/staff erişebilir.
+ * profiles tablosundan role=customer kayıtları — toplam, bu hafta, bu ay, bugün.
  *
  * Yanıt:
  *   { total: 12, weekNew: 3, monthNew: 8, todayNew: 1 }
@@ -10,19 +9,16 @@
 
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
   try {
-    // Sefa 21 May v68: inline auth check → assertAdmin helper'a refactor.
-    // Tutarlılık (admin tarafı tüm endpoint'lerde aynı pattern) + DRY.
-    const auth = await assertPermission("finans", "view");
+    const auth = await assertPermission("customers", "view");
     if (!auth) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
-    // Tarih aralıkları (server time)
     const now = new Date();
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
@@ -30,27 +26,27 @@ export async function GET() {
     startOfWeek.setDate(now.getDate() - 7);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Toplam profil sayısı (role=customer dahil)
     const { count: total } = await supabase
       .from("profiles")
-      .select("id", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true })
+      .eq("role", "customer");
 
-    // Bu hafta yeni
     const { count: weekNew } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
+      .eq("role", "customer")
       .gte("created_at", startOfWeek.toISOString());
 
-    // Bu ay yeni
     const { count: monthNew } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
+      .eq("role", "customer")
       .gte("created_at", startOfMonth.toISOString());
 
-    // Bugün yeni
     const { count: todayNew } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
+      .eq("role", "customer")
       .gte("created_at", startOfDay.toISOString());
 
     return NextResponse.json({

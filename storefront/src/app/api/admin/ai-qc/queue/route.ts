@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AI_QC_ACTIVE_STATUSES } from "@/lib/order";
 
 interface OrderRow {
   id: string;
@@ -70,12 +71,7 @@ export async function GET() {
   const { data: ordersData, error: ordersErr } = await admin
     .from("orders")
     .select("id, status, created_at, total, address, user_id")
-    .in("status", [
-      "human_review",
-      "human_review_failed",
-      "proof_generating",
-      "operator_review", // P1 #7 — qc_attempt limit aşıldı, AI atlandı
-    ] as never)
+    .in("status", [...AI_QC_ACTIVE_STATUSES] as never)
     .order("created_at", { ascending: false })
     .limit(50);
 

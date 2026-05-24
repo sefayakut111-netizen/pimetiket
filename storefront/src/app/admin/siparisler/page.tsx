@@ -24,6 +24,7 @@ import {
   ADMIN_MANUAL_SET_STATUSES,
   ADMIN_STATUS_FILTER_CHIPS,
   UNASSIGNED_PRODUCTION_STATUSES,
+  parseAdminStatusFilter,
 } from "@/lib/order";
 // Sefa 22 May v68: updateCustomerOrderStatus kaldırıldı — auth mode'da
 // no-op olduğu için admin "Uygula" sessizce başarısız oluyordu. Artık
@@ -189,10 +190,15 @@ function AdminSiparislerPageInner() {
   const pathname = usePathname();
   const { permissions } = useAdminPermissions();
   const canUpdateOrders = canAccessModule(permissions, "orders", "update");
-  const initialFilter = (searchParams.get("status") as AdminStatus | null) ?? "all";
+  const initialStatuses = parseAdminStatusFilter(
+    searchParams.get("status"),
+    searchParams.getAll("status")
+  );
   const initialSearch = searchParams.get("q") ?? "";
 
-  const [filter, setFilter] = useState<AdminStatus | "all">(initialFilter);
+  const [statusFilters, setStatusFilters] = useState<OrderStatus[] | null>(
+    initialStatuses
+  );
   const [search, setSearch] = useState(initialSearch);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -231,14 +237,16 @@ function AdminSiparislerPageInner() {
   // 2 sekmede farklı filtre tutmak için + paylaşılabilir link.
   useEffect(() => {
     const params = new URLSearchParams();
-    if (filter !== "all") params.set("status", filter);
+    if (statusFilters?.length) {
+      params.set("status", statusFilters.join(","));
+    }
     if (search.trim()) params.set("q", search.trim());
     const newUrl = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
     router.replace(newUrl, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, search]);
+  }, [statusFilters, search]);
 
   useEffect(() => {
     void loadOrders();
@@ -281,7 +289,9 @@ function AdminSiparislerPageInner() {
     }
 
     return base.filter((o) => {
-      if (filter !== "all" && o.status !== filter) return false;
+      if (statusFilters?.length && !statusFilters.includes(o.status)) {
+        return false;
+      }
       if (search.length > 0) {
         const q = search.toLowerCase();
         return (
@@ -292,7 +302,7 @@ function AdminSiparislerPageInner() {
       }
       return true;
     });
-  }, [orders, filter, search, activeView]);
+  }, [orders, statusFilters, search, activeView]);
 
   // Selection helpers
   const allFilteredSelected =
@@ -407,7 +417,7 @@ function AdminSiparislerPageInner() {
                 <button
                   type="button"
                   onClick={() => {
-                    setFilter("all");
+                    setStatusFilters(null);
                     setSearch("");
                     setActiveView(null);
                   }}
@@ -472,10 +482,15 @@ function AdminSiparislerPageInner() {
               <button
                 key={f.id}
                 type="button"
-                onClick={() => setFilter(f.id)}
+                onClick={() =>
+                  setStatusFilters(f.id === "all" ? null : [f.id as AdminStatus])
+                }
                 className={cn(
                   "px-4 py-2 rounded-full text-[13px] font-semibold transition-colors",
-                  filter === f.id
+                  (f.id === "all" && !statusFilters) ||
+                    (f.id !== "all" &&
+                      statusFilters?.length === 1 &&
+                      statusFilters[0] === f.id)
                     ? "bg-lacivert text-white"
                     : "bg-gri-100 text-gri-700 hover:bg-gri-200"
                 )}
@@ -483,6 +498,11 @@ function AdminSiparislerPageInner() {
                 {f.label}
               </button>
             ))}
+            {statusFilters && statusFilters.length > 1 && (
+              <span className="text-[12px] font-semibold text-pim-mercan px-2">
+                {statusFilters.length} durum filtresi aktif
+              </span>
+            )}
             <div className="ml-auto w-full sm:w-auto sm:min-w-[280px] relative">
               <Input
                 type="search"
