@@ -10,12 +10,15 @@ alwaysApply: false
 
 1. `src/lib/agents/_shared/types.ts`
 2. `src/lib/agents/_shared/proposal.ts`
-3. `docs/SISTEM-BAGIMLILIK-HARITASI.md` (circular dep bölümü)
+3. `docs/API-INTEGRATION-FIXES.md`
+4. `docs/SISTEM-BAGIMLILIK-HARITASI.md` (circular dep bölümü)
+5. `src/lib/agents/run-order-qc.ts`, `src/lib/agents/circuit-breaker.ts`, `src/lib/agents/design-qc.ts`
 
 ## Kurallar
 
 - Circular dep agent altyapısında kasıtlı — kırma
-- Circuit breaker: `src/lib/agents/circuit-breaker.ts`
+- Circuit breaker: `src/lib/agents/circuit-breaker.ts` (DB hata → fail-closed)
+- OpenAI QC: `design-qc.ts` — timeout + maxRetries via `external-timeouts.ts`
 - Claude denetim: `/denetle` komutu (Smart Trigger)
 
 ## Claude agent

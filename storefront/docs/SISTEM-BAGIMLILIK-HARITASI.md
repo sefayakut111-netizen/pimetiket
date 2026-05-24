@@ -247,5 +247,73 @@ Sadece bu döküman ve `scripts/analyze-deps.py` versiyon kontrolünde.
 
 ---
 
+## 8️⃣ Dış API entegrasyon katmanı (agent bağlamı)
+
+> **Detay:** `docs/API-INTEGRATION-FIXES.md` · **Smart Context domain:** `integrations`
+> **Cursor rule:** `.cursor/rules/integrations.mdc`
+
+```mermaid
+graph TB
+    subgraph routes["API Routes"]
+        chat["api/pim/chat"]
+        qc["agents/design-qc"]
+        pay["api/payment/*"]
+        cutline["api/pim/cutline-*"]
+    end
+    subgraph adapters["Adapter modülleri — lib/"]
+        http["lib/http/*<br/>timeout + fetch"]
+        paytr["lib/payment/paytr.ts"]
+        sms["lib/sms/netgsm.ts"]
+        ship["lib/shipping/yurtici-api.ts"]
+        mail["lib/mail/resend.ts"]
+        rl["lib/rate-limit.ts"]
+    end
+    subgraph external["Dış servisler"]
+        openai["OpenAI"]
+        paytrapi["PayTR"]
+        netgsm["Netgsm"]
+        yurtici["Yurtiçi SOAP"]
+        resend["Resend"]
+        upstash["Upstash Redis"]
+    end
+    subgraph qcflow["QC orkestrasyon"]
+        runqc["run-order-qc.ts"]
+        cb["circuit-breaker.ts"]
+        designqc["design-qc.ts"]
+    end
+
+    chat --> http
+    cutline --> http
+    qc --> designqc
+    pay --> paytr
+    paytr --> http
+    sms --> http
+    ship --> http
+    mail --> resend
+    rl --> upstash
+    pay --> runqc
+    runqc --> cb
+    runqc --> designqc
+    designqc --> openai
+    chat --> openai
+    cutline --> openai
+    paytr --> paytrapi
+    sms --> netgsm
+    ship --> yurtici
+```
+
+**Agent tetikleme:**
+
+| Dosya / konu | `npm run context -- --path` sonucu |
+|--------------|----------------------------------|
+| `src/lib/payment/paytr.ts` | order + **integrations** |
+| `src/lib/http/*` | **integrations** |
+| `src/app/api/payment/callback` | order + integrations |
+| `src/lib/agents/run-order-qc.ts` | agents + order + integrations |
+
+**Kural:** Yeni dış HTTP → `fetchWithTimeout` + `external-timeouts.ts` sabiti.
+
+---
+
 **Versiyon geçmişi**
 - v1.0 — 21.05.2026 — İlk üretim. 474 modül, 10 circular dep, 8 dead code.

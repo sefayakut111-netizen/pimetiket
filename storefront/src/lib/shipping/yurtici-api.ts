@@ -20,6 +20,12 @@
  *   - github.com/quardianwolf/yurtici-kargo-react (TS create shipment)
  */
 
+import {
+  fetchWithTimeout,
+  isFetchTimeoutError,
+} from "@/lib/http/fetch-with-timeout";
+import { YURTICI_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+
 const YURTICI_USERNAME = process.env.YURTICI_USERNAME;
 const YURTICI_PASSWORD = process.env.YURTICI_PASSWORD;
 const YURTICI_LANGUAGE = process.env.YURTICI_LANGUAGE ?? "TR";
@@ -340,7 +346,7 @@ export async function queryYurticiShipment(
   // Gerçek SOAP çağrısı
   try {
     const body = buildQuerySoapBody(trackingNumber);
-    const response = await fetch(TRACKING_ENDPOINT, {
+    const response = await fetchWithTimeout(TRACKING_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "text/xml; charset=UTF-8",
@@ -348,6 +354,7 @@ export async function queryYurticiShipment(
         Accept: "text/xml",
       },
       body,
+      timeoutMs: YURTICI_HTTP_TIMEOUT_MS,
     });
 
     const xml = await response.text();
@@ -398,13 +405,16 @@ export async function queryYurticiShipment(
     const result = parseYurticiResponse(xml, trackingNumber);
     return { ...result, raw: xml, dryRun: false };
   } catch (err) {
+    const msg = isFetchTimeoutError(err)
+      ? "Yurtiçi API zaman aşımı"
+      : `Network/parse hatası: ${(err as Error).message}`;
     return {
       success: false,
       trackingNumber,
       currentStatus: null,
       deliveredAt: null,
       events: [],
-      error: `Network/parse hatası: ${(err as Error).message}`,
+      error: msg,
       dryRun: false,
     };
   }

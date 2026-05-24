@@ -20,6 +20,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertCronAuth } from "@/lib/cron-auth";
 import { AUDITOR_NAMES, type AuditorName } from "@/lib/agents/_shared/types";
 import { SecurityAuditor } from "@/lib/agents/auditors/security";
 import { FinanceAuditor } from "@/lib/agents/auditors/finance";
@@ -50,20 +51,9 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ name: string }> }
 ) {
-  // 1) Cron secret kontrolü
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET env not configured" },
-      { status: 500 }
-    );
-  }
-
-  const authHeader = req.headers.get("authorization");
-  const expected = `Bearer ${cronSecret}`;
-  if (authHeader !== expected) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // 1) Auth — Sefa 23 May v68 (P1.3): assertCronAuth (timing-safe).
+  const guard = assertCronAuth(req);
+  if (guard) return guard;
 
   // 2) Auditor name validate
   const { name } = await params;

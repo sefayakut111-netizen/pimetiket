@@ -79,8 +79,27 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Env yoksa middleware no-op (Supabase kurulmadan önce uygulama çalışsın)
+  // Env yoksa fail-closed (Sefa 23 May v68 — P1.4).
+  // Production'da env eksikse /admin /odeme /partner /panelim gibi
+  // korumalı sayfalara erişim 503 ile bloke. Public sayfalar serbest
+  // (anasayfa, /sticker, /etiket, blog görünür kalır).
+  // Dev/test'te (NODE_ENV !== 'production') eskiden olduğu gibi no-op
+  // — local geliştirici Supabase olmadan UI'da gezebilir.
   if (!url || !anonKey) {
+    if (process.env.NODE_ENV === "production") {
+      const pathname = request.nextUrl.pathname;
+      const sensitive =
+        isProtected(pathname) ||
+        pathname.startsWith("/admin") ||
+        pathname.startsWith("/partner") ||
+        pathname.startsWith("/odeme");
+      if (sensitive) {
+        return new NextResponse(
+          "Service Unavailable — Auth not configured. Lütfen daha sonra tekrar deneyin.",
+          { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } }
+        );
+      }
+    }
     return supabaseResponse;
   }
 
@@ -191,12 +210,19 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(redirectUrl);
       }
 
-      // Sefa 16 May Kritik 4: Admin için 2FA enforcement
-      // Eğer kullanıcı MFA enroll etmişse (factor var) ama AAL2 session değilse
-      // mfa-challenge sayfasına yönlendir.
+      // Sefa 16 May Kritik 4 + 23 May v68 (P1.5): Admin 2FA enforcement
+      //
+      // İki katman:
+      //   A) MFA enrolled + session aal1 → /auth/mfa-challenge (zorla)
+      //   B) MFA enroll edilmemiş ise:
+      //      - ADMIN_2FA_REQUIRED env var "true" ise → /ayarlar/2fa enroll'a zorla
+      //      - Yoksa /admin'e izin ver (Sefa solo, kendisi enroll yapana kadar
+      //        bypass açık; enroll yaptıktan sonra env'i set ederek aktif eder).
       try {
         const { data: aalData } =
           await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+        // (A) Enrolled ama aal1 — challenge sayfasına
         if (
           aalData?.currentLevel === "aal1" &&
           aalData?.nextLevel === "aal2"
@@ -206,9 +232,22 @@ export async function updateSession(request: NextRequest) {
           redirectUrl.searchParams.set("next", pathname + request.nextUrl.search);
           return NextResponse.redirect(redirectUrl);
         }
-        // NOT: currentLevel='aal1' + nextLevel='aal1' = MFA enroll edilmemiş.
-        // Sefa enroll edene kadar /admin'e izin ver. İlerde enroll'a zorlanacak:
-        //   if (!hasEnrolledFactor) redirect to /ayarlar/2fa?force=admin
+
+        // (B) Enroll edilmemiş — feature flag ile zorla
+        // currentLevel='aal1' + nextLevel='aal1' = MFA enroll edilmemiş
+        const enforce2fa = process.env.ADMIN_2FA_REQUIRED === "true";
+        if (
+          enforce2fa &&
+          aalData?.currentLevel === "aal1" &&
+          aalData?.nextLevel === "aal1" &&
+          !pathname.startsWith("/admin/ayarlar/2fa") &&
+          !pathname.startsWith("/admin/profil") // profil sayfası 2FA enroll içerir
+        ) {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = "/admin/profil";
+          redirectUrl.searchParams.set("force_2fa", "1");
+          return NextResponse.redirect(redirectUrl);
+        }
       } catch {
         // AAL check başarısız olursa admin'e izin ver (Supabase MFA env'i yoksa)
       }

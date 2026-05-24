@@ -31,6 +31,7 @@
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { OPENAI_VISION_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 
 // ============================================================
 // Types
@@ -246,6 +247,8 @@ export async function runDesignQC(
           ],
         },
       ],
+      maxRetries: 2,
+      abortSignal: AbortSignal.timeout(OPENAI_VISION_TIMEOUT_MS),
     });
 
     const duration = Date.now() - start;

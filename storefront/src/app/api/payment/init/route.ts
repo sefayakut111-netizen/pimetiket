@@ -29,6 +29,7 @@ import {
 } from "@/lib/payment/paytr";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateCartPricing } from "@/lib/payment-validation";
 
 // ============================================================
 // Validation
@@ -169,17 +170,50 @@ export async function POST(req: NextRequest) {
   }
 
   // 4) Server-side recalc
+  // ---------------------------------------------------------
+  // Sefa 23 May v68 (P0.1 güvenlik analizi): client'tan gelen unit/total
+  // değerleri ARTIK körlemesine toplanmıyor. validateCartPricing her item
+  // için admin live_config'ten gerçek fiyatı hesaplayıp toleransla
+  // karşılaştırır; recalc yapılamayan item'lara sanity floor uygular
+  // (unit ≥ 0.40 TL, min alan, total≈unit*qty).
+  //
+  // Eski davranış: subtotal toleransı 0.5 TL idi; saldırgan total=0.01
+  // gönderirse subtotal mismatch'e takılmıyordu. Şimdi her item ayrı
+  // doğrulanıyor + toplam tolerans 0.05 TL'ye sıkıştırıldı.
+  // ---------------------------------------------------------
   const calcSubtotal = body.items.reduce((s, i) => s + i.total, 0);
-  if (Math.abs(calcSubtotal - body.subtotal) > 0.5) {
+  if (Math.abs(calcSubtotal - body.subtotal) > 0.05) {
     return NextResponse.json(
       { error: "subtotal_mismatch", expected: calcSubtotal },
       { status: 400 }
     );
   }
   const calcTotal = body.subtotal + body.shipping;
-  if (Math.abs(calcTotal - body.total) > 0.5) {
+  if (Math.abs(calcTotal - body.total) > 0.05) {
     return NextResponse.json(
       { error: "total_mismatch", expected: calcTotal },
+      { status: 400 }
+    );
+  }
+
+  // Per-item recalc + sanity floor — P0.1 fix
+  const pricingValidation = await validateCartPricing(
+    body.items,
+    body.subtotal
+  );
+  if (!pricingValidation.ok) {
+    console.warn("[payment/init] pricing validation failed:", {
+      userId: user.id,
+      failures: pricingValidation.failures,
+      recalced: pricingValidation.recalcedItemIds.length,
+    });
+    return NextResponse.json(
+      {
+        error: "pricing_validation_failed",
+        // Müşteriye ayrıntı yazmıyoruz — saldırgan calibration yapmasın.
+        // Detay log'da. Müşteri "Fiyat eşleşmedi, sepeti yenileyin" görür.
+        hint: "Fiyat doğrulaması başarısız. Sepeti yenileyip tekrar deneyin.",
+      },
       { status: 400 }
     );
   }

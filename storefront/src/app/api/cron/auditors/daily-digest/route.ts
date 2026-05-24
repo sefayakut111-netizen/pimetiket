@@ -15,6 +15,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertCronAuth } from "@/lib/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendMail, isResendConfigured } from "@/lib/mail/resend";
 import {
@@ -51,19 +52,9 @@ function fmtTime(iso: string | null): string {
 }
 
 export async function GET(req: Request) {
-  // Auth check
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET env not configured" },
-      { status: 500 }
-    );
-  }
-
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Auth — Sefa 23 May v68 (P1.3): assertCronAuth (timing-safe).
+  const guard = assertCronAuth(req);
+  if (guard) return guard;
 
   const admin = createAdminClient();
 

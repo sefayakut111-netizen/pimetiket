@@ -24,6 +24,12 @@
 
 import "server-only";
 
+import {
+  fetchWithTimeout,
+  isFetchTimeoutError,
+} from "@/lib/http/fetch-with-timeout";
+import { NETGSM_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+
 interface NetgsmConfig {
   userCode: string;
   password: string;
@@ -88,13 +94,14 @@ export async function sendSms(args: {
     const auth = Buffer.from(`${cfg.userCode}:${cfg.password}`).toString(
       "base64"
     );
-    const res = await fetch(`${NETGSM_BASE}/sms/rest/v2/send`, {
+    const res = await fetchWithTimeout(`${NETGSM_BASE}/sms/rest/v2/send`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         Authorization: `Basic ${auth}`,
       },
       body: JSON.stringify(body),
+      timeoutMs: NETGSM_HTTP_TIMEOUT_MS,
     });
     const data = (await res.json()) as NetgsmSendResponse;
     if (data.code === "0" || data.code === "00") {
@@ -108,7 +115,7 @@ export async function sendSms(args: {
     console.error("[sms] Netgsm error:", err);
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "request_failed",
+      error: isFetchTimeoutError(err) ? "timeout" : "request_failed",
     };
   }
 }

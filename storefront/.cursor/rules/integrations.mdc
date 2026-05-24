@@ -1,0 +1,44 @@
+---
+description: Dış API entegrasyonları — PayTR, OpenAI, Netgsm, Yurtiçi, Resend, timeout, rate limit
+globs: src/lib/http/**,src/lib/payment/**,src/lib/sms/**,src/lib/shipping/**,src/lib/rate-limit.ts,src/lib/mail/resend.ts,src/lib/storage/r2-client.ts,src/app/api/cron/paytr-reconciler/**,src/app/api/cron/poll-shipments/**,src/app/api/cron/process-mail-outbox/**
+alwaysApply: false
+---
+
+# Dış API Entegrasyon Bağlamı
+
+## Okuma önceliği (sırayla)
+
+1. `docs/API-INTEGRATION-FIXES.md` — son düzeltmeler, timeout sabitleri, smoke test
+2. `src/lib/http/external-timeouts.ts` — tüm süre sabitleri (tek kaynak)
+3. `src/lib/http/fetch-with-timeout.ts` — dış HTTP çağrıları buradan
+4. İlgili adapter: `payment/paytr.ts`, `sms/netgsm.ts`, `shipping/yurtici-api.ts`, `mail/resend.ts`
+
+## OpenAI (Vercel AI SDK)
+
+| Kullanım | Dosya | Timeout sabiti |
+|----------|-------|----------------|
+| Pim chat | `api/pim/chat/route.ts` | `OPENAI_CHAT_TIMEOUT_MS` |
+| Design QC | `lib/agents/design-qc.ts` | `OPENAI_VISION_TIMEOUT_MS` |
+| Cutline vision | `api/pim/cutline-vision-fallback/route.ts` | `OPENAI_VISION_TIMEOUT_MS` |
+| Cutline feedback | `api/pim/cutline-feedback/route.ts` | `OPENAI_MINI_TIMEOUT_MS` |
+
+QC orkestrasyon: `lib/agents/run-order-qc.ts` · Circuit breaker: `lib/agents/circuit-breaker.ts`
+
+## Kurallar
+
+- Yeni dış `fetch` → **mutlaka** `fetchWithTimeout` + `external-timeouts.ts` sabiti
+- OpenAI `generateObject` / `streamText` → `maxRetries` + `abortSignal: AbortSignal.timeout(...)`
+- PayTR callback'te dış servis await ETME (fire-and-forget); QC hata → `human_review` (`run-order-qc.ts`)
+- Rate limit: `lib/rate-limit.ts` (Upstash yoksa in-memory fallback)
+- İş mantığını route'a gömme — adapter modülünde tut
+
+## İlişkili domain'ler
+
+- **order** — ödeme callback → QC tetikleme
+- **pim** — chat + cutline AI endpoint'leri
+- **agents** — design QC + circuit breaker
+- **mail** — Resend outbox cron
+
+## Claude agent
+
+`.claude/agents/backend.md`, `ai-llm.md`, `architect.md`

@@ -30,6 +30,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { archiveCustomer } from "@/lib/storage/archive-service";
 import { IS_DRY_RUN } from "@/lib/storage/r2-client";
+import { assertCronAuth } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 dakika max (Vercel Pro plan limit)
@@ -38,15 +39,9 @@ const DAYS_INACTIVE = 90;
 const BATCH_SIZE = 10;
 
 export async function GET(req: NextRequest) {
-  // Auth kontrolü
-  const authHeader = req.headers.get("authorization");
-  const expected = `Bearer ${process.env.CRON_SECRET ?? ""}`;
-  if (!process.env.CRON_SECRET || authHeader !== expected) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  // Auth — Sefa 23 May v68 (P1.3): assertCronAuth (timing-safe).
+  const guard = assertCronAuth(req);
+  if (guard) return guard;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

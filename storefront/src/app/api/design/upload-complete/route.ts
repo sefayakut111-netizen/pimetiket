@@ -16,6 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import type { AllowedMime } from "@/lib/storage/design-files";
 
 const CompleteBodySchema = z.object({
   fileId: z.string().uuid(),
@@ -145,14 +147,87 @@ interface AiCheckFlag {
 async function runDesignAiCheck(fileId: string): Promise<void> {
   const admin = createAdminClient();
 
+  // Magic-byte content validation — Sefa 23 May v68 (P1.2):
+  // Müşteri signed URL'e PUT etti, mimeType iddiası design_files satırında.
+  // Storage'tan ilk 64 byte indir, gerçek MIME ile karşılaştır. Uyumsuzsa
+  // dosyayı 'rejected' status'una geçir + order'a flag at.
+  const flags: AiCheckFlag[] = [];
+  try {
+    const { data: fileMeta } = await admin
+      .from("design_files")
+      .select("storage_path, mime_type, order_id")
+      .eq("id", fileId)
+      .single();
+    const meta = fileMeta as unknown as {
+      storage_path: string;
+      mime_type: string;
+      order_id: string;
+    } | null;
+
+    if (meta) {
+      const { data: blob } = await admin.storage
+        .from("designs")
+        .download(meta.storage_path);
+      if (blob) {
+        const headerBytes = new Uint8Array(
+          await blob.arrayBuffer()
+        ).slice(0, 64);
+        const magic = detectMimeFromMagicBytes(
+          headerBytes,
+          meta.mime_type as AllowedMime
+        );
+        if (!magic.matchesClaim) {
+          console.warn("[design/ai-check] magic-byte mismatch", {
+            fileId,
+            claimed: meta.mime_type,
+            detected: magic.detected,
+            label: magic.label,
+          });
+          await admin
+            .from("design_files")
+            .update({
+              status: "rejected",
+              ai_check: {
+                flags: [
+                  {
+                    kind: "error",
+                    message: `Dosya içeriği MIME ile uyumsuz (iddia: ${meta.mime_type}, gerçek: ${magic.label}).`,
+                  },
+                ],
+              } as never,
+            } as never)
+            .eq("id", fileId);
+          await admin.from("order_events").insert([
+            {
+              order_id: meta.order_id,
+              event_type: "design_rejected",
+              actor_role: "system",
+              summary: "Tasarım dosyası magic-byte kontrolünden geçemedi.",
+              detail: {
+                fileId,
+                claimed: meta.mime_type,
+                detected: magic.detected,
+                label: magic.label,
+              },
+            },
+          ] as never);
+          return; // Bundan sonra AI check yapma
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[design/ai-check] magic-byte check failed:", err);
+    // Magic-byte check fail olsa bile AI check devam etsin (mevcut davranış)
+  }
+
   // Mock gecikme — gerçek pipeline 10-30sn sürer
   await new Promise((r) => setTimeout(r, 1500));
 
   // Mock flag set — production'da gerçek analiz
-  const flags: AiCheckFlag[] = [
+  flags.push(
     { kind: "ok", message: "Çözünürlük uygun (mock)" },
-    { kind: "ok", message: "CMYK renk uzayı (mock)" },
-  ];
+    { kind: "ok", message: "CMYK renk uzayı (mock)" }
+  );
 
   // %20 ihtimalle warning ekle (test için)
   if (Math.random() < 0.2) {

@@ -10,8 +10,7 @@
  *      - any "kotu" → human_review (admin /admin/ai-qc'da inceler)
  *      - mixed/normal → human_review (insan göz ister)
  *
- * Hata olursa: order.status değişmez (paid kalır), Sentry log düşer.
- * Admin /admin/ai-qc kuyruğunda manuel re-run yapabilir.
+ * Kritik hata: human_review + order_event (paid'de takılma önlenir).
  *
  * Sefa 20 May v68 (P1 #7 döngü guard):
  *   orders.qc_attempt_count >= QC_MAX_ATTEMPTS ise AI atlanır:
@@ -45,22 +44,72 @@ interface DesignFileForQC {
   order_item_id: string | null;
 }
 
-interface RunOrderQCResult {
+export interface RunOrderQCResult {
   orderId: string;
   ranCount: number;
   verdictCounts: Record<"iyi" | "normal" | "kotu" | "error", number>;
   aggregateVerdict: "ready_to_proof" | "needs_review" | "escalated_max_attempts";
 }
 
+type VerdictKey = "iyi" | "normal" | "kotu" | "error";
+
+async function recordQcFailureEscalation(
+  admin: SupabaseClient,
+  orderId: string,
+  summary: string,
+  detail: Record<string, unknown>
+): Promise<void> {
+  await admin
+    .from("orders")
+    .update({ status: "human_review" } as never)
+    .eq("id", orderId);
+  await admin.from("order_events").insert([
+    {
+      order_id: orderId,
+      event_type: "qc_pipeline_failure",
+      status_after: "human_review",
+      actor_role: "system",
+      summary,
+      detail,
+    },
+  ] as never);
+}
+
 /**
  * Bir sipariş için tüm tasarım dosyalarının QC'sini çalıştırır,
  * audit log düşer, order.status'u günceller.
  *
- * @param admin — service-role Supabase client
- * @param orderId — sipariş ID
- * @returns aggregate sonuç
+ * Üst seviye hatalarda sipariş human_review'a alınır (paid'de takılmaz).
  */
 export async function runOrderDesignQC(
+  admin: SupabaseClient,
+  orderId: string
+): Promise<RunOrderQCResult> {
+  try {
+    return await runOrderDesignQCInner(admin, orderId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown";
+    Sentry.captureException(err, {
+      tags: { scope: "design_qc.order_auto_fatal", order_id: orderId },
+    });
+    console.error("[runOrderDesignQC] fatal:", orderId, err);
+    try {
+      await recordQcFailureEscalation(admin, orderId, `QC pipeline hatası: ${message}`, {
+        error: message,
+      });
+    } catch (escalateErr) {
+      console.error("[runOrderDesignQC] escalation failed:", escalateErr);
+    }
+    return {
+      orderId,
+      ranCount: 0,
+      verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+      aggregateVerdict: "needs_review",
+    };
+  }
+}
+
+async function runOrderDesignQCInner(
   admin: SupabaseClient,
   orderId: string
 ): Promise<RunOrderQCResult> {
@@ -135,9 +184,19 @@ export async function runOrderDesignQC(
     .eq("order_id", orderId);
 
   if (itemsErr || !itemsData || itemsData.length === 0) {
-    throw new Error(
-      `runOrderDesignQC: no items for order ${orderId} (${itemsErr?.message ?? "empty"})`
+    const reason = itemsErr?.message ?? "empty";
+    await recordQcFailureEscalation(
+      admin,
+      orderId,
+      `QC atlandı — sipariş kalemi bulunamadı (${reason})`,
+      { reason }
     );
+    return {
+      orderId,
+      ranCount: 0,
+      verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+      aggregateVerdict: "needs_review",
+    };
   }
 
   const items = itemsData as unknown as OrderItemForQC[];
@@ -149,7 +208,18 @@ export async function runOrderDesignQC(
     .eq("order_id", orderId);
 
   if (filesErr) {
-    throw new Error(`runOrderDesignQC: files query failed — ${filesErr.message}`);
+    await recordQcFailureEscalation(
+      admin,
+      orderId,
+      `QC atlandı — tasarım dosyası sorgusu başarısız (${filesErr.message})`,
+      { reason: filesErr.message }
+    );
+    return {
+      orderId,
+      ranCount: 0,
+      verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+      aggregateVerdict: "needs_review",
+    };
   }
 
   const files = (filesData ?? []) as unknown as DesignFileForQC[];
@@ -165,13 +235,15 @@ export async function runOrderDesignQC(
     };
   }
 
-  const verdictCounts = { iyi: 0, normal: 0, kotu: 0, error: 0 };
+  const verdictCounts: Record<VerdictKey, number> = {
+    iyi: 0,
+    normal: 0,
+    kotu: 0,
+    error: 0,
+  };
 
-  // 3) Her dosya için QC paralel çalıştır (Sefa 19 May v68 — AI agent P1
-  //    #15: dosyalar bağımsız, race condition yok; ~40 sn → ~12 sn).
-  //    Promise.allSettled fail-tolerant: bir dosya patlarsa diğerleri
-  //    devam eder, error verdict audit'e düşer.
-  await Promise.allSettled(
+  // 3) Her dosya için QC paralel — sonuçları topla (race-safe)
+  const settled = await Promise.allSettled(
     files.map(async (file) => {
       const item =
         items.find((i) => i.id === file.order_item_id) ?? items[0];
@@ -192,8 +264,6 @@ export async function runOrderDesignQC(
           printHeightMm: item.height,
           productType: item.product,
         });
-
-        verdictCounts[result.verdict] += 1;
 
         await admin.from("design_quality_checks").insert({
           order_id: orderId,
@@ -219,8 +289,9 @@ export async function runOrderDesignQC(
           duration_ms: result.durationMs,
           cost_usd: result.costUsd,
         } as never);
+
+        return result.verdict as VerdictKey;
       } catch (err) {
-        verdictCounts.error += 1;
         Sentry.captureException(err, {
           tags: { scope: "design_qc.order_auto", order_id: orderId },
           extra: { file_id: file.id },
@@ -235,9 +306,16 @@ export async function runOrderDesignQC(
           verdict: "error",
           error: err instanceof Error ? err.message : "unknown",
         } as never);
+        return "error" as VerdictKey;
       }
     })
   );
+
+  for (const outcome of settled) {
+    const verdict: VerdictKey =
+      outcome.status === "fulfilled" ? outcome.value : "error";
+    verdictCounts[verdict] += 1;
+  }
 
   // 4) Aggregate karar — Sefa kuralı: tek bir hata insan göz gerektirir
   const allGood =

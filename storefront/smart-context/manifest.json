@@ -23,7 +23,9 @@
       "src/lib/supabase/server.ts",
       "src/lib/supabase/admin.ts",
       "src/lib/supabase/assert-admin.ts",
-      "src/lib/i18n/context.tsx"
+      "src/lib/i18n/context.tsx",
+      "src/lib/http/external-timeouts.ts",
+      "src/lib/http/fetch-with-timeout.ts"
     ]
   },
   "domains": [
@@ -56,9 +58,15 @@
         "src/components/Pim.tsx",
         "src/app/api/pim/**"
       ],
-      "keywords": ["pim", "persona", "chat", "asistan", "memory", "hafıza"],
-      "docs": ["../docs/PIM_AGENT.md", "docs/SISTEM-AKISLARI.md"],
-      "hubs": ["src/lib/pim/personas.ts", "src/lib/pim/memory.ts", "src/app/api/pim/chat/route.ts"],
+      "keywords": ["pim", "persona", "chat", "asistan", "memory", "hafıza", "openai", "vision", "cutline"],
+      "docs": ["../docs/PIM_AGENT.md", "docs/SISTEM-AKISLARI.md", "docs/API-INTEGRATION-FIXES.md"],
+      "hubs": [
+        "src/lib/pim/personas.ts",
+        "src/lib/pim/memory.ts",
+        "src/app/api/pim/chat/route.ts",
+        "src/lib/http/external-timeouts.ts"
+      ],
+      "alsoLoads": ["integrations"],
       "claudeAgents": ["ai-llm", "marka-sesi"],
       "cursorRule": "pim-chat.mdc"
     },
@@ -75,11 +83,27 @@
         "src/lib/customer-cart.ts",
         "src/app/api/orders/**",
         "src/app/api/checkout/**",
-        "src/app/api/payment/**"
+        "src/app/api/payment/**",
+        "src/lib/payment/**",
+        "src/lib/agents/run-order-qc.ts",
+        "src/lib/agents/design-qc.ts",
+        "src/app/api/cron/paytr-reconciler/**"
       ],
-      "keywords": ["sipariş", "order", "ödeme", "paytr", "checkout", "sepet", "cart"],
-      "docs": ["docs/SIPARIS-AKISI-SNAPSHOT.md", "docs/SISTEM-AKISLARI.md", "docs/AKIS-V2-SEFA-22MAY.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
-      "hubs": ["src/lib/customer-order.ts", "src/lib/customer-cart.ts"],
+      "keywords": ["sipariş", "order", "ödeme", "paytr", "checkout", "sepet", "cart", "qc", "design quality"],
+      "docs": [
+        "docs/SIPARIS-AKISI-SNAPSHOT.md",
+        "docs/SISTEM-AKISLARI.md",
+        "docs/AKIS-V2-SEFA-22MAY.md",
+        "docs/DOMAIN-SCHEMA-REFERENCE.md",
+        "docs/API-INTEGRATION-FIXES.md"
+      ],
+      "hubs": [
+        "src/lib/customer-order.ts",
+        "src/lib/customer-cart.ts",
+        "src/lib/payment/paytr.ts",
+        "src/lib/agents/run-order-qc.ts"
+      ],
+      "alsoLoads": ["integrations"],
       "schemaMigrations": ["001_initial_schema.sql", "002_invoice_events_payments.sql", "007_payment_intents.sql", "009_paytr_provider.sql", "015_drop_wallet.sql", "019_order_events_constraint.sql", "033_payment_finalize_atomic.sql", "061_awaiting_upload_state.sql", "065_order_id_sequence.sql", "069_payment_refund_idempotency.sql", "070_proof_pending_sla_kaskad.sql", "078_order_id_date_stamped.sql"],
       "schemaTables": ["cart_items", "orders", "order_items", "order_events", "payments", "payment_intents"],
       "typeRefs": ["Tables<'orders'>", "Tables<'order_items'>", "Tables<'payments'>", "Tables<'payment_intents'>", "Enums<'order_status'>", "Enums<'payment_intent_status'>", "Functions<'fn_finalize_paid_order'>", "Functions<'fn_create_order'>"],
@@ -95,12 +119,20 @@
         "public/poc.html",
         "src/lib/cutline/**",
         "src/lib/design-preview/**",
+        "src/lib/hooks/useVisionFallback.ts",
         "src/app/api/cutline/**",
-        "src/app/api/pim/cutline-feedback/**"
+        "src/app/api/pim/cutline-feedback/**",
+        "src/app/api/pim/cutline-vision-fallback/**"
       ],
-      "keywords": ["etiket", "sticker", "konfigüratör", "cutline", "bıçak", "white plan", "beyaz plan"],
-      "docs": ["docs/DOSYA-AKISI.md", "docs/AKIS-V2-SEFA-22MAY.md", "docs/TEST-MATERYALLERI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
-      "hubs": ["src/app/etiket/yapilandir/page.tsx", "src/app/sticker/yapilandir/page.tsx"],
+      "keywords": ["etiket", "sticker", "konfigüratör", "cutline", "bıçak", "white plan", "beyaz plan", "vision", "opencv"],
+      "docs": ["docs/DOSYA-AKISI.md", "docs/AKIS-V2-SEFA-22MAY.md", "docs/TEST-MATERYALLERI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md", "docs/API-INTEGRATION-FIXES.md"],
+      "hubs": [
+        "src/app/etiket/yapilandir/page.tsx",
+        "src/app/sticker/yapilandir/page.tsx",
+        "src/lib/hooks/useVisionFallback.ts",
+        "src/app/api/pim/cutline-vision-fallback/route.ts"
+      ],
+      "alsoLoads": ["integrations"],
       "schemaMigrations": ["003_returns_design_files.sql", "008_design_temp_uploads.sql", "038_cart_items_multi_design.sql", "039_design_quality_checks.sql", "059_proof_approval_flow.sql", "060_cutline_poc_v2_columns.sql", "062_auto_cutline_state.sql", "063_multi_design_proof.sql", "071_qc_attempt_guard.sql", "072_cart_design_preview.sql"],
       "schemaTables": ["design_files", "design_temp_uploads", "design_quality_checks", "cutline_designs", "cart_items"],
       "typeRefs": ["Tables<'design_files'>", "Tables<'cutline_designs'>", "Enums<'design_file_status'>"],
@@ -167,11 +199,13 @@
       "globs": [
         "src/lib/mail/**",
         "src/app/api/mail/**",
-        "src/app/api/cron/mail/**"
+        "src/app/api/cron/process-mail-outbox/**",
+        "src/app/api/cron/admin-daily-summary/**"
       ],
-      "keywords": ["mail", "email", "resend", "bildirim", "template"],
-      "docs": ["docs/RESEND-SETUP.md", "docs/SISTEM-AKISLARI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md"],
-      "hubs": ["src/lib/mail/notifications.ts"],
+      "keywords": ["mail", "email", "resend", "bildirim", "template", "outbox"],
+      "docs": ["docs/RESEND-SETUP.md", "docs/SISTEM-AKISLARI.md", "docs/DOMAIN-SCHEMA-REFERENCE.md", "docs/API-INTEGRATION-FIXES.md"],
+      "hubs": ["src/lib/mail/notifications.ts", "src/lib/mail/resend.ts"],
+      "alsoLoads": ["integrations"],
       "schemaMigrations": ["004_notifications_audit.sql", "034_email_subscribers.sql", "035_mail_outbox_generic.sql", "037_mail_outbox_target_id_text.sql", "076_mail_suppressions_and_observability.sql"],
       "schemaTables": ["notification_prefs", "fason_mail_outbox", "mail_suppressions", "email_subscribers"],
       "typeRefs": ["Tables<'fason_mail_outbox'>", "Tables<'mail_suppressions'>", "Functions<'fn_enqueue_mail'>"],
@@ -230,8 +264,12 @@
         "src/lib/agents/_shared/types.ts",
         "src/lib/agents/_shared/proposal.ts",
         "src/lib/http/external-timeouts.ts",
-        "src/lib/agents/run-order-qc.ts"
+        "src/lib/http/fetch-with-timeout.ts",
+        "src/lib/agents/run-order-qc.ts",
+        "src/lib/agents/circuit-breaker.ts",
+        "src/lib/agents/design-qc.ts"
       ],
+      "alsoLoads": ["integrations"],
       "schemaMigrations": ["040_auditor_framework.sql", "041_auditor_helpers.sql"],
       "schemaTables": ["auditor_runs", "auditor_findings", "auditor_pending_actions", "auditor_action_log", "auth_failed_logins"],
       "typeRefs": ["Tables<'auditor_runs'>", "Tables<'auditor_findings'>"],
@@ -253,6 +291,57 @@
       "typeRefs": ["Tables<'fason_partners'>", "Tables<'order_assignments'>", "Enums<'assignment_status'>", "Functions<'fn_assign_order_to_fason'>"],
       "claudeAgents": ["backend", "product"],
       "cursorRule": "admin-panel.mdc"
+    },
+    {
+      "id": "integrations",
+      "label": "Dış API Entegrasyonları",
+      "globs": [
+        "src/lib/http/**",
+        "src/lib/payment/**",
+        "src/lib/sms/**",
+        "src/lib/shipping/**",
+        "src/lib/rate-limit.ts",
+        "src/lib/mail/resend.ts",
+        "src/lib/storage/r2-client.ts",
+        "src/lib/agents/actions/block-ip.ts",
+        "src/app/api/cron/paytr-reconciler/**",
+        "src/app/api/cron/poll-shipments/**",
+        "src/app/api/cron/process-mail-outbox/**"
+      ],
+      "keywords": [
+        "entegrasyon",
+        "integration",
+        "paytr",
+        "openai",
+        "netgsm",
+        "yurtiçi",
+        "yurtici",
+        "resend",
+        "timeout",
+        "rate limit",
+        "circuit breaker",
+        "fetch",
+        "dış api",
+        "external api"
+      ],
+      "docs": [
+        "docs/API-INTEGRATION-FIXES.md",
+        "docs/SISTEM-BAGIMLILIK-HARITASI.md",
+        "docs/RESEND-SETUP.md"
+      ],
+      "hubs": [
+        "src/lib/http/external-timeouts.ts",
+        "src/lib/http/fetch-with-timeout.ts",
+        "src/lib/payment/paytr.ts",
+        "src/lib/sms/netgsm.ts",
+        "src/lib/shipping/yurtici-api.ts",
+        "src/lib/mail/resend.ts",
+        "src/lib/rate-limit.ts",
+        "src/lib/agents/circuit-breaker.ts",
+        "src/lib/agents/run-order-qc.ts"
+      ],
+      "claudeAgents": ["backend", "ai-llm", "architect"],
+      "cursorRule": "integrations.mdc"
     },
     {
       "id": "frontend-ui",

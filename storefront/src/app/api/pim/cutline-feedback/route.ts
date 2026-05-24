@@ -32,6 +32,7 @@ import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { OPENAI_MINI_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
@@ -292,6 +293,7 @@ export async function POST(req: Request) {
       prompt: buildUserPrompt(input, firstName, itemData.title),
       temperature: 0.6,
       maxRetries: 2,
+      abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
     });
 
     return NextResponse.json({

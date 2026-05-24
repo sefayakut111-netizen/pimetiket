@@ -1,6 +1,6 @@
 ---
 description: Etiket/sticker konfigüratör, cutline, POC, white plan
-globs: src/app/etiket/**,src/app/sticker/**,public/poc.html,src/lib/cutline/**,src/lib/design-preview/**,src/app/api/cutline/**
+globs: src/app/etiket/**,src/app/sticker/**,public/poc.html,src/lib/cutline/**,src/lib/design-preview/**,src/lib/hooks/useVisionFallback.ts,src/app/api/cutline/**,src/app/api/pim/cutline-feedback/**,src/app/api/pim/cutline-vision-fallback/**
 alwaysApply: false
 ---
 
@@ -11,6 +11,8 @@ alwaysApply: false
 1. `docs/DOSYA-AKISI.md`
 2. `docs/AKIS-V2-SEFA-22MAY.md`
 3. `public/poc.html` (cutline POC, postMessage)
+4. `src/lib/hooks/useVisionFallback.ts` → `/api/pim/cutline-vision-fallback`
+5. `docs/API-INTEGRATION-FIXES.md` — vision fallback, rate limit
 
 ## Kurallar
 

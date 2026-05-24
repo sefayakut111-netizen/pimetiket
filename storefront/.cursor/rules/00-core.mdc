@@ -34,3 +34,5 @@ Claude: `/baglam [dosya veya konu]`
 ## Hub dosyalar (dikkatli dokun)
 
 `components/ui/index.ts`, `Icon.tsx`, `lib/cn.ts`, `lib/supabase/*`, `lib/i18n/context.tsx`
+
+Dış API değişikliği: `lib/http/external-timeouts.ts`, `lib/http/fetch-with-timeout.ts` — detay: `.cursor/rules/integrations.mdc`

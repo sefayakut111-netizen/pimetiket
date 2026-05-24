@@ -19,6 +19,8 @@
  *   }
  */
 
+import { UPSTASH_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+
 interface RateLimitResult {
   /** İstek limit içinde mi? */
   success: boolean;
@@ -127,6 +129,7 @@ async function upstashCheck(
         ["PEXPIRE", opts.key, opts.windowMs, "NX"],
         ["PTTL", opts.key],
       ]),
+      signal: AbortSignal.timeout(UPSTASH_HTTP_TIMEOUT_MS),
     });
     if (!res.ok) {
       console.warn(

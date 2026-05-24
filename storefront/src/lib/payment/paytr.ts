@@ -18,6 +18,11 @@
 import "server-only";
 
 import crypto from "node:crypto";
+import {
+  fetchWithTimeout,
+  isFetchTimeoutError,
+} from "@/lib/http/fetch-with-timeout";
+import { PAYTR_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import type {
   PayTrTokenRequest,
   PayTrTokenResponse,
@@ -283,17 +288,21 @@ export async function createCheckoutToken(
 
   let res: Response;
   try {
-    res = await fetch("https://www.paytr.com/odeme/api/get-token", {
+    res = await fetchWithTimeout("https://www.paytr.com/odeme/api/get-token", {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         "user-agent": "PimEtiket/1.0",
       },
       body: params.toString(),
+      timeoutMs: PAYTR_HTTP_TIMEOUT_MS,
     });
   } catch (err) {
     console.error("[paytr] get-token network error:", err);
-    return { ok: false, reason: "network_error" };
+    return {
+      ok: false,
+      reason: isFetchTimeoutError(err) ? "timeout" : "network_error",
+    };
   }
 
   if (!res.ok) {
@@ -431,17 +440,21 @@ export async function refundPayment(
 
   let res: Response;
   try {
-    res = await fetch("https://www.paytr.com/odeme/iade", {
+    res = await fetchWithTimeout("https://www.paytr.com/odeme/iade", {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         "user-agent": "PimEtiket/1.0",
       },
       body: params.toString(),
+      timeoutMs: PAYTR_HTTP_TIMEOUT_MS,
     });
   } catch (err) {
     console.error("[paytr] refund network error:", err);
-    return { ok: false, reason: "network_error" };
+    return {
+      ok: false,
+      reason: isFetchTimeoutError(err) ? "timeout" : "network_error",
+    };
   }
 
   if (!res.ok) {
@@ -521,17 +534,21 @@ export async function queryPaymentStatus(
 
   let res: Response;
   try {
-    res = await fetch("https://www.paytr.com/odeme/durum-sorgu", {
+    res = await fetchWithTimeout("https://www.paytr.com/odeme/durum-sorgu", {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         "user-agent": "PimEtiket/1.0",
       },
       body: params.toString(),
+      timeoutMs: PAYTR_HTTP_TIMEOUT_MS,
     });
   } catch (err) {
     console.error("[paytr/query] network error:", merchantOid, err);
-    return { ok: false, reason: "network_error" };
+    return {
+      ok: false,
+      reason: isFetchTimeoutError(err) ? "timeout" : "network_error",
+    };
   }
 
   if (!res.ok) {

@@ -49,9 +49,11 @@ export async function isAiCircuitOpen(
     .gte("created_at", sinceIso);
 
   if (error) {
-    // DB sorgusu patlarsa fail-safe: circuit kapalı say (mevcut akış devam etsin)
+    // DB sorgusu patlarsa fail-closed: AI'a gitme, insan kuyruğuna yönlendir.
+    // (Fail-open eski davranış OpenAI kesintisinde gereksiz yük + paid'de takılma riski.)
+    console.error("[circuit-breaker] design_quality_checks query failed:", error);
     return {
-      open: false,
+      open: true,
       totalRuns: 0,
       errorRuns: 0,
       failureRate: 0,

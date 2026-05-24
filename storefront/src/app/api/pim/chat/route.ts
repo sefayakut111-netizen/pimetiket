@@ -18,6 +18,7 @@ import {
   type PimPersona,
 } from "@/lib/pim/personas";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { OPENAI_CHAT_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import {
   quoteSticker,
@@ -192,9 +193,10 @@ export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
     return new Response(
       JSON.stringify({
-        error: "OPENAI_API_KEY env eksik. .env.local'e ekle.",
+        error: "service_unavailable",
+        detail: "Pim şu an kullanılamıyor. Lütfen daha sonra tekrar dene.",
       }),
-      { status: 500, headers: { "content-type": "application/json" } }
+      { status: 503, headers: { "content-type": "application/json" } }
     );
   }
 
@@ -274,6 +276,7 @@ export async function POST(req: Request) {
     toolChoice: personaConfig.useTools ? "auto" : undefined,
     temperature: personaConfig.temperature,
     maxRetries: 2,
+    abortSignal: AbortSignal.timeout(OPENAI_CHAT_TIMEOUT_MS),
     stopWhen: ({ steps }) => steps.length >= 5,
   });
 

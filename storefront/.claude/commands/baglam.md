@@ -86,6 +86,7 @@ Bağlam yüklendi. Ne yapmamı istiyorsun?
 | legal | `.cursor/rules/legal.mdc` |
 | i18n | `.cursor/rules/i18n.mdc` |
 | agents | `.cursor/rules/agents-audit.mdc` |
+| integrations | `.cursor/rules/integrations.mdc` |
 | frontend-ui | `.cursor/rules/frontend-ui.mdc` |
 
 Cursor bu kuralları dosya glob'una göre otomatik yükler. Claude bu komutla aynı manifest'i manuel tetikler.

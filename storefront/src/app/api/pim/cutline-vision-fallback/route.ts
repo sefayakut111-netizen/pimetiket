@@ -31,6 +31,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { OPENAI_VISION_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -160,30 +161,67 @@ function buildUser(
 }
 
 // ============================================================
+// Vision çağrısı patlarsa: kind'a göre statik öneri
+// ============================================================
+function buildRuleFallback(
+  input: z.infer<typeof RequestSchema>,
+  firstName: string | null
+): z.infer<typeof ResponseSchema> {
+  const name = firstName ? `${firstName}, ` : "";
+  switch (input.kind) {
+    case "no_contours":
+      return {
+        diagnosis:
+          "OpenCV ön-analizi dosyada hiç bağımsız obje bulamadı — büyük ihtimalle arka plan tamamen şeffaf değil ya da görsel düz bir fotoğraf.",
+        severity: "err",
+        suggested_action: "upload_transparent",
+        pim_message: `${name}bu dosyadan bıçak çıkaramadım. Saydam arka planlı PNG veya vektörel bir versiyonunu yüklersek hallederim.`,
+      };
+    case "bg_not_separable":
+      return {
+        diagnosis:
+          "Bıçak görselin tüm kenarlarını sardı — beyaz/renkli arka plan otomatik ayrılamadı. AI ile arka planı kaldırırsak temiz silüet çıkar.",
+        severity: "warn",
+        suggested_action: "bg_remove",
+        pim_message: `${name}arka planı temiz ayıramadım. AI ile sildirip tekrar deneyelim mi?`,
+      };
+    case "low_confidence":
+      return {
+        diagnosis:
+          "Bıçak çıktı ama tier=improve — kalite sınırda. Manuel düzenleme veya yardım iyi olur.",
+        severity: "warn",
+        suggested_action: "request_help",
+        pim_message: `${name}bıçak çıktı ama emin değilim. İstersen sen "Bıçağı düzenle"den ayarla, ya da ekipten yardım iste.`,
+      };
+    case "complex_multi_object":
+      return {
+        diagnosis:
+          "Tasarım birden fazla bağımsız obje içeriyor — her birine ayrı bıçak ya da hepsini saran tek bıçak tercih meselesi.",
+        severity: "warn",
+        suggested_action: "request_help",
+        pim_message: `${name}içinde birden fazla parça var. Her birini ayrı sticker mı yapayım, yoksa hepsi tek mi olsun?`,
+      };
+  }
+}
+
+function visionFallbackResponse(
+  input: z.infer<typeof RequestSchema>,
+  firstName: string | null,
+  reason?: string
+) {
+  return NextResponse.json({
+    ok: true,
+    fallback: true,
+    ...(reason ? { fallback_reason: reason } : {}),
+    ...buildRuleFallback(input, firstName),
+  });
+}
+
+// ============================================================
 // Handler
 // ============================================================
 
 export async function POST(req: Request) {
-  // Rate limit — vision pahalı, dakikada 6
-  const ip = getClientIp(req);
-  const limit = await rateLimit({
-    key: `pim-cutline-vision:${ip}`,
-    limit: 6,
-    windowMs: 60_000,
-  });
-  if (!limit.success) {
-    return NextResponse.json(
-      { error: "rate_limit_exceeded", retryAfter: limit.retryAfter },
-      {
-        status: 429,
-        headers: {
-          "retry-after": String(limit.retryAfter),
-          "x-ratelimit-remaining": String(limit.remaining),
-        },
-      }
-    );
-  }
-
   // Body
   let rawBody: unknown;
   try {
@@ -211,8 +249,6 @@ export async function POST(req: Request) {
   }
 
   // Ownership check via design_files + orders.
-  // designFileId verilmişse direkt; yoksa itemId'den en güncel non-superseded
-  // design_file'ı çek.
   const admin = createAdminClient();
   type DfRow = {
     id: string;
@@ -256,15 +292,24 @@ export async function POST(req: Request) {
       ?.name ?? null;
   const firstName = customerName ? customerName.split(" ")[0] : null;
 
+  // Rate limit — vision pahalı; limit aşılırsa kural-tabanlı fallback (UI kırılmasın)
+  const ip = getClientIp(req);
+  const limit = await rateLimit({
+    key: `pim-cutline-vision:${ip}`,
+    limit: 6,
+    windowMs: 60_000,
+  });
+  if (!limit.success) {
+    return visionFallbackResponse(input, firstName, "rate_limit");
+  }
+
   // Signed URL — vision 1 saatlik short-lived
   const { data: signed, error: signErr } = await admin.storage
     .from(STORAGE_BUCKET)
     .createSignedUrl(df.storage_path, 3600);
   if (signErr || !signed?.signedUrl) {
-    return NextResponse.json(
-      { error: "signed_url_failed", detail: signErr?.message },
-      { status: 500 }
-    );
+    console.error("[pim/cutline-vision-fallback] signed URL failed:", signErr);
+    return visionFallbackResponse(input, firstName, "signed_url_failed");
   }
 
   // Vision call — image_url message + structured output
@@ -283,7 +328,8 @@ export async function POST(req: Request) {
         },
       ],
       temperature: 0.4,
-      maxRetries: 1,
+      maxRetries: 2,
+      abortSignal: AbortSignal.timeout(OPENAI_VISION_TIMEOUT_MS),
     });
 
     return NextResponse.json({
@@ -292,55 +338,6 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("[pim/cutline-vision-fallback] OpenAI error:", err);
-    // Fallback: kural-tabanlı kind→öneri map'i
-    return NextResponse.json({
-      ok: true,
-      fallback: true,
-      ...buildRuleFallback(input, firstName),
-    });
-  }
-}
-
-// ============================================================
-// Vision çağrısı patlarsa: kind'a göre statik öneri
-// ============================================================
-function buildRuleFallback(
-  input: z.infer<typeof RequestSchema>,
-  firstName: string | null
-): z.infer<typeof ResponseSchema> {
-  const name = firstName ? `${firstName}, ` : "";
-  switch (input.kind) {
-    case "no_contours":
-      return {
-        diagnosis:
-          "OpenCV ön-analizi dosyada hiç bağımsız obje bulamadı — büyük ihtimalle arka plan tamamen şeffaf değil ya da görsel düz bir fotoğraf.",
-        severity: "err",
-        suggested_action: "upload_transparent",
-        pim_message: `${name}bu dosyadan bıçak çıkaramadım. Saydam arka planlı PNG veya vektörel bir versiyonunu yüklersek hallederim.`,
-      };
-    case "bg_not_separable":
-      return {
-        diagnosis:
-          "Bıçak görselin tüm kenarlarını sardı — beyaz/renkli arka plan otomatik ayrılamadı. AI ile arka planı kaldırırsak temiz silüet çıkar.",
-        severity: "warn",
-        suggested_action: "bg_remove",
-        pim_message: `${name}arka planı temiz ayıramadım. AI ile sildirip tekrar deneyelim mi?`,
-      };
-    case "low_confidence":
-      return {
-        diagnosis:
-          "Bıçak çıktı ama tier=improve — kalite sınırda. Manuel düzenleme veya yardım iyi olur.",
-        severity: "warn",
-        suggested_action: "request_help",
-        pim_message: `${name}bıçak çıktı ama emin değilim. İstersen sen "Bıçağı düzenle"den ayarla, ya da ekipten yardım iste.`,
-      };
-    case "complex_multi_object":
-      return {
-        diagnosis:
-          "Tasarım birden fazla bağımsız obje içeriyor — her birine ayrı bıçak ya da hepsini saran tek bıçak tercih meselesi.",
-        severity: "warn",
-        suggested_action: "request_help",
-        pim_message: `${name}içinde birden fazla parça var. Her birini ayrı sticker mı yapayım, yoksa hepsi tek mi olsun?`,
-      };
+    return visionFallbackResponse(input, firstName, "openai_error");
   }
 }

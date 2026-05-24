@@ -108,37 +108,33 @@ export async function POST(req: Request) {
   // 3) user_id yoksa auth.users oluştur + link
   let userId = primary.user_id;
   if (!userId) {
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: {
-        partner_contact_id: primary.id,
-        partner_id: partnerId,
-        name: primary.name,
-      },
-    });
-    if (createErr || !created?.user) {
-      if (createErr?.message?.toLowerCase().includes("already")) {
-        const { data: list } = await admin.auth.admin.listUsers();
-        const existing = list?.users?.find(
-          (u) => u.email?.toLowerCase() === email
-        );
-        if (existing) {
-          userId = existing.id;
-        } else {
-          return NextResponse.json(
-            { error: "auth_user_link_failed" },
-            { status: 500 }
-          );
-        }
-      } else {
+    // Sefa 23 May v68 (P1.6): listUsers paging fix — RPC ile email lookup
+    const { data: lookupRows } = await admin.rpc(
+      "fn_find_auth_user_by_email" as never,
+      { p_email: email } as never
+    );
+    const existingUserId =
+      (lookupRows as Array<{ user_id: string }> | null)?.[0]?.user_id ?? null;
+
+    if (existingUserId) {
+      userId = existingUserId;
+    } else {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: {
+          partner_contact_id: primary.id,
+          partner_id: partnerId,
+          name: primary.name,
+        },
+      });
+      if (createErr || !created?.user) {
         console.error("[admin/impersonate/partner] createUser error:", createErr);
         return NextResponse.json(
           { error: "auth_user_create_failed", detail: createErr?.message },
           { status: 500 }
         );
       }
-    } else {
       userId = created.user.id;
     }
     await admin

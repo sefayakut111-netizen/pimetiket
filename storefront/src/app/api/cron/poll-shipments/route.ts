@@ -20,6 +20,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { assertCronAuth } from "@/lib/cron-auth";
 import {
   queryYurticiShipment,
   IS_YURTICI_DRY_RUN,
@@ -42,12 +43,9 @@ interface CandidateRow {
 }
 
 export async function GET(req: NextRequest) {
-  // Bearer auth
-  const auth = req.headers.get("authorization");
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || auth !== expected) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Auth — Sefa 23 May v68 (P1.3): assertCronAuth (timing-safe).
+  const guard = assertCronAuth(req);
+  if (guard) return guard;
 
   const supabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -18,10 +18,36 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+/**
+ * Open redirect guard — `next` parametresinin sadece kendi site path'ine
+ * yönlendirme yapmasını sağlar.
+ *
+ * Saldırı: `?next=//kotu-site.com` — tarayıcılar `//` ile başlayan path'i
+ * harici URL olarak yorumlar (klasik open redirect / phishing).
+ *
+ * Kabul ediliyor:
+ *   - Tek `/` ile başlayan path'ler: `/panelim`, `/siparislerim`, vb.
+ *   - Query string ve fragment dahil: `/panelim?welcome=1`, `/p#hash`
+ * Reddediliyor:
+ *   - `//` ile başlayan path'ler (protocol-relative)
+ *   - `/\` (Windows backslash trick — bazı tarayıcılarda // sayılır)
+ *   - Mutlak URL (https://..., http://..., javascript:, vb.)
+ *   - Boş / null
+ */
+function sanitizeNextPath(raw: string | null, fallback = "/panelim"): string {
+  if (!raw || typeof raw !== "string") return fallback;
+  // Sadece "/" ile başlamalı ve ikinci karakter "/" veya "\" olmamalı.
+  if (!raw.startsWith("/")) return fallback;
+  if (raw.length > 1 && (raw[1] === "/" || raw[1] === "\\")) return fallback;
+  // Aşırı uzun path = anomalies kaynağı
+  if (raw.length > 512) return fallback;
+  return raw;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/panelim";
+  const next = sanitizeNextPath(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();

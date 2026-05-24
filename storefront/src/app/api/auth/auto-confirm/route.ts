@@ -5,22 +5,64 @@
  * Mail altyapısı bağlanınca (Resend domain doğrulaması) bu endpoint
  * KAPATILACAK ve mail-tabanlı confirm akışına dönülecek.
  *
+ * Sefa 23 May v68 (Güvenlik analizi P0.3 sertleştirme):
+ *   - Rate limit: IP başına 60 sn'de 5 istek
+ *   - Generic 200 response — kullanıcı var/yok ayrımı kaybedildi
+ *     (enumeration koruması)
+ *   - userId artık response'da dönmüyor
+ *   - listUsers paging: 100 → 1000 (mevcut ölçekte yeterli, mali pencere
+ *     sonrası direct getUserByEmail RPC ile değiştirilecek)
+ *   - SIGNUP_WINDOW_SECONDS dışında olan kullanıcı için "already confirmed"
+ *     gibi davran (eski 403 mesajı bilgi sızıntısıydı)
+ *
  * Güvenlik:
  *   - Sadece email_confirmed_at NULL olan, son 60 saniyede kayıt olmuş
  *     kullanıcıyı confirm eder (signup-flow attack guard)
  *   - Service role key server-only kullanılır
+ *   - IP başına rate limit (Upstash varsa kalıcı, yoksa in-memory)
+ *   - Response gövdesi her zaman generic (kullanıcı keşfi engellendi)
  */
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const SIGNUP_WINDOW_SECONDS = 60;
+
+// IP başına 60 sn'de 5 istek — yeni kayıt akışı en kötü 1-2 retry yapar
+const RATE_LIMIT_PER_IP = 5;
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 interface BodyShape {
   email?: unknown;
 }
 
+/**
+ * Generic success response — kullanıcı var/yok, confirmed/değil
+ * ayrımı yapmıyor. Saldırgan bilgi çıkaramaz.
+ */
+function genericOk() {
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: Request) {
+  // 0) Rate limit — IP başına
+  const ip = getClientIp(req);
+  const rl = await rateLimit({
+    key: `auto-confirm:${ip}`,
+    limit: RATE_LIMIT_PER_IP,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+  });
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "rate_limit_exceeded" },
+      {
+        status: 429,
+        headers: { "retry-after": String(rl.retryAfter) },
+      }
+    );
+  }
+
   let body: BodyShape;
   try {
     body = (await req.json()) as BodyShape;
@@ -50,67 +92,65 @@ export async function POST(req: Request) {
   });
 
   try {
-    // Email ile kullanıcıyı bul. listUsers() supabase admin API.
-    // Page filter yok, sadece email match. Toplam kullanıcı az olduğunda
-    // sorun yok; çoğaldığında getUserByEmail benzeri custom RPC ekleriz.
-    const { data: list, error: listErr } = await admin.auth.admin.listUsers({
-      perPage: 100,
-    });
-    if (listErr) {
-      console.error("[auto-confirm] listUsers error:", listErr);
-      return NextResponse.json(
-        { error: "Kullanıcı listelenemedi" },
-        { status: 500 }
-      );
-    }
-    const user = list.users.find(
-      (u) => u.email?.toLowerCase() === email
+    // Email ile kullanıcıyı bul. Sefa 23 May v68 (P1.6):
+    // listUsers paging hatası kaldırıldı — fn_find_auth_user_by_email RPC
+    // ile email-by-email lookup (Mig 088).
+    const { data: lookupRows, error: lookupErr } = await admin.rpc(
+      "fn_find_auth_user_by_email" as never,
+      { p_email: email } as never
     );
-    if (!user) {
-      // Race: signUp henüz commit olmamış olabilir; retry yapsın
-      return NextResponse.json(
-        { error: "Kullanıcı henüz hazır değil, tekrar dene" },
-        { status: 404 }
-      );
+    if (lookupErr) {
+      console.error("[auto-confirm] rpc lookup error:", lookupErr);
+      return genericOk();
+    }
+    const lookup =
+      (lookupRows as Array<{ user_id: string; email_confirmed_at: string | null }> | null)?.[0];
+
+    // Kullanıcı yok → generic 200 (enumeration koruması)
+    if (!lookup) {
+      return genericOk();
     }
 
-    // Zaten confirmed ise no-op
-    if (user.email_confirmed_at) {
-      return NextResponse.json({ ok: true, alreadyConfirmed: true });
+    // Zaten confirmed → no-op generic 200
+    if (lookup.email_confirmed_at) {
+      return genericOk();
     }
 
-    // Son 60 saniyede kayıt olmuş mu?
-    const createdAt = user.created_at
-      ? new Date(user.created_at).getTime()
+    // SIGNUP_WINDOW_SECONDS kontrolü için created_at gerek; RPC dönmüyor,
+    // updateUserById çağrısı için user_id yeterli. Ama age check zorunlu
+    // (eski hesabı yeniden onaylama saldırısı engeli). admin.auth.admin
+    // .getUserById ile created_at çek.
+    const { data: userData, error: userErr } =
+      await admin.auth.admin.getUserById(lookup.user_id);
+    if (userErr || !userData?.user) {
+      console.error("[auto-confirm] getUserById error:", userErr);
+      return genericOk();
+    }
+    const createdAt = userData.user.created_at
+      ? new Date(userData.user.created_at).getTime()
       : 0;
     const ageSec = (Date.now() - createdAt) / 1000;
     if (ageSec > SIGNUP_WINDOW_SECONDS) {
-      // Eski kullanıcı — bu endpoint sadece taze signup'lar için
-      return NextResponse.json(
-        { error: "Bu hesap auto-confirm penceresi dışında" },
-        { status: 403 }
+      console.warn(
+        `[auto-confirm] out-of-window attempt — email ${email}, age ${Math.round(ageSec)}s`
       );
+      return genericOk();
     }
 
     // Onayla
     const { error: updateErr } = await admin.auth.admin.updateUserById(
-      user.id,
+      lookup.user_id,
       { email_confirm: true }
     );
     if (updateErr) {
       console.error("[auto-confirm] update error:", updateErr);
-      return NextResponse.json(
-        { error: "Onaylama başarısız" },
-        { status: 500 }
-      );
+      return genericOk();
     }
 
-    return NextResponse.json({ ok: true, userId: user.id });
+    // userId artık dönmüyor — enumeration koruması
+    return genericOk();
   } catch (e) {
     console.error("[auto-confirm] unexpected:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Sunucu hatası" },
-      { status: 500 }
-    );
+    return genericOk();
   }
 }

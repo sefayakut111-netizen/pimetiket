@@ -11,6 +11,7 @@ alwaysApply: false
 1. `src/lib/pim/personas.ts` — system prompt + marka voice
 2. `src/lib/pim/memory.ts` — localStorage backend
 3. `../docs/PIM_AGENT.md`
+4. `docs/API-INTEGRATION-FIXES.md` — chat timeout, cutline fallback
 
 ## Kurallar
 
@@ -18,7 +19,8 @@ alwaysApply: false
 - "Beni hatırla?" SORMA — sessizce localStorage, KVKK m.5/2-c
 - Bot menüsü ve chip önerisi YASAK; bağlamı kendin anla
 - Streaming: Vercel AI SDK v6 + GPT-4o (`/api/pim/chat`)
-- Rate limit: 12 mesaj/dk
+- Rate limit: 12 mesaj/dk · Timeout: `OPENAI_CHAT_TIMEOUT_MS` (`lib/http/external-timeouts.ts`)
+- Cutline vision: `/api/pim/cutline-vision-fallback` — hata → 200 + `fallback: true`
 
 ## Claude agent
 

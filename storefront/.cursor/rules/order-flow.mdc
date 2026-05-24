@@ -1,6 +1,6 @@
 ---
 description: Sipariş, ödeme, sepet, onay akışları
-globs: src/app/odeme/**,src/app/siparis/**,src/app/onay/**,src/lib/customer-*.ts,src/app/api/orders/**,src/app/api/checkout/**,src/app/api/payment/**
+globs: src/app/odeme/**,src/app/siparis/**,src/app/onay/**,src/lib/customer-*.ts,src/app/api/orders/**,src/app/api/checkout/**,src/app/api/payment/**,src/lib/payment/**,src/lib/agents/run-order-qc.ts,src/lib/agents/design-qc.ts
 alwaysApply: false
 ---
 
@@ -10,9 +10,10 @@ alwaysApply: false
 
 1. `docs/SIPARIS-AKISI-SNAPSHOT.md`
 2. `docs/AKIS-V2-SEFA-22MAY.md`
-3. `docs/DOMAIN-SCHEMA-REFERENCE.md` → order domain migration listesi
-4. `src/lib/customer-cart.ts`, `src/lib/customer-order.ts`
-5. `src/lib/supabase/types.ts` → yalnızca `orders`, `payments`, `payment_intents`, `cart_items`
+3. `docs/API-INTEGRATION-FIXES.md` — PayTR timeout, QC fire-and-forget
+4. `docs/DOMAIN-SCHEMA-REFERENCE.md` → order domain migration listesi
+5. `src/lib/customer-cart.ts`, `src/lib/customer-order.ts`
+6. `src/lib/payment/paytr.ts`, `src/lib/agents/run-order-qc.ts`
 
 ## Status akışı
 

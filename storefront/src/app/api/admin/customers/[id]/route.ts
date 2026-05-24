@@ -1,175 +1,220 @@
 /**
- * GET /api/admin/customers/export
+ * /api/admin/customers/[id]
  *
- * Müşteri listesini CSV olarak indir. KVKK uyum:
- *   - Sadece admin auth ile erişilir
- *   - Tüm kayıtlar audit_log'a yazılır (kim ne zaman export aldı)
+ * Müşteri 360° admin endpoint'i. Sefa 23 May v68 (P0 #4 — Grup D):
+ * Bu dosya daha önce CSV export handler'ının kopyasıydı; UI 360°
+ * sayfası açılırken yanlışlıkla CSV indiriyordu. Sıfırdan yazıldı.
  *
- * Query: ?segment=...&search=... (liste endpoint ile aynı filter)
+ * UI sözleşmesi (src/app/admin/musteriler/[id]/page.tsx):
+ *   GET    → { ok, data?: Customer360, error? }
+ *   PATCH  → { ok, error? }   (profile alanları güncelleme; UI henüz çağırmıyor)
+ *   DELETE → { ok, error? }   (hesap kapatma; UI henüz çağırmıyor)
+ *
+ * Audit:
+ *   - GET her çağrıda 'customer.view_360' yazar (KVKK m.7 — kim
+ *     hangi müşterinin profilini açtı izlenir).
+ *   - PATCH/DELETE mutation audit'i.
+ *
+ * RPC fn_admin_customer_360 security definer + admin RLS check
+ * içerir; yetkisiz çağrılar 'forbidden' fırlatır.
  */
 
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
-import type { AdminCustomerWithSegment } from "@/app/api/admin/customers/route";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const DAY = 24 * 60 * 60 * 1000;
+export const runtime = "nodejs";
 
-function deriveSegment(
-  row: {
-    order_count: number;
-    last_order_at: string | null;
-  }
-): AdminCustomerWithSegment["segment"] {
-  if (row.order_count === 0) return "no_order";
-  if (!row.last_order_at) return "no_order";
-  const sinceDays = Math.floor(
-    (Date.now() - new Date(row.last_order_at).getTime()) / DAY
-  );
-  if (sinceDays > 180) return "lost";
-  if (sinceDays > 90) return "risk";
-  if (row.order_count >= 4) return "vip";
-  if (row.order_count >= 2) return "repeat";
-  return "new";
+const PatchBodySchema = z.object({
+  display_name: z.string().trim().min(1).max(120).nullish(),
+  phone: z.string().trim().max(40).nullish(),
+  invoice_type: z.enum(["individual", "corporate"]).nullish(),
+});
+
+function clientIp(req: Request): string | null {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 }
 
-// Excel'in TR locale'i okuyabilmesi için BOM + UTF-8 + ;
-function escapeCsv(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  const s = String(value);
-  if (s.includes(";") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
+function userAgent(req: Request): string | null {
+  return req.headers.get("user-agent") ?? null;
 }
 
-export async function GET(req: Request) {
+// ---------------------------------------------------------------------
+// GET — Customer 360° (overview + activity + orders + notes + tags + grants)
+// ---------------------------------------------------------------------
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const auth = await assertAdmin();
   if (!auth) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const url = new URL(req.url);
-  const segment = url.searchParams.get("segment") ?? "all";
-  const search = url.searchParams.get("search")?.trim().toLowerCase() ?? "";
-
+  const { id } = await params;
   const admin = createAdminClient();
-  const { data, error } = await admin.from("v_admin_customers").select("*");
+
+  // RPC: fn_admin_customer_360 — security definer, admin RLS check yapıyor.
+  // (Cast: Supabase tipleri generic RPC için Database<...> ister; bu projede
+  //  generated types yok, runtime'da JSONB döndüğünü biliyoruz.)
+  const { data, error } = await admin.rpc(
+    "fn_admin_customer_360" as never,
+    { p_user_id: id } as never
+  );
 
   if (error) {
+    if (error.message?.toLowerCase().includes("forbidden")) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
     return NextResponse.json(
       { error: "query_failed", detail: error.message },
       { status: 500 }
     );
   }
 
-  let rows = ((data ?? []) as Array<{
-    user_id: string;
-    email: string;
-    display_name: string | null;
-    phone: string | null;
-    invoice_type: string | null;
-    order_count: number;
-    total_revenue: number;
-    avg_order: number;
-    last_order_at: string | null;
-    registered_at: string;
-    email_confirmed_at: string | null;
-    has_2fa: boolean;
-    tags: string[];
-    marketing_subscribed: boolean;
-  }>).map((r) => ({
-    ...r,
-    segment: deriveSegment(r),
-  }));
-
-  // Filtreler
-  if (segment !== "all") {
-    rows = rows.filter((r) => r.segment === segment);
-  }
-  if (search) {
-    rows = rows.filter((r) =>
-      [r.email, r.display_name ?? "", r.phone ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(search)
-    );
-  }
-
-  // CSV header — Excel TR için ; ayraç + BOM
-  const headers = [
-    "Email",
-    "Ad Soyad",
-    "Telefon",
-    "Segment",
-    "Fatura tipi",
-    "Sipariş sayısı",
-    "Toplam ciro (₺)",
-    "Ort. sepet (₺)",
-    "Son sipariş",
-    "Kayıt tarihi",
-    "Email doğrulanmış",
-    "2FA aktif",
-    "Pazarlama izni",
-    "Etiketler",
-  ];
-
-  const lines = [headers.map(escapeCsv).join(";")];
-  for (const r of rows) {
-    lines.push(
-      [
-        r.email,
-        r.display_name ?? "",
-        r.phone ?? "",
-        r.segment,
-        r.invoice_type ?? "",
-        r.order_count,
-        Math.round(Number(r.total_revenue)),
-        Math.round(Number(r.avg_order)),
-        r.last_order_at
-          ? new Date(r.last_order_at).toLocaleDateString("tr-TR")
-          : "",
-        new Date(r.registered_at).toLocaleDateString("tr-TR"),
-        r.email_confirmed_at ? "Evet" : "Hayır",
-        r.has_2fa ? "Evet" : "Hayır",
-        r.marketing_subscribed ? "Evet" : "Hayır",
-        r.tags.join(", "),
-      ]
-        .map(escapeCsv)
-        .join(";")
-    );
-  }
-
-  // KVKK audit log — export işlemini kaydet
+  // Audit — KVKK m.7 izlenebilirlik (kim ne zaman hangi profili açtı)
   try {
     await admin.from("audit_log").insert([
       {
         actor_id: auth.user.id,
         actor_email: auth.user.email,
-        action: "customer_csv_export",
-        target_type: "customers",
-        target_id: null,
-        metadata: {
-          rows: rows.length,
-          segment,
-          search: search || undefined,
-        },
+        actor_role: "admin",
+        action: "customer.view_360",
+        target_type: "user",
+        target_id: id,
+        summary: `Müşteri 360° görüntülendi: ${id}`,
+        detail: {},
+        ip_address: clientIp(req),
+        user_agent: userAgent(req),
       },
     ] as never);
   } catch {
     /* audit log error silent */
   }
 
-  // BOM + content
-  const bom = "﻿";
-  const csv = bom + lines.join("\r\n");
-  const filename = `pimetiket-musteriler-${new Date().toISOString().slice(0, 10)}.csv`;
+  return NextResponse.json({ ok: true, data });
+}
 
-  return new NextResponse(csv, {
-    headers: {
-      "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="${filename}"`,
-      "cache-control": "no-store",
-    },
-  });
+// ---------------------------------------------------------------------
+// PATCH — profil alanlarını güncelle (display_name / phone / invoice_type)
+// ---------------------------------------------------------------------
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await assertAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = PatchBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "invalid_body", detail: parsed.error.message },
+      { status: 400 }
+    );
+  }
+
+  // Sadece gönderilen alanları güncelle (null = temizle, undefined = dokunma)
+  const patch: Record<string, string | null> = {};
+  if (parsed.data.display_name !== undefined)
+    patch.display_name = parsed.data.display_name;
+  if (parsed.data.phone !== undefined) patch.phone = parsed.data.phone;
+  if (parsed.data.invoice_type !== undefined)
+    patch.invoice_type = parsed.data.invoice_type;
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: "empty_body" }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update(patch as never)
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json(
+      { error: "update_failed", detail: error.message },
+      { status: 500 }
+    );
+  }
+
+  try {
+    await admin.from("audit_log").insert([
+      {
+        actor_id: auth.user.id,
+        actor_email: auth.user.email,
+        actor_role: "admin",
+        action: "profile.delete", // TODO: enum'a 'customer.profile_update' eklenince değiştir
+        target_type: "user",
+        target_id: id,
+        summary: `Müşteri profili güncellendi: ${Object.keys(patch).join(", ")}`,
+        detail: { patch },
+        ip_address: clientIp(req),
+        user_agent: userAgent(req),
+      },
+    ] as never);
+  } catch {
+    /* audit log error silent */
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+// ---------------------------------------------------------------------
+// DELETE — hesap kapat (auth.users sil → profiles cascade)
+// ---------------------------------------------------------------------
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await assertAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  // Kendini silmeye izin verme
+  if (id === auth.user.id) {
+    return NextResponse.json(
+      { error: "cannot_delete_self" },
+      { status: 400 }
+    );
+  }
+
+  const admin = createAdminClient();
+
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) {
+    return NextResponse.json(
+      { error: "delete_failed", detail: error.message },
+      { status: 500 }
+    );
+  }
+
+  try {
+    await admin.from("audit_log").insert([
+      {
+        actor_id: auth.user.id,
+        actor_email: auth.user.email,
+        actor_role: "admin",
+        action: "profile.delete",
+        target_type: "user",
+        target_id: id,
+        summary: `Müşteri hesabı silindi (admin tarafından): ${id}`,
+        detail: { deleted_user_id: id },
+        ip_address: clientIp(req),
+        user_agent: userAgent(req),
+      },
+    ] as never);
+  } catch {
+    /* audit log error silent */
+  }
+
+  return NextResponse.json({ ok: true });
 }

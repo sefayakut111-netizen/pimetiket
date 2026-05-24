@@ -47,7 +47,26 @@ function matchDomain(domain, filepath) {
 function matchKeywords(domain, query) {
   if (!query) return false;
   const q = query.toLowerCase();
-  return domain.keywords.some((kw) => q.includes(kw.toLowerCase()));
+  return domain.keywords.some((kw) => {
+    const k = kw.toLowerCase();
+    if (k.length <= 3) {
+      const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`\\b${escaped}\\b`, "i").test(q);
+    }
+    return q.includes(k);
+  });
+}
+
+function expandAlsoLoads(manifest, domains) {
+  const expanded = new Map();
+  for (const d of domains) {
+    expanded.set(d.id, d);
+    for (const relId of d.alsoLoads ?? []) {
+      const rel = manifest.domains.find((x) => x.id === relId);
+      if (rel) expanded.set(relId, rel);
+    }
+  }
+  return [...expanded.values()];
 }
 
 function normalizePath(input) {
@@ -122,7 +141,7 @@ function resolveDomains(manifest, filepaths, query) {
     }
   }
 
-  return [...matched.values()];
+  return expandAlsoLoads(manifest, [...matched.values()]);
 }
 
 function dedupe(arr) {

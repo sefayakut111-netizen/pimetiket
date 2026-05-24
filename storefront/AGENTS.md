@@ -25,9 +25,11 @@ npm run context -- --query "fiyat motoru"
 npm run context -- --json --path src/lib/pim/personas.ts
 ```
 
-### Domain haritası (13 alan)
+### Domain haritası (14 alan)
 
-pricing · pim · order · configurator · admin · database · auth · mail · legal · i18n · agents · partner · frontend-ui
+pricing · pim · order · configurator · admin · database · auth · mail · legal · i18n · agents · partner · **integrations** · frontend-ui
+
+Dış API / timeout / PayTR / OpenAI çalışırken: `integrations` domain + `docs/API-INTEGRATION-FIXES.md`
 
 Manifest güncellemek için `smart-context/manifest.json` düzenle — Cursor rules ve `/baglam` otomatik takip eder.
 
