@@ -20,15 +20,20 @@ import { Icon } from "@/components/Icon";
 import { Card, Input, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
+import {
+  ADMIN_MANUAL_SET_STATUSES,
+  ADMIN_STATUS_FILTER_CHIPS,
+  UNASSIGNED_PRODUCTION_STATUSES,
+} from "@/lib/order";
 // Sefa 22 May v68: updateCustomerOrderStatus kaldırıldı — auth mode'da
 // no-op olduğu için admin "Uygula" sessizce başarısız oluyordu. Artık
 // POST /api/admin/orders/[id]/status çağrılıyor (handleStatusChange +
 // applyBulkStatus). listCustomerOrders sadece initial render fallback.
-import {
-  listCustomerOrders,
-  type CustomerOrder,
-} from "@/lib/customer-order";
+// listCustomerOrders kaldırıldı — admin liste yalnızca API'den gelir
+import type { CustomerOrder } from "@/lib/customer-order";
 import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { canAccessModule } from "@/lib/admin-rbac";
 
 type AdminStatus = OrderStatus;
 
@@ -65,34 +70,10 @@ const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: strin
   cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100" },
 };
 
-// Sefa 22 May v68: Filtre isimleri daha açıklayıcı + "Tasarım bekleniyor"
-// ve "İptal" eklendi. Sefa geri bildirimi: "üretim prova kargo neyi
-// yansıttığı belli değil" → her chip'in ne anlama geldiği netleşti.
-const FILTERS: { id: AdminStatus | "all"; label: string }[] = [
-  { id: "all", label: "Tümü" },
-  { id: "paid", label: "Yeni (ödendi)" },
-  { id: "awaiting_upload", label: "Tasarım bekleniyor" },
-  { id: "qc_flagged", label: "AI sorun (acil)" },
-  { id: "operator_review", label: "Operatör inceliyor" },
-  { id: "proof_pending", label: "Müşteri onayı bekliyor" },
-  { id: "in_production", label: "Üretimde" },
-  { id: "shipped", label: "Kargoda" },
-  { id: "delivered", label: "Teslim edildi" },
-  { id: "cancelled", label: "İptal edildi" },
-];
+const FILTERS = ADMIN_STATUS_FILTER_CHIPS;
 
 /** Tüm AdminStatus'lar — durum güncelleme dropdown'u için */
-const ALL_STATUSES: AdminStatus[] = [
-  "paid",
-  "qc_pending",
-  "qc_flagged",
-  "operator_review",
-  "proof_pending",
-  "in_production",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
+const ALL_STATUSES: AdminStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
 
 // ============================================================
 // Saved views
@@ -135,8 +116,11 @@ const SAVED_VIEWS: SavedView[] = [
     id: "unassigned",
     label: "Üretime atanmamış",
     emoji: "🏭",
-    description: "Ödeme alındı ama henüz üretim partneri atanmadı",
-    apply: (orders) => orders.filter((o) => o.status === "paid"),
+    description: "Üretime hazır ama henüz partnere atanmadı",
+    apply: (orders) =>
+      orders.filter((o) =>
+        UNASSIGNED_PRODUCTION_STATUSES.includes(o.status)
+      ),
   },
   {
     id: "high-value",
@@ -203,15 +187,45 @@ function AdminSiparislerPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { permissions } = useAdminPermissions();
+  const canUpdateOrders = canAccessModule(permissions, "orders", "update");
   const initialFilter = (searchParams.get("status") as AdminStatus | null) ?? "all";
   const initialSearch = searchParams.get("q") ?? "";
 
   const [filter, setFilter] = useState<AdminStatus | "all">(initialFilter);
   const [search, setSearch] = useState(initialSearch);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeView, setActiveView] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState<AdminStatus | "">("");
+
+  const loadOrders = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const res = await fetch("/api/admin/orders/list?limit=500", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        setListError(
+          res.status === 403
+            ? "Sipariş listesine erişim yetkiniz yok."
+            : `Liste yüklenemedi (HTTP ${res.status})`
+        );
+        setOrders([]);
+        return;
+      }
+      const data = (await res.json()) as { orders?: CustomerOrder[] };
+      setOrders((data.orders ?? []).map(toAdminOrderRow));
+    } catch {
+      setListError("Bağlantı hatası — sipariş listesi alınamadı.");
+      setOrders([]);
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
 
   // Sefa 18 May v68 (admin UX denetim): Filter + search → URL sync.
   // 2 sekmede farklı filtre tutmak için + paylaşılabilir link.
@@ -227,25 +241,13 @@ function AdminSiparislerPageInner() {
   }, [filter, search]);
 
   useEffect(() => {
-    // İlk paint için local cache (LocalStorage / kendi user'ı)
-    setOrders(listCustomerOrders().map(toAdminOrderRow));
-    // Asıl liste: admin API → tüm müşterilerin siparişleri (RLS bypass)
-    let cancelled = false;
-    void fetchAllOrdersForAdmin({ limit: 500 }).then((all) => {
-      if (!cancelled) setOrders(all.map(toAdminOrderRow));
-    });
-    const refresh = () => {
-      setOrders(listCustomerOrders().map(toAdminOrderRow));
-      void fetchAllOrdersForAdmin({ limit: 500 }).then((all) => {
-        if (!cancelled) setOrders(all.map(toAdminOrderRow));
-      });
-    };
+    void loadOrders();
+    const refresh = () => void loadOrders();
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () => {
-      cancelled = true;
       window.removeEventListener("pim_customer_orders_updated", refresh);
     };
-  }, []);
+  }, [loadOrders]);
 
   // Sefa 22 May v68: Tek satır status değiştirme de aynı bug'dan
   // muzdaripti — updateCustomerOrderStatus auth mode'da no-op.
@@ -263,11 +265,9 @@ function AdminSiparislerPageInner() {
         return;
       }
       // Fresh çek
-      void fetchAllOrdersForAdmin({ limit: 500 }).then((all) =>
-        setOrders(all.map(toAdminOrderRow))
-      );
+      void loadOrders();
     },
-    []
+    [loadOrders]
   );
 
   /** Filtreli + aranmış + saved view uygulanmış siparişler */
@@ -370,9 +370,7 @@ function AdminSiparislerPageInner() {
     }
 
     // Liste yenile
-    void fetchAllOrdersForAdmin({ limit: 500 }).then((all) =>
-      setOrders(all.map(toAdminOrderRow))
-    );
+    void loadOrders();
     clearSelection();
     setBulkStatus("");
     // PostHog: bulk update event
@@ -386,7 +384,7 @@ function AdminSiparislerPageInner() {
       .catch(() => {
         /* silent */
       });
-  }, [bulkStatus, selected, clearSelection]);
+  }, [bulkStatus, selected, clearSelection, loadOrders]);
 
   return (
     <main className="py-8 pb-20">
@@ -421,6 +419,16 @@ function AdminSiparislerPageInner() {
             )}
           </p>
         </div>
+
+        {listError && (
+          <div className="mb-4 rounded-xl bg-kirmizi-soft text-kirmizi-koyu px-4 py-3 text-[13.5px] font-semibold">
+            {listError}
+          </div>
+        )}
+
+        {listLoading && orders.length === 0 && !listError && (
+          <p className="mb-4 text-[13.5px] text-gri-700">Siparişler yükleniyor…</p>
+        )}
 
         {/* Saved views chips */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -492,7 +500,7 @@ function AdminSiparislerPageInner() {
         </Card>
 
         {/* Bulk action bar — sticky when items selected */}
-        {selected.size > 0 && (
+        {canUpdateOrders && selected.size > 0 && (
           <div className="sticky top-14 md:top-4 z-30 mb-4 rounded-xl bg-lacivert text-white shadow-2 px-4 py-3 flex items-center gap-3 flex-wrap">
             <span className="font-semibold text-[13.5px]">
               {selected.size} sipariş seçildi
@@ -686,23 +694,35 @@ function AdminSiparislerPageInner() {
                         {o.date}
                       </td>
                       <td className="px-4 py-3">
-                        <select
-                          value={o.status}
-                          onChange={(e) =>
-                            handleStatusChange(
-                              o.id,
-                              e.target.value as AdminStatus
-                            )
-                          }
-                          aria-label={`${o.id} statüsü güncelle`}
-                          className="h-8 px-2 pr-7 rounded-lg ring-1 ring-gri-200 bg-white text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan focus:ring-pim-mercan focus:outline-none"
-                        >
-                          {ALL_STATUSES.map((st) => (
-                            <option key={st} value={st}>
-                              {STATUS_META[st].label}
-                            </option>
-                          ))}
-                        </select>
+                        {canUpdateOrders ? (
+                          <select
+                            value={o.status}
+                            onChange={(e) =>
+                              handleStatusChange(
+                                o.id,
+                                e.target.value as AdminStatus
+                              )
+                            }
+                            aria-label={`${o.id} statüsü güncelle`}
+                            className="h-8 px-2 pr-7 rounded-lg ring-1 ring-gri-200 bg-white text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan focus:ring-pim-mercan focus:outline-none"
+                          >
+                            {ALL_STATUSES.map((st) => (
+                              <option key={st} value={st}>
+                                {STATUS_META[st].label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[22px] px-2 rounded-full text-[11.5px] font-semibold",
+                              s.bg,
+                              s.color
+                            )}
+                          >
+                            {s.label}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link

@@ -325,12 +325,20 @@ export default function AdminProvaPage() {
                           />
                         ))}
                       </div>
-                      <Link
-                        href={`/admin/prova/${p.id}`}
-                        className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline"
-                      >
-                        Tam ekran incele (tasarım + bıçak) →
-                      </Link>
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <Link
+                          href={`/admin/siparisler/${p.id}`}
+                          className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-lacivert hover:underline"
+                        >
+                          Admin sipariş detayı →
+                        </Link>
+                        <Link
+                          href={`/admin/prova/${p.id}`}
+                          className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline"
+                        >
+                          Tam ekran incele (tasarım + bıçak) →
+                        </Link>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
                       <Button

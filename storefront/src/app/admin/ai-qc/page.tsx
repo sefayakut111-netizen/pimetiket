@@ -14,13 +14,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
-const fmtKurus = (n: number) =>
-  (n / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 }) + " ₺";
+const fmtTotal = (n: number) =>
+  Math.round(n).toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " ₺";
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -54,7 +55,7 @@ interface QueueItem {
   orderId: string;
   status: string;
   createdAt: string;
-  totalKurus: number;
+  total: number;
   customerName: string;
   items: Array<{
     product: string;
@@ -315,8 +316,14 @@ export default function AdminAiQcPage() {
                     Sipariş tutarı
                   </div>
                   <div className="text-xl font-bold mt-1 tabular-nums">
-                    {fmtKurus(active.totalKurus)}
+                    {fmtTotal(active.total)}
                   </div>
+                  <Link
+                    href={`/admin/siparisler/${active.orderId}`}
+                    className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline"
+                  >
+                    Sipariş detayı →
+                  </Link>
                   <div className="text-[12px] text-gri-700 mt-0.5">
                     {timeAgo(active.createdAt)}
                   </div>

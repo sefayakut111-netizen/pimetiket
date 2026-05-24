@@ -41,6 +41,10 @@ import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import {
+  AI_QC_ACTIVE_STATUSES,
+  UNASSIGNED_PRODUCTION_STATUSES,
+} from "@/lib/order";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import type { AdminModule } from "@/lib/admin-rbac";
 
@@ -68,9 +72,10 @@ function aggregateBadges(
   let fason = 0;
   for (const o of orders) {
     if (o.status !== "delivered" && o.status !== "cancelled") active++;
-    if (o.status === "qc_flagged" || o.status === "operator_review") aiQc++;
+    if ((AI_QC_ACTIVE_STATUSES as readonly string[]).includes(o.status)) aiQc++;
     if (o.status === "proof_pending") proof++;
-    if (o.status === "paid" || o.status === "qc_pending") fason++;
+    if ((UNASSIGNED_PRODUCTION_STATUSES as readonly string[]).includes(o.status))
+      fason++;
   }
   return {
     active,

@@ -22,6 +22,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
+import { logOrderEvent } from "@/lib/order-events-server";
 
 const BodySchema = z.object({
   orderId: z.string().min(1),
@@ -83,15 +84,22 @@ export async function POST(req: Request) {
   const eventType =
     body.decision === "approve" ? "qc_approved" : "qc_rejected";
 
-  await admin.from("order_events").insert({
-    order_id: body.orderId,
-    event_type: eventType,
-    payload: {
+  await logOrderEvent(admin, {
+    orderId: body.orderId,
+    eventType,
+    statusAfter: nextStatus,
+    actorId: auth.user.id,
+    actorRole: auth.role === "admin" ? "admin" : "staff",
+    summary:
+      body.decision === "approve"
+        ? "AI QC onaylandı → üretime hazır"
+        : "AI QC reddedildi → düzeltme istendi",
+    detail: {
       operator: auth.user.email ?? auth.user.id,
       note: body.note ?? null,
       next_status: nextStatus,
     },
-  } as never);
+  });
 
   // Sefa 19 May v68 (su borusu mail trigger):
   // Reject ise müşteriye "düzeltme iste" maili — fire-and-forget

@@ -26,6 +26,7 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
+import { logOrderEvent } from "@/lib/order-events-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -221,13 +222,23 @@ export async function POST(
       .eq("id", assignmentId);
   }
 
-  // Order events log
-  await supabase.from("order_events").insert({
-    order_id: orderId,
-    kind: "shipping_tracking_added",
-    actor_user_id: auth.user.id,
-    actor_role: auth.role,
-    metadata: {
+  // Order events log + sipariş statüsünü kargoda olarak senkronize et
+  const orderRow = order as { id: string; status: string };
+  if (orderRow.status !== "shipped" && orderRow.status !== "delivered") {
+    await supabase
+      .from("orders")
+      .update({ status: "shipped" })
+      .eq("id", orderId);
+  }
+
+  await logOrderEvent(supabase, {
+    orderId,
+    eventType: "shipping_tracking_added",
+    statusAfter: "shipped",
+    actorId: auth.user.id,
+    actorRole: auth.role === "admin" ? "admin" : "staff",
+    summary: `Kargo takip no eklendi: ${trackingNumber}`,
+    detail: {
       carrier_code: carrier.code,
       tracking_number: trackingNumber,
       tracking_url: trackingUrl,

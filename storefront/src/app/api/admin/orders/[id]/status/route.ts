@@ -12,23 +12,12 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { isOrderStatus } from "@/lib/order";
 
 interface BodyShape {
   status?: unknown;
   note?: unknown;
 }
-
-const VALID_STATUSES = [
-  "paid",
-  "qc_pending",
-  "qc_flagged",
-  "operator_review",
-  "proof_pending",
-  "in_production",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
 
 export async function POST(
   req: Request,
@@ -47,7 +36,7 @@ export async function POST(
   }
 
   const status =
-    typeof body.status === "string" && VALID_STATUSES.includes(body.status)
+    typeof body.status === "string" && isOrderStatus(body.status)
       ? body.status
       : null;
   if (!status) {

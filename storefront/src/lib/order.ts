@@ -49,3 +49,77 @@ export type OrderStatus =
 
   // İptal
   | "cancelled"; // İptal edildi
+
+/** Tüm geçerli order_status değerleri — tek kaynak (UI + API senkron) */
+export const ORDER_STATUS_VALUES: readonly OrderStatus[] = [
+  "paid",
+  "awaiting_upload",
+  "qc_pending",
+  "qc_flagged",
+  "operator_review",
+  "human_review",
+  "human_review_failed",
+  "proof_generating",
+  "proof_pending",
+  "proof_approved",
+  "ready_to_ship",
+  "fason_assigned",
+  "in_production",
+  "shipped",
+  "delivered",
+  "cancelled",
+] as const;
+
+export function isOrderStatus(value: string): value is OrderStatus {
+  return (ORDER_STATUS_VALUES as readonly string[]).includes(value);
+}
+
+/** Admin liste filtre chip'leri */
+export const ADMIN_STATUS_FILTER_CHIPS: ReadonlyArray<{
+  id: OrderStatus | "all";
+  label: string;
+}> = [
+  { id: "all", label: "Tümü" },
+  { id: "paid", label: "Yeni (ödendi)" },
+  { id: "awaiting_upload", label: "Tasarım bekleniyor" },
+  { id: "qc_pending", label: "AI kontrol" },
+  { id: "qc_flagged", label: "AI sorun (acil)" },
+  { id: "human_review", label: "İnsan incelemesi" },
+  { id: "operator_review", label: "Operatör inceliyor" },
+  { id: "proof_generating", label: "Prova hazırlanıyor" },
+  { id: "proof_pending", label: "Müşteri onayı bekliyor" },
+  { id: "proof_approved", label: "Müşteri onayladı" },
+  { id: "ready_to_ship", label: "Üretime hazır" },
+  { id: "fason_assigned", label: "Partnere atandı" },
+  { id: "in_production", label: "Üretimde" },
+  { id: "shipped", label: "Kargoda" },
+  { id: "delivered", label: "Teslim edildi" },
+  { id: "cancelled", label: "İptal edildi" },
+];
+
+/** Admin manuel status güncelleme dropdown'u — tüm enum değerleri */
+export const ADMIN_MANUAL_SET_STATUSES: readonly OrderStatus[] =
+  ORDER_STATUS_VALUES;
+
+/** Üretim partneri atanmamış — modern akış statüleri */
+export const UNASSIGNED_PRODUCTION_STATUSES: readonly OrderStatus[] = [
+  "ready_to_ship",
+  "proof_approved",
+];
+
+/** AI QC kuyruk + dashboard badge statüleri */
+export const AI_QC_ACTIVE_STATUSES: readonly OrderStatus[] = [
+  "human_review",
+  "human_review_failed",
+  "proof_generating",
+  "operator_review",
+  "qc_flagged",
+];
+
+/** Fason atama paneli gösterilecek statüler */
+export const FASON_ASSIGN_ELIGIBLE_STATUSES: readonly OrderStatus[] = [
+  "operator_review",
+  "proof_approved",
+  "ready_to_ship",
+  "in_production",
+];

@@ -11,19 +11,20 @@
 
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Card, Button, Eyebrow, useToast, Skeleton } from "@/components/ui";
 import { AdminTrackingForm } from "@/components/admin/AdminTrackingForm";
 import { cn } from "@/lib/cn";
-import {
-  listCustomerOrders,
-  updateCustomerOrderStatus,
-  type CustomerOrder,
-} from "@/lib/customer-order";
+import type { CustomerOrder } from "@/lib/customer-order";
 import type { OrderStatus } from "@/lib/order";
+import {
+  ADMIN_MANUAL_SET_STATUSES,
+  FASON_ASSIGN_ELIGIBLE_STATUSES,
+} from "@/lib/order";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { canAccessModule } from "@/lib/admin-rbac";
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
   paid: { label: "Yeni — dosya bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
@@ -45,17 +46,61 @@ const STATUS_META: Record<OrderStatus, { label: string; color: string; bg: strin
   cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100" },
 };
 
-const ALL_STATUSES: OrderStatus[] = [
-  "paid",
-  "qc_pending",
-  "qc_flagged",
-  "operator_review",
-  "proof_pending",
-  "in_production",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
+const ALL_STATUSES: OrderStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
+
+function mapAdminOrderResponse(json: {
+  order: {
+    id: string;
+    status: OrderStatus;
+    subtotal: number;
+    shipping: number;
+    total: number;
+    address: CustomerOrder["address"];
+    invoice: CustomerOrder["invoice"];
+    payment: CustomerOrder["payment"];
+    estimated_delivery: string | null;
+    created_at: string;
+  };
+  items: Array<{
+    id: string;
+    product: "etiket" | "sticker";
+    title: string;
+    config: string;
+    width: number;
+    height: number;
+    qty: number;
+    unit: number;
+    total: number;
+    meta: Record<string, unknown>;
+  }>;
+}): CustomerOrder {
+  const ts = new Date(json.order.created_at).getTime();
+  return {
+    id: json.order.id,
+    status: json.order.status,
+    subtotal: Number(json.order.subtotal),
+    shipping: Number(json.order.shipping),
+    total: Number(json.order.total),
+    address: json.order.address,
+    invoice: json.order.invoice,
+    payment: json.order.payment,
+    estimatedDelivery: json.order.estimated_delivery ?? undefined,
+    createdAt: ts,
+    createdAtIso: json.order.created_at,
+    items: json.items.map((i) => ({
+      id: i.id,
+      product: i.product,
+      title: i.title,
+      config: i.config,
+      width: Number(i.width),
+      height: Number(i.height),
+      qty: i.qty,
+      unit: Number(i.unit),
+      total: Number(i.total),
+      addedAt: ts,
+    })),
+  };
+}
 
 interface Params {
   id: string;
@@ -82,8 +127,11 @@ export default function AdminOrderDetailPage({
   params: Promise<Params>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
   const toast = useToast();
+  const { permissions } = useAdminPermissions();
+  const canUpdateOrders = canAccessModule(permissions, "orders", "update");
+  const canUpdateProof = canAccessModule(permissions, "proof", "update");
+  const canUpdateFason = canAccessModule(permissions, "fason", "update");
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -151,10 +199,16 @@ export default function AdminOrderDetailPage({
         assignmentId: string;
         fasonToken: string;
         fasonName: string;
+        orderStatusAfter?: string;
       };
       setAssignmentInfo(json);
       toast.success(`${json.fasonName}'a atama yapıldı`);
-      setOrder({ ...order, status: "in_production" });
+      if (json.orderStatusAfter) {
+        setOrder({
+          ...order,
+          status: json.orderStatusAfter as OrderStatus,
+        });
+      }
     } catch (e) {
       console.error("[fason/assign]", e);
       toast.error("Bağlantı hatası");
@@ -190,86 +244,34 @@ export default function AdminOrderDetailPage({
     }
   };
 
-  useEffect(() => {
-    const refresh = async () => {
-      // 1) Önce yerel cache (localStorage / customer-order)
-      const found = listCustomerOrders().find((o) => o.id === id);
-      if (found) {
-        setOrder(found);
-        setLoading(false);
-        return;
-      }
-      // 2) DB'den admin endpoint ile çek (manuel sipariş veya başka müşterinin)
-      try {
-        const res = await fetch(`/api/admin/orders/${id}`);
-        if (res.ok) {
-          const json = (await res.json()) as {
-            order: {
-              id: string;
-              status: OrderStatus;
-              subtotal: number;
-              shipping: number;
-              total: number;
-              address: CustomerOrder["address"];
-              invoice: CustomerOrder["invoice"];
-              payment: CustomerOrder["payment"];
-              estimated_delivery: string | null;
-              created_at: string;
-            };
-            items: Array<{
-              id: string;
-              product: "etiket" | "sticker";
-              title: string;
-              config: string;
-              width: number;
-              height: number;
-              qty: number;
-              unit: number;
-              total: number;
-              meta: Record<string, unknown>;
-            }>;
-          };
-          const ts = new Date(json.order.created_at).getTime();
-          setOrder({
-            id: json.order.id,
-            status: json.order.status,
-            subtotal: Number(json.order.subtotal),
-            shipping: Number(json.order.shipping),
-            total: Number(json.order.total),
-            address: json.order.address,
-            invoice: json.order.invoice,
-            payment: json.order.payment,
-            estimatedDelivery: json.order.estimated_delivery ?? undefined,
-            createdAt: ts,
-            createdAtIso: json.order.created_at,
-            items: json.items.map((i) => ({
-              id: i.id,
-              product: i.product,
-              title: i.title,
-              config: i.config,
-              width: Number(i.width),
-              height: Number(i.height),
-              qty: i.qty,
-              unit: Number(i.unit),
-              total: Number(i.total),
-              addedAt: ts,
-            })),
-          });
-        } else {
-          setOrder(null);
-        }
-      } catch (e) {
-        console.error("[admin/orders GET]", e);
+  const loadOrder = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`);
+      if (res.ok) {
+        const json = (await res.json()) as Parameters<
+          typeof mapAdminOrderResponse
+        >[0];
+        setOrder(mapAdminOrderResponse(json));
+      } else {
         setOrder(null);
-      } finally {
-        setLoading(false);
       }
-    };
-    void refresh();
-    window.addEventListener("pim_customer_orders_updated", () => void refresh());
-    return () =>
-      window.removeEventListener("pim_customer_orders_updated", () => void refresh());
+    } catch (e) {
+      console.error("[admin/orders GET]", e);
+      setOrder(null);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    void loadOrder();
+    const onRefresh = () => void loadOrder();
+    window.addEventListener("pim_customer_orders_updated", onRefresh);
+    return () => {
+      window.removeEventListener("pim_customer_orders_updated", onRefresh);
+    };
+  }, [loadOrder]);
 
   const handleStatusChange = async (newStatus: OrderStatus) => {
     if (!order) return;
@@ -290,23 +292,10 @@ export default function AdminOrderDetailPage({
       });
       if (res.ok) {
         toast.success(`Durum güncellendi → ${STATUS_META[newStatus].label}`);
-        // Order'ı yenile (yerel customer-order cache de senkron etmek için)
-        const found = listCustomerOrders().find((o) => o.id === order.id);
-        if (found) {
-          setOrder({ ...found, status: newStatus });
-        } else {
-          setOrder({ ...order, status: newStatus });
-        }
+        setOrder({ ...order, status: newStatus });
       } else {
-        // DB'de bulamadıysa (localStorage-only mock order) → eski yola dön
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        if (j.error === "Sipariş bulunamadı") {
-          updateCustomerOrderStatus(order.id, newStatus);
-          toast.success(`Durum güncellendi → ${STATUS_META[newStatus].label}`);
-          setOrder({ ...order, status: newStatus });
-        } else {
-          toast.error(j.error ?? "Güncelleme başarısız");
-        }
+        toast.error(j.error ?? "Güncelleme başarısız");
       }
     } catch (e) {
       console.error("[status]", e);
@@ -446,9 +435,10 @@ export default function AdminOrderDetailPage({
             </Card>
 
             {/* Prova upload — operator_review ve qc_passed durumları için */}
-            {(order.status === "operator_review" ||
-              order.status === "qc_pending" ||
-              order.status === "paid") && (
+            {canUpdateProof &&
+              (order.status === "operator_review" ||
+                order.status === "qc_pending" ||
+                order.status === "paid") && (
               <Card padding="p-5">
                 <div className="flex items-start gap-3 mb-4">
                   <span className="grid place-items-center w-10 h-10 rounded-xl bg-pim-mercan-tint text-pim-mercan shrink-0">
@@ -579,8 +569,8 @@ export default function AdminOrderDetailPage({
 
             {/* Fason atama — sipariş prova_pending'ten sonra (müşteri onayladıktan sonra)
                 veya operator_review (manuel) durumunda gösterilir */}
-            {(order.status === "operator_review" ||
-              order.status === "in_production") &&
+            {canUpdateFason &&
+              FASON_ASSIGN_ELIGIBLE_STATUSES.includes(order.status) &&
               !assignmentInfo && (
                 <Card padding="p-5">
                   <div className="flex items-start gap-3 mb-4">
@@ -840,6 +830,7 @@ export default function AdminOrderDetailPage({
           {/* Sağ kolon — aksiyonlar + özet */}
           <div className="space-y-5 lg:sticky lg:top-[80px] lg:self-start">
             {/* Status değiştir */}
+            {canUpdateOrders && (
             <Card padding="p-5">
               <h2 className="text-[15px] font-semibold mb-3">
                 Durum güncelle
@@ -877,6 +868,22 @@ export default function AdminOrderDetailPage({
                 })}
               </div>
             </Card>
+            )}
+
+            {!canUpdateOrders && (
+            <Card padding="p-5">
+              <h2 className="text-[15px] font-semibold mb-3">Durum</h2>
+              <span
+                className={cn(
+                  "inline-flex items-center h-[26px] px-3 rounded-full text-[12.5px] font-semibold",
+                  STATUS_META[order.status].bg,
+                  STATUS_META[order.status].color
+                )}
+              >
+                {STATUS_META[order.status].label}
+              </span>
+            </Card>
+            )}
 
             {/* Özet */}
             <Card padding="p-5">
@@ -969,7 +976,9 @@ export default function AdminOrderDetailPage({
             )}
 
             {/* Sefa 18 May: Yurtiçi Kargo manuel tracking + durum geçmişi */}
-            <AdminTrackingForm orderId={order.id} />
+            {canUpdateOrders && (
+              <AdminTrackingForm orderId={order.id} />
+            )}
           </div>
         </div>
       </div>

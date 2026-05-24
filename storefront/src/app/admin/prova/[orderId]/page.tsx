@@ -219,6 +219,12 @@ export default function AdminProvaDetailPage({
             >
               ← Prova kuyruğuna dön
             </Link>
+            <Link
+              href={`/admin/siparisler/${orderId}`}
+              className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-pim-mercan hover:underline mb-2 ml-4"
+            >
+              Admin sipariş detayı →
+            </Link>
             <Eyebrow>PROVA İNCELEME</Eyebrow>
             <h1 className="mt-1 text-2xl md:text-3xl font-bold text-lacivert tabular-nums">
               #{orderId}

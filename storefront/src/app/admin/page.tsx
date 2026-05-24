@@ -33,6 +33,10 @@ import {
 } from "@/lib/customer-order";
 import type { OrderStatus } from "@/lib/order";
 import {
+  AI_QC_ACTIVE_STATUSES,
+  UNASSIGNED_PRODUCTION_STATUSES,
+} from "@/lib/order";
+import {
   buildDailySeries,
   buildHeatmapMatrix,
   aggregateProductMix,
@@ -119,19 +123,29 @@ interface AlertItem {
   cta: string;
 }
 
+function countByStatuses(
+  orders: CustomerOrder[],
+  statuses: readonly OrderStatus[]
+): number {
+  const set = new Set<string>(statuses);
+  return orders.filter((o) => set.has(o.status)).length;
+}
+
 function detectAlerts(orders: CustomerOrder[]): AlertItem[] {
   const alerts: AlertItem[] = [];
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
 
   const stuckAi = orders.filter(
-    (o) => o.status === "qc_flagged" && now - o.createdAt > day
+    (o) =>
+      (AI_QC_ACTIVE_STATUSES as readonly string[]).includes(o.status) &&
+      now - o.createdAt > day
   );
   if (stuckAi.length > 0) {
     alerts.push({
       id: "stuck-ai",
       level: "critical",
-      message: `${stuckAi.length} sipariş 24 saatten uzun süredir AI flag'inde — incele`,
+      message: `${stuckAi.length} sipariş 24 saatten uzun süredir AI/operatör kuyruğunda — incele`,
       href: "/admin/ai-qc",
       cta: "AI QC kuyruğu",
     });
@@ -150,14 +164,14 @@ function detectAlerts(orders: CustomerOrder[]): AlertItem[] {
     });
   }
 
-  const unassigned = orders.filter((o) => o.status === "paid").length;
-  if (unassigned >= 5) {
+  const unassigned = countByStatuses(orders, UNASSIGNED_PRODUCTION_STATUSES);
+  if (unassigned >= 3) {
     alerts.push({
       id: "unassigned",
       level: "warn",
-      message: `${unassigned} ödenmiş sipariş henüz üretime atanmadı`,
-      href: "/admin/fason",
-      cta: "Partnere ata",
+      message: `${unassigned} sipariş üretime hazır ama henüz partnere atanmadı`,
+      href: "/admin/siparisler?status=ready_to_ship",
+      cta: "Sipariş listesi",
     });
   }
 
@@ -186,17 +200,17 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
   const day = 24 * 60 * 60 * 1000;
   const items: TodoItem[] = [];
 
-  const aiFlag = orders.filter((o) => o.status === "qc_flagged").length;
-  if (aiFlag > 0) {
+  const aiQueue = countByStatuses(orders, AI_QC_ACTIVE_STATUSES);
+  if (aiQueue > 0) {
     items.push({
-      id: "ai-flag",
+      id: "ai-queue",
       priority: 1,
       emoji: "🤖",
-      title: "AI flag — manuel kontrol",
-      count: aiFlag,
-      hint: "AI tasarımı sorunlu buldu, sen karar ver",
+      title: "AI / operatör incelemesi",
+      count: aiQueue,
+      hint: "Tasarım kontrolü veya prova üretimi bekliyor",
       href: "/admin/ai-qc",
-      urgent: aiFlag > 3,
+      urgent: aiQueue > 3,
     });
   }
 
@@ -232,16 +246,16 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     });
   }
 
-  const unassigned = orders.filter((o) => o.status === "paid").length;
+  const unassigned = countByStatuses(orders, UNASSIGNED_PRODUCTION_STATUSES);
   if (unassigned > 0) {
     items.push({
       id: "unassigned",
       priority: 4,
       emoji: "🏭",
-      title: "Üretime atanacak",
+      title: "Partnere atanacak",
       count: unassigned,
-      hint: "Üretim partnerine ata + teslim tarihi belirle",
-      href: "/admin/fason",
+      hint: "Üretime hazır siparişleri partnere ata",
+      href: "/admin/siparisler?status=ready_to_ship",
       urgent: unassigned >= 5,
     });
   }
@@ -444,11 +458,12 @@ export default function AdminDashboardPage() {
   const revenue = inRange.reduce((s, o) => s + o.total, 0);
   const prevRevenue = inPrevRange.reduce((s, o) => s + o.total, 0);
   const aov = count > 0 ? revenue / count : 0;
-  const aiFlagged = orders.filter((o) => o.status === "qc_flagged").length;
+  const aiFlagged = countByStatuses(orders, AI_QC_ACTIVE_STATUSES);
   const proofPending = orders.filter((o) => o.status === "proof_pending").length;
-  const productionPending = orders.filter(
-    (o) => o.status === "paid" || o.status === "operator_review"
-  ).length;
+  const productionPending = countByStatuses(
+    orders,
+    UNASSIGNED_PRODUCTION_STATUSES
+  );
 
   const countChange = formatChange(count, prevCount);
   const revenueChange = formatChange(revenue, prevRevenue);
@@ -582,15 +597,63 @@ export default function AdminDashboardPage() {
     },
   ];
 
-  // Production funnel — 7 step
+  // Production funnel — modern akış (grouped counts)
   const funnel = [
-    { status: "paid" as OrderStatus, label: "Yeni", count: statusDistribution.paid, href: "/admin/siparisler?status=paid" },
-    { status: "qc_pending" as OrderStatus, label: "AI kontrol", count: statusDistribution.qc_pending, href: "/admin/siparisler?status=qc_pending" },
-    { status: "operator_review" as OrderStatus, label: "Operatör", count: statusDistribution.operator_review, href: "/admin/siparisler?status=operator_review" },
-    { status: "proof_pending" as OrderStatus, label: "Prova", count: statusDistribution.proof_pending, href: "/admin/prova" },
-    { status: "in_production" as OrderStatus, label: "Üretimde", count: statusDistribution.in_production, href: "/admin/fason" },
-    { status: "shipped" as OrderStatus, label: "Kargoda", count: statusDistribution.shipped, href: "/admin/siparisler?status=shipped" },
-    { status: "delivered" as OrderStatus, label: "Teslim", count: statusDistribution.delivered, href: "/admin/siparisler?status=delivered" },
+    {
+      status: "paid" as OrderStatus,
+      label: "Yeni",
+      count:
+        statusDistribution.paid + statusDistribution.awaiting_upload,
+      href: "/admin/siparisler?status=paid",
+    },
+    {
+      status: "qc_pending" as OrderStatus,
+      label: "AI kontrol",
+      count: statusDistribution.qc_pending + statusDistribution.qc_flagged,
+      href: "/admin/siparisler?status=qc_pending",
+    },
+    {
+      status: "human_review" as OrderStatus,
+      label: "İnceleme",
+      count:
+        statusDistribution.human_review +
+        statusDistribution.operator_review +
+        statusDistribution.proof_generating +
+        statusDistribution.human_review_failed,
+      href: "/admin/ai-qc",
+    },
+    {
+      status: "proof_pending" as OrderStatus,
+      label: "Prova",
+      count: statusDistribution.proof_pending,
+      href: "/admin/prova",
+    },
+    {
+      status: "ready_to_ship" as OrderStatus,
+      label: "Üretime hazır",
+      count:
+        statusDistribution.proof_approved + statusDistribution.ready_to_ship,
+      href: "/admin/siparisler?status=ready_to_ship",
+    },
+    {
+      status: "in_production" as OrderStatus,
+      label: "Üretimde",
+      count:
+        statusDistribution.fason_assigned + statusDistribution.in_production,
+      href: "/admin/fason",
+    },
+    {
+      status: "shipped" as OrderStatus,
+      label: "Kargoda",
+      count: statusDistribution.shipped,
+      href: "/admin/siparisler?status=shipped",
+    },
+    {
+      status: "delivered" as OrderStatus,
+      label: "Teslim",
+      count: statusDistribution.delivered,
+      href: "/admin/siparisler?status=delivered",
+    },
   ];
   const maxFunnel = Math.max(...funnel.map((s) => s.count), 1);
   const funnelTotal = funnel.reduce((sum, s) => sum + s.count, 0);

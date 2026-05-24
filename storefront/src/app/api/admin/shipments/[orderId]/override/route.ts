@@ -23,6 +23,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { logOrderEvent } from "@/lib/order-events-server";
 
 export const runtime = "nodejs";
 
@@ -140,12 +141,13 @@ export async function POST(
   }
 
   // Order events audit log
-  await supabase.from("order_events").insert({
-    order_id: orderId,
-    kind: "shipping_admin_override",
-    actor_user_id: auth.user.id,
-    actor_role: auth.role,
-    metadata: {
+  await logOrderEvent(supabase, {
+    orderId,
+    eventType: "shipping_admin_override",
+    actorId: auth.user.id,
+    actorRole: auth.role === "admin" ? "admin" : "staff",
+    summary: `Kargo durumu manuel override: ${status}`,
+    detail: {
       override_status: status,
       description,
       location,

@@ -25,9 +25,9 @@ interface OrderRow {
   id: string;
   status: string;
   created_at: string;
-  total_kurus: number;
-  customer_name: string | null;
-  delivery_address: Record<string, unknown> | null;
+  total: number;
+  address: Record<string, unknown> | null;
+  user_id: string | null;
 }
 
 interface ItemRow {
@@ -69,7 +69,7 @@ export async function GET() {
   // 1) Sıradaki siparişler
   const { data: ordersData, error: ordersErr } = await admin
     .from("orders")
-    .select("id, status, created_at, total_kurus, customer_name, delivery_address")
+    .select("id, status, created_at, total, address, user_id")
     .in("status", [
       "human_review",
       "human_review_failed",
@@ -129,15 +129,13 @@ export async function GET() {
 
   // 5) Aggregate
   const queue = orders.map((o) => {
-    const addr = o.delivery_address as
-      | { name?: string }
-      | null;
-    const customerName = o.customer_name ?? addr?.name ?? "—";
+    const addr = o.address as { name?: string } | null;
+    const customerName = addr?.name ?? "—";
     return {
       orderId: o.id,
       status: o.status,
       createdAt: o.created_at,
-      totalKurus: o.total_kurus,
+      total: Number(o.total),
       customerName,
       items: items
         .filter((i) => i.order_id === o.id)
