@@ -2553,6 +2553,101 @@ export type Database = {
           },
         ]
       }
+      partner_pricebook_axes: {
+        Row: {
+          axis: string
+          created_at: string
+          display_order: number
+          id: string
+          product_type: string
+          value_mm: number
+        }
+        Insert: {
+          axis: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_type?: string
+          value_mm: number
+        }
+        Update: {
+          axis?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_type?: string
+          value_mm?: number
+        }
+        Relationships: []
+      }
+      partner_pricebook_matrices: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_name: string
+          id: string
+          material_key: string
+          product_type: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_name: string
+          id?: string
+          material_key: string
+          product_type?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_name?: string
+          id?: string
+          material_key?: string
+          product_type?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      partner_pricebook_cells: {
+        Row: {
+          height_mm: number
+          matrix_id: string
+          price_per_unit: number
+          qty: number
+          updated_at: string
+          width_mm: number
+        }
+        Insert: {
+          height_mm: number
+          matrix_id: string
+          price_per_unit: number
+          qty: number
+          updated_at?: string
+          width_mm: number
+        }
+        Update: {
+          height_mm?: number
+          matrix_id?: string
+          price_per_unit?: number
+          qty?: number
+          updated_at?: string
+          width_mm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_pricebook_cells_matrix_id_fkey"
+            columns: ["matrix_id"]
+            isOneToOne: false
+            referencedRelation: "partner_pricebook_matrices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_cards: {
         Row: {
           created_at: string
@@ -3241,6 +3336,7 @@ export type Database = {
           min_order_total_try: number
           min_subtotal_for_credit: number
           partner_auto_assign_enabled: boolean
+          pricing_markup_pct: number
           referral_credit_try: number
           shipping_fee_try: number
           updated_at: string
@@ -3254,6 +3350,7 @@ export type Database = {
           min_order_total_try?: number
           min_subtotal_for_credit?: number
           partner_auto_assign_enabled?: boolean
+          pricing_markup_pct?: number
           referral_credit_try?: number
           shipping_fee_try?: number
           updated_at?: string
@@ -3267,6 +3364,7 @@ export type Database = {
           min_order_total_try?: number
           min_subtotal_for_credit?: number
           partner_auto_assign_enabled?: boolean
+          pricing_markup_pct?: number
           referral_credit_try?: number
           shipping_fee_try?: number
           updated_at?: string

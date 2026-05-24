@@ -52,11 +52,12 @@ export interface PercentConfig {
   pct: number;
 }
 
-export type PricingMode = "area" | "sheet";
+export type PricingMode = "area" | "sheet" | "pricebook";
 
 export interface ProfileConfig {
-  /** "area" → m2_cost × area × qty (sticker, rulo etiket)
+  /** "area" → m2_cost × area × qty (sticker, rulo etiket legacy)
    *  "sheet" → sheet_cost × sheets_needed (tabaka etiket)
+   *  "pricebook" → partner WxH×qty matris (rulo etiket)
    *  Default: "area" (geriye uyum) */
   pricing_mode?: PricingMode;
   materials: MaterialItem[];
@@ -116,6 +117,7 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
 };
 
 export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
+  pricing_mode: "pricebook",
   materials: [
     { id: "kuse",    name: "Kuşe Etiket",    m2_cost_try: 350, desc: "Mat kaplamalı baskı kağıdı" },
     { id: "kraft",   name: "Kraft Etiket",   m2_cost_try: 300, desc: "Doğal, dokunsal" },
@@ -166,9 +168,9 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
 export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
   pricing_mode: "sheet",
   materials: [
-    { id: "kuse",  name: "Kuşe Etiket",    sheet_cost_try: 22, desc: "Mat kaplamalı baskı kağıdı (23×31 cm)" },
-    { id: "kraft", name: "Kraft Etiket",   sheet_cost_try: 20, desc: "Doğal, dokunsal (23×31 cm)" },
-    { id: "beyaz", name: "Opak PP Etiket", sheet_cost_try: 27, desc: "Klasik, dayanıklı, parlak (23×31 cm)" },
+    { id: "kuse",  name: "Kuşe Etiket",    sheet_cost_try: 22, desc: "Mat kaplamalı baskı kağıdı (33×45 cm)" },
+    { id: "kraft", name: "Kraft Etiket",   sheet_cost_try: 20, desc: "Doğal, dokunsal (33×45 cm)" },
+    { id: "beyaz", name: "Opak PP Etiket", sheet_cost_try: 27, desc: "Klasik, dayanıklı, parlak (33×45 cm)" },
   ],
   options: {
     coating: {

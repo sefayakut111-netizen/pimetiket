@@ -1,5 +1,8 @@
 /**
- * Etiket pricing — rulo etiket için ayrı geometri + cost wrapper.
+ * Etiket pricing — rulo etiket geometri + legacy maliyet.
+ *
+ * @deprecated Rulo fiyatlandirma icin pricing-pricebook modulu kullanilir.
+ *             Geometri onizlemesi icin hala cagrilir; fiyat bridge uzerinden gelir.
  *
  * Sticker'dan farkları:
  *   - Tabaka YOK — etiketler doğrudan rulo halinde teslim

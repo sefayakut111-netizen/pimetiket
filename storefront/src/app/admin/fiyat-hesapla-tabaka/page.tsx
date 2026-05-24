@@ -29,22 +29,24 @@ import {
   type ProfileConfig,
 } from "@/lib/pricing-config-types";
 import { calculatePrice } from "@/lib/pricing-calc";
+import {
+  calculateTabakaSheetGeometry,
+  TABAKA_SHEET_W_MM,
+  TABAKA_SHEET_H_MM,
+  TABAKA_SHEET_MARGIN_MM,
+} from "@/lib/pricing-tabaka-geo";
+import {
+  TABAKA_USABLE_W,
+  TABAKA_USABLE_H,
+  GAP_TABAKA,
+} from "@/lib/pricing-engine/constants";
 
-// ============================================================
-// Constants — tabaka geometry
-// ============================================================
-
-/** Standart küçük tabaka 23×31 cm (Sefa kuralı 15 May v5) */
-const SHEET_W_MM = 230;
-const SHEET_H_MM = 310;
-const SHEET_MARGIN_MM = 20;
-
-/** Kullanılabilir baskı alanı (her kenardan 2 cm marj) */
-const USABLE_W_MM = SHEET_W_MM - 2 * SHEET_MARGIN_MM; // 190
-const USABLE_H_MM = SHEET_H_MM - 2 * SHEET_MARGIN_MM; // 270
-
-/** Adet başına boşluk (her sticker arası, mm) */
-const GAP_MM = 6;
+const SHEET_W_MM = TABAKA_SHEET_W_MM;
+const SHEET_H_MM = TABAKA_SHEET_H_MM;
+const SHEET_MARGIN_MM = TABAKA_SHEET_MARGIN_MM;
+const USABLE_W_MM = TABAKA_USABLE_W;
+const USABLE_H_MM = TABAKA_USABLE_H;
+const GAP_MM = GAP_TABAKA;
 
 // ============================================================
 // Helpers
@@ -55,59 +57,6 @@ const fmt = (n: number, dec = 0) =>
     minimumFractionDigits: dec,
     maximumFractionDigits: dec,
   });
-
-interface SheetGeometry {
-  cols: number;
-  rows: number;
-  per_sheet: number;
-  sheets_needed: number;
-  total_m2: number;
-  waste_pct: number;
-}
-
-/**
- * Tabaka geometry hesabı — kaç sticker bir tabakaya sığar?
- *
- * Sefa kuralı 15 May v5: 5 mm step'e snap (yukarı). Min 5 mm.
- */
-function calculateSheetGeometry(
-  width_mm: number,
-  height_mm: number,
-  qty: number
-): SheetGeometry {
-  const w = Math.max(5, Math.ceil(width_mm / 5) * 5);
-  const h = Math.max(5, Math.ceil(height_mm / 5) * 5);
-
-  // Klasik orientation: width yatay, height dikey
-  const cols_w = Math.floor((USABLE_W_MM + GAP_MM) / (w + GAP_MM));
-  const rows_h = Math.floor((USABLE_H_MM + GAP_MM) / (h + GAP_MM));
-  const per_a = Math.max(0, cols_w * rows_h);
-
-  // 90° rotated: width dikey, height yatay
-  const cols_h = Math.floor((USABLE_W_MM + GAP_MM) / (h + GAP_MM));
-  const rows_w = Math.floor((USABLE_H_MM + GAP_MM) / (w + GAP_MM));
-  const per_b = Math.max(0, cols_h * rows_w);
-
-  // En çok sığan orientation seç
-  const per_sheet = Math.max(per_a, per_b, 1);
-  const cols = per_a >= per_b ? cols_w : cols_h;
-  const rows = per_a >= per_b ? rows_h : rows_w;
-
-  const sheets_needed = Math.ceil(qty / per_sheet);
-  const total_area_mm2 = sheets_needed * SHEET_W_MM * SHEET_H_MM;
-  const total_m2 = total_area_mm2 / 1_000_000;
-  const used_mm2 = qty * w * h;
-  const waste_pct = ((total_area_mm2 - used_mm2) / total_area_mm2) * 100;
-
-  return {
-    cols,
-    rows,
-    per_sheet,
-    sheets_needed,
-    total_m2,
-    waste_pct,
-  };
-}
 
 // ============================================================
 // Defaults
@@ -142,7 +91,7 @@ export default function FiyatHesaplaTabakaPage() {
 
   // Hesap (her render'da)
   const geometry = useMemo(
-    () => calculateSheetGeometry(width, height, qty),
+    () => calculateTabakaSheetGeometry(width, height, qty),
     [width, height, qty]
   );
 

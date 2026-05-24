@@ -32,7 +32,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -68,6 +68,11 @@ import {
 } from "@/lib/cart-pdf-helpers";
 import { StatsModal } from "@/components/admin/pricing/StatsModal";
 import { recordStat } from "@/lib/pricing-stats";
+import { calculatePrice } from "@/lib/pricing-calc";
+import {
+  FALLBACK_STICKER_CONFIG,
+  type ProfileConfig,
+} from "@/lib/pricing-config-types";
 
 // ============================================================
 // Defaults — v0.4: overhead 15→45 (SaaS recovery), minMarkup, customerType
@@ -134,8 +139,35 @@ export default function FiyatHesaplaPage() {
   // Lot rozeti — bir sonraki lot numarası
   const [nextLotPreview, setNextLotPreview] = useState<string>("A000001");
   const [statsOpen, setStatsOpen] = useState(false);
+  const [liveStickerConfig, setLiveStickerConfig] = useState<ProfileConfig>(
+    FALLBACK_STICKER_CONFIG
+  );
+  const [liveConfigLoaded, setLiveConfigLoaded] = useState(false);
+
   useEffect(() => {
     setNextLotPreview(peekNextLot("A"));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/pricing?scope=sticker", {
+          cache: "no-store",
+        });
+        const j = (await r.json()) as { ok?: boolean; live?: ProfileConfig };
+        if (!cancelled && r.ok && j.ok && j.live) {
+          setLiveStickerConfig(j.live);
+        }
+      } catch {
+        /* fallback config kalır */
+      } finally {
+        if (!cancelled) setLiveConfigLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function handleGeneratePDF() {
@@ -315,6 +347,26 @@ export default function FiyatHesaplaPage() {
   }
 
   const tier = findTier(qty);
+
+  const liveSitePrice = useMemo(() => {
+    if (!result.ok) return null;
+    return calculatePrice(
+      {
+        width_mm: width,
+        height_mm: height,
+        qty,
+        material_id: "vinil",
+        selected_options: { finish: "parlak" },
+        billable_m2: result.geometry.totalM2,
+      },
+      liveStickerConfig
+    );
+  }, [result, width, height, qty, liveStickerConfig]);
+
+  const fasonPartnerCost =
+    result.ok && mode === "fason"
+      ? result.geometry.totalM2 * fasonRate
+      : null;
 
   function reset() {
     setMode(DEFAULTS.mode);
@@ -625,6 +677,15 @@ export default function FiyatHesaplaPage() {
             {/* Price hero */}
             <PriceHero result={result} qty={qty} tier={tier} />
 
+            {result.ok && (
+              <LivePricingPanel
+                fasonPartnerCost={fasonPartnerCost}
+                liveSitePrice={liveSitePrice}
+                totalM2={result.geometry.totalM2}
+                liveConfigLoaded={liveConfigLoaded}
+              />
+            )}
+
             {result.ok ? (
               <>
                 {/* Rulo plan SVG (full width) */}
@@ -886,6 +947,79 @@ function TierGrid({
   );
 }
 
+function LivePricingPanel({
+  fasonPartnerCost,
+  liveSitePrice,
+  totalM2,
+  liveConfigLoaded,
+}: {
+  fasonPartnerCost: number | null;
+  liveSitePrice: ReturnType<typeof calculatePrice> | null;
+  totalM2: number;
+  liveConfigLoaded: boolean;
+}) {
+  return (
+    <Card padding="p-5" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[15px] font-semibold text-lacivert">
+          Site Fiyatı (Live Config)
+        </h3>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-gri-500">
+          {liveConfigLoaded ? "DB live_config" : "yükleniyor…"}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-lg bg-white ring-1 ring-gri-200 p-4">
+          <div className="text-[11px] uppercase tracking-wide text-gri-500 font-semibold mb-1">
+            Fason Partner Maliyeti
+          </div>
+          {fasonPartnerCost !== null ? (
+            <>
+              <div className="text-[24px] font-bold tabular-nums text-lacivert">
+                {fmt(Math.round(fasonPartnerCost))}{" "}
+                <span className="text-[16px] text-gri-500">₺</span>
+              </div>
+              <div className="text-[12px] text-gri-600 mt-1">
+                {totalM2.toFixed(3)} m² × fason rate (KDV hariç tahmin)
+              </div>
+            </>
+          ) : (
+            <div className="text-[13px] text-gri-600">
+              Üretim modu — fason satırı yok
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg bg-white ring-1 ring-gri-200 p-4">
+          <div className="text-[11px] uppercase tracking-wide text-gri-500 font-semibold mb-1">
+            Müşteri Fiyatı (vinil + parlak)
+          </div>
+          {liveSitePrice?.ok ? (
+            <>
+              <div className="text-[24px] font-bold tabular-nums text-lacivert">
+                {fmt(Math.round(liveSitePrice.final))}{" "}
+                <span className="text-[16px] text-gri-500">₺</span>
+              </div>
+              <div className="text-[12px] text-gri-600 mt-1">
+                Base: {fmt(liveSitePrice.base)} ₺ · billable{" "}
+                {(liveSitePrice.billable_m2 ?? totalM2).toFixed(3)} m² · tier{" "}
+                {liveSitePrice.tier.label}
+              </div>
+            </>
+          ) : (
+            <div className="text-[13px] text-gri-600">
+              {liveSitePrice && !liveSitePrice.ok
+                ? liveSitePrice.reason
+                : "Hesaplanamadı"}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function PriceHero({
   result,
   qty,
@@ -899,7 +1033,7 @@ function PriceHero({
     return (
       <Card padding="p-7" className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white">
         <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-          Müşteri Satış Fiyatı (KDV Dahil)
+          Operatör Simülasyonu (KDV Dahil)
         </div>
         <div className="text-[44px] font-bold leading-none tracking-tight">
           —
@@ -925,7 +1059,7 @@ function PriceHero({
       <div className="relative grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-            Müşteri Satış Fiyatı (KDV Dahil)
+            Operatör Simülasyonu (KDV Dahil)
           </div>
           <div className="text-[44px] md:text-[52px] font-bold leading-none tracking-tight tabular-nums">
             {fmt(Math.round(cost.total))}{" "}

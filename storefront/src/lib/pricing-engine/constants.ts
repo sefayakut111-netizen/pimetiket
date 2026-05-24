@@ -31,22 +31,18 @@ export const ROLL_MARGIN_Y = 50;
 // Tabaka boyutları
 // ============================================================
 
-/** Standart küçük tabaka — 23×31 cm (Sefa kuralı 15 May v5).
- *  Müşteri zarfı: 24×32 cm (1 cm extra marj).
- *  Kullanılabilir baskı alanı tabaka - 2*TABAKA_MARGIN_X×Y. */
-export const SMALL_SHEET_W = 230;
-export const SMALL_SHEET_H = 310;
+/** Standart tabaka — 33×45 cm (Sefa 2026 pricebook revizyonu).
+ *  Kenarlardan 1 cm marj → kullanılabilir 31×43 cm. */
+export const SMALL_SHEET_W = 330;
+export const SMALL_SHEET_H = 450;
 
-/** Tabaka kenarlardan baskısız boşluk (Sefa kuralı 15 May v5):
- *  Sağdan/soldan/üstten/alttan 2'şer cm = 20 mm.
- *  Kullanılabilir alan = SMALL_SHEET - 2 × MARGIN.
- *  Yani: 23 - 4 = 19 cm wide × 31 - 4 = 27 cm high = 190 × 270 mm. */
-export const TABAKA_MARGIN_X = 20;
-export const TABAKA_MARGIN_Y = 20;
+/** Tabaka kenarlardan baskısız boşluk: her kenardan 1 cm = 10 mm. */
+export const TABAKA_MARGIN_X = 10;
+export const TABAKA_MARGIN_Y = 10;
 
 /** Tabaka kullanılabilir baskı alanı (Sefa kuralı 15 May v5). */
-export const TABAKA_USABLE_W = SMALL_SHEET_W - 2 * TABAKA_MARGIN_X; // 190
-export const TABAKA_USABLE_H = SMALL_SHEET_H - 2 * TABAKA_MARGIN_Y; // 270
+export const TABAKA_USABLE_W = SMALL_SHEET_W - 2 * TABAKA_MARGIN_X; // 310
+export const TABAKA_USABLE_H = SMALL_SHEET_H - 2 * TABAKA_MARGIN_Y; // 430
 
 /** Müşteri zarfı (küçük) */
 export const SMALL_ENVELOPE_W = 240;

@@ -102,6 +102,9 @@ export interface CustomerCartItem {
     mimeType: string;
   }>;
 
+  /** Ek meta — checkout recalc için çoklu özelleştirme ID'leri */
+  meta?: Record<string, unknown>;
+
   /** Eklendi tarih (timestamp ms) */
   addedAt: number;
 }

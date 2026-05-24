@@ -24,6 +24,7 @@
  */
 
 import { STICKER_TIERS, type StickerTier } from "./constants";
+import { findTier as findTierByCeiling } from "../pricing-calc";
 import type { GeometryResult } from "./geometry";
 
 // ============================================================
@@ -318,19 +319,5 @@ export function computeCost(input: CostInput): CostResult {
 // ============================================================
 
 export function findTier(qty: number): StickerTier {
-  const exact = STICKER_TIERS.find((t) => t.qty === qty);
-  if (exact) return exact;
-
-  let closest = STICKER_TIERS[0];
-  let minDistance = Math.abs(qty - closest.qty);
-
-  for (const t of STICKER_TIERS) {
-    const d = Math.abs(qty - t.qty);
-    if (d < minDistance) {
-      minDistance = d;
-      closest = t;
-    }
-  }
-
-  return closest;
+  return findTierByCeiling(qty, STICKER_TIERS) as StickerTier;
 }

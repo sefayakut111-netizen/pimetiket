@@ -4,8 +4,9 @@
  * Sefa 17 May v2: m² maliyet + toplamsal % + tier çarpansal.
  *
  * Formül:
- *   area_m2  = (width × height) / 1.000.000
- *   base     = m2_cost × area × qty
+ *   area_m2  = (width × height) / 1.000.000  (gösterim)
+ *   base     = m2_cost × billable_m2         (geometri totalM2 tercih)
+ *            veya m2_cost × area × qty        (geriye dönük fallback)
  *   tiered   = base × tier_multiplier
  *   with_opt = tiered × (1 + Σ option_pct / 100)
  *   + op     = (setup + packaging × qty + cargo)
@@ -35,12 +36,16 @@ export interface PriceCalcInput {
   /** Sheet mode (etiket_tabaka) için: geometriden gelen tabaka sayısı.
    *  pricing_mode === "sheet" ise ZORUNLU. */
   sheets_needed?: number;
+  /** Area modunda geometri motorundan gelen fire dahil m² (tercih edilen). */
+  billable_m2?: number;
 }
 
 export interface PriceCalcOk {
   ok: true;
   // Adım adım değerler
   area_m2: number;
+  /** Fiyat hesabında kullanılan m² (area modu) */
+  billable_m2?: number;
   /** "area" → m²×alan×qty, "sheet" → sheet_cost×sheets_needed */
   pricing_mode: "area" | "sheet";
   /** Sheet mode'da kullanılan tabaka sayısı (area mode'da undefined) */
@@ -160,7 +165,21 @@ export function calculatePrice(
       };
     }
     base = material.m2_cost_try * area_m2 * input.qty;
+    if (
+      input.billable_m2 !== undefined &&
+      input.billable_m2 > 0 &&
+      Number.isFinite(input.billable_m2)
+    ) {
+      base = material.m2_cost_try * input.billable_m2;
+    }
   }
+
+  const billable_m2 =
+    mode === "area"
+      ? input.billable_m2 !== undefined && input.billable_m2 > 0
+        ? input.billable_m2
+        : area_m2 * input.qty
+      : undefined;
 
   // 5. Tier (çarpansal)
   const tier = findTier(input.qty, config.tiers);
@@ -239,6 +258,7 @@ export function calculatePrice(
   return {
     ok: true,
     area_m2,
+    billable_m2,
     pricing_mode: mode,
     sheets_used,
     material,

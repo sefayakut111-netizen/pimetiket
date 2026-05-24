@@ -81,6 +81,8 @@ import { gridColsForCount } from "@/lib/grid-cols";
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
 import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
+import type { PricebookSnapshot } from "@/lib/pricing-pricebook-types";
+import { FALLBACK_PRICEBOOK_SNAPSHOT } from "@/lib/pricing-pricebook-types";
 import { deriveScopeFromProduct } from "@/lib/pricing-calc";
 import {
   addToCustomerCart,
@@ -681,13 +683,25 @@ function EtiketPage() {
   //   - Material/Coating/Customization name+desc admin'den öncelikli
   //   - Fiyat hesabı quoteEtiketFromConfig'le (config varsa)
   const [adminConfig, setAdminConfig] = useState<ProfileConfig | null>(null);
+  const [pricebookSnapshot, setPricebookSnapshot] =
+    useState<PricebookSnapshot>(FALLBACK_PRICEBOOK_SNAPSHOT);
   useEffect(() => {
     let cancelled = false;
     const scope = deriveScopeFromProduct("etiket", formFactor);
-    setAdminConfig(null); // formFactor değişince eski config bypass
+    setAdminConfig(null);
     void getLivePricingConfig(scope).then((cfg) => {
       if (!cancelled) setAdminConfig(cfg);
     });
+    if (formFactor === "rulo") {
+      void fetch("/api/public/pricebook", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((j: { ok?: boolean; snapshot?: PricebookSnapshot }) => {
+          if (!cancelled && j.ok && j.snapshot) setPricebookSnapshot(j.snapshot);
+        })
+        .catch(() => {
+          /* fallback snapshot kalir */
+        });
+    }
     return () => {
       cancelled = true;
     };
@@ -1016,7 +1030,11 @@ function EtiketPage() {
     customizations: customs,
   };
   const quote =
-    (adminConfig && quoteEtiketFromConfig(adminConfig, etiketQuoteInput)) ??
+    (adminConfig &&
+      quoteEtiketFromConfig(adminConfig, etiketQuoteInput, {
+        pricebookSnapshot:
+          formFactor === "rulo" ? pricebookSnapshot : undefined,
+      })) ??
     quoteCustomerEtiket(etiketQuoteInput);
 
   const rawTotal = quote.ok ? quote.total : 0;
@@ -1240,6 +1258,10 @@ function EtiketPage() {
       materialId: material,
       coatingId: coating,
       customizationId: primaryCustom,
+      meta: {
+        customizations: customs.filter((id) => id !== "yok"),
+        formFactor,
+      },
       winding,
       // Sefa 21 May v68 Mig 073: rulo göbek + adet/rulo structured kayıt
       // (eskiden sadece config string'inde tutuluyordu, sipariş detay özet

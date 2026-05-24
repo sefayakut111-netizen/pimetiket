@@ -27,6 +27,8 @@ import {
 } from "./customer-pricing-from-config";
 import { getLivePricingConfig } from "./pricing-config";
 import type { ProfileConfig } from "./pricing-config-types";
+import { fetchPricebookSnapshot } from "./pricing-pricebook-db";
+import { isPricebookMode } from "./pricing-pricebook";
 
 // ============================================================
 // Types
@@ -49,6 +51,7 @@ export interface CartItemForValidation {
   finish?: string | null;
   coatingId?: string | null;
   customizationId?: string | null;
+  materialId?: string | null;
 }
 
 export interface ValidationFailDetail {
@@ -185,12 +188,22 @@ async function recalcSticker(
   return { recalced: true };
 }
 
+function parseCustomizationsFromMeta(
+  meta: Record<string, unknown> | null | undefined
+): string[] | undefined {
+  const raw = meta?.customizations;
+  if (!Array.isArray(raw)) return undefined;
+  const ids = raw.filter((v): v is string => typeof v === "string" && v.length > 0);
+  return ids.length > 0 ? ids : undefined;
+}
+
 async function recalcEtiket(
   item: CartItemForValidation,
   config: ProfileConfig,
   formFactor: "rulo" | "tabaka"
 ): Promise<RecalcOutcome> {
-  if (!item.material) return { recalced: false };
+  const materialId = item.materialId ?? item.material;
+  if (!materialId) return { recalced: false };
 
   // Note: formFactor parametre olarak alınmıyor — config.pricing_mode'a
   // güvenilir (caller scope'a göre doğru config'i fetch eder). Hata mesajı
@@ -202,18 +215,31 @@ async function recalcEtiket(
   // güvenli (üzerinde recalc yapılan üretim ID'leri client-side'da zaten
   // validate ediliyor; admin config'inde de olmayan ID'ye düştüğünde
   // priceResult.ok=false dönüyor).
-  const result = quoteEtiketFromConfig(config, {
-    width: item.width,
-    height: item.height,
-    qty: item.qty,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    material: item.material as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    coating: (item.coatingId ?? "") as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    customization: (item.customizationId ?? "") as any,
-    customizations: undefined,
-  });
+  const metaCustomizations = parseCustomizationsFromMeta(item.meta);
+  const customizationIds =
+    metaCustomizations ??
+    (item.customizationId ? [item.customizationId] : undefined);
+
+  const result = quoteEtiketFromConfig(
+    config,
+    {
+      width: item.width,
+      height: item.height,
+      qty: item.qty,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      material: materialId as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      coating: (item.coatingId ?? "") as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      customization: (customizationIds?.[0] ?? "") as any,
+      customizations: customizationIds as never,
+    },
+    {
+      pricebookSnapshot: isPricebookMode(config)
+        ? await fetchPricebookSnapshot()
+        : undefined,
+    }
+  );
   if (!result || !result.ok) return { recalced: false };
 
   const expectedTotal = result.total;

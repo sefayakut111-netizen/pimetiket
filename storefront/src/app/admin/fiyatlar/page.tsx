@@ -28,7 +28,14 @@ import type {
   OptionItem,
   TierConfig,
 } from "@/lib/pricing-config";
+import { PriceBookPanel } from "@/components/admin/pricing/PriceBookPanel";
+import { calcTabakaSheets } from "@/lib/pricing-tabaka-geo";
 import { calculatePrice } from "@/lib/pricing-calc";
+import {
+  isPricebookMode,
+  quoteRuloFromPricebook,
+  FALLBACK_PRICEBOOK_SNAPSHOT,
+} from "@/lib/pricing-pricebook";
 import {
   diffProfileConfig,
   isMaterialChanged,
@@ -79,28 +86,9 @@ const SCOPE_PREVIEW_DEFAULTS: Record<
   etiket_tabaka: { width: 70, height: 50, qty: 1000 },
 };
 
-// ============================================================
-// Tabaka geometry — sheet preview için sheets_needed hesabı
-// (fiyat-hesapla-tabaka sayfasındaki ile aynı kurallar)
-// ============================================================
-const SHEET_W_MM = 230;
-const SHEET_H_MM = 310;
-const SHEET_MARGIN_MM = 20;
-const USABLE_W_MM = SHEET_W_MM - 2 * SHEET_MARGIN_MM; // 190
-const USABLE_H_MM = SHEET_H_MM - 2 * SHEET_MARGIN_MM; // 270
-const GAP_MM = 6;
-
+// Tabaka geometry — ortak modul (33×45 cm, 1 cm marj)
 function calcSheetsNeeded(width_mm: number, height_mm: number, qty: number): number {
-  const w = Math.max(5, Math.ceil(width_mm / 5) * 5);
-  const h = Math.max(5, Math.ceil(height_mm / 5) * 5);
-  const per_a =
-    Math.max(0, Math.floor((USABLE_W_MM + GAP_MM) / (w + GAP_MM))) *
-    Math.max(0, Math.floor((USABLE_H_MM + GAP_MM) / (h + GAP_MM)));
-  const per_b =
-    Math.max(0, Math.floor((USABLE_W_MM + GAP_MM) / (h + GAP_MM))) *
-    Math.max(0, Math.floor((USABLE_H_MM + GAP_MM) / (w + GAP_MM)));
-  const per_sheet = Math.max(per_a, per_b, 1);
-  return Math.ceil(qty / per_sheet);
+  return calcTabakaSheets(width_mm, height_mm, qty);
 }
 
 function fmtMoney(n: number): string {
@@ -275,10 +263,26 @@ export default function FiyatlarPage() {
     return scope === "etiket_tabaka";
   }, [draft, scope]);
 
+  const isRuloPricebook = useMemo(() => {
+    if (!draft) return scope === "etiket_rulo";
+    return isPricebookMode(draft);
+  }, [draft, scope]);
+
   // Live preview hesaplama
   const previewResult = useMemo(() => {
     if (!draft || !previewMaterialId) return null;
     const defaults = SCOPE_PREVIEW_DEFAULTS[scope];
+
+    if (isRuloPricebook) {
+      return quoteRuloFromPricebook(FALLBACK_PRICEBOOK_SNAPSHOT, draft, {
+        width_mm: defaults.width,
+        height_mm: defaults.height,
+        qty: defaults.qty,
+        material_key: previewMaterialId,
+        selected_options: previewOptions,
+      });
+    }
+
     const sheets_needed = isSheetMode
       ? calcSheetsNeeded(defaults.width, defaults.height, defaults.qty)
       : undefined;
@@ -293,7 +297,7 @@ export default function FiyatlarPage() {
       },
       draft
     );
-  }, [draft, previewMaterialId, previewOptions, scope, isSheetMode]);
+  }, [draft, previewMaterialId, previewOptions, scope, isSheetMode, isRuloPricebook]);
 
   if (loading && !data) {
     return (
@@ -1022,6 +1026,43 @@ export default function FiyatlarPage() {
 
               {/* Hesap sonucu */}
               {previewResult?.ok ? (
+                "retail" in previewResult ? (
+                  <div className="text-[11.5px] space-y-1 font-mono leading-relaxed text-lacivert">
+                    <Row
+                      label="Partner subtotal"
+                      value={fmtMoney2(previewResult.partner_subtotal)}
+                    />
+                    <Row
+                      label={`+ Kaplama %${previewResult.retail.options_pct_total}`}
+                      value={fmtMoney2(previewResult.retail.with_options)}
+                    />
+                    <Row
+                      label="+ Operasyon"
+                      value={`+${fmtMoney2(previewResult.retail.operation_cost)}`}
+                    />
+                    <Row
+                      label={`+ Markup %${previewResult.retail.markup_pct}`}
+                      value={fmtMoney2(previewResult.retail.with_markup)}
+                    />
+                    <Row
+                      label="+ Fee + KDV"
+                      value={fmtMoney2(previewResult.total)}
+                    />
+                    <div className="border-t border-pim-mercan/30 pt-2 mt-2">
+                      <div className="font-sans">
+                        <div className="text-[10.5px] uppercase tracking-[0.04em] text-pim-mercan font-bold">
+                          Musteri gorur (price book)
+                        </div>
+                        <div className="text-[20px] font-bold text-pim-mercan tabular-nums">
+                          {fmtMoney(previewResult.total)}
+                        </div>
+                        <div className="text-[11px] text-gri-700">
+                          Birim: {previewResult.unitPrice.toFixed(2)} TL/adet
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                 <div className="text-[11.5px] space-y-1 font-mono leading-relaxed text-lacivert">
                   <Row
                     label={
@@ -1067,6 +1108,7 @@ export default function FiyatlarPage() {
                     </div>
                   </div>
                 </div>
+                )
               ) : previewResult ? (
                 <div className="text-[12px] text-kirmizi">
                   ⚠ {previewResult.reason}
@@ -1081,6 +1123,8 @@ export default function FiyatlarPage() {
             </Card>
           </div>
         </div>
+
+        {scope === "etiket_rulo" && draft && <PriceBookPanel config={draft} />}
       </div>
     </main>
   );

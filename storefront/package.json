@@ -12,7 +12,7 @@
     "context": "node scripts/smart-context.mjs",
     "verify:upload-chain": "node scripts/verify-upload-chain.mjs",
     "verify:r2": "node scripts/verify-r2.mjs",
-    "verify:manifest-restore": "node scripts/verify-manifest-restore.mjs",
+    "verify:pricebook": "node scripts/verify-pricebook.mjs",
     "supabase:types": "supabase gen types typescript --project-id ucmpwxnoaqjpzhijnxtp > src/lib/supabase/types.ts",
     "analyze:deps": "npx madge --json --extensions ts,tsx --ts-config tsconfig.json src/ > deps.json && python scripts/analyze-deps.py",
     "analyze:orphan": "npx madge --orphans --extensions ts,tsx --ts-config tsconfig.json src/",

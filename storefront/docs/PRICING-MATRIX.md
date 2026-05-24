@@ -1,7 +1,7 @@
 # Pim Etiket — Partner Pricing Matrix Mimarisi
 
 **Yazıldı:** 23 Mayıs 2026 (Sefa kararı)
-**Durum:** ⏳ Plan onaylandı, implementasyon beklemede
+**Durum:** ✅ Uygulandı (Migration 093–094, 5 malzeme seed, admin UI, müşteri bridge)
 **Sahibi:** Sefa Yakut
 
 ---
@@ -14,9 +14,9 @@
 
 | Ürün | Model | Veri kaynağı |
 |---|---|---|
-| **Etiket Rulo** | Model C — 2D matris (boyut × adet) | Partner tablo |
-| **Etiket Tabaka** | Model C — 2D matris (boyut × adet) | Partner tablo |
-| **Sticker** | m² × rate × tier (mevcut sistem) | Partner m² fiyatı |
+| **Etiket Rulo** | Price Book — W×H×qty matris + bilinear interpolasyon | `partner_pricebook_*` tabloları |
+| **Etiket Tabaka** | Geometri × tabaka birim fiyatı (matris **yok**) | `pricing_config` `sheet_cost_try` + `pricing-tabaka-geo.ts` |
+| **Sticker** | m² × rate × tier (mevcut sistem) | `pricing_config` m² maliyet |
 
 ---
 
@@ -43,7 +43,8 @@ Detay: bkz. konuşma transkriptindeki "Pim Etiket Fiyat Motoru — Akademi" öze
 - **Min sipariş: 1.000 adet — kati kural.** Altı reddedilir, müşteri sticker'a yönlendirilir.
 
 **Etiket Tabaka:**
-- Boyut + adet ekseni partner görüşmesinden sonra netleşecek (Sefa karar verecek)
+- **Matris yok** — 33×45 cm tabaka, kenarlardan 1 cm marj → `calcTabakaSheets()` × `sheet_cost_try`
+- Geometri: [`pricing-tabaka-geo.ts`](../src/lib/pricing-tabaka-geo.ts) (tek kaynak)
 
 **Sticker:** Anchor yok (mevcut m² × rate × tier sistemi).
 
@@ -166,60 +167,26 @@ unit_cost = totalM2 × material_rate × tier_multiplier
 
 ---
 
-## 7. DB Schema (Mig 085 önerisi)
+## 7. DB Schema (Migration 093)
 
-```sql
--- 1) Anchor noktaları (axes)
-create table public.partner_pricing_axes (
-  id uuid primary key default gen_random_uuid(),
-  product_type text not null check (product_type in ('etiket_rulo', 'etiket_tabaka')),
-  kind text not null check (kind in ('size', 'qty')),
-  value integer not null,
-  display_order integer not null default 0,
-  created_at timestamptz default now(),
-  unique(product_type, kind, value)
-);
+Tablolar: `partner_pricebook_axes`, `partner_pricebook_matrices`, `partner_pricebook_cells`
 
--- 2) Matrisler
-create table public.partner_pricing_matrices (
-  id uuid primary key default gen_random_uuid(),
-  product_type text not null check (product_type in ('etiket_rulo', 'etiket_tabaka')),
-  material_key text not null,  -- 'kuse', 'seffaf', 'metalik', ...
-  display_name text not null,
-  active boolean not null default true,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(product_type, material_key)
-);
+- Boyut ekseni: `(width_mm, height_mm)` composite — dikdörtgen destekli
+- Adet ekseni: `1000 / 3000 / 5000 / 10000`
+- Global markup: `site_settings.pricing_markup_pct`
 
--- 3) Hücreler
-create table public.partner_pricing_cells (
-  matrix_id uuid not null references partner_pricing_matrices(id) on delete cascade,
-  size_value integer not null,
-  qty_value integer not null,
-  price_per_unit numeric(10, 4) not null,
-  updated_at timestamptz default now(),
-  primary key (matrix_id, size_value, qty_value)
-);
+Kod modülleri:
 
--- 4) Kaplama/özelleştirme yüzdeleri
-create table public.partner_pricing_modifiers (
-  id uuid primary key default gen_random_uuid(),
-  product_type text not null,  -- 'etiket_rulo' | 'etiket_tabaka' | 'sticker' | '*' (global)
-  modifier_key text not null,  -- 'coating_mat', 'finish_foil', ...
-  display_name text not null,
-  pct_add numeric(5, 2) not null default 0,
-  display_order integer not null default 0,
-  active boolean not null default true,
-  unique(product_type, modifier_key)
-);
+| Dosya | Rol |
+|---|---|
+| `src/lib/pricing-pricebook.ts` | Public API |
+| `src/lib/pricing-pricebook-lookup.ts` | Snapshot lookup |
+| `src/lib/pricing-pricebook-interp.ts` | Bilinear + qty interpolation |
+| `src/lib/pricing-retail.ts` | Modifier + markup + fee + KDV |
+| `src/lib/pricing-pricebook-db.ts` | DB fetch + cache |
+| `src/components/admin/pricing/PriceBookPanel.tsx` | Admin grid UI |
 
--- 5) Global markup
-alter table public.site_settings
-  add column if not exists pricing_markup_pct numeric(5, 2) not null default 50.0;
-```
-
-**RLS:** Sadece admin/staff insert/update. Public read (müşteri bridge bu tabloları okur).
+Eski Mig 085 önerisi (`partner_pricing_*`) **kullanılmadı** — isimlendirme `pricebook` olarak netleştirildi.
 
 ---
 
