@@ -1,3 +1,33 @@
+## ✅ 25 Mayıs 2026 — Admin · Storage · PRICING-MATRIX — **KAPATILDI**
+
+> **Oturum logu:** [`SESSION-LOG-2026-05-25.md`](../SESSION-LOG-2026-05-25.md)  
+> **Fiyat spec:** [`docs/PRICING-MATRIX.md`](PRICING-MATRIX.md)  
+> **Git:** `c4ce0fa` … `ffd7320` → `origin/main` · Vercel production Ready
+
+| İş | Durum | Referans |
+|---|---|---|
+| Granüler RBAC + partner UI preview | ✅ | `c4ce0fa` |
+| Siparişler 16-status senkron | ✅ | `bb02dc1`, `lib/order.ts` |
+| Dashboard API-only + RBAC gates | ✅ | `58f4773` |
+| R2 hot/archive + purge crons | ✅ | `572436b` |
+| Faz 0 fiyat kopukluk fix | ✅ | `ffd7320` içinde |
+| Partner W×H price book (5 malzeme) | ✅ | Migration 093–094, admin UI |
+| Production deploy + mig 093–094 apply | ✅ | `apply-migrations-093-094.mjs` |
+| Design QC `tokens_used` kaydı | ✅ | bu oturum kapanış commit'i |
+| Verify script'leri | ✅ | `verify-pricebook`, `verify-auditor-fixes`, `verify-qc-tokens` |
+
+### Sıradaki (25 May oturumundan kalan)
+
+| # | İş | Öncelik |
+|---|---|---|
+| 1 | Migration **085–092** production apply | P1 |
+| 2 | Partner gerçek CSV → admin Price Book | P1 iş |
+| 3 | Faz 4 shadow diff (eski m² vs pricebook) | P2 |
+| 4 | `/admin/fiyat-hesapla-etiket` pricebook diagnostik | P2 |
+| 5 | Legacy rulo m² fallback kaldırma | P3 |
+
+---
+
 ## 🔜 Denetçi sistemi — sonraki tur (25 May 2026)
 
 > Auditor fix oturumundan (snooze, security RPC, finance cron, digest stale, tokens_used, ApprovalCard deep link) kalan geniş işler.

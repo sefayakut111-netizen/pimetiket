@@ -57,7 +57,7 @@ const QCAnalysisSchema = z.object({
     .number()
     .nullable()
     .describe("Effective DPI for print size (null if vektörel-only)"),
-  embeddedRasterCount: z.number().default(0),
+  embeddedRasterCount: z.number(),
   colorProfile: z
     .enum(["CMYK", "RGB", "Grayscale", "Spot", "Unknown"])
     .nullable(),
@@ -82,7 +82,7 @@ const QCAnalysisSchema = z.object({
         "general",
       ]),
       message: z.string(),
-      actionable: z.string().optional(),
+      actionable: z.string().nullable(),
     })
   ),
 });

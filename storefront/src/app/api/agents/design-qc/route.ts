@@ -158,6 +158,7 @@ export async function POST(req: Request) {
       model: result.model,
       duration_ms: result.durationMs,
       cost_usd: result.costUsd,
+      tokens_used: result.tokensUsed ?? null,
     } as never)
     .select("id")
     .single();
@@ -191,6 +192,7 @@ export async function POST(req: Request) {
       durationMs: result.durationMs,
       model: result.model,
       costUsd: result.costUsd,
+      tokensUsed: result.tokensUsed,
     },
   });
 }

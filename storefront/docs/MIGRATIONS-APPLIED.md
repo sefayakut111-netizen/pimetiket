@@ -7,7 +7,28 @@
 > apply'ları burada belgelenir. CLI tracking (`supabase_migrations.schema_migrations`)
 > kullanılmıyor (her migration manuel apply edildi).
 
-**Son güncelleme:** 24 Mayıs 2026 (085–089 apply bekliyor)
+**Son güncelleme:** 25 Mayıs 2026 (093–094 apply edildi; 085–089 hâlâ bekliyor)
+
+---
+
+## ✅ Apply edildi — Migration 093–094 (25 May 2026 — PRICING-MATRIX)
+
+> **Apply script:** `node scripts/apply-migrations-093-094.mjs`  
+> **Oturum:** `SESSION-LOG-2026-05-25.md`  
+> **Git:** `ffd7320` → `origin/main` · Vercel production Ready
+
+| # | Migration | Konu |
+|---|---|---|
+| 093 | `093_partner_pricebook.sql` | `partner_pricebook_*` tabloları, kuşe seed, `etiket_rulo` → `pricebook` modu |
+| 094 | `094_partner_pricebook_all_materials.sql` | kraft, beyaz, ultra, metalik matrisleri |
+
+Verify:
+```sql
+SELECT material_key, active FROM partner_pricebook_matrices ORDER BY material_key;
+-- Beklenen: 5 satır
+```
+
+Canlı API: `GET https://pimetiket.com/api/public/pricebook`
 
 ---
 
@@ -63,6 +84,8 @@ Migration push sonrası checklist: `db apply` → `npm run supabase:types` → `
 | 075 | `075_product_cards_encoding_fix.sql` | 21 May 2026 | Management API | 22 UPDATE, replacement char temizliği |
 | 076 | `076_mail_suppressions_and_observability.sql` | 21 May 2026 | Management API | Mail observability + suppressions + idempotency |
 | 072 | `072_cart_design_preview.sql` | 21 May 2026 | Management API (geriden) | Bucket + path-strict RLS policies |
+| 093 | `093_partner_pricebook.sql` | 25 May 2026 | Management API | Partner price book şema + kuşe seed |
+| 094 | `094_partner_pricebook_all_materials.sql` | 25 May 2026 | Management API | 4 malzeme matris seed |
 | 077 | `077_design_previews_rls_relax.sql` | ❌ **UYGULANMADI** | — | Server proxy ile gereksiz oldu |
 
 ---
