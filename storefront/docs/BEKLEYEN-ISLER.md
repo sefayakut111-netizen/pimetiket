@@ -5,6 +5,44 @@ maddeler. Bu dosya hatırlatma listesi — Sefa zamanı geldiğinde uygula.
 
 ---
 
+## ✅ 23 Mayıs 2026 — API entegrasyon analizi & dayanıklılık (commit + push)
+
+> **Oturum logu:** [`SESSION-LOG-2026-05-23-API-ENTEGRASYON.md`](../SESSION-LOG-2026-05-23-API-ENTEGRASYON.md)  
+> **Teknik detay:** [`docs/API-INTEGRATION-FIXES.md`](API-INTEGRATION-FIXES.md)  
+> **Git:** `f58b183` → `origin/main` (`pimetiket`)
+
+| İş | Durum | Referans |
+|---|---|---|
+| Dış API / OpenAI analiz raporu | ✅ | Oturum log Paket A |
+| HTTP timeout katmanı (`lib/http/*`) | ✅ | PayTR, Netgsm, Yurtiçi, Upstash |
+| QC pipeline güvenlik sarmalayıcı | ✅ | `run-order-qc.ts` |
+| Circuit breaker fail-closed | ✅ | `circuit-breaker.ts` |
+| OpenAI timeout + retry | ✅ | chat, QC, cutline |
+| Smart Context `integrations` domain | ✅ | `manifest.json`, `integrations.mdc` |
+| Agent bağlam kopuklukları giderildi | ✅ | `alsoLoads`, glob fix, keyword fix |
+| Commit + push | ✅ | `f58b183` |
+
+### Bugün başarıyla biten — 23 May 2026 (API entegrasyon oturumu)
+
+- ✅ Mimari ve API entegrasyon analizi (salt rapor — risk listesi)
+- ✅ `fetchWithTimeout` + `external-timeouts.ts` merkezi katman
+- ✅ Ödeme sonrası QC: fatal hata → `human_review` (paid'de takılma önlendi)
+- ✅ Cutline vision: hata/limit → 200 + kural-tabanlı fallback
+- ✅ Yeni Smart Context domain: **integrations** (14. domain)
+- ✅ Cursor rule: `.cursor/rules/integrations.mdc`
+- ✅ `npm run context -- --path src/lib/payment/paytr.ts` → order + integrations doğrulandı
+- ✅ Git push: `main` @ `f58b183`
+
+### Sıradaki (API oturumundan kalan — deploy sonrası)
+
+| # | İş | Öncelik |
+|---|---|---|
+| 1 | Smoke test checklist (`API-INTEGRATION-FIXES.md`) | 🟡 deploy sonrası |
+| 2 | PDF/vektör gerçek vision QC | 🟢 ürün kararı |
+| 3 | Upstash production zorunlu kılma | 🟢 infra |
+
+---
+
 ## ✅ 24 Mayıs 2026 — Şema & TypeScript agent altyapısı (kod, migration apply değil)
 
 > Bu bölüm **kod tabanı ve dokümantasyon** güncellemesidir. Yeni SQL migration apply edilmedi.

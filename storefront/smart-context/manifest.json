@@ -258,6 +258,7 @@
       "docs": [
         "docs/SISTEM-BAGIMLILIK-HARITASI.md",
         "docs/API-INTEGRATION-FIXES.md",
+        "docs/BEKLEYEN-ISLER.md",
         "docs/DOMAIN-SCHEMA-REFERENCE.md"
       ],
       "hubs": [
