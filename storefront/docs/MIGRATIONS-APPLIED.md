@@ -7,7 +7,31 @@
 > apply'ları burada belgelenir. CLI tracking (`supabase_migrations.schema_migrations`)
 > kullanılmıyor (her migration manuel apply edildi).
 
-**Son güncelleme:** 25 Mayıs 2026 (093–094 apply edildi; 085–089 hâlâ bekliyor)
+**Son güncelleme:** 25 Mayıs 2026 (085–094 apply edildi)
+
+---
+
+## ✅ Apply edildi — Migration 085–092 (25 May 2026)
+
+> **Apply script:** `npm run migrate:085-092`  
+> **Not:** 085 RPC revoke blokları `to_regprocedure` ile koşullu (070 apply edilmemiş ortamlarda güvenli)
+
+| # | Migration | Konu |
+|---|---|---|
+| 085 | `085_security_patches.sql` | RPC grant revoke, design-previews DELETE guard, partner_contacts RLS |
+| 086 | `086_partner_contract_alignment.sql` | Partner contract assign guard |
+| 087 | `087_customer_audit_actions.sql` | `audit_action` customer.* enum |
+| 088 | `088_auth_user_email_lookup.sql` | `fn_find_auth_user_by_email` RPC |
+| 089 | `089_fason_token_hash.sql` | Fason token SHA256 hash |
+| 090 | `090_rbac_extended_modules.sql` | Granüler RBAC modülleri |
+| 091 | `091_assign_admin_roles.sql` | Admin rol ataması seed |
+| 092 | `092_fason_assign_modern_status.sql` | Fason assign modern status |
+
+Verify:
+```sql
+SELECT proname FROM pg_proc WHERE proname = 'fn_find_auth_user_by_email';
+SELECT module_key FROM admin_role_modules LIMIT 5;
+```
 
 ---
 
@@ -32,7 +56,18 @@ Canlı API: `GET https://pimetiket.com/api/public/pricebook`
 
 ---
 
-## ⏳ Bekleyen apply — Migration 085–089 (23 May güvenlik oturumu)
+## ⏳ Bekleyen apply — (yok — 085–094 tamam)
+
+<details>
+<summary>Eski not: Migration 085–089 (arşiv)</summary>
+
+> Artık apply edildi — `npm run migrate:085-092` · 25 May 2026
+
+</details>
+
+---
+
+## ~~⏳ Bekleyen apply — Migration 085–089~~ (TAMAMLANDI)
 
 > **Durum:** SQL dosyaları repo'da; production'a henüz apply edilmedi.  
 > **Şema oturumu:** KAPATILDI (`SESSION-LOG-2026-05-24.md`) — apply deploy adımı.  
@@ -86,6 +121,10 @@ Migration push sonrası checklist: `db apply` → `npm run supabase:types` → `
 | 072 | `072_cart_design_preview.sql` | 21 May 2026 | Management API (geriden) | Bucket + path-strict RLS policies |
 | 093 | `093_partner_pricebook.sql` | 25 May 2026 | Management API | Partner price book şema + kuşe seed |
 | 094 | `094_partner_pricebook_all_materials.sql` | 25 May 2026 | Management API | 4 malzeme matris seed |
+| 090 | `090_rbac_extended_modules.sql` | 25 May 2026 | Management API | Granüler RBAC modülleri |
+| 091 | `091_assign_admin_roles.sql` | 25 May 2026 | Management API | Admin rol seed |
+| 092 | `092_fason_assign_modern_status.sql` | 25 May 2026 | Management API | Fason modern status |
+| 085–089 | güvenlik / partner / fason token | 25 May 2026 | Management API | Koşullu 085 revoke |
 | 077 | `077_design_previews_rls_relax.sql` | ❌ **UYGULANMADI** | — | Server proxy ile gereksiz oldu |
 
 ---

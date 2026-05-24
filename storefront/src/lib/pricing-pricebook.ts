@@ -25,6 +25,10 @@ export {
 } from "./pricing-pricebook-seed";
 export { lookupPricebookFromSnapshot } from "./pricing-pricebook-lookup";
 export { FALLBACK_PRICEBOOK_SNAPSHOT } from "./pricing-pricebook-types";
+export { comparePricebookVsLegacyArea } from "./pricing-pricebook-shadow";
+export type {
+  PricebookShadowCompareResult,
+} from "./pricing-pricebook-shadow";
 
 export interface RuloPricebookQuoteInput {
   width_mm: number;

@@ -1,7 +1,7 @@
 # Pim Etiket — Partner Pricing Matrix Mimarisi
 
 **Yazıldı:** 23 Mayıs 2026 (Sefa kararı)
-**Durum:** ✅ Uygulandı (Migration 093–094, 5 malzeme seed, admin UI, müşteri bridge)
+**Durum:** ✅ Uygulandı + Faz 4 shadow diff (Migration 093–094, admin UI, müşteri bridge)
 **Sahibi:** Sefa Yakut
 
 ---

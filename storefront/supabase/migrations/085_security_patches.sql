@@ -20,41 +20,36 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 1) P1.10 — fn_process_proof_pending_sla cron-only
--- ------------------------------------------------------------
--- Mig 070 satır 105'te `grant execute ... to authenticated` vardı.
--- Auth'lu herhangi bir kullanıcı bu RPC'yi tetikleyip 36+ saatlik
--- orderları toplu iptal edebilirdi. Cron tek caller olmalı.
+-- 1) P1.10 — fn_process_proof_pending_sla cron-only (varsa)
 -- ------------------------------------------------------------
 
-revoke execute on function public.fn_process_proof_pending_sla() from authenticated;
-revoke execute on function public.fn_process_proof_pending_sla() from anon;
--- service_role grant Mig 070 satır 106'da zaten var, cron buradan çağırır.
-
-comment on function public.fn_process_proof_pending_sla() is
-  'P1 #10 SLA kaskadı — 12sa pre-warning + 36sa auto-refund. '
-  'Mig 085 ile authenticated grant kaldırıldı, sadece service_role (cron-only).';
+do $mig085$
+begin
+  if to_regprocedure('public.fn_process_proof_pending_sla()') is not null then
+    revoke execute on function public.fn_process_proof_pending_sla() from authenticated;
+    revoke execute on function public.fn_process_proof_pending_sla() from anon;
+    comment on function public.fn_process_proof_pending_sla() is
+      'P1 #10 SLA kaskadı — 12sa pre-warning + 36sa auto-refund. '
+      'Mig 085 ile authenticated grant kaldırıldı, sadece service_role (cron-only).';
+  end if;
+end $mig085$;
 
 
 -- ------------------------------------------------------------
--- 2) P1.1 — fn_log_failed_login cron/server-only
--- ------------------------------------------------------------
--- Mig 041 satır 202-203: `to authenticated, service_role`. Auth'lu
--- kullanıcı Supabase client ile RPC'yi doğrudan çağırıp sahte e-posta
--- /IP kayıtları üretebilir (auth_failed_logins tablosunu şişirme +
--- IP block listesinde false positive). Sadece app endpoint'i
--- (service-role) çağırmalı.
+-- 2) P1.1 — fn_log_failed_login cron/server-only (varsa)
 -- ------------------------------------------------------------
 
-revoke execute on function public.fn_log_failed_login(text, inet, text, text) from authenticated;
-revoke execute on function public.fn_log_failed_login(text, inet, text, text) from anon;
--- service_role grant korunuyor — app endpoint'i (log-failed-login route)
--- bu RPC'yi service_role client ile çağırmaya devam edebilir.
-
-comment on function public.fn_log_failed_login(text, inet, text, text) is
-  'App''ın auth endpoint''i tarafından çağrılır — başarısız giriş kaydı. '
-  'Mig 085 ile authenticated grant kaldırıldı (DoS + false positive '
-  'koruması). Yalnızca service_role çağırabilir.';
+do $mig085$
+begin
+  if to_regprocedure('public.fn_log_failed_login(text, inet, text, text)') is not null then
+    revoke execute on function public.fn_log_failed_login(text, inet, text, text) from authenticated;
+    revoke execute on function public.fn_log_failed_login(text, inet, text, text) from anon;
+    comment on function public.fn_log_failed_login(text, inet, text, text) is
+      'App''ın auth endpoint''i tarafından çağrılır — başarısız giriş kaydı. '
+      'Mig 085 ile authenticated grant kaldırıldı (DoS + false positive '
+      'koruması). Yalnızca service_role çağırabilir.';
+  end if;
+end $mig085$;
 
 
 -- ------------------------------------------------------------
@@ -77,23 +72,25 @@ comment on function public.fn_log_failed_login(text, inet, text, text) is
 --               AND (storage.foldername(name))[1] = auth.uid()::text
 -- ------------------------------------------------------------
 
-set local role supabase_storage_admin;
-
-drop policy if exists "design_previews_auth_delete" on storage.objects;
-
-create policy "design_previews_owner_delete_v2" on storage.objects
-  for delete to authenticated
-  using (
-    bucket_id = 'design-previews'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  );
-
-comment on policy "design_previews_owner_delete_v2" on storage.objects is
-  'Mig 085 P0.5: DELETE için path guard restore. Authenticated kullanıcı '
-  'sadece kendi {user_id}/ klasöründeki preview''ları silebilir. INSERT/'
-  'UPDATE Mig 077 gerekçesiyle bilinçli gevşek bırakıldı.';
-
-reset role;
+do $mig085$
+begin
+  begin
+    execute 'set local role supabase_storage_admin';
+    drop policy if exists "design_previews_auth_delete" on storage.objects;
+    create policy "design_previews_owner_delete_v2" on storage.objects
+      for delete to authenticated
+      using (
+        bucket_id = 'design-previews'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      );
+    execute 'reset role';
+  exception
+    when insufficient_privilege then
+      raise notice 'Mig 085 storage policy: Dashboard UI ile uygulayin (42501)';
+    when others then
+      raise notice 'Mig 085 storage policy atlandi: %', sqlerrm;
+  end;
+end $mig085$;
 
 
 -- ------------------------------------------------------------
@@ -107,15 +104,18 @@ reset role;
 -- ------------------------------------------------------------
 
 drop policy if exists "Partner sees own contact rows" on public.partner_contacts;
-create policy "Partner sees own contact rows"
-  on public.partner_contacts for select
-  to authenticated
-  using (user_id = auth.uid());
 
-comment on policy "Partner sees own contact rows" on public.partner_contacts is
-  'Mig 085 P0.6: Partner kendi partner_contacts satırını okuyabilir. '
-  'Mig 067 admin/staff SELECT policy''si yan yana çalışır (PostgreSQL '
-  'multiple policy OR logic). Yazma/silme service_role''dadır.';
+do $mig085$
+begin
+  if to_regclass('public.partner_contacts') is not null then
+    execute $pol$
+      create policy "Partner sees own contact rows"
+        on public.partner_contacts for select
+        to authenticated
+        using (user_id = auth.uid())
+    $pol$;
+  end if;
+end $mig085$;
 
 
 -- ============================================================

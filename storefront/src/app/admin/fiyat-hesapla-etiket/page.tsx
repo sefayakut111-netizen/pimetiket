@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -44,6 +44,14 @@ import {
 } from "@/lib/cart-pdf-helpers";
 import { StatsModal } from "@/components/admin/pricing/StatsModal";
 import { recordStat } from "@/lib/pricing-stats";
+import type { ProfileConfig } from "@/lib/pricing-config-types";
+import { FALLBACK_ETIKET_RULO_CONFIG } from "@/lib/pricing-config-types";
+import {
+  comparePricebookVsLegacyArea,
+  quoteRuloFromPricebook,
+  FALLBACK_PRICEBOOK_SNAPSHOT,
+  type PricebookSnapshot,
+} from "@/lib/pricing-pricebook";
 
 // ============================================================
 // Defaults
@@ -121,8 +129,48 @@ export default function EtiketFiyatHesaplaPage() {
   // Lot rozet
   const [nextLotPreview, setNextLotPreview] = useState("B000001");
   const [statsOpen, setStatsOpen] = useState(false);
+  const [liveRuloConfig, setLiveRuloConfig] = useState<ProfileConfig>(
+    FALLBACK_ETIKET_RULO_CONFIG
+  );
+  const [pricebookSnapshot, setPricebookSnapshot] =
+    useState<PricebookSnapshot>(FALLBACK_PRICEBOOK_SNAPSHOT);
+  const [livePricingLoaded, setLivePricingLoaded] = useState(false);
+
   useEffect(() => {
     setNextLotPreview(peekNextLot("B"));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cfgRes, pbRes] = await Promise.all([
+          fetch("/api/admin/pricing?scope=etiket_rulo", { cache: "no-store" }),
+          fetch("/api/admin/pricebook", { cache: "no-store" }),
+        ]);
+        const cfgJson = (await cfgRes.json()) as {
+          ok?: boolean;
+          live?: ProfileConfig;
+        };
+        const pbJson = (await pbRes.json()) as {
+          ok?: boolean;
+          snapshot?: PricebookSnapshot;
+        };
+        if (!cancelled && cfgRes.ok && cfgJson.ok && cfgJson.live) {
+          setLiveRuloConfig(cfgJson.live);
+        }
+        if (!cancelled && pbRes.ok && pbJson.ok && pbJson.snapshot) {
+          setPricebookSnapshot(pbJson.snapshot);
+        }
+      } catch {
+        /* fallback kalır */
+      } finally {
+        if (!cancelled) setLivePricingLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Quote
@@ -150,6 +198,59 @@ export default function EtiketFiyatHesaplaPage() {
   });
 
   const tier = findEtiketTier(qty);
+
+  const livePricebookQuote = useMemo(() => {
+    if (!result.ok) return null;
+    return quoteRuloFromPricebook(pricebookSnapshot, liveRuloConfig, {
+      width_mm: width,
+      height_mm: height,
+      qty,
+      material_key: materialId,
+      selected_options: {
+        coating: coatingId,
+        customization: customizationId === "yok" ? [] : [customizationId],
+      },
+    });
+  }, [
+    result,
+    pricebookSnapshot,
+    liveRuloConfig,
+    width,
+    height,
+    qty,
+    materialId,
+    coatingId,
+    customizationId,
+  ]);
+
+  const liveShadow = useMemo(() => {
+    if (!result.ok) return null;
+    return comparePricebookVsLegacyArea(liveRuloConfig, pricebookSnapshot, {
+      width_mm: width,
+      height_mm: height,
+      qty,
+      material_key: materialId,
+      selected_options: {
+        coating: coatingId,
+        customization: customizationId === "yok" ? [] : [customizationId],
+      },
+    });
+  }, [
+    result,
+    pricebookSnapshot,
+    liveRuloConfig,
+    width,
+    height,
+    qty,
+    materialId,
+    coatingId,
+    customizationId,
+  ]);
+
+  const fasonPartnerCost =
+    result.ok && mode === "fason"
+      ? result.geometry.totalM2 * fasonRate
+      : null;
 
   function reset() {
     setMode(DEFAULTS.mode);
@@ -626,6 +727,14 @@ export default function EtiketFiyatHesaplaPage() {
                     </div>
                   )}
                 </Card>
+
+                <EtiketLivePricebookPanel
+                  fasonPartnerCost={fasonPartnerCost}
+                  livePricebookQuote={livePricebookQuote}
+                  liveShadow={liveShadow}
+                  totalM2={result.geometry.totalM2}
+                  loaded={livePricingLoaded}
+                />
 
                 {/* Rulo Plan Card (SVG) — sticker'daki RollPlanSvg adapter ile */}
                 <Card padding="p-0" className="overflow-hidden">
@@ -1176,6 +1285,106 @@ function StatCell({
         {unit && <span className="text-[12px] text-gri-500 ml-1 font-medium">{unit}</span>}
       </div>
     </div>
+  );
+}
+
+function EtiketLivePricebookPanel({
+  fasonPartnerCost,
+  livePricebookQuote,
+  liveShadow,
+  totalM2,
+  loaded,
+}: {
+  fasonPartnerCost: number | null;
+  livePricebookQuote: ReturnType<typeof quoteRuloFromPricebook> | null;
+  liveShadow: ReturnType<typeof comparePricebookVsLegacyArea> | null;
+  totalM2: number;
+  loaded: boolean;
+}) {
+  return (
+    <Card padding="p-5" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[15px] font-semibold text-lacivert">
+          Site Fiyatı (Price Book — Live)
+        </h3>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-gri-500">
+          {loaded ? "DB live_config + pricebook" : "yükleniyor…"}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="rounded-lg bg-white ring-1 ring-gri-200 p-4">
+          <div className="text-[11px] uppercase tracking-wide text-gri-500 font-semibold mb-1">
+            Fason Partner Maliyeti
+          </div>
+          {fasonPartnerCost !== null ? (
+            <>
+              <div className="text-[24px] font-bold tabular-nums text-lacivert">
+                {fmt(Math.round(fasonPartnerCost))}{" "}
+                <span className="text-[16px] text-gri-500">₺</span>
+              </div>
+              <div className="text-[12px] text-gri-600 mt-1">
+                {totalM2.toFixed(3)} m² × fason rate (KDV hariç tahmin)
+              </div>
+            </>
+          ) : (
+            <div className="text-[13px] text-gri-600">
+              Üretim modu — fason satırı yok
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg bg-white ring-1 ring-gri-200 p-4">
+          <div className="text-[11px] uppercase tracking-wide text-gri-500 font-semibold mb-1">
+            Müşteri Fiyatı (price book)
+          </div>
+          {livePricebookQuote?.ok ? (
+            <>
+              <div className="text-[24px] font-bold tabular-nums text-lacivert">
+                {fmt(Math.round(livePricebookQuote.total))}{" "}
+                <span className="text-[16px] text-gri-500">₺</span>
+              </div>
+              <div className="text-[12px] text-gri-600 mt-1">
+                Partner: {livePricebookQuote.partner_unit_per_label.toFixed(4)} ₺/adet
+                · birim {fmt(livePricebookQuote.unitPrice, 2)} ₺
+              </div>
+            </>
+          ) : (
+            <div className="text-[13px] text-gri-600">
+              {livePricebookQuote && !livePricebookQuote.ok
+                ? `${livePricebookQuote.reason}${livePricebookQuote.hint ? `: ${livePricebookQuote.hint}` : ""}`
+                : "Hesaplanamadı"}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {liveShadow?.ok &&
+        liveShadow.delta_total !== null &&
+        liveShadow.delta_pct !== null && (
+          <div
+            className={cn(
+              "rounded-lg px-3 py-2 text-[12px] font-semibold tabular-nums",
+              Math.abs(liveShadow.delta_pct) > 15
+                ? "bg-kirmizi/10 text-kirmizi ring-1 ring-kirmizi/20"
+                : "bg-yesil/10 text-yesil-koyu ring-1 ring-yesil/20"
+            )}
+          >
+            Shadow: legacy m²{" "}
+            {liveShadow.legacy_total !== null
+              ? `${Math.round(liveShadow.legacy_total).toLocaleString("tr-TR")} ₺`
+              : "—"}{" "}
+            vs price book{" "}
+            {liveShadow.pricebook_total !== null
+              ? `${Math.round(liveShadow.pricebook_total).toLocaleString("tr-TR")} ₺`
+              : "—"}{" "}
+            → fark {liveShadow.delta_total >= 0 ? "+" : ""}
+            {Math.round(liveShadow.delta_total).toLocaleString("tr-TR")} ₺ (
+            {liveShadow.delta_pct >= 0 ? "+" : ""}
+            {liveShadow.delta_pct.toFixed(1)}%)
+          </div>
+        )}
+    </Card>
   );
 }
 

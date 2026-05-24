@@ -20,11 +20,13 @@
 
 | # | İş | Öncelik |
 |---|---|---|
-| 1 | Migration **085–092** production apply | P1 |
-| 2 | Partner gerçek CSV → admin Price Book | P1 iş |
-| 3 | Faz 4 shadow diff (eski m² vs pricebook) | P2 |
-| 4 | `/admin/fiyat-hesapla-etiket` pricebook diagnostik | P2 |
-| 5 | Legacy rulo m² fallback kaldırma | P3 |
+| 1 | Migration **085–092** production apply | ✅ |
+| 2 | Partner gerçek CSV → admin Price Book | 🟡 şablon hazır; gerçek kotasyon Sefa girecek |
+| 3 | Faz 4 shadow diff (eski m² vs pricebook) | ✅ | `pricing-pricebook-shadow.ts`, PriceBookPanel |
+| 4 | `/admin/fiyat-hesapla-etiket` pricebook diagnostik | ✅ | Live panel + shadow |
+| 5 | Migration **085–092** production apply | ✅ | `npm run migrate:085-092` |
+| 6 | Partner CSV şablonu | ✅ | `docs/samples/partner-pricebook-kuse.csv` |
+| 7 | Legacy rulo m² fallback kaldırma | P3 | 2 hafta paralel sonra |
 
 ---
 

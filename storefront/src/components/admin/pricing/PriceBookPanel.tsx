@@ -8,6 +8,7 @@ import {
   quoteRuloFromPricebook,
   type PricebookSnapshot,
 } from "@/lib/pricing-pricebook";
+import { comparePricebookVsLegacyArea } from "@/lib/pricing-pricebook-shadow";
 import { FALLBACK_PRICEBOOK_SNAPSHOT } from "@/lib/pricing-pricebook-types";
 import {
   cloneCellsFromKuse,
@@ -84,6 +85,16 @@ export function PriceBookPanel({ config }: Props) {
 
   const testResult = useMemo(() => {
     return quoteRuloFromPricebook(snapshot, config, {
+      width_mm: testW,
+      height_mm: testH,
+      qty: testQty,
+      material_key: materialKey,
+      selected_options: { coating: "yok", customization: [] },
+    });
+  }, [snapshot, config, testW, testH, testQty, materialKey]);
+
+  const shadowResult = useMemo(() => {
+    return comparePricebookVsLegacyArea(config, snapshot, {
       width_mm: testW,
       height_mm: testH,
       qty: testQty,
@@ -432,6 +443,72 @@ export function PriceBookPanel({ config }: Props) {
             {testResult.reason}: {testResult.hint}
           </div>
         )}
+
+        <div className="mt-4 pt-4 border-t border-gri-200">
+          <h4 className="text-[13px] font-semibold mb-2">
+            Shadow diff — eski m² vs price book
+          </h4>
+          {shadowResult.ok ? (
+            <div className="text-[12px] space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded bg-white p-2 ring-1 ring-gri-200">
+                  <div className="text-[10px] uppercase text-gri-500 font-bold">
+                    Legacy m²
+                  </div>
+                  {shadowResult.legacy_ok && shadowResult.legacy_total !== null ? (
+                    <>
+                      <div className="font-semibold tabular-nums">
+                        {Math.round(shadowResult.legacy_total).toLocaleString("tr-TR")} ₺
+                      </div>
+                      <div className="text-gri-600 tabular-nums">
+                        {fmt(shadowResult.legacy_unit ?? 0, 2)} ₺/adet
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-kirmizi">{shadowResult.legacy_reason}</div>
+                  )}
+                </div>
+                <div className="rounded bg-white p-2 ring-1 ring-pim-mercan/30">
+                  <div className="text-[10px] uppercase text-gri-500 font-bold">
+                    Price book
+                  </div>
+                  {shadowResult.pricebook_ok &&
+                  shadowResult.pricebook_total !== null ? (
+                    <>
+                      <div className="font-semibold tabular-nums">
+                        {Math.round(shadowResult.pricebook_total).toLocaleString("tr-TR")}{" "}
+                        ₺
+                      </div>
+                      <div className="text-gri-600 tabular-nums">
+                        {fmt(shadowResult.pricebook_unit ?? 0, 2)} ₺/adet
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-kirmizi">{shadowResult.pricebook_reason}</div>
+                  )}
+                </div>
+              </div>
+              {shadowResult.delta_total !== null && shadowResult.delta_pct !== null && (
+                <div
+                  className={cn(
+                    "px-2 py-1.5 rounded font-semibold tabular-nums",
+                    Math.abs(shadowResult.delta_pct) > 15
+                      ? "bg-kirmizi/10 text-kirmizi"
+                      : "bg-yesil/10 text-yesil-koyu"
+                  )}
+                >
+                  Fark: {shadowResult.delta_total >= 0 ? "+" : ""}
+                  {Math.round(shadowResult.delta_total).toLocaleString("tr-TR")} ₺ (
+                  {shadowResult.delta_pct >= 0 ? "+" : ""}
+                  {shadowResult.delta_pct.toFixed(1)}%) · billable{" "}
+                  {shadowResult.billable_m2.toFixed(3)} m²
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-[12px] text-kirmizi">{shadowResult.reason}</div>
+          )}
+        </div>
       </div>
     </Card>
   );
