@@ -544,6 +544,31 @@ export default function PanelimPage() {
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    const hasWaiting = orders.some(
+      (o) =>
+        o.status === "qc_pending" ||
+        o.status === "proof_generating" ||
+        o.status === "proof_validating" ||
+        o.status === "human_review"
+    );
+    if (!hasWaiting) return;
+
+    const interval = setInterval(() => {
+      void refreshCustomerOrders().then(() => {
+        setOrders(listCustomerOrders());
+      });
+    }, 10000);
+
+    const timeout = setTimeout(() => clearInterval(interval), 300000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [hydrated, orders]);
+
   const handleQuickReorder = async (order: CustomerOrder) => {
     setReordering(true);
     try {
