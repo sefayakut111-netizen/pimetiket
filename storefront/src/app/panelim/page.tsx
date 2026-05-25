@@ -30,6 +30,7 @@ import { reorderFromOrder } from "@/lib/customer-reorder";
 import { getMyProfile } from "@/lib/customer-profile";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
+import { NotificationsMini } from "@/components/customer/NotificationsMini";
 
 const COPY = {
   tr: {
@@ -85,15 +86,6 @@ const COPY = {
     mixed: "Karışık",
     pcs: "adet",
     detail: "Detay",
-    detailArrow: "Detay →",
-    aiForYou: "SANA ÖZEL",
-    aiUpsell: (qty: string) => (
-      <>
-        Son etiket siparişin <strong>{qty} adet</strong>&rsquo;ti — stokun
-        azalmış olabilir, yeniden bastıralım mı?
-      </>
-    ),
-    reprint: "Yeniden bastır",
     profileSettings: { t: "Profil ayarları", d: "Ad, e-posta, şifre" },
     addressBook: { t: "Adres defterim", d: "Teslim ve fatura adresleri" },
     invoiceInfo: { t: "Fatura bilgileri", d: "TC/VKN, e-fatura tercihi" },
@@ -158,15 +150,6 @@ const COPY = {
     mixed: "Mixed",
     pcs: "units",
     detail: "Details",
-    detailArrow: "Details →",
-    aiForYou: "JUST FOR YOU",
-    aiUpsell: (qty: string) => (
-      <>
-        Your last label order was <strong>{qty} units</strong> — stock may be
-        running low, want to reprint?
-      </>
-    ),
-    reprint: "Reprint",
     profileSettings: { t: "Profile settings", d: "Name, email, password" },
     addressBook: { t: "Address book", d: "Shipping & invoice addresses" },
     invoiceInfo: { t: "Invoice info", d: "TC/VAT, e-invoice preference" },
@@ -184,23 +167,185 @@ function statusToPhaseIndex(status: OrderStatus): number {
   switch (status) {
     case "paid":
       return 1;
+    case "awaiting_upload":
+      return 2;
     case "qc_pending":
-      return 3;
     case "qc_flagged":
+    case "human_review":
+    case "human_review_failed":
     case "operator_review":
-      return 4;
+      return 3;
+    case "proof_generating":
+    case "proof_validating":
     case "proof_pending":
       return 4;
     case "proof_approved":
-      return 5;
+    case "ready_to_ship":
+    case "fason_assigned":
     case "in_production":
       return 5;
     case "shipped":
       return 6;
     case "delivered":
       return 7;
+    case "cancelled":
+      return -1;
     default:
       return 0;
+  }
+}
+
+function orderNeedsCustomerAction(status: OrderStatus): boolean {
+  return (
+    status === "awaiting_upload" ||
+    status === "proof_pending" ||
+    status === "proof_validating" ||
+    status === "human_review_failed"
+  );
+}
+
+function orderCustomerPhaseDone(status: OrderStatus): boolean {
+  return (
+    status === "proof_approved" ||
+    status === "ready_to_ship" ||
+    status === "fason_assigned" ||
+    status === "in_production" ||
+    status === "shipped"
+  );
+}
+
+function OrderActionCta({
+  order,
+  locale,
+  reordering,
+  onReorder,
+}: {
+  order: CustomerOrder;
+  locale: string;
+  reordering: boolean;
+  onReorder: (order: CustomerOrder) => void;
+}) {
+  const isEn = locale === "en";
+
+  switch (order.status) {
+    case "awaiting_upload":
+      return (
+        <Button
+          variant="primary"
+          size="sm"
+          href={`/siparis/${order.id}/tasarim-yukle`}
+          className="w-full"
+        >
+          📁 {isEn ? "Upload design" : "Tasarım yükle"}
+        </Button>
+      );
+
+    case "proof_pending":
+    case "proof_validating":
+      return (
+        <Button
+          variant="primary"
+          size="sm"
+          href={`/onay/${order.id}`}
+          className="w-full"
+        >
+          ✋ {isEn ? "Review and approve proof" : "Provayı incele ve onayla"}
+        </Button>
+      );
+
+    case "shipped":
+      return (
+        <Button
+          variant="secondary"
+          size="sm"
+          href={`/siparis/${order.id}`}
+          className="w-full"
+        >
+          📦 {isEn ? "Track shipment →" : "Kargo takip et →"}
+        </Button>
+      );
+
+    case "delivered":
+      return (
+        <div className="flex gap-2 w-full">
+          <Button
+            variant="secondary"
+            size="sm"
+            href={`/yorum-yaz/${order.id}`}
+            className="flex-1"
+          >
+            ⭐ {isEn ? "Write review" : "Yorum yaz"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onReorder(order)}
+            disabled={reordering}
+            className="flex-1"
+          >
+            🔄 {isEn ? "Reorder" : "Tekrarla"}
+          </Button>
+        </div>
+      );
+
+    case "qc_pending":
+    case "human_review":
+    case "proof_generating":
+      return (
+        <div className="flex items-center gap-2 text-[12px] text-gri-500">
+          <span className="w-3 h-3 rounded-full bg-sari animate-pulse shrink-0" />
+          {isEn
+            ? "Under review — results in a few minutes"
+            : "İnceleniyor — birkaç dakika içinde sonuç çıkacak"}
+        </div>
+      );
+
+    case "human_review_failed":
+      return (
+        <Button
+          variant="primary"
+          size="sm"
+          href={`/siparis/${order.id}/tasarim-yukle`}
+          className="w-full !bg-pim-mercan"
+        >
+          ⚠️{" "}
+          {isEn
+            ? "Fix design and re-upload"
+            : "Tasarımını düzelt ve tekrar yükle"}
+        </Button>
+      );
+
+    case "in_production":
+      return (
+        <div className="text-[12px] text-gri-500">
+          🏭{" "}
+          {isEn ? "In production — estimated shipping " : "Üretimde — tahmini "}
+          {order.estimatedDelivery
+            ? new Date(order.estimatedDelivery).toLocaleDateString(
+                isEn ? "en-US" : "tr-TR",
+                { day: "numeric", month: "long" }
+              )
+            : isEn
+              ? "in a few days"
+              : "birkaç gün içinde"}{" "}
+          {isEn ? "" : "kargoda"}
+        </div>
+      );
+
+    case "cancelled":
+      return (
+        <div className="text-[12px] text-kirmizi">
+          {isEn ? "Cancelled" : "İptal edildi"}
+          {order.total > 0
+            ? isEn
+              ? " — refund initiated"
+              : " — iade işlemi başlatıldı"
+            : ""}
+        </div>
+      );
+
+    default:
+      return null;
   }
 }
 
@@ -404,6 +549,38 @@ export default function PanelimPage() {
     { ...c.profileSettings, href: "/profil" },
     { ...c.addressBook, href: "/adreslerim" },
     { ...c.invoiceInfo, href: "/fatura-bilgileri" },
+    {
+      t: locale === "en" ? "My designs" : "Tasarımlarım",
+      d:
+        locale === "en"
+          ? "Uploaded design files"
+          : "Yüklenen tasarım dosyaları",
+      href: "/tasarimlarim",
+    },
+    {
+      t: locale === "en" ? "My returns" : "İadelerim",
+      d:
+        locale === "en"
+          ? "Return requests & status"
+          : "İade taleplerim ve durumu",
+      href: "/iadelerim",
+    },
+    {
+      t: locale === "en" ? "Support" : "Destek",
+      d:
+        locale === "en"
+          ? "Create a support ticket"
+          : "Destek talebi oluştur",
+      href: "/destek",
+    },
+    {
+      t: locale === "en" ? "Notifications" : "Bildirim tercihleri",
+      d:
+        locale === "en"
+          ? "Email & SMS preferences"
+          : "E-posta ve SMS ayarları",
+      href: "/bildirim-tercihleri",
+    },
     { ...c.helpCenter, href: "/sss" },
   ];
 
@@ -422,8 +599,30 @@ export default function PanelimPage() {
   const shippedCount = orders.filter((o) => o.status === "shipped").length;
   const thisYear = new Date().getFullYear();
   const thisYearTotalQty = orders
-    .filter((o) => new Date(o.createdAtIso).getFullYear() === thisYear)
+    .filter((o) => {
+      try {
+        return new Date(o.createdAtIso).getFullYear() === thisYear;
+      } catch {
+        return false;
+      }
+    })
     .reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.qty, 0), 0);
+
+  const thisYearTotalSpent = orders
+    .filter((o) => {
+      try {
+        return new Date(o.createdAtIso).getFullYear() === thisYear;
+      } catch {
+        return false;
+      }
+    })
+    .filter((o) => o.status !== "cancelled")
+    .reduce(
+      (sum, o) => sum + (typeof o.total === "number" ? o.total : 0),
+      0
+    );
+
+  const totalOrderCount = orders.filter((o) => o.status !== "cancelled").length;
 
   // Selam — Sefa 17 May P1-11: profile cache > orders fallback
   // (orders yüklenmesini beklemeden anında isim göstersin)
@@ -501,7 +700,7 @@ export default function PanelimPage() {
                 : c.activeSummary(activeCount, inProductionCount, shippedCount)}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-7 max-w-[520px]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-7 max-w-[780px]">
             <Stat
               label={c.statActive}
               value={hydrated ? activeCount.toString() : "—"}
@@ -520,12 +719,62 @@ export default function PanelimPage() {
               icon={<Icon.Sparkle size={18} />}
               accent="text-turuncu"
             />
+            <Stat
+              label={
+                locale === "en"
+                  ? `Spent in ${thisYear}`
+                  : `${thisYear} harcama`
+              }
+              value={hydrated ? `${fmt(thisYearTotalSpent)} ₺` : "—"}
+              sub={
+                locale === "en"
+                  ? `${totalOrderCount} orders total`
+                  : `${totalOrderCount} sipariş toplamı`
+              }
+              icon={<Icon.Wallet size={18} />}
+              accent="text-yesil"
+            />
           </div>
         </div>
 
-        {/* Sefa 20 May v68 (test geri bildirim): "Yeni etiket / Yeni sticker
-            / Tekrar sipariş" 3 kart bloğu kaldırıldı — anasayfa hero ve
-            üst nav'da zaten aynı CTA'lar var, duplicate. */}
+        {/* Quick actions — Görev 4 ile geri getirildi */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <QuickAction
+            icon={<Icon.Roll size={20} />}
+            title={c.qaNewEtiket}
+            desc={c.qaNewEtiketDesc}
+            href="/etiket"
+            primary
+          />
+          <QuickAction
+            icon={<Icon.Sticker size={20} />}
+            title={c.qaNewSticker}
+            desc={c.qaNewStickerDesc}
+            href="/sticker"
+          />
+          {lastReorderTarget ? (
+            <QuickAction
+              icon={<Icon.Refresh size={20} />}
+              title={c.qaReorder}
+              desc={
+                lastEtiketItem
+                  ? c.qaReorderEtiket(`${fmt(lastEtiketQty)} ad`)
+                  : lastStickerItem
+                    ? c.qaReorderSticker(lastStickerItem.title)
+                    : c.qaReorderSoon
+              }
+              onClick={() => void handleQuickReorder(lastReorderTarget)}
+              disabled={reordering}
+            />
+          ) : (
+            <QuickAction
+              icon={<Icon.Refresh size={20} />}
+              title={c.qaReorder}
+              desc={c.qaReorderSoon}
+              href="/siparislerim"
+            />
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
           {/* MAIN */}
@@ -572,6 +821,8 @@ export default function PanelimPage() {
                   {activeOrders.map((o) => {
                     const meta = statusMeta(o.status, c);
                     const phase = statusToPhaseIndex(o.status);
+                    const needsAction = orderNeedsCustomerAction(o.status);
+                    const phaseDone = orderCustomerPhaseDone(o.status);
                     const title =
                       o.items.length === 1
                         ? o.items[0].title
@@ -582,8 +833,26 @@ export default function PanelimPage() {
                         ? o.items[0].config.split("·").slice(-2).join("·").trim()
                         : c.mixed;
                     return (
-                      <Card key={o.id} padding="p-5">
-                        <div className="flex gap-4 items-start">
+                      <Card
+                        key={o.id}
+                        padding="p-5"
+                        className={cn(
+                          "relative overflow-hidden",
+                          phaseDone && "opacity-70"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "absolute left-0 top-0 bottom-0 w-1 rounded-l-lg",
+                            phaseDone
+                              ? "bg-yesil"
+                              : needsAction
+                                ? "bg-pim-mercan"
+                                : "bg-gri-200"
+                          )}
+                          aria-hidden
+                        />
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start pl-2">
                           <div
                             className="grid place-items-center w-14 h-14 rounded-xl shrink-0"
                             style={{ background: meta.soft }}
@@ -610,7 +879,7 @@ export default function PanelimPage() {
                               </span>
                               {o.status === "in_production" && (
                                 <span
-                                  className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold ml-auto"
+                                  className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold"
                                   title="Tasarımın baskı atölyemize iletildi · 30 gün sonra imha"
                                 >
                                   🏭 Atölyemize iletildi
@@ -621,7 +890,10 @@ export default function PanelimPage() {
                               {title}
                             </div>
                             <div className="text-[13px] text-gri-700 tabular-nums">
-                              {fmt(totalQty)} {c.pcs} · {matSummary}
+                              {fmt(totalQty)} {c.pcs} · {matSummary} ·{" "}
+                              <strong className="text-lacivert">
+                                {fmt(o.total)} ₺
+                              </strong>
                             </div>
 
                             {/* Phase mini timeline */}
@@ -635,13 +907,13 @@ export default function PanelimPage() {
                                     className="w-2 h-2 rounded-full shrink-0"
                                     style={{
                                       background:
-                                        i < phase
+                                        phase >= 0 && i < phase
                                           ? "var(--color-yesil)"
-                                          : i === phase
+                                          : phase >= 0 && i === phase
                                             ? meta.color
                                             : "var(--color-gri-200)",
                                       boxShadow:
-                                        i === phase
+                                        phase >= 0 && i === phase
                                           ? `0 0 0 3px ${meta.soft}`
                                           : "none",
                                     }}
@@ -651,7 +923,7 @@ export default function PanelimPage() {
                                       className="flex-1 h-0.5"
                                       style={{
                                         background:
-                                          i < phase
+                                          phase >= 0 && i < phase
                                             ? "var(--color-yesil)"
                                             : "var(--color-gri-200)",
                                       }}
@@ -660,29 +932,31 @@ export default function PanelimPage() {
                                 </div>
                               ))}
                             </div>
-                            {/* Sefa 20 May v68 (test): Sol alt = aktif phase
-                                adı (en son nerede kaldıysa). Sağ alt eski
-                                "DETAY →" linki kaldırıldı (sağ üstte "Detay"
-                                buton zaten var) → yerine SON phase adı
-                                statik gösterilir (akış hedefi belli olsun,
-                                örn "TESLİM EDİLDİ"). */}
                             <div className="flex justify-between mt-1.5">
                               <span className="text-[11.5px] text-gri-700 font-semibold uppercase tracking-[0.04em]">
-                                {c.phases[phase]}
+                                {phase >= 0 ? c.phases[phase] : "—"}
                               </span>
                               <span className="text-[11.5px] text-gri-500 font-semibold uppercase tracking-[0.04em]">
                                 {c.phases[c.phases.length - 1]}
                               </span>
                             </div>
                           </div>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            href={`/siparis/${o.id}`}
-                            className="shrink-0"
-                          >
-                            {c.detail} <Icon.ChevR size={12} />
-                          </Button>
+                          <div className="shrink-0 w-full sm:w-auto flex flex-col gap-2 min-w-[140px]">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              href={`/siparis/${o.id}`}
+                              className="w-full sm:w-auto"
+                            >
+                              {c.detail} <Icon.ChevR size={12} />
+                            </Button>
+                            <OrderActionCta
+                              order={o}
+                              locale={locale}
+                              reordering={reordering}
+                              onReorder={(ord) => void handleQuickReorder(ord)}
+                            />
+                          </div>
                         </div>
                       </Card>
                     );
@@ -691,12 +965,84 @@ export default function PanelimPage() {
               )}
             </section>
 
+            {/* Son teslim edilenler — yorum + tekrar sipariş */}
+            {hydrated &&
+              (() => {
+                const recentDelivered = orders
+                  .filter((o) => o.status === "delivered")
+                  .slice(0, 2);
+                if (recentDelivered.length === 0) return null;
+                return (
+                  <section>
+                    <h2 className="text-[18px] font-semibold tracking-tight mb-3">
+                      {locale === "en"
+                        ? "Recently delivered"
+                        : "Son teslim edilenler"}
+                    </h2>
+                    <div className="space-y-2">
+                      {recentDelivered.map((o) => {
+                        const dTitle =
+                          o.items.length === 1
+                            ? o.items[0].title
+                            : locale === "en"
+                              ? `${o.items.length} products`
+                              : `${o.items.length} ürün`;
+                        return (
+                          <Card
+                            key={o.id}
+                            padding="p-4"
+                            className="!bg-yesil-soft/20"
+                          >
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-[14px] truncate">
+                                  {dTitle}
+                                </div>
+                                <div className="text-[12px] text-gri-700">
+                                  {fmt(o.total)} ₺ ·{" "}
+                                  {locale === "en"
+                                    ? "Delivered ✓"
+                                    : "Teslim edildi ✓"}
+                                </div>
+                              </div>
+                              <div className="flex gap-2 shrink-0">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  href={`/yorum-yaz/${o.id}`}
+                                >
+                                  ⭐{" "}
+                                  {locale === "en" ? "Review" : "Yorum yaz"}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => void handleQuickReorder(o)}
+                                  disabled={reordering}
+                                  aria-label={
+                                    locale === "en" ? "Reorder" : "Tekrarla"
+                                  }
+                                >
+                                  🔄
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })()}
+
             {/* Sefa 20 May v68 (test geri bildirim): "SANA ÖZEL — Son etiket
                 siparişin X adet'ti..." upsell kartı kaldırıldı (gereksiz). */}
           </div>
 
           {/* SIDE */}
           <div className="flex flex-col gap-4">
+            <NotificationsMini />
+
             {/* Sadakat kuponları — aktif kupon varsa göster */}
             {loyalty && loyalty.availableCoupons.length > 0 && (
               <Card padding="p-5">
