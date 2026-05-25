@@ -2,8 +2,18 @@
  * Blog yazıları — DB kaynağı (blog_posts tablosu).
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/types";
 import { calculateReadMinutes } from "@/lib/blog-slug";
+
+function createPublicClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  return createSupabaseClient<Database>(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 export interface BlogPost {
   slug: string;
@@ -80,7 +90,8 @@ export function getReadMinutes(post: BlogPost): number {
 }
 
 export async function getPublishedPosts(): Promise<BlogPost[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from("blog_posts")
     .select(
@@ -98,7 +109,8 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
 }
 
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return null;
   const { data, error } = await supabase
     .from("blog_posts")
     .select(
