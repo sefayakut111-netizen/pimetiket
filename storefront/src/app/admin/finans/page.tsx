@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
@@ -151,6 +151,14 @@ function formatPercentChange(curr: number, prev: number): {
 }
 
 export default function AdminFinansPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <AdminFinansPageInner />
+    </Suspense>
+  );
+}
+
+function AdminFinansPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);

@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Card, Eyebrow, Button, useToast } from "@/components/ui";
@@ -140,6 +140,14 @@ function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 export default function FiyatlarPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <FiyatlarPageInner />
+    </Suspense>
+  );
+}
+
+function FiyatlarPageInner() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
