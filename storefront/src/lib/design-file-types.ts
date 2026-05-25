@@ -23,7 +23,8 @@ export function categorizeFile(
   mimeType?: string
 ): DesignFileCategory {
   void mimeType;
-  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  const dot = fileName.lastIndexOf(".");
+  const ext = dot === -1 ? "" : fileName.toLowerCase().slice(dot);
   if ((BLOCKED_EXTENSIONS as readonly string[]).includes(ext)) return "blocked";
   if ((QC_ONLY_EXTENSIONS as readonly string[]).includes(ext)) return "qc_only";
   if ((PROCESSABLE_EXTENSIONS as readonly string[]).includes(ext))

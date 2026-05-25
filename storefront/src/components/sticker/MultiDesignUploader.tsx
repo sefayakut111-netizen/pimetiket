@@ -138,8 +138,12 @@ export function MultiDesignUploader({
     for (const file of arr.slice(0, remaining)) {
       if (!isAcceptedFile(file)) {
         setError(
-          `${file.name}: Sadece PDF, PNG, JPG, AI, PSD, EPS dosyaları kabul ediliyor.`
+          `${file.name}: Sadece PDF, PNG, JPG, AI, PSD veya SVG dosyaları kabul ediliyor.`
         );
+        continue;
+      }
+      if (file.size <= 0) {
+        setError(`${file.name}: Boş dosya yüklenemez.`);
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
@@ -177,11 +181,14 @@ export function MultiDesignUploader({
         mimeType: file.type,
       });
     }
+    if (arr.length > remaining) {
+      setError(
+        `${remaining} dosya eklendi — seçimdeki ${arr.length - remaining} dosya hedef tasarım sayısı (${designCount}) nedeniyle atlandı.`
+      );
+    }
     if (accepted.length > 0) {
       const merged = [...designs, ...accepted];
       onDesignsChange(merged);
-
-      // Sefa 20 May v68: Async preview generation — non-blocking.
       // Her PDF/AI/PSD için arka planda render başlat; sonuç hazır olunca
       // designs state'i güncelle (parent setDesigns callback). EPS/unknown
       // direkt failed → fallback badge.
@@ -212,6 +219,13 @@ export function MultiDesignUploader({
     onDesignsChange(
       latest.map((d) => {
         if (d.id !== id) return d;
+        if (
+          d.generatedPreviewUrl &&
+          d.generatedPreviewUrl.startsWith("blob:") &&
+          d.generatedPreviewUrl !== d.previewUrl
+        ) {
+          URL.revokeObjectURL(d.generatedPreviewUrl);
+        }
         const url = previewBlob ? URL.createObjectURL(previewBlob) : null;
         return {
           ...d,
@@ -226,7 +240,18 @@ export function MultiDesignUploader({
 
   const removeDesign = (id: string) => {
     const target = designs.find((d) => d.id === id);
-    if (target) URL.revokeObjectURL(target.previewUrl);
+    if (target) {
+      if (target.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      if (
+        target.generatedPreviewUrl &&
+        target.generatedPreviewUrl.startsWith("blob:") &&
+        target.generatedPreviewUrl !== target.previewUrl
+      ) {
+        URL.revokeObjectURL(target.generatedPreviewUrl);
+      }
+    }
     onDesignsChange(designs.filter((d) => d.id !== id));
   };
 
