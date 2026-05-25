@@ -3,7 +3,7 @@
  *
  * Client signed URL'e PUT ettikten sonra çağırır. Server:
  *   - design_files satırını günceller (sha256 + ai_check başlat)
- *   - AI ön-kontrol pipeline'ı tetikler (P0-5.5 stub)
+ *   - AI ön-kontrol pipeline'ı tetikler (runOrderDesignQC)
  *   - order_events 'file_uploaded' log
  *
  * Body: { fileId, sha256? }
@@ -220,6 +220,15 @@ export async function POST(req: NextRequest) {
   ];
 
   if (orderRow && qcTriggerStatuses.includes(orderRow.status)) {
+    if (
+      orderRow.status === "awaiting_upload" ||
+      orderRow.status === "paid"
+    ) {
+      await admin
+        .from("orders")
+        .update({ status: "qc_pending" })
+        .eq("id", orderId);
+    }
     scheduleOrderDesignQC(admin, orderId);
   }
 
