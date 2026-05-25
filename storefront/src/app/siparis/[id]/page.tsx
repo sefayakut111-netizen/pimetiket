@@ -111,7 +111,7 @@ const COPY = {
     uploadCtaNewVersion: "Yeni versiyon yükle",
     designEmptyTitle: "Henüz tasarım yüklemedin",
     designEmptyDesc:
-      "PDF, AI, EPS, PSD, PNG, JPG, SVG kabul ederim. Yükledikten sonra Pim AI saniyeler içinde DPI / CMYK / boşluk kontrolü yapar.",
+      "PDF, AI, PSD, PNG, JPG, SVG kabul ederim. Yükledikten sonra Pim AI saniyeler içinde DPI / CMYK / boşluk kontrolü yapar.",
     aiFlagBadge: "AI flag",
     warnBadge: "Uyarı",
     aiPassBadge: "AI geçti",
@@ -214,7 +214,7 @@ const COPY = {
     uploadCtaNewVersion: "Upload new version",
     designEmptyTitle: "No design uploaded yet",
     designEmptyDesc:
-      "Accepts PDF, AI, EPS, PSD, PNG, JPG, SVG. Once uploaded, Pim AI runs DPI / CMYK / margin checks in seconds.",
+      "Accepts PDF, AI, PSD, PNG, JPG, SVG. Once uploaded, Pim AI runs DPI / CMYK / margin checks in seconds.",
     aiFlagBadge: "AI flag",
     warnBadge: "Warning",
     aiPassBadge: "AI passed",
@@ -287,6 +287,58 @@ function statusToPhaseIndex(status: OrderStatus): number {
 
 const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
+function SlaCountdown({
+  createdAt,
+  locale,
+}: {
+  createdAt: number;
+  locale: string;
+}) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const elapsedHours = (now - createdAt) / 3_600_000;
+  const remainingHours = Math.max(0, 36 - elapsedHours);
+  const isEn = locale === "en";
+
+  if (remainingHours <= 0) {
+    return (
+      <span className="text-[12px] font-bold text-kirmizi animate-pulse">
+        ⏰ {isEn ? "SLA expired" : "Süre doldu!"}
+      </span>
+    );
+  }
+
+  if (remainingHours <= 6) {
+    return (
+      <span className="text-[12px] font-bold text-kirmizi">
+        🔴 {Math.floor(remainingHours)}
+        {isEn ? "h left" : " saat kaldı"}
+      </span>
+    );
+  }
+
+  if (remainingHours <= 12) {
+    return (
+      <span className="text-[12px] font-semibold text-sari-koyu">
+        ⏰ {Math.floor(remainingHours)}
+        {isEn ? "h left" : " saat kaldı"}
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-[11px] text-gri-500">
+      ⏳ {Math.floor(remainingHours)}
+      {isEn ? "h remaining" : " saat kaldı"}
+    </span>
+  );
+}
+
 export default function SiparisDetailPage({
   params,
 }: {
@@ -299,6 +351,10 @@ export default function SiparisDetailPage({
   const [proofApproved, setProofApproved] = useState(false);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [changeRequestOpen, setChangeRequestOpen] = useState(false);
+  const [changeRequestNote, setChangeRequestNote] = useState("");
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   // Dosya yüklendi mi? — DesignUploadCard içindeki files state ana
   // komponente erişilemiyor; bu yüzden burada ayrıca count çekiyoruz.
   const [hasUploadedDesign, setHasUploadedDesign] = useState(false);
@@ -320,21 +376,17 @@ export default function SiparisDetailPage({
   const [reordering, setReordering] = useState(false);
   const [proofResponding, setProofResponding] = useState(false);
 
-  const respondToProof = async (action: "approve" | "request_change") => {
+  const respondToProof = async (
+    action: "approve" | "request_change",
+    noteOverride?: string | null
+  ) => {
     if (proofResponding) return;
     setProofResponding(true);
     try {
-      let note: string | null = null;
-      if (action === "request_change") {
-        note = prompt(
-          "Hangi değişikliği istiyorsun? (Opsiyonel, kısa not):"
-        );
-        if (note === null) {
-          // İptal
-          setProofResponding(false);
-          return;
-        }
-      }
+      const note =
+        action === "request_change"
+          ? (noteOverride ?? changeRequestNote).trim().slice(0, 500) || null
+          : null;
       const res = await fetch(`/api/orders/${id}/proof-respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -448,6 +500,41 @@ export default function SiparisDetailPage({
       toast.error("Tekrar sipariş açılamadı — sayfayı yenileyip tekrar dene.");
     } finally {
       setReordering(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order || cancelling) return;
+    const isEn = locale === "en";
+    const confirmed = window.confirm(
+      isEn
+        ? "Are you sure you want to cancel this order? A refund will be processed."
+        : "Bu siparişi iptal etmek istediğine emin misin? İade işlemi başlatılacak."
+    );
+    if (!confirmed) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/cancel`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        toast.success(
+          isEn
+            ? "Order cancelled — refund initiated"
+            : "Sipariş iptal edildi — iade başlatıldı"
+        );
+        void fetchCustomerOrder(id).then((o) => o && setOrder(o));
+      } else {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(
+          j.error ??
+            (isEn ? "Cancellation failed" : "İptal başarısız")
+        );
+      }
+    } catch {
+      toast.error(isEn ? "Cancellation failed" : "İptal başarısız");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -593,14 +680,34 @@ export default function SiparisDetailPage({
               </span>
             </div>
           </div>
-          <Button
-            variant="secondary"
-            onClick={handleReorder}
-            disabled={reordering}
-          >
-            <Icon.Bolt size={14} />{" "}
-            {reordering ? "Ekleniyor..." : c.reorder}
-          </Button>
+          <div className="flex gap-2 flex-wrap shrink-0">
+            {(order.status === "paid" ||
+              order.status === "awaiting_upload") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleCancelOrder()}
+                disabled={cancelling}
+                className="!text-kirmizi"
+              >
+                {cancelling
+                  ? locale === "en"
+                    ? "Cancelling..."
+                    : "İptal ediliyor..."
+                  : locale === "en"
+                    ? "Cancel order"
+                    : "Siparişi iptal et"}
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              onClick={handleReorder}
+              disabled={reordering}
+            >
+              <Icon.Bolt size={14} />{" "}
+              {reordering ? "Ekleniyor..." : c.reorder}
+            </Button>
+          </div>
         </div>
 
         {order.status === "proof_validating" && (
@@ -709,11 +816,14 @@ export default function SiparisDetailPage({
 
               {order.status === "proof_pending" && (
                 <div className="mt-4 rounded-xl bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/30 p-4">
-                  <div className="font-semibold text-[14px] text-pim-mercan mb-1">
-                    ✋{" "}
-                    {locale === "en"
-                      ? "Proof approval needed"
-                      : "Prova onayın bekleniyor"}
+                  <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+                    <div className="font-semibold text-[14px] text-pim-mercan">
+                      ✋{" "}
+                      {locale === "en"
+                        ? "Proof approval needed"
+                        : "Prova onayın bekleniyor"}
+                    </div>
+                    <SlaCountdown createdAt={order.createdAt} locale={locale} />
                   </div>
                   <p className="text-[13px] text-gri-700 mb-3">
                     {locale === "en"
@@ -816,7 +926,7 @@ export default function SiparisDetailPage({
                       </Button>
                       <Button
                         variant="secondary"
-                        onClick={() => void respondToProof("request_change")}
+                        onClick={() => setChangeRequestOpen(true)}
                         disabled={proofResponding}
                       >
                         {c.proofRequestChange}
@@ -910,6 +1020,7 @@ export default function SiparisDetailPage({
                           fileName={item.designFileName}
                           mimeType={item.designMimeType}
                           product={item.product}
+                          onPreview={(url) => setLightboxSrc(url)}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between gap-3 items-baseline">
@@ -1167,11 +1278,47 @@ export default function SiparisDetailPage({
                 {order.payment.masked && (
                   <div className="font-mono">{order.payment.masked}</div>
                 )}
-                <div className="text-[11.5px] text-gri-500 mt-2">
-                  {c.invoice}: {INVOICE_LABEL[order.invoice.type]}
+                <div className="text-[11.5px] text-gri-500 mt-2 flex items-center justify-between gap-2">
+                  <span>
+                    {c.invoice}: {INVOICE_LABEL[order.invoice.type]}
+                  </span>
+                  {/* TODO: /api/orders/[id]/invoice-pdf endpoint hazır olunca aktif et */}
+                  {false && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(`/api/orders/${id}/invoice-pdf`, "_blank")
+                      }
+                      className="text-[11px] font-semibold text-pim-mercan hover:underline shrink-0"
+                    >
+                      📄{" "}
+                      {locale === "en" ? "Download invoice" : "Fatura indir"}
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
+
+            {/* İade talebi — teslim edilmiş siparişler */}
+            {order.status === "delivered" && (
+              <Card padding="p-4" className="!bg-gri-50">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="font-semibold text-[13px]">
+                      {locale === "en" ? "Need to return?" : "İade mi istiyorsun?"}
+                    </div>
+                    <div className="text-[12px] text-gri-700 mt-0.5">
+                      {locale === "en"
+                        ? "Submit a return request within 14 days"
+                        : "14 gün içinde iade talebi oluşturabilirsin"}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" href="/iade-talep">
+                    {locale === "en" ? "Return request" : "İade talebi →"}
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             {/* Pim help */}
             <Card padding="p-5" className="!bg-krem">
@@ -1182,7 +1329,17 @@ export default function SiparisDetailPage({
                   <div className="text-[11.5px] text-gri-700 mt-0.5">
                     {c.pimAskSub}
                   </div>
-                  <button className="text-[12.5px] font-semibold text-pim-mercan mt-2 hover:underline">
+                  <button
+                    type="button"
+                    className="text-[12.5px] font-semibold text-pim-mercan mt-2 hover:underline"
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent("pim-chat-open", {
+                          detail: { context: `siparis_${order.id}` },
+                        })
+                      );
+                    }}
+                  >
                     {c.openChat}
                   </button>
                 </div>
@@ -1191,6 +1348,108 @@ export default function SiparisDetailPage({
           </div>
         </div>
       </div>
+
+      {changeRequestOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <Card padding="p-6" className="w-full max-w-md">
+            <h3 className="text-lg font-semibold text-lacivert mb-2">
+              {locale === "en" ? "Request changes" : "Değişiklik iste"}
+            </h3>
+            <p className="text-[13px] text-gri-700 mb-4">
+              {locale === "en"
+                ? "Describe what you want changed. Our team will review and update the proof."
+                : "Ne değişmesini istiyorsun? Ekibimiz inceleyip provayı güncelleyecek."}
+            </p>
+            <textarea
+              value={changeRequestNote}
+              onChange={(e) => setChangeRequestNote(e.target.value)}
+              placeholder={
+                locale === "en"
+                  ? 'e.g. "Logo should be 2mm bigger" or "Cut line too close to edge"'
+                  : 'Örn: "Logo 2mm büyük olsun" veya "Bıçak çizgisi kenara çok yakın"'
+              }
+              rows={4}
+              className="w-full px-3 py-2.5 rounded-lg ring-1 ring-gri-200 text-[14px] focus:ring-2 focus:ring-pim-mercan/40 focus:outline-none resize-none mb-4"
+              autoFocus
+            />
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setChangeRequestOpen(false);
+                  setChangeRequestNote("");
+                }}
+              >
+                {locale === "en" ? "Cancel" : "Vazgeç"}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setChangeRequestOpen(false);
+                  void respondToProof("request_change", changeRequestNote);
+                  setChangeRequestNote("");
+                }}
+                disabled={proofResponding}
+              >
+                {locale === "en" ? "Send request" : "Talebi gönder"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setLightboxSrc(null)}
+          role="dialog"
+          aria-label={locale === "en" ? "Design preview" : "Tasarım büyütme"}
+        >
+          <img
+            src={lightboxSrc}
+            alt={locale === "en" ? "Design preview" : "Tasarım büyütme"}
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+          />
+          <button
+            type="button"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/40"
+            onClick={() => setLightboxSrc(null)}
+            aria-label={locale === "en" ? "Close" : "Kapat"}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {(order.status === "awaiting_upload" || order.status === "paid") && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
+          <Button
+            variant="primary"
+            size="md"
+            href={`/siparis/${order.id}/tasarim-yukle`}
+            className="w-full"
+          >
+            📁 {locale === "en" ? "Upload design" : "Tasarım yükle"}
+          </Button>
+        </div>
+      )}
+      {order.status === "proof_pending" && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
+          <Button
+            variant="primary"
+            size="md"
+            href={`/onay/${order.id}`}
+            className="w-full !bg-yesil hover:!bg-yesil-koyu"
+          >
+            ✋ {locale === "en" ? "Approve proof" : "Provayı onayla"}
+          </Button>
+        </div>
+      )}
+      {(order.status === "awaiting_upload" ||
+        order.status === "paid" ||
+        order.status === "proof_pending") && (
+        <div className="h-16 md:hidden" aria-hidden />
+      )}
     </main>
   );
 }
@@ -1211,33 +1470,6 @@ interface UploadedFile {
    */
   storagePath?: string;
   mimeType?: string;
-}
-
-const STORAGE_KEY_FILES = "pim_design_files_v1";
-
-function loadFiles(orderId: string): UploadedFile[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const all = JSON.parse(
-      localStorage.getItem(STORAGE_KEY_FILES) ?? "{}"
-    ) as Record<string, UploadedFile[]>;
-    return all[orderId] ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function saveFiles(orderId: string, files: UploadedFile[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    const all = JSON.parse(
-      localStorage.getItem(STORAGE_KEY_FILES) ?? "{}"
-    ) as Record<string, UploadedFile[]>;
-    all[orderId] = files;
-    localStorage.setItem(STORAGE_KEY_FILES, JSON.stringify(all));
-  } catch {
-    // ignore
-  }
 }
 
 interface DbFileRow {
@@ -1944,6 +2176,7 @@ function SiparisOzetiDesignThumb({
   fileName,
   mimeType,
   product,
+  onPreview,
 }: {
   orderId: string;
   itemId: string;
@@ -1951,10 +2184,13 @@ function SiparisOzetiDesignThumb({
   fileName?: string;
   mimeType?: string;
   product: "sticker" | "etiket";
+  onPreview?: (url: string) => void;
 }) {
   const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
   const [fetchedMime, setFetchedMime] = useState<string | undefined>(undefined);
   const [fetchedName, setFetchedName] = useState<string | undefined>(undefined);
+
+  const previewUrl = fallbackPreviewUrl ?? fetchedUrl ?? undefined;
 
   useEffect(() => {
     if (fallbackPreviewUrl) return; // cart preview varsa fetch yapma
@@ -1983,15 +2219,30 @@ function SiparisOzetiDesignThumb({
     };
   }, [orderId, itemId, fallbackPreviewUrl]);
 
-  return (
+  const thumb = (
     <DesignThumb
-      previewUrl={fallbackPreviewUrl ?? fetchedUrl ?? undefined}
+      previewUrl={previewUrl}
       fileName={fileName ?? fetchedName}
       mimeType={mimeType ?? fetchedMime}
       product={product}
       size="sm"
     />
   );
+
+  if (onPreview && previewUrl) {
+    return (
+      <button
+        type="button"
+        onClick={() => onPreview(previewUrl)}
+        className="cursor-zoom-in shrink-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan/40"
+        aria-label="Tasarımı büyüt"
+      >
+        {thumb}
+      </button>
+    );
+  }
+
+  return thumb;
 }
 
 // ============================================================
@@ -2079,7 +2330,7 @@ function DesignUploadCard({
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Auth mode: DB; Guest mode: localStorage
+  // Auth mode: DB; Guest mode: in-memory mock (localStorage kaldırıldı)
   const refreshDb = async () => {
     const supabase = createSupabaseClient();
     const { data, error } = await supabase
@@ -2105,10 +2356,8 @@ function DesignUploadCard({
         }
       }, 3000);
       return () => clearInterval(interval);
-    } else {
-      setFiles(loadFiles(orderId));
-      setHydrated(true);
     }
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
@@ -2212,15 +2461,13 @@ function DesignUploadCard({
       };
       const next = [fresh, ...files];
       setFiles(next);
-      saveFiles(orderId, next as UploadedFile[]);
       setAnalyzing(false);
     }, 1500);
   };
 
   // Sefa 22 May v68: handleRemove kaldırıldı — müşteri tasarım silemez,
   // sadece "Yeni versiyon yükle" ile değiştirebilir (versiyon geçmişi
-  // OrderDesignHistory accordion'da kalır). saveFiles import'u kaldırıldı,
-  // useState/refreshDb akışı korundu (yeni versiyon kayıtları için).
+  // OrderDesignHistory accordion'da kalır).
 
   if (!hydrated) return null;
 
@@ -2244,7 +2491,7 @@ function DesignUploadCard({
             id={`design-upload-${orderId}`}
             type="file"
             className="hidden"
-            accept=".pdf,.ai,.eps,.psd,.png,.jpg,.jpeg,.svg"
+            accept=".pdf,.ai,.psd,.png,.jpg,.jpeg,.svg"
             onChange={handleRealUpload}
             disabled={analyzing}
             aria-label={c.uploadCta}
