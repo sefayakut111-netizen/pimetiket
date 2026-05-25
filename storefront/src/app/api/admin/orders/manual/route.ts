@@ -38,6 +38,7 @@ interface ManualOrderBody {
     addr: string;
     city: string;
     label?: string;
+    email?: string;
   };
   invoice: {
     type: "individual" | "corporate";
@@ -52,6 +53,12 @@ interface ManualOrderBody {
   };
   estimatedDelivery: string | null;
   items: ManualOrderItem[];
+  discount?: {
+    type: string;
+    value: number;
+    amount: number;
+    reason?: string;
+  };
 }
 
 // Sefa kuralı (12 May): orderId 8-char nanoid — tek kaynak
@@ -102,6 +109,13 @@ export async function POST(req: Request) {
 
   const orderId = generateOrderId();
 
+  const paymentPayload = {
+    ...body.payment,
+    ...(body.discount && body.discount.amount > 0
+      ? { manualDiscount: body.discount }
+      : {}),
+  };
+
   const { error: rpcErr } = await admin.rpc(
     "fn_create_manual_order",
     {
@@ -111,7 +125,7 @@ export async function POST(req: Request) {
       p_total: body.total,
       p_address: body.address,
       p_invoice: body.invoice,
-      p_payment: body.payment,
+      p_payment: paymentPayload,
       p_estimated_delivery: body.estimatedDelivery,
       p_items: body.items,
     }

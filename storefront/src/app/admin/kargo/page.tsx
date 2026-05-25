@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import {
@@ -47,6 +47,11 @@ type StatusFilter =
   | "returned";
 
 type DateRange = "today" | "week" | "month" | "all";
+
+type SortKey = "date" | "status" | "customer" | "tracking";
+type SortDir = "asc" | "desc";
+
+const PAGE_SIZE = 30;
 
 const STATUS_META: Record<
   Exclude<StatusFilter, "all" | "active">,
@@ -130,6 +135,35 @@ export default function AdminKargoPage() {
   const [geo, setGeo] = useState<GeoDistributionResponse | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const refreshShipments = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      status: statusFilter,
+      dateRange,
+      limit: "100",
+    });
+    if (debounced) params.set("search", debounced);
+
+    try {
+      const res = await fetch(`/api/admin/shipments?${params.toString()}`);
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      setShipments(data.shipments ?? []);
+      setTotal(data.total ?? 0);
+      setSelected(new Set());
+    } catch (e) {
+      toast.error(`Yükleme hatası: ${(e as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, dateRange, debounced, toast]);
 
   // Search debounce
   useEffect(() => {
@@ -139,38 +173,12 @@ export default function AdminKargoPage() {
 
   // Fetch shipments
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    const params = new URLSearchParams({
-      status: statusFilter,
-      dateRange,
-      limit: "100",
-    });
-    if (debounced) params.set("search", debounced);
+    void refreshShipments();
+  }, [refreshShipments]);
 
-    fetch(`/api/admin/shipments?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (data.error) {
-          toast.error(data.error);
-          return;
-        }
-        setShipments(data.shipments ?? []);
-        setTotal(data.total ?? 0);
-        setSelected(new Set()); // filtre değişince seçim sıfırla
-      })
-      .catch((e) => {
-        if (!cancelled) toast.error(`Yükleme hatası: ${e.message}`);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [statusFilter, dateRange, debounced, toast]);
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, dateRange, debounced]);
 
   // Fetch stats (KPI + trend + histogram) — sadece 1 kez
   useEffect(() => {
@@ -198,12 +206,104 @@ export default function AdminKargoPage() {
     setSelected(next);
   }
 
+  const toggleSort = useCallback(
+    (key: SortKey) => {
+      if (sortKey === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setSortKey(key);
+        setSortDir("desc");
+      }
+    },
+    [sortKey]
+  );
+
+  const sorted = useMemo(() => {
+    const list = [...shipments];
+    list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "date":
+          cmp =
+            new Date(a.shipped_at ?? 0).getTime() -
+            new Date(b.shipped_at ?? 0).getTime();
+          break;
+        case "status":
+          cmp = (a.tracking_status ?? "").localeCompare(
+            b.tracking_status ?? ""
+          );
+          break;
+        case "customer":
+          cmp = (a.customer_name ?? "").localeCompare(
+            b.customer_name ?? "",
+            "tr"
+          );
+          break;
+        case "tracking":
+          cmp = (a.tracking_number ?? "").localeCompare(
+            b.tracking_number ?? ""
+          );
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [shipments, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   function toggleSelectAll() {
-    if (selected.size === shipments.length) {
+    if (selected.size === sorted.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(shipments.map((s) => s.assignment_id)));
+      setSelected(new Set(sorted.map((s) => s.assignment_id)));
     }
+  }
+
+  const SortableHeader = ({
+    label,
+    sortField,
+  }: {
+    label: string;
+    sortField: SortKey;
+  }) => {
+    const isActive = sortKey === sortField;
+    return (
+      <th
+        className="px-3 py-3 text-left font-semibold cursor-pointer select-none hover:text-lacivert"
+        onClick={() => toggleSort(sortField)}
+      >
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {isActive && (
+            <span className="text-pim-mercan">
+              {sortDir === "asc" ? "↑" : "↓"}
+            </span>
+          )}
+        </span>
+      </th>
+    );
+  };
+
+  function exportCsv() {
+    const header =
+      "Sipariş,Müşteri,Email,Şehir,Takip No,Durum,Son Event,Tarih\n";
+    const lines = sorted
+      .map(
+        (s) =>
+          `"${s.order_id}","${s.customer_name ?? ""}","${s.customer_email ?? ""}","${s.city ?? ""}","${s.tracking_number ?? ""}","${s.tracking_status ?? ""}","${s.last_event_description ?? ""}","${s.shipped_at ?? ""}"`
+      )
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + header + lines], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kargo-${statusFilter}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handleBulkPoll() {
@@ -227,8 +327,8 @@ export default function AdminKargoPage() {
       toast.success(
         `Poll: ${s.polled} kargo, ${s.success} başarılı, ${s.newEvents} yeni event`
       );
-      // Listeyi yenile
-      window.location.reload();
+      setSelected(new Set());
+      await refreshShipments();
     } catch (e) {
       toast.error(`Hata: ${(e as Error).message}`);
     } finally {
@@ -373,6 +473,28 @@ export default function AdminKargoPage() {
               delivered / (delivered + failed + returned)
             </p>
           </Card>
+          <Card className="p-4">
+            <div className="text-[11px] text-gri-700">SLA uyumu</div>
+            <div
+              className={cn(
+                "text-2xl font-bold mt-1",
+                stats?.sla_compliance_pct == null
+                  ? "text-gri-500"
+                  : stats.sla_compliance_pct >= 90
+                  ? "text-yesil-koyu"
+                  : stats.sla_compliance_pct >= 75
+                  ? "text-sari-koyu"
+                  : "text-kirmizi-koyu"
+              )}
+            >
+              {stats?.sla_compliance_pct != null
+                ? `%${stats.sla_compliance_pct}`
+                : "—"}
+            </div>
+            <p className="text-[11px] text-gri-500 mt-1">
+              Tahmini süre içinde teslim oranı
+            </p>
+          </Card>
         </div>
       </div>
 
@@ -451,6 +573,14 @@ export default function AdminKargoPage() {
             })}
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={sorted.length === 0}
+              className="text-[12px] font-semibold text-gri-500 hover:text-pim-mercan disabled:opacity-40"
+            >
+              📥 CSV indir ({sorted.length})
+            </button>
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRange)}
@@ -507,19 +637,17 @@ export default function AdminKargoPage() {
                   <input
                     type="checkbox"
                     checked={
-                      shipments.length > 0 && selected.size === shipments.length
+                      sorted.length > 0 && selected.size === sorted.length
                     }
                     onChange={toggleSelectAll}
                     className="rounded"
                   />
                 </th>
                 <th className="px-3 py-3 text-left font-semibold">Sipariş</th>
-                <th className="px-3 py-3 text-left font-semibold">Müşteri</th>
-                <th className="px-3 py-3 text-left font-semibold">Takip no</th>
-                <th className="px-3 py-3 text-left font-semibold">Durum</th>
-                <th className="px-3 py-3 text-left font-semibold">
-                  Son güncelleme
-                </th>
+                <SortableHeader label="Müşteri" sortField="customer" />
+                <SortableHeader label="Takip no" sortField="tracking" />
+                <SortableHeader label="Durum" sortField="status" />
+                <SortableHeader label="Son güncelleme" sortField="date" />
                 <th className="px-3 py-3 text-right font-semibold">İşlem</th>
               </tr>
             </thead>
@@ -532,7 +660,7 @@ export default function AdminKargoPage() {
                     </td>
                   </tr>
                 ))
-              ) : shipments.length === 0 ? (
+              ) : sorted.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
@@ -554,7 +682,7 @@ export default function AdminKargoPage() {
                   </td>
                 </tr>
               ) : (
-                shipments.map((s) => {
+                paged.map((s) => {
                   const meta = s.tracking_status
                     ? (STATUS_META as Record<string, { tr: string; emoji: string; color: string; bg: string }>)[s.tracking_status]
                     : STATUS_META.new;
@@ -589,9 +717,18 @@ export default function AdminKargoPage() {
                         </div>
                       </td>
                       <td className="px-3 py-3">
-                        <code className="rounded bg-gri-100 px-1.5 py-0.5 font-mono text-[11.5px]">
-                          {s.tracking_number ?? "—"}
-                        </code>
+                        {s.tracking_number ? (
+                          <code className="rounded bg-gri-100 px-1.5 py-0.5 font-mono text-[11.5px]">
+                            {s.tracking_number}
+                          </code>
+                        ) : (
+                          <Link
+                            href={`/admin/siparisler/${s.order_id}#tracking`}
+                            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-pim-mercan hover:underline"
+                          >
+                            + Tracking gir
+                          </Link>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <span
@@ -621,13 +758,44 @@ export default function AdminKargoPage() {
                             Henüz event yok
                           </span>
                         )}
+                        {s.tracking_status === "delivered" &&
+                          s.shipped_at &&
+                          s.last_event_time && (
+                            <div className="text-[10px] text-yesil-koyu mt-0.5">
+                              ✅{" "}
+                              {Math.ceil(
+                                (new Date(s.last_event_time).getTime() -
+                                  new Date(s.shipped_at).getTime()) /
+                                  86400000
+                              )}{" "}
+                              günde teslim
+                            </div>
+                          )}
+                        {s.tracking_status === "failed" && (
+                          <div className="text-[10px] text-kirmizi mt-0.5">
+                            ⚠️ Teslim edilemedi
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <Link href={`/admin/kargo/${s.order_id}`}>
-                          <Button size="sm" variant="secondary">
-                            Detay
-                          </Button>
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          {s.tracking_number && (
+                            <a
+                              href={`/api/admin/shipping/label/${s.order_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 h-8 px-2 rounded-lg ring-1 ring-gri-200 bg-white text-[11.5px] font-semibold text-lacivert hover:ring-pim-mercan"
+                              title="Kargo etiketi PDF indir"
+                            >
+                              🏷️ Etiket
+                            </a>
+                          )}
+                          <Link href={`/admin/kargo/${s.order_id}`}>
+                            <Button size="sm" variant="secondary">
+                              Detay
+                            </Button>
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -636,6 +804,67 @@ export default function AdminKargoPage() {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gri-100">
+            <span className="text-[12px] text-gri-500">
+              {sorted.length} kargo · Sayfa {page}/{totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="px-2 py-1 text-[12px] rounded hover:bg-gri-100 disabled:opacity-30"
+              >
+                ««
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-2 py-1 text-[12px] rounded hover:bg-gri-100 disabled:opacity-30"
+              >
+                «
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+                const p = start + i;
+                if (p > totalPages) return null;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={cn(
+                      "w-8 h-8 text-[12px] rounded font-semibold",
+                      p === page
+                        ? "bg-lacivert text-white"
+                        : "hover:bg-gri-100 text-gri-700"
+                    )}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-2 py-1 text-[12px] rounded hover:bg-gri-100 disabled:opacity-30"
+              >
+                »
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                className="px-2 py-1 text-[12px] rounded hover:bg-gri-100 disabled:opacity-30"
+              >
+                »»
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <div className="mt-4 text-[12.5px] text-gri-500">

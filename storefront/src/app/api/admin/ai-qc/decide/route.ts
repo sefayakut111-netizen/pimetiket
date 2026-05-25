@@ -26,7 +26,7 @@ import { logOrderEvent } from "@/lib/order-events-server";
 
 const BodySchema = z.object({
   orderId: z.string().min(1),
-  decision: z.enum(["approve", "reject"]),
+  decision: z.enum(["approve", "reject", "fix_and_proof"]),
   note: z.string().max(2000).optional(),
 });
 
@@ -54,7 +54,11 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
 
   const nextStatus =
-    body.decision === "approve" ? "ready_to_ship" : "human_review_failed";
+    body.decision === "approve"
+      ? "ready_to_ship"
+      : body.decision === "fix_and_proof"
+        ? "proof_generating"
+        : "human_review_failed";
 
   // 1) Order status update — guard: yalnızca QC kuyruğundaki statüsler
   const { data: updated, error: updateErr } = await admin
@@ -82,7 +86,11 @@ export async function POST(req: Request) {
 
   // 2) Order event audit
   const eventType =
-    body.decision === "approve" ? "qc_approved" : "qc_rejected";
+    body.decision === "approve"
+      ? "qc_approved"
+      : body.decision === "fix_and_proof"
+        ? "qc_fixed_by_operator"
+        : "qc_rejected";
 
   await logOrderEvent(admin, {
     orderId: body.orderId,
@@ -93,7 +101,9 @@ export async function POST(req: Request) {
     summary:
       body.decision === "approve"
         ? "AI QC onaylandı → üretime hazır"
-        : "AI QC reddedildi → düzeltme istendi",
+        : body.decision === "fix_and_proof"
+          ? "Operatör düzeltecek → prova hazırlanıyor"
+          : "AI QC reddedildi → düzeltme istendi",
     detail: {
       operator: auth.user.email ?? auth.user.id,
       note: body.note ?? null,

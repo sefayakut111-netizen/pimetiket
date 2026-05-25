@@ -38,6 +38,8 @@ export interface ShipmentStats {
   daily_trend: Array<{ day: string; shipped: number; delivered: number }>;
   /** Faz 3: teslim süresi histogram bucket'ları */
   delivery_histogram: Array<{ bucket: string; count: number }>;
+  /** Tahmini süre içinde teslim oranı (son 30 gün) */
+  sla_compliance_pct: number | null;
 }
 
 export async function GET() {
@@ -224,6 +226,29 @@ export async function GET() {
     count: b.count,
   }));
 
+  // 12. SLA uyumu — tahmini teslim tarihi içinde teslim (son 30 gün)
+  const { data: slaRows } = await supabase
+    .from("order_assignments")
+    .select("estimated_delivery, tracking_delivered_at")
+    .not("tracking_delivered_at", "is", null)
+    .not("estimated_delivery", "is", null)
+    .gte("tracking_delivered_at", monthAgo);
+
+  let slaCompliancePct: number | null = null;
+  const slaList = (slaRows ?? []) as Array<{
+    estimated_delivery: string;
+    tracking_delivered_at: string;
+  }>;
+  if (slaList.length > 0) {
+    const onTime = slaList.filter((r) => {
+      const est = new Date(r.estimated_delivery);
+      const del = new Date(r.tracking_delivered_at);
+      est.setHours(23, 59, 59, 999);
+      return del.getTime() <= est.getTime();
+    }).length;
+    slaCompliancePct = Math.round((onTime / slaList.length) * 100);
+  }
+
   const stats: ShipmentStats = {
     shipped_today: shippedToday ?? 0,
     in_transit: inTransit ?? 0,
@@ -236,6 +261,7 @@ export async function GET() {
     last_poll: lastPoll,
     daily_trend: dailyTrend,
     delivery_histogram: deliveryHistogram,
+    sla_compliance_pct: slaCompliancePct,
   };
 
   return NextResponse.json(stats);

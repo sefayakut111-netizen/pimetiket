@@ -90,7 +90,8 @@ export async function GET() {
         "default_lead_days, express_lead_time_days, min_order_amount_try, " +
         "payment_term, iban, contract_pdf_url, contract_uploaded_at, " +
         "contact_email, contact_whatsapp, contact_person, " +
-        "specialties, cached_score, score_updated_at, notes, created_at"
+        "specialties, cached_score, score_updated_at, notes, created_at, " +
+        "active, contract_signed_at"
     )
     .neq("status", "terminated")
     .order("status", { ascending: true })
@@ -149,8 +150,27 @@ export async function GET() {
     capsByPartner.get(c.partner_id)!.push(c);
   }
 
+  // Aktif atama sayıları (assigned / acknowledged / in_production)
+  const activeCountByPartner = new Map<string, number>();
+  if (partnerIds.length > 0) {
+    const { data: activeAssignments } = await admin
+      .from("order_assignments")
+      .select("fason_partner_id")
+      .in("fason_partner_id", partnerIds)
+      .in("status", ["assigned", "acknowledged", "in_production"]);
+    for (const row of (activeAssignments ?? []) as Array<{
+      fason_partner_id: string;
+    }>) {
+      activeCountByPartner.set(
+        row.fason_partner_id,
+        (activeCountByPartner.get(row.fason_partner_id) ?? 0) + 1
+      );
+    }
+  }
+
   const enriched = partnerRows.map((p) => ({
     ...p,
+    active_order_count: activeCountByPartner.get(p.id) ?? 0,
     contacts: contactsByPartner.get(p.id) ?? [],
     capabilities: capsByPartner.get(p.id) ?? [],
   }));

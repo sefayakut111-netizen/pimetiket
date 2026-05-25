@@ -55,6 +55,7 @@ interface FasonPartner {
   contract_signed_at: string | null;
   notes: string | null;
   created_at: string;
+  active_order_count?: number;
   // Mig 067 nested
   contacts?: Array<{
     role: string;
@@ -94,6 +95,10 @@ interface AssignmentRow {
 // Status etiketleri tek kaynaktan (src/lib/fason/status-labels.ts):
 // getAdminPillClasses(status) — label + Tailwind chip className döner.
 
+type SortBy = "score" | "name" | "lead_days" | "active_orders";
+
+const HISTORY_PAGE_SIZE = 10;
+
 // ============================================================
 // Page
 // ============================================================
@@ -108,6 +113,9 @@ export default function AdminFasonPage() {
   const [filter, setFilter] = useState<"all" | "active" | "no_contract">(
     "active"
   );
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy>("score");
+  const [historyPage, setHistoryPage] = useState(1);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -115,7 +123,12 @@ export default function AdminFasonPage() {
       const res = await fetch("/api/admin/fason/partners");
       const json = (await res.json()) as { partners?: FasonPartner[]; error?: string };
       if (!res.ok) throw new Error(json.error ?? "list_failed");
-      setPartners(json.partners ?? []);
+      const newPartners = json.partners ?? [];
+      setPartners(newPartners);
+      setSelected((prev) => {
+        if (!prev) return prev;
+        return newPartners.find((p) => p.id === prev.id) ?? null;
+      });
     } catch (err) {
       console.error("[admin/fason] list error:", err);
     } finally {
@@ -147,17 +160,55 @@ export default function AdminFasonPage() {
     if (selected) void loadHistory(selected.id);
   }, [selected, loadHistory]);
 
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [selected?.id]);
+
   // ============================================================
   // Computed
   // ============================================================
 
   const filtered = useMemo(() => {
-    if (filter === "all") return partners;
-    if (filter === "active") return partners.filter((p) => p.active);
+    let list = partners;
+    if (filter === "active") list = list.filter((p) => p.active);
     if (filter === "no_contract")
-      return partners.filter((p) => !p.contract_signed_at);
-    return partners;
-  }, [partners, filter]);
+      list = list.filter((p) => !p.contract_signed_at);
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.contact_email.toLowerCase().includes(q) ||
+          (p.city ?? "").toLowerCase().includes(q) ||
+          (p.contact_person ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [partners, filter, search]);
+
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    list.sort((a, b) => {
+      switch (sortBy) {
+        case "score":
+          return (b.cached_score ?? 0) - (a.cached_score ?? 0);
+        case "name":
+          return a.name.localeCompare(b.name, "tr");
+        case "lead_days":
+          return a.default_lead_days - b.default_lead_days;
+        case "active_orders":
+          return (b.active_order_count ?? 0) - (a.active_order_count ?? 0);
+        default:
+          return 0;
+      }
+    });
+    return list;
+  }, [filtered, sortBy]);
+
+  const pagedHistory = history.slice(0, historyPage * HISTORY_PAGE_SIZE);
+  const hasMoreHistory = history.length > pagedHistory.length;
 
   const stats = useMemo(() => {
     const total = partners.length;
@@ -252,8 +303,8 @@ export default function AdminFasonPage() {
           </div>
         )}
 
-        {/* Filter chips */}
-        <div className="flex gap-2 flex-wrap mb-4">
+        {/* Filter chips + arama + sıralama */}
+        <div className="flex gap-2 flex-wrap mb-4 items-center">
           {(
             [
               { id: "active" as const, label: "Aktif" },
@@ -275,6 +326,31 @@ export default function AdminFasonPage() {
               {f.label}
             </button>
           ))}
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            className="h-9 px-2 text-[12px] border border-gri-200 rounded-lg bg-white"
+          >
+            <option value="score">Skor (yüksek → düşük)</option>
+            <option value="name">İsim (A-Z)</option>
+            <option value="lead_days">Teslim süresi (hızlı → yavaş)</option>
+            <option value="active_orders">Aktif sipariş (çok → az)</option>
+          </select>
+
+          <div className="ml-auto w-full sm:w-auto sm:min-w-[240px] relative">
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Partner ara (isim/email/şehir)…"
+              className="!h-10 !pl-9"
+            />
+            <Icon.Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gri-500 pointer-events-none"
+            />
+          </div>
         </div>
 
         {/* Grid: partners (sol) + history (sağ) */}
@@ -282,7 +358,7 @@ export default function AdminFasonPage() {
           {/* Partners */}
           <div className="space-y-3">
             {loading && <Skeleton.AdminTable rows={4} />}
-            {!loading && filtered.length === 0 && (
+            {!loading && sorted.length === 0 && (
               <Card padding="p-8" className="text-center">
                 <div className="text-gri-700 mb-3">
                   Bu filtreye uyan üretim partneri yok.
@@ -292,12 +368,18 @@ export default function AdminFasonPage() {
                 </Button>
               </Card>
             )}
-            {filtered.map((p) => (
+            {sorted.map((p) => (
               <PartnerCard
                 key={p.id}
                 partner={p}
                 isSelected={selected?.id === p.id}
                 onSelect={() => setSelected(p)}
+                onRefresh={() => {
+                  void refresh();
+                  if (selected?.id === p.id) {
+                    void loadHistory(p.id);
+                  }
+                }}
               />
             ))}
           </div>
@@ -322,6 +404,9 @@ export default function AdminFasonPage() {
                   }}
                 />
               )}
+              {selected && (
+                <PartnerScoreBreakdown partner={selected} history={history} />
+              )}
               {selected && historyLoading && (
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -336,7 +421,7 @@ export default function AdminFasonPage() {
               )}
               {selected && history.length > 0 && (
                 <ul className="space-y-2">
-                  {history.slice(0, 15).map((a) => {
+                  {pagedHistory.map((a) => {
                     const meta = getAdminPillClasses(
                       a.status as AssignmentStatus
                     );
@@ -370,6 +455,16 @@ export default function AdminFasonPage() {
                   })}
                 </ul>
               )}
+              {selected && hasMoreHistory && (
+                <button
+                  type="button"
+                  onClick={() => setHistoryPage((p) => p + 1)}
+                  className="mt-2 w-full text-center text-[12px] font-semibold text-pim-mercan hover:underline py-2"
+                >
+                  Daha fazla göster ({history.length - pagedHistory.length}{" "}
+                  kalan)
+                </button>
+              )}
               {selected && (
                 <div className="mt-4 pt-3 border-t border-gri-100 space-y-1.5 text-[12px] text-gri-700">
                   <div>
@@ -390,17 +485,35 @@ export default function AdminFasonPage() {
                   <div>
                     📑 Sözleşme:{" "}
                     {selected.contract_signed_at ? (
-                      <span className="text-yesil font-semibold">
-                        {new Date(selected.contract_signed_at).toLocaleDateString(
-                          "tr-TR"
+                      <>
+                        <span className="text-yesil font-semibold">
+                          {new Date(
+                            selected.contract_signed_at
+                          ).toLocaleDateString("tr-TR")}
+                        </span>
+                        {selected.contract_pdf_url && (
+                          <a
+                            href={selected.contract_pdf_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-pim-mercan font-semibold hover:underline text-[11px]"
+                          >
+                            📥 PDF indir
+                          </a>
                         )}
-                      </span>
+                      </>
                     ) : (
                       <span className="text-kirmizi font-semibold">
                         İmzasız
                       </span>
                     )}
                   </div>
+                  <PartnerMailLog partnerId={selected.id} />
+                  <AssignOrderToPartner
+                    partnerId={selected.id}
+                    partnerName={selected.name}
+                    onAssigned={() => void loadHistory(selected.id)}
+                  />
                 </div>
               )}
             </Card>
@@ -533,6 +646,385 @@ function PartnerCapabilitiesPanel({
 }
 
 // ============================================================
+// PartnerActions
+// ============================================================
+
+function PartnerActions({
+  partner,
+  onUpdated,
+}: {
+  partner: FasonPartner;
+  onUpdated: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [open]);
+
+  const action = async (endpoint: string, reason: string) => {
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${partner.id}/${endpoint}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason }),
+        }
+      );
+      if (res.ok) onUpdated();
+    } finally {
+      setBusy(false);
+      setOpen(false);
+    }
+  };
+
+  const confirmAction = (endpoint: string, confirmMsg: string, reason: string) => {
+    if (!confirm(confirmMsg)) return;
+    void action(endpoint, reason);
+  };
+
+  return (
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        className="w-8 h-8 rounded-lg hover:bg-gri-100 flex items-center justify-center text-gri-600"
+        title="İşlemler"
+      >
+        <Icon.Menu size={16} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-9 z-20 w-48 rounded-lg bg-white shadow-lg ring-1 ring-gri-200 py-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {partner.status !== "paused" && partner.active && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-[13px] hover:bg-gri-50 text-sari-koyu"
+              onClick={() =>
+                confirmAction(
+                  "pause",
+                  `${partner.name} duraklatılsın mı? Yeni atama almaz.`,
+                  "Admin panelinden duraklatıldı"
+                )
+              }
+              disabled={busy}
+            >
+              ◐ Duraklat
+            </button>
+          )}
+          {(partner.status === "paused" || !partner.active) &&
+            partner.status !== "terminated" && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-[13px] hover:bg-gri-50 text-yesil"
+                onClick={() =>
+                  confirmAction(
+                    "resume",
+                    `${partner.name} tekrar aktif edilsin mi?`,
+                    "Admin panelinden devam ettirildi"
+                  )
+                }
+                disabled={busy}
+              >
+                ▶ Devam ettir
+              </button>
+            )}
+          {partner.status !== "terminated" && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-[13px] hover:bg-gri-50 text-kirmizi"
+              onClick={() =>
+                confirmAction(
+                  "terminate",
+                  `${partner.name} kalıcı olarak sonlandırılsın mı? Bu işlem geri alınamaz.`,
+                  "Admin panelinden sonlandırıldı"
+                )
+              }
+              disabled={busy}
+            >
+              ✕ Sonlandır
+            </button>
+          )}
+          <div className="border-t border-gri-100 my-1" />
+          <Link
+            href={`/admin/fason/yeni?edit=${partner.id}`}
+            className="block px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
+            onClick={() => setOpen(false)}
+          >
+            ✏️ Düzenle
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// PartnerScoreBreakdown
+// ============================================================
+
+function PartnerScoreBreakdown({
+  history,
+}: {
+  partner: FasonPartner;
+  history: AssignmentRow[];
+}) {
+  const metrics = useMemo(() => {
+    if (history.length === 0) return null;
+
+    const completed = history.filter(
+      (a) => a.status === "completed" || a.actual_delivery
+    );
+    const total = history.length;
+
+    const onTime = completed.filter((a) => {
+      if (!a.estimated_delivery || !a.actual_delivery) return false;
+      return (
+        new Date(a.actual_delivery).getTime() <=
+        new Date(a.estimated_delivery).getTime()
+      );
+    }).length;
+    const onTimeRate =
+      completed.length > 0
+        ? Math.round((onTime / completed.length) * 100)
+        : null;
+
+    const rejected = history.filter(
+      (a) => a.status === "rejected" || a.status === "cancelled"
+    ).length;
+    const rejectRate = total > 0 ? Math.round((rejected / total) * 100) : 0;
+
+    const deliveryDays = completed
+      .filter((a) => a.assigned_at && a.actual_delivery)
+      .map(
+        (a) =>
+          (new Date(a.actual_delivery!).getTime() -
+            new Date(a.assigned_at).getTime()) /
+          86400000
+      );
+    const avgDays =
+      deliveryDays.length > 0
+        ? deliveryDays.reduce((s, d) => s + d, 0) / deliveryDays.length
+        : null;
+
+    return {
+      onTimeRate,
+      rejectRate,
+      avgDays,
+      totalOrders: total,
+      completedOrders: completed.length,
+    };
+  }, [history]);
+
+  if (!metrics) return null;
+
+  return (
+    <div className="mb-4 pb-4 border-b border-gri-100">
+      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
+        Performans kırılımı
+      </h4>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-gri-50 p-2.5">
+          <div className="text-[10px] text-gri-500">Zamanında teslim</div>
+          <div
+            className={cn(
+              "text-[16px] font-bold",
+              metrics.onTimeRate === null
+                ? "text-gri-400"
+                : metrics.onTimeRate >= 80
+                  ? "text-yesil"
+                  : "text-kirmizi"
+            )}
+          >
+            {metrics.onTimeRate !== null ? `%${metrics.onTimeRate}` : "—"}
+          </div>
+        </div>
+        <div className="rounded-lg bg-gri-50 p-2.5">
+          <div className="text-[10px] text-gri-500">Red oranı</div>
+          <div
+            className={cn(
+              "text-[16px] font-bold",
+              metrics.rejectRate <= 5 ? "text-yesil" : "text-kirmizi"
+            )}
+          >
+            %{metrics.rejectRate}
+          </div>
+        </div>
+        <div className="rounded-lg bg-gri-50 p-2.5">
+          <div className="text-[10px] text-gri-500">Ort. teslim</div>
+          <div className="text-[16px] font-bold text-lacivert">
+            {metrics.avgDays !== null
+              ? `${metrics.avgDays.toFixed(1)} gün`
+              : "—"}
+          </div>
+        </div>
+        <div className="rounded-lg bg-gri-50 p-2.5">
+          <div className="text-[10px] text-gri-500">Toplam iş</div>
+          <div className="text-[16px] font-bold text-lacivert">
+            {metrics.totalOrders}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// PartnerMailLog
+// ============================================================
+
+function PartnerMailLog({ partnerId }: { partnerId: string }) {
+  const [mails, setMails] = useState<
+    Array<{ template: string; sentAt: string; status: string }>
+  >([]);
+
+  useEffect(() => {
+    fetch(`/api/admin/fason/partners/${partnerId}/mail-log?limit=10`)
+      .then((r) => r.json())
+      .then((d) => setMails(d.mails ?? []))
+      .catch(() => {});
+  }, [partnerId]);
+
+  if (mails.length === 0) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gri-100">
+      <h4 className="text-[11px] font-bold uppercase text-gri-500 mb-2">
+        Son iletişim
+      </h4>
+      <ul className="space-y-1">
+        {mails.map((m, i) => (
+          <li
+            key={i}
+            className="text-[11px] text-gri-600 flex justify-between gap-2"
+          >
+            <span>📧 {m.template.replace(/_/g, " ")}</span>
+            <span className="text-gri-400 shrink-0">
+              {new Date(m.sentAt).toLocaleDateString("tr-TR", {
+                day: "2-digit",
+                month: "short",
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ============================================================
+// AssignOrderToPartner
+// ============================================================
+
+function AssignOrderToPartner({
+  partnerId,
+  partnerName,
+  onAssigned,
+}: {
+  partnerId: string;
+  partnerName: string;
+  onAssigned: () => void;
+}) {
+  const [unassigned, setUnassigned] = useState<
+    Array<{ id: string; customer: string; total: number }>
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+
+  const loadUnassigned = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "/api/admin/orders/list?status=ready_to_ship,proof_approved&limit=20"
+      );
+      const data = (await res.json()) as {
+        orders?: Array<{
+          id: string;
+          total: number;
+          fasonName?: string;
+          address?: { name?: string } | null;
+        }>;
+      };
+      setUnassigned(
+        (data.orders ?? [])
+          .filter((o) => !o.fasonName)
+          .map((o) => ({
+            id: o.id,
+            customer: o.address?.name ?? "—",
+            total: o.total,
+          }))
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUnassigned();
+  }, [loadUnassigned]);
+
+  const assignOrder = async (orderId: string) => {
+    if (!confirm(`${orderId} → ${partnerName} atasın mı?`)) return;
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/admin/fason/assign", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId, fasonPartnerId: partnerId }),
+      });
+      if (res.ok) {
+        setUnassigned((prev) => prev.filter((o) => o.id !== orderId));
+        onAssigned();
+      }
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  if (loading || unassigned.length === 0) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gri-100">
+      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-2">
+        Atanabilecek siparişler ({unassigned.length})
+      </h4>
+      <ul className="space-y-1.5">
+        {unassigned.slice(0, 5).map((o) => (
+          <li
+            key={o.id}
+            className="flex items-center justify-between text-[12px] gap-2"
+          >
+            <span className="font-mono text-[11px] truncate">
+              {o.id} · {o.customer}
+            </span>
+            <button
+              type="button"
+              onClick={() => void assignOrder(o.id)}
+              disabled={assigning}
+              className="text-pim-mercan font-semibold hover:underline text-[11px] shrink-0"
+            >
+              Ata →
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ============================================================
 // PartnerCard
 // ============================================================
 
@@ -540,10 +1032,12 @@ function PartnerCard({
   partner,
   isSelected,
   onSelect,
+  onRefresh,
 }: {
   partner: FasonPartner;
   isSelected: boolean;
   onSelect: () => void;
+  onRefresh: () => void;
 }) {
   const scorePct =
     partner.cached_score == null ? null : Math.round(partner.cached_score * 100);
@@ -558,12 +1052,19 @@ function PartnerCard({
           : "bg-kirmizi-soft text-kirmizi";
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={cn(
-        "block w-full text-left transition-all",
-        isSelected ? "ring-2 ring-pim-mercan" : ""
+        "block w-full text-left transition-all cursor-pointer",
+        isSelected ? "ring-2 ring-pim-mercan rounded-xl" : ""
       )}
     >
       <Card padding="p-5" className={isSelected ? "!ring-pim-mercan" : ""}>
@@ -593,6 +1094,7 @@ function PartnerCard({
                 {scorePct} / 100
               </span>
             )}
+            <PartnerActions partner={partner} onUpdated={onRefresh} />
             {/* Mig 067 status enum (paused/terminated), legacy active fallback */}
             {(partner.status === "paused" ||
               (partner.status === undefined && !partner.active)) && (
@@ -651,11 +1153,18 @@ function PartnerCard({
           )
         )}
 
-        <div className="flex items-center gap-3 text-[12px] text-gri-700 pt-3 border-t border-gri-100">
+        <div className="flex items-center gap-3 text-[12px] text-gri-700 pt-3 border-t border-gri-100 flex-wrap">
           <span>
             ⏱ Tipik teslim:{" "}
             <strong className="text-lacivert">{partner.default_lead_days}</strong>{" "}
             gün
+          </span>
+          <span>
+            📦 Aktif:{" "}
+            <strong className="text-lacivert">
+              {partner.active_order_count ?? "?"}
+            </strong>{" "}
+            sipariş
           </span>
           {partner.contract_signed_at ? (
             <span className="text-yesil font-semibold ml-auto">
@@ -668,7 +1177,7 @@ function PartnerCard({
           )}
         </div>
       </Card>
-    </button>
+    </div>
   );
 }
 

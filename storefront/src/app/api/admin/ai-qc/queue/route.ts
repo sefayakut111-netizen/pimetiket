@@ -123,6 +123,19 @@ export async function GET() {
     );
   }
 
+  const signedUrlMap = new Map<string, string>();
+  for (const file of filesMap.values()) {
+    const { data: signedData } = await admin.storage
+      .from("designs")
+      .createSignedUrl(file.storage_path, 600);
+    if (signedData?.signedUrl) {
+      signedUrlMap.set(file.id, signedData.signedUrl);
+    }
+  }
+
+  const isPreviewableMime = (mime: string) =>
+    mime === "image/png" || mime === "image/jpeg";
+
   // 5) Aggregate
   const queue = orders.map((o) => {
     const addr = o.address as { name?: string } | null;
@@ -158,6 +171,13 @@ export async function GET() {
             findings: q.findings,
             fileId: q.design_file_id,
             fileName: file?.original_name ?? null,
+            previewUrl:
+              q.design_file_id && file && isPreviewableMime(file.mime_type)
+                ? (signedUrlMap.get(q.design_file_id) ?? null)
+                : null,
+            downloadUrl: q.design_file_id
+              ? (signedUrlMap.get(q.design_file_id) ?? null)
+              : null,
             createdAt: q.created_at,
           };
         }),

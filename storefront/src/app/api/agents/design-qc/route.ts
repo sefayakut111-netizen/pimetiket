@@ -27,19 +27,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
-import {
-  runDesignQC,
-  mimeToFormat,
-  type DesignQCResult,
-} from "@/lib/agents/design-qc";
+import { runDesignQC, mimeToFormat, type DesignQCResult } from "@/lib/agents/design-qc";
+import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 
-const BodySchema = z.object({
+const FileBodySchema = z.object({
   fileId: z.string().uuid(),
   orderId: z.string().optional(),
   printWidthMm: z.number().int().min(5).max(1500),
   printHeightMm: z.number().int().min(5).max(1500),
   productType: z.enum(["etiket", "sticker"]),
+});
+
+const OrderRerunSchema = z.object({
+  orderId: z.string().min(1),
+  force: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -50,10 +52,30 @@ export async function POST(req: Request) {
   }
 
   // Body validate
-  let body: z.infer<typeof BodySchema>;
+  let raw: unknown;
   try {
-    const raw = (await req.json()) as unknown;
-    body = BodySchema.parse(raw);
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const orderRerun = OrderRerunSchema.safeParse(raw);
+  if (orderRerun.success && !("fileId" in (raw as object))) {
+    const admin = createAdminClient();
+    const result = await runOrderDesignQC(admin, orderRerun.data.orderId);
+    return NextResponse.json({
+      ok: true,
+      orderId: result.orderId,
+      ranCount: result.ranCount,
+      aggregateVerdict: result.aggregateVerdict,
+      verdictCounts: result.verdictCounts,
+      forced: orderRerun.data.force ?? false,
+    });
+  }
+
+  let body: z.infer<typeof FileBodySchema>;
+  try {
+    body = FileBodySchema.parse(raw);
   } catch (err) {
     return NextResponse.json(
       {
