@@ -112,7 +112,7 @@ function OdemeSonucInner() {
 
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 30; // 2sn × 30 = ~60sn
+    const maxAttempts = 45; // 2sn × 45 = ~90sn (PayTR durum sorgu gecikmesi)
 
     const poll = async () => {
       attempts += 1;
@@ -177,12 +177,38 @@ function OdemeSonucInner() {
   useEffect(() => {
     if (isPendingVerification) return;
     ensureAuthBindings();
-    void fetchCustomerOrder(orderId).then(setOrder);
+
+    let cancelled = false;
+    const poll = async () => {
+      const o = await fetchCustomerOrder(orderId);
+      if (!cancelled && o) {
+        setOrder(o);
+        if (o.status !== "paid" && o.status !== "awaiting_upload") {
+          return;
+        }
+      }
+    };
+
+    void poll();
+    const interval = setInterval(() => {
+      if (cancelled) return;
+      void poll();
+    }, 3000);
+
+    const timeout = setTimeout(() => clearInterval(interval), 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, [orderId, isPendingVerification]);
 
   const orderHasDesigns =
     hasDesignsParam ||
-    (order != null && order.status !== "awaiting_upload");
+    (order != null &&
+      order.status !== "awaiting_upload" &&
+      order.status !== "paid");
 
   if (status === "fail") {
     const reason = sp.get("reason");
