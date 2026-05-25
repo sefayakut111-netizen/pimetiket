@@ -176,6 +176,23 @@ interface ProofSummary {
   };
 }
 
+function cleanItemConfig(config: string): string {
+  return config
+    .replace(/\d+×\d+\s*mm/g, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*/, "")
+    .replace(/\s*·\s*$/, "")
+    .trim();
+}
+
+function itemCutlinePreviewUrl(item: ProofItem): string | null {
+  if (item.cutline?.preview_png_url) return item.cutline.preview_png_url;
+  for (const d of item.designs ?? []) {
+    if (d.cutline?.preview_png_url) return d.cutline.preview_png_url;
+  }
+  return null;
+}
+
 const STATUS_BADGE: Record<
   ProofItem["proof_status"],
   { label: string; bg: string; color: string; emoji: string }
@@ -849,12 +866,16 @@ export default function ProofApprovalPage({
 
   const handleApprove = async () => {
     if (!activeItem) return;
+    if (!activeCutline && !showJpgShapeSelector) {
+      toast.error("Bıçak çizgisi henüz hazır değil — lütfen birkaç dakika bekle");
+      return;
+    }
     setApproving(true);
     try {
       const result = await approveItem(
         orderId,
         activeItem.id,
-        activeItem.cutline?.id
+        activeCutline?.id
       );
       if (!result.ok) {
         toast.error(result.error ?? "Onay başarısız");
@@ -1087,11 +1108,19 @@ export default function ProofApprovalPage({
   const { summary, items, order } = data;
   const progressPct =
     summary.total > 0 ? Math.round((summary.approved / summary.total) * 100) : 0;
+  const cutlineNotReady = !activeCutline && !showJpgShapeSelector;
 
   return (
     <main className="container py-6">
       {/* Header */}
       <div className="mb-6">
+        <Link
+          href={`/siparis/${order.id}`}
+          className="mb-2 inline-flex items-center gap-1 text-xs text-gri-700 hover:text-pim-mercan transition"
+        >
+          <span>&larr;</span>
+          <span>Sipariş detayına dön</span>
+        </Link>
         <Eyebrow>SİPARİŞ #{order.id}</Eyebrow>
         <h1 className="mt-1 text-2xl font-bold text-lacivert">
           Baskı önizlemelerini onayla
@@ -1115,9 +1144,11 @@ export default function ProofApprovalPage({
         <p className="text-sm leading-relaxed text-lacivert">
           {summary.help_requested > 0
             ? `Bir ürün için yardım talebin açık — operatörümüz çözümleyince sıraya gelir. ${summary.help_requested === summary.total - summary.approved ? "Diğer ürünler de seni bekliyor değil mi?" : ""}`
-            : summary.approved === 0
-              ? "İlk önizlemeye bak, kesim çizgisini incele. Memnunsan 'Onayla' de; bir şey değişsin istiyorsan 'Düzenle'."
-              : `${summary.approved}/${summary.total} ürün onaylandı, az kaldı! Kalan ${summary.total - summary.approved} ürünü de gözden geçirelim.`}
+            : order.status === "proof_generating" || bgGenItemId
+              ? "Bıçak çizgin hazırlanıyor. Birkaç dakika sürebilir — sayfayı kapatabilirsin, hazır olunca mail atacağız."
+              : summary.approved === 0
+                ? "İlk önizlemeye bak, kesim çizgisini incele. Memnunsan 'Onayla' de; bir şey değişsin istiyorsan 'Düzenle'."
+                : `${summary.approved}/${summary.total} ürün onaylandı, az kaldı! Kalan ${summary.total - summary.approved} ürünü de gözden geçirelim.`}
         </p>
       </Card>
 
@@ -1189,6 +1220,7 @@ export default function ProofApprovalPage({
           {items.map((item) => {
             const badge = STATUS_BADGE[item.proof_status];
             const isActive = item.id === activeItemId;
+            const thumbUrl = itemCutlinePreviewUrl(item);
             return (
               <button
                 key={item.id}
@@ -1201,13 +1233,28 @@ export default function ProofApprovalPage({
                 )}
               >
                 <div className="flex items-start gap-3">
-                  {/* Thumbnail placeholder — gerçek preview Faz 2'de */}
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-gri-100 text-gri-700">
-                    {item.product === "sticker" ? (
-                      <Icon.Sticker size={32} />
-                    ) : (
-                      <Icon.Tag size={32} />
-                    )}
+                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gri-100 text-gri-700">
+                    {thumbUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumbUrl}
+                        alt={item.title}
+                        className="h-full w-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          (
+                            e.target as HTMLImageElement
+                          ).nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                    ) : null}
+                    <div className={thumbUrl ? "hidden" : ""}>
+                      {item.product === "sticker" ? (
+                        <Icon.Sticker size={32} />
+                      ) : (
+                        <Icon.Tag size={32} />
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -1270,7 +1317,12 @@ export default function ProofApprovalPage({
                       </div>
                       <div className="mt-0.5 text-xs text-gri-700">
                         {activeItem.qty} ad · {activeItem.width}×
-                        {activeItem.height}mm · {activeItem.config}
+                        {activeItem.height}mm
+                        {activeItem.config &&
+                          (() => {
+                            const clean = cleanItemConfig(activeItem.config);
+                            return clean ? ` · ${clean}` : "";
+                          })()}
                       </div>
 
                       {/* POC v2 — tier + malzeme + white plan rozeti */}
@@ -1433,8 +1485,8 @@ export default function ProofApprovalPage({
                         className={cn(
                           "rounded-md border px-2.5 py-1 text-xs font-medium transition",
                           previewLayer === layer
-                            ? "border-pim-mercan bg-pim-mercan text-white"
-                            : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
+                            ? "border-lacivert bg-lacivert text-white"
+                            : "border-gri-200 bg-white text-lacivert hover:border-lacivert/40"
                         )}
                       >
                         {label}
@@ -1529,17 +1581,59 @@ export default function ProofApprovalPage({
                       </p>
                     </div>
                   ) : (
-                    <div className="text-center text-sm text-gri-700">
-                      <div className="mb-2 flex justify-center opacity-50">
-                        <Icon.Doc size={48} />
-                      </div>
-                      <p className="font-medium">
-                        Otomatik kesim çizgisi hazırlanıyor
-                      </p>
-                      <p className="mt-1 text-xs">
-                        "Düzenle" diyerek bıçağı kendin de ayarlayabilirsin.
-                      </p>
-                    </div>
+                    (() => {
+                      const deadlineIso = data?.order.sla_proof_deadline;
+                      const slaExpired = deadlineIso
+                        ? new Date(deadlineIso).getTime() <= Date.now()
+                        : false;
+
+                      return (
+                        <div className="text-center text-sm text-gri-700">
+                          <div className="mb-2 flex justify-center opacity-50">
+                            {slaExpired ? (
+                              <Icon.Info size={48} />
+                            ) : (
+                              <Icon.Doc size={48} />
+                            )}
+                          </div>
+                          {slaExpired ? (
+                            <>
+                              <p className="font-medium">
+                                Operatörümüz bıçağı hazırlıyor
+                              </p>
+                              <p className="mt-1 text-xs">
+                                Birkaç saat içinde tamamlanacak. Hazır olunca
+                                mail atacağız — sayfayı kapatabilirsin.
+                              </p>
+                              <div className="mt-3">
+                                <Link
+                                  href={`/siparis/${orderId}`}
+                                  className="inline-flex items-center gap-1 rounded-md border border-gri-200 bg-white px-3 py-1.5 text-xs font-medium text-lacivert hover:border-pim-mercan/40 transition"
+                                >
+                                  Sipariş detayına git
+                                </Link>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-medium">
+                                Otomatik kesim çizgisi hazırlanıyor
+                              </p>
+                              <p className="mt-1 text-xs">
+                                &quot;Düzenle&quot; diyerek bıçağı kendin de
+                                ayarlayabilirsin.
+                              </p>
+                              <div className="mt-3 flex justify-center">
+                                <span
+                                  className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
 
@@ -1622,7 +1716,7 @@ export default function ProofApprovalPage({
               {/* Action bar */}
               <div className="sticky bottom-4 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setHelpOpen(true)}
                   disabled={activeItem.proof_status === "help_requested"}
@@ -1630,7 +1724,12 @@ export default function ProofApprovalPage({
                   Ekibimizden yardım iste
                 </Button>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button variant="secondary" size="md" onClick={handleEdit}>
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={handleEdit}
+                    disabled={cutlineNotReady}
+                  >
                     Bıçağı düzenle
                   </Button>
                   <Button
@@ -1640,14 +1739,17 @@ export default function ProofApprovalPage({
                     disabled={
                       approving ||
                       activeItem.proof_status === "approved" ||
-                      activeItem.proof_status === "help_requested"
+                      activeItem.proof_status === "help_requested" ||
+                      cutlineNotReady
                     }
                   >
                     {approving
                       ? "Onaylanıyor…"
                       : activeItem.proof_status === "approved"
                         ? "Onaylandı ✓"
-                        : "Bu ürünü onayla"}
+                        : cutlineNotReady
+                          ? "Bıçak hazırlanıyor…"
+                          : "Bu ürünü onayla"}
                   </Button>
                 </div>
               </div>
@@ -1737,7 +1839,7 @@ export default function ProofApprovalPage({
         const ss = remainingSec !== null ? remainingSec % 60 : null;
         const slaExpired = remainingSec !== null && remainingSec === 0;
         return (
-          <div className="fixed bottom-4 right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg">
+          <div className="fixed bottom-20 right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg">
             <div className="flex items-start gap-2">
               <div className="mt-0.5 h-2 w-2 animate-pulse rounded-full bg-pim-mercan" />
               <div className="flex-1 text-sm">
