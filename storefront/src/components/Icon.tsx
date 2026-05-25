@@ -259,6 +259,24 @@ const Package = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+const Instagram = ({ size = 16, className }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const Icon = {
   Sparkle,
   Box,
@@ -291,6 +309,7 @@ export const Icon = {
   Edit,
   Shield,
   Package,
+  Instagram,
 };
 
 export type IconName = keyof typeof Icon;

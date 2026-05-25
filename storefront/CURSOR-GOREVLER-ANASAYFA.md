@@ -2,277 +2,128 @@
 
 > Claude Code (mimari) tarafından hazırlanmıştır.
 > Dosya: `src/app/page.tsx` (279 satır)
-> 10 görev: 4 düzeltme + 6 ekleme
+> 6 görev — Sefa onayladı (25 May)
+> İPTAL: Görev 1 (trust strip), 2 (fiyat kartları), 3 (sosyal kanıt), 5 (popüler ürünler)
 
 ---
 
-## DÜZELTMELER (4)
+## GÖREV 1/6 — Hero CTA Mikrokopi (eski Görev 4)
 
-### GÖREV 1/10 — Trust Strip (Güven Sinyali) (P1)
+### Ne yapılacak
+Hero'daki "Sticker bastır" ve "Etiket bastır" butonlarının hemen altına 3 adımlık mini akış göster. Müşteri "tıklarsam ne olur" bilsin.
 
-#### Sorun
-Güven strip'i kaldırılmış (Sefa 17 May) — yeni müşteri "güvenilir mi" diye düşünür.
+### Konum
+Mevcut CTA butonları (satır ~147) ile "ücretsiz hesap aç" satırı (satır ~157) ARASINA.
 
-#### Değişiklik
-
-Hero ile "Nasıl çalışır" arasına minimal trust strip ekle:
-
-```typescript
-{/* ============================== TRUST STRIP ============================== */}
-<section className="py-6 border-b border-gri-100">
-  <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-      {[
-        { icon: '🔒', text: locale === 'en' ? '3D Secure payments' : '3D Secure ödeme' },
-        { icon: '🤖', text: locale === 'en' ? 'AI design check' : 'AI dosya kontrolü' },
-        { icon: '📦', text: locale === 'en' ? 'Free shipping over ₺500' : '500₺ üzeri ücretsiz kargo' },
-        { icon: '🛡️', text: locale === 'en' ? 'KVKK compliant' : 'KVKK uyumlu' },
-      ].map((item, i) => (
-        <div key={i} className="flex items-center gap-2 text-[13px] text-gri-700">
-          <span className="text-lg">{item.icon}</span>
-          <span className="font-medium">{item.text}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
-```
-
-Basit, 1 satır, 4 ikon+metin. Footer'daki PaymentBadges ile duplicate değil — bu genel güven, footer ödeme spesifik.
-
----
-
-### GÖREV 2/10 — Başlangıç Fiyat Kartları (P1)
-
-#### Sorun
-Müşteri fiyat görmeden konfigüratöre girmiyor — bounce rate yüksek.
-
-#### Değişiklik
-
-Trust strip'in altına, "Nasıl çalışır"ın ÜSTÜNE fiyat önizleme bölümü ekle:
+### Kod
 
 ```typescript
-{/* ============================== PRICE PREVIEW ============================== */}
-<section className="py-16">
-  <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-    <div className="text-center mb-10">
-      <Eyebrow>{locale === 'en' ? 'Pricing' : 'Fiyatlar'}</Eyebrow>
-      <h2 className="mt-4 text-[28px] md:text-[36px] font-semibold tracking-tight">
-        {locale === 'en' ? 'Transparent pricing, no surprises' : 'Şeffaf fiyatlandırma, sürpriz yok'}
-      </h2>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-      {[
-        {
-          title: locale === 'en' ? 'Stickers' : 'Sticker',
-          desc: locale === 'en' ? 'From 25 pieces, die-cut' : '25 adetten, özel kesim',
-          from: '30',
-          unit: locale === 'en' ? 'starting from' : 'başlangıç',
-          href: '/sticker',
-          emoji: '🏷️',
-          bg: 'bg-pim-mercan-tint/30',
-        },
-        {
-          title: locale === 'en' ? 'Roll Labels' : 'Rulo Etiket',
-          desc: locale === 'en' ? 'From 1,000 pieces' : '1.000 adetten',
-          from: '850',
-          unit: locale === 'en' ? 'starting from' : 'başlangıç',
-          href: '/etiket',
-          emoji: '📋',
-          bg: 'bg-krem/50',
-        },
-        {
-          title: locale === 'en' ? 'Sheet Labels' : 'Tabaka Etiket',
-          desc: locale === 'en' ? 'From 250 pieces' : '250 adetten',
-          from: '120',
-          unit: locale === 'en' ? 'starting from' : 'başlangıç',
-          href: '/etiket?scope=tabaka',
-          emoji: '📄',
-          bg: 'bg-yesil-soft/20',
-        },
-      ].map((card, i) => (
-        <Link
-          key={i}
-          href={card.href}
-          className={cn(
-            "group rounded-2xl p-6 ring-1 ring-gri-200 hover:ring-pim-mercan hover:shadow-lg transition-all",
-            card.bg
-          )}
-        >
-          <span className="text-3xl">{card.emoji}</span>
-          <h3 className="mt-3 text-xl font-semibold">{card.title}</h3>
-          <p className="text-[13px] text-gri-700 mt-1">{card.desc}</p>
-          <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-[28px] font-bold text-lacivert tabular-nums">
-              {card.from} ₺
-            </span>
-            <span className="text-[12px] text-gri-500">{card.unit}</span>
-          </div>
-          <div className="mt-3 text-[13px] font-semibold text-pim-mercan group-hover:underline">
-            {locale === 'en' ? 'Configure →' : 'Konfigüre et →'}
-          </div>
-        </Link>
-      ))}
-    </div>
-    <p className="text-center text-[12px] text-gri-500 mt-4">
-      {locale === 'en'
-        ? 'All prices include 20% VAT. Exact price calculated in configurator.'
-        : 'Tüm fiyatlar %20 KDV dahildir. Tam fiyat konfigüratörde hesaplanır.'}
-    </p>
-  </div>
-</section>
-```
-
-NOT: "30₺", "850₺", "120₺" başlangıç fiyatları statik — gerçek pricing engine'dan çekmek yerine yaklaşık değer yeterli (müşteri zaten konfigüratöre gidecek). Sefa bu rakamları admin ayarlardan değiştirmek isterse gelecekte `site_settings`'e eklenebilir.
-
----
-
-### GÖREV 3/10 — Sosyal Kanıt (Yorum Yokken) (P1)
-
-#### Sorun
-Pre-launch'ta yorum yok → HomeReviews boş state gösteriyor.
-
-#### Değişiklik
-
-`src/components/reviews/HomeReviews.tsx`'de boş state'i güncelle — "henüz yorum yok" yerine rakamlar + mikrokopi:
-
-```typescript
-// Mevcut boş state (satır ~62 civarı) yerine:
-if (reviews !== null && reviews.length === 0) {
-  return (
-    <section className="py-16 bg-gri-50">
-      <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
-        <Eyebrow>Müşterilerimiz</Eyebrow>
-        <h2 className="mt-4 text-[28px] md:text-[36px] font-semibold tracking-tight">
-          Güvenle çalışıyoruz
-        </h2>
-        <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { num: '7/24', label: 'AI destekli dosya kontrolü' },
-            { num: '3D', label: 'Secure ödeme garantisi' },
-            { num: '36sa', label: 'Onay verilmezse otomatik iade' },
-            { num: '%100', label: 'KVKK uyumlu veri koruma' },
-          ].map((s, i) => (
-            <div key={i}>
-              <div className="text-[32px] font-bold text-pim-mercan">{s.num}</div>
-              <div className="text-[13px] text-gri-700 mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-8 text-[14px] text-gri-500">
-          İlk siparişini ver, deneyimini paylaş — yorumun burada görünsün.
-        </p>
-      </div>
-    </section>
-  );
-}
-```
-
-Gerçek yorumlar gelince otomatik bu bölüm kaybolur, normal yorum grid'i gösterilir.
-
----
-
-### GÖREV 4/10 — Hero CTA Mikrokopi (P2)
-
-#### Sorun
-"Sticker bastır" tıklayan müşteri ne bekleyeceğini bilmiyor.
-
-#### Değişiklik
-
-Hero CTA butonlarının altına kısa akış açıklaması ekle (mevcut "ücretsiz hesap aç" satırının ÜSTÜNE):
-
-```typescript
-{/* CTA butonları altına — akış özeti */}
+{/* CTA butonlarının altına — akış özeti */}
 <div className="mt-4 flex items-center gap-4 text-[12px] text-gri-500">
-  <span className="flex items-center gap-1">
-    <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center">1</span>
+  <span className="flex items-center gap-1.5">
+    <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">1</span>
     {locale === 'en' ? 'Configure' : 'Ayarla'}
   </span>
   <span className="text-gri-300">→</span>
-  <span className="flex items-center gap-1">
-    <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center">2</span>
+  <span className="flex items-center gap-1.5">
+    <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">2</span>
     {locale === 'en' ? 'See price' : 'Fiyat gör'}
   </span>
   <span className="text-gri-300">→</span>
-  <span className="flex items-center gap-1">
-    <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center">3</span>
+  <span className="flex items-center gap-1.5">
+    <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">3</span>
     {locale === 'en' ? 'Order' : 'Sipariş ver'}
   </span>
 </div>
 ```
 
+### Doğrulama
+- Hero'da butonların altında "① Ayarla → ② Fiyat gör → ③ Sipariş ver" görünüyor
+- Mobilde de okunabilir
+- `npx tsc --noEmit` → 0 hata
+
 ---
 
-## EKLEMELER (6)
+## GÖREV 2/6 — Blog Önizleme (eski Görev 6)
 
-### GÖREV 5/10 — Popüler Ürün Kartları (P2)
+### Ne yapılacak
+FAQ bölümünün ALTINA son 3 blog yazısı kartı. Blog boşsa bölüm tamamen gizlenir.
 
-#### Değişiklik
-
-Fiyat kartları bölümünün altına, "Nasıl çalışır"ın ÜSTÜNE:
+### Yeni component: `src/components/blog/BlogPreview.tsx`
 
 ```typescript
-{/* ============================== POPULAR ============================== */}
-<section className="py-16 bg-white">
-  <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-    <div className="text-center mb-10">
-      <Eyebrow>{locale === 'en' ? 'Popular' : 'Popüler ürünler'}</Eyebrow>
-      <h2 className="mt-4 text-[28px] md:text-[36px] font-semibold tracking-tight">
-        {locale === 'en' ? 'Most ordered products' : 'En çok sipariş edilenler'}
-      </h2>
-    </div>
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+interface BlogPost {
+  slug: string;
+  title_tr: string;
+  excerpt_tr: string;
+  category: string;
+  read_minutes: number;
+  cover_image_url?: string;
+}
+
+export function BlogPreview({ limit = 3 }: { limit?: number }) {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    // Sprint 2'de oluşturulan blog API veya mevcut getPublishedPosts
+    fetch(`/api/admin/blog?status=published&limit=${limit}`)
+      .then(r => r.ok ? r.json() : { posts: [] })
+      .then(d => setPosts(d.posts ?? d.coupons ?? []))
+      .catch(() => {});
+  }, [limit]);
+
+  if (posts.length === 0) return null;
+
+  return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-      {[
-        {
-          title: locale === 'en' ? 'Round Roll Label' : 'Yuvarlak Rulo Etiket',
-          desc: locale === 'en' ? 'The classic — jars, bottles, cosmetics' : 'Klasik — kavanoz, şişe, kozmetik',
-          href: '/etiket/yapilandir?shape=circle',
-          img: '/assets/svg/cards/rulo-circle.svg',
-        },
-        {
-          title: locale === 'en' ? 'Die-Cut Sticker' : 'Özel Kesim Sticker',
-          desc: locale === 'en' ? 'Your logo shape — laptop, packaging' : 'Logo şeklinde — laptop, ambalaj',
-          href: '/sticker/yapilandir?shape=die&cut=diecut',
-          img: '/assets/svg/cards/rulo-diecut.svg',
-        },
-        {
-          title: locale === 'en' ? 'Kraft Label' : 'Kraft Etiket',
-          desc: locale === 'en' ? 'Natural look — organic, artisan' : 'Doğal görünüm — organik, el yapımı',
-          href: '/etiket/yapilandir?material=kraft',
-          img: '/assets/svg/cards/rulo-square.svg',
-        },
-      ].map((card, i) => (
+      {posts.map(post => (
         <Link
-          key={i}
-          href={card.href}
-          className="group rounded-2xl overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan hover:shadow-lg transition-all"
+          key={post.slug}
+          href={`/blog/${post.slug}`}
+          className="group rounded-2xl bg-white ring-1 ring-gri-200 overflow-hidden hover:ring-pim-mercan hover:shadow-lg transition-all"
         >
-          <div className="h-40 bg-gri-50 flex items-center justify-center p-4">
-            <img src={card.img} alt={card.title} className="h-28 object-contain" />
-          </div>
-          <div className="p-5">
-            <h3 className="text-lg font-semibold">{card.title}</h3>
-            <p className="text-[13px] text-gri-700 mt-1">{card.desc}</p>
-            <div className="mt-3 text-[13px] font-semibold text-pim-mercan group-hover:underline">
-              {locale === 'en' ? 'Configure →' : 'Konfigüre et →'}
+          {post.cover_image_url && (
+            <div className="h-36 overflow-hidden">
+              <img
+                src={post.cover_image_url}
+                alt={post.title_tr}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
             </div>
+          )}
+          <div className="p-5">
+            <div className="text-[11px] text-gri-500 uppercase tracking-wider">
+              {post.category} · {post.read_minutes} dk
+            </div>
+            <h3 className="mt-1.5 text-[15px] font-semibold leading-snug line-clamp-2">
+              {post.title_tr}
+            </h3>
+            {post.excerpt_tr && (
+              <p className="mt-2 text-[13px] text-gri-700 line-clamp-2">
+                {post.excerpt_tr}
+              </p>
+            )}
           </div>
         </Link>
       ))}
     </div>
-  </div>
-</section>
+  );
+}
 ```
 
----
+### Anasayfada kullan
 
-### GÖREV 6/10 — Blog Önizleme (P2)
-
-#### Değişiklik
-
-FAQ bölümünün ALTINA son 3 blog yazısı:
+`src/app/page.tsx` — FAQ section'ın kapanış `</section>` TAG'ından SONRA:
 
 ```typescript
+import { BlogPreview } from "@/components/blog/BlogPreview";
+import { Pim } from "@/components/Pim";  // zaten import varsa tekrar ekleme
+
 {/* ============================== BLOG ============================== */}
 <section className="py-16 bg-gri-50">
   <div className="mx-auto max-w-[1280px] px-4 md:px-8">
@@ -292,83 +143,85 @@ FAQ bölümünün ALTINA son 3 blog yazısı:
 </section>
 ```
 
-`BlogPreview` component'i:
+NOT: Blog API yoksa (Sprint 2 henüz tamamlanmadıysa) `BlogPreview` sessizce `null` döner — sayfa kırılmaz.
 
-```typescript
-// src/components/blog/BlogPreview.tsx (yeni)
-function BlogPreview({ limit = 3 }: { limit?: number }) {
-  const [posts, setPosts] = useState<any[]>([]);
-
-  useEffect(() => {
-    // Blog CMS'den (Görev SPRINT2'de eklendi) veya mevcut blog-posts.ts'den
-    fetch('/api/public/blog?limit=' + limit)
-      .then(r => r.json())
-      .then(d => setPosts(d.posts ?? []))
-      .catch(() => {});
-  }, [limit]);
-
-  if (posts.length === 0) return null; // Blog yazısı yoksa bölüm gizle
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-      {posts.map(post => (
-        <Link
-          key={post.slug}
-          href={`/blog/${post.slug}`}
-          className="group rounded-2xl bg-white ring-1 ring-gri-200 overflow-hidden hover:ring-pim-mercan hover:shadow-lg transition-all"
-        >
-          {post.cover_image_url && (
-            <div className="h-36 overflow-hidden">
-              <img src={post.cover_image_url} alt={post.title_tr} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-            </div>
-          )}
-          <div className="p-5">
-            <div className="text-[11px] text-gri-500 uppercase tracking-wider">{post.category} · {post.read_minutes} dk</div>
-            <h3 className="mt-1.5 text-[15px] font-semibold leading-snug">{post.title_tr}</h3>
-            <p className="mt-2 text-[13px] text-gri-700 line-clamp-2">{post.excerpt_tr}</p>
-          </div>
-        </Link>
-      ))}
-    </div>
-  );
-}
-```
-
-NOT: Blog API'si (`/api/public/blog`) Sprint 2 görevlerinde oluşturuldu. Mevcut değilse basitçe `getPublishedPosts()` fonksiyonunu client component'ten çağır.
+### Doğrulama
+- Blog yazısı varsa → 3 kart görünüyor
+- Blog boşsa → bölüm tamamen gizli
+- Hover: kart ring + shadow + kapak zoom
+- `npx tsc --noEmit` → 0 hata
 
 ---
 
-### GÖREV 7/10 — Pim Maskot Anasayfada (P2)
+## GÖREV 3/6 — Pim Maskot FAQ Yanında (eski Görev 7)
 
-#### Değişiklik
+### Ne yapılacak
+FAQ bölümünün sol kolonunda, "Tüm SSS →" butonunun altına Pim maskot ekle.
 
-"Nasıl çalışır" bölümünün yanına veya FAQ bölümüne Pim ekleme:
-
-FAQ bölümünün sol kolonu'nda (mevcut başlık + açıklama + buton) altına:
+### Konum
+`src/app/page.tsx` — FAQ section'daki sol kolon (satır ~246 civarı), `<Button>` kapanışından sonra:
 
 ```typescript
-{/* FAQ sol kolonda mevcut içerik altına: */}
+{/* Mevcut: */}
+<Button variant="secondary" href="/sss">
+  {t.home.faqAll} <Icon.ChevR size={14} />
+</Button>
+
+{/* YENİ — Pim maskot (sadece desktop) */}
 <div className="mt-8 hidden md:block">
   <Pim pose="wave" size={100} />
 </div>
 ```
 
-Sadece desktop'ta göster (mobilde yer kaplar). Pim'in "wave" pose'u ile samimi karşılama.
+`Pim` import'u zaten dosyada yoksa ekle. Kontrol et — `HomeReviews` veya boş state'lerde kullanılıyor olabilir ama `page.tsx`'de doğrudan import olmayabilir.
+
+### Doğrulama
+- Desktop: FAQ sol kolonunda Pim wave görünüyor
+- Mobil: Pim gizli (yer kaplamaz)
+- `npx tsc --noEmit` → 0 hata
 
 ---
 
-### GÖREV 8/10 — Instagram / Sosyal Medya Kartı (P3)
+## GÖREV 4/6 — Instagram Kartı (eski Görev 8)
 
-#### Değişiklik
+### Ne yapılacak
+Blog bölümü ile Footer arasına Instagram takip kartı. Minimal, merkez hizalı.
 
-Blog bölümü altına veya Footer öncesine:
+### Yeni SVG ikon gerekli
+
+`src/components/Icon.tsx`'e Instagram ikonu ekle:
 
 ```typescript
-{/* ============================== SOCIAL ============================== */}
+function Instagram({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2" y="2" width="20" height="20" rx="5" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+```
+
+`Icon` export objesine ekle:
+
+```typescript
+export const Icon = {
+  // ... mevcut ikonlar ...
+  Instagram,
+};
+```
+
+### Anasayfada kullan
+
+Blog section'dan SONRA, `</main>` öncesine:
+
+```typescript
+{/* ============================== INSTAGRAM ============================== */}
 <section className="py-12">
   <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
-    <h3 className="text-lg font-semibold mb-3">
-      {locale === 'en' ? 'Follow us on Instagram' : 'Bizi Instagram\'da takip edin'}
+    <h3 className="text-lg font-semibold mb-2">
+      {locale === 'en' ? 'Follow us on Instagram' : "Bizi Instagram'da takip edin"}
     </h3>
     <p className="text-[13px] text-gri-700 mb-5">
       {locale === 'en'
@@ -379,7 +232,10 @@ Blog bölümü altına veya Footer öncesine:
       href="https://instagram.com/pimetiket"
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white font-semibold text-[14px] hover:opacity-90 transition-opacity"
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-[14px] transition-opacity hover:opacity-90"
+      style={{
+        background: 'linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D, #F56040, #F77737, #FCAF45)',
+      }}
     >
       <Icon.Instagram size={18} /> @pimetiket
     </a>
@@ -387,77 +243,117 @@ Blog bölümü altına veya Footer öncesine:
 </section>
 ```
 
-NOT: Instagram hesap URL'ini `site_settings`'ten çekmek ideal ama şimdilik hardcoded yeterli.
+NOT: Instagram hesabı yoksa bu bölümü koşullu gösterebilirsin — ama şimdilik hardcoded bırak, Sefa hesap açınca zaten link çalışır.
+
+### Doğrulama
+- Instagram kartı görünüyor, gradient buton
+- Tıklayınca yeni tab'da Instagram açılıyor
+- `npx tsc --noEmit` → 0 hata
 
 ---
 
-### GÖREV 9/10 — Mobil Sticky CTA Bar (P2)
+## GÖREV 5/6 — Mobil Sticky CTA Bar (eski Görev 9)
 
-#### Sorun
-Mobilde scroll edince hero CTA butonları kaybolur — müşteri aksiyon alamıyor.
+### Ne yapılacak
+Mobilde scroll edince hero CTA kaybolur. Sayfanın altında sabit 2 butonlu bar.
 
-#### Değişiklik
+### globals.css'e ekle
 
-Sayfa sonuna (FAQ altına, footer öncesine) mobil sticky bar ekle:
-
-```typescript
-{/* ============================== MOBILE STICKY CTA ============================== */}
-<div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
-  <div className="flex gap-2">
-    <Button variant="primary" size="sm" href="/sticker" className="flex-1">
-      <Icon.Sticker size={14} /> Sticker
-    </Button>
-    <Button variant="secondary" size="sm" href="/etiket" className="flex-1">
-      <Icon.Roll size={14} /> Etiket
-    </Button>
-  </div>
-</div>
-{/* Bottom padding — sticky bar arkasına content girmesi için */}
-<div className="h-16 md:hidden" />
-```
-
-`safe-area-bottom` class'ı (iPhone notch):
 ```css
+/* iPhone notch safe area */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 ```
 
-Bu class'ı `globals.css`'e ekle (veya Tailwind plugin kullan).
+### Anasayfada — `</main>` kapanışından ÖNCE (en son):
 
-Bar sadece mobilde görünür (`md:hidden`). Desktop'ta hero CTA her zaman erişilebilir.
+```typescript
+{/* ============================== MOBILE STICKY CTA ============================== */}
+<div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
+  <div className="flex gap-2.5">
+    <Button variant="primary" size="sm" href="/sticker" className="flex-1">
+      <Icon.Sticker size={14} /> {t.home.ctaSticker}
+    </Button>
+    <Button variant="secondary" size="sm" href="/etiket" className="flex-1">
+      <Icon.Roll size={14} /> {t.home.ctaEtiket}
+    </Button>
+  </div>
+</div>
+{/* Bottom padding — sticky bar arkasına content girmesin */}
+<div className="h-16 md:hidden" aria-hidden />
+```
+
+### Doğrulama
+- Mobilde: scroll edince altta sabit 2 buton
+- Desktop'ta: bar gizli
+- iPhone'da notch alanı doğru
+- Butonlar çalışıyor (sticker→/sticker, etiket→/etiket)
+- `npx tsc --noEmit` → 0 hata
 
 ---
 
-### GÖREV 10/10 — Anasayfa Bölüm Sırası Düzenle (P2)
+## GÖREV 6/6 — Bölüm Sırası Düzenle (eski Görev 10)
 
-#### Mevcut sıra:
-1. Hero
-2. How it works
-3. Reviews
-4. FAQ
+### ÖNEMLİ: Geri alınabilir yapı
 
-#### Yeni sıra (tüm görevler sonrası):
-1. Hero
-2. **Trust strip** (🆕 Görev 1)
-3. **Başlangıç fiyat kartları** (🆕 Görev 2)
-4. **Popüler ürünler** (🆕 Görev 5)
-5. How it works
-6. Reviews / Sosyal kanıt (🆕 Görev 3 — boşken rakam, doluyken yorum)
-7. FAQ (+ Pim 🆕 Görev 7)
-8. **Blog önizleme** (🆕 Görev 6)
-9. **Instagram** (🆕 Görev 8)
-10. Footer
-11. **Mobil sticky CTA** (🆕 Görev 9)
+Bu görev mevcut section sırasını değiştirir. Sefa beğenmezse kolayca geri alınabilmesi için:
 
-Bu sıralama müşteri psikolojisine uygun:
+**Adım 1:** Mevcut sırayı yorum olarak sakla:
+
+```typescript
+{/* ============================== SECTION ORDER ==============================
+  GERİ ALMA: Bu yorumdaki sıra orijinaldir. Sefa beğenmezse
+  section'ları bu sıraya geri getir:
+  
+  ORIGINAL ORDER (25 May 2026 öncesi):
+    1. Hero
+    2. How it works (py-20 bg-gri-50)
+    3. HomeReviews
+    4. FAQ (py-12)
+  
+  YENİ ORDER:
+    1. Hero
+    2. How it works
+    3. HomeReviews  
+    4. FAQ + Pim (Görev 3)
+    5. Blog (Görev 2)
+    6. Instagram (Görev 4)
+    7. Mobile sticky CTA (Görev 5)
+============================== */}
 ```
-İlgi çek (hero) → Güven ver (trust) → Fiyat göster (fiyat kartları) 
-→ İlham ver (popüler) → Nasıl çalışır (akış) → Sosyal kanıt (yorum/rakam) 
-→ Soruları cevapla (FAQ) → İçerik (blog) → Takip et (Instagram)
+
+**Adım 2:** Section'ları yeni sıraya taşı:
+
+```
+1. Hero (mevcut — değişmez)
+     ↓
+   CTA mikrokopi (Görev 1 — hero içinde)
+     ↓
+2. How it works (mevcut — değişmez)
+     ↓
+3. HomeReviews (mevcut — değişmez)
+     ↓
+4. FAQ + Pim (mevcut FAQ + Görev 3 Pim eklendi)
+     ↓
+5. Blog önizleme (Görev 2 — YENİ section)
+     ↓
+6. Instagram (Görev 4 — YENİ section)
+     ↓
+7. Mobil sticky CTA (Görev 5 — fixed, section değil)
+     ↓
+   </main>
 ```
 
-Görevler tamamlandıktan sonra `page.tsx`'deki section sırasını bu şekilde düzenle.
+**Fark:** Orijinalden tek fark → FAQ'dan SONRA 2 yeni bölüm (Blog + Instagram) eklendi. Mevcut sıra korundu. Minimal değişiklik.
+
+**Geri alma talimatı:** Blog ve Instagram section'larını sil, Pim'i FAQ'dan kaldır, CTA mikrokopisini sil → orijinal 4 section'a dön.
+
+### Doğrulama
+- Sayfa sırası: Hero → How it works → Reviews → FAQ+Pim → Blog → Instagram
+- Scroll akışı doğal
+- Mobilde sticky CTA altta
+- `npx tsc --noEmit` → 0 hata
 
 ---
 
@@ -465,19 +361,16 @@ Görevler tamamlandıktan sonra `page.tsx`'deki section sırasını bu şekilde 
 
 | # | Görev | Süre |
 |---|---|---|
-| 1 | Trust strip (güven sinyali) | 15 dk |
-| 2 | Başlangıç fiyat kartları | 30 dk |
-| 3 | Sosyal kanıt (yorum yokken rakam) | 20 dk |
-| 4 | Hero CTA mikrokopi | 10 dk |
-| 5 | Popüler ürün kartları | 25 dk |
-| 6 | Blog önizleme (son 3 yazı) | 25 dk |
-| 7 | Pim maskot FAQ yanında | 5 dk |
-| 8 | Instagram kartı | 10 dk |
-| 9 | Mobil sticky CTA bar | 15 dk |
-| 10 | Bölüm sırası düzenle | 10 dk |
+| 1 | Hero CTA mikrokopi | 10 dk |
+| 2 | Blog önizleme (component + section) | 25 dk |
+| 3 | Pim maskot FAQ yanında | 5 dk |
+| 4 | Instagram kartı (ikon + section) | 15 dk |
+| 5 | Mobil sticky CTA bar | 15 dk |
+| 6 | Bölüm sırası düzenle (geri alınabilir) | 10 dk |
 
 Her görev sonrası: `npx tsc --noEmit` + commit.
 
 ---
 
 *Hazırlayan: Claude Code (mimari) · 25 May 2026*
+*Sefa onayı: Görev 1,2,3,5 iptal · Görev 4,6,7,8,9,10 onaylandı*

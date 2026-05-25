@@ -334,3 +334,8 @@ select:-webkit-autofill:focus {
     0 0 0 1px var(--color-pim-mercan),
     0 0 0 5px var(--color-pim-mercan-tint) !important;
 }
+
+/* iPhone notch safe area */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

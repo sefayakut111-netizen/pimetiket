@@ -13,6 +13,8 @@ import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
+import { HomeBlogSection } from "@/components/blog/BlogPreview";
+import { Pim } from "@/components/Pim";
 import { useSiteImage } from "@/lib/site-images-client";
 import { useUser } from "@/lib/supabase/use-user";
 
@@ -74,6 +76,26 @@ export default function HomePage() {
   const FAQS = locale === "en" ? FAQ_QUESTIONS_EN : FAQ_QUESTIONS_TR;
   return (
     <main className="animate-fade-up">
+      {/* ============================== SECTION ORDER ==============================
+        GERİ ALMA: Bu yorumdaki sıra orijinaldir. Sefa beğenmezse
+        section'ları bu sıraya geri getir:
+
+        ORIGINAL ORDER (25 May 2026 öncesi):
+          1. Hero
+          2. How it works (py-20 bg-gri-50)
+          3. HomeReviews
+          4. FAQ (py-12)
+
+        YENİ ORDER:
+          1. Hero (+ CTA mikrokopi)
+          2. How it works
+          3. HomeReviews
+          4. FAQ + Pim
+          5. Blog
+          6. Instagram
+          7. Mobile sticky CTA
+      ============================== */}
+
       {/* ============================== HERO ============================== */}
       {/* Sefa 23 May v68 (overlay refactor):
           Önceki: banner üstte, metin altta. Yeni: metin banner'ın
@@ -150,6 +172,28 @@ export default function HomePage() {
               <Button variant="secondary" size="lg" href="/etiket">
                 <Icon.Roll size={18} /> {t.home.ctaEtiket}
               </Button>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gri-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">
+                  1
+                </span>
+                {locale === "en" ? "Configure" : "Ayarla"}
+              </span>
+              <span className="text-gri-300">→</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">
+                  2
+                </span>
+                {locale === "en" ? "See price" : "Fiyat gör"}
+              </span>
+              <span className="text-gri-300">→</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">
+                  3
+                </span>
+                {locale === "en" ? "Order" : "Sipariş ver"}
+              </span>
             </div>
             {/* Sefa kuralı (16 May denetim #23): Oturum açıkken
                 "Hesap aç" mikrokopisi gizli — kullanıcı zaten girmiş. */}
@@ -245,6 +289,9 @@ export default function HomePage() {
             <Button variant="secondary" href="/sss">
               {t.home.faqAll} <Icon.ChevR size={14} />
             </Button>
+            <div className="mt-8 hidden md:block">
+              <Pim pose="wave" size={100} />
+            </div>
           </div>
           <div className="flex flex-col gap-4">
             {FAQS.map((f, i) => (
@@ -266,6 +313,49 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <HomeBlogSection locale={locale} limit={3} />
+
+      {/* ============================== INSTAGRAM ============================== */}
+      <section className="py-12">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
+          <h3 className="text-lg font-semibold mb-2">
+            {locale === "en"
+              ? "Follow us on Instagram"
+              : "Bizi Instagram'da takip edin"}
+          </h3>
+          <p className="text-[13px] text-gri-700 mb-5">
+            {locale === "en"
+              ? "Inspirations, behind the scenes, customer projects"
+              : "İlham, üretim sahne arkası, müşteri projeleri"}
+          </p>
+          <a
+            href="https://instagram.com/pimetiket"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-[14px] transition-opacity hover:opacity-90"
+            style={{
+              background:
+                "linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D, #F56040, #F77737, #FCAF45)",
+            }}
+          >
+            <Icon.Instagram size={18} /> @pimetiket
+          </a>
+        </div>
+      </section>
+
+      {/* ============================== MOBILE STICKY CTA ============================== */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
+        <div className="flex gap-2.5">
+          <Button variant="primary" size="sm" href="/sticker" className="flex-1">
+            <Icon.Sticker size={14} /> {t.home.ctaSticker}
+          </Button>
+          <Button variant="secondary" size="sm" href="/etiket" className="flex-1">
+            <Icon.Roll size={14} /> {t.home.ctaEtiket}
+          </Button>
+        </div>
+      </div>
+      <div className="h-16 md:hidden" aria-hidden />
 
       {/* Sefa kararı 17 May v13: Trust strip + Bottom CTA section'ları kaldırıldı.
           - Trust strip (3D Secure / Hızlı kargo / AI dosya / KVKK) → footer'da
