@@ -1874,7 +1874,16 @@ export default function OdemePage() {
                         ),
                       });
                       await clearCustomerCart();
-                      router.push(`/odeme-sonuc?status=success&order=${order.id}&hasDesigns=true`);
+                      // Tasarım promote + QC tetikle (payment callback'in yaptığını burada da yap)
+                      try {
+                        await fetch("/api/orders/admin-bypass-promote", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ orderId: order.id }),
+                        });
+                      } catch { /* sessiz — sipariş zaten oluştu */ }
+                      const hasDesigns = cartItems.some((i) => !!i.designTempId);
+                      router.push(`/odeme-sonuc?status=success&order=${order.id}&hasDesigns=${hasDesigns}`);
                     } catch (err) {
                       setLoading(false);
                       toast.error("Admin bypass hata: " + (err instanceof Error ? err.message : "bilinmeyen"));
