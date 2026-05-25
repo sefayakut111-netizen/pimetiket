@@ -42,7 +42,7 @@ export async function PATCH(
   const body = await req.json().catch(() => ({}));
   const newRole = (body.admin_role as string | null | undefined) ?? null;
 
-  if (newRole !== null && !VALID_ROLES.includes(newRole as never)) {
+  if (newRole !== null && !(VALID_ROLES as readonly string[]).includes(newRole)) {
     return NextResponse.json(
       {
         error: `admin_role geçersiz. Kabul: ${VALID_ROLES.join(", ")} veya null`,

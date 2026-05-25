@@ -30,8 +30,8 @@ export async function GET(
 
   // Token doğrula
   const { data: validateData } = await admin.rpc(
-    "fn_validate_fason_token" as never,
-    { p_token: token } as never
+    "fn_validate_fason_token",
+    { p_token: token }
   );
   const validation = (validateData as Array<{
     assignment_id: string;

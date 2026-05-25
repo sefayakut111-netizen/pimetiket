@@ -28,6 +28,7 @@ import {
 import { getLivePricingConfig } from "./pricing-config";
 import type { ProfileConfig } from "./pricing-config-types";
 import { fetchPricebookSnapshot } from "./pricing-pricebook-db";
+import type { EtiketCustomId } from "./etiket-customer-pricing";
 import { isPricebookMode } from "./pricing-pricebook";
 
 // ============================================================
@@ -232,7 +233,7 @@ async function recalcEtiket(
       coating: (item.coatingId ?? "") as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       customization: (customizationIds?.[0] ?? "") as any,
-      customizations: customizationIds as never,
+      customizations: customizationIds as EtiketCustomId[] | undefined,
     },
     {
       pricebookSnapshot: isPricebookMode(config)

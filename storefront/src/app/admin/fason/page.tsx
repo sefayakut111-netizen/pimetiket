@@ -64,8 +64,10 @@ interface FasonPartner {
     auto_notification?: boolean;
   }>;
   capabilities?: Array<{
+    id: string;
     capability_type: "product_type" | "material";
     capability_value: string;
+    is_verified?: boolean;
   }>;
 }
 
@@ -311,6 +313,15 @@ export default function AdminFasonPage() {
                   Detay görmek için bir ortak seç.
                 </p>
               )}
+              {selected && (
+                <PartnerCapabilitiesPanel
+                  partner={selected}
+                  onUpdated={(updated) => {
+                    setSelected(updated);
+                    void refresh();
+                  }}
+                />
+              )}
               {selected && historyLoading && (
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -440,6 +451,84 @@ function KpiCard({
       </div>
       <div className="text-[20px] font-bold tabular-nums">{value}</div>
     </Card>
+  );
+}
+
+// ============================================================
+// PartnerCapabilitiesPanel
+// ============================================================
+
+function PartnerCapabilitiesPanel({
+  partner,
+  onUpdated,
+}: {
+  partner: FasonPartner;
+  onUpdated: (p: FasonPartner) => void;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const caps = partner.capabilities ?? [];
+
+  if (caps.length === 0) return null;
+
+  const verify = async (capabilityId: string, verified: boolean) => {
+    setBusyId(capabilityId);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${partner.id}/capabilities/verify`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ capabilityId, verified }),
+        }
+      );
+      if (!res.ok) return;
+      const nextCaps = caps.map((c) =>
+        c.id === capabilityId ? { ...c, is_verified: verified } : c
+      );
+      onUpdated({ ...partner, capabilities: nextCaps });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="mb-4 pb-4 border-b border-gri-100">
+      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-2">
+        Yetkinlik onayı
+      </h4>
+      <ul className="space-y-2">
+        {caps.map((c) => {
+          const label =
+            CAPABILITY_LABEL[c.capability_value] ?? c.capability_value;
+          const verified = c.is_verified !== false;
+          return (
+            <li
+              key={c.id}
+              className="flex items-center justify-between gap-2 text-[12px]"
+            >
+              <span>
+                {c.capability_type === "product_type" ? "Ürün" : "Malzeme"}:{" "}
+                <strong>{label}</strong>
+              </span>
+              {verified ? (
+                <span className="inline-flex items-center gap-1 text-yesil font-semibold">
+                  ✅ Onaylı
+                </span>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busyId === c.id}
+                  onClick={() => void verify(c.id, true)}
+                >
+                  ⏳ Onayla
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

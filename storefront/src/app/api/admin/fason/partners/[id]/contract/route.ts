@@ -89,7 +89,7 @@ export async function POST(
       contract_pdf_url: key,
       contract_uploaded_at: new Date().toISOString(),
       updated_by: auth.user.id,
-    } as never)
+    })
     .eq("id", id);
   if (updErr) {
     return NextResponse.json(

@@ -32,7 +32,8 @@ export type AdminModule =
   | "backups"
   | "archive"
   | "settings"
-  | "mail_health";
+  | "mail_health"
+  | "blog";
 
 export interface ModulePermissions {
   view: boolean;
@@ -78,10 +79,12 @@ export const ADMIN_PATH_MODULES: Array<{ prefix: string; module: AdminModule }> 
     { prefix: "/admin/iadeler", module: "returns" },
     { prefix: "/admin/tasarimlar", module: "designs" },
     { prefix: "/admin/yardim-talepleri", module: "help_requests" },
+    { prefix: "/admin/destek", module: "help_requests" },
     { prefix: "/admin/urunler", module: "products" },
     { prefix: "/admin/aboneler", module: "subscribers" },
     { prefix: "/admin/galeri", module: "gallery" },
     { prefix: "/admin/gorseller", module: "site_images" },
+    { prefix: "/admin/blog", module: "blog" },
     { prefix: "/admin/siparisler", module: "orders" },
     { prefix: "/admin/siparis-ekle", module: "manual_order" },
     { prefix: "/admin/ai-qc", module: "ai_qc" },
@@ -147,6 +150,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItemDef[] = [
   { href: "/admin/aboneler", label: "Aboneler", module: "subscribers" },
   { href: "/admin/galeri", label: "Galeri", module: "gallery" },
   { href: "/admin/gorseller", label: "Site Görselleri", module: "site_images" },
+  { href: "/admin/blog", label: "Blog", module: "blog" },
   { href: "/admin/finans", label: "Finans", module: "finans" },
   { href: "/admin/kuponlar", label: "Kuponlar", module: "coupons" },
   { href: "/admin/calisanlar", label: "Çalışanlar", module: "staff" },

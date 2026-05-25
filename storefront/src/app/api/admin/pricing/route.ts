@@ -21,6 +21,7 @@ import {
   getAdminPricingConfig,
   saveDraftPricingConfig,
   listPricingHistory,
+  type ScopeConfig,
   type ScopeName,
 } from "@/lib/pricing-config";
 
@@ -110,7 +111,7 @@ export async function PUT(req: Request) {
     // Önce draft kaydet (audit için)
     const r = await saveDraftPricingConfig(
       scope,
-      payload as never,
+      payload as ScopeConfig,
       auth.user.id,
       auth.user.email ?? "admin",
       body.note

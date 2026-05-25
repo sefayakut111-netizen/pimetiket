@@ -73,15 +73,15 @@ export class BrandAuditor extends AuditorBase {
 
     const { data } = await this.admin
       .from("blog_posts")
-      .select("id, slug, title, body_md")
-      .eq("is_published", true)
+      .select("id, slug, title_tr, body_tr")
+      .eq("status", "published")
       .limit(50);
 
     const posts = (data ?? []) as Array<{
       id: string;
       slug: string;
-      title: string;
-      body_md: string | null;
+      title_tr: string;
+      body_tr: string | null;
     }>;
 
     if (posts.length === 0) return { findings, metrics: { checked: 0 } };
@@ -89,10 +89,10 @@ export class BrandAuditor extends AuditorBase {
     const issues: Array<{ slug: string; phrase: string; title: string }> = [];
 
     for (const post of posts) {
-      const content = `${post.title}\n${post.body_md ?? ""}`;
+      const content = `${post.title_tr}\n${post.body_tr ?? ""}`;
       for (const phrase of DISCOURAGED_PHRASES) {
         if (content.includes(phrase)) {
-          issues.push({ slug: post.slug, phrase, title: post.title });
+          issues.push({ slug: post.slug, phrase, title: post.title_tr });
         }
       }
     }

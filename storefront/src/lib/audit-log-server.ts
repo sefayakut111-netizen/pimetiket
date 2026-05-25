@@ -45,7 +45,9 @@ type AuditAction =
   | "design_file.reject"
   | "auth.login"
   | "auth.logout"
-  | "profile.delete";
+  | "profile.delete"
+  | "partner.capability_verify"
+  | "partner.capability_unverify";
 
 export interface ServerAuditInput {
   actorId: string | null;

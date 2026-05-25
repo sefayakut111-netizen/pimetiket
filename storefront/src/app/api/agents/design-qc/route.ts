@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       product_type: body.productType,
       verdict: "error",
       error: agentError,
-    } as never);
+    });
     return NextResponse.json(
       { error: "Agent execution failed", detail: agentError },
       { status: 500 }
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
       duration_ms: result.durationMs,
       cost_usd: result.costUsd,
       tokens_used: result.tokensUsed ?? null,
-    } as never)
+    })
     .select("id")
     .single();
 

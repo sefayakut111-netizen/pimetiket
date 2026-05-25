@@ -7,11 +7,12 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { LineChart, BarChart } from "@/components/charts";
 
 const STORAGE_KEY = "pim_coupons_v1";
 
@@ -34,41 +35,26 @@ interface Coupon {
   createdAt: number;
 }
 
-const SAMPLE_COUPONS: Coupon[] = [
-  {
-    id: "c1",
-    code: "HOSGELDIN10",
-    type: "percent",
-    value: 10,
-    minSubtotal: 0,
-    maxUses: null,
-    usedCount: 0,
-    validFrom: new Date().toISOString().slice(0, 10),
-    validTo: new Date(Date.now() + 365 * 86400_000).toISOString().slice(0, 10),
-    active: true,
-    createdAt: Date.now(),
-  },
-];
-
-function loadCoupons(): Coupon[] {
-  if (typeof window === "undefined") return SAMPLE_COUPONS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SAMPLE_COUPONS;
-    return JSON.parse(raw) as Coupon[];
-  } catch {
-    return SAMPLE_COUPONS;
-  }
-}
-
-function saveCoupons(coupons: Coupon[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(coupons));
+interface CouponAnalytics {
+  totalUsage: number;
+  totalDiscount: number;
+  topCoupons: Array<{
+    code: string;
+    usedCount: number;
+    totalDiscount: number;
+  }>;
+  usageTrend: Array<{
+    date: string;
+    count: number;
+    discount: number;
+  }>;
 }
 
 export default function AdminKuponlarPage() {
   const toast = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [analytics, setAnalytics] = useState<CouponAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [draft, setDraft] = useState<Coupon>({
     id: "",
@@ -84,23 +70,65 @@ export default function AdminKuponlarPage() {
     createdAt: Date.now(),
   });
 
+  const fetchCoupons = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/coupons", { cache: "no-store" });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        coupons?: Coupon[];
+        analytics?: CouponAnalytics;
+        error?: string;
+      };
+      if (j.ok && j.coupons) {
+        setCoupons(j.coupons);
+        setAnalytics(j.analytics ?? null);
+      } else if (!r.ok) {
+        toast.error(j.error ?? "Kuponlar yüklenemedi");
+      }
+    } catch {
+      toast.error("Ağ hatası");
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
-    setCoupons(loadCoupons());
-  }, []);
+    void fetchCoupons();
+  }, [fetchCoupons]);
 
-  const persist = (next: Coupon[]) => {
-    setCoupons(next);
-    saveCoupons(next);
-  };
+  useEffect(() => {
+    const local = localStorage.getItem(STORAGE_KEY);
+    if (!local) return;
 
-  const onSubmit = (e: React.FormEvent) => {
+    void (async () => {
+      try {
+        const parsed = JSON.parse(local) as Coupon[];
+        const r = await fetch("/api/admin/coupons/migrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ coupons: parsed }),
+        });
+        const j = (await r.json()) as { ok?: boolean; migrated?: number };
+        if (j.ok) {
+          localStorage.removeItem(STORAGE_KEY);
+          if ((j.migrated ?? 0) > 0) {
+            toast.success(`${j.migrated} kupon DB'ye aktarıldı`);
+            await fetchCoupons();
+          }
+        }
+      } catch {
+        /* sessiz */
+      }
+    })();
+  }, [fetchCoupons, toast]);
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft.code.trim()) {
       toast.error("Kod boş olamaz");
       return;
     }
-    // Sefa 21 May v68 (site denetim P2 #18): TR locale upper — "i" → "İ"
-    // doğru çevrilsin (default toUpperCase Türkçe büyük "İ"yi vermez).
     const code = draft.code
       .trim()
       .toLocaleUpperCase("tr-TR")
@@ -109,41 +137,110 @@ export default function AdminKuponlarPage() {
       toast.error("Bu kod zaten var");
       return;
     }
-    const fresh: Coupon = {
-      ...draft,
-      id: `cpn-${Date.now()}`,
-      code,
-      createdAt: Date.now(),
-    };
-    persist([fresh, ...coupons]);
-    toast.success(`${code} oluşturuldu`);
-    setShowForm(false);
-    setDraft({
-      id: "",
-      code: "",
-      type: "percent",
-      value: 10,
-      minSubtotal: 0,
-      maxUses: null,
-      usedCount: 0,
-      validFrom: new Date().toISOString().slice(0, 10),
-      validTo: new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10),
-      active: true,
-      createdAt: Date.now(),
-    });
+
+    try {
+      const r = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          type: draft.type,
+          value: draft.value,
+          minSubtotal: draft.minSubtotal,
+          maxUses: draft.maxUses,
+          validFrom: draft.validFrom,
+          validTo: draft.validTo,
+        }),
+      });
+      const j = (await r.json()) as { ok?: boolean; coupon?: Coupon; error?: string };
+      if (!j.ok || !j.coupon) {
+        toast.error(j.error ?? "Oluşturulamadı");
+        return;
+      }
+      setCoupons((prev) => [j.coupon!, ...prev]);
+      toast.success(`${code} oluşturuldu`);
+      setShowForm(false);
+      setDraft({
+        id: "",
+        code: "",
+        type: "percent",
+        value: 10,
+        minSubtotal: 0,
+        maxUses: null,
+        usedCount: 0,
+        validFrom: new Date().toISOString().slice(0, 10),
+        validTo: new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10),
+        active: true,
+        createdAt: Date.now(),
+      });
+    } catch {
+      toast.error("Ağ hatası");
+    }
   };
 
-  const toggleActive = (id: string) => {
-    persist(
-      coupons.map((c) => (c.id === id ? { ...c, active: !c.active } : c))
-    );
+  const toggleActive = async (id: string) => {
+    const current = coupons.find((c) => c.id === id);
+    if (!current) return;
+
+    try {
+      const r = await fetch("/api/admin/coupons", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, active: !current.active }),
+      });
+      const j = (await r.json()) as { ok?: boolean; coupon?: Coupon; error?: string };
+      if (!j.ok || !j.coupon) {
+        toast.error(j.error ?? "Güncellenemedi");
+        return;
+      }
+      setCoupons((prev) => prev.map((c) => (c.id === id ? j.coupon! : c)));
+    } catch {
+      toast.error("Ağ hatası");
+    }
   };
 
-  const remove = (c: Coupon) => {
+  const remove = async (c: Coupon) => {
     if (!confirm(`${c.code} silinsin mi?`)) return;
-    persist(coupons.filter((x) => x.id !== c.id));
-    toast.info(`${c.code} silindi`);
+
+    try {
+      const r = await fetch(`/api/admin/coupons?id=${encodeURIComponent(c.id)}`, {
+        method: "DELETE",
+      });
+      const j = (await r.json()) as { ok?: boolean; error?: string };
+      if (!j.ok) {
+        toast.error(j.error ?? "Silinemedi");
+        return;
+      }
+      setCoupons((prev) => prev.filter((x) => x.id !== c.id));
+      toast.info(`${c.code} silindi`);
+    } catch {
+      toast.error("Ağ hatası");
+    }
   };
+
+  const topPopularCode = useMemo(() => {
+    if (analytics?.topCoupons[0]?.code) return analytics.topCoupons[0].code;
+    const sorted = [...coupons].sort((a, b) => b.usedCount - a.usedCount);
+    return sorted[0]?.code ?? "—";
+  }, [analytics, coupons]);
+
+  const trendPoints = useMemo(
+    () =>
+      (analytics?.usageTrend ?? []).map((d) => ({
+        x: d.date.slice(5),
+        y: d.count,
+      })),
+    [analytics]
+  );
+
+  const topBarData = useMemo(
+    () =>
+      (analytics?.topCoupons ?? []).map((c) => ({
+        label: c.code,
+        value: c.usedCount,
+      })),
+    [analytics]
+  );
 
   return (
     <main className="py-8 pb-20">
@@ -167,6 +264,62 @@ export default function AdminKuponlarPage() {
             <Icon.Plus size={16} /> Yeni kupon
           </Button>
         </div>
+
+        {/* Analitik KPI */}
+        {analytics && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+              <Card padding="p-5">
+                <div className="text-xs uppercase tracking-wide text-gri-700">
+                  Toplam kullanım (30g)
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-lacivert">
+                  {analytics.totalUsage}
+                </div>
+              </Card>
+              <Card padding="p-5">
+                <div className="text-xs uppercase tracking-wide text-gri-700">
+                  Toplam indirim (30g)
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-pim-mercan">
+                  ₺{analytics.totalDiscount.toLocaleString("tr-TR")}
+                </div>
+              </Card>
+              <Card padding="p-5">
+                <div className="text-xs uppercase tracking-wide text-gri-700">
+                  En popüler kupon
+                </div>
+                <div className="mt-1 text-2xl font-semibold font-mono text-lacivert">
+                  {topPopularCode}
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+              <Card padding="p-5">
+                <h2 className="text-[15px] font-semibold mb-3">
+                  30 gün kullanım trendi
+                </h2>
+                <LineChart
+                  points={trendPoints}
+                  height={140}
+                  formatY={(n) => `${n} kullanım`}
+                  emptyLabel="Son 30 günde kullanım yok"
+                />
+              </Card>
+              <Card padding="p-5">
+                <h2 className="text-[15px] font-semibold mb-3">
+                  En çok kullanılan 5 kupon
+                </h2>
+                <BarChart
+                  bars={topBarData}
+                  height={140}
+                  emptyLabel="Kullanım verisi yok"
+                />
+              </Card>
+            </div>
+          </>
+        )}
 
         {/* Form */}
         {showForm && (
@@ -315,7 +468,11 @@ export default function AdminKuponlarPage() {
         )}
 
         {/* List */}
-        {coupons.length === 0 ? (
+        {loading ? (
+          <Card padding="p-12" className="text-center text-gri-700">
+            Yükleniyor…
+          </Card>
+        ) : coupons.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Pim pose="think" size={140} />
             <h3 className="mt-4 text-xl font-semibold">Henüz kupon yok</h3>

@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 
   // ---- 1) Süresi dolmuş tasarımları işaretle (soft-delete) ----
   const { data: markedData, error: markErr } = await admin.rpc(
-    "fn_mark_expired_designs_for_deletion" as never
+    "fn_mark_expired_designs_for_deletion"
   );
   if (markErr) {
     console.error("[purge-expired-designs] mark error:", markErr);
@@ -130,7 +130,7 @@ export async function GET(req: Request) {
   let pimAnonymized: number | null = null;
   try {
     const { data: anonData } = await admin.rpc(
-      "fn_anonymize_old_pim_conversations" as never
+      "fn_anonymize_old_pim_conversations"
     );
     pimAnonymized = (anonData as number) ?? 0;
   } catch (err) {
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
   let legalWarn30Day = 0;
   try {
     const { data: legalData } = await admin.rpc(
-      "fn_count_legal_purge_candidates" as never
+      "fn_count_legal_purge_candidates"
     );
     const row = (legalData as Array<{
       candidate_count: number;

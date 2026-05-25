@@ -43,8 +43,8 @@ export async function GET(req: Request) {
     .order("started_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (auditor) query = query.eq("auditor_name", auditor as never);
-  if (status) query = query.eq("status", status as never);
+  if (auditor) query = query.eq("auditor_name", auditor);
+  if (status) query = query.eq("status", status);
   if (since) query = query.gte("started_at", since);
 
   const { data, count, error } = await query;

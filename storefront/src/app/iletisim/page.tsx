@@ -95,6 +95,14 @@ export default function IletisimPage() {
       href: "mailto:info@pimetiket.com",
       accent: "bg-yesil-soft text-yesil",
     },
+    {
+      icon: <Icon.ChatBubble size={20} />,
+      title: "Destek talebi",
+      desc: "Sipariş, tasarım veya kargo ile ilgili sorularınız için destek formunu kullanın.",
+      cta: "Destek talebi oluştur",
+      href: "/destek",
+      accent: "bg-lacivert/10 text-lacivert",
+    },
   ];
 
   const FAQ_LINKS = [
@@ -127,7 +135,7 @@ export default function IletisimPage() {
           2 kart ortalı görünüm */}
       <section className="py-6 md:py-8">
         <div className="mx-auto max-w-[900px] px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {CONTACT_METHODS.map((m) => (
               <Card key={m.title} padding="p-6 md:p-7">
                 <div

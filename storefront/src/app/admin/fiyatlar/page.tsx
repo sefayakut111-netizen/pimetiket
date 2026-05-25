@@ -16,6 +16,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Card, Eyebrow, Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -43,6 +44,16 @@ import {
   isTierChanged,
   type DiffEntry,
 } from "@/lib/pricing-diff";
+import { StickerCalculator } from "@/components/admin/pricing/StickerCalculator";
+import { RuloCalculator } from "@/components/admin/pricing/RuloCalculator";
+import { TabakaCalculator } from "@/components/admin/pricing/TabakaCalculator";
+
+type PriceTab = "config" | "calculator";
+
+function parseScopeParam(v: string | null): Scope | null {
+  if (v === "sticker" || v === "etiket_rulo" || v === "etiket_tabaka") return v;
+  return null;
+}
 
 type Scope = "sticker" | "etiket_rulo" | "etiket_tabaka";
 
@@ -130,13 +141,43 @@ function deepEqual(a: unknown, b: unknown): boolean {
 
 export default function FiyatlarPage() {
   const toast = useToast();
-  const [scope, setScope] = useState<Scope>("sticker");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [scope, setScope] = useState<Scope>(
+    () => parseScopeParam(searchParams.get("scope")) ?? "sticker"
+  );
+  const [activeTab, setActiveTab] = useState<PriceTab>(() =>
+    searchParams.get("tab") === "calculator" ? "calculator" : "config"
+  );
   const [data, setData] = useState<ApiResponse | null>(null);
   const [draft, setDraft] = useState<ProfileConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+
+  const syncUrl = useCallback(
+    (tab: PriceTab, nextScope: Scope) => {
+      const params = new URLSearchParams();
+      if (tab === "calculator") params.set("tab", "calculator");
+      if (nextScope !== "sticker" || tab === "calculator") {
+        params.set("scope", nextScope);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `/admin/fiyatlar?${qs}` : "/admin/fiyatlar", {
+        scroll: false,
+      });
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    const sc = searchParams.get("scope");
+    setActiveTab(tab === "calculator" ? "calculator" : "config");
+    const parsed = parseScopeParam(sc);
+    if (parsed) setScope(parsed);
+  }, [searchParams]);
 
   // Preview state — örnek sipariş için
   const [previewMaterialId, setPreviewMaterialId] = useState<string>("");
@@ -411,6 +452,80 @@ export default function FiyatlarPage() {
           </p>
         </div>
 
+        {/* Scope tabs */}
+        <div className="mb-5 flex gap-2 flex-wrap">
+          {(["sticker", "etiket_rulo", "etiket_tabaka"] as Scope[]).map((s) => {
+            const meta = SCOPE_META[s];
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  if (isDirty) {
+                    if (
+                      !confirm(
+                        "Kaydedilmemiş değişiklik var, yine de geçeyim mi?"
+                      )
+                    )
+                      return;
+                  }
+                  setScope(s);
+                  syncUrl(activeTab, s);
+                }}
+                className={cn(
+                  "px-4 py-2.5 rounded-full text-[13.5px] font-semibold transition-colors",
+                  scope === s
+                    ? "bg-lacivert text-white"
+                    : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                )}
+              >
+                {meta.emoji} {meta.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Scope description */}
+        <p className="text-[12.5px] text-gri-700 italic mb-4">
+          {SCOPE_META[scope].desc}
+        </p>
+
+        {/* Fiyat yönetimi / Hesaplayıcı */}
+        <div className="flex gap-2 border-b border-gri-200 mb-5">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("config");
+              syncUrl("config", scope);
+            }}
+            className={cn(
+              "px-4 py-2 text-[13.5px] font-medium transition-colors -mb-px",
+              activeTab === "config"
+                ? "border-b-2 border-pim-mercan font-semibold text-lacivert"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Fiyat Yönetimi
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("calculator");
+              syncUrl("calculator", scope);
+            }}
+            className={cn(
+              "px-4 py-2 text-[13.5px] font-medium transition-colors -mb-px",
+              activeTab === "calculator"
+                ? "border-b-2 border-pim-mercan font-semibold text-lacivert"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Hesaplayıcı
+          </button>
+        </div>
+
+        {activeTab === "config" && (
+          <>
         {/* Status banner — Sefa 17 May v4 sadeleştirildi (Draft kaldırıldı) */}
         <Card
           padding="p-4"
@@ -484,43 +599,6 @@ export default function FiyatlarPage() {
             </div>
           )}
         </Card>
-
-        {/* Scope tabs */}
-        <div className="mb-5 flex gap-2 flex-wrap">
-          {(["sticker", "etiket_rulo", "etiket_tabaka"] as Scope[]).map((s) => {
-            const meta = SCOPE_META[s];
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  if (isDirty) {
-                    if (
-                      !confirm(
-                        "Kaydedilmemiş değişiklik var, yine de geçeyim mi?"
-                      )
-                    )
-                      return;
-                  }
-                  setScope(s);
-                }}
-                className={cn(
-                  "px-4 py-2.5 rounded-full text-[13.5px] font-semibold transition-colors",
-                  scope === s
-                    ? "bg-lacivert text-white"
-                    : "bg-gri-100 text-gri-700 hover:bg-gri-200"
-                )}
-              >
-                {meta.emoji} {meta.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Scope description */}
-        <p className="text-[12.5px] text-gri-700 italic mb-5">
-          {SCOPE_META[scope].desc}
-        </p>
 
         {/* History panel */}
         {showHistory && (
@@ -1125,6 +1203,22 @@ export default function FiyatlarPage() {
         </div>
 
         {scope === "etiket_rulo" && draft && <PriceBookPanel config={draft} />}
+          </>
+        )}
+
+        {activeTab === "calculator" && (
+          <>
+            {scope === "sticker" && (
+              <StickerCalculator liveConfig={data.live} embedded />
+            )}
+            {scope === "etiket_rulo" && (
+              <RuloCalculator liveConfig={data.live} embedded />
+            )}
+            {scope === "etiket_tabaka" && (
+              <TabakaCalculator liveConfig={data.live} embedded />
+            )}
+          </>
+        )}
       </div>
     </main>
   );

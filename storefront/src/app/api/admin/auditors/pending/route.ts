@@ -41,13 +41,13 @@ export async function GET(req: Request) {
     .limit(limit);
 
   if (status === "pending") {
-    query = query.eq("status", "pending" as never);
+    query = query.eq("status", "pending");
   } else if (status !== "all") {
-    query = query.eq("status", status as never);
+    query = query.eq("status", status);
   }
 
   if (severity) {
-    query = query.eq("severity", severity as never);
+    query = query.eq("severity", severity);
   }
 
   const { data, error } = await query;

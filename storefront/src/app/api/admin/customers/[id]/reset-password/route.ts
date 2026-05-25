@@ -25,6 +25,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -92,7 +93,7 @@ export async function POST(
       status: "pending",
       attempts: 0,
     },
-  ] as never);
+  ]);
 
   if (outboxErr) {
     return NextResponse.json(
@@ -108,7 +109,7 @@ export async function POST(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: "customer.reset_password",
+        action: "customer.reset_password" as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: `Şifre sıfırlama maili kuyruğa eklendi → ${email}`,
@@ -116,7 +117,7 @@ export async function POST(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }

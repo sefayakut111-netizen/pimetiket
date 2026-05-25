@@ -229,6 +229,10 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 // Sefa 20 May v68 (Sticker reform): /sticker grid'den gelen URL pre-fill helper'ları
 function readInitialCutMode(searchParams: URLSearchParams): CutMode {
+  const formParam = searchParams.get("form");
+  if (formParam !== null && formParam.length === 0) {
+    return "diecut";
+  }
   const cut = searchParams.get("cut");
   if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") return cut;
   return "diecut";
@@ -247,6 +251,9 @@ function readInitialShape(searchParams: URLSearchParams): ShapeId {
   }
   if (shape && (SHAPE_IDS as readonly string[]).includes(shape)) {
     return shape as ShapeId;
+  }
+  if (shape && !(SHAPE_IDS as readonly string[]).includes(shape)) {
+    return "square";
   }
   return "square";
 }
@@ -457,6 +464,10 @@ function StickerPage() {
   // Sefa 20 May v68: searchParams değişirse (client-side nav) sync —
   // kullanıcı farklı karttan yeni girerse state'ler yeniden eşleşir
   useEffect(() => {
+    const formParam = searchParams.get("form");
+    if (formParam !== null && formParam.length === 0) {
+      setCutMode("diecut");
+    }
     const cut = searchParams.get("cut");
     if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") {
       setCutMode(cut);
@@ -466,6 +477,8 @@ function StickerPage() {
       setShape("die");
     } else if (sp && (SHAPE_IDS as readonly string[]).includes(sp)) {
       setShape(sp as ShapeId);
+    } else if (sp && !(SHAPE_IDS as readonly string[]).includes(sp)) {
+      setShape("square");
     }
     if (sp === "bumper") {
       setWidth(BUMPER_PRESET_WIDTH);
@@ -528,11 +541,14 @@ function StickerPage() {
 
   // Sefa 20 May v68: bumper sticker varsayılan 280×80mm (klasik tampon),
   // diğerleri 75×75. URL ?shape=... ve useEffect ile sync.
-  const initialDims =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("shape") === "bumper"
-      ? { w: BUMPER_PRESET_WIDTH, h: BUMPER_PRESET_HEIGHT }
-      : { w: 75, h: 75 };
+  const initialDims = (() => {
+    if (typeof window === "undefined") return { w: 75, h: 75 };
+    const urlShape = new URLSearchParams(window.location.search).get("shape");
+    if (urlShape === "bumper") {
+      return { w: BUMPER_PRESET_WIDTH, h: BUMPER_PRESET_HEIGHT };
+    }
+    return { w: 75, h: 75 };
+  })();
   const [width, setWidth] = useState<number>(initialDims.w);
   const [height, setHeight] = useState<number>(initialDims.h);
   // Sefa 18 May v68 (CRO denetim — Preset feedback fix):

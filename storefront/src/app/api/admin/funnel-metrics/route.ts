@@ -25,7 +25,7 @@ export async function GET() {
     const supabase = await createClient();
 
     const { data, error } = await supabase.rpc(
-      "fn_funnel_avg_durations" as never
+      "fn_funnel_avg_durations"
     );
     if (error) {
       console.error("[funnel-metrics] rpc error:", error);

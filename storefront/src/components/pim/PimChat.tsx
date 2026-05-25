@@ -171,7 +171,7 @@ export function PimChat() {
       parts: [{ type: "text" as const, text: m.content }],
     }));
     // useChat type'ı UIMessage[] bekler — runtime safe cast
-    setMessages(restored as never);
+    setMessages(restored);
     // sendMessage'ı no-op kullanmak için referansı tüket (lint pacification yerine no-op)
     void sendMessage;
   }, [memory, messages.length, setMessages, sendMessage]);

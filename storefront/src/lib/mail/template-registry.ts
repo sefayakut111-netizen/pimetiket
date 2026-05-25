@@ -1,0 +1,277 @@
+/**
+ * Mail şablon kaydı — admin önizleme / test gönderimi için.
+ */
+
+import "server-only";
+
+import { render } from "@react-email/render";
+import { renderMailTemplate, type MailRendered } from "./templates";
+import { OrderConfirmationEmail } from "./templates/order-confirmation";
+import { OrderDeliveredEmail } from "./templates/order-delivered";
+import { ProofReadyEmail } from "./templates/proof-ready";
+import { OrderProofReminderEmail } from "./templates/order-proof-reminder";
+import { QcFlaggedEmail } from "./templates/qc-flagged";
+import { QcRejectedEmail } from "./templates/qc-rejected";
+import { ShipmentStatusEmail } from "./templates/shipment-status";
+import { ShippingUpdateEmail } from "./templates/shipping-update";
+import { ProofHelpResolvedEmail } from "./templates/proof-help-resolved";
+import { OrderUploadReminderEmail } from "./templates/order-upload-reminder";
+
+export const MAIL_TEMPLATES = [
+  {
+    key: "order-confirmation",
+    label: "Sipariş Onayı",
+    subject: "Siparişiniz onaylandı",
+  },
+  {
+    key: "order-delivered",
+    label: "Teslim Bildirimi",
+    subject: "Siparişiniz teslim edildi",
+  },
+  {
+    key: "proof-ready",
+    label: "Prova Hazır",
+    subject: "Baskı provanız hazır",
+  },
+  {
+    key: "proof-reminder",
+    label: "Prova Hatırlatma",
+    subject: "Provanız onay bekliyor",
+  },
+  {
+    key: "qc-flagged",
+    label: "QC Uyarı",
+    subject: "Tasarımınızda düzeltme gerekli",
+  },
+  {
+    key: "qc-rejected",
+    label: "QC Red",
+    subject: "Tasarımınız reddedildi",
+  },
+  {
+    key: "shipment-status",
+    label: "Kargo Durumu",
+    subject: "Kargo güncelleme",
+  },
+  {
+    key: "shipping-update",
+    label: "Kargo Takip",
+    subject: "Kargonuz yola çıktı",
+  },
+  {
+    key: "proof-help-resolved",
+    label: "Destek Yanıtı",
+    subject: "Yardım talebiniz yanıtlandı",
+  },
+  {
+    key: "order-upload-reminder",
+    label: "Upload Hatırlatma",
+    subject: "Tasarımınızı yükleyin",
+  },
+  {
+    key: "abandoned-cart",
+    label: "Terk Sepet",
+    subject: "Sepetiniz sizi bekliyor",
+  },
+  {
+    key: "review-request",
+    label: "Yorum Daveti",
+    subject: "Deneyiminizi paylaşın",
+  },
+  {
+    key: "admin-daily-summary",
+    label: "Günlük Özet",
+    subject: "Pim Etiket günlük rapor",
+  },
+] as const;
+
+export type MailTemplateKey = (typeof MAIL_TEMPLATES)[number]["key"];
+
+const MOCK_ORDER_ID = "PE-2026-001234";
+const MOCK_NAME = "Ayşe Yılmaz";
+
+function templateMeta(key: MailTemplateKey) {
+  return MAIL_TEMPLATES.find((t) => t.key === key)!;
+}
+
+export async function previewMailTemplate(
+  key: MailTemplateKey
+): Promise<MailRendered | null> {
+  const meta = templateMeta(key);
+
+  switch (key) {
+    case "order-confirmation": {
+      const html = await render(
+        OrderConfirmationEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          items: [
+            {
+              title: "Yuvarlak Etiket 5cm",
+              config: "Mat kuşe · 500 adet",
+              qty: 1,
+              total: 890,
+            },
+          ],
+          subtotal: 890,
+          shipping: 49,
+          total: 939,
+          estimatedDelivery: "28 Mayıs 2026",
+        })
+      );
+      return {
+        subject: `${meta.subject} — #${MOCK_ORDER_ID}`,
+        html,
+        text: `Siparişin onaylandı — ${MOCK_ORDER_ID}`,
+      };
+    }
+    case "order-delivered": {
+      const html = await render(
+        OrderDeliveredEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          deliveredAt: "25 Mayıs 2026 14:32",
+          carrierLabel: "Yurtiçi Kargo",
+        })
+      );
+      return {
+        subject: `${meta.subject} — #${MOCK_ORDER_ID}`,
+        html,
+        text: `Sipariş teslim edildi — ${MOCK_ORDER_ID}`,
+      };
+    }
+    case "proof-ready": {
+      const html = await render(
+        ProofReadyEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          productTitle: "Yuvarlak Etiket 5cm",
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "proof-reminder": {
+      const html = await render(
+        OrderProofReminderEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          pendingCount: 1,
+          hoursSincePaid: 36,
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "qc-flagged": {
+      const html = await render(
+        QcFlaggedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          warnings: ["DPI sınırda (298)", "Bleed payı kontrol ediliyor"],
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "qc-rejected": {
+      const html = await render(
+        QcRejectedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          reason:
+            "Tasarım dosyasında font outline eksik. Lütfen Illustrator'da Create Outlines yapıp tekrar yükleyin.",
+          fileName: "etiket-v3.pdf",
+          issueCategory: "font",
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "shipment-status": {
+      const html = await render(
+        ShipmentStatusEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          status: "in_transit",
+          description: "Transfer merkezine ulaştı",
+          location: "İstanbul Avrupa",
+          trackingNumber: "1234567890",
+          trackingUrl: "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula",
+        })
+      );
+      return { subject: meta.subject, html, text: "" };
+    }
+    case "shipping-update": {
+      const html = await render(
+        ShippingUpdateEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          carrierName: "Yurtiçi Kargo",
+          trackingNumber: "1234567890",
+          trackingUrl: "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula",
+          estimatedDelivery: "27 Mayıs 2026",
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "proof-help-resolved": {
+      const html = await render(
+        ProofHelpResolvedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          itemTitle: "Yuvarlak Etiket 5cm",
+          originalMessage: "Prova rengi ekrandakinden farklı görünüyor, normal mi?",
+          resolutionNote:
+            "Mat kuşe baskıda renkler ekrandan %5-8 daha koyu çıkar — bu normal. İsterseniz CMYK proof PDF gönderebiliriz.",
+        })
+      );
+      return { subject: meta.subject, html, text: "" };
+    }
+    case "order-upload-reminder": {
+      const html = await render(
+        OrderUploadReminderEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          pendingCount: 1,
+          hoursSincePaid: 28,
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "abandoned-cart":
+      return (
+        renderMailTemplate("customer_abandoned_cart", {
+          customer_name: MOCK_NAME,
+          item_count: 2,
+          total: 1240,
+          coupon_code: "SEPET10",
+        }) ?? null
+      );
+    case "review-request":
+      return (
+        renderMailTemplate("customer_review_request", {
+          order_id: MOCK_ORDER_ID,
+          customer_name: MOCK_NAME,
+          product_name: "Yuvarlak Etiket 5cm",
+          review_token: "preview-token",
+        }) ?? null
+      );
+    case "admin-daily-summary":
+      return (
+        renderMailTemplate("admin_daily_summary", {
+          newOrders24h: 12,
+          revenue24h: 18450,
+          awaitingUpload: 3,
+          awaitingUploadStale: 1,
+          aiQcQueue: 5,
+          proofPending: 2,
+          inProduction: 8,
+          shipped24h: 6,
+          partnerCapacityWarn: 1,
+        }) ?? null
+      );
+    default:
+      return null;
+  }
+}
+
+export function isMailTemplateKey(value: string): value is MailTemplateKey {
+  return MAIL_TEMPLATES.some((t) => t.key === value);
+}

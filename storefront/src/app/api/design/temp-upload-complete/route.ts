@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE,
@@ -94,8 +95,12 @@ export async function POST(req: NextRequest) {
         {
           actor_id: user.id,
           actor_role: "customer",
-          kind: "mime_spoof_blocked",
+          action: "design_file.reject" as Enums<"audit_action">,
+          target_type: "design_file",
+          target_id: body.storagePath,
+          summary: "MIME spoof blocked on temp design upload",
           detail: {
+            kind: "mime_spoof_blocked",
             claimedMime: body.mimeType,
             detectedMime: magic.detected,
             detectedLabel: magic.label,
@@ -104,7 +109,7 @@ export async function POST(req: NextRequest) {
             storagePath: body.storagePath,
           },
         },
-      ] as never);
+      ]);
       return NextResponse.json(
         {
           error: "mime_mismatch",
@@ -139,7 +144,7 @@ export async function POST(req: NextRequest) {
         mime_type: body.mimeType,
         sha256: body.sha256 ?? null,
       },
-    ] as never)
+    ])
     .select("id")
     .single();
 

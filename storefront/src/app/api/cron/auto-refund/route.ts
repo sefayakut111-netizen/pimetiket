@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 
   // RPC çağır — Mig 070 SLA kaskadı
   const { data, error } = await admin.rpc(
-    "fn_process_proof_pending_sla" as never
+    "fn_process_proof_pending_sla"
   );
 
   if (error) {

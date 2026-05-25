@@ -84,12 +84,12 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient();
   const { data, error } = await admin.rpc(
-    "fn_find_best_partner" as never,
+    "fn_find_best_partner",
     {
       p_product_type: productType,
-      p_material: material,
+      p_material: material ?? "",
       p_order_amount: Number.isFinite(amount) ? amount : 0,
-    } as never
+    }
   );
 
   if (error) {

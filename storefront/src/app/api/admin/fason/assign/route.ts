@@ -18,8 +18,7 @@
 
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { logServerAudit } from "@/lib/audit-log-server";
 
 interface BodyShape {
@@ -40,6 +39,11 @@ const HUMAN_ERRORS: Record<string, { msg: string; status: number }> = {
   order_not_found: { msg: "Sipariş bulunamadı", status: 404 },
   fason_not_found: { msg: "Fason bulunamadı", status: 404 },
   fason_inactive: { msg: "Fason aktif değil", status: 400 },
+  order_proof_pending_sla: {
+    msg: "Sipariş prova onayı bekliyor (proof_pending). 36 saat SLA aktif — partner ataması yapılamaz.",
+    status: 409,
+  },
+  order_status_locked: { msg: "Sipariş durumu atamaya kapalı", status: 409 },
   fason_no_contract: {
     msg: "Bu fason için veri işleyici sözleşmesi imzalanmamış. Sözleşme olmadan atama yapılamaz (KVKK m.12).",
     status: 400,
@@ -75,26 +79,19 @@ export async function POST(req: Request) {
   }
 
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json({ error: "Sunucu yapılandırması" }, { status: 500 });
-  }
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createAdminClient();
 
   // Atomik RPC — Migration 024
   const { data, error } = await admin.rpc(
-    "fn_assign_order_to_fason" as never,
+    "fn_assign_order_to_fason",
     {
       p_order_id: orderId,
       p_fason_partner_id: fasonPartnerId,
       p_admin_user_id: auth.user.id,
-      p_estimated_delivery: estimatedDelivery,
-      p_notes: notes,
+      p_estimated_delivery: estimatedDelivery ?? "",
+      p_notes: notes ?? "",
       p_token_days: 14,
-    } as never
+    }
   );
 
   if (error) {

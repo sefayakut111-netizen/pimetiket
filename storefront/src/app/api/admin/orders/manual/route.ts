@@ -103,7 +103,7 @@ export async function POST(req: Request) {
   const orderId = generateOrderId();
 
   const { error: rpcErr } = await admin.rpc(
-    "fn_create_manual_order" as never,
+    "fn_create_manual_order",
     {
       p_order_id: orderId,
       p_subtotal: body.subtotal,
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
       p_payment: body.payment,
       p_estimated_delivery: body.estimatedDelivery,
       p_items: body.items,
-    } as never
+    }
   );
   if (rpcErr) {
     console.error("[admin/manual] rpc error:", rpcErr);

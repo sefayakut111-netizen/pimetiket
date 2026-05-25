@@ -61,7 +61,7 @@ async function recordQcFailureEscalation(
 ): Promise<void> {
   await admin
     .from("orders")
-    .update({ status: "human_review" } as never)
+    .update({ status: "human_review" })
     .eq("id", orderId);
   await admin.from("order_events").insert([
     {
@@ -72,7 +72,7 @@ async function recordQcFailureEscalation(
       summary,
       detail,
     },
-  ] as never);
+  ]);
 }
 
 /**
@@ -128,7 +128,7 @@ async function runOrderDesignQCInner(
     // Escalate — AI'a gitmeden insan kuyruğuna at
     await admin
       .from("orders")
-      .update({ status: "operator_review" } as never)
+      .update({ status: "operator_review" })
       .eq("id", orderId);
     await admin.from("order_events").insert([
       {
@@ -139,7 +139,7 @@ async function runOrderDesignQCInner(
         summary: `AI ${currentAttempts} kez çalıştı — insan kuyruğuna escalate edildi (sonsuz döngü guard).`,
         detail: { attempts: currentAttempts, max_attempts: QC_MAX_ATTEMPTS },
       },
-    ] as never);
+    ]);
     return {
       orderId,
       ranCount: 0,
@@ -155,7 +155,7 @@ async function runOrderDesignQCInner(
   if (circuit.open) {
     await admin
       .from("orders")
-      .update({ status: "human_review" } as never)
+      .update({ status: "human_review" })
       .eq("id", orderId);
     await admin.from("order_events").insert([
       {
@@ -168,7 +168,7 @@ async function runOrderDesignQCInner(
         )} (${circuit.errorRuns}/${circuit.totalRuns}). İnsan kuyruğuna fallback.`,
         detail: { ...circuit },
       },
-    ] as never);
+    ]);
     return {
       orderId,
       ranCount: 0,
@@ -289,7 +289,7 @@ async function runOrderDesignQCInner(
           duration_ms: result.durationMs,
           cost_usd: result.costUsd,
           tokens_used: result.tokensUsed ?? null,
-        } as never);
+        });
 
         return result.verdict as VerdictKey;
       } catch (err) {
@@ -306,7 +306,7 @@ async function runOrderDesignQCInner(
           product_type: item.product,
           verdict: "error",
           error: err instanceof Error ? err.message : "unknown",
-        } as never);
+        });
         return "error" as VerdictKey;
       }
     })
@@ -339,7 +339,7 @@ async function runOrderDesignQCInner(
     .update({
       status: nextStatus,
       qc_attempt_count: nextAttemptCount,
-    } as never)
+    })
     .eq("id", orderId);
 
   // Eğer bu son izin verilen attempt ise (counter şimdi maks'e ulaştı) ve
@@ -357,7 +357,7 @@ async function runOrderDesignQCInner(
         summary: `AI ${nextAttemptCount}/${QC_MAX_ATTEMPTS} attempt — sonraki çağrı escalate olur.`,
         detail: { attempts: nextAttemptCount, verdict_counts: verdictCounts },
       },
-    ] as never);
+    ]);
   }
 
   return {

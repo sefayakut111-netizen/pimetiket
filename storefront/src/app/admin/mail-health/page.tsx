@@ -19,6 +19,8 @@ import { Card, Button, Input, Eyebrow } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
 
+type MailHealthTab = "status" | "templates";
+
 interface Stats24h {
   enqueued: number;
   sent: number;
@@ -102,6 +104,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function AdminMailHealthPage() {
+  const [activeTab, setActiveTab] = useState<MailHealthTab>("status");
   const [data, setData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,6 +229,38 @@ export default function AdminMailHealthPage() {
           </div>
         </div>
 
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 p-1 rounded-xl bg-gri-100 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab("status")}
+            className={cn(
+              "px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors",
+              activeTab === "status"
+                ? "bg-white text-lacivert shadow-1"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Durum
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("templates")}
+            className={cn(
+              "px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors",
+              activeTab === "templates"
+                ? "bg-white text-lacivert shadow-1"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Şablonlar
+          </button>
+        </div>
+
+        {activeTab === "templates" && <MailTemplatesTab />}
+
+        {activeTab === "status" && (
+          <>
         {/* Error band */}
         {error && (
           <Card className="mb-6 border-kirmizi/30 bg-kirmizi/5 p-4">
@@ -552,8 +587,183 @@ export default function AdminMailHealthPage() {
             </p>
           </>
         )}
+          </>
+        )}
       </div>
     </main>
+  );
+}
+
+interface MailTemplateItem {
+  key: string;
+  label: string;
+  subject: string;
+}
+
+function MailTemplatesTab() {
+  const [templates, setTemplates] = useState<MailTemplateItem[]>([]);
+  const [fromAddress, setFromAddress] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/admin/mail-templates", { cache: "no-store" });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          templates?: MailTemplateItem[];
+          from?: string;
+        };
+        if (json.ok && json.templates) {
+          setTemplates(json.templates);
+          setFromAddress(json.from ?? null);
+          if (json.templates[0]) {
+            setSelectedKey(json.templates[0].key);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const loadPreview = useCallback(async (key: string) => {
+    setPreviewLoading(true);
+    setSelectedKey(key);
+    try {
+      const res = await fetch(
+        `/api/admin/mail-templates?key=${encodeURIComponent(key)}&preview=true`,
+        { cache: "no-store" }
+      );
+      const json = (await res.json()) as {
+        ok?: boolean;
+        html?: string;
+        subject?: string;
+      };
+      if (json.ok) {
+        setPreviewHtml(json.html ?? null);
+        setPreviewSubject(json.subject ?? null);
+      }
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedKey) void loadPreview(selectedKey);
+  }, [selectedKey, loadPreview]);
+
+  const sendTest = async () => {
+    if (!selectedKey) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/mail-templates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          templateKey: selectedKey,
+          recipientEmail: testEmail.trim() || undefined,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; to?: string };
+      if (!json.ok) {
+        alert(`Gönderilemedi: ${json.error ?? "bilinmiyor"}`);
+      } else {
+        alert(`Test mail gönderildi: ${json.to}`);
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) {
+    return <Card className="p-8 text-center text-gri-700">Şablonlar yükleniyor…</Card>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+      <Card className="p-4">
+        <h2 className="text-lg font-semibold mb-3">Mail şablonları</h2>
+        <ul className="space-y-1 max-h-[520px] overflow-y-auto">
+          {templates.map((t) => (
+            <li key={t.key}>
+              <button
+                type="button"
+                onClick={() => void loadPreview(t.key)}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 rounded-lg text-[13px] transition-colors",
+                  selectedKey === t.key
+                    ? "bg-pim-mercan-tint text-lacivert font-semibold"
+                    : "hover:bg-gri-50 text-gri-700"
+                )}
+              >
+                <span className="block font-medium">{t.label}</span>
+                <span className="block text-[11px] text-gri-500 font-mono mt-0.5">
+                  {t.key}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold mb-1">Önizleme</h2>
+        {previewSubject && (
+          <p className="text-sm text-gri-700 mb-1">
+            <strong>Konu:</strong> {previewSubject}
+          </p>
+        )}
+        {fromAddress && (
+          <p className="text-xs text-gri-500 mb-4 font-mono">From: {fromAddress}</p>
+        )}
+
+        {previewLoading ? (
+          <div className="h-[420px] flex items-center justify-center text-gri-700">
+            Render ediliyor…
+          </div>
+        ) : previewHtml ? (
+          <iframe
+            title="Mail önizleme"
+            srcDoc={previewHtml}
+            className="w-full h-[420px] rounded-lg border border-gri-200 bg-white"
+            sandbox=""
+          />
+        ) : (
+          <div className="h-[420px] flex items-center justify-center text-gri-700">
+            Şablon seçin
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2 items-end">
+          <label className="flex-1 min-w-[200px]">
+            <span className="text-xs text-gri-700 block mb-1">
+              Test gönder (boş = admin email)
+            </span>
+            <Input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="admin@pimetiket.com"
+            />
+          </label>
+          <Button
+            variant="primary"
+            onClick={() => void sendTest()}
+            disabled={!selectedKey || sending}
+          >
+            Test gönder
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 

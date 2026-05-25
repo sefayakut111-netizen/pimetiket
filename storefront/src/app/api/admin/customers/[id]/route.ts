@@ -23,6 +23,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums, TablesUpdate } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -59,8 +60,8 @@ export async function GET(
   // (Cast: Supabase tipleri generic RPC için Database<...> ister; bu projede
   //  generated types yok, runtime'da JSONB döndüğünü biliyoruz.)
   const { data, error } = await admin.rpc(
-    "fn_admin_customer_360" as never,
-    { p_user_id: id } as never
+    "fn_admin_customer_360",
+    { p_user_id: id }
   );
 
   if (error) {
@@ -80,7 +81,7 @@ export async function GET(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: "customer.view_360",
+        action: "customer.view_360" as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: `Müşteri 360° görüntülendi: ${id}`,
@@ -88,7 +89,7 @@ export async function GET(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }
@@ -119,7 +120,7 @@ export async function PATCH(
   }
 
   // Sadece gönderilen alanları güncelle (null = temizle, undefined = dokunma)
-  const patch: Record<string, string | null> = {};
+  const patch: TablesUpdate<"profiles"> = {};
   if (parsed.data.display_name !== undefined)
     patch.display_name = parsed.data.display_name;
   if (parsed.data.phone !== undefined) patch.phone = parsed.data.phone;
@@ -133,7 +134,7 @@ export async function PATCH(
   const admin = createAdminClient();
   const { error } = await admin
     .from("profiles")
-    .update(patch as never)
+    .update(patch)
     .eq("id", id);
 
   if (error) {
@@ -157,7 +158,7 @@ export async function PATCH(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }
@@ -211,7 +212,7 @@ export async function DELETE(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }

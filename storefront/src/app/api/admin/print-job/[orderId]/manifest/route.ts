@@ -38,6 +38,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums, Json } from "@/lib/supabase/types";
 import { getSignedDownloadUrl } from "@/lib/storage/r2-client";
 
 export const runtime = "nodejs";
@@ -276,7 +277,7 @@ export async function GET(
     {
       order_id: orderId,
       event_type: "print_manifest_downloaded",
-      status_after: orderRow.status,
+      status_after: orderRow.status as Enums<"order_status">,
       actor_id: auth.user.id,
       actor_role: auth.role,
       summary: `Baskı manifesti indirildi (${itemsManifest.length} ürün)`,
@@ -285,7 +286,7 @@ export async function GET(
         admin_email: auth.user.email,
       },
     },
-  ] as never);
+  ]);
 
   const generatedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000).toISOString();

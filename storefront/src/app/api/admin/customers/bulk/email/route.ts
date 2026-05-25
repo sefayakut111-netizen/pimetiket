@@ -87,7 +87,7 @@ export async function POST(req: Request) {
           status: "pending",
           attempts: 0,
         },
-      ] as never);
+      ]);
     if (outboxErr) {
       skipped.push(userId);
       continue;
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       body: `📧 Toplu email gönderildi (${enqueued.length} alıcı) — "${subject}"`,
       pinned: false,
     }));
-    await admin.from("customer_notes").insert(notes as never);
+    await admin.from("customer_notes").insert(notes);
   }
 
   return NextResponse.json({

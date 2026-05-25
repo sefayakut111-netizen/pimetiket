@@ -152,3 +152,39 @@ export const FASON_ASSIGN_ELIGIBLE_STATUSES: readonly OrderStatus[] = [
   "ready_to_ship",
   "in_production",
 ];
+
+/** Admin toplu status değiştirme — izin verilen geçişler (Sprint 2) */
+export const VALID_BULK_TRANSITIONS: Partial<
+  Record<OrderStatus, readonly OrderStatus[]>
+> = {
+  paid: ["qc_pending", "cancelled"],
+  awaiting_upload: ["cancelled"],
+  qc_pending: ["proof_generating", "human_review", "cancelled"],
+  proof_pending: ["proof_approved", "cancelled"],
+  proof_approved: ["ready_to_ship"],
+  ready_to_ship: ["in_production"],
+  in_production: ["shipped"],
+  shipped: ["delivered"],
+};
+
+export function isValidBulkTransition(
+  from: OrderStatus,
+  to: OrderStatus
+): boolean {
+  const allowed = VALID_BULK_TRANSITIONS[from];
+  return allowed ? allowed.includes(to) : false;
+}
+
+/** Seçili siparişlerin hepsine uygulanabilecek ortak hedef statüler */
+export function getCommonBulkTransitionTargets(
+  statuses: OrderStatus[]
+): OrderStatus[] {
+  if (statuses.length === 0) return [];
+  const perOrder = statuses.map(
+    (s) => VALID_BULK_TRANSITIONS[s] ?? ([] as OrderStatus[])
+  );
+  return perOrder.reduce<OrderStatus[]>(
+    (acc, curr) => acc.filter((t) => curr.includes(t)),
+    [...perOrder[0]!]
+  );
+}

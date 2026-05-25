@@ -652,6 +652,120 @@ export type Database = {
           },
         ]
       }
+      blog_posts: {
+        Row: {
+          id: string
+          slug: string
+          title_tr: string
+          title_en: string | null
+          body_tr: string
+          body_en: string | null
+          excerpt_tr: string | null
+          excerpt_en: string | null
+          category: string
+          cover_image_url: string | null
+          author_name: string | null
+          status: string
+          read_minutes: number | null
+          seo_title: string | null
+          seo_description: string | null
+          published_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          title_tr: string
+          title_en?: string | null
+          body_tr: string
+          body_en?: string | null
+          excerpt_tr?: string | null
+          excerpt_en?: string | null
+          category?: string
+          cover_image_url?: string | null
+          author_name?: string | null
+          status?: string
+          read_minutes?: number | null
+          seo_title?: string | null
+          seo_description?: string | null
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title_tr?: string
+          title_en?: string | null
+          body_tr?: string
+          body_en?: string | null
+          excerpt_tr?: string | null
+          excerpt_en?: string | null
+          category?: string
+          cover_image_url?: string | null
+          author_name?: string | null
+          status?: string
+          read_minutes?: number | null
+          seo_title?: string | null
+          seo_description?: string | null
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          id: string
+          user_id: string | null
+          guest_email: string | null
+          guest_name: string | null
+          subject: string
+          message: string
+          category: string
+          status: string
+          order_id: string | null
+          admin_response: string | null
+          admin_responded_by: string | null
+          admin_responded_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          subject: string
+          message: string
+          category?: string
+          status?: string
+          order_id?: string | null
+          admin_response?: string | null
+          admin_responded_by?: string | null
+          admin_responded_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          subject?: string
+          message?: string
+          category?: string
+          status?: string
+          order_id?: string | null
+          admin_response?: string | null
+          admin_responded_by?: string | null
+          admin_responded_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -2236,21 +2350,30 @@ export type Database = {
           capability_value: string
           created_at: string | null
           id: string
+          is_verified: boolean
           partner_id: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           capability_type: string
           capability_value: string
           created_at?: string | null
           id?: string
+          is_verified?: boolean
           partner_id: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           capability_type?: string
           capability_value?: string
           created_at?: string | null
           id?: string
+          is_verified?: boolean
           partner_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {

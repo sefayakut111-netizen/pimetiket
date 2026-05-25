@@ -28,6 +28,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums, Json } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -200,8 +201,8 @@ export async function POST(
     .update({
       qty: newSourceQty,
       total: newSourceTotal,
-      meta: sourceMeta,
-    } as never)
+      meta: sourceMeta as Json,
+    })
     .eq("id", sourceItemId)
     .eq("order_id", orderId)
     .eq("qty", source.qty); // optimistic lock — başka concurrent değişiklik olduysa fail
@@ -231,8 +232,8 @@ export async function POST(
     .update({
       qty: newTargetQty,
       total: newTargetTotal,
-      meta: targetMeta,
-    } as never)
+      meta: targetMeta as Json,
+    })
     .eq("id", targetItemId)
     .eq("order_id", orderId)
     .eq("qty", target.qty);
@@ -244,8 +245,8 @@ export async function POST(
       .update({
         qty: source.qty,
         total: source.total,
-        meta: source.meta ?? {},
-      } as never)
+        meta: (source.meta ?? {}) as Json,
+      })
       .eq("id", sourceItemId);
     return NextResponse.json(
       {
@@ -262,7 +263,7 @@ export async function POST(
     {
       order_id: orderId,
       event_type: "slot_redistributed",
-      status_after: order.status,
+      status_after: order.status as Enums<"order_status">,
       actor_id: user.id,
       actor_role: "customer",
       summary: `${qtyToMove} adet "${source.title}" → "${target.title}" transferi yapıldı (kısmi iade alternatifi).`,
@@ -278,7 +279,7 @@ export async function POST(
         newTargetQty,
       },
     },
-  ] as never);
+  ]);
 
   return NextResponse.json({
     ok: true,

@@ -15,7 +15,7 @@ export async function unsnoozeExpiredActions(
 
   const { data, error } = await admin
     .from("auditor_pending_actions")
-    .update({ status: "pending" } as never)
+    .update({ status: "pending" })
     .eq("status", "snoozed")
     .lt("snooze_until", now)
     .select("id");

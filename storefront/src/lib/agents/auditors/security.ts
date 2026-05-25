@@ -280,7 +280,7 @@ export class SecurityAuditor extends AuditorBase {
     const { data, error } = await this.admin
       .from("audit_log")
       .select("id, actor, target_id, payload, created_at")
-      .eq("event_type", "profile_role_update" as never)
+      .eq("event_type", "profile_role_update")
       .gte("created_at", since.toISOString());
 
     if (error) return [];

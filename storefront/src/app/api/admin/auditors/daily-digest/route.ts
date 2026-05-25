@@ -88,7 +88,7 @@ export async function POST() {
   const { count: pendingCount } = await admin
     .from("auditor_pending_actions")
     .select("*", { count: "exact", head: true })
-    .eq("status", "pending" as never);
+    .eq("status", "pending");
 
   const subject =
     totalCritical > 0

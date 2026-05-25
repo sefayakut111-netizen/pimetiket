@@ -63,7 +63,7 @@ export async function GET(
   const { data: recentRunsData } = await admin
     .from("auditor_runs")
     .select("*")
-    .eq("auditor_name", auditorName as never)
+    .eq("auditor_name", auditorName)
     .gte("started_at", thirtyDaysAgo.toISOString())
     .order("started_at", { ascending: false })
     .limit(100);
@@ -77,7 +77,7 @@ export async function GET(
       .from("auditor_runs")
       .select("*")
       .eq("id", runIdParam)
-      .eq("auditor_name", auditorName as never)
+      .eq("auditor_name", auditorName)
       .maybeSingle();
     latestRun = (data ?? null) as unknown as AuditorRunRow | null;
   } else {
@@ -101,7 +101,7 @@ export async function GET(
   const { data: pendingData } = await admin
     .from("auditor_pending_actions")
     .select("*")
-    .eq("auditor_name", auditorName as never)
+    .eq("auditor_name", auditorName)
     .order("created_at", { ascending: false })
     .limit(50);
 

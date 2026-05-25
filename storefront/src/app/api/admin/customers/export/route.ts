@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 import type { AdminCustomerWithSegment } from "@/app/api/admin/customers/route";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -146,16 +147,18 @@ export async function GET(req: Request) {
       {
         actor_id: auth.user.id,
         actor_email: auth.user.email,
-        action: "customer_csv_export",
+        action: "customer_csv_export" as Enums<"audit_action">,
+        actor_role: "admin",
         target_type: "customers",
         target_id: null,
-        metadata: {
+        summary: `Müşteri CSV export (${rows.length} satır)`,
+        detail: {
           rows: rows.length,
           segment,
           search: search || undefined,
         },
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }

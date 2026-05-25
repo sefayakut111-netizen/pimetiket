@@ -142,9 +142,9 @@ export async function POST(req: Request) {
   // 4) profiles.role = 'partner' upsert
   await admin
     .from("profiles")
-    .upsert({ id: userId, role: "partner" } as never, {
+    .upsert({ id: userId, role: "partner" }, {
       onConflict: "id",
-    } as never);
+    });
 
   // 5) Magic-link üret
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({

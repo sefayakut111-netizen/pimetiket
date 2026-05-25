@@ -55,6 +55,7 @@ export function Footer() {
       // (Çerez / Ön Bilgilendirme / Mesafeli Satış / Cayma Hakkı)
       links: [
         { label: "SSS", href: "/sss" },
+        { label: "Destek talebi oluştur", href: "/destek" },
         { label: "İade talebi oluştur", href: "/iade-talep" },
         { label: "İade-değişim politikası", href: "/iade-degisim-politikasi" },
         { label: "Çerez Politikası", href: "/cerez" },

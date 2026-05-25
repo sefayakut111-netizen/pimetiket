@@ -23,6 +23,7 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/types";
 import { queryPaymentStatus, isPayTrConfigured } from "@/lib/payment/paytr";
 import {
   sendOrderConfirmation,
@@ -129,7 +130,7 @@ export async function GET(req: Request) {
                 0,
                 200
               ),
-          } as never)
+          })
           .eq("id", intent.id)
           .eq("status", "pending"); // optimistic lock
         summary.failed += 1;
@@ -172,14 +173,14 @@ export async function GET(req: Request) {
           .split("T")[0];
 
         const { data: finalizeResult, error: rpcErr } = await admin.rpc(
-          "fn_finalize_paid_order" as never,
+          "fn_finalize_paid_order",
           {
             p_merchant_oid: intent.id,
             p_order_id: "RECONCILER", // sequence override edilir (Mig 065)
-            p_items: snapshot.items,
-            p_payment_meta: paymentMeta,
+            p_items: snapshot.items as Json,
+            p_payment_meta: paymentMeta as Json,
             p_estimated_delivery: estimatedDelivery,
-          } as never
+          }
         );
 
         if (rpcErr) {

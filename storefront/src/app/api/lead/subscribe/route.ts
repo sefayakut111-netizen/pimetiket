@@ -104,7 +104,7 @@ export async function POST(req: Request) {
         .update({
           subscribed: true,
           unsubscribed_at: null,
-        } as never)
+        })
         .eq("id", ex.id);
     }
     return NextResponse.json({
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
         consent_ip: ip !== "unknown" ? ip : null,
         consent_ua: ua,
       },
-    ] as never)
+    ])
     .select("id")
     .single();
 

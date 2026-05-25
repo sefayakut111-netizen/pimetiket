@@ -21,6 +21,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -72,7 +73,7 @@ export async function POST(
 
   const { error } = await admin.auth.admin.updateUserById(id, {
     ban_duration: isSuspending ? PERMANENT_BAN : "none",
-  } as never);
+  });
 
   if (error) {
     return NextResponse.json(
@@ -87,7 +88,9 @@ export async function POST(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: isSuspending ? "customer.suspend" : "customer.unsuspend",
+        action: (isSuspending
+          ? "customer.suspend"
+          : "customer.unsuspend") as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: isSuspending
@@ -101,7 +104,7 @@ export async function POST(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }

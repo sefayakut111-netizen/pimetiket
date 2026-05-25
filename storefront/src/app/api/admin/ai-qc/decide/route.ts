@@ -59,14 +59,14 @@ export async function POST(req: Request) {
   // 1) Order status update — guard: yalnızca QC kuyruğundaki statüsler
   const { data: updated, error: updateErr } = await admin
     .from("orders")
-    .update({ status: nextStatus } as never)
+    .update({ status: nextStatus })
     .eq("id", body.orderId)
     .in("status", [
       "human_review",
       "human_review_failed",
       "proof_generating",
       "operator_review", // P1 #7 — escalate edilmiş sipariş kararı
-    ] as never)
+    ])
     .select("id, status")
     .single();
 

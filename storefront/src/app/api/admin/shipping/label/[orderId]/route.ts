@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 import { generateShippingLabel } from "@/lib/shipping/generate-label";
 
 export const runtime = "nodejs";
@@ -120,7 +121,7 @@ export async function GET(
     {
       order_id: orderId,
       event_type: "shipping_label_printed",
-      status_after: orderRow.status,
+      status_after: orderRow.status as Enums<"order_status">,
       actor_id: auth.user.id,
       actor_role: auth.role,
       summary: trackingNumber
@@ -132,7 +133,7 @@ export async function GET(
         admin_email: auth.user.email,
       },
     },
-  ] as never);
+  ]);
 
   return new NextResponse(pdf as unknown as BodyInit, {
     status: 200,

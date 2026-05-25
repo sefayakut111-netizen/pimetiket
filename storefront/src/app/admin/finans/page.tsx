@@ -17,6 +17,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow } from "@/components/ui";
@@ -35,6 +36,9 @@ import {
   formatCurrency,
   formatShortDate,
 } from "@/lib/admin-analytics";
+import { DetailReports } from "@/components/admin/reports/DetailReports";
+
+type ReportTab = "overview" | "detail";
 
 type TimeRange = "7d" | "mtd" | "30d" | "all";
 
@@ -147,9 +151,18 @@ function formatPercentChange(curr: number, prev: number): {
 }
 
 export default function AdminFinansPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [range, setRange] = useState<TimeRange>("mtd");
   const [coupons, setCoupons] = useState<CouponSnapshot[]>([]);
+  const [reportTab, setReportTab] = useState<ReportTab>(() =>
+    searchParams.get("tab") === "detail" ? "detail" : "overview"
+  );
+
+  useEffect(() => {
+    setReportTab(searchParams.get("tab") === "detail" ? "detail" : "overview");
+  }, [searchParams]);
 
   useEffect(() => {
     const refresh = () => setOrders(listCustomerOrders());
@@ -252,13 +265,21 @@ export default function AdminFinansPage() {
     .sort((a, b) => b.usedCount - a.usedCount)
     .slice(0, 5);
 
+  const setFinansTab = (tab: ReportTab) => {
+    setReportTab(tab);
+    router.replace(
+      tab === "detail" ? "/admin/finans?tab=detail" : "/admin/finans",
+      { scroll: false }
+    );
+  };
+
   return (
     <main className="py-8 pb-20 bg-gri-50 min-h-[calc(100vh-56px)]">
       <div className="mx-auto max-w-[1320px] px-6">
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
           <div>
-            <Eyebrow>Finans</Eyebrow>
+            <Eyebrow>Finans & Raporlar</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
               Mali tablo
             </h1>
@@ -287,6 +308,35 @@ export default function AdminFinansPage() {
           </div>
         </div>
 
+        <div className="flex gap-2 border-b border-gri-200 mb-6">
+          <button
+            type="button"
+            onClick={() => setFinansTab("overview")}
+            className={cn(
+              "px-4 py-2 text-[13.5px] font-medium transition-colors -mb-px",
+              reportTab === "overview"
+                ? "border-b-2 border-pim-mercan font-semibold text-lacivert"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Genel Bakış
+          </button>
+          <button
+            type="button"
+            onClick={() => setFinansTab("detail")}
+            className={cn(
+              "px-4 py-2 text-[13.5px] font-medium transition-colors -mb-px",
+              reportTab === "detail"
+                ? "border-b-2 border-pim-mercan font-semibold text-lacivert"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Detay Raporlar
+          </button>
+        </div>
+
+        {reportTab === "overview" && (
+          <>
         {/* PayTR uzlaşma uyarısı (mali pencere açılana kadar) */}
         <Card padding="p-4" className="mb-6 bg-sari-soft ring-sari/20">
           <div className="flex items-start gap-3">
@@ -630,6 +680,10 @@ export default function AdminFinansPage() {
             </div>
           </div>
         </Card>
+          </>
+        )}
+
+        {reportTab === "detail" && <DetailReports orders={orders} />}
       </div>
     </main>
   );

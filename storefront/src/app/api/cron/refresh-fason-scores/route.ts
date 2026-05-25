@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   });
 
   const { data, error } = await admin.rpc(
-    "fn_refresh_fason_scores" as never
+    "fn_refresh_fason_scores"
   );
 
   if (error) {
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   let outboxCleaned: number | null = null;
   try {
     const { data: cleaned } = await admin.rpc(
-      "fn_cleanup_outbox_payload" as never
+      "fn_cleanup_outbox_payload"
     );
     outboxCleaned = (cleaned as number) ?? null;
   } catch (err) {

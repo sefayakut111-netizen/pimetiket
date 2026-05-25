@@ -25,7 +25,7 @@ export async function POST(
       status_reason: null,
       active: true,
       updated_by: auth.user.id,
-    } as never)
+    })
     .eq("id", id);
   if (error) {
     return NextResponse.json(

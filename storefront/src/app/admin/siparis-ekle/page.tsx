@@ -1,9 +1,8 @@
 /**
  * /admin/siparis-ekle — Manuel sipariş giriş formu.
  *
- * Telefonla / WhatsApp'la / showroom'dan gelen siparişi sisteme alır.
- * Şu an: localStorage'a "paid" status'la kaydeder (dashboard'da görünür).
- * İleri faz: admin RPC fn_create_manual_order ile DB'ye yazılacak.
+ * Telefonla / WhatsApp'la / showroom'dan gelen siparişi DB'ye kaydeder
+ * (/api/admin/orders/manual → fn_create_manual_order RPC).
  */
 
 "use client";

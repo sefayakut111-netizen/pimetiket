@@ -22,6 +22,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { guardCards } from "@/lib/product-cards-guard";
 import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
@@ -240,17 +241,14 @@ export default function EtiketGridPage() {
         const cards = (j.cards as DbProductCard[])
           .map(dbCardToEtiketCard)
           .filter((c): c is EtiketCard => c !== null);
-        // Sefa 21 May v68 (site denetim P0 #1): DB INSERT'lerinde Türkçe
-        // karakter bozuk geldiyse (U+FFFD replacement char veya bozuk
-        // mojibake "�") fallback hardcoded array'i kullan, kullanıcıya
-        // bozuk metin gösterme.
-        const hasBrokenEncoding = cards.some((c) => /[�]/.test(c.titleTr) || /[�]/.test(c.descTr));
-        if (hasBrokenEncoding) {
-          console.warn("[etiket] DB kart metinlerinde bozuk karakter — fallback kullanılıyor");
-          return;
-        }
-        const rulo = cards.filter((c) => c.form === "rulo");
-        const tabaka = cards.filter((c) => c.form === "tabaka");
+        const rulo = guardCards(
+          cards.filter((c) => c.form === "rulo"),
+          RULO_CARDS
+        );
+        const tabaka = guardCards(
+          cards.filter((c) => c.form === "tabaka"),
+          TABAKA_CARDS
+        );
         if (rulo.length > 0) setRuloCards(rulo);
         if (tabaka.length > 0) setTabakaCards(tabaka);
       })

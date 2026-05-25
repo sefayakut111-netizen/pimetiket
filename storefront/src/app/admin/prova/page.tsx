@@ -24,6 +24,7 @@ import {
   updateCustomerOrderStatus,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import type { OrderStatus } from "@/lib/order";
 import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
@@ -161,7 +162,7 @@ export default function AdminProvaPage() {
         return false;
       }
       // Optimistic: local store'u da güncelle (page refresh tetiklesin)
-      updateCustomerOrderStatus(orderId, status as never);
+      updateCustomerOrderStatus(orderId, status as OrderStatus);
       // Re-fetch admin list — useEffect listener yakalar
       window.dispatchEvent(new Event("pim_customer_orders_updated"));
       return true;

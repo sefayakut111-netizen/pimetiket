@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 import { VIEW_MODE_COOKIE } from "@/lib/view-mode";
 import { PARTNER_PREVIEW_ID_COOKIE } from "@/lib/partner-preview";
 
@@ -78,12 +79,15 @@ export async function POST(req: Request) {
     try {
       const admin = createAdminClient();
       await admin.from("audit_log").insert({
-        actor: user.email ?? user.id,
-        event_type: "admin_partner_ui_preview",
+        actor_id: user.id,
+        actor_email: user.email ?? null,
+        actor_role: "admin",
+        action: "settings.update" as Enums<"audit_action">,
         target_type: "partner_ui",
         target_id: user.id,
-        payload: { generic: true },
-      } as never);
+        summary: "Admin partner UI preview mode enabled",
+        detail: { generic: true },
+      });
     } catch {
       // sessiz — audit opsiyonel
     }

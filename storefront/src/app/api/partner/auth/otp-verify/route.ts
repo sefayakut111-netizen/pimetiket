@@ -111,7 +111,7 @@ export async function POST(req: Request) {
   if (contact) {
     await admin
       .from("partner_contacts")
-      .update({ last_login_at: new Date().toISOString() } as never)
+      .update({ last_login_at: new Date().toISOString() })
       .eq("id", contact.id);
   }
 

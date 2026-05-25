@@ -51,8 +51,8 @@ export async function GET() {
   let referralCode = (profile as { referral_code: string | null }).referral_code;
   if (!referralCode) {
     const { data: code } = await admin.rpc(
-      "fn_generate_referral_code" as never,
-      { p_user_id: user.id } as never
+      "fn_generate_referral_code",
+      { p_user_id: user.id }
     );
     referralCode = (code as string) ?? null;
   }

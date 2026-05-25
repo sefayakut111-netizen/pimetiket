@@ -1,8 +1,5 @@
 /**
  * Pim Etiket — /blog/[slug]
- *
- * Blog yazı detayı. Markdown'sız basit paragraf render —
- * `**bold**` syntax'ı için ufak parser, listeler için tire.
  */
 
 import type { Metadata } from "next";
@@ -12,7 +9,11 @@ import { notFound } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Pill } from "@/components/ui";
-import { BLOG_POSTS, getBlogPost, getReadMinutes } from "@/lib/blog-posts";
+import {
+  getPublishedPosts,
+  getPostBySlug,
+  getReadMinutes,
+} from "@/lib/blog-posts";
 import { getSiteImage } from "@/lib/site-images";
 import {
   SchemaJsonLd,
@@ -24,17 +25,20 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export async function generateStaticParams() {
-  return BLOG_POSTS.map((p) => ({ slug: p.slug }));
+  const posts = await getPublishedPosts();
+  return posts.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPostBySlug(slug);
   if (!post) return { title: "Yazı bulunamadı" };
   return {
-    title: post.title,
-    description: post.excerpt,
+    title: post.seoTitle ?? post.title,
+    description: post.seoDescription ?? post.excerpt,
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
       title: post.title,
@@ -56,11 +60,9 @@ function formatDate(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/** Basit markdown render: **bold**, paragraflar, ön çizgili listeler */
 function renderBody(body: string): React.ReactNode[] {
   const blocks = body.split(/\n\n+/);
   return blocks.map((block, i) => {
-    // Bold işaretlerini parse et
     const parts = block.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
@@ -84,27 +86,28 @@ function renderBody(body: string): React.ReactNode[] {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const [post, allPosts, defaultHero] = await Promise.all([
+    getPostBySlug(slug),
+    getPublishedPosts(),
+    getSiteImage("blog_default_hero"),
+  ]);
   if (!post) notFound();
 
-  // Admin panelinden yüklenen blog default hero (varsa Pim mascot yerine)
-  const defaultHero = await getSiteImage("blog_default_hero");
+  const idx = allPosts.findIndex((p) => p.slug === slug);
+  const prev = idx > 0 ? allPosts[idx - 1] : null;
+  const next = idx >= 0 && idx < allPosts.length - 1 ? allPosts[idx + 1] : null;
 
-  // Sıradaki + önceki yazılar
-  const idx = BLOG_POSTS.findIndex((p) => p.slug === slug);
-  const prev = idx > 0 ? BLOG_POSTS[idx - 1] : null;
-  const next = idx < BLOG_POSTS.length - 1 ? BLOG_POSTS[idx + 1] : null;
+  const coverSrc = post.coverImageUrl ?? defaultHero?.publicUrl ?? null;
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
-      {/* Article + Breadcrumb JSON-LD — rich snippet için */}
       <SchemaJsonLd
         data={articleSchema({
           title: post.title,
           description: post.excerpt,
           url: `/blog/${post.slug}`,
           publishedAt: post.publishedAt,
-          image: defaultHero?.publicUrl,
+          image: coverSrc ?? undefined,
         })}
       />
       <SchemaJsonLd
@@ -116,7 +119,6 @@ export default async function BlogPostPage({ params }: Props) {
       />
 
       <article className="mx-auto max-w-[760px] px-6">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-[14px] mb-6">
           <Link
             href="/"
@@ -135,7 +137,6 @@ export default async function BlogPostPage({ params }: Props) {
           <span className="font-semibold truncate">{post.title}</span>
         </div>
 
-        {/* Header */}
         <div className="flex items-center gap-2 mb-3">
           <Pill variant="mercan">{post.category}</Pill>
           <span className="text-[12px] text-gri-500">
@@ -155,14 +156,13 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Cover — admin'in yüklediği default görsel öncelikli, yoksa Pim */}
         <div
-          className={`${post.coverColor} rounded-2xl grid place-items-center min-h-[240px] mb-7 overflow-hidden`}
+          className={`${post.coverColor} rounded-2xl grid place-items-center min-h-[240px] mb-7 overflow-hidden relative`}
         >
-          {defaultHero ? (
+          {coverSrc ? (
             <Image
-              src={defaultHero.publicUrl}
-              alt={defaultHero.altText ?? post.title}
+              src={coverSrc}
+              alt={defaultHero?.altText ?? post.title}
               width={1200}
               height={630}
               sizes="(max-width: 768px) 100vw, 800px"
@@ -173,32 +173,24 @@ export default async function BlogPostPage({ params }: Props) {
           )}
         </div>
 
-        {/* Excerpt */}
         <p className="text-[18px] text-lacivert leading-relaxed font-medium border-l-4 border-pim-mercan pl-4 mb-7">
           {post.excerpt}
         </p>
 
-        {/* Body */}
         <div className="prose-pim">{renderBody(post.body)}</div>
 
-        {/* Pim chat CTA */}
         <Card padding="p-6" className="!bg-krem mt-10">
           <div className="flex gap-4 items-start">
             <Pim pose="chat" size={64} />
             <div className="flex-1">
-              <h3 className="font-semibold text-base mb-1">
-                Pim&rsquo;e sor
-              </h3>
+              <h3 className="font-semibold text-base mb-1">Pim&rsquo;e sor</h3>
               <p className="text-[13.5px] text-gri-700 leading-relaxed">
-                Bu konuda kafan karıştıysa sağ alt köşedeki Pim balonuna
-                tıkla. Etiket / sticker konfigürasyonunda anlık fiyat çıkarır
-                veya soru cevaplar.
+                Bu konuda kafan karıştıysa sağ alt köşedeki Pim balonuna tıkla.
               </p>
             </div>
           </div>
         </Card>
 
-        {/* Önceki / Sonraki */}
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-3">
           {prev ? (
             <Link

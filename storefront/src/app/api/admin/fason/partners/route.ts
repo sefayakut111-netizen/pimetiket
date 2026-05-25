@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/types";
 
 // ============================================================
 // Zod schemas
@@ -114,7 +115,7 @@ export async function GET() {
   const { data: caps } = partnerIds.length
     ? await admin
         .from("partner_capabilities")
-        .select("partner_id, capability_type, capability_value")
+        .select("partner_id, id, capability_type, capability_value, is_verified")
         .in("partner_id", partnerIds)
     : { data: [] };
 
@@ -129,8 +130,10 @@ export async function GET() {
   };
   type CP = {
     partner_id: string;
+    id: string;
     capability_type: string;
     capability_value: string;
+    is_verified: boolean;
   };
 
   const contactsByPartner = new Map<string, CT[]>();
@@ -260,13 +263,13 @@ export async function POST(req: Request) {
 
   try {
     const { data: partnerId, error: rpcErr } = await admin.rpc(
-      "fn_create_partner_with_contacts" as never,
+      "fn_create_partner_with_contacts",
       {
-        p_partner: partnerJson,
-        p_contacts: contacts,
-        p_capabilities: capabilities,
+        p_partner: partnerJson as Json,
+        p_contacts: contacts as Json,
+        p_capabilities: capabilities as Json,
         p_admin_id: auth.user.id,
-      } as never
+      }
     );
     if (rpcErr) {
       return NextResponse.json(
@@ -336,7 +339,7 @@ async function handleLegacyFlatBody(body: Record<string, unknown>) {
   };
   const { data, error } = await admin
     .from("fason_partners")
-    .insert(insertPayload as never)
+    .insert(insertPayload)
     .select()
     .single();
   if (error) {

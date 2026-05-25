@@ -25,6 +25,7 @@ import {
   ADMIN_STATUS_FILTER_CHIPS,
   UNASSIGNED_PRODUCTION_STATUSES,
   parseAdminStatusFilter,
+  getCommonBulkTransitionTargets,
 } from "@/lib/order";
 // Sefa 22 May v68: updateCustomerOrderStatus kaldırıldı — auth mode'da
 // no-op olduğu için admin "Uygula" sessizce başarısız oluyordu. Artık
@@ -334,17 +335,20 @@ function AdminSiparislerPageInner() {
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
-  /** Toplu durum güncelle — Sefa 22 May v68:
-   *  Önceki kod updateCustomerOrderStatus() çağırıyordu — bu helper auth
-   *  mode'da NO-OP (console.warn'a yazıp dönüyor). Yani admin "Uygula"ya
-   *  tıklıyordu, hiçbir şey olmuyordu. Doğru endpoint: POST /api/admin/
-   *  orders/[id]/status (service_role + admin role guard). */
+  const bulkTargetStatuses = useMemo(() => {
+    const statuses = orders
+      .filter((o) => selected.has(o.id))
+      .map((o) => o.status);
+    return getCommonBulkTransitionTargets(statuses);
+  }, [orders, selected]);
+
+  /** Toplu durum güncelle — POST /api/admin/orders/bulk-status */
   const applyBulkStatus = useCallback(async () => {
     if (!bulkStatus || selected.size === 0) return;
     const targetLabel = STATUS_META[bulkStatus].label;
     if (
       !confirm(
-        `${selected.size} siparişin durumu "${targetLabel}" olarak güncellensin mi?`
+        `${selected.size} siparişin durumunu "${targetLabel}" olarak değiştirmek istediğinize emin misiniz?`
       )
     ) {
       return;
@@ -352,42 +356,42 @@ function AdminSiparislerPageInner() {
     const count = selected.size;
     const ids = Array.from(selected);
 
-    // Paralel istek (max 5 eşzamanlı — Vercel function rate'i koru)
-    let failed = 0;
-    for (let i = 0; i < ids.length; i += 5) {
-      const batch = ids.slice(i, i + 5);
-      const results = await Promise.allSettled(
-        batch.map((id) =>
-          fetch(`/api/admin/orders/${id}/status`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              status: bulkStatus,
-              note: "Toplu güncelleme (admin panel)",
-            }),
-          })
-        )
-      );
-      for (const r of results) {
-        if (r.status === "rejected" || !r.value.ok) failed++;
-      }
+    const res = await fetch("/api/admin/orders/bulk-status", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orderIds: ids,
+        newStatus: bulkStatus,
+        reason: "Toplu güncelleme (admin panel)",
+      }),
+    });
+
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      updated?: number;
+      skipped?: number;
+      errors?: string[];
+      error?: string;
+    };
+
+    if (!res.ok || !json.ok) {
+      alert(`Güncelleme başarısız: ${json.error ?? res.status}`);
+      return;
     }
 
-    if (failed > 0) {
-      alert(
-        `${count - failed}/${count} sipariş güncellendi. ${failed} hata oluştu.`
-      );
+    const updated = json.updated ?? 0;
+    const skipped = json.skipped ?? 0;
+    if (skipped > 0) {
+      alert(`${updated}/${count} sipariş güncellendi. ${skipped} atlandı.`);
     }
 
-    // Liste yenile
     void loadOrders();
     clearSelection();
     setBulkStatus("");
-    // PostHog: bulk update event
     void import("@/lib/analytics/posthog-events")
       .then(({ track }) => {
         track("admin_bulk_status_changed", {
-          count,
+          count: updated,
           new_status: bulkStatus,
         });
       })
@@ -544,21 +548,27 @@ function AdminSiparislerPageInner() {
                 <option value="" className="text-lacivert">
                   Seç…
                 </option>
-                {ALL_STATUSES.map((st) => (
-                  <option
-                    key={st}
-                    value={st}
-                    className="text-lacivert"
-                  >
-                    {STATUS_META[st].label}
+                {bulkTargetStatuses.length === 0 ? (
+                  <option value="" disabled className="text-lacivert">
+                    Ortak geçiş yok
                   </option>
-                ))}
+                ) : (
+                  bulkTargetStatuses.map((st) => (
+                    <option
+                      key={st}
+                      value={st}
+                      className="text-lacivert"
+                    >
+                      {STATUS_META[st].label}
+                    </option>
+                  ))
+                )}
               </select>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={applyBulkStatus}
-                disabled={!bulkStatus}
+                disabled={!bulkStatus || bulkTargetStatuses.length === 0}
               >
                 Uygula
               </Button>

@@ -28,6 +28,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/types";
 import { executePendingAction } from "@/lib/agents/_shared/proposal";
 import { sendActionAppliedNotification } from "@/lib/agents/_shared/mailer";
 import type {
@@ -127,7 +128,7 @@ export async function POST(
         reviewed_at: reviewedAt,
         review_note: note,
         snooze_until: snoozeUntil.toISOString(),
-      } as never)
+      })
       .eq("id", id);
 
     if (error) {
@@ -152,7 +153,7 @@ export async function POST(
         reviewed_by: auth.user.id,
         reviewed_at: reviewedAt,
         review_note: note,
-      } as never)
+      })
       .eq("id", id);
 
     if (error) {
@@ -176,7 +177,7 @@ export async function POST(
     // action_payload kolonunu güncelle
     await admin
       .from("auditor_pending_actions")
-      .update({ action_payload: actionPayload } as never)
+      .update({ action_payload: actionPayload as Json })
       .eq("id", id);
   }
 
@@ -188,7 +189,7 @@ export async function POST(
       reviewed_by: auth.user.id,
       reviewed_at: reviewedAt,
       review_note: note,
-    } as never)
+    })
     .eq("id", id);
 
   if (approveErr) {

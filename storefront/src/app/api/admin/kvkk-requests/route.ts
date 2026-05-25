@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (statusParam !== "all" && VALID_STATUS.includes(statusParam as never)) {
+  if (statusParam !== "all" && (VALID_STATUS as readonly string[]).includes(statusParam)) {
     query = query.eq("status", statusParam);
   }
 

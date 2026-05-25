@@ -57,7 +57,7 @@ export async function PATCH(
   }
   if (
     typeof body.product_type === "string" &&
-    VALID_PRODUCTS.includes(body.product_type as never)
+    (VALID_PRODUCTS as readonly string[]).includes(body.product_type)
   ) {
     update.product_type = body.product_type;
   }

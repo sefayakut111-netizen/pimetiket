@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   const ext =
     typeof body.extension === "string" &&
-    VALID_EXT.includes(body.extension.toLowerCase() as never)
+    (VALID_EXT as readonly string[]).includes(body.extension.toLowerCase())
       ? body.extension.toLowerCase()
       : null;
   if (!ext) {

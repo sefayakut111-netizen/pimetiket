@@ -144,7 +144,7 @@ export async function POST(req: Request) {
     // partner_contacts.user_id link
     await admin
       .from("partner_contacts")
-      .update({ user_id: userId } as never)
+      .update({ user_id: userId })
       .eq("id", contact.id);
   }
 
@@ -155,8 +155,8 @@ export async function POST(req: Request) {
   await admin
     .from("profiles")
     .upsert(
-      { id: userId, role: "partner" } as never,
-      { onConflict: "id" } as never
+      { id: userId, role: "partner" },
+      { onConflict: "id" }
     );
 
   // 4) Supabase OTP gönder (signInWithOtp — 6 haneli email kodu)

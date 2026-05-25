@@ -98,7 +98,7 @@ export async function POST(
       resolution_note: resolutionNote,
       resolved_by: auth.user.id,
       resolved_at: new Date().toISOString(),
-    } as never)
+    })
     .eq("id", helpRequestId);
   if (updErr) {
     console.error("[admin/help-requests/respond] update error:", updErr);
@@ -112,7 +112,7 @@ export async function POST(
   // dismissed durumunda da pending'e dön — müşteri cevabı görüp karar versin
   await admin
     .from("order_items")
-    .update({ proof_status: "pending" } as never)
+    .update({ proof_status: "pending" })
     .eq("id", hr.order_item_id)
     .eq("proof_status", "help_requested");
 
@@ -135,7 +135,7 @@ export async function POST(
         original_message: hr.message,
       },
     },
-  ] as never);
+  ]);
 
   // Sefa 22 May v68 Faz 4b — Mail bildirim (sadece 'resolved' durumunda):
   // 'dismissed' = operatör müşteri yanıtı istemediğine karar verdi, mail spam'lemeyelim.

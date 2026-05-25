@@ -19,6 +19,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -67,7 +68,7 @@ export async function POST(
       body,
       pinned,
     },
-  ] as never);
+  ]);
 
   if (error) {
     return NextResponse.json(
@@ -82,7 +83,7 @@ export async function POST(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: "customer.note_add",
+        action: "customer.note_add" as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: `Müşteriye not eklendi (${pinned ? "pinned" : "normal"})`,
@@ -90,7 +91,7 @@ export async function POST(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }
@@ -141,7 +142,7 @@ export async function DELETE(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: "customer.note_delete",
+        action: "customer.note_delete" as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: `Müşteri notu silindi: ${noteId}`,
@@ -149,7 +150,7 @@ export async function DELETE(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }

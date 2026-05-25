@@ -208,7 +208,7 @@ export async function POST(
   // Önceki design_files'ı superseded yap
   await admin
     .from("design_files")
-    .update({ status: "superseded" } as never)
+    .update({ status: "superseded" })
     .eq("order_item_id", itemId)
     .neq("status", "superseded");
 
@@ -226,11 +226,12 @@ export async function POST(
         mime_type: file.type,
         size_bytes: file.size,
         version: nextVersion,
+        // @ts-expect-error — design_files.status 'active' henüz generated enum'da yok
         status: "active",
         revised_by_partner_id: partnerId,
         revised_at: new Date().toISOString(),
       },
-    ] as never)
+    ])
     .select("id")
     .single();
   if (insertErr || !insertRow) {
@@ -253,7 +254,7 @@ export async function POST(
       partner_decided_by: userId,
       partner_decided_at: new Date().toISOString(),
       partner_decision_note: note ?? "Partner kendi dosyasıyla revize",
-    } as never)
+    })
     .eq("id", itemId);
 
   // Audit
@@ -276,7 +277,7 @@ export async function POST(
         note: note ?? null,
       },
     },
-  ] as never);
+  ]);
 
   // TODO (Sefa 23 May v68): müşteriye mail
   // sendProofRevisedByPartner({ userId: order.user_id, orderId: order.id,

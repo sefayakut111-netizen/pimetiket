@@ -10,6 +10,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/types";
 
 // Re-export client-safe types (geriye uyum için)
 export type {
@@ -163,11 +164,11 @@ export async function saveDraftPricingConfig(
   const { error } = await admin
     .from("pricing_config")
     .update({
-      draft_config: draft,
+      draft_config: draft as Json,
       draft_updated_at: new Date().toISOString(),
       draft_updated_by: adminId,
       draft_updated_by_email: adminEmail,
-    } as never)
+    })
     .eq("scope", scope);
   if (error) return { ok: false, error: error.message };
 
@@ -175,12 +176,12 @@ export async function saveDraftPricingConfig(
     {
       scope,
       action: "draft_save",
-      config_snapshot: draft,
+      config_snapshot: draft as Json,
       changed_by: adminId,
       changed_by_email: adminEmail,
       note: note ?? null,
     },
-  ] as never);
+  ]);
 
   return { ok: true };
 }
@@ -221,12 +222,12 @@ export async function publishPricingConfig(
   const { error: updErr } = await admin
     .from("pricing_config")
     .update({
-      live_config: draft,
+      live_config: draft as Json,
       live_updated_at: now,
       live_updated_by: adminId,
       live_updated_by_email: adminEmail,
       live_published_at: now,
-    } as never)
+    })
     .eq("scope", scope);
   if (updErr) return { ok: false, error: `update_failed: ${updErr.message}` };
 
@@ -237,12 +238,12 @@ export async function publishPricingConfig(
       {
         scope,
         action: "publish",
-        config_snapshot: draft,
+        config_snapshot: draft as Json,
         changed_by: adminId,
         changed_by_email: adminEmail,
         note: note ?? null,
       },
-    ] as never);
+    ]);
   if (histErr) {
     // History başarısız ama publish başardı — kritik değil, log yap
     console.warn(
@@ -289,12 +290,12 @@ export async function revertPricingConfig(
   const { error: updErr } = await admin
     .from("pricing_config")
     .update({
-      live_config: snapshot,
+      live_config: snapshot as Json,
       live_updated_at: now,
       live_updated_by: adminId,
       live_updated_by_email: adminEmail,
       live_published_at: now,
-    } as never)
+    })
     .eq("scope", scope);
   if (updErr) return { ok: false, error: `update_failed: ${updErr.message}` };
 
@@ -305,12 +306,12 @@ export async function revertPricingConfig(
       {
         scope,
         action: "revert",
-        config_snapshot: snapshot,
+        config_snapshot: snapshot as Json,
         changed_by: adminId,
         changed_by_email: adminEmail,
         note: `Revert to history ID ${historyId}`,
       },
-    ] as never);
+    ]);
   if (histInsErr) {
     console.warn(
       `[revertPricingConfig] history insert failed (revert ok): ${histInsErr.message}`

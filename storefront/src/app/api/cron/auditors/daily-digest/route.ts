@@ -24,6 +24,7 @@ import {
   AUDITOR_NAMES,
   type AuditorName,
   type AuditorLatestRunSummary,
+  type RunStatus,
 } from "@/lib/agents/_shared/types";
 import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
 
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
       startedAt: r?.started_at ?? null,
       finishedAt: null,
       durationMs: null,
-      status: (r?.status ?? null) as never,
+      status: (r?.status ?? null) as RunStatus | null,
       findingsCount: r?.findings_count ?? 0,
       criticalCount: r?.critical_count ?? 0,
       warningCount: r?.warning_count ?? 0,
@@ -127,7 +128,7 @@ export async function GET(req: Request) {
   const { count: pendingCount } = await admin
     .from("auditor_pending_actions")
     .select("*", { count: "exact", head: true })
-    .eq("status", "pending" as never);
+    .eq("status", "pending");
 
   // Mail içeriği
   const subject =

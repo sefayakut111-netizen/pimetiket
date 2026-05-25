@@ -18,7 +18,9 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { AllowedMime } from "@/lib/storage/design-files";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import type { TablesUpdate } from "@/lib/supabase/types";
 import { getSlotMeta } from "@/lib/site-image-slots";
 
 const BUCKET = "public-assets";
@@ -140,7 +142,7 @@ export async function POST(req: Request) {
   }
 
   const claimedMime = file.type;
-  if (!ALLOWED_MIME.includes(claimedMime as never)) {
+  if (!(ALLOWED_MIME as readonly string[]).includes(claimedMime)) {
     return NextResponse.json(
       {
         error: "invalid_mime",
@@ -155,7 +157,7 @@ export async function POST(req: Request) {
   const bytes = new Uint8Array(buffer);
   const magic = detectMimeFromMagicBytes(
     bytes.slice(0, 512),
-    claimedMime as never
+    claimedMime as AllowedMime
   );
   if (!magic.matchesClaim) {
     return NextResponse.json(
@@ -223,7 +225,7 @@ export async function POST(req: Request) {
         size_bytes: file.size,
         mime_type: claimedMime,
         updated_by: auth.user.id,
-      } as never,
+      },
       { onConflict: "slot" }
     );
 
@@ -284,7 +286,7 @@ export async function PATCH(req: Request) {
   }
 
   const admin = createAdminClient();
-  const updates: Record<string, unknown> = { updated_by: auth.user.id };
+  const updates: TablesUpdate<"site_images"> = { updated_by: auth.user.id };
   if (body.alt_text !== undefined) updates.alt_text = body.alt_text;
   if (body.title !== undefined) updates.title = body.title;
   if (body.link_url !== undefined) {
@@ -294,7 +296,7 @@ export async function PATCH(req: Request) {
 
   const { error } = await admin
     .from("site_images")
-    .update(updates as never)
+    .update(updates)
     .eq("slot", slot);
 
   if (error) {

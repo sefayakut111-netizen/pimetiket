@@ -71,7 +71,7 @@ export async function GET() {
   const { data: ordersData, error: ordersErr } = await admin
     .from("orders")
     .select("id, status, created_at, total, address, user_id")
-    .in("status", [...AI_QC_ACTIVE_STATUSES] as never)
+    .in("status", [...AI_QC_ACTIVE_STATUSES])
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -94,7 +94,7 @@ export async function GET() {
   const { data: itemsData } = await admin
     .from("order_items")
     .select("id, order_id, product, title, width, height, qty")
-    .in("order_id", orderIds as never);
+    .in("order_id", orderIds);
 
   const items = (itemsData ?? []) as unknown as ItemRow[];
 
@@ -102,7 +102,7 @@ export async function GET() {
   const { data: qcData } = await admin
     .from("design_quality_checks")
     .select("id, order_id, design_file_id, verdict, score, analysis, findings, created_at")
-    .in("order_id", orderIds as never)
+    .in("order_id", orderIds)
     .order("created_at", { ascending: false });
 
   const qcRuns = (qcData ?? []) as unknown as QCRow[];
@@ -117,7 +117,7 @@ export async function GET() {
     const { data: filesData } = await admin
       .from("design_files")
       .select("id, original_name, storage_path, mime_type")
-      .in("id", fileIds as never);
+      .in("id", fileIds);
     filesMap = new Map(
       ((filesData ?? []) as unknown as FileRow[]).map((f) => [f.id, f])
     );

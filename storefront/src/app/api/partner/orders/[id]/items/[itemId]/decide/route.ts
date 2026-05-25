@@ -162,7 +162,7 @@ export async function POST(
       partner_decided_by: userId,
       partner_decided_at: new Date().toISOString(),
       partner_decision_note: note ?? null,
-    } as never)
+    })
     .eq("id", itemId);
   if (updErr) {
     console.error("[partner/decide] update error:", updErr);
@@ -192,7 +192,7 @@ export async function POST(
         note: note ?? null,
       },
     },
-  ] as never);
+  ]);
 
   // Tüm itemleri tekrar çek — assignment status'unu güncelle
   const { data: allItemsRow } = await admin
@@ -216,7 +216,7 @@ export async function POST(
       .update({
         status: "in_production",
         in_production_at: new Date().toISOString(),
-      } as never)
+      })
       .eq("id", assignment.id);
     assignmentTransition = "in_production";
   } else if (anyRejected && assignment.status !== "issue") {
@@ -229,7 +229,7 @@ export async function POST(
         issue_category: "partner_rejected",
         issue_description:
           note ?? `${item.title} tasarımı partner tarafından reddedildi`,
-      } as never)
+      })
       .eq("id", assignment.id);
     assignmentTransition = "issue";
   }

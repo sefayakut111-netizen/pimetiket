@@ -52,7 +52,7 @@ export async function POST(
   const location = (body.location as string | undefined)?.trim() ?? null;
   const reason = (body.reason as string | undefined)?.trim();
 
-  if (!status || !VALID_STATUSES.includes(status as never)) {
+  if (!status || !(VALID_STATUSES as readonly string[]).includes(status)) {
     return NextResponse.json(
       { error: `status eksik veya geçersiz. Kabul: ${VALID_STATUSES.join(", ")}` },
       { status: 400 }

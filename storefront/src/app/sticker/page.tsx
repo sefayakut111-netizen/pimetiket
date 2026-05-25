@@ -29,6 +29,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { guardCards } from "@/lib/product-cards-guard";
 import Link from "next/link";
 import Image from "next/image";
 import { useT } from "@/lib/i18n/context";
@@ -575,16 +576,8 @@ export default function StickerGridPage() {
         const mapped = (j.cards as DbProductCard[])
           .map(dbCardToStickerCard)
           .filter((c): c is StickerCard => c !== null);
-        // Sefa 21 May v68 (site denetim P0 #1): bozuk Türkçe karakter
-        // (U+FFFD / "�") gelirse fallback'i koru.
-        const broken = mapped.some(
-          (c) => /[�]/.test(c.titleTr) || /[�]/.test(c.descTr)
-        );
-        if (broken) {
-          console.warn("[sticker] DB kart metinlerinde bozuk karakter — fallback kullanılıyor");
-          return;
-        }
-        if (mapped.length > 0) setCards(mapped);
+        const safe = guardCards(mapped, STICKER_CARDS);
+        if (safe.length > 0) setCards(safe);
       })
       .catch(() => {
         /* DB fail → fallback hardcoded kalır */

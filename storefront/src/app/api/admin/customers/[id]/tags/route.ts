@@ -19,6 +19,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -77,7 +78,7 @@ export async function POST(
         tag,
         created_by: auth.user.id,
       },
-    ] as never,
+    ],
     { onConflict: "user_id,tag", ignoreDuplicates: true }
   );
 
@@ -94,7 +95,7 @@ export async function POST(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: "customer.tag_add",
+        action: "customer.tag_add" as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: `Müşteriye tag eklendi: ${tag}`,
@@ -102,7 +103,7 @@ export async function POST(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }
@@ -151,7 +152,7 @@ export async function DELETE(
         actor_id: auth.user.id,
         actor_email: auth.user.email,
         actor_role: "admin",
-        action: "customer.tag_remove",
+        action: "customer.tag_remove" as Enums<"audit_action">,
         target_type: "user",
         target_id: id,
         summary: `Müşteriden tag kaldırıldı: ${tag}`,
@@ -159,7 +160,7 @@ export async function DELETE(
         ip_address: clientIp(req),
         user_agent: userAgent(req),
       },
-    ] as never);
+    ]);
   } catch {
     /* audit log error silent */
   }

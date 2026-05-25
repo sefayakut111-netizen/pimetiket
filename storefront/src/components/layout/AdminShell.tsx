@@ -58,13 +58,15 @@ interface AdminBadges {
   auditorsCritical: number;
   // Sefa 22 May v68 Faz 4 — Proof yardım ticket'ları (open + in_progress)
   helpRequests: number;
+  supportOpen: number;
 }
 
 function aggregateBadges(
   orders: CustomerOrder[],
   auditorsPending: number = 0,
   auditorsCritical: number = 0,
-  helpRequests: number = 0
+  helpRequests: number = 0,
+  supportOpen: number = 0
 ): AdminBadges {
   let active = 0;
   let aiQc = 0;
@@ -85,6 +87,7 @@ function aggregateBadges(
     auditorsPending,
     auditorsCritical,
     helpRequests,
+    supportOpen,
   };
 }
 
@@ -112,7 +115,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/prova": "Prova akışı",
   "/admin/fason": "Üretim Partnerleri",
   "/admin/musteriler": "Müşteriler",
-  "/admin/finans": "Finans — Mali tablo",
+  "/admin/finans": "Finans & Raporlar",
   "/admin/tasarimlar": "Tasarım kütüphanesi",
   "/admin/aboneler": "Email aboneleri",
   "/admin/gorseller": "Site görselleri",
@@ -120,14 +123,13 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/iadeler": "İade talepleri",
   "/admin/kuponlar": "Kuponlar",
   "/admin/calisanlar": "Çalışanlar",
-  "/admin/fiyat-hesapla": "🏷 Sticker fiyat hesabı",
-  "/admin/fiyat-hesapla-etiket": "📋 Rulo etiket fiyat hesabı",
-  "/admin/fiyat-hesapla-tabaka": "📄 Tabaka etiket fiyat hesabı",
+  "/admin/fiyatlar": "Fiyat yönetimi",
   "/admin/raporlar": "Raporlar",
   "/admin/audit-log": "Denetim kaydı",
   "/admin/kvkk-talepleri": "KVKK talepleri",
   "/admin/yedekler": "Yedekler",
   "/admin/galeri": "Galeri yönetimi",
+  "/admin/blog": "Blog yönetimi",
   "/admin/urunler": "Ürün kartları",
   "/admin/kargo": "Kargo yönetimi",
   "/admin/ayarlar": "Ayarlar",
@@ -155,6 +157,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     auditorsPending: 0,
     auditorsCritical: 0,
     helpRequests: 0,
+    supportOpen: 0,
   });
   const [switching, setSwitching] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -197,6 +200,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     let auditorCounts = { pending: 0, critical: 0 };
     let adminOrders: CustomerOrder[] = [];
     let helpRequestsCount = 0;
+    let supportOpenCount = 0;
 
     // Sefa 21 May v68 (site denetim P2 #13): Sidebar badge'i admin-wide
     // /api/admin/orders/list'ten çeker; daha önce listCustomerOrders
@@ -223,7 +227,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
           adminOrders,
           auditorCounts.pending,
           auditorCounts.critical,
-          helpRequestsCount
+          helpRequestsCount,
+          supportOpenCount
         )
       );
     };
@@ -276,11 +281,28 @@ export function AdminShell({ children }: { children: ReactNode }) {
     void fetchHelpRequests();
     const helpInterval = setInterval(fetchHelpRequests, 60_000);
 
+    const fetchSupportTickets = async () => {
+      try {
+        const res = await fetch("/api/admin/support?status=open", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { items?: Array<{ id: string }> };
+        supportOpenCount = json.items?.length ?? 0;
+        refresh();
+      } catch {
+        /* sessiz */
+      }
+    };
+    void fetchSupportTickets();
+    const supportInterval = setInterval(fetchSupportTickets, 60_000);
+
     return () => {
       window.removeEventListener("pim_customer_orders_updated", fetchAdminOrders);
       clearInterval(interval);
       clearInterval(ordersInterval);
       clearInterval(helpInterval);
+      clearInterval(supportInterval);
     };
   }, []);
 
@@ -385,6 +407,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
             badgeAccent: badges.helpRequests > 0,
             module: "help_requests",
           },
+          {
+            href: "/admin/destek",
+            label: "Destek",
+            icon: <Icon.ChatBubble size={16} />,
+            badge: badges.supportOpen,
+            badgeAccent: badges.supportOpen > 0,
+            module: "help_requests",
+          },
         ],
       },
       // Sefa 18 May v68 (admin UX denetim — yeni İÇERİK grubu):
@@ -412,6 +442,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             module: "gallery",
           },
           {
+            href: "/admin/blog",
+            label: "Blog",
+            icon: <Icon.Doc size={16} />,
+            module: "blog",
+          },
+          {
             href: "/admin/gorseller",
             label: "Site Görselleri",
             icon: <Icon.Box size={16} />,
@@ -424,7 +460,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         items: [
           {
             href: "/admin/finans",
-            label: "Finans",
+            label: "Finans & Raporlar",
             icon: <Icon.Wallet size={16} />,
             module: "finans",
           },
@@ -440,12 +476,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
             icon: <Icon.User size={16} />,
             module: "staff",
           },
-          {
-            href: "/admin/fiyat-hesapla",
-            label: "Fiyat hesapla",
-            icon: <Icon.Bolt size={16} />,
-            module: "pricing",
-          },
         ],
       },
       {
@@ -460,12 +490,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
             badge: badges.auditorsPending,
             badgeAccent: badges.auditorsCritical > 0,
             module: "auditors",
-          },
-          {
-            href: "/admin/raporlar",
-            label: "Raporlar",
-            icon: <Icon.Doc size={16} />,
-            module: "reports",
           },
           {
             href: "/admin/audit-log",
@@ -498,6 +522,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   label: "Sipariş simülatörü",
                   icon: <Icon.Refresh size={16} />,
                   module: "manual_order" as AdminModule,
+                },
+                {
+                  href: "/admin/debug/design-qc-test",
+                  label: "Design QC test",
+                  icon: <Icon.Sparkle size={16} />,
+                  module: "ai_qc" as AdminModule,
                 },
               ]
             : []),

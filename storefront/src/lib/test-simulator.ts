@@ -167,12 +167,12 @@ export async function runCheckoutSimulation(
   await admin.from("profiles").upsert(
     [
       {
-        id: userId,
+        id: userResult,
         display_name: "Simülasyon Test",
         phone: "+905551234567",
         role: "customer",
       },
-    ] as never,
+    ],
     { onConflict: "id" }
   );
 
@@ -222,7 +222,7 @@ export async function runCheckoutSimulation(
       .from("addresses")
       .insert([
         {
-          user_id: userId,
+          user_id: userResult,
           label: "Simülasyon adresi",
           name: "Simülasyon Test",
           addr: "Beştepeler Mah. Nergis Sok. No:7/2, Çankaya, Ankara, Türkiye",
@@ -230,7 +230,7 @@ export async function runCheckoutSimulation(
           phone: "+905551234567",
           is_default: true,
         },
-      ] as never)
+      ])
       .select("id")
       .single();
     if (error) throw error;
@@ -248,7 +248,7 @@ export async function runCheckoutSimulation(
       .from("customer_invoice_profiles")
       .insert([
         {
-          user_id: userId,
+          user_id: userResult,
           label: "Simülasyon şirket",
           vkn: "1234567890",
           company_name: "Simülasyon Test Ltd. Şti.",
@@ -257,7 +257,7 @@ export async function runCheckoutSimulation(
             "Beştepeler Mah. Nergis Sok. No:7/2 Çankaya/Ankara",
           is_default: true,
         },
-      ] as never)
+      ])
       .select("id")
       .single();
     if (error) throw error;
@@ -272,8 +272,8 @@ export async function runCheckoutSimulation(
   await step("coupon", async () => {
     // Geçerli kupon
     const { data: valid, error: validErr } = await admin.rpc(
-      "fn_validate_coupon" as never,
-      { p_code: "HOSGELDIN10", p_subtotal: 6050 } as never
+      "fn_validate_coupon",
+      { p_code: "HOSGELDIN10", p_subtotal: 6050 }
     );
     if (validErr && validErr.code !== "42883") {
       // RPC yoksa skip (sistem henüz kurulmamış)
@@ -285,8 +285,8 @@ export async function runCheckoutSimulation(
 
     // Geçersiz kupon
     const { data: invalid } = await admin.rpc(
-      "fn_validate_coupon" as never,
-      { p_code: "GECERSIZ_TEST_999", p_subtotal: 6050 } as never
+      "fn_validate_coupon",
+      { p_code: "GECERSIZ_TEST_999", p_subtotal: 6050 }
     );
     const invalidResult = invalid as
       | { ok: boolean; reason?: string }
@@ -328,7 +328,7 @@ export async function runCheckoutSimulation(
       .insert([
         {
           id: newOrderId,
-          user_id: userId,
+          user_id: userResult,
           status: "paid",
           subtotal: 6050,
           shipping: 0,
@@ -352,7 +352,7 @@ export async function runCheckoutSimulation(
             is_simulator_test: true,
           },
         },
-      ] as never);
+      ]);
 
     if (orderErr) throw orderErr;
 
@@ -380,7 +380,7 @@ export async function runCheckoutSimulation(
         unit: 4.2,
         total: 1050,
       },
-    ] as never);
+    ]);
 
     orderId = newOrderId;
     setStep("order", { data: { order_id: newOrderId } });
@@ -395,14 +395,15 @@ export async function runCheckoutSimulation(
     await step("callback", async () => {
       // Direkt fn_apply_paid_order çağır (idempotent + atomic)
       const { error } = await admin.rpc(
-        "fn_apply_paid_order" as never,
+        // @ts-expect-error — RPC henüz types.ts'te tanımlı değil
+        "fn_apply_paid_order",
         {
           p_order_id: localOrderId,
           p_paid_amount: 6050,
           p_payment_method: "card",
           p_masked_card: "**** **** **** 0796",
           p_psp_transaction_id: `SIM-${stamp}`,
-        } as never
+        }
       );
       if (error) {
         // RPC yoksa fallback: doğrudan UPDATE
@@ -416,7 +417,7 @@ export async function runCheckoutSimulation(
                 masked: "**** **** **** 0796",
                 psp_transaction_id: `SIM-${stamp}`,
               },
-            } as never)
+            })
             .eq("id", localOrderId);
           if (updErr) throw updErr;
           setStep("callback", {
