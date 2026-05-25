@@ -500,6 +500,29 @@ export default function SiparisDetailPage({
     return () => clearInterval(interval);
   }, [order?.status, id]);
 
+  useEffect(() => {
+    const waitingStatuses = [
+      "qc_pending",
+      "proof_generating",
+      "proof_validating",
+      "human_review",
+    ];
+    if (!order || !waitingStatuses.includes(order.status)) return;
+
+    const interval = setInterval(() => {
+      void fetchCustomerOrder(id).then((o) => {
+        if (o) setOrder(o);
+      });
+    }, 5000);
+
+    const timeout = setTimeout(() => clearInterval(interval), 300000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [order?.status, id]);
+
   // Sefa 22 May v68 — Tekrar sipariş duplicate guard:
   // Önce her tıklama sepete tekrar ürün ekliyordu (sınırsız), ilk tıklamada
   // yönlendirme yoktu, sonraki tıklamalarda /sepet'e gidiyordu (tutarsız).
@@ -955,13 +978,24 @@ export default function SiparisDetailPage({
                       dönüyordu, UI sessiz fail). */}
                   {order.status === "proof_generating" ||
                   order.status === "proof_validating" ? (
-                    <div className="flex items-center gap-2 text-[13px] text-gri-700 bg-gri-50 rounded-lg p-3">
-                      <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
-                      <span>
-                        {order.status === "proof_validating"
-                          ? "Düzenlemenizi kontrol ediyoruz — birkaç saniye sonra onay butonları aktif olur."
-                          : "Bıçak çizimi hala hazırlanıyor — birkaç dakika sonra onay butonları aktif olur."}
-                      </span>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-[13px] text-gri-700 bg-gri-50 rounded-lg p-3">
+                        <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
+                        <span>
+                          {order.status === "proof_validating"
+                            ? "Düzenlemenizi kontrol ediyoruz — birkaç saniye."
+                            : "Bıçak çizimi hazırlanıyor — hazır olunca onaylayabileceksin."}
+                        </span>
+                      </div>
+                      {order.status === "proof_generating" && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          href={`/onay/${order.id}`}
+                        >
+                          Prova hazırlığını gör →
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="flex gap-2 flex-wrap">
