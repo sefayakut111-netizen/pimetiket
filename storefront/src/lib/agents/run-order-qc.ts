@@ -226,7 +226,23 @@ async function runOrderDesignQCInner(
     };
   }
 
-  const files = (filesData ?? []) as unknown as DesignFileForQC[];
+  let files = (filesData ?? []) as unknown as DesignFileForQC[];
+
+  if (files.length === 0) {
+    await new Promise((r) => setTimeout(r, 5000));
+
+    const { data: retryFilesData } = await admin
+      .from("design_files")
+      .select(
+        "id, storage_path, mime_type, original_name, order_id, order_item_id"
+      )
+      .eq("order_id", orderId);
+
+    const retryFiles = (retryFilesData ?? []) as unknown as DesignFileForQC[];
+    if (retryFiles.length > 0) {
+      files = retryFiles;
+    }
+  }
 
   if (files.length === 0) {
     console.warn(
@@ -258,8 +274,13 @@ async function runOrderDesignQCInner(
         event_type: "qc_skipped_no_files",
         status_after: order?.status ?? "unknown",
         actor_role: "system",
-        summary: "QC atlandı — tasarım dosyası bulunamadı",
-        detail: { trigger: "runOrderDesignQC", designFileCount: 0 },
+        summary:
+          "QC çalıştı ama design_files boş — müşteri henüz yüklememiş olabilir",
+        detail: {
+          trigger: "runOrderDesignQC",
+          designFileCount: 0,
+          attempts: currentAttempts + 1,
+        },
       },
     ]);
 
