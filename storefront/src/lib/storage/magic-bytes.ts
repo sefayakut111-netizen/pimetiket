@@ -17,12 +17,6 @@ const MIME_ALIASES: Record<string, string[]> = {
   "application/pdf": ["application/pdf"],
   "application/illustrator": [
     "application/illustrator",
-    "application/postscript",
-    "application/pdf",
-  ],
-  "application/postscript": [
-    "application/postscript",
-    "application/illustrator",
     "application/pdf",
   ],
   "image/vnd.adobe.photoshop": ["image/vnd.adobe.photoshop"],
@@ -34,10 +28,9 @@ const MIME_ALIASES: Record<string, string[]> = {
 /**
  * Magic-byte signatures → canonical mime.
  *
+ * EPS (%!PS-Adobe): artık desteklenmiyor — pure PostScript upload engellenir.
  * AI: modern AI dosyaları PDF wrapper'lı (`%PDF`) gelir; eski PS based
- * `%!PS` ile başlar. Her ikisi de application/illustrator olarak kabul edilir.
- *
- * EPS: `%!PS-Adobe` başlığı PostScript ile aynı; .eps olarak kabul.
+ * `%!PS` ile başlar (application/illustrator olarak kabul).
  */
 interface Signature {
   /** Hex bytes (offset 0'dan başlayarak) */
@@ -63,11 +56,11 @@ const SIGNATURES: Signature[] = [
     mime: "application/pdf",
     label: "PDF",
   },
-  // PostScript / EPS / AI (modern AI PDF wrapper'lı; eski AI = PS)
+  // PostScript / legacy AI (EPS uzantısı upload-init'te engellenir)
   {
     bytes: [0x25, 0x21, 0x50, 0x53],
-    mime: "application/postscript",
-    label: "PostScript/EPS/AI",
+    mime: "application/illustrator",
+    label: "PostScript/Legacy-AI",
   },
   // Photoshop PSD: "8BPS"
   {
@@ -133,13 +126,13 @@ export function detectMimeFromMagicBytes(
   }
 
   // SVG (XML başlığı binary değil — string scan).
-  // SVG ALLOWED_MIME_TYPES'ta yok (Sefa security ile vector-only PDF/AI istiyor),
-  // ama yine de tanı + reject akışı için claim comparison string olarak yapılır.
   if (detectSvg(buf)) {
     return {
       detected: "image/svg+xml",
       label: "SVG/XML",
-      matchesClaim: (claimedMime as string) === "image/svg+xml",
+      matchesClaim: (MIME_ALIASES[claimedMime] ?? [claimedMime]).includes(
+        "image/svg+xml"
+      ),
     };
   }
 

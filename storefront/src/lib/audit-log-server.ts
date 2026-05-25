@@ -41,6 +41,8 @@ type AuditAction =
   | "staff.remove"
   | "staff.role_change"
   | "settings.update"
+  | "cron.manual_trigger"
+  | "pricing_config_updated"
   | "design_file.approve"
   | "design_file.reject"
   | "auth.login"

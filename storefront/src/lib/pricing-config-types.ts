@@ -19,6 +19,10 @@ export interface MaterialItem {
   /** Tabaka Etiket için: ₺/tabaka maliyet (23×31 cm 1 tabaka) */
   sheet_cost_try?: number;
   desc?: string;
+  /** Rakip referans notu — hesaba girmez, bilgi amaçlı */
+  competitor_ref?: string;
+  /** false = müşteri tarafında gizli (undefined = aktif) */
+  active?: boolean;
 }
 
 export interface OptionItem {

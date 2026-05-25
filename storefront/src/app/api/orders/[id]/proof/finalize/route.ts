@@ -25,6 +25,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 // Faz 2 iptali: import { sendOrderProofApproved } from "@/lib/mail/notifications";
+import { generatePrintReadyForOrder } from "@/lib/proof/print-ready";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(
   _req: Request,
@@ -74,6 +76,22 @@ export async function POST(
   // void sendOrderProofApproved({ userId: user.id, orderId }).catch((err) =>
   //   console.error("[proof/finalize] mail error:", err)
   // );
+
+  void generatePrintReadyForOrder(orderId)
+    .then(async ({ generated, errors }) => {
+      if (errors.length > 0) {
+        console.warn("[proof/finalize] print-ready partial:", errors);
+      }
+      if (generated > 0) {
+        const admin = createAdminClient();
+        await admin
+          .from("orders")
+          .update({ status: "ready_to_ship" })
+          .eq("id", orderId)
+          .eq("status", "proof_approved");
+      }
+    })
+    .catch((err) => console.error("[proof/finalize] print-ready:", err));
 
   return NextResponse.json({
     ok: true,

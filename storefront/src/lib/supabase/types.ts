@@ -766,6 +766,108 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_runs: {
+        Row: {
+          id: string
+          cron_name: string
+          started_at: string
+          finished_at: string | null
+          status: string
+          duration_ms: number | null
+          summary: string | null
+          error_message: string | null
+          items_processed: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          cron_name: string
+          started_at?: string
+          finished_at?: string | null
+          status?: string
+          duration_ms?: number | null
+          summary?: string | null
+          error_message?: string | null
+          items_processed?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          cron_name?: string
+          started_at?: string
+          finished_at?: string | null
+          status?: string
+          duration_ms?: number | null
+          summary?: string | null
+          error_message?: string | null
+          items_processed?: number | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      proof_validations: {
+        Row: {
+          id: string
+          order_id: string
+          order_item_id: string | null
+          design_file_id: string | null
+          rule_check_passed: boolean | null
+          rule_issues: Json | null
+          ai_validated: boolean | null
+          ai_verdict: string | null
+          ai_cutline: Json | null
+          ai_white_layer: Json | null
+          ai_suggestions: Json | null
+          ai_pim_message: string | null
+          ai_tokens_used: number | null
+          ai_cost_usd: number | null
+          auto_fixed: boolean | null
+          fix_log: Json | null
+          final_verdict: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          order_item_id?: string | null
+          design_file_id?: string | null
+          rule_check_passed?: boolean | null
+          rule_issues?: Json | null
+          ai_validated?: boolean | null
+          ai_verdict?: string | null
+          ai_cutline?: Json | null
+          ai_white_layer?: Json | null
+          ai_suggestions?: Json | null
+          ai_pim_message?: string | null
+          ai_tokens_used?: number | null
+          ai_cost_usd?: number | null
+          auto_fixed?: boolean | null
+          fix_log?: Json | null
+          final_verdict?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          order_item_id?: string | null
+          design_file_id?: string | null
+          rule_check_passed?: boolean | null
+          rule_issues?: Json | null
+          ai_validated?: boolean | null
+          ai_verdict?: string | null
+          ai_cutline?: Json | null
+          ai_white_layer?: Json | null
+          ai_suggestions?: Json | null
+          ai_pim_message?: string | null
+          ai_tokens_used?: number | null
+          ai_cost_usd?: number | null
+          auto_fixed?: boolean | null
+          fix_log?: Json | null
+          final_verdict?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -2178,6 +2280,7 @@ export type Database = {
           proof_edited_at: string | null
           proof_status: string
           proof_viewed_at: string | null
+          print_ready_pdf_url: string | null
           qty: number
           reprint_source_order_id: string | null
           title: string
@@ -2200,6 +2303,7 @@ export type Database = {
           proof_edited_at?: string | null
           proof_status?: string
           proof_viewed_at?: string | null
+          print_ready_pdf_url?: string | null
           qty: number
           reprint_source_order_id?: string | null
           title: string
@@ -2222,6 +2326,7 @@ export type Database = {
           proof_edited_at?: string | null
           proof_status?: string
           proof_viewed_at?: string | null
+          print_ready_pdf_url?: string | null
           qty?: number
           reprint_source_order_id?: string | null
           title?: string
@@ -3455,6 +3560,8 @@ export type Database = {
         Row: {
           free_shipping_threshold: number
           id: number
+          maintenance_message: string | null
+          maintenance_mode: boolean
           max_order_total_try: number
           min_order_total_try: number
           min_subtotal_for_credit: number
@@ -3469,6 +3576,8 @@ export type Database = {
         Insert: {
           free_shipping_threshold?: number
           id?: number
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
           max_order_total_try?: number
           min_order_total_try?: number
           min_subtotal_for_credit?: number
@@ -3483,6 +3592,8 @@ export type Database = {
         Update: {
           free_shipping_threshold?: number
           id?: number
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
           max_order_total_try?: number
           min_order_total_try?: number
           min_subtotal_for_credit?: number
@@ -4024,6 +4135,7 @@ export type Database = {
         | "qc_flagged"
         | "operator_review"
         | "proof_pending"
+        | "proof_validating"
         | "proof_approved"
         | "in_production"
         | "shipped"
@@ -4246,6 +4358,7 @@ export const Constants = {
         "qc_flagged",
         "operator_review",
         "proof_pending",
+        "proof_validating",
         "proof_approved",
         "in_production",
         "shipped",

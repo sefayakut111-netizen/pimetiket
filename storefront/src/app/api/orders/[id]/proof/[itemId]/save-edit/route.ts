@@ -45,6 +45,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadToR2, r2KeyBuilders } from "@/lib/storage/r2-client";
+import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { runProofValidationAfterEdit } from "@/lib/proof/orchestrator";
 import type { Enums, Json, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 interface Body {
@@ -437,6 +439,57 @@ export async function POST(
       },
     } satisfies TablesInsert<"order_events">,
   ]);
+
+  // Müşteri manuel düzenleme → proof_validating + arka plan doğrulama
+  if (!isAuto && !isPartner && orderRow.status === "proof_pending") {
+    const { data: itemDims } = await admin
+      .from("order_items")
+      .select("width, height, meta")
+      .eq("id", itemId)
+      .eq("order_id", orderId)
+      .maybeSingle();
+    const itemRow = itemDims as {
+      width: number;
+      height: number;
+      meta: Record<string, unknown> | null;
+    } | null;
+
+    const dfQuery = admin
+      .from("design_files")
+      .select("storage_path, original_name")
+      .eq("order_id", orderId)
+      .eq("order_item_id", itemId)
+      .neq("status", "superseded");
+    const { data: dfRow } = designFileId
+      ? await dfQuery.eq("id", designFileId).maybeSingle()
+      : await dfQuery.order("version", { ascending: false }).limit(1).maybeSingle();
+    const designFile = dfRow as {
+      storage_path: string;
+      original_name: string;
+    } | null;
+
+    if (itemRow && designFile) {
+      const { data: signed } = await admin.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(designFile.storage_path, 300);
+      if (signed?.signedUrl) {
+        const materialKey = String(
+          itemRow.meta?.material_type ?? itemRow.meta?.material ?? "paper"
+        );
+        void runProofValidationAfterEdit({
+          orderId,
+          itemId,
+          designFileId,
+          svg,
+          fileName: designFile.original_name,
+          designFileUrl: signed.signedUrl,
+          materialKey,
+          designWidth: itemRow.width,
+          designHeight: itemRow.height,
+        });
+      }
+    }
+  }
 
   return NextResponse.json({
     ok: true,

@@ -29,6 +29,7 @@ import {
   MAX_FILE_SIZE,
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 
 export interface DesignTempState {
   tempId: string;
@@ -85,14 +86,9 @@ export function DesignDropZone({
       );
       return;
     }
-    // Sefa 18 May v54 + 20 May v68: PDF/PNG/JPG/AI/PSD/EPS. AI/PSD/EPS bazı
-    // tarayıcılarda boş mime döndürür → uzantı kontrolü fallback.
     if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      if (!ext || !["pdf", "png", "jpg", "jpeg", "ai", "psd", "eps"].includes(ext)) {
-        toast.error(
-          `Desteklenmeyen format: PDF, PNG, JPG, AI, PSD, EPS kabul edilir.`
-        );
+      if (categorizeFile(file.name, file.type) === "blocked") {
+        toast.error(BLOCKED_FILE_MESSAGE);
         return;
       }
     }
@@ -307,7 +303,7 @@ export function DesignDropZone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.eps,application/pdf,image/png,image/jpeg,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
+          accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.svg,application/pdf,image/png,image/jpeg,image/svg+xml,application/illustrator,image/vnd.adobe.photoshop"
           onChange={onInputChange}
           disabled={uploading}
         />
@@ -372,7 +368,7 @@ export function DesignDropZone({
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.eps,application/pdf,image/png,image/jpeg,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
+        accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.svg,application/pdf,image/png,image/jpeg,image/svg+xml,application/illustrator,image/vnd.adobe.photoshop"
         onChange={onInputChange}
         disabled={uploading}
       />

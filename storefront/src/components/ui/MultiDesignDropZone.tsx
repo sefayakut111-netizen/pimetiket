@@ -29,15 +29,16 @@ import {
   MAX_FILE_SIZE,
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import type { DesignTempState } from "./DesignDropZone";
 
 const MAX_FILES_PER_ORDER = 50;
 // Sefa 18 May v54-v67: Sadece PDF/PNG/AI/PSD/EPS.
 // MIME types genişletildi → tarayıcı dosya seçicide daha sıkı filter.
 const ACCEPT_ATTR =
-  ".pdf,.png,.ai,.psd,.eps," +
-  "application/pdf,image/png," +
-  "application/illustrator,application/postscript,image/vnd.adobe.photoshop";
+  ".pdf,.png,.jpg,.jpeg,.ai,.psd,.svg," +
+  "application/pdf,image/png,image/jpeg,image/svg+xml," +
+  "application/illustrator,image/vnd.adobe.photoshop";
 
 interface MultiDesignDropZoneProps {
   value: DesignTempState[];
@@ -82,13 +83,8 @@ export function MultiDesignDropZone({
       return null;
     }
     if (file.type && !(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-      // Sefa 18 May v54: Sadece PDF/PNG/AI/PSD/EPS. JPEG ve SVG kaldırıldı.
-      // Bazı browser .ai/.eps/.psd için mime type vermez; uzantı kontrolü
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      if (!ext || !["pdf", "png", "ai", "psd", "eps"].includes(ext)) {
-        toast.error(
-          `${file.name}: desteklenmeyen format (PDF, PNG, AI, PSD, EPS kabul edilir)`
-        );
+      if (categorizeFile(file.name, file.type) === "blocked") {
+        toast.error(`${file.name}: ${BLOCKED_FILE_MESSAGE}`);
         return null;
       }
     }

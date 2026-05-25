@@ -30,6 +30,7 @@ import {
 } from "@/lib/pricing-engine";
 import { getDefaultInput } from "@/lib/pricing-profiles";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
+import { PIM_NAV_TOOLS } from "@/lib/pim/navigation-tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -263,17 +264,19 @@ export async function POST(req: Request) {
   const systemPrompt = buildSystemPromptWithMemory(persona, memory);
   const modelMessages = await convertToModelMessages(body.messages);
 
-  // Tool'lar sadece useTools=true persona'larda aktif (şu an: designer)
-  const tools = personaConfig.useTools
-    ? { quote_sticker: stickerTool, quote_etiket: etiketTool }
-    : undefined;
+  const tools = {
+    ...PIM_NAV_TOOLS,
+    ...(personaConfig.useTools
+      ? { quote_sticker: stickerTool, quote_etiket: etiketTool }
+      : {}),
+  };
 
   const result = streamText({
     model: openai(personaConfig.model),
     system: systemPrompt,
     messages: modelMessages,
     tools,
-    toolChoice: personaConfig.useTools ? "auto" : undefined,
+    toolChoice: "auto",
     temperature: personaConfig.temperature,
     maxRetries: 2,
     abortSignal: AbortSignal.timeout(OPENAI_CHAT_TIMEOUT_MS),

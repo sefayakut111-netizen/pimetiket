@@ -25,6 +25,7 @@ import {
   STORAGE_BUCKET,
   getExtensionFromMime,
 } from "@/lib/storage/design-files";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 
 const InitBodySchema = z.object({
   originalName: z.string().min(1).max(255),
@@ -54,6 +55,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  const category = categorizeFile(body.originalName, body.mimeType);
+  if (category === "blocked") {
+    return NextResponse.json({ error: BLOCKED_FILE_MESSAGE }, { status: 400 });
   }
 
   // Storage path: temp/<userId>/<uuid>.<ext>

@@ -26,6 +26,42 @@ function fmt(n: number, dec = 4): string {
   });
 }
 
+function exportMatrixCsv(
+  snapshot: PricebookSnapshot,
+  materialKey: string
+): void {
+  const matrix = snapshot.matrices[materialKey];
+  if (!matrix) {
+    return;
+  }
+  const { width: widthAxis, height: heightAxis, qty: qtyAxis } = snapshot.axes;
+  const cells = matrix.cells ?? {};
+  let csv = `boyut_mm,${qtyAxis.join(",")}\n`;
+
+  for (const w of widthAxis) {
+    for (const h of heightAxis) {
+      const sizeLabel = `${w}x${h}`;
+      const row = qtyAxis.map((qty) => {
+        const price = cells[`${w}:${h}:${qty}`];
+        return price !== undefined ? price.toFixed(4) : "";
+      });
+      csv += `${sizeLabel},${row.join(",")}\n`;
+    }
+  }
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pricebook-${materialKey}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseCsvLine(line: string): string[] {
+  return line.split(/[,;\t]/).map((s) => s.trim());
+}
+
 export function PriceBookPanel({ config }: Props) {
   const toast = useToast();
   const [snapshot, setSnapshot] = useState<PricebookSnapshot>(
@@ -207,8 +243,73 @@ export function PriceBookPanel({ config }: Props) {
   const handleCsvImport = async (file: File) => {
     const text = await file.text();
     const lines = text.trim().split(/\r?\n/);
-    const header = lines[0]?.split(/[,;\t]/).map((s) => s.trim().toLowerCase());
-    if (!header) return;
+    const header = parseCsvLine(lines[0] ?? "").map((s) => s.toLowerCase());
+    if (!header.length) {
+      toast.error("CSV bos veya gecersiz");
+      return;
+    }
+
+    const isMatrixFormat =
+      header[0] === "boyut_mm" ||
+      header[0] === "size_mm" ||
+      (header.length > 1 && !header.includes("width_mm"));
+
+    if (isMatrixFormat && header[0] !== "width_mm") {
+      const qtyAxes = header.slice(1).map((s) => Number(s.replace(/\./g, "")));
+      if (qtyAxes.some((q) => !Number.isFinite(q) || q <= 0)) {
+        toast.error("CSV: boyut_mm,qty1,qty2,... baslik satiri gerekli");
+        return;
+      }
+
+      let updated = 0;
+      setSnapshot((prev) => {
+        const existing = prev.matrices[materialKey];
+        const meta = RULO_MATERIAL_PRICE_MULTIPLIERS[materialKey];
+        const nextCells = { ...(existing?.cells ?? {}) };
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = parseCsvLine(lines[i] ?? "");
+          if (cols.length < 2) continue;
+          const sizeParts = cols[0].split(/x/i).map(Number);
+          const w = sizeParts[0];
+          const h = sizeParts[1];
+          if (!w || !h) continue;
+
+          for (let j = 0; j < qtyAxes.length; j++) {
+            const raw = cols[j + 1]?.replace(",", ".");
+            if (!raw) continue;
+            const price = parseFloat(raw);
+            if (!Number.isFinite(price) || price <= 0) continue;
+            nextCells[`${w}:${h}:${qtyAxes[j]}`] = price;
+            updated++;
+          }
+        }
+
+        return {
+          ...prev,
+          matrices: {
+            ...prev.matrices,
+            [materialKey]: {
+              meta: existing?.meta ?? {
+                id: `local-${materialKey}`,
+                material_key: materialKey,
+                display_name: meta?.display_name ?? materialKey,
+                active: true,
+                version: 1,
+              },
+              cells: nextCells,
+            },
+          },
+        };
+      });
+
+      if (updated === 0) {
+        toast.error("CSV'den gecerli hucre bulunamadi");
+        return;
+      }
+      toast.success(`${updated} hucre guncellendi (henuz kaydedilmedi)`);
+      return;
+    }
 
     const wIdx = header.indexOf("width_mm");
     const hIdx = header.indexOf("height_mm");
@@ -217,7 +318,7 @@ export function PriceBookPanel({ config }: Props) {
     const mIdx = header.indexOf("material_key");
 
     if (wIdx < 0 || hIdx < 0 || qIdx < 0 || pIdx < 0) {
-      toast.error("CSV: width_mm,height_mm,qty,price_per_unit gerekli");
+      toast.error("CSV: boyut_mm matrisi veya width_mm,height_mm,qty,price_per_unit");
       return;
     }
 
@@ -225,7 +326,7 @@ export function PriceBookPanel({ config }: Props) {
     const newCells = { ...snapshot.matrices };
 
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(/[,;\t]/).map((s) => s.trim());
+      const cols = parseCsvLine(lines[i] ?? "");
       if (cols.length < 4) continue;
       const mat = mIdx >= 0 ? cols[mIdx] : materialKey;
       const w = Number(cols[wIdx]);
@@ -274,10 +375,17 @@ export function PriceBookPanel({ config }: Props) {
             ekseninde. Kaplama/ozellestirme mevcut options % ile eklenir.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => exportMatrixCsv(snapshot, materialKey)}
+          >
+            📥 CSV İndir
+          </Button>
           <label className="cursor-pointer">
-            <span className="inline-flex items-center h-10 px-4 rounded-lg bg-gri-100 text-[13px] font-semibold hover:bg-gri-200">
-              CSV import
+            <span className="inline-flex items-center h-9 px-3 rounded-lg bg-gri-100 text-[13px] font-semibold hover:bg-gri-200">
+              📤 CSV Yükle
             </span>
             <input
               type="file"
@@ -286,6 +394,7 @@ export function PriceBookPanel({ config }: Props) {
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void handleCsvImport(f);
+                e.target.value = "";
               }}
             />
           </label>

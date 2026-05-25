@@ -24,9 +24,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/Icon";
-import { PimMini } from "@/components/Pim";
+import { PimMini, Pim } from "@/components/Pim";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
+import { categorizeFile, needsWhiteLayer } from "@/lib/design-file-types";
+import {
+  JpgShapeSelector,
+  buildGeoCutlineSvg,
+  geoShapeToSaveMode,
+  type GeoShape,
+} from "@/components/proof/JpgShapeSelector";
+import { BgRemovalPrompt } from "@/components/proof/BgRemovalPrompt";
+import type { BgDetectResult } from "@/lib/proof/background-detect";
+import type { ConsistencyIssue } from "@/lib/proof/multi-design-check";
 
 // ============================================================
 // Types — fn_proof_summary RPC çıktısı
@@ -209,6 +219,29 @@ const STATUS_BADGE: Record<
 };
 
 // ============================================================
+// Material helpers (POC + save-edit)
+// ============================================================
+
+function mapMaterial(m: unknown): string {
+  if (typeof m !== "string") return "paper";
+  const k = m.toLowerCase();
+  if (k === "transparan" || k === "transparent") return "transparent";
+  if (k === "holo" || k === "holographic") return "holographic";
+  if (k === "simli" || k === "metallic") return "metallic";
+  return "paper";
+}
+
+function mapMaterialType(
+  m: unknown
+): "paper" | "transparent" | "metallic" | "holographic" {
+  const mapped = mapMaterial(m);
+  if (mapped === "transparent") return "transparent";
+  if (mapped === "holographic") return "holographic";
+  if (mapped === "metallic") return "metallic";
+  return "paper";
+}
+
+// ============================================================
 // API helpers
 // ============================================================
 
@@ -314,9 +347,14 @@ export default function ProofApprovalPage({
   const [bgGenItemId, setBgGenItemId] = useState<string | null>(null);
   const [bgGenDesignFileId, setBgGenDesignFileId] = useState<string | null>(null);
   const [bgGenError, setBgGenError] = useState<string | null>(null);
-  // Sefa 22 May v68 Faz 4b — Resolved/dismissed help_request'ler.
-  // fn_proof_summary sadece open/in_progress döner; bu state operatörün cevabını
-  // gösterir → müşteri /onay'da operatör notunu okuyabilir.
+  const [jpgSaving, setJpgSaving] = useState(false);
+  const [proofValidation, setProofValidation] = useState<{
+    pimMessage: string | null;
+    finalVerdict: string | null;
+    cutlineIssues: string[];
+    whiteLayerIssues: string[];
+    ruleIssues: string[];
+  } | null>(null);
   const [helpHistory, setHelpHistory] = useState<
     Record<
       string,
@@ -331,6 +369,23 @@ export default function ProofApprovalPage({
     >
   >({});
 
+  type PreviewLayer = "cutline" | "design" | "cmyk" | "checkerboard";
+  const [previewLayer, setPreviewLayer] = useState<PreviewLayer>("cutline");
+  const [designUrl, setDesignUrl] = useState<string | null>(null);
+  const [cmykPreview, setCmykPreview] = useState<{
+    url: string;
+    colorShift: string;
+    affectedAreas: string;
+  } | null>(null);
+  const [bgPrompt, setBgPrompt] = useState<{
+    show: boolean;
+    bgDetect: BgDetectResult | null;
+  }>({ show: false, bgDetect: null });
+  const [consistencyIssues, setConsistencyIssues] = useState<
+    ConsistencyIssue[]
+  >([]);
+  const [consistencyDismissed, setConsistencyDismissed] = useState(false);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -344,10 +399,11 @@ export default function ProofApprovalPage({
         return;
       }
       // Mig 062: proof_generating de bu sayfada kalır — auto cutline orchestration
-      // (hidden iframe POC) burada çalışır.
+      // proof_validating: müşteri düzenleme sonrası AI doğrulama (kısa poll)
       if (
         summary.order.status !== "proof_pending" &&
-        summary.order.status !== "proof_generating"
+        summary.order.status !== "proof_generating" &&
+        summary.order.status !== "proof_validating"
       ) {
         if (summary.order.status === "awaiting_upload") {
           router.replace(`/siparis/${orderId}/tasarim-yukle`);
@@ -413,7 +469,113 @@ export default function ProofApprovalPage({
     void load();
   }, [load]);
 
+  // Proof validation sonuçları (AI + kural uyarıları)
+  useEffect(() => {
+    if (data?.order.status !== "proof_pending") {
+      setProofValidation(null);
+      return;
+    }
+    fetch(`/api/orders/${orderId}/proof/validation`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { validation: null }))
+      .then((j: { validation?: typeof proofValidation }) => {
+        setProofValidation(j.validation ?? null);
+      })
+      .catch(() => setProofValidation(null));
+  }, [data?.order.status, orderId]);
+
+  // proof_validating — 2sn poll, proof_pending'e dönünce sayfa güncellenir
+  useEffect(() => {
+    if (data?.order.status !== "proof_validating") return;
+    const interval = setInterval(() => {
+      void fetchProofSummary(orderId)
+        .then((summary) => {
+          setData(summary);
+        })
+        .catch(() => {
+          /* sessiz — bir sonraki poll dener */
+        });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [data?.order.status, orderId]);
+
   const activeItem = data?.items.find((i) => i.id === activeItemId) ?? null;
+
+  useEffect(() => {
+    if (data?.order.status !== "proof_pending") {
+      setConsistencyIssues([]);
+      return;
+    }
+    fetch(`/api/orders/${orderId}/proof/consistency`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { consistency: { issues: [] } }))
+      .then((j: { consistency?: { issues?: ConsistencyIssue[] } }) => {
+        setConsistencyIssues(j.consistency?.issues ?? []);
+      })
+      .catch(() => setConsistencyIssues([]));
+  }, [data?.order.status, orderId]);
+
+  useEffect(() => {
+    if (!activeItem || data?.order.status !== "proof_pending") {
+      setBgPrompt({ show: false, bgDetect: null });
+      return;
+    }
+    fetch(`/api/orders/${orderId}/proof/${activeItem.id}/background`, {
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : { showPrompt: false }))
+      .then(
+        (j: { showPrompt?: boolean; bgDetect?: BgDetectResult | null }) => {
+          setBgPrompt({
+            show: !!j.showPrompt,
+            bgDetect: j.bgDetect ?? null,
+          });
+        }
+      )
+      .catch(() => setBgPrompt({ show: false, bgDetect: null }));
+  }, [activeItem?.id, data?.order.status, orderId]);
+
+  useEffect(() => {
+    if (!activeItem || previewLayer !== "design") {
+      setDesignUrl(null);
+      return;
+    }
+    const dfParam = activeDesignFileId
+      ? `?design_file_id=${activeDesignFileId}`
+      : "";
+    fetch(
+      `/api/orders/${orderId}/proof/${activeItem.id}/design-url${dfParam}`,
+      { cache: "no-store" }
+    )
+      .then((r) => (r.ok ? r.json() : { url: null }))
+      .then((j: { url?: string | null }) => setDesignUrl(j.url ?? null))
+      .catch(() => setDesignUrl(null));
+  }, [activeItem, activeDesignFileId, orderId, previewLayer]);
+
+  useEffect(() => {
+    if (!activeItem || previewLayer !== "cmyk") {
+      setCmykPreview(null);
+      return;
+    }
+    fetch(`/api/orders/${orderId}/proof/${activeItem.id}/cmyk-preview`, {
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (j: {
+          simulatedPngUrl?: string;
+          colorShift?: string;
+          affectedAreas?: string;
+        } | null) => {
+          if (j?.simulatedPngUrl) {
+            setCmykPreview({
+              url: j.simulatedPngUrl,
+              colorShift: j.colorShift ?? "noticeable",
+              affectedAreas: j.affectedAreas ?? "",
+            });
+          }
+        }
+      )
+      .catch(() => setCmykPreview(null));
+  }, [activeItem?.id, orderId, previewLayer]);
 
   // Multi-design (C2): activeItem değişince ilk design'ı seç
   useEffect(() => {
@@ -439,6 +601,19 @@ export default function ProofApprovalPage({
     activeItem?.designs?.find((d) => d.design_file_id === activeDesignFileId) ??
     null;
   const activeCutline = activeDesign?.cutline ?? activeItem?.cutline ?? null;
+
+  const activeDesignMeta = activeDesign ?? null;
+  const showJpgShapeSelector =
+    !!activeItem &&
+    !!activeDesignMeta &&
+    !activeCutline &&
+    data?.order.status === "proof_pending" &&
+    categorizeFile(activeDesignMeta.file_name, activeDesignMeta.mime_type) ===
+      "qc_only";
+
+  const materialKey = String(
+    activeItem?.meta?.material_type ?? activeItem?.meta?.material ?? "paper"
+  );
 
   // activeItem/activeDesign değiştiğinde preview signed URL fetch et
   useEffect(() => {
@@ -514,14 +689,6 @@ export default function ProofApprovalPage({
     // Konfigüratör material → POC material mapping.
     // Sticker: vinil/transparan/holo/simli, Etiket: kraft/kuşe/...
     // POC: paper / transparent / metallic / holographic
-    const mapMaterial = (m: unknown): string => {
-      if (typeof m !== "string") return "paper";
-      const k = m.toLowerCase();
-      if (k === "transparan" || k === "transparent") return "transparent";
-      if (k === "holo" || k === "holographic") return "holographic";
-      if (k === "simli" || k === "metallic") return "metallic";
-      return "paper"; // vinil, kraft, kuşe, default
-    };
 
     let candidate: Candidate | null = null;
     for (const item of data.items) {
@@ -530,7 +697,11 @@ export default function ProofApprovalPage({
         item.meta?.material_type ?? item.meta?.material
       );
       if (item.designs && item.designs.length > 0) {
-        const noCutDesign = item.designs.find((d) => !d.cutline);
+        const noCutDesign = item.designs.find(
+          (d) =>
+            !d.cutline &&
+            categorizeFile(d.file_name, d.mime_type) !== "qc_only"
+        );
         if (noCutDesign) {
           candidate = {
             itemId: item.id,
@@ -771,6 +942,65 @@ export default function ProofApprovalPage({
     router.push(`/onay/${orderId}/duzenle/${activeItem.id}${dfParam}`);
   };
 
+  const handleJpgShapeSelected = async (shape: GeoShape) => {
+    if (!activeItem || !activeDesignMeta || jpgSaving) return;
+    setJpgSaving(true);
+    try {
+      const svg = buildGeoCutlineSvg(
+        shape,
+        activeItem.width,
+        activeItem.height
+      );
+      const materialType = mapMaterialType(
+        activeItem.meta?.material_type ?? activeItem.meta?.material
+      );
+      const needsWhite = needsWhiteLayer(materialKey);
+      const res = await fetch(
+        `/api/orders/${orderId}/proof/${activeItem.id}/save-edit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            svg,
+            source: "raster",
+            mode: geoShapeToSaveMode(shape),
+            offset_mm: 1.5,
+            width_mm: activeItem.width,
+            height_mm: activeItem.height,
+            design_file_id: activeDesignMeta.design_file_id,
+            material_type: materialType,
+            white_plan_mode: needsWhite ? "full" : "off",
+            white_plan_path_count: needsWhite ? 1 : 0,
+            has_custom_white_plan: false,
+            tier: "standard",
+            pim_feedback: "JPG için hazır geometrik bıçak seçildi.",
+            pim_severity: "ok",
+          }),
+        }
+      );
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Bıçak kaydedilemedi");
+        return;
+      }
+      toast.success("Bıçak çizgisi oluşturuldu");
+      void load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      toast.error(msg);
+    } finally {
+      setJpgSaving(false);
+    }
+  };
+
+  const handleJpgUploadPng = () => {
+    router.push(`/siparis/${orderId}/tasarim-yukle`);
+  };
+
+  const handleJpgRequestHelp = () => {
+    setHelpOpen(true);
+  };
+
   // ============================================================
   // Render
   // ============================================================
@@ -836,6 +1066,24 @@ export default function ProofApprovalPage({
     );
   }
 
+  if (data?.order.status === "proof_validating") {
+    return (
+      <main className="container flex min-h-[60vh] flex-col items-center justify-center py-12 text-center">
+        <Pim pose="think" size={140} />
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <span
+            className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+            aria-hidden="true"
+          />
+          <h1 className="text-lg font-semibold text-lacivert">
+            Düzenlemenizi kontrol ediyoruz...
+          </h1>
+        </div>
+        <p className="mt-2 text-sm text-gri-700">Birkaç saniye.</p>
+      </main>
+    );
+  }
+
   const { summary, items, order } = data;
   const progressPct =
     summary.total > 0 ? Math.round((summary.approved / summary.total) * 100) : 0;
@@ -872,6 +1120,68 @@ export default function ProofApprovalPage({
               : `${summary.approved}/${summary.total} ürün onaylandı, az kaldı! Kalan ${summary.total - summary.approved} ürünü de gözden geçirelim.`}
         </p>
       </Card>
+
+      {proofValidation?.finalVerdict === "warn" && (
+        <Card className="mb-6 border-sari-soft/60 bg-sari-soft/30 p-4">
+          <p className="text-sm font-semibold text-sari-koyu">
+            Kontrol ettik, küçük uyarılar var — aşağıya bak
+          </p>
+        </Card>
+      )}
+
+      {!consistencyDismissed &&
+        consistencyIssues.filter((i) => i.severity === "warning").length >
+          0 && (
+          <Card className="mb-6 border-mavi-soft/60 bg-mavi-soft/20 p-4">
+            <p className="text-sm font-semibold text-lacivert">
+              ℹ️ Tasarımlar arasında kalite farkı var
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gri-700">
+              {consistencyIssues
+                .filter((i) => i.severity === "warning")
+                .map((issue) => (
+                  <li key={issue.type}>{issue.message_tr}</li>
+                ))}
+            </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setConsistencyDismissed(true)}
+              >
+                Bu şekilde devam et
+              </Button>
+            </div>
+          </Card>
+        )}
+
+      {(proofValidation?.cutlineIssues.length ||
+        proofValidation?.whiteLayerIssues.length ||
+        proofValidation?.ruleIssues.length) ? (
+        <Card className="mb-6 border-sari-soft/60 bg-sari-soft/20 p-4">
+          <p className="mb-2 text-sm font-semibold text-sari-koyu">
+            Dikkat edilmesi gereken noktalar
+          </p>
+          <ul className="list-inside list-disc space-y-1 text-sm text-lacivert">
+            {[
+              ...(proofValidation.cutlineIssues ?? []),
+              ...(proofValidation.whiteLayerIssues ?? []),
+              ...(proofValidation.ruleIssues ?? []),
+            ].map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
+      {proofValidation?.pimMessage && (
+        <Card className="mb-6 flex items-start gap-3 bg-pim-mercan-tint/30 p-4">
+          <PimMini pose="inspect" size={48} />
+          <p className="text-sm leading-relaxed text-lacivert">
+            {proofValidation.pimMessage}
+          </p>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
         {/* SOL — İtem listesi */}
@@ -1087,18 +1397,101 @@ export default function ProofApprovalPage({
                   </div>
                 )}
 
+                {bgPrompt.show && bgPrompt.bgDetect && activeItem && (
+                  <div className="border-b border-gri-200 p-4">
+                    <BgRemovalPrompt
+                      orderId={orderId}
+                      itemId={activeItem.id}
+                      designFileId={activeDesignFileId}
+                      bgDetect={bgPrompt.bgDetect}
+                      previewUrl={designUrl ?? previewUrl}
+                      onDismiss={() =>
+                        setBgPrompt({ show: false, bgDetect: null })
+                      }
+                      onRemoved={() => {
+                        setBgPrompt({ show: false, bgDetect: null });
+                        void load();
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="border-b border-gri-200 px-4 py-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ["cutline", "✂️ Bıçak"],
+                        ["design", "🎨 Tasarım"],
+                        ["checkerboard", "🏁 Zemin"],
+                        ["cmyk", "🖨️ CMYK Önizleme"],
+                      ] as const
+                    ).map(([layer, label]) => (
+                      <button
+                        key={layer}
+                        type="button"
+                        onClick={() => setPreviewLayer(layer)}
+                        className={cn(
+                          "rounded-md border px-2.5 py-1 text-xs font-medium transition",
+                          previewLayer === layer
+                            ? "border-pim-mercan bg-pim-mercan text-white"
+                            : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {previewLayer === "cmyk" && cmykPreview && (
+                    <p className="mt-2 text-xs text-gri-700">
+                      Baskıda renkler yaklaşık bu şekilde görünecek.
+                      {cmykPreview.colorShift === "significant" && (
+                        <span className="mt-1 block font-medium text-sari-koyu">
+                          Tasarımındaki canlı renkler baskıda soluk görünebilir.
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+
                 {/* Canlı önizleme — cutline_design preview PNG (R2 signed URL) */}
                 <div
                   className="relative grid min-h-[320px] place-items-center bg-gri-100 p-6"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(45deg, #f3efe6 25%, transparent 25%), linear-gradient(-45deg, #f3efe6 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f3efe6 75%), linear-gradient(-45deg, transparent 75%, #f3efe6 75%)",
-                    backgroundSize: "20px 20px",
-                    backgroundPosition:
-                      "0 0, 0 10px, 10px -10px, -10px 0px",
-                  }}
+                  style={
+                    showJpgShapeSelector
+                      ? undefined
+                      : previewLayer === "checkerboard" ||
+                          needsWhiteLayer(materialKey)
+                        ? {
+                            backgroundImage:
+                              "linear-gradient(45deg, #f3efe6 25%, transparent 25%), linear-gradient(-45deg, #f3efe6 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f3efe6 75%), linear-gradient(-45deg, transparent 75%, #f3efe6 75%)",
+                            backgroundSize: "20px 20px",
+                            backgroundPosition:
+                              "0 0, 0 10px, 10px -10px, -10px 0px",
+                          }
+                        : undefined
+                  }
                 >
-                  {previewUrl ? (
+                  {showJpgShapeSelector && activeItem ? (
+                    <JpgShapeSelector
+                      orderId={orderId}
+                      itemId={activeItem.id}
+                      designWidth={activeItem.width}
+                      designHeight={activeItem.height}
+                      material={materialKey}
+                      saving={jpgSaving}
+                      onShapeSelected={handleJpgShapeSelected}
+                      onUploadPng={handleJpgUploadPng}
+                      onRequestHelp={handleJpgRequestHelp}
+                    />
+                  ) : (() => {
+                    const displayUrl =
+                      previewLayer === "cmyk"
+                        ? cmykPreview?.url ?? null
+                        : previewLayer === "design"
+                          ? designUrl
+                          : previewUrl;
+                    return displayUrl;
+                  })() ? (
                     <>
                       <button
                         type="button"
@@ -1108,7 +1501,13 @@ export default function ProofApprovalPage({
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={previewUrl}
+                          src={
+                            previewLayer === "cmyk"
+                              ? cmykPreview?.url ?? ""
+                              : previewLayer === "design"
+                                ? designUrl ?? ""
+                                : previewUrl ?? ""
+                          }
                           alt={`${activeItem.title} bıçak önizlemesi`}
                           className="max-h-[400px] rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02]"
                         />

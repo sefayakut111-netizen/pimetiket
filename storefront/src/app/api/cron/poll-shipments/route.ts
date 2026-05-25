@@ -21,6 +21,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import {
   queryYurticiShipment,
   IS_YURTICI_DRY_RUN,
@@ -47,40 +48,48 @@ export async function GET(req: NextRequest) {
   const guard = assertCronAuth(req);
   if (guard) return guard;
 
-  const supabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  try {
+    const payload = await withCronRun<Record<string, unknown>>("poll-shipments", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
 
-  const startedAt = Date.now();
-  const config = getYurticiConfig();
+      const supabase = createServiceClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
-  // Aday listesi
-  const { data: candidates, error: rpcErr } = await supabase.rpc(
-    "fn_get_shipment_poll_candidates",
-    {
-      p_min_age_minutes: MIN_AGE_MINUTES,
-      p_limit: BATCH_LIMIT,
-    }
-  );
+      const startedAt = Date.now();
+      const config = getYurticiConfig();
 
-  if (rpcErr) {
-    return NextResponse.json(
-      { error: rpcErr.message, stage: "rpc_candidates" },
-      { status: 500 }
-    );
-  }
+      // Aday listesi
+      const { data: candidates, error: rpcErr } = await supabase.rpc(
+        "fn_get_shipment_poll_candidates",
+        {
+          p_min_age_minutes: MIN_AGE_MINUTES,
+          p_limit: BATCH_LIMIT,
+        }
+      );
 
-  const rows = (candidates ?? []) as CandidateRow[];
-  if (rows.length === 0) {
-    return NextResponse.json({
-      success: true,
-      message: "Poll adayı yok",
-      yurticiConfig: config,
-      durationMs: Date.now() - startedAt,
-    });
-  }
+      if (rpcErr) {
+        throw new Error(rpcErr.message);
+      }
+
+      const rows = (candidates ?? []) as CandidateRow[];
+      if (rows.length === 0) {
+        const responseData = {
+          success: true,
+          message: "Poll adayı yok",
+          yurticiConfig: config,
+          durationMs: Date.now() - startedAt,
+        };
+        return {
+          summary: "Poll adayı yok",
+          itemsProcessed: 0,
+          data: responseData,
+        };
+      }
 
   type PollSummary = {
     orderId: string;
@@ -231,21 +240,34 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const summary = {
-    totalCandidates: rows.length,
-    polled: results.length,
-    successful: results.filter((r) => r.success).length,
-    delivered: results.filter((r) => r.delivered).length,
-    totalNewEvents: results.reduce((s, r) => s + r.newEvents, 0),
-    failed: results.filter((r) => !r.success).length,
-    durationMs: Date.now() - startedAt,
-    dryRun: IS_YURTICI_DRY_RUN,
-  };
+      const summary = {
+        totalCandidates: rows.length,
+        polled: results.length,
+        successful: results.filter((r) => r.success).length,
+        delivered: results.filter((r) => r.delivered).length,
+        totalNewEvents: results.reduce((s, r) => s + r.newEvents, 0),
+        failed: results.filter((r) => !r.success).length,
+        durationMs: Date.now() - startedAt,
+        dryRun: IS_YURTICI_DRY_RUN,
+      };
 
-  return NextResponse.json({
-    success: true,
-    summary,
-    yurticiConfig: config,
-    results: results.slice(0, 20), // İlk 20 (log spam'i önle)
-  });
+      const responseData = {
+        success: true,
+        summary,
+        yurticiConfig: config,
+        results: results.slice(0, 20), // İlk 20 (log spam'i önle)
+      };
+
+      return {
+        summary: `${results.length} kargo poll edildi, ${summary.delivered} teslim`,
+        itemsProcessed: results.length,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/poll-shipments]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

@@ -18,6 +18,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import type { AllowedMime } from "@/lib/storage/design-files";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import { isR2StorageKey } from "@/lib/storage/purge-r2";
 import { deleteFromR2, downloadFromR2 } from "@/lib/storage/r2-client";
 import type {
@@ -81,6 +82,28 @@ export async function POST(req: NextRequest) {
   const fileRow = file as unknown as DesignFileRow;
   if (fileRow.user_id !== user.id) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const fileCategory = categorizeFile(
+    fileRow.original_name,
+    fileRow.mime_type
+  );
+  if (fileCategory === "blocked") {
+    if (isR2StorageKey(fileRow.storage_path)) {
+      await deleteFromR2(fileRow.storage_path);
+    } else {
+      await admin.storage.from(STORAGE_BUCKET).remove([fileRow.storage_path]);
+    }
+    await admin
+      .from("design_files")
+      .update({
+        status: "rejected" as Enums<"design_file_status">,
+        ai_check: {
+          flags: [{ kind: "error", message: BLOCKED_FILE_MESSAGE }],
+        } as Json,
+      } satisfies TablesUpdate<"design_files">)
+      .eq("id", body.fileId);
+    return NextResponse.json({ error: BLOCKED_FILE_MESSAGE }, { status: 400 });
   }
 
   // Magic-byte doğrulama (sync — upload-complete hot path)

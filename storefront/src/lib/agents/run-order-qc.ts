@@ -27,6 +27,10 @@ import * as Sentry from "@sentry/nextjs";
 import { runDesignQC, mimeToFormat } from "./design-qc";
 import { isAiCircuitOpen } from "./circuit-breaker";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import {
+  checkMultiDesignConsistency,
+  type DesignQCResult,
+} from "@/lib/proof/multi-design-check";
 
 interface OrderItemForQC {
   id: string;
@@ -241,6 +245,7 @@ async function runOrderDesignQCInner(
     kotu: 0,
     error: 0,
   };
+  const qcResults: DesignQCResult[] = [];
 
   // 3) Her dosya için QC paralel — sonuçları topla (race-safe)
   const settled = await Promise.allSettled(
@@ -291,7 +296,17 @@ async function runOrderDesignQCInner(
           tokens_used: result.tokensUsed ?? null,
         });
 
-        return result.verdict as VerdictKey;
+        const qcEntry: DesignQCResult = {
+          fileId: file.id,
+          fileName: file.original_name,
+          dpi: result.effectiveDpi ?? 0,
+          colorProfile: result.colorProfile ?? "RGB",
+          verdict: result.verdict,
+          score: result.score,
+          fileType: result.fileType ?? "raster",
+        };
+
+        return { verdict: result.verdict as VerdictKey, qcEntry };
       } catch (err) {
         Sentry.captureException(err, {
           tags: { scope: "design_qc.order_auto", order_id: orderId },
@@ -307,15 +322,20 @@ async function runOrderDesignQCInner(
           verdict: "error",
           error: err instanceof Error ? err.message : "unknown",
         });
-        return "error" as VerdictKey;
+        return { verdict: "error" as VerdictKey, qcEntry: null };
       }
     })
   );
 
   for (const outcome of settled) {
-    const verdict: VerdictKey =
-      outcome.status === "fulfilled" ? outcome.value : "error";
-    verdictCounts[verdict] += 1;
+    if (outcome.status === "fulfilled") {
+      verdictCounts[outcome.value.verdict] += 1;
+      if (outcome.value.qcEntry) {
+        qcResults.push(outcome.value.qcEntry);
+      }
+    } else {
+      verdictCounts.error += 1;
+    }
   }
 
   // 4) Aggregate karar — Sefa kuralı: tek bir hata insan göz gerektirir
@@ -360,6 +380,24 @@ async function runOrderDesignQCInner(
     ]);
   }
 
+  if (qcResults.length > 1) {
+    const consistency = checkMultiDesignConsistency(qcResults);
+    if (!consistency.consistent) {
+      await admin.from("order_events").insert([
+        {
+          order_id: orderId,
+          event_type: "design_consistency_warning",
+          status_after: nextStatus,
+          actor_role: "system",
+          summary: "Tasarımlar arasında kalite tutarsızlığı tespit edildi",
+          detail: consistency,
+        },
+      ]);
+    }
+  }
+
+  // proof_generating sonrası bıçak /onay'da üretilir; runProofPipeline
+  // save-edit sonrası proof_validating aşamasında çalışır.
   return {
     orderId,
     ranCount: files.length,

@@ -10,27 +10,26 @@
  * Bucket: `designs` (privé)
  * Path: `designs/<orderId>/<uuid>.<ext>`
  *
- * Validation (server-side, Sefa kuralı 18 May v54):
+ * Validation (server-side, Sefa kuralı 18 May v54 + Proof Editor v3):
  *   - max size: 30 MB / dosya
  *   - max count: 50 dosya / sipariş (MultiDesignDropZone tarafında)
- *   - allowed format: PDF, PNG, JPG, AI, PSD, EPS
- *   - SVG kaldırıldı (Sefa kararı v54 — sade liste).
- *   - JPG geri eklendi (Sefa 20 May v68 — kullanıcı sıkça yüklüyor).
+ *   - allowed format: PDF, PNG, JPG, AI, PSD, SVG (EPS desteklenmez)
  *   - magic-byte check (mime spoofing'e karşı, AI ön-kontrol esnasında)
  */
 
+import { categorizeFile } from "@/lib/design-file-types";
 import { SUPABASE_STORAGE_BUCKETS } from "./buckets";
 
 export const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "application/illustrator",
-  "application/postscript", // EPS + AI (Adobe AI dosyalarını da bazen tetikler)
   "image/vnd.adobe.photoshop",
   "image/png",
-  "image/jpeg", // Sefa 20 May v68: kullanıcı sıkça yüklüyor (fotoğraf tasarım)
+  "image/jpeg",
+  "image/svg+xml",
 ] as const;
 
-/** Tarayıcı .ai/.psd/.eps için MIME döndürmediği durumda uzantı bazlı kontrol */
+/** Tarayıcı .ai/.psd için MIME döndürmediği durumda uzantı bazlı kontrol */
 export const ALLOWED_EXTENSIONS = [
   ".pdf",
   ".png",
@@ -38,7 +37,7 @@ export const ALLOWED_EXTENSIONS = [
   ".jpeg",
   ".ai",
   ".psd",
-  ".eps",
+  ".svg",
 ] as const;
 
 export type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
@@ -53,12 +52,9 @@ export function isAllowedMime(mime: string): mime is AllowedMime {
   return (ALLOWED_MIME_TYPES as readonly string[]).includes(mime);
 }
 
-/** MIME yoksa uzantıya bak — AI/PSD/EPS çoğu tarayıcıda mime boş. */
+/** MIME yoksa uzantıya bak — AI/PSD çoğu tarayıcıda mime boş. */
 export function isAllowedByExtension(fileName: string): boolean {
-  const lastDot = fileName.lastIndexOf(".");
-  if (lastDot === -1) return false;
-  const ext = fileName.slice(lastDot).toLowerCase();
-  return (ALLOWED_EXTENSIONS as readonly string[]).includes(ext);
+  return categorizeFile(fileName) !== "blocked";
 }
 
 export function getExtensionFromMime(mime: string): string {
@@ -67,14 +63,14 @@ export function getExtensionFromMime(mime: string): string {
       return "pdf";
     case "application/illustrator":
       return "ai";
-    case "application/postscript":
-      return "eps";
     case "image/vnd.adobe.photoshop":
       return "psd";
     case "image/png":
       return "png";
     case "image/jpeg":
       return "jpg";
+    case "image/svg+xml":
+      return "svg";
     default:
       return "bin";
   }

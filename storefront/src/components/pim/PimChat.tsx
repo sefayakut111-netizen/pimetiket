@@ -606,19 +606,84 @@ interface ToolResultError {
   bigEtiketRedirect?: boolean;
 }
 
+interface ToolResultRedirect {
+  type: "redirect";
+  url: string;
+  label: string;
+}
+
+interface ToolResultProofStatus {
+  found: boolean;
+  orderId?: string;
+  status?: string;
+  redirect?: ToolResultRedirect;
+  pimSuggestion?: string | null;
+  [key: string]: unknown;
+}
+
 type ToolResultData =
   | ToolResultStickerSuccess
   | ToolResultEtiketSuccess
   | ToolResultError;
 
-function ToolResultCard({ result }: { result: ToolResultData }) {
+function isRedirectResult(r: unknown): r is ToolResultRedirect {
+  return (
+    !!r &&
+    typeof r === "object" &&
+    "type" in r &&
+    (r as ToolResultRedirect).type === "redirect"
+  );
+}
+
+function isProofStatusResult(r: unknown): r is ToolResultProofStatus {
+  return (
+    !!r &&
+    typeof r === "object" &&
+    "found" in r &&
+    (r as ToolResultProofStatus).found === true
+  );
+}
+
+function ToolResultCard({ result }: { result: unknown }) {
   const toast = useToast();
 
-  if (!result.success) {
+  if (isRedirectResult(result)) {
+    return (
+      <Link
+        href={result.url}
+        className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-pim-mercan text-white rounded-lg font-medium hover:bg-pim-mercan/90 text-sm"
+      >
+        {result.label}
+      </Link>
+    );
+  }
+
+  if (isProofStatusResult(result) && result.redirect?.type === "redirect") {
+    return (
+      <div className="max-w-[85%] rounded-xl bg-white ring-1 ring-gri-200 px-3.5 py-2.5 text-[12.5px] text-lacivert">
+        {result.status && (
+          <p className="font-medium">Durum: {String(result.status)}</p>
+        )}
+        {result.pimSuggestion && (
+          <p className="mt-1 text-gri-700">{String(result.pimSuggestion)}</p>
+        )}
+        <Link
+          href={result.redirect.url}
+          className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-pim-mercan text-white rounded-lg font-medium hover:bg-pim-mercan/90 text-sm"
+        >
+          {result.redirect.label}
+        </Link>
+      </div>
+    );
+  }
+
+  const quote = result as ToolResultData;
+  if (!("success" in quote) || !quote.success) {
+    const err = quote as ToolResultError;
     return (
       <div className="max-w-[85%] rounded-xl bg-kirmizi/10 ring-1 ring-kirmizi/30 px-3.5 py-2.5 text-[12.5px] text-kirmizi">
-        ⚠️ {result.reason}
-        {result.bigEtiketRedirect && (
+        ⚠️ {err.reason}
+        {err.bigEtiketRedirect && (
           <div className="text-[11px] text-kirmizi/70 mt-1">
             Büyük etiket servisi yakında.
           </div>
@@ -627,7 +692,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
     );
   }
 
-  const isSticker = result.product === "sticker";
+  const isSticker = quote.product === "sticker";
   const fmtTL = (n: number) =>
     n.toLocaleString("tr-TR", {
       minimumFractionDigits: 0,
@@ -635,8 +700,8 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
     });
 
   const handleAddToCart = async () => {
-    if (result.product === "sticker") {
-      const parts = result.size_mm.split(/[×x]/).map((s) => Number(s.trim()));
+    if (quote.product === "sticker") {
+      const parts = quote.size_mm.split(/[×x]/).map((s) => Number(s.trim()));
       const w = Number.isFinite(parts[0]) ? parts[0] : 0;
       const h = Number.isFinite(parts[1]) ? parts[1] : 0;
       if (w === 0 || h === 0) {
@@ -656,40 +721,40 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
       };
       const r = await addToCustomerCart({
         product: "sticker",
-        title: `Sticker · ${matLabel[result.material] ?? result.material} + ${
-          finLabel[result.finish] ?? result.finish
+        title: `Sticker · ${matLabel[quote.material] ?? quote.material} + ${
+          finLabel[quote.finish] ?? quote.finish
         }`,
-        config: `${w}×${h}mm · ${result.qty.toLocaleString(
+        config: `${w}×${h}mm · ${quote.qty.toLocaleString(
           "tr-TR"
         )} adet · Pim ile fiyatlandı`,
         width: w,
         height: h,
-        qty: result.qty,
-        unit: result.unit_price_kdv_dahil,
-        total: Math.round(result.total_kdv_dahil),
+        qty: quote.qty,
+        unit: quote.unit_price_kdv_dahil,
+        total: Math.round(quote.total_kdv_dahil),
         cut: "diecut",
-        hediyeAdet: result.hediye_adet,
+        hediyeAdet: quote.hediye_adet,
       });
       if (r.ok) toast.success("Sepete eklendi 🛒");
       else toast.error(r.reason);
     } else {
       const r = await addToCustomerCart({
         product: "etiket",
-        title: `Etiket · ${result.material}${
-          result.coating !== "Kaplamasız" ? ` + ${result.coating}` : ""
+        title: `Etiket · ${quote.material}${
+          quote.coating !== "Kaplamasız" ? ` + ${quote.coating}` : ""
         }`,
-        config: `${result.width_mm}×${result.height_mm}mm · ${result.qty.toLocaleString(
+        config: `${quote.width_mm}×${quote.height_mm}mm · ${quote.qty.toLocaleString(
           "tr-TR"
         )} adet${
-          result.customization !== "Eklenti yok"
-            ? ` · ${result.customization}`
+          quote.customization !== "Eklenti yok"
+            ? ` · ${quote.customization}`
             : ""
         } · Pim ile fiyatlandı`,
-        width: result.width_mm,
-        height: result.height_mm,
-        qty: result.qty,
-        unit: result.unit_price_kdv_dahil,
-        total: Math.round(result.total_kdv_dahil),
+        width: quote.width_mm,
+        height: quote.height_mm,
+        qty: quote.qty,
+        unit: quote.unit_price_kdv_dahil,
+        total: Math.round(quote.total_kdv_dahil),
       });
       if (r.ok) toast.success("Sepete eklendi 🛒");
       else toast.error(r.reason);
@@ -707,32 +772,32 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
           {isSticker ? "Sticker Fiyat" : "Etiket Fiyat"} · KDV Dahil
         </div>
         <div className="text-[28px] font-bold tracking-tight tabular-nums leading-none">
-          {fmtTL(result.total_kdv_dahil)}{" "}
+          {fmtTL(quote.total_kdv_dahil)}{" "}
           <span className="text-pim-mercan text-[20px] font-semibold">₺</span>
         </div>
         <div className="text-[11.5px] text-white/70 mt-1.5 tabular-nums">
-          {result.qty.toLocaleString("tr-TR")} adet ×{" "}
+          {quote.qty.toLocaleString("tr-TR")} adet ×{" "}
           <strong className="text-white">
-            {fmtTL(result.unit_price_kdv_dahil)} ₺/adet
+            {fmtTL(quote.unit_price_kdv_dahil)} ₺/adet
           </strong>
         </div>
 
         <div className="text-[11.5px] text-white/80 mt-2 leading-snug">
           {isSticker ? (
             <>
-              {result.size_mm} mm · {result.material} ·{" "}
-              {result.finish}
+              {quote.size_mm} mm · {quote.material} ·{" "}
+              {quote.finish}
               {/* +hediye Pim'de gizli (Sefa kuralı 11 May) — overrun
                   adet backend'de fire payı olarak depo edilir */}
             </>
           ) : (
             <>
-              {result.width_mm}×{result.height_mm} mm · {result.material}
-              {result.coating !== "Kaplamasız" && ` · ${result.coating}`}
-              {result.customization !== "Eklenti yok" &&
-                ` · ${result.customization}`}
+              {quote.width_mm}×{quote.height_mm} mm · {quote.material}
+              {quote.coating !== "Kaplamasız" && ` · ${quote.coating}`}
+              {quote.customization !== "Eklenti yok" &&
+                ` · ${quote.customization}`}
               {" · "}
-              {result.rolls_needed} rulo
+              {quote.rolls_needed} rulo
             </>
           )}
         </div>
@@ -747,7 +812,7 @@ function ToolResultCard({ result }: { result: ToolResultData }) {
               <Icon.Cart size={11} /> Sepete ekle
             </button>
             <a
-              href={result.configurator_url}
+              href={quote.configurator_url}
               className="text-[11px] font-semibold text-pim-mercan hover:text-white transition-colors"
             >
               Düzenle →
@@ -776,19 +841,19 @@ interface UIMessageWithParts {
  * Tool result part'ları çıkarır. AI SDK v6'da part type'ı "tool-{name}"
  * formatında ve `output` field'ında structured data var.
  */
-function extractToolResults(m: unknown): ToolResultData[] {
+function extractToolResults(m: unknown): unknown[] {
   if (!m || typeof m !== "object") return [];
   const msg = m as UIMessageWithParts;
   if (!Array.isArray(msg.parts)) return [];
 
-  const results: ToolResultData[] = [];
+  const results: unknown[] = [];
   for (const part of msg.parts) {
     if (
       part.type?.startsWith("tool-") &&
       part.state === "output-available" &&
       part.output
     ) {
-      results.push(part.output as ToolResultData);
+      results.push(part.output);
     }
   }
   return results;

@@ -36,6 +36,8 @@ export type OrderStatus =
   // Prova / Baskı Onay (Mig 059 — POC entegrasyonu)
   | "proof_generating" // Prova hazırlanıyor (otomatik render, Mig 039)
   | "proof_pending" // Müşteri baskı önizleme onay sayfasında (/onay/[id])
+  // proof_validating: müşteri düzenleme yaptı, AI tekrar doğruluyor (kısa ömürlü 3-10sn)
+  | "proof_validating"
   | "proof_approved" // Tüm itemler müşteri tarafından onaylandı (Mig 059)
 
   // Üretim
@@ -61,6 +63,7 @@ export const ORDER_STATUS_VALUES: readonly OrderStatus[] = [
   "human_review_failed",
   "proof_generating",
   "proof_pending",
+  "proof_validating",
   "proof_approved",
   "ready_to_ship",
   "fason_assigned",
@@ -88,6 +91,7 @@ export const ADMIN_STATUS_FILTER_CHIPS: ReadonlyArray<{
   { id: "operator_review", label: "Operatör inceliyor" },
   { id: "proof_generating", label: "Prova hazırlanıyor" },
   { id: "proof_pending", label: "Müşteri onayı bekliyor" },
+  { id: "proof_validating", label: "Düzenleme doğrulanıyor" },
   { id: "proof_approved", label: "Müşteri onayladı" },
   { id: "ready_to_ship", label: "Üretime hazır" },
   { id: "fason_assigned", label: "Partnere atandı" },
@@ -160,7 +164,8 @@ export const VALID_BULK_TRANSITIONS: Partial<
   paid: ["qc_pending", "cancelled"],
   awaiting_upload: ["cancelled"],
   qc_pending: ["proof_generating", "human_review", "cancelled"],
-  proof_pending: ["proof_approved", "cancelled"],
+  proof_pending: ["proof_validating", "proof_approved", "cancelled"],
+  proof_validating: ["proof_pending", "operator_review", "cancelled"],
   proof_approved: ["ready_to_ship"],
   ready_to_ship: ["in_production"],
   in_production: ["shipped"],

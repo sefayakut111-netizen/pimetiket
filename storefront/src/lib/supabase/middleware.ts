@@ -17,6 +17,7 @@
  */
 
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveAdminPathModule } from "@/lib/admin-rbac";
 import { VIEW_MODE_COOKIE, parseViewMode } from "@/lib/view-mode";
@@ -72,6 +73,26 @@ function isAuthPath(pathname: string): boolean {
   return AUTH_PATHS.some((p) => pathname === p);
 }
 
+async function isMaintenanceModeActive(): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return false;
+
+  try {
+    const admin = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data } = await admin
+      .from("site_settings")
+      .select("maintenance_mode")
+      .eq("id", 1)
+      .maybeSingle();
+    return !!(data as { maintenance_mode?: boolean } | null)?.maintenance_mode;
+  } catch {
+    return false;
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -104,6 +125,23 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  const pathname = request.nextUrl.pathname;
+
+  // Bakım modu — admin/API/bakim sayfası hariç müşteri trafiğini yönlendir
+  const isAdminPath = pathname.startsWith("/admin");
+  const isApiPath = pathname.startsWith("/api");
+  const isMaintenancePath = pathname === "/bakim";
+
+  if (!isAdminPath && !isApiPath && !isMaintenancePath) {
+    try {
+      if (await isMaintenanceModeActive()) {
+        return NextResponse.rewrite(new URL("/bakim", request.url));
+      }
+    } catch {
+      // DB erişimi başarısızsa siteyi kapatma — fail-open
+    }
+  }
+
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
@@ -129,7 +167,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
+  // pathname yukarıda tanımlandı (bakım modu kontrolü)
 
   // 1) Korumalı rota + login değil → /auth?next=<path>
   if (!user && isProtected(pathname)) {

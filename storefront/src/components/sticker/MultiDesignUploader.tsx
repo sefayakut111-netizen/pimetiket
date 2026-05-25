@@ -27,6 +27,7 @@ import {
   detectKind,
   type DesignFileKind,
 } from "@/lib/design-preview";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 
 export interface PendingDesign {
   id: string;
@@ -61,28 +62,11 @@ interface Props {
   productLabel?: string;
 }
 
-// Sefa 18 May v54 + 20 May v68: PDF/PNG/JPG/AI/PSD/EPS — JPG eklendi
-// (kullanıcı sıkça yüklüyor, fotoğraf bazlı tasarım).
-// AI/PSD/EPS için tarayıcı MIME döndürmez → uzantı kontrolü baz alınır.
-const ALLOWED_EXTENSIONS = [
-  ".pdf",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".ai",
-  ".psd",
-  ".eps",
-] as const;
+// PDF/PNG/JPG/AI/PSD/SVG — EPS desteklenmez
 const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB
 
-function getExt(name: string): string {
-  const i = name.lastIndexOf(".");
-  return i === -1 ? "" : name.slice(i).toLowerCase();
-}
-
 function isAcceptedFile(file: File): boolean {
-  const ext = getExt(file.name);
-  return (ALLOWED_EXTENSIONS as readonly string[]).includes(ext);
+  return categorizeFile(file.name, file.type) !== "blocked";
 }
 
 /**
@@ -424,7 +408,7 @@ export function MultiDesignUploader({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.eps,application/pdf,image/png,image/jpeg,application/illustrator,application/postscript,image/vnd.adobe.photoshop"
+          accept=".pdf,.png,.jpg,.jpeg,.ai,.psd,.svg,application/pdf,image/png,image/jpeg,image/svg+xml,application/illustrator,image/vnd.adobe.photoshop"
           multiple
           className="hidden"
           onChange={(e) => {

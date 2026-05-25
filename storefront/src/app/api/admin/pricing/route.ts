@@ -24,6 +24,8 @@ import {
   type ScopeConfig,
   type ScopeName,
 } from "@/lib/pricing-config";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { logServerAudit } from "@/lib/audit-log-server";
 
 const VALID_SCOPES: ScopeName[] = [
   "sticker",
@@ -96,6 +98,7 @@ export async function PUT(req: Request) {
     config?: unknown;
     draft?: unknown; // geriye uyum
     note?: string;
+    changes_count?: number;
   };
 
   const payload = body.config ?? body.draft;
@@ -138,6 +141,23 @@ export async function PUT(req: Request) {
         { status: 500 }
       );
     }
+
+    const admin = createAdminClient();
+    await logServerAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email ?? null,
+      actorRole: auth.role === "staff" ? "staff" : "admin",
+      action: "pricing_config_updated",
+      targetType: "pricing_config",
+      targetId: scope,
+      summary: `Fiyat config güncellendi (${scope})`,
+      detail: {
+        scope,
+        changes_count:
+          typeof body.changes_count === "number" ? body.changes_count : null,
+        note: body.note ?? null,
+      },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

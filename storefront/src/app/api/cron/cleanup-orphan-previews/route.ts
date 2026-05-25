@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { SUPABASE_STORAGE_BUCKETS } from "@/lib/storage/buckets";
 
 export const dynamic = "force-dynamic";
@@ -20,76 +21,91 @@ export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json({ error: "Supabase env eksik" }, { status: 500 });
-  }
-
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  const cutoff = new Date(
-    Date.now() - ORPHAN_DAYS * 24 * 60 * 60 * 1000
-  ).toISOString();
-
-  const { data: cartRows } = await admin
-    .from("cart_items")
-    .select("design_preview_url")
-    .not("design_preview_url", "is", null);
-
-  const referenced = new Set<string>();
-  for (const row of cartRows ?? []) {
-    const previewUrl = (row as { design_preview_url: string | null })
-      .design_preview_url;
-    if (!previewUrl) continue;
-    const path = extractPreviewPath(previewUrl);
-    if (path) referenced.add(path);
-  }
-
-  const { data: objects, error: listErr } = await admin.storage
-    .from(BUCKET)
-    .list("", { limit: MAX_SCAN, sortBy: { column: "created_at", order: "asc" } });
-
-  if (listErr) {
-    console.error("[cleanup-orphan-previews] list error:", listErr);
-    return NextResponse.json({ error: listErr.message }, { status: 500 });
-  }
-
-  const orphanPaths: string[] = [];
-  for (const userFolder of objects ?? []) {
-    if (!userFolder.name || userFolder.name === ".emptyFolderPlaceholder") continue;
-    const { data: files } = await admin.storage
-      .from(BUCKET)
-      .list(userFolder.name, { limit: 100 });
-    for (const file of files ?? []) {
-      if (!file.name?.endsWith(".png")) continue;
-      const created = file.created_at ?? file.updated_at;
-      if (created && created > cutoff) continue;
-      const fullPath = `${userFolder.name}/${file.name}`;
-      if (!referenced.has(fullPath)) {
-        orphanPaths.push(fullPath);
+  try {
+    const payload = await withCronRun("cleanup-orphan-previews", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
       }
-    }
-  }
 
-  let deleted = 0;
-  for (let i = 0; i < orphanPaths.length; i += 100) {
-    const batch = orphanPaths.slice(i, i + 100);
-    const { data, error } = await admin.storage.from(BUCKET).remove(batch);
-    if (!error) {
-      deleted += (data as { name: string }[])?.length ?? 0;
-    }
-  }
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
-  return NextResponse.json({
-    ok: true,
-    scanned_users: objects?.length ?? 0,
-    orphans_found: orphanPaths.length,
-    deleted,
-    timestamp: new Date().toISOString(),
-  });
+      const cutoff = new Date(
+        Date.now() - ORPHAN_DAYS * 24 * 60 * 60 * 1000
+      ).toISOString();
+
+      const { data: cartRows } = await admin
+        .from("cart_items")
+        .select("design_preview_url")
+        .not("design_preview_url", "is", null);
+
+      const referenced = new Set<string>();
+      for (const row of cartRows ?? []) {
+        const previewUrl = (row as { design_preview_url: string | null })
+          .design_preview_url;
+        if (!previewUrl) continue;
+        const path = extractPreviewPath(previewUrl);
+        if (path) referenced.add(path);
+      }
+
+      const { data: objects, error: listErr } = await admin.storage
+        .from(BUCKET)
+        .list("", { limit: MAX_SCAN, sortBy: { column: "created_at", order: "asc" } });
+
+      if (listErr) {
+        console.error("[cleanup-orphan-previews] list error:", listErr);
+        throw new Error(listErr.message);
+      }
+
+      const orphanPaths: string[] = [];
+      for (const userFolder of objects ?? []) {
+        if (!userFolder.name || userFolder.name === ".emptyFolderPlaceholder") continue;
+        const { data: files } = await admin.storage
+          .from(BUCKET)
+          .list(userFolder.name, { limit: 100 });
+        for (const file of files ?? []) {
+          if (!file.name?.endsWith(".png")) continue;
+          const created = file.created_at ?? file.updated_at;
+          if (created && created > cutoff) continue;
+          const fullPath = `${userFolder.name}/${file.name}`;
+          if (!referenced.has(fullPath)) {
+            orphanPaths.push(fullPath);
+          }
+        }
+      }
+
+      let deleted = 0;
+      for (let i = 0; i < orphanPaths.length; i += 100) {
+        const batch = orphanPaths.slice(i, i + 100);
+        const { data, error } = await admin.storage.from(BUCKET).remove(batch);
+        if (!error) {
+          deleted += (data as { name: string }[])?.length ?? 0;
+        }
+      }
+
+      const responseData = {
+        ok: true,
+        scanned_users: objects?.length ?? 0,
+        orphans_found: orphanPaths.length,
+        deleted,
+        timestamp: new Date().toISOString(),
+      };
+
+      return {
+        summary: `${deleted}/${orphanPaths.length} orphan preview silindi`,
+        itemsProcessed: deleted,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/cleanup-orphan-previews]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }
 
 function extractPreviewPath(url: string): string | null {

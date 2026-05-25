@@ -80,6 +80,7 @@ import { gridColsForCount } from "@/lib/grid-cols";
 // Client-safe import.
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
+import { getActiveMaterials } from "@/lib/pricing-materials";
 import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
 import type { PricebookSnapshot } from "@/lib/pricing-pricebook-types";
 import { FALLBACK_PRICEBOOK_SNAPSHOT } from "@/lib/pricing-pricebook-types";
@@ -740,7 +741,7 @@ function EtiketPage() {
   ): readonly T[] => {
     const adminIds =
       bucket === "materials"
-        ? adminConfig?.materials?.map((m) => m.id)
+        ? getActiveMaterials(adminConfig).map((m) => m.id)
         : adminConfig?.options?.[bucket]?.items.map((i) => i.id);
     if (!adminIds || adminIds.length === 0) return moduleIds;
     const filtered = adminIds.filter((id) =>

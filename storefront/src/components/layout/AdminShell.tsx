@@ -116,6 +116,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/fason": "Üretim Partnerleri",
   "/admin/musteriler": "Müşteriler",
   "/admin/finans": "Finans & Raporlar",
+  "/admin/odemeler": "Ödemeler",
   "/admin/tasarimlar": "Tasarım kütüphanesi",
   "/admin/aboneler": "Email aboneleri",
   "/admin/gorseller": "Site görselleri",
@@ -133,6 +134,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/urunler": "Ürün kartları",
   "/admin/kargo": "Kargo yönetimi",
   "/admin/ayarlar": "Ayarlar",
+  "/admin/sistem/cronlar": "Cron izleme",
 };
 
 function getPageTitle(pathname: string): string {
@@ -163,6 +165,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Sefa 18 May v68 (CRO denetim): Cmd+K global arama palette
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const { canView, legacyFullAccess, loading: permLoading } =
     useAdminPermissions();
 
@@ -176,6 +179,24 @@ export function AdminShell({ children }: { children: ReactNode }) {
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  useEffect(() => {
+    const fetchMaintenance = async () => {
+      try {
+        const res = await fetch("/api/admin/settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          settings?: { maintenance_mode?: boolean };
+        };
+        setMaintenanceMode(Boolean(json.settings?.maintenance_mode));
+      } catch {
+        /* sessiz */
+      }
+    };
+    void fetchMaintenance();
+    const interval = setInterval(fetchMaintenance, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   const switchToCustomer = async () => {
@@ -465,6 +486,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             module: "finans",
           },
           {
+            href: "/admin/odemeler",
+            label: "Ödemeler",
+            icon: <Icon.Wallet size={16} />,
+            module: "finans",
+          },
+          {
             href: "/admin/kuponlar",
             label: "Kuponlar",
             icon: <Icon.Tag size={16} />,
@@ -490,6 +517,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
             badge: badges.auditorsPending,
             badgeAccent: badges.auditorsCritical > 0,
             module: "auditors",
+          },
+          {
+            href: "/admin/sistem/cronlar",
+            label: "Cron İzleme",
+            icon: <Icon.Refresh size={16} />,
+            module: "settings",
           },
           {
             href: "/admin/audit-log",
@@ -728,6 +761,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       {/* Main column — desktop'ta sidebar genişliği kadar margin */}
       <div className="lg:ml-[248px] flex flex-col min-h-screen">
+        {maintenanceMode && (
+          <div className="bg-kirmizi px-4 py-2 text-center text-sm font-medium text-white">
+            ⚠️ BAKIM MODU AKTİF — müşteriler siteye erişemiyor.
+            <Link href="/admin/ayarlar" className="ml-2 underline">
+              Kapat
+            </Link>
+          </div>
+        )}
         {/* Topbar */}
         <header className="sticky top-0 z-30 bg-white border-b border-gri-200 h-14 px-4 lg:px-6 flex items-center gap-3 shadow-1">
           {/* Mobile hamburger */}

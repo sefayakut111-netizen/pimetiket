@@ -28,6 +28,8 @@ interface BodyShape {
   // Sefa 18 May Migration 053: min/max sipariş tutarı
   min_order_total_try?: unknown;
   max_order_total_try?: unknown;
+  maintenance_mode?: unknown;
+  maintenance_message?: unknown;
 }
 
 function serviceClient() {
@@ -68,6 +70,9 @@ export async function GET() {
         min_subtotal_for_credit: 500,
         min_order_total_try: 250,
         max_order_total_try: 250000,
+        maintenance_mode: false,
+        maintenance_message:
+          "Kısa süreli bakım yapılıyor. Birkaç dakika içinde tekrar deneyin.",
         updated_at: null,
       },
       stale: true,
@@ -91,7 +96,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const update: Record<string, number> = {};
+  const update: Record<string, number | boolean | string> = {};
   const fields = [
     "shipping_fee_try",
     "free_shipping_threshold",
@@ -108,6 +113,14 @@ export async function PATCH(req: Request) {
       update[f] = Math.round(v * 100) / 100;
     }
   }
+
+  if (typeof body.maintenance_mode === "boolean") {
+    update.maintenance_mode = body.maintenance_mode;
+  }
+  if (typeof body.maintenance_message === "string") {
+    update.maintenance_message = body.maintenance_message.slice(0, 500);
+  }
+
   if (Object.keys(update).length === 0) {
     return NextResponse.json(
       { error: "Güncellenecek alan yok" },

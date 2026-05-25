@@ -25,9 +25,10 @@ interface SiteSettings {
   welcomeCreditTry: number;
   referralCreditTry: number;
   minSubtotalForCredit: number;
-  // Sefa 18 May Migration 053: min/max sipariş tutarı
   minOrderTotal: number;
   maxOrderTotal: number;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
   defaultStickerDelivery: number;
   defaultEtiketDelivery: number;
   fastTrackEnabled: boolean; // DEPRECATED — Sefa kuralı "hızlı baskı yok", UI'dan kaldırıldı
@@ -46,7 +47,9 @@ const DEFAULTS: SiteSettings = {
   minSubtotalForCredit: 500,
   minOrderTotal: 250,
   maxOrderTotal: 250000,
-  // Sefa kuralı (18 May v68): Etiket 10 iş günü, Sticker 5 iş günü.
+  maintenanceMode: false,
+  maintenanceMessage:
+    "Kısa süreli bakım yapılıyor. Birkaç dakika içinde tekrar deneyin.",
   defaultStickerDelivery: 5,
   defaultEtiketDelivery: 10,
   fastTrackEnabled: false, // Hızlı baskı YOK
@@ -77,6 +80,41 @@ export default function AdminAyarlarPage() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULTS);
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
+
+  const patchMaintenance = async (
+    patch: Partial<Pick<SiteSettings, "maintenanceMode" | "maintenanceMessage">>
+  ) => {
+    setMaintenanceSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          maintenance_mode: patch.maintenanceMode,
+          maintenance_message: patch.maintenanceMessage,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error(j.error ?? "Bakım modu güncellenemedi");
+        return false;
+      }
+      toast.success(
+        patch.maintenanceMode === true
+          ? "Bakım modu açıldı"
+          : patch.maintenanceMode === false
+            ? "Bakım modu kapatıldı"
+            : "Bakım mesajı güncellendi"
+      );
+      return true;
+    } catch {
+      toast.error("Bakım modu güncellenemedi");
+      return false;
+    } finally {
+      setMaintenanceSaving(false);
+    }
+  };
 
   useEffect(() => {
     const local = loadLocalSettings();
@@ -110,6 +148,10 @@ export default function AdminAyarlarPage() {
           ),
           maxOrderTotal: Number(
             s.max_order_total_try ?? prev.maxOrderTotal
+          ),
+          maintenanceMode: Boolean(s.maintenance_mode ?? prev.maintenanceMode),
+          maintenanceMessage: String(
+            s.maintenance_message ?? prev.maintenanceMessage
           ),
         }));
       })
@@ -190,6 +232,60 @@ export default function AdminAyarlarPage() {
             Vergi, kargo, tatil günleri ve iletişim ayarları.
           </p>
         </div>
+
+        <Card
+          padding="p-6"
+          className="mb-6 border-2 border-kirmizi/40 bg-kirmizi-soft/10"
+        >
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-lg">🔴</span>
+            <h2 className="text-lg font-semibold text-kirmizi-koyu">
+              Bakım Modu
+            </h2>
+          </div>
+          <label className="flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              checked={settings.maintenanceMode}
+              disabled={maintenanceSaving}
+              onChange={async (e) => {
+                const next = e.target.checked;
+                setSettings((s) => ({ ...s, maintenanceMode: next }));
+                const ok = await patchMaintenance({ maintenanceMode: next });
+                if (!ok) {
+                  setSettings((s) => ({ ...s, maintenanceMode: !next }));
+                }
+              }}
+              className="h-5 w-5 rounded border-gri-300 text-kirmizi focus:ring-kirmizi"
+            />
+            <span className="text-sm font-medium text-lacivert">
+              {settings.maintenanceMode ? "Açık" : "Kapalı"}
+            </span>
+          </label>
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-[13px] font-semibold">
+              Mesaj
+            </span>
+            <Input
+              value={settings.maintenanceMessage}
+              disabled={maintenanceSaving}
+              onChange={(e) =>
+                setSettings((s) => ({
+                  ...s,
+                  maintenanceMessage: e.target.value,
+                }))
+              }
+              onBlur={async (e) => {
+                await patchMaintenance({
+                  maintenanceMessage: e.target.value,
+                });
+              }}
+            />
+          </label>
+          <p className="mt-3 text-[12.5px] leading-relaxed text-gri-700">
+            ⚠️ Açıkken müşteriler siteye erişemez. Admin paneli etkilenmez.
+          </p>
+        </Card>
 
         <form onSubmit={onSave} className="space-y-4">
           {/* Finans */}

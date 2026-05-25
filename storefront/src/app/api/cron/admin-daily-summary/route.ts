@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 export const runtime = "nodejs";
@@ -51,15 +52,17 @@ export async function GET(req: Request) {
     });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json({ error: "Supabase env eksik" }, { status: 500 });
-  }
+  try {
+    const payload = await withCronRun("admin-daily-summary", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
 
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
   const now = Date.now();
   const dayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
@@ -160,5 +163,18 @@ export async function GET(req: Request) {
     if (result.ok) sent++;
   }
 
-  return NextResponse.json({ ok: true, sent, data });
+      const responseData = { ok: true, sent, data };
+
+      return {
+        summary: `Admin özeti ${sent}/${adminEmails.length} alıcıya kuyruğa alındı`,
+        itemsProcessed: sent,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/admin-daily-summary]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

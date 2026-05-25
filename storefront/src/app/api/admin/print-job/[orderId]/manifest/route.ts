@@ -40,6 +40,7 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums, Json } from "@/lib/supabase/types";
 import { getSignedDownloadUrl } from "@/lib/storage/r2-client";
+import { SUPABASE_STORAGE_BUCKETS } from "@/lib/storage/buckets";
 
 export const runtime = "nodejs";
 
@@ -92,6 +93,7 @@ interface ItemRow {
   width: number;
   height: number;
   meta: Record<string, unknown> | null;
+  print_ready_pdf_url: string | null;
 }
 
 export async function GET(
@@ -143,7 +145,7 @@ export async function GET(
   // Items
   const { data: items } = await admin
     .from("order_items")
-    .select("id, product, title, config, qty, width, height, meta")
+    .select("id, product, title, config, qty, width, height, meta, print_ready_pdf_url")
     .eq("order_id", orderId);
   const itemRows = (items as ItemRow[] | null) ?? [];
 
@@ -184,6 +186,19 @@ export async function GET(
       return await getSignedDownloadUrl(key, TTL_SECONDS);
     } catch (err) {
       console.error("[manifest] sign failed:", key, err);
+      return null;
+    }
+  }
+
+  async function signSupabaseDesignUrl(key: string | null): Promise<string | null> {
+    if (!key) return null;
+    try {
+      const { data } = await admin.storage
+        .from(SUPABASE_STORAGE_BUCKETS.designs)
+        .createSignedUrl(key, TTL_SECONDS);
+      return data?.signedUrl ?? null;
+    } catch (err) {
+      console.error("[manifest] supabase sign failed:", key, err);
       return null;
     }
   }
@@ -267,6 +282,9 @@ export async function GET(
         width_mm: it.width,
         height_mm: it.height,
         material_hint: (it.meta?.material_type as string | undefined) ?? null,
+        print_ready_pdf_url: it.print_ready_pdf_url
+          ? await signSupabaseDesignUrl(it.print_ready_pdf_url)
+          : null,
         designs,
       };
     })

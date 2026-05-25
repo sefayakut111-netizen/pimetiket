@@ -17,6 +17,7 @@ import {
   MAX_R2_FILE_SIZE,
   getExtensionFromMime,
 } from "@/lib/storage/design-files";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import { r2PendingDesignKey } from "@/lib/storage/buckets";
 import { getSignedUploadUrl } from "@/lib/storage/r2-client";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
@@ -63,6 +64,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  const category = categorizeFile(body.originalName, body.mimeType);
+  if (category === "blocked") {
+    return NextResponse.json({ error: BLOCKED_FILE_MESSAGE }, { status: 400 });
   }
 
   const admin = createAdminClient();

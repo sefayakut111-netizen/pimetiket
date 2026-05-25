@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 export const dynamic = "force-dynamic";
@@ -39,18 +40,17 @@ export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Supabase env eksik" },
-      { status: 500 }
-    );
-  }
+  try {
+    const payload = await withCronRun("detect-abandoned-carts", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
 
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
   // 24-72 saat aralığında cart'ı olan user_id'ler
   const cutoffOld = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -65,10 +65,10 @@ export async function GET(req: Request) {
     .gte("added_at", cutoffYoungest)
     .limit(1000);
 
-  if (cartErr) {
-    console.error("[abandoned-carts] cart query error:", cartErr);
-    return NextResponse.json({ error: cartErr.message }, { status: 500 });
-  }
+      if (cartErr) {
+        console.error("[abandoned-carts] cart query error:", cartErr);
+        throw new Error(cartErr.message);
+      }
 
   type CartRow = { user_id: string; total: number; added_at: string };
   const carts = (cartRows ?? []) as CartRow[];
@@ -93,14 +93,18 @@ export async function GET(req: Request) {
     }
   }
 
-  if (byUser.size === 0) {
-    return NextResponse.json({
-      ok: true,
-      candidates: 0,
-      enqueued: 0,
-      skipped: { recent_order: 0, low_total: 0, already_mailed: 0, no_email: 0 },
-    });
-  }
+      if (byUser.size === 0) {
+        return {
+          summary: "Abandoned cart adayı yok",
+          itemsProcessed: 0,
+          data: {
+            ok: true,
+            candidates: 0,
+            enqueued: 0,
+            skipped: { recent_order: 0, low_total: 0, already_mailed: 0, no_email: 0 },
+          },
+        };
+      }
 
   const candidates = Array.from(byUser.entries()).slice(0, BATCH_LIMIT);
   const userIds = candidates.map(([id]) => id);
@@ -198,11 +202,24 @@ export async function GET(req: Request) {
     if (result.ok) enqueued += 1;
   }
 
-  return NextResponse.json({
-    ok: true,
-    candidates: byUser.size,
-    enqueued,
-    skipped: stats,
-    timestamp: new Date().toISOString(),
-  });
+      const responseData = {
+        ok: true,
+        candidates: byUser.size,
+        enqueued,
+        skipped: stats,
+        timestamp: new Date().toISOString(),
+      };
+
+      return {
+        summary: `${enqueued} abandoned cart maili kuyruğa alındı`,
+        itemsProcessed: enqueued,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/detect-abandoned-carts]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

@@ -22,6 +22,7 @@
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import { queryPaymentStatus, isPayTrConfigured } from "@/lib/payment/paytr";
@@ -60,37 +61,40 @@ export async function GET(req: Request) {
     );
   }
 
-  const admin = createAdminClient();
+  try {
+    const payload = await withCronRun<Record<string, unknown>>("paytr-reconciler", async () => {
+      const admin = createAdminClient();
 
-  // 15 dakikadan eski + pending intent'ler (worst-case 24sa kayıp)
-  const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      // 15 dakikadan eski + pending intent'ler (worst-case 24sa kayıp)
+      const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-  const { data: intentRows, error: selectErr } = await admin
-    .from("payment_intents")
-    .select("id, user_id, card_amount, snapshot, status, created_at")
-    .eq("status", "pending")
-    .lt("created_at", fifteenMinAgo)
-    .order("created_at", { ascending: true })
-    .limit(50); // güvenlik için batch limit
+      const { data: intentRows, error: selectErr } = await admin
+        .from("payment_intents")
+        .select("id, user_id, card_amount, snapshot, status, created_at")
+        .eq("status", "pending")
+        .lt("created_at", fifteenMinAgo)
+        .order("created_at", { ascending: true })
+        .limit(50); // güvenlik için batch limit
 
-  if (selectErr) {
-    Sentry.captureException(selectErr, {
-      tags: { scope: "paytr_reconciler.select" },
-    });
-    return NextResponse.json(
-      { ok: false, error: selectErr.message },
-      { status: 500 }
-    );
-  }
+      if (selectErr) {
+        Sentry.captureException(selectErr, {
+          tags: { scope: "paytr_reconciler.select" },
+        });
+        throw new Error(selectErr.message);
+      }
 
-  const intents = (intentRows ?? []) as IntentRow[];
-  if (intents.length === 0) {
-    return NextResponse.json({
-      ok: true,
-      message: "No pending intents to reconcile",
-      checked: 0,
-    });
-  }
+      const intents = (intentRows ?? []) as IntentRow[];
+      if (intents.length === 0) {
+        return {
+          summary: "Reconcile edilecek pending intent yok",
+          itemsProcessed: 0,
+          data: {
+            ok: true,
+            message: "No pending intents to reconcile",
+            checked: 0,
+          },
+        };
+      }
 
   const summary = {
     checked: intents.length,
@@ -231,5 +235,18 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, ...summary });
+      const responseData = { ok: true, ...summary };
+
+      return {
+        summary: `${summary.checked} intent kontrol, ${summary.recovered} recover, ${summary.failed} fail`,
+        itemsProcessed: summary.checked,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/paytr-reconciler]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

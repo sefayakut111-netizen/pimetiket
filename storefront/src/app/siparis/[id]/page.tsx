@@ -268,6 +268,7 @@ function statusToPhaseIndex(status: OrderStatus): number {
     case "proof_generating":
       return 5;
     case "proof_pending":
+    case "proof_validating":
       return 5;
     case "proof_approved":
       return 6;
@@ -402,6 +403,17 @@ export default function SiparisDetailPage({
     })();
   }, [id]);
 
+  // proof_validating — düzenleme sonrası AI doğrulama, 2sn poll
+  useEffect(() => {
+    if (order?.status !== "proof_validating") return;
+    const interval = setInterval(() => {
+      void fetchCustomerOrder(id).then((o) => {
+        if (o) setOrder(o);
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [order?.status, id]);
+
   // Sefa 22 May v68 — Tekrar sipariş duplicate guard:
   // Önce her tıklama sepete tekrar ürün ekliyordu (sınırsız), ilk tıklamada
   // yönlendirme yoktu, sonraki tıklamalarda /sepet'e gidiyordu (tutarsız).
@@ -510,7 +522,8 @@ export default function SiparisDetailPage({
     order.status === "qc_flagged" ||
     order.status === "operator_review" ||
     order.status === "proof_generating" ||
-    order.status === "proof_pending";
+    order.status === "proof_pending" ||
+    order.status === "proof_validating";
 
   const deliveryDate = order.estimatedDelivery
     ? new Date(order.estimatedDelivery).toLocaleDateString(c.locale, {
@@ -586,6 +599,24 @@ export default function SiparisDetailPage({
             {reordering ? "Ekleniyor..." : c.reorder}
           </Button>
         </div>
+
+        {order.status === "proof_validating" && (
+          <Card className="mb-6 flex flex-col items-center gap-3 bg-pim-mercan-tint/30 p-6 text-center sm:flex-row sm:text-left">
+            <Pim pose="think" size={80} bob={false} />
+            <div className="flex-1">
+              <div className="flex items-center justify-center gap-2 sm:justify-start">
+                <span
+                  className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+                  aria-hidden="true"
+                />
+                <p className="font-semibold text-lacivert">
+                  Düzenlemenizi kontrol ediyoruz...
+                </p>
+              </div>
+              <p className="mt-1 text-sm text-gri-700">Birkaç saniye.</p>
+            </div>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
           {/* MAIN */}
@@ -707,12 +738,14 @@ export default function SiparisDetailPage({
                       proof_generating'de bıçak hala hazırlanıyor — backend
                       endpoint zaten sadece proof_pending kabul ediyor (400
                       dönüyordu, UI sessiz fail). */}
-                  {order.status === "proof_generating" ? (
+                  {order.status === "proof_generating" ||
+                  order.status === "proof_validating" ? (
                     <div className="flex items-center gap-2 text-[13px] text-gri-700 bg-gri-50 rounded-lg p-3">
                       <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
                       <span>
-                        Bıçak çizimi hala hazırlanıyor — birkaç dakika sonra
-                        onay butonları aktif olur.
+                        {order.status === "proof_validating"
+                          ? "Düzenlemenizi kontrol ediyoruz — birkaç saniye sonra onay butonları aktif olur."
+                          : "Bıçak çizimi hala hazırlanıyor — birkaç dakika sonra onay butonları aktif olur."}
                       </span>
                     </div>
                   ) : (

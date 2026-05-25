@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 export const dynamic = "force-dynamic";
@@ -27,18 +28,17 @@ export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Supabase env eksik" },
-      { status: 500 }
-    );
-  }
+  try {
+    const payload = await withCronRun("request-reviews", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
 
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
   // 7-21 gün önce teslim edilen siparişler
   // delivered_at kolonu yoksa updated_at + status='delivered' kullanılır
@@ -57,10 +57,10 @@ export async function GET(req: Request) {
     .gte("updated_at", twentyOneDaysAgo)
     .limit(BATCH_LIMIT);
 
-  if (error) {
-    console.error("[request-reviews] query error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+      if (error) {
+        console.error("[request-reviews] query error:", error);
+        throw new Error(error.message);
+      }
 
   type OrderRow = {
     id: string;
@@ -70,14 +70,18 @@ export async function GET(req: Request) {
   };
 
   const list = (orders ?? []) as OrderRow[];
-  if (list.length === 0) {
-    return NextResponse.json({
-      ok: true,
-      candidates: 0,
-      enqueued: 0,
-      skipped: { already_reviewed: 0, already_mailed: 0, no_email: 0 },
-    });
-  }
+      if (list.length === 0) {
+        return {
+          summary: "Review request adayı yok",
+          itemsProcessed: 0,
+          data: {
+            ok: true,
+            candidates: 0,
+            enqueued: 0,
+            skipped: { already_reviewed: 0, already_mailed: 0, no_email: 0 },
+          },
+        };
+      }
 
   const orderIds = list.map((o) => o.id);
 
@@ -164,11 +168,24 @@ export async function GET(req: Request) {
     if (result.ok) enqueued += 1;
   }
 
-  return NextResponse.json({
-    ok: true,
-    candidates: list.length,
-    enqueued,
-    skipped: stats,
-    timestamp: new Date().toISOString(),
-  });
+      const responseData = {
+        ok: true,
+        candidates: list.length,
+        enqueued,
+        skipped: stats,
+        timestamp: new Date().toISOString(),
+      };
+
+      return {
+        summary: `${enqueued} review request maili kuyruğa alındı`,
+        itemsProcessed: enqueued,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/request-reviews]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

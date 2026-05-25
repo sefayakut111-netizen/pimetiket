@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendMail, isResendConfigured } from "@/lib/mail/resend";
 import {
@@ -78,24 +79,23 @@ export async function GET(req: Request) {
   const guard = assertCronAuth(req);
   if (guard) return guard;
 
-  const admin = createAdminClient();
+  try {
+    const payload = await withCronRun<Record<string, unknown>>("auditors-daily-digest", async () => {
+      const admin = createAdminClient();
 
-  // Süresi dolmuş ertelenen aksiyonları bekleyen kuyruğa al (digest pending sayısı doğru olsun)
-  await unsnoozeExpiredActions(admin);
+      // Süresi dolmuş ertelenen aksiyonları bekleyen kuyruğa al (digest pending sayısı doğru olsun)
+      await unsnoozeExpiredActions(admin);
 
-  // Son run'ları çek
-  const { data, error } = await admin
-    .from("v_auditor_latest_runs")
-    .select(
-      "auditor_name, latest_run_id, started_at, status, findings_count, critical_count, warning_count, info_count, summary"
-    );
+      // Son run'ları çek
+      const { data, error } = await admin
+        .from("v_auditor_latest_runs")
+        .select(
+          "auditor_name, latest_run_id, started_at, status, findings_count, critical_count, warning_count, info_count, summary"
+        );
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
-  }
+      if (error) {
+        throw new Error(error.message);
+      }
 
   const rows = (data ?? []) as unknown as LatestRunRow[];
   const runMap = new Map(rows.map((r) => [r.auditor_name, r]));
@@ -149,43 +149,64 @@ export async function GET(req: Request) {
     pendingCount: pendingCount ?? 0,
   });
 
-  // Mail at
-  if (!isResendConfigured()) {
-    return NextResponse.json({
-      ok: false,
-      reason: "resend_not_configured",
-      previewed: subject,
+      // Mail at
+      if (!isResendConfigured()) {
+        return {
+          summary: "Resend yapılandırılmamış — digest gönderilmedi",
+          itemsProcessed: 0,
+          data: {
+            ok: false,
+            reason: "resend_not_configured",
+            previewed: subject,
+          },
+        };
+      }
+
+      const recipients = (process.env.AUDITOR_NOTIFY_EMAILS ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.includes("@"));
+
+      if (recipients.length === 0) {
+        return {
+          summary: "Alıcı yok — digest gönderilmedi",
+          itemsProcessed: 0,
+          data: {
+            ok: false,
+            reason: "no_recipients",
+          },
+        };
+      }
+
+      const result = await sendMail({
+        to: recipients,
+        subject,
+        html,
+        text: subject,
+      });
+
+      const responseData = {
+        ok: result.ok,
+        sent: result.ok ? recipients : [],
+        totalCritical,
+        totalWarning,
+        neverRun,
+        pendingCount,
+        staleCount: staleAuditors.length,
+      };
+
+      return {
+        summary: `Digest mail ${result.ok ? "gönderildi" : "başarısız"} — ${totalCritical} kritik, ${totalWarning} uyarı`,
+        itemsProcessed: result.ok ? recipients.length : 0,
+        data: responseData,
+      };
     });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/auditors-daily-digest]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
   }
-
-  const recipients = (process.env.AUDITOR_NOTIFY_EMAILS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.includes("@"));
-
-  if (recipients.length === 0) {
-    return NextResponse.json({
-      ok: false,
-      reason: "no_recipients",
-    });
-  }
-
-  const result = await sendMail({
-    to: recipients,
-    subject,
-    html,
-    text: subject,
-  });
-
-  return NextResponse.json({
-    ok: result.ok,
-    sent: result.ok ? recipients : [],
-    totalCritical,
-    totalWarning,
-    neverRun,
-    pendingCount,
-    staleCount: staleAuditors.length,
-  });
 }
 
 // ============================================================

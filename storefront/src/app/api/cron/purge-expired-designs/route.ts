@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { logServerAudit } from "@/lib/audit-log-server";
 import {
   deleteR2Keys,
@@ -42,23 +43,25 @@ export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json({ error: "Supabase env eksik" }, { status: 500 });
-  }
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  try {
+    const payload = await withCronRun("purge-expired-designs", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
   // ---- 1) Süresi dolmuş tasarımları işaretle (soft-delete) ----
   const { data: markedData, error: markErr } = await admin.rpc(
     "fn_mark_expired_designs_for_deletion"
   );
-  if (markErr) {
-    console.error("[purge-expired-designs] mark error:", markErr);
-    return NextResponse.json({ error: markErr.message }, { status: 500 });
-  }
+      if (markErr) {
+        console.error("[purge-expired-designs] mark error:", markErr);
+        throw new Error(markErr.message);
+      }
   const marked = (markedData as ExpiredDesignRow[] | null) ?? [];
 
   // ---- 2) Asıl Storage dosyalarını sil ----
@@ -177,16 +180,29 @@ export async function GET(req: Request) {
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    designs_marked: marked.length,
-    storage_deleted: storageDeleted,
-    storage_errors: storageErrors,
-    r2_deleted: r2Deleted,
-    r2_errors: r2Errors,
-    pim_anonymized: pimAnonymized,
-    legal_candidates: legalCandidateCount,
-    legal_warn_30day: legalWarn30Day,
-    timestamp: new Date().toISOString(),
-  });
+      const responseData = {
+        ok: true,
+        designs_marked: marked.length,
+        storage_deleted: storageDeleted,
+        storage_errors: storageErrors,
+        r2_deleted: r2Deleted,
+        r2_errors: r2Errors,
+        pim_anonymized: pimAnonymized,
+        legal_candidates: legalCandidateCount,
+        legal_warn_30day: legalWarn30Day,
+        timestamp: new Date().toISOString(),
+      };
+
+      return {
+        summary: `${marked.length} tasarım imha, ${storageDeleted} storage + ${r2Deleted} R2 silindi`,
+        itemsProcessed: marked.length,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/purge-expired-designs]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

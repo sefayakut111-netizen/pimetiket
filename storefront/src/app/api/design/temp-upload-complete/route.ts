@@ -21,6 +21,7 @@ import {
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 
 const CompleteBodySchema = z.object({
   fileId: z.string().uuid(),
@@ -60,6 +61,13 @@ export async function POST(req: NextRequest) {
       { error: "invalid_storage_path" },
       { status: 400 }
     );
+  }
+
+  const category = categorizeFile(body.originalName, body.mimeType);
+  if (category === "blocked") {
+    const adminEarly = createAdminClient();
+    await adminEarly.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
+    return NextResponse.json({ error: BLOCKED_FILE_MESSAGE }, { status: 400 });
   }
 
   const admin = createAdminClient();

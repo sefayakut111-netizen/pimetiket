@@ -128,6 +128,18 @@ export function getCustomerStatusInfo(
         phase: 2,
         group: "proof_generating",
       };
+    case "proof_validating":
+      return {
+        label: "Düzenlemenizi kontrol ediyoruz",
+        labelEn: "Checking your edit",
+        bg: "bg-gri-100",
+        color: "text-lacivert",
+        hint: "Birkaç saniye",
+        hintEn: "Just a few seconds",
+        pimPose: "think",
+        phase: 2,
+        group: "proof_generating",
+      };
     case "proof_pending":
       return {
         label: "Onayını bekliyoruz",

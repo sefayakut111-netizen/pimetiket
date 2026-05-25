@@ -21,6 +21,7 @@
 
 import { NextResponse } from "next/server";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { AUDITOR_NAMES, type AuditorName } from "@/lib/agents/_shared/types";
 import { SecurityAuditor } from "@/lib/agents/auditors/security";
 import { FinanceAuditor } from "@/lib/agents/auditors/finance";
@@ -76,28 +77,28 @@ export async function GET(
     );
   }
 
-  // 3) Run
   try {
-    const auditor = factory();
-    const runId = await auditor.run({
-      triggerType: "cron",
-      triggeredBy: `vercel-cron:${name}`,
+    const payload = await withCronRun(`auditors-${name}`, async () => {
+      const auditor = factory();
+      const runId = await auditor.run({
+        triggerType: "cron",
+        triggeredBy: `vercel-cron:${name}`,
+      });
+
+      return {
+        summary: `${name} auditor tamamlandı`,
+        itemsProcessed: 1,
+        data: {
+          ok: true,
+          auditor: name,
+          runId,
+        },
+      };
     });
 
-    return NextResponse.json({
-      ok: true,
-      auditor: name,
-      runId,
-    });
+    return NextResponse.json(payload);
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      {
-        ok: false,
-        auditor: name,
-        error: errMsg,
-      },
-      { status: 500 }
-    );
+    console.error(`[cron/auditors/${name}]`, err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
   }
 }

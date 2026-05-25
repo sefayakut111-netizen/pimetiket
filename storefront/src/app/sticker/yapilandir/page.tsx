@@ -88,6 +88,7 @@ import { gridColsForCount } from "@/lib/grid-cols";
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
+import { getActiveMaterials } from "@/lib/pricing-materials";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
 import {
   addToCustomerCart,
@@ -344,7 +345,7 @@ function StickerPage() {
     if (!adminConfig?.materials) {
       base = MATERIAL_IDS;
     } else {
-      const adminFiltered = adminConfig.materials
+      const adminFiltered = getActiveMaterials(adminConfig)
         .map((m) => m.id as StickerMaterial)
         .filter((id) => (MATERIAL_IDS as readonly string[]).includes(id));
       const missing = MATERIAL_IDS.filter(

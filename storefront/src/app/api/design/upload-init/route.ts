@@ -26,6 +26,7 @@ import {
   STORAGE_BUCKET,
   getExtensionFromMime,
 } from "@/lib/storage/design-files";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 const InitBodySchema = z.object({
@@ -74,6 +75,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  const category = categorizeFile(body.originalName, body.mimeType);
+  if (category === "blocked") {
+    return NextResponse.json({ error: BLOCKED_FILE_MESSAGE }, { status: 400 });
   }
 
   // 3) Order var mı + müşteriye ait mi + status uygun mu?

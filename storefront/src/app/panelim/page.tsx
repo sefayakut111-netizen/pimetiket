@@ -238,6 +238,13 @@ function statusMeta(
         soft: "var(--color-sari-soft)",
         pim: "inspect",
       };
+    case "proof_validating":
+      return {
+        label: "Düzenlemenizi kontrol ediyoruz",
+        color: "var(--color-sari)",
+        soft: "var(--color-sari-soft)",
+        pim: "inspect",
+      };
     case "proof_approved":
       return {
         label: "Onayın alındı — üretime geçildi",

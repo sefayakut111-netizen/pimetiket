@@ -23,6 +23,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { renderMailTemplate } from "@/lib/mail/templates";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import {
   buildUnsubscribeUrl,
   buildListUnsubscribeHeader,
@@ -55,42 +56,41 @@ export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Supabase env eksik" },
-      { status: 500 }
-    );
-  }
+  try {
+    const payload = await withCronRun("process-mail-outbox", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
 
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
-  // Env naming unification: src/lib/mail/resend.ts ile aynı isim kullan.
-  // Önce RESEND_FROM_EMAIL, fallback MAIL_FROM_ADDRESS (legacy).
-  const resendKey = process.env.RESEND_API_KEY;
-  const fromAddress =
-    process.env.RESEND_FROM_EMAIL ?? process.env.MAIL_FROM_ADDRESS;
-  const stubMode = !resendKey || !fromAddress;
+      // Env naming unification: src/lib/mail/resend.ts ile aynı isim kullan.
+      // Önce RESEND_FROM_EMAIL, fallback MAIL_FROM_ADDRESS (legacy).
+      const resendKey = process.env.RESEND_API_KEY;
+      const fromAddress =
+        process.env.RESEND_FROM_EMAIL ?? process.env.MAIL_FROM_ADDRESS;
+      const stubMode = !resendKey || !fromAddress;
 
-  // Pending veya retry zamanı gelen kayıtları çek
-  const { data: rows, error: selectErr } = await admin
-    .from("fason_mail_outbox")
-    .select(
-      "id, assignment_id, template_key, to_email, subject, payload, attempts, category"
-    )
-    .in("status", ["pending", "failed"])
-    .lt("attempts", MAX_ATTEMPTS)
-    .or(`next_retry_at.is.null,next_retry_at.lte.${new Date().toISOString()}`)
-    .order("created_at", { ascending: true })
-    .limit(BATCH_SIZE);
+      // Pending veya retry zamanı gelen kayıtları çek
+      const { data: rows, error: selectErr } = await admin
+        .from("fason_mail_outbox")
+        .select(
+          "id, assignment_id, template_key, to_email, subject, payload, attempts, category"
+        )
+        .in("status", ["pending", "failed"])
+        .lt("attempts", MAX_ATTEMPTS)
+        .or(`next_retry_at.is.null,next_retry_at.lte.${new Date().toISOString()}`)
+        .order("created_at", { ascending: true })
+        .limit(BATCH_SIZE);
 
-  if (selectErr) {
-    console.error("[cron/process-mail-outbox] select error:", selectErr);
-    return NextResponse.json({ error: selectErr.message }, { status: 500 });
-  }
+      if (selectErr) {
+        console.error("[cron/process-mail-outbox] select error:", selectErr);
+        throw new Error(selectErr.message);
+      }
 
   const queue = (rows as OutboxRow[] | null) ?? [];
 
@@ -257,14 +257,27 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    mode: stubMode ? "stub" : "live",
-    processed: queue.length,
-    sent,
-    blocked, // STUB modunda kuyrukta bekletilen sayısı
-    failed,
-    unknown_template: unknownTemplate,
-    timestamp: new Date().toISOString(),
-  });
+      const responseData = {
+        ok: true,
+        mode: stubMode ? "stub" : "live",
+        processed: queue.length,
+        sent,
+        blocked, // STUB modunda kuyrukta bekletilen sayısı
+        failed,
+        unknown_template: unknownTemplate,
+        timestamp: new Date().toISOString(),
+      };
+
+      return {
+        summary: `${sent} mail gönderildi, ${failed} hata, ${blocked} blocked`,
+        itemsProcessed: queue.length,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/process-mail-outbox]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

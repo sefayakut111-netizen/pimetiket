@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
+import { withCronRun } from "@/lib/cron-logger";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 export const dynamic = "force-dynamic";
@@ -32,18 +33,17 @@ export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Supabase env eksik" },
-      { status: 500 }
-    );
-  }
+  try {
+    const payload = await withCronRun<Record<string, unknown>>("upload-reminders", async () => {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error("Supabase env eksik");
+      }
 
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
   const nowMs = Date.now();
   const minAge = new Date(nowMs - MIN_AGE_HOURS * 60 * 60 * 1000).toISOString();
@@ -59,10 +59,10 @@ export async function GET(req: Request) {
     .order("paid_at", { ascending: true })
     .limit(BATCH_LIMIT);
 
-  if (orderErr) {
-    console.error("[upload-reminders] order query error:", orderErr);
-    return NextResponse.json({ error: orderErr.message }, { status: 500 });
-  }
+      if (orderErr) {
+        console.error("[upload-reminders] order query error:", orderErr);
+        throw new Error(orderErr.message);
+      }
 
   type OrderRow = {
     id: string;
@@ -71,9 +71,13 @@ export async function GET(req: Request) {
     created_at: string;
   };
   const orderRows = (orders ?? []) as OrderRow[];
-  if (orderRows.length === 0) {
-    return NextResponse.json({ ok: true, sent: 0, reason: "no_awaiting" });
-  }
+      if (orderRows.length === 0) {
+        return {
+          summary: "Awaiting upload sipariş yok",
+          itemsProcessed: 0,
+          data: { ok: true, sent: 0, reason: "no_awaiting" },
+        };
+      }
 
   // user info — name + email
   const userIds = Array.from(new Set(orderRows.map((o) => o.user_id)));
@@ -149,5 +153,18 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, skipped, total: orderRows.length });
+      const responseData = { ok: true, sent, skipped, total: orderRows.length };
+
+      return {
+        summary: `${sent} upload reminder gönderildi, ${skipped} atlandı`,
+        itemsProcessed: sent,
+        data: responseData,
+      };
+    });
+
+    return NextResponse.json(payload);
+  } catch (err) {
+    console.error("[cron/upload-reminders]", err);
+    return NextResponse.json({ error: "Internal" }, { status: 500 });
+  }
 }

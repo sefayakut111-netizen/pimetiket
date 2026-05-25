@@ -63,6 +63,7 @@ const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: strin
   human_review_failed: { label: "Düzeltme isteniyor", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft" },
   proof_generating: { label: "Prova hazırlanıyor", color: "text-lacivert", bg: "bg-gri-100" },
   proof_pending: { label: "Müşteri onayı bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
+  proof_validating: { label: "Düzenleme doğrulanıyor", color: "text-lacivert", bg: "bg-gri-100" },
   proof_approved: { label: "Müşteri onayladı", color: "text-yesil", bg: "bg-yesil-soft" },
   ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
   fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
