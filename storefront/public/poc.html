@@ -1604,10 +1604,12 @@ const PIM_PARAMS = (() => {
       orderId: sp.get('orderId'),
       itemId: sp.get('itemId'),
       headless: sp.get('headless') === '1',
+      autoSave: sp.get('autoSave') === '1',
+      mode: sp.get('mode') || 'contour',
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false };
+    return { headless: false, autoSave: false, mode: 'contour' };
   }
 })();
 
@@ -1619,11 +1621,24 @@ if (PIM_PARAMS.headless) {
 // Parent'a sinyal — POC ready
 function pimPostToParent(payload) {
   try {
+    const full = {
+      ...payload,
+      orderId: PIM_PARAMS.orderId,
+      itemId: PIM_PARAMS.itemId,
+    };
+    // Headless Puppeteer — top-level page'de parent === window
+    if (PIM_PARAMS.headless) {
+      if (full.type === 'pim-cutline-saved' && typeof window.__pimCutlineSaved === 'function') {
+        window.__pimCutlineSaved(JSON.stringify(full));
+      } else if (
+        (full.type === 'pim-cutline-auto-failed' || full.type === 'pim-poc-error') &&
+        typeof window.__pimCutlineFailed === 'function'
+      ) {
+        window.__pimCutlineFailed(JSON.stringify(full));
+      }
+    }
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage(
-        { ...payload, orderId: PIM_PARAMS.orderId, itemId: PIM_PARAMS.itemId },
-        '*' // origin check parent tarafında yapılır
-      );
+      window.parent.postMessage(full, '*');
     }
   } catch (e) {
     /* sessiz fail */
@@ -1758,6 +1773,13 @@ function onOpenCvReady() {
       );
       if (matBtn) matBtn.click();
     }
+    // URL'den mode (contour/hull/rect/circle)
+    if (PIM_PARAMS.mode && ['contour', 'hull', 'rect', 'circle'].includes(PIM_PARAMS.mode)) {
+      currentMode = PIM_PARAMS.mode;
+      document.querySelectorAll('.mode-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.mode === PIM_PARAMS.mode);
+      });
+    }
     // Başlangıç katmanları
     if (PIM_PARAMS.layers.length > 0) {
       ['cut', 'white', 'bleed', 'safe'].forEach((lyr) => {
@@ -1811,6 +1833,8 @@ uploadZone.addEventListener('drop', (e) => {
 });
 
 function handleFile(file) {
+  pimAutoSaveDone = false;
+  pimVisionFallbackSent = false;
   if (!cvReady) {
     showStatus('OpenCV henüz hazır değil, lütfen bekleyin...', 'warn');
     return;
@@ -2171,6 +2195,7 @@ function processImage(img, file) {
   render();
   generatePimComment();
   hideLoading();
+  pimScheduleAutoSave();
 }
 
 // ============================================================
@@ -2240,6 +2265,7 @@ function generateCutline() {
   }
 
   mask.delete();
+  pimScheduleAutoSave();
 }
 
 // ============================================================
@@ -3335,20 +3361,61 @@ sliders.forEach(id => {
 updateOffsetNote();
 
 // ============================================================
-// SVG EXPORT (CutContour spot color uyumlu)
+// AUTO-SAVE (headless / onay iframe fallback)
 // ============================================================
-document.getElementById('exportSvg').addEventListener('click', () => {
-  if (!currentPaths || currentPaths.length === 0 || !currentMat) {
-    showStatus('Önce bir görsel yükleyin', 'warn');
-    return;
+let pimAutoSaveDone = false;
+let pimAutoSaveTimer = null;
+
+function pimScheduleAutoSave() {
+  if (!PIM_PARAMS.autoSave || pimAutoSaveDone) return;
+  clearTimeout(pimAutoSaveTimer);
+  pimAutoSaveTimer = setTimeout(pimTryAutoSave, 600);
+}
+
+function pimBuildCutlineMeta() {
+  const tierInfo = classifyTier();
+  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
+  const smoothness = parseFloat(document.getElementById('smoothSlider').value);
+  const dpi = imageMetadata ? imageMetadata.dpi : null;
+  return {
+    source: currentFileSource,
+    mode: currentMode,
+    offset_mm: offsetMm,
+    smoothness: smoothness,
+    dpi: dpi,
+    width_mm: imageMetadata ? parseFloat(imageMetadata.widthMm) : null,
+    height_mm: imageMetadata ? parseFloat(imageMetadata.heightMm) : null,
+    pim_feedback: null,
+    pim_severity: tierInfo.tier === 'improve' ? 'warn' : 'ok',
+    material_type: materialType,
+    white_plan_mode: whitePlanMode,
+    white_plan_path_count: whitePlanPaths.length,
+    has_custom_white_plan: hasCustomWhitePlan,
+    tier: tierInfo.tier,
+    detected_cut_contour_names: detectedCutContourNames.slice(0, 10),
+  };
+}
+
+function pimCapturePreviewPng() {
+  try {
+    const canvas = document.getElementById('canvas');
+    if (!canvas || canvas.classList.contains('hidden')) return null;
+    const dataUrl = canvas.toDataURL('image/png');
+    return dataUrl.replace(/^data:image\/png;base64,/, '');
+  } catch (e) {
+    return null;
+  }
+}
+
+function pimBuildCutlineSvg() {
+  if (!currentPaths || currentPaths.length === 0 || !currentMat || !imageMetadata) {
+    return null;
   }
 
   const inverseScale = 1 / imageMetadata.scale;
   const w = imageMetadata.originalW;
   const h = imageMetadata.originalH;
-  // Padding'i orijinal koordinat sistemine çevir
   const paddingOrig = imageMetadata.padding * inverseScale;
-  // SVG viewBox: orijinal görüntü + her tarafta padding kadar alan
   const viewMinX = -paddingOrig;
   const viewMinY = -paddingOrig;
   const viewW = w + 2 * paddingOrig;
@@ -3357,7 +3424,6 @@ document.getElementById('exportSvg').addEventListener('click', () => {
   let svgPaths = '';
   for (const path of currentPaths) {
     if (path.length < 2) continue;
-    // Path padded canvas'ta. Önce padding'i çıkar, sonra inverseScale ile orijinal piksele çevir.
     const toOrig = (pt) => [
       ((pt[0] - imageMetadata.padding) * inverseScale).toFixed(2),
       ((pt[1] - imageMetadata.padding) * inverseScale).toFixed(2)
@@ -3372,7 +3438,6 @@ document.getElementById('exportSvg').addEventListener('click', () => {
     svgPaths += `  <path d="${d}" fill="none" stroke="#FF0080" stroke-width="0.5"/>\n`;
   }
 
-  // BEYAZ KATMAN — varsa ekle (White spot color olarak)
   let whitePaths = '';
   if (whitePlanPaths.length > 0 && whitePlanMode !== 'off' && materialType !== 'paper') {
     const toOrig = (pt) => [
@@ -3396,33 +3461,55 @@ document.getElementById('exportSvg').addEventListener('click', () => {
   <g id="White" data-pim-white="true" data-material="${materialType}" data-mode="${whitePlanMode}">
 ${whitePaths}  </g>` : '';
 
-  const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!--
-  Pim Etiket — Otomatik Üretilen Kesim Çizgisi
-  Tarih: ${new Date().toISOString()}
-  Mod: ${currentMode}
-  Offset: ${document.getElementById('offsetSlider').value}mm
-  Yumuşatma: ${document.getElementById('smoothSlider').value}
-  Görüntü: ${imageMetadata.filename} (${w}x${h}px, ${imageMetadata.dpi}dpi)
-  Baskı: ${imageMetadata.widthMm} x ${imageMetadata.heightMm}mm
-  Padding: ${paddingOrig.toFixed(1)}px her tarafa (bıçağın taşması için)
-  Malzeme: ${materialType}
-  Beyaz plan: ${whitePlanMode}${whitePaths ? ' (üretildi)' : ''}
-
-  Katman sırası: White (alt) → Tasarım → CutContour (üst)
-
-  NOT: Bu SVG'deki magenta (#FF0080) çizgisi, üretim aşamasında
-  PDF'e dönüştürülürken "CutContour" spot color olarak işaretlenmelidir.
-  Beyaz katman (#FFFFFF dolgu) "White" veya "WhiteInk" spot color olarak
-  işaretlenmelidir. Roland VersaWorks, Mimaki RasterLink, Graphtec Cutting
-  Master Pro bu spot color'ları beyaz mürekkep kanalında basar.
--->
+  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg"
      width="${viewW.toFixed(2)}" height="${viewH.toFixed(2)}"
      viewBox="${viewMinX.toFixed(2)} ${viewMinY.toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}">${whiteGroup}
   <g id="CutContour" data-pim-cutline="true">
 ${svgPaths}  </g>
 </svg>`;
+}
+
+function pimTryAutoSave() {
+  if (!PIM_PARAMS.autoSave || pimAutoSaveDone) return;
+  if (!currentMat || !imageMetadata) return;
+
+  if (!currentPaths || currentPaths.length === 0) {
+    pimAutoSaveDone = true;
+    pimPostToParent({ type: 'pim-cutline-auto-failed', error: 'no_contours' });
+    return;
+  }
+
+  const svg = pimBuildCutlineSvg();
+  if (!svg) {
+    pimAutoSaveDone = true;
+    pimPostToParent({ type: 'pim-cutline-auto-failed', error: 'svg_build_failed' });
+    return;
+  }
+
+  pimAutoSaveDone = true;
+  pimPostToParent({
+    type: 'pim-cutline-saved',
+    svg,
+    meta: pimBuildCutlineMeta(),
+    preview_png_base64: pimCapturePreviewPng(),
+  });
+}
+
+// ============================================================
+// SVG EXPORT (CutContour spot color uyumlu)
+// ============================================================
+document.getElementById('exportSvg').addEventListener('click', () => {
+  if (!currentPaths || currentPaths.length === 0 || !currentMat) {
+    showStatus('Önce bir görsel yükleyin', 'warn');
+    return;
+  }
+
+  const svg = pimBuildCutlineSvg();
+  if (!svg) {
+    showStatus('SVG üretilemedi', 'err');
+    return;
+  }
 
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);

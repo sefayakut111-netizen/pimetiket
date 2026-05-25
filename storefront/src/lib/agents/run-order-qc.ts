@@ -476,8 +476,15 @@ async function runOrderDesignQCInner(
     }
   }
 
-  // proof_generating sonrası bıçak /onay'da üretilir; runProofPipeline
-  // save-edit sonrası proof_validating aşamasında çalışır.
+  // proof_generating → server-side cutline (Puppeteer headless POC).
+  // /onay iframe yalnızca fallback (JPG veya server hatası).
+  if (nextStatus === "proof_generating") {
+    const { scheduleOrderCutlineGeneration } = await import(
+      "./schedule-order-cutline"
+    );
+    scheduleOrderCutlineGeneration(admin, orderId);
+  }
+
   return {
     orderId,
     ranCount: files.length,

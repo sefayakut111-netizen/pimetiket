@@ -685,12 +685,12 @@ export default function ProofApprovalPage({
   }, [data?.order.status]);
 
   // ============================================================
-  // BACKGROUND AUTO-CUTLINE (B1) — cutline'sız itemları sırayla üret
+  // BACKGROUND AUTO-CUTLINE (B1 fallback) — cutline'sız itemları sırayla üret
   // ============================================================
-  // Müşteri /onay'a geldiğinde cutline'sız her item için hidden iframe
-  // POC açıp arka planda bıçak üretir. POC autoSave=1 ile çağrılır,
-  // postMessage 'pim-cutline-saved' geldiğinde save-edit (auto:true)
-  // POST edilir → cutline_designs INSERT → trigger proof_pending'e geçer.
+  // Server-side cutline (QC sonrası Puppeteer) çoğu siparişte bıçağı
+  // zaten üretmiş olur — candidate yoksa iframe atlanır.
+  // Fallback: JPG (qc_only), server hatası veya eski siparişler için hidden
+  // iframe POC autoSave=1 → save-edit (auto:true) → cutline_designs INSERT.
   useEffect(() => {
     if (!data) return;
     // Zaten bir iframe aktif → bekle
