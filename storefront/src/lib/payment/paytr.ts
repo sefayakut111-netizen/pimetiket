@@ -479,6 +479,23 @@ export async function refundPayment(
   return { ok: true };
 }
 
+/** PayTR durum sorgu: tutarlar "750,00" gibi virgüllü TL string döner (kuruş değil). */
+function parsePayTrStatusAmountToKurus(
+  value: string | number | undefined
+): number {
+  if (value === undefined || value === null || value === "") return 0;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return 0;
+    return value >= 1000 && Number.isInteger(value)
+      ? value
+      : Math.round(value * 100);
+  }
+  const normalized = String(value).trim().replace(/\s/g, "").replace(",", ".");
+  const tl = parseFloat(normalized);
+  if (!Number.isFinite(tl)) return 0;
+  return Math.round(tl * 100);
+}
+
 // ============================================================
 // queryPaymentStatus — PayTR Durum Sorgu API
 // Sefa 20 May v68 (Agent denetim P0 #1 — reconciler için)
@@ -575,8 +592,8 @@ export async function queryPaymentStatus(
     return {
       ok: true,
       status: "success",
-      paymentAmountKurus: Number(data.payment_amount ?? 0),
-      paymentTotalKurus: Number(data.payment_total ?? 0),
+      paymentAmountKurus: parsePayTrStatusAmountToKurus(data.payment_amount),
+      paymentTotalKurus: parsePayTrStatusAmountToKurus(data.payment_total),
       installmentCount: Number(data.installment_count ?? 1),
     };
   }

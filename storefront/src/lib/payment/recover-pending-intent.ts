@@ -20,6 +20,7 @@ import {
 } from "@/lib/mail/notifications";
 import { enqueueMail } from "@/lib/mail/enqueue";
 import { queryPaymentStatus } from "@/lib/payment/paytr";
+import { resolveOrderIdFromIntent } from "@/lib/payment/resolve-order-from-intent";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -156,12 +157,21 @@ async function runPostFinalizeSideEffects(
 
   if (orderItemsForPromote.length > 0) {
     try {
-      await promoteOrderDesigns({
+      const promotedCount = await promoteOrderDesigns({
         admin,
         orderId,
         userId: intent.user_id,
         orderItems: orderItemsForPromote,
       });
+
+      if (promotedCount > 0) {
+        await admin
+          .from("orders")
+          .update({ status: "qc_pending" })
+          .eq("id", orderId);
+
+        scheduleOrderDesignQC(admin, orderId);
+      }
     } catch (err) {
       console.error("[payment/recover] promote failed:", err);
     }
@@ -202,16 +212,6 @@ async function runPostFinalizeSideEffects(
   }).catch((err) =>
     console.error("[payment/recover] proof_required mail failed:", err)
   );
-
-  const { data: designFiles } = await admin
-    .from("design_files")
-    .select("id")
-    .eq("order_id", orderId)
-    .in("status", ["uploaded", "analyzing", "qc_passed", "qc_warned"]);
-
-  if (designFiles && designFiles.length > 0) {
-    scheduleOrderDesignQC(admin, orderId);
-  }
 
   void notifyAdminNewOrder({
     admin,
@@ -349,17 +349,11 @@ export async function recoverPendingPaymentIntent(
   }
 
   if (intent.status === "consumed") {
-    if (intent.order_id) {
-      return { status: "consumed", orderId: intent.order_id };
-    }
-    const { data: paymentRow } = await admin
-      .from("payments")
-      .select("order_id")
-      .eq("psp_transaction_id", merchantOid)
-      .eq("action", "charge")
-      .eq("status", "success")
-      .maybeSingle();
-    const orderId = (paymentRow as { order_id?: string } | null)?.order_id;
+    const orderId = await resolveOrderIdFromIntent(
+      admin,
+      merchantOid,
+      intent.order_id
+    );
     if (orderId) {
       return { status: "consumed", orderId };
     }
@@ -403,8 +397,11 @@ export async function recoverPendingPaymentIntent(
   }
 
   if (queryResult.status === "success") {
-    const totalKurus =
+    let totalKurus =
       queryResult.paymentTotalKurus ?? queryResult.paymentAmountKurus ?? 0;
+    if (totalKurus === 0) {
+      totalKurus = Math.round(intent.card_amount * 100);
+    }
     return finalizeFromPaytrSuccess(admin, intent, {
       totalAmountKurus: totalKurus,
       installmentCount: queryResult.installmentCount,

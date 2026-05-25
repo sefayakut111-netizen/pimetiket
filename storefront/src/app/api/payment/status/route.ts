@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPayTrConfigured } from "@/lib/payment/paytr";
-import { recoverPendingPaymentIntent } from "@/lib/payment/recover-pending-intent";
+import { recoverPendingPaymentIntentWithRetries } from "@/lib/payment/recover-with-retries";
 
 export async function GET(req: NextRequest) {
   if (!isPayTrConfigured()) {
@@ -33,8 +33,10 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const result = await recoverPendingPaymentIntent(admin, oid, {
+  const result = await recoverPendingPaymentIntentWithRetries(admin, oid, {
     userId: user.id,
+    maxAttempts: 3,
+    delayMs: 1200,
   });
 
   if (result.status === "not_found") {
