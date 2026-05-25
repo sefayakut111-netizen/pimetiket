@@ -465,32 +465,25 @@ function StickerPage() {
   // Sefa 20 May v68: searchParams değişirse (client-side nav) sync —
   // kullanıcı farklı karttan yeni girerse state'ler yeniden eşleşir
   useEffect(() => {
-    const formParam = searchParams.get("form");
+    const params = new URLSearchParams(searchParams.toString());
+    const formParam = params.get("form");
     if (formParam !== null && formParam.length === 0) {
       setCutMode("diecut");
     }
-    const cut = searchParams.get("cut");
+    const cut = params.get("cut");
     if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") {
       setCutMode(cut);
     }
-    const sp = searchParams.get("shape");
-    if (sp === "diecut") {
-      setShape("die");
-    } else if (sp && (SHAPE_IDS as readonly string[]).includes(sp)) {
-      setShape(sp as ShapeId);
-    } else if (sp && !(SHAPE_IDS as readonly string[]).includes(sp)) {
-      setShape("square");
-    }
+    setShape(readInitialShape(params));
+    const sp = params.get("shape");
     if (sp === "bumper") {
       setWidth(BUMPER_PRESET_WIDTH);
       setHeight(BUMPER_PRESET_HEIGHT);
       setSoftCorners(true);
     }
-    const mat = searchParams.get("material");
-    if (mat === "vinil" || mat === "transparan" || mat === "holo" || mat === "simli") {
-      setMaterial(mat);
-    }
-    const corner = searchParams.get("corner");
+    const matFromUrl = readInitialMaterial(params);
+    if (matFromUrl) setMaterial(matFromUrl);
+    const corner = params.get("corner");
     if (corner === "rounded") setSoftCorners(true);
     else if (corner === "sharp") setSoftCorners(false);
   }, [searchParams]);
@@ -542,14 +535,10 @@ function StickerPage() {
 
   // Sefa 20 May v68: bumper sticker varsayılan 280×80mm (klasik tampon),
   // diğerleri 75×75. URL ?shape=... ve useEffect ile sync.
-  const initialDims = (() => {
-    if (typeof window === "undefined") return { w: 75, h: 75 };
-    const urlShape = new URLSearchParams(window.location.search).get("shape");
-    if (urlShape === "bumper") {
-      return { w: BUMPER_PRESET_WIDTH, h: BUMPER_PRESET_HEIGHT };
-    }
-    return { w: 75, h: 75 };
-  })();
+  const initialDims =
+    initialParams.get("shape") === "bumper"
+      ? { w: BUMPER_PRESET_WIDTH, h: BUMPER_PRESET_HEIGHT }
+      : { w: 75, h: 75 };
   const [width, setWidth] = useState<number>(initialDims.w);
   const [height, setHeight] = useState<number>(initialDims.h);
   // Sefa 18 May v68 (CRO denetim — Preset feedback fix):
@@ -606,6 +595,7 @@ function StickerPage() {
       "rectangle",
       "oval",
       "bumper",
+      "ozel",
       "holo",
       "transparan",
       "transparent",
@@ -822,10 +812,11 @@ function StickerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tabaka modunda kontur kesim seçili kalmasın — kareye düş
-  if (cutMode === "tabaka" && shape === "die") {
-    setShape("square");
-  }
+  useEffect(() => {
+    if (cutMode === "tabaka" && shape === "die") {
+      setShape("square");
+    }
+  }, [cutMode, shape]);
 
   // Tabaka modunda kontur kesim gizli
   const visibleShapes =
@@ -1557,8 +1548,8 @@ function StickerPage() {
                       key={preset.label}
                       type="button"
                       onClick={() => {
-                        setWidth(preset.w);
-                        setHeight(preset.h);
+                        setWidth(Math.max(STICKER_MIN_DIM, preset.w));
+                        setHeight(Math.max(STICKER_MIN_DIM, preset.h));
                         markTouched(5);
                         // Input pulse animasyonu
                         setPresetPulseAt(Date.now());
@@ -1798,13 +1789,17 @@ function StickerPage() {
                   FINISHES.find((f) => f.id === finish)?.name ?? finish;
                 const shapeName =
                   SHAPES.find((s) => s.id === shape)?.name ?? shape;
-                const cutLabel = cutMode === "tabaka" ? "Tabaka" : "Die-cut";
-                const cornerLabel =
-                  shape === "square" || shape === "ozel"
-                    ? softCorners
-                      ? " · Yumuşatılmış köşe"
-                      : " · Düz köşe"
-                    : "";
+                const cutLabel =
+                  cutMode === "tabaka"
+                    ? "Tabaka"
+                    : cutMode === "kisscut"
+                      ? "Yarı Kesim"
+                      : "Die-cut";
+                const cornerLabel = supportsCornerStyle(shape)
+                  ? softCorners
+                    ? " · Yumuşatılmış köşe"
+                    : " · Düz köşe"
+                  : "";
                 // Çoklu tasarım için title'da designCount belirt
                 const titleSuffix =
                   designCount > 1 ? ` (${designCount} tasarım)` : "";
@@ -1814,6 +1809,16 @@ function StickerPage() {
                 // hızlı UX guard. Bilinçsiz "atlama" sonucu awaiting_upload
                 // sipariş açılmasını önler. İptal → tasarım step'ine kaydır.
                 const hasNoDesign = designs.length === 0;
+                if (
+                  designCount > 1 &&
+                  designs.length > 0 &&
+                  designs.length < designCount
+                ) {
+                  toast.error(
+                    `${designCount} tasarım seçtin ama ${designs.length} dosya yükledin. Eksik dosyaları yükle veya tasarım sayısını düşür.`
+                  );
+                  return;
+                }
                 if (hasNoDesign) {
                   const confirmed = window.confirm(
                     "Tasarım yüklemeden devam etmek istiyor musun?\n\n" +
@@ -1836,15 +1841,19 @@ function StickerPage() {
                 // için persistDesignPreview ile yükle.
                 let _resolvedPreviewUrl: string | undefined =
                   design?.generatedPreviewUrl;
-                if (!_resolvedPreviewUrl && designs[0]) {
-                  const { persistDesignPreview } = await import(
-                    "@/lib/design-preview"
-                  );
-                  const url = await persistDesignPreview(
-                    designs[0].file,
-                    designs[0].id
-                  );
-                  _resolvedPreviewUrl = url ?? undefined;
+                const { persistDesignPreview } = await import(
+                  "@/lib/design-preview"
+                );
+                const persistedDesigns = await Promise.all(
+                  designs.map(async (d) => {
+                    const url =
+                      (await persistDesignPreview(d.file, d.id)) ??
+                      d.previewUrl;
+                    return { ...d, previewUrl: url };
+                  })
+                );
+                if (!_resolvedPreviewUrl && persistedDesigns[0]) {
+                  _resolvedPreviewUrl = persistedDesigns[0].previewUrl;
                 }
 
                 const result = await addToCustomerCart({
@@ -1871,17 +1880,16 @@ function StickerPage() {
                   // refresh sonrası 404. _resolvedPreviewUrl yukarıda
                   // persistDesignPreview ile auth varsa kalıcı Supabase URL.
                   designPreviewUrl: _resolvedPreviewUrl,
-                  designFileName: design?.fileName ?? designs[0]?.name,
-                  designMimeType: design?.mimeType ?? designs[0]?.mimeType,
+                  designFileName: design?.fileName ?? persistedDesigns[0]?.name,
+                  designMimeType: design?.mimeType ?? persistedDesigns[0]?.mimeType,
                   // Multi-design metadata (Sefa 15 May v5):
                   // Sticker'da PendingDesign local-only (Supabase upload yok)
                   // — sadece designCount metadata gönder + sipariş sonrası
                   // mail ile gerçek dosyalar yüklenecek.
                   designCount: designCount > 1 ? designCount : undefined,
                   additionalDesigns:
-                    designs.length > 0
-                      ? designs.map((d) => ({
-                          // tempId yok (local-only) → name'i kullan
+                    persistedDesigns.length > 1
+                      ? persistedDesigns.slice(1).map((d) => ({
                           tempId: `local-${d.id}`,
                           previewUrl: d.previewUrl,
                           fileName: d.name,
@@ -1912,8 +1920,19 @@ function StickerPage() {
                 // Tasarım state'ini sıfırla — yeni eklemede temiz başla
                 setDesign(null);
                 // Çoklu tasarım kullanıldıysa local preview'ları temizle
-                if (designs.length > 0) {
-                  designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
+                if (persistedDesigns.length > 0) {
+                  designs.forEach((d) => {
+                    if (d.previewUrl.startsWith("blob:")) {
+                      URL.revokeObjectURL(d.previewUrl);
+                    }
+                    if (
+                      d.generatedPreviewUrl &&
+                      d.generatedPreviewUrl.startsWith("blob:") &&
+                      d.generatedPreviewUrl !== d.previewUrl
+                    ) {
+                      URL.revokeObjectURL(d.generatedPreviewUrl);
+                    }
+                  });
                   setDesigns([]);
                   setDesignCount(1);
                 }
