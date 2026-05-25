@@ -25,7 +25,8 @@ import {
   verifyCallback,
   isPayTrConfigured,
 } from "@/lib/payment/paytr";
-import { recoverPendingPaymentIntent } from "@/lib/payment/recover-pending-intent";
+import { recoverPendingPaymentIntentWithRetries } from "@/lib/payment/recover-with-retries";
+import { resolveOrderIdFromIntent } from "@/lib/payment/resolve-order-from-intent";
 import {
   sendOrderConfirmation,
   sendOrderProofRequired,
@@ -319,6 +320,12 @@ export async function POST(req: NextRequest) {
   const orderId = rpcRow?.order_id ?? candidateOrderId;
   const wasDuplicate = rpcRow?.was_duplicate ?? false;
 
+  // GET redirect + polling için order_id hemen yaz (promote/QC hatası siparişi kaybettirmesin)
+  await admin
+    .from("payment_intents")
+    .update({ order_id: orderId })
+    .eq("id", merchantOid);
+
   // Duplicate IPN: var olan order'ı PayTR'a yine "OK" döneriz,
   // promote/referral'i tekrar çalıştırmıyoruz.
   if (wasDuplicate) {
@@ -346,25 +353,24 @@ export async function POST(req: NextRequest) {
 
   if (orderItemsForPromote.length > 0) {
     try {
-      await promoteOrderDesigns({
+      const promotedCount = await promoteOrderDesigns({
         admin,
         orderId,
         userId: intent.user_id,
         orderItems: orderItemsForPromote,
       });
+
+      if (promotedCount > 0) {
+        await admin
+          .from("orders")
+          .update({ status: "qc_pending" })
+          .eq("id", orderId);
+
+        scheduleOrderDesignQC(admin, orderId);
+      }
     } catch (err) {
       console.error("[payment/callback] promote failed:", err);
     }
-  }
-
-  const { data: designFiles } = await admin
-    .from("design_files")
-    .select("id")
-    .eq("order_id", orderId)
-    .in("status", ["uploaded", "analyzing", "qc_passed", "qc_warned"]);
-
-  if (designFiles && designFiles.length > 0) {
-    scheduleOrderDesignQC(admin, orderId);
   }
 
   // (11) Cüzdan akışı KALDIRILDI — Migration 015
@@ -390,15 +396,6 @@ export async function POST(req: NextRequest) {
 
   // 12) Cart temizle
   await admin.from("cart_items").delete().eq("user_id", intent.user_id);
-
-  // 13) Intent order_id set (status='consumed' zaten RPC içinde set
-  // edildi — bu sadece GET endpoint redirect'i için order_id alanı).
-  await admin
-    .from("payment_intents")
-    .update({
-      order_id: orderId,
-    })
-    .eq("id", merchantOid);
 
   // 14) Order confirmation maili (fire-and-forget)
   void sendOrderConfirmation({
@@ -542,12 +539,19 @@ export async function GET(req: NextRequest) {
     failure_reason: string | null;
   };
 
-  if (intent.status === "consumed" && intent.order_id) {
-    const hasDesigns = await orderHasDesignFiles(admin, intent.order_id);
-    return NextResponse.redirect(
-      successRedirectUrl(siteUrl, intent.order_id, hasDesigns),
-      303
+  if (intent.status === "consumed") {
+    const orderId = await resolveOrderIdFromIntent(
+      admin,
+      oid,
+      intent.order_id
     );
+    if (orderId) {
+      const hasDesigns = await orderHasDesignFiles(admin, orderId);
+      return NextResponse.redirect(
+        successRedirectUrl(siteUrl, orderId, hasDesigns),
+        303
+      );
+    }
   }
 
   if (intent.status === "failed") {
@@ -561,7 +565,10 @@ export async function GET(req: NextRequest) {
 
   // Pending — IPN henüz gelmemiş olabilir. PayTR Durum Sorgu ile recover dene.
   if (ret === "ok") {
-    const recovered = await recoverPendingPaymentIntent(admin, oid);
+    const recovered = await recoverPendingPaymentIntentWithRetries(admin, oid, {
+      maxAttempts: 5,
+      delayMs: 1500,
+    });
     if (recovered.status === "consumed") {
       const hasDesigns = await orderHasDesignFiles(admin, recovered.orderId);
       return NextResponse.redirect(
