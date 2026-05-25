@@ -136,9 +136,18 @@ export async function GET(
     );
   }
 
+  // Thumbnail modu: ?thumb=1 ise küçük boyutlu önizleme döndür
+  const isThumb = url.searchParams.get("thumb") === "1";
+  const isRaster =
+    dfRow.mime_type.startsWith("image/") && !dfRow.mime_type.includes("svg");
+  const transformOpts =
+    isThumb && isRaster
+      ? { transform: { width: 400, height: 400, resize: "contain" as const } }
+      : undefined;
+
   const { data: signed, error: signErr } = await admin.storage
     .from(STORAGE_BUCKET)
-    .createSignedUrl(dfRow.storage_path, TTL_SECONDS);
+    .createSignedUrl(dfRow.storage_path, TTL_SECONDS, transformOpts);
   if (signErr || !signed) {
     return NextResponse.json(
       { error: "Signed URL üretilemedi", detail: signErr?.message },
@@ -151,5 +160,6 @@ export async function GET(
     mimeType: dfRow.mime_type,
     fileName: dfRow.original_name,
     expiresAt: new Date(Date.now() + TTL_SECONDS * 1000).toISOString(),
+    thumbnail: isThumb,
   });
 }

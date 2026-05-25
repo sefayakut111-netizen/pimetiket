@@ -378,6 +378,7 @@ export default function OdemePage() {
   const [acceptSatis, setAcceptSatis] = useState(false);
   const [acceptCopyright, setAcceptCopyright] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // ============================================================
   // Hydration
@@ -406,6 +407,23 @@ export default function OdemePage() {
             /* silent */
           });
       }
+    });
+
+    // Admin kontrolü
+    void import("@/lib/supabase/client").then(({ createClient }) => {
+      const sb = createClient();
+      sb.auth.getUser().then(({ data }) => {
+        if (!data.user) return;
+        sb.from("profiles")
+          .select("admin_role")
+          .eq("id", data.user.id)
+          .single()
+          .then(({ data: p }) => {
+            if (p && (p as { admin_role: string | null }).admin_role) {
+              setIsAdmin(true);
+            }
+          });
+      });
     });
 
     // Adresler
@@ -1820,6 +1838,54 @@ export default function OdemePage() {
                   : c.proceed(fmt(cardAmount))}{" "}
                 {!loading && <Icon.ArrowR />}
               </Button>
+
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (loading || cartItems.length === 0) return;
+                    setLoading(true);
+                    try {
+                      const addr = selectedAddress
+                        ? {
+                            label: selectedAddress.label ?? undefined,
+                            name: selectedAddress.name,
+                            addr: selectedAddress.addr,
+                            city: selectedAddress.city,
+                            phone: selectedAddress.phone,
+                          }
+                        : {
+                            name: `${newAddr.firstName} ${newAddr.lastName}`.trim() || "Admin Test",
+                            addr: newAddr.addr || "Test adres",
+                            city: newAddr.city || "Istanbul",
+                            phone: newAddr.phone || "5551234567",
+                          };
+                      const invoice = { type: "individual" as const, tc: "00000000000" };
+                      const order = await createCustomerOrder({
+                        items: cartItems,
+                        address: addr,
+                        invoice,
+                        payment: { method: "card", masked: "**** 0000 (admin bypass)" },
+                        subtotal,
+                        shipping: effectiveShipping,
+                        total: effectiveTotal,
+                        estimatedDelivery: addDaysIso(
+                          cartItems.some((i) => i.product === "etiket") ? 10 : 5
+                        ),
+                      });
+                      await clearCustomerCart();
+                      router.push(`/odeme-sonuc?status=success&order=${order.id}&hasDesigns=true`);
+                    } catch (err) {
+                      setLoading(false);
+                      toast.error("Admin bypass hata: " + (err instanceof Error ? err.message : "bilinmeyen"));
+                    }
+                  }}
+                  disabled={loading || cartItems.length === 0}
+                  className="mt-2 w-full rounded-lg border border-dashed border-gri-300 bg-gri-50 px-3 py-2 text-xs font-medium text-gri-500 hover:border-pim-mercan hover:text-pim-mercan transition"
+                >
+                  {loading ? "İşleniyor..." : "Admin devam et (ödeme atla)"}
+                </button>
+              )}
 
               {/* Sefa 17 May Dalga 3 #18: trust rozetleri büyütüldü
                   22px → 28px height, font 11.5 → 13, ikon görünürlüğü +

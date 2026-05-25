@@ -17,6 +17,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -99,17 +100,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const toast: ToastApi = {
-    success: (m) => push("success", m),
-    warning: (m) => push("warning", m),
-    error: (m) => push("error", m),
-    info: (m) => push("info", m),
-    undoable: (m, onUndo, ttlMs = 5000) =>
-      push("info", m, {
-        action: { label: "Geri al", onClick: onUndo },
-        ttlMs,
-      }),
-  };
+  const toast: ToastApi = useMemo(
+    () => ({
+      success: (m: string) => push("success", m),
+      warning: (m: string) => push("warning", m),
+      error: (m: string) => push("error", m),
+      info: (m: string) => push("info", m),
+      undoable: (m: string, onUndo: () => void, ttlMs = 5000) =>
+        push("info", m, {
+          action: { label: "Geri al", onClick: onUndo },
+          ttlMs,
+        }),
+    }),
+    [push]
+  );
 
   return (
     <ToastCtx.Provider value={{ toast }}>

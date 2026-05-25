@@ -545,7 +545,7 @@ function MessageList({
                     : "bg-white ring-1 ring-gri-200 text-lacivert rounded-bl-md"
                 )}
               >
-                {text}
+                {isUser ? text : renderMessageText(text)}
               </div>
             )}
             {toolResults.map((tr, i) => (
@@ -935,6 +935,42 @@ interface UIMessageLike {
 }
 
 /** AI SDK v6 UIMessage'ten text parts'ları birleştirir. */
+function renderMessageText(text: string): React.ReactNode {
+  const MD_LINK = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  const BARE_URL = /(https?:\/\/[^\s<]+)/g;
+
+  if (!MD_LINK.test(text) && !BARE_URL.test(text)) return text;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  const combined = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s<]+)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = combined.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const label = match[1] || match[3]?.replace(/^https?:\/\/(www\.)?/, "").split("/")[0] || "Link";
+    const url = match[2] || match[3] || "#";
+    const isInternal = url.includes("pimetiket.com") || url.startsWith("/");
+    const href = isInternal ? url.replace(/^https?:\/\/(www\.)?pimetiket\.com/, "") || "/" : url;
+
+    parts.push(
+      <a
+        key={match.index}
+        href={href}
+        className="font-semibold text-pim-mercan underline underline-offset-2"
+        {...(isInternal ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+      >
+        {label}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return <>{parts}</>;
+}
+
 function extractText(m: unknown): string {
   if (!m || typeof m !== "object") return "";
   const msg = m as UIMessageLike;

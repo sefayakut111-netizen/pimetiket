@@ -36,6 +36,18 @@ function extractPathFromSvg(svg: string): string {
   return match?.[1] ?? "";
 }
 
+function cutlineOverlayUrl(designUrl: string, cutlinePath: string): string {
+  if (!cutlinePath) return designUrl;
+  if (cutlinePath.startsWith("http://") || cutlinePath.startsWith("https://")) {
+    return cutlinePath;
+  }
+  const svg = cutlinePath.includes("<svg")
+    ? cutlinePath
+    : `<svg xmlns="http://www.w3.org/2000/svg"><path d="${cutlinePath}" fill="none" stroke="#FF0080" stroke-width="2"/></svg>`;
+  const b64 = Buffer.from(svg, "utf8").toString("base64");
+  return `data:image/svg+xml;base64,${b64}`;
+}
+
 async function saveValidation(
   orderId: string,
   itemId: string,
@@ -200,7 +212,7 @@ export async function runProofPipeline(
     try {
       aiResult = await validateProofWithAI(
         input.designFileUrl,
-        input.designFileUrl,
+        cutlineOverlayUrl(input.designFileUrl, cutlinePath),
         null
       );
     } catch (err) {

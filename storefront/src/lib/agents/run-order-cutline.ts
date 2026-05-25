@@ -6,6 +6,7 @@ import { generateCutlineHeadless } from "./generate-cutline-headless";
 import { categorizeFile } from "@/lib/design-file-types";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { saveCutlineEdit } from "@/lib/proof/save-cutline-edit";
+import { runProofPipeline } from "@/lib/proof/orchestrator";
 import { sendProofReady } from "@/lib/mail/notifications";
 
 const SITE_URL = () =>
@@ -38,6 +39,17 @@ export async function runOrderCutlineGeneration(
     .eq("order_id", orderId);
 
   if (!items || items.length === 0) return { generated: 0, failed: 0 };
+
+  const pendingProofs: {
+    itemId: string;
+    designFileId: string;
+    storagePath: string;
+    originalName: string;
+    width: number;
+    height: number;
+    materialKey: string;
+    cutlineSvg: string;
+  }[] = [];
 
   for (const item of items) {
     const itemMeta = item.meta as Record<string, unknown> | null;
@@ -172,6 +184,16 @@ export async function runOrderCutlineGeneration(
 
       if (saveResult.ok) {
         generated++;
+        pendingProofs.push({
+          itemId: item.id,
+          designFileId: df.id,
+          storagePath: df.storage_path,
+          originalName: df.original_name,
+          width: item.width,
+          height: item.height,
+          materialKey: material,
+          cutlineSvg: result.svg,
+        });
       } else {
         failed++;
         console.error(
@@ -184,7 +206,32 @@ export async function runOrderCutlineGeneration(
     }
   }
 
-  if (generated > 0 && failed === 0) {
+  let proofPipelineStatus: "proof_pending" | "operator_review" | null = null;
+  for (const pp of pendingProofs) {
+    const { data: signedForProof } = await admin.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(pp.storagePath, 300);
+    if (!signedForProof?.signedUrl) continue;
+    try {
+      const pr = await runProofPipeline({
+        orderId,
+        itemId: pp.itemId,
+        designFileId: pp.designFileId,
+        designFileUrl: signedForProof.signedUrl,
+        fileName: pp.originalName,
+        materialKey: pp.materialKey,
+        designWidth: pp.width,
+        designHeight: pp.height,
+        cutlineSvgPath: pp.cutlineSvg,
+      });
+      proofPipelineStatus = pr.status;
+      if (pr.status === "operator_review") break;
+    } catch (err) {
+      console.error("[run-order-cutline] proof pipeline failed:", orderId, pp.itemId, err);
+    }
+  }
+
+  if (generated > 0 && failed === 0 && proofPipelineStatus !== "operator_review") {
     await admin
       .from("orders")
       .update({ status: "proof_pending" })

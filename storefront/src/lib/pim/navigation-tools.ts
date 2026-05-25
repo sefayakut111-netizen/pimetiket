@@ -154,8 +154,101 @@ export const getProofStatusTool = tool({
   },
 });
 
+export const createProofHelpRequestTool = tool({
+  description:
+    "Müşterinin prova/bıçak sorununu operatöre iletir — yardım talebi oluşturur.",
+  inputSchema: z.object({
+    orderId: z.string().describe("Sipariş numarası"),
+    itemId: z.string().optional().describe("Sipariş kalemi id (opsiyonel)"),
+    issue: z.string().describe("Müşterinin tarif ettiği sorun"),
+  }),
+  execute: async ({ orderId, itemId, issue }) => {
+    const admin = createAdminClient();
+    const { data: order } = await admin
+      .from("orders")
+      .select("id, user_id, status")
+      .ilike("id", orderId)
+      .maybeSingle();
+    const orderRow = order as {
+      id: string;
+      user_id: string;
+      status: string;
+    } | null;
+
+    if (!orderRow) {
+      return { ticketCreated: false, message: "Sipariş bulunamadı." };
+    }
+    if (orderRow.status !== "proof_pending") {
+      return {
+        ticketCreated: false,
+        message: `Bu aşamada yardım talebi açılamaz (${orderRow.status}).`,
+      };
+    }
+
+    let targetItemId = itemId;
+    if (!targetItemId) {
+      const { data: items } = await admin
+        .from("order_items")
+        .select("id")
+        .eq("order_id", orderRow.id)
+        .limit(1);
+      targetItemId = (items as Array<{ id: string }> | null)?.[0]?.id;
+    }
+    if (!targetItemId) {
+      return { ticketCreated: false, message: "Sipariş kalemi bulunamadı." };
+    }
+
+    const message = issue.trim().slice(0, 1000);
+    if (!message) {
+      return { ticketCreated: false, message: "Sorun açıklaması gerekli." };
+    }
+
+    const { error: hrErr } = await admin.from("proof_help_requests").insert({
+      order_id: orderRow.id,
+      order_item_id: targetItemId,
+      user_id: orderRow.user_id,
+      message,
+      status: "open",
+    });
+
+    if (hrErr) {
+      console.error("[pim/create_proof_help_request]", hrErr);
+      return {
+        ticketCreated: false,
+        message: "Talep oluşturulamadı, lütfen tekrar dene.",
+      };
+    }
+
+    await admin
+      .from("order_items")
+      .update({ proof_status: "help_requested" })
+      .eq("id", targetItemId)
+      .eq("order_id", orderRow.id);
+
+    await admin.from("order_events").insert([
+      {
+        order_id: orderRow.id,
+        event_type: "proof_help_requested",
+        status_after: orderRow.status,
+        actor_id: orderRow.user_id,
+        actor_role: "customer",
+        summary: `Pim chat yardım talebi: ${message.slice(0, 80)}`,
+        detail: { item_id: targetItemId, via: "pim_chat" },
+      },
+    ]);
+
+    return {
+      ticketCreated: true,
+      message:
+        "Uzman ekibimize ilettim, en kısa sürede dönüş yapacaklar. Prova sayfasından da durumu takip edebilirsin.",
+      redirect: buildOrderUrl(orderRow.id, "proof"),
+    };
+  },
+});
+
 export const PIM_NAV_TOOLS = {
   redirect_to_configurator: redirectToConfiguratorTool,
   redirect_to_order: redirectToOrderTool,
   get_proof_status: getProofStatusTool,
+  create_proof_help_request: createProofHelpRequestTool,
 };

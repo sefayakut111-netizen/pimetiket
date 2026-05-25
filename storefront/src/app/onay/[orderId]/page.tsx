@@ -1869,43 +1869,43 @@ export default function ProofApprovalPage({
         );
       })()}
 
-      {/* Lightbox modal — büyütülmüş bıçak önizlemesi */}
+      {/* Lightbox modal — bıçak önizlemesi (sınırlı boyut) */}
       {lightboxOpen && previewUrl && activeItem && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6"
           onClick={() => setLightboxOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Bıçak önizleme büyük görünüm"
+          aria-label="Bıçak önizleme"
         >
-          <button
-            type="button"
-            onClick={() => setLightboxOpen(false)}
-            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20"
-            aria-label="Kapat"
-          >
-            ✕ Kapat (Esc)
-          </button>
           <div
-            className="relative max-h-[90vh] max-w-[95vw]"
+            className="relative max-w-2xl max-h-[75vh] rounded-xl overflow-hidden shadow-2xl"
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             style={{
               backgroundImage:
-                "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
-              backgroundSize: "20px 20px",
-              backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
-              backgroundColor: "#1a1a1a",
+                "linear-gradient(45deg, #e8e8e8 25%, transparent 25%), linear-gradient(-45deg, #e8e8e8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e8e8e8 75%), linear-gradient(-45deg, transparent 75%, #e8e8e8 75%)",
+              backgroundSize: "16px 16px",
+              backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+              backgroundColor: "#f5f5f5",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}
-              alt={`${activeItem.title} bıçak büyük önizlemesi`}
-              className="max-h-[90vh] max-w-[95vw] object-contain"
+              alt={`${activeItem.title} bıçak önizlemesi`}
+              className="w-full h-full max-h-[75vh] object-contain"
             />
-          </div>
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white">
-            {activeItem.title} · {activeItem.width}×{activeItem.height} mm
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 text-sm"
+              aria-label="Kapat"
+            >
+              ✕
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-3 py-1.5 text-xs text-white text-center">
+              {activeItem.title} · {activeItem.width}×{activeItem.height} mm
+            </div>
           </div>
         </div>
       )}

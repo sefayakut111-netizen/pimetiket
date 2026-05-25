@@ -1264,29 +1264,29 @@ function AdminDashboardPageInner() {
           className="grid gap-3 mb-6"
           style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
         >
-          {showFinancials && (
-            <Card
-              padding="p-4"
-              className="!bg-pim-mercan-tint/20 ring-1 ring-pim-mercan/20"
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-pim-mercan">
-                Bugün
-              </div>
-              <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+          <Card
+            padding="p-4"
+            className="!bg-pim-mercan-tint/20 ring-1 ring-pim-mercan/20"
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wider text-pim-mercan">
+              Bugün
+            </div>
+            <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+              {showFinancials && (
                 <span className="text-[28px] font-bold text-lacivert tabular-nums">
                   {formatCurrency(todayRevenue)}
                 </span>
-                <span className="text-[13px] text-gri-700">
-                  {todayCount} sipariş
-                </span>
-              </div>
-              {todayCount > 0 && (
-                <div className="mt-1 text-[11px] text-gri-500">
-                  Ort. sepet: {formatCurrency(todayRevenue / todayCount)}
-                </div>
               )}
-            </Card>
-          )}
+              <span className="text-[13px] text-gri-700">
+                {todayCount} sipariş
+              </span>
+            </div>
+            {showFinancials && todayCount > 0 && (
+              <div className="mt-1 text-[11px] text-gri-500">
+                Ort. sepet: {formatCurrency(todayRevenue / todayCount)}
+              </div>
+            )}
+          </Card>
           {KPIS.map((k) => (
             <Card key={k.label} padding="p-4">
               <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 truncate">

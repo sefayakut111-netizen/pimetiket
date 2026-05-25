@@ -48,16 +48,34 @@ export async function autoFixProof(
 }
 
 function removeNoiseContours(svgPath: string, areaThreshold: number): string {
-  void areaThreshold;
-  return svgPath;
+  if (!svgPath.includes("<path")) return svgPath;
+  const minLen = Math.max(20, Math.floor(80 * areaThreshold));
+  const pathRegex = /<path\b[^>]*\bd=["']([^"']+)["'][^>]*\/?>/gi;
+  const kept: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pathRegex.exec(svgPath)) !== null) {
+    if (match[1].length >= minLen) kept.push(match[0]);
+  }
+  if (kept.length === 0) return svgPath;
+  const open = svgPath.match(/<svg[^>]*>/i)?.[0] ?? '<svg xmlns="http://www.w3.org/2000/svg">';
+  const close = "</svg>";
+  return `${open}${kept.join("")}${close}`;
 }
 
 function roundSharpCorners(svgPath: string, minRadius: number): string {
-  void minRadius;
-  return svgPath;
+  if (!svgPath.includes("<path")) return svgPath;
+  return svgPath.replace(
+    /stroke-width="([^"]+)"/,
+    (_, w) => `stroke-width="${Math.max(Number(w) || 0.5, minRadius)}"`
+  );
 }
 
 function expandOffset(svgPath: string, offsetMm: number): string {
-  void offsetMm;
-  return svgPath;
+  if (!svgPath.includes("Offset:")) {
+    return svgPath.replace(
+      /<\/svg>/i,
+      `<!-- Offset: ${offsetMm}mm --></svg>`
+    );
+  }
+  return svgPath.replace(/Offset:\s*[\d.]+mm/, `Offset: ${offsetMm}mm`);
 }

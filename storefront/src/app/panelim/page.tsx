@@ -628,9 +628,13 @@ export default function PanelimPage() {
     { ...c.helpCenter, href: "/sss" },
   ];
 
-  // Aktif siparişler (delivered + cancelled hariç)
-  const activeOrders = orders
+  // Aktif siparişler (delivered + cancelled hariç) — sayfalı
+  const ORDERS_PER_PAGE = 10;
+  const [orderPage, setOrderPage] = useState(1);
+  const allActiveOrders = orders
     .filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+  const activeOrders = allActiveOrders.slice(0, orderPage * ORDERS_PER_PAGE);
+  const hasMoreOrders = allActiveOrders.length > activeOrders.length;
 
   // Stat hesapları
   const activeCount = orders.filter(
@@ -1004,6 +1008,18 @@ export default function PanelimPage() {
                       </Card>
                     );
                   })}
+                  {hasMoreOrders && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setOrderPage((p) => p + 1)}
+                      className="w-full mt-3"
+                    >
+                      {locale === "en"
+                        ? `Show more (${allActiveOrders.length - activeOrders.length} remaining)`
+                        : `Daha fazla göster (${allActiveOrders.length - activeOrders.length} kaldı)`}
+                    </Button>
+                  )}
                 </div>
               )}
             </section>

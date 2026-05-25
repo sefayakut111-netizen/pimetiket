@@ -61,16 +61,17 @@ export async function GET() {
     map.set(name, entry);
   }
 
-  const partners = Array.from(map.values())
-    .sort((a, b) => b.activeCount - a.activeCount)
-    .slice(0, 5);
+  const partners = Array.from(map.values()).sort(
+    (a, b) => b.activeCount - a.activeCount
+  );
+  const totals = {
+    active: partners.reduce((s, p) => s + p.activeCount, 0),
+    overdue: partners.reduce((s, p) => s + p.overdueCount, 0),
+  };
 
   return NextResponse.json({
     ok: true,
-    partners,
-    totals: {
-      active: partners.reduce((s, p) => s + p.activeCount, 0),
-      overdue: partners.reduce((s, p) => s + p.overdueCount, 0),
-    },
+    partners: partners.slice(0, 5),
+    totals,
   });
 }

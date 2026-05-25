@@ -11,15 +11,25 @@ import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runOrderDesignQC } from "./run-order-qc";
 
+function runQcBackground(admin: SupabaseClient, orderId: string): void {
+  void runOrderDesignQC(admin, orderId).catch((err) => {
+    console.error("[schedule-order-design-qc] failed:", orderId, err);
+  });
+}
+
 export function scheduleOrderDesignQC(
   admin: SupabaseClient,
   orderId: string
 ): void {
-  after(async () => {
-    try {
+  try {
+    after(async () => {
       await runOrderDesignQC(admin, orderId);
-    } catch (err) {
-      console.error("[schedule-order-design-qc] failed:", orderId, err);
-    }
-  });
+    });
+  } catch (err) {
+    console.warn(
+      "[schedule-order-design-qc] after() unavailable, inline fallback:",
+      err
+    );
+    runQcBackground(admin, orderId);
+  }
 }
