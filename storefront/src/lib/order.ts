@@ -172,6 +172,32 @@ export const VALID_BULK_TRANSITIONS: Partial<
   shipped: ["delivered"],
 };
 
+/** Tek satır admin dropdown — izin verilen geçişler */
+export const VALID_SINGLE_TRANSITIONS: Partial<
+  Record<OrderStatus, readonly OrderStatus[]>
+> = {
+  paid: ["qc_pending", "awaiting_upload", "cancelled"],
+  awaiting_upload: ["qc_pending", "cancelled"],
+  qc_pending: ["proof_generating", "human_review", "cancelled"],
+  qc_flagged: ["human_review", "cancelled"],
+  human_review: ["proof_generating", "human_review_failed", "cancelled"],
+  human_review_failed: ["qc_pending", "cancelled"],
+  proof_generating: ["proof_pending", "human_review"],
+  proof_pending: ["proof_approved", "cancelled"],
+  proof_validating: ["proof_pending"],
+  proof_approved: ["ready_to_ship"],
+  ready_to_ship: ["in_production", "fason_assigned"],
+  fason_assigned: ["in_production"],
+  in_production: ["shipped"],
+  shipped: ["delivered"],
+  delivered: [],
+  cancelled: [],
+};
+
+export function getValidTransitions(currentStatus: OrderStatus): OrderStatus[] {
+  return [...(VALID_SINGLE_TRANSITIONS[currentStatus] ?? [])];
+}
+
 export function isValidBulkTransition(
   from: OrderStatus,
   to: OrderStatus

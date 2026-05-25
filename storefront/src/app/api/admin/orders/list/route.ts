@@ -117,6 +117,29 @@ export async function GET(req: Request) {
   }
   const items = (itemRows ?? []) as unknown as DbItemRow[];
 
+  // Aktif partner atamaları (fason adı + kargo takip)
+  const { data: assignmentRows } = await admin
+    .from("order_assignments")
+    .select(
+      "order_id, status, tracking_number, fason_partners ( name )"
+    )
+    .in("order_id", orderIds)
+    .neq("status", "cancelled");
+
+  const assignmentByOrder = new Map<
+    string,
+    { fasonName: string; trackingNumber: string | null }
+  >();
+  for (const row of assignmentRows ?? []) {
+    const orderId = row.order_id as string;
+    const partner = row.fason_partners as { name?: string } | null;
+    if (!partner?.name) continue;
+    assignmentByOrder.set(orderId, {
+      fasonName: partner.name,
+      trackingNumber: (row.tracking_number as string | null) ?? null,
+    });
+  }
+
   // CustomerOrder shape'ine map et (rowsToOrder inline)
   const result = orders.map((o) => {
     const ts = new Date(o.created_at).getTime();
@@ -160,6 +183,8 @@ export async function GET(req: Request) {
       createdAt: ts,
       createdAtIso: o.created_at,
       estimatedDelivery: o.estimated_delivery ?? undefined,
+      fasonName: assignmentByOrder.get(o.id)?.fasonName,
+      trackingNumber: assignmentByOrder.get(o.id)?.trackingNumber ?? undefined,
     };
   });
 
