@@ -229,8 +229,40 @@ async function runOrderDesignQCInner(
   const files = (filesData ?? []) as unknown as DesignFileForQC[];
 
   if (files.length === 0) {
-    // Sefa kuralı: müşteri 3 gün içinde dosya yükleme süresi var.
-    // Şu an dosya yok → QC çalıştırmıyoruz, order paid'de kalıyor.
+    console.warn(
+      `[run-order-qc] Order ${orderId}: no design files found — skipping QC`
+    );
+
+    const { data: order } = await admin
+      .from("orders")
+      .select("status")
+      .eq("id", orderId)
+      .single();
+
+    if (order?.status === "awaiting_upload") {
+      return {
+        orderId,
+        ranCount: 0,
+        verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+        aggregateVerdict: "needs_review",
+      };
+    }
+
+    console.error(
+      `[run-order-qc] Order ${orderId} status=${order?.status} but 0 design files — possible data issue`
+    );
+
+    await admin.from("order_events").insert([
+      {
+        order_id: orderId,
+        event_type: "qc_skipped_no_files",
+        status_after: order?.status ?? "unknown",
+        actor_role: "system",
+        summary: "QC atlandı — tasarım dosyası bulunamadı",
+        detail: { trigger: "runOrderDesignQC", designFileCount: 0 },
+      },
+    ]);
+
     return {
       orderId,
       ranCount: 0,
@@ -348,6 +380,33 @@ async function runOrderDesignQCInner(
   const aggregateVerdict: "ready_to_proof" | "needs_review" = allGood
     ? "ready_to_proof"
     : "needs_review";
+
+  const { data: currentOrder } = await admin
+    .from("orders")
+    .select("status")
+    .eq("id", orderId)
+    .single();
+
+  const qcAllowedStatuses = [
+    "paid",
+    "awaiting_upload",
+    "qc_pending",
+    "qc_flagged",
+    "human_review",
+    "human_review_failed",
+  ];
+
+  if (!currentOrder || !qcAllowedStatuses.includes(currentOrder.status)) {
+    console.warn(
+      `[run-order-qc] Order ${orderId} status=${currentOrder?.status} — not in QC-allowed range, skipping status update`
+    );
+    return {
+      orderId,
+      ranCount: files.length,
+      verdictCounts,
+      aggregateVerdict,
+    };
+  }
 
   // 5) Order status update + P1 #7 attempt counter increment
   const nextAttemptCount = currentAttempts + 1;

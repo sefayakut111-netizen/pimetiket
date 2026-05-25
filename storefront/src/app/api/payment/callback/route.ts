@@ -99,6 +99,22 @@ function addDaysIso(days: number): string {
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+async function orderHasDesignFiles(
+  admin: ReturnType<typeof createAdminClient>,
+  orderId: string
+): Promise<boolean> {
+  const { data } = await admin
+    .from("design_files")
+    .select("id")
+    .eq("order_id", orderId)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+function successRedirectUrl(siteUrl: string, orderId: string, hasDesigns: boolean) {
+  return `${siteUrl}/odeme-sonuc?status=success&order=${encodeURIComponent(orderId)}&hasDesigns=${hasDesigns}`;
+}
+
 // ============================================================
 // POST — IPN handler (server-to-server)
 //
@@ -341,6 +357,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const { data: designFiles } = await admin
+    .from("design_files")
+    .select("id")
+    .eq("order_id", orderId)
+    .in("status", ["uploaded", "analyzing", "qc_passed", "qc_warned"]);
+
+  if (designFiles && designFiles.length > 0) {
+    setTimeout(() => {
+      void runOrderDesignQC(admin, orderId).catch((err) => {
+        console.error("[payment/callback] QC trigger failed:", err);
+      });
+    }, 2000);
+  }
+
   // (11) Cüzdan akışı KALDIRILDI — Migration 015
 
   // (11b) Referans tamamlama — bu kullanıcının ilk siparişi mi?
@@ -394,14 +424,8 @@ export async function POST(req: NextRequest) {
     console.error("[payment/callback] proof_required mail failed:", err)
   );
 
-  // 14b) Design QC agent (Sefa kuralı 16 May v3 — fire-and-forget).
-  // Müşteri ödeme yaptıktan sonra tasarım kalite kontrolü background'da.
-  // PayTR retry'lamasın diye await ETMEYİZ.
-  void runOrderDesignQC(admin, orderId).catch((err) => {
-    console.error("[payment/callback] design QC failed:", err);
-    // runOrderDesignQC iç sarmalayıcı fatal hatalarda human_review atar;
-    // bu catch yalnızca escalation'ın da patladığı edge case için.
-  });
+  // QC artık promote sonrası (veya upload-complete) tetikleniyor — race önlemek için
+  // burada doğrudan çağrılmıyor.
 
   // 14c) Admin anlık sipariş bildirimi (Sefa 21 May v68 — admin operasyon
   // konforu). ADMIN_NOTIFICATION_EMAIL env'i set ise yeni siparişte
@@ -523,8 +547,9 @@ export async function GET(req: NextRequest) {
   };
 
   if (intent.status === "consumed" && intent.order_id) {
+    const hasDesigns = await orderHasDesignFiles(admin, intent.order_id);
     return NextResponse.redirect(
-      `${siteUrl}/odeme-sonuc?status=success&order=${intent.order_id}`,
+      successRedirectUrl(siteUrl, intent.order_id, hasDesigns),
       303
     );
   }
@@ -542,8 +567,9 @@ export async function GET(req: NextRequest) {
   if (ret === "ok") {
     const recovered = await recoverPendingPaymentIntent(admin, oid);
     if (recovered.status === "consumed") {
+      const hasDesigns = await orderHasDesignFiles(admin, recovered.orderId);
       return NextResponse.redirect(
-        `${siteUrl}/odeme-sonuc?status=success&order=${recovered.orderId}`,
+        successRedirectUrl(siteUrl, recovered.orderId, hasDesigns),
         303
       );
     }

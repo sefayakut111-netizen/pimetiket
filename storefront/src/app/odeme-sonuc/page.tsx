@@ -100,6 +100,7 @@ function OdemeSonucInner() {
   const status = sp.get("status") ?? "success";
   const oid = sp.get("oid");
   const orderIdParam = sp.get("order") ?? "000000000000";
+  const hasDesignsParam = sp.get("hasDesigns") === "true";
   const isPendingVerification =
     status === "success" && orderIdParam === "pending" && Boolean(oid);
 
@@ -131,7 +132,7 @@ function OdemeSonucInner() {
         if (data.status === "consumed" && data.orderId) {
           setResolvedOrderId(data.orderId);
           router.replace(
-            `/odeme-sonuc?status=success&order=${encodeURIComponent(data.orderId)}`
+            `/odeme-sonuc?status=success&order=${encodeURIComponent(data.orderId)}&hasDesigns=${sp.get("hasDesigns") === "true" ? "true" : "false"}`
           );
           return;
         }
@@ -175,6 +176,10 @@ function OdemeSonucInner() {
     ensureAuthBindings();
     void fetchCustomerOrder(orderId).then(setOrder);
   }, [orderId, isPendingVerification]);
+
+  const orderHasDesigns =
+    hasDesignsParam ||
+    (order != null && order.status !== "awaiting_upload");
 
   if (status === "fail") {
     const reason = sp.get("reason");
@@ -505,40 +510,44 @@ function OdemeSonucInner() {
           </ol>
         </Card>
 
-        {/* Sefa 22 May v68 - CTA tam status-aware:
-            - awaiting_upload -> /siparis/[id]/tasarim-yukle (tasarim yukle)
-            - proof_generating/proof_pending -> /siparis/[id] (prova izle/onayla)
-            - diger -> siparis detayi */}
-        <div className="mt-8 flex gap-3 justify-center flex-wrap">
-          {order?.status === "awaiting_upload" ? (
-            <Button
-              variant="primary"
-              size="lg"
-              href={`/siparis/${orderId}/tasarim-yukle`}
-            >
-              Tasarımını yükle →
-            </Button>
-          ) : order?.status === "proof_generating" ||
-            order?.status === "proof_pending" ? (
-            <Button
-              variant="primary"
-              size="lg"
-              href={`/siparis/${orderId}`}
-            >
-              {order.status === "proof_generating"
-                ? "Bıçak çizimini izle →"
-                : "Provayı incele ve onayla →"}
-            </Button>
+        {/* Status-aware CTA — tasarım var/yok */}
+        <div className="mt-8 space-y-3">
+          {orderHasDesigns ? (
+            <>
+              <p className="text-[14px] text-gri-700">
+                {locale === "en"
+                  ? "Your design is uploaded — AI quality check is starting. You can review the proof in a few minutes."
+                  : "Tasarımın yüklendi — AI kalite kontrolü başlıyor. Birkaç dakika sonra provayı inceleyebilirsin."}
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Button variant="primary" size="lg" href={`/siparis/${orderId}`}>
+                  {locale === "en" ? "View order details →" : "Sipariş detayını gör →"}
+                </Button>
+              </div>
+            </>
           ) : (
-            <Button variant="primary" size="lg" href={`/siparis/${orderId}`}>
-              <Icon.Box size={16} /> Sipariş detayı →
-            </Button>
-          )}
-          {/* Sekunder: primer CTA sipariş detayına gitmiyorsa, ek olarak göster */}
-          {order?.status === "awaiting_upload" && (
-            <Button variant="secondary" size="lg" href={`/siparis/${orderId}`}>
-              <Icon.Box size={16} /> {t.orderSuccess.orderDetail}
-            </Button>
+            <>
+              <p className="text-[14px] text-gri-700">
+                {locale === "en"
+                  ? "Order created! Upload your design file now — AI will check it and prepare the print proof."
+                  : "Siparişin oluştu! Şimdi tasarım dosyanı yükle — AI kontrol edecek ve baskı provası hazırlanacak."}
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  href={`/siparis/${orderId}/tasarim-yukle`}
+                >
+                  📁{" "}
+                  {locale === "en" ? "Upload design →" : "Tasarım yükle →"}
+                </Button>
+                <Button variant="ghost" size="lg" href={`/siparis/${orderId}`}>
+                  {locale === "en"
+                    ? "Upload later — order details"
+                    : "Sonra yükleyeceğim — sipariş detayı"}
+                </Button>
+              </div>
+            </>
           )}
         </div>
 

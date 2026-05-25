@@ -249,28 +249,28 @@ const COPY = {
   },
 };
 
-/** OrderStatus → PHASES index map */
+/** OrderStatus → PHASES index map (current step) */
 function statusToPhaseIndex(status: OrderStatus): number {
   switch (status) {
     case "paid":
       return 1;
-    // Sefa 22 May v68 — Mig 061: ödedi ama tasarım yok, dosya bekleniyor.
-    // Faz 1'de kal (ödendi current), kullanıcı "tasarım yükle" CTA görmeli.
     case "awaiting_upload":
-      return 1;
+      return 2;
     case "qc_pending":
-      return 3;
     case "qc_flagged":
+    case "human_review":
+    case "human_review_failed":
     case "operator_review":
-      return 4;
-    // Sefa 22 May v68 — Mig 062: bıçak otomatik üretiliyor ara state.
-    // Operatör onayı sonrası, prova bekleniyor öncesi = faz 5'in başında.
+      return 3;
     case "proof_generating":
-      return 5;
-    case "proof_pending":
     case "proof_validating":
+      return 4;
+    case "proof_pending":
       return 5;
     case "proof_approved":
+      return 6;
+    case "ready_to_ship":
+    case "fason_assigned":
       return 6;
     case "in_production":
       return 6;
@@ -278,6 +278,8 @@ function statusToPhaseIndex(status: OrderStatus): number {
       return 7;
     case "delivered":
       return 8;
+    case "cancelled":
+      return -1;
     default:
       return 1;
   }
@@ -542,6 +544,7 @@ export default function SiparisDetailPage({
     statusToPhaseIndex(order.status),
     hasUploadedDesign ? 2 : 0
   );
+  const isCancelled = order.status === "cancelled";
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
@@ -626,8 +629,13 @@ export default function SiparisDetailPage({
               <h2 className="text-xl font-semibold mb-5">{c.journeyTitle}</h2>
               <ol className="flex flex-col gap-0">
                 {c.phases.map((p, i) => {
-                  const state =
-                    i < phaseIdx ? "done" : i === phaseIdx ? "curr" : "todo";
+                  const state = isCancelled
+                    ? "todo"
+                    : i < phaseIdx
+                      ? "done"
+                      : i === phaseIdx
+                        ? "curr"
+                        : "todo";
                   return (
                     <li
                       key={p.id}
@@ -640,26 +648,39 @@ export default function SiparisDetailPage({
                           className="absolute left-[13px] top-8 bottom-0 w-0.5"
                           style={{
                             background:
-                              i < phaseIdx
+                              !isCancelled && i < phaseIdx
                                 ? "var(--color-yesil)"
                                 : "var(--color-gri-200)",
                           }}
                         />
                       )}
                       <StageDot
-                        state={state}
-                        label={state === "curr" ? i + 1 : i + 1}
+                        state={isCancelled ? "todo" : state}
+                        label={
+                          isCancelled
+                            ? "✕"
+                            : state === "curr"
+                              ? i + 1
+                              : i + 1
+                        }
                       />
                       <div className="flex-1 pt-0.5">
                         <div
                           className={cn(
                             "font-semibold text-[15px]",
-                            state === "todo" && "text-gri-500"
+                            state === "todo" && "text-gri-500",
+                            state === "done" && !isCancelled && "text-yesil",
+                            state === "curr" && !isCancelled && "text-lacivert"
                           )}
                         >
                           {p.label}
+                          {state === "curr" && !isCancelled && (
+                            <span className="text-[11px] text-pim-mercan ml-2 font-semibold">
+                              ← {locale === "en" ? "you are here" : "şu an burada"}
+                            </span>
+                          )}
                         </div>
-                        {state === "curr" && (
+                        {state === "curr" && !isCancelled && (
                           <div className="text-[13px] text-gri-700 mt-0.5">
                             {c.nextStepHint}
                           </div>
@@ -669,6 +690,41 @@ export default function SiparisDetailPage({
                   );
                 })}
               </ol>
+
+              {order.status === "qc_pending" && (
+                <div className="mt-4 rounded-xl bg-mavi-soft/20 ring-1 ring-mavi/30 p-4">
+                  <div className="font-semibold text-[14px] text-mavi-koyu mb-1">
+                    🤖{" "}
+                    {locale === "en"
+                      ? "AI quality check in progress"
+                      : "AI kalite kontrolü yapılıyor"}
+                  </div>
+                  <p className="text-[13px] text-gri-700">
+                    {locale === "en"
+                      ? "Your design is being checked by AI. This usually takes a few minutes."
+                      : "Tasarımın AI tarafından kontrol ediliyor. Genellikle birkaç dakika sürer."}
+                  </p>
+                </div>
+              )}
+
+              {order.status === "proof_pending" && (
+                <div className="mt-4 rounded-xl bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/30 p-4">
+                  <div className="font-semibold text-[14px] text-pim-mercan mb-1">
+                    ✋{" "}
+                    {locale === "en"
+                      ? "Proof approval needed"
+                      : "Prova onayın bekleniyor"}
+                  </div>
+                  <p className="text-[13px] text-gri-700 mb-3">
+                    {locale === "en"
+                      ? "Die-cut and print proof are ready. Review and approve."
+                      : "Bıçak çizimi ve baskı provası hazır. Kontrol edip onayla."}
+                  </p>
+                  <Button variant="primary" size="sm" href={`/onay/${order.id}`}>
+                    {locale === "en" ? "Review proof →" : "Provayı incele →"}
+                  </Button>
+                </div>
+              )}
             </Card>
 
             {/* Sefa 22 May v68 — Üst CTA: paid/awaiting_upload durumunda
