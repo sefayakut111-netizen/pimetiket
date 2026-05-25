@@ -86,10 +86,15 @@
         "src/app/api/payment/**",
         "src/lib/payment/**",
         "src/lib/agents/run-order-qc.ts",
+        "src/lib/agents/run-order-cutline.ts",
+        "src/lib/agents/generate-cutline-headless.ts",
+        "src/lib/agents/schedule-order-cutline.ts",
         "src/lib/agents/design-qc.ts",
+        "src/lib/proof/**",
+        "src/app/api/agents/**",
         "src/app/api/cron/paytr-reconciler/**"
       ],
-      "keywords": ["sipariş", "order", "ödeme", "paytr", "checkout", "sepet", "cart", "qc", "design quality"],
+      "keywords": ["sipariş", "order", "ödeme", "paytr", "checkout", "sepet", "cart", "qc", "design quality", "proof", "prova", "cutline", "bıçak"],
       "docs": [
         "docs/SIPARIS-AKISI-SNAPSHOT.md",
         "docs/SISTEM-AKISLARI.md",
@@ -101,11 +106,13 @@
         "src/lib/customer-order.ts",
         "src/lib/customer-cart.ts",
         "src/lib/payment/paytr.ts",
-        "src/lib/agents/run-order-qc.ts"
+        "src/lib/agents/run-order-qc.ts",
+        "src/lib/agents/run-order-cutline.ts",
+        "src/lib/proof/orchestrator.ts"
       ],
       "alsoLoads": ["integrations"],
-      "schemaMigrations": ["001_initial_schema.sql", "002_invoice_events_payments.sql", "007_payment_intents.sql", "009_paytr_provider.sql", "015_drop_wallet.sql", "019_order_events_constraint.sql", "033_payment_finalize_atomic.sql", "061_awaiting_upload_state.sql", "065_order_id_sequence.sql", "069_payment_refund_idempotency.sql", "070_proof_pending_sla_kaskad.sql", "078_order_id_date_stamped.sql"],
-      "schemaTables": ["cart_items", "orders", "order_items", "order_events", "payments", "payment_intents"],
+      "schemaMigrations": ["001_initial_schema.sql", "002_invoice_events_payments.sql", "007_payment_intents.sql", "009_paytr_provider.sql", "015_drop_wallet.sql", "019_order_events_constraint.sql", "033_payment_finalize_atomic.sql", "061_awaiting_upload_state.sql", "065_order_id_sequence.sql", "069_payment_refund_idempotency.sql", "070_proof_pending_sla_kaskad.sql", "078_order_id_date_stamped.sql", "102_proof_validations.sql"],
+      "schemaTables": ["cart_items", "orders", "order_items", "order_events", "payments", "payment_intents", "proof_validations", "cutline_designs"],
       "typeRefs": ["Tables<'orders'>", "Tables<'order_items'>", "Tables<'payments'>", "Tables<'payment_intents'>", "Enums<'order_status'>", "Enums<'payment_intent_status'>", "Functions<'fn_finalize_paid_order'>", "Functions<'fn_create_order'>"],
       "claudeAgents": ["backend", "frontend", "product"],
       "cursorRule": "order-flow.mdc"
