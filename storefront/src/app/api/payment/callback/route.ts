@@ -112,6 +112,23 @@ async function orderHasDesignFiles(
   return (data?.length ?? 0) > 0;
 }
 
+async function resolveHasDesignsForRedirect(
+  admin: ReturnType<typeof createAdminClient>,
+  orderId: string
+): Promise<boolean> {
+  const { data: orderRow } = await admin
+    .from("orders")
+    .select("status")
+    .eq("id", orderId)
+    .single();
+
+  const orderStatus = (orderRow as { status: string } | null)?.status;
+  return (
+    orderStatus !== "awaiting_upload" ||
+    (await orderHasDesignFiles(admin, orderId))
+  );
+}
+
 function successRedirectUrl(siteUrl: string, orderId: string, hasDesigns: boolean) {
   return `${siteUrl}/odeme-sonuc?status=success&order=${encodeURIComponent(orderId)}&hasDesigns=${hasDesigns}`;
 }
@@ -546,7 +563,7 @@ export async function GET(req: NextRequest) {
       intent.order_id
     );
     if (orderId) {
-      const hasDesigns = await orderHasDesignFiles(admin, orderId);
+      const hasDesigns = await resolveHasDesignsForRedirect(admin, orderId);
       return NextResponse.redirect(
         successRedirectUrl(siteUrl, orderId, hasDesigns),
         303
@@ -570,7 +587,10 @@ export async function GET(req: NextRequest) {
       delayMs: 1500,
     });
     if (recovered.status === "consumed") {
-      const hasDesigns = await orderHasDesignFiles(admin, recovered.orderId);
+      const hasDesigns = await resolveHasDesignsForRedirect(
+        admin,
+        recovered.orderId
+      );
       return NextResponse.redirect(
         successRedirectUrl(siteUrl, recovered.orderId, hasDesigns),
         303
