@@ -51,17 +51,20 @@ import {
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { getAdminModuleLabel } from "@/lib/admin-rbac";
 
-type TimeRange = "today" | "7d" | "mtd" | "30d";
+type TimeRange = "today" | "7d" | "mtd" | "30d" | "custom";
 
 const RANGE_LABEL: Record<TimeRange, string> = {
   today: "Bugün",
   "7d": "7 gün",
   mtd: "Bu ay",
   "30d": "30 gün",
+  custom: "Özel",
 };
 
 interface RangeWindow {
   start: number;
+  /** Üst sınır (custom / bugün için) */
+  end?: number;
   /** Önceki periyot başlangıcı (kıyas için) */
   prevStart: number;
   /** Önceki periyot bitişi (default: start) — MTD için ayrı */
@@ -70,14 +73,39 @@ interface RangeWindow {
   days: number;
 }
 
-function getRangeWindow(range: TimeRange): RangeWindow {
+function getRangeWindow(
+  range: TimeRange,
+  customFrom?: string,
+  customTo?: string
+): RangeWindow {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
+  if (range === "custom" && customFrom && customTo) {
+    const from = new Date(customFrom);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(customTo);
+    to.setHours(23, 59, 59, 999);
+    const duration = to.getTime() - from.getTime();
+    const days = Math.max(
+      1,
+      Math.ceil(duration / day)
+    );
+    return {
+      start: from.getTime(),
+      end: to.getTime(),
+      prevStart: from.getTime() - duration,
+      prevEnd: from.getTime(),
+      days,
+    };
+  }
   if (range === "today") {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
     return {
       start: startOfDay.getTime(),
+      end: endOfDay.getTime(),
       prevStart: startOfDay.getTime() - day,
       prevEnd: startOfDay.getTime(),
       days: 1,
@@ -373,6 +401,39 @@ function aggregateFunnelMetric(
   return { avgSeconds: weightedSum / totalSamples, sampleCount: totalSamples };
 }
 
+interface SystemHealth {
+  crons: { total: number; healthy: number; error: number; lastError?: string };
+  mail: { status: "ok" | "error"; sent24h: number; bounce: number };
+  db: { status: "ok" | "error" };
+}
+
+interface PartnerProductionRow {
+  name: string;
+  activeCount: number;
+  overdueCount: number;
+}
+
+interface ActivityFeedEvent {
+  type: string;
+  summary: string;
+  createdAt: string;
+  orderId: string;
+  actorName: string | null;
+}
+
+const EVENT_EMOJI: Record<string, string> = {
+  paid: "🟢",
+  design_uploaded: "📁",
+  proof_approved: "✅",
+  fason_assigned: "🏭",
+  shipped: "📦",
+  delivered: "🎉",
+  cancelled: "❌",
+  refund: "💸",
+  user_registered: "👤",
+  review_submitted: "⭐",
+};
+
 export default function AdminDashboardPage() {
   return (
     <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
@@ -392,13 +453,27 @@ function AdminDashboardPageInner() {
   const canViewOrders = canView("orders");
   const canViewCustomers = canView("customers");
   const canViewAuditors = canView("auditors");
+  const canViewSettings = canView("settings");
+  const canViewFason = canView("fason");
   const showFinancials = !permLoading && canViewFinancials;
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [range, setRange] = useState<TimeRange>("7d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
+  const [statsError, setStatsError] = useState(false);
+  const [funnelError, setFunnelError] = useState(false);
+  const [auditorError, setAuditorError] = useState(false);
   const [funnelMetrics, setFunnelMetrics] = useState<Record<string, FunnelMetric>>({});
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [partnerProduction, setPartnerProduction] = useState<{
+    partners: PartnerProductionRow[];
+    totals: { active: number; overdue: number };
+  } | null>(null);
+  const [activityFeed, setActivityFeed] = useState<ActivityFeedEvent[]>([]);
   const [auditorPending, setAuditorPending] = useState<{
     critical: number;
     warning: number;
@@ -454,18 +529,31 @@ function AdminDashboardPageInner() {
 
     if (canViewCustomers) {
       fetch("/api/admin/customer-stats")
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => {
+          if (!r.ok) {
+            setStatsError(true);
+            return null;
+          }
+          setStatsError(false);
+          return r.json();
+        })
         .then((data: CustomerStats | null) => data && setCustomerStats(data))
-        .catch(() => {
-          /* endpoint yoksa veya yetki yoksa sessiz */
-        });
+        .catch(() => setStatsError(true));
     } else {
       setCustomerStats(null);
+      setStatsError(false);
     }
 
     if (canViewAuditors) {
       fetch("/api/admin/auditors")
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => {
+          if (!r.ok) {
+            setAuditorError(true);
+            return null;
+          }
+          setAuditorError(false);
+          return r.json();
+        })
         .then(
           (data: {
             ok?: boolean;
@@ -484,8 +572,60 @@ function AdminDashboardPageInner() {
             }
           }
         )
+        .catch(() => setAuditorError(true));
+    } else {
+      setAuditorError(false);
+    }
+
+    if (canViewSettings) {
+      fetch("/api/admin/system-health")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { ok?: boolean; crons?: SystemHealth["crons"]; mail?: SystemHealth["mail"]; db?: SystemHealth["db"] } | null) => {
+          if (data?.ok && data.crons && data.mail && data.db) {
+            setSystemHealth({
+              crons: data.crons,
+              mail: data.mail,
+              db: data.db,
+            });
+          }
+        })
         .catch(() => {
-          /* silently */
+          /* opsiyonel strip */
+        });
+    }
+
+    if (canViewFason) {
+      fetch("/api/admin/partner-production-summary")
+        .then((r) => (r.ok ? r.json() : null))
+        .then(
+          (data: {
+            ok?: boolean;
+            partners?: PartnerProductionRow[];
+            totals?: { active: number; overdue: number };
+          } | null) => {
+            if (data?.ok && data.partners && data.totals) {
+              setPartnerProduction({
+                partners: data.partners,
+                totals: data.totals,
+              });
+            }
+          }
+        )
+        .catch(() => {
+          /* sessiz */
+        });
+    }
+
+    if (canViewOrders) {
+      fetch("/api/admin/activity-feed?hours=24&limit=15")
+        .then((r) => (r.ok ? r.json() : null))
+        .then(
+          (data: { ok?: boolean; events?: ActivityFeedEvent[] } | null) => {
+            if (data?.ok && data.events) setActivityFeed(data.events);
+          }
+        )
+        .catch(() => {
+          /* sessiz */
         });
     }
 
@@ -497,26 +637,60 @@ function AdminDashboardPageInner() {
       w.removeEventListener("pim_customer_orders_updated", refresh);
       clearInterval(tick);
     };
-  }, [permLoading, loadOrders, canViewCustomers, canViewAuditors]);
+  }, [permLoading, loadOrders, canViewCustomers, canViewAuditors, canViewSettings, canViewFason, canViewOrders]);
 
   useEffect(() => {
     if (permLoading || !canViewOrders) return;
     fetch("/api/admin/funnel-metrics")
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) {
+          setFunnelError(true);
+          return null;
+        }
+        setFunnelError(false);
+        return r.json();
+      })
       .then((data: { metrics?: Record<string, FunnelMetric> } | null) => {
         if (data?.metrics) setFunnelMetrics(data.metrics);
       })
-      .catch(() => {
-        /* silently */
-      });
+      .catch(() => setFunnelError(true));
   }, [permLoading, canViewOrders]);
 
-  const rangeWindow = getRangeWindow(range);
+  const rangeWindow = getRangeWindow(range, customFrom, customTo);
+
+  const customLabel =
+    customFrom && customTo
+      ? `${new Date(customFrom).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} – ${new Date(customTo).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}`
+      : "Özel";
+
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, [now]);
+
+  const todayOrders = useMemo(
+    () => orders.filter((o) => o.createdAt >= todayStart),
+    [orders, todayStart]
+  );
+  const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
+  const todayCount = todayOrders.length;
+
+  const proofResponseMetric = funnelMetrics.proof_pending;
+  const proofResponseHours =
+    proofResponseMetric && proofResponseMetric.sampleCount > 0
+      ? proofResponseMetric.avgSeconds / 3600
+      : null;
 
   // Window içindeki siparişler (KPI ve chart'lar bunu kullanır)
   const inRange = useMemo(
-    () => orders.filter((o) => o.createdAt >= rangeWindow.start),
-    [orders, rangeWindow.start]
+    () =>
+      orders.filter(
+        (o) =>
+          o.createdAt >= rangeWindow.start &&
+          (rangeWindow.end === undefined || o.createdAt <= rangeWindow.end)
+      ),
+    [orders, rangeWindow.start, rangeWindow.end]
   );
   const inPrevRange = useMemo(
     () =>
@@ -790,25 +964,89 @@ function AdminDashboardPageInner() {
               {canViewOrders && !ordersLoading && !ordersError && (
                 <span className="inline-flex w-1.5 h-1.5 rounded-full bg-yesil animate-pulse" />
               )}
+              {range === "custom" && customFrom && customTo && (
+                <span className="text-[12px] text-gri-500 ml-2">({customLabel})</span>
+              )}
             </p>
           </div>
 
-          <div className="bg-white rounded-full ring-1 ring-gri-200 p-1 inline-flex gap-1 shrink-0">
-            {(Object.keys(RANGE_LABEL) as TimeRange[]).map((r) => (
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="bg-white rounded-full ring-1 ring-gri-200 p-1 inline-flex gap-1">
+              {(Object.keys(RANGE_LABEL) as TimeRange[])
+                .filter((r) => r !== "custom")
+                .map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    setRange(r);
+                    setShowDatePicker(false);
+                  }}
+                  className={cn(
+                    "h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-colors",
+                    range === r
+                      ? "bg-lacivert text-white"
+                      : "text-gri-700 hover:text-lacivert"
+                  )}
+                >
+                  {RANGE_LABEL[r]}
+                </button>
+              ))}
               <button
-                key={r}
                 type="button"
-                onClick={() => setRange(r)}
+                onClick={() => {
+                  setShowDatePicker((s) => !s);
+                  if (range !== "custom") setRange("custom");
+                }}
                 className={cn(
                   "h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-colors",
-                  range === r
+                  range === "custom"
                     ? "bg-lacivert text-white"
                     : "text-gri-700 hover:text-lacivert"
                 )}
               >
-                {RANGE_LABEL[r]}
+                📅 Özel
               </button>
-            ))}
+            </div>
+            {showDatePicker && (
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg ring-1 ring-gri-200 shadow-sm flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-[12px] text-gri-700">Başlangıç:</label>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    max={customTo || undefined}
+                    className="text-[13px] border border-gri-200 rounded px-2 py-1 focus:border-pim-mercan focus:outline-none"
+                  />
+                </div>
+                <span className="text-gri-400">→</span>
+                <div className="flex items-center gap-2">
+                  <label className="text-[12px] text-gri-700">Bitiş:</label>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    min={customFrom || undefined}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="text-[13px] border border-gri-200 rounded px-2 py-1 focus:border-pim-mercan focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customFrom && customTo) {
+                      setRange("custom");
+                      setShowDatePicker(false);
+                    }
+                  }}
+                  disabled={!customFrom || !customTo}
+                  className="px-3 py-1.5 bg-pim-mercan text-white text-[12.5px] font-medium rounded-lg disabled:opacity-40"
+                >
+                  Uygula
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -856,9 +1094,50 @@ function AdminDashboardPageInner() {
         )}
 
         {canViewOrders && ordersTruncated && !ordersLoading && !ordersError && (
-          <div className="mb-6 rounded-xl px-5 py-3.5 ring-1 bg-sari-soft ring-sari/30 text-lacivert text-[13px]">
-            Liste en fazla <strong>500</strong> siparişle sınırlandı — daha eski
-            siparişler KPI, funnel ve grafiklerde görünmeyebilir.
+          <div className="mb-4 rounded-lg border border-sari bg-sari-soft/30 px-4 py-3 text-sm text-lacivert">
+            ⚠️ <strong>Son 500 sipariş gösteriliyor.</strong> KPI değerleri bu
+            aralığa göre hesaplanıyor. Tam veriler için{" "}
+            <Link href="/admin/finans" className="underline font-semibold">
+              Finans &amp; Raporlar
+            </Link>{" "}
+            sayfasını kullanın.
+          </div>
+        )}
+
+        {canViewOrders && !ordersLoading && !ordersError && systemHealth && (
+          <div
+            className={cn(
+              "mb-4 rounded-lg px-4 py-2.5 flex items-center gap-4 text-[12.5px] flex-wrap",
+              systemHealth.crons.error > 0 ||
+                systemHealth.mail.status === "error"
+                ? "bg-kirmizi/10 text-kirmizi"
+                : "bg-yesil-soft/30 text-yesil-koyu"
+            )}
+          >
+            <span>
+              ⚙️ Cron: {systemHealth.crons.healthy}/{systemHealth.crons.total}
+              {systemHealth.crons.error > 0 && (
+                <Link
+                  href="/admin/sistem/cronlar"
+                  className="underline ml-1 font-semibold"
+                >
+                  {systemHealth.crons.error} hata
+                </Link>
+              )}
+            </span>
+            <span className="text-gri-300">|</span>
+            <span>
+              📧 Mail: {systemHealth.mail.sent24h} gönderildi
+              {systemHealth.mail.bounce > 0 && (
+                <span className="text-kirmizi ml-1 font-semibold">
+                  {systemHealth.mail.bounce} bounce
+                </span>
+              )}
+            </span>
+            <span className="text-gri-300">|</span>
+            <span>
+              🗄️ DB: {systemHealth.db.status === "ok" ? "✅" : "❌"}
+            </span>
           </div>
         )}
 
@@ -980,14 +1259,34 @@ function AdminDashboardPageInner() {
           </Card>
         )}
 
-        {/* KPI grid 6 cards — Sefa 18 May v68 (admin UX denetim):
-            1400px ekran sınırında 6 kart yan yana sığmıyordu, sağdaki kart
-            kesiliyor + scrollbar belirmiyordu. auto-fit + minmax(180px,1fr)
-            ile responsive: 6→4→3→2 düzeyinde otomatik kırılır. */}
+        {/* KPI grid — Bugün kartı + metrikler */}
         <div
           className="grid gap-3 mb-6"
           style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
         >
+          {showFinancials && (
+            <Card
+              padding="p-4"
+              className="!bg-pim-mercan-tint/20 ring-1 ring-pim-mercan/20"
+            >
+              <div className="text-[11px] font-bold uppercase tracking-wider text-pim-mercan">
+                Bugün
+              </div>
+              <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+                <span className="text-[28px] font-bold text-lacivert tabular-nums">
+                  {formatCurrency(todayRevenue)}
+                </span>
+                <span className="text-[13px] text-gri-700">
+                  {todayCount} sipariş
+                </span>
+              </div>
+              {todayCount > 0 && (
+                <div className="mt-1 text-[11px] text-gri-500">
+                  Ort. sepet: {formatCurrency(todayRevenue / todayCount)}
+                </div>
+              )}
+            </Card>
+          )}
           {KPIS.map((k) => (
             <Card key={k.label} padding="p-4">
               <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 truncate">
@@ -1073,7 +1372,17 @@ function AdminDashboardPageInner() {
         <Card padding="p-0" className="mb-6">
           <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between">
             <div>
-              <h2 className="text-[15px] font-semibold">Üretim akışı</h2>
+              <h2 className="text-[15px] font-semibold flex items-center gap-2">
+                Üretim akışı
+                {funnelError && (
+                  <span
+                    className="text-[10px] text-kirmizi font-normal"
+                    title="API hatası — veri yüklenemedi"
+                  >
+                    ⚠️ yüklenemedi
+                  </span>
+                )}
+              </h2>
               <p className="text-[12px] text-gri-700">
                 Her adımdaki aktif iş — tıklayarak detaya in
               </p>
@@ -1153,7 +1462,7 @@ function AdminDashboardPageInner() {
         </Card>
 
         {/* Operational metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               AI flag oranı
@@ -1200,7 +1509,39 @@ function AdminDashboardPageInner() {
 
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+              Prova yanıt süresi
+            </div>
+            <div className="text-[22px] font-bold mt-1 tabular-nums text-lacivert">
+              {proofResponseHours !== null
+                ? formatHours(proofResponseHours)
+                : "—"}
+            </div>
+            <div className="text-[11px] text-gri-700 mt-1">
+              {proofResponseHours !== null
+                ? "müşteri onay süresi"
+                : "henüz veri yok"}
+            </div>
+          </Card>
+
+          <Card padding="p-4">
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 flex items-center gap-1">
               {customerStats ? "Yeni kayıt (7g)" : "Tekrar müşteri"}
+              {statsError && (
+                <span
+                  className="text-[9px] text-kirmizi normal-case"
+                  title="API hatası — veri yüklenemedi"
+                >
+                  ⚠️
+                </span>
+              )}
+              {auditorError && canViewAuditors && (
+                <span
+                  className="text-[9px] text-kirmizi normal-case"
+                  title="Denetçi API hatası"
+                >
+                  ⚠️
+                </span>
+              )}
             </div>
             <div className="text-[22px] font-bold mt-1 tabular-nums text-pim-mercan">
               {customerStats !== null
@@ -1216,11 +1557,21 @@ function AdminDashboardPageInner() {
         </div>
 
         {/* Müşteri kayıt istatistikleri (varsa) */}
-        {canViewCustomers && customerStats !== null && customerStats.total > 0 && (
+        {canViewCustomers && (customerStats !== null || statsError) && (
           <Card padding="p-5" className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-[15px] font-semibold">Üyelik istatistikleri</h2>
+                <h2 className="text-[15px] font-semibold flex items-center gap-2">
+                  Üyelik istatistikleri
+                  {statsError && (
+                    <span
+                      className="text-[10px] text-kirmizi font-normal"
+                      title="API hatası — veri yüklenemedi"
+                    >
+                      ⚠️ yüklenemedi
+                    </span>
+                  )}
+                </h2>
                 <p className="text-[12px] text-gri-700">
                   Hesap açan ziyaretçiler — sipariş vermeden önce
                 </p>
@@ -1232,6 +1583,12 @@ function AdminDashboardPageInner() {
                 Müşteri listesi →
               </Link>
             </div>
+            {statsError ? (
+              <p className="text-[13px] text-gri-700">
+                Müşteri istatistikleri yüklenemedi. Sayfayı yenileyin veya yetkinizi
+                kontrol edin.
+              </p>
+            ) : customerStats && customerStats.total > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="rounded-lg bg-gri-50 ring-1 ring-gri-200 p-3.5">
                 <div className="text-[10.5px] font-semibold uppercase text-gri-700 tracking-[0.04em]">
@@ -1266,11 +1623,78 @@ function AdminDashboardPageInner() {
                 </div>
               </div>
             </div>
+            ) : (
+              <p className="text-[13px] text-gri-500">Henüz kayıtlı müşteri yok.</p>
+            )}
           </Card>
         )}
 
+        {canViewFason &&
+          partnerProduction &&
+          partnerProduction.partners.length > 0 && (
+            <Card padding="p-0" className="mb-6">
+              <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between">
+                <div>
+                  <h2 className="text-[15px] font-semibold">Üretim partnerleri</h2>
+                  <p className="text-[12px] text-gri-700">
+                    Aktif atamalar — partner bazlı özet
+                  </p>
+                </div>
+                <Link
+                  href="/admin/fason"
+                  className="text-[12px] font-semibold text-pim-mercan hover:underline"
+                >
+                  Tümü →
+                </Link>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="bg-gri-50 text-[11px] uppercase text-gri-700">
+                      <th className="text-left px-5 py-2 font-semibold">Partner</th>
+                      <th className="text-right px-5 py-2 font-semibold">Üretimde</th>
+                      <th className="text-right px-5 py-2 font-semibold">Gecikmeli</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gri-100">
+                    {partnerProduction.partners.map((p) => (
+                      <tr
+                        key={p.name}
+                        className={cn(
+                          p.overdueCount > 0 && "bg-kirmizi/5"
+                        )}
+                      >
+                        <td className="px-5 py-2.5 font-medium">{p.name}</td>
+                        <td className="px-5 py-2.5 text-right tabular-nums">
+                          {p.activeCount}
+                        </td>
+                        <td
+                          className={cn(
+                            "px-5 py-2.5 text-right tabular-nums",
+                            p.overdueCount > 0 && "text-kirmizi font-semibold"
+                          )}
+                        >
+                          {p.overdueCount > 0 ? `${p.overdueCount} ⚠️` : "0"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-5 py-3 border-t border-gri-100 text-[12px] text-gri-700">
+                Toplam: {partnerProduction.totals.active} üretimde
+                {partnerProduction.totals.overdue > 0 && (
+                  <span className="text-kirmizi font-semibold ml-1">
+                    · {partnerProduction.totals.overdue} gecikmeli
+                  </span>
+                )}
+              </div>
+            </Card>
+          )}
+
         {/* AI insights + Quick actions */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 mb-6">
+          {orders.length >= 10 ? (
           <Card padding="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Icon.Sparkle size={16} className="text-pim-mercan" />
@@ -1304,6 +1728,19 @@ function AdminDashboardPageInner() {
               ))}
             </ul>
           </Card>
+          ) : (
+            <Card padding="p-5" className="!bg-gri-50">
+              <div className="flex items-center gap-3 text-gri-500 text-sm">
+                <span className="text-2xl">✨</span>
+                <div>
+                  <div className="font-medium">Otomatik içgörüler</div>
+                  <div className="text-[12px]">
+                    10+ sipariş sonrası aktif ({orders.length}/10)
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <div className="grid grid-cols-2 gap-3 content-start">
             {QUICK_ACTIONS.length === 0 ? (
@@ -1381,10 +1818,22 @@ function AdminDashboardPageInner() {
                 Hangi gün-saatte sipariş geliyor
               </p>
             </div>
-            <HeatMap
-              matrix={heatmapMatrix}
-              emptyLabel="Yeterli sipariş gelince saatlik dağılım açılır"
-            />
+            {orders.length >= 50 ? (
+              <HeatMap
+                matrix={heatmapMatrix}
+                emptyLabel="Yeterli sipariş gelince saatlik dağılım açılır"
+              />
+            ) : (
+              <div className="flex items-center gap-3 text-gri-500 text-sm py-6">
+                <span className="text-2xl">📊</span>
+                <div>
+                  <div className="font-medium">Saatlik yoğunluk haritası</div>
+                  <div className="text-[12px]">
+                    50+ sipariş sonrası aktif olacak ({orders.length}/50)
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
 
@@ -1445,7 +1894,8 @@ function AdminDashboardPageInner() {
             <div className="px-5 py-3.5 border-b border-gri-200">
               <h2 className="text-[15px] font-semibold">Top şehirler</h2>
             </div>
-            {cities.length === 0 ? (
+            {orders.length >= 30 ? (
+              cities.length === 0 ? (
               <div className="p-6 text-center text-[12.5px] text-gri-500 italic">
                 Coğrafi dağılım için sipariş bekleniyor
               </div>
@@ -1479,6 +1929,17 @@ function AdminDashboardPageInner() {
                   );
                 })}
               </ul>
+            )
+            ) : (
+              <div className="p-6 flex items-center gap-3 text-gri-500 text-sm">
+                <span className="text-2xl">🗺️</span>
+                <div>
+                  <div className="font-medium">Şehir dağılımı</div>
+                  <div className="text-[12px]">
+                    30+ sipariş sonrası aktif ({orders.length}/30)
+                  </div>
+                </div>
+              </div>
             )}
           </Card>
 
@@ -1555,6 +2016,51 @@ function AdminDashboardPageInner() {
             </div>
           )}
         </Card>
+
+        {activityFeed.length > 0 && (
+          <Card padding="p-0" className="mt-6">
+            <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold">Son 24 saat</h2>
+              <Link
+                href="/admin/siparisler"
+                className="text-[12.5px] font-semibold text-pim-mercan hover:underline"
+              >
+                Tümünü gör →
+              </Link>
+            </div>
+            <ul className="divide-y divide-gri-100">
+              {activityFeed.map((ev, i) => {
+                const emoji = EVENT_EMOJI[ev.type] ?? "•";
+                const time = new Date(ev.createdAt).toLocaleTimeString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                return (
+                  <li
+                    key={`${ev.createdAt}-${i}`}
+                    className="px-5 py-2.5 text-[13px] flex items-start gap-2"
+                  >
+                    <span className="shrink-0">{emoji}</span>
+                    <span className="text-gri-500 tabular-nums shrink-0 w-12">
+                      {time}
+                    </span>
+                    <span className="text-lacivert flex-1 min-w-0">
+                      {ev.summary}
+                      {ev.orderId && (
+                        <Link
+                          href={`/admin/siparisler/${ev.orderId}`}
+                          className="text-pim-mercan hover:underline ml-1 font-mono text-[11px]"
+                        >
+                          #{ev.orderId.slice(-8)}
+                        </Link>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        )}
           </>
         )}
       </div>
