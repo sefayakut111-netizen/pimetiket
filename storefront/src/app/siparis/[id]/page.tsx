@@ -890,6 +890,29 @@ export default function SiparisDetailPage({
                   </Button>
                 </div>
               )}
+
+              {order.status === "proof_generating" && (
+                <div className="mt-4 rounded-xl bg-pim-mercan-tint/20 ring-1 ring-pim-mercan/20 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
+                    <div className="font-semibold text-[14px] text-pim-mercan">
+                      {locale === "en"
+                        ? "Preparing your proof"
+                        : "Provan hazırlanıyor"}
+                    </div>
+                  </div>
+                  <p className="text-[13px] text-gri-700 mb-3">
+                    {locale === "en"
+                      ? "Cut line is being generated on our servers. You can watch progress on the approval page."
+                      : "Bıçak çizimi sunucuda üretiliyor. İlerlemeyi onay sayfasından takip edebilirsin."}
+                  </p>
+                  <Button variant="primary" size="sm" href={`/onay/${order.id}`}>
+                    {locale === "en"
+                      ? "View proof preparation →"
+                      : "Prova hazırlığını gör →"}
+                  </Button>
+                </div>
+              )}
             </Card>
 
             {/* Sefa 22 May v68 — Üst CTA: paid/awaiting_upload durumunda
@@ -1103,7 +1126,6 @@ export default function SiparisDetailPage({
                           fileName={item.designFileName}
                           mimeType={item.designMimeType}
                           product={item.product}
-                          onPreview={(url) => setLightboxSrc(url)}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between gap-3 items-baseline">
@@ -1483,24 +1505,26 @@ export default function SiparisDetailPage({
 
       {lightboxSrc && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 cursor-zoom-out"
           onClick={() => setLightboxSrc(null)}
           role="dialog"
-          aria-label={locale === "en" ? "Design preview" : "Tasarım büyütme"}
+          aria-label={locale === "en" ? "Design preview" : "Tasarım önizleme"}
         >
-          <img
-            src={lightboxSrc}
-            alt={locale === "en" ? "Design preview" : "Tasarım büyütme"}
-            className="max-w-full max-h-[90vh] object-contain rounded-lg"
-          />
-          <button
-            type="button"
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/40"
-            onClick={() => setLightboxSrc(null)}
-            aria-label={locale === "en" ? "Close" : "Kapat"}
-          >
-            ✕
-          </button>
+          <div className="relative max-w-lg max-h-[70vh] rounded-xl overflow-hidden bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightboxSrc}
+              alt={locale === "en" ? "Design preview" : "Tasarım önizleme"}
+              className="w-full h-full max-h-[70vh] object-contain"
+            />
+            <button
+              type="button"
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 text-sm"
+              onClick={() => setLightboxSrc(null)}
+              aria-label={locale === "en" ? "Close" : "Kapat"}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -2279,7 +2303,7 @@ function SiparisOzetiDesignThumb({
   useEffect(() => {
     if (fallbackPreviewUrl) return; // cart preview varsa fetch yapma
     let active = true;
-    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url`, {
+    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url?thumb=1`, {
       cache: "no-store",
     })
       .then((r) => (r.ok ? r.json() : null))
