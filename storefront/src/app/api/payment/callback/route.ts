@@ -25,6 +25,7 @@ import {
   verifyCallback,
   isPayTrConfigured,
 } from "@/lib/payment/paytr";
+import { recoverPendingPaymentIntent } from "@/lib/payment/recover-pending-intent";
 import {
   sendOrderConfirmation,
   sendOrderProofRequired,
@@ -537,11 +538,26 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Pending — IPN henüz işlemedi. Ret ok ise success, fail ise fail göster.
+  // Pending — IPN henüz gelmemiş olabilir. PayTR Durum Sorgu ile recover dene.
   if (ret === "ok") {
-    // PayTR IPN gelene kadar /odeme-sonuc kendi polling yapsın
+    const recovered = await recoverPendingPaymentIntent(admin, oid);
+    if (recovered.status === "consumed") {
+      return NextResponse.redirect(
+        `${siteUrl}/odeme-sonuc?status=success&order=${recovered.orderId}`,
+        303
+      );
+    }
+    if (recovered.status === "failed") {
+      return NextResponse.redirect(
+        `${siteUrl}/odeme-sonuc?status=fail&reason=${encodeURIComponent(
+          recovered.reason
+        )}`,
+        303
+      );
+    }
+    // Hâlâ pending — /odeme-sonuc polling ile devam eder
     return NextResponse.redirect(
-      `${siteUrl}/odeme-sonuc?status=success&order=pending&oid=${oid}`,
+      `${siteUrl}/odeme-sonuc?status=success&order=pending&oid=${encodeURIComponent(oid)}`,
       303
     );
   }

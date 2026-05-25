@@ -7,7 +7,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card } from "@/components/ui";
@@ -41,6 +41,12 @@ const EXTRA = {
     times: "×",
     currency: "₺",
     locale: "tr-TR",
+    verifyingTitle: "Ödemen doğrulanıyor",
+    verifyingDesc:
+      "Bankadan onay alındı, siparişini oluşturuyoruz. Bu birkaç saniye sürebilir.",
+    verifyingTimeout:
+      "Doğrulama beklenenden uzun sürüyor. Sayfayı yenile veya birkaç dakika sonra siparişlerimden kontrol et.",
+    refresh: "Sayfayı yenile",
   },
   en: {
     failTitle: "Payment failed",
@@ -67,6 +73,12 @@ const EXTRA = {
     times: "×",
     currency: "TRY",
     locale: "en-US",
+    verifyingTitle: "Verifying your payment",
+    verifyingDesc:
+      "Bank approval received — we're creating your order. This may take a few seconds.",
+    verifyingTimeout:
+      "Verification is taking longer than expected. Refresh the page or check My Orders in a few minutes.",
+    refresh: "Refresh page",
   },
 };
 
@@ -80,18 +92,89 @@ export default function OdemeSonucPage() {
 
 function OdemeSonucInner() {
   const sp = useSearchParams();
+  const router = useRouter();
   const { t, locale } = useT();
   const x = locale === "en" ? EXTRA.en : EXTRA.tr;
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
 
   const status = sp.get("status") ?? "success";
-  const orderId = sp.get("order") ?? "000000000000";
+  const oid = sp.get("oid");
+  const orderIdParam = sp.get("order") ?? "000000000000";
+  const isPendingVerification =
+    status === "success" && orderIdParam === "pending" && Boolean(oid);
+
+  const [resolvedOrderId, setResolvedOrderId] = useState(orderIdParam);
+  const [verifyTimedOut, setVerifyTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isPendingVerification || !oid) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 30; // 2sn × 30 = ~60sn
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const res = await fetch(
+          `/api/payment/status?oid=${encodeURIComponent(oid)}`
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          status?: string;
+          orderId?: string;
+          reason?: string;
+        };
+
+        if (cancelled) return;
+
+        if (data.status === "consumed" && data.orderId) {
+          setResolvedOrderId(data.orderId);
+          router.replace(
+            `/odeme-sonuc?status=success&order=${encodeURIComponent(data.orderId)}`
+          );
+          return;
+        }
+
+        if (data.status === "failed") {
+          router.replace(
+            `/odeme-sonuc?status=fail&reason=${encodeURIComponent(
+              data.reason ?? "payment_failed"
+            )}`
+          );
+        }
+      } catch {
+        // sessiz — sonraki poll dener
+      }
+
+      if (attempts >= maxAttempts) {
+        setVerifyTimedOut(true);
+      }
+    };
+
+    void poll();
+    const interval = setInterval(() => {
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        return;
+      }
+      void poll();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isPendingVerification, oid, router]);
+
+  const orderId = resolvedOrderId;
 
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   useEffect(() => {
+    if (isPendingVerification) return;
     ensureAuthBindings();
     void fetchCustomerOrder(orderId).then(setOrder);
-  }, [orderId]);
+  }, [orderId, isPendingVerification]);
 
   if (status === "fail") {
     const reason = sp.get("reason");
@@ -138,6 +221,42 @@ function OdemeSonucInner() {
               </>
             )}
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isPendingVerification) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[600px] px-6 text-center">
+          <Pim pose="think" size={160} />
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+              aria-hidden="true"
+            />
+            <h1 className="text-[24px] md:text-[32px] font-semibold tracking-tight">
+              {x.verifyingTitle}
+            </h1>
+          </div>
+          <p className="mt-4 text-base text-gri-700 leading-relaxed">
+            {verifyTimedOut ? x.verifyingTimeout : x.verifyingDesc}
+          </p>
+          {verifyTimedOut && (
+            <div className="mt-6 flex gap-3 justify-center flex-wrap">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => window.location.reload()}
+              >
+                {x.refresh}
+              </Button>
+              <Button variant="secondary" size="lg" href="/siparislerim">
+                {t.orderSuccess.orderDetail}
+              </Button>
+            </div>
+          )}
         </div>
       </main>
     );
