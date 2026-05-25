@@ -279,6 +279,23 @@ export default function TasarimYuklePage({
 
   useEffect(() => {
     if (!order) return;
+    if (
+      order.status !== "qc_pending" &&
+      order.status !== "paid" &&
+      order.status !== "awaiting_upload"
+    ) {
+      return;
+    }
+    const interval = setInterval(() => void load({ silent: true }), 5000);
+    const timeout = setTimeout(() => clearInterval(interval), 30000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [order?.status, load]);
+
+  useEffect(() => {
+    if (!order) return;
     if (uploadingItemId) return;
 
     const allDone =
@@ -306,6 +323,7 @@ export default function TasarimYuklePage({
   }, []);
 
   async function handleFileSelect(item: OrderItem, file: File) {
+    if (uploadingItemId) return;
     if (file.size <= 0) {
       toast.error("Boş dosya yüklenemez.");
       return;
