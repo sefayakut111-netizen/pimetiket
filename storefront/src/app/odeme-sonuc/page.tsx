@@ -125,14 +125,17 @@ function OdemeSonucInner() {
           status?: string;
           orderId?: string;
           reason?: string;
+          hasDesigns?: boolean;
         };
 
         if (cancelled) return;
 
         if (data.status === "consumed" && data.orderId) {
           setResolvedOrderId(data.orderId);
+          const hasDesigns =
+            data.hasDesigns === true || sp.get("hasDesigns") === "true";
           router.replace(
-            `/odeme-sonuc?status=success&order=${encodeURIComponent(data.orderId)}&hasDesigns=${sp.get("hasDesigns") === "true" ? "true" : "false"}`
+            `/odeme-sonuc?status=success&order=${encodeURIComponent(data.orderId)}&hasDesigns=${hasDesigns}`
           );
           return;
         }

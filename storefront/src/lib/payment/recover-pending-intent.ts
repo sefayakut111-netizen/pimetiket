@@ -13,7 +13,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateOrderId } from "@/lib/customer-order";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
-import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
+import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import {
   sendOrderConfirmation,
   sendOrderProofRequired,
@@ -203,9 +203,15 @@ async function runPostFinalizeSideEffects(
     console.error("[payment/recover] proof_required mail failed:", err)
   );
 
-  void runOrderDesignQC(admin, orderId).catch((err) => {
-    console.error("[payment/recover] design QC failed:", err);
-  });
+  const { data: designFiles } = await admin
+    .from("design_files")
+    .select("id")
+    .eq("order_id", orderId)
+    .in("status", ["uploaded", "analyzing", "qc_passed", "qc_warned"]);
+
+  if (designFiles && designFiles.length > 0) {
+    scheduleOrderDesignQC(admin, orderId);
+  }
 
   void notifyAdminNewOrder({
     admin,

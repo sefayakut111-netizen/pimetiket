@@ -42,9 +42,15 @@ export async function GET(req: NextRequest) {
   }
 
   if (result.status === "consumed") {
+    const { data: designFiles } = await admin
+      .from("design_files")
+      .select("id")
+      .eq("order_id", result.orderId)
+      .limit(1);
     return NextResponse.json({
       status: "consumed",
       orderId: result.orderId,
+      hasDesigns: (designFiles?.length ?? 0) > 0,
     });
   }
 

@@ -31,7 +31,7 @@ import {
   sendOrderProofRequired,
 } from "@/lib/mail/notifications";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
-import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
+import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 interface IntentRow {
@@ -364,11 +364,7 @@ export async function POST(req: NextRequest) {
     .in("status", ["uploaded", "analyzing", "qc_passed", "qc_warned"]);
 
   if (designFiles && designFiles.length > 0) {
-    setTimeout(() => {
-      void runOrderDesignQC(admin, orderId).catch((err) => {
-        console.error("[payment/callback] QC trigger failed:", err);
-      });
-    }, 2000);
+    scheduleOrderDesignQC(admin, orderId);
   }
 
   // (11) Cüzdan akışı KALDIRILDI — Migration 015

@@ -21,7 +21,7 @@ import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import { isR2StorageKey } from "@/lib/storage/purge-r2";
 import { deleteFromR2, downloadFromR2 } from "@/lib/storage/r2-client";
-import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
+import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import type {
   Enums,
   Json,
@@ -220,9 +220,7 @@ export async function POST(req: NextRequest) {
   ];
 
   if (orderRow && qcTriggerStatuses.includes(orderRow.status)) {
-    void runOrderDesignQC(admin, orderId).catch((err) => {
-      console.error("[upload-complete] QC trigger failed:", err);
-    });
+    scheduleOrderDesignQC(admin, orderId);
   }
 
   return NextResponse.json({
