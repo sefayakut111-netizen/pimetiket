@@ -80,10 +80,18 @@ import { gridColsForCount } from "@/lib/grid-cols";
 // Client-safe import.
 import { getLivePricingConfig } from "@/lib/pricing-config-client";
 import type { ProfileConfig } from "@/lib/pricing-config-types";
+import {
+  FALLBACK_ETIKET_RULO_CONFIG,
+  FALLBACK_ETIKET_TABAKA_CONFIG,
+} from "@/lib/pricing-config-types";
 import { getActiveMaterials } from "@/lib/pricing-materials";
 import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
 import type { PricebookSnapshot } from "@/lib/pricing-pricebook-types";
-import { FALLBACK_PRICEBOOK_SNAPSHOT } from "@/lib/pricing-pricebook-types";
+import {
+  FALLBACK_PRICEBOOK_SNAPSHOT,
+  PRICEBOOK_MAX_QTY,
+} from "@/lib/pricing-pricebook-types";
+import { isPricebookMode } from "@/lib/pricing-pricebook";
 import { deriveScopeFromProduct } from "@/lib/pricing-calc";
 import {
   addToCustomerCart,
@@ -645,10 +653,6 @@ function EtiketPage() {
   // searchParams değişirse (client-side nav) sync — kullanıcı farklı karttan
   // yeni girerse formFactor + shape + cornerStyle yeniden eşleşir
   useEffect(() => {
-    const form = searchParams.get("form");
-    if (form === "rulo" || form === "tabaka") {
-      setFormFactor(form);
-    }
     const sp = searchParams.get("shape");
     // Eski "rounded" link'i → rectangle + cornerStyle rounded
     if (sp === "rounded") {
@@ -813,13 +817,18 @@ function EtiketPage() {
 
     if (it.materialId) setMaterial(it.materialId as EtiketMaterialId);
     if (it.coatingId) setCoating(it.coatingId as EtiketCoatingId);
+    const itemFormFactor =
+      (it.meta?.formFactor as FormFactor | undefined) ?? "rulo";
+    setFormFactor(itemFormFactor);
     if (it.width) setWidth(it.width);
     if (it.height) setHeight(it.height);
     if (it.winding) setWinding(it.winding);
     if (it.coreSize) setCoreSize(it.coreSize);
     if (it.rollLabelCount) setRollLabelCount(it.rollLabelCount);
     const designCnt = it.designCount ?? 1;
-    setQty(Math.max(ETIKET_MIN_QTY, Math.round(it.qty / designCnt)));
+    const minForItem =
+      itemFormFactor === "tabaka" ? ETIKET_TABAKA_MIN_QTY : ETIKET_MIN_QTY;
+    setQty(Math.max(minForItem, Math.round(it.qty / designCnt)));
     if (designCnt > 1) setDesignCount(designCnt);
 
     // Tüm adımları touched işaretle (lock guard düşmesin)
@@ -903,6 +912,15 @@ function EtiketPage() {
     [formFactor, formFactorTouched, designs]
   );
 
+  // URL ?form= değişince picker ile aynı reset (grid navigasyonu)
+  useEffect(() => {
+    const form = searchParams.get("form");
+    if (form !== "rulo" && form !== "tabaka") return;
+    if (form !== formFactor) {
+      handleFormFactorChange(form);
+    }
+  }, [searchParams, formFactor, handleFormFactorChange]);
+
   // Adım etiketleri + DOM id mapping — tabaka modunda Özellik/Sarım yok.
   // Sefa 16 May denetim #1: i18n — labels artık t.etiket.step*'ten geliyor.
   // Sefa 20 May v68 (Aşama B+/sequential lock fix):
@@ -970,8 +988,19 @@ function EtiketPage() {
   // Adet sınırları formFactor'a göre değişir (Sefa kuralı 15 May).
   const minQty =
     formFactor === "rulo" ? ETIKET_MIN_QTY : ETIKET_TABAKA_MIN_QTY;
+  const pricingConfig =
+    adminConfig ??
+    (formFactor === "tabaka"
+      ? FALLBACK_ETIKET_TABAKA_CONFIG
+      : FALLBACK_ETIKET_RULO_CONFIG);
+  const pricebookActive =
+    formFactor === "rulo" && isPricebookMode(pricingConfig);
   const maxQty =
-    formFactor === "rulo" ? ETIKET_MAX_QTY : ETIKET_TABAKA_MAX_QTY;
+    formFactor === "rulo"
+      ? pricebookActive
+        ? Math.min(ETIKET_MAX_QTY, PRICEBOOK_MAX_QTY)
+        : ETIKET_MAX_QTY
+      : ETIKET_TABAKA_MAX_QTY;
   const qtyStep =
     formFactor === "rulo" ? ETIKET_QTY_STEP : ETIKET_TABAKA_QTY_STEP;
   const snapQty = formFactor === "rulo" ? snapEtiketQty : snapTabakaQty;
@@ -1031,12 +1060,17 @@ function EtiketPage() {
     customizations: customs,
   };
   const quote =
-    (adminConfig &&
-      quoteEtiketFromConfig(adminConfig, etiketQuoteInput, {
-        pricebookSnapshot:
-          formFactor === "rulo" ? pricebookSnapshot : undefined,
-      })) ??
-    quoteCustomerEtiket(etiketQuoteInput);
+    quoteEtiketFromConfig(pricingConfig, etiketQuoteInput, {
+      formFactor,
+      pricebookSnapshot:
+        formFactor === "rulo" ? pricebookSnapshot : undefined,
+    }) ??
+    (formFactor === "rulo"
+      ? quoteCustomerEtiket(etiketQuoteInput)
+      : {
+          ok: false as const,
+          reason: "Tabaka fiyatı hesaplanamadı — boyutu kontrol edin.",
+        });
 
   const rawTotal = quote.ok ? quote.total : 0;
   const rawUnit = quote.ok ? quote.unitPrice : 0;
@@ -1064,6 +1098,8 @@ function EtiketPage() {
   const tierSavings = quote.ok
     ? computeEtiketTierSavings({ width, height, material, coating, customization: primaryCustom, customizations: customs }, minQty, qty)
     : 0;
+
+  const quoteError = !quote.ok ? quote.reason : null;
 
   const teslim = deliveryEstimate({ kind: "etiket", qty });
   const upsell = upsellFor(qty);
@@ -1210,11 +1246,21 @@ function EtiketPage() {
       designCount > 1
         ? ` · ${designCount} tasarım × ${qty.toLocaleString("tr-TR")} = ${totalEtiketCount.toLocaleString("tr-TR")} etiket`
         : "";
-    const primary = designs[0];
     // Sefa 17 May P1-12: tasarım yüklemeden sepete ekle akışı net opt-in.
     // Eski "policy: ödeme sonrası 3 gün" gizliydi → cart title'da açık
     // göster ki müşteri sepete bakınca "tasarımı yüklemem lazım" anlasın.
     const hasNoDesign = designs.length === 0;
+
+    if (
+      designCount > 1 &&
+      designs.length > 0 &&
+      designs.length < designCount
+    ) {
+      toast.error(
+        `${designCount} tasarım seçtin ama ${designs.length} dosya yükledin. Eksik dosyaları yükle veya tasarım sayısını düşür.`
+      );
+      return;
+    }
 
     // Sefa 22 May v68 — C sorun fix: tasarımsız sepete ekle BİLİNÇLİ
     // olsun. Modal yok, native confirm yeterli (hızlı, mobile uyumlu).
@@ -1239,10 +1285,17 @@ function EtiketPage() {
     // Sefa 20 May v68 (test "önizleme gözükmüyor"): Native image için
     // kalıcı Supabase URL üret. Yoksa sayfa refresh sonrası blob URL invalid.
     let _resolvedPreviewUrl: string | undefined;
-    if (primary) {
-      const { persistDesignPreview } = await import("@/lib/design-preview");
-      const url = await persistDesignPreview(primary.file, primary.id);
-      _resolvedPreviewUrl = url ?? undefined;
+    const { persistDesignPreview } = await import("@/lib/design-preview");
+    const persistedDesigns = await Promise.all(
+      designs.map(async (d) => {
+        const url =
+          (await persistDesignPreview(d.file, d.id)) ?? d.previewUrl;
+        return { ...d, previewUrl: url };
+      })
+    );
+    const primaryPersisted = persistedDesigns[0];
+    if (primaryPersisted) {
+      _resolvedPreviewUrl = primaryPersisted.previewUrl;
     }
 
     const result = await addToCustomerCart({
@@ -1271,17 +1324,17 @@ function EtiketPage() {
       rollLabelCount: formFactor === "rulo" ? rollLabelCount : undefined,
       // PendingDesign local-only (Supabase tempId yok) — "local-{id}" formatında.
       // Sipariş sonrası detay sayfasında gerçek upload yapılır (sticker pattern).
-      designTempId: primary ? `local-${primary.id}` : undefined,
+      designTempId: primaryPersisted ? `local-${primaryPersisted.id}` : undefined,
       // Sefa 20 May v68 (test): persistDesignPreview ile kalıcı Supabase URL
       designPreviewUrl: _resolvedPreviewUrl,
-      designFileName: primary?.name,
-      designMimeType: primary?.mimeType,
-      // Multi-design metadata (Sefa 15 May v6): designCount + tüm dosyalar
-      // (primary dahil, sticker pattern'ine paralel).
+      designFileName: primaryPersisted?.name,
+      designMimeType: primaryPersisted?.mimeType,
+      // Multi-design metadata (Sefa 15 May v6): designCount + ek dosyalar
+      // (primary hariç — sepet badge doğru sayı göstersin).
       designCount: designCount > 1 ? designCount : undefined,
       additionalDesigns:
-        designs.length > 0
-          ? designs.map((d) => ({
+        persistedDesigns.length > 1
+          ? persistedDesigns.slice(1).map((d) => ({
               tempId: `local-${d.id}`,
               previewUrl: d.previewUrl,
               fileName: d.name,
@@ -1301,7 +1354,18 @@ function EtiketPage() {
       setEditingItemId(null);
     }
     // PendingDesign local-preview blob URL'lerini revoke et (memory leak yok)
-    designs.forEach((d) => URL.revokeObjectURL(d.previewUrl));
+    designs.forEach((d) => {
+      if (d.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(d.previewUrl);
+      }
+      if (
+        d.generatedPreviewUrl &&
+        d.generatedPreviewUrl.startsWith("blob:") &&
+        d.generatedPreviewUrl !== d.previewUrl
+      ) {
+        URL.revokeObjectURL(d.generatedPreviewUrl);
+      }
+    });
     // Sefa 18 May v60-v61: toast yerine modal popup; productSummary
     // locale-aware ('adet'/'etiket' EN'de 'pcs'/'labels')
     const summary =
@@ -2477,6 +2541,11 @@ function EtiketPage() {
 
             {/* Price card — Intersection observer için ref'li wrapper */}
             <div ref={priceCardRef}>
+              {quoteError && (
+                <div className="mb-3 rounded-lg bg-kirmizi-soft/30 ring-1 ring-kirmizi/30 px-4 py-3 text-[13px] text-kirmizi">
+                  ⚠️ {quoteError}
+                </div>
+              )}
               <PriceCard
                 variant="quiet"
                 topLabel="TOPLAM"

@@ -47,6 +47,7 @@ export const RULO_MATERIAL_PRICE_MULTIPLIERS: Record<
   kraft: { display_name: "Kraft Rulo Etiket", multiplier: 300 / 350 },
   beyaz: { display_name: "Opak PP Rulo Etiket", multiplier: 400 / 350 },
   ultra: { display_name: "Ultra Clear Rulo Etiket", multiplier: 600 / 350 },
+  seffaf: { display_name: "Şeffaf Rulo Etiket", multiplier: 600 / 350 },
   metalik: { display_name: "Metalik Rulo Etiket", multiplier: 900 / 350 },
 };
 

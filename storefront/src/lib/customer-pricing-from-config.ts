@@ -4,7 +4,7 @@
 
 import { calculatePrice } from "./pricing-calc";
 import type { ProfileConfig } from "./pricing-config-types";
-import { calcTabakaSheets } from "./pricing-tabaka-geo";
+import { calcTabakaSheets, calculateTabakaSheetGeometry } from "./pricing-tabaka-geo";
 import {
   FALLBACK_PRICEBOOK_SNAPSHOT,
   isPricebookMode,
@@ -89,6 +89,8 @@ export function quoteStickerFromConfig(
 }
 
 export interface EtiketBridgeOptions {
+  /** Rulo vs tabaka — pricebook yalnızca rulo için */
+  formFactor?: "rulo" | "tabaka";
   pricebookSnapshot?: PricebookSnapshot;
 }
 
@@ -127,9 +129,10 @@ export function quoteEtiketFromConfig(
   };
 
   const { geometry, effectiveRate, multipliers } = geomResult;
+  const formFactor = options?.formFactor ?? "rulo";
 
-  // Rulo — partner price book
-  if (isPricebookMode(config)) {
+  // Rulo — partner price book (tabaka modunda kullanılmaz)
+  if (formFactor === "rulo" && isPricebookMode(config)) {
     const snapshot =
       options?.pricebookSnapshot ?? FALLBACK_PRICEBOOK_SNAPSHOT;
     const pb = quoteRuloFromPricebook(snapshot, config, {
@@ -160,10 +163,24 @@ export function quoteEtiketFromConfig(
   }
 
   // Tabaka — sheet modu
+  const tabakaGeom =
+    formFactor === "tabaka" || config.pricing_mode === "sheet"
+      ? calculateTabakaSheetGeometry(input.width, input.height, input.qty)
+      : null;
+
+  if (tabakaGeom && tabakaGeom.per_sheet === 0) {
+    return {
+      ok: false,
+      reason: "Bu boyut tabakaya sığmıyor — daha küçük ölçü seçin.",
+    };
+  }
+
   const sheets_needed =
-    config.pricing_mode === "sheet"
-      ? calcTabakaSheets(input.width, input.height, input.qty)
-      : undefined;
+    tabakaGeom != null
+      ? tabakaGeom.sheets_needed
+      : config.pricing_mode === "sheet"
+        ? calcTabakaSheets(input.width, input.height, input.qty)
+        : undefined;
 
   const billable_m2 =
     config.pricing_mode === "sheet"
@@ -196,11 +213,17 @@ export function quoteEtiketFromConfig(
     total: priceResult.final,
     unitPrice: priceResult.unit_price,
     rollsNeeded: geometry.rollsNeeded,
-    geometry: {
-      cols: geometry.cols,
-      rowsPerSheet: geometry.rowsPerRoll,
-      perSheet: geometry.perRoll,
-    },
+    geometry: tabakaGeom
+      ? {
+          cols: tabakaGeom.cols,
+          rowsPerSheet: tabakaGeom.rows,
+          perSheet: tabakaGeom.per_sheet,
+        }
+      : {
+          cols: geometry.cols,
+          rowsPerSheet: geometry.rowsPerRoll,
+          perSheet: geometry.perRoll,
+        },
     effectiveRate,
     multipliers,
   };

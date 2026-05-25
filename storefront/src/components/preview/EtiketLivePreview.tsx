@@ -26,6 +26,12 @@
 
 import { MaterialSwatch, type SurfaceId } from "@/components/ui";
 import { MaskotPlaceholder } from "./MaskotPlaceholder";
+import {
+  calculateTabakaSheetGeometry,
+  TABAKA_SHEET_H_MM,
+  TABAKA_SHEET_W_MM,
+} from "@/lib/pricing-tabaka-geo";
+import { GAP_TABAKA } from "@/lib/pricing-engine/constants";
 import type { PreviewView } from "./ProductPreviewShell";
 import type {
   EtiketMaterialId,
@@ -359,43 +365,16 @@ export function EtiketLivePreview({
   }
 
   // ─────────────────────────────────────────────────────────────
-  // TABAKA MODE — Sefa 18 May v67 v2:
-  // Pricing engine etiket için "tabaka = rulo" adapter kullanıyor
-  // → o yüzden geometryRows = rowsPerRoll (örn 892), tabaka için ANLAMSIZ.
-  // Burada YEREL SRA3 hesabı yapıyoruz: 320×450 mm tabaka, 2 mm gap.
-  // En iyi rotation (yatay vs döndürülmüş) seçilir, perSheet maksimize.
+  // TABAKA MODE — pricing-tabaka-geo ile aynı yerleşim (330×450, 10mm marj)
   // ─────────────────────────────────────────────────────────────
-  const TABAKA_W = 320; // SRA3 usable width (mm)
-  const TABAKA_H = 450; // SRA3 usable height (mm)
-  const TABAKA_GAP = 2; // gap arası boşluk (mm)
-  // Yatay yerleşim
-  const fitColsA = Math.max(
-    1,
-    Math.floor((TABAKA_W + TABAKA_GAP) / (width + TABAKA_GAP))
-  );
-  const fitRowsA = Math.max(
-    1,
-    Math.floor((TABAKA_H + TABAKA_GAP) / (height + TABAKA_GAP))
-  );
-  const fitA = fitColsA * fitRowsA;
-  // Döndürülmüş yerleşim (90° rotate)
-  const fitColsB = Math.max(
-    1,
-    Math.floor((TABAKA_W + TABAKA_GAP) / (height + TABAKA_GAP))
-  );
-  const fitRowsB = Math.max(
-    1,
-    Math.floor((TABAKA_H + TABAKA_GAP) / (width + TABAKA_GAP))
-  );
-  const fitB = fitColsB * fitRowsB;
-  const rotated = fitB > fitA;
-  const rawCols = rotated ? fitColsB : fitColsA;
-  const rawRows = rotated ? fitRowsB : fitRowsA;
-  const realPerSheet = rawCols * rawRows;
-  // Not: geometryCols/Rows/PerSheet rulo modu için kullanılıyor (yukarıda).
-  // Tabaka için pricing engine "tabaka = rulo" adapter verdiğinden burada
-  // YEREL SRA3 hesabı kullanıyoruz. Tutarsızlığı önlemek için tabaka modu
-  // pricing geometrisini IGNORE eder.
+  const tabakaGeom = calculateTabakaSheetGeometry(width, height, 1);
+  const rawCols = tabakaGeom.cols;
+  const rawRows = tabakaGeom.rows;
+  const realPerSheet = tabakaGeom.per_sheet;
+  const TABAKA_W = TABAKA_SHEET_W_MM - 2 * 10;
+  const TABAKA_H = TABAKA_SHEET_H_MM - 2 * 10;
+  const TABAKA_GAP = GAP_TABAKA;
+  const rotated = tabakaGeom.rotated_layout;
   // Preview cap — overflow'u önle. Max 6×8 = 48 hücre.
   const displayCols = Math.min(rawCols, 6);
   const displayRows = Math.min(rawRows, 8);
@@ -428,7 +407,7 @@ export function EtiketLivePreview({
         >
           {/* Üst sol köşe: SRA3 tabaka boyutu etiketi */}
           <span className="absolute -top-2 left-3 px-1.5 text-[9px] font-bold uppercase tracking-[0.06em] text-gri-500 bg-krem tabular-nums">
-            {TABAKA_W}×{TABAKA_H} mm
+            {TABAKA_SHEET_W_MM}×{TABAKA_SHEET_H_MM} mm
           </span>
           {/* Inner dashed border (tabaka usable area) */}
           <div className="rounded ring-1 ring-dashed ring-gri-400 p-2">

@@ -228,10 +228,11 @@ export default function SepetPage() {
   const remove = (item: CustomerCartItem) => {
     void removeFromCustomerCart(item.id);
     toast.undoable(`${item.title} ${x.toastRemoved.toLowerCase()}`, () => {
-      // Item'ı yeniden ekle — id ve addedAt yeniden üretilir
       const { id: _id, addedAt: _addedAt, ...rest } = item;
       void _id; void _addedAt;
-      void addToCustomerCart(rest);
+      void addToCustomerCart(rest).then((result) => {
+        if (!result.ok) toast.error(result.reason);
+      });
     });
   };
 

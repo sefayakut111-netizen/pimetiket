@@ -357,7 +357,14 @@ export async function mergeGuestCartIntoDb(): Promise<void> {
   if (guestItems.length === 0) return;
 
   const dbItems = await dbList(user.id);
+  let dbCount = dbItems.length;
   for (const guest of guestItems) {
+    if (dbCount >= MAX_ITEMS) {
+      console.warn(
+        `[cart] mergeGuestCartIntoDb: max ${MAX_ITEMS} items — kalan guest item atlandi`
+      );
+      break;
+    }
     const match = dbItems.find(
       (db) =>
         db.product === guest.product &&
@@ -373,6 +380,7 @@ export async function mergeGuestCartIntoDb(): Promise<void> {
       const { id: _, addedAt: __, ...rest } = guest;
       void _; void __;
       await dbInsert(user.id, rest);
+      dbCount += 1;
     }
   }
   clearLocal();
@@ -401,6 +409,9 @@ export async function addToCustomerCart(
   | { ok: false; reason: string }
 > {
   const user = await getCurrentUser();
+  if (user && !cacheLoaded) {
+    await refreshCustomerCart();
+  }
   if (cache.length >= MAX_ITEMS) {
     return {
       ok: false,

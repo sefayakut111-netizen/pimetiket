@@ -30,6 +30,8 @@ export interface TabakaSheetGeometry {
   waste_pct: number;
   snapped_width_mm: number;
   snapped_height_mm: number;
+  /** Etiketler 90° döndürülerek yerleştirildi mi */
+  rotated_layout: boolean;
 }
 
 /**
@@ -51,11 +53,14 @@ export function calculateTabakaSheetGeometry(
   const rows_w = Math.floor((USABLE_H_MM + GAP_MM) / (w + GAP_MM));
   const per_b = Math.max(0, cols_h * rows_w);
 
-  const per_sheet = Math.max(per_a, per_b, 1);
+  const per_sheet =
+    per_a === 0 && per_b === 0 ? 0 : Math.max(per_a, per_b);
+  const rotated_layout = per_b > per_a;
   const cols = per_a >= per_b ? cols_w : cols_h;
   const rows = per_a >= per_b ? rows_h : rows_w;
 
-  const sheets_needed = Math.ceil(qty / per_sheet);
+  const sheets_needed =
+    per_sheet === 0 ? 0 : Math.ceil(qty / per_sheet);
   const total_area_mm2 = sheets_needed * TABAKA_SHEET_W_MM * TABAKA_SHEET_H_MM;
   const total_m2 = total_area_mm2 / 1_000_000;
   const used_mm2 = qty * w * h;
@@ -73,6 +78,7 @@ export function calculateTabakaSheetGeometry(
     waste_pct,
     snapped_width_mm: w,
     snapped_height_mm: h,
+    rotated_layout,
   };
 }
 
