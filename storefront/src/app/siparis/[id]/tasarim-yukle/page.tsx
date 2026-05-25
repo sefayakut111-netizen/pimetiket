@@ -230,6 +230,20 @@ export default function TasarimYuklePage({
         const data = (await res.json()) as OrderInfo;
         setOrder(data);
 
+        const allItemsComplete =
+          data.items.length > 0 &&
+          data.items.every((i) => i.designsComplete);
+
+        if (allItemsComplete && data.status === "awaiting_upload") {
+          const adv = await fetch(`/api/orders/${orderId}/advance-status`, {
+            method: "POST",
+          });
+          if (adv.ok) {
+            await new Promise((r) => setTimeout(r, 1500));
+            return load({ silent: true });
+          }
+        }
+
         if (
           data.status === "proof_pending" ||
           data.status === "proof_validating"
