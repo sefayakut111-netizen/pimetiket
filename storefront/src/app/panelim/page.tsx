@@ -2,7 +2,7 @@
  * Pim Etiket — /panelim (E.2.2)
  *
  * Customer dashboard. customer-orders store'undan canlı veri okur:
- *   - Aktif siparişler (delivered/cancelled hariç) ilk 3
+ *   - Aktif siparişler (delivered/cancelled hariç) tümü
  *   - "Bu yıl basıldı" toplamı qty üzerinden
  *   - Quick re-order: en son etiket/sticker siparişi
  *
@@ -290,13 +290,32 @@ function OrderActionCta({
 
     case "qc_pending":
     case "human_review":
-    case "proof_generating":
       return (
         <div className="flex items-center gap-2 text-[12px] text-gri-500">
           <span className="w-3 h-3 rounded-full bg-sari animate-pulse shrink-0" />
           {isEn
-            ? "Under review — results in a few minutes"
-            : "İnceleniyor — birkaç dakika içinde sonuç çıkacak"}
+            ? "AI check in progress — results in a few minutes"
+            : "AI ön-kontrol yapılıyor — birkaç dakika içinde sonuç çıkacak"}
+        </div>
+      );
+
+    case "proof_generating":
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-[12px] text-gri-500">
+            <span className="w-3 h-3 rounded-full bg-pim-mercan animate-pulse shrink-0" />
+            {isEn
+              ? "Cut line being prepared..."
+              : "Bıçak çizimi hazırlanıyor..."}
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            href={`/onay/${order.id}`}
+            className="w-full"
+          >
+            {isEn ? "View proof preparation →" : "Prova hazırlığını gör →"}
+          </Button>
         </div>
       );
 
@@ -584,10 +603,9 @@ export default function PanelimPage() {
     { ...c.helpCenter, href: "/sss" },
   ];
 
-  // Aktif siparişler (delivered + cancelled hariç) — ilk 3
+  // Aktif siparişler (delivered + cancelled hariç)
   const activeOrders = orders
-    .filter((o) => o.status !== "delivered" && o.status !== "cancelled")
-    .slice(0, 3);
+    .filter((o) => o.status !== "delivered" && o.status !== "cancelled");
 
   // Stat hesapları
   const activeCount = orders.filter(
