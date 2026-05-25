@@ -457,6 +457,38 @@ export default function SiparisDetailPage({
     })();
   }, [id]);
 
+  useEffect(() => {
+    if (!order) return;
+    if (order.status !== "paid" && order.status !== "awaiting_upload") return;
+    if (hasUploadedDesign) return;
+
+    let cancelled = false;
+    const pollDesignCount = async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const { count } = await supabase
+          .from("design_files")
+          .select("id", { count: "exact", head: true })
+          .eq("order_id", id)
+          .neq("status", "superseded");
+        if (!cancelled && typeof count === "number" && count > 0) {
+          setHasUploadedDesign(true);
+        }
+      } catch {
+        // sessiz fallback
+      }
+    };
+
+    void pollDesignCount();
+    const interval = setInterval(() => void pollDesignCount(), 3000);
+    const timeout = setTimeout(() => clearInterval(interval), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [order, id, hasUploadedDesign]);
+
   // proof_validating — düzenleme sonrası AI doğrulama, 2sn poll
   useEffect(() => {
     if (order?.status !== "proof_validating") return;
@@ -842,7 +874,8 @@ export default function SiparisDetailPage({
                 küçük "+ Dosya yükle" butonu sağda kayboluyordu, kullanıcı
                 ne yapacağını bilmiyordu. */}
             {(order.status === "paid" ||
-              order.status === "awaiting_upload") && (
+              order.status === "awaiting_upload") &&
+              !hasUploadedDesign && (
               <Card padding="p-6" className="border-2 border-pim-mercan/40 bg-pim-mercan-tint/20">
                 <div className="flex gap-4 items-start">
                   <PimMini pose="inspect" size={56} />
@@ -869,6 +902,22 @@ export default function SiparisDetailPage({
                       </Button>
                     </div>
                   </div>
+                </div>
+              </Card>
+            )}
+
+            {hasUploadedDesign &&
+              (order.status === "paid" ||
+                order.status === "awaiting_upload") && (
+              <Card padding="p-5" className="text-center">
+                <p className="text-sm text-gri-700">
+                  Tasarımın yüklendi. Sistem ön-kontrolü başlatılıyor...
+                </p>
+                <div className="mt-2 flex justify-center">
+                  <span
+                    className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+                    aria-hidden="true"
+                  />
                 </div>
               </Card>
             )}
@@ -1421,7 +1470,8 @@ export default function SiparisDetailPage({
         </div>
       )}
 
-      {(order.status === "awaiting_upload" || order.status === "paid") && (
+      {(order.status === "awaiting_upload" || order.status === "paid") &&
+        !hasUploadedDesign && (
         <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
           <Button
             variant="primary"
