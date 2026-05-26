@@ -196,6 +196,14 @@ function isHttpUrl(url: string | null | undefined): url is string {
   return t.length > 0 && /^https?:\/\/.+/i.test(t);
 }
 
+/** Same-origin API proxy veya http(s) URL — img src için güvenli. */
+function isPreviewSrc(url: string | null | undefined): url is string {
+  if (!url) return false;
+  const t = url.trim();
+  if (t.startsWith("/api/")) return true;
+  return isHttpUrl(t);
+}
+
 function getItemDesignCount(item: ProofItem): number {
   return getExpectedDesignCount(item.meta, item.designs?.length ?? 0);
 }
@@ -371,8 +379,6 @@ export default function ProofApprovalPage({
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpMsg, setHelpMsg] = useState("");
   const [submittingHelp, setSubmittingHelp] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [previewImgBroken, setPreviewImgBroken] = useState(false);
   const [itemThumbs, setItemThumbs] = useState<Record<string, string>>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -698,46 +704,16 @@ export default function ProofApprovalPage({
     activeItem?.meta?.material_type ?? activeItem?.meta?.material ?? "paper"
   );
 
-  // activeItem/activeDesign değiştiğinde preview signed URL fetch et
-  useEffect(() => {
-    if (!activeItem) {
-      setPreviewUrl(null);
-      setPreviewLoading(false);
-      return;
-    }
-    if (!activeCutline) {
-      setPreviewUrl(null);
-      setPreviewLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setPreviewUrl(null);
-    setPreviewImgBroken(false);
-    setPreviewLoading(true);
-    (async () => {
-      try {
-        const dfParam = activeDesignFileId
-          ? `?design_file_id=${activeDesignFileId}`
-          : "";
-        const res = await fetch(
-          `/api/orders/${orderId}/proof/${activeItem.id}/preview-url${dfParam}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) return;
-        const j = (await res.json()) as { url: string | null };
-        if (!cancelled) setPreviewUrl(j.url);
-      } catch {
-        // Sessizce geç — UI placeholder gösterir
-      } finally {
-        if (!cancelled) setPreviewLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeItem, activeCutline, activeDesignFileId, orderId]);
+  const cutlinePreviewSrc =
+    activeItem && activeCutline
+      ? `/api/orders/${orderId}/proof/${activeItem.id}/preview-png${
+          activeDesignFileId ? `?design_file_id=${activeDesignFileId}` : ""
+        }`
+      : null;
 
-  // Sol panel: cutline yoksa tasarım thumbnail (thumb=1)
+  useEffect(() => {
+    setPreviewImgBroken(false);
+  }, [cutlinePreviewSrc, designUrl, cmykPreview?.url, previewLayer, activeDesignFileId]);
   useEffect(() => {
     if (!data) return;
     let cancelled = false;
@@ -770,9 +746,6 @@ export default function ProofApprovalPage({
     };
   }, [data, orderId]);
 
-  useEffect(() => {
-    setPreviewImgBroken(false);
-  }, [previewUrl, designUrl, cmykPreview?.url, previewLayer, activeDesignFileId]);
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1239,12 +1212,12 @@ export default function ProofApprovalPage({
       ? (cmykPreview?.url ?? null)
       : previewLayer === "design" || previewLayer === "checkerboard"
         ? designUrl
-        : previewUrl;
+        : cutlinePreviewSrc;
   const canShowPreviewImage =
-    isHttpUrl(layerPreviewUrl) &&
+    isPreviewSrc(layerPreviewUrl) &&
     !previewImgBroken &&
     (previewLayer === "cutline"
-      ? !cutlineNotReady && !!activeCutline
+      ? !!activeCutline
       : previewLayer === "checkerboard"
         ? !!designUrl
         : true);
@@ -1401,28 +1374,11 @@ export default function ProofApprovalPage({
       );
     }
 
-    if (previewLoading) {
-      return (
-        <div className="text-center text-sm text-gri-700">
-          <div className="flex justify-center">
-            <span
-              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
-              aria-hidden="true"
-            />
-          </div>
-          <p className="mt-2 font-medium">Önizleme yükleniyor…</p>
-        </div>
-      );
-    }
-
-    if (
-      (previewLayer === "cutline" || previewLayer === "checkerboard") &&
-      cutlineNotReady
-    ) {
+    if (previewLayer === "cutline" && cutlineNotReady) {
       return renderCutlineEmptyState();
     }
 
-    if (activeCutline?.preview_png_url && previewImgBroken) {
+    if (activeCutline && previewImgBroken) {
       return (
         <div className="text-center text-sm text-gri-700">
           <p className="font-medium">Önizleme şu an açılamıyor</p>
@@ -1431,7 +1387,7 @@ export default function ProofApprovalPage({
       );
     }
 
-    if (previewLayer === "cutline" || previewLayer === "checkerboard") {
+    if (previewLayer === "cutline") {
       return renderCutlineEmptyState();
     }
 
@@ -1816,7 +1772,7 @@ export default function ProofApprovalPage({
                       itemId={activeItem.id}
                       designFileId={activeDesignFileId}
                       bgDetect={bgPrompt.bgDetect}
-                      previewUrl={designUrl ?? previewUrl}
+                      previewUrl={designUrl ?? cutlinePreviewSrc}
                       onDismiss={() =>
                         setBgPrompt({ show: false, bgDetect: null })
                       }
@@ -2143,7 +2099,7 @@ export default function ProofApprovalPage({
 
       {/* Lightbox modal — aktif katman önizlemesi */}
       {lightboxOpen &&
-        isHttpUrl(lightboxUrl) &&
+        isPreviewSrc(lightboxUrl) &&
         activeItem &&
         !previewImgBroken && (
         <div

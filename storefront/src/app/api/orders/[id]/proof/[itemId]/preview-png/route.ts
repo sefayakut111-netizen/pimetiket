@@ -1,19 +1,13 @@
 /**
- * GET /api/orders/[id]/proof/[itemId]/preview-url
- *
- * /onay sayfasında müşteriye cutline preview göstermek için kullanılan
- * signed URL endpoint'i. cutline_designs.preview_png_url'i alır ve 1 saatlik
- * imzalı R2 link döndürür.
- *
- * Auth: sipariş sahibi, admin/staff veya atanmış partner.
- *
- * Not: Tarayıcı img için tercihen /preview-png same-origin proxy kullanın.
+ * GET /api/orders/[id]/proof/[itemId]/preview-png
+ * Cutline preview PNG — same-origin proxy (R2 → tarayıcı).
+ * Admin müşteri görünümü + img tag uyumluluğu için signed R2 URL yerine.
  */
 
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSignedDownloadUrl } from "@/lib/storage/r2-client";
+import { downloadFromR2 } from "@/lib/storage/r2-client";
 import {
   assertProofOrderAccess,
   getCutlinePreviewKey,
@@ -21,8 +15,6 @@ import {
 } from "@/lib/proof/order-proof-access";
 
 export const runtime = "nodejs";
-
-const TTL_SECONDS = 3600;
 
 export async function GET(
   req: Request,
@@ -59,17 +51,22 @@ export async function GET(
     designFileId
   );
   if (!previewKey) {
-    return NextResponse.json({ url: null, expiresAt: null });
+    return NextResponse.json({ error: "preview_not_found" }, { status: 404 });
   }
 
   try {
-    const signedUrl = await getSignedDownloadUrl(previewKey, TTL_SECONDS);
-    const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000).toISOString();
-    return NextResponse.json({ url: signedUrl, expiresAt });
+    const buffer = await downloadFromR2(previewKey);
+    return new NextResponse(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "private, max-age=300",
+      },
+    });
   } catch (err) {
-    console.error("[proof/preview-url] signed URL failed:", err);
+    console.error("[proof/preview-png]", err);
     return NextResponse.json(
-      { error: "Önizleme bağlantısı üretilemedi" },
+      { error: "Önizleme yüklenemedi" },
       { status: 500 }
     );
   }

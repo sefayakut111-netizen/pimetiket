@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { assertProofOrderAccess } from "@/lib/proof/order-proof-access";
 
 export async function GET(
   req: Request,
@@ -25,13 +26,12 @@ export async function GET(
   }
 
   const admin = createAdminClient();
-  const { data: order } = await admin
-    .from("orders")
-    .select("user_id")
-    .eq("id", orderId)
-    .maybeSingle();
-  if ((order as { user_id: string } | null)?.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const access = await assertProofOrderAccess(admin, orderId, user?.id);
+  if (!access.ok) {
+    return NextResponse.json(
+      { error: access.status === 401 ? "Unauthorized" : "Forbidden" },
+      { status: access.status }
+    );
   }
 
   const dfQuery = admin
