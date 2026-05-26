@@ -1,0 +1,1 @@
+`@CURSOR-GOREVLER-AKIS-KONTROL.md` bu dosyadaki adımları sırayla uygula. Adım 1'den başla. Her adımda bulduğun sonuçları console'a yaz, kırık noktayı bul ve düzelt. Bu görev diğer tüm görevlerden ÖNCE yapılmalı — akış düzelmeden diğerleri anlamsız.

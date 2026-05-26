@@ -117,6 +117,8 @@ async function runOrderDesignQCInner(
   admin: SupabaseClient,
   orderId: string
 ): Promise<RunOrderQCResult> {
+  console.log("[run-order-qc] START orderId:", orderId);
+
   // 0) P1 #7 — Sonsuz döngü guard: 3 attempt'tan sonra AI atlanır,
   // sipariş insan-only kuyruğa düşer (operator_review).
   const { data: orderRow } = await admin
@@ -227,6 +229,12 @@ async function runOrderDesignQCInner(
   }
 
   let files = (filesData ?? []) as unknown as DesignFileForQC[];
+
+  console.log(
+    "[run-order-qc] design_files count:",
+    files.length,
+    files.map((f) => ({ id: f.id, status: f.mime_type }))
+  );
 
   if (files.length === 0) {
     await new Promise((r) => setTimeout(r, 5000));
@@ -361,6 +369,7 @@ async function runOrderDesignQCInner(
 
         return { verdict: result.verdict as VerdictKey, qcEntry };
       } catch (err) {
+        console.log("[run-order-qc] file QC error:", file.id, err);
         Sentry.captureException(err, {
           tags: { scope: "design_qc.order_auto", order_id: orderId },
           extra: { file_id: file.id },
@@ -383,6 +392,11 @@ async function runOrderDesignQCInner(
   for (const outcome of settled) {
     if (outcome.status === "fulfilled") {
       verdictCounts[outcome.value.verdict] += 1;
+      console.log(
+        "[run-order-qc] file QC result:",
+        outcome.value.qcEntry?.fileId ?? "?",
+        outcome.value.verdict
+      );
       if (outcome.value.qcEntry) {
         qcResults.push(outcome.value.qcEntry);
       }
@@ -434,13 +448,41 @@ async function runOrderDesignQCInner(
   const nextStatus =
     aggregateVerdict === "ready_to_proof" ? "proof_generating" : "human_review";
 
-  await admin
+  console.log(
+    "[run-order-qc] aggregate verdict:",
+    aggregateVerdict,
+    "next status:",
+    nextStatus,
+    "verdictCounts:",
+    verdictCounts
+  );
+
+  const { error: statusUpdateErr } = await admin
     .from("orders")
     .update({
       status: nextStatus,
       qc_attempt_count: nextAttemptCount,
     })
     .eq("id", orderId);
+
+  if (statusUpdateErr) {
+    console.error(
+      "[run-order-qc] status update FAILED:",
+      orderId,
+      statusUpdateErr.message
+    );
+    const { error: fallbackErr } = await admin
+      .from("orders")
+      .update({ status: nextStatus })
+      .eq("id", orderId);
+    if (fallbackErr) {
+      console.error("[run-order-qc] fallback status update FAILED:", fallbackErr.message);
+      throw new Error(`status_update_failed: ${fallbackErr.message}`);
+    }
+    console.log("[run-order-qc] status updated via fallback (no qc_attempt_count)");
+  } else {
+    console.log("[run-order-qc] status updated to:", nextStatus);
+  }
 
   // Eğer bu son izin verilen attempt ise (counter şimdi maks'e ulaştı) ve
   // sonuç "needs_review" ise admin görsün — sıradaki re-run direkt escalate olacak.
@@ -477,12 +519,16 @@ async function runOrderDesignQCInner(
   }
 
   // proof_generating → server-side cutline (Puppeteer headless POC).
-  // /onay iframe yalnızca fallback (JPG veya server hatası).
+  // Doğrudan await — after() lambda kapandığında cutline kaybolmasın.
   if (nextStatus === "proof_generating") {
-    const { scheduleOrderCutlineGeneration } = await import(
-      "./schedule-order-cutline"
-    );
-    scheduleOrderCutlineGeneration(admin, orderId);
+    const { runOrderCutlineGeneration } = await import("./run-order-cutline");
+    console.log("[run-order-qc] starting cutline generation for:", orderId);
+    try {
+      const cutResult = await runOrderCutlineGeneration(admin, orderId);
+      console.log("[run-order-qc] cutline result:", cutResult);
+    } catch (cutErr) {
+      console.error("[run-order-qc] cutline generation failed:", orderId, cutErr);
+    }
   }
 
   return {

@@ -20,6 +20,7 @@ export async function runOrderCutlineGeneration(
   admin: SupabaseClient<Database>,
   orderId: string
 ): Promise<{ generated: number; failed: number }> {
+  console.log("[cutline-gen] START orderId:", orderId);
   const siteUrl = SITE_URL();
   let generated = 0;
   let failed = 0;
@@ -39,6 +40,8 @@ export async function runOrderCutlineGeneration(
     .eq("order_id", orderId);
 
   if (!items || items.length === 0) return { generated: 0, failed: 0 };
+
+  console.log("[cutline-gen] items to process:", items.length);
 
   const pendingProofs: {
     itemId: string;
@@ -254,5 +257,6 @@ export async function runOrderCutlineGeneration(
     });
   }
 
+  console.log("[cutline-gen] result:", { generated, failed, orderId });
   return { generated, failed };
 }

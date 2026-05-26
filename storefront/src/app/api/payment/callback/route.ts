@@ -366,7 +366,10 @@ export async function POST(req: NextRequest) {
       product: "sticker" | "etiket";
       meta: Record<string, unknown>;
     }>) ?? []
-  ).filter((i) => (i.meta as { designTempId?: string })?.designTempId);
+  ).filter((i) => {
+    const tid = (i.meta as { designTempId?: string })?.designTempId;
+    return !!tid && !tid.startsWith("local-");
+  });
 
   if (orderItemsForPromote.length > 0) {
     try {
@@ -383,7 +386,14 @@ export async function POST(req: NextRequest) {
           .update({ status: "qc_pending" })
           .eq("id", orderId);
 
+        console.log(
+          "[payment-callback] promoted:",
+          promotedCount,
+          "orderId:",
+          orderId
+        );
         scheduleOrderDesignQC(admin, orderId);
+        console.log("[payment-callback] QC scheduled for:", orderId);
       }
     } catch (err) {
       console.error("[payment/callback] promote failed:", err);

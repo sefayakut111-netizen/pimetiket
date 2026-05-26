@@ -108,12 +108,18 @@ export async function generateCutlineHeadless(args: {
 
     await page.goto(`${args.siteUrl}/poc.html?${params.toString()}`, {
       waitUntil: "networkidle2",
-      timeout: 30000,
+      timeout: 60000,
     });
 
-    return await cutlinePromise;
+    console.log("[cutline-headless] poc loaded, waiting for cutline…", args.orderId);
+    const result = await cutlinePromise;
+    if (!result) {
+      console.error("[cutline-headless] timeout or empty result", args.orderId, args.itemId);
+    }
+    return result;
   } catch (err) {
-    console.error("[cutline-headless] error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[cutline-headless] error:", msg, args.orderId, args.itemId);
     return null;
   } finally {
     if (browser) {

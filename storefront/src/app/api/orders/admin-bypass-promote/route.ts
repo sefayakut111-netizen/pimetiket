@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerClient();
