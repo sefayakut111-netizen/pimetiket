@@ -235,18 +235,65 @@ function itemCutlinePreviewSrc(
   item: ProofItem,
   designFileId?: string | null
 ): string | null {
-  if (!itemHasCutlinePreview(item)) return null;
-  const dfId =
-    designFileId ??
-    item.designs?.find((d) => designHasCutline(d.cutline))?.design_file_id ??
-    item.designs?.[0]?.design_file_id;
-  const cutlineId =
-    (dfId
-      ? item.designs?.find((d) => d.design_file_id === dfId)?.cutline?.id
-      : null) ??
-    item.designs?.find((d) => designHasCutline(d.cutline))?.cutline?.id ??
-    item.cutline?.id;
-  return buildPreviewPngPath(orderId, item.id, dfId, cutlineId);
+  if (designFileId) {
+    const design = item.designs?.find(
+      (d) => d.design_file_id === designFileId
+    );
+    if (design && designHasCutline(design.cutline)) {
+      return buildPreviewPngPath(
+        orderId,
+        item.id,
+        designFileId,
+        design.cutline!.id
+      );
+    }
+    return null;
+  }
+
+  if (designHasCutline(item.cutline)) {
+    return buildPreviewPngPath(
+      orderId,
+      item.id,
+      item.designs?.[0]?.design_file_id,
+      item.cutline!.id
+    );
+  }
+  const firstWithCutline = item.designs?.find((d) =>
+    designHasCutline(d.cutline)
+  );
+  if (firstWithCutline) {
+    return buildPreviewPngPath(
+      orderId,
+      item.id,
+      firstWithCutline.design_file_id,
+      firstWithCutline.cutline!.id
+    );
+  }
+  return null;
+}
+
+/** Henüz promote edilmemiş slot için meta'daki geçici önizleme URL'si. */
+function slotMetaPreviewUrl(
+  item: ProofItem,
+  slotIdx: number
+): string | null {
+  if (slotIdx === 0) {
+    const url = item.meta?.designPreviewUrl;
+    return typeof url === "string" && isHttpUrl(url) ? url : null;
+  }
+  const additional = item.meta?.additionalDesigns;
+  if (!Array.isArray(additional)) return null;
+  const entry = additional[slotIdx - 1];
+  if (
+    entry &&
+    typeof entry === "object" &&
+    "previewUrl" in entry &&
+    typeof (entry as { previewUrl?: string }).previewUrl === "string"
+  ) {
+    const url = (entry as { previewUrl: string }).previewUrl;
+    return isHttpUrl(url) ? url : null;
+  }
+  return null;
 }
 
 function normalizeConfigText(s: string): string {
@@ -341,15 +388,30 @@ const STATUS_BADGE: Record<
 };
 
 const DESIGN_WAITING_BADGE = {
-  label: "Bıçak hazırlanıyor",
+  label: "Bıçak sırada",
   bg: "bg-gri-100",
   color: "text-gri-700",
   emoji: "⏳",
 } as const;
 
+const DESIGN_GENERATING_BADGE = {
+  label: "Bıçak üretiliyor",
+  bg: "bg-mavi-soft",
+  color: "text-mavi-koyu",
+  emoji: "⚙️",
+} as const;
+
+const DESIGN_SLOT_PENDING_BADGE = {
+  label: "Tasarım bekleniyor",
+  bg: "bg-gri-100",
+  color: "text-gri-700",
+  emoji: "📄",
+} as const;
+
 function getDesignStatusBadge(
   design: ProofDesign | null,
-  item: ProofItem
+  item: ProofItem,
+  opts?: { isGenerating?: boolean }
 ): (typeof STATUS_BADGE)[ProofItem["proof_status"]] {
   if (design && cutlineIsApproved(design.cutline)) {
     return STATUS_BADGE.approved;
@@ -357,8 +419,11 @@ function getDesignStatusBadge(
   if (item.proof_status === "help_requested") {
     return STATUS_BADGE.help_requested;
   }
-  if (!design || !designHasCutline(design.cutline)) {
-    return DESIGN_WAITING_BADGE;
+  if (!design) {
+    return DESIGN_SLOT_PENDING_BADGE;
+  }
+  if (!designHasCutline(design.cutline)) {
+    return opts?.isGenerating ? DESIGN_GENERATING_BADGE : DESIGN_WAITING_BADGE;
   }
   if (item.proof_status === "viewed" || item.proof_status === "edited") {
     return STATUS_BADGE.viewed;
@@ -867,14 +932,9 @@ export default function ProofApprovalPage({
           const tasks: Promise<void>[] = [];
           const designCount = getItemDesignCount(item);
           if (designCount > 1) {
-            for (let idx = 0; idx < designCount; idx++) {
-              const d = item.designs[idx];
-              if (!d) continue;
+            for (const d of item.designs ?? []) {
               const key = `${item.id}:${d.design_file_id}`;
-              if (
-                itemCutlinePreviewSrc(orderId, item, d.design_file_id) ||
-                designHasCutline(d.cutline)
-              ) {
+              if (itemCutlinePreviewSrc(orderId, item, d.design_file_id)) {
                 continue;
               }
               tasks.push(
@@ -974,7 +1034,7 @@ export default function ProofApprovalPage({
       if (item.designs && item.designs.length > 0) {
         const noCutDesign = item.designs.find(
           (d) =>
-            !d.cutline &&
+            !designHasCutline(d.cutline) &&
             categorizeFile(d.file_name, d.mime_type) !== "qc_only"
         );
         if (noCutDesign) {
@@ -1489,6 +1549,15 @@ export default function ProofApprovalPage({
   const cutlineNotReady =
     !itemReadyForApproval && !showJpgShapeSelector;
   const multiDesignCount = activeItem ? getItemDesignCount(activeItem) : 0;
+  const activeDesignGenerating =
+    bgGenDesignFileId !== null &&
+    activeDesign?.design_file_id === bgGenDesignFileId;
+  const activeDesignBadge =
+    activeDesign && activeItem
+      ? getDesignStatusBadge(activeDesign, activeItem, {
+          isGenerating: activeDesignGenerating,
+        })
+      : null;
   const previewFrameStyle: React.CSSProperties | undefined =
     activeItem && activeItem.width > 0 && activeItem.height > 0
       ? {
@@ -1688,8 +1757,15 @@ export default function ProofApprovalPage({
     );
   };
 
+  const showFinalizeBar = order.status === "proof_pending";
+
   return (
-    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-28 lg:pb-8">
+    <main
+      className={cn(
+        "bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8",
+        showFinalizeBar ? "pb-36" : "pb-28 lg:pb-8"
+      )}
+    >
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2">
@@ -1902,14 +1978,19 @@ export default function ProofApprovalPage({
                 (d
                   ? d.design_file_id === activeDesignFileId
                   : idx === 0 && !activeDesignFileId);
-              const badge = getDesignStatusBadge(d, item);
+              const isGeneratingThis =
+                bgGenDesignFileId !== null &&
+                d?.design_file_id === bgGenDesignFileId;
+              const badge = getDesignStatusBadge(d, item, {
+                isGenerating: isGeneratingThis,
+              });
               const isDesignApproved = d ? cutlineIsApproved(d.cutline) : false;
               const thumbUrl = d
                 ? itemCutlinePreviewSrc(orderId, item, d.design_file_id) ??
                   (isPreviewSrc(designThumbs[`${item.id}:${d.design_file_id}`])
                     ? designThumbs[`${item.id}:${d.design_file_id}`]
                     : null)
-                : null;
+                : slotMetaPreviewUrl(item, idx);
 
               return (
                 <button
@@ -2018,25 +2099,22 @@ export default function ProofApprovalPage({
                       <div
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                          multiDesignCount > 1 && activeDesign
-                            ? getDesignStatusBadge(activeDesign, activeItem).bg
+                          multiDesignCount > 1 && activeDesignBadge
+                            ? activeDesignBadge.bg
                             : STATUS_BADGE[activeItem.proof_status].bg,
-                          multiDesignCount > 1 && activeDesign
-                            ? getDesignStatusBadge(activeDesign, activeItem)
-                                .color
+                          multiDesignCount > 1 && activeDesignBadge
+                            ? activeDesignBadge.color
                             : STATUS_BADGE[activeItem.proof_status].color
                         )}
                       >
                         <span>
-                          {multiDesignCount > 1 && activeDesign
-                            ? getDesignStatusBadge(activeDesign, activeItem)
-                                .emoji
+                          {multiDesignCount > 1 && activeDesignBadge
+                            ? activeDesignBadge.emoji
                             : STATUS_BADGE[activeItem.proof_status].emoji}
                         </span>
                         <span>
-                          {multiDesignCount > 1 && activeDesign
-                            ? getDesignStatusBadge(activeDesign, activeItem)
-                                .label
+                          {multiDesignCount > 1 && activeDesignBadge
+                            ? activeDesignBadge.label
                             : STATUS_BADGE[activeItem.proof_status].label}
                         </span>
                       </div>
@@ -2331,7 +2409,9 @@ export default function ProofApprovalPage({
                       : activeDesignApproved
                         ? "Onaylandı ✓"
                         : !itemReadyForApproval
-                          ? "Bıçak hazırlanıyor…"
+                          ? activeDesignGenerating
+                            ? "Bıçak üretiliyor…"
+                            : "Bıçak sırada"
                           : "Bu tasarımı onayla"}
                   </Button>
                 </div>
@@ -2345,31 +2425,33 @@ export default function ProofApprovalPage({
         </section>
       </div>
 
-      {/* Tüm tasarımlar onaylandıktan sonra finalize */}
-      {order.status === "proof_pending" && (
-        <div className="sticky bottom-4 z-40 mt-6 rounded-xl border border-gri-200 bg-white p-4 shadow-lg">
-          <Button
-            variant="primary"
-            size="lg"
-            className={cn(
-              "w-full justify-center text-base font-semibold",
-              allDesignsApproved
-                ? "!bg-yesil hover:!bg-yesil-koyu"
-                : "!bg-gri-300 !text-gri-700 cursor-not-allowed"
+      {/* Tüm tasarımlar onaylandıktan sonra finalize — viewport altında sabit */}
+      {showFinalizeBar && (
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-gri-200 bg-white/95 p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+          <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+            <Button
+              variant="primary"
+              size="lg"
+              className={cn(
+                "w-full justify-center text-base font-semibold",
+                allDesignsApproved
+                  ? "!bg-yesil hover:!bg-yesil-koyu"
+                  : "!bg-gri-300 !text-gri-700 cursor-not-allowed"
+              )}
+              onClick={() => void handleFinalizeAll()}
+              disabled={!allDesignsApproved || finalizing}
+            >
+              {finalizing
+                ? "Gönderiliyor…"
+                : "✅ Tüm Tasarımları Onayla ve Üretime Gönder"}
+            </Button>
+            {!allDesignsApproved && (
+              <p className="mt-2 text-center text-xs text-gri-700">
+                Önce tüm tasarımları tek tek onayla (
+                {designProgress.approved}/{designProgress.total})
+              </p>
             )}
-            onClick={() => void handleFinalizeAll()}
-            disabled={!allDesignsApproved || finalizing}
-          >
-            {finalizing
-              ? "Gönderiliyor…"
-              : "✅ Tüm Tasarımları Onayla ve Üretime Gönder"}
-          </Button>
-          {!allDesignsApproved && (
-            <p className="mt-2 text-center text-xs text-gri-700">
-              Önce tüm tasarımları tek tek onayla (
-              {designProgress.approved}/{designProgress.total})
-            </p>
-          )}
+          </div>
         </div>
       )}
 
@@ -2457,7 +2539,12 @@ export default function ProofApprovalPage({
         const ss = remainingSec !== null ? remainingSec % 60 : null;
         const slaExpired = remainingSec !== null && remainingSec === 0;
         return (
-          <div className="fixed bottom-20 right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg">
+          <div
+            className={cn(
+              "fixed right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg",
+              showFinalizeBar ? "bottom-28" : "bottom-20"
+            )}
+          >
             <div className="flex items-start gap-2">
               <div className="mt-0.5 h-2 w-2 animate-pulse rounded-full bg-pim-mercan" />
               <div className="flex-1 text-sm">

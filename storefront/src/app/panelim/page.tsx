@@ -31,6 +31,12 @@ import { getMyProfile } from "@/lib/customer-profile";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 import { NotificationsMini } from "@/components/customer/NotificationsMini";
+import { OrderCardDesignPreview } from "@/components/orders/OrderCardDesignPreview";
+import {
+  orderHasMetaPreviews,
+  prefetchOrderDesignFiles,
+  type OrderDesignFilesMap,
+} from "@/lib/order-design-previews";
 
 const COPY = {
   tr: {
@@ -70,10 +76,9 @@ const COPY = {
     qaNewEtiketDesc: "1000 adetten başla",
     qaNewSticker: "Yeni sticker",
     qaNewStickerDesc: "25 adetten başla",
-    qaReorder: "Tekrar sipariş",
-    qaReorderEtiket: (label: string) => `Son etiket: ${label}`,
-    qaReorderSticker: (label: string) => `Son sticker: ${label}`,
-    qaReorderSoon: "Yakında öneri",
+    qaReorder: "Son siparişi tekrar et",
+    qaReorderLast: (summary: string) => summary,
+    qaReorderSoon: "Henüz sipariş yok",
     qaReorderRepeat: "Tekrarla",
     activeOrdersTitle: "Aktif siparişler",
     seeAll: "Tümünü gör",
@@ -134,10 +139,9 @@ const COPY = {
     qaNewEtiketDesc: "Start at 1000 units",
     qaNewSticker: "New sticker",
     qaNewStickerDesc: "Start at 25 units",
-    qaReorder: "Reorder",
-    qaReorderEtiket: (label: string) => `Last label: ${label}`,
-    qaReorderSticker: (label: string) => `Last sticker: ${label}`,
-    qaReorderSoon: "Suggestions soon",
+    qaReorder: "Repeat last order",
+    qaReorderLast: (summary: string) => summary,
+    qaReorderSoon: "No orders yet",
     qaReorderRepeat: "Repeat",
     activeOrdersTitle: "Active orders",
     seeAll: "See all",
@@ -498,6 +502,7 @@ export default function PanelimPage() {
   // 2-3sn boş kalma sorununu çöz. İlk render anında en son bilinen isim
   // gösterilir, profile fetch'i tamamlanınca düzenlenir.
   const [profileName, setProfileName] = useState<string | null>(null);
+  const [designFilesMap, setDesignFilesMap] = useState<OrderDesignFilesMap>({});
   const router = useRouter();
   const toast = useToast();
 
@@ -636,6 +641,24 @@ export default function PanelimPage() {
   const activeOrders = allActiveOrders.slice(0, orderPage * ORDERS_PER_PAGE);
   const hasMoreOrders = allActiveOrders.length > activeOrders.length;
 
+  useEffect(() => {
+    if (!hydrated) return;
+    const recentDelivered = orders
+      .filter((o) => o.status === "delivered")
+      .slice(0, 2);
+    const visibleActive = orders
+      .filter((o) => o.status !== "delivered" && o.status !== "cancelled")
+      .slice(0, orderPage * ORDERS_PER_PAGE);
+    const candidates = [...visibleActive, ...recentDelivered].filter(
+      (o) => !orderHasMetaPreviews(o)
+    );
+    const ids = candidates.map((o) => o.id);
+    if (ids.length === 0) return;
+    void prefetchOrderDesignFiles(ids).then((next) => {
+      setDesignFilesMap((prev) => ({ ...prev, ...next }));
+    });
+  }, [hydrated, orders, orderPage]);
+
   // Stat hesapları
   const activeCount = orders.filter(
     (o) => o.status !== "delivered" && o.status !== "cancelled"
@@ -677,27 +700,20 @@ export default function PanelimPage() {
     profileName ??
     (orders.length > 0 ? orders[0].address.name.split(" ")[0] : null);
 
-  // Tekrar sipariş için en son delivered/in_production etiket / sticker
+  // Tekrar sipariş — en yeni tamamlanmış sipariş (created_at DESC)
   const completedOrders = orders.filter(
     (o) => o.status !== "cancelled" && o.status !== "awaiting_upload" && o.status !== "paid"
   );
-  const lastEtiketOrder = completedOrders.find((o) =>
-    o.items.some((i) => i.product === "etiket")
-  );
-  const lastEtiketItem = lastEtiketOrder?.items.find(
-    (i) => i.product === "etiket"
-  );
-  const lastEtiketQty = lastEtiketItem?.qty ?? 0;
+  const lastReorderTarget = completedOrders[0] ?? null;
 
-  const lastStickerOrder = completedOrders.find((o) =>
-    o.items.some((i) => i.product === "sticker")
-  );
-  const lastStickerItem = lastStickerOrder?.items.find(
-    (i) => i.product === "sticker"
-  );
-
-  // Quick reorder: en son tamamlanmış sipariş (etiket varsa o, yoksa sticker)
-  const lastReorderTarget = lastEtiketOrder ?? lastStickerOrder ?? null;
+  function reorderSummary(order: CustomerOrder): string {
+    const title =
+      order.items.length === 1
+        ? order.items[0].title
+        : c.multiOrder(order.items.length);
+    const totalQty = order.items.reduce((s, i) => s + i.qty, 0);
+    return `${title} · ${fmt(totalQty)} ${c.pcs}`;
+  }
 
   // Sefa 17 May P1-5 + P2-19:
   // - Hydration error #418 — SSR'de server timezone'da date farklı dönebiliyor
@@ -782,6 +798,22 @@ export default function PanelimPage() {
 
         {/* Quick actions — Görev 4 ile geri getirildi */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          {lastReorderTarget ? (
+            <QuickAction
+              icon={<Icon.Refresh size={20} />}
+              title={c.qaReorder}
+              desc={c.qaReorderLast(reorderSummary(lastReorderTarget))}
+              onClick={() => void handleQuickReorder(lastReorderTarget)}
+              disabled={reordering}
+            />
+          ) : (
+            <QuickAction
+              icon={<Icon.Refresh size={20} />}
+              title={c.qaReorder}
+              desc={c.qaReorderSoon}
+              href="/siparislerim"
+            />
+          )}
           <QuickAction
             icon={<Icon.Roll size={20} />}
             title={c.qaNewEtiket}
@@ -795,28 +827,6 @@ export default function PanelimPage() {
             desc={c.qaNewStickerDesc}
             href="/sticker"
           />
-          {lastReorderTarget ? (
-            <QuickAction
-              icon={<Icon.Refresh size={20} />}
-              title={c.qaReorder}
-              desc={
-                lastEtiketItem
-                  ? c.qaReorderEtiket(`${fmt(lastEtiketQty)} ad`)
-                  : lastStickerItem
-                    ? c.qaReorderSticker(lastStickerItem.title)
-                    : c.qaReorderSoon
-              }
-              onClick={() => void handleQuickReorder(lastReorderTarget)}
-              disabled={reordering}
-            />
-          ) : (
-            <QuickAction
-              icon={<Icon.Refresh size={20} />}
-              title={c.qaReorder}
-              desc={c.qaReorderSoon}
-              href="/siparislerim"
-            />
-          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
@@ -896,11 +906,13 @@ export default function PanelimPage() {
                           aria-hidden
                         />
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start pl-2">
-                          <div
-                            className="grid place-items-center w-14 h-14 rounded-xl shrink-0"
-                            style={{ background: meta.soft }}
-                          >
-                            <PimMini pose={meta.pim} size={48} />
+                          <div className="shrink-0 min-w-14 rounded-xl overflow-hidden bg-gri-100 ring-1 ring-gri-200/80 p-1">
+                            <OrderCardDesignPreview
+                              orderId={o.id}
+                              items={o.items}
+                              designFilesByItem={designFilesMap[o.id]}
+                              size="sm"
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1049,15 +1061,25 @@ export default function PanelimPage() {
                             className="!bg-yesil-soft/20"
                           >
                             <div className="flex items-center justify-between gap-3 flex-wrap">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-[14px] truncate">
-                                  {dTitle}
+                              <div className="flex items-start gap-3 flex-1 min-w-0">
+                                <div className="shrink-0 min-w-12 rounded-lg overflow-hidden bg-gri-100 ring-1 ring-gri-200/80 p-0.5">
+                                  <OrderCardDesignPreview
+                                    orderId={o.id}
+                                    items={o.items}
+                                    designFilesByItem={designFilesMap[o.id]}
+                                    size="sm"
+                                  />
                                 </div>
-                                <div className="text-[12px] text-gri-700">
-                                  {fmt(o.total)} ₺ ·{" "}
-                                  {locale === "en"
-                                    ? "Delivered ✓"
-                                    : "Teslim edildi ✓"}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-[14px] truncate">
+                                    {dTitle}
+                                  </div>
+                                  <div className="text-[12px] text-gri-700">
+                                    {fmt(o.total)} ₺ ·{" "}
+                                    {locale === "en"
+                                      ? "Delivered ✓"
+                                      : "Teslim edildi ✓"}
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex gap-2 shrink-0">

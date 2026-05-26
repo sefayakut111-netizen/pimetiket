@@ -1327,15 +1327,47 @@
     display: block;
   }
   .placement-btns {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
-  .placement-btns button {
-    flex: 1 1 auto;
-    min-width: 72px;
-    font-size: 11px;
-    padding: 6px 8px;
+  .placement-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 64px;
+    padding: 8px 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .placement-btn:hover {
+    border-color: var(--accent);
+    background: #fdf6f1;
+  }
+  .placement-btn .placement-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .placement-btn .placement-label {
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+  }
+  #resetSettingsPanel { display: none; }
+  html.pim-embed-restricted.pim-has-order-dims #resetSettingsPanel {
+    display: block;
+  }
+  #btnResetSettings {
+    width: 100%;
+    font-size: 12px;
   }
   /* Zoom toolbar */
   .preview-header {
@@ -1568,10 +1600,32 @@
       <div class="panel-title">Yerleşim</div>
       <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Görseli sürükleyerek konumlandırın. Bıçak sabit kalır.</p>
       <div class="placement-btns">
-        <button type="button" class="btn secondary" id="btnPlaceCenter">Ortala</button>
-        <button type="button" class="btn secondary" id="btnPlaceCover">Doldur</button>
-        <button type="button" class="btn secondary" id="btnPlaceContain">İçinde kalsın</button>
+        <button type="button" class="placement-btn" id="btnPlaceCenter" title="Görseli bıçak merkezine hizala">
+          <svg class="placement-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+            <path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>
+          </svg>
+          <span class="placement-label">Ortala</span>
+        </button>
+        <button type="button" class="placement-btn" id="btnPlaceCover" title="Görseli bıçağı tam dolduracak şekilde büyüt">
+          <svg class="placement-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+            <path d="M9 9h6v6H9z"/>
+          </svg>
+          <span class="placement-label">Doldur</span>
+        </button>
+        <button type="button" class="placement-btn" id="btnPlaceContain" title="Görseli bıçak içinde tam göster">
+          <svg class="placement-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="16" rx="1"/>
+            <rect x="8" y="8" width="8" height="8" rx="0.5" stroke-dasharray="2,2"/>
+          </svg>
+          <span class="placement-label">İçinde kalsın</span>
+        </button>
       </div>
+    </div>
+
+    <div class="panel" id="resetSettingsPanel">
+      <button type="button" class="btn secondary" id="btnResetSettings">Ayarları sıfırla</button>
     </div>
 
     <!-- Çıktı -->
@@ -2464,8 +2518,55 @@ function trimTransparentBounds(img) {
   return { canvas: tc, w: tw, h: th, trimmed: true };
 }
 
-function resetImageTransform() {
-  imageTransform = { x: 0, y: 0, scale: 1 };
+function getPngPageRect() {
+  if (!imageMetadata) return null;
+  return {
+    x: imageMetadata.contentOffsetX,
+    y: imageMetadata.contentOffsetY,
+    w: imageMetadata.contentW,
+    h: imageMetadata.contentH,
+  };
+}
+
+function drawPngPageBoundary(ctx) {
+  const page = getPngPageRect();
+  if (!page) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.14)';
+  ctx.fillRect(page.x, page.y, page.w, page.h);
+  ctx.strokeStyle = 'rgba(100, 116, 139, 0.42)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 4]);
+  ctx.strokeRect(page.x + 0.5, page.y + 0.5, page.w - 1, page.h - 1);
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function resetEditorSettings() {
+  const offsetEl = document.getElementById('offsetSlider');
+  const smoothEl = document.getElementById('smoothSlider');
+  if (offsetEl) {
+    offsetEl.value = '2.0';
+    document.getElementById('offsetVal').textContent = '2.0';
+  }
+  if (smoothEl) {
+    smoothEl.value = '0';
+    document.getElementById('smoothVal').textContent = '0';
+  }
+  updateOffsetNote();
+  if (!currentMat || !sourceImage) return;
+  resetImageTransform();
+  if (cutlineFrame && PIM_PARAMS.embed) {
+    applyPlacementPreset('center');
+  } else {
+    generateCutline();
+    generateWhitePlan();
+    render();
+    updateMetadataDisplay();
+    generatePimComment();
+    pimScheduleAutoSave();
+    pimScheduleHeightReport();
+  }
 }
 
 function getArtDrawRect() {
@@ -3154,6 +3255,13 @@ function render() {
   canvas.height = currentMat.rows;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ============================================================
+  // 0. PNG SAYFA SINIRI — sabit yarı saydam sayfa (bıçak üretiminde referans)
+  // ============================================================
+  if (sourceImage) {
+    drawPngPageBoundary(ctx);
+  }
 
   // ============================================================
   // 1. BEYAZ PLAN — ALT KATMAN (görselden ÖNCE çizilir)
@@ -3917,6 +4025,7 @@ updateOffsetNote();
 document.getElementById('btnPlaceCenter')?.addEventListener('click', () => applyPlacementPreset('center'));
 document.getElementById('btnPlaceCover')?.addEventListener('click', () => applyPlacementPreset('cover'));
 document.getElementById('btnPlaceContain')?.addEventListener('click', () => applyPlacementPreset('contain'));
+document.getElementById('btnResetSettings')?.addEventListener('click', () => resetEditorSettings());
 
 document.getElementById('zoomIn')?.addEventListener('click', () => {
   viewZoom = Math.min(3, Math.round((viewZoom + 0.1) * 10) / 10);
@@ -4029,6 +4138,7 @@ function pimCapturePreviewPng() {
     off.height = currentMat.rows;
     const ctx = off.getContext('2d');
     ctx.clearRect(0, 0, off.width, off.height);
+    drawPngPageBoundary(ctx);
     if (layers.white && whitePlanPaths.length > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.92)';
       for (const path of whitePlanPaths) {

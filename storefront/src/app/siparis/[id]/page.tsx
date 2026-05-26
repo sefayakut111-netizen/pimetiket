@@ -22,11 +22,7 @@ import {
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { DesignThumb } from "@/components/cart/DesignThumb";
-import {
-  DesignThumbnailGroup,
-  designPreviewsFromCartItem,
-  type DesignPreviewEntry,
-} from "@/components/cart/DesignThumbnailGroup";
+import { OrderItemDesignPreview } from "@/components/orders/OrderItemDesignPreview";
 import { buildSummaryItems } from "@/lib/order-summary";
 import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
@@ -1160,7 +1156,7 @@ export default function SiparisDetailPage({
                     11.5→13). Tasarım önizlemesi için design-url endpoint
                     fallback'i — cart item designPreviewUrl boş ise (örn.
                     sipariş sonrası /tasarim-yukle'den yükleme) design_files'
-                    tan signed URL alır. SiparisOzetiDesignThumb wrapper. */}
+                    tan signed URL alır. OrderItemDesignPreview wrapper. */}
                 {order.items.map((item) => {
                   const summaryItems = buildSummaryItems(
                     item,
@@ -1172,7 +1168,7 @@ export default function SiparisDetailPage({
                       className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
                     >
                       <div className="flex gap-3 items-start">
-                        <SiparisOzetiDesignThumbGroup
+                        <OrderItemDesignPreview
                           orderId={order.id}
                           item={item}
                           designFiles={itemDesignFiles[item.id]}
@@ -2328,154 +2324,6 @@ function LayerToggle({
       </span>
     </button>
   );
-}
-
-// ============================================================
-// SiparisOzetiDesignThumbGroup — multi-design özet thumbnail'ları
-// ============================================================
-function SiparisOzetiDesignThumbGroup({
-  orderId,
-  item,
-  designFiles,
-  onPreview,
-}: {
-  orderId: string;
-  item: CustomerOrder["items"][number];
-  designFiles?: Array<{
-    id: string;
-    fileName: string;
-    mimeType: string;
-    previewUrl?: string;
-  }>;
-  onPreview?: (url: string) => void;
-}) {
-  const apiPreviews: DesignPreviewEntry[] =
-    designFiles?.map((df) => ({
-      previewUrl: df.previewUrl,
-      fileName: df.fileName,
-      mimeType: df.mimeType,
-    })) ?? [];
-
-  const cartPreviews = designPreviewsFromCartItem(item);
-  const previews = apiPreviews.length > 0 ? apiPreviews : cartPreviews;
-
-  if (previews.length > 1) {
-    const group = (
-      <DesignThumbnailGroup
-        item={{ ...item, product: item.product }}
-        size="sm"
-        previews={previews}
-      />
-    );
-    if (onPreview && previews[0]?.previewUrl) {
-      return (
-        <button
-          type="button"
-          onClick={() => onPreview(previews[0].previewUrl!)}
-          className="cursor-zoom-in shrink-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan/40"
-          aria-label="Tasarımı büyüt"
-        >
-          {group}
-        </button>
-      );
-    }
-    return group;
-  }
-
-  return (
-    <SiparisOzetiDesignThumb
-      orderId={orderId}
-      itemId={item.id}
-      fallbackPreviewUrl={item.designPreviewUrl ?? previews[0]?.previewUrl}
-      fileName={item.designFileName ?? previews[0]?.fileName}
-      mimeType={item.designMimeType ?? previews[0]?.mimeType}
-      product={item.product}
-      onPreview={onPreview}
-    />
-  );
-}
-
-// ============================================================
-// SiparisOzetiDesignThumb — Sipariş özeti kartında thumbnail.
-// Sefa 22 May v68: Cart item designPreviewUrl boş ise (ödeme sonrası
-// /siparis/[id]/tasarim-yukle'den yükleme), DB'de design_files var ama
-// item.designPreviewUrl undefined. design-url endpoint'inden signed URL
-// alıp DesignThumb'a fallback verir.
-// ============================================================
-function SiparisOzetiDesignThumb({
-  orderId,
-  itemId,
-  fallbackPreviewUrl,
-  fileName,
-  mimeType,
-  product,
-  onPreview,
-}: {
-  orderId: string;
-  itemId: string;
-  fallbackPreviewUrl?: string;
-  fileName?: string;
-  mimeType?: string;
-  product: "sticker" | "etiket";
-  onPreview?: (url: string) => void;
-}) {
-  const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
-  const [fetchedMime, setFetchedMime] = useState<string | undefined>(undefined);
-  const [fetchedName, setFetchedName] = useState<string | undefined>(undefined);
-
-  const previewUrl = fallbackPreviewUrl ?? fetchedUrl ?? undefined;
-
-  useEffect(() => {
-    if (fallbackPreviewUrl) return; // cart preview varsa fetch yapma
-    let active = true;
-    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url?thumb=1`, {
-      cache: "no-store",
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { url?: string; mimeType?: string; fileName?: string } | null) => {
-        if (!active || !data?.url) return;
-        // Raster mime ise direkt göster, vector (PDF/AI) ise fallback rozet
-        const isRaster =
-          data.mimeType?.startsWith("image/") &&
-          !data.mimeType.includes("svg");
-        if (isRaster) {
-          setFetchedUrl(data.url);
-        }
-        setFetchedMime(data.mimeType);
-        setFetchedName(data.fileName);
-      })
-      .catch(() => {
-        /* sessiz fail, fallback ürün ikonu gösterilir */
-      });
-    return () => {
-      active = false;
-    };
-  }, [orderId, itemId, fallbackPreviewUrl]);
-
-  const thumb = (
-    <DesignThumb
-      previewUrl={previewUrl}
-      fileName={fileName ?? fetchedName}
-      mimeType={mimeType ?? fetchedMime}
-      product={product}
-      size="sm"
-    />
-  );
-
-  if (onPreview && previewUrl) {
-    return (
-      <button
-        type="button"
-        onClick={() => onPreview(previewUrl)}
-        className="cursor-zoom-in shrink-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan/40"
-        aria-label="Tasarımı büyüt"
-      >
-        {thumb}
-      </button>
-    );
-  }
-
-  return thumb;
 }
 
 // ============================================================
