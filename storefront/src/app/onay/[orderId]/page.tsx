@@ -908,7 +908,7 @@ export default function ProofApprovalPage({
   // Seçilen design + cutline (multi-design → designs[]; legacy → item.cutline)
   const activeDesign =
     activeItem?.designs?.find((d) => d.design_file_id === activeDesignFileId) ??
-    null;
+    (!activeDesignFileId ? (activeItem?.designs?.[0] ?? null) : null);
   const activeCutline =
     activeDesign?.cutline ??
     (activeItem?.designs && activeItem.designs.length > 0

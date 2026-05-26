@@ -72,14 +72,14 @@ export function PanelimAdditionalDesignsRow({
 
   return (
     <div className="mt-3 border-t border-gri-100 pt-3">
-      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gri-600">
         Diğer tasarımlar
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         {others.map((entry, i) => (
           <div
             key={`${entry.fileName ?? "design"}-${i + 2}`}
-            className="flex w-14 flex-col items-center gap-0.5"
+            className="flex w-[4.5rem] flex-col items-center gap-1"
           >
             <DesignThumb
               previewUrl={entry.previewUrl}
@@ -88,12 +88,12 @@ export function PanelimAdditionalDesignsRow({
               product={item.product}
               size="sm"
             />
-            <span className="text-[9px] font-medium text-gri-700">
+            <span className="text-[11px] font-medium text-gri-800">
               Tasarım {i + 2}
             </span>
             {entry.fileName && (
               <span
-                className="max-w-14 truncate text-center text-[8px] text-gri-500"
+                className="max-w-[4.5rem] truncate text-center text-[10px] text-gri-600"
                 title={entry.fileName}
               >
                 {entry.fileName}

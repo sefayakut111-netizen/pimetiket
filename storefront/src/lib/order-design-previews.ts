@@ -95,3 +95,113 @@ export function orderHasMetaPreviews(order: {
   if (order.items.length === 0) return false;
   return order.items.every(itemHasAllMetaPreviews);
 }
+
+type DesignMetaItem = {
+  designCount?: number;
+  designFileName?: string;
+  designPreviewUrl?: string;
+  designMimeType?: string;
+  additionalDesigns?: Array<{
+    fileName: string;
+    previewUrl?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }>;
+};
+
+type DesignDbFile = {
+  id: string;
+  name: string;
+  size: number;
+  uploadedAt: number;
+  status?: string;
+  previewUrl?: string;
+  mimeType?: string;
+  storagePath?: string;
+  flags: Array<{ kind: "ok" | "warning" | "error"; message: string }>;
+};
+
+export type DesignSlotDisplay = DesignDbFile & {
+  slotIndex: number;
+  pendingLink?: boolean;
+};
+
+/** DB kayıtları + meta slot'ları birleştir — multi-design listesi. */
+export function buildDesignSlotDisplay(
+  item: DesignMetaItem | undefined,
+  dbFiles: DesignDbFile[]
+): DesignSlotDisplay[] {
+  const metaSlots: Array<{
+    fileName: string;
+    previewUrl?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }> = [];
+
+  if (item?.designFileName || item?.designPreviewUrl) {
+    metaSlots.push({
+      fileName: item.designFileName ?? "Tasarım 1",
+      previewUrl: item.designPreviewUrl,
+      mimeType: item.designMimeType,
+    });
+  }
+  for (const ad of item?.additionalDesigns ?? []) {
+    metaSlots.push({
+      fileName: ad.fileName,
+      previewUrl: ad.previewUrl,
+      mimeType: ad.mimeType,
+      sizeBytes: ad.sizeBytes,
+    });
+  }
+
+  const expected = getExpectedDesignCount(
+    {
+      designCount: item?.designCount,
+      additionalDesigns: item?.additionalDesigns,
+    },
+    Math.max(dbFiles.length, metaSlots.length)
+  );
+
+  const usedDb = new Set<string>();
+  const entries: DesignSlotDisplay[] = [];
+
+  for (let i = 0; i < expected; i++) {
+    const meta = metaSlots[i];
+    let db =
+      meta &&
+      dbFiles.find(
+        (f) => !usedDb.has(f.id) && f.name === meta.fileName
+      );
+    if (!db) {
+      db = dbFiles.find((f) => !usedDb.has(f.id));
+    }
+    if (db) {
+      usedDb.add(db.id);
+      entries.push({ ...db, slotIndex: i });
+    } else if (meta) {
+      entries.push({
+        id: `meta-${i}`,
+        name: meta.fileName,
+        size: meta.sizeBytes ?? 0,
+        uploadedAt: 0,
+        previewUrl: meta.previewUrl,
+        mimeType: meta.mimeType,
+        flags: [],
+        slotIndex: i,
+        pendingLink: true,
+      });
+    }
+  }
+
+  for (const db of dbFiles) {
+    if (!usedDb.has(db.id)) {
+      entries.push({ ...db, slotIndex: entries.length });
+    }
+  }
+
+  if (entries.length === 0 && dbFiles.length > 0) {
+    return dbFiles.map((f, i) => ({ ...f, slotIndex: i }));
+  }
+
+  return entries;
+}

@@ -2565,6 +2565,21 @@ function drawPngPageBoundary(ctx) {
   ctx.restore();
 }
 
+function resetImageTransform() {
+  imageTransform = { x: 0, y: 0, scale: 1 };
+}
+
+function pimFetchInit(url) {
+  const opts = { mode: 'cors' };
+  try {
+    const u = new URL(url, window.location.origin);
+    if (u.origin === window.location.origin) opts.credentials = 'include';
+  } catch (e) {
+    if (String(url).startsWith('/')) opts.credentials = 'include';
+  }
+  return opts;
+}
+
 function resetEditorSettings() {
   const offsetEl = document.getElementById('offsetSlider');
   const smoothEl = document.getElementById('smoothSlider');
@@ -2664,7 +2679,7 @@ async function pimDownloadProductionExport(type) {
     return;
   }
   try {
-    const res = await fetch(url, { credentials: 'include' });
+    const res = await fetch(url, pimFetchInit(url));
     if (!res.ok) {
       showStatus('İndirme başarısız (' + res.status + ')', 'err');
       return;

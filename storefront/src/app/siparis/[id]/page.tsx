@@ -9,25 +9,23 @@
 
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { use, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Skeleton, StageDot, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import {
-  fetchCustomerOrder,
-  type CustomerOrder,
-} from "@/lib/customer-order";
+import { buildDesignSlotDisplay } from "@/lib/order-design-previews";
+import type { CustomerOrder } from "@/lib/customer-order";
+import { fetchCustomerOrder } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
-import { DesignThumb } from "@/components/cart/DesignThumb";
 import { OrderItemDesignPreview } from "@/components/orders/OrderItemDesignPreview";
+import { DesignThumb } from "@/components/cart/DesignThumb";
 import { buildSummaryItems } from "@/lib/order-summary";
 import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
-import { useVisionFallback } from "@/lib/hooks/useVisionFallback";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE,
@@ -349,11 +347,8 @@ export default function SiparisDetailPage({
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
 
-  const [proofApproved, setProofApproved] = useState(false);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [changeRequestOpen, setChangeRequestOpen] = useState(false);
-  const [changeRequestNote, setChangeRequestNote] = useState("");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   // Dosya yüklendi mi? — DesignUploadCard içindeki files state ana
@@ -375,44 +370,6 @@ export default function SiparisDetailPage({
   const router = useRouter();
   const toast = useToast();
   const [reordering, setReordering] = useState(false);
-  const [proofResponding, setProofResponding] = useState(false);
-
-  const respondToProof = async (
-    action: "approve" | "request_change",
-    noteOverride?: string | null
-  ) => {
-    if (proofResponding) return;
-    setProofResponding(true);
-    try {
-      const note =
-        action === "request_change"
-          ? (noteOverride ?? changeRequestNote).trim().slice(0, 500) || null
-          : null;
-      const res = await fetch(`/api/orders/${id}/proof-respond`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, note }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        toast.error(j.error ?? "İşlem başarısız");
-        return;
-      }
-      if (action === "approve") {
-        setProofApproved(true);
-        toast.success("Provayı onayladın — sipariş üretime gönderildi 🎉");
-      } else {
-        toast.success("Değişiklik talebin operatöre iletildi");
-      }
-      // Order'ı yenile
-      void fetchCustomerOrder(id).then((o) => o && setOrder(o));
-    } catch (e) {
-      console.error("[proof-respond]", e);
-      toast.error("Bağlantı hatası");
-    } finally {
-      setProofResponding(false);
-    }
-  };
 
   // Sefa 17 May Migration 045: kargo bilgisi
   const [shipment, setShipment] = useState<CustomerShipment | null>(null);
@@ -913,28 +870,6 @@ export default function SiparisDetailPage({
                 </div>
               )}
 
-              {order.status === "proof_pending" && (
-                <div className="mt-4 rounded-xl bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/30 p-4">
-                  <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
-                    <div className="font-semibold text-[14px] text-pim-mercan">
-                      ✋{" "}
-                      {locale === "en"
-                        ? "Proof approval needed"
-                        : "Prova onayın bekleniyor"}
-                    </div>
-                    <SlaCountdown createdAt={order.createdAt} locale={locale} />
-                  </div>
-                  <p className="text-[13px] text-gri-700 mb-3">
-                    {locale === "en"
-                      ? "Die-cut and print proof are ready. Review and approve."
-                      : "Bıçak çizimi ve baskı provası hazır. Kontrol edip onayla."}
-                  </p>
-                  <Button variant="primary" size="sm" href={`/onay/${order.id}`}>
-                    {locale === "en" ? "Review proof →" : "Provayı incele →"}
-                  </Button>
-                </div>
-              )}
-
               {order.status === "proof_generating" && (
                 <div className="mt-4 rounded-xl bg-pim-mercan-tint/20 ring-1 ring-pim-mercan/20 p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -1016,95 +951,7 @@ export default function SiparisDetailPage({
               </Card>
             )}
 
-            {/* Sefa 22 May v68 (kaldırıldı) — "Bıçak çiziliyor / İlerlemeyi
-                gör" CTA kartı KALDIRILDI. Faz 4 inline POC iframe sonrası
-                bu kart prova kartı ile dublicate oluyordu: prova kartında
-                zaten gerçek bıçak çizimi inline gösteriliyor, Onayla/
-                Değişiklik iste butonları altta, "↗ Düzenle" linki POC editöre
-                yönlendiriyor. Ekstra CTA kafa karıştırıcıydı. */}
-
-            {/* Sefa 22 May v68: Proof kartı SADELEŞTİRİLDİ.
-                - Pim Mercan gradient header KALDIRILDI (üstteki "Bıçak
-                  çiziliyor / İlerlemeyi gör" CTA kartı ile dublicate idi)
-                - Mock canvas (bej kutu "Sefa" yazılı) KALDIRILDI →
-                  ProofPreviewBox: gerçek tasarım thumbnail + ölçü +
-                  beyaz plan layer toggle
-                - Renk uyarısı + Onayla/Değişiklik iste butonları KALDI */}
-            {phaseIdx === 5 && !proofApproved && order.items[0] && (
-              <Card padding="" className="!p-0 overflow-hidden bg-gri-100">
-                <ProofPreviewBox
-                  orderId={order.id}
-                  itemId={order.items[0].id}
-                  width={order.items[0].width}
-                  height={order.items[0].height}
-                />
-                <div className="p-6 border-t border-gri-200 bg-white">
-                  <p className="text-[13px] text-gri-700 leading-relaxed mb-4">
-                    <strong className="text-lacivert">{c.proofColorWarn}</strong>{" "}
-                    {c.proofColorWarnText}
-                  </p>
-                  {/* Sefa 22 May v68: Butonlar SADECE proof_pending'de aktif.
-                      proof_generating'de bıçak hala hazırlanıyor — backend
-                      endpoint zaten sadece proof_pending kabul ediyor (400
-                      dönüyordu, UI sessiz fail). */}
-                  {order.status === "proof_generating" ||
-                  order.status === "proof_validating" ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-[13px] text-gri-700 bg-gri-50 rounded-lg p-3">
-                        <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
-                        <span>
-                          {order.status === "proof_validating"
-                            ? "Düzenlemenizi kontrol ediyoruz — birkaç saniye."
-                            : "Bıçak çizimi hazırlanıyor — hazır olunca onaylayabileceksin."}
-                        </span>
-                      </div>
-                      {order.status === "proof_generating" && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          href={`/onay/${order.id}`}
-                        >
-                          Prova hazırlığını gör →
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="primary"
-                        onClick={() => void respondToProof("approve")}
-                        disabled={proofResponding}
-                        className="!bg-yesil hover:!bg-yesil-koyu"
-                      >
-                        <Icon.Check size={14} /> {c.proofApprove}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setChangeRequestOpen(true)}
-                        disabled={proofResponding}
-                      >
-                        {c.proofRequestChange}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-            {proofApproved && (
-              <div className="rounded-2xl p-6 bg-yesil-soft ring-1 ring-yesil/30 flex gap-4 items-center">
-                <div className="grid place-items-center w-12 h-12 rounded-full bg-yesil text-white shrink-0">
-                  <Icon.Check size={20} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-base">
-                    {c.proofApprovedTitle}
-                  </h3>
-                  <p className="text-[13px] text-gri-700 mt-0.5">
-                    {c.proofApprovedDesc}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Prova onay — /onay sayfasında; burada tekrar göstermiyoruz. */}
 
             {/* Üretim ortağı bilgilendirmesi — in_production / shipped / delivered */}
             {(order.status === "in_production" ||
@@ -1137,6 +984,7 @@ export default function SiparisDetailPage({
             {/* File upload card */}
             <DesignUploadCard
               orderId={order.id}
+              orderItem={order.items[0]}
               orderItemId={order.items[0]?.id}
               itemDesignFiles={itemDesignFiles}
               c={c}
@@ -1151,75 +999,111 @@ export default function SiparisDetailPage({
             {/* Order summary */}
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-4">{c.summaryTitle}</h3>
-              <ul className="flex flex-col gap-3 text-[13px]">
-                {/* Sefa 22 May v68: Font boyutları büyütüldü (13.5→14.5,
-                    11.5→13). Tasarım önizlemesi için design-url endpoint
-                    fallback'i — cart item designPreviewUrl boş ise (örn.
-                    sipariş sonrası /tasarim-yukle'den yükleme) design_files'
-                    tan signed URL alır. OrderItemDesignPreview wrapper. */}
+              <ul className="flex flex-col gap-2.5 text-[13px] mb-4">
                 {order.items.map((item) => {
                   const summaryItems = buildSummaryItems(
                     item,
                     c.locale === "en-US" ? "en" : "tr"
                   );
+                  const designFiles = itemDesignFiles[item.id] ?? [];
+                  const designRows =
+                    designFiles.length > 1
+                      ? designFiles.map((df, idx) => ({
+                          key: df.id,
+                          previewUrl: df.previewUrl,
+                          fileName: df.fileName,
+                          mimeType: df.mimeType,
+                          label:
+                            idx === 0
+                              ? item.title
+                              : locale === "en"
+                                ? `Design ${idx + 1}`
+                                : `Tasarım ${idx + 1}`,
+                          showPrice: idx === 0,
+                        }))
+                      : [
+                          {
+                            key: item.id,
+                            previewUrl: undefined as string | undefined,
+                            fileName: undefined as string | undefined,
+                            mimeType: undefined as string | undefined,
+                            label: item.title,
+                            showPrice: true,
+                          },
+                        ];
+
                   return (
                     <li
                       key={item.id}
                       className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
                     >
-                      <div className="flex gap-3 items-start">
-                        <OrderItemDesignPreview
-                          orderId={order.id}
-                          item={item}
-                          designFiles={itemDesignFiles[item.id]}
-                          onPreview={setLightboxSrc}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between gap-3 items-baseline">
-                            <span className="font-semibold text-lacivert text-[14.5px] truncate flex-1 min-w-0">
-                              {item.title}
-                            </span>
-                            <span className="font-semibold tabular-nums shrink-0 text-[14.5px]">
-                              {fmt(item.total)} {c.currency}
-                            </span>
+                      <div className="space-y-2">
+                        {designRows.map((row) => (
+                          <div
+                            key={row.key}
+                            className="flex gap-3 items-center min-w-0"
+                          >
+                            {designFiles.length > 1 ? (
+                              <DesignThumb
+                                previewUrl={row.previewUrl}
+                                fileName={row.fileName}
+                                mimeType={row.mimeType}
+                                product={item.product}
+                                size="sm"
+                              />
+                            ) : (
+                              <OrderItemDesignPreview
+                                orderId={order.id}
+                                item={item}
+                                designFiles={designFiles}
+                                onPreview={setLightboxSrc}
+                              />
+                            )}
+                            <div className="flex-1 min-w-0 flex justify-between gap-3 items-baseline">
+                              <span className="font-semibold text-lacivert text-[14px] leading-snug">
+                                {row.label}
+                              </span>
+                              {row.showPrice && (
+                                <span className="font-semibold tabular-nums shrink-0 text-[14px]">
+                                  {fmt(item.total)} {c.currency}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {/* Basamak basamak özet — her bir konfigüratör
-                              seçimi tek satır */}
-                          {summaryItems.length > 0 && (
-                            <ul className="mt-2 space-y-1 text-[13px] text-gri-700 leading-relaxed">
-                              {summaryItems.map((s, i) => (
-                                <li key={i} className="flex items-start gap-1.5">
-                                  <span aria-hidden="true" className="shrink-0">
-                                    {s.icon}
-                                  </span>
-                                  <span>
-                                    <span className="text-gri-500">
-                                      {s.label}:
-                                    </span>{" "}
-                                    <span className="font-medium text-lacivert">
-                                      {s.value}
-                                    </span>
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          <div className="text-[12.5px] text-gri-500 mt-2 tabular-nums">
-                            {fmtUnit(item.unit)} {c.currency} × {item.qty.toLocaleString(c.locale)} {c.pcs}
-                          </div>
-                          {(order.status === "paid" ||
-                            order.status === "awaiting_upload") && (
-                            <Link
-                              href={`/siparis/${order.id}/tasarim-yukle?item=${item.id}`}
-                              className="inline-block mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
-                            >
-                              {locale === "en"
-                                ? "Upload / change design →"
-                                : "Tasarım yükle / değiştir →"}
-                            </Link>
-                          )}
-                        </div>
+                        ))}
                       </div>
+                      {summaryItems.length > 0 && (
+                        <ul className="mt-2 ml-[3.25rem] space-y-1 text-[12.5px] text-gri-700 leading-relaxed">
+                          {summaryItems.map((s, i) => (
+                            <li key={i} className="flex items-start gap-1.5">
+                              <span aria-hidden="true" className="shrink-0">
+                                {s.icon}
+                              </span>
+                              <span>
+                                <span className="text-gri-500">{s.label}:</span>{" "}
+                                <span className="font-medium text-lacivert">
+                                  {s.value}
+                                </span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="text-[12px] text-gri-500 mt-2 ml-[3.25rem] tabular-nums">
+                        {fmtUnit(item.unit)} {c.currency} ×{" "}
+                        {item.qty.toLocaleString(c.locale)} {c.pcs}
+                      </div>
+                      {(order.status === "paid" ||
+                        order.status === "awaiting_upload") && (
+                        <Link
+                          href={`/siparis/${order.id}/tasarim-yukle?item=${item.id}`}
+                          className="inline-block mt-2 ml-[3.25rem] text-[12px] font-semibold text-pim-mercan hover:underline"
+                        >
+                          {locale === "en"
+                            ? "Upload / change design →"
+                            : "Tasarım yükle / değiştir →"}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
@@ -1509,55 +1393,6 @@ export default function SiparisDetailPage({
         </div>
       </div>
 
-      {changeRequestOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <Card padding="p-6" className="w-full max-w-md">
-            <h3 className="text-lg font-semibold text-lacivert mb-2">
-              {locale === "en" ? "Request changes" : "Değişiklik iste"}
-            </h3>
-            <p className="text-[13px] text-gri-700 mb-4">
-              {locale === "en"
-                ? "Describe what you want changed. Our team will review and update the proof."
-                : "Ne değişmesini istiyorsun? Ekibimiz inceleyip provayı güncelleyecek."}
-            </p>
-            <textarea
-              value={changeRequestNote}
-              onChange={(e) => setChangeRequestNote(e.target.value)}
-              placeholder={
-                locale === "en"
-                  ? 'e.g. "Logo should be 2mm bigger" or "Cut line too close to edge"'
-                  : 'Örn: "Logo 2mm büyük olsun" veya "Bıçak çizgisi kenara çok yakın"'
-              }
-              rows={4}
-              className="w-full px-3 py-2.5 rounded-lg ring-1 ring-gri-200 text-[14px] focus:ring-2 focus:ring-pim-mercan/40 focus:outline-none resize-none mb-4"
-              autoFocus
-            />
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setChangeRequestOpen(false);
-                  setChangeRequestNote("");
-                }}
-              >
-                {locale === "en" ? "Cancel" : "Vazgeç"}
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setChangeRequestOpen(false);
-                  void respondToProof("request_change", changeRequestNote);
-                  setChangeRequestNote("");
-                }}
-                disabled={proofResponding}
-              >
-                {locale === "en" ? "Send request" : "Talebi gönder"}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
       {lightboxSrc && (
         <div
           className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 cursor-zoom-out"
@@ -1596,21 +1431,7 @@ export default function SiparisDetailPage({
           </Button>
         </div>
       )}
-      {order.status === "proof_pending" && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
-          <Button
-            variant="primary"
-            size="md"
-            href={`/onay/${order.id}`}
-            className="w-full !bg-yesil hover:!bg-yesil-koyu"
-          >
-            ✋ {locale === "en" ? "Approve proof" : "Provayı onayla"}
-          </Button>
-        </div>
-      )}
-      {(order.status === "awaiting_upload" ||
-        order.status === "paid" ||
-        order.status === "proof_pending") && (
+      {(order.status === "awaiting_upload" || order.status === "paid") && (
         <div className="h-16 md:hidden" aria-hidden />
       )}
     </main>
@@ -1638,6 +1459,7 @@ interface UploadedFile {
 
 interface DbFileRow {
   id: string;
+  order_item_id: string | null;
   storage_path: string;
   original_name: string;
   size_bytes: number;
@@ -1668,671 +1490,6 @@ function dbRowToUploaded(r: DbFileRow): UploadedFile & { id: string; status: str
   };
 }
 
-// ============================================================
-// ProofPreviewBox v2 — Faz 2 (Sefa 22 May v68 plan)
-// ------------------------------------------------------------
-// Sol panel: 3 layer toggle (Renk, Bıçak, Beyaz plan) + ölçü + meta
-// Sağ canvas: zoom transform + pan + cutline SVG overlay + fullscreen
-// "Düzenle" butonu /onay/duzenle POC editörüne yönlendirir.
-//
-// Beyaz plan: şu an basit white background toggle. Faz 3'te kullanıcı
-// upload + alpha channel auto-mask gelir.
-// Bıçak: şu an mock SVG (yuvarlak/dikdörtgen frame). Faz 4'te
-// cutline_designs tablosundan gerçek SVG çekilir.
-// ============================================================
-
-type LayerKey = "color" | "cutline" | "white";
-
-// Checker pattern (şeffaflık) — global helper
-const CHECKER_STYLE = {
-  backgroundImage:
-    "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)",
-  backgroundSize: "16px 16px",
-  backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
-  backgroundColor: "white",
-} as const;
-
-const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4] as const;
-
-function ProofPreviewBox({
-  orderId,
-  itemId,
-  width,
-  height,
-}: {
-  orderId: string;
-  itemId: string;
-  width: number;
-  height: number;
-}) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [mimeType, setMimeType] = useState<string | undefined>(undefined);
-  const [fileName, setFileName] = useState<string | undefined>(undefined);
-
-  // Layer visibility — Renk açık default, Bıçak açık, Beyaz plan kapalı
-  // (sadece transparan material'da kritik; opaque'larda görsel kirlilik)
-  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
-    color: true,
-    cutline: true,
-    white: false,
-  });
-
-  // Zoom + fullscreen
-  const [zoomIdx, setZoomIdx] = useState(2); // 100% (index 2)
-  const [fullscreen, setFullscreen] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    void fetch(`/api/orders/${orderId}/items/${itemId}/design-url`, {
-      cache: "no-store",
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(
-        (data: { url?: string; mimeType?: string; fileName?: string } | null) => {
-          if (!active || !data?.url) return;
-          setSignedUrl(data.url);
-          setMimeType(data.mimeType);
-          setFileName(data.fileName);
-        }
-      )
-      .catch(() => {
-        /* sessiz fail */
-      });
-    return () => {
-      active = false;
-    };
-  }, [orderId, itemId]);
-
-  const isRaster =
-    mimeType?.startsWith("image/") && !mimeType?.includes("svg");
-
-  const zoom = ZOOM_LEVELS[zoomIdx];
-  const zoomIn = useCallback(
-    () => setZoomIdx((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1)),
-    []
-  );
-  const zoomOut = useCallback(
-    () => setZoomIdx((i) => Math.max(i - 1, 0)),
-    []
-  );
-  const fitToScreen = useCallback(() => setZoomIdx(2), []); // 100%
-
-  function toggleLayer(key: LayerKey) {
-    setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  // Fullscreen escape
-  useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFullscreen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreen]);
-
-  // Sefa 22 May v68 Faz 4 — POC iframe entegrasyonu.
-  // Mock SVG bıçak overlay'i KALDIRILDI. POC HTML (/poc.html?headless=1)
-  // inline iframe olarak göstereriz. signedUrl varsa designUrl param ile
-  // auto-load, OpenCV başlayınca otomatik bıçak + beyaz plan üretir.
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iframeReady, setIframeReady] = useState(false);
-  const [iframeError, setIframeError] = useState<string | null>(null);
-  // Sefa 22 May v68 Faz 3 — Vision fallback ortak hook.
-  // POC partCount=0 / coverage>0.95 signal'ı → /api/pim/cutline-vision-fallback
-  // → diagnosis + suggested_action + pim_message banner olarak gösterilir.
-  const { visionFallback, dismiss: dismissVisionFallback } = useVisionFallback({
-    orderId,
-    itemId,
-    iframeRef,
-  });
-
-  // POC URL — designUrl + headless + layers seti
-  const pocSrc = signedUrl
-    ? `/poc.html?${new URLSearchParams({
-        designUrl: signedUrl,
-        orderId,
-        itemId,
-        headless: "1",
-        layers: ["cut"]
-          .concat(layers.cutline ? [] : [])
-          .filter(Boolean)
-          .join(","),
-      }).toString()}`
-    : null;
-
-  // POC iframe'den ready/saved/error mesajlarını dinle
-  useEffect(() => {
-    function onMsg(e: MessageEvent) {
-      if (!iframeRef.current || e.source !== iframeRef.current.contentWindow)
-        return;
-      const msg = e.data;
-      if (!msg || typeof msg !== "object") return;
-      if (msg.type === "pim-poc-ready") {
-        setIframeReady(true);
-        setIframeError(null);
-        console.log("[ProofPreviewBox] POC ready");
-      }
-      if (msg.type === "pim-poc-loaded") {
-        console.log("[ProofPreviewBox] POC tasarım yükledi:", msg);
-        setIframeError(null);
-      }
-      if (msg.type === "pim-poc-error") {
-        console.error("[ProofPreviewBox] POC error:", msg.error);
-        setIframeError(String(msg.error));
-      }
-      // Sefa 22 May v68 Faz 3 — Vision fallback artık useVisionFallback
-      // hook'u içinde işleniyor (kod tekrarı /onay/duzenle ile birleşti).
-    }
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, []);
-
-  // Layer toggle değişince iframe'e bildir (POC tarafında gerçek katman aç/kapa)
-  useEffect(() => {
-    if (!iframeReady || !iframeRef.current?.contentWindow) return;
-    const win = iframeRef.current.contentWindow;
-    // Pim Renk = POC'da hep aktif (tasarım her zaman gözükür);
-    // Pim Bıçak → POC "cut" layer;
-    // Pim Beyaz plan → POC "white" layer.
-    win.postMessage(
-      { type: "pim-toggle-layer", layer: "cut", on: layers.cutline },
-      "*"
-    );
-    win.postMessage(
-      { type: "pim-toggle-layer", layer: "white", on: layers.white },
-      "*"
-    );
-  }, [iframeReady, layers.cutline, layers.white]);
-
-  function Canvas({ heightClass }: { heightClass: string }) {
-    return (
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-md border border-gri-200 bg-white",
-          heightClass
-        )}
-      >
-        {pocSrc ? (
-          <iframe
-            ref={iframeRef}
-            src={pocSrc}
-            title="Bıçak çizimi önizleme"
-            className="absolute inset-0 w-full h-full"
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "center",
-              border: "none",
-            }}
-            // POC same-origin iframe (kendi public/ assetimiz) — sandbox gevşek
-            // postMessage çalışsın diye allow-scripts + same-origin
-            sandbox="allow-scripts allow-same-origin"
-          />
-        ) : (
-          <div className="absolute inset-0 grid place-items-center text-[12px] text-gri-500">
-            Tasarım yükleniyor…
-          </div>
-        )}
-
-        {/* Error mesajı — POC iframe'den gelen pim-poc-error */}
-        {iframeError && (
-          <div className="absolute top-2 left-2 right-2 bg-kirmizi-soft border border-kirmizi/40 text-kirmizi text-[11.5px] px-3 py-2 rounded shadow-1">
-            <strong>POC hata:</strong> {iframeError}
-            <div className="text-[10px] text-gri-700 mt-1">
-              Browser Console&apos;u aç (F12), &quot;[pim-poc]&quot; satırlarına bak.
-            </div>
-          </div>
-        )}
-
-        {/* Sefa 22 May v68 Faz 3 — Vision AI tanı banner'ı.
-            POC partCount=0 vb. tetikleyince /api/pim/cutline-vision-fallback
-            gerçek görsele bakıp daha akıllı bir öneri verir. */}
-        {visionFallback && (
-          <div
-            className={
-              "absolute top-2 left-2 right-2 rounded shadow-1 text-[12px] px-3 py-2 border " +
-              (visionFallback.severity === "err"
-                ? "bg-kirmizi-soft border-kirmizi/40 text-kirmizi"
-                : "bg-pim-mercan-tint border-pim-mercan/40 text-lacivert")
-            }
-          >
-            <div className="flex items-start gap-2">
-              <span
-                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-pim-mercan text-white text-[11px] font-bold"
-                aria-hidden
-              >
-                {visionFallback.loading ? "…" : "AI"}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold">
-                  {visionFallback.loading
-                    ? "Pim Vision tanı koyuyor"
-                    : visionFallback.fallback
-                      ? "Pim önerisi"
-                      : "Pim Vision tanısı"}
-                </div>
-                <p className="mt-1 leading-relaxed">
-                  {visionFallback.pim_message}
-                </p>
-                {!visionFallback.loading && visionFallback.diagnosis && (
-                  <details className="mt-1.5 text-[11px]">
-                    <summary className="cursor-pointer text-gri-700 hover:text-lacivert">
-                      Teknik tanı
-                    </summary>
-                    <p className="mt-1 text-gri-700">
-                      {visionFallback.diagnosis}
-                    </p>
-                  </details>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={dismissVisionFallback}
-                className="text-gri-700 hover:text-lacivert text-[16px] leading-none"
-                aria-label="Kapat"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Zoom level rozeti — sağ alt */}
-        <div className="absolute bottom-2 right-2 bg-lacivert/85 text-white text-[10.5px] font-mono px-2 py-0.5 rounded pointer-events-none">
-          %{Math.round(zoom * 100)}
-        </div>
-      </div>
-    );
-  }
-
-  // Layer paneli — fullscreen ve inline'da aynı
-  function LayerPanel() {
-    return (
-      <div className="flex flex-col gap-3 text-[12.5px]">
-        <div>
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500 mb-2">
-            Katmanlar
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <LayerToggle
-              label="Renk"
-              swatch="color"
-              active={layers.color}
-              onClick={() => toggleLayer("color")}
-              hint="Tasarım orijinal renkleri"
-            />
-            <LayerToggle
-              label="Bıçak"
-              swatch="cutline"
-              active={layers.cutline}
-              onClick={() => toggleLayer("cutline")}
-              hint="Kesim çizgisi (die-cut)"
-            />
-            <LayerToggle
-              label="Beyaz plan"
-              swatch="white"
-              active={layers.white}
-              onClick={() => toggleLayer("white")}
-              hint="Şeffaf etiket alt katmanı"
-              disabled={!isRaster}
-            />
-          </div>
-          {/* Sefa 22 May v68 Faz 3b — Manuel beyaz plan upload.
-              Default otomatik beyaz plan kullanılır (alpha channel mask).
-              İleri tasarımcı kendi beyaz planını yüklemek istiyorsa: */}
-          <WhitePlanUploader
-            orderId={orderId}
-            itemId={itemId}
-            disabled={!isRaster}
-          />
-        </div>
-
-        <div className="border-t border-gri-200 pt-3">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500 mb-1.5">
-            Ölçü
-          </div>
-          <div className="font-semibold tabular-nums text-lacivert text-[14px]">
-            {width} × {height} mm
-          </div>
-        </div>
-
-        <div className="border-t border-gri-200 pt-3">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500 mb-1.5">
-            AI ön-kontrol
-          </div>
-          <div className="space-y-0.5 text-[12px] text-gri-700">
-            <div className="flex items-center gap-1.5">
-              <span className="text-yesil">✓</span> CMYK renk uzayı
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-yesil">✓</span> Çözünürlük 320 DPI
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Top control bar
-  function TopBar({ extra }: { extra?: ReactNode }) {
-    return (
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={zoomOut}
-          disabled={zoomIdx === 0}
-          className="w-8 h-8 grid place-items-center rounded bg-gri-100 hover:bg-gri-200 disabled:opacity-40 text-lacivert"
-          aria-label="Uzaklaş"
-        >
-          −
-        </button>
-        <button
-          type="button"
-          onClick={fitToScreen}
-          className="h-8 px-2.5 rounded bg-gri-100 hover:bg-gri-200 text-[12px] font-semibold text-lacivert tabular-nums min-w-[52px]"
-        >
-          %{Math.round(zoom * 100)}
-        </button>
-        <button
-          type="button"
-          onClick={zoomIn}
-          disabled={zoomIdx === ZOOM_LEVELS.length - 1}
-          className="w-8 h-8 grid place-items-center rounded bg-gri-100 hover:bg-gri-200 disabled:opacity-40 text-lacivert"
-          aria-label="Yakınlaş"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          onClick={() => setFullscreen((v) => !v)}
-          className="h-8 px-3 rounded bg-gri-100 hover:bg-gri-200 text-[12px] font-semibold text-lacivert"
-        >
-          {fullscreen ? "✕ Kapat" : "⛶ Tam ekran"}
-        </button>
-        <a
-          href={`/onay/${orderId}/duzenle/${itemId}`}
-          className="h-8 px-3 grid place-items-center rounded bg-pim-mercan/10 hover:bg-pim-mercan/20 text-[12px] font-semibold text-pim-mercan"
-        >
-          ↗ Düzenle
-        </a>
-        {extra}
-      </div>
-    );
-  }
-
-  // Fullscreen modal — z-50, escape ile çıkar
-  if (fullscreen) {
-    return (
-      <div
-        className="fixed inset-0 z-50 bg-lacivert/95 backdrop-blur-sm p-4 md:p-8"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="h-full grid grid-rows-[auto_1fr] gap-4 max-w-[1600px] mx-auto">
-          <div className="flex items-center justify-between gap-4 text-white">
-            <h2 className="text-[18px] font-semibold">Prova — tam ekran</h2>
-            <TopBar />
-          </div>
-          <div className="grid grid-cols-[240px_1fr] gap-4 min-h-0">
-            <div className="bg-white rounded-lg p-4 overflow-y-auto">
-              <LayerPanel />
-            </div>
-            <Canvas heightClass="h-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 md:p-6">
-      {/* Top bar */}
-      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
-        <TopBar />
-      </div>
-
-      {/* Layer panel (lg: yan, md/sm: üst stack) + Canvas */}
-      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4">
-        <div className="lg:order-1 order-2">
-          <LayerPanel />
-        </div>
-        <div className="lg:order-2 order-1">
-          <Canvas heightClass="h-[400px] md:h-[480px]" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// WhitePlanUploader — Faz 3b (Sefa 22 May v68)
-// ------------------------------------------------------------
-// İleri tasarımcı/ajans için manuel beyaz plan yükleme.
-// Default akış: otomatik beyaz plan (alpha channel mask, Faz 4'te
-// üretici tarafında üretilir). Bu component opt-in — küçük bir
-// expander altında, çoğu müşteri görmez ama gören için fonksiyonel.
-//
-// Upload akışı:
-//   POST /api/design/upload-init { kind: "white" }
-//   → storage_path: orderId/_white/uuid.png (subfolder ayırma)
-//   → design_files.ai_check.kind = "white" meta
-//   PUT signed URL
-//   POST /api/design/upload-complete { fileId }
-// ============================================================
-function WhitePlanUploader({
-  orderId,
-  itemId,
-  disabled,
-}: {
-  orderId: string;
-  itemId: string;
-  disabled?: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleFile(file: File) {
-    if (file.size > 30 * 1024 * 1024) {
-      setError("Dosya 30 MB'tan büyük olamaz");
-      return;
-    }
-    setError(null);
-    setUploading(true);
-    try {
-      const initRes = await fetch("/api/design/upload-init", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          orderId,
-          orderItemId: itemId,
-          originalName: file.name,
-          sizeBytes: file.size,
-          mimeType: file.type,
-          kind: "white",
-        }),
-      });
-      if (!initRes.ok) {
-        const e = (await initRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(e.error || `init_failed_${initRes.status}`);
-      }
-      const init = (await initRes.json()) as {
-        uploadUrl: string;
-        token: string;
-        storagePath: string;
-        fileId: string;
-      };
-
-      const supabase = createSupabaseClient();
-      const { error: uploadErr } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .uploadToSignedUrl(init.storagePath, init.token, file);
-      if (uploadErr) throw new Error(`upload_failed: ${uploadErr.message}`);
-
-      const compRes = await fetch("/api/design/upload-complete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fileId: init.fileId }),
-      });
-      if (!compRes.ok) {
-        const e = (await compRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(e.error || `complete_failed_${compRes.status}`);
-      }
-
-      setUploadedFile(file.name);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  if (disabled) return null;
-
-  return (
-    <div className="mt-3 pt-3 border-t border-gri-200">
-      {!expanded && !uploadedFile && (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="text-[11.5px] text-pim-mercan font-semibold hover:underline"
-        >
-          + Kendi beyaz planımı yüklerim (ileri seviye)
-        </button>
-      )}
-
-      {expanded && !uploadedFile && (
-        <div className="space-y-2">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500">
-            Manuel beyaz plan
-          </div>
-          <p className="text-[11.5px] text-gri-700 leading-relaxed">
-            Tasarımının beyaz baskı katmanı için PNG/PDF yükle. Beyaz
-            (görünür) alanlar siyahla maskelenmiş olmalı.
-          </p>
-          <input
-            type="file"
-            accept=".png,.jpg,.jpeg,.pdf"
-            disabled={uploading}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handleFile(f);
-            }}
-            className="block w-full text-[11.5px] text-gri-700 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-pim-mercan file:text-white file:text-[11px] file:font-semibold file:cursor-pointer hover:file:bg-pim-mercan-koyu"
-          />
-          {uploading && (
-            <div className="text-[11px] text-pim-mercan">Yükleniyor…</div>
-          )}
-          {error && (
-            <div className="text-[11px] text-kirmizi">⚠ {error}</div>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setExpanded(false);
-              setError(null);
-            }}
-            className="text-[11px] text-gri-500 hover:text-gri-700"
-          >
-            Vazgeç
-          </button>
-        </div>
-      )}
-
-      {uploadedFile && (
-        <div className="space-y-1">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-gri-500">
-            Manuel beyaz plan
-          </div>
-          <div className="flex items-center gap-1.5 text-[11.5px] text-yesil">
-            <span>✓</span>
-            <span className="font-semibold truncate">{uploadedFile}</span>
-          </div>
-          <p className="text-[10.5px] text-gri-500 leading-relaxed">
-            Otomatik beyaz plan yerine bu dosya kullanılacak. Üretim
-            ekibimiz kontrol eder.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// LayerToggle — küçük renkli kare swatch + label + checkbox
-function LayerToggle({
-  label,
-  swatch,
-  active,
-  onClick,
-  hint,
-  disabled,
-}: {
-  label: string;
-  swatch: "color" | "cutline" | "white";
-  active: boolean;
-  onClick: () => void;
-  hint?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={disabled ? "Sadece raster (PNG/JPG) tasarımlar için" : hint}
-      className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors",
-        active
-          ? "bg-pim-mercan-tint hover:bg-pim-mercan-tint/80"
-          : "bg-gri-50 hover:bg-gri-100",
-        disabled && "opacity-40 cursor-not-allowed hover:bg-gri-50"
-      )}
-      aria-pressed={active}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "inline-block w-4 h-4 rounded-sm border shrink-0",
-          swatch === "color" && "bg-gradient-to-br from-pim-mercan to-mavi",
-          swatch === "cutline" && "bg-white border-[#ff4d6d] border-dashed",
-          swatch === "white" && "bg-white border-gri-400"
-        )}
-      />
-      <span className={cn("flex-1 font-medium", active ? "text-lacivert" : "text-gri-700")}>
-        {label}
-      </span>
-      <span
-        className={cn(
-          "inline-block w-4 h-4 rounded border grid place-items-center",
-          active
-            ? "bg-pim-mercan border-pim-mercan text-white"
-            : "border-gri-300"
-        )}
-      >
-        {active && (
-          <svg className="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none">
-            <path
-              d="M2.5 6L5 8.5L9.5 3.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-      </span>
-    </button>
-  );
-}
-
-// ============================================================
-// DesignFileThumb — raster tasarımlar için preview thumbnail.
-// Sefa 21 May v68 (E sorun fix): /siparis/[id] sayfasında dosya yüklenmiş
-// ama önizleme gözükmüyordu — sadece Icon.Box rendered. Bu component
-// storagePath ile Supabase Storage'tan signed URL alır, image render eder.
-// SVG/PDF/AI/EPS (vector) için fallback Icon.Box kalır.
-// ============================================================
 function DesignFileThumb({
   storagePath,
   mimeType,
@@ -2391,11 +1548,13 @@ function DesignFileThumb({
 
 function DesignUploadCard({
   orderId,
+  orderItem,
   orderItemId,
   itemDesignFiles,
   c,
 }: {
   orderId: string;
+  orderItem?: CustomerOrder["items"][number];
   orderItemId?: string;
   itemDesignFiles?: Record<
     string,
@@ -2406,6 +1565,32 @@ function DesignUploadCard({
   const [files, setFiles] = useState<Array<UploadedFile & { id?: string; status?: string }>>([]);
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [uploadStatusFiles, setUploadStatusFiles] = useState<
+    Array<{ id: string; fileName: string; previewUrl?: string }>
+  >([]);
+
+  const refreshUploadStatus = async () => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/upload-status`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        items?: Array<{
+          id: string;
+          designFiles?: Array<{
+            id: string;
+            fileName: string;
+            previewUrl?: string;
+          }>;
+        }>;
+      };
+      const item = data.items?.find((i) => i.id === orderItemId);
+      setUploadStatusFiles(item?.designFiles ?? []);
+    } catch {
+      /* sessiz */
+    }
+  };
 
   // Auth mode: DB; Guest mode: in-memory mock (localStorage kaldırıldı)
   const refreshDb = async () => {
@@ -2429,15 +1614,72 @@ function DesignUploadCard({
       }
     }
     setFiles(
-      (data as unknown as DbFileRow[]).map((r) => ({
-        ...dbRowToUploaded(r),
-        previewUrl: previewById.get(r.id),
-      }))
+      (data as unknown as DbFileRow[])
+        .filter(
+          (r) =>
+            !orderItemId ||
+            r.order_item_id === orderItemId ||
+            r.order_item_id == null
+        )
+        .map((r) => ({
+          ...dbRowToUploaded(r),
+          previewUrl: previewById.get(r.id),
+        }))
     );
   };
 
+  const apiDesignFiles =
+    uploadStatusFiles.length > 0
+      ? uploadStatusFiles
+      : orderItemId && itemDesignFiles?.[orderItemId]
+        ? itemDesignFiles[orderItemId]
+        : [];
+
+  const mergedDbFiles = (() => {
+    const byId = new Map(
+      files.map((f) => [
+        f.id ?? f.name,
+        {
+          id: f.id ?? f.name,
+          name: f.name,
+          size: f.size,
+          uploadedAt: f.uploadedAt,
+          status: f.status,
+          previewUrl: f.previewUrl,
+          mimeType: f.mimeType,
+          storagePath: f.storagePath,
+          flags: f.flags,
+        },
+      ])
+    );
+    for (const af of apiDesignFiles) {
+      const existing = byId.get(af.id);
+      if (existing) {
+        if (!existing.previewUrl && af.previewUrl) {
+          existing.previewUrl = af.previewUrl;
+        }
+      } else {
+        byId.set(af.id, {
+          id: af.id,
+          name: af.fileName,
+          size: 0,
+          uploadedAt: 0,
+          status: undefined,
+          previewUrl: af.previewUrl,
+          mimeType: undefined,
+          storagePath: undefined,
+          flags: [],
+        });
+      }
+    }
+    return [...byId.values()].sort((a, b) => a.uploadedAt - b.uploadedAt);
+  })();
+
+  const displayFiles = buildDesignSlotDisplay(orderItem, mergedDbFiles);
+
   useEffect(() => {
     if (isLoggedInSync()) {
+      void refreshUploadStatus();
       void refreshDb().finally(() => setHydrated(true));
       // Polling — AI check tamamlanınca status değişecek
       const interval = setInterval(() => {
@@ -2456,6 +1698,16 @@ function DesignUploadCard({
       void refreshDb();
     }
   }, [itemDesignFiles]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasPendingSlots = displayFiles.some((f) => f.pendingLink);
+  useEffect(() => {
+    if (!hasPendingSlots) return;
+    const interval = setInterval(() => {
+      void refreshUploadStatus();
+      void refreshDb();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [hasPendingSlots]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRealUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -2607,7 +1859,7 @@ function DesignUploadCard({
         </div>
       </div>
 
-      {files.length === 0 ? (
+      {displayFiles.length === 0 ? (
         <div className="rounded-lg bg-gri-50 ring-1 ring-dashed ring-gri-200 p-8 text-center">
           <Icon.Box size={36} className="text-gri-500 mx-auto mb-3" />
           <h3 className="font-semibold text-lacivert mb-1">
@@ -2619,18 +1871,23 @@ function DesignUploadCard({
         </div>
       ) : (
         <div className="space-y-3">
-          {files.map((f, i) => {
-            const date = new Date(f.uploadedAt).toLocaleString(c.locale, {
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            const sizeMb = (f.size / 1024 / 1024).toFixed(1);
+          {displayFiles.map((f) => {
+            const date =
+              f.uploadedAt > 0
+                ? new Date(f.uploadedAt).toLocaleString(c.locale, {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : null;
+            const sizeMb =
+              f.size > 0 ? (f.size / 1024 / 1024).toFixed(1) : null;
             const hasError = f.flags.some((fl) => fl.kind === "error");
             const hasWarning = f.flags.some((fl) => fl.kind === "warning");
-            const statusIcon =
-              f.status === "qc_passed" || f.status === "approved"
+            const statusIcon = f.pendingLink
+              ? "⏳"
+              : f.status === "qc_passed" || f.status === "approved"
                 ? "✅"
                 : f.status === "analyzing"
                   ? "⏳"
@@ -2639,7 +1896,7 @@ function DesignUploadCard({
                     : "📁";
             return (
               <div
-                key={f.id ?? f.name}
+                key={f.id ?? `${f.name}-${f.slotIndex}`}
                 className="flex items-start gap-3 p-4 rounded-lg bg-gri-50 ring-1 ring-gri-200"
               >
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-gri-100 shrink-0 ring-1 ring-gri-200">
@@ -2665,9 +1922,13 @@ function DesignUploadCard({
                       {f.name}
                     </span>
                     <span className="text-[10px] font-semibold text-gri-500 uppercase tracking-wide">
-                      Tasarım {i + 1}
+                      Tasarım {f.slotIndex + 1}
                     </span>
-                    {hasError ? (
+                    {f.pendingLink ? (
+                      <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-mavi-soft text-mavi-koyu text-[11px] font-bold">
+                        Bağlanıyor
+                      </span>
+                    ) : hasError ? (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi/10 text-kirmizi text-[11px] font-bold">
                         {c.aiFlagBadge}
                       </span>
@@ -2681,9 +1942,20 @@ function DesignUploadCard({
                       </span>
                     )}
                   </div>
-                  <div className="text-[12px] text-gri-700 mt-0.5">
-                    {sizeMb} MB · {date} · {statusIcon}
-                  </div>
+                  {(sizeMb || date) && (
+                    <div className="text-[12px] text-gri-700 mt-0.5">
+                      {sizeMb ? `${sizeMb} MB` : null}
+                      {sizeMb && date ? " · " : null}
+                      {date}
+                      {(sizeMb || date) && ` · ${statusIcon}`}
+                    </div>
+                  )}
+                  {f.pendingLink && (
+                    <p className="text-[12px] text-gri-600 mt-1 leading-relaxed">
+                      Dosya siparişe bağlanıyor — birkaç saniye içinde hazır
+                      olur.
+                    </p>
+                  )}
                   <div className="mt-2 space-y-1">
                     {f.flags.map((fl, i) => (
                       <div

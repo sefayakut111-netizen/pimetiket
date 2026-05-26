@@ -19,7 +19,10 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/lib/supabase/types";
+import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { USABLE_DESIGN_STATUSES } from "@/lib/design-file-status";
+import { orderItemHasDesigns } from "@/lib/order-item-meta";
+import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 
 function qcMessageFromCheck(
@@ -81,6 +84,34 @@ export async function GET(
   }
   if (orderRow.user_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Eksik temp upload'ları promote et (multi-design siparişlerde 2+ tasarım)
+  try {
+    const { data: promoteItems } = await admin
+      .from("order_items")
+      .select("id, product, meta")
+      .eq("order_id", orderId);
+    const itemsToPromote = (
+      (promoteItems as unknown as Array<{
+        id: string;
+        product: "sticker" | "etiket";
+        meta: Record<string, unknown>;
+      }>) ?? []
+    ).filter((i) => orderItemHasDesigns(i.meta));
+    if (itemsToPromote.length > 0) {
+      const promoted = await promoteOrderDesigns({
+        admin,
+        orderId,
+        userId: user.id,
+        orderItems: itemsToPromote,
+      });
+      if (promoted > 0) {
+        scheduleOrderDesignQC(admin, orderId);
+      }
+    }
+  } catch (promoteErr) {
+    console.error("[GET /upload-status] promote failed:", promoteErr);
   }
 
   // Item'lari cek — meta'dan designCount al (multi-design destek)
