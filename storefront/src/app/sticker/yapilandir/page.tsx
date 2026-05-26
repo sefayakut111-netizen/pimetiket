@@ -538,7 +538,11 @@ function StickerPage() {
   const initialDims =
     initialParams.get("shape") === "bumper"
       ? { w: BUMPER_PRESET_WIDTH, h: BUMPER_PRESET_HEIGHT }
-      : { w: 75, h: 75 };
+      : initialParams.get("shape") === "rectangle"
+        ? { w: 50, h: 80 }
+        : initialParams.get("shape") === "oval"
+          ? { w: 70, h: 50 }
+          : { w: 75, h: 75 };
   const [width, setWidth] = useState<number>(initialDims.w);
   const [height, setHeight] = useState<number>(initialDims.h);
   // Sefa 18 May v68 (CRO denetim — Preset feedback fix):
@@ -1076,9 +1080,14 @@ function StickerPage() {
                         if (s.id === "ozel") {
                           setWidth(100);
                           setHeight(40);
-                          // Bumper sticker için yumuşatılmış köşe default
                           setSoftCorners(true);
-                        } else if (s.id === "square" || s.id === "circle") {
+                        } else if (s.id === "rectangle") {
+                          setWidth(50);
+                          setHeight(80);
+                        } else if (s.id === "oval") {
+                          setWidth(70);
+                          setHeight(50);
+                        } else {
                           setWidth(75);
                           setHeight(75);
                         }
@@ -1522,23 +1531,32 @@ function StickerPage() {
                       { w: 120, h: 70, label: "120×70" },
                       { w: 150, h: 90, label: "150×90" },
                     ]
+                  : shape === "rectangle"
+                  ? [
+                      { w: 30, h: 50, label: "30×50" },
+                      { w: 40, h: 60, label: "40×60" },
+                      { w: 50, h: 80, label: "50×80" },
+                      { w: 60, h: 120, label: "60×120" },
+                      { w: 50, h: 200, label: "50×200" },
+                      { w: 80, h: 100, label: "80×100" },
+                      { w: 100, h: 150, label: "100×150" },
+                      { w: 150, h: 200, label: "150×200" },
+                      { w: 15, h: 40, label: "15×40" },
+                      { w: 20, h: 50, label: "20×50" },
+                    ]
                   : [
-                  { w: 15, h: 40, label: "15×40" },
-                  { w: 20, h: 50, label: "20×50" },
-                  { w: 30, h: 30, label: "30×30" },
-                  { w: 30, h: 50, label: "30×50" },
-                  { w: 40, h: 60, label: "40×60" },
-                  { w: 50, h: 50, label: "50×50" },
-                  { w: 50, h: 80, label: "50×80" },
-                  { w: 50, h: 200, label: "50×200" },
-                  { w: 60, h: 120, label: "60×120" },
-                  { w: 70, h: 70, label: "70×70" },
-                  { w: 80, h: 80, label: "80×80" },
-                  { w: 80, h: 100, label: "80×100" },
-                  { w: 100, h: 100, label: "100×100" },
-                  { w: 100, h: 150, label: "100×150" },
-                  { w: 150, h: 200, label: "150×200" },
-                ]).map((preset) => {
+                      { w: 30, h: 50, label: "30×50" },
+                      { w: 40, h: 60, label: "40×60" },
+                      { w: 50, h: 50, label: "50×50" },
+                      { w: 50, h: 80, label: "50×80" },
+                      { w: 60, h: 120, label: "60×120" },
+                      { w: 50, h: 200, label: "50×200" },
+                      { w: 70, h: 70, label: "70×70" },
+                      { w: 80, h: 100, label: "80×100" },
+                      { w: 100, h: 100, label: "100×100" },
+                      { w: 100, h: 150, label: "100×150" },
+                      { w: 150, h: 200, label: "150×200" },
+                    ]).map((preset) => {
                   const active =
                     touchedSteps.has(5) &&
                     width === preset.w &&
