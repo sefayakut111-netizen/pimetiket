@@ -159,6 +159,7 @@ export default function ProofEditPage({
   const [helpMsg, setHelpMsg] = useState("");
   const [submittingHelp, setSubmittingHelp] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [iframeHeight, setIframeHeight] = useState(900);
   // Sefa 23 May v68: design-url hata mesajini iframe alaninda goster
   // (toast kaybolup gidiyor, "Bir gorsel yukle" bos ekranda neden anlasilmiyor).
   const [designLoadError, setDesignLoadError] = useState<string | null>(null);
@@ -325,6 +326,12 @@ export default function ProofEditPage({
           state: "error",
           message: `POC hatası: ${data.error ?? "(boş)"}`,
         });
+      } else if (
+        data.type === "pim-poc-resize" &&
+        typeof (data as { height?: number }).height === "number"
+      ) {
+        const h = (data as { height: number }).height;
+        setIframeHeight(Math.max(720, Math.min(h + 8, 4800)));
       }
     };
     window.addEventListener("message", handler);
@@ -432,10 +439,10 @@ export default function ProofEditPage({
 
   if (loading) {
     return (
-      <main className="overflow-hidden bg-gri-50 h-[calc(100vh-64px)] py-4">
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-4 pb-8">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Skeleton className="mb-2 h-6 w-48" />
-          <Skeleton className="h-[calc(100vh-200px)] min-h-[600px]" />
+          <Skeleton className="h-[720px]" />
         </div>
       </main>
     );
@@ -443,7 +450,7 @@ export default function ProofEditPage({
 
   if (forbidden || !item) {
     return (
-      <main className="overflow-hidden bg-gri-50 h-[calc(100vh-64px)] py-8">
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-8 pb-12">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Card className="p-8 text-center">
             <h1 className="mb-2 text-lg font-semibold">
@@ -462,8 +469,8 @@ export default function ProofEditPage({
   }
 
   return (
-    <main className="overflow-hidden bg-gri-50 h-[calc(100vh-64px)] py-4">
-      <div className="mx-auto flex h-full max-w-[1280px] flex-col px-4 md:px-8">
+    <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-4 pb-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
       {/* Header — kompakt */}
       <div className="mb-3 flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -484,10 +491,11 @@ export default function ProofEditPage({
         </Button>
       </div>
 
-      <Card className="mb-3 flex shrink-0 items-start gap-2 bg-pim-mercan-tint/30 p-3">
+      <Card className="mb-3 flex items-start gap-2 border-gri-200 bg-white p-3">
         <PimMini pose="inspect" size={36} />
-        <p className="text-xs leading-relaxed text-lacivert sm:text-sm">
-          Kesim mesafesi ve yumuşatmayı ayarla, alttan <strong>Kaydet ve dön</strong> de.
+        <p className="text-xs leading-relaxed text-lacivert sm:text-sm [&_strong]:text-lacivert">
+          Kesim mesafesi ve yumuşatmayı ayarla, alttan{" "}
+          <strong className="font-semibold text-lacivert">Kaydet ve dön</strong> de.
           Onayı sonra onay sayfasında verirsin.
         </p>
       </Card>
@@ -565,18 +573,20 @@ export default function ProofEditPage({
         </div>
       )}
 
-      {/* POC iframe */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
+      {/* POC iframe — yükseklik POC'tan gelir, sayfa ile tek scroll */}
+      <div className="overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
         {iframeSrc ? (
           <iframe
             ref={iframeRef}
             src={iframeSrc}
             title="Bıçak düzenleyici"
-            className="block h-[calc(100vh-200px)] min-h-[600px] w-full"
+            className="block w-full border-0"
+            style={{ height: iframeHeight }}
+            scrolling="no"
             sandbox="allow-scripts allow-same-origin allow-downloads"
           />
         ) : designLoadError ? (
-          <div className="grid h-[calc(100vh-200px)] min-h-[600px] place-items-center bg-kirmizi-soft p-6 text-center">
+          <div className="grid min-h-[480px] place-items-center bg-kirmizi-soft p-6 text-center">
             <div className="max-w-lg">
               <div className="mb-2 text-base font-semibold text-kirmizi">
                 Tasarım yüklenemedi
@@ -595,13 +605,13 @@ export default function ProofEditPage({
             </div>
           </div>
         ) : (
-          <div className="grid h-[calc(100vh-200px)] min-h-[600px] place-items-center bg-gri-100 text-sm text-gri-700">
+          <div className="grid min-h-[480px] place-items-center bg-gri-100 text-sm text-gri-700">
             Tasarım yükleniyor…
           </div>
         )}
       </div>
 
-      <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+      <div className="sticky bottom-0 z-20 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gri-200 bg-gri-50/95 py-3 backdrop-blur-sm">
         <Button
           variant="secondary"
           size="sm"

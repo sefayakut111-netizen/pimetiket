@@ -1278,11 +1278,30 @@
   /* Embed editor mode (/onay/duzenle) — upload kilidi, malzeme readonly */
   html.pim-embed-restricted #fileUploadPanel,
   html.pim-embed-restricted #btnRemoveBg,
-  html.pim-embed-restricted #actionBar {
+  html.pim-embed-restricted #actionBar,
+  html.pim-embed-restricted header {
     display: none !important;
   }
   html.pim-embed-restricted #dpiSliderRow {
     display: none !important;
+  }
+  html.pim-embed-restricted,
+  html.pim-embed-restricted body {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  html.pim-embed-restricted main {
+    min-height: auto !important;
+    padding-bottom: 16px;
+  }
+  html.pim-embed-restricted .preview {
+    min-height: 520px;
+    overflow: visible;
+  }
+  html.pim-embed-restricted .canvas-wrap {
+    overflow: visible;
+    min-height: 360px;
   }
   html.pim-embed-locked-material #materialPanel .material-btn {
     pointer-events: none;
@@ -1293,6 +1312,10 @@
     opacity: 1;
     border-color: var(--accent);
     background: #fdf6f1;
+    color: var(--text) !important;
+  }
+  html.pim-embed-locked-material #materialPanel .material-btn.active .mat-label {
+    color: var(--text) !important;
   }
 </style>
 </head>
@@ -1662,6 +1685,35 @@ function pimApplyEmbedUiRestrictions() {
     const row = document.getElementById('dpiSliderRow');
     if (row) row.style.display = 'none';
   }
+  pimReportHeight();
+}
+
+/** Embed iframe — parent sayfa tek scroll kullansın diye yükseklik bildir */
+function pimReportHeight() {
+  if (!PIM_PARAMS.embed) return;
+  try {
+    const mainEl = document.querySelector('main');
+    const h = Math.ceil(
+      Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        mainEl ? mainEl.scrollHeight + 80 : 0
+      )
+    );
+    pimPostToParent({ type: 'pim-poc-resize', height: h });
+  } catch (e) {
+    /* sessiz */
+  }
+}
+
+let pimReportHeightTimer = null;
+function pimScheduleHeightReport() {
+  if (pimReportHeightTimer) clearTimeout(pimReportHeightTimer);
+  pimReportHeightTimer = setTimeout(pimReportHeight, 120);
+}
+
+if (PIM_PARAMS.embed) {
+  window.addEventListener('resize', pimScheduleHeightReport);
 }
 
 if (document.readyState === 'loading') {
@@ -1805,13 +1857,14 @@ async function pimAutoLoadDesign() {
     if (typeof handleFile === 'function') {
       handleFile(file);
       // Auto-load sonrası parent'a sinyal — handleFile async sürebilir
-      setTimeout(() => {
+        setTimeout(() => {
         pimPostToParent({
           type: 'pim-poc-loaded',
           source: currentFileSource,
           width: currentMat ? currentMat.cols : 0,
           height: currentMat ? currentMat.rows : 0,
         });
+        pimScheduleHeightReport();
       }, 2000);
     } else {
       throw new Error('handleFile_not_defined');
@@ -2272,6 +2325,7 @@ function processImage(img, file) {
   generatePimComment();
   hideLoading();
   pimScheduleAutoSave();
+  pimScheduleHeightReport();
 }
 
 // ============================================================
@@ -2857,6 +2911,7 @@ function render() {
   }
 
   ctx.setLineDash([]);
+  pimScheduleHeightReport();
 }
 
 function drawPaths(ctx, paths) {
@@ -3222,6 +3277,7 @@ window.performBackgroundRemoval = performBackgroundRemoval;
 // Dosya yüklenince "Onayla" butonu aktif olur (action bar default'ta görünür)
 function showActionBar() {
   document.getElementById('btnApprove').disabled = false;
+  pimScheduleHeightReport();
 }
 
 // "Ayarlar" — panellere smooth scroll
