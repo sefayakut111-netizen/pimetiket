@@ -11,9 +11,9 @@ import { randomUUID } from "node:crypto";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DRY = process.argv.includes("--dry-run");
-const filterOrderId = process.argv.find(
-  (a) => !a.startsWith("-") && a !== process.argv[1] && !a.endsWith(".mjs")
-);
+const filterOrderId = process.argv
+  .slice(2)
+  .find((a) => !a.startsWith("-") && !a.endsWith(".mjs"));
 
 for (const f of [".env.local", ".env.agent"]) {
   const p = join(ROOT, f);
