@@ -1078,6 +1078,8 @@ export type Database = {
         Row: {
           approved_at: string | null
           created_at: string
+          cutline_height_mm: number | null
+          cutline_width_mm: number | null
           design_file_id: string | null
           detected_cut_contour_names: Json | null
           dpi: number | null
@@ -1091,6 +1093,7 @@ export type Database = {
           order_item_id: string
           pim_feedback: string | null
           pim_severity: string | null
+          placement_json: Json | null
           preview_png_url: string | null
           smoothness: number | null
           source: string
@@ -1106,6 +1109,8 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           created_at?: string
+          cutline_height_mm?: number | null
+          cutline_width_mm?: number | null
           design_file_id?: string | null
           detected_cut_contour_names?: Json | null
           dpi?: number | null
@@ -1119,6 +1124,7 @@ export type Database = {
           order_item_id: string
           pim_feedback?: string | null
           pim_severity?: string | null
+          placement_json?: Json | null
           preview_png_url?: string | null
           smoothness?: number | null
           source: string
@@ -1134,6 +1140,8 @@ export type Database = {
         Update: {
           approved_at?: string | null
           created_at?: string
+          cutline_height_mm?: number | null
+          cutline_width_mm?: number | null
           design_file_id?: string | null
           detected_cut_contour_names?: Json | null
           dpi?: number | null
@@ -1147,6 +1155,7 @@ export type Database = {
           order_item_id?: string
           pim_feedback?: string | null
           pim_severity?: string | null
+          placement_json?: Json | null
           preview_png_url?: string | null
           smoothness?: number | null
           source?: string

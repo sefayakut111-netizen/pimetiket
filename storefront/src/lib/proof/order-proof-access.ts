@@ -64,6 +64,62 @@ export async function assertProofOrderAccess(
   return { ok: false, status: 403 };
 }
 
+/** Partner, admin/staff — müşteri (sipariş sahibi dahil) hariç üretim indirme erişimi. */
+export async function assertProductionExportAccess(
+  admin: SupabaseClient<Database>,
+  orderId: string,
+  userId: string | undefined
+): Promise<AccessResult> {
+  if (!userId) {
+    return { ok: false, status: 401 };
+  }
+
+  const { data: order } = await admin
+    .from("orders")
+    .select("user_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  const orderRow = order as { user_id: string } | null;
+  if (!orderRow) {
+    return { ok: false, status: 404 };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+  const role = (profile as { role?: string } | null)?.role;
+
+  if (role === "admin" || role === "staff") {
+    return { ok: true };
+  }
+
+  if (role === "partner") {
+    const { data: contactRow } = await admin
+      .from("partner_contacts")
+      .select("partner_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const partnerId = (contactRow as { partner_id: string } | null)?.partner_id;
+    if (!partnerId) {
+      return { ok: false, status: 403 };
+    }
+    const { data: asgRow } = await admin
+      .from("order_assignments")
+      .select("fason_partner_id")
+      .eq("order_id", orderId)
+      .order("assigned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if ((asgRow as { fason_partner_id: string } | null)?.fason_partner_id === partnerId) {
+      return { ok: true };
+    }
+  }
+
+  return { ok: false, status: 403 };
+}
+
 export async function getCutlinePreviewKey(
   admin: SupabaseClient<Database>,
   orderId: string,

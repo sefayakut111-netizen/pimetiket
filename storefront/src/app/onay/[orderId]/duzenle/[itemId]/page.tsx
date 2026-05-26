@@ -273,6 +273,8 @@ export default function ProofEditPage({
             designFileId,
             autoSave: false,
             editorMode: true,
+            orderWidthMm: item.width,
+            orderHeightMm: item.height,
             origin,
           })
         );

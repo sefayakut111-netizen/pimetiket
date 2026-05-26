@@ -1317,6 +1317,86 @@
   html.pim-embed-locked-material #materialPanel .material-btn.active .mat-label {
     color: var(--text) !important;
   }
+  /* Müşteri embed — Çıktı paneli gizle (partnerMode hariç) */
+  html.pim-embed-restricted:not(.pim-partner-mode) .panel-output {
+    display: none !important;
+  }
+  /* Yerleşim paneli — yalnızca embed + sipariş boyutu */
+  #placementPanel { display: none; }
+  html.pim-embed-restricted.pim-has-order-dims #placementPanel {
+    display: block;
+  }
+  .placement-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .placement-btns button {
+    flex: 1 1 auto;
+    min-width: 72px;
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  /* Zoom toolbar */
+  .preview-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .zoom-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .zoom-toolbar button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+  }
+  .zoom-toolbar button:hover {
+    border-color: var(--accent);
+  }
+  .zoom-toolbar .zoom-label {
+    min-width: 44px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  #canvasZoomInner {
+    transform-origin: center center;
+    transition: transform 0.12s ease-out;
+  }
+  html.pim-embed-restricted #canvas {
+    cursor: grab;
+  }
+  html.pim-embed-restricted #canvas.pim-dragging {
+    cursor: grabbing;
+  }
+  .meta-order-size .val {
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .meta-file-size .val {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .partner-export-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .partner-export-btns button {
+    width: 100%;
+    font-size: 12px;
+  }
 </style>
 </head>
 <body>
@@ -1483,10 +1563,26 @@
       </div>
     </div>
 
+    <!-- Yerleşim (embed + sipariş boyutu) -->
+    <div class="panel" id="placementPanel">
+      <div class="panel-title">Yerleşim</div>
+      <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Görseli sürükleyerek konumlandırın. Bıçak sabit kalır.</p>
+      <div class="placement-btns">
+        <button type="button" class="btn secondary" id="btnPlaceCenter">Ortala</button>
+        <button type="button" class="btn secondary" id="btnPlaceCover">Doldur</button>
+        <button type="button" class="btn secondary" id="btnPlaceContain">İçinde kalsın</button>
+      </div>
+    </div>
+
     <!-- Çıktı -->
-    <div class="panel">
+    <div class="panel panel-output" id="outputPanel">
       <div class="panel-title">Çıktı</div>
       <button class="btn secondary" id="exportSvg" disabled>SVG indir</button>
+      <div class="partner-export-btns" id="partnerExportBtns" style="display:none;margin-top:8px;">
+        <button type="button" class="btn secondary" id="exportCutlineApi">Bıçak SVG indir</button>
+        <button type="button" class="btn secondary" id="exportDesignApi">Görsel indir</button>
+        <button type="button" class="btn secondary" id="exportCompositeApi">Bıçak+Görsel PNG</button>
+      </div>
     </div>
 
     <!-- Bilgi -->
@@ -1509,7 +1605,14 @@
       <div>
         <strong style="font-size:14px;">Canlı önizleme</strong>
       </div>
-      <div class="legend">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
+        <div class="zoom-toolbar" id="zoomToolbar">
+          <button type="button" id="zoomOut" title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
+          <span class="zoom-label" id="zoomLabel">100%</span>
+          <button type="button" id="zoomIn" title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
+          <button type="button" id="zoomReset" title="Sıfırla" aria-label="Zoom sıfırla" style="width:auto;padding:0 8px;font-size:11px;">Sıfırla</button>
+        </div>
+        <div class="legend">
         <div class="legend-item">
           <span class="legend-swatch" style="border-top-color: var(--cut);"></span> Bıçak
         </div>
@@ -1519,10 +1622,12 @@
         <div class="legend-item">
           <span class="legend-swatch" style="border-top-color: var(--safe);"></span> Safe
         </div>
+        </div>
       </div>
     </div>
 
-    <div class="canvas-wrap" id="canvasWrap" style="position:relative;">
+    <div class="canvas-wrap" id="canvasWrap" style="position:relative;overflow:auto;">
+      <div id="canvasZoomInner">
       <div class="empty-state" id="emptyState">
         <h3>Bir görsel yükle</h3>
         <p>Sol panelden PNG dosyası seç veya bu alana sürükle</p>
@@ -1539,6 +1644,7 @@
         <h2>Bıçak onaylandı</h2>
         <p>Sepete ekleniyor, üretim aşamasına geçiyoruz.</p>
         <button class="btn-edit" onclick="resetApproval()">Geri al</button>
+      </div>
       </div>
     </div>
 
@@ -1619,6 +1725,15 @@ let whitePlanMode = 'full';        // 'off' | 'full' | 'smart' | 'custom'
 let whitePlanPaths = [];           // beyaz plan path'leri (canvas koordinatlarında)
 let hasCustomWhitePlan = false;    // PDF/AI/PSD içinde white spot color bulundu mu
 
+// === SABIT BIÇAK + HAREKETLI GÖRSEL ===
+let sourceImage = null;            // trim edilmiş görsel (offscreen canvas)
+let imageTransform = { x: 0, y: 0, scale: 1 }; // px, contentOffset'a göre
+let cutlineFrame = null;         // { cx, cy, w, h, mode, refW, refH }
+let isCutlineLocked = true;        // drag sırasında path yeniden üretilmez
+let viewZoom = 1;                  // yalnızca önizleme (0.25–3.0)
+let isDraggingArt = false;
+let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
+
 // ============================================================
 // PIM ENTEGRASYON BOOTSTRAP (Sefa 22 May v68 — Faz 4)
 // ============================================================
@@ -1655,11 +1770,14 @@ const PIM_PARAMS = (() => {
       hideUpload: sp.get('hideUpload') === '1',
       lockMaterial: sp.get('lockMaterial') === '1',
       hideDpi: sp.get('hideDpi') === '1',
+      partnerMode: sp.get('partnerMode') === '1',
+      orderWidthMm: parseFloat(sp.get('orderWidthMm') || '0') || 0,
+      orderHeightMm: parseFloat(sp.get('orderHeightMm') || '0') || 0,
       mode: sp.get('mode') || 'contour',
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false, autoSave: false, embed: false, hideUpload: false, lockMaterial: false, hideDpi: false, mode: 'contour' };
+    return { headless: false, autoSave: false, embed: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour' };
   }
 })();
 
@@ -1673,6 +1791,14 @@ function pimApplyEmbedUiRestrictions() {
       if (h3) h3.textContent = 'Tasarım yükleniyor…';
       if (p) p.textContent = 'Siparişindeki dosya otomatik açılacak.';
     }
+  }
+  if (PIM_PARAMS.partnerMode) {
+    document.documentElement.classList.add('pim-partner-mode');
+    const pe = document.getElementById('partnerExportBtns');
+    if (pe) pe.style.display = 'flex';
+  }
+  if (PIM_PARAMS.orderWidthMm > 0 && PIM_PARAMS.orderHeightMm > 0) {
+    document.documentElement.classList.add('pim-has-order-dims');
   }
   if (PIM_PARAMS.lockMaterial) {
     document.documentElement.classList.add('pim-embed-locked-material');
@@ -2267,17 +2393,183 @@ async function tryDetectCutContour(page) {
   return { found: names.length > 0, names, hasWhite: whiteFound };
 }
 
+// ============================================================
+// SABIT BIÇAK + GÖRSEL YERLEŞİM YARDIMCILARI
+// ============================================================
+function getOrderDimsMm() {
+  if (PIM_PARAMS.orderWidthMm > 0 && PIM_PARAMS.orderHeightMm > 0) {
+    return { w: PIM_PARAMS.orderWidthMm, h: PIM_PARAMS.orderHeightMm };
+  }
+  return null;
+}
+
+function getCutlineReferenceMm(orderW, orderH, mode) {
+  if (mode === 'circle') {
+    const side = Math.max(orderW, orderH);
+    return { w: side, h: side };
+  }
+  if (mode === 'rect') {
+    return { w: orderW, h: orderH };
+  }
+  return null;
+}
+
+function useFixedCutlineFrame() {
+  return PIM_PARAMS.embed && getOrderDimsMm() && (currentMode === 'circle' || currentMode === 'rect');
+}
+
+function buildFixedCutlineFrame() {
+  const dims = getOrderDimsMm();
+  if (!dims || !imageMetadata) return null;
+  const ref = getCutlineReferenceMm(dims.w, dims.h, currentMode);
+  if (!ref) return null;
+  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
+  const fw = ref.w * pxPerMm;
+  const fh = ref.h * pxPerMm;
+  const cx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
+  const cy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
+  return { cx, cy, w: fw, h: fh, mode: currentMode, refW: ref.w, refH: ref.h };
+}
+
+function trimTransparentBounds(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const id = ctx.getImageData(0, 0, c.width, c.height);
+  const d = id.data;
+  const width = c.width;
+  const height = c.height;
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (d[i + 3] > 10) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX) return { canvas: c, w: width, h: height, trimmed: false };
+  const tw = maxX - minX + 1;
+  const th = maxY - minY + 1;
+  const tc = document.createElement('canvas');
+  tc.width = tw;
+  tc.height = th;
+  tc.getContext('2d').drawImage(c, minX, minY, tw, th, 0, 0, tw, th);
+  return { canvas: tc, w: tw, h: th, trimmed: true };
+}
+
+function resetImageTransform() {
+  imageTransform = { x: 0, y: 0, scale: 1 };
+}
+
+function getArtDrawRect() {
+  if (!imageMetadata || !sourceImage) return null;
+  const ox = imageMetadata.contentOffsetX;
+  const oy = imageMetadata.contentOffsetY;
+  const cw = imageMetadata.contentW;
+  const ch = imageMetadata.contentH;
+  const w = cw * imageTransform.scale;
+  const h = ch * imageTransform.scale;
+  const x = ox + imageTransform.x - (w - cw) / 2;
+  const y = oy + imageTransform.y - (h - ch) / 2;
+  return { x, y, w, h };
+}
+
+function applyPlacementPreset(preset) {
+  if (!imageMetadata || !sourceImage) return;
+  resetImageTransform();
+  if (!cutlineFrame) {
+    render();
+    pimScheduleHeightReport();
+    pimScheduleAutoSave();
+    return;
+  }
+  const artW = imageMetadata.contentW;
+  const artH = imageMetadata.contentH;
+  const frameW = cutlineFrame.w;
+  const frameH = cutlineFrame.h;
+  if (preset === 'center') {
+    imageTransform.scale = 1;
+    const artCx = imageMetadata.contentOffsetX + artW / 2;
+    const artCy = imageMetadata.contentOffsetY + artH / 2;
+    imageTransform.x = cutlineFrame.cx - artCx;
+    imageTransform.y = cutlineFrame.cy - artCy;
+  } else if (preset === 'cover') {
+    imageTransform.scale = Math.max(frameW / artW, frameH / artH);
+    const artCx = imageMetadata.contentOffsetX + artW / 2;
+    const artCy = imageMetadata.contentOffsetY + artH / 2;
+    imageTransform.x = cutlineFrame.cx - artCx;
+    imageTransform.y = cutlineFrame.cy - artCy;
+  } else if (preset === 'contain') {
+    imageTransform.scale = Math.min(frameW / artW, frameH / artH);
+    const artCx = imageMetadata.contentOffsetX + artW / 2;
+    const artCy = imageMetadata.contentOffsetY + artH / 2;
+    imageTransform.x = cutlineFrame.cx - artCx;
+    imageTransform.y = cutlineFrame.cy - artCy;
+  }
+  render();
+  pimScheduleHeightReport();
+  pimScheduleAutoSave();
+}
+
+function applyViewZoom() {
+  const inner = document.getElementById('canvasZoomInner');
+  const label = document.getElementById('zoomLabel');
+  if (inner) inner.style.transform = `scale(${viewZoom})`;
+  if (label) label.textContent = Math.round(viewZoom * 100) + '%';
+}
+
+function pimProductionExportUrl(type) {
+  if (!PIM_PARAMS.orderId || !PIM_PARAMS.itemId) return null;
+  const qs = new URLSearchParams({ type });
+  if (PIM_PARAMS.designFileId) qs.set('design_file_id', PIM_PARAMS.designFileId);
+  return `/api/orders/${PIM_PARAMS.orderId}/proof/${PIM_PARAMS.itemId}/production-export?${qs.toString()}`;
+}
+
+async function pimDownloadProductionExport(type) {
+  const url = pimProductionExportUrl(type);
+  if (!url) {
+    showStatus('Sipariş bağlamı eksik — indirilemedi', 'warn');
+    return;
+  }
+  try {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) {
+      showStatus('İndirme başarısız (' + res.status + ')', 'err');
+      return;
+    }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ext = type === 'cutline' ? 'svg' : type === 'composite' ? 'png' : 'bin';
+    a.download = `pim-${type}-${Date.now()}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showStatus('İndirildi', 'ok');
+  } catch (e) {
+    showStatus('İndirme hatası', 'err');
+  }
+}
+
 function processImage(img, file) {
+  // Alpha trim — full-bleed PNG'de içerik bbox'u bul
+  const trimmed = trimTransparentBounds(img);
+  const srcCanvas = trimmed.canvas;
+  const srcW = trimmed.w;
+  const srcH = trimmed.h;
+
   // Resize for performance (max 800px)
   const maxSize = 800;
-  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
+  const scale = Math.min(1, maxSize / Math.max(srcW, srcH));
+  const w = Math.round(srcW * scale);
+  const h = Math.round(srcH * scale);
 
-  // PADDING: PNG'nin dış sınırı bıçağı kısıtlamasın diye etrafına
-  // şeffaf alan ekle. Bu olmadan, görselin kenarına yakın içerik için
-  // bıçak çizgisi PNG kenarına dayanıyor ve düzleşiyordu.
-  // 80 piksel @ 800px canvas = max offset (5mm) + güvenlik payı
   const padding = 80;
   const paddedW = w + 2 * padding;
   const paddedH = h + 2 * padding;
@@ -2287,33 +2579,45 @@ function processImage(img, file) {
   tempCanvas.height = paddedH;
   const tempCtx = tempCanvas.getContext('2d');
   tempCtx.clearRect(0, 0, paddedW, paddedH);
-  // Görüntüyü padded canvas'ın ortasına yerleştir
-  tempCtx.drawImage(img, padding, padding, w, h);
+  tempCtx.drawImage(srcCanvas, padding, padding, w, h);
+
+  // sourceImage — trim + scale edilmiş görsel (transform ile çizilir)
+  sourceImage = document.createElement('canvas');
+  sourceImage.width = w;
+  sourceImage.height = h;
+  sourceImage.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
+  resetImageTransform();
 
   if (currentMat) currentMat.delete();
   currentMat = cv.imread(tempCanvas);
 
-  // Metadata
-  const dpi = parseInt(document.getElementById('dpiSlider').value);
-  const widthMm = (img.width / dpi) * 25.4;
-  const heightMm = (img.height / dpi) * 25.4;
+  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+  const orderDims = getOrderDimsMm();
+  const widthMm = orderDims
+    ? orderDims.w.toFixed(1)
+    : ((img.width / dpi) * 25.4).toFixed(1);
+  const heightMm = orderDims
+    ? orderDims.h.toFixed(1)
+    : ((img.height / dpi) * 25.4).toFixed(1);
 
   imageMetadata = {
     filename: file.name,
     originalW: img.width,
     originalH: img.height,
-    displayW: paddedW,        // padded canvas boyutu
+    displayW: paddedW,
     displayH: paddedH,
-    contentW: w,              // gerçek içeriğin scaled boyutu
+    contentW: w,
     contentH: h,
-    contentOffsetX: padding,  // içeriğin padded canvas'taki sol konumu
+    contentOffsetX: padding,
     contentOffsetY: padding,
     padding: padding,
     scale: scale,
     fileSize: (file.size / 1024).toFixed(1) + ' KB',
     dpi: dpi,
-    widthMm: widthMm.toFixed(1),
-    heightMm: heightMm.toFixed(1),
+    widthMm: widthMm,
+    heightMm: heightMm,
+    orderWidthMm: orderDims ? orderDims.w : null,
+    orderHeightMm: orderDims ? orderDims.h : null,
     hasAlpha: currentMat.channels() === 4
   };
 
@@ -2323,14 +2627,17 @@ function processImage(img, file) {
   document.getElementById('infoPanel').style.display = 'block';
   document.getElementById('exportSvg').disabled = false;
 
-  // 3 katmanlı akış: action bar'ı göster, varsa önceki onayı sıfırla
   showActionBar();
   document.getElementById('approvalOverlay').classList.remove('show');
 
   updateMetadataDisplay();
   generateCutline();
   generateWhitePlan();
-  render();
+  if (cutlineFrame && PIM_PARAMS.embed) {
+    applyPlacementPreset('center');
+  } else {
+    render();
+  }
   generatePimComment();
   hideLoading();
   pimScheduleAutoSave();
@@ -2370,7 +2677,26 @@ function generateCutline() {
   }
 
   // STEP 2: Mode'a göre işle
-  if (currentMode === 'rect') {
+  if (useFixedCutlineFrame()) {
+    cutlineFrame = buildFixedCutlineFrame();
+    if (cutlineFrame) {
+      const { cx, cy, w, h } = cutlineFrame;
+      if (currentMode === 'rect') {
+        const baseRect = { x: cx - w / 2, y: cy - h / 2, w, h };
+        const r = expandRect(baseRect, offsetPx);
+        currentPaths = [rectToPath(r)];
+        bleedPaths = [rectToPath(expandRect(baseRect, offsetPx + bleedPx))];
+        safePaths = [rectToPath(expandRect(baseRect, offsetPx - safePx))];
+      } else {
+        const r = Math.min(w, h) / 2;
+        currentPaths = [circleToPath(cx, cy, r + offsetPx)];
+        bleedPaths = [circleToPath(cx, cy, r + offsetPx + bleedPx)];
+        safePaths = [circleToPath(cx, cy, Math.max(1, r + offsetPx - safePx))];
+      }
+    } else {
+      currentPaths = []; bleedPaths = []; safePaths = [];
+    }
+  } else if (currentMode === 'rect') {
     // Bounding box
     const rect = getBoundingRect(mask);
     if (rect) {
@@ -2401,6 +2727,10 @@ function generateCutline() {
     currentPaths = generateOffsetPaths(mask, offsetPx, smoothness, false);
     bleedPaths = generateOffsetPaths(mask, offsetPx + bleedPx, smoothness, false);
     safePaths = generateOffsetPaths(mask, offsetPx - safePx, smoothness, false);
+  }
+
+  if (!useFixedCutlineFrame()) {
+    cutlineFrame = null;
   }
 
   mask.delete();
@@ -2879,21 +3209,26 @@ function render() {
   }
 
   // ============================================================
-  // 2. GÖRSEL — drawImage ile (alpha respect, beyaz planın üstüne)
+  // 2. GÖRSEL — sourceImage + imageTransform (alpha blend)
   // ============================================================
-  // putImageData direkt piksel atar (alttaki katmanı override eder).
-  // drawImage alpha-blend yapar, alttaki beyaz planı korur.
-  const offscreen = document.createElement('canvas');
-  offscreen.width = currentMat.cols;
-  offscreen.height = currentMat.rows;
-  const offCtx = offscreen.getContext('2d');
-  const imgData = new ImageData(
-    new Uint8ClampedArray(currentMat.data),
-    currentMat.cols,
-    currentMat.rows
-  );
-  offCtx.putImageData(imgData, 0, 0);
-  ctx.drawImage(offscreen, 0, 0);
+  if (sourceImage) {
+    const rect = getArtDrawRect();
+    if (rect) {
+      ctx.drawImage(sourceImage, rect.x, rect.y, rect.w, rect.h);
+    }
+  } else {
+    const offscreen = document.createElement('canvas');
+    offscreen.width = currentMat.cols;
+    offscreen.height = currentMat.rows;
+    const offCtx = offscreen.getContext('2d');
+    const imgData = new ImageData(
+      new Uint8ClampedArray(currentMat.data),
+      currentMat.cols,
+      currentMat.rows
+    );
+    offCtx.putImageData(imgData, 0, 0);
+    ctx.drawImage(offscreen, 0, 0);
+  }
 
   // ============================================================
   // 3. BLEED / CUT / SAFE — en üst katman (overlay)
@@ -2972,14 +3307,26 @@ function updateMetadataDisplay() {
       <div class="val" style="font-size:12px;">${sourceLabel}</div>
     </div>
     ${cutContourRow}
-    <div class="meta-item">
-      <div class="key">Boyut</div>
+    ${imageMetadata.orderWidthMm ? `
+    <div class="meta-item meta-order-size" style="grid-column: span 2;">
+      <div class="key">Satın alınan boyut</div>
+      <div class="val">${Number(imageMetadata.orderWidthMm).toFixed(1)} × ${Number(imageMetadata.orderHeightMm).toFixed(1)} mm</div>
+    </div>
+    ` : ''}
+    <div class="meta-item meta-file-size">
+      <div class="key">Dosya boyutu</div>
       <div class="val">${imageMetadata.originalW} × ${imageMetadata.originalH} px</div>
     </div>
+    <div class="meta-item" id="cutlineSizeRow" style="display:none;">
+      <div class="key">Bıçak referans boyutu</div>
+      <div class="val" id="cutlineSizeVal">—</div>
+    </div>
+    ${!imageMetadata.orderWidthMm ? `
     <div class="meta-item">
       <div class="key">Baskı boyutu</div>
       <div class="val">${imageMetadata.widthMm} × ${imageMetadata.heightMm} mm</div>
     </div>
+    ` : ''}
     <div class="meta-item">
       <div class="key">Alpha</div>
       <div class="val">${imageMetadata.hasAlpha ? '✓ Var' : '✗ Yok'}</div>
@@ -2990,7 +3337,28 @@ function updateMetadataDisplay() {
     </div>
   `;
 
+  updateCutlineSizeRow();
   runPreflight();
+}
+
+function updateCutlineSizeRow() {
+  const row = document.getElementById('cutlineSizeRow');
+  const val = document.getElementById('cutlineSizeVal');
+  if (!row || !val || !imageMetadata) return;
+  const orderDims = getOrderDimsMm();
+  if (!orderDims) {
+    row.style.display = 'none';
+    return;
+  }
+  const ref = getCutlineReferenceMm(orderDims.w, orderDims.h, currentMode);
+  if (ref) {
+    const modeLabel = currentMode === 'circle' ? ' (Yuvarlak)' : currentMode === 'rect' ? ' (Dikdörtgen)' : '';
+    val.textContent = `${ref.w.toFixed(1)} × ${ref.h.toFixed(1)} mm${modeLabel}`;
+    row.style.display = '';
+  } else {
+    val.textContent = 'İçeriğe göre';
+    row.style.display = '';
+  }
 }
 
 function runPreflight() {
@@ -3010,12 +3378,7 @@ function runPreflight() {
   const coverage = imgArea > 0 ? largestArea / imgArea : 0;
   imageMetadata.cutCoverage = coverage; // Pim yorumu kullanacak
 
-  if (coverage > 0.95) {
-    issues.push({
-      level: 'err',
-      msg: 'Bıçak çizgisi neredeyse tüm görselin kenarlarından geçiyor. Bu, arka planın temiz ayrılamadığı anlamına gelir. Şeffaf arka planlı PNG-24 olarak yeniden dışa aktarın.'
-    });
-  }
+  // coverage > 0.95 müşteriye gösterilmez (internal tier için korunur)
 
   if (imageMetadata.alphaUseful === false && imageMetadata.hasAlpha) {
     issues.push({ level: 'warn', msg: 'PNG\'nin alpha kanalı var ama hepsi opak — şeffaflık taşımıyor. Beyaz arka plan tespitine düşüldü.' });
@@ -3527,8 +3890,14 @@ sliders.forEach(id => {
       if (id === 'dpiSlider') {
         const dpi = parseInt(el.value);
         imageMetadata.dpi = dpi;
-        imageMetadata.widthMm = ((imageMetadata.originalW / dpi) * 25.4).toFixed(1);
-        imageMetadata.heightMm = ((imageMetadata.originalH / dpi) * 25.4).toFixed(1);
+        const orderDims = getOrderDimsMm();
+        if (orderDims) {
+          imageMetadata.widthMm = orderDims.w.toFixed(1);
+          imageMetadata.heightMm = orderDims.h.toFixed(1);
+        } else {
+          imageMetadata.widthMm = ((imageMetadata.originalW / dpi) * 25.4).toFixed(1);
+          imageMetadata.heightMm = ((imageMetadata.originalH / dpi) * 25.4).toFixed(1);
+        }
       }
       generateCutline();
       generateWhitePlan();
@@ -3541,6 +3910,75 @@ sliders.forEach(id => {
 
 // İlk yüklemede offset note'u set et
 updateOffsetNote();
+
+// ============================================================
+// YERLEŞİM, ZOOM, SÜRÜKLEME
+// ============================================================
+document.getElementById('btnPlaceCenter')?.addEventListener('click', () => applyPlacementPreset('center'));
+document.getElementById('btnPlaceCover')?.addEventListener('click', () => applyPlacementPreset('cover'));
+document.getElementById('btnPlaceContain')?.addEventListener('click', () => applyPlacementPreset('contain'));
+
+document.getElementById('zoomIn')?.addEventListener('click', () => {
+  viewZoom = Math.min(3, Math.round((viewZoom + 0.1) * 10) / 10);
+  applyViewZoom();
+});
+document.getElementById('zoomOut')?.addEventListener('click', () => {
+  viewZoom = Math.max(0.25, Math.round((viewZoom - 0.1) * 10) / 10);
+  applyViewZoom();
+});
+document.getElementById('zoomReset')?.addEventListener('click', () => {
+  viewZoom = 1;
+  applyViewZoom();
+});
+applyViewZoom();
+
+document.getElementById('exportCutlineApi')?.addEventListener('click', () => pimDownloadProductionExport('cutline'));
+document.getElementById('exportDesignApi')?.addEventListener('click', () => pimDownloadProductionExport('design'));
+document.getElementById('exportCompositeApi')?.addEventListener('click', () => pimDownloadProductionExport('composite'));
+
+(function initArtDrag() {
+  const canvas = document.getElementById('canvas');
+  if (!canvas) return;
+
+  function canvasPoint(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!PIM_PARAMS.embed || !isCutlineLocked || !sourceImage || !imageMetadata) return;
+    isDraggingArt = true;
+    canvas.classList.add('pim-dragging');
+    canvas.setPointerCapture(e.pointerId);
+    const pt = canvasPoint(e);
+    dragStart = { x: pt.x, y: pt.y, tx: imageTransform.x, ty: imageTransform.y };
+    e.preventDefault();
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!isDraggingArt) return;
+    const pt = canvasPoint(e);
+    imageTransform.x = dragStart.tx + (pt.x - dragStart.x);
+    imageTransform.y = dragStart.ty + (pt.y - dragStart.y);
+    render();
+  });
+
+  function endDrag() {
+    if (!isDraggingArt) return;
+    isDraggingArt = false;
+    canvas.classList.remove('pim-dragging');
+    pimScheduleAutoSave();
+    pimScheduleHeightReport();
+  }
+
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+})();
 
 // ============================================================
 // AUTO-SAVE (headless / onay iframe fallback)
@@ -3559,14 +3997,19 @@ function pimBuildCutlineMeta() {
   const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
   const smoothness = parseFloat(document.getElementById('smoothSlider').value);
   const dpi = imageMetadata ? imageMetadata.dpi : null;
+  const orderDims = getOrderDimsMm();
+  const cutRef = orderDims ? getCutlineReferenceMm(orderDims.w, orderDims.h, currentMode) : null;
   return {
     source: currentFileSource,
     mode: currentMode,
     offset_mm: offsetMm,
     smoothness: smoothness,
     dpi: dpi,
-    width_mm: imageMetadata ? parseFloat(imageMetadata.widthMm) : null,
-    height_mm: imageMetadata ? parseFloat(imageMetadata.heightMm) : null,
+    width_mm: orderDims ? orderDims.w : (imageMetadata ? parseFloat(imageMetadata.widthMm) : null),
+    height_mm: orderDims ? orderDims.h : (imageMetadata ? parseFloat(imageMetadata.heightMm) : null),
+    cutline_width_mm: cutRef ? cutRef.w : null,
+    cutline_height_mm: cutRef ? cutRef.h : null,
+    image_placement: { x: imageTransform.x, y: imageTransform.y, scale: imageTransform.scale },
     pim_feedback: null,
     pim_severity: tierInfo.tier === 'improve' ? 'warn' : 'ok',
     material_type: materialType,
@@ -3580,10 +4023,41 @@ function pimBuildCutlineMeta() {
 
 function pimCapturePreviewPng() {
   try {
-    const canvas = document.getElementById('canvas');
-    if (!canvas || canvas.classList.contains('hidden')) return null;
-    const dataUrl = canvas.toDataURL('image/png');
-    return dataUrl.replace(/^data:image\/png;base64,/, '');
+    if (!currentMat || !imageMetadata) return null;
+    const off = document.createElement('canvas');
+    off.width = currentMat.cols;
+    off.height = currentMat.rows;
+    const ctx = off.getContext('2d');
+    ctx.clearRect(0, 0, off.width, off.height);
+    if (layers.white && whitePlanPaths.length > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      for (const path of whitePlanPaths) {
+        if (path.length < 3) continue;
+        ctx.beginPath();
+        ctx.moveTo(path[0][0], path[0][1]);
+        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i][0], path[i][1]);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    if (sourceImage) {
+      const rect = getArtDrawRect();
+      if (rect) ctx.drawImage(sourceImage, rect.x, rect.y, rect.w, rect.h);
+    }
+    if (layers.cut && currentPaths.length > 0) {
+      ctx.strokeStyle = '#ff0080';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+      for (const path of currentPaths) {
+        if (path.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(path[0][0], path[0][1]);
+        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i][0], path[i][1]);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    return off.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
   } catch (e) {
     return null;
   }

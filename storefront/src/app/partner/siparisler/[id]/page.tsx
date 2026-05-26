@@ -92,6 +92,28 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   partner_revised: { label: "↻ Revize Ettin", cls: "bg-pim-mercan-tint text-pim-mercan" },
 };
 
+async function downloadProductionExport(
+  orderId: string,
+  itemId: string,
+  type: "cutline" | "design" | "composite",
+  designFileId?: string
+) {
+  const qs = new URLSearchParams({ type });
+  if (designFileId) qs.set("design_file_id", designFileId);
+  const res = await fetch(
+    `/api/orders/${orderId}/proof/${itemId}/production-export?${qs.toString()}`,
+    { credentials: "include" }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const ext = type === "cutline" ? "svg" : type === "composite" ? "png" : "bin";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `pim-${type}-${orderId.slice(-6)}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export default function PartnerOrderDetailPage({
   params,
 }: {
@@ -319,6 +341,36 @@ function ItemCard({ item, orderId, actionLoading, onDecide }: ItemCardProps) {
                 Bıçak · {design.cutline.tier ?? "—"} ·{" "}
                 {design.cutline.mode ?? "—"}
               </p>
+            </div>
+          )}
+          {design?.cutline && (
+            <div className="mt-2 flex flex-col gap-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gri-700">
+                Üretim indir
+              </p>
+              {(["cutline", "design", "composite"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className="rounded border border-gri-200 bg-white px-2 py-1 text-left text-[11px] text-lacivert hover:border-pim-mercan hover:bg-pim-mercan-tint/30"
+                  onClick={() => {
+                    void downloadProductionExport(
+                      orderId,
+                      item.id,
+                      t,
+                      design.design_file_id
+                    ).catch(() => {
+                      /* toast parent */
+                    });
+                  }}
+                >
+                  {t === "cutline"
+                    ? "Bıçak SVG"
+                    : t === "design"
+                      ? "Görsel dosyası"
+                      : "Bıçak+Görsel PNG"}
+                </button>
+              ))}
             </div>
           )}
         </div>

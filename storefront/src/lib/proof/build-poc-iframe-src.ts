@@ -19,6 +19,11 @@ export function buildPocIframeSrc(args: {
   autoSave?: boolean;
   /** Müşteri editörü: upload gizle, malzeme kilitle, DPI gizle */
   editorMode?: boolean;
+  /** Sipariş satırından satın alınan baskı boyutu (mm) */
+  orderWidthMm?: number;
+  orderHeightMm?: number;
+  /** Partner/üretim: indirme paneli görünür */
+  partnerMode?: boolean;
   origin: string;
 }): string {
   const dfQs = args.designFileId
@@ -42,6 +47,15 @@ export function buildPocIframeSrc(args: {
     params.set("hideUpload", "1");
     params.set("lockMaterial", "1");
     params.set("hideDpi", "1");
+  }
+  if (args.orderWidthMm != null && args.orderWidthMm > 0) {
+    params.set("orderWidthMm", String(args.orderWidthMm));
+  }
+  if (args.orderHeightMm != null && args.orderHeightMm > 0) {
+    params.set("orderHeightMm", String(args.orderHeightMm));
+  }
+  if (args.partnerMode) {
+    params.set("partnerMode", "1");
   }
   return `/poc.html?${params.toString()}`;
 }

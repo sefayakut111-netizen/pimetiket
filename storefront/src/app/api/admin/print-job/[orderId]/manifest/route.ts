@@ -82,6 +82,7 @@ interface DesignFileRow {
   mime_type: string;
   version: number;
   status: string;
+  storage_path: string;
 }
 
 interface ItemRow {
@@ -152,7 +153,7 @@ export async function GET(
   // Design files
   const { data: dfs } = await admin
     .from("design_files")
-    .select("id, order_item_id, original_name, mime_type, version, status")
+    .select("id, order_item_id, original_name, mime_type, version, status, storage_path")
     .eq("order_id", orderId)
     .neq("status", "superseded");
   const designFiles = (dfs as DesignFileRow[] | null) ?? [];
@@ -210,12 +211,20 @@ export async function GET(
         itemDfs.length > 0
           ? itemDfs.map(async (df) => {
               const cl = pickCutline(df.id, it.id);
+              const cutSvg = cl ? await signUrl(cl.svg_url) : null;
+              const cutPreview = cl ? await signUrl(cl.preview_png_url) : null;
+              const designUrl = await signSupabaseDesignUrl(df.storage_path);
               return {
                 design_file_id: df.id,
                 file_name: df.original_name,
                 mime_type: df.mime_type,
                 version: df.version,
                 design_status: df.status,
+                exports: {
+                  cutline: cutSvg,
+                  design: designUrl,
+                  composite: cutPreview,
+                },
                 cutline: cl
                   ? {
                       id: cl.id,
@@ -242,12 +251,19 @@ export async function GET(
             [
               await (async () => {
                 const cl = pickCutline(null, it.id);
+                const cutSvg = cl ? await signUrl(cl.svg_url) : null;
+                const cutPreview = cl ? await signUrl(cl.preview_png_url) : null;
                 return {
                   design_file_id: null,
                   file_name: "(eski sipariş — design_files yok)",
                   mime_type: "",
                   version: 0,
                   design_status: "legacy",
+                  exports: {
+                    cutline: cutSvg,
+                    design: null,
+                    composite: cutPreview,
+                  },
                   cutline: cl
                     ? {
                         id: cl.id,

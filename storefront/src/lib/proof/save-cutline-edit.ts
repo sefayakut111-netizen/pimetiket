@@ -42,6 +42,9 @@ export interface SaveCutlineEditBody {
   dpi?: number | null;
   width_mm?: number | null;
   height_mm?: number | null;
+  cutline_width_mm?: number | null;
+  cutline_height_mm?: number | null;
+  image_placement?: { x: number; y: number; scale: number } | null;
   pim_feedback?: string | null;
   pim_severity?: string | null;
   material_type?: string | null;
@@ -86,6 +89,9 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
     dpi: number | null;
     width_mm: number | null;
     height_mm: number | null;
+    cutline_width_mm: number | null;
+    cutline_height_mm: number | null;
+    placement_json: Json | null;
     pim_feedback: string | null;
   };
 } {
@@ -141,6 +147,29 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
       ? raw.preview_png_base64.replace(/^data:image\/png;base64,/, "")
       : null;
 
+  const cutline_width_mm =
+    typeof raw.cutline_width_mm === "number" && raw.cutline_width_mm > 0
+      ? raw.cutline_width_mm
+      : null;
+  const cutline_height_mm =
+    typeof raw.cutline_height_mm === "number" && raw.cutline_height_mm > 0
+      ? raw.cutline_height_mm
+      : null;
+  let placement_json: Json | null = null;
+  if (
+    raw.image_placement &&
+    typeof raw.image_placement === "object" &&
+    typeof raw.image_placement.x === "number" &&
+    typeof raw.image_placement.y === "number" &&
+    typeof raw.image_placement.scale === "number"
+  ) {
+    placement_json = {
+      x: raw.image_placement.x,
+      y: raw.image_placement.y,
+      scale: raw.image_placement.scale,
+    };
+  }
+
   return {
     parsed: {
       svg,
@@ -161,6 +190,9 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
       dpi: typeof raw.dpi === "number" ? raw.dpi : null,
       width_mm: typeof raw.width_mm === "number" ? raw.width_mm : null,
       height_mm: typeof raw.height_mm === "number" ? raw.height_mm : null,
+      cutline_width_mm,
+      cutline_height_mm,
+      placement_json,
       pim_feedback:
         typeof raw.pim_feedback === "string"
           ? raw.pim_feedback.slice(0, 2000)
@@ -207,6 +239,9 @@ export async function saveCutlineEdit(
     dpi,
     width_mm,
     height_mm,
+    cutline_width_mm,
+    cutline_height_mm,
+    placement_json,
     pim_feedback,
   } = (parsedResult as { parsed: NonNullable<ReturnType<typeof parseBody> extends { parsed: infer P } ? P : never> }).parsed;
 
@@ -295,6 +330,9 @@ export async function saveCutlineEdit(
     dpi,
     width_mm,
     height_mm,
+    cutline_width_mm,
+    cutline_height_mm,
+    placement_json,
     pim_feedback,
     pim_severity: pimSeverity,
     status: isAuto ? "auto_generated" : "draft",

@@ -162,6 +162,9 @@ export default function PartnerEditCutlinePage({
             designFileId,
             autoSave: false,
             editorMode: true,
+            orderWidthMm: item.width,
+            orderHeightMm: item.height,
+            partnerMode: true,
             origin,
           })
         );
@@ -258,13 +261,51 @@ export default function PartnerEditCutlinePage({
             {item.qty} adet · {item.width}×{item.height}mm
           </p>
         </div>
-        <Button
-          href={`/partner/siparisler/${orderId}`}
-          variant="ghost"
-          size="sm"
-        >
-          ← Sipariş detayına dön
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            href={`/partner/siparisler/${orderId}`}
+            variant="ghost"
+            size="sm"
+          >
+            ← Sipariş detayına dön
+          </Button>
+          {designFileId && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const qs = new URLSearchParams({
+                    type: "cutline",
+                    design_file_id: designFileId,
+                  });
+                  window.open(
+                    `/api/orders/${orderId}/proof/${itemId}/production-export?${qs}`,
+                    "_blank"
+                  );
+                }}
+              >
+                Bıçak SVG
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const qs = new URLSearchParams({
+                    type: "composite",
+                    design_file_id: designFileId,
+                  });
+                  window.open(
+                    `/api/orders/${orderId}/proof/${itemId}/production-export?${qs}`,
+                    "_blank"
+                  );
+                }}
+              >
+                Bıçak+Görsel
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <Card className="mb-4 flex items-start gap-3 bg-pim-mercan-tint/30 p-4">
