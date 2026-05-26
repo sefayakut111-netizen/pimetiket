@@ -75,36 +75,53 @@ export function DesignThumbnailGroup({
     );
   }
 
-  const boxClass =
-    size === "sm" ? "w-10 h-10" : "w-12 h-12 sm:w-14 sm:h-14";
+  const primary = entries[0];
+  const others = entries.slice(1);
+  const thumbSize = size === "sm" ? "w-8 h-8" : "w-10 h-10";
 
   return (
-    <div className="flex gap-1 flex-wrap shrink-0 max-w-[140px]">
-      {entries.map((e, i) => (
-        <div
-          key={`${e.fileName ?? "design"}-${i}`}
-          className={`${boxClass} rounded-md overflow-hidden bg-gri-100 ring-1 ring-gri-200 shrink-0`}
-        >
-          {e.previewUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={e.previewUrl}
-              alt={e.fileName ?? `Tasarım ${i + 1}`}
-              title={e.fileName}
-              className="w-full h-full object-contain bg-white"
-              loading="lazy"
-            />
-          ) : (
-            <DesignThumb
-              previewUrl={undefined}
-              fileName={e.fileName}
-              mimeType={e.mimeType}
-              product={item.product}
-              size="sm"
-            />
-          )}
+    <div className="flex flex-col gap-2 shrink-0">
+      <DesignThumb
+        previewUrl={primary.previewUrl}
+        fileName={primary.fileName}
+        mimeType={primary.mimeType}
+        product={item.product}
+        size={size}
+      />
+      {others.length > 0 && (
+        <div className="border-t border-gri-200 pt-1.5">
+          <div className="text-[10px] font-semibold text-gri-500 uppercase tracking-wide mb-1">
+            Diğer tasarımlar
+          </div>
+          <div className="flex gap-1 flex-wrap">
+            {others.map((e, i) => (
+              <div
+                key={`${e.fileName ?? "design"}-${i + 1}`}
+                className={`${thumbSize} rounded overflow-hidden bg-gri-100 ring-1 ring-gri-200 shrink-0`}
+                title={e.fileName ?? `Tasarım ${i + 2}`}
+              >
+                {e.previewUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={e.previewUrl}
+                    alt={e.fileName ?? `Tasarım ${i + 2}`}
+                    className="w-full h-full object-contain bg-white"
+                    loading="lazy"
+                  />
+                ) : (
+                  <DesignThumb
+                    previewUrl={undefined}
+                    fileName={e.fileName}
+                    mimeType={e.mimeType}
+                    product={item.product}
+                    size="sm"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
