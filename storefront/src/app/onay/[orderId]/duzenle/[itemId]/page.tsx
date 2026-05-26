@@ -331,7 +331,10 @@ export default function ProofEditPage({
         typeof (data as { height?: number }).height === "number"
       ) {
         const h = (data as { height: number }).height;
-        setIframeHeight(Math.max(720, Math.min(h + 8, 4800)));
+        setIframeHeight((prev) => {
+          const next = Math.max(720, Math.min(h + 8, 4800));
+          return Math.abs(prev - next) < 8 ? prev : next;
+        });
       }
     };
     window.addEventListener("message", handler);

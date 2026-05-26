@@ -1287,8 +1287,8 @@
   }
   html.pim-embed-restricted,
   html.pim-embed-restricted body {
-    overflow: visible !important;
-    height: auto !important;
+    overflow: hidden !important;
+    height: fit-content !important;
     min-height: 0 !important;
   }
   html.pim-embed-restricted main {
@@ -1689,17 +1689,18 @@ function pimApplyEmbedUiRestrictions() {
 }
 
 /** Embed iframe — parent sayfa tek scroll kullansın diye yükseklik bildir */
+let pimLastReportedHeight = 0;
+
 function pimReportHeight() {
   if (!PIM_PARAMS.embed) return;
   try {
     const mainEl = document.querySelector('main');
-    const h = Math.ceil(
-      Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight,
-        mainEl ? mainEl.scrollHeight + 80 : 0
-      )
-    );
+    if (!mainEl) return;
+    // scrollHeight kullanma — iframe büyüdükçe geri besleme döngüsü oluşur
+    const h = Math.ceil(mainEl.getBoundingClientRect().bottom + 12);
+    if (h < 400) return;
+    if (Math.abs(h - pimLastReportedHeight) < 8) return;
+    pimLastReportedHeight = h;
     pimPostToParent({ type: 'pim-poc-resize', height: h });
   } catch (e) {
     /* sessiz */
@@ -1709,17 +1710,25 @@ function pimReportHeight() {
 let pimReportHeightTimer = null;
 function pimScheduleHeightReport() {
   if (pimReportHeightTimer) clearTimeout(pimReportHeightTimer);
-  pimReportHeightTimer = setTimeout(pimReportHeight, 120);
+  pimReportHeightTimer = setTimeout(pimReportHeight, 150);
 }
 
-if (PIM_PARAMS.embed) {
-  window.addEventListener('resize', pimScheduleHeightReport);
+function pimObserveEmbedHeight() {
+  if (!PIM_PARAMS.embed) return;
+  const mainEl = document.querySelector('main');
+  if (!mainEl || typeof ResizeObserver === 'undefined') return;
+  const ro = new ResizeObserver(() => pimScheduleHeightReport());
+  ro.observe(mainEl);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', pimApplyEmbedUiRestrictions);
+  document.addEventListener('DOMContentLoaded', () => {
+    pimApplyEmbedUiRestrictions();
+    pimObserveEmbedHeight();
+  });
 } else {
   pimApplyEmbedUiRestrictions();
+  pimObserveEmbedHeight();
 }
 
 // Headless mode CSS — toolbar/sidebar gizle (parent iframe minimal göstersin)
@@ -2911,7 +2920,6 @@ function render() {
   }
 
   ctx.setLineDash([]);
-  pimScheduleHeightReport();
 }
 
 function drawPaths(ctx, paths) {
