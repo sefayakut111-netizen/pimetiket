@@ -1210,12 +1210,14 @@ export default function ProofApprovalPage({
 
   if (loading) {
     return (
-      <main className="container py-8">
-        <Skeleton className="mb-4 h-8 w-64" />
-        <Skeleton className="mb-2 h-4 w-96" />
-        <div className="mt-6 grid gap-4 lg:grid-cols-[320px_1fr]">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-8">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <Skeleton className="mb-4 h-8 w-64" />
+          <Skeleton className="mb-2 h-4 w-96" />
+          <div className="mt-6 grid gap-4 lg:grid-cols-[320px_1fr]">
+            <Skeleton className="h-96" />
+            <Skeleton className="h-96" />
+          </div>
         </div>
       </main>
     );
@@ -1223,7 +1225,8 @@ export default function ProofApprovalPage({
 
   if (!data) {
     return (
-      <main className="container py-12">
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <Card className="mx-auto max-w-lg p-8 text-center">
           <h1 className="mb-2 text-lg font-semibold text-lacivert">
             Baskı onay sayfası açılamadı
@@ -1265,13 +1268,14 @@ export default function ProofApprovalPage({
             </Button>
           </div>
         </Card>
+        </div>
       </main>
     );
   }
 
   if (data?.order.status === "proof_validating") {
     return (
-      <main className="container flex min-h-[60vh] flex-col items-center justify-center py-12 text-center">
+      <main className="bg-gri-50 flex min-h-[calc(100vh-64px)] flex-col items-center justify-center py-12 text-center">
         <Pim pose="think" size={140} />
         <div className="mt-6 flex items-center justify-center gap-2">
           <span
@@ -1496,7 +1500,8 @@ export default function ProofApprovalPage({
   };
 
   return (
-    <main className="container py-6 pb-28 lg:pb-6">
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-28 lg:pb-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2">
         <Link
@@ -2251,6 +2256,7 @@ export default function ProofApprovalPage({
           </div>
         </div>
       )}
+      </div>
     </main>
   );
 }
