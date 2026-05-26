@@ -47,6 +47,7 @@ const COPY = {
     statusFailed: "Hata",
     statusPending: "İnceleniyor",
     statusApproved: "Onaylı",
+    downloadCta: "İndir",
     reprintCta: "Yeniden bastır",
     viewOrder: "Sipariş",
     fileSize: "KB",
@@ -72,12 +73,22 @@ const COPY = {
     statusFailed: "Failed",
     statusPending: "Reviewing",
     statusApproved: "Approved",
+    downloadCta: "Download",
     reprintCta: "Reprint",
     viewOrder: "Order",
     fileSize: "KB",
     locale: "en-US",
   },
 };
+
+function buildDesignDownloadUrl(d: CustomerDesign): string | null {
+  if (!d.orderItemId) return null;
+  const qs = new URLSearchParams({
+    design_file_id: d.id,
+    download: "1",
+  });
+  return `/api/orders/${d.orderId}/items/${d.orderItemId}/design-file?${qs}`;
+}
 
 function statusLabel(
   status: CustomerDesign["status"],
@@ -264,6 +275,7 @@ export default function TasarimlarimPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {designs.map((d) => {
               const status = statusLabel(d.status, c);
+              const downloadUrl = buildDesignDownloadUrl(d);
               const sizeKb = (d.sizeBytes / 1024).toFixed(1);
               const date = new Date(d.uploadedAt).toLocaleDateString(c.locale, {
                 day: "numeric",
@@ -317,17 +329,33 @@ export default function TasarimlarimPage() {
                     )}
 
                     {/* Actions */}
-                    <div className="mt-3 flex gap-2 items-center">
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {downloadUrl ? (
+                        <a
+                          href={downloadUrl}
+                          download={d.originalName}
+                          className="inline-flex items-center justify-center gap-1 h-8 px-2 rounded-full border border-gri-200 bg-white text-[11px] font-semibold text-gri-700 hover:border-pim-mercan hover:text-pim-mercan transition-colors"
+                        >
+                          <Icon.Doc size={12} /> {c.downloadCta}
+                        </a>
+                      ) : (
+                        <span
+                          className="inline-flex items-center justify-center h-8 px-2 rounded-full border border-gri-100 bg-gri-50 text-[11px] font-semibold text-gri-400 cursor-not-allowed"
+                          aria-disabled
+                        >
+                          {c.downloadCta}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleReprint(d)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-pim-mercan text-white text-[12px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
+                        className="inline-flex items-center justify-center gap-1 h-8 px-2 rounded-full bg-pim-mercan text-white text-[11px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
                       >
                         <Icon.Bolt size={12} /> {c.reprintCta}
                       </button>
                       <Link
                         href={`/siparis/${d.orderId}`}
-                        className="text-[11.5px] font-semibold text-gri-700 hover:text-pim-mercan whitespace-nowrap"
+                        className="inline-flex items-center justify-center gap-0.5 h-8 px-2 rounded-full border border-gri-200 bg-white text-[11px] font-semibold text-gri-700 hover:border-pim-mercan hover:text-pim-mercan transition-colors"
                       >
                         {c.viewOrder} →
                       </Link>

@@ -62,12 +62,13 @@ export async function GET(
 
   const buffer = Buffer.from(await data.arrayBuffer());
   const safeName = resolved.file.original_name.replace(/[^\w.\-()+ ]/g, "_");
+  const asDownload = url.searchParams.get("download") === "1";
 
   return new NextResponse(buffer, {
     status: 200,
     headers: {
       "Content-Type": resolved.file.mime_type || "application/octet-stream",
-      "Content-Disposition": `inline; filename="${safeName}"`,
+      "Content-Disposition": `${asDownload ? "attachment" : "inline"}; filename="${safeName}"`,
       "Cache-Control": "private, no-cache, max-age=0",
     },
   });

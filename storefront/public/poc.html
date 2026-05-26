@@ -2551,12 +2551,12 @@ function getPngPageRect() {
   };
 }
 
+/** PNG sayfa sınırı — yalnızca embed editörde (yerleşim referansı). Dolgu yok. */
 function drawPngPageBoundary(ctx) {
+  if (!PIM_PARAMS.embed) return;
   const page = getPngPageRect();
   if (!page) return;
   ctx.save();
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.14)';
-  ctx.fillRect(page.x, page.y, page.w, page.h);
   ctx.strokeStyle = 'rgba(100, 116, 139, 0.42)';
   ctx.lineWidth = 1;
   ctx.setLineDash([5, 4]);
@@ -4180,7 +4180,6 @@ function pimCapturePreviewPng() {
     off.height = currentMat.rows;
     const ctx = off.getContext('2d');
     ctx.clearRect(0, 0, off.width, off.height);
-    drawPngPageBoundary(ctx);
     if (layers.white && whitePlanPaths.length > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.92)';
       for (const path of whitePlanPaths) {
