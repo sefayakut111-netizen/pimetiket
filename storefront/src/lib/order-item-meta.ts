@@ -117,6 +117,48 @@ export function designHasCutline(
   return typeof cutline?.id === "string" && cutline.id.length > 0;
 }
 
+export function cutlineIsApproved(
+  cutline: { status?: string } | null | undefined
+): boolean {
+  return (
+    cutline?.status === "approved" || cutline?.status === "operator_override"
+  );
+}
+
+/** Multi-design: item içindeki tüm tasarımlar müşteri tarafından onaylandı mı? */
+export function itemAllDesignsApproved(item: {
+  proof_status?: string;
+  meta: Record<string, unknown> | null;
+  designs?: Array<{ cutline?: { id?: string; status?: string } | null }>;
+  cutline?: { id?: string; status?: string } | null;
+}): boolean {
+  const designs = item.designs ?? [];
+  if (designs.length === 0) {
+    return (
+      item.proof_status === "approved" || cutlineIsApproved(item.cutline)
+    );
+  }
+  const expected = getExpectedDesignCount(item.meta, designs.length);
+  if (designs.length < expected) return false;
+  return designs.every((d) => cutlineIsApproved(d.cutline));
+}
+
+/** Sipariş genelinde tüm tasarımlar onaylandı mı (finalize için). */
+export function orderAllDesignsApproved(
+  items: Array<{
+    proof_status?: string;
+    meta: Record<string, unknown> | null;
+    designs?: Array<{ cutline?: { id?: string; status?: string } | null }>;
+    cutline?: { id?: string; status?: string } | null;
+  }>
+): boolean {
+  if (items.length === 0) return false;
+  return items.every(
+    (item) =>
+      item.proof_status !== "help_requested" && itemAllDesignsApproved(item)
+  );
+}
+
 /** Multi-design: tüm beklenen tasarımlar promote edilmiş ve bıçağı var mı? */
 export function itemAllDesignsReady(item: {
   meta: Record<string, unknown> | null;

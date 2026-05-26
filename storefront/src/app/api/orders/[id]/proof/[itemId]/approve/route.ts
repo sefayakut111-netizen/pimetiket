@@ -2,24 +2,20 @@
  * POST /api/orders/[id]/proof/[itemId]/approve
  *
  * Sefa 19 May v68 (Migration 059):
- * Müşteri tek bir item'ı onayladığında çağrılır.
+ * Müşteri tek bir item/tasarım onayladığında çağrılır.
  *
- * Akış:
- *   1. proof_status: viewed/pending/edited → approved
- *   2. order_items.proof_approved_at = NOW()
- *   3. Bu item için en son cutline_designs.status='draft' kaydı varsa → 'approved'
- *   4. order_events log
- *   5. Response: { ok: true, allApproved: boolean } — frontend tümü
- *      approved olduğunda /finalize çağırabilir.
+ * Multi-design (Mig 063): cutlineId verilirse yalnızca o tasarımın bıçağı
+ * onaylanır; item proof_status ancak tüm tasarımlar onaylandığında approved olur.
  *
  * Body (opsiyonel):
- *   { cutlineId?: string }  — eğer müşteri düzenleyip onayladıysa
+ *   { cutlineId?: string }
  */
 
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  cutlineIsApproved,
   designHasCutline,
   getExpectedDesignCount,
 } from "@/lib/order-item-meta";
@@ -27,6 +23,35 @@ import type { Enums, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 interface Body {
   cutlineId?: unknown;
+}
+
+async function latestCutlineForDesign(
+  admin: ReturnType<typeof createAdminClient>,
+  itemId: string,
+  designFileId: string
+) {
+  const { data } = await admin
+    .from("cutline_designs")
+    .select("id, status")
+    .eq("order_item_id", itemId)
+    .eq("design_file_id", designFileId)
+    .neq("status", "superseded")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data as { id: string; status: string } | null;
+}
+
+async function allItemDesignsApproved(
+  admin: ReturnType<typeof createAdminClient>,
+  itemId: string,
+  dfIds: string[]
+): Promise<boolean> {
+  for (const dfId of dfIds) {
+    const cd = await latestCutlineForDesign(admin, itemId, dfId);
+    if (!cutlineIsApproved(cd)) return false;
+  }
+  return true;
 }
 
 export async function POST(
@@ -42,7 +67,7 @@ export async function POST(
   try {
     body = (await req.json()) as Body;
   } catch {
-    // Body opsiyonel; parse hatasını umursama
+    // Body opsiyonel
   }
   const cutlineId =
     typeof body.cutlineId === "string" ? body.cutlineId : null;
@@ -57,7 +82,6 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // Auth + status check
   const { data: order } = await admin
     .from("orders")
     .select("user_id, status")
@@ -79,12 +103,15 @@ export async function POST(
 
   const { data: orderItem } = await admin
     .from("order_items")
-    .select("meta")
+    .select("meta, proof_status")
     .eq("id", itemId)
     .eq("order_id", orderId)
     .maybeSingle();
-  const itemMeta =
-    (orderItem as { meta?: Record<string, unknown> } | null)?.meta ?? {};
+  const itemRow = orderItem as {
+    meta?: Record<string, unknown>;
+    proof_status?: string;
+  } | null;
+  const itemMeta = itemRow?.meta ?? {};
 
   const { data: designFiles } = await admin
     .from("design_files")
@@ -94,6 +121,7 @@ export async function POST(
 
   const dfIds = (designFiles ?? []).map((d) => (d as { id: string }).id);
   const expected = getExpectedDesignCount(itemMeta, dfIds.length);
+  const isMultiDesign = dfIds.length > 1;
 
   if (dfIds.length < expected) {
     return NextResponse.json(
@@ -104,18 +132,129 @@ export async function POST(
     );
   }
 
+  const now = new Date().toISOString();
+
+  if (isMultiDesign) {
+    if (!cutlineId) {
+      return NextResponse.json(
+        { error: "Multi-design onay için cutlineId gerekli" },
+        { status: 400 }
+      );
+    }
+
+    const { data: targetCd } = await admin
+      .from("cutline_designs")
+      .select("id, status, design_file_id")
+      .eq("id", cutlineId)
+      .eq("order_item_id", itemId)
+      .neq("status", "superseded")
+      .maybeSingle();
+
+    const target = targetCd as {
+      id: string;
+      status: string;
+      design_file_id: string | null;
+    } | null;
+
+    if (!target || !designHasCutline(target)) {
+      return NextResponse.json(
+        { error: "Onaylanacak bıçak bulunamadı" },
+        { status: 400 }
+      );
+    }
+    if (cutlineIsApproved(target)) {
+      return NextResponse.json(
+        { error: "Bu tasarım zaten onaylandı" },
+        { status: 400 }
+      );
+    }
+    if (!["draft", "auto_generated"].includes(target.status)) {
+      return NextResponse.json(
+        { error: "Bu bıçak şu an onaylanamaz" },
+        { status: 400 }
+      );
+    }
+
+    const { error: cdErr } = await admin
+      .from("cutline_designs")
+      .update({ status: "approved", approved_at: now })
+      .eq("id", cutlineId)
+      .eq("order_item_id", itemId)
+      .in("status", ["draft", "auto_generated"]);
+
+    if (cdErr) {
+      console.error("[proof/approve] cutline update error:", cdErr);
+      return NextResponse.json({ error: "Onay kaydedilemedi" }, { status: 500 });
+    }
+
+    const itemFullyApproved = await allItemDesignsApproved(
+      admin,
+      itemId,
+      dfIds
+    );
+
+    if (itemFullyApproved) {
+      const { error: itemErr } = await admin
+        .from("order_items")
+        .update({
+          proof_status: "approved",
+          proof_approved_at: now,
+          cutline_design_id: cutlineId,
+        } satisfies TablesUpdate<"order_items">)
+        .eq("id", itemId)
+        .eq("order_id", orderId);
+
+      if (itemErr) {
+        console.error("[proof/approve] item update error:", itemErr);
+        return NextResponse.json(
+          { error: "Onay kaydedilemedi" },
+          { status: 500 }
+        );
+      }
+    } else if (itemRow?.proof_status === "pending") {
+      await admin
+        .from("order_items")
+        .update({ proof_status: "viewed", proof_viewed_at: now })
+        .eq("id", itemId)
+        .eq("order_id", orderId);
+    }
+
+    const { count: pendingCount } = await admin
+      .from("order_items")
+      .select("id", { count: "exact", head: true })
+      .eq("order_id", orderId)
+      .not("proof_status", "in", "(approved)");
+
+    await admin.from("order_events").insert([
+      {
+        order_id: orderId,
+        event_type: "proof_item_approved",
+        status_after: orderRow.status as Enums<"order_status">,
+        actor_id: user.id,
+        actor_role: "customer",
+        summary: `Müşteri tasarım onayladı (${itemId.slice(0, 8)}…)`,
+        detail: {
+          item_id: itemId,
+          cutline_id: cutlineId,
+          partial: !itemFullyApproved,
+        },
+      } satisfies TablesInsert<"order_events">,
+    ]);
+
+    return NextResponse.json({
+      ok: true,
+      designApproved: true,
+      itemFullyApproved,
+      allApproved: (pendingCount ?? 0) === 0,
+      remainingCount: pendingCount ?? 0,
+    });
+  }
+
+  // Tek tasarım veya legacy (designs[] boş)
   if (dfIds.length > 0) {
     for (const dfId of dfIds) {
-      const { data: cd } = await admin
-        .from("cutline_designs")
-        .select("id")
-        .eq("order_item_id", itemId)
-        .eq("design_file_id", dfId)
-        .neq("status", "superseded")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!designHasCutline(cd as { id?: string } | null)) {
+      const cd = await latestCutlineForDesign(admin, itemId, dfId);
+      if (!designHasCutline(cd)) {
         return NextResponse.json(
           { error: "Bıçak çizgisi henüz hazır değil — lütfen bekleyin" },
           { status: 400 }
@@ -139,9 +278,6 @@ export async function POST(
     }
   }
 
-  const now = new Date().toISOString();
-
-  // Item'ı approved yap
   const { error: itemErr } = await admin
     .from("order_items")
     .update({
@@ -157,10 +293,6 @@ export async function POST(
     return NextResponse.json({ error: "Onay kaydedilemedi" }, { status: 500 });
   }
 
-  // İlişkili draft + auto_generated cutline'ları approve durumuna çek.
-  // Mig 062: hidden iframe auto cutline → status='auto_generated'
-  // Mig 063: multi-design — bu item'a ait HER design_file için en güncel
-  //          cutline (auto_generated veya draft) approved'a çekilir.
   if (cutlineId) {
     await admin
       .from("cutline_designs")
@@ -169,8 +301,6 @@ export async function POST(
       .eq("order_item_id", itemId)
       .in("status", ["draft", "auto_generated"]);
   } else {
-    // CutlineId verilmediyse: item'a ait tüm non-superseded, non-approved
-    // cutline'ları approve et (multi-design: her tasarım için ayrı row).
     await admin
       .from("cutline_designs")
       .update({ status: "approved", approved_at: now })
@@ -178,14 +308,12 @@ export async function POST(
       .in("status", ["draft", "auto_generated"]);
   }
 
-  // Tüm itemler approved mı? (frontend kullanır)
   const { count: pendingCount } = await admin
     .from("order_items")
     .select("id", { count: "exact", head: true })
     .eq("order_id", orderId)
     .not("proof_status", "in", "(approved)");
 
-  // order_events log
   await admin.from("order_events").insert([
     {
       order_id: orderId,

@@ -38,9 +38,12 @@ import { BgRemovalPrompt } from "@/components/proof/BgRemovalPrompt";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
 import type { ConsistencyIssue } from "@/lib/proof/multi-design-check";
 import {
+  cutlineIsApproved,
   designHasCutline,
   getExpectedDesignCount,
+  itemAllDesignsApproved,
   itemAllDesignsReady,
+  orderAllDesignsApproved,
 } from "@/lib/order-item-meta";
 import { buildPocIframeSrc } from "@/lib/proof/build-poc-iframe-src";
 
@@ -337,6 +340,53 @@ const STATUS_BADGE: Record<
   },
 };
 
+const DESIGN_WAITING_BADGE = {
+  label: "Bıçak hazırlanıyor",
+  bg: "bg-gri-100",
+  color: "text-gri-700",
+  emoji: "⏳",
+} as const;
+
+function getDesignStatusBadge(
+  design: ProofDesign | null,
+  item: ProofItem
+): (typeof STATUS_BADGE)[ProofItem["proof_status"]] {
+  if (design && cutlineIsApproved(design.cutline)) {
+    return STATUS_BADGE.approved;
+  }
+  if (item.proof_status === "help_requested") {
+    return STATUS_BADGE.help_requested;
+  }
+  if (!design || !designHasCutline(design.cutline)) {
+    return DESIGN_WAITING_BADGE;
+  }
+  if (item.proof_status === "viewed" || item.proof_status === "edited") {
+    return STATUS_BADGE.viewed;
+  }
+  return STATUS_BADGE.pending;
+}
+
+function countOrderDesignProgress(items: ProofItem[]): {
+  total: number;
+  approved: number;
+} {
+  let total = 0;
+  let approved = 0;
+  for (const item of items) {
+    const expected = getItemDesignCount(item);
+    total += expected;
+    if ((item.designs?.length ?? 0) > 0) {
+      for (let i = 0; i < expected; i++) {
+        const d = item.designs[i];
+        if (d && cutlineIsApproved(d.cutline)) approved++;
+      }
+    } else if (itemAllDesignsApproved(item)) {
+      approved += expected;
+    }
+  }
+  return { total, approved };
+}
+
 // ============================================================
 // Material helpers (POC + save-edit)
 // ============================================================
@@ -463,11 +513,13 @@ export default function ProofApprovalPage({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpMsg, setHelpMsg] = useState("");
   const [submittingHelp, setSubmittingHelp] = useState(false);
   const [previewImgBroken, setPreviewImgBroken] = useState(false);
   const [itemThumbs, setItemThumbs] = useState<Record<string, string>>({});
+  const [designThumbs, setDesignThumbs] = useState<Record<string, string>>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   // Multi-design (C2): item içinde aktif tasarım seçimi
@@ -808,28 +860,66 @@ export default function ProofApprovalPage({
     if (!data) return;
     let cancelled = false;
     (async () => {
-      const next: Record<string, string> = {};
+      const nextItems: Record<string, string> = {};
+      const nextDesigns: Record<string, string> = {};
       await Promise.all(
-        data.items.map(async (item) => {
-          if (itemHasCutlinePreview(item) || itemCutlinePreviewUrl(item)) return;
-          const dfId = item.designs?.[0]?.design_file_id;
-          const qs = dfId
-            ? `?design_file_id=${dfId}&thumb=1`
-            : "?thumb=1";
-          try {
-            const res = await fetch(
-              `/api/orders/${orderId}/items/${item.id}/design-url${qs}`,
-              { cache: "no-store" }
+        data.items.flatMap((item) => {
+          const tasks: Promise<void>[] = [];
+          const designCount = getItemDesignCount(item);
+          if (designCount > 1) {
+            for (let idx = 0; idx < designCount; idx++) {
+              const d = item.designs[idx];
+              if (!d) continue;
+              const key = `${item.id}:${d.design_file_id}`;
+              if (
+                itemCutlinePreviewSrc(orderId, item, d.design_file_id) ||
+                designHasCutline(d.cutline)
+              ) {
+                continue;
+              }
+              tasks.push(
+                fetch(
+                  `/api/orders/${orderId}/items/${item.id}/design-url?design_file_id=${d.design_file_id}&thumb=1`,
+                  { cache: "no-store" }
+                )
+                  .then((res) => (res.ok ? res.json() : null))
+                  .then((j: { url?: string } | null) => {
+                    if (j?.url) nextDesigns[key] = j.url;
+                  })
+                  .catch(() => {
+                    /* sessiz */
+                  })
+              );
+            }
+          } else if (
+            !itemHasCutlinePreview(item) &&
+            !itemCutlinePreviewUrl(item)
+          ) {
+            const dfId = item.designs?.[0]?.design_file_id;
+            const qs = dfId
+              ? `?design_file_id=${dfId}&thumb=1`
+              : "?thumb=1";
+            tasks.push(
+              fetch(
+                `/api/orders/${orderId}/items/${item.id}/design-url${qs}`,
+                { cache: "no-store" }
+              )
+                .then((res) => (res.ok ? res.json() : null))
+                .then((j: { url?: string } | null) => {
+                  if (j?.url) nextItems[item.id] = j.url;
+                })
+                .catch(() => {
+                  /* sessiz */
+                })
             );
-            if (!res.ok) return;
-            const j = (await res.json()) as { url?: string };
-            if (j.url) next[item.id] = j.url;
-          } catch {
-            /* sessiz */
           }
+          return tasks;
         })
       );
-      if (!cancelled) setItemThumbs(next);
+      if (!cancelled) {
+        setItemThumbs(nextItems);
+        setDesignThumbs(nextDesigns);
+      }
     })();
     return () => {
       cancelled = true;
@@ -1014,9 +1104,35 @@ export default function ProofApprovalPage({
   const handleSelectItem = (itemId: string) => {
     setActiveItemId(itemId);
     const item = data?.items.find((i) => i.id === itemId);
+    if (item?.designs?.[0]) {
+      setActiveDesignFileId(item.designs[0].design_file_id);
+    }
     if (item && item.proof_status === "pending") {
       void markViewed(orderId, itemId);
-      // Local state'i de güncelle (yumuşak UI)
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              items: prev.items.map((i) =>
+                i.id === itemId
+                  ? { ...i, proof_status: "viewed" as const }
+                  : i
+              ),
+            }
+          : prev
+      );
+    }
+  };
+
+  const handleSelectDesign = (
+    itemId: string,
+    designFileId: string | null
+  ) => {
+    setActiveItemId(itemId);
+    if (designFileId) setActiveDesignFileId(designFileId);
+    const item = data?.items.find((i) => i.id === itemId);
+    if (item && item.proof_status === "pending") {
+      void markViewed(orderId, itemId);
       setData((prev) =>
         prev
           ? {
@@ -1034,14 +1150,24 @@ export default function ProofApprovalPage({
 
   const handleApprove = async () => {
     if (!activeItem) return;
-    if (!itemAllDesignsReady(activeItem)) {
-      toast.error("Tüm tasarımların bıçak çizgisi hazır olmalı");
-      return;
-    }
     if (!activeCutline && !showJpgShapeSelector) {
       toast.error("Bıçak çizgisi henüz hazır değil — lütfen birkaç dakika bekle");
       return;
     }
+    if (activeCutline && cutlineIsApproved(activeCutline)) {
+      toast.error("Bu tasarım zaten onaylandı");
+      return;
+    }
+    const multiDesign = getItemDesignCount(activeItem) > 1;
+    if (!multiDesign && !itemAllDesignsReady(activeItem)) {
+      toast.error("Tüm tasarımların bıçak çizgisi hazır olmalı");
+      return;
+    }
+    if (multiDesign && !designHasCutline(activeCutline)) {
+      toast.error("Bu tasarımın bıçak çizgisi henüz hazır değil");
+      return;
+    }
+
     setApproving(true);
     try {
       const result = await approveItem(
@@ -1054,58 +1180,111 @@ export default function ProofApprovalPage({
         return;
       }
 
-      // Local state güncelle
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              items: prev.items.map((i) =>
-                i.id === activeItem.id
-                  ? {
-                      ...i,
-                      proof_status: "approved" as const,
-                      proof_approved_at: new Date().toISOString(),
-                    }
-                  : i
-              ),
-              summary: {
-                ...prev.summary,
-                approved: prev.summary.approved + 1,
-                pending:
-                  activeItem.proof_status === "pending"
-                    ? Math.max(0, prev.summary.pending - 1)
-                    : prev.summary.pending,
-                viewed:
-                  activeItem.proof_status === "viewed"
-                    ? Math.max(0, prev.summary.viewed - 1)
-                    : prev.summary.viewed,
-              },
-            }
-          : prev
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((i) => {
+            if (i.id !== activeItem.id) return i;
+            const updatedDesigns = (i.designs ?? []).map((d) => {
+              if (
+                d.design_file_id !== activeDesignFileId ||
+                !d.cutline ||
+                !activeCutline
+              ) {
+                return d;
+              }
+              return {
+                ...d,
+                cutline: { ...d.cutline, status: "approved" as const },
+              };
+            });
+            const patched = { ...i, designs: updatedDesigns };
+            const fullyApproved = itemAllDesignsApproved(patched);
+            return {
+              ...patched,
+              proof_status: fullyApproved
+                ? ("approved" as const)
+                : i.proof_status === "pending"
+                  ? ("viewed" as const)
+                  : i.proof_status,
+              proof_approved_at: fullyApproved
+                ? new Date().toISOString()
+                : i.proof_approved_at,
+            };
+          }),
+          summary: {
+            ...prev.summary,
+            approved: prev.items.filter((it) => {
+              if (it.id !== activeItem.id) {
+                return itemAllDesignsApproved(it);
+              }
+              const updatedDesigns = (it.designs ?? []).map((d) => {
+                if (
+                  d.design_file_id !== activeDesignFileId ||
+                  !d.cutline ||
+                  !activeCutline
+                ) {
+                  return d;
+                }
+                return {
+                  ...d,
+                  cutline: { ...d.cutline, status: "approved" as const },
+                };
+              });
+              return itemAllDesignsApproved({
+                ...it,
+                designs: updatedDesigns,
+              });
+            }).length,
+          },
+        };
+      });
+
+      toast.success(
+        multiDesign
+          ? `Tasarım ${(activeItem.designs?.findIndex(
+              (d) => d.design_file_id === activeDesignFileId
+            ) ?? 0) + 1} onaylandı`
+          : `${activeItem.title} onaylandı`
       );
 
-      toast.success(`${activeItem.title} onaylandı`);
-
-      if (result.allApproved) {
-        // Hepsi onaylandı → finalize çağır
-        const fin = await finalizeProof(orderId);
-        if (fin.ok) {
-          router.push(`/onay/${orderId}/tamamlandi`);
-          return;
+      // Sıradaki onaysız tasarıma geç
+      const nextDesign = (() => {
+        for (const item of data?.items ?? []) {
+          const count = getItemDesignCount(item);
+          for (let idx = 0; idx < count; idx++) {
+            const d = item.designs[idx];
+            if (!d || cutlineIsApproved(d.cutline)) continue;
+            if (!designHasCutline(d.cutline)) continue;
+            return {
+              itemId: item.id,
+              designFileId: d.design_file_id,
+            };
+          }
         }
-        toast.error(fin.error ?? "Sonlandırma başarısız");
-        return;
-      }
-
-      // Sıradaki onaysız item'a geç
-      const next = data?.items.find(
-        (i) => i.id !== activeItem.id && i.proof_status !== "approved"
-      );
-      if (next) {
-        handleSelectItem(next.id);
+        return null;
+      })();
+      if (nextDesign) {
+        handleSelectDesign(nextDesign.itemId, nextDesign.designFileId);
       }
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleFinalizeAll = async () => {
+    if (!data || !orderAllDesignsApproved(data.items)) return;
+    setFinalizing(true);
+    try {
+      const fin = await finalizeProof(orderId);
+      if (fin.ok) {
+        router.push(`/onay/${orderId}/tamamlandi`);
+        return;
+      }
+      toast.error(fin.error ?? "Sonlandırma başarısız");
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -1293,10 +1472,19 @@ export default function ProofApprovalPage({
   }
 
   const { summary, items, order } = data;
+  const designProgress = countOrderDesignProgress(items);
   const progressPct =
-    summary.total > 0 ? Math.round((summary.approved / summary.total) * 100) : 0;
+    designProgress.total > 0
+      ? Math.round((designProgress.approved / designProgress.total) * 100)
+      : summary.total > 0
+        ? Math.round((summary.approved / summary.total) * 100)
+        : 0;
+  const allDesignsApproved = orderAllDesignsApproved(items);
+  const activeDesignApproved = activeCutline
+    ? cutlineIsApproved(activeCutline)
+    : false;
   const itemReadyForApproval = activeItem
-    ? itemAllDesignsReady(activeItem)
+    ? designHasCutline(activeCutline) || showJpgShapeSelector
     : false;
   const cutlineNotReady =
     !itemReadyForApproval && !showJpgShapeSelector;
@@ -1523,7 +1711,7 @@ export default function ProofApprovalPage({
           aria-valuenow={progressPct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Onay ilerlemesi: ${summary.approved}/${summary.total}`}
+          aria-label={`Onay ilerlemesi: ${designProgress.approved}/${designProgress.total}`}
         >
           <div
             className="h-full bg-yesil transition-all"
@@ -1611,143 +1799,197 @@ export default function ProofApprovalPage({
       )}
 
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-        {/* SOL — İtem listesi */}
+        {/* SOL — Ürün / tasarım kartları */}
         <aside className="space-y-2">
-          {items.map((item) => {
-            const badge = STATUS_BADGE[item.proof_status];
-            const isActive = item.id === activeItemId;
-            const thumbUrl =
-              itemCutlinePreviewSrc(orderId, item) ??
-              (isPreviewSrc(itemThumbs[item.id]) ? itemThumbs[item.id] : null) ??
-              (isHttpUrl(itemCutlinePreviewUrl(item))
-                ? itemCutlinePreviewUrl(item)
-                : null);
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => handleSelectItem(item.id)}
-                className={cn(
-                  "w-full rounded-xl border p-4 text-left transition",
-                  isActive
-                    ? "border-gri-200 border-l-[3px] border-l-pim-mercan bg-pim-mercan-tint/20 shadow-sm"
-                    : "border-gri-200 bg-white hover:border-pim-mercan/40"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gri-100 text-gri-700">
-                    {thumbUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumbUrl}
-                        alt={item.title}
-                        className="h-full w-full object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                          (
-                            e.target as HTMLImageElement
-                          ).nextElementSibling?.classList.remove("hidden");
-                        }}
-                      />
-                    ) : null}
-                    <div className={thumbUrl ? "hidden" : ""}>
-                      {item.product === "sticker" ? (
-                        <Icon.Sticker size={32} />
-                      ) : (
-                        <Icon.Tag size={32} />
+          {items.flatMap((item) => {
+            const designCount = getItemDesignCount(item);
+
+            if (designCount <= 1) {
+              const badge = STATUS_BADGE[item.proof_status];
+              const isActive = item.id === activeItemId;
+              const singleDesign = item.designs[0] ?? null;
+              const thumbUrl =
+                itemCutlinePreviewSrc(
+                  orderId,
+                  item,
+                  singleDesign?.design_file_id
+                ) ??
+                (isPreviewSrc(itemThumbs[item.id])
+                  ? itemThumbs[item.id]
+                  : null) ??
+                (isHttpUrl(itemCutlinePreviewUrl(item))
+                  ? itemCutlinePreviewUrl(item)
+                  : null);
+              const isApproved = itemAllDesignsApproved(item);
+
+              return [
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => handleSelectItem(item.id)}
+                  className={cn(
+                    "w-full rounded-xl border p-4 text-left transition",
+                    isActive
+                      ? "border-gri-200 border-l-[3px] border-l-pim-mercan bg-pim-mercan-tint/20 shadow-sm"
+                      : "border-gri-200 bg-white hover:border-pim-mercan/40",
+                    isApproved && "opacity-70"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gri-100 text-gri-700">
+                      {thumbUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumbUrl}
+                          alt={item.title}
+                          className="h-full w-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                            (
+                              e.target as HTMLImageElement
+                            ).nextElementSibling?.classList.remove("hidden");
+                          }}
+                        />
+                      ) : null}
+                      <div className={thumbUrl ? "hidden" : ""}>
+                        {item.product === "sticker" ? (
+                          <Icon.Sticker size={32} />
+                        ) : (
+                          <Icon.Tag size={32} />
+                        )}
+                      </div>
+                      {isApproved && (
+                        <span
+                          className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-yesil text-[10px] text-white"
+                          aria-hidden
+                        >
+                          ✓
+                        </span>
                       )}
                     </div>
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate font-medium text-lacivert">
-                      {item.title}
-                    </div>
-                    <div className="mt-0.5 text-xs text-gri-700">
-                      {formatItemSubtitle(item)}
-                      {item.cutline?.material_type &&
-                        item.cutline.material_type !== "paper" && (
-                          <span>
-                            {" · "}
-                            {MATERIAL_LABEL[item.cutline.material_type]}
-                          </span>
-                        )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1">
-                      <div
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                          badge.bg,
-                          badge.color
-                        )}
-                      >
-                        <span>{badge.emoji}</span>
-                        <span>{badge.label}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium text-lacivert">
+                        {item.title}
                       </div>
-                      {/* Tier mini rozet (sadece pro veya improve için) */}
-                      {item.cutline?.tier &&
-                        item.cutline.tier !== "standard" && (
-                          <div
-                            className={cn(
-                              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                              TIER_BADGE[item.cutline.tier].bg,
-                              TIER_BADGE[item.cutline.tier].color
-                            )}
-                          >
-                            {TIER_BADGE[item.cutline.tier].emoji}
-                          </div>
-                        )}
+                      <div className="mt-0.5 text-xs text-gri-700">
+                        {formatItemSubtitle(item)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1">
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                            badge.bg,
+                            badge.color
+                          )}
+                        >
+                          <span>{badge.emoji}</span>
+                          <span>{badge.label}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </button>,
+              ];
+            }
 
-                {/* Multi-design picker — seçili item'ın altında */}
-                {isActive && multiDesignCount > 1 && (
-                  <div className="mt-2 border-t border-gri-200 pt-2 pl-[76px]">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-gri-500 mb-1">
-                      {multiDesignCount} Tasarım
+            return Array.from({ length: designCount }, (_, idx) => {
+              const d = item.designs[idx] ?? null;
+              const isSelected =
+                item.id === activeItemId &&
+                (d
+                  ? d.design_file_id === activeDesignFileId
+                  : idx === 0 && !activeDesignFileId);
+              const badge = getDesignStatusBadge(d, item);
+              const isDesignApproved = d ? cutlineIsApproved(d.cutline) : false;
+              const thumbUrl = d
+                ? itemCutlinePreviewSrc(orderId, item, d.design_file_id) ??
+                  (isPreviewSrc(designThumbs[`${item.id}:${d.design_file_id}`])
+                    ? designThumbs[`${item.id}:${d.design_file_id}`]
+                    : null)
+                : null;
+
+              return (
+                <button
+                  key={`${item.id}-${d?.design_file_id ?? `slot-${idx}`}`}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() =>
+                    handleSelectDesign(item.id, d?.design_file_id ?? null)
+                  }
+                  className={cn(
+                    "w-full rounded-xl border p-4 text-left transition",
+                    isSelected
+                      ? "border-gri-200 border-l-[3px] border-l-pim-mercan bg-pim-mercan-tint/20 shadow-sm"
+                      : "border-gri-200 bg-white hover:border-pim-mercan/40",
+                    isDesignApproved && "opacity-70"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gri-100 text-gri-700">
+                      {thumbUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumbUrl}
+                          alt={d?.file_name ?? `Tasarım ${idx + 1}`}
+                          className="h-full w-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                            (
+                              e.target as HTMLImageElement
+                            ).nextElementSibling?.classList.remove("hidden");
+                          }}
+                        />
+                      ) : null}
+                      <div className={thumbUrl ? "hidden" : ""}>
+                        {item.product === "sticker" ? (
+                          <Icon.Sticker size={32} />
+                        ) : (
+                          <Icon.Tag size={32} />
+                        )}
+                      </div>
+                      {isDesignApproved && (
+                        <span
+                          className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-yesil text-[10px] text-white"
+                          aria-hidden
+                        >
+                          ✓
+                        </span>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {Array.from({ length: multiDesignCount }, (_, idx) => {
-                        const d = item.designs[idx];
-                        if (d) {
-                          const isSel = d.design_file_id === activeDesignFileId;
-                          const ready = designHasCutline(d.cutline);
-                          return (
-                            <button
-                              key={d.design_file_id}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveDesignFileId(d.design_file_id);
-                              }}
-                              className={cn(
-                                "rounded-md border px-2 py-0.5 text-[11px] transition",
-                                isSel
-                                  ? "border-pim-mercan bg-pim-mercan text-white"
-                                  : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
-                              )}
-                              title={d.file_name}
-                            >
-                              {idx + 1} {ready ? "✓" : "⏳"}
-                            </button>
-                          );
-                        }
-                        return (
-                          <span
-                            key={`p-${idx}`}
-                            className="rounded-md border border-dashed border-gri-300 px-2 py-0.5 text-[11px] text-gri-400"
-                          >
-                            {idx + 1} ⏳
-                          </span>
-                        );
-                      })}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-medium text-gri-500">
+                        {item.title}
+                      </div>
+                      <div className="truncate font-medium text-lacivert">
+                        Tasarım {idx + 1}
+                      </div>
+                      {d?.file_name && (
+                        <div className="mt-0.5 truncate text-[11px] text-gri-700">
+                          {d.file_name}
+                        </div>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-1">
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                            badge.bg,
+                            badge.color
+                          )}
+                        >
+                          <span>{badge.emoji}</span>
+                          <span>{badge.label}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                )}
-              </button>
-            );
+                </button>
+              );
+            });
           })}
         </aside>
 
@@ -1762,16 +2004,41 @@ export default function ProofApprovalPage({
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="text-sm font-semibold text-lacivert">
                         {activeItem.title}
+                        {multiDesignCount > 1 && activeDesign && (
+                          <span className="font-normal text-gri-700">
+                            {" "}
+                            · Tasarım{" "}
+                            {(activeItem.designs?.findIndex(
+                              (d) =>
+                                d.design_file_id === activeDesignFileId
+                            ) ?? 0) + 1}
+                          </span>
+                        )}
                       </div>
                       <div
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                          STATUS_BADGE[activeItem.proof_status].bg,
-                          STATUS_BADGE[activeItem.proof_status].color
+                          multiDesignCount > 1 && activeDesign
+                            ? getDesignStatusBadge(activeDesign, activeItem).bg
+                            : STATUS_BADGE[activeItem.proof_status].bg,
+                          multiDesignCount > 1 && activeDesign
+                            ? getDesignStatusBadge(activeDesign, activeItem)
+                                .color
+                            : STATUS_BADGE[activeItem.proof_status].color
                         )}
                       >
-                        <span>{STATUS_BADGE[activeItem.proof_status].emoji}</span>
-                        <span>{STATUS_BADGE[activeItem.proof_status].label}</span>
+                        <span>
+                          {multiDesignCount > 1 && activeDesign
+                            ? getDesignStatusBadge(activeDesign, activeItem)
+                                .emoji
+                            : STATUS_BADGE[activeItem.proof_status].emoji}
+                        </span>
+                        <span>
+                          {multiDesignCount > 1 && activeDesign
+                            ? getDesignStatusBadge(activeDesign, activeItem)
+                                .label
+                            : STATUS_BADGE[activeItem.proof_status].label}
+                        </span>
                       </div>
                     </div>
                     <div className="mt-0.5 text-xs text-gri-700">
@@ -2054,18 +2321,18 @@ export default function ProofApprovalPage({
                     onClick={() => void handleApprove()}
                     disabled={
                       approving ||
-                      activeItem.proof_status === "approved" ||
+                      activeDesignApproved ||
                       activeItem.proof_status === "help_requested" ||
                       !itemReadyForApproval
                     }
                   >
                     {approving
                       ? "Onaylanıyor…"
-                      : activeItem.proof_status === "approved"
+                      : activeDesignApproved
                         ? "Onaylandı ✓"
                         : !itemReadyForApproval
                           ? "Bıçak hazırlanıyor…"
-                          : "Bu ürünü onayla"}
+                          : "Bu tasarımı onayla"}
                   </Button>
                 </div>
               </div>
@@ -2077,6 +2344,34 @@ export default function ProofApprovalPage({
           )}
         </section>
       </div>
+
+      {/* Tüm tasarımlar onaylandıktan sonra finalize */}
+      {order.status === "proof_pending" && (
+        <div className="sticky bottom-4 z-40 mt-6 rounded-xl border border-gri-200 bg-white p-4 shadow-lg">
+          <Button
+            variant="primary"
+            size="lg"
+            className={cn(
+              "w-full justify-center text-base font-semibold",
+              allDesignsApproved
+                ? "!bg-yesil hover:!bg-yesil-koyu"
+                : "!bg-gri-300 !text-gri-700 cursor-not-allowed"
+            )}
+            onClick={() => void handleFinalizeAll()}
+            disabled={!allDesignsApproved || finalizing}
+          >
+            {finalizing
+              ? "Gönderiliyor…"
+              : "✅ Tüm Tasarımları Onayla ve Üretime Gönder"}
+          </Button>
+          {!allDesignsApproved && (
+            <p className="mt-2 text-center text-xs text-gri-700">
+              Önce tüm tasarımları tek tek onayla (
+              {designProgress.approved}/{designProgress.total})
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Yardım modal */}
       {helpOpen && activeItem && (
