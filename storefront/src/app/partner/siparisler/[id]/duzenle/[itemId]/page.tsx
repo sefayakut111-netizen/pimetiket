@@ -21,6 +21,10 @@ import { use, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
+import {
+  buildPocIframeSrc,
+  mapConfiguratorMaterial,
+} from "@/lib/proof/build-poc-iframe-src";
 
 interface PartnerItem {
   id: string;
@@ -144,30 +148,22 @@ export default function PartnerEditCutlinePage({
           setDesignLoadError("Tasarım URL üretilemedi");
           return;
         }
-        const mapMaterial = (m: unknown): string => {
-          if (typeof m !== "string") return "paper";
-          const k = m.toLowerCase();
-          if (k === "transparan" || k === "transparent") return "transparent";
-          if (k === "holo" || k === "holographic") return "holographic";
-          if (k === "simli" || k === "metallic") return "metallic";
-          return "paper";
-        };
-        const meta = (item as unknown as { meta?: Record<string, unknown> })
-          .meta;
-        const material = mapMaterial(meta?.material_type ?? meta?.material);
-        const ps = new URLSearchParams({
-          embed: "1",
-          designUrl: j.url,
-          designName: j.fileName,
-          designMime: j.mimeType,
-          material,
-          mode: "contour",
-          autoSave: "0",
-          orderId,
-          itemId,
-        });
-        if (designFileId) ps.set("designFileId", designFileId);
-        setIframeSrc(`/poc.html?${ps.toString()}`);
+        const material = mapConfiguratorMaterial(
+          item.meta?.material_type ?? item.meta?.material
+        );
+        const origin = window.location.origin;
+        setIframeSrc(
+          buildPocIframeSrc({
+            orderId,
+            itemId,
+            fileName: j.fileName,
+            mimeType: j.mimeType,
+            material,
+            designFileId,
+            autoSave: false,
+            origin,
+          })
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         setDesignLoadError("POC açılamadı: " + msg);

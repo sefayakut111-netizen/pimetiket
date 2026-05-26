@@ -42,6 +42,7 @@ import {
   getExpectedDesignCount,
   itemAllDesignsReady,
 } from "@/lib/order-item-meta";
+import { buildPocIframeSrc } from "@/lib/proof/build-poc-iframe-src";
 
 // ============================================================
 // Types — fn_proof_summary RPC çıktısı
@@ -922,20 +923,20 @@ export default function ProofApprovalPage({
           fileName: string;
         };
         if (cancelled) return;
-        const params = new URLSearchParams({
-          embed: "1",
-          designUrl: j.url,
-          designName: j.fileName,
-          designMime: j.mimeType,
-          material: candidate.material,
-          mode: "contour",
-          autoSave: "1",
-          orderId,
-          itemId: candidate.itemId,
-        });
         setBgGenItemId(candidate.itemId);
         setBgGenDesignFileId(candidate.designFileId);
-        setBgGenSrc(`/poc.html?${params.toString()}`);
+        setBgGenSrc(
+          buildPocIframeSrc({
+            orderId,
+            itemId: candidate.itemId,
+            fileName: j.fileName,
+            mimeType: j.mimeType,
+            material: candidate.material,
+            designFileId: candidate.designFileId,
+            autoSave: true,
+            origin: window.location.origin,
+          })
+        );
         setBgGenError(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";

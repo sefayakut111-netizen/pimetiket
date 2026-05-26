@@ -1600,16 +1600,20 @@ const PIM_PARAMS = (() => {
     const sp = new URLSearchParams(window.location.search);
     return {
       designUrl: sp.get('designUrl'),
+      designName: sp.get('designName'),
+      designMime: sp.get('designMime'),
       material: sp.get('material'),
       orderId: sp.get('orderId'),
       itemId: sp.get('itemId'),
+      designFileId: sp.get('designFileId'),
+      embed: sp.get('embed') === '1',
       headless: sp.get('headless') === '1',
       autoSave: sp.get('autoSave') === '1',
       mode: sp.get('mode') || 'contour',
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false, autoSave: false, mode: 'contour' };
+    return { headless: false, autoSave: false, embed: false, mode: 'contour' };
   }
 })();
 
@@ -1670,6 +1674,14 @@ window.addEventListener('message', (e) => {
       // Export SVG yapıp parent'a yolla (save handler tetikle)
       const btn = document.getElementById('btnApprove');
       if (btn) btn.click();
+    } else if (msg.type === 'pim-load-design') {
+      // Parent'tan tasarım URL — query string kesildiyse yedek yükleme
+      if (msg.url && typeof msg.url === 'string') {
+        PIM_PARAMS.designUrl = msg.url;
+        if (msg.fileName) PIM_PARAMS.designName = msg.fileName;
+        if (msg.mimeType) PIM_PARAMS.designMime = msg.mimeType;
+        void pimAutoLoadDesign();
+      }
     }
   } catch (err) {
     pimPostToParent({ type: 'pim-poc-error', error: String(err) });
@@ -1721,10 +1733,21 @@ async function pimAutoLoadDesign() {
     const blob = await res.blob();
     console.log('[pim-poc] blob alındı:', blob.size, 'bytes, type:', blob.type);
     if (blob.size === 0) throw new Error('EMPTY_BLOB');
-    // Dosya adını URL'den çıkar
-    const urlObj = new URL(PIM_PARAMS.designUrl);
-    const name = urlObj.pathname.split('/').pop() || 'design.png';
-    const file = new File([blob], name, { type: blob.type || 'image/png' });
+    const name =
+      PIM_PARAMS.designName ||
+      (() => {
+        try {
+          const urlObj = new URL(PIM_PARAMS.designUrl);
+          return urlObj.pathname.split('/').pop() || 'design.png';
+        } catch (e) {
+          return 'design.png';
+        }
+      })();
+    const mime =
+      PIM_PARAMS.designMime ||
+      blob.type ||
+      'image/png';
+    const file = new File([blob], name, { type: mime });
     console.log('[pim-poc] handleFile çağrılıyor:', name);
     if (typeof handleFile === 'function') {
       handleFile(file);
@@ -3157,11 +3180,53 @@ document.getElementById('btnEdit').addEventListener('click', () => {
   }
 });
 
-// "Bıçağı onayla" — onay overlay göster
+// Embed modu — parent entegrasyonu (onay/duzenle sayfası)
+function pimIsIntegrationMode() {
+  return !!(PIM_PARAMS.orderId && PIM_PARAMS.itemId);
+}
+
+function pimSaveToParent() {
+  if (!currentMat) return false;
+  if (!currentPaths || currentPaths.length === 0) {
+    showStatus('Önce bir görsel yükleyin', 'warn');
+    return false;
+  }
+  const svg = pimBuildCutlineSvg();
+  if (!svg) {
+    showStatus('SVG üretilemedi', 'err');
+    return false;
+  }
+  pimPostToParent({
+    type: 'pim-cutline-saved',
+    svg,
+    meta: pimBuildCutlineMeta(),
+    preview_png_base64: pimCapturePreviewPng(),
+  });
+  showStatus('Kaydediliyor…', 'ok');
+  return true;
+}
+
+if (PIM_PARAMS.embed && pimIsIntegrationMode()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnApprove');
+    if (!btn) return;
+    for (const node of btn.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+        node.textContent = ' Kaydet ve dön';
+        break;
+      }
+    }
+  });
+}
+
+// "Bıçağı onayla" — entegrasyon modunda parent'a kaydet
 document.getElementById('btnApprove').addEventListener('click', () => {
   if (!currentMat) return;
+  if (pimIsIntegrationMode()) {
+    pimSaveToParent();
+    return;
+  }
   document.getElementById('approvalOverlay').classList.add('show');
-  // Gerçek sistemde burada sepete ekleme / order workflow tetiklenir
   console.log('[PimEtiket] Bıçak onaylandı, sipariş akışına geçildi');
 });
 

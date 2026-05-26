@@ -67,6 +67,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
 import { useVisionFallback } from "@/lib/hooks/useVisionFallback";
+import {
+  buildPocIframeSrc,
+  mapConfiguratorMaterial,
+} from "@/lib/proof/build-poc-iframe-src";
 
 interface ProofItem {
   id: string;
@@ -75,6 +79,7 @@ interface ProofItem {
   height: number;
   qty: number;
   proof_status: string;
+  meta?: Record<string, unknown> | null;
 }
 
 interface ProofSummaryLite {
@@ -142,6 +147,11 @@ export default function ProofEditPage({
     state: "loading" | "ready" | "loaded" | "error" | "timeout";
     message: string;
   } | null>(null);
+  const pendingDesignRef = useRef<{
+    url: string;
+    fileName: string;
+    mimeType: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,13 +204,13 @@ export default function ProofEditPage({
     (async () => {
       try {
         const qs = designFileId ? `?design_file_id=${designFileId}` : "";
-        const designUrlEndpoint = `/api/orders/${orderId}/items/${itemId}/design-url${qs}`;
-        console.log("[onay/duzenle] design-url fetch:", designUrlEndpoint);
-        const res = await fetch(designUrlEndpoint, { cache: "no-store" });
+        const res = await fetch(
+          `/api/orders/${orderId}/items/${itemId}/design-url${qs}`,
+          { cache: "no-store" }
+        );
         if (!res.ok) {
           const body = await res.text().catch(() => "");
           const errMsg = `design-url ${res.status}: ${body.slice(0, 200) || "(no body)"}`;
-          console.error("[onay/duzenle]", errMsg);
           setDesignLoadError(errMsg);
           toast.error("Tasarım yüklenemedi — manuel düzenleme yapamayız");
           return;
@@ -211,45 +221,39 @@ export default function ProofEditPage({
           fileName: string;
         };
         if (cancelled) return;
-        console.log("[onay/duzenle] design-url ok:", {
-          fileName: j.fileName,
-          mimeType: j.mimeType,
-          urlLength: j.url?.length ?? 0,
-        });
         if (!j.url) {
-          const errMsg = "design-url response.url bos — Supabase signed URL uretilemedi";
-          console.error("[onay/duzenle]", errMsg);
-          setDesignLoadError(errMsg);
+          setDesignLoadError(
+            "design-url response.url bos — tasarım dosyasına erişilemedi"
+          );
           toast.error("Tasarım URL üretilemedi");
           return;
         }
-        // Konfigüratör material → POC material mapping (vinil/transparan/holo/simli)
-        const mapMaterial = (m: unknown): string => {
-          if (typeof m !== "string") return "paper";
-          const k = m.toLowerCase();
-          if (k === "transparan" || k === "transparent") return "transparent";
-          if (k === "holo" || k === "holographic") return "holographic";
-          if (k === "simli" || k === "metallic") return "metallic";
-          return "paper";
-        };
-        const meta = (item as unknown as { meta?: Record<string, unknown> })
-          .meta;
-        const material = mapMaterial(meta?.material_type ?? meta?.material);
 
-        const params = new URLSearchParams({
-          embed: "1",
-          designUrl: j.url,
-          designName: j.fileName,
-          designMime: j.mimeType,
-          material,
-          mode: "contour",
-          autoSave: "0",
-          orderId,
-          itemId,
-        });
-        if (designFileId) params.set("designFileId", designFileId);
-        setIframeSrc(`/poc.html?${params.toString()}`);
-        setPocStatus({ state: "loading", message: "POC iframe yukleniyor..." });
+        const material = mapConfiguratorMaterial(
+          item.meta?.material_type ?? item.meta?.material
+        );
+        const origin = window.location.origin;
+        const proxyDesignUrl = `${origin}/api/orders/${orderId}/items/${itemId}/design-file${qs}`;
+
+        pendingDesignRef.current = {
+          url: proxyDesignUrl,
+          fileName: j.fileName,
+          mimeType: j.mimeType,
+        };
+
+        setIframeSrc(
+          buildPocIframeSrc({
+            orderId,
+            itemId,
+            fileName: j.fileName,
+            mimeType: j.mimeType,
+            material,
+            designFileId,
+            autoSave: false,
+            origin,
+          })
+        );
+        setPocStatus({ state: "loading", message: "POC iframe yükleniyor…" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
         toast.error(`POC açılamadı: ${msg}`);
@@ -272,36 +276,43 @@ export default function ProofEditPage({
       const data = e.data as { type?: string; error?: string; source?: string } | undefined;
       if (!data || typeof data.type !== "string") return;
       if (data.type === "pim-poc-ready") {
-        console.log("[onay/duzenle] POC ready");
-        setPocStatus({ state: "ready", message: "POC hazir, tasarim cekiliyor..." });
+        setPocStatus({ state: "ready", message: "POC hazır, tasarım çekiliyor…" });
+        const pending = pendingDesignRef.current;
+        if (pending && iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage(
+            {
+              type: "pim-load-design",
+              url: pending.url,
+              fileName: pending.fileName,
+              mimeType: pending.mimeType,
+            },
+            "*"
+          );
+        }
       } else if (data.type === "pim-poc-loaded") {
-        console.log("[onay/duzenle] POC loaded:", data);
         loaded = true;
         setPocStatus({
           state: "loaded",
-          message: `Tasarim yuklendi (source=${data.source ?? "?"})`,
+          message: `Tasarım yüklendi (source=${data.source ?? "?"})`,
         });
-        // 3sn sonra banner'i gizle (basariliyi sUrekli gostermek gereksiz)
         setTimeout(() => setPocStatus(null), 3000);
       } else if (data.type === "pim-poc-error") {
-        console.error("[onay/duzenle] POC error:", data.error);
         setPocStatus({
           state: "error",
-          message: `POC hatasi: ${data.error ?? "(bos)"}`,
+          message: `POC hatası: ${data.error ?? "(boş)"}`,
         });
       }
     };
     window.addEventListener("message", handler);
     timeoutHandle = setTimeout(() => {
       if (!loaded) {
-        console.warn("[onay/duzenle] 12sn doldu, POC tasarim yuklemedi");
         setPocStatus((prev) =>
           prev?.state === "loaded"
             ? prev
             : {
                 state: "timeout",
                 message:
-                  "12 saniyedir POC tasarim yuklemedi. CORS/sandbox sorunu olabilir. Console'da [pim-poc] hatasini kontrol et.",
+                  "12 saniyedir POC tasarım yüklemedi. Sayfayı yenilemeyi dene veya tasarım dosyasının erişilebilir olduğundan emin ol.",
               }
         );
       }
@@ -368,33 +379,38 @@ export default function ProofEditPage({
 
   if (loading) {
     return (
-      <main className="container py-8">
-        <Skeleton className="mb-2 h-6 w-48" />
-        <Skeleton className="h-[500px]" />
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <Skeleton className="mb-2 h-6 w-48" />
+          <Skeleton className="h-[min(640px,calc(100vh-220px))]" />
+        </div>
       </main>
     );
   }
 
   if (forbidden || !item) {
     return (
-      <main className="container py-12">
-        <Card className="p-8 text-center">
-          <h1 className="mb-2 text-lg font-semibold">
-            Bu ürün düzenleme aşamasında değil
-          </h1>
-          <p className="mb-4 text-sm text-gri-700">
-            Sipariş zaten onaylanmış veya bu ürün sana ait değil olabilir.
-          </p>
-          <Button href={`/onay/${orderId}`} variant="primary" size="md">
-            Onay sayfasına dön
-          </Button>
-        </Card>
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <Card className="p-8 text-center">
+            <h1 className="mb-2 text-lg font-semibold">
+              Bu ürün düzenleme aşamasında değil
+            </h1>
+            <p className="mb-4 text-sm text-gri-700">
+              Sipariş zaten onaylanmış veya bu ürün sana ait değil olabilir.
+            </p>
+            <Button href={`/onay/${orderId}`} variant="primary" size="md">
+              Onay sayfasına dön
+            </Button>
+          </Card>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="container py-6">
+    <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -504,12 +520,12 @@ export default function ProofEditPage({
             ref={iframeRef}
             src={iframeSrc}
             title="Bıçak düzenleyici"
-            className="block h-[calc(100vh-220px)] min-h-[640px] w-full"
+            className="block h-[min(calc(100vh-280px),900px)] min-h-[480px] w-full sm:min-h-[560px] md:min-h-[640px]"
             // POC esm.run'dan @imgly/background-removal indiriyor, allow-scripts şart
             sandbox="allow-scripts allow-same-origin allow-downloads"
           />
         ) : designLoadError ? (
-          <div className="grid h-[calc(100vh-220px)] min-h-[640px] place-items-center bg-kirmizi-soft p-6 text-center">
+          <div className="grid h-[min(calc(100vh-280px),900px)] min-h-[480px] place-items-center bg-kirmizi-soft p-6 text-center sm:min-h-[560px] md:min-h-[640px]">
             <div className="max-w-lg">
               <div className="mb-2 text-base font-semibold text-kirmizi">
                 Tasarım yüklenemedi
@@ -528,7 +544,7 @@ export default function ProofEditPage({
             </div>
           </div>
         ) : (
-          <div className="grid h-[calc(100vh-220px)] min-h-[640px] place-items-center bg-gri-100 text-sm text-gri-700">
+          <div className="grid h-[min(calc(100vh-280px),900px)] min-h-[480px] place-items-center bg-gri-100 text-sm text-gri-700 sm:min-h-[560px] md:min-h-[640px]">
             Tasarım yükleniyor…
           </div>
         )}
@@ -539,6 +555,7 @@ export default function ProofEditPage({
           Bıçak kaydediliyor, lütfen bekle…
         </div>
       )}
+      </div>
     </main>
   );
 }
