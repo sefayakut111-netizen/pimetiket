@@ -2486,6 +2486,20 @@ function buildFixedCutlineFrame() {
   return { cx, cy, w: fw, h: fh, mode: currentMode, refW: ref.w, refH: ref.h };
 }
 
+/** Yerleşim preset'leri için referans çerçeve — sabit bıçak veya sipariş boyutu (kontur embed). */
+function getPlacementFrame() {
+  if (cutlineFrame) return cutlineFrame;
+  const dims = getOrderDimsMm();
+  if (!PIM_PARAMS.embed || !dims || !imageMetadata) return null;
+  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
+  const fw = dims.w * pxPerMm;
+  const fh = dims.h * pxPerMm;
+  const cx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
+  const cy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
+  return { cx, cy, w: fw, h: fh };
+}
+
 function trimTransparentBounds(img) {
   const c = document.createElement('canvas');
   c.width = img.width;
@@ -2556,7 +2570,7 @@ function resetEditorSettings() {
   updateOffsetNote();
   if (!currentMat || !sourceImage) return;
   resetImageTransform();
-  if (cutlineFrame && PIM_PARAMS.embed) {
+  if (getPlacementFrame() && PIM_PARAMS.embed) {
     applyPlacementPreset('center');
   } else {
     generateCutline();
@@ -2585,7 +2599,8 @@ function getArtDrawRect() {
 function applyPlacementPreset(preset) {
   if (!imageMetadata || !sourceImage) return;
   resetImageTransform();
-  if (!cutlineFrame) {
+  const frame = getPlacementFrame();
+  if (!frame) {
     render();
     pimScheduleHeightReport();
     pimScheduleAutoSave();
@@ -2593,26 +2608,26 @@ function applyPlacementPreset(preset) {
   }
   const artW = imageMetadata.contentW;
   const artH = imageMetadata.contentH;
-  const frameW = cutlineFrame.w;
-  const frameH = cutlineFrame.h;
+  const frameW = frame.w;
+  const frameH = frame.h;
   if (preset === 'center') {
     imageTransform.scale = 1;
     const artCx = imageMetadata.contentOffsetX + artW / 2;
     const artCy = imageMetadata.contentOffsetY + artH / 2;
-    imageTransform.x = cutlineFrame.cx - artCx;
-    imageTransform.y = cutlineFrame.cy - artCy;
+    imageTransform.x = frame.cx - artCx;
+    imageTransform.y = frame.cy - artCy;
   } else if (preset === 'cover') {
     imageTransform.scale = Math.max(frameW / artW, frameH / artH);
     const artCx = imageMetadata.contentOffsetX + artW / 2;
     const artCy = imageMetadata.contentOffsetY + artH / 2;
-    imageTransform.x = cutlineFrame.cx - artCx;
-    imageTransform.y = cutlineFrame.cy - artCy;
+    imageTransform.x = frame.cx - artCx;
+    imageTransform.y = frame.cy - artCy;
   } else if (preset === 'contain') {
     imageTransform.scale = Math.min(frameW / artW, frameH / artH);
     const artCx = imageMetadata.contentOffsetX + artW / 2;
     const artCy = imageMetadata.contentOffsetY + artH / 2;
-    imageTransform.x = cutlineFrame.cx - artCx;
-    imageTransform.y = cutlineFrame.cy - artCy;
+    imageTransform.x = frame.cx - artCx;
+    imageTransform.y = frame.cy - artCy;
   }
   render();
   pimScheduleHeightReport();
@@ -2734,7 +2749,7 @@ function processImage(img, file) {
   updateMetadataDisplay();
   generateCutline();
   generateWhitePlan();
-  if (cutlineFrame && PIM_PARAMS.embed) {
+  if (getPlacementFrame() && PIM_PARAMS.embed) {
     applyPlacementPreset('center');
   } else {
     render();

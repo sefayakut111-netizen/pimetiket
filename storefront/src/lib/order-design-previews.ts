@@ -1,4 +1,5 @@
 import type { OrderDesignFilesByItem } from "@/components/orders/OrderCardDesignPreview";
+import { getExpectedDesignCount } from "@/lib/order-item-meta";
 
 export type OrderDesignFilesMap = Record<string, OrderDesignFilesByItem>;
 
@@ -59,16 +60,38 @@ export async function prefetchOrderDesignFiles(
   return map;
 }
 
-/** Meta'da tüm item'lar için preview varsa upload-status atlanabilir */
+type OrderPreviewItem = {
+  designCount?: number;
+  designPreviewUrl?: string;
+  additionalDesigns?: Array<{ previewUrl?: string }>;
+};
+
+function itemHasAllMetaPreviews(item: OrderPreviewItem): boolean {
+  const expected = getExpectedDesignCount(
+    {
+      designCount: item.designCount,
+      additionalDesigns: item.additionalDesigns,
+    },
+    0
+  );
+  if (expected <= 1) {
+    return Boolean(item.designPreviewUrl?.trim());
+  }
+  const slotUrls: (string | undefined)[] = [
+    item.designPreviewUrl,
+    ...(item.additionalDesigns ?? []).map((d) => d.previewUrl),
+  ];
+  for (let i = 0; i < expected; i++) {
+    const url = slotUrls[i];
+    if (!url?.trim()) return false;
+  }
+  return true;
+}
+
+/** Tüm item/slot'larda meta preview varsa upload-status atlanabilir */
 export function orderHasMetaPreviews(order: {
-  items: Array<{
-    designPreviewUrl?: string;
-    additionalDesigns?: Array<{ previewUrl?: string }>;
-  }>;
+  items: OrderPreviewItem[];
 }): boolean {
   if (order.items.length === 0) return false;
-  return order.items.every((item) => {
-    if (item.designPreviewUrl) return true;
-    return (item.additionalDesigns ?? []).some((d) => d.previewUrl);
-  });
+  return order.items.every(itemHasAllMetaPreviews);
 }

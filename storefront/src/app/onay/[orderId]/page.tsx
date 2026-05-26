@@ -441,9 +441,8 @@ function countOrderDesignProgress(items: ProofItem[]): {
     const expected = getItemDesignCount(item);
     total += expected;
     if ((item.designs?.length ?? 0) > 0) {
-      for (let i = 0; i < expected; i++) {
-        const d = item.designs[i];
-        if (d && cutlineIsApproved(d.cutline)) approved++;
+      for (const d of item.designs) {
+        if (cutlineIsApproved(d.cutline)) approved++;
       }
     } else if (itemAllDesignsApproved(item)) {
       approved += expected;
@@ -866,24 +865,24 @@ export default function ProofApprovalPage({
       .catch(() => setCmykPreview(null));
   }, [activeItem?.id, activeDesignFileId, orderId, previewLayer]);
 
-  // Multi-design (C2): activeItem değişince ilk design'ı seç
+  // Multi-design (C2): activeItem değişince geçerli design seç (slot tıklamasını ezme)
   useEffect(() => {
     if (!activeItem) {
       setActiveDesignFileId(null);
       return;
     }
-    if (activeItem.designs && activeItem.designs.length > 0) {
-      // Eğer activeDesignFileId bu item'a ait değilse sıfırla
-      const stillValid = activeItem.designs.some(
-        (d) => d.design_file_id === activeDesignFileId
-      );
-      if (!stillValid) {
-        setActiveDesignFileId(activeItem.designs[0].design_file_id);
-      }
+    const designs = activeItem.designs ?? [];
+    if (designs.length > 0) {
+      setActiveDesignFileId((prev) => {
+        if (prev && designs.some((d) => d.design_file_id === prev)) {
+          return prev;
+        }
+        return designs[0].design_file_id;
+      });
     } else {
       setActiveDesignFileId(null);
     }
-  }, [activeItem, activeDesignFileId]);
+  }, [activeItem?.id]);
 
   // Seçilen design + cutline (multi-design → designs[]; legacy → item.cutline)
   const activeDesign =
@@ -977,8 +976,12 @@ export default function ProofApprovalPage({
         })
       );
       if (!cancelled) {
-        setItemThumbs(nextItems);
-        setDesignThumbs(nextDesigns);
+        if (Object.keys(nextItems).length > 0) {
+          setItemThumbs((prev) => ({ ...prev, ...nextItems }));
+        }
+        if (Object.keys(nextDesigns).length > 0) {
+          setDesignThumbs((prev) => ({ ...prev, ...nextDesigns }));
+        }
       }
     })();
     return () => {
@@ -1020,6 +1023,8 @@ export default function ProofApprovalPage({
       itemId: string;
       designFileId: string | null;
       material: string;
+      orderWidthMm: number;
+      orderHeightMm: number;
     };
     // Konfigüratör material → POC material mapping.
     // Sticker: vinil/transparan/holo/simli, Etiket: kraft/kuşe/...
@@ -1042,12 +1047,20 @@ export default function ProofApprovalPage({
             itemId: item.id,
             designFileId: noCutDesign.design_file_id,
             material,
+            orderWidthMm: item.width,
+            orderHeightMm: item.height,
           };
           break;
         }
       } else if (!item.cutline) {
         // Legacy: designs[] yok, item-bağlı
-        candidate = { itemId: item.id, designFileId: null, material };
+        candidate = {
+          itemId: item.id,
+          designFileId: null,
+          material,
+          orderWidthMm: item.width,
+          orderHeightMm: item.height,
+        };
         break;
       }
     }
@@ -1084,6 +1097,9 @@ export default function ProofApprovalPage({
             material: candidate.material,
             designFileId: candidate.designFileId,
             autoSave: true,
+            editorMode: true,
+            orderWidthMm: candidate.orderWidthMm,
+            orderHeightMm: candidate.orderHeightMm,
             origin: window.location.origin,
           })
         );
@@ -1189,7 +1205,7 @@ export default function ProofApprovalPage({
     designFileId: string | null
   ) => {
     setActiveItemId(itemId);
-    if (designFileId) setActiveDesignFileId(designFileId);
+    setActiveDesignFileId(designFileId);
     const item = data?.items.find((i) => i.id === itemId);
     if (item && item.proof_status === "pending") {
       void markViewed(orderId, itemId);
@@ -1763,7 +1779,7 @@ export default function ProofApprovalPage({
     <main
       className={cn(
         "bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8",
-        showFinalizeBar ? "pb-36" : "pb-28 lg:pb-8"
+        showFinalizeBar ? "pb-44" : "pb-28 lg:pb-8"
       )}
     >
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
@@ -1806,9 +1822,9 @@ export default function ProofApprovalPage({
                 bgGenItemId ||
                 cutlineNotReady
               ? "Bıçak çizgin hazırlanıyor. Birkaç dakika sürebilir — sayfayı kapatabilirsin, hazır olunca mail atacağız."
-              : summary.approved === 0
+              : designProgress.approved === 0
                 ? "İlk önizlemeye bak, kesim çizgisini incele. Memnunsan 'Onayla' de; bir şey değişsin istiyorsan 'Düzenle'."
-                : `${summary.approved}/${summary.total} ürün onaylandı, az kaldı! Kalan ${summary.total - summary.approved} ürünü de gözden geçirelim.`}
+                : `${designProgress.approved}/${designProgress.total} tasarım onaylandı, az kaldı! Kalan ${designProgress.total - designProgress.approved} tasarımı da gözden geçirelim.`}
         </p>
       </Card>
 
@@ -1846,18 +1862,18 @@ export default function ProofApprovalPage({
           </Card>
         )}
 
-      {(proofValidation?.cutlineIssues.length ||
-        proofValidation?.whiteLayerIssues.length ||
-        proofValidation?.ruleIssues.length) ? (
+      {((proofValidation?.cutlineIssues?.length ?? 0) > 0 ||
+        (proofValidation?.whiteLayerIssues?.length ?? 0) > 0 ||
+        (proofValidation?.ruleIssues?.length ?? 0) > 0) ? (
         <Card className="mb-6 border-sari-soft/60 bg-sari-soft/20 p-4">
           <p className="mb-2 text-sm font-semibold text-sari-koyu">
             Dikkat edilmesi gereken noktalar
           </p>
           <ul className="list-inside list-disc space-y-1 text-sm text-lacivert">
             {[
-              ...(proofValidation.cutlineIssues ?? []),
-              ...(proofValidation.whiteLayerIssues ?? []),
-              ...(proofValidation.ruleIssues ?? []),
+              ...(proofValidation?.cutlineIssues ?? []),
+              ...(proofValidation?.whiteLayerIssues ?? []),
+              ...(proofValidation?.ruleIssues ?? []),
             ].map((issue) => (
               <li key={issue}>{issue}</li>
             ))}
@@ -1883,7 +1899,7 @@ export default function ProofApprovalPage({
             if (designCount <= 1) {
               const badge = STATUS_BADGE[item.proof_status];
               const isActive = item.id === activeItemId;
-              const singleDesign = item.designs[0] ?? null;
+              const singleDesign = item.designs?.[0] ?? null;
               const thumbUrl =
                 itemCutlinePreviewSrc(
                   orderId,
@@ -2375,7 +2391,12 @@ export default function ProofApprovalPage({
               </Card>
 
               {/* Action bar */}
-              <div className="sticky bottom-4 z-30 mt-1 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
+              <div
+                className={cn(
+                  "sticky z-30 mt-1 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between",
+                  showFinalizeBar ? "bottom-32" : "bottom-4"
+                )}
+              >
                 <Button
                   variant="secondary"
                   size="sm"
@@ -2542,7 +2563,7 @@ export default function ProofApprovalPage({
           <div
             className={cn(
               "fixed right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg",
-              showFinalizeBar ? "bottom-28" : "bottom-20"
+              showFinalizeBar ? "bottom-36" : "bottom-20"
             )}
           >
             <div className="flex items-start gap-2">

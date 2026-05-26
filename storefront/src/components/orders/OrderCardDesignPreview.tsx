@@ -45,7 +45,7 @@ export function OrderCardDesignPreview({
   const itemSize = compactMultiItem ? "sm" : size;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-row flex-wrap items-center gap-1.5">
       {shown.map((item) => (
         <div key={item.id} className="shrink-0">
           <OrderItemDesignPreview
