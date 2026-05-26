@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generateOrderId } from "@/lib/customer-order";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
 import {
   sendOrderConfirmation,
   sendOrderProofRequired,
@@ -21,6 +22,7 @@ import {
 import { enqueueMail } from "@/lib/mail/enqueue";
 import { queryPaymentStatus } from "@/lib/payment/paytr";
 import { resolveOrderIdFromIntent } from "@/lib/payment/resolve-order-from-intent";
+import type { Json } from "@/lib/supabase/types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -153,7 +155,7 @@ async function runPostFinalizeSideEffects(
       product: "sticker" | "etiket";
       meta: Record<string, unknown>;
     }>) ?? []
-  ).filter((i) => (i.meta as { designTempId?: string })?.designTempId);
+  ).filter((i) => orderItemHasDesigns(i.meta));
 
   if (orderItemsForPromote.length > 0) {
     try {
@@ -247,20 +249,7 @@ async function finalizeFromPaytrSuccess(
     qty: i.qty,
     unit: i.unit,
     total: i.total,
-    meta: {
-      ...(i.meta ?? {}),
-      designTempId: i.designTempId,
-      shape: i.shape,
-      cut: i.cut,
-      softCorners: i.softCorners,
-      material: i.material,
-      finish: i.finish,
-      hediyeAdet: i.hediyeAdet,
-      materialId: i.materialId,
-      coatingId: i.coatingId,
-      customizationId: i.customizationId,
-      winding: i.winding,
-    },
+    meta: buildOrderItemMeta(i),
   }));
 
   const estimatedDelivery = addDaysIso(
@@ -284,7 +273,7 @@ async function finalizeFromPaytrSuccess(
     const { data: d, error: e } = await admin.rpc("fn_finalize_paid_order", {
       p_merchant_oid: intent.id,
       p_order_id: candidateOrderId,
-      p_items: itemsPayload,
+      p_items: itemsPayload as Json,
       p_payment_meta: paymentMeta,
       p_estimated_delivery: estimatedDelivery,
     });

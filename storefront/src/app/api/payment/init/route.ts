@@ -41,6 +41,14 @@ import type { Json, TablesInsert } from "@/lib/supabase/types";
 // (örn. etiket ürününde shape/cut/material/finish = null). Zod'da `.optional()`
 // sadece `T | undefined` kabul eder, `null` reddeder → 400 invalid_body.
 // `.nullish()` = `T | null | undefined` → defansif, üretici-tarafı kırılmaz.
+const AdditionalDesignSchema = z.object({
+  tempId: z.string().min(1),
+  previewUrl: z.string().nullish(),
+  fileName: z.string().min(1),
+  sizeBytes: z.number().nonnegative(),
+  mimeType: z.string().min(1),
+});
+
 const CartItemSchema = z.object({
   id: z.string(),
   product: z.enum(["sticker", "etiket"]),
@@ -55,6 +63,9 @@ const CartItemSchema = z.object({
   designTempId: z.string().uuid().nullish(),
   designPreviewUrl: z.string().nullish(),
   designFileName: z.string().nullish(),
+  designMimeType: z.string().nullish(),
+  designCount: z.number().int().positive().nullish(),
+  additionalDesigns: z.array(AdditionalDesignSchema).nullish(),
   shape: z.string().nullish(),
   cut: z.string().nullish(),
   softCorners: z.boolean().nullish(),
@@ -65,6 +76,8 @@ const CartItemSchema = z.object({
   coatingId: z.string().nullish(),
   customizationId: z.string().nullish(),
   winding: z.number().nullish(),
+  coreSize: z.number().nullish(),
+  rollLabelCount: z.number().nullish(),
 });
 
 const AddressSchema = z.object({

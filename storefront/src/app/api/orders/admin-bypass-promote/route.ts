@@ -4,6 +4,10 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
+import {
+  collectDesignTempIds,
+  orderItemHasDesigns,
+} from "@/lib/order-item-meta";
 
 export const maxDuration = 120;
 
@@ -60,19 +64,16 @@ export async function POST(req: NextRequest) {
     }>) ?? [];
 
   console.log(
-    "[promote] orderItems meta.designTempId:",
+    "[promote] orderItems tempIds:",
     allItems.map((i) => ({
       id: i.id,
-      designTempId: (i.meta as { designTempId?: string })?.designTempId ?? null,
+      tempIds: collectDesignTempIds(i.meta),
     }))
   );
 
-  const orderItems = allItems.filter((i) => {
-    const tid = (i.meta as { designTempId?: string })?.designTempId;
-    return !!tid && !tid.startsWith("local-");
-  });
+  const orderItems = allItems.filter((i) => orderItemHasDesigns(i.meta));
 
-  console.log("[promote] orderItems with designTempId:", orderItems.length);
+  console.log("[promote] orderItems with designs:", orderItems.length);
 
   let promoted = 0;
   if (orderItems.length > 0) {

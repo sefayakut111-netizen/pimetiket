@@ -12,6 +12,7 @@
  */
 
 import type { CustomerCartItem } from "./customer-cart";
+import { buildOrderItemMeta } from "./order-item-meta";
 import type { OrderStatus } from "./order";
 import { createClient } from "./supabase/client";
 import type { Json } from "./supabase/types";
@@ -192,6 +193,7 @@ function rowsToOrder(
       designPreviewUrl: meta.designPreviewUrl,
       designFileName: meta.designFileName,
       designMimeType: meta.designMimeType,
+      additionalDesigns: meta.additionalDesigns,
       addedAt: ts,
     };
   });
@@ -282,31 +284,7 @@ async function dbCreate(
     qty: i.qty,
     unit: i.unit,
     total: i.total,
-    // Sefa 21 May v68 Mig 073: meta'ya coreSize/rollLabelCount/design*
-    // alanları eklendi → /siparis detay sayfası buildSummaryItems ile
-    // basamak basamak özet gösterir, DesignThumb preview render eder.
-    meta: {
-      shape: i.shape,
-      cut: i.cut,
-      softCorners: i.softCorners,
-      material: i.material,
-      finish: i.finish,
-      hediyeAdet: i.hediyeAdet,
-      materialId: i.materialId,
-      coatingId: i.coatingId,
-      customizationId: i.customizationId,
-      winding: i.winding,
-      coreSize: i.coreSize,
-      rollLabelCount: i.rollLabelCount,
-      designCount: i.designCount,
-      designTempId:
-        i.designTempId && !i.designTempId.startsWith("local-")
-          ? i.designTempId
-          : undefined,
-      designPreviewUrl: i.designPreviewUrl,
-      designFileName: i.designFileName,
-      designMimeType: i.designMimeType,
-    },
+    meta: buildOrderItemMeta(i) as Json,
   }));
 
   console.log(

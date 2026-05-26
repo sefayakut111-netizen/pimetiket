@@ -33,7 +33,9 @@ import {
 } from "@/lib/mail/notifications";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
 import { enqueueMail } from "@/lib/mail/enqueue";
+import type { Json } from "@/lib/supabase/types";
 
 interface IntentRow {
   id: string;
@@ -250,20 +252,7 @@ export async function POST(req: NextRequest) {
     qty: i.qty,
     unit: i.unit,
     total: i.total,
-    meta: {
-      ...(i.meta ?? {}),
-      designTempId: i.designTempId,
-      shape: i.shape,
-      cut: i.cut,
-      softCorners: i.softCorners,
-      material: i.material,
-      finish: i.finish,
-      hediyeAdet: i.hediyeAdet,
-      materialId: i.materialId,
-      coatingId: i.coatingId,
-      customizationId: i.customizationId,
-      winding: i.winding,
-    },
+    meta: buildOrderItemMeta(i) as Json,
   }));
 
   const estimatedDelivery = addDaysIso(
@@ -290,7 +279,7 @@ export async function POST(req: NextRequest) {
     const { data: d, error: e } = await admin.rpc("fn_finalize_paid_order", {
         p_merchant_oid: merchantOid,
         p_order_id: candidateOrderId,
-        p_items: itemsPayload,
+        p_items: itemsPayload as Json,
         p_payment_meta: paymentMeta,
         p_estimated_delivery: estimatedDelivery,
       });
@@ -366,10 +355,7 @@ export async function POST(req: NextRequest) {
       product: "sticker" | "etiket";
       meta: Record<string, unknown>;
     }>) ?? []
-  ).filter((i) => {
-    const tid = (i.meta as { designTempId?: string })?.designTempId;
-    return !!tid && !tid.startsWith("local-");
-  });
+  ).filter((i) => orderItemHasDesigns(i.meta));
 
   if (orderItemsForPromote.length > 0) {
     try {

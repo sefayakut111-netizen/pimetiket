@@ -1,6 +1,7 @@
 /**
  * GET /api/orders/[id]/proof/[itemId]/cmyk-preview
  * CMYK baskı simülasyonu PNG (cache'li).
+ * ?design_file_id= — multi-design siparişlerde belirli tasarım
  */
 
 import { NextResponse } from "next/server";
@@ -12,10 +13,13 @@ import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 export const runtime = "nodejs";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const { id: orderId, itemId } = await params;
+  const { searchParams } = new URL(req.url);
+  const designFileIdParam = searchParams.get("design_file_id");
+
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -45,21 +49,35 @@ export async function GET(
       string,
       unknown
     >) ?? {};
-  const cachedPath = (meta.cmyk_preview_path as string | undefined) ?? null;
 
-  const { data: df } = await admin
+  let designQuery = admin
     .from("design_files")
-    .select("storage_path")
+    .select("id, storage_path")
     .eq("order_id", orderId)
     .eq("order_item_id", itemId)
-    .neq("status", "superseded")
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const designFile = df as { storage_path: string } | null;
+    .neq("status", "superseded");
+
+  if (designFileIdParam) {
+    designQuery = designQuery.eq("id", designFileIdParam);
+  } else {
+    designQuery = designQuery
+      .order("version", { ascending: false })
+      .limit(1);
+  }
+
+  const { data: df } = await designQuery.maybeSingle();
+  const designFile = df as { id: string; storage_path: string } | null;
   if (!designFile) {
     return NextResponse.json({ error: "design_not_found" }, { status: 404 });
   }
+
+  const cachedPaths =
+    (meta.cmyk_preview_paths as Record<string, string> | undefined) ?? {};
+  const legacyCachedPath =
+    (meta.cmyk_preview_path as string | undefined) ?? null;
+  const cachedPath =
+    cachedPaths[designFile.id] ??
+    (!designFileIdParam ? legacyCachedPath : null);
 
   const { data: signed } = await admin.storage
     .from(STORAGE_BUCKET)
@@ -77,10 +95,16 @@ export async function GET(
     );
 
     if (!cachedPath) {
+      const nextPaths = { ...cachedPaths, [designFile.id]: result.storagePath };
       await admin
         .from("order_items")
         .update({
-          meta: { ...meta, cmyk_preview_path: result.storagePath },
+          meta: {
+            ...meta,
+            cmyk_preview_paths: nextPaths,
+            // Tek tasarımlı siparişler için geriye dönük uyumluluk
+            cmyk_preview_path: result.storagePath,
+          },
         })
         .eq("id", itemId);
     }

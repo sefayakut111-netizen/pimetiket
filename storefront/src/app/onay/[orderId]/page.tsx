@@ -185,10 +185,25 @@ function cleanItemConfig(config: string): string {
     .trim();
 }
 
+function isHttpUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  const t = url.trim();
+  return t.length > 0 && /^https?:\/\/.+/i.test(t);
+}
+
+function getItemDesignCount(item: ProofItem): number {
+  const metaCount = Number(item.meta?.designCount) || 0;
+  return Math.max(item.designs?.length ?? 0, metaCount, 1);
+}
+
 function itemCutlinePreviewUrl(item: ProofItem): string | null {
-  if (item.cutline?.preview_png_url) return item.cutline.preview_png_url;
+  if (isHttpUrl(item.cutline?.preview_png_url)) {
+    return item.cutline!.preview_png_url;
+  }
   for (const d of item.designs ?? []) {
-    if (d.cutline?.preview_png_url) return d.cutline.preview_png_url;
+    if (isHttpUrl(d.cutline?.preview_png_url)) {
+      return d.cutline!.preview_png_url;
+    }
   }
   return null;
 }
@@ -354,7 +369,10 @@ export default function ProofApprovalPage({
   const [submittingHelp, setSubmittingHelp] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewImgBroken, setPreviewImgBroken] = useState(false);
+  const [itemThumbs, setItemThumbs] = useState<Record<string, string>>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   // Multi-design (C2): item içinde aktif tasarım seçimi
   const [activeDesignFileId, setActiveDesignFileId] = useState<string | null>(null);
   // SLA countdown — proof_generating durumunda her saniye güncellenir
@@ -403,10 +421,13 @@ export default function ProofApprovalPage({
   >([]);
   const [consistencyDismissed, setConsistencyDismissed] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
     try {
-      setLoading(true);
-      setLoadError(null);
+      if (!silent) {
+        setLoading(true);
+        setLoadError(null);
+      }
       const summary = await fetchProofSummary(orderId);
       setData(summary);
 
@@ -415,8 +436,6 @@ export default function ProofApprovalPage({
         router.replace(`/onay/${orderId}/tamamlandi`);
         return;
       }
-      // Mig 062: proof_generating de bu sayfada kalır — auto cutline orchestration
-      // proof_validating: müşteri düzenleme sonrası AI doğrulama (kısa poll)
       if (
         summary.order.status !== "proof_pending" &&
         summary.order.status !== "proof_generating" &&
@@ -430,20 +449,7 @@ export default function ProofApprovalPage({
         return;
       }
 
-      // İlk pending item'a otomatik scroll
-      if (!activeItemId && summary.items.length > 0) {
-        const firstPending =
-          summary.items.find((i) => i.proof_status !== "approved") ??
-          summary.items[0];
-        setActiveItemId(firstPending.id);
-        // İlk gösterimde "viewed" işareti at
-        if (firstPending.proof_status === "pending") {
-          void markViewed(orderId, firstPending.id);
-        }
-      }
-
       // Sefa 22 May v68 Faz 4b — Help history fetch (resolved + dismissed).
-      // Paralel ama bağımsız — patlarsa sayfa açılmaya devam etsin.
       fetch(`/api/orders/${orderId}/help-requests`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : { items: [] }))
         .then((j: { items?: Array<{
@@ -474,13 +480,26 @@ export default function ProofApprovalPage({
         });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      setLoadError(msg);
-      setData(null);
+      if (!silent) {
+        setLoadError(msg);
+        setData(null);
+      }
       toast.error(`Sipariş yüklenemedi: ${msg}`);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, [orderId, router, toast, activeItemId]);
+  }, [orderId, router, toast]);
+
+  // İlk yüklemede ve aktif item yokken pending item seç
+  useEffect(() => {
+    if (!data || activeItemId || data.items.length === 0) return;
+    const firstPending =
+      data.items.find((i) => i.proof_status !== "approved") ?? data.items[0];
+    setActiveItemId(firstPending.id);
+    if (firstPending.proof_status === "pending") {
+      void markViewed(orderId, firstPending.id);
+    }
+  }, [data, activeItemId, orderId]);
 
   useEffect(() => {
     void load();
@@ -514,6 +533,34 @@ export default function ProofApprovalPage({
     }, 2000);
     return () => clearInterval(interval);
   }, [data?.order.status, orderId]);
+
+  // proof_pending / proof_generating + eksik cutline — arka planda bıçak üretilirken poll
+  useEffect(() => {
+    if (
+      !data ||
+      (data.order.status !== "proof_pending" &&
+        data.order.status !== "proof_generating")
+    ) {
+      return;
+    }
+    const needsCutline = data.items.some((item) => {
+      if (item.proof_status === "approved") return false;
+      if (item.designs && item.designs.length > 0) {
+        return item.designs.some((d) => !d.cutline);
+      }
+      return !item.cutline;
+    });
+    if (!needsCutline) return;
+
+    const interval = setInterval(() => {
+      void fetchProofSummary(orderId)
+        .then((summary) => setData(summary))
+        .catch(() => {
+          /* sessiz */
+        });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [data, orderId]);
 
   const activeItem = data?.items.find((i) => i.id === activeItemId) ?? null;
 
@@ -572,9 +619,12 @@ export default function ProofApprovalPage({
       setCmykPreview(null);
       return;
     }
-    fetch(`/api/orders/${orderId}/proof/${activeItem.id}/cmyk-preview`, {
-      cache: "no-store",
-    })
+    fetch(
+      `/api/orders/${orderId}/proof/${activeItem.id}/cmyk-preview${
+        activeDesignFileId ? `?design_file_id=${activeDesignFileId}` : ""
+      }`,
+      { cache: "no-store" }
+    )
       .then((r) => (r.ok ? r.json() : null))
       .then(
         (j: {
@@ -592,7 +642,7 @@ export default function ProofApprovalPage({
         }
       )
       .catch(() => setCmykPreview(null));
-  }, [activeItem?.id, orderId, previewLayer]);
+  }, [activeItem?.id, activeDesignFileId, orderId, previewLayer]);
 
   // Multi-design (C2): activeItem değişince ilk design'ı seç
   useEffect(() => {
@@ -636,16 +686,20 @@ export default function ProofApprovalPage({
   useEffect(() => {
     if (!activeItem) {
       setPreviewUrl(null);
+      setPreviewLoading(false);
+      return;
+    }
+    if (!activeCutline) {
+      setPreviewUrl(null);
+      setPreviewLoading(false);
       return;
     }
     let cancelled = false;
     setPreviewUrl(null);
-    // Multi-design: activeCutline (design-specific) varsa onun preview'i
-    if (!activeCutline?.preview_png_url) return;
+    setPreviewImgBroken(false);
     setPreviewLoading(true);
     (async () => {
       try {
-        // Multi-design endpoint geliştirilince design_file_id param eklenir
         const dfParam = activeDesignFileId
           ? `?design_file_id=${activeDesignFileId}`
           : "";
@@ -667,7 +721,42 @@ export default function ProofApprovalPage({
     };
   }, [activeItem, activeCutline, activeDesignFileId, orderId]);
 
-  // Lightbox açıkken ESC ile kapansın
+  // Sol panel: cutline yoksa tasarım thumbnail (thumb=1)
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, string> = {};
+      await Promise.all(
+        data.items.map(async (item) => {
+          if (itemCutlinePreviewUrl(item)) return;
+          const dfId = item.designs?.[0]?.design_file_id;
+          const qs = dfId
+            ? `?design_file_id=${dfId}&thumb=1`
+            : "?thumb=1";
+          try {
+            const res = await fetch(
+              `/api/orders/${orderId}/items/${item.id}/design-url${qs}`,
+              { cache: "no-store" }
+            );
+            if (!res.ok) return;
+            const j = (await res.json()) as { url?: string };
+            if (j.url) next[item.id] = j.url;
+          } catch {
+            /* sessiz */
+          }
+        })
+      );
+      if (!cancelled) setItemThumbs(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, orderId]);
+
+  useEffect(() => {
+    setPreviewImgBroken(false);
+  }, [previewUrl, designUrl, cmykPreview?.url, previewLayer, activeDesignFileId]);
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -783,6 +872,7 @@ export default function ProofApprovalPage({
   // Hidden POC iframe'inden gelen mesajları yakala (auto cutline akışı)
   useEffect(() => {
     const handler = async (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
       const d = e.data as
         | {
             type: string;
@@ -824,15 +914,14 @@ export default function ProofApprovalPage({
           setBgGenItemId(null);
           setBgGenDesignFileId(null);
           setBgGenSrc(null);
-          void load();
+          void load({ silent: true });
         }
       } else if (d.type === "pim-cutline-auto-failed") {
         setBgGenError(d.error || "auto_failed");
         setBgGenItemId(null);
         setBgGenDesignFileId(null);
         setBgGenSrc(null);
-        // Bu design için skip — kullanıcı manuel düzenleyebilir
-        void load();
+        void load({ silent: true });
       }
     };
     window.addEventListener("message", handler);
@@ -899,7 +988,14 @@ export default function ProofApprovalPage({
               summary: {
                 ...prev.summary,
                 approved: prev.summary.approved + 1,
-                viewed: Math.max(0, prev.summary.viewed - 1),
+                pending:
+                  activeItem.proof_status === "pending"
+                    ? Math.max(0, prev.summary.pending - 1)
+                    : prev.summary.pending,
+                viewed:
+                  activeItem.proof_status === "viewed"
+                    ? Math.max(0, prev.summary.viewed - 1)
+                    : prev.summary.viewed,
               },
             }
           : prev
@@ -948,7 +1044,7 @@ export default function ProofApprovalPage({
       setHelpOpen(false);
       setHelpMsg("");
       // Reload
-      void load();
+      void load({ silent: true });
     } finally {
       setSubmittingHelp(false);
     }
@@ -956,6 +1052,10 @@ export default function ProofApprovalPage({
 
   const handleEdit = () => {
     if (!activeItem) return;
+    if (cutlineNotReady) {
+      toast.error("Bıçak çizgisi henüz hazır değil");
+      return;
+    }
     // Mig 063: multi-design — hangi tasarım düzenlenecek? query param ile geçir.
     const dfParam = activeDesignFileId
       ? `?design_file_id=${activeDesignFileId}`
@@ -1005,7 +1105,7 @@ export default function ProofApprovalPage({
         return;
       }
       toast.success("Bıçak çizgisi oluşturuldu");
-      void load();
+      void load({ silent: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       toast.error(msg);
@@ -1109,14 +1209,191 @@ export default function ProofApprovalPage({
   const progressPct =
     summary.total > 0 ? Math.round((summary.approved / summary.total) * 100) : 0;
   const cutlineNotReady = !activeCutline && !showJpgShapeSelector;
+  const multiDesignCount = activeItem ? getItemDesignCount(activeItem) : 0;
+  const layerPreviewUrl =
+    previewLayer === "cmyk"
+      ? (cmykPreview?.url ?? null)
+      : previewLayer === "design"
+        ? designUrl
+        : previewUrl;
+  const canShowPreviewImage =
+    isHttpUrl(layerPreviewUrl) &&
+    !previewImgBroken &&
+    (previewLayer === "cutline" || previewLayer === "checkerboard"
+      ? !cutlineNotReady
+      : true);
+
+  const renderCutlineEmptyState = () => {
+    const deadlineIso = data?.order.sla_proof_deadline;
+    const slaExpired = deadlineIso
+      ? new Date(deadlineIso).getTime() <= Date.now()
+      : false;
+
+    return (
+      <div className="text-center text-sm text-gri-700">
+        <div className="mb-2 flex justify-center opacity-50">
+          {slaExpired ? <Icon.Info size={48} /> : <Icon.Doc size={48} />}
+        </div>
+        {slaExpired ? (
+          <>
+            <p className="font-medium">Operatörümüz bıçağı hazırlıyor</p>
+            <p className="mt-1 text-xs">
+              Birkaç saat içinde tamamlanacak. Hazır olunca mail atacağız —
+              sayfayı kapatabilirsin.
+            </p>
+            <div className="mt-3">
+              <Link
+                href={`/siparis/${orderId}`}
+                className="inline-flex items-center gap-1 rounded-md border border-gri-200 bg-white px-3 py-1.5 text-xs font-medium text-lacivert hover:border-pim-mercan/40 transition"
+              >
+                Sipariş detayına git
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="font-medium">Otomatik kesim çizgisi hazırlanıyor</p>
+            <p className="mt-1 text-xs">
+              Birkaç dakika sürebilir — sayfayı kapatabilirsin, hazır olunca mail
+              atacağız.
+            </p>
+            <div className="mt-3 flex justify-center">
+              <span
+                className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+                aria-hidden="true"
+              />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderPreviewBody = () => {
+    if (showJpgShapeSelector && activeItem) {
+      return (
+        <JpgShapeSelector
+          orderId={orderId}
+          itemId={activeItem.id}
+          designWidth={activeItem.width}
+          designHeight={activeItem.height}
+          material={materialKey}
+          saving={jpgSaving}
+          onShapeSelected={handleJpgShapeSelected}
+          onUploadPng={handleJpgUploadPng}
+          onRequestHelp={handleJpgRequestHelp}
+        />
+      );
+    }
+
+    if (previewLayer === "cmyk" && !cmykPreview && !previewLoading) {
+      return (
+        <div className="text-center text-sm text-gri-700">
+          <p className="font-medium">CMYK simülasyonu hazırlanıyor</p>
+          <p className="mt-1 text-xs">Baskı renkleri hesaplanıyor…</p>
+          <div className="mt-3 flex justify-center">
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (previewLayer === "design" && !designUrl && !previewLoading) {
+      return (
+        <div className="text-center text-sm text-gri-700">
+          <p className="font-medium">Tasarım önizlemesi yükleniyor</p>
+          <div className="mt-3 flex justify-center">
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (canShowPreviewImage && layerPreviewUrl) {
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setLightboxUrl(layerPreviewUrl);
+            setLightboxOpen(true);
+          }}
+          className="group relative max-h-[400px] cursor-zoom-in"
+          title="Büyütüp incele"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={layerPreviewUrl}
+            alt={`${activeItem?.title ?? "Ürün"} ${
+              previewLayer === "design"
+                ? "tasarım"
+                : previewLayer === "cmyk"
+                  ? "CMYK"
+                  : "bıçak"
+            } önizlemesi`}
+            className="max-h-[400px] rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02]"
+            onError={() => setPreviewImgBroken(true)}
+          />
+          <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+            🔍 Büyüt
+          </span>
+        </button>
+      );
+    }
+
+    if (previewLoading) {
+      return (
+        <div className="text-center text-sm text-gri-700">
+          <div className="flex justify-center">
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+              aria-hidden="true"
+            />
+          </div>
+          <p className="mt-2 font-medium">Önizleme yükleniyor…</p>
+        </div>
+      );
+    }
+
+    if (
+      (previewLayer === "cutline" || previewLayer === "checkerboard") &&
+      cutlineNotReady
+    ) {
+      return renderCutlineEmptyState();
+    }
+
+    if (activeCutline?.preview_png_url && previewImgBroken) {
+      return (
+        <div className="text-center text-sm text-gri-700">
+          <p className="font-medium">Önizleme şu an açılamıyor</p>
+          <p className="mt-1 text-xs">Sayfayı yenilemeyi dene.</p>
+        </div>
+      );
+    }
+
+    if (previewLayer === "cutline" || previewLayer === "checkerboard") {
+      return renderCutlineEmptyState();
+    }
+
+    return (
+      <div className="text-center text-sm text-gri-700">
+        <p className="font-medium">Önizleme mevcut değil</p>
+      </div>
+    );
+  };
 
   return (
-    <main className="container py-6">
+    <main className="container py-6 pb-28 lg:pb-6">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col gap-2">
         <Link
           href={`/siparis/${order.id}`}
-          className="mb-2 inline-flex items-center gap-1 text-xs text-gri-700 hover:text-pim-mercan transition"
+          className="inline-flex w-fit items-center gap-1 text-xs text-gri-700 hover:text-pim-mercan transition"
         >
           <span>&larr;</span>
           <span>Sipariş detayına dön</span>
@@ -1130,7 +1407,14 @@ export default function ProofApprovalPage({
         </p>
 
         {/* Progress bar */}
-        <div className="mt-3 h-2 w-full max-w-md overflow-hidden rounded-full bg-gri-100">
+        <div
+          className="mt-3 h-2 w-full max-w-md overflow-hidden rounded-full bg-gri-100"
+          role="progressbar"
+          aria-valuenow={progressPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Onay ilerlemesi: ${summary.approved}/${summary.total}`}
+        >
           <div
             className="h-full bg-yesil transition-all"
             style={{ width: `${progressPct}%` }}
@@ -1144,7 +1428,9 @@ export default function ProofApprovalPage({
         <p className="text-sm leading-relaxed text-lacivert">
           {summary.help_requested > 0
             ? `Bir ürün için yardım talebin açık — operatörümüz çözümleyince sıraya gelir. ${summary.help_requested === summary.total - summary.approved ? "Diğer ürünler de seni bekliyor değil mi?" : ""}`
-            : order.status === "proof_generating" || bgGenItemId
+            : order.status === "proof_generating" ||
+                bgGenItemId ||
+                cutlineNotReady
               ? "Bıçak çizgin hazırlanıyor. Birkaç dakika sürebilir — sayfayı kapatabilirsin, hazır olunca mail atacağız."
               : summary.approved === 0
                 ? "İlk önizlemeye bak, kesim çizgisini incele. Memnunsan 'Onayla' de; bir şey değişsin istiyorsan 'Düzenle'."
@@ -1220,10 +1506,15 @@ export default function ProofApprovalPage({
           {items.map((item) => {
             const badge = STATUS_BADGE[item.proof_status];
             const isActive = item.id === activeItemId;
-            const thumbUrl = itemCutlinePreviewUrl(item);
+            const thumbUrlRaw =
+              itemCutlinePreviewUrl(item) ?? itemThumbs[item.id] ?? null;
+            const thumbUrl =
+              thumbUrlRaw && isHttpUrl(thumbUrlRaw) ? thumbUrlRaw : null;
             return (
               <button
                 key={item.id}
+                type="button"
+                aria-pressed={isActive}
                 onClick={() => handleSelectItem(item.id)}
                 className={cn(
                   "w-full rounded-xl border p-4 text-left transition",
@@ -1326,36 +1617,36 @@ export default function ProofApprovalPage({
                       </div>
 
                       {/* POC v2 — tier + malzeme + white plan rozeti */}
-                      {activeItem.cutline && (
+                      {activeCutline && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           {/* Tier rozeti */}
-                          {activeItem.cutline.tier && (
+                          {activeCutline.tier && (
                             <div
                               className={cn(
                                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
-                                TIER_BADGE[activeItem.cutline.tier].bg,
-                                TIER_BADGE[activeItem.cutline.tier].color
+                                TIER_BADGE[activeCutline.tier].bg,
+                                TIER_BADGE[activeCutline.tier].color
                               )}
-                              title={TIER_BADGE[activeItem.cutline.tier].desc}
+                              title={TIER_BADGE[activeCutline.tier].desc}
                             >
                               <span>
-                                {TIER_BADGE[activeItem.cutline.tier].emoji}
+                                {TIER_BADGE[activeCutline.tier].emoji}
                               </span>
                               <span>
-                                {TIER_BADGE[activeItem.cutline.tier].label}
+                                {TIER_BADGE[activeCutline.tier].label}
                               </span>
                             </div>
                           )}
 
                           {/* Malzeme rozeti */}
-                          {activeItem.cutline.material_type &&
-                            activeItem.cutline.material_type !== "paper" && (
+                          {activeCutline.material_type &&
+                            activeCutline.material_type !== "paper" && (
                               <div className="inline-flex items-center gap-1 rounded-full bg-gri-100 px-2 py-0.5 text-xs font-medium text-gri-700">
                                 <span>📦</span>
                                 <span>
                                   {
                                     MATERIAL_LABEL[
-                                      activeItem.cutline.material_type
+                                      activeCutline.material_type
                                     ]
                                   }
                                 </span>
@@ -1363,8 +1654,8 @@ export default function ProofApprovalPage({
                             )}
 
                           {/* White plan göstergesi (sadece varsa) */}
-                          {activeItem.cutline.white_plan_mode &&
-                            activeItem.cutline.white_plan_mode !== "off" && (
+                          {activeCutline.white_plan_mode &&
+                            activeCutline.white_plan_mode !== "off" && (
                               <div
                                 className="inline-flex items-center gap-1 rounded-full bg-gri-100 px-2 py-0.5 text-xs font-medium text-gri-700"
                                 title="Şeffaf/metalize altına basılan beyaz mürekkep katmanı"
@@ -1374,7 +1665,7 @@ export default function ProofApprovalPage({
                                   Beyaz plan:{" "}
                                   {
                                     WHITE_MODE_LABEL[
-                                      activeItem.cutline.white_plan_mode
+                                      activeCutline.white_plan_mode
                                     ]
                                   }
                                 </span>
@@ -1382,15 +1673,14 @@ export default function ProofApprovalPage({
                             )}
 
                           {/* Gömülü cutline tespit edildiyse */}
-                          {activeItem.cutline
-                            .detected_cut_contour_names &&
-                            activeItem.cutline.detected_cut_contour_names
-                              .length > 0 && (
+                          {activeCutline.detected_cut_contour_names &&
+                            activeCutline.detected_cut_contour_names.length >
+                              0 && (
                               <div className="inline-flex items-center gap-1 rounded-full bg-yesil-soft/60 px-2 py-0.5 text-xs font-medium text-yesil-koyu">
                                 <span>🎯</span>
                                 <span>
                                   Gömülü bıçak:{" "}
-                                  {activeItem.cutline.detected_cut_contour_names
+                                  {activeCutline.detected_cut_contour_names
                                     .slice(0, 2)
                                     .join(", ")}
                                 </span>
@@ -1411,38 +1701,53 @@ export default function ProofApprovalPage({
                   </div>
                 </div>
 
-                {/* Multi-design picker (C2) — item başına N tasarım varsa */}
-                {activeItem.designs && activeItem.designs.length > 1 && (
+                {/* Multi-design picker (C2) — meta.designCount veya designs[] > 1 */}
+                {multiDesignCount > 1 && (
                   <div className="border-b border-gri-200 bg-gri-100/50 px-4 py-2">
                     <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gri-700">
-                      Bu üründe {activeItem.designs.length} tasarım var
+                      Bu üründe {multiDesignCount} tasarım var
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {activeItem.designs.map((d, idx) => {
-                        const isSel = d.design_file_id === activeDesignFileId;
-                        const ready = !!d.cutline;
+                      {Array.from({ length: multiDesignCount }, (_, idx) => {
+                        const d = activeItem.designs[idx];
+                        if (d) {
+                          const isSel = d.design_file_id === activeDesignFileId;
+                          const ready = !!d.cutline;
+                          return (
+                            <button
+                              key={d.design_file_id}
+                              type="button"
+                              onClick={() =>
+                                setActiveDesignFileId(d.design_file_id)
+                              }
+                              className={cn(
+                                "rounded-md border px-2.5 py-1 text-xs transition",
+                                isSel
+                                  ? "border-pim-mercan bg-pim-mercan text-white"
+                                  : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
+                              )}
+                              title={d.file_name}
+                            >
+                              <span className="font-semibold">
+                                Tasarım {idx + 1}
+                              </span>
+                              <span className="ml-1 opacity-75">
+                                {ready ? "✓" : "⏳"}
+                              </span>
+                            </button>
+                          );
+                        }
                         return (
-                          <button
-                            key={d.design_file_id}
-                            type="button"
-                            onClick={() =>
-                              setActiveDesignFileId(d.design_file_id)
-                            }
-                            className={cn(
-                              "rounded-md border px-2.5 py-1 text-xs transition",
-                              isSel
-                                ? "border-pim-mercan bg-pim-mercan text-white"
-                                : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
-                            )}
-                            title={d.file_name}
+                          <span
+                            key={`pending-design-${idx}`}
+                            className="rounded-md border border-dashed border-gri-300 bg-white px-2.5 py-1 text-xs text-gri-500"
+                            title="Tasarım henüz bağlanmadı"
                           >
                             <span className="font-semibold">
                               Tasarım {idx + 1}
                             </span>
-                            <span className="ml-1 opacity-75">
-                              {ready ? "✓" : "⏳"}
-                            </span>
-                          </button>
+                            <span className="ml-1">⏳</span>
+                          </span>
                         );
                       })}
                     </div>
@@ -1462,14 +1767,18 @@ export default function ProofApprovalPage({
                       }
                       onRemoved={() => {
                         setBgPrompt({ show: false, bgDetect: null });
-                        void load();
+                        void load({ silent: true });
                       }}
                     />
                   </div>
                 )}
 
                 <div className="border-b border-gri-200 px-4 py-2">
-                  <div className="flex flex-wrap gap-1.5">
+                  <div
+                    className="flex flex-wrap gap-1.5"
+                    role="tablist"
+                    aria-label="Önizleme katmanları"
+                  >
                     {(
                       [
                         ["cutline", "✂️ Bıçak"],
@@ -1481,6 +1790,8 @@ export default function ProofApprovalPage({
                       <button
                         key={layer}
                         type="button"
+                        role="tab"
+                        aria-selected={previewLayer === layer}
                         onClick={() => setPreviewLayer(layer)}
                         className={cn(
                           "rounded-md border px-2.5 py-1 text-xs font-medium transition",
@@ -1508,6 +1819,16 @@ export default function ProofApprovalPage({
                 {/* Canlı önizleme — cutline_design preview PNG (R2 signed URL) */}
                 <div
                   className="relative grid min-h-[320px] place-items-center bg-gri-100 p-6"
+                  role="tabpanel"
+                  aria-label={
+                    previewLayer === "design"
+                      ? "Tasarım önizlemesi"
+                      : previewLayer === "cmyk"
+                        ? "CMYK önizlemesi"
+                        : previewLayer === "checkerboard"
+                          ? "Zemin önizlemesi"
+                          : "Bıçak önizlemesi"
+                  }
                   style={
                     showJpgShapeSelector
                       ? undefined
@@ -1523,134 +1844,23 @@ export default function ProofApprovalPage({
                         : undefined
                   }
                 >
-                  {showJpgShapeSelector && activeItem ? (
-                    <JpgShapeSelector
-                      orderId={orderId}
-                      itemId={activeItem.id}
-                      designWidth={activeItem.width}
-                      designHeight={activeItem.height}
-                      material={materialKey}
-                      saving={jpgSaving}
-                      onShapeSelected={handleJpgShapeSelected}
-                      onUploadPng={handleJpgUploadPng}
-                      onRequestHelp={handleJpgRequestHelp}
-                    />
-                  ) : (() => {
-                    const displayUrl =
-                      previewLayer === "cmyk"
-                        ? cmykPreview?.url ?? null
-                        : previewLayer === "design"
-                          ? designUrl
-                          : previewUrl;
-                    return displayUrl;
-                  })() ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setLightboxOpen(true)}
-                        className="group relative max-h-[400px] cursor-zoom-in"
-                        title="Büyütüp incele"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={
-                            previewLayer === "cmyk"
-                              ? cmykPreview?.url ?? ""
-                              : previewLayer === "design"
-                                ? designUrl ?? ""
-                                : previewUrl ?? ""
-                          }
-                          alt={`${activeItem.title} bıçak önizlemesi`}
-                          className="max-h-[400px] rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02]"
-                        />
-                        <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-                          🔍 Büyüt
-                        </span>
-                      </button>
-                    </>
-                  ) : previewLoading ? (
-                    <div className="text-sm text-gri-700">
-                      Önizleme yükleniyor…
-                    </div>
-                  ) : activeItem.cutline?.preview_png_url ? (
-                    // PNG R2'de var ama signed URL alınamadı (5xx vb.)
-                    <div className="text-center text-sm text-gri-700">
-                      <p className="font-medium">Önizleme şu an açılamıyor</p>
-                      <p className="mt-1 text-xs">
-                        Sayfayı yenilemeyi dene.
-                      </p>
-                    </div>
-                  ) : (
-                    (() => {
-                      const deadlineIso = data?.order.sla_proof_deadline;
-                      const slaExpired = deadlineIso
-                        ? new Date(deadlineIso).getTime() <= Date.now()
-                        : false;
-
-                      return (
-                        <div className="text-center text-sm text-gri-700">
-                          <div className="mb-2 flex justify-center opacity-50">
-                            {slaExpired ? (
-                              <Icon.Info size={48} />
-                            ) : (
-                              <Icon.Doc size={48} />
-                            )}
-                          </div>
-                          {slaExpired ? (
-                            <>
-                              <p className="font-medium">
-                                Operatörümüz bıçağı hazırlıyor
-                              </p>
-                              <p className="mt-1 text-xs">
-                                Birkaç saat içinde tamamlanacak. Hazır olunca
-                                mail atacağız — sayfayı kapatabilirsin.
-                              </p>
-                              <div className="mt-3">
-                                <Link
-                                  href={`/siparis/${orderId}`}
-                                  className="inline-flex items-center gap-1 rounded-md border border-gri-200 bg-white px-3 py-1.5 text-xs font-medium text-lacivert hover:border-pim-mercan/40 transition"
-                                >
-                                  Sipariş detayına git
-                                </Link>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <p className="font-medium">
-                                Otomatik kesim çizgisi hazırlanıyor
-                              </p>
-                              <p className="mt-1 text-xs">
-                                &quot;Düzenle&quot; diyerek bıçağı kendin de
-                                ayarlayabilirsin.
-                              </p>
-                              <div className="mt-3 flex justify-center">
-                                <span
-                                  className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
-                                  aria-hidden="true"
-                                />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })()
-                  )}
+                  {renderPreviewBody()}
                 </div>
 
                 {/* Pim yorumu (cutline_designs.pim_feedback) */}
-                {activeItem.cutline?.pim_feedback && (
+                {activeCutline?.pim_feedback && (
                   <div className="flex items-start gap-3 border-t border-gri-200 bg-krem p-4">
                     <PimMini
                       pose={
-                        activeItem.cutline.pim_severity === "err" ||
-                        activeItem.cutline.pim_severity === "warn"
+                        activeCutline.pim_severity === "err" ||
+                        activeCutline.pim_severity === "warn"
                           ? "inspect"
                           : "happy"
                       }
                       size={36}
                     />
                     <p className="text-sm leading-relaxed text-lacivert">
-                      {activeItem.cutline.pim_feedback}
+                      {activeCutline.pim_feedback}
                     </p>
                   </div>
                 )}
@@ -1714,7 +1924,7 @@ export default function ProofApprovalPage({
               </Card>
 
               {/* Action bar */}
-              <div className="sticky bottom-4 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
+              <div className="sticky bottom-4 z-30 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -1767,12 +1977,18 @@ export default function ProofApprovalPage({
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
           onClick={() => !submittingHelp && setHelpOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="help-modal-title"
         >
           <Card
             className="w-full max-w-md p-6"
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-lacivert">
+            <h3
+              id="help-modal-title"
+              className="text-lg font-semibold text-lacivert"
+            >
               Operatörden yardım iste
             </h3>
             <p className="mt-2 text-sm text-gri-700">
@@ -1787,6 +2003,7 @@ export default function ProofApprovalPage({
               value={helpMsg}
               onChange={(e) => setHelpMsg(e.target.value)}
               disabled={submittingHelp}
+              aria-label="Yardım talebi mesajı"
             />
             <p className="mt-1 text-xs text-gri-700">
               {helpMsg.length}/1000 karakter
@@ -1869,14 +2086,20 @@ export default function ProofApprovalPage({
         );
       })()}
 
-      {/* Lightbox modal — bıçak önizlemesi (sınırlı boyut) */}
-      {lightboxOpen && previewUrl && activeItem && (
+      {/* Lightbox modal — aktif katman önizlemesi */}
+      {lightboxOpen &&
+        isHttpUrl(lightboxUrl) &&
+        activeItem &&
+        !previewImgBroken && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6"
-          onClick={() => setLightboxOpen(false)}
+          onClick={() => {
+            setLightboxOpen(false);
+            setLightboxUrl(null);
+          }}
           role="dialog"
           aria-modal="true"
-          aria-label="Bıçak önizleme"
+          aria-label={`${activeItem.title} önizleme`}
         >
           <div
             className="relative max-w-2xl max-h-[75vh] rounded-xl overflow-hidden shadow-2xl"
@@ -1891,13 +2114,22 @@ export default function ProofApprovalPage({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewUrl}
-              alt={`${activeItem.title} bıçak önizlemesi`}
+              src={lightboxUrl}
+              alt={`${activeItem.title} ${
+                previewLayer === "design"
+                  ? "tasarım"
+                  : previewLayer === "cmyk"
+                    ? "CMYK"
+                    : "bıçak"
+              } önizlemesi`}
               className="w-full h-full max-h-[75vh] object-contain"
             />
             <button
               type="button"
-              onClick={() => setLightboxOpen(false)}
+              onClick={() => {
+                setLightboxOpen(false);
+                setLightboxUrl(null);
+              }}
               className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 text-sm"
               aria-label="Kapat"
             >
