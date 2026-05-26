@@ -1,5 +1,8 @@
 Aşağıdaki görev dosyalarını sırayla uygula. Her dosyayı Görev 1'den başlayarak sırayla tamamla, her görev sonrası `npx tsc --noEmit` + commit yap. Bir dosya bitince sonrakine geç.
 
+## SIRA 0 — EN KRİTİK (akış uçtan uca kontrol)
+`@CURSOR-GOREVLER-AKIS-KONTROL.md` — 8 adım: DB kontrol, QC pipeline test, kırık noktayı bul ve düzelt. BU GÖREV DİĞER HEPSİNDEN ÖNCE YAPILMALI.
+
 ## SIRA 1 — KRİTİK (tasarım promote debug)
 `@CURSOR-GOREVLER-TASARIM-PROMOTE-FIX.md` — designTempId nerede kopuyor debug et ve düzelt
 

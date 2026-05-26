@@ -234,7 +234,8 @@ export async function runOrderCutlineGeneration(
     }
   }
 
-  if (generated > 0 && failed === 0 && proofPipelineStatus !== "operator_review") {
+  // Server cutline başarısız olsa bile proof_pending — müşteri /onay'da iframe fallback
+  if (proofPipelineStatus !== "operator_review") {
     await admin
       .from("orders")
       .update({ status: "proof_pending" })

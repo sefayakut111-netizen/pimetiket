@@ -405,16 +405,15 @@ async function runOrderDesignQCInner(
     }
   }
 
-  // 4) Aggregate karar — Sefa kuralı: tek bir hata insan göz gerektirir
-  const allGood =
-    verdictCounts.kotu === 0 &&
-    verdictCounts.normal === 0 &&
-    verdictCounts.error === 0 &&
-    verdictCounts.iyi > 0;
+  // 4) Aggregate karar — MVP müşteri akışı:
+  // Sadece QC agent hatası (error) insan gözüne gider.
+  // iyi / normal / kotu → proof_generating (uyarılar /onay'da gösterilir).
+  const needsHumanReview = verdictCounts.error > 0;
+  const hasAnyVerdict =
+    verdictCounts.iyi + verdictCounts.normal + verdictCounts.kotu > 0;
 
-  const aggregateVerdict: "ready_to_proof" | "needs_review" = allGood
-    ? "ready_to_proof"
-    : "needs_review";
+  const aggregateVerdict: "ready_to_proof" | "needs_review" =
+    !needsHumanReview && hasAnyVerdict ? "ready_to_proof" : "needs_review";
 
   const { data: currentOrder } = await admin
     .from("orders")
@@ -528,6 +527,21 @@ async function runOrderDesignQCInner(
       console.log("[run-order-qc] cutline result:", cutResult);
     } catch (cutErr) {
       console.error("[run-order-qc] cutline generation failed:", orderId, cutErr);
+    }
+
+    // Server cutline başarısız olsa bile proof_pending'e geç — /onay iframe fallback
+    const { data: afterCut } = await admin
+      .from("orders")
+      .select("status")
+      .eq("id", orderId)
+      .maybeSingle();
+    if ((afterCut as { status: string } | null)?.status === "proof_generating") {
+      await admin
+        .from("orders")
+        .update({ status: "proof_pending" })
+        .eq("id", orderId)
+        .eq("status", "proof_generating");
+      console.log("[run-order-qc] fallback: proof_generating → proof_pending");
     }
   }
 

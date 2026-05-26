@@ -114,6 +114,91 @@ function classifyFileType(
   return "unknown";
 }
 
+/** Sharp ile pixel boyutu → effective DPI; AI çağrısından önce hızlı geçiş. */
+async function tryRuleBasedRasterQC(
+  input: DesignQCInput,
+  fileType: "raster" | "vector" | "hybrid" | "unknown"
+): Promise<DesignQCResult | null> {
+  if (fileType !== "raster") return null;
+  if (input.printWidthMm <= 0 || input.printHeightMm <= 0) return null;
+
+  const start = Date.now();
+  try {
+    const res = await fetch(input.fileUrl, {
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
+    if (!meta.width || !meta.height) return null;
+
+    const dpiW = (meta.width / input.printWidthMm) * 25.4;
+    const dpiH = (meta.height / input.printHeightMm) * 25.4;
+    const effectiveDpi = Math.round(Math.min(dpiW, dpiH) * 10) / 10;
+
+    if (effectiveDpi >= 200) {
+      return {
+        verdict: "iyi",
+        score: Math.min(95, 70 + Math.floor(effectiveDpi / 20)),
+        fileType: "raster",
+        effectiveDpi,
+        embeddedRasterCount: 0,
+        colorProfile: "Unknown",
+        hasBleed: null,
+        hasCutPath: null,
+        isTextOutlined: null,
+        visualQuality: "sharp",
+        findings: [
+          {
+            severity: "info",
+            category: "resolution",
+            message: `Effective DPI ${effectiveDpi} — baskı boyutu için yeterli çözünürlük.`,
+            actionable: null,
+          },
+        ],
+        durationMs: Date.now() - start,
+        model: "rule-based-raster",
+        costUsd: 0,
+        tokensUsed: 0,
+      };
+    }
+
+    if (effectiveDpi >= 120) {
+      return {
+        verdict: "normal",
+        score: 65,
+        fileType: "raster",
+        effectiveDpi,
+        embeddedRasterCount: 0,
+        colorProfile: "Unknown",
+        hasBleed: null,
+        hasCutPath: null,
+        isTextOutlined: null,
+        visualQuality: "acceptable",
+        findings: [
+          {
+            severity: "warning",
+            category: "resolution",
+            message: `Effective DPI ${effectiveDpi} — kabul edilebilir ama ideal değil (hedef ≥200).`,
+            actionable:
+              "Daha yüksek çözünürlüklü dosya yüklersen baskı kalitesi artar.",
+          },
+        ],
+        durationMs: Date.now() - start,
+        model: "rule-based-raster",
+        costUsd: 0,
+        tokensUsed: 0,
+      };
+    }
+
+    // Çok düşük DPI — AI'ya bırak (veya null dönerse GPT devreye girer)
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ============================================================
 // System Prompt (Türkçe — Sefa'nın ekibi için)
 // ============================================================
@@ -229,7 +314,13 @@ export async function runDesignQC(
     };
   }
 
-  // Raster dosya — Claude/GPT Vision API ile analiz
+  // Raster dosya — önce kural tabanlı DPI kontrolü (hızlı + tutarlı)
+  const ruleBased = await tryRuleBasedRasterQC(input, fileType);
+  if (ruleBased) {
+    return ruleBased;
+  }
+
+  // Kural tabanlı sonuç yoksa GPT Vision ile analiz
   const systemPrompt = buildSystemPrompt(input);
 
   try {

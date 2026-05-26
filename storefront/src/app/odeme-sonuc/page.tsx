@@ -183,7 +183,14 @@ function OdemeSonucInner() {
       const o = await fetchCustomerOrder(orderId);
       if (!cancelled && o) {
         setOrder(o);
-        if (o.status !== "paid" && o.status !== "awaiting_upload") {
+        const terminal =
+          o.status === "proof_pending" ||
+          o.status === "proof_generating" ||
+          o.status === "proof_validating" ||
+          o.status === "human_review" ||
+          o.status === "proof_approved";
+        if (terminal) return;
+        if (o.status !== "paid" && o.status !== "awaiting_upload" && o.status !== "qc_pending") {
           return;
         }
       }
@@ -195,7 +202,7 @@ function OdemeSonucInner() {
       void poll();
     }, 3000);
 
-    const timeout = setTimeout(() => clearInterval(interval), 30000);
+    const timeout = setTimeout(() => clearInterval(interval), 120000);
 
     return () => {
       cancelled = true;
@@ -203,6 +210,11 @@ function OdemeSonucInner() {
       clearTimeout(timeout);
     };
   }, [orderId, isPendingVerification]);
+
+  const orderReadyForProof =
+    order?.status === "proof_pending" ||
+    order?.status === "proof_generating" ||
+    order?.status === "proof_validating";
 
   const orderHasDesigns =
     hasDesignsParam ||
@@ -516,7 +528,7 @@ function OdemeSonucInner() {
                           <Button
                             variant="primary"
                             size="md"
-                            href={`/siparis/${orderId}`}
+                            href={`/onay/${orderId}`}
                           >
                             Provayı İncele →
                           </Button>
@@ -544,12 +556,25 @@ function OdemeSonucInner() {
           {orderHasDesigns ? (
             <>
               <p className="text-[14px] text-gri-700">
-                {locale === "en"
-                  ? "Your design is uploaded — AI quality check is starting. You can review the proof in a few minutes."
-                  : "Tasarımın yüklendi — AI kalite kontrolü başlıyor. Birkaç dakika sonra provayı inceleyebilirsin."}
+                {orderReadyForProof
+                  ? locale === "en"
+                    ? "Your proof is ready — review and approve your print preview."
+                    : "Provan hazır — baskı önizlemesini inceleyip onaylayabilirsin."
+                  : locale === "en"
+                    ? "Your design is uploaded — AI quality check is starting. This usually takes 30–60 seconds."
+                    : "Tasarımın yüklendi — AI kalite kontrolü başlıyor. Genelde 30–60 saniye sürer."}
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
-                <Button variant="primary" size="lg" href={`/siparis/${orderId}`}>
+                {orderReadyForProof ? (
+                  <Button variant="primary" size="lg" href={`/onay/${orderId}`}>
+                    {locale === "en" ? "Review proof →" : "Provayı incele →"}
+                  </Button>
+                ) : null}
+                <Button
+                  variant={orderReadyForProof ? "secondary" : "primary"}
+                  size="lg"
+                  href={`/siparis/${orderId}`}
+                >
                   {locale === "en" ? "View order details →" : "Sipariş detayını gör →"}
                 </Button>
               </div>
