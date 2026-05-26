@@ -236,8 +236,13 @@ function itemCutlinePreviewSrc(
     designFileId ??
     item.designs?.find((d) => designHasCutline(d.cutline))?.design_file_id ??
     item.designs?.[0]?.design_file_id;
-  const qs = dfId ? `?design_file_id=${dfId}` : "";
-  return `/api/orders/${orderId}/proof/${item.id}/preview-png${qs}`;
+  const cutlineId =
+    (dfId
+      ? item.designs?.find((d) => d.design_file_id === dfId)?.cutline?.id
+      : null) ??
+    item.designs?.find((d) => designHasCutline(d.cutline))?.cutline?.id ??
+    item.cutline?.id;
+  return buildPreviewPngPath(orderId, item.id, dfId, cutlineId);
 }
 
 function normalizeConfigText(s: string): string {
@@ -264,6 +269,29 @@ function formatItemSubtitle(item: ProofItem): string {
     return dims;
   }
   return `${dims} · ${clean}`;
+}
+
+function buildPreviewPngQuery(
+  designFileId: string | null | undefined,
+  cutlineId: string | null | undefined
+): string {
+  const params = new URLSearchParams();
+  if (designFileId) params.set("design_file_id", designFileId);
+  if (cutlineId) params.set("v", cutlineId.slice(0, 8));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+function buildPreviewPngPath(
+  orderId: string,
+  itemId: string,
+  designFileId?: string | null,
+  cutlineId?: string | null
+): string {
+  return `/api/orders/${orderId}/proof/${itemId}/preview-png${buildPreviewPngQuery(
+    designFileId,
+    cutlineId
+  )}`;
 }
 
 const STATUS_BADGE: Record<
@@ -416,6 +444,18 @@ export default function ProofApprovalPage({
   const { orderId } = use(params);
   const router = useRouter();
   const toast = useToast();
+
+  // Deploy sonrası açık sekmede eski JS bundle kalmasın (SPA soft-nav).
+  useEffect(() => {
+    const build = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+    if (!build) return;
+    const storageKey = "pim-onay-bundle";
+    const seen = sessionStorage.getItem(storageKey);
+    sessionStorage.setItem(storageKey, build);
+    if (seen && seen !== build) {
+      window.location.reload();
+    }
+  }, []);
 
   const [data, setData] = useState<ProofSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -752,9 +792,12 @@ export default function ProofApprovalPage({
 
   const cutlinePreviewSrc =
     activeItem && activeCutline
-      ? `/api/orders/${orderId}/proof/${activeItem.id}/preview-png${
-          activeDesignFileId ? `?design_file_id=${activeDesignFileId}` : ""
-        }`
+      ? buildPreviewPngPath(
+          orderId,
+          activeItem.id,
+          activeDesignFileId,
+          activeCutline.id
+        )
       : null;
 
   useEffect(() => {
@@ -1253,6 +1296,14 @@ export default function ProofApprovalPage({
   const cutlineNotReady =
     !itemReadyForApproval && !showJpgShapeSelector;
   const multiDesignCount = activeItem ? getItemDesignCount(activeItem) : 0;
+  const previewFrameStyle: React.CSSProperties | undefined =
+    activeItem && activeItem.width > 0 && activeItem.height > 0
+      ? {
+          aspectRatio: `${activeItem.width} / ${activeItem.height}`,
+          maxHeight: "min(520px, 65vh)",
+          width: "100%",
+        }
+      : { maxHeight: "min(520px, 65vh)", width: "100%" };
   const layerPreviewUrl =
     previewLayer === "cmyk"
       ? (cmykPreview?.url ?? null)
@@ -1395,7 +1446,7 @@ export default function ProofApprovalPage({
             setLightboxUrl(layerPreviewUrl);
             setLightboxOpen(true);
           }}
-          className="group relative flex max-h-[min(360px,48vh)] max-w-full cursor-zoom-in items-center justify-center sm:max-h-[min(480px,58vh)]"
+          className="group relative h-full w-full cursor-zoom-in"
           title="Büyütüp incele"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1410,7 +1461,7 @@ export default function ProofApprovalPage({
                     ? "CMYK"
                     : "bıçak"
             } önizlemesi`}
-            className="max-h-[min(360px,48vh)] max-w-full w-auto object-contain rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02] sm:max-h-[min(480px,58vh)]"
+            className="h-full w-full object-contain rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.01]"
             onError={() => setPreviewImgBroken(true)}
           />
           <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -1872,7 +1923,7 @@ export default function ProofApprovalPage({
 
                 {/* Canlı önizleme — cutline_design preview PNG (R2 signed URL) */}
                 <div
-                  className="relative flex min-h-[360px] w-full items-center justify-center bg-gri-100 p-4 sm:min-h-[420px] sm:p-6"
+                  className="relative flex w-full items-center justify-center bg-gri-100 p-4 sm:p-6"
                   role="tabpanel"
                   aria-label={
                     previewLayer === "design"
@@ -1898,7 +1949,12 @@ export default function ProofApprovalPage({
                         : undefined
                   }
                 >
-                  {renderPreviewBody()}
+                  <div
+                    className="mx-auto flex max-w-md items-center justify-center sm:max-w-xl"
+                    style={previewFrameStyle}
+                  >
+                    {renderPreviewBody()}
+                  </div>
                 </div>
 
                 {/* Pim yorumu (cutline_designs.pim_feedback) */}
