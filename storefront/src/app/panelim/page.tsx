@@ -677,8 +677,11 @@ export default function PanelimPage() {
     profileName ??
     (orders.length > 0 ? orders[0].address.name.split(" ")[0] : null);
 
-  // Tekrar sipariş için en son etiket / sticker item'ı
-  const lastEtiketOrder = orders.find((o) =>
+  // Tekrar sipariş için en son delivered/in_production etiket / sticker
+  const completedOrders = orders.filter(
+    (o) => o.status !== "cancelled" && o.status !== "awaiting_upload" && o.status !== "paid"
+  );
+  const lastEtiketOrder = completedOrders.find((o) =>
     o.items.some((i) => i.product === "etiket")
   );
   const lastEtiketItem = lastEtiketOrder?.items.find(
@@ -686,14 +689,14 @@ export default function PanelimPage() {
   );
   const lastEtiketQty = lastEtiketItem?.qty ?? 0;
 
-  const lastStickerOrder = orders.find((o) =>
+  const lastStickerOrder = completedOrders.find((o) =>
     o.items.some((i) => i.product === "sticker")
   );
   const lastStickerItem = lastStickerOrder?.items.find(
     (i) => i.product === "sticker"
   );
 
-  // Quick reorder: en son sipariş (etiket varsa o, yoksa sticker)
+  // Quick reorder: en son tamamlanmış sipariş (etiket varsa o, yoksa sticker)
   const lastReorderTarget = lastEtiketOrder ?? lastStickerOrder ?? null;
 
   // Sefa 17 May P1-5 + P2-19:
