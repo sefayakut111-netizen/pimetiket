@@ -160,20 +160,24 @@ export function diffProfileConfig(
     });
   }
 
-  // Operation
-  const op_keys: Array<keyof ProfileConfig["operation"]> = [
-    "setup",
-    "packaging_per_unit",
-    "cargo",
-    "fee_pct",
-  ];
+  // Operation — enabled toggle
+  if ((oldCfg.operation.enabled !== false) !== (newCfg.operation.enabled !== false)) {
+    diffs.push({
+      section: "operation",
+      label: "Operasyon aktif",
+      old_value: oldCfg.operation.enabled !== false ? 1 : 0,
+      new_value: newCfg.operation.enabled !== false ? 1 : 0,
+    });
+  }
+  // Operation — numeric fields
+  const op_num_keys = ["setup", "packaging_per_unit", "cargo", "fee_pct"] as const;
   const op_labels: Record<string, string> = {
     setup: "Setup",
     packaging_per_unit: "Paketleme/adet",
     cargo: "Kargo",
     fee_pct: "Komisyon %",
   };
-  for (const k of op_keys) {
+  for (const k of op_num_keys) {
     if (oldCfg.operation[k] !== newCfg.operation[k]) {
       diffs.push({
         section: "operation",

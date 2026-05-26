@@ -417,7 +417,8 @@ function FiyatlarPageInner() {
 
     const vatAmount = total - total / (1 + draft.vat.pct / 100);
     const subtotal = total - vatAmount;
-    const feeAmount = subtotal * (draft.operation.fee_pct / 100);
+    const opEnabled = draft.operation.enabled !== false;
+    const feeAmount = opEnabled ? subtotal * (draft.operation.fee_pct / 100) : 0;
     const marginAmount =
       (subtotal - feeAmount) * (draft.margin.pct / (100 + draft.margin.pct));
     const partnerCost = subtotal - feeAmount - marginAmount;
@@ -1074,9 +1075,44 @@ function FiyatlarPageInner() {
 
             {/* Operation + Margin + KDV (single card) */}
             <Card padding="p-5">
-              <h2 className="font-semibold text-[16px] mb-3 flex items-center gap-2">
-                💰 <span>Operasyon + Marj + KDV</span>
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-[16px] flex items-center gap-2">
+                  💰 <span>Operasyon + Marj + KDV</span>
+                </h2>
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <span className="text-xs text-gri-700">
+                    {draft.operation.enabled !== false ? "Aktif" : "Devre dışı"}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={draft.operation.enabled !== false}
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        operation: {
+                          ...draft.operation,
+                          enabled: draft.operation.enabled === false ? true : false,
+                        },
+                      })
+                    }
+                    className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                      draft.operation.enabled !== false
+                        ? "bg-yesil"
+                        : "bg-gri-300"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                        draft.operation.enabled !== false
+                          ? "translate-x-5"
+                          : "translate-x-0.5"
+                      } mt-0.5`}
+                    />
+                  </button>
+                </label>
+              </div>
+              <div className={draft.operation.enabled === false ? "opacity-40 pointer-events-none" : ""}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <NumField
                   label="Setup (₺)"
@@ -1116,6 +1152,7 @@ function FiyatlarPageInner() {
                   step={1}
                   onChange={updateVatPct}
                 />
+              </div>
               </div>
             </Card>
           </div>

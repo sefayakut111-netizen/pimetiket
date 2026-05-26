@@ -46,6 +46,7 @@ export interface TierConfig {
 }
 
 export interface OperationConfig {
+  enabled?: boolean;
   setup: number;
   packaging_per_unit: number;
   cargo: number;
