@@ -37,6 +37,11 @@ import {
 import { BgRemovalPrompt } from "@/components/proof/BgRemovalPrompt";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
 import type { ConsistencyIssue } from "@/lib/proof/multi-design-check";
+import {
+  designHasCutline,
+  getExpectedDesignCount,
+  itemAllDesignsReady,
+} from "@/lib/order-item-meta";
 
 // ============================================================
 // Types — fn_proof_summary RPC çıktısı
@@ -192,8 +197,7 @@ function isHttpUrl(url: string | null | undefined): url is string {
 }
 
 function getItemDesignCount(item: ProofItem): number {
-  const metaCount = Number(item.meta?.designCount) || 0;
-  return Math.max(item.designs?.length ?? 0, metaCount, 1);
+  return getExpectedDesignCount(item.meta, item.designs?.length ?? 0);
 }
 
 function itemCutlinePreviewUrl(item: ProofItem): string | null {
@@ -535,6 +539,18 @@ export default function ProofApprovalPage({
   }, [data?.order.status, orderId]);
 
   // proof_pending / proof_generating + eksik cutline — arka planda bıçak üretilirken poll
+  const cutlinePollSignature =
+    data?.items
+      .map((item) => {
+        if (item.proof_status === "approved") return "a";
+        const expected = getItemDesignCount(item);
+        const designs = item.designs ?? [];
+        if (designs.length === 0) return item.cutline ? "ok" : "wait";
+        if (designs.length < expected) return "wait";
+        return designs.every((d) => designHasCutline(d.cutline)) ? "ok" : "wait";
+      })
+      .join("|") ?? "";
+
   useEffect(() => {
     if (
       !data ||
@@ -543,14 +559,7 @@ export default function ProofApprovalPage({
     ) {
       return;
     }
-    const needsCutline = data.items.some((item) => {
-      if (item.proof_status === "approved") return false;
-      if (item.designs && item.designs.length > 0) {
-        return item.designs.some((d) => !d.cutline);
-      }
-      return !item.cutline;
-    });
-    if (!needsCutline) return;
+    if (!cutlinePollSignature.includes("wait")) return;
 
     const interval = setInterval(() => {
       void fetchProofSummary(orderId)
@@ -560,7 +569,7 @@ export default function ProofApprovalPage({
         });
     }, 5000);
     return () => clearInterval(interval);
-  }, [data, orderId]);
+  }, [data?.order.status, cutlinePollSignature, orderId]);
 
   const activeItem = data?.items.find((i) => i.id === activeItemId) ?? null;
 
@@ -598,7 +607,10 @@ export default function ProofApprovalPage({
   }, [activeItem?.id, data?.order.status, orderId]);
 
   useEffect(() => {
-    if (!activeItem || previewLayer !== "design") {
+    if (
+      !activeItem ||
+      (previewLayer !== "design" && previewLayer !== "checkerboard")
+    ) {
       setDesignUrl(null);
       return;
     }
@@ -667,7 +679,11 @@ export default function ProofApprovalPage({
   const activeDesign =
     activeItem?.designs?.find((d) => d.design_file_id === activeDesignFileId) ??
     null;
-  const activeCutline = activeDesign?.cutline ?? activeItem?.cutline ?? null;
+  const activeCutline =
+    activeDesign?.cutline ??
+    (activeItem?.designs && activeItem.designs.length > 0
+      ? null
+      : (activeItem?.cutline ?? null));
 
   const activeDesignMeta = activeDesign ?? null;
   const showJpgShapeSelector =
@@ -955,6 +971,10 @@ export default function ProofApprovalPage({
 
   const handleApprove = async () => {
     if (!activeItem) return;
+    if (!itemAllDesignsReady(activeItem)) {
+      toast.error("Tüm tasarımların bıçak çizgisi hazır olmalı");
+      return;
+    }
     if (!activeCutline && !showJpgShapeSelector) {
       toast.error("Bıçak çizgisi henüz hazır değil — lütfen birkaç dakika bekle");
       return;
@@ -1052,7 +1072,7 @@ export default function ProofApprovalPage({
 
   const handleEdit = () => {
     if (!activeItem) return;
-    if (cutlineNotReady) {
+    if (!activeCutline) {
       toast.error("Bıçak çizgisi henüz hazır değil");
       return;
     }
@@ -1208,33 +1228,59 @@ export default function ProofApprovalPage({
   const { summary, items, order } = data;
   const progressPct =
     summary.total > 0 ? Math.round((summary.approved / summary.total) * 100) : 0;
-  const cutlineNotReady = !activeCutline && !showJpgShapeSelector;
+  const itemReadyForApproval = activeItem
+    ? itemAllDesignsReady(activeItem)
+    : false;
+  const cutlineNotReady =
+    !itemReadyForApproval && !showJpgShapeSelector;
   const multiDesignCount = activeItem ? getItemDesignCount(activeItem) : 0;
   const layerPreviewUrl =
     previewLayer === "cmyk"
       ? (cmykPreview?.url ?? null)
-      : previewLayer === "design"
+      : previewLayer === "design" || previewLayer === "checkerboard"
         ? designUrl
         : previewUrl;
   const canShowPreviewImage =
     isHttpUrl(layerPreviewUrl) &&
     !previewImgBroken &&
-    (previewLayer === "cutline" || previewLayer === "checkerboard"
-      ? !cutlineNotReady
-      : true);
+    (previewLayer === "cutline"
+      ? !cutlineNotReady && !!activeCutline
+      : previewLayer === "checkerboard"
+        ? !!designUrl
+        : true);
 
   const renderCutlineEmptyState = () => {
     const deadlineIso = data?.order.sla_proof_deadline;
     const slaExpired = deadlineIso
       ? new Date(deadlineIso).getTime() <= Date.now()
       : false;
+    const pendingDesignSlots =
+      activeItem && multiDesignCount > (activeItem.designs?.length ?? 0)
+        ? multiDesignCount - (activeItem.designs?.length ?? 0)
+        : 0;
 
     return (
       <div className="text-center text-sm text-gri-700">
         <div className="mb-2 flex justify-center opacity-50">
           {slaExpired ? <Icon.Info size={48} /> : <Icon.Doc size={48} />}
         </div>
-        {slaExpired ? (
+        {pendingDesignSlots > 0 ? (
+          <>
+            <p className="font-medium">
+              {pendingDesignSlots} tasarım daha bağlanıyor
+            </p>
+            <p className="mt-1 text-xs">
+              Tüm tasarımlar hazır olunca bıçak önizlemeleri görünecek. Birkaç
+              dakika sürebilir — sayfayı kapatabilirsin.
+            </p>
+            <div className="mt-3 flex justify-center">
+              <span
+                className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+                aria-hidden="true"
+              />
+            </div>
+          </>
+        ) : slaExpired ? (
           <>
             <p className="font-medium">Operatörümüz bıçağı hazırlıyor</p>
             <p className="mt-1 text-xs">
@@ -1286,11 +1332,17 @@ export default function ProofApprovalPage({
       );
     }
 
-    if (previewLayer === "cmyk" && !cmykPreview && !previewLoading) {
+    if (
+      (previewLayer === "design" || previewLayer === "checkerboard") &&
+      !designUrl
+    ) {
       return (
         <div className="text-center text-sm text-gri-700">
-          <p className="font-medium">CMYK simülasyonu hazırlanıyor</p>
-          <p className="mt-1 text-xs">Baskı renkleri hesaplanıyor…</p>
+          <p className="font-medium">
+            {previewLayer === "checkerboard"
+              ? "Tasarım zemin önizlemesi yükleniyor"
+              : "Tasarım önizlemesi yükleniyor"}
+          </p>
           <div className="mt-3 flex justify-center">
             <span
               className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
@@ -1301,10 +1353,11 @@ export default function ProofApprovalPage({
       );
     }
 
-    if (previewLayer === "design" && !designUrl && !previewLoading) {
+    if (previewLayer === "cmyk" && !cmykPreview) {
       return (
         <div className="text-center text-sm text-gri-700">
-          <p className="font-medium">Tasarım önizlemesi yükleniyor</p>
+          <p className="font-medium">CMYK simülasyonu hazırlanıyor</p>
+          <p className="mt-1 text-xs">Baskı renkleri hesaplanıyor…</p>
           <div className="mt-3 flex justify-center">
             <span
               className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
@@ -1332,9 +1385,11 @@ export default function ProofApprovalPage({
             alt={`${activeItem?.title ?? "Ürün"} ${
               previewLayer === "design"
                 ? "tasarım"
-                : previewLayer === "cmyk"
-                  ? "CMYK"
-                  : "bıçak"
+                : previewLayer === "checkerboard"
+                  ? "zemin"
+                  : previewLayer === "cmyk"
+                    ? "CMYK"
+                    : "bıçak"
             } önizlemesi`}
             className="max-h-[400px] rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02]"
             onError={() => setPreviewImgBroken(true)}
@@ -1712,7 +1767,7 @@ export default function ProofApprovalPage({
                         const d = activeItem.designs[idx];
                         if (d) {
                           const isSel = d.design_file_id === activeDesignFileId;
-                          const ready = !!d.cutline;
+                          const ready = designHasCutline(d.cutline);
                           return (
                             <button
                               key={d.design_file_id}
@@ -1938,7 +1993,7 @@ export default function ProofApprovalPage({
                     variant="secondary"
                     size="md"
                     onClick={handleEdit}
-                    disabled={cutlineNotReady}
+                    disabled={!activeCutline}
                   >
                     Bıçağı düzenle
                   </Button>
@@ -1950,14 +2005,14 @@ export default function ProofApprovalPage({
                       approving ||
                       activeItem.proof_status === "approved" ||
                       activeItem.proof_status === "help_requested" ||
-                      cutlineNotReady
+                      !itemReadyForApproval
                     }
                   >
                     {approving
                       ? "Onaylanıyor…"
                       : activeItem.proof_status === "approved"
                         ? "Onaylandı ✓"
-                        : cutlineNotReady
+                        : !itemReadyForApproval
                           ? "Bıçak hazırlanıyor…"
                           : "Bu ürünü onayla"}
                   </Button>

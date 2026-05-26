@@ -19,6 +19,10 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  designHasCutline,
+  getExpectedDesignCount,
+} from "@/lib/order-item-meta";
 import type { Enums, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 
 interface Body {
@@ -71,6 +75,68 @@ export async function POST(
       { error: `Sipariş bu aşamada değil (${orderRow.status})` },
       { status: 400 }
     );
+  }
+
+  const { data: orderItem } = await admin
+    .from("order_items")
+    .select("meta")
+    .eq("id", itemId)
+    .eq("order_id", orderId)
+    .maybeSingle();
+  const itemMeta =
+    (orderItem as { meta?: Record<string, unknown> } | null)?.meta ?? {};
+
+  const { data: designFiles } = await admin
+    .from("design_files")
+    .select("id")
+    .eq("order_item_id", itemId)
+    .neq("status", "superseded");
+
+  const dfIds = (designFiles ?? []).map((d) => (d as { id: string }).id);
+  const expected = getExpectedDesignCount(itemMeta, dfIds.length);
+
+  if (dfIds.length < expected) {
+    return NextResponse.json(
+      {
+        error: `Tüm tasarımlar henüz hazır değil (${dfIds.length}/${expected})`,
+      },
+      { status: 400 }
+    );
+  }
+
+  if (dfIds.length > 0) {
+    for (const dfId of dfIds) {
+      const { data: cd } = await admin
+        .from("cutline_designs")
+        .select("id")
+        .eq("order_item_id", itemId)
+        .eq("design_file_id", dfId)
+        .neq("status", "superseded")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!designHasCutline(cd as { id?: string } | null)) {
+        return NextResponse.json(
+          { error: "Bıçak çizgisi henüz hazır değil — lütfen bekleyin" },
+          { status: 400 }
+        );
+      }
+    }
+  } else {
+    const { data: legacyCd } = await admin
+      .from("cutline_designs")
+      .select("id")
+      .eq("order_item_id", itemId)
+      .neq("status", "superseded")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!designHasCutline(legacyCd as { id?: string } | null)) {
+      return NextResponse.json(
+        { error: "Bıçak çizgisi henüz hazır değil — lütfen bekleyin" },
+        { status: 400 }
+      );
+    }
   }
 
   const now = new Date().toISOString();
