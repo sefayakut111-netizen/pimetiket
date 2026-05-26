@@ -121,10 +121,10 @@ export function MultiDesignUploader({
   const handleFiles = (files: FileList | File[]) => {
     setError(null);
     const arr = Array.from(files);
-    const remaining = Math.max(0, designCount - designs.length);
-    if (remaining === 0) {
+    const maxAllowed = (maxCount ?? 50) - designs.length;
+    if (maxAllowed <= 0) {
       setError(
-        `Hedef tasarım sayısına (${designCount}) ulaştın. Daha çok yüklemek için yukarıdan tasarım sayısını artır.`
+        `Maksimum tasarım sayısına (${maxCount ?? 50}) ulaştın.`
       );
       return;
     }
@@ -135,7 +135,7 @@ export function MultiDesignUploader({
       designs.map((d) => `${d.name}__${d.sizeBytes}`)
     );
     const newKeys = new Set<string>(); // aynı batch içinde de duplicate engelle
-    for (const file of arr.slice(0, remaining)) {
+    for (const file of arr.slice(0, maxAllowed)) {
       if (!isAcceptedFile(file)) {
         setError(
           `${file.name}: Sadece PDF, PNG, JPG, AI, PSD veya SVG dosyaları kabul ediliyor.`
@@ -181,13 +181,16 @@ export function MultiDesignUploader({
         mimeType: file.type,
       });
     }
-    if (arr.length > remaining) {
+    if (arr.length > maxAllowed) {
       setError(
-        `${remaining} dosya eklendi — seçimdeki ${arr.length - remaining} dosya hedef tasarım sayısı (${designCount}) nedeniyle atlandı.`
+        `${maxAllowed} dosya eklendi — seçimdeki ${arr.length - maxAllowed} dosya maksimum limit nedeniyle atlandı.`
       );
     }
     if (accepted.length > 0) {
       const merged = [...designs, ...accepted];
+      if (merged.length > designCount) {
+        onDesignCountChange(merged.length);
+      }
       onDesignsChange(merged);
       // Her PDF/AI/PSD için arka planda render başlat; sonuç hazır olunca
       // designs state'i güncelle (parent setDesigns callback). EPS/unknown
@@ -252,7 +255,11 @@ export function MultiDesignUploader({
         URL.revokeObjectURL(target.generatedPreviewUrl);
       }
     }
-    onDesignsChange(designs.filter((d) => d.id !== id));
+    const remaining = designs.filter((d) => d.id !== id);
+    onDesignsChange(remaining);
+    if (remaining.length < designCount) {
+      onDesignCountChange(Math.max(1, remaining.length));
+    }
   };
 
   // Sefa 18 May v57: totalQty hesaplaması kaldırıldı (UI'dan 'tasarım =
