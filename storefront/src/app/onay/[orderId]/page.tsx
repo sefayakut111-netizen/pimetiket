@@ -220,6 +220,52 @@ function itemCutlinePreviewUrl(item: ProofItem): string | null {
   return null;
 }
 
+function itemHasCutlinePreview(item: ProofItem): boolean {
+  if (designHasCutline(item.cutline)) return true;
+  return (item.designs ?? []).some((d) => designHasCutline(d.cutline));
+}
+
+/** Sidebar + liste için same-origin bıçak önizlemesi (admin müşteri görünümü dahil). */
+function itemCutlinePreviewSrc(
+  orderId: string,
+  item: ProofItem,
+  designFileId?: string | null
+): string | null {
+  if (!itemHasCutlinePreview(item)) return null;
+  const dfId =
+    designFileId ??
+    item.designs?.find((d) => designHasCutline(d.cutline))?.design_file_id ??
+    item.designs?.[0]?.design_file_id;
+  const qs = dfId ? `?design_file_id=${dfId}` : "";
+  return `/api/orders/${orderId}/proof/${item.id}/preview-png${qs}`;
+}
+
+function normalizeConfigText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[+·\-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Boyut satırı — title'da zaten geçen config tekrarını gösterme. */
+function formatItemSubtitle(item: ProofItem): string {
+  const dims = `${item.qty} ad · ${item.width}×${item.height}mm`;
+  const clean = cleanItemConfig(item.config);
+  if (!clean) return dims;
+  const titleNorm = normalizeConfigText(item.title);
+  const configNorm = normalizeConfigText(clean);
+  if (titleNorm.includes(configNorm)) return dims;
+  const configWords = configNorm.split(" ").filter((w) => w.length > 2);
+  if (
+    configWords.length > 0 &&
+    configWords.every((w) => titleNorm.includes(w))
+  ) {
+    return dims;
+  }
+  return `${dims} · ${clean}`;
+}
+
 const STATUS_BADGE: Record<
   ProofItem["proof_status"],
   { label: string; bg: string; color: string; emoji: string }
@@ -721,7 +767,7 @@ export default function ProofApprovalPage({
       const next: Record<string, string> = {};
       await Promise.all(
         data.items.map(async (item) => {
-          if (itemCutlinePreviewUrl(item)) return;
+          if (itemHasCutlinePreview(item) || itemCutlinePreviewUrl(item)) return;
           const dfId = item.designs?.[0]?.design_file_id;
           const qs = dfId
             ? `?design_file_id=${dfId}&thumb=1`
@@ -1349,7 +1395,7 @@ export default function ProofApprovalPage({
             setLightboxUrl(layerPreviewUrl);
             setLightboxOpen(true);
           }}
-          className="group relative max-h-[400px] cursor-zoom-in"
+          className="group relative flex max-h-[min(360px,48vh)] max-w-full cursor-zoom-in items-center justify-center sm:max-h-[min(480px,58vh)]"
           title="Büyütüp incele"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1364,7 +1410,7 @@ export default function ProofApprovalPage({
                     ? "CMYK"
                     : "bıçak"
             } önizlemesi`}
-            className="max-h-[400px] rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02]"
+            className="max-h-[min(360px,48vh)] max-w-full w-auto object-contain rounded-md border border-gri-200 shadow-sm transition-transform group-hover:scale-[1.02] sm:max-h-[min(480px,58vh)]"
             onError={() => setPreviewImgBroken(true)}
           />
           <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -1517,10 +1563,12 @@ export default function ProofApprovalPage({
           {items.map((item) => {
             const badge = STATUS_BADGE[item.proof_status];
             const isActive = item.id === activeItemId;
-            const thumbUrlRaw =
-              itemCutlinePreviewUrl(item) ?? itemThumbs[item.id] ?? null;
             const thumbUrl =
-              thumbUrlRaw && isHttpUrl(thumbUrlRaw) ? thumbUrlRaw : null;
+              itemCutlinePreviewSrc(orderId, item) ??
+              (isPreviewSrc(itemThumbs[item.id]) ? itemThumbs[item.id] : null) ??
+              (isHttpUrl(itemCutlinePreviewUrl(item))
+                ? itemCutlinePreviewUrl(item)
+                : null);
             return (
               <button
                 key={item.id}
@@ -1530,7 +1578,7 @@ export default function ProofApprovalPage({
                 className={cn(
                   "w-full rounded-xl border p-4 text-left transition",
                   isActive
-                    ? "border-pim-mercan bg-pim-mercan-tint/30 shadow-mercan"
+                    ? "border-gri-200 border-l-[3px] border-l-pim-mercan bg-pim-mercan-tint/20 shadow-sm"
                     : "border-gri-200 bg-white hover:border-pim-mercan/40"
                 )}
               >
@@ -1564,7 +1612,7 @@ export default function ProofApprovalPage({
                       {item.title}
                     </div>
                     <div className="mt-0.5 text-xs text-gri-700">
-                      {item.qty} ad · {item.width}×{item.height}mm
+                      {formatItemSubtitle(item)}
                       {item.cutline?.material_type &&
                         item.cutline.material_type !== "paper" && (
                           <span>
@@ -1610,22 +1658,27 @@ export default function ProofApprovalPage({
           {activeItem ? (
             <>
               {/* Önizleme alanı */}
-              <Card className="overflow-hidden p-0">
+              <Card className="p-0">
                 <div className="border-b border-gri-200 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <div className="text-sm font-semibold text-lacivert">
                         {activeItem.title}
                       </div>
-                      <div className="mt-0.5 text-xs text-gri-700">
-                        {activeItem.qty} ad · {activeItem.width}×
-                        {activeItem.height}mm
-                        {activeItem.config &&
-                          (() => {
-                            const clean = cleanItemConfig(activeItem.config);
-                            return clean ? ` · ${clean}` : "";
-                          })()}
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                          STATUS_BADGE[activeItem.proof_status].bg,
+                          STATUS_BADGE[activeItem.proof_status].color
+                        )}
+                      >
+                        <span>{STATUS_BADGE[activeItem.proof_status].emoji}</span>
+                        <span>{STATUS_BADGE[activeItem.proof_status].label}</span>
                       </div>
+                    </div>
+                    <div className="mt-0.5 text-xs text-gri-700">
+                      {formatItemSubtitle(activeItem)}
+                    </div>
 
                       {/* POC v2 — tier + malzeme + white plan rozeti */}
                       {activeCutline && (
@@ -1699,16 +1752,6 @@ export default function ProofApprovalPage({
                             )}
                         </div>
                       )}
-                    </div>
-                    <div
-                      className={cn(
-                        "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
-                        STATUS_BADGE[activeItem.proof_status].bg,
-                        STATUS_BADGE[activeItem.proof_status].color
-                      )}
-                    >
-                      {STATUS_BADGE[activeItem.proof_status].label}
-                    </div>
                   </div>
                 </div>
 
@@ -1829,7 +1872,7 @@ export default function ProofApprovalPage({
 
                 {/* Canlı önizleme — cutline_design preview PNG (R2 signed URL) */}
                 <div
-                  className="relative grid min-h-[320px] place-items-center bg-gri-100 p-6"
+                  className="relative flex min-h-[360px] w-full items-center justify-center bg-gri-100 p-4 sm:min-h-[420px] sm:p-6"
                   role="tabpanel"
                   aria-label={
                     previewLayer === "design"
@@ -1935,7 +1978,7 @@ export default function ProofApprovalPage({
               </Card>
 
               {/* Action bar */}
-              <div className="sticky bottom-4 z-30 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
+              <div className="sticky bottom-4 z-30 mt-1 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="secondary"
                   size="sm"
