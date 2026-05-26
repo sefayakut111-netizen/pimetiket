@@ -1984,6 +1984,17 @@ window.addEventListener('message', (e) => {
 
 // Auto-load: designUrl varsa OpenCV hazır olunca fetch + handleFile
 // Sefa 22 May v68 — Verbose logging + canvas üzerine görsel hata mesajı.
+let pimAutoLoadPending = false;
+
+function pimNotifyLoaded() {
+  pimPostToParent({
+    type: 'pim-poc-loaded',
+    source: currentFileSource,
+    width: currentMat ? currentMat.cols : 0,
+    height: currentMat ? currentMat.rows : 0,
+  });
+  pimScheduleHeightReport();
+}
 function pimShowError(message) {
   console.error('[pim-poc]', message);
   try {
@@ -2011,14 +2022,20 @@ async function pimAutoLoadDesign() {
     console.log('[pim-poc] designUrl yok, auto-load atlandı');
     return;
   }
+  if (!cvReady) {
+    pimAutoLoadPending = true;
+    console.log('[pim-poc] OpenCV hazır değil, auto-load kuyruğa alındı');
+    return;
+  }
+  pimAutoLoadPending = false;
   console.log('[pim-poc] auto-load başlıyor:', PIM_PARAMS.designUrl);
   try {
-    // Önce CORS no-cors deneyimi yapsak da blob alamayız (opaque).
-    // Direkt cors mode + Supabase response Access-Control-Allow-Origin: *
-    // beklentisi. Fail ise hata mesajını net göster.
     let res;
     try {
-      res = await fetch(PIM_PARAMS.designUrl, { mode: 'cors' });
+      res = await fetch(PIM_PARAMS.designUrl, {
+        mode: 'cors',
+        credentials: 'include',
+      });
     } catch (fetchErr) {
       throw new Error('CORS_BLOCKED: ' + (fetchErr.message || fetchErr));
     }
@@ -2045,16 +2062,6 @@ async function pimAutoLoadDesign() {
     console.log('[pim-poc] handleFile çağrılıyor:', name);
     if (typeof handleFile === 'function') {
       handleFile(file);
-      // Auto-load sonrası parent'a sinyal — handleFile async sürebilir
-        setTimeout(() => {
-        pimPostToParent({
-          type: 'pim-poc-loaded',
-          source: currentFileSource,
-          width: currentMat ? currentMat.cols : 0,
-          height: currentMat ? currentMat.rows : 0,
-        });
-        pimScheduleHeightReport();
-      }, 2000);
     } else {
       throw new Error('handleFile_not_defined');
     }
@@ -2110,7 +2117,9 @@ function onOpenCvReady() {
       });
     }
     // Auto-load tasarım
-    pimAutoLoadDesign();
+    if (PIM_PARAMS.designUrl || pimAutoLoadPending) {
+      pimAutoLoadDesign();
+    }
   }
 }
 
@@ -2758,6 +2767,9 @@ function processImage(img, file) {
   hideLoading();
   pimScheduleAutoSave();
   pimScheduleHeightReport();
+  if (PIM_PARAMS.embed || PIM_PARAMS.designUrl) {
+    pimNotifyLoaded();
+  }
 }
 
 // ============================================================

@@ -12,6 +12,9 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
+import { orderItemHasDesigns } from "@/lib/order-item-meta";
+import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 
 export async function GET(
   req: Request,
@@ -116,6 +119,34 @@ export async function GET(
     return NextResponse.json(proxyData, { status: proxyRes.status });
   }
   const orderId = orderRow.id; // canonical
+
+  // Eksik temp upload'ları promote et (multi-design siparişlerde 2+ tasarım)
+  try {
+    const { data: orderItems } = await admin
+      .from("order_items")
+      .select("id, product, meta")
+      .eq("order_id", orderId);
+    const itemsToPromote = (
+      (orderItems as unknown as Array<{
+        id: string;
+        product: "sticker" | "etiket";
+        meta: Record<string, unknown>;
+      }>) ?? []
+    ).filter((i) => orderItemHasDesigns(i.meta));
+    if (itemsToPromote.length > 0) {
+      const promoted = await promoteOrderDesigns({
+        admin,
+        orderId,
+        userId: user.id,
+        orderItems: itemsToPromote,
+      });
+      if (promoted > 0) {
+        scheduleOrderDesignQC(admin, orderId);
+      }
+    }
+  } catch (promoteErr) {
+    console.error("[GET /orders/proof] promote failed:", promoteErr);
+  }
 
   const { data, error } = await supabase.rpc("fn_proof_summary", {
     p_order_id: orderId,

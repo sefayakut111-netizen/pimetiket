@@ -31,7 +31,7 @@ import { getMyProfile } from "@/lib/customer-profile";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 import { NotificationsMini } from "@/components/customer/NotificationsMini";
-import { OrderCardDesignPreview } from "@/components/orders/OrderCardDesignPreview";
+import { PanelimAdditionalDesignsRow, PanelimPrimaryPreview } from "@/components/orders/PanelimOrderPreviews";
 import {
   orderHasMetaPreviews,
   prefetchOrderDesignFiles,
@@ -906,12 +906,11 @@ export default function PanelimPage() {
                           aria-hidden
                         />
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start pl-2">
-                          <div className="shrink-0 min-w-14 rounded-xl overflow-hidden bg-gri-100 ring-1 ring-gri-200/80 p-1">
-                            <OrderCardDesignPreview
+                          <div className="shrink-0 rounded-xl overflow-hidden bg-gri-100 ring-1 ring-gri-200/80 p-1">
+                            <PanelimPrimaryPreview
                               orderId={o.id}
-                              items={o.items}
-                              designFilesByItem={designFilesMap[o.id]}
-                              size="sm"
+                              item={o.items[0]}
+                              designFiles={designFilesMap[o.id]?.[o.items[0].id]}
                             />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -995,6 +994,14 @@ export default function PanelimPage() {
                                 {c.phases[c.phases.length - 1]}
                               </span>
                             </div>
+                            {o.items.length === 1 && (
+                              <PanelimAdditionalDesignsRow
+                                item={o.items[0]}
+                                designFiles={
+                                  designFilesMap[o.id]?.[o.items[0].id]
+                                }
+                              />
+                            )}
                           </div>
                           <div className="shrink-0 w-full sm:w-auto flex flex-col gap-2 min-w-[140px]">
                             <Button
@@ -1062,12 +1069,13 @@ export default function PanelimPage() {
                           >
                             <div className="flex items-center justify-between gap-3 flex-wrap">
                               <div className="flex items-start gap-3 flex-1 min-w-0">
-                                <div className="shrink-0 min-w-12 rounded-lg overflow-hidden bg-gri-100 ring-1 ring-gri-200/80 p-0.5">
-                                  <OrderCardDesignPreview
+                                <div className="shrink-0 rounded-lg overflow-hidden bg-gri-100 ring-1 ring-gri-200/80 p-0.5">
+                                  <PanelimPrimaryPreview
                                     orderId={o.id}
-                                    items={o.items}
-                                    designFilesByItem={designFilesMap[o.id]}
-                                    size="sm"
+                                    item={o.items[0]}
+                                    designFiles={
+                                      designFilesMap[o.id]?.[o.items[0].id]
+                                    }
                                   />
                                 </div>
                                 <div className="flex-1 min-w-0">

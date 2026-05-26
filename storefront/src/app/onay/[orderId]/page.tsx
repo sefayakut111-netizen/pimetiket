@@ -296,6 +296,27 @@ function slotMetaPreviewUrl(
   return null;
 }
 
+/** Henüz promote edilmemiş slot için meta'daki dosya adı. */
+function slotMetaFileName(item: ProofItem, slotIdx: number): string | null {
+  if (slotIdx === 0) {
+    const name = item.meta?.designFileName;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  }
+  const additional = item.meta?.additionalDesigns;
+  if (!Array.isArray(additional)) return null;
+  const entry = additional[slotIdx - 1];
+  if (
+    entry &&
+    typeof entry === "object" &&
+    "fileName" in entry &&
+    typeof (entry as { fileName?: string }).fileName === "string"
+  ) {
+    const name = (entry as { fileName: string }).fileName.trim();
+    return name || null;
+  }
+  return null;
+}
+
 function normalizeConfigText(s: string): string {
   return s
     .toLowerCase()
@@ -1602,6 +1623,59 @@ export default function ProofApprovalPage({
     const slaExpired = deadlineIso
       ? new Date(deadlineIso).getTime() <= Date.now()
       : false;
+    const activeSlotIdx =
+      activeItem && multiDesignCount > 1
+        ? activeDesignFileId
+          ? Math.max(
+              0,
+              activeItem.designs?.findIndex(
+                (d) => d.design_file_id === activeDesignFileId
+              ) ?? 0
+            )
+          : 0
+        : 0;
+    const metaPreview =
+      activeItem && isPreviewSrc(slotMetaPreviewUrl(activeItem, activeSlotIdx))
+        ? slotMetaPreviewUrl(activeItem, activeSlotIdx)
+        : null;
+    const slotFileName =
+      activeDesign?.file_name ??
+      (activeItem ? slotMetaFileName(activeItem, activeSlotIdx) : null);
+    const designFilePending = !activeDesign && multiDesignCount > 1;
+    const cutlinePending =
+      !!activeDesign && !designHasCutline(activeDesign.cutline);
+
+    if (metaPreview && (designFilePending || cutlinePending)) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center text-sm text-gri-700">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={metaPreview}
+            alt={slotFileName ?? `Tasarım ${activeSlotIdx + 1}`}
+            className="mb-3 max-h-[min(420px,55vh)] max-w-full rounded-md border border-gri-200 object-contain shadow-sm"
+          />
+          <p className="font-medium">
+            {designFilePending
+              ? "Tasarım dosyası bağlanıyor"
+              : "Bıçak hazırlanıyor"}
+          </p>
+          {slotFileName && (
+            <p className="mt-0.5 text-xs text-gri-500">{slotFileName}</p>
+          )}
+          <p className="mt-1 text-xs">
+            Birkaç dakika sürebilir — sayfayı kapatabilirsin, hazır olunca mail
+            atacağız.
+          </p>
+          <div className="mt-3 flex justify-center">
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+      );
+    }
+
     const pendingDesignSlots =
       activeItem && multiDesignCount > (activeItem.designs?.length ?? 0)
         ? multiDesignCount - (activeItem.designs?.length ?? 0)
@@ -1612,14 +1686,14 @@ export default function ProofApprovalPage({
         <div className="mb-2 flex justify-center opacity-50">
           {slaExpired ? <Icon.Info size={48} /> : <Icon.Doc size={48} />}
         </div>
-        {pendingDesignSlots > 0 ? (
+        {pendingDesignSlots > 0 && designFilePending ? (
           <>
             <p className="font-medium">
               {pendingDesignSlots} tasarım daha bağlanıyor
             </p>
             <p className="mt-1 text-xs">
-              Tüm tasarımlar hazır olunca bıçak önizlemeleri görünecek. Birkaç
-              dakika sürebilir — sayfayı kapatabilirsin.
+              Dosyalar sırayla sisteme ekleniyor. Birkaç dakika sürebilir —
+              sayfayı kapatabilirsin.
             </p>
             <div className="mt-3 flex justify-center">
               <span
@@ -1779,7 +1853,7 @@ export default function ProofApprovalPage({
     <main
       className={cn(
         "bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8",
-        showFinalizeBar ? "pb-44" : "pb-28 lg:pb-8"
+        showFinalizeBar ? "pb-52" : "pb-28 lg:pb-8"
       )}
     >
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
@@ -2065,9 +2139,9 @@ export default function ProofApprovalPage({
                       <div className="truncate font-medium text-lacivert">
                         Tasarım {idx + 1}
                       </div>
-                      {d?.file_name && (
+                      {(d?.file_name ?? slotMetaFileName(item, idx)) && (
                         <div className="mt-0.5 truncate text-[11px] text-gri-700">
-                          {d.file_name}
+                          {d?.file_name ?? slotMetaFileName(item, idx)}
                         </div>
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-1">
@@ -2390,53 +2464,49 @@ export default function ProofApprovalPage({
                   ))}
               </Card>
 
-              {/* Action bar */}
-              <div
-                className={cn(
-                  "sticky z-30 mt-1 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between",
-                  showFinalizeBar ? "bottom-32" : "bottom-4"
-                )}
-              >
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setHelpOpen(true)}
-                  disabled={activeItem.proof_status === "help_requested"}
-                >
-                  Ekibimizden yardım iste
-                </Button>
-                <div className="flex flex-col gap-2 sm:flex-row">
+              {!showFinalizeBar && (
+                <div className="sticky bottom-4 z-30 mt-1 flex flex-col gap-2 rounded-xl border border-gri-200 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
                   <Button
                     variant="secondary"
-                    size="md"
-                    onClick={handleEdit}
-                    disabled={!activeCutline}
+                    size="sm"
+                    onClick={() => setHelpOpen(true)}
+                    disabled={activeItem.proof_status === "help_requested"}
                   >
-                    Bıçağı düzenle
+                    Ekibimizden yardım iste
                   </Button>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    onClick={() => void handleApprove()}
-                    disabled={
-                      approving ||
-                      activeDesignApproved ||
-                      activeItem.proof_status === "help_requested" ||
-                      !itemReadyForApproval
-                    }
-                  >
-                    {approving
-                      ? "Onaylanıyor…"
-                      : activeDesignApproved
-                        ? "Onaylandı ✓"
-                        : !itemReadyForApproval
-                          ? activeDesignGenerating
-                            ? "Bıçak üretiliyor…"
-                            : "Bıçak sırada"
-                          : "Bu tasarımı onayla"}
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={handleEdit}
+                      disabled={!activeCutline}
+                    >
+                      Bıçağı düzenle
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={() => void handleApprove()}
+                      disabled={
+                        approving ||
+                        activeDesignApproved ||
+                        activeItem.proof_status === "help_requested" ||
+                        !itemReadyForApproval
+                      }
+                    >
+                      {approving
+                        ? "Onaylanıyor…"
+                        : activeDesignApproved
+                          ? "Onaylandı ✓"
+                          : !itemReadyForApproval
+                            ? activeDesignGenerating
+                              ? "Bıçak üretiliyor…"
+                              : "Bıçak sırada"
+                            : "Bu tasarımı onayla"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             <Card className="p-8 text-center text-sm text-gri-700">
@@ -2446,32 +2516,77 @@ export default function ProofApprovalPage({
         </section>
       </div>
 
-      {/* Tüm tasarımlar onaylandıktan sonra finalize — viewport altında sabit */}
+      {/* Sabit alt panel — eski kart görünümü, viewport altında */}
       {showFinalizeBar && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-gri-200 bg-white/95 p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-sm">
-          <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-            <Button
-              variant="primary"
-              size="lg"
-              className={cn(
-                "w-full justify-center text-base font-semibold",
-                allDesignsApproved
-                  ? "!bg-yesil hover:!bg-yesil-koyu"
-                  : "!bg-gri-300 !text-gri-700 cursor-not-allowed"
+        <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4 pt-2">
+          <div className="mx-auto max-w-[1280px] md:px-8">
+            <div className="rounded-xl border border-gri-200 bg-white p-4 shadow-lg">
+              {activeItem && (
+                <div className="mb-3 flex flex-col gap-2 border-b border-gri-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setHelpOpen(true)}
+                    disabled={activeItem.proof_status === "help_requested"}
+                  >
+                    Ekibimizden yardım iste
+                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={handleEdit}
+                      disabled={!activeCutline}
+                    >
+                      Bıçağı düzenle
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={() => void handleApprove()}
+                      disabled={
+                        approving ||
+                        activeDesignApproved ||
+                        activeItem.proof_status === "help_requested" ||
+                        !itemReadyForApproval
+                      }
+                    >
+                      {approving
+                        ? "Onaylanıyor…"
+                        : activeDesignApproved
+                          ? "Onaylandı ✓"
+                          : !itemReadyForApproval
+                            ? activeDesignGenerating
+                              ? "Bıçak üretiliyor…"
+                              : "Bıçak sırada"
+                            : "Bu tasarımı onayla"}
+                    </Button>
+                  </div>
+                </div>
               )}
-              onClick={() => void handleFinalizeAll()}
-              disabled={!allDesignsApproved || finalizing}
-            >
-              {finalizing
-                ? "Gönderiliyor…"
-                : "✅ Tüm Tasarımları Onayla ve Üretime Gönder"}
-            </Button>
-            {!allDesignsApproved && (
-              <p className="mt-2 text-center text-xs text-gri-700">
-                Önce tüm tasarımları tek tek onayla (
-                {designProgress.approved}/{designProgress.total})
-              </p>
-            )}
+              <Button
+                variant="primary"
+                size="lg"
+                className={cn(
+                  "w-full justify-center text-base font-semibold",
+                  allDesignsApproved
+                    ? "!bg-yesil hover:!bg-yesil-koyu"
+                    : "!bg-gri-300 !text-gri-700 cursor-not-allowed"
+                )}
+                onClick={() => void handleFinalizeAll()}
+                disabled={!allDesignsApproved || finalizing}
+              >
+                {finalizing
+                  ? "Gönderiliyor…"
+                  : "✅ Tüm Tasarımları Onayla ve Üretime Gönder"}
+              </Button>
+              {!allDesignsApproved && (
+                <p className="mt-2 text-center text-xs text-gri-700">
+                  Önce tüm tasarımları tek tek onayla (
+                  {designProgress.approved}/{designProgress.total})
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
