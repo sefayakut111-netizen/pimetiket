@@ -15,7 +15,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
-import { DesignThumb } from "@/components/cart/DesignThumb";
+import { DesignThumbnailGroup } from "@/components/cart/DesignThumbnailGroup";
 import { useT } from "@/lib/i18n/context";
 import {
   listCustomerCart,
@@ -315,13 +315,7 @@ export default function SepetPage() {
                       1) preview render → asıl tasarım
                       2) MIME varsa → PDF/AI/PSD rozeti
                       3) fallback → ürün ikonu */}
-                  <DesignThumb
-                    previewUrl={item.designPreviewUrl}
-                    fileName={item.designFileName}
-                    mimeType={item.designMimeType}
-                    product={item.product}
-                    size="md"
-                  />
+                  <DesignThumbnailGroup item={item} size="md" />
                   <div className="min-w-0">
                     <div className="font-semibold text-base truncate">
                       {item.title}

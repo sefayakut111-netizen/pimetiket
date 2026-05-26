@@ -22,6 +22,11 @@ import {
 } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { DesignThumb } from "@/components/cart/DesignThumb";
+import {
+  DesignThumbnailGroup,
+  designPreviewsFromCartItem,
+  type DesignPreviewEntry,
+} from "@/components/cart/DesignThumbnailGroup";
 import { buildSummaryItems } from "@/lib/order-summary";
 import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
@@ -419,6 +424,19 @@ export default function SiparisDetailPage({
   const [shipmentTimeline, setShipmentTimeline] = useState<
     ShipmentTimelineEvent[]
   >([]);
+  const [itemDesignFiles, setItemDesignFiles] = useState<
+    Record<
+      string,
+      Array<{
+        id: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        status: string;
+        previewUrl?: string;
+      }>
+    >
+  >({});
 
   useEffect(() => {
     ensureAuthBindings();
@@ -440,7 +458,37 @@ export default function SiparisDetailPage({
     void fetchMyOrderShipment(id).then(setShipment);
     void fetchMyShipmentTimeline(id).then(setShipmentTimeline);
 
-    // Design dosyası yüklü mü? Status trigger gecikmiş olsa bile UI
+    void fetch(`/api/orders/${id}/upload-status`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (
+          data: {
+            items?: Array<{
+              id: string;
+              designFiles?: Array<{
+                id: string;
+                fileName: string;
+                mimeType: string;
+                sizeBytes: number;
+                status: string;
+                previewUrl?: string;
+              }>;
+            }>;
+          } | null
+        ) => {
+          if (!data?.items) return;
+          const map: typeof itemDesignFiles = {};
+          for (const it of data.items) {
+            map[it.id] = it.designFiles ?? [];
+          }
+          setItemDesignFiles(map);
+        }
+      )
+      .catch(() => {
+        /* sessiz */
+      });
+
+    // Design dosyası yüklü mü?
     // "Dosya yüklendi" adımını doğru gösterir.
     void (async () => {
       try {
@@ -1094,6 +1142,7 @@ export default function SiparisDetailPage({
             <DesignUploadCard
               orderId={order.id}
               orderItemId={order.items[0]?.id}
+              itemDesignFiles={itemDesignFiles}
               c={c}
             />
 
@@ -1123,13 +1172,11 @@ export default function SiparisDetailPage({
                       className="pb-3 border-b border-gri-100 last:border-0 last:pb-0"
                     >
                       <div className="flex gap-3 items-start">
-                        <SiparisOzetiDesignThumb
+                        <SiparisOzetiDesignThumbGroup
                           orderId={order.id}
-                          itemId={item.id}
-                          fallbackPreviewUrl={item.designPreviewUrl}
-                          fileName={item.designFileName}
-                          mimeType={item.designMimeType}
-                          product={item.product}
+                          item={item}
+                          designFiles={itemDesignFiles[item.id]}
+                          onPreview={setLightboxSrc}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between gap-3 items-baseline">
@@ -1593,6 +1640,7 @@ interface UploadedFile {
    */
   storagePath?: string;
   mimeType?: string;
+  previewUrl?: string;
 }
 
 interface DbFileRow {
@@ -2286,6 +2334,71 @@ function LayerToggle({
 }
 
 // ============================================================
+// SiparisOzetiDesignThumbGroup — multi-design özet thumbnail'ları
+// ============================================================
+function SiparisOzetiDesignThumbGroup({
+  orderId,
+  item,
+  designFiles,
+  onPreview,
+}: {
+  orderId: string;
+  item: CustomerOrder["items"][number];
+  designFiles?: Array<{
+    id: string;
+    fileName: string;
+    mimeType: string;
+    previewUrl?: string;
+  }>;
+  onPreview?: (url: string) => void;
+}) {
+  const apiPreviews: DesignPreviewEntry[] =
+    designFiles?.map((df) => ({
+      previewUrl: df.previewUrl,
+      fileName: df.fileName,
+      mimeType: df.mimeType,
+    })) ?? [];
+
+  const cartPreviews = designPreviewsFromCartItem(item);
+  const previews = apiPreviews.length > 0 ? apiPreviews : cartPreviews;
+
+  if (previews.length > 1) {
+    const group = (
+      <DesignThumbnailGroup
+        item={{ ...item, product: item.product }}
+        size="sm"
+        previews={previews}
+      />
+    );
+    if (onPreview && previews[0]?.previewUrl) {
+      return (
+        <button
+          type="button"
+          onClick={() => onPreview(previews[0].previewUrl!)}
+          className="cursor-zoom-in shrink-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan/40"
+          aria-label="Tasarımı büyüt"
+        >
+          {group}
+        </button>
+      );
+    }
+    return group;
+  }
+
+  return (
+    <SiparisOzetiDesignThumb
+      orderId={orderId}
+      itemId={item.id}
+      fallbackPreviewUrl={item.designPreviewUrl ?? previews[0]?.previewUrl}
+      fileName={item.designFileName ?? previews[0]?.fileName}
+      mimeType={item.designMimeType ?? previews[0]?.mimeType}
+      product={item.product}
+      onPreview={onPreview}
+    />
+  );
+}
+
+// ============================================================
 // SiparisOzetiDesignThumb — Sipariş özeti kartında thumbnail.
 // Sefa 22 May v68: Cart item designPreviewUrl boş ise (ödeme sonrası
 // /siparis/[id]/tasarim-yukle'den yükleme), DB'de design_files var ama
@@ -2434,19 +2547,15 @@ function DesignFileThumb({
 function DesignUploadCard({
   orderId,
   orderItemId,
+  itemDesignFiles,
   c,
 }: {
   orderId: string;
-  /**
-   * Sefa 22 May v68: orderItemId zorunlu — design_files.order_item_id
-   * NULL kayıt edilirse:
-   *  - SiparisOzetiDesignThumb endpoint filter ile bulamaz (önizleme yok)
-   *  - upload-status hasDesign hesabı bozulur
-   *  - Çoklu ürünlü siparişte hangi tasarım hangi ürüne ait belli olmaz
-   * /siparis/[id]/page'de tek-item kullanım için ilk item geçilir.
-   * /siparis/[id]/tasarim-yukle ise her item için ayrı buton sağlar.
-   */
   orderItemId?: string;
+  itemDesignFiles?: Record<
+    string,
+    Array<{ id: string; previewUrl?: string; fileName: string }>
+  >;
   c: typeof COPY.tr | typeof COPY.en;
 }) {
   const [files, setFiles] = useState<Array<UploadedFile & { id?: string; status?: string }>>([]);
@@ -2461,12 +2570,25 @@ function DesignUploadCard({
       .select("*")
       .eq("order_id", orderId)
       .neq("status", "superseded")
-      .order("uploaded_at", { ascending: false });
+      .order("uploaded_at", { ascending: true });
     if (error) {
       console.error("[design] list error:", error);
       return;
     }
-    setFiles((data as unknown as DbFileRow[]).map(dbRowToUploaded));
+    const previewById = new Map<string, string>();
+    if (itemDesignFiles) {
+      for (const dfs of Object.values(itemDesignFiles)) {
+        for (const df of dfs) {
+          if (df.previewUrl) previewById.set(df.id, df.previewUrl);
+        }
+      }
+    }
+    setFiles(
+      (data as unknown as DbFileRow[]).map((r) => ({
+        ...dbRowToUploaded(r),
+        previewUrl: previewById.get(r.id),
+      }))
+    );
   };
 
   useEffect(() => {
@@ -2482,7 +2604,13 @@ function DesignUploadCard({
     }
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
+  }, [orderId, itemDesignFiles]);
+
+  useEffect(() => {
+    if (isLoggedInSync() && Object.keys(itemDesignFiles ?? {}).length > 0) {
+      void refreshDb();
+    }
+  }, [itemDesignFiles]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRealUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -2646,30 +2774,53 @@ function DesignUploadCard({
         </div>
       ) : (
         <div className="space-y-3">
-          {files.map((f) => {
+          {files.map((f, i) => {
             const date = new Date(f.uploadedAt).toLocaleString(c.locale, {
               day: "numeric",
               month: "short",
               hour: "2-digit",
               minute: "2-digit",
             });
-            const sizeKb = (f.size / 1024).toFixed(1);
+            const sizeMb = (f.size / 1024 / 1024).toFixed(1);
             const hasError = f.flags.some((fl) => fl.kind === "error");
             const hasWarning = f.flags.some((fl) => fl.kind === "warning");
+            const statusIcon =
+              f.status === "qc_passed" || f.status === "approved"
+                ? "✅"
+                : f.status === "analyzing"
+                  ? "⏳"
+                  : f.status === "qc_failed"
+                    ? "❌"
+                    : "📁";
             return (
               <div
-                key={f.name}
+                key={f.id ?? f.name}
                 className="flex items-start gap-3 p-4 rounded-lg bg-gri-50 ring-1 ring-gri-200"
               >
-                <DesignFileThumb
-                  storagePath={f.storagePath}
-                  mimeType={f.mimeType}
-                  fileName={f.name}
-                />
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gri-100 shrink-0 ring-1 ring-gri-200">
+                  {f.previewUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={f.previewUrl}
+                      alt={f.name}
+                      className="w-full h-full object-contain bg-white"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <DesignFileThumb
+                      storagePath={f.storagePath}
+                      mimeType={f.mimeType}
+                      fileName={f.name}
+                    />
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-[14px] truncate">
                       {f.name}
+                    </span>
+                    <span className="text-[10px] font-semibold text-gri-500 uppercase tracking-wide">
+                      Tasarım {i + 1}
                     </span>
                     {hasError ? (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi/10 text-kirmizi text-[11px] font-bold">
@@ -2686,7 +2837,7 @@ function DesignUploadCard({
                     )}
                   </div>
                   <div className="text-[12px] text-gri-700 mt-0.5">
-                    {sizeKb} KB · {date}
+                    {sizeMb} MB · {date} · {statusIcon}
                   </div>
                   <div className="mt-2 space-y-1">
                     {f.flags.map((fl, i) => (

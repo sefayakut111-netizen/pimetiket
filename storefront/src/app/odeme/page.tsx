@@ -32,7 +32,7 @@ import {
   ValidatedInput,
   useToast,
 } from "@/components/ui";
-import { DesignThumb } from "@/components/cart/DesignThumb";
+import { DesignThumbnailGroup } from "@/components/cart/DesignThumbnailGroup";
 import { filterConfigString } from "@/lib/cart-config-filter";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
@@ -1573,13 +1573,7 @@ export default function OdemePage() {
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex justify-between gap-3 items-start">
                     <div className="flex gap-2.5 min-w-0 flex-1">
-                      <DesignThumb
-                        previewUrl={item.designPreviewUrl}
-                        fileName={item.designFileName}
-                        mimeType={item.designMimeType}
-                        product={item.product}
-                        size="sm"
-                      />
+                      <DesignThumbnailGroup item={item} size="sm" />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate font-semibold text-lacivert text-[12.5px]">
                           {item.title}
