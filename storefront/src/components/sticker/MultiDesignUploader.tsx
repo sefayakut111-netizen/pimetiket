@@ -309,7 +309,7 @@ export function MultiDesignUploader({
             </button>
             <input
               type="number"
-              value={designCountTouched ? designCount : ""}
+              value={designCountTouched || designs.length > 0 ? designCount : ""}
               placeholder="örn. 1"
               autoComplete="off"
               onChange={(e) => {
