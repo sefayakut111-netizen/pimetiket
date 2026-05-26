@@ -1705,6 +1705,51 @@ export default function ProofApprovalPage({
                     </div>
                   </div>
                 </div>
+
+                {/* Multi-design picker — seçili item'ın altında */}
+                {isActive && multiDesignCount > 1 && (
+                  <div className="mt-2 border-t border-gri-200 pt-2 pl-[76px]">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-gri-500 mb-1">
+                      {multiDesignCount} Tasarım
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {Array.from({ length: multiDesignCount }, (_, idx) => {
+                        const d = item.designs[idx];
+                        if (d) {
+                          const isSel = d.design_file_id === activeDesignFileId;
+                          const ready = designHasCutline(d.cutline);
+                          return (
+                            <button
+                              key={d.design_file_id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDesignFileId(d.design_file_id);
+                              }}
+                              className={cn(
+                                "rounded-md border px-2 py-0.5 text-[11px] transition",
+                                isSel
+                                  ? "border-pim-mercan bg-pim-mercan text-white"
+                                  : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
+                              )}
+                              title={d.file_name}
+                            >
+                              {idx + 1} {ready ? "✓" : "⏳"}
+                            </button>
+                          );
+                        }
+                        return (
+                          <span
+                            key={`p-${idx}`}
+                            className="rounded-md border border-dashed border-gri-300 px-2 py-0.5 text-[11px] text-gri-400"
+                          >
+                            {idx + 1} ⏳
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </button>
             );
           })}
@@ -1812,58 +1857,7 @@ export default function ProofApprovalPage({
                   </div>
                 </div>
 
-                {/* Multi-design picker (C2) — meta.designCount veya designs[] > 1 */}
-                {multiDesignCount > 1 && (
-                  <div className="border-b border-gri-200 bg-gri-100/50 px-4 py-2">
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gri-700">
-                      Bu üründe {multiDesignCount} tasarım var
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {Array.from({ length: multiDesignCount }, (_, idx) => {
-                        const d = activeItem.designs[idx];
-                        if (d) {
-                          const isSel = d.design_file_id === activeDesignFileId;
-                          const ready = designHasCutline(d.cutline);
-                          return (
-                            <button
-                              key={d.design_file_id}
-                              type="button"
-                              onClick={() =>
-                                setActiveDesignFileId(d.design_file_id)
-                              }
-                              className={cn(
-                                "rounded-md border px-2.5 py-1 text-xs transition",
-                                isSel
-                                  ? "border-pim-mercan bg-pim-mercan text-white"
-                                  : "border-gri-200 bg-white text-lacivert hover:border-pim-mercan/40"
-                              )}
-                              title={d.file_name}
-                            >
-                              <span className="font-semibold">
-                                Tasarım {idx + 1}
-                              </span>
-                              <span className="ml-1 opacity-75">
-                                {ready ? "✓" : "⏳"}
-                              </span>
-                            </button>
-                          );
-                        }
-                        return (
-                          <span
-                            key={`pending-design-${idx}`}
-                            className="rounded-md border border-dashed border-gri-300 bg-white px-2.5 py-1 text-xs text-gri-500"
-                            title="Tasarım henüz bağlanmadı"
-                          >
-                            <span className="font-semibold">
-                              Tasarım {idx + 1}
-                            </span>
-                            <span className="ml-1">⏳</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {/* Multi-design picker sol sidebar'a taşındı */}
 
                 {bgPrompt.show && bgPrompt.bgDetect && activeItem && (
                   <div className="border-b border-gri-200 p-4">
