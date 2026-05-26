@@ -1516,10 +1516,6 @@ export default function ProofApprovalPage({
         <h1 className="mt-1 text-2xl font-bold text-lacivert">
           Baskı önizlemelerini onayla
         </h1>
-        <p className="mt-1 text-sm text-gri-700">
-          {summary.total} ürün — {summary.approved} onaylandı, {summary.total - summary.approved} bekliyor
-        </p>
-
         {/* Progress bar */}
         <div
           className="mt-3 h-2 w-full max-w-md overflow-hidden rounded-full bg-gri-100"
