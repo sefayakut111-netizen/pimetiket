@@ -20,6 +20,7 @@ interface OrderInfo {
   status: string;
   total: number;
   itemCount: number;
+  hasEtiket: boolean;
   estimatedDelivery?: string | null;
 }
 
@@ -45,11 +46,10 @@ export default function ProofCompletedPage({
         if (!res.ok) return;
         const data = (await res.json()) as {
           order: { id: string; status: string; total: number };
-          items: Array<{ id: string }>;
+          items: Array<{ id: string; product?: string }>;
         };
         if (cancelled) return;
 
-        // Sadece proof_approved (ve sonrası) durumlarda göster
         if (data.order.status === "proof_pending") {
           router.replace(`/onay/${orderId}`);
           return;
@@ -60,6 +60,7 @@ export default function ProofCompletedPage({
           status: data.order.status,
           total: data.order.total,
           itemCount: data.items.length,
+          hasEtiket: data.items.some((i) => i.product === "etiket"),
         });
       } finally {
         if (!cancelled) setLoading(false);
@@ -73,17 +74,21 @@ export default function ProofCompletedPage({
 
   if (loading) {
     return (
-      <main className="container py-12">
-        <Skeleton className="mx-auto mb-4 h-20 w-20 rounded-full" />
-        <Skeleton className="mx-auto mb-2 h-8 w-72" />
-        <Skeleton className="mx-auto h-4 w-96" />
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <Skeleton className="mx-auto mb-4 h-20 w-20 rounded-full" />
+          <Skeleton className="mx-auto mb-2 h-8 w-72" />
+          <Skeleton className="mx-auto h-4 w-96" />
+        </div>
       </main>
     );
   }
 
+  const deliveryDays = info?.hasEtiket ? "10 iş günü" : "5 iş günü";
+
   return (
-    <main className="container py-12">
-      <div className="mx-auto max-w-2xl text-center">
+    <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+      <div className="mx-auto max-w-2xl px-4 md:px-8 text-center">
         {/* Animasyonlu yeşil tik */}
         <div
           className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-full bg-yesil text-white"
@@ -107,76 +112,76 @@ export default function ProofCompletedPage({
         </div>
 
         <h1 className="mb-3 text-3xl font-bold text-lacivert">
-          Teşekkürler! Üretim başladı 🎉
+          Teşekkürler! Üretim Başladı
         </h1>
         <p className="mb-8 text-base text-gri-700">
           {info
-            ? `${info.itemCount} ürünün baskı önizlemesini onayladın.`
-            : "Tüm baskı önizlemeleri onaylandı."}{" "}
-          Tasarımların artık matbaa hattına aktarıldı. En geç 2 iş günü
-          içinde kargoya veriyoruz.
+            ? `${info.itemCount} ürünün baskı onayını aldık.`
+            : "Tüm baskı onayları alındı."}{" "}
+          Tasarımların üretim kuyruğuna girdi. Operatör kontrolünden sonra baskıya alınacak,
+          kargoya verildiğinde mail ile bilgilendireceğiz.
         </p>
 
         {/* Üretim aşamaları */}
         <Card className="mb-6 p-6 text-left">
           <h2 className="mb-4 text-base font-semibold text-lacivert">
-            📦 Bundan sonraki adımlar
+            Bundan Sonraki Adımlar
           </h2>
           <ol className="space-y-3">
             <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yesil text-white text-sm">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yesil text-white text-sm font-bold">
                 ✓
               </span>
               <div>
-                <div className="font-medium text-lacivert">Onayın alındı</div>
+                <div className="font-medium text-lacivert">Onayın Alındı</div>
                 <div className="text-sm text-gri-700">
-                  Şimdi · Tasarımların kilitlendi, üretim sıramıza girdi
+                  Tasarımların kilitlendi, üretim sıramıza girdi
                 </div>
               </div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-200 text-gri-500 text-sm">
+                2
               </span>
               <div>
                 <div className="font-medium text-lacivert">
-                  Operatör son göz kontrolü
+                  Operatör Kontrolü
                 </div>
                 <div className="text-sm text-gri-700">
-                  1-2 saat · Matbaa standartlarına uygun mu son bir bak
+                  Baskı standartlarına uygunluk kontrolü yapılıyor
                 </div>
               </div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-200 text-gri-500 text-sm">
+                3
               </span>
               <div>
-                <div className="font-medium text-lacivert">Üretim hattı</div>
+                <div className="font-medium text-lacivert">Üretim</div>
                 <div className="text-sm text-gri-700">
-                  1-2 iş günü · Baskı + kesim + kalite kontrol
+                  Baskı + kesim + kalite kontrol
                 </div>
               </div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-200 text-gri-500 text-sm">
+                4
               </span>
               <div>
-                <div className="font-medium text-lacivert">Kargoya verildi</div>
+                <div className="font-medium text-lacivert">Kargoya Verildi</div>
                 <div className="text-sm text-gri-700">
-                  Mail bildirimi geleceğin gün · Yurtiçi Kargo takip linki
+                  Kargoya verildiğinde e-posta ile bilgilendireceğiz. Takip numaranı sipariş detayında görebilirsin.
                 </div>
               </div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-100 text-gri-700 text-sm">
-                ○
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gri-200 text-gri-500 text-sm">
+                5
               </span>
               <div>
                 <div className="font-medium text-lacivert">Teslimat</div>
                 <div className="text-sm text-gri-700">
-                  3-5 iş günü · Adresinde
+                  Tahmini teslimat: {deliveryDays}
                 </div>
               </div>
             </li>
@@ -189,10 +194,10 @@ export default function ProofCompletedPage({
             variant="primary"
             size="md"
           >
-            Sipariş takibimi aç
+            Sipariş Takibimi Aç
           </Button>
           <Button href="/etiket" variant="secondary" size="md">
-            Yeni sipariş ver
+            Yeni Sipariş Ver
           </Button>
         </div>
 
@@ -200,15 +205,13 @@ export default function ProofCompletedPage({
           Sorun yaşadıysan{" "}
           <a
             href="mailto:info@pimetiket.com"
-            className="text-pim-mercan underline"
+            className="text-pim-mercan font-semibold hover:underline"
           >
             info@pimetiket.com
           </a>{" "}
-          veya{" "}
-          <Link href="/iletisim" className="text-pim-mercan underline">
-            Pim sohbet
-          </Link>{" "}
-          asistanından ulaşabilirsin.
+          veya sağ alt köşedeki{" "}
+          <span className="font-semibold text-pim-mercan">Pim</span>
+          &apos;e sorabilirsin.
         </p>
       </div>
 
