@@ -1274,6 +1274,26 @@
     border: none;
     border-radius: 0;
   }
+
+  /* Embed editor mode (/onay/duzenle) — upload kilidi, malzeme readonly */
+  html.pim-embed-restricted #fileUploadPanel,
+  html.pim-embed-restricted #btnRemoveBg,
+  html.pim-embed-restricted #actionBar {
+    display: none !important;
+  }
+  html.pim-embed-restricted #dpiSliderRow {
+    display: none !important;
+  }
+  html.pim-embed-locked-material #materialPanel .material-btn {
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.45;
+  }
+  html.pim-embed-locked-material #materialPanel .material-btn.active {
+    opacity: 1;
+    border-color: var(--accent);
+    background: #fdf6f1;
+  }
 </style>
 </head>
 <body>
@@ -1293,7 +1313,7 @@
 <main>
   <aside class="sidebar">
     <!-- Upload -->
-    <div class="panel">
+    <div class="panel" id="fileUploadPanel">
       <div class="panel-title">Dosya</div>
       <label class="upload-zone" id="uploadZone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1315,7 +1335,7 @@
     </div>
 
     <!-- Malzeme tipi -->
-    <div class="panel">
+    <div class="panel" id="materialPanel">
       <div class="panel-title">Malzeme tipi</div>
       <div class="material-grid">
         <button class="material-btn active" data-material="paper">
@@ -1396,7 +1416,7 @@
         <input type="range" id="smoothSlider" min="0" max="100" step="1" value="0">
       </div>
 
-      <div class="slider-row">
+      <div class="slider-row" id="dpiSliderRow">
         <div class="slider-header">
           <span class="label">Görüntü çözünürlüğü (DPI)</span>
           <span class="value"><span id="dpiVal">300</span></span>
@@ -1609,13 +1629,46 @@ const PIM_PARAMS = (() => {
       embed: sp.get('embed') === '1',
       headless: sp.get('headless') === '1',
       autoSave: sp.get('autoSave') === '1',
+      hideUpload: sp.get('hideUpload') === '1',
+      lockMaterial: sp.get('lockMaterial') === '1',
+      hideDpi: sp.get('hideDpi') === '1',
       mode: sp.get('mode') || 'contour',
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false, autoSave: false, embed: false, mode: 'contour' };
+    return { headless: false, autoSave: false, embed: false, hideUpload: false, lockMaterial: false, hideDpi: false, mode: 'contour' };
   }
 })();
+
+function pimApplyEmbedUiRestrictions() {
+  if (PIM_PARAMS.hideUpload) {
+    document.documentElement.classList.add('pim-embed-restricted');
+    const empty = document.getElementById('emptyState');
+    if (empty) {
+      const h3 = empty.querySelector('h3');
+      const p = empty.querySelector('p');
+      if (h3) h3.textContent = 'Tasarım yükleniyor…';
+      if (p) p.textContent = 'Siparişindeki dosya otomatik açılacak.';
+    }
+  }
+  if (PIM_PARAMS.lockMaterial) {
+    document.documentElement.classList.add('pim-embed-locked-material');
+    document.querySelectorAll('#materialPanel .material-btn').forEach((btn) => {
+      btn.setAttribute('aria-disabled', 'true');
+      btn.tabIndex = -1;
+    });
+  }
+  if (PIM_PARAMS.hideDpi) {
+    const row = document.getElementById('dpiSliderRow');
+    if (row) row.style.display = 'none';
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', pimApplyEmbedUiRestrictions);
+} else {
+  pimApplyEmbedUiRestrictions();
+}
 
 // Headless mode CSS — toolbar/sidebar gizle (parent iframe minimal göstersin)
 if (PIM_PARAMS.headless) {

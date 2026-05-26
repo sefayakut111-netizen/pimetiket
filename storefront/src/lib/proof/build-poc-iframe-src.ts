@@ -17,6 +17,8 @@ export function buildPocIframeSrc(args: {
   material: string;
   designFileId?: string | null;
   autoSave?: boolean;
+  /** Müşteri editörü: upload gizle, malzeme kilitle, DPI gizle */
+  editorMode?: boolean;
   origin: string;
 }): string {
   const dfQs = args.designFileId
@@ -36,5 +38,10 @@ export function buildPocIframeSrc(args: {
     itemId: args.itemId,
   });
   if (args.designFileId) params.set("designFileId", args.designFileId);
+  if (args.editorMode) {
+    params.set("hideUpload", "1");
+    params.set("lockMaterial", "1");
+    params.set("hideDpi", "1");
+  }
   return `/poc.html?${params.toString()}`;
 }

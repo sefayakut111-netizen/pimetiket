@@ -114,6 +114,23 @@ interface CutlineSavedPayload {
   preview_png_base64: string | null;
 }
 
+async function submitHelpRequest(
+  orderId: string,
+  itemId: string,
+  message: string
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`/api/orders/${orderId}/proof/${itemId}/help`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+  };
+  return { ok: res.ok && data.ok === true, error: data.error };
+}
+
 export default function ProofEditPage({
   params,
 }: {
@@ -137,6 +154,10 @@ export default function ProofEditPage({
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [designLoaded, setDesignLoaded] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpMsg, setHelpMsg] = useState("");
+  const [submittingHelp, setSubmittingHelp] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   // Sefa 23 May v68: design-url hata mesajini iframe alaninda goster
   // (toast kaybolup gidiyor, "Bir gorsel yukle" bos ekranda neden anlasilmiyor).
@@ -250,9 +271,11 @@ export default function ProofEditPage({
             material,
             designFileId,
             autoSave: false,
+            editorMode: true,
             origin,
           })
         );
+        setDesignLoaded(false);
         setPocStatus({ state: "loading", message: "POC iframe yükleniyor…" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -291,6 +314,7 @@ export default function ProofEditPage({
         }
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
+        setDesignLoaded(true);
         setPocStatus({
           state: "loaded",
           message: `Tasarım yüklendi (source=${data.source ?? "?"})`,
@@ -377,12 +401,41 @@ export default function ProofEditPage({
     return () => window.removeEventListener("message", handler);
   }, [item, orderId, itemId, router, toast, saving, designFileId]);
 
+  const handleSave = () => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "pim-request-export" },
+      "*"
+    );
+  };
+
+  const handleSubmitHelp = async () => {
+    const trimmed = helpMsg.trim();
+    if (trimmed.length < 5) {
+      toast.error("Lütfen sorunu en az 5 karakter açıkla");
+      return;
+    }
+    setSubmittingHelp(true);
+    try {
+      const result = await submitHelpRequest(orderId, itemId, trimmed);
+      if (!result.ok) {
+        toast.error(result.error ?? "Talep gönderilemedi");
+        return;
+      }
+      toast.success("Talebin alındı, operatörümüz 1 iş günü içinde dönecek");
+      setHelpOpen(false);
+      setHelpMsg("");
+      router.push(`/onay/${orderId}`);
+    } finally {
+      setSubmittingHelp(false);
+    }
+  };
+
   if (loading) {
     return (
-      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8">
+      <main className="overflow-hidden bg-gri-50 h-[calc(100vh-64px)] py-4">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Skeleton className="mb-2 h-6 w-48" />
-          <Skeleton className="h-[min(640px,calc(100vh-220px))]" />
+          <Skeleton className="h-[calc(100vh-200px)] min-h-[600px]" />
         </div>
       </main>
     );
@@ -390,7 +443,7 @@ export default function ProofEditPage({
 
   if (forbidden || !item) {
     return (
-      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-12">
+      <main className="overflow-hidden bg-gri-50 h-[calc(100vh-64px)] py-8">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Card className="p-8 text-center">
             <h1 className="mb-2 text-lg font-semibold">
@@ -409,16 +462,16 @@ export default function ProofEditPage({
   }
 
   return (
-    <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8">
-      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <main className="overflow-hidden bg-gri-50 h-[calc(100vh-64px)] py-4">
+      <div className="mx-auto flex h-full max-w-[1280px] flex-col px-4 md:px-8">
+      {/* Header — kompakt */}
+      <div className="mb-3 flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Eyebrow>SİPARİŞ #{orderId}</Eyebrow>
-          <h1 className="mt-1 text-2xl font-bold text-lacivert">
+          <h1 className="text-xl font-bold text-lacivert">
             Bıçağı düzenle: {item.title}
           </h1>
-          <p className="mt-1 text-sm text-gri-700">
+          <p className="text-xs text-gri-700">
             {item.qty} ad · {item.width}×{item.height}mm
           </p>
         </div>
@@ -431,12 +484,11 @@ export default function ProofEditPage({
         </Button>
       </div>
 
-      <Card className="mb-4 flex items-start gap-3 bg-pim-mercan-tint/30 p-4">
-        <PimMini pose="inspect" size={48} />
-        <p className="text-sm leading-relaxed text-lacivert">
-          Bıçak çizgisini istediğin gibi ayarlayabilirsin. "Kaydet ve dön"
-          dersen taslak olarak kalır, sonra onay sayfasında "Onayla"
-          diyebilirsin.
+      <Card className="mb-3 flex shrink-0 items-start gap-2 bg-pim-mercan-tint/30 p-3">
+        <PimMini pose="inspect" size={36} />
+        <p className="text-xs leading-relaxed text-lacivert sm:text-sm">
+          Kesim mesafesi ve yumuşatmayı ayarla, alttan <strong>Kaydet ve dön</strong> de.
+          Onayı sonra onay sayfasında verirsin.
         </p>
       </Card>
 
@@ -445,7 +497,7 @@ export default function ProofEditPage({
       {visionFallback && (
         <div
           className={
-            "mb-3 rounded-xl border px-4 py-3 text-[13px] " +
+            "mb-2 shrink-0 rounded-xl border px-3 py-2 text-[12px] " +
             (visionFallback.severity === "err"
               ? "border-kirmizi/40 bg-kirmizi-soft text-kirmizi"
               : "border-pim-mercan/40 bg-pim-mercan-tint text-lacivert")
@@ -498,7 +550,7 @@ export default function ProofEditPage({
       {pocStatus && (
         <div
           className={
-            "mb-3 rounded-xl border px-4 py-2 text-[12.5px] " +
+            "mb-2 shrink-0 rounded-xl border px-3 py-1.5 text-[12px] " +
             (pocStatus.state === "error" || pocStatus.state === "timeout"
               ? "border-kirmizi/40 bg-kirmizi-soft text-kirmizi"
               : pocStatus.state === "loaded"
@@ -513,19 +565,18 @@ export default function ProofEditPage({
         </div>
       )}
 
-      {/* POC v2 iframe mount — design-url fetch hazır olunca yüklenir */}
-      <div className="overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
+      {/* POC iframe */}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
         {iframeSrc ? (
           <iframe
             ref={iframeRef}
             src={iframeSrc}
             title="Bıçak düzenleyici"
-            className="block h-[min(calc(100vh-280px),900px)] min-h-[480px] w-full sm:min-h-[560px] md:min-h-[640px]"
-            // POC esm.run'dan @imgly/background-removal indiriyor, allow-scripts şart
+            className="block h-[calc(100vh-200px)] min-h-[600px] w-full"
             sandbox="allow-scripts allow-same-origin allow-downloads"
           />
         ) : designLoadError ? (
-          <div className="grid h-[min(calc(100vh-280px),900px)] min-h-[480px] place-items-center bg-kirmizi-soft p-6 text-center sm:min-h-[560px] md:min-h-[640px]">
+          <div className="grid h-[calc(100vh-200px)] min-h-[600px] place-items-center bg-kirmizi-soft p-6 text-center">
             <div className="max-w-lg">
               <div className="mb-2 text-base font-semibold text-kirmizi">
                 Tasarım yüklenemedi
@@ -544,15 +595,89 @@ export default function ProofEditPage({
             </div>
           </div>
         ) : (
-          <div className="grid h-[min(calc(100vh-280px),900px)] min-h-[480px] place-items-center bg-gri-100 text-sm text-gri-700 sm:min-h-[560px] md:min-h-[640px]">
+          <div className="grid h-[calc(100vh-200px)] min-h-[600px] place-items-center bg-gri-100 text-sm text-gri-700">
             Tasarım yükleniyor…
           </div>
         )}
       </div>
 
-      {saving && (
-        <div className="mt-4 rounded-lg bg-pim-mercan-tint/30 p-3 text-center text-sm text-lacivert">
-          Bıçak kaydediliyor, lütfen bekle…
+      <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setHelpOpen(true)}
+          disabled={item.proof_status === "help_requested"}
+        >
+          Ekibimizden yardım iste
+        </Button>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Button variant="ghost" size="md" href={`/onay/${orderId}`}>
+            İptal — onay sayfasına dön
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleSave}
+            disabled={saving || !designLoaded || !!designLoadError}
+          >
+            {saving ? "Kaydediliyor…" : "Kaydet ve dön"}
+          </Button>
+        </div>
+      </div>
+
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          onClick={() => !submittingHelp && setHelpOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="help-modal-title"
+        >
+          <Card
+            className="w-full max-w-md p-6"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
+            <h3
+              id="help-modal-title"
+              className="text-lg font-semibold text-lacivert"
+            >
+              Operatörden yardım iste
+            </h3>
+            <p className="mt-2 text-sm text-gri-700">
+              <strong>{item.title}</strong> için bıçak/kesim ayarını
+              operatörümüzün yapmasını istiyorsan kısaca anlat.
+            </p>
+            <textarea
+              className="mt-3 w-full rounded-lg border border-gri-200 p-3 text-sm focus:border-pim-mercan focus:outline-none"
+              rows={5}
+              placeholder="Örnek: Logo etrafındaki bıçak çok dar kalıyor, 3-4 mm istiyorum…"
+              value={helpMsg}
+              onChange={(e) => setHelpMsg(e.target.value)}
+              disabled={submittingHelp}
+              aria-label="Yardım talebi mesajı"
+            />
+            <p className="mt-1 text-xs text-gri-700">
+              {helpMsg.length}/1000 karakter
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setHelpOpen(false)}
+                disabled={submittingHelp}
+              >
+                İptal
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void handleSubmitHelp()}
+                disabled={submittingHelp || helpMsg.trim().length < 5}
+              >
+                {submittingHelp ? "Gönderiliyor…" : "Talep gönder"}
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
       </div>

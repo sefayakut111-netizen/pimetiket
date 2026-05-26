@@ -161,6 +161,7 @@ export default function PartnerEditCutlinePage({
             material,
             designFileId,
             autoSave: false,
+            editorMode: true,
             origin,
           })
         );
