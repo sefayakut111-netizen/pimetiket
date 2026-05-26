@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
-import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
+
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerClient();
@@ -90,7 +92,15 @@ export async function POST(req: NextRequest) {
       .update({ status: "qc_pending" })
       .eq("id", orderId);
 
-    scheduleOrderDesignQC(admin, orderId);
+    // QC'yi doğrudan çalıştır (after() yerine — lambda kapanma riski yok)
+    try {
+      const qcResult = await runOrderDesignQC(admin, orderId);
+      console.log("[promote] QC result:", qcResult.aggregateVerdict, qcResult.verdictCounts);
+      return NextResponse.json({ ok: true, promoted, qc: qcResult.aggregateVerdict });
+    } catch (qcErr) {
+      console.error("[promote] QC failed:", qcErr);
+      return NextResponse.json({ ok: true, promoted, qc: "error" });
+    }
   }
 
   return NextResponse.json({ ok: true, promoted });
