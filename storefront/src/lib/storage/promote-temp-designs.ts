@@ -9,14 +9,15 @@
  *   FROM: temp/<userId>/<uuid>.<ext>
  *   TO:   <orderId>/<uuid>.<ext>
  *
- * Sonra AI ön-kontrol pipeline'ı tetiklenir (status=analyzing).
+ * Kurtarma: temp/ silinmiş ama dosya zaten {orderId}/ altındaysa design_files
+ * satırı oluşturulur (yarım kalmış promote).
  */
 
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
-import { collectDesignTempIds } from "@/lib/order-item-meta";
+import { collectDesignTempIds, type AdditionalDesignMeta } from "@/lib/order-item-meta";
 import { STORAGE_BUCKET } from "./design-files";
 
 interface OrderItemWithDesign {
@@ -32,6 +33,73 @@ interface TempUploadRow {
   size_bytes: number;
   mime_type: string;
   sha256: string | null;
+  promoted_to?: string | null;
+}
+
+function metaForTempId(
+  meta: Record<string, unknown>,
+  designTempId: string
+): Pick<TempUploadRow, "original_name" | "size_bytes" | "mime_type"> | null {
+  if (meta.designTempId === designTempId) {
+    return {
+      original_name:
+        typeof meta.designFileName === "string"
+          ? meta.designFileName
+          : "design.png",
+      size_bytes: 0,
+      mime_type:
+        typeof meta.designMimeType === "string"
+          ? meta.designMimeType
+          : "image/png",
+    };
+  }
+  const additional = meta.additionalDesigns;
+  if (Array.isArray(additional)) {
+    for (const entry of additional) {
+      if (
+        entry &&
+        typeof entry === "object" &&
+        (entry as AdditionalDesignMeta).tempId === designTempId
+      ) {
+        const ad = entry as AdditionalDesignMeta;
+        return {
+          original_name: ad.fileName,
+          size_bytes: ad.sizeBytes ?? 0,
+          mime_type: ad.mimeType ?? "image/png",
+        };
+      }
+    }
+  }
+  return null;
+}
+
+async function storageObjectExists(
+  admin: SupabaseClient<Database>,
+  path: string
+): Promise<boolean> {
+  const { data, error } = await admin.storage
+    .from(STORAGE_BUCKET)
+    .download(path);
+  return !error && !!data;
+}
+
+async function ensureFileAtOrderPath(args: {
+  admin: SupabaseClient<Database>;
+  tempPath: string;
+  orderPath: string;
+}): Promise<boolean> {
+  if (await storageObjectExists(args.admin, args.orderPath)) {
+    return true;
+  }
+  const { error: moveErr } = await args.admin.storage
+    .from(STORAGE_BUCKET)
+    .move(args.tempPath, args.orderPath);
+  if (!moveErr) return true;
+
+  const { error: copyErr } = await args.admin.storage
+    .from(STORAGE_BUCKET)
+    .copy(args.tempPath, args.orderPath);
+  return !copyErr;
 }
 
 async function promoteOneTemp(args: {
@@ -40,8 +108,19 @@ async function promoteOneTemp(args: {
   userId: string;
   orderItemId: string;
   designTempId: string;
+  itemMeta: Record<string, unknown>;
+  /** Multi-design slot — unique index (order_id, order_item_id, version) */
+  version: number;
 }): Promise<boolean> {
-  const { admin, orderId, userId, orderItemId, designTempId } = args;
+  const {
+    admin,
+    orderId,
+    userId,
+    orderItemId,
+    designTempId,
+    itemMeta,
+    version,
+  } = args;
 
   console.log(
     "[promote] processing designTempId:",
@@ -50,43 +129,69 @@ async function promoteOneTemp(args: {
     orderItemId
   );
 
-  const { data: tempData, error: tempErr } = await admin
+  const orderPath = `${orderId}/${designTempId}.png`;
+
+  const { data: existingByPath } = await admin
+    .from("design_files")
+    .select("id")
+    .eq("order_id", orderId)
+    .eq("storage_path", orderPath)
+    .neq("status", "superseded")
+    .maybeSingle();
+
+  if (existingByPath) {
+    await admin
+      .from("design_temp_uploads")
+      .update({
+        promoted_to: (existingByPath as { id: string }).id,
+      } satisfies TablesUpdate<"design_temp_uploads">)
+      .eq("id", designTempId)
+      .is("promoted_to", null);
+    return false;
+  }
+
+  const { data: tempData } = await admin
     .from("design_temp_uploads")
-    .select("id, storage_path, original_name, size_bytes, mime_type, sha256")
+    .select(
+      "id, storage_path, original_name, size_bytes, mime_type, sha256, promoted_to"
+    )
     .eq("id", designTempId)
     .eq("user_id", userId)
-    .is("promoted_to", null)
-    .single();
+    .maybeSingle();
 
-  if (tempErr || !tempData) {
+  const temp = tempData as unknown as TempUploadRow | null;
+  if (temp?.promoted_to) {
+    return false;
+  }
+
+  const metaFallback = metaForTempId(itemMeta, designTempId);
+  const originalName =
+    temp?.original_name ?? metaFallback?.original_name ?? `${designTempId}.png`;
+  const sizeBytes = temp?.size_bytes ?? metaFallback?.size_bytes ?? 0;
+  const mimeType = temp?.mime_type ?? metaFallback?.mime_type ?? "image/png";
+  const sha256 = temp?.sha256 ?? null;
+
+  const tempPath =
+    temp?.storage_path ?? `temp/${userId}/${designTempId}.png`;
+  const fileName = tempPath.split("/").pop() ?? `${designTempId}.png`;
+  const newPath = `${orderId}/${fileName}`;
+
+  const ready = await ensureFileAtOrderPath({
+    admin,
+    tempPath,
+    orderPath: newPath,
+  });
+
+  if (!ready && !(await storageObjectExists(admin, orderPath))) {
     console.warn(
-      `[promote] temp upload not found for design_temp_id=${designTempId}:`,
-      tempErr?.message
+      `[promote] storage missing for temp=${designTempId} paths=${tempPath}|${newPath}|${orderPath}`
     );
     return false;
   }
 
-  const temp = tempData as unknown as TempUploadRow;
-  const fileName = temp.storage_path.split("/").pop() ?? "design.bin";
-  const newPath = `${orderId}/${fileName}`;
-
-  const { error: moveErr } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .move(temp.storage_path, newPath);
-
-  if (moveErr) {
-    console.error(
-      `[promote] storage move failed (${temp.storage_path} → ${newPath}):`,
-      moveErr.message
-    );
-    const { error: copyErr } = await admin.storage
-      .from(STORAGE_BUCKET)
-      .copy(temp.storage_path, newPath);
-    if (copyErr) {
-      console.error("[promote] storage copy fallback failed:", copyErr);
-      return false;
-    }
-  }
+  const storagePath = (await storageObjectExists(admin, newPath))
+    ? newPath
+    : orderPath;
 
   const fileId = crypto.randomUUID();
   const { error: insertErr } = await admin.from("design_files").insert([
@@ -95,12 +200,12 @@ async function promoteOneTemp(args: {
       order_id: orderId,
       user_id: userId,
       order_item_id: orderItemId,
-      storage_path: newPath,
-      original_name: temp.original_name,
-      size_bytes: temp.size_bytes,
-      mime_type: temp.mime_type,
-      sha256: temp.sha256,
-      version: 1,
+      storage_path: storagePath,
+      original_name: originalName,
+      size_bytes: sizeBytes,
+      mime_type: mimeType,
+      sha256,
+      version,
       status: "analyzing",
     } satisfies TablesInsert<"design_files">,
   ]);
@@ -110,10 +215,18 @@ async function promoteOneTemp(args: {
     return false;
   }
 
-  await admin
-    .from("design_temp_uploads")
-    .update({ promoted_to: fileId } satisfies TablesUpdate<"design_temp_uploads">)
-    .eq("id", temp.id);
+  if (temp?.id) {
+    await admin
+      .from("design_temp_uploads")
+      .update({ promoted_to: fileId } satisfies TablesUpdate<"design_temp_uploads">)
+      .eq("id", temp.id);
+  } else {
+    await admin
+      .from("design_temp_uploads")
+      .update({ promoted_to: fileId } satisfies TablesUpdate<"design_temp_uploads">)
+      .eq("id", designTempId)
+      .is("promoted_to", null);
+  }
 
   await admin.from("order_events").insert([
     {
@@ -122,12 +235,12 @@ async function promoteOneTemp(args: {
       status_after: null,
       actor_id: userId,
       actor_role: "customer",
-      summary: `Tasarım dosyası bağlandı: ${temp.original_name}`,
+      summary: `Tasarım dosyası bağlandı: ${originalName}`,
       detail: {
         fileId,
         orderItemId,
-        sizeBytes: temp.size_bytes,
-        mimeType: temp.mime_type,
+        sizeBytes,
+        mimeType,
         source: "pre_purchase_upload",
       },
     } satisfies TablesInsert<"order_events">,
@@ -153,13 +266,16 @@ export async function promoteOrderDesigns(args: {
 
   for (const orderItem of orderItems) {
     const tempIds = collectDesignTempIds(orderItem.meta);
-    for (const designTempId of tempIds) {
+    for (let slot = 0; slot < tempIds.length; slot++) {
+      const designTempId = tempIds[slot];
       const ok = await promoteOneTemp({
         admin,
         orderId,
         userId,
         orderItemId: orderItem.id,
         designTempId,
+        itemMeta: orderItem.meta,
+        version: slot + 1,
       });
       if (ok) promoted++;
     }
