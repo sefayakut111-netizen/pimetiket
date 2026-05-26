@@ -20,6 +20,34 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/lib/supabase/types";
 import { USABLE_DESIGN_STATUSES } from "@/lib/design-file-status";
+import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+
+function qcMessageFromCheck(
+  aiCheck: {
+    flags?: Array<{ kind?: string; message?: string }>;
+  } | null
+): string | undefined {
+  const err =
+    aiCheck?.flags?.find((x) => x.kind === "error") ??
+    aiCheck?.flags?.find((x) => x.kind === "warning");
+  return err?.message?.trim();
+}
+
+async function signedPreviewUrl(
+  admin: ReturnType<typeof createAdminClient>,
+  storagePath: string,
+  mimeType: string
+): Promise<string | undefined> {
+  const isRaster =
+    mimeType.startsWith("image/") && !mimeType.includes("svg");
+  const transformOpts = isRaster
+    ? { transform: { width: 400, height: 400, resize: "contain" as const } }
+    : undefined;
+  const { data } = await admin.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(storagePath, 300, transformOpts);
+  return data?.signedUrl;
+}
 
 export async function GET(
   _req: Request,
@@ -95,6 +123,69 @@ export async function GET(
     }
   }
 
+  type DesignFileRow = {
+    id: string;
+    order_item_id: string | null;
+    original_name: string;
+    mime_type: string;
+    size_bytes: number;
+    status: string;
+    storage_path: string;
+    uploaded_at: string;
+    ai_check: {
+      flags?: Array<{ kind?: string; message?: string }>;
+    } | null;
+  };
+
+  const { data: activeFiles } = await admin
+    .from("design_files")
+    .select(
+      "id, order_item_id, original_name, mime_type, size_bytes, status, storage_path, uploaded_at, ai_check"
+    )
+    .eq("order_id", orderId)
+    .neq("status", "superseded")
+    .order("uploaded_at", { ascending: true });
+
+  const designFilesByItem = new Map<
+    string,
+    Array<{
+      id: string;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+      status: string;
+      previewUrl?: string;
+      uploadedAt: string;
+      qcMessage?: string;
+    }>
+  >();
+
+  for (const df of ((activeFiles as DesignFileRow[] | null) ?? [])) {
+    if (typeof df.order_item_id !== "string") continue;
+    const previewUrl = await signedPreviewUrl(
+      admin,
+      df.storage_path,
+      df.mime_type
+    );
+    const entry = {
+      id: df.id,
+      fileName: df.original_name,
+      mimeType: df.mime_type,
+      sizeBytes: df.size_bytes,
+      status: df.status,
+      previewUrl,
+      uploadedAt: df.uploaded_at,
+      qcMessage:
+        df.status === "qc_failed"
+          ? qcMessageFromCheck(df.ai_check) ??
+            "Kalite kontrolden geçemedi"
+          : qcMessageFromCheck(df.ai_check),
+    };
+    const arr = designFilesByItem.get(df.order_item_id) ?? [];
+    arr.push(entry);
+    designFilesByItem.set(df.order_item_id, arr);
+  }
+
   // Sefa 22 May v68 — Faz 2: qc_failed tasarımları ayrıca getir.
   // Müşteri "neden yüklemem sayılmadı?" sorusunu yanıtlayabilsin.
   // ai_check.flags içinden ilk error mesajını çıkarıyoruz.
@@ -160,6 +251,7 @@ export async function GET(
         designsComplete: designsUploaded >= designsRequired,
         // Sefa 22 May v68 — Faz 2: AI kontrolde takılan dosyalar
         failedDesigns: failedByItem.get(it.id) ?? [],
+        designFiles: designFilesByItem.get(it.id) ?? [],
       };
     }),
   });

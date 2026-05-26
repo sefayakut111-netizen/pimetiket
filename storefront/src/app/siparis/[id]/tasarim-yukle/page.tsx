@@ -13,7 +13,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
 import { cn } from "@/lib/cn";
@@ -30,6 +30,17 @@ interface FailedDesign {
   uploadedAt: string;
 }
 
+interface ItemDesignFile {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: string;
+  previewUrl?: string;
+  uploadedAt: string;
+  qcMessage?: string;
+}
+
 interface OrderItem {
   id: string;
   title: string;
@@ -44,6 +55,7 @@ interface OrderItem {
   designsUploaded: number;
   designsComplete: boolean;
   failedDesigns: FailedDesign[];
+  designFiles: ItemDesignFile[];
 }
 
 interface OrderInfo {
@@ -133,7 +145,25 @@ function uploadWithProgress(
   });
 }
 
+function designStatusLabel(status: string): string {
+  switch (status) {
+    case "qc_passed":
+      return "✅ Kontrol geçti";
+    case "qc_failed":
+      return "❌ Sorun bulundu";
+    case "qc_warned":
+      return "⚠️ Uyarı var";
+    case "analyzing":
+      return "⏳ Kontrol ediliyor";
+    case "approved":
+      return "✅ Onaylı";
+    default:
+      return "⏳ Yüklendi";
+  }
+}
+
 function ItemDropZone({
+  id,
   item,
   isUploading,
   isComplete,
@@ -141,6 +171,7 @@ function ItemDropZone({
   onDrop,
   children,
 }: {
+  id?: string;
   item: OrderItem;
   isUploading: boolean;
   isComplete: boolean;
@@ -152,6 +183,7 @@ function ItemDropZone({
 
   return (
     <Card
+      id={id}
       className={cn(
         "relative overflow-hidden p-5 transition-all",
         dragOver && !isUploading && "ring-2 ring-pim-mercan bg-pim-mercan-tint/10",
@@ -196,6 +228,8 @@ export default function TasarimYuklePage({
 }) {
   const { id: orderId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const focusItemId = searchParams.get("item");
   const toast = useToast();
 
   const [order, setOrder] = useState<OrderInfo | null>(null);
@@ -227,7 +261,14 @@ export default function TasarimYuklePage({
           }
           return null;
         }
-        const data = (await res.json()) as OrderInfo;
+        const raw = (await res.json()) as OrderInfo;
+        const data: OrderInfo = {
+          ...raw,
+          items: raw.items.map((i) => ({
+            ...i,
+            designFiles: i.designFiles ?? [],
+          })),
+        };
         setOrder(data);
 
         const allItemsComplete =
@@ -278,6 +319,22 @@ export default function TasarimYuklePage({
   }, [load]);
 
   useEffect(() => {
+    if (!focusItemId || !order) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`upload-item-${focusItemId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-pim-mercan");
+        setTimeout(
+          () => el.classList.remove("ring-2", "ring-pim-mercan"),
+          3000
+        );
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [focusItemId, order]);
+
+  useEffect(() => {
     if (!order) return;
     if (
       order.status !== "qc_pending" &&
@@ -322,7 +379,11 @@ export default function TasarimYuklePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleFileSelect(item: OrderItem, file: File) {
+  async function handleFileSelect(
+    item: OrderItem,
+    file: File,
+    replaceFileId?: string
+  ) {
     if (uploadingItemId) return;
     if (file.size <= 0) {
       toast.error("Boş dosya yüklenemez.");
@@ -364,6 +425,7 @@ export default function TasarimYuklePage({
           originalName: file.name,
           sizeBytes: file.size,
           mimeType: mimeType ?? "application/pdf",
+          ...(replaceFileId ? { replaceFileId } : {}),
         }),
       });
       if (!initRes.ok) {
@@ -416,13 +478,19 @@ export default function TasarimYuklePage({
         };
       });
 
-      if (!wasComplete) {
+      if (!wasComplete || replaceFileId) {
         setOrder((prev) =>
           prev
             ? {
                 ...prev,
                 items: prev.items.map((i) => {
                   if (i.id !== item.id) return i;
+                  if (replaceFileId) {
+                    return {
+                      ...i,
+                      hasDesign: true,
+                    };
+                  }
                   const newUploaded = (i.designsUploaded ?? 0) + 1;
                   return {
                     ...i,
@@ -468,6 +536,18 @@ export default function TasarimYuklePage({
     } finally {
       setRedistributing(false);
     }
+  }
+
+  function handleReplaceDesign(item: OrderItem, oldFileId: string) {
+    if (uploadingItemId) return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = FILE_ACCEPT;
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) void handleFileSelect(item, file, oldFileId);
+    };
+    input.click();
   }
 
   function renderFileInput(item: OrderItem) {
@@ -636,6 +716,7 @@ export default function TasarimYuklePage({
           return (
             <ItemDropZone
               key={item.id}
+              id={`upload-item-${item.id}`}
               item={item}
               isUploading={isUploading}
               isComplete={isComplete}
@@ -680,6 +761,60 @@ export default function TasarimYuklePage({
                     </div>
                   )}
 
+                  {(item.designFiles?.length ?? 0) > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {item.designFiles.map((df) => (
+                        <div
+                          key={df.id}
+                          className="flex items-start gap-3 text-[12px] rounded-lg bg-gri-50 p-2 ring-1 ring-gri-100"
+                        >
+                          {df.previewUrl ? (
+                            <img
+                              src={df.previewUrl}
+                              alt={df.fileName}
+                              className="w-10 h-10 rounded object-contain bg-gri-100 shrink-0"
+                            />
+                          ) : (
+                            <span className="w-10 h-10 rounded bg-gri-100 grid place-items-center shrink-0">
+                              📄
+                            </span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate text-lacivert">
+                              {df.fileName}
+                            </div>
+                            <div className="text-gri-500">
+                              {(df.sizeBytes / 1024 / 1024).toFixed(1)} MB ·{" "}
+                              {designStatusLabel(df.status)}
+                            </div>
+                            {df.status === "qc_failed" && df.qcMessage && (
+                              <div className="mt-1 p-2 rounded bg-kirmizi-soft/30 text-[11px] text-kirmizi">
+                                <strong>AI uyarısı:</strong> {df.qcMessage}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleReplaceDesign(item, df.id)
+                                  }
+                                  className="ml-2 font-semibold underline"
+                                >
+                                  Düzelt ve tekrar yükle
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleReplaceDesign(item, df.id)}
+                            disabled={isUploading}
+                            className="text-[11px] font-semibold text-pim-mercan hover:underline disabled:opacity-50 shrink-0"
+                          >
+                            Değiştir
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {isComplete && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <p className="inline-flex items-center gap-1 rounded-full bg-yesil-soft px-3 py-1 text-xs font-medium text-yesil">
@@ -688,14 +823,6 @@ export default function TasarimYuklePage({
                           ? `${required} tasarım yüklendi`
                           : "Tasarım yüklendi"}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => fileInputs.current[item.id]?.click()}
-                        disabled={isUploading}
-                        className="text-[11px] font-semibold text-pim-mercan hover:underline disabled:opacity-50"
-                      >
-                        Değiştir
-                      </button>
                     </div>
                   )}
 

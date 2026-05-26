@@ -35,6 +35,8 @@ const InitBodySchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE),
   mimeType: z.enum(ALLOWED_MIME_TYPES),
   orderItemId: z.string().uuid().optional(),
+  /** Mevcut design_files kaydını superseded yap (replace akışı) */
+  replaceFileId: z.string().uuid().optional(),
   /**
    * Sefa 22 May v68 Faz 3b — Dosya kategorisi:
    *  - "design" (default): normal tasarım dosyası (renk + bıçak)
@@ -109,6 +111,26 @@ export async function POST(req: NextRequest) {
       { error: "order_status_not_uploadable", current: orderRow.status },
       { status: 400 }
     );
+  }
+
+  if (body.replaceFileId && body.orderItemId) {
+    const { data: replaceTarget } = await admin
+      .from("design_files")
+      .select("id")
+      .eq("id", body.replaceFileId)
+      .eq("order_id", body.orderId)
+      .eq("order_item_id", body.orderItemId)
+      .maybeSingle();
+    if (replaceTarget) {
+      await admin
+        .from("design_files")
+        .update({ status: "superseded" })
+        .eq("id", body.replaceFileId);
+      console.log(
+        "[design/upload-init] superseded replace target:",
+        body.replaceFileId
+      );
+    }
   }
 
   // 4) Versiyon hesapla — bu order_item için kaçıncı upload?

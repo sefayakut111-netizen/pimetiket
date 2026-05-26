@@ -942,7 +942,11 @@ export default function SiparisDetailPage({
                       <Button
                         variant="primary"
                         size="lg"
-                        href={`/siparis/${order.id}/tasarim-yukle`}
+                        href={`/siparis/${order.id}/tasarim-yukle${
+                          order.items.length === 1
+                            ? `?item=${order.items[0].id}`
+                            : ""
+                        }`}
                       >
                         <Icon.Plus size={16} /> Tasarımını yükle →
                       </Button>
@@ -1160,6 +1164,17 @@ export default function SiparisDetailPage({
                           <div className="text-[12.5px] text-gri-500 mt-2 tabular-nums">
                             {fmtUnit(item.unit)} {c.currency} × {item.qty.toLocaleString(c.locale)} {c.pcs}
                           </div>
+                          {(order.status === "paid" ||
+                            order.status === "awaiting_upload") && (
+                            <Link
+                              href={`/siparis/${order.id}/tasarim-yukle?item=${item.id}`}
+                              className="inline-block mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
+                            >
+                              {locale === "en"
+                                ? "Upload / change design →"
+                                : "Tasarım yükle / değiştir →"}
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </li>
@@ -2581,8 +2596,19 @@ function DesignUploadCard({
 
   return (
     <Card padding="p-6">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <h2 className="text-xl font-semibold">{c.designTitle}</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          {orderItemId && (
+            <Link
+              href={`/siparis/${orderId}/tasarim-yukle?item=${orderItemId}`}
+              className="text-[12px] font-semibold text-pim-mercan hover:underline"
+            >
+              {c.locale === "en-US"
+                ? "Manage all uploads →"
+                : "Tüm yüklemeleri yönet →"}
+            </Link>
+          )}
         {/* Sefa 22 May v68: htmlFor + id eklendi (a11y — ekran okuyucu).
             Önceden label içinde gömülü input vardı, htmlFor bağlama yoktu. */}
         <label
@@ -2605,6 +2631,7 @@ function DesignUploadCard({
             aria-label={c.uploadCta}
           />
         </label>
+        </div>
       </div>
 
       {files.length === 0 ? (
