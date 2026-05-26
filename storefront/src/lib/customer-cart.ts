@@ -422,6 +422,7 @@ export async function addToCustomerCart(
   if (user) {
     const inserted = await dbInsert(user.id, item);
     if (!inserted) return { ok: false, reason: "Kaydedilemedi, tekrar dene." };
+    console.log("[customer-cart] addToCustomerCart designTempId:", inserted.designTempId ?? null);
     cache = [...cache, inserted];
   } else {
     const fresh: CustomerCartItem = {
@@ -429,6 +430,7 @@ export async function addToCustomerCart(
       id: generateId(),
       addedAt: Date.now(),
     };
+    console.log("[customer-cart] addToCustomerCart (guest) designTempId:", fresh.designTempId ?? null);
     cache = [...cache, fresh];
     writeLocal(cache);
   }

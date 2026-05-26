@@ -204,6 +204,7 @@ export function DesignDropZone({
         sizeBytes: file.size,
         mimeType: file.type,
       });
+      console.log("[design-dropzone] designTempId set:", comp.tempId);
       toast.success("Tasarım yüklendi — önizlemede görüyorsun 👀");
     } catch (err) {
       console.error("[design-dropzone] upload failed:", err);

@@ -188,6 +188,7 @@ function rowsToOrder(
       coreSize: meta.coreSize,
       rollLabelCount: meta.rollLabelCount,
       designCount: meta.designCount,
+      designTempId: meta.designTempId,
       designPreviewUrl: meta.designPreviewUrl,
       designFileName: meta.designFileName,
       designMimeType: meta.designMimeType,
@@ -298,11 +299,20 @@ async function dbCreate(
       coreSize: i.coreSize,
       rollLabelCount: i.rollLabelCount,
       designCount: i.designCount,
+      designTempId:
+        i.designTempId && !i.designTempId.startsWith("local-")
+          ? i.designTempId
+          : undefined,
       designPreviewUrl: i.designPreviewUrl,
       designFileName: i.designFileName,
       designMimeType: i.designMimeType,
     },
   }));
+
+  console.log(
+    "[createCustomerOrder] items designTempIds:",
+    itemsJson.map((i) => (i.meta as { designTempId?: string }).designTempId ?? null)
+  );
 
   const { error } = await supabase.rpc("fn_create_order", {
     p_order_id: orderId,

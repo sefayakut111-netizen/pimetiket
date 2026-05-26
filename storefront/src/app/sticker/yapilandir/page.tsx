@@ -1856,6 +1856,29 @@ function StickerPage() {
                   _resolvedPreviewUrl = persistedDesigns[0].previewUrl;
                 }
 
+                let resolvedDesignTempId: string | undefined = design?.tempId;
+                if (persistedDesigns[0] && !resolvedDesignTempId) {
+                  const { uploadFileToTempDesign } = await import(
+                    "@/lib/design-temp-upload"
+                  );
+                  const uploaded = await uploadFileToTempDesign(
+                    persistedDesigns[0].file
+                  );
+                  console.log("[cart-add] designTempId:", uploaded?.tempId ?? null);
+                  if (!uploaded?.tempId) {
+                    toast.error(
+                      "Tasarım sunucuya yüklenemedi — giriş yapıp tekrar dene."
+                    );
+                    return;
+                  }
+                  resolvedDesignTempId = uploaded.tempId;
+                  if (uploaded.generatedPreviewUrl) {
+                    _resolvedPreviewUrl = uploaded.generatedPreviewUrl;
+                  }
+                } else {
+                  console.log("[cart-add] designTempId:", resolvedDesignTempId ?? null);
+                }
+
                 const result = await addToCustomerCart({
                   product: "sticker",
                   title: `Sticker · ${matName} + ${finName}${titleSuffix}`,
@@ -1874,7 +1897,7 @@ function StickerPage() {
                   material,
                   finish,
                   hediyeAdet: overrunCount * designCount,
-                  designTempId: design?.tempId,
+                  designTempId: resolvedDesignTempId,
                   // Sefa 20 May v68 (test geri bildirim "önizleme gözükmüyor"):
                   // Native image (PNG/JPG) için blob URL session-scope; sayfa
                   // refresh sonrası 404. _resolvedPreviewUrl yukarıda
@@ -1889,13 +1912,24 @@ function StickerPage() {
                   designCount: designCount > 1 ? designCount : undefined,
                   additionalDesigns:
                     persistedDesigns.length > 1
-                      ? persistedDesigns.slice(1).map((d) => ({
-                          tempId: `local-${d.id}`,
-                          previewUrl: d.previewUrl,
-                          fileName: d.name,
-                          sizeBytes: d.sizeBytes,
-                          mimeType: d.mimeType,
-                        }))
+                      ? (
+                          await Promise.all(
+                            persistedDesigns.slice(1).map(async (d) => {
+                              const { uploadFileToTempDesign } = await import(
+                                "@/lib/design-temp-upload"
+                              );
+                              const up = await uploadFileToTempDesign(d.file);
+                              return {
+                                tempId: up?.tempId ?? `local-${d.id}`,
+                                previewUrl:
+                                  up?.generatedPreviewUrl ?? d.previewUrl,
+                                fileName: d.name,
+                                sizeBytes: d.sizeBytes,
+                                mimeType: d.mimeType,
+                              };
+                            })
+                          )
+                        )
                       : undefined,
                 });
                 if (!result.ok) {

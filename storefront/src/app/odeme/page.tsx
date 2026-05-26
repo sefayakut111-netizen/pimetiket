@@ -390,6 +390,10 @@ export default function OdemePage() {
     // Cart
     void refreshCustomerCart().then(() => {
       const items = listCustomerCart();
+      console.log(
+        "[odeme] cartItems designTempIds:",
+        items.map((i) => ({ id: i.id, designTempId: i.designTempId ?? null }))
+      );
       setCartItems(items);
       setHydrated(true);
       if (items.length === 0) {
@@ -1882,7 +1886,12 @@ export default function OdemePage() {
                           body: JSON.stringify({ orderId: order.id }),
                         });
                       } catch { /* sessiz — sipariş zaten oluştu */ }
-                      const hasDesigns = cartItems.some((i) => !!i.designTempId);
+                      const hasDesigns = cartItems.some(
+                        (i) =>
+                          !!i.designTempId &&
+                          !i.designTempId.startsWith("local-")
+                      );
+                      console.log("[admin-bypass] hasDesigns:", hasDesigns);
                       router.push(`/odeme-sonuc?status=success&order=${order.id}&hasDesigns=${hasDesigns}`);
                     } catch (err) {
                       setLoading(false);

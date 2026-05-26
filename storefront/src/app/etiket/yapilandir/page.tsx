@@ -1298,6 +1298,27 @@ function EtiketPage() {
       _resolvedPreviewUrl = primaryPersisted.previewUrl;
     }
 
+    let resolvedDesignTempId: string | undefined;
+    if (primaryPersisted) {
+      const { uploadFileToTempDesign } = await import(
+        "@/lib/design-temp-upload"
+      );
+      const uploaded = await uploadFileToTempDesign(primaryPersisted.file);
+      console.log("[cart-add] designTempId:", uploaded?.tempId ?? null);
+      if (!uploaded?.tempId) {
+        toast.error(
+          "Tasarım sunucuya yüklenemedi — giriş yapıp tekrar dene."
+        );
+        return;
+      }
+      resolvedDesignTempId = uploaded.tempId;
+      if (uploaded.generatedPreviewUrl) {
+        _resolvedPreviewUrl = uploaded.generatedPreviewUrl;
+      }
+    } else {
+      console.log("[cart-add] designTempId: (no design)");
+    }
+
     const result = await addToCustomerCart({
       product: "etiket",
       title: `Etiket · ${matName} + ${coatName}${
@@ -1322,9 +1343,7 @@ function EtiketPage() {
       // için yapılandırılmış kayıt gerekli — order-summary.ts helper).
       coreSize: formFactor === "rulo" ? coreSize : undefined,
       rollLabelCount: formFactor === "rulo" ? rollLabelCount : undefined,
-      // PendingDesign local-only (Supabase tempId yok) — "local-{id}" formatında.
-      // Sipariş sonrası detay sayfasında gerçek upload yapılır (sticker pattern).
-      designTempId: primaryPersisted ? `local-${primaryPersisted.id}` : undefined,
+      designTempId: resolvedDesignTempId,
       // Sefa 20 May v68 (test): persistDesignPreview ile kalıcı Supabase URL
       designPreviewUrl: _resolvedPreviewUrl,
       designFileName: primaryPersisted?.name,
@@ -1334,13 +1353,23 @@ function EtiketPage() {
       designCount: designCount > 1 ? designCount : undefined,
       additionalDesigns:
         persistedDesigns.length > 1
-          ? persistedDesigns.slice(1).map((d) => ({
-              tempId: `local-${d.id}`,
-              previewUrl: d.previewUrl,
-              fileName: d.name,
-              sizeBytes: d.sizeBytes,
-              mimeType: d.mimeType,
-            }))
+          ? (
+              await Promise.all(
+                persistedDesigns.slice(1).map(async (d) => {
+                  const { uploadFileToTempDesign } = await import(
+                    "@/lib/design-temp-upload"
+                  );
+                  const up = await uploadFileToTempDesign(d.file);
+                  return {
+                    tempId: up?.tempId ?? `local-${d.id}`,
+                    previewUrl: up?.generatedPreviewUrl ?? d.previewUrl,
+                    fileName: d.name,
+                    sizeBytes: d.sizeBytes,
+                    mimeType: d.mimeType,
+                  };
+                })
+              )
+            )
           : undefined,
     });
     if (!result.ok) {

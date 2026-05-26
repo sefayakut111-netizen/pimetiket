@@ -54,7 +54,9 @@ export async function promoteOrderDesigns(args: {
   for (const orderItem of orderItems) {
     const designTempId = (orderItem.meta as { designTempId?: string })
       ?.designTempId;
-    if (!designTempId) continue;
+    if (!designTempId || designTempId.startsWith("local-")) continue;
+
+    console.log("[promote] processing designTempId:", designTempId, "item:", orderItem.id);
 
     // 1) Temp upload row'unu çek
     const { data: tempData, error: tempErr } = await admin
