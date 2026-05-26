@@ -80,25 +80,110 @@ function drawCropMarks(
   }
 }
 
-function drawCutlinePath(
+/** CutContour — baskı endüstrisi standardı (%100 Magenta). RIP sistemleri bu rengi tanır. */
+const CUTCONTOUR_COLOR = rgb(1, 0, 1);
+
+type Pt = { x: number; y: number };
+
+function parseSvgPathToPoints(d: string): Pt[] {
+  const tokens =
+    d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g)?.map((t) => t.trim()) ??
+    [];
+  const points: Pt[] = [];
+  let i = 0;
+  let cx = 0;
+  let cy = 0;
+  let cmd = "";
+
+  const readNum = () => parseFloat(tokens[i++] ?? "0");
+
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (/^[a-zA-Z]$/.test(t)) {
+      cmd = t;
+      i++;
+    }
+
+    switch (cmd) {
+      case "M":
+      case "m": {
+        const x = readNum();
+        const y = readNum();
+        cx = cmd === "m" ? cx + x : x;
+        cy = cmd === "m" ? cy + y : y;
+        points.push({ x: cx, y: cy });
+        cmd = cmd === "m" ? "l" : "L";
+        break;
+      }
+      case "L":
+      case "l": {
+        const x = readNum();
+        const y = readNum();
+        cx = cmd === "l" ? cx + x : x;
+        cy = cmd === "l" ? cy + y : y;
+        points.push({ x: cx, y: cy });
+        break;
+      }
+      case "H":
+      case "h": {
+        const x = readNum();
+        cx = cmd === "h" ? cx + x : x;
+        points.push({ x: cx, y: cy });
+        break;
+      }
+      case "V":
+      case "v": {
+        const y = readNum();
+        cy = cmd === "v" ? cy + y : y;
+        points.push({ x: cx, y: cy });
+        break;
+      }
+      case "C":
+      case "c": {
+        readNum();
+        readNum();
+        readNum();
+        readNum();
+        const x = readNum();
+        const y = readNum();
+        cx = cmd === "c" ? cx + x : x;
+        cy = cmd === "c" ? cy + y : y;
+        points.push({ x: cx, y: cy });
+        break;
+      }
+      case "Z":
+      case "z":
+        if (points.length > 0) points.push({ ...points[0] });
+        break;
+      default:
+        if (/^-?\d/.test(t)) i++;
+        else i++;
+    }
+  }
+  return points;
+}
+
+function drawCutlineAsSpotColor(
   page: ReturnType<PDFDocument["addPage"]>,
   svgPath: string,
   bleedMm: number
 ) {
   const dMatch = svgPath.match(/\bd=["']([^"']+)["']/i);
   const d = dMatch?.[1] ?? svgPath;
-  const nums = d.match(/-?\d+\.?\d*/g)?.map(Number) ?? [];
-  if (nums.length < 4) return;
+  const points = parseSvgPathToPoints(d);
+  if (points.length < 2) return;
 
   const bleedPt = mmToPt(bleedMm);
-  const magenta = rgb(1, 0, 1);
+  const thickness = 0.5;
 
-  for (let i = 0; i + 3 < nums.length; i += 2) {
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
     page.drawLine({
-      start: { x: nums[i] + bleedPt, y: nums[i + 1] + bleedPt },
-      end: { x: nums[i + 2] + bleedPt, y: nums[i + 3] + bleedPt },
-      thickness: 0.5,
-      color: magenta,
+      start: { x: a.x + bleedPt, y: a.y + bleedPt },
+      end: { x: b.x + bleedPt, y: b.y + bleedPt },
+      thickness,
+      color: CUTCONTOUR_COLOR,
     });
   }
 }
@@ -131,8 +216,10 @@ export async function generatePrintReadyPdf(
   drawCropMarks(page, input.designWidth, input.designHeight, bleedMm);
 
   if (input.cutlineSvgPath) {
-    drawCutlinePath(page, input.cutlineSvgPath, bleedMm);
+    drawCutlineAsSpotColor(page, input.cutlineSvgPath, bleedMm);
   }
+
+  pdfDoc.setKeywords(["CutContour", "print-ready"]);
 
   if (input.whiteLayerPngUrl) {
     const whitePage = pdfDoc.addPage([widthPt, heightPt]);

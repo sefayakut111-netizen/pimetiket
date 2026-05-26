@@ -166,7 +166,7 @@ export async function runProofPipeline(
     }
   }
 
-  let whiteResult = { generated: false, coverage: 0 };
+  let whiteResult = { generated: false, coverage: 0, whitePngUrl: undefined as string | undefined };
   if (cutlinePath) {
     const wr = await generateWhiteLayer({
       designFileUrl: input.designFileUrl,
@@ -174,10 +174,13 @@ export async function runProofPipeline(
       materialKey: input.materialKey,
       designWidth: input.designWidth,
       designHeight: input.designHeight,
+      orderId: input.orderId,
+      itemId: input.itemId,
     });
     whiteResult = {
       generated: wr.generated,
       coverage: wr.coverage ?? 0,
+      whitePngUrl: wr.whitePngUrl,
     };
   }
 
@@ -251,7 +254,13 @@ export async function runProofPipeline(
           materialKey: input.materialKey,
           fileCategory,
         },
-        aiResult
+        aiResult,
+        {
+          designFileUrl: input.designFileUrl,
+          orderId: input.orderId,
+          itemId: input.itemId,
+          whiteLayerPngUrl: whiteResult.whitePngUrl,
+        }
       );
 
       if (!fix.fixed || !fix.fixedCutlineSvg) break;

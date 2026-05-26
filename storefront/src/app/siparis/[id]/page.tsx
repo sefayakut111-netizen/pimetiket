@@ -1449,19 +1449,16 @@ export default function SiparisDetailPage({
                   <span>
                     {c.invoice}: {INVOICE_LABEL[order.invoice.type]}
                   </span>
-                  {/* TODO: /api/orders/[id]/invoice-pdf endpoint hazır olunca aktif et */}
-                  {false && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        window.open(`/api/orders/${id}/invoice-pdf`, "_blank")
-                      }
-                      className="text-[11px] font-semibold text-pim-mercan hover:underline shrink-0"
-                    >
-                      📄{" "}
-                      {locale === "en" ? "Download invoice" : "Fatura indir"}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(`/api/orders/${id}/invoice-pdf`, "_blank")
+                    }
+                    className="text-[11px] font-semibold text-pim-mercan hover:underline shrink-0"
+                  >
+                    📄{" "}
+                    {locale === "en" ? "Download invoice" : "Fatura indir"}
+                  </button>
                 </div>
               </div>
             </Card>
