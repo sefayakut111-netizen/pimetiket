@@ -5,7 +5,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 import {
-  collectDesignTempIds,
   orderItemHasDesigns,
 } from "@/lib/order-item-meta";
 
@@ -37,8 +36,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
   }
 
-  console.log("[promote] admin-bypass-promote orderId:", orderId);
-
   const { data: orderRow } = await admin
     .from("orders")
     .select("user_id")
@@ -63,17 +60,7 @@ export async function POST(req: NextRequest) {
       meta: Record<string, unknown>;
     }>) ?? [];
 
-  console.log(
-    "[promote] orderItems tempIds:",
-    allItems.map((i) => ({
-      id: i.id,
-      tempIds: collectDesignTempIds(i.meta),
-    }))
-  );
-
   const orderItems = allItems.filter((i) => orderItemHasDesigns(i.meta));
-
-  console.log("[promote] orderItems with designs:", orderItems.length);
 
   let promoted = 0;
   if (orderItems.length > 0) {
@@ -85,8 +72,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  console.log("[promote] result promoted:", promoted);
-
   if (promoted > 0) {
     await admin
       .from("orders")
@@ -96,7 +81,6 @@ export async function POST(req: NextRequest) {
     // QC'yi doğrudan çalıştır (after() yerine — lambda kapanma riski yok)
     try {
       const qcResult = await runOrderDesignQC(admin, orderId);
-      console.log("[promote] QC result:", qcResult.aggregateVerdict, qcResult.verdictCounts);
       return NextResponse.json({ ok: true, promoted, qc: qcResult.aggregateVerdict });
     } catch (qcErr) {
       console.error("[promote] QC failed:", qcErr);

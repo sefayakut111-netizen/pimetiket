@@ -144,6 +144,9 @@ function successRedirectUrl(siteUrl: string, orderId: string, hasDesigns: boolea
 // fraud protection için.
 // ============================================================
 
+export const runtime = "nodejs";
+export const maxDuration = 120;
+
 export async function POST(req: NextRequest) {
   if (!isPayTrConfigured()) {
     // PayTR retry yapacak, ama biz config yokken "OK" demeyeceğiz
@@ -372,14 +375,7 @@ export async function POST(req: NextRequest) {
           .update({ status: "qc_pending" })
           .eq("id", orderId);
 
-        console.log(
-          "[payment-callback] promoted:",
-          promotedCount,
-          "orderId:",
-          orderId
-        );
         scheduleOrderDesignQC(admin, orderId);
-        console.log("[payment-callback] QC scheduled for:", orderId);
       }
     } catch (err) {
       console.error("[payment/callback] promote failed:", err);
