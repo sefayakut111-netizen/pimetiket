@@ -44,6 +44,7 @@ import {
   topCustomers,
   topCities,
   operationalMetrics,
+  proofFlowStatsLast30Days,
   generateInsights,
   formatHours,
   formatCurrency,
@@ -159,6 +160,14 @@ interface TodoItem {
   urgent: boolean;
 }
 
+function formatProofWaitDuration(hours: number): string {
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    return `${days} gün`;
+  }
+  return `${Math.floor(hours)} saat`;
+}
+
 function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
@@ -194,17 +203,21 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     });
   }
 
-  const stuckProof = orders.filter(
+  const stuckProofOrders = orders.filter(
     (o) => o.status === "proof_pending" && now - o.createdAt > 1.5 * day
-  ).length;
+  );
+  const stuckProof = stuckProofOrders.length;
   if (stuckProof > 0) {
+    const oldestWaitHours = Math.max(
+      ...stuckProofOrders.map((o) => (now - o.createdAt) / 3600000)
+    );
     items.push({
       id: "stuck-proof",
       priority: 3,
       iconKey: "Info",
-      title: "36+ saattir prova yanıtı yok",
+      title: `Prova yanıtı yok · ${stuckProof} sipariş (en eski: ${formatProofWaitDuration(oldestWaitHours)})`,
       count: stuckProof,
-      hint: "WhatsApp ile hatırlat",
+      hint: "WhatsApp veya e-posta ile hatırlat",
       href: "/admin/prova",
       urgent: true,
     });
@@ -697,6 +710,13 @@ function AdminDashboardPageInner() {
   const tops = useMemo(() => topCustomers(metricOrders, 5), [metricOrders]);
   const cities = useMemo(() => topCities(metricOrders, 5), [metricOrders]);
   const ops = useMemo(() => operationalMetrics(metricOrders), [metricOrders]);
+  const proofStats30d = useMemo(
+    () => proofFlowStatsLast30Days(metricOrders),
+    [metricOrders]
+  );
+  const isCancelOverTarget = ops.cancelRate > 5 && metricOrders.length > 0;
+  const isProofCancelOverTarget =
+    proofStats30d.cancelRate > 30 && proofStats30d.total > 0;
   const insights = useMemo(
     () => generateInsights(metricOrders),
     [metricOrders]
@@ -862,6 +882,29 @@ function AdminDashboardPageInner() {
   ];
   const maxFunnel = Math.max(...funnel.map((s) => s.count), 1);
   const funnelTotal = funnel.reduce((sum, s) => sum + s.count, 0);
+
+  const funnelDisplay = useMemo(() => {
+    let lastWithOrders = -1;
+    for (let i = funnel.length - 1; i >= 0; i--) {
+      if (funnel[i].count > 0) {
+        lastWithOrders = i;
+        break;
+      }
+    }
+    if (lastWithOrders < 0) {
+      return {
+        visible: [] as typeof funnel,
+        emptyTailSummary: "Üretim akışında henüz sipariş yok",
+      };
+    }
+    const visible = funnel.slice(0, lastWithOrders + 1);
+    const tail = funnel.slice(lastWithOrders + 1);
+    const emptyTailSummary =
+      tail.length > 0
+        ? `${tail.map((s) => s.label.toLowerCase()).join(" ve ")}: henüz sipariş yok`
+        : null;
+    return { visible, emptyTailSummary };
+  }, [funnel]);
 
   const QUICK_ACTIONS = [
     ...(canView("manual_order")
@@ -1327,8 +1370,19 @@ function AdminDashboardPageInner() {
             </span>
           </div>
           <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-              {funnel.map((step, i) => {
+            {funnelDisplay.visible.length === 0 ? (
+              <p className="text-[13px] text-gri-500 py-4 text-center">
+                {funnelDisplay.emptyTailSummary}
+              </p>
+            ) : (
+              <>
+                <div
+                  className="grid gap-2"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.min(funnelDisplay.visible.length, 4)}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {funnelDisplay.visible.map((step, i) => {
                 const intensity = step.count / maxFunnel;
                 const metric = aggregateFunnelMetric(
                   funnelMetrics,
@@ -1370,7 +1424,7 @@ function AdminDashboardPageInner() {
                         style={{ width: `${Math.max(intensity * 100, 4)}%` }}
                       />
                     </div>
-                    {/* Ortalama bekleme — sample varsa göster */}
+                    {step.count > 0 && hasMetric && metric && (
                     <div
                       className={cn(
                         "mt-1.5 text-[10.5px] tabular-nums flex items-center gap-1",
@@ -1378,26 +1432,28 @@ function AdminDashboardPageInner() {
                           ? "text-sari-koyu font-semibold"
                           : "text-gri-500"
                       )}
-                      title={
-                        hasMetric && metric
-                          ? `${metric.sampleCount} sipariş örnekleminden ortalama`
-                          : "Henüz veri yok"
-                      }
+                      title={`${metric.sampleCount} sipariş örnekleminden ortalama`}
                     >
-                      <span className="opacity-70">⏱</span>
-                      {step.count > 0 && hasMetric && metric
-                        ? formatDuration(metric.avgSeconds)
-                        : "—"}
+                      <Icon.Calendar size={10} className="opacity-70" />
+                      {formatDuration(metric.avgSeconds)}
                     </div>
+                    )}
                   </Link>
                 );
               })}
-            </div>
+                </div>
+                {funnelDisplay.emptyTailSummary && (
+                  <p className="mt-3 text-[12.5px] text-gri-500 text-center">
+                    {funnelDisplay.emptyTailSummary}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </Card>
 
         {/* Operational metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               AI flag oranı
@@ -1429,14 +1485,17 @@ function AdminDashboardPageInner() {
 
           <Link
             href="/admin/siparisler?status=cancelled"
-            className="block rounded-xl transition-shadow hover:ring-1 hover:ring-gri-200"
+            className={cn(
+              "block rounded-xl transition-shadow",
+              isCancelOverTarget
+                ? "ring-2 ring-kirmizi bg-kirmizi-soft/10 hover:ring-kirmizi"
+                : "hover:ring-1 hover:ring-gri-200"
+            )}
           >
           <Card
             padding="p-4"
             className={cn(
-              ops.cancelRate > 5 &&
-                metricOrders.length > 0 &&
-                "bg-kirmizi-soft/20 ring-1 ring-kirmizi/30"
+              isCancelOverTarget && "bg-kirmizi-soft/10 ring-0"
             )}
           >
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
@@ -1468,6 +1527,49 @@ function AdminDashboardPageInner() {
                 )
               ) : (
                 "veri yok"
+              )}
+            </div>
+          </Card>
+          </Link>
+
+          <Link href="/admin/prova" className="block rounded-xl hover:ring-1 hover:ring-gri-200 transition-shadow">
+          <Card
+            padding="p-4"
+            className={cn(
+              isProofCancelOverTarget && "ring-2 ring-kirmizi bg-kirmizi-soft/10"
+            )}
+          >
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+              Prova iptal oranı
+            </div>
+            <div
+              className={cn(
+                "text-[22px] font-bold mt-1 tabular-nums",
+                proofStats30d.total === 0
+                  ? "text-gri-500"
+                  : isProofCancelOverTarget
+                    ? "text-kirmizi"
+                    : proofStats30d.cancelRate > 0
+                      ? "text-lacivert"
+                      : "text-gri-500"
+              )}
+            >
+              {proofStats30d.total > 0
+                ? `%${proofStats30d.cancelRate.toFixed(0)}`
+                : "—"}
+            </div>
+            <div className="text-[11px] text-gri-700 mt-1">
+              {proofStats30d.total > 0 ? (
+                isProofCancelOverTarget ? (
+                  <span className="text-xs font-semibold text-kirmizi">
+                    {proofStats30d.approved} onay / {proofStats30d.cancelled}{" "}
+                    iptal — hedef &lt;%30
+                  </span>
+                ) : (
+                  `${proofStats30d.approved} onay / ${proofStats30d.cancelled} iptal (30g)`
+                )
+              ) : (
+                "henüz veri yok"
               )}
             </div>
           </Card>

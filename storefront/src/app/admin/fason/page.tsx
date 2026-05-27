@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Input, Modal, Skeleton } from "@/components/ui";
+import { Button, Card, Eyebrow, Input, Modal, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   getAdminPillClasses,
@@ -1381,6 +1381,40 @@ function PartnerCard({
   onShowJobs: () => void;
   onRefresh: () => void;
 }) {
+  const toast = useToast();
+  const [markingContract, setMarkingContract] = useState(false);
+
+  const markContractSigned = async () => {
+    if (
+      !confirm(
+        `${partner.name} icin sozlesme imzalandi olarak isaretlensin mi?`
+      )
+    ) {
+      return;
+    }
+    setMarkingContract(true);
+    try {
+      const res = await fetch(`/api/admin/fason/partners/${partner.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contractSignedAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Sozlesme kaydedilemedi");
+        return;
+      }
+      toast.success("Sozlesme imzalandi olarak isaretlendi");
+      onRefresh();
+    } catch {
+      toast.error("Sozlesme kaydedilemedi (ag hatasi)");
+    } finally {
+      setMarkingContract(false);
+    }
+  };
+
   const scorePct =
     partner.cached_score == null ? null : Math.round(partner.cached_score * 100);
 
@@ -1531,6 +1565,29 @@ function PartnerCard({
             </span>
           )}
         </div>
+        {!partner.contract_signed_at && (
+          <div
+            className="mt-3 flex flex-wrap gap-2"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={markingContract}
+              onClick={() => void markContractSigned()}
+            >
+              {markingContract ? "Kaydediliyor..." : "Sozlesme imzalandi olarak isaretle"}
+            </Button>
+            <a
+              href={`mailto:${partner.contact_email}?subject=${encodeURIComponent("KVKK Veri Isleyici Sozlesmesi")}`}
+              className="inline-flex items-center h-8 px-3 rounded-lg text-[12px] font-semibold text-gri-700 hover:bg-gri-100 ring-1 ring-gri-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Sozlesme talep et (e-posta)
+            </a>
+          </div>
+        )}
       </Card>
     </div>
   );

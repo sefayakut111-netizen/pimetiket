@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
@@ -79,6 +79,15 @@ function whatsappPhone(phone: string | undefined): string {
   return `90${digits}`;
 }
 
+function formatProofWaitDetail(hours: number): string {
+  const h = Math.floor(hours);
+  if (h >= 24) {
+    const days = Math.floor(h / 24);
+    return `${h} saat (${days} gün)`;
+  }
+  return `${h} saat`;
+}
+
 function ProofSlaTag({
   createdAt,
   status,
@@ -95,12 +104,13 @@ function ProofSlaTag({
   const remainingHours = 36 - elapsedHours;
 
   if (remainingHours <= 0) {
+    const slaDetail = formatProofWaitDetail(elapsedHours);
     return (
       <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-kirmizi text-white text-[11px] font-bold animate-pulse">
         <StatusDot color="gri" className="!bg-white" />
         {autoRefundHealthy
-          ? "SLA asildi — otomatik iade tetiklenecek"
-          : "SLA asildi — otomatik iade pasif, manuel islem gerekli"}
+          ? `SLA asildi · ${slaDetail} — otomatik iade tetiklenecek`
+          : `SLA asildi · ${slaDetail} — otomatik iade pasif, manuel islem gerekli`}
       </span>
     );
   }
@@ -236,6 +246,10 @@ export default function AdminProvaPage() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showTestOrders, setShowTestOrders] = useState(false);
   const [autoRefundHealthy, setAutoRefundHealthy] = useState(true);
+  const [hasContractedPartner, setHasContractedPartner] = useState(false);
+  const [reminderLog, setReminderLog] = useState<
+    Record<string, { lastAt: string; count: number }>
+  >({});
 
   useEffect(() => {
     void fetch("/api/admin/system-health")
@@ -250,6 +264,29 @@ export default function AdminProvaPage() {
       .catch(() => {
         setAutoRefundHealthy(false);
       });
+  }, []);
+
+  useEffect(() => {
+    void fetch("/api/admin/fason/partners", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: {
+          partners?: Array<{
+            active?: boolean;
+            status?: string;
+            contract_signed_at?: string | null;
+          }>;
+        } | null) => {
+          const partners = data?.partners ?? [];
+          const contracted = partners.some(
+            (p) =>
+              (p.status === "active" || p.active === true) &&
+              Boolean(p.contract_signed_at)
+          );
+          setHasContractedPartner(contracted);
+        }
+      )
+      .catch(() => setHasContractedPartner(false));
   }, []);
 
   useEffect(() => {
@@ -335,6 +372,36 @@ export default function AdminProvaPage() {
     });
   }, [filteredItems]);
 
+  const loadReminderLog = useCallback(async (orderIds: string[]) => {
+    if (orderIds.length === 0) {
+      setReminderLog({});
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/admin/prova/reminder-log?orders=${encodeURIComponent(orderIds.join(","))}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        ok?: boolean;
+        reminders?: Record<string, { lastAt: string; count: number }>;
+      };
+      if (data.ok && data.reminders) {
+        setReminderLog(data.reminders);
+      }
+    } catch {
+      /* sessiz */
+    }
+  }, []);
+
+  useEffect(() => {
+    const ids = sortedItems
+      .filter((o) => o.status === "proof_pending")
+      .map((o) => o.id);
+    void loadReminderLog(ids);
+  }, [sortedItems, loadReminderLog]);
+
   const approvedOrders = useMemo(
     () => items.filter((o) => o.status === "proof_approved"),
     [items]
@@ -393,6 +460,12 @@ export default function AdminProvaPage() {
   };
 
   const handleApprove = async (order: CustomerOrder) => {
+    if (!hasContractedPartner) {
+      toast.error(
+        "Sozlesmeli partner yok — once partner sozlesmesi tamamlanmali"
+      );
+      return;
+    }
     const ok = await callStatusApi(
       order.id,
       "in_production",
@@ -418,6 +491,7 @@ export default function AdminProvaPage() {
         return;
       }
       toast.success(`${order.id} müşterisine prova hatırlatma maili gönderildi`);
+      void loadReminderLog([order.id]);
     } catch {
       toast.error("Hatırlatma gönderilemedi (ağ hatası)");
     }
@@ -435,6 +509,12 @@ export default function AdminProvaPage() {
 
   const bulkApprove = async () => {
     if (approvedOrders.length === 0) return;
+    if (!hasContractedPartner) {
+      toast.error(
+        "Sozlesmeli partner yok — once partner sozlesmesi tamamlanmali"
+      );
+      return;
+    }
     if (
       !confirm(
         `${approvedOrders.length} siparişi üretime almak istediğinize emin misiniz?`
@@ -467,6 +547,10 @@ export default function AdminProvaPage() {
     const waPhone = whatsappPhone(p.address?.phone);
     const isSystemProcessing =
       p.status === "proof_generating" || p.status === "proof_validating";
+    const reminderInfo = reminderLog[p.id];
+    const reminderBlocked =
+      reminderInfo?.lastAt != null &&
+      Date.now() - new Date(reminderInfo.lastAt).getTime() < 24 * 60 * 60 * 1000;
 
     if (isSystemProcessing) {
       return (
@@ -478,18 +562,43 @@ export default function AdminProvaPage() {
 
     return (
       <div className="flex flex-col gap-2 shrink-0">
-        <Button variant="primary" size="sm" onClick={() => handleApprove(p)}>
-          <Icon.Check size={12} /> Üretime al
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!hasContractedPartner}
+          title={
+            !hasContractedPartner
+              ? "Sozlesmeli partner yok — once partner sozlesmesi tamamlanmali"
+              : undefined
+          }
+          onClick={() => void handleApprove(p)}
+        >
+          <Icon.Check size={12} />{" "}
+          {hasContractedPartner ? "Üretime al" : "Üretime al (partner yok)"}
         </Button>
         {p.status === "proof_pending" && (
           <>
             <Button
               variant="secondary"
               size="sm"
+              disabled={reminderBlocked}
+              title={
+                reminderBlocked
+                  ? "24 saat icinde zaten hatirlatma gonderildi"
+                  : undefined
+              }
               onClick={() => void handleReminder(p)}
             >
               Hatırlat
+              {reminderInfo && reminderInfo.count > 0
+                ? ` (${reminderInfo.count})`
+                : ""}
             </Button>
+            {reminderInfo?.lastAt && (
+              <span className="text-[11px] text-gri-500">
+                Son hatirlatma: {timeAgo(new Date(reminderInfo.lastAt).getTime())}
+              </span>
+            )}
             <Button variant="ghost" size="sm" onClick={() => handleCancel(p)}>
               İptal et
             </Button>
@@ -631,7 +740,12 @@ export default function AdminProvaPage() {
               size="sm"
               className="!bg-yesil hover:!bg-yesil-koyu"
               onClick={() => void bulkApprove()}
-              disabled={bulkLoading}
+              disabled={bulkLoading || !hasContractedPartner}
+              title={
+                !hasContractedPartner
+                  ? "Sozlesmeli partner yok — once partner sozlesmesi tamamlanmali"
+                  : undefined
+              }
             >
               Tümünü üretime al ({approvedOrders.length})
             </Button>

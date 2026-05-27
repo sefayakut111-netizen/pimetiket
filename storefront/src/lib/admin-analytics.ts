@@ -237,6 +237,41 @@ export interface OperationalMetrics {
   avgProofResponseHours: number | null;
 }
 
+export interface ProofFlowStats30d {
+  approved: number;
+  cancelled: number;
+  total: number;
+  cancelRate: number;
+}
+
+const PROOF_APPROVED_OR_BEYOND: readonly OrderStatus[] = [
+  "proof_approved",
+  "ready_to_ship",
+  "fason_assigned",
+  "in_production",
+  "shipped",
+  "delivered",
+];
+
+/** Son 30 gün prova akışı — onay vs iptal oranı (dashboard KPI) */
+export function proofFlowStatsLast30Days(
+  orders: CustomerOrder[]
+): ProofFlowStats30d {
+  const cutoff = Date.now() - 30 * DAY;
+  const recent = orders.filter((o) => o.createdAt >= cutoff);
+  const approved = recent.filter((o) =>
+    (PROOF_APPROVED_OR_BEYOND as readonly string[]).includes(o.status)
+  ).length;
+  const cancelled = recent.filter((o) => o.status === "cancelled").length;
+  const total = approved + cancelled;
+  return {
+    approved,
+    cancelled,
+    total,
+    cancelRate: total > 0 ? (cancelled / total) * 100 : 0,
+  };
+}
+
 export function operationalMetrics(
   orders: CustomerOrder[]
 ): OperationalMetrics {

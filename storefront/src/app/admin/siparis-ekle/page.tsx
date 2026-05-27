@@ -343,6 +343,8 @@ export default function AdminCreateOrderPage() {
   const shipping = vatBase >= 1000 || vatBase === 0 ? 0 : 49;
   const total = vatBase + vat + shipping;
 
+  const canCreate = total > 0 && items.length > 0 && hasValidPricing;
+
   const primaryProduct = items[0]?.product ?? "etiket";
 
   useEffect(() => {
@@ -1466,7 +1468,7 @@ export default function AdminCreateOrderPage() {
                 variant="ghost"
                 size="lg"
                 className="flex-1 min-w-[160px]"
-                disabled={loading || !hasValidPricing}
+                disabled={loading || !canCreate}
                 onClick={() => {
                   setSubmitAction("new");
                   void handleSubmit("new");
@@ -1481,13 +1483,18 @@ export default function AdminCreateOrderPage() {
                 variant="primary"
                 size="lg"
                 className="flex-1 min-w-[160px]"
-                disabled={loading || !hasValidPricing}
+                disabled={loading || !canCreate}
               >
                 {loading && submitAction === "redirect"
                   ? "Kaydediliyor..."
                   : "Oluştur ve detaya git"}
               </Button>
             </div>
+            {total === 0 && items.length > 0 && (
+              <p className="text-[13px] text-kirmizi font-semibold mt-2">
+                Birim fiyat girilmeden siparis olusturulamaz.
+              </p>
+            )}
             <p className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
               Bu sipariş <strong>“Yeni”</strong> statüsünde oluşturulur. Operatör
               dosyasını alıp AI kontrolüne göndereceksin.

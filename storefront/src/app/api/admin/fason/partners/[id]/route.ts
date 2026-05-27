@@ -25,6 +25,10 @@ const ContactSchema = z.object({
   autoNotify: z.boolean().optional(),
 });
 
+const QuickContractSchema = z.object({
+  contractSignedAt: z.string().datetime(),
+});
+
 const UpdatePartnerSchema = z.object({
   name: z.string().min(2).max(150),
   shortName: z.string().max(40).optional(),
@@ -167,6 +171,45 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const admin = createAdminClient();
+
+  const quickContract = QuickContractSchema.safeParse(raw);
+  if (
+    quickContract.success &&
+    raw != null &&
+    typeof raw === "object" &&
+    Object.keys(raw as Record<string, unknown>).length === 1
+  ) {
+    const { data: existingQuick } = await admin
+      .from("fason_partners")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!existingQuick) {
+      return NextResponse.json({ error: "Partner bulunamadı" }, { status: 404 });
+    }
+
+    const signedAt = quickContract.data.contractSignedAt;
+    const { error: quickErr } = await admin
+      .from("fason_partners")
+      .update({
+        contract_signed_at: signedAt,
+        updated_by: auth.user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (quickErr) {
+      return NextResponse.json({ error: quickErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      id,
+      contract_signed_at: signedAt,
+    });
+  }
+
   const parsed = UpdatePartnerSchema.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json(
@@ -181,7 +224,6 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     );
   }
   const body = parsed.data;
-  const admin = createAdminClient();
 
   const { data: existing } = await admin
     .from("fason_partners")
