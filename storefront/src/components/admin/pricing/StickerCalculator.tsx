@@ -43,6 +43,7 @@ import {
   type ProductionMode,
   quoteSticker,
   findTier,
+  computeCost,
 } from "@/lib/pricing-engine";
 import { ProfileTabs } from "@/components/admin/pricing/ProfileTabs";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
@@ -60,20 +61,10 @@ import {
   nextLot,
   peekNextLot,
 } from "@/lib/pricing-pdf";
-import { addToCart, type CartItem } from "@/lib/pricing-cart";
-import { CartPanel } from "@/components/admin/pricing/CartPanel";
-import {
-  reconstructGeometryFromCart,
-  reconstructCostFromCart,
-} from "@/lib/cart-pdf-helpers";
 import { StatsModal } from "@/components/admin/pricing/StatsModal";
 import { recordStat } from "@/lib/pricing-stats";
 import { calculatePrice } from "@/lib/pricing-calc";
 import { livePriceToCostResult } from "@/lib/pricing-live-snapshot";
-import {
-  resolveM2Cost,
-  resolveM2Sell,
-} from "@/lib/pricing-dual-price";
 import {
   FALLBACK_STICKER_CONFIG,
   type ProfileConfig,
@@ -86,6 +77,9 @@ import {
 const DEFAULT_PREVIEW_MATERIAL = "vinil";
 const DEFAULT_PREVIEW_FINISH = "parlak";
 const DEFAULTS: ProfileInputSnapshot = getDefaultInput();
+
+/** Simülasyon maliyetinde tier uygulanmaz — referans çarpan 1 */
+const SIM_TIER: StickerTier = { qty: 250, multiplier: 1, label: "referans" };
 
 // ============================================================
 // Helpers
@@ -134,7 +128,8 @@ export function StickerCalculator({
   const [setup, setSetup] = useState<number>(DEFAULTS.setup);
   const [packaging, setPackaging] = useState<number>(DEFAULTS.packaging);
   const [feePct, setFeePct] = useState<number>(DEFAULTS.feePct);
-  const [vatPct, setVatPct] = useState<number>(DEFAULTS.vatPct);
+
+  const [operationEnabled, setOperationEnabled] = useState(true);
 
   // Site fiyat önizleme (live config malzeme/finiş)
   const [previewMaterialId, setPreviewMaterialId] = useState<string>(
@@ -167,6 +162,7 @@ export function StickerCalculator({
     if (liveConfig) {
       setLiveStickerConfig(liveConfig);
       setLiveConfigLoaded(true);
+      setOperationEnabled(liveConfig.operation.enabled !== false);
     }
   }, [liveConfig]);
 
@@ -193,29 +189,18 @@ export function StickerCalculator({
     };
   }, [liveConfig]);
 
-  // Hesap — sol: operatör maliyet simülasyonu (quoteSticker, margin/cargo yok)
+  // Hesap — sol: operatör maliyet simülasyonu (fason, tier simülasyonda yok)
   const result = quoteSticker({
     width,
     height,
     cut,
     qty,
-    production:
-      mode === "fason"
-        ? { mode: "fason", rate: fasonRate }
-        : {
-            mode: "uretim",
-            paper,
-            ink,
-            coating,
-            labor,
-            overhead,
-            depreciation,
-          },
-    operation: { setup, packaging, feePct },
-    vatPct,
+    production: { mode: "fason", rate: fasonRate },
+    operation: operationEnabled
+      ? { setup, packaging, feePct }
+      : { setup: 0, packaging: 0, feePct: 0 },
+    vatPct: liveStickerConfig.vat.pct,
   });
-
-  const operatorTier = findTier(qty);
 
   const liveSitePrice = useMemo(() => {
     if (!result.ok) return null;
@@ -242,12 +227,33 @@ export function StickerCalculator({
   ]);
 
   const displayTier = liveSitePrice?.ok ? liveSitePrice.tier : findTier(qty);
-  const siteVatPct = liveStickerConfig.vat.pct;
 
-  const fasonPartnerCost =
-    result.ok && mode === "fason"
-      ? result.geometry.totalM2 * fasonRate
-      : null;
+  const simulationCost = useMemo(() => {
+    if (!result.ok) return null;
+    return computeCost({
+      geometry: result.geometry,
+      requestedQty: qty,
+      production: { mode: "fason", rate: fasonRate },
+      operation: operationEnabled
+        ? { setup, packaging, feePct, cargo: 0 }
+        : { setup: 0, packaging: 0, feePct: 0, cargo: 0 },
+      margin: {
+        marginPct: 0,
+        vatPct: liveStickerConfig.vat.pct,
+        minMarkupFraction: 0,
+      },
+      tier: SIM_TIER,
+    });
+  }, [
+    result,
+    qty,
+    fasonRate,
+    setup,
+    packaging,
+    feePct,
+    operationEnabled,
+    liveStickerConfig.vat.pct,
+  ]);
 
   function handleGeneratePDF() {
     if (!result.ok) {
@@ -300,76 +306,6 @@ export function StickerCalculator({
     toast.success(`İş emri ${lot} üretildi (PDF indirildi)`);
   }
 
-  function handleAddToCart() {
-    if (!result.ok) {
-      toast.error("Önce geçerli bir hesaplama yap");
-      return;
-    }
-    if (!liveSitePrice?.ok) {
-      toast.error(
-        liveSitePrice && !liveSitePrice.ok
-          ? liveSitePrice.reason
-          : "Site fiyatı hesaplanamadı"
-      );
-      return;
-    }
-    const siteCost = livePriceToCostResult(liveSitePrice);
-    const r = addToCart({
-      product: "sticker",
-      width,
-      height,
-      requestedQty: qty,
-      producedQty: result.geometry.fit.producedQty,
-      preGroupSubtotal: siteCost.subtotal,
-      vatPct: siteVatPct,
-      tierMultiplier: siteCost.tierMultiplier,
-      preGroupTotal: siteCost.total,
-      mode,
-      cut,
-      layoutMode: result.geometry.fit.mode,
-      rollsNeeded: result.geometry.roll.rollsNeeded,
-      totalM2: result.geometry.totalM2,
-      baseCost: siteCost.baseCost,
-      intendedProfit: siteCost.intendedProfit,
-      actualProfit: siteCost.actualProfit,
-      vatAmount: siteCost.vatAmount,
-      total: siteCost.total,
-      unitPrice: siteCost.unitPrice,
-    });
-    if (!r.ok) {
-      toast.error(r.reason);
-      return;
-    }
-    toast.success(`${r.item.name} sepete eklendi`);
-  }
-
-  function handleCartPDF(items: CartItem[]) {
-    // Her item için ayrı PDF üret (toplu olarak — her biri kendi lot'uyla)
-    items.forEach((item, idx) => {
-      // Item product'a göre lot prefix
-      const lot = nextLot(item.product === "sticker" ? "A" : "B");
-      // Synthetic geometry+cost reconstruction
-      // Bu birleşik PDF değil — her item ayrı PDF iner
-      // İleride combined PDF için ayrı helper yazılabilir
-      setTimeout(() => {
-        const fakeGeom = reconstructGeometryFromCart(item);
-        const fakeCost = reconstructCostFromCart(item);
-        generateWorkOrderPDF({
-          lot,
-          geometry: fakeGeom,
-          cost: fakeCost,
-          requestedQty: item.requestedQty,
-          cut: item.cut ?? "diecut",
-          mode: item.mode,
-          product: item.product,
-          customerName: item.name,
-        });
-      }, idx * 200); // çoklu indirme browser handle etsin
-    });
-    setNextLotPreview(peekNextLot("A"));
-    toast.success(`${items.length} adet PDF iş emri üretiliyor`);
-  }
-
   // Profile snapshot — current state'i serialize et
   const currentInput: ProfileInputSnapshot = {
     mode,
@@ -387,7 +323,7 @@ export function StickerCalculator({
     setup,
     packaging,
     feePct,
-    vatPct,
+    vatPct: liveStickerConfig.vat.pct,
     customerType,
   };
 
@@ -408,7 +344,6 @@ export function StickerCalculator({
     setSetup(i.setup);
     setPackaging(i.packaging);
     setFeePct(i.feePct);
-    setVatPct(i.vatPct);
     setCustomerType(i.customerType);
     setActiveProfileId(p.id);
     toast.success(`"${p.name}" profili yüklendi`);
@@ -430,7 +365,7 @@ export function StickerCalculator({
     setSetup(DEFAULTS.setup);
     setPackaging(DEFAULTS.packaging);
     setFeePct(DEFAULTS.feePct);
-    setVatPct(DEFAULTS.vatPct);
+    setOperationEnabled(liveStickerConfig.operation.enabled !== false);
     setPreviewMaterialId(DEFAULT_PREVIEW_MATERIAL);
     setPreviewFinishId(DEFAULT_PREVIEW_FINISH);
     setCustomerType(DEFAULTS.customerType);
@@ -484,14 +419,6 @@ export function StickerCalculator({
               Sıfırla
             </Button>
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleAddToCart}
-              disabled={!result.ok || !liveSitePrice?.ok}
-            >
-              🛒 Sepete Ekle
-            </Button>
-            <Button
               variant="primary"
               size="sm"
               onClick={handleGeneratePDF}
@@ -514,28 +441,32 @@ export function StickerCalculator({
         <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-6 items-start">
           {/* LEFT — Input */}
           <div className="space-y-4">
-            {/* Mode + Cut */}
+            {/* Kart 1: Ürün özellikleri */}
             <Card padding="p-5">
-              <h2 className="text-[15px] font-semibold mb-4">Sipariş</h2>
+              <h2 className="text-[15px] font-semibold mb-4">Ürün Özellikleri</h2>
 
-              {/* Mode toggle */}
-              <Field label="Üretim Modu" hint="tedarik senaryosu">
-                <SegmentToggle
-                  options={[
-                    { value: "fason", label: "Fason", sub: "Dış Tedarik" },
-                    {
-                      value: "uretim",
-                      label: "Üretim",
-                      sub: "Kendi Makina",
-                    },
-                  ]}
-                  value={mode}
-                  onChange={(v) => setMode(v as ProductionMode)}
+              <Field label="Malzeme">
+                <ChipGrid
+                  options={liveStickerConfig.materials.map((m) => ({
+                    id: m.id,
+                    label: m.name,
+                  }))}
+                  value={previewMaterialId}
+                  onChange={setPreviewMaterialId}
                 />
               </Field>
 
-              {/* Cut type */}
-              <Field label="Kesim Tipi" hint="fire & dizgi farkı">
+              <Field label="Finiş">
+                <ChipGrid
+                  options={(liveStickerConfig.options.finish?.items ?? []).map(
+                    (f) => ({ id: f.id, label: f.name })
+                  )}
+                  value={previewFinishId}
+                  onChange={setPreviewFinishId}
+                />
+              </Field>
+
+              <Field label="Kesim">
                 <div className="grid grid-cols-2 gap-2">
                   <CutCard
                     selected={cut === "tabaka"}
@@ -553,9 +484,13 @@ export function StickerCalculator({
                   />
                 </div>
               </Field>
+            </Card>
 
-              {/* Dimensions */}
-              <Field label="Sticker Boyutu" hint="milimetre">
+            {/* Kart 2: Boyut + Adet */}
+            <Card padding="p-5">
+              <h2 className="text-[15px] font-semibold mb-4">Boyut + Adet</h2>
+
+              <Field label="Boyut (mm)">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <NumInput
                     value={width}
@@ -575,76 +510,58 @@ export function StickerCalculator({
                 </div>
               </Field>
 
-              {/* Tier buttons */}
-              <Field label="Adet Kademesi" hint="tasarım başına">
+              <Field label="Adet">
                 <TierGrid value={qty} onChange={setQty} />
               </Field>
             </Card>
 
-            {/* Üretim — Fason */}
-            {mode === "fason" && (
-              <Card padding="p-5">
-                <SectionTitle accent="mercan">① Üretim · Fason</SectionTitle>
-                <Field label="Fason Birim Maliyet" hint="m² başına">
-                  <NumInput
-                    value={fasonRate}
-                    onChange={setFasonRate}
-                    suffix="₺ / m²"
-                    step={5}
-                  />
-                </Field>
-              </Card>
-            )}
-
-            {/* Üretim — Kendi Makina */}
-            {mode === "uretim" && (
-              <Card padding="p-5">
-                <SectionTitle accent="mercan">
-                  ① Üretim · Kendi Makina
-                </SectionTitle>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Kağıt / Folio">
-                    <NumInput value={paper} onChange={setPaper} suffix="₺/m²" />
-                  </Field>
-                  <Field label="Mürekkep">
-                    <NumInput value={ink} onChange={setInk} suffix="₺/m²" />
-                  </Field>
-                  <Field label="Kaplama">
-                    <NumInput
-                      value={coating}
-                      onChange={setCoating}
-                      suffix="₺/m²"
-                    />
-                  </Field>
-                  <Field label="İşçilik">
-                    <NumInput value={labor} onChange={setLabor} suffix="₺/m²" />
-                  </Field>
-                  <Field label="Genel Gider">
-                    <NumInput
-                      value={overhead}
-                      onChange={setOverhead}
-                      suffix="₺/m²"
-                    />
-                  </Field>
-                  <Field label="Amortisman">
-                    <NumInput
-                      value={depreciation}
-                      onChange={setDepreciation}
-                      suffix="₺/m²"
-                    />
-                  </Field>
-                </div>
-              </Card>
-            )}
-
-            {/* Operatör operasyon — simülasyon (cargo/margin yok) */}
+            {/* Kart 3: Fason maliyet */}
             <Card padding="p-5">
-              <SectionTitle accent="turuncu">② Operasyon · Simülasyon</SectionTitle>
-              <p className="text-[12px] text-gri-600 mb-4">
-                Sol panel maliyet simülasyonu — müşteri fiyatından bağımsız.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Hazırlık" hint="tek seferlik">
+              <h2 className="text-[15px] font-semibold mb-4">Fason Maliyet</h2>
+              <Field label="Fason Birim Maliyet">
+                <NumInput
+                  value={fasonRate}
+                  onChange={setFasonRate}
+                  suffix="₺ / m²"
+                  step={5}
+                />
+              </Field>
+            </Card>
+
+            {/* Kart 4: Operasyon */}
+            <Card padding="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[15px] font-semibold">Operasyon</h2>
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <span className="text-xs text-gri-700">
+                    {operationEnabled ? "Aktif" : "Devre dışı"}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={operationEnabled}
+                    onClick={() => setOperationEnabled((v) => !v)}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
+                      operationEnabled ? "bg-yesil" : "bg-gri-300"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform mt-0.5",
+                        operationEnabled ? "translate-x-5" : "translate-x-0.5"
+                      )}
+                    />
+                  </button>
+                </label>
+              </div>
+              <div
+                className={cn(
+                  "grid grid-cols-2 gap-3",
+                  !operationEnabled && "opacity-40 pointer-events-none"
+                )}
+              >
+                <Field label="Hazırlık">
                   <NumInput
                     value={setup}
                     onChange={setSetup}
@@ -652,7 +569,7 @@ export function StickerCalculator({
                     step={10}
                   />
                 </Field>
-                <Field label="Paketleme" hint="zarf/koli">
+                <Field label="Paketleme">
                   <NumInput
                     value={packaging}
                     onChange={setPackaging}
@@ -660,7 +577,7 @@ export function StickerCalculator({
                     step={5}
                   />
                 </Field>
-                <Field label="İşlem Ücreti" hint="PSP gross-up">
+                <Field label="Komisyon">
                   <NumInput
                     value={feePct}
                     onChange={setFeePct}
@@ -668,109 +585,28 @@ export function StickerCalculator({
                     step={0.5}
                   />
                 </Field>
-                <Field label="KDV" hint="simülasyon gösterimi">
-                  <NumInput
-                    value={vatPct}
-                    onChange={setVatPct}
-                    suffix="%"
-                    step={1}
-                  />
-                </Field>
-              </div>
-            </Card>
-
-            {/* Site fiyat önizleme — malzeme/finiş */}
-            <Card padding="p-5">
-              <SectionTitle accent="yesil">③ Site Fiyat Önizleme</SectionTitle>
-              <p className="text-[12px] text-gri-600 mb-4">
-                Sağ panel müşteri fiyatı — Fiyatlar sekmesindeki alış/satış
-                (dual-price) + tier + KDV.
-              </p>
-              <div className="grid grid-cols-2 gap-3 mb-3 text-[13px] tabular-nums">
-                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
-                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
-                    Live setup
-                  </div>
-                  {fmt(liveStickerConfig.operation.setup)} ₺
-                </div>
-                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
-                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
-                    Live KDV
-                  </div>
-                  {liveStickerConfig.vat.pct}%
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Malzeme" hint="m2_cost / m2_sell">
-                  <select
-                    value={previewMaterialId}
-                    onChange={(e) => setPreviewMaterialId(e.target.value)}
-                    className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
-                  >
-                    {liveStickerConfig.materials.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Finiş">
-                  <select
-                    value={previewFinishId}
-                    onChange={(e) => setPreviewFinishId(e.target.value)}
-                    className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
-                  >
-                    {(liveStickerConfig.options.finish?.items ?? []).map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Müşteri Tipi" hint="bilgi (Block C entegrasyon)">
-                  <select
-                    value={customerType}
-                    onChange={(e) =>
-                      setCustomerType(e.target.value as CustomerType)
-                    }
-                    className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
-                  >
-                    <option value="standart">Standart</option>
-                    <option value="duzenli">Düzenli</option>
-                    <option value="sadik">Sadık</option>
-                    <option value="sozlesmeli">Sözleşmeli</option>
-                  </select>
-                </Field>
               </div>
             </Card>
           </div>
 
           {/* RIGHT — Output */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <OperatorCostHero result={result} qty={qty} tier={operatorTier} />
-              <SitePriceHero
-                liveSitePrice={liveSitePrice}
-                qty={qty}
-                tier={displayTier}
-                totalM2={result.ok ? result.geometry.totalM2 : 0}
-              />
-            </div>
+            <SitePriceHero
+              liveSitePrice={liveSitePrice}
+              qty={qty}
+              tier={displayTier}
+              totalM2={result.ok ? result.geometry.totalM2 : 0}
+              sheetsNeeded={result.ok ? result.geometry.fit.sheetsNeeded : 0}
+            />
 
-            {result.ok && liveSitePrice?.ok && (
-              <ProfitCompareStrip
-                operatorCost={result.cost.baseCost}
-                siteSell={liveSitePrice.with_margin}
+            {result.ok && simulationCost && liveSitePrice?.ok && (
+              <SimulationCompareCard
+                simulationTotal={simulationCost.total}
+                simulationBase={simulationCost.baseCost}
                 siteFinal={liveSitePrice.final}
-              />
-            )}
-
-            {result.ok && (
-              <LivePricingPanel
-                fasonPartnerCost={fasonPartnerCost}
-                liveSitePrice={liveSitePrice}
+                siteSell={liveSitePrice.with_margin}
                 totalM2={result.geometry.totalM2}
-                liveConfigLoaded={liveConfigLoaded}
+                fasonRate={fasonRate}
               />
             )}
 
@@ -784,9 +620,6 @@ export function StickerCalculator({
                   <SheetPreviewCard result={result} />
                   <UretimOzetiCard result={result} />
                 </div>
-
-                {/* Cost breakdown */}
-                <CostBreakdown result={result} liveSitePrice={liveSitePrice} />
               </>
             ) : (
               <Card padding="p-8" className="text-center">
@@ -800,11 +633,6 @@ export function StickerCalculator({
               </Card>
             )}
           </div>
-        </div>
-
-        {/* Sepet panel — full width, 2-col grid'in dışında */}
-        <div className="mt-6">
-          <CartPanel onGeneratePDF={handleCartPDF} />
         </div>
       </div>
 
@@ -835,26 +663,6 @@ function Field({
         {hint && <span className="text-[11px] text-gri-500">{hint}</span>}
       </div>
       {children}
-    </div>
-  );
-}
-
-function SectionTitle({
-  children,
-  accent,
-}: {
-  children: React.ReactNode;
-  accent: "mercan" | "turuncu" | "yesil";
-}) {
-  const dotColor = {
-    mercan: "bg-pim-mercan",
-    turuncu: "bg-turuncu",
-    yesil: "bg-yesil",
-  }[accent];
-  return (
-    <div className="flex items-center gap-2 mb-4 text-[11.5px] font-bold uppercase tracking-[0.1em] text-gri-700">
-      <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", dotColor)} />
-      <span>{children}</span>
     </div>
   );
 }
@@ -890,50 +698,6 @@ function NumInput({
           {suffix}
         </span>
       )}
-    </div>
-  );
-}
-
-function SegmentToggle({
-  options,
-  value,
-  onChange,
-}: {
-  options: Array<{ value: string; label: string; sub?: string }>;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-1 p-1 bg-gri-50 ring-1 ring-gri-200 rounded-xl">
-      {options.map((opt) => {
-        const selected = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            aria-pressed={selected}
-            className={cn(
-              "py-2.5 rounded-lg text-[13px] font-semibold transition-colors text-center",
-              selected
-                ? "bg-lacivert text-white shadow-1"
-                : "text-gri-700 hover:bg-white"
-            )}
-          >
-            <div>{opt.label}</div>
-            {opt.sub && (
-              <div
-                className={cn(
-                  "text-[10px] uppercase tracking-[0.04em] mt-0.5",
-                  selected ? "text-white/70" : "text-gri-500"
-                )}
-              >
-                {opt.sub}
-              </div>
-            )}
-          </button>
-        );
-      })}
     </div>
   );
 }
@@ -981,6 +745,40 @@ function CutCard({
         {spec}
       </span>
     </button>
+  );
+}
+
+function ChipGrid({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{ id: string; label: string }>;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => {
+        const selected = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            aria-pressed={selected}
+            className={cn(
+              "px-3 py-2 rounded-lg text-[13px] font-semibold ring-[1.5px] transition-all",
+              selected
+                ? "ring-lacivert bg-lacivert text-white"
+                : "ring-gri-200 bg-white text-lacivert hover:ring-pim-mercan-soft"
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1035,146 +833,54 @@ function TierGrid({
   );
 }
 
-function LivePricingPanel({
-  fasonPartnerCost,
-  liveSitePrice,
+function SimulationCompareCard({
+  simulationTotal,
+  simulationBase,
+  siteFinal,
+  siteSell,
   totalM2,
-  liveConfigLoaded,
+  fasonRate,
 }: {
-  fasonPartnerCost: number | null;
-  liveSitePrice: ReturnType<typeof calculatePrice> | null;
+  simulationTotal: number;
+  simulationBase: number;
+  siteFinal: number;
+  siteSell: number;
   totalM2: number;
-  liveConfigLoaded: boolean;
+  fasonRate: number;
 }) {
-  const billableM2 =
-    liveSitePrice?.ok && liveSitePrice.billable_m2
-      ? liveSitePrice.billable_m2
-      : totalM2;
-  const m2Cost =
-    liveSitePrice?.ok && liveSitePrice.material
-      ? resolveM2Cost(liveSitePrice.material)
-      : null;
-  const m2Sell =
-    liveSitePrice?.ok && liveSitePrice.material
-      ? resolveM2Sell(liveSitePrice.material)
-      : null;
+  const diffKdvHaric = siteSell - simulationBase;
+  const diffKdvDahil = siteFinal - simulationTotal;
+  const pctKdvHaric =
+    simulationBase > 0 ? (diffKdvHaric / simulationBase) * 100 : 0;
 
   return (
-    <Card padding="p-5" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
-      <div className="mb-4">
-        <h3 className="text-[15px] font-semibold text-lacivert">
-          Site Fiyatı
-        </h3>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-lg bg-white ring-1 ring-gri-200 p-4">
-          <div className="text-[11px] uppercase tracking-wide text-gri-500 font-semibold mb-1">
-            Maliyet (Alış)
-          </div>
-          {liveSitePrice?.ok ? (
-            <>
-              <div className="text-[24px] font-bold tabular-nums text-lacivert">
-                {fmt(Math.round(liveSitePrice.cost_total))}{" "}
-                <span className="text-[16px] text-gri-500">₺</span>
-              </div>
-              <div className="text-[12px] text-gri-600 mt-1">
-                {billableM2.toFixed(3)} m² × {fmt(m2Cost ?? 0, 2)} ₺/m²
-              </div>
-            </>
-          ) : (
-            <div className="text-[13px] text-gri-600">
-              {liveSitePrice && !liveSitePrice.ok
-                ? liveSitePrice.reason
-                : "Hesaplanamadı"}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-lg bg-white ring-1 ring-gri-200 p-4">
-          <div className="text-[11px] uppercase tracking-wide text-gri-500 font-semibold mb-1">
-            Müşteri Fiyatı (vinil + parlak)
-          </div>
-          {liveSitePrice?.ok ? (
-            <>
-              <div className="text-[24px] font-bold tabular-nums text-lacivert">
-                {fmt(Math.round(liveSitePrice.final))}{" "}
-                <span className="text-[16px] text-gri-500">₺</span>
-              </div>
-              <div className="text-[12px] text-gri-600 mt-1">
-                {billableM2.toFixed(3)} m² × {fmt(m2Sell ?? 0, 2)} ₺/m² · {liveSitePrice.tier.label}
-              </div>
-            </>
-          ) : (
-            <div className="text-[13px] text-gri-600">
-              {liveSitePrice && !liveSitePrice.ok
-                ? liveSitePrice.reason
-                : "Hesaplanamadı"}
-            </div>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function OperatorCostHero({
-  result,
-  qty,
-  tier,
-}: {
-  result: ReturnType<typeof quoteSticker>;
-  qty: number;
-  tier: StickerTier;
-}) {
-  if (!result.ok) {
-    return (
-      <Card padding="p-6" className="ring-1 ring-gri-200">
-        <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
-          Operatör Maliyet Simülasyonu
-        </div>
-        <div className="text-[32px] font-bold text-gri-400">—</div>
-        <p className="mt-2 text-[13px] text-gri-600">{result.reason}</p>
-      </Card>
-    );
-  }
-
-  const { cost, geometry } = result;
-
-  return (
-    <Card
-      padding="p-6"
-      className="ring-1 ring-gri-300 bg-gradient-to-br from-gri-50 to-white"
-    >
-      <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
-        Operatör Maliyet Simülasyonu
-      </div>
-      <div className="text-[36px] font-bold tabular-nums text-lacivert leading-none">
-        {fmt(Math.round(cost.baseCost))}{" "}
-        <span className="text-[20px] text-gri-500">₺</span>
-      </div>
-      <p className="text-[12px] text-gri-600 mt-1">Üretim + operasyon (KDV hariç, markup yok)</p>
-      <p className="text-[12px] text-gri-500 mt-2 tabular-nums">
-        {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka ·{" "}
-        {geometry.totalM2.toFixed(3)} m² · Tier {tier.label}
-      </p>
-      <div className="mt-4 pt-4 border-t border-gri-200 grid grid-cols-2 gap-3 text-[13px] tabular-nums">
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">Üretim</div>
-          {fmt(Math.round(cost.productionCost))} ₺
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">Operasyon</div>
-          {fmt(Math.round(cost.operationCost))} ₺
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil sim.</div>
-          {fmt(Math.round(cost.total))} ₺
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">Birim (KDV dahil)</div>
-          {fmt(cost.unitPrice, 2)} ₺
-        </div>
+    <Card padding="p-5" className="ring-1 ring-gri-200 bg-gri-50/60">
+      <div className="space-y-2 text-[14px] tabular-nums text-gri-800 font-mono">
+        <p>
+          <span className="text-[11px] uppercase tracking-wide text-gri-500 font-sans font-semibold">
+            Simülasyon maliyeti:
+          </span>{" "}
+          <strong>{fmt(Math.round(simulationTotal))} ₺</strong>{" "}
+          <span className="text-[12px] text-gri-500 font-sans">(KDV dahil)</span>
+        </p>
+        <p className="text-[12px] text-gri-500 font-sans">
+          Fason {fmt(fasonRate)} ₺/m² × {totalM2.toFixed(3)} m² · KDV hariç{" "}
+          {fmt(Math.round(simulationBase))} ₺
+        </p>
+        <p>
+          <span className="text-[11px] uppercase tracking-wide text-gri-500 font-sans font-semibold">
+            Site satış fiyatı:
+          </span>{" "}
+          <strong>{fmt(Math.round(siteFinal))} ₺</strong>
+        </p>
+        <p className="font-semibold text-lacivert pt-2 border-t border-gri-200">
+          Fark: {diffKdvDahil >= 0 ? "+" : ""}
+          {fmt(Math.round(diffKdvDahil))} ₺ ({pctKdvHaric.toFixed(0)}% kâr)
+        </p>
+        <p className="text-[12px] text-gri-600 font-sans">
+          Net kâr (KDV hariç): {diffKdvHaric >= 0 ? "+" : ""}
+          {fmt(Math.round(diffKdvHaric))} ₺ · tier simülasyona uygulanmaz
+        </p>
       </div>
     </Card>
   );
@@ -1185,11 +891,13 @@ function SitePriceHero({
   qty,
   tier,
   totalM2,
+  sheetsNeeded = 0,
 }: {
   liveSitePrice: ReturnType<typeof calculatePrice> | null;
   qty: number;
   tier: StickerTier | { qty: number; multiplier: number; label: string };
   totalM2: number;
+  sheetsNeeded?: number;
 }) {
   if (!liveSitePrice?.ok) {
     return (
@@ -1237,7 +945,8 @@ function SitePriceHero({
           <span className="text-pim-mercan text-[22px]">₺</span>
         </div>
         <p className="text-[12px] text-white/70 mt-1 tabular-nums">
-          {fmt(liveSitePrice.unit_price, 2)} ₺/adet · {billableM2.toFixed(3)} m² · Tier{" "}
+          {fmt(liveSitePrice.unit_price, 2)} ₺/adet · {qty.toLocaleString("tr-TR")}{" "}
+          adet · {sheetsNeeded} tabaka · {billableM2.toFixed(3)} m² · Tier{" "}
           {tier.label}
         </p>
         <div className="mt-4 pt-4 border-t border-white/15 grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -1256,42 +965,6 @@ function SitePriceHero({
           />
           <VatCell label="PSP" value={`${fmt(Math.round(fee))} ₺`} />
           <VatCell label="KDV" value={`${fmt(Math.round(vat))} ₺`} />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function ProfitCompareStrip({
-  operatorCost,
-  siteSell,
-  siteFinal,
-}: {
-  operatorCost: number;
-  siteSell: number;
-  siteFinal: number;
-}) {
-  const configProfit = siteSell - operatorCost;
-  const pct =
-    operatorCost > 0 ? (configProfit / operatorCost) * 100 : 0;
-
-  return (
-    <Card padding="p-4" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
-        <span className="font-semibold text-lacivert">Maliyet vs Satış Karşılaştırması</span>
-        <div className="flex flex-wrap gap-4 tabular-nums">
-          <span>
-            Operatör maliyet: <strong>{fmt(Math.round(operatorCost))} ₺</strong>
-          </span>
-          <span>
-            Site satış (KDV hariç): <strong>{fmt(Math.round(siteSell))} ₺</strong>
-          </span>
-          <span>
-            Site final (KDV dahil): <strong>{fmt(Math.round(siteFinal))} ₺</strong>
-          </span>
-          <span className="text-pim-mercan-koyu font-bold">
-            Fark: {fmt(Math.round(configProfit))} ₺ ({pct.toFixed(0)}%)
-          </span>
         </div>
       </div>
     </Card>
@@ -1532,236 +1205,6 @@ function StatCell({
       <div className="text-[20px] font-bold tracking-tight tabular-nums">
         {value}
         {unit && <span className="text-[12px] text-gri-500 ml-1 font-medium">{unit}</span>}
-      </div>
-    </div>
-  );
-}
-
-function CostBreakdown({
-  result,
-  liveSitePrice,
-}: {
-  result: ReturnType<typeof quoteSticker>;
-  liveSitePrice: ReturnType<typeof calculatePrice> | null;
-}) {
-  if (!result.ok) return null;
-  const { cost } = result;
-  const useLive = liveSitePrice?.ok === true;
-
-  return (
-    <Card padding="p-0">
-      <div className="px-5 py-4 border-b border-gri-200 bg-gri-50 flex items-center justify-between">
-        <h3 className="text-[15px] font-semibold">Maliyet Detayı</h3>
-        <span className="text-[10px] tabular-nums px-2 py-0.5 rounded-full bg-white ring-1 ring-gri-200 font-semibold">
-          {useLive ? "LIVE CONFIG" : "3 KATMAN"}
-        </span>
-      </div>
-      <div className="px-5 divide-y divide-gri-100">
-        {useLive ? (
-          <>
-            {cost.productionItems.map((item, i) => (
-              <BreakdownRow key={`prod-${i}`} item={item} />
-            ))}
-            <BreakdownRow
-              item={{
-                name: "Üretim Ara Toplam",
-                formula: "① simülasyon",
-                amount: cost.productionCost,
-              }}
-              subtotal
-            />
-            {cost.operationItems.map((item, i) => (
-              <BreakdownRow key={`op-${i}`} item={item} />
-            ))}
-            {cost.operationCost > 0 && (
-              <BreakdownRow
-                item={{
-                  name: "Operasyon Ara Toplam",
-                  formula: "② simülasyon",
-                  amount: cost.operationCost,
-                }}
-                subtotal
-              />
-            )}
-            <BreakdownRow
-              item={{
-                name: "Operatör Simülasyon Maliyeti",
-                formula: "① + ②",
-                amount: cost.baseCost,
-              }}
-              highlight
-            />
-            <BreakdownRow
-              item={{
-                name: "Maliyet (Alış)",
-                formula: "m2_cost_try × billable m²",
-                amount: liveSitePrice.cost_total,
-              }}
-            />
-            <BreakdownRow
-              item={{
-                name: "Satış Fiyatı",
-                formula: "m2_sell_try × billable m²",
-                amount: liveSitePrice.with_margin,
-              }}
-            />
-            <BreakdownRow
-              item={{
-                name: "Kâr",
-                formula: "satış − alış",
-                amount: liveSitePrice.with_margin - liveSitePrice.cost_total,
-              }}
-            />
-            <BreakdownRow
-              item={{
-                name: "İşlem Ücreti",
-                formula: "PSP gross-up",
-                amount: liveSitePrice.with_fee - liveSitePrice.with_margin,
-              }}
-            />
-            <BreakdownRow
-              item={{
-                name: "KDV",
-                formula: "site config",
-                amount: liveSitePrice.final - liveSitePrice.with_fee,
-              }}
-            />
-            <BreakdownRow
-              item={{
-                name: "Müşteri Satış Fiyatı",
-                formula: "KDV dahil",
-                amount: liveSitePrice.final,
-              }}
-              total
-            />
-          </>
-        ) : (
-          <>
-            {cost.productionItems.map((item, i) => (
-              <BreakdownRow key={`prod-${i}`} item={item} />
-            ))}
-            <BreakdownRow
-              item={{
-                name: "Üretim Ara Toplam",
-                formula: "①",
-                amount: cost.productionCost,
-              }}
-              subtotal
-            />
-            {cost.operationItems.map((item, i) => (
-              <BreakdownRow key={`op-${i}`} item={item} />
-            ))}
-            {cost.operationCost > 0 && (
-              <BreakdownRow
-                item={{
-                  name: "Operasyon Ara Toplam",
-                  formula: "②",
-                  amount: cost.operationCost,
-                }}
-                subtotal
-              />
-            )}
-            <BreakdownRow
-              item={{
-                name: "Fason Simülasyon Maliyeti",
-                formula: "üretim only",
-                amount: cost.baseCost,
-              }}
-              highlight
-            />
-            <BreakdownRow
-              item={{
-                name: "İşlem Ücreti",
-                formula: "ödeme komisyonu",
-                amount: cost.processingFee,
-              }}
-            />
-            {cost.tierAdjustment !== 0 && (
-              <BreakdownRow
-                item={{
-                  name: cost.tierMultiplier > 1 ? "Tier Zam" : "Tier İndirim",
-                  formula: `× ${cost.tierMultiplier.toFixed(2)}`,
-                  amount: cost.tierAdjustment,
-                }}
-                negative={cost.tierAdjustment < 0}
-              />
-            )}
-            <BreakdownRow
-              item={{
-                name: "Ara Toplam (KDV Hariç)",
-                formula: "subtotal",
-                amount: cost.subtotal,
-              }}
-              subtotal
-            />
-            <BreakdownRow
-              item={{
-                name: "KDV",
-                formula: "subtotal × kdv%",
-                amount: cost.vatAmount,
-              }}
-            />
-            <BreakdownRow
-              item={{
-                name: "Operatör Toplam",
-                formula: "KDV dahil",
-                amount: cost.total,
-              }}
-              total
-            />
-          </>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-function BreakdownRow({
-  item,
-  subtotal,
-  highlight,
-  total,
-  negative,
-}: {
-  item: { name: string; formula: string; amount: number };
-  subtotal?: boolean;
-  highlight?: boolean;
-  total?: boolean;
-  negative?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "py-3 grid grid-cols-[1fr_auto_auto] items-center gap-3",
-        subtotal && "bg-gri-50/50",
-        highlight && "bg-lacivert/5",
-        total && "bg-pim-mercan-tint/50"
-      )}
-    >
-      <div>
-        <div
-          className={cn(
-            "text-[13px]",
-            (highlight || total) && "font-semibold",
-            subtotal && "font-medium"
-          )}
-        >
-          {item.name}
-        </div>
-        <div className="text-[10px] text-gri-500 tabular-nums mt-0.5">
-          {item.formula}
-        </div>
-      </div>
-      <div />
-      <div
-        className={cn(
-          "text-right tabular-nums font-semibold text-[13px]",
-          negative && "text-yesil",
-          total && "text-pim-mercan-koyu text-[16px] font-bold"
-        )}
-      >
-        {negative ? "−" : ""}
-        {fmt(Math.abs(item.amount))} ₺
       </div>
     </div>
   );
