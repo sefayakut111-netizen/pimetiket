@@ -36,6 +36,10 @@ import {
   type CommandItem,
 } from "@/components/admin/AdminCommandPalette";
 import { AdminBreadcrumb } from "@/components/admin/AdminBreadcrumb";
+import {
+  AdminPathLabelProvider,
+  useAdminPathLabels,
+} from "@/hooks/useAdminPathLabel";
 import { PartnerImpersonatePicker } from "@/components/layout/PartnerImpersonatePicker";
 import {
   listCustomerOrders,
@@ -142,20 +146,34 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/sistem/cronlar": "Cron izleme",
 };
 
-function getPageTitle(pathname: string): string {
+function getPageTitle(
+  pathname: string,
+  segmentLabels: Record<string, string> = {}
+): string {
   if (PATH_TITLES[pathname]) return PATH_TITLES[pathname];
-  // /admin/foo/bar → "Foo / Bar" (Sefa 21 May v68 P2 #17: capitalize)
   const segs = pathname.split("/").filter(Boolean).slice(1);
   if (segs.length === 0) return "Operatör paneli";
+  if (segs[0] === "fason" && segs.length === 2 && segmentLabels[segs[1]]) {
+    return segmentLabels[segs[1]];
+  }
   return segs
-    .map((s) => s.replace(/-/g, " "))
+    .map((s) => segmentLabels[s] ?? s.replace(/-/g, " "))
     .map((s) => s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1))
     .join(" / ");
 }
 
 export function AdminShell({ children }: { children: ReactNode }) {
+  return (
+    <AdminPathLabelProvider>
+      <AdminShellInner>{children}</AdminShellInner>
+    </AdminPathLabelProvider>
+  );
+}
+
+function AdminShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const pathLabels = useAdminPathLabels()?.labels ?? {};
   const [badges, setBadges] = useState<AdminBadges>({
     active: 0,
     orderTotal: 0,
@@ -655,7 +673,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       .filter((group) => group.items.length > 0);
   }, [navGroups, permLoading, legacyFullAccess, canView]);
 
-  const pageTitle = getPageTitle(pathname);
+  const pageTitle = getPageTitle(pathname, pathLabels);
 
   const commandItems: CommandItem[] = useMemo(
     () =>

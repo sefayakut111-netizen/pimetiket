@@ -17,6 +17,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAdminPathLabels } from "@/hooks/useAdminPathLabel";
 
 const SEGMENT_LABELS: Record<string, string> = {
   admin: "Dashboard",
@@ -55,7 +56,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   blog: "Blog",
 };
 
-function labelFor(segment: string): string {
+function labelFor(
+  segment: string,
+  dynamicLabels: Record<string, string>
+): string {
+  if (dynamicLabels[segment]) return dynamicLabels[segment];
   if (SEGMENT_LABELS[segment]) return SEGMENT_LABELS[segment];
   // UUID kısalt
   if (
@@ -73,6 +78,7 @@ function labelFor(segment: string): string {
 
 export function AdminBreadcrumb() {
   const pathname = usePathname();
+  const dynamicLabels = useAdminPathLabels()?.labels ?? {};
 
   // /admin/foo/bar → ["admin", "foo", "bar"]
   const segments = pathname.split("/").filter(Boolean);
@@ -81,7 +87,7 @@ export function AdminBreadcrumb() {
   // Path zincirini kur (/admin, /admin/foo, /admin/foo/bar)
   const crumbs = segments.map((seg, i) => ({
     href: "/" + segments.slice(0, i + 1).join("/"),
-    label: labelFor(seg),
+    label: labelFor(seg, dynamicLabels),
     isLast: i === segments.length - 1,
   }));
 
