@@ -32,7 +32,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -68,8 +68,10 @@ import { calculatePrice } from "@/lib/pricing-calc";
 import { livePriceToCostResult } from "@/lib/pricing-live-snapshot";
 import {
   FALLBACK_STICKER_CONFIG,
+  type MaterialItem,
   type ProfileConfig,
 } from "@/lib/pricing-config-types";
+import { resolveM2Cost } from "@/lib/pricing-dual-price";
 
 // ============================================================
 // Defaults — v0.4: overhead 45 (SaaS recovery), customerType
@@ -81,6 +83,49 @@ const DEFAULTS: ProfileInputSnapshot = getDefaultInput();
 
 /** Simülasyon maliyetinde tier uygulanmaz — referans çarpan 1 */
 const SIM_TIER: StickerTier = { qty: 250, multiplier: 1, label: "referans" };
+
+/** Varsayılan malzeme: Opak Folyo / Vinil (id veya isim) */
+function findOpakFolyoMaterial(
+  config: ProfileConfig
+): MaterialItem | undefined {
+  const byId = config.materials.find(
+    (m) => m.id === "vinil" || m.id === "opak" || m.id === "opak_folyo"
+  );
+  if (byId) return byId;
+  return config.materials.find((m) => /opak|vinil/i.test(m.name));
+}
+
+function fasonRateForMaterial(
+  config: ProfileConfig,
+  materialId: string
+): number {
+  const selected = config.materials.find((m) => m.id === materialId);
+  if (selected) return resolveM2Cost(selected);
+  const opak = findOpakFolyoMaterial(config);
+  return opak ? resolveM2Cost(opak) : DEFAULTS.fasonRate;
+}
+
+function applyLiveConfigDefaults(
+  config: ProfileConfig,
+  setters: {
+    setPreviewMaterialId: (id: string) => void;
+    setFasonRate: (n: number) => void;
+    setSetup: (n: number) => void;
+    setPackaging: (n: number) => void;
+    setFeePct: (n: number) => void;
+    setOperationEnabled: (v: boolean) => void;
+  }
+) {
+  const opak = findOpakFolyoMaterial(config);
+  if (opak) {
+    setters.setPreviewMaterialId(opak.id);
+    setters.setFasonRate(resolveM2Cost(opak));
+  }
+  setters.setSetup(config.operation.setup);
+  setters.setPackaging(config.operation.packaging_per_unit);
+  setters.setFeePct(config.operation.fee_pct);
+  setters.setOperationEnabled(config.operation.enabled !== false);
+}
 
 // ============================================================
 // Helpers
@@ -114,8 +159,13 @@ export function StickerCalculator({
   const [height, setHeight] = useState<number>(DEFAULTS.height);
   const [qty, setQty] = useState<number>(DEFAULTS.qty);
 
-  // Fason
-  const [fasonRate, setFasonRate] = useState<number>(DEFAULTS.fasonRate);
+  // Fason — varsayılan Opak Folyo config alış (m²)
+  const [fasonRate, setFasonRate] = useState(() =>
+    fasonRateForMaterial(
+      liveConfig ?? FALLBACK_STICKER_CONFIG,
+      DEFAULT_PREVIEW_MATERIAL
+    )
+  );
 
   // Üretim
   const [paper, setPaper] = useState<number>(DEFAULTS.paper);
@@ -154,6 +204,18 @@ export function StickerCalculator({
     liveConfig ?? FALLBACK_STICKER_CONFIG
   );
   const [liveConfigLoaded, setLiveConfigLoaded] = useState(!!liveConfig);
+  const configDefaultsApplied = useRef(!!liveConfig);
+
+  const selectedMaterial = useMemo(
+    () =>
+      liveStickerConfig.materials.find((m) => m.id === previewMaterialId),
+    [liveStickerConfig, previewMaterialId]
+  );
+
+  const handleMaterialChange = (materialId: string) => {
+    setPreviewMaterialId(materialId);
+    setFasonRate(fasonRateForMaterial(liveStickerConfig, materialId));
+  };
 
   useEffect(() => {
     setNextLotPreview(peekNextLot("A"));
@@ -163,9 +225,32 @@ export function StickerCalculator({
     if (liveConfig) {
       setLiveStickerConfig(liveConfig);
       setLiveConfigLoaded(true);
-      setOperationEnabled(liveConfig.operation.enabled !== false);
+      if (!configDefaultsApplied.current) {
+        configDefaultsApplied.current = true;
+        applyLiveConfigDefaults(liveConfig, {
+          setPreviewMaterialId,
+          setFasonRate,
+          setSetup,
+          setPackaging,
+          setFeePct,
+          setOperationEnabled,
+        });
+      }
     }
   }, [liveConfig]);
+
+  useEffect(() => {
+    if (!liveConfigLoaded || configDefaultsApplied.current) return;
+    configDefaultsApplied.current = true;
+    applyLiveConfigDefaults(liveStickerConfig, {
+      setPreviewMaterialId,
+      setFasonRate,
+      setSetup,
+      setPackaging,
+      setFeePct,
+      setOperationEnabled,
+    });
+  }, [liveConfigLoaded, liveStickerConfig]);
 
   useEffect(() => {
     if (liveConfig) return;
@@ -356,18 +441,20 @@ export function StickerCalculator({
     setWidth(DEFAULTS.width);
     setHeight(DEFAULTS.height);
     setQty(DEFAULTS.qty);
-    setFasonRate(DEFAULTS.fasonRate);
+    applyLiveConfigDefaults(liveStickerConfig, {
+      setPreviewMaterialId,
+      setFasonRate,
+      setSetup,
+      setPackaging,
+      setFeePct,
+      setOperationEnabled,
+    });
     setPaper(DEFAULTS.paper);
     setInk(DEFAULTS.ink);
     setCoating(DEFAULTS.coating);
     setLabor(DEFAULTS.labor);
     setOverhead(DEFAULTS.overhead);
     setDepreciation(DEFAULTS.depreciation);
-    setSetup(DEFAULTS.setup);
-    setPackaging(DEFAULTS.packaging);
-    setFeePct(DEFAULTS.feePct);
-    setOperationEnabled(liveStickerConfig.operation.enabled !== false);
-    setPreviewMaterialId(DEFAULT_PREVIEW_MATERIAL);
     setPreviewFinishId(DEFAULT_PREVIEW_FINISH);
     setCustomerType(DEFAULTS.customerType);
     setActiveProfileId(undefined);
@@ -474,7 +561,7 @@ export function StickerCalculator({
                     label: m.name,
                   }))}
                   value={previewMaterialId}
-                  onChange={setPreviewMaterialId}
+                  onChange={handleMaterialChange}
                 />
               </Field>
 
@@ -526,7 +613,14 @@ export function StickerCalculator({
               subtitle="Operatör referansı — site fiyatından bağımsız"
               muted
             >
-              <Field label="Fason birim maliyet">
+              <Field
+                label="Fason birim maliyet"
+                hint={
+                  selectedMaterial
+                    ? `${selectedMaterial.name} · config alış ${fmt(resolveM2Cost(selectedMaterial))} ₺/m²`
+                    : "Opak Folyo varsayılan"
+                }
+              >
                 <NumInput
                   value={fasonRate}
                   onChange={setFasonRate}
