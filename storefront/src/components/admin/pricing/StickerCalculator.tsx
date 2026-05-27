@@ -692,28 +692,26 @@ export function StickerCalculator({
             </FlowStepCard>
           </div>
 
-          {/* RIGHT — Output */}
+          {/* RIGHT — Output: site fiyatı üstte (ana), simülasyon altta (ikincil) */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <OperatorCostHero
-                result={result}
-                simulationCost={simulationCost}
-                qty={qty}
-              />
-              <SitePriceHero
-                liveSitePrice={liveSitePrice}
-                qty={qty}
-                tier={displayTier}
-                totalM2={result.ok ? result.geometry.totalM2 : 0}
-                sheetsNeeded={result.ok ? result.geometry.fit.sheetsNeeded : 0}
-              />
-            </div>
+            <SitePriceHero
+              liveSitePrice={liveSitePrice}
+              qty={qty}
+              tier={displayTier}
+              totalM2={result.ok ? result.geometry.totalM2 : 0}
+              sheetsNeeded={result.ok ? result.geometry.fit.sheetsNeeded : 0}
+            />
+
+            <OperatorCostHero
+              result={result}
+              simulationCost={simulationCost}
+              qty={qty}
+              compact
+            />
 
             {result.ok && simulationCost && liveSitePrice?.ok && (
               <ProfitCompareStrip
-                operatorCost={simulationCost.baseCost}
                 simulationTotal={simulationCost.total}
-                siteSell={liveSitePrice.with_margin}
                 siteFinal={liveSitePrice.final}
               />
             )}
@@ -997,10 +995,12 @@ function OperatorCostHero({
   result,
   simulationCost,
   qty,
+  compact = false,
 }: {
   result: ReturnType<typeof quoteSticker>;
   simulationCost: CostResult | null;
   qty: number;
+  compact?: boolean;
 }) {
   if (!result.ok) {
     return (
@@ -1029,15 +1029,25 @@ function OperatorCostHero({
 
   return (
     <Card
-      padding="p-6"
-      className="ring-1 ring-gri-300 bg-gradient-to-br from-gri-50 to-white"
+      padding={compact ? "p-4" : "p-6"}
+      className={cn(
+        "ring-1 ring-gri-300 bg-gradient-to-br from-gri-50 to-white",
+        compact && "opacity-95"
+      )}
     >
       <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
-        Operatör Maliyet Simülasyonu
+        Simülasyon Maliyeti
       </div>
-      <div className="text-[36px] font-bold tabular-nums text-lacivert leading-none">
+      <div
+        className={cn(
+          "font-bold tabular-nums text-lacivert leading-none",
+          compact ? "text-[28px]" : "text-[36px]"
+        )}
+      >
         {fmt(Math.round(cost.total))}{" "}
-        <span className="text-[20px] text-gri-500">₺</span>
+        <span className={cn("text-gri-500", compact ? "text-[16px]" : "text-[20px]")}>
+          ₺
+        </span>
       </div>
       <p className="text-[12px] text-gri-500 mt-0.5 tabular-nums">
         KDV dahil · KDV hariç {fmt(Math.round(cost.baseCost))} ₺
@@ -1049,43 +1059,40 @@ function OperatorCostHero({
         {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka ·{" "}
         {geometry.totalM2.toFixed(3)} m²
       </p>
-      <div className="mt-4 pt-4 border-t border-gri-200 grid grid-cols-2 gap-3 text-[13px] tabular-nums">
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">Üretim</div>
-          {fmt(Math.round(cost.productionCost))} ₺
+      {!compact && (
+        <div className="mt-4 pt-4 border-t border-gri-200 grid grid-cols-2 gap-3 text-[13px] tabular-nums">
+          <div>
+            <div className="text-[10px] uppercase text-gri-500 font-semibold">Üretim</div>
+            {fmt(Math.round(cost.productionCost))} ₺
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-gri-500 font-semibold">Operasyon</div>
+            {fmt(Math.round(cost.operationCost))} ₺
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil sim.</div>
+            {fmt(Math.round(cost.total))} ₺
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-gri-500 font-semibold">Birim (KDV dahil)</div>
+            {fmt(cost.unitPrice, 2)} ₺
+          </div>
         </div>
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">Operasyon</div>
-          {fmt(Math.round(cost.operationCost))} ₺
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil sim.</div>
-          {fmt(Math.round(cost.total))} ₺
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-gri-500 font-semibold">Birim (KDV dahil)</div>
-          {fmt(cost.unitPrice, 2)} ₺
-        </div>
-      </div>
+      )}
     </Card>
   );
 }
 
 function ProfitCompareStrip({
-  operatorCost,
   simulationTotal,
-  siteSell,
   siteFinal,
 }: {
-  operatorCost: number;
   simulationTotal: number;
-  siteSell: number;
   siteFinal: number;
 }) {
-  const configProfit = siteSell - operatorCost;
-  const pct =
-    operatorCost > 0 ? (configProfit / operatorCost) * 100 : 0;
-  const isProfit = configProfit >= 0;
+  const diff = siteFinal - simulationTotal;
+  const pct = simulationTotal > 0 ? (diff / simulationTotal) * 100 : 0;
+  const isProfit = diff >= 0;
 
   return (
     <Card
@@ -1097,22 +1104,25 @@ function ProfitCompareStrip({
           : "ring-kirmizi/30 bg-kirmizi-soft/40"
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
-        <span className="font-semibold text-lacivert">Maliyet vs Satış Karşılaştırması</span>
-        <div className="flex flex-wrap gap-4 tabular-nums">
-          <span>
-            Simülasyon (KDV hariç):{" "}
-            <strong>{fmt(Math.round(operatorCost))} ₺</strong>
+      <div className="space-y-1.5 font-mono text-[13px] tabular-nums text-lacivert">
+        <div className="flex justify-between gap-4">
+          <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
+            Simülasyon maliyeti
           </span>
           <span>
-            Simülasyon (KDV dahil):{" "}
-            <strong>{fmt(Math.round(simulationTotal))} ₺</strong>
+            {fmt(Math.round(simulationTotal))} ₺{" "}
+            <span className="text-gri-500 font-sans text-[12px]">(KDV dahil)</span>
           </span>
-          <span>
-            Site satış (KDV hariç): <strong>{fmt(Math.round(siteSell))} ₺</strong>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
+            Site satış fiyatı
           </span>
-          <span>
-            Site final (KDV dahil): <strong>{fmt(Math.round(siteFinal))} ₺</strong>
+          <span className="font-semibold">{fmt(Math.round(siteFinal))} ₺</span>
+        </div>
+        <div className="flex justify-between gap-4 border-t border-gri-200 pt-1.5">
+          <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
+            Fark
           </span>
           <span
             className={cn(
@@ -1120,8 +1130,8 @@ function ProfitCompareStrip({
               isProfit ? "text-pim-mercan-koyu" : "text-kirmizi"
             )}
           >
-            Fark: {isProfit ? "+" : ""}
-            {fmt(Math.round(configProfit))} ₺ ({Math.abs(pct).toFixed(0)}%{" "}
+            {isProfit ? "+" : ""}
+            {fmt(Math.round(diff))} ₺ ({Math.abs(pct).toFixed(0)}%{" "}
             {isProfit ? "kâr" : "zarar"})
           </span>
         </div>
