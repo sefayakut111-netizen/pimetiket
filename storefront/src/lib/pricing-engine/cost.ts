@@ -53,7 +53,7 @@ export type ProductionRates = FasonRates | UretimRates;
 export interface OperationRates {
   setup: number;
   packaging: number;
-  cargo: number;
+  cargo?: number;
   feePct: number;
 }
 
@@ -206,7 +206,8 @@ function computeOperationItems(
   const cargoMultiplier = isBigMode
     ? 1.5 + Math.max(envelopeCount - 1, 0) * 0.3
     : 1.0;
-  const cargoTotal = rates.cargo * cargoMultiplier;
+  const cargoRate = rates.cargo ?? 0;
+  const cargoTotal = cargoRate * cargoMultiplier;
 
   const items: CostBreakdownItem[] = [
     {
@@ -221,7 +222,7 @@ function computeOperationItems(
     },
   ];
 
-  if (rates.cargo > 0) {
+  if (cargoRate > 0) {
     items.push({
       name: "Kargo",
       formula: isBigMode
@@ -233,7 +234,7 @@ function computeOperationItems(
 
   return {
     items,
-    total: rates.setup + packagingTotal + (rates.cargo > 0 ? cargoTotal : 0),
+    total: rates.setup + packagingTotal + (cargoRate > 0 ? cargoTotal : 0),
   };
 }
 

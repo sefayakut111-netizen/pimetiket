@@ -31,8 +31,7 @@ export function quoteStickerFromConfig(
     cut: input.cut ?? "diecut",
     qty: input.qty,
     production: { mode: "fason", rate: 100 },
-    operation: { setup: 0, packaging: 0, cargo: 0, feePct: 0 },
-    margin: { marginPct: 0, vatPct: 0, minMarkupFraction: 0 },
+    operation: { setup: 0, packaging: 0, feePct: 0 },
   });
 
   if (!geomResult.ok) {

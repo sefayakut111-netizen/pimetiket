@@ -130,6 +130,12 @@ export function StickerCalculator({
   const [overhead, setOverhead] = useState<number>(DEFAULTS.overhead);
   const [depreciation, setDepreciation] = useState<number>(DEFAULTS.depreciation);
 
+  // Operatör simülasyonu — operasyon (cargo/margin yok)
+  const [setup, setSetup] = useState<number>(DEFAULTS.setup);
+  const [packaging, setPackaging] = useState<number>(DEFAULTS.packaging);
+  const [feePct, setFeePct] = useState<number>(DEFAULTS.feePct);
+  const [vatPct, setVatPct] = useState<number>(DEFAULTS.vatPct);
+
   // Site fiyat önizleme (live config malzeme/finiş)
   const [previewMaterialId, setPreviewMaterialId] = useState<string>(
     DEFAULT_PREVIEW_MATERIAL
@@ -187,7 +193,7 @@ export function StickerCalculator({
     };
   }, [liveConfig]);
 
-  // Hesap — geometri + fason simülasyonu (site fiyatından bağımsız)
+  // Hesap — sol: operatör maliyet simülasyonu (quoteSticker, margin/cargo yok)
   const result = quoteSticker({
     width,
     height,
@@ -205,9 +211,11 @@ export function StickerCalculator({
             overhead,
             depreciation,
           },
-    operation: { setup: 0, packaging: 0, cargo: 0, feePct: 0 },
-    margin: { marginPct: 0, vatPct: 0, minMarkupFraction: 0 },
+    operation: { setup, packaging, feePct },
+    vatPct,
   });
+
+  const operatorTier = findTier(qty);
 
   const liveSitePrice = useMemo(() => {
     if (!result.ok) return null;
@@ -376,6 +384,10 @@ export function StickerCalculator({
     labor,
     overhead,
     depreciation,
+    setup,
+    packaging,
+    feePct,
+    vatPct,
     customerType,
   };
 
@@ -393,6 +405,10 @@ export function StickerCalculator({
     setLabor(i.labor);
     setOverhead(i.overhead);
     setDepreciation(i.depreciation);
+    setSetup(i.setup);
+    setPackaging(i.packaging);
+    setFeePct(i.feePct);
+    setVatPct(i.vatPct);
     setCustomerType(i.customerType);
     setActiveProfileId(p.id);
     toast.success(`"${p.name}" profili yüklendi`);
@@ -411,6 +427,10 @@ export function StickerCalculator({
     setLabor(DEFAULTS.labor);
     setOverhead(DEFAULTS.overhead);
     setDepreciation(DEFAULTS.depreciation);
+    setSetup(DEFAULTS.setup);
+    setPackaging(DEFAULTS.packaging);
+    setFeePct(DEFAULTS.feePct);
+    setVatPct(DEFAULTS.vatPct);
     setPreviewMaterialId(DEFAULT_PREVIEW_MATERIAL);
     setPreviewFinishId(DEFAULT_PREVIEW_FINISH);
     setCustomerType(DEFAULTS.customerType);
@@ -617,41 +637,71 @@ export function StickerCalculator({
               </Card>
             )}
 
-            {/* Site fiyatı — live config */}
+            {/* Operatör operasyon — simülasyon (cargo/margin yok) */}
             <Card padding="p-5">
-              <SectionTitle accent="turuncu">② Site Fiyatı (Live Config)</SectionTitle>
+              <SectionTitle accent="turuncu">② Operasyon · Simülasyon</SectionTitle>
               <p className="text-[12px] text-gri-600 mb-4">
-                Operasyon, komisyon ve KDV live config&apos;ten gelir — Fiyatlar
-                sekmesinden düzenlenir.
+                Sol panel maliyet simülasyonu — müşteri fiyatından bağımsız.
               </p>
-              <div className="grid grid-cols-2 gap-3 mb-4 text-[13px] tabular-nums">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Hazırlık" hint="tek seferlik">
+                  <NumInput
+                    value={setup}
+                    onChange={setSetup}
+                    suffix="₺"
+                    step={10}
+                  />
+                </Field>
+                <Field label="Paketleme" hint="zarf/koli">
+                  <NumInput
+                    value={packaging}
+                    onChange={setPackaging}
+                    suffix="₺/zarf"
+                    step={5}
+                  />
+                </Field>
+                <Field label="İşlem Ücreti" hint="PSP gross-up">
+                  <NumInput
+                    value={feePct}
+                    onChange={setFeePct}
+                    suffix="%"
+                    step={0.5}
+                  />
+                </Field>
+                <Field label="KDV" hint="simülasyon gösterimi">
+                  <NumInput
+                    value={vatPct}
+                    onChange={setVatPct}
+                    suffix="%"
+                    step={1}
+                  />
+                </Field>
+              </div>
+            </Card>
+
+            {/* Site fiyat önizleme — malzeme/finiş */}
+            <Card padding="p-5">
+              <SectionTitle accent="yesil">③ Site Fiyat Önizleme</SectionTitle>
+              <p className="text-[12px] text-gri-600 mb-4">
+                Sağ panel müşteri fiyatı — Fiyatlar sekmesindeki alış/satış
+                (dual-price) + tier + KDV.
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-3 text-[13px] tabular-nums">
                 <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
                   <div className="text-[10px] uppercase text-gri-500 font-semibold">
-                    Setup
+                    Live setup
                   </div>
                   {fmt(liveStickerConfig.operation.setup)} ₺
                 </div>
                 <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
                   <div className="text-[10px] uppercase text-gri-500 font-semibold">
-                    Paketleme/adet
-                  </div>
-                  {liveStickerConfig.operation.packaging_per_unit.toFixed(3)} ₺
-                </div>
-                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
-                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
-                    Komisyon
-                  </div>
-                  {liveStickerConfig.operation.fee_pct}%
-                </div>
-                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
-                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
-                    KDV
+                    Live KDV
                   </div>
                   {liveStickerConfig.vat.pct}%
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Malzeme" hint="site fiyat önizleme">
+                <Field label="Malzeme" hint="m2_cost / m2_sell">
                   <select
                     value={previewMaterialId}
                     onChange={(e) => setPreviewMaterialId(e.target.value)}
@@ -664,7 +714,7 @@ export function StickerCalculator({
                     ))}
                   </select>
                 </Field>
-                <Field label="Finiş" hint="site fiyat önizleme">
+                <Field label="Finiş">
                   <select
                     value={previewFinishId}
                     onChange={(e) => setPreviewFinishId(e.target.value)}
@@ -697,13 +747,23 @@ export function StickerCalculator({
 
           {/* RIGHT — Output */}
           <div className="space-y-4">
-            {/* Price hero */}
-            <PriceHero
-              result={result}
-              qty={qty}
-              tier={displayTier}
-              liveSitePrice={liveSitePrice}
-            />
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <OperatorCostHero result={result} qty={qty} tier={operatorTier} />
+              <SitePriceHero
+                liveSitePrice={liveSitePrice}
+                qty={qty}
+                tier={displayTier}
+                totalM2={result.ok ? result.geometry.totalM2 : 0}
+              />
+            </div>
+
+            {result.ok && liveSitePrice?.ok && (
+              <ProfitCompareStrip
+                operatorCost={result.cost.baseCost}
+                siteSell={liveSitePrice.with_margin}
+                siteFinal={liveSitePrice.final}
+              />
+            )}
 
             {result.ok && (
               <LivePricingPanel
@@ -1067,134 +1127,182 @@ function LivePricingPanel({
   );
 }
 
-function PriceHero({
+function OperatorCostHero({
   result,
   qty,
   tier,
-  liveSitePrice,
 }: {
   result: ReturnType<typeof quoteSticker>;
   qty: number;
-  tier: StickerTier | { qty: number; multiplier: number; label: string };
-  liveSitePrice: ReturnType<typeof calculatePrice> | null;
+  tier: StickerTier;
 }) {
   if (!result.ok) {
     return (
-      <Card padding="p-7" className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white">
-        <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-          Site Fiyatı (KDV Dahil)
+      <Card padding="p-6" className="ring-1 ring-gri-200">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
+          Operatör Maliyet Simülasyonu
         </div>
-        <div className="text-[44px] font-bold leading-none tracking-tight">
-          —
-        </div>
-        <div className="mt-2 text-[13px] text-white/70">
-          {result.reason}
-        </div>
+        <div className="text-[32px] font-bold text-gri-400">—</div>
+        <p className="mt-2 text-[13px] text-gri-600">{result.reason}</p>
       </Card>
     );
   }
 
   const { cost, geometry } = result;
-  const useLive = liveSitePrice?.ok === true;
-  const displayTotal = useLive ? liveSitePrice.final : cost.total;
-  const displayUnit = useLive ? liveSitePrice.unit_price : cost.unitPrice;
-  const heroTitle = useLive
-    ? "Site Fiyatı (KDV Dahil)"
-    : "Operatör Maliyet (KDV Dahil)";
-
-  const breakdown = useLive
-    ? {
-        costBuy: liveSitePrice.cost_total,
-        sell: liveSitePrice.with_margin,
-        profit: liveSitePrice.with_margin - liveSitePrice.cost_total,
-        fee: liveSitePrice.with_fee - liveSitePrice.with_margin,
-        vat: liveSitePrice.final - liveSitePrice.with_fee,
-      }
-    : {
-        costBuy: cost.baseCost,
-        sell: cost.subtotal - cost.vatAmount,
-        profit: 0,
-        fee: cost.processingFee,
-        vat: cost.vatAmount,
-      };
-  const profitPct =
-    breakdown.costBuy > 0
-      ? (breakdown.profit / breakdown.costBuy) * 100
-      : 0;
 
   return (
     <Card
-      padding="p-7"
+      padding="p-6"
+      className="ring-1 ring-gri-300 bg-gradient-to-br from-gri-50 to-white"
+    >
+      <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
+        Operatör Maliyet Simülasyonu
+      </div>
+      <div className="text-[36px] font-bold tabular-nums text-lacivert leading-none">
+        {fmt(Math.round(cost.baseCost))}{" "}
+        <span className="text-[20px] text-gri-500">₺</span>
+      </div>
+      <p className="text-[12px] text-gri-600 mt-1">Üretim + operasyon (KDV hariç, markup yok)</p>
+      <p className="text-[12px] text-gri-500 mt-2 tabular-nums">
+        {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka ·{" "}
+        {geometry.totalM2.toFixed(3)} m² · Tier {tier.label}
+      </p>
+      <div className="mt-4 pt-4 border-t border-gri-200 grid grid-cols-2 gap-3 text-[13px] tabular-nums">
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">Üretim</div>
+          {fmt(Math.round(cost.productionCost))} ₺
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">Operasyon</div>
+          {fmt(Math.round(cost.operationCost))} ₺
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil sim.</div>
+          {fmt(Math.round(cost.total))} ₺
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">Birim (KDV dahil)</div>
+          {fmt(cost.unitPrice, 2)} ₺
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SitePriceHero({
+  liveSitePrice,
+  qty,
+  tier,
+  totalM2,
+}: {
+  liveSitePrice: ReturnType<typeof calculatePrice> | null;
+  qty: number;
+  tier: StickerTier | { qty: number; multiplier: number; label: string };
+  totalM2: number;
+}) {
+  if (!liveSitePrice?.ok) {
+    return (
+      <Card
+        padding="p-6"
+        className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white"
+      >
+        <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
+          Site Fiyatı (KDV Dahil)
+        </div>
+        <div className="text-[32px] font-bold">—</div>
+        <p className="mt-2 text-[13px] text-white/70">
+          {liveSitePrice && !liveSitePrice.ok
+            ? liveSitePrice.reason
+            : "Hesaplanamadı"}
+        </p>
+      </Card>
+    );
+  }
+
+  const profit = liveSitePrice.with_margin - liveSitePrice.cost_total;
+  const profitPct =
+    liveSitePrice.cost_total > 0
+      ? (profit / liveSitePrice.cost_total) * 100
+      : 0;
+  const fee = liveSitePrice.with_fee - liveSitePrice.with_margin;
+  const vat = liveSitePrice.final - liveSitePrice.with_fee;
+  const billableM2 = liveSitePrice.billable_m2 ?? totalM2;
+
+  return (
+    <Card
+      padding="p-6"
       className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white relative overflow-hidden"
     >
       <div
         aria-hidden
-        className="absolute -top-24 -right-24 w-[280px] h-[280px] rounded-full bg-pim-mercan/20 blur-2xl"
+        className="absolute -top-16 -right-16 w-[200px] h-[200px] rounded-full bg-pim-mercan/20 blur-2xl"
       />
-      <div className="relative grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-            {heroTitle}
-          </div>
-          <div className="text-[44px] md:text-[52px] font-bold leading-none tracking-tight tabular-nums">
-            {fmt(Math.round(displayTotal))}{" "}
-            <span className="text-pim-mercan text-[36px] font-semibold">
-              ₺
-            </span>
-          </div>
-          <div className="mt-2 text-[13px] text-white/70">
-            {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka · {geometry.totalM2.toFixed(3)} m²
-          </div>
+      <div className="relative">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
+          Site Fiyatı (KDV Dahil)
         </div>
-        <div className="md:text-right">
-          <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-            Birim Fiyat / KDV Dahil
-          </div>
-          <div className="text-[28px] md:text-[32px] font-semibold tracking-tight tabular-nums">
-            <span className="text-pim-mercan text-[22px] mr-1">₺</span>
-            {fmt(displayUnit, 2)}
-          </div>
-          <div className="mt-2 text-[13px] text-white/70 md:text-right">
-            / adet · Tier {tier.qty} ({tier.label})
-          </div>
+        <div className="text-[36px] font-bold tabular-nums leading-none">
+          {fmt(Math.round(liveSitePrice.final))}{" "}
+          <span className="text-pim-mercan text-[22px]">₺</span>
+        </div>
+        <p className="text-[12px] text-white/70 mt-1 tabular-nums">
+          {fmt(liveSitePrice.unit_price, 2)} ₺/adet · {billableM2.toFixed(3)} m² · Tier{" "}
+          {tier.label}
+        </p>
+        <div className="mt-4 pt-4 border-t border-white/15 grid grid-cols-2 md:grid-cols-5 gap-3">
+          <VatCell
+            label="Maliyet (Alış)"
+            value={`${fmt(Math.round(liveSitePrice.cost_total))} ₺`}
+          />
+          <VatCell
+            label="Satış Fiyatı"
+            value={`${fmt(Math.round(liveSitePrice.with_margin))} ₺`}
+          />
+          <VatCell
+            label="Kâr"
+            value={`${fmt(Math.round(profit))} ₺`}
+            subtitle={`%${profitPct.toFixed(0)} kâr`}
+          />
+          <VatCell label="PSP" value={`${fmt(Math.round(fee))} ₺`} />
+          <VatCell label="KDV" value={`${fmt(Math.round(vat))} ₺`} />
         </div>
       </div>
+    </Card>
+  );
+}
 
-      <div className="relative mt-6 pt-5 border-t border-white/15 grid grid-cols-2 md:grid-cols-5 gap-4">
-        <VatCell
-          label="Maliyet (Alış)"
-          value={`${fmt(Math.round(breakdown.costBuy))} ₺`}
-        />
-        <VatCell
-          label="Satış Fiyatı"
-          value={`${fmt(Math.round(breakdown.sell))} ₺`}
-        />
-        <VatCell
-          label="Kâr"
-          value={`${fmt(Math.round(breakdown.profit))} ₺`}
-          subtitle={useLive ? `%${profitPct.toFixed(0)} kâr` : undefined}
-        />
-        <VatCell
-          label="PSP Komisyon"
-          value={`${fmt(Math.round(breakdown.fee))} ₺`}
-        />
-        <VatCell label="KDV" value={`${fmt(Math.round(breakdown.vat))} ₺`} />
-      </div>
+function ProfitCompareStrip({
+  operatorCost,
+  siteSell,
+  siteFinal,
+}: {
+  operatorCost: number;
+  siteSell: number;
+  siteFinal: number;
+}) {
+  const configProfit = siteSell - operatorCost;
+  const pct =
+    operatorCost > 0 ? (configProfit / operatorCost) * 100 : 0;
 
-      {geometry.fit.producedQty > qty && (
-        <div className="relative mt-3 px-3 py-2 rounded-lg bg-pim-mercan/10 ring-1 ring-pim-mercan/30 text-[12px] flex justify-between items-center">
+  return (
+    <Card padding="p-4" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
+        <span className="font-semibold text-lacivert">Maliyet vs Satış Karşılaştırması</span>
+        <div className="flex flex-wrap gap-4 tabular-nums">
           <span>
-            📐 <strong className="text-pim-mercan">Üretim:</strong>{" "}
-            <strong>{geometry.fit.producedQty}</strong> · {qty} faturalanır ·{" "}
-            <strong className="text-yesil">
-              +{geometry.fit.producedQty - qty} hediye
-            </strong>
+            Operatör maliyet: <strong>{fmt(Math.round(operatorCost))} ₺</strong>
           </span>
-          <span className="tabular-nums text-white/50">
-            aşım %{(geometry.fit.overrun * 100).toFixed(1)}
+          <span>
+            Site satış (KDV hariç): <strong>{fmt(Math.round(siteSell))} ₺</strong>
+          </span>
+          <span>
+            Site final (KDV dahil): <strong>{fmt(Math.round(siteFinal))} ₺</strong>
+          </span>
+          <span className="text-pim-mercan-koyu font-bold">
+            Fark: {fmt(Math.round(configProfit))} ₺ ({pct.toFixed(0)}%)
           </span>
         </div>
-      )}
+      </div>
     </Card>
   );
 }
@@ -1465,9 +1573,30 @@ function CostBreakdown({
             ))}
             <BreakdownRow
               item={{
-                name: "Fason Simülasyon (referans)",
-                formula: "operatör üretim maliyeti",
+                name: "Üretim Ara Toplam",
+                formula: "① simülasyon",
                 amount: cost.productionCost,
+              }}
+              subtotal
+            />
+            {cost.operationItems.map((item, i) => (
+              <BreakdownRow key={`op-${i}`} item={item} />
+            ))}
+            {cost.operationCost > 0 && (
+              <BreakdownRow
+                item={{
+                  name: "Operasyon Ara Toplam",
+                  formula: "② simülasyon",
+                  amount: cost.operationCost,
+                }}
+                subtotal
+              />
+            )}
+            <BreakdownRow
+              item={{
+                name: "Operatör Simülasyon Maliyeti",
+                formula: "① + ②",
+                amount: cost.baseCost,
               }}
               highlight
             />

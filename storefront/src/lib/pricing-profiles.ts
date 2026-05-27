@@ -46,6 +46,11 @@ export interface ProfileInputSnapshot {
   labor: number;
   overhead: number;
   depreciation: number;
+  // Operatör simülasyonu (cargo/margin yok)
+  setup: number;
+  packaging: number;
+  feePct: number;
+  vatPct: number;
   customerType: CustomerType;
 }
 
@@ -271,6 +276,10 @@ export function getDefaultInput(): ProfileInputSnapshot {
     labor: 35,
     overhead: 45, // v0.4: SaaS recovery için 15 → 45
     depreciation: 10,
+    setup: 50,
+    packaging: 15,
+    feePct: 2.5,
+    vatPct: 20,
     customerType: "standart",
   };
 }

@@ -135,14 +135,9 @@ export function quoteCustomerSticker(
     operation: {
       setup: 0,
       packaging: 0,
-      cargo: 0,
       feePct: 0,
     },
-    margin: {
-      marginPct: 0,
-      vatPct: 20,
-      minMarkupFraction: 0,
-    },
+    vatPct: 20,
   });
 
   if (!result.ok) {

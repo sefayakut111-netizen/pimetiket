@@ -32,14 +32,23 @@ import {
 // Üst seviye yardımcı: tek çağrıda quote
 // ============================================================
 
+/** Sticker quoteSticker operasyon girdisi — cargo/margin yok */
+export interface StickerOperationRates {
+  setup: number;
+  packaging: number;
+  feePct: number;
+}
+
 export interface QuoteInput {
   width: number;
   height: number;
   cut: CutType;
   qty: number;
   production: ProductionRates;
-  operation: OperationRates;
-  margin: MarginConfig;
+  /** Operatör simülasyonu — cargo yok (sticker dual-price) */
+  operation: StickerOperationRates;
+  /** Operatör toplamında KDV (markup yok) */
+  vatPct?: number;
 }
 
 export type QuoteResult =
@@ -90,8 +99,12 @@ export function quoteSticker(input: QuoteInput): QuoteResult {
     geometry,
     requestedQty: Q,
     production: input.production,
-    operation: input.operation,
-    margin: input.margin,
+    operation: { ...input.operation, cargo: 0 },
+    margin: {
+      marginPct: 0,
+      vatPct: input.vatPct ?? 0,
+      minMarkupFraction: 0,
+    },
     tier,
   });
 
