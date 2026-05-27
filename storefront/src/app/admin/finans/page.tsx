@@ -37,7 +37,17 @@ import {
   formatCurrency,
   formatShortDate,
 } from "@/lib/admin-analytics";
+import { excludeTestOrders } from "@/lib/admin-order-filters";
 import { DetailReports } from "@/components/admin/reports/DetailReports";
+
+type FinancialSummary = {
+  grossOrderTotal: number;
+  collectedTotal: number;
+  cancelledOrderTotal: number;
+  pendingTotal: number;
+  refundedTotal: number;
+  gap: number;
+};
 
 type ReportTab = "overview" | "detail";
 
@@ -168,6 +178,9 @@ function AdminFinansPageInner() {
   const [reportTab, setReportTab] = useState<ReportTab>(() =>
     searchParams.get("tab") === "detail" ? "detail" : "overview"
   );
+  const [showTestOrders, setShowTestOrders] = useState(false);
+  const [financialSummary, setFinancialSummary] =
+    useState<FinancialSummary | null>(null);
 
   useEffect(() => {
     setReportTab(searchParams.get("tab") === "detail" ? "detail" : "overview");
@@ -194,24 +207,45 @@ function AdminFinansPageInner() {
       window.removeEventListener("pim_customer_orders_updated", refresh);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams({ range });
+    if (!showTestOrders) params.set("excludeTest", "1");
+    void fetch(`/api/admin/financials/summary?${params.toString()}`, {
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((j: FinancialSummary & { ok?: boolean }) => {
+        if (j.ok !== false) setFinancialSummary(j);
+      })
+      .catch(() => {
+        /* silent */
+      });
+  }, [range, showTestOrders]);
+
   const rangeWindow = getRangeWindow(range);
+
+  const catalogOrders = useMemo(
+    () => (showTestOrders ? orders : excludeTestOrders(orders)),
+    [orders, showTestOrders]
+  );
+  const hiddenTestCount = orders.length - catalogOrders.length;
 
   const inRange = useMemo(
     () =>
       range === "all"
-        ? orders
-        : orders.filter((o) => o.createdAt >= rangeWindow.start),
-    [orders, rangeWindow.start, range]
+        ? catalogOrders
+        : catalogOrders.filter((o) => o.createdAt >= rangeWindow.start),
+    [catalogOrders, rangeWindow.start, range]
   );
 
   const inPrevRange = useMemo(() => {
     if (range === "all") return [];
-    return orders.filter(
+    return catalogOrders.filter(
       (o) =>
         o.createdAt >= rangeWindow.prevStart &&
         o.createdAt < rangeWindow.prevEnd
     );
-  }, [orders, rangeWindow.prevStart, rangeWindow.prevEnd, range]);
+  }, [catalogOrders, rangeWindow.prevStart, rangeWindow.prevEnd, range]);
 
   // Sadece tamamlanan/üretimdeki/teslim olan siparişler "kazanç" sayılır.
   // İptal edilen ciro hesabına girmez.
@@ -295,6 +329,22 @@ function AdminFinansPageInner() {
             <p className="mt-1.5 text-base text-gri-700">
               Sipariş bazlı brüt ciro · KDV dahil tutarlar üzerinden
             </p>
+            {hiddenTestCount > 0 && (
+              <label className="mt-3 inline-flex items-center gap-2 text-[12.5px] text-gri-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showTestOrders}
+                  onChange={(e) => setShowTestOrders(e.target.checked)}
+                  className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+                />
+                Test siparislerini goster
+                {!showTestOrders && (
+                  <span className="text-gri-500">
+                    ({hiddenTestCount} test siparisi gizli)
+                  </span>
+                )}
+              </label>
+            )}
           </div>
 
           {/* Time range toggle */}
@@ -362,6 +412,57 @@ function AdminFinansPageInner() {
             </div>
           </div>
         </Card>
+
+        {financialSummary && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <Card padding="p-4">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+                Brut siparis tutari
+              </div>
+              <div className="text-[22px] font-bold mt-1 tabular-nums text-lacivert">
+                {formatCurrency(financialSummary.grossOrderTotal)}
+              </div>
+              <div className="text-[11px] mt-1 text-gri-700">orders tablosu</div>
+            </Card>
+            <Card padding="p-4">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+                Tahsil edilen
+              </div>
+              <div className="text-[22px] font-bold mt-1 tabular-nums text-yesil">
+                {formatCurrency(financialSummary.collectedTotal)}
+              </div>
+              <div className="text-[11px] mt-1 text-gri-700">payments (basarili)</div>
+            </Card>
+            <Card padding="p-4">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+                Fark
+              </div>
+              <div
+                className={cn(
+                  "text-[22px] font-bold mt-1 tabular-nums",
+                  Math.abs(financialSummary.gap) > 1
+                    ? "text-sari-koyu"
+                    : "text-gri-700"
+                )}
+              >
+                {formatCurrency(financialSummary.gap)}
+              </div>
+              <div className="text-[11px] mt-1 text-gri-700">
+                iptal + iade + bekleyen
+              </div>
+            </Card>
+            <Card padding="p-4">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
+                Iptal / iade / bekleyen
+              </div>
+              <div className="text-[12px] mt-2 space-y-1 text-gri-700 tabular-nums">
+                <div>Iptal: {formatCurrency(financialSummary.cancelledOrderTotal)}</div>
+                <div>Iade: {formatCurrency(financialSummary.refundedTotal)}</div>
+                <div>Bekleyen: {formatCurrency(financialSummary.pendingTotal)}</div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Ana KPI grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -692,7 +793,11 @@ function AdminFinansPageInner() {
           </>
         )}
 
-        {reportTab === "detail" && <DetailReports orders={orders} />}
+        {reportTab === "detail" && (
+          <DetailReports
+            orders={showTestOrders ? orders : excludeTestOrders(orders)}
+          />
+        )}
       </div>
     </main>
   );

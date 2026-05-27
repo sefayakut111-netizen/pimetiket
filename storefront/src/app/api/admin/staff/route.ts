@@ -32,6 +32,16 @@ export interface StaffRow {
   mfa_enabled: boolean;
 }
 
+function pickLatestActivity(
+  ...values: Array<string | null | undefined>
+): string | null {
+  const dates = values.filter(Boolean) as string[];
+  if (dates.length === 0) return null;
+  return dates.sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+  )[0];
+}
+
 export async function GET() {
   // Sadece super_admin çalışan listesini görebilir
   const auth = await assertPermission("staff", "view");
@@ -48,7 +58,7 @@ export async function GET() {
   // admin_role NOT NULL veya legacy role admin/staff olan profilleri çek
   const { data: profiles, error: profErr } = await supabase
     .from("profiles")
-    .select("id, display_name, admin_role, role")
+    .select("id, display_name, admin_role, role, updated_at")
     .or("admin_role.not.is.null,role.in.(admin,staff)");
 
   if (profErr) {
@@ -60,6 +70,7 @@ export async function GET() {
     display_name: string | null;
     admin_role: string | null;
     role: string | null;
+    updated_at: string | null;
   };
 
   const rows = (profiles ?? []) as ProfileRow[];
@@ -89,7 +100,10 @@ export async function GET() {
         display_name: p.display_name,
         admin_role: p.admin_role,
         legacy_role: p.role,
-        last_sign_in_at: user?.last_sign_in_at ?? null,
+        last_sign_in_at: pickLatestActivity(
+          user?.last_sign_in_at,
+          p.updated_at
+        ),
         email_confirmed_at: user?.email_confirmed_at ?? null,
         mfa_enabled: mfaEnabled,
       };
@@ -104,5 +118,6 @@ export async function GET() {
       (a.admin_role ?? "z").localeCompare(b.admin_role ?? "z")
     ),
     roles: roles ?? [],
+    currentUserId: auth.user.id,
   });
 }

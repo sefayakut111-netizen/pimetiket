@@ -367,7 +367,6 @@ export default function OdemePage() {
   // Sefa 20 May v68 UX paket B #12: Kupon collapse — default kapalı,
   // "İndirim kodun var mı?" linkine tıklayınca açılır. Kupon zaten
   // uygulanmışsa otomatik açık tut.
-  const [couponExpanded, setCouponExpanded] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponResult, setCouponResult] = useState<CouponValidateResult | null>(
     null
@@ -1637,22 +1636,13 @@ export default function OdemePage() {
                   </span>
                 </div>
 
-                {/* Sefa 20 May v68 UX paket B #12: Kupon collapse */}
+                {/* Kupon alani — her zaman gorunur */}
                 <div className="pt-2">
-                  {!couponExpanded && !couponResult?.ok ? (
-                    <button
-                      type="button"
-                      onClick={() => setCouponExpanded(true)}
-                      className="text-[12.5px] text-pim-mercan font-semibold hover:underline inline-flex items-center gap-1"
-                      aria-expanded={false}
-                      aria-controls="coupon-form"
-                    >
-                      <span aria-hidden="true">🎁</span>
+                  <div id="coupon-form">
+                    <p className="text-[12px] font-semibold text-gri-700 mb-2">
                       {c.couponTitle}
-                    </button>
-                  ) : (
-                    <div id="coupon-form">
-                      <div className="flex gap-2">
+                    </p>
+                    <div className="flex gap-2">
                         <Input
                           value={couponCode}
                           onChange={(e) => {
@@ -1671,7 +1661,6 @@ export default function OdemePage() {
                             onClick={() => {
                               setCouponCode("");
                               setCouponResult(null);
-                              setCouponExpanded(false);
                             }}
                           >
                             {c.couponRemove}
@@ -1719,7 +1708,6 @@ export default function OdemePage() {
                         </div>
                       )}
                     </div>
-                  )}
                 </div>
               </div>
 

@@ -20,6 +20,7 @@ import {
   Eyebrow,
   useToast,
   Skeleton,
+  Modal,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { StaffRow } from "@/app/api/admin/staff/route";
@@ -72,6 +73,8 @@ export default function AdminCalisanlarPage() {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<StaffRow | null>(null);
 
   async function fetchStaff() {
     setLoading(true);
@@ -84,6 +87,7 @@ export default function AdminCalisanlarPage() {
       }
       setStaff(data.staff ?? []);
       setRoles(data.roles ?? []);
+      setCurrentUserId(data.currentUserId ?? null);
     } catch (e) {
       toast.error(`Yükleme hatası: ${(e as Error).message}`);
     } finally {
@@ -116,14 +120,21 @@ export default function AdminCalisanlarPage() {
     }
   }
 
-  async function handleRemove(userId: string, email: string | null) {
-    if (
-      !confirm(
-        `${email ?? userId} çalışan listesinden çıkarılacak. Devam edilsin mi?`
-      )
-    ) {
+  function requestRemove(target: StaffRow) {
+    const superAdminCount = staff.filter(
+      (s) => s.admin_role === "super_admin"
+    ).length;
+    if (target.admin_role === "super_admin" && superAdminCount <= 1) {
+      toast.error("Tek super admin kaldirilamaz.");
       return;
     }
+    setRemoveTarget(target);
+  }
+
+  async function confirmRemove() {
+    if (!removeTarget) return;
+    const userId = removeTarget.user_id;
+    const email = removeTarget.email;
     setUpdating(userId);
     try {
       const res = await fetch(`/api/admin/staff/${userId}`, {
@@ -131,10 +142,11 @@ export default function AdminCalisanlarPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error ?? "Kaldırılamadı");
+        toast.error(data.error ?? "Kaldirilamadi");
         return;
       }
-      toast.success("Çalışan kaldırıldı");
+      toast.success(`${email ?? userId} calisan listesinden cikarildi`);
+      setRemoveTarget(null);
       await fetchStaff();
     } finally {
       setUpdating(null);
@@ -158,6 +170,11 @@ export default function AdminCalisanlarPage() {
           </p>
         </div>
       </div>
+
+      <p className="text-sm text-sari-koyu bg-sari-soft/30 rounded-lg p-3 mb-4">
+        Calisan eklemek icin: kisi /auth sayfasindan hesap acar, sonra burada
+        rolunu atarsiniz. Token bazli davet sistemi yakin zamanda eklenecek.
+      </p>
 
       {/* Rol açıklamaları */}
       <Card padding="p-5" className="mb-6">
@@ -308,12 +325,16 @@ export default function AdminCalisanlarPage() {
                           </select>
                           <button
                             type="button"
-                            onClick={() => handleRemove(s.user_id, s.email)}
-                            disabled={updating === s.user_id}
+                            onClick={() => requestRemove(s)}
+                            disabled={
+                              updating === s.user_id ||
+                              (s.user_id === currentUserId &&
+                                s.admin_role === "super_admin")
+                            }
                             className="text-[12px] text-kirmizi-koyu hover:underline disabled:opacity-50"
-                            title="Çalışanlardan çıkar"
+                            title="Calisanlardan cikar"
                           >
-                            Kaldır
+                            Kaldir
                           </button>
                         </div>
                       </td>
@@ -325,6 +346,29 @@ export default function AdminCalisanlarPage() {
           </table>
         </div>
       </Card>
+
+      <Modal
+        open={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        title="Calisani kaldir"
+      >
+        <p className="text-sm text-gri-700">
+          {removeTarget?.email ?? removeTarget?.user_id} calisan listesinden
+          cikarilacak. Devam edilsin mi?
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setRemoveTarget(null)}>
+            Iptal
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!!updating}
+            onClick={() => void confirmRemove()}
+          >
+            {updating ? "Kaldiriliyor…" : "Kaldir"}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Bilgilendirme — davet akışı henüz yok */}
       <div className="mt-6 rounded-lg bg-mavi-soft p-4 text-[12.5px] text-mavi-koyu">

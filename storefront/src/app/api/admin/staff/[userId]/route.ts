@@ -68,6 +68,26 @@ export async function PATCH(
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
+  if (newRole === null) {
+    const { data: target } = await supabase
+      .from("profiles")
+      .select("admin_role")
+      .eq("id", userId)
+      .maybeSingle();
+    if (target?.admin_role === "super_admin") {
+      const { count } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("admin_role", "super_admin");
+      if ((count ?? 0) <= 1) {
+        return NextResponse.json(
+          { error: "Tek super admin kaldirilamaz." },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   // Profil güncelle
   const { error: updErr } = await supabase
     .from("profiles")
@@ -118,6 +138,25 @@ export async function DELETE(
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("admin_role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (target?.admin_role === "super_admin") {
+    const { count } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("admin_role", "super_admin");
+    if ((count ?? 0) <= 1) {
+      return NextResponse.json(
+        { error: "Tek super admin kaldırılamaz." },
+        { status: 400 }
+      );
+    }
+  }
 
   const { error } = await supabase
     .from("profiles")

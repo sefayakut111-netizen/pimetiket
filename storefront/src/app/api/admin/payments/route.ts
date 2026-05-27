@@ -27,6 +27,27 @@ type PaymentRow = {
   psp_raw: Record<string, unknown> | null;
 };
 
+type OrderRow = {
+  id: string;
+  user_id: string | null;
+  total: number;
+  address: { name?: string; email?: string; phone?: string } | null;
+};
+
+type ProfileRow = {
+  id: string;
+  display_name: string | null;
+  phone: string | null;
+};
+
+function pickLatestIso(...values: Array<string | null | undefined>): string | null {
+  const dates = values.filter(Boolean) as string[];
+  if (dates.length === 0) return null;
+  return dates.sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+  )[0];
+}
+
 export async function GET(req: Request) {
   const auth = await assertPermission("finans", "view");
   if (!auth) {
@@ -60,34 +81,38 @@ export async function GET(req: Request) {
 
   const { data: orders } = await admin
     .from("orders")
-    .select("id, user_id, total")
+    .select("id, user_id, total, address")
     .in("id", orderIds.length ? orderIds : ["__none__"]);
 
+  const orderRows = (orders ?? []) as OrderRow[];
   const userIds = [
-    ...new Set(
-      ((orders ?? []) as { user_id: string }[]).map((o) => o.user_id).filter(Boolean)
-    ),
-  ];
+    ...new Set(orderRows.map((o) => o.user_id).filter(Boolean)),
+  ] as string[];
 
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, email, full_name")
+    .select("id, display_name, phone")
     .in("id", userIds.length ? userIds : ["__none__"]);
 
-  const orderMap = new Map(
-    ((orders ?? []) as Array<{ id: string; user_id: string; total: number }>).map(
-      (o) => [o.id, o]
-    )
-  );
+  const emailByUser = new Map<string, string>();
+  for (const uid of userIds) {
+    try {
+      const { data: u } = await admin.auth.admin.getUserById(uid);
+      if (u?.user?.email) emailByUser.set(uid, u.user.email);
+    } catch {
+      /* skip */
+    }
+  }
+
+  const orderMap = new Map(orderRows.map((o) => [o.id, o]));
   const profileMap = new Map(
-    ((profiles ?? []) as Array<{ id: string; email: string | null; full_name: string | null }>).map(
-      (p) => [p.id, p]
-    )
+    ((profiles ?? []) as ProfileRow[]).map((p) => [p.id, p])
   );
 
   let filtered = rows.map((p) => {
     const order = orderMap.get(p.order_id);
-    const profile = order ? profileMap.get(order.user_id) : undefined;
+    const profile = order?.user_id ? profileMap.get(order.user_id) : undefined;
+    const addr = order?.address;
     return {
       id: p.id,
       orderId: p.order_id,
@@ -100,8 +125,11 @@ export async function GET(req: Request) {
       createdAt: p.created_at,
       completedAt: p.completed_at,
       failureReason: p.failure_reason,
-      customerEmail: profile?.email ?? null,
-      customerName: profile?.full_name ?? null,
+      customerEmail:
+        (order?.user_id ? emailByUser.get(order.user_id) : null) ??
+        addr?.email ??
+        null,
+      customerName: profile?.display_name ?? addr?.name ?? null,
       orderTotal: order?.total ?? null,
       pspRaw: p.psp_raw,
     };

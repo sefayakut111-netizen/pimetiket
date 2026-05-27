@@ -54,6 +54,22 @@ const PUBLIC_PATHS: ReadonlyArray<string> = [
 ];
 
 const AUTH_PATHS: ReadonlyArray<string> = ["/auth", "/sifre-sifirla"];
+const ADMIN_ACTIVITY_COOKIE = "pim_admin_activity";
+const ADMIN_ACTIVITY_THROTTLE_MS = 15 * 60 * 1000;
+
+async function touchAdminProfileActivity(userId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return;
+
+  const admin = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  await admin
+    .from("profiles")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", userId);
+}
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -326,6 +342,29 @@ export async function updateSession(request: NextRequest) {
           redirectUrl.pathname = "/admin";
           redirectUrl.searchParams.set("denied", pathModule);
           return NextResponse.redirect(redirectUrl);
+        }
+      }
+
+      const lastTouchRaw = request.cookies.get(ADMIN_ACTIVITY_COOKIE)?.value;
+      const lastTouchMs = lastTouchRaw ? Number(lastTouchRaw) : 0;
+      if (
+        !lastTouchMs ||
+        Date.now() - lastTouchMs > ADMIN_ACTIVITY_THROTTLE_MS
+      ) {
+        try {
+          await touchAdminProfileActivity(user.id);
+          supabaseResponse.cookies.set(
+            ADMIN_ACTIVITY_COOKIE,
+            String(Date.now()),
+            {
+              maxAge: 3600,
+              path: "/",
+              httpOnly: true,
+              sameSite: "lax",
+            }
+          );
+        } catch {
+          /* sessiz */
         }
       }
     } catch {

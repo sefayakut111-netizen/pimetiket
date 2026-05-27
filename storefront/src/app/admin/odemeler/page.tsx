@@ -206,7 +206,28 @@ export default function AdminOdemelerPage() {
                           {p.status} / {p.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gri-500">{p.pspProvider}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Link
+                            href={`/admin/siparisler/${p.orderId}`}
+                            className="inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold text-pim-mercan hover:bg-pim-mercan-tint/30"
+                          >
+                            Siparis
+                          </Link>
+                          {p.pspTransactionId && (
+                            <button
+                              type="button"
+                              className="inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold text-gri-700 hover:bg-gri-100"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(p.pspTransactionId!);
+                                toast.success("Ref kopyalandi");
+                              }}
+                            >
+                              Ref kopyala
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

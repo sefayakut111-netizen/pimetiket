@@ -219,9 +219,14 @@ export default function AdminKuponlarPage() {
   };
 
   const topPopularCode = useMemo(() => {
-    if (analytics?.topCoupons[0]?.code) return analytics.topCoupons[0].code;
+    const fromAnalytics = analytics?.topCoupons[0];
+    if (fromAnalytics && fromAnalytics.usedCount > 0) {
+      return `${fromAnalytics.code} (${fromAnalytics.usedCount} kullanim)`;
+    }
     const sorted = [...coupons].sort((a, b) => b.usedCount - a.usedCount);
-    return sorted[0]?.code ?? "—";
+    const top = sorted[0];
+    if (!top || top.usedCount === 0) return "Henuz kullanim yok";
+    return `${top.code} (${top.usedCount} kullanim)`;
   }, [analytics, coupons]);
 
   const trendPoints = useMemo(
