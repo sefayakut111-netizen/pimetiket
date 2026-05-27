@@ -118,6 +118,7 @@ async function deleteOrder(orderId) {
   await supabase.from("proof_validations").delete().eq("order_id", orderId);
   await supabase.from("design_quality_checks").delete().eq("order_id", orderId);
   await supabase.from("returns").delete().eq("order_id", orderId);
+  await supabase.from("payments").delete().eq("order_id", orderId);
   await supabase.from("order_items").delete().eq("order_id", orderId);
   await supabase.from("design_files").delete().eq("order_id", orderId);
   await supabase.from("order_events").delete().eq("order_id", orderId);
