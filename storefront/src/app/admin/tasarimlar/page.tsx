@@ -1,31 +1,20 @@
-/**
- * Pim Etiket — /admin/tasarimlar
- *
- * Tasarım kütüphanesi — admin/staff için tüm müşteri yüklemeleri.
- *
- * İçerik:
- *   - Status filtreleri (uploaded / analyzing / qc_* / approved)
- *   - Grid: 4 sütun thumbnail kart
- *   - Her kart: önizleme, müşteri, sipariş, ürün, AI flag rozeti, tarih
- *   - Karta tıklayınca sipariş detayına gider
- *   - Search: orderId / müşteri / dosya adı
- *
- * Veri kaynağı: GET /api/admin/designs (RLS: admin/staff role)
- */
-
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@/components/Icon";
 import { Pim } from "@/components/Pim";
-import { Card, Input, Eyebrow } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { AdminDesignRow } from "@/app/api/admin/designs/route";
 import {
+  isTestOrderLike,
+} from "@/lib/admin-order-filters";
+import {
   DESIGN_FILE_STATUS_FILTERS,
   DESIGN_FILE_STATUS_META,
+  formatAiCheckSummary,
   type DesignFileStatusFilter,
 } from "@/lib/design-file-status";
 
@@ -47,22 +36,24 @@ function formatDate(iso: string): string {
   });
 }
 
+function isTestDesign(d: AdminDesignRow): boolean {
+  return isTestOrderLike({ id: d.orderId, customer: d.customerName });
+}
+
 export default function AdminTasarimlarPage() {
-  const [designs, setDesigns] = useState<AdminDesignRow[]>([]);
+  const toast = useToast();
+  const [allDesigns, setAllDesigns] = useState<AdminDesignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const [showTestDesigns, setShowTestDesigns] = useState(false);
+  const [repairing, setRepairing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const url =
-      filter === "all"
-        ? "/api/admin/designs"
-        : `/api/admin/designs?status=${filter}`;
+  const loadDesigns = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetch(url)
+    return fetch("/api/admin/designs?limit=500")
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
@@ -74,20 +65,44 @@ export default function AdminTasarimlarPage() {
         }>;
       })
       .then((data) => {
-        if (cancelled) return;
-        setDesigns(data.designs);
+        setAllDesigns(data.designs);
         setLoading(false);
       })
       .catch((e: Error) => {
-        if (cancelled) return;
         setError(e.message);
-        setDesigns([]);
+        setAllDesigns([]);
         setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [filter]);
+  }, []);
+
+  useEffect(() => {
+    void loadDesigns();
+  }, [loadDesigns]);
+
+  const visibleCatalog = useMemo(
+    () =>
+      showTestDesigns ? allDesigns : allDesigns.filter((d) => !isTestDesign(d)),
+    [allDesigns, showTestDesigns]
+  );
+
+  const hiddenTestCount = useMemo(
+    () => allDesigns.filter(isTestDesign).length,
+    [allDesigns]
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: visibleCatalog.length };
+    for (const f of DESIGN_FILE_STATUS_FILTERS) {
+      if (f.id === "all") continue;
+      counts[f.id] = visibleCatalog.filter((d) => d.status === f.id).length;
+    }
+    return counts;
+  }, [visibleCatalog]);
+
+  const designs = useMemo(() => {
+    if (filter === "all") return visibleCatalog;
+    return visibleCatalog.filter((d) => d.status === filter);
+  }, [visibleCatalog, filter]);
 
   const filtered = useMemo(() => {
     if (!search) return designs;
@@ -101,41 +116,78 @@ export default function AdminTasarimlarPage() {
     );
   }, [designs, search]);
 
-  // KPI: AI  ratio (qc_passed / total qc_*)
-  const qcDone = designs.filter(
+  const stuckAnalyzingCount = useMemo(
+    () =>
+      allDesigns.filter((d) => {
+        if (d.status !== "analyzing") return false;
+        const ageMs = Date.now() - new Date(d.uploadedAt).getTime();
+        return ageMs > 60 * 60 * 1000;
+      }).length,
+    [allDesigns]
+  );
+
+  const qcDone = visibleCatalog.filter(
     (d) => d.status !== "uploaded" && d.status !== "approved"
   );
   const passRate =
     qcDone.length > 0
-      ? (designs.filter((d) => d.status === "qc_passed").length /
+      ? (visibleCatalog.filter((d) => d.status === "qc_passed").length /
           qcDone.length) *
         100
       : 0;
 
+  const repairStuck = async () => {
+    if (repairing) return;
+    setRepairing(true);
+    try {
+      const res = await fetch("/api/admin/designs/repair-stuck", {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        repaired?: number;
+        ordersTriggered?: number;
+        error?: string;
+      };
+      if (!json.ok) {
+        toast.error(json.error ?? "Onarım başarısız");
+        return;
+      }
+      toast.success(
+        `${json.repaired ?? 0} dosya yeniden kuyruğa alındı (${json.ordersTriggered ?? 0} sipariş)`
+      );
+      await loadDesigns();
+    } catch {
+      toast.error("Onarım isteği gönderilemedi");
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1320px] px-6">
-        {/* Header */}
         <div className="mb-6">
           <Eyebrow>Kütüphane</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
             Tasarımlar
           </h1>
-          {/* Sefa 21 May v68 (site denetim P1 #6): loading sırasında
-              "0 aktif tasarım" flash etmesin → skeleton göster */}
+          <p className="mt-2 text-xs text-gri-500">
+            Tasarım dosyaları teslimden 90 gün sonra otomatik imha edilir
+            (KVKK m.7).
+          </p>
           {loading ? (
             <div className="mt-2 h-5 w-[220px] rounded bg-gri-100 animate-pulse" />
           ) : (
             <p className="mt-1.5 text-base text-gri-700">
-              {designs.length} aktif tasarım dosyası ·{" "}
+              {visibleCatalog.length} aktif tasarım dosyası ·{" "}
               {qcDone.length > 0
-                ? `AI  oranı: %${passRate.toFixed(0)}`
+                ? `AI oranı: %${passRate.toFixed(0)}`
                 : "AI kontrolü bekliyor"}
             </p>
           )}
         </div>
 
-        {/* Filtre + arama */}
         <Card padding="p-4" className="mb-5">
           <div className="flex flex-wrap gap-2 items-center">
             {DESIGN_FILE_STATUS_FILTERS.map((f) => (
@@ -150,27 +202,51 @@ export default function AdminTasarimlarPage() {
                     : "bg-gri-100 text-gri-700 hover:bg-gri-200"
                 )}
               >
-                {f.label}
+                {f.label} ({statusCounts[f.id] ?? 0})
               </button>
             ))}
-            <div className="ml-auto w-full sm:w-auto sm:min-w-[280px] relative">
-              <Input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Sipariş, müşteri, dosya ara…"
-                className="!h-11 !pl-10"
-              />
-              <Icon.Search
-                size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gri-500"
-              />
+            <div className="ml-auto flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {stuckAnalyzingCount > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={repairing}
+                  onClick={() => void repairStuck()}
+                >
+                  {repairing
+                    ? "Isleniyor…"
+                    : `Takili dosyalari yeniden isle (${stuckAnalyzingCount})`}
+                </Button>
+              )}
+              <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showTestDesigns}
+                  onChange={(e) => setShowTestDesigns(e.target.checked)}
+                  className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+                />
+                Test dosyalarini goster
+                {hiddenTestCount > 0 && !showTestDesigns && (
+                  <span className="text-gri-500">({hiddenTestCount} gizli)</span>
+                )}
+              </label>
+              <div className="relative w-full sm:w-auto sm:min-w-[280px]">
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Siparis, musteri, dosya ara…"
+                  className="!h-11 !pl-10"
+                />
+                <Icon.Search
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gri-500"
+                />
+              </div>
             </div>
           </div>
         </Card>
 
-        {/* Sonuç — Sefa 20 May v68: grid → yatay satır liste (15+ tasarımda
-            kalabalıkı önler, lineer scan kolaylığı). Mobile 2 satıra düşer. */}
         {loading ? (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -183,7 +259,7 @@ export default function AdminTasarimlarPage() {
         ) : error ? (
           <Card padding="p-10" className="text-center">
             <Icon.Info size={32} className="text-kirmizi mx-auto mb-2" />
-            <h3 className="text-lg font-semibold">Liste yüklenemedi</h3>
+            <h3 className="text-lg font-semibold">Liste yuklenemedi</h3>
             <p className="text-[13px] text-gri-700 mt-1">{error}</p>
           </Card>
         ) : filtered.length === 0 ? (
@@ -191,13 +267,13 @@ export default function AdminTasarimlarPage() {
             <Pim pose="think" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
               {designs.length === 0
-                ? "Henüz tasarım yok"
-                : "Bu aramada sonuç yok"}
+                ? "Henuz tasarim yok"
+                : "Bu aramada sonuc yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
               {designs.length === 0
-                ? "Müşteriler dosya yükledikçe burada görünecek."
-                : "Filtreyi gevşet veya aramayı temizle."}
+                ? "Musteriler dosya yukledikce burada gorunecek."
+                : "Filtreyi gevset veya aramayi temizle."}
             </p>
           </Card>
         ) : (
@@ -213,12 +289,7 @@ export default function AdminTasarimlarPage() {
                       color: "text-gri-700",
                       bg: "bg-gri-100",
                     };
-              const errFlags = d.aiCheckFlags.filter(
-                (f) => f.kind === "error"
-              ).length;
-              const warnFlags = d.aiCheckFlags.filter(
-                (f) => f.kind === "warning"
-              ).length;
+              const aiSummary = formatAiCheckSummary(d.status, d.aiCheckFlags);
               const isImage = d.mimeType.startsWith("image/");
               return (
                 <Link
@@ -226,7 +297,6 @@ export default function AdminTasarimlarPage() {
                   href={`/admin/siparisler/${d.orderId}`}
                   className="group flex items-center gap-3 rounded-xl bg-white ring-1 ring-gri-200 hover:ring-pim-mercan hover:bg-gri-50 transition-colors p-2.5"
                 >
-                  {/* Thumbnail 64×56 */}
                   <div className="relative w-16 h-14 rounded-lg bg-gri-50 overflow-hidden grid place-items-center shrink-0">
                     {d.previewUrl && isImage ? (
                       <Image
@@ -247,7 +317,6 @@ export default function AdminTasarimlarPage() {
                     )}
                   </div>
 
-                  {/* Orta blok — dosya + müşteri + sipariş + config */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span
@@ -269,29 +338,26 @@ export default function AdminTasarimlarPage() {
                         </>
                       )}
                     </div>
+                    {aiSummary && (
+                      <p
+                        className={cn(
+                          "text-[11px] mt-0.5 truncate max-w-[480px]",
+                          d.status === "qc_passed" || d.status === "approved"
+                            ? "text-yesil"
+                            : d.status === "qc_failed"
+                              ? "text-kirmizi"
+                              : "text-sari-koyu"
+                        )}
+                        title={aiSummary}
+                      >
+                        {d.status === "qc_passed" || d.status === "approved"
+                          ? `AI · ${aiSummary}`
+                          : aiSummary}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Sağ blok — status + flags + boyut + tarih (md+: yan yana,
-                      mobile: ikinci satıra düşer) */}
                   <div className="hidden md:flex items-center gap-3 shrink-0">
-                    {/* Flag rozetleri */}
-                    {errFlags > 0 && (
-                      <span
-                        className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi text-white text-[10px] font-bold"
-                        title={`${errFlags} hata`}
-                      >
-                         {errFlags}
-                      </span>
-                    )}
-                    {warnFlags > 0 && (
-                      <span
-                        className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-sari text-white text-[10px] font-bold"
-                        title={`${warnFlags} uyarı`}
-                      >
-                        ! {warnFlags}
-                      </span>
-                    )}
-                    {/* Status */}
                     <span
                       className={cn(
                         "inline-flex items-center h-[22px] px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap",
@@ -301,19 +367,19 @@ export default function AdminTasarimlarPage() {
                     >
                       {meta.label}
                     </span>
-                    {/* Boyut */}
                     <span className="text-[11px] text-gri-700 tabular-nums w-[60px] text-right">
                       {formatSize(d.sizeBytes)}
                     </span>
-                    {/* Tarih + version */}
                     <span className="text-[11px] text-gri-500 tabular-nums w-[100px] text-right">
                       {formatDate(d.uploadedAt)}
                       <span className="ml-1 text-gri-400">v{d.version}</span>
                     </span>
-                    <Icon.ChevR size={12} className="text-gri-400 group-hover:text-pim-mercan" />
+                    <Icon.ChevR
+                      size={12}
+                      className="text-gri-400 group-hover:text-pim-mercan"
+                    />
                   </div>
 
-                  {/* Mobile sağ blok — sadece status + tarih kısaca */}
                   <div className="md:hidden flex flex-col items-end gap-1 shrink-0">
                     <span
                       className={cn(

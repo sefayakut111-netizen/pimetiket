@@ -73,3 +73,26 @@ export const DESIGN_FILE_STATUS_FILTERS: {
     label: DESIGN_FILE_STATUS_META[id].label,
   })),
 ];
+
+/** Admin tasarim karti — AI kontrol ozeti */
+export function formatAiCheckSummary(
+  status: string,
+  flags: Array<{ kind: string; message: string }>
+): string | null {
+  if (status === "uploaded" || status === "analyzing") return null;
+
+  const errors = flags.filter((f) => f.kind === "error");
+  const warnings = flags.filter((f) => f.kind === "warning");
+  const ok = flags.filter((f) => f.kind === "ok");
+
+  if (status === "qc_passed" || status === "approved") {
+    const parts = ok.map((f) => f.message).filter(Boolean).slice(0, 2);
+    return parts.length > 0 ? parts.join(" · ") : "Kontrol tamam";
+  }
+
+  if (errors.length > 0) return errors[0].message;
+  if (warnings.length > 0) return warnings[0].message;
+  if (status === "qc_failed") return "Sorun tespit edildi";
+  if (status === "qc_warned") return "Uyarı var";
+  return null;
+}

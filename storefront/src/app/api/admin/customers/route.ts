@@ -15,35 +15,15 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAdminCustomerRows } from "@/lib/admin-customers-list";
+import type {
+  AdminCustomerRow,
+  AdminCustomerWithSegment,
+} from "@/lib/admin-customer-types";
+
+export type { AdminCustomerRow, AdminCustomerWithSegment };
+
 const DAY = 24 * 60 * 60 * 1000;
-
-export interface AdminCustomerRow {
-  user_id: string;
-  email: string;
-  email_confirmed_at: string | null;
-  last_sign_in_at: string | null;
-  registered_at: string;
-  banned_until: string | null;
-  display_name: string | null;
-  phone: string | null;
-  invoice_type: "individual" | "corporate" | null;
-  order_count: number;
-  active_orders: number;
-  total_revenue: number;
-  avg_order: number;
-  last_order_at: string | null;
-  last_order_id: string | null;
-  first_order_at: string | null;
-  total_loyalty_granted: number;
-  has_2fa: boolean;
-  tags: string[];
-  notes_count: number;
-  marketing_subscribed: boolean;
-}
-
-export interface AdminCustomerWithSegment extends AdminCustomerRow {
-  segment: "vip" | "repeat" | "new" | "risk" | "lost" | "no_order";
-}
 
 function deriveSegment(
   row: AdminCustomerRow
@@ -82,37 +62,44 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient();
 
-  // View'dan tüm kayıtları çek — segment hesabı server-side (TR locale + 90/180 gün hesabı)
-  // Limit + offset üst seviyede uygulanır (segment filter sonrası)
-  const { data, error } = await admin
+  let data: AdminCustomerRow[] | null = null;
+  let fetchSource: "view" | "fallback" = "view";
+
+  const viewResult = await admin
     .from("v_admin_customers")
     .select("*")
     .returns<AdminCustomerRow[]>();
 
-  if (error) {
-    // Sefa 18 May v68 (admin UX denetim — kullanıcı dostu hata):
-    // v_admin_customers view eksikse veya RLS policy çakışırsa
-    // generic "query_failed" gösteriliyordu. Şimdi:
-    //   - Code/mesaj loglanır (Sentry'ye)
-    //   - Friendly UI mesajı + admin için detail
-    console.error("[admin/customers] view query failed:", error);
-    const isViewMissing =
-      error.code === "42P01" || // PostgreSQL: undefined_table/view
-      error.message.toLowerCase().includes("does not exist");
-    return NextResponse.json(
-      {
-        error: isViewMissing
-          ? "Müşteri view'u kurulu değil — Migration 046'yı production'a push et."
-          : "Müşteri verisi şu an çekilemiyor. Teknik ekip bilgilendirildi.",
-        code: error.code,
-        detail: error.message,
-        hint: isViewMissing
-          ? "npx supabase db push --linked çalıştır"
-          : "/admin/audit-log'a göz at, son sorgu girişimleri orada",
-      },
-      { status: 500 }
-    );
+  if (viewResult.error) {
+    console.error("[admin/customers] view query failed, using fallback:", viewResult.error);
+    try {
+      data = await fetchAdminCustomerRows(admin);
+      fetchSource = "fallback";
+    } catch (fallbackErr) {
+      console.error("[admin/customers] fallback failed:", fallbackErr);
+      const error = viewResult.error;
+      const isViewMissing =
+        error.code === "42P01" ||
+        error.message.toLowerCase().includes("does not exist");
+      return NextResponse.json(
+        {
+          error: isViewMissing
+            ? "Müşteri view'u kurulu değil — Migration 046'yı production'a push et."
+            : "Müşteri verisi şu an çekilemiyor. Teknik ekip bilgilendirildi.",
+          code: error.code,
+          detail: error.message,
+          hint: isViewMissing
+            ? "npx supabase db push --linked çalıştır"
+            : "/admin/audit-log'a göz at, son sorgu girişimleri orada",
+        },
+        { status: 500 }
+      );
+    }
+  } else {
+    data = viewResult.data;
   }
+
+  void fetchSource;
 
   let rows: AdminCustomerWithSegment[] = (data ?? []).map((r) => ({
     ...r,

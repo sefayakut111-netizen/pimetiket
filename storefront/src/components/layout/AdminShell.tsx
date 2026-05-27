@@ -56,12 +56,11 @@ interface AdminBadges {
   aiQc: number;
   proof: number;
   activePartners: number;
-  // Sefa 16 May v3 — Domain denetçi agent sistemi
   auditorsPending: number;
   auditorsCritical: number;
-  // Sefa 22 May v68 Faz 4 — Proof yardım ticket'ları (open + in_progress)
   helpRequests: number;
   supportOpen: number;
+  pendingReviews: number;
 }
 
 function aggregateBadges(
@@ -69,7 +68,8 @@ function aggregateBadges(
   auditorsPending: number = 0,
   auditorsCritical: number = 0,
   helpRequests: number = 0,
-  supportOpen: number = 0
+  supportOpen: number = 0,
+  pendingReviews: number = 0
 ): AdminBadges {
   let aiQc = 0;
   let proof = 0;
@@ -90,6 +90,7 @@ function aggregateBadges(
     auditorsCritical,
     helpRequests,
     supportOpen,
+    pendingReviews,
   };
 }
 
@@ -165,6 +166,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     auditorsCritical: 0,
     helpRequests: 0,
     supportOpen: 0,
+    pendingReviews: 0,
   });
   const [switching, setSwitching] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -227,6 +229,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     let adminOrders: CustomerOrder[] = [];
     let helpRequestsCount = 0;
     let supportOpenCount = 0;
+    let pendingReviewsCount = 0;
     let activePartnersCount = 0;
 
     // Sefa 21 May v68 (site denetim P2 #13): Sidebar badge'i admin-wide
@@ -255,7 +258,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
           auditorCounts.pending,
           auditorCounts.critical,
           helpRequestsCount,
-          supportOpenCount
+          supportOpenCount,
+          pendingReviewsCount
         ),
         activePartners: activePartnersCount,
       });
@@ -344,6 +348,24 @@ export function AdminShell({ children }: { children: ReactNode }) {
     void fetchSupportTickets();
     const supportInterval = setInterval(fetchSupportTickets, 60_000);
 
+    const fetchPendingReviews = async () => {
+      try {
+        const res = await fetch("/api/admin/reviews", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          reviews?: Array<{ status?: string }>;
+        };
+        pendingReviewsCount = (json.reviews ?? []).filter(
+          (r) => r.status === "pending"
+        ).length;
+        refresh();
+      } catch {
+        /* sessiz */
+      }
+    };
+    void fetchPendingReviews();
+    const reviewsInterval = setInterval(fetchPendingReviews, 60_000);
+
     return () => {
       window.removeEventListener("pim_customer_orders_updated", fetchAdminOrders);
       clearInterval(interval);
@@ -351,6 +373,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       clearInterval(partnersInterval);
       clearInterval(helpInterval);
       clearInterval(supportInterval);
+      clearInterval(reviewsInterval);
     };
   }, []);
 
@@ -434,6 +457,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/yorumlar",
             label: "Yorumlar",
             icon: <Icon.Star size={16} />,
+            badge: badges.pendingReviews,
+            badgeAccent: badges.pendingReviews > 0,
             module: "reviews",
           },
           {

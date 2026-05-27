@@ -1,8 +1,27 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
+
+type SupportInsert = Database["public"]["Tables"]["support_tickets"]["Insert"];
+
+const VALID_CATEGORIES = [
+  "genel",
+  "siparis",
+  "tasarim",
+  "kargo",
+  "iade",
+  "teknik",
+  "fiyat",
+] as const;
+
+const PRIORITY_PREFIX: Record<string, string> = {
+  normal: "",
+  yuksek: "[Yüksek] ",
+  acil: "[Acil] ",
+};
 
 export async function GET(req: Request) {
   const auth = await assertPermission("help_requests", "view");
@@ -64,4 +83,86 @@ export async function GET(req: Request) {
   }));
 
   return NextResponse.json({ ok: true, items });
+}
+
+export async function POST(req: Request) {
+  const auth = await assertPermission("help_requests", "create");
+  if (!auth) {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+
+  let body: {
+    subject?: string;
+    message?: string;
+    category?: string;
+    order_id?: string;
+    user_id?: string;
+    guest_email?: string;
+    guest_name?: string;
+    priority?: string;
+  };
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const rawSubject = body.subject?.trim();
+  const message = body.message?.trim();
+  if (!rawSubject || !message) {
+    return NextResponse.json(
+      { ok: false, error: "Konu ve mesaj zorunlu" },
+      { status: 400 }
+    );
+  }
+
+  const priority = body.priority ?? "normal";
+  const prefix = PRIORITY_PREFIX[priority] ?? "";
+  const subject = prefix + rawSubject;
+
+  const category = VALID_CATEGORIES.includes(
+    body.category as (typeof VALID_CATEGORIES)[number]
+  )
+    ? body.category!
+    : "genel";
+
+  const admin = createAdminClient();
+  const row: SupportInsert = body.user_id
+    ? {
+        user_id: body.user_id,
+        subject,
+        message,
+        category,
+        order_id: body.order_id?.trim() || null,
+        status: "open",
+      }
+    : {
+        guest_email: body.guest_email?.trim().toLowerCase() || null,
+        guest_name: body.guest_name?.trim() || null,
+        subject,
+        message,
+        category,
+        order_id: body.order_id?.trim() || null,
+        status: "open",
+      };
+
+  if (!body.user_id && !row.guest_email) {
+    return NextResponse.json(
+      { ok: false, error: "Müşteri veya e-posta zorunlu" },
+      { status: 400 }
+    );
+  }
+
+  const { data, error } = await admin
+    .from("support_tickets")
+    .insert(row)
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("[admin/support] create:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, id: data.id });
 }

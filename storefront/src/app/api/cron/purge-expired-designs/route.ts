@@ -54,7 +54,14 @@ export async function GET(req: Request) {
         auth: { autoRefreshToken: false, persistSession: false },
       });
 
-  // ---- 1) Süresi dolmuş tasarımları işaretle (soft-delete) ----
+  // ---- 1) KVKK saklama suresi — iptal/teslim adaylarini isaretle ----
+  try {
+    await admin.rpc("fn_apply_kvkk_order_design_retention");
+  } catch (err) {
+    console.warn("[purge-expired-designs] kvkk retention apply skip:", err);
+  }
+
+  // ---- 2) Süresi dolmuş tasarımları işaretle (soft-delete) ----
   const { data: markedData, error: markErr } = await admin.rpc(
     "fn_mark_expired_designs_for_deletion"
   );

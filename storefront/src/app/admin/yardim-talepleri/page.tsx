@@ -155,9 +155,8 @@ export default function AdminYardimTalepleriPage() {
             Müşteri yardım talepleri
           </h1>
           <p className="mt-1 text-sm text-gri-700">
-            Prova aşamasında "Ekibimizden yardım iste" tıklayan müşterilerin
-            ticket'ları. Cevap yazınca müşteri /onay sayfasında okur ve karar
-            verir.
+            Prova aşamasında &quot;Ekibimizden yardım iste&quot; tıklayan
+            müşterilerin talepleri.
           </p>
         </div>
       </div>

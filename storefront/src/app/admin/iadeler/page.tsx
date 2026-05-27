@@ -115,6 +115,11 @@ export default function AdminIadelerPage() {
             {items.length} iade talebi · {pending} incelemede ·{" "}
             {refunded} tamamlandı
           </p>
+          <p className="text-sm text-gri-600 mt-4">
+            İade = teslim edildikten sonra müşteri geri göndermesi. İptal =
+            sipariş üretime girmeden vazgeçme. İptal edilen siparişleri
+            Siparişler sayfasından görebilirsin.
+          </p>
         </div>
 
         {/* KPI strip — Sefa 21 May v68 (site denetim P2 #15): Reddedildi
