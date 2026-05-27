@@ -567,7 +567,7 @@ export default function AdminProvaPage() {
           <span>✅ {last30Stats.approved} onaylandı</span>
           <span>❌ {last30Stats.cancelled} iptal</span>
           {last30Stats.avgDays > 0 && (
-            <span>⏱ Sipariş → onay toplam: {last30Stats.avgDays.toFixed(1)} gün</span>
+            <span>Sipariş → onay arası ort.: {last30Stats.avgDays.toFixed(1)} gün</span>
           )}
         </div>
 
