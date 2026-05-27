@@ -121,7 +121,6 @@ export function StickerCalculator({
   const [liveStickerConfig, setLiveStickerConfig] = useState<ProfileConfig>(
     liveConfig ?? FALLBACK_STICKER_CONFIG
   );
-  const [liveConfigLoaded, setLiveConfigLoaded] = useState(!!liveConfig);
 
   useEffect(() => {
     setNextLotPreview(peekNextLot("A"));
@@ -130,7 +129,6 @@ export function StickerCalculator({
   useEffect(() => {
     if (liveConfig) {
       setLiveStickerConfig(liveConfig);
-      setLiveConfigLoaded(true);
     }
   }, [liveConfig]);
 
@@ -147,9 +145,7 @@ export function StickerCalculator({
           setLiveStickerConfig(j.live);
         }
       } catch {
-        /* fallback config kalÄ±r */
-      } finally {
-        if (!cancelled) setLiveConfigLoaded(true);
+        /* fallback config kalır */
       }
     })();
     return () => {
