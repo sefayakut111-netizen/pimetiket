@@ -52,7 +52,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
     aspectRatio: "4:3",
     dimensions: { width: 800, height: 600 },
     category: "anasayfa",
-    previewPath: "/",
+    previewPath: "/etiket",
   },
   {
     id: "home_sticker_card",
@@ -62,7 +62,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
     aspectRatio: "4:3",
     dimensions: { width: 800, height: 600 },
     category: "anasayfa",
-    previewPath: "/",
+    previewPath: "/sticker",
   },
 
   // ============ Sayfalar ============
@@ -106,6 +106,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
     aspectRatio: "1.91:1",
     dimensions: { width: 1200, height: 630 },
     category: "sosyal",
+    previewPath: "/",
   },
   {
     id: "og_home",
@@ -115,6 +116,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
     aspectRatio: "1.91:1",
     dimensions: { width: 1200, height: 630 },
     category: "sosyal",
+    previewPath: "/",
   },
 
   // ============ Blog ============

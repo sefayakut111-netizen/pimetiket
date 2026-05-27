@@ -19,7 +19,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { StatusDot, type DotColor } from "@/components/admin/ui";
-import { slugifyTitle } from "@/lib/blog-slug";
+import { slugifyTitle, calculateReadMinutes } from "@/lib/blog-slug";
 import type { BlogPostRow, BlogPostStatus } from "@/app/api/admin/blog/route";
 
 type StatusFilter = "all" | BlogPostStatus;
@@ -73,6 +73,10 @@ function formatDate(iso: string | null): string {
   });
 }
 
+function postReadMinutes(post: BlogPostRow): number {
+  return post.read_minutes ?? calculateReadMinutes(post.body_tr);
+}
+
 export default function AdminBlogPage() {
   const toast = useToast();
   const [posts, setPosts] = useState<BlogPostRow[]>([]);
@@ -82,6 +86,8 @@ export default function AdminBlogPage() {
   const [editing, setEditing] = useState<BlogPostRow | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BlogPostRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -166,17 +172,23 @@ export default function AdminBlogPage() {
   };
 
   const removePost = async (post: BlogPostRow) => {
-    if (!confirm(`"${post.title_tr}" silinsin mi?`)) return;
-    const res = await fetch(`/api/admin/blog?id=${encodeURIComponent(post.id)}`, {
-      method: "DELETE",
-    });
-    const json = (await res.json()) as { ok?: boolean };
-    if (!json.ok) {
-      toast.error("Silinemedi");
-      return;
+    setDeleting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/blog?id=${encodeURIComponent(post.id)}`,
+        { method: "DELETE" }
+      );
+      const json = (await res.json()) as { ok?: boolean };
+      if (!json.ok) {
+        toast.error("Silinemedi");
+        return;
+      }
+      toast.info("Silindi");
+      setDeleteTarget(null);
+      await refresh();
+    } finally {
+      setDeleting(false);
     }
-    toast.info("Silindi");
-    await refresh();
   };
 
   return (
@@ -239,6 +251,9 @@ export default function AdminBlogPage() {
                   <th className="px-4 py-3 font-semibold">Başlık</th>
                   <th className="px-4 py-3 font-semibold">Kategori</th>
                   <th className="px-4 py-3 font-semibold">Durum</th>
+                  <th className="px-4 py-3 font-semibold">SEO</th>
+                  <th className="px-4 py-3 font-semibold">OG</th>
+                  <th className="px-4 py-3 font-semibold">Okuma</th>
                   <th className="px-4 py-3 font-semibold">Tarih</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -252,6 +267,33 @@ export default function AdminBlogPage() {
                     </td>
                     <td className="px-4 py-3 text-gri-700">{p.category}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                    <td className="px-4 py-3 text-xs text-gri-500 max-w-[180px]">
+                      {p.seo_description?.trim() ? (
+                        <span className="text-yesil font-semibold" title={p.seo_description}>
+                          SEO tamam
+                          <span className="block text-gri-600 font-normal truncate mt-0.5">
+                            {p.seo_description.slice(0, 60)}
+                            {p.seo_description.length > 60 ? "…" : ""}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-kirmizi font-semibold">SEO eksik</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gri-500">
+                      {p.cover_image_url ? (
+                        <img
+                          src={p.cover_image_url}
+                          alt=""
+                          className="w-8 h-8 rounded object-cover ring-1 ring-gri-200"
+                        />
+                      ) : (
+                        <span className="text-gri-500">Görsel yok</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gri-600 tabular-nums">
+                      {postReadMinutes(p)} dk
+                    </td>
                     <td className="px-4 py-3 text-gri-700 tabular-nums">
                       {formatDate(p.published_at ?? p.created_at)}
                     </td>
@@ -259,7 +301,7 @@ export default function AdminBlogPage() {
                       <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
                         Düzenle
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => void removePost(p)}>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(p)}>
                         Sil
                       </Button>
                     </td>
@@ -366,6 +408,31 @@ export default function AdminBlogPage() {
             </Button>
             <Button variant="primary" disabled={saving} onClick={() => void savePost(true)}>
               Yayınla
+            </Button>
+          </div>
+        </Modal>
+
+        <Modal
+          open={deleteTarget != null}
+          onClose={() => setDeleteTarget(null)}
+          title="Yazıyı sil"
+          maxWidthClassName="max-w-md"
+        >
+          <p className="text-[13px] text-gri-700 leading-relaxed">
+            &quot;{deleteTarget?.title_tr}&quot; yazısını silmek istediğinizden
+            emin misiniz? Bu işlem geri alınamaz.
+          </p>
+          <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-gri-200">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              İptal
+            </Button>
+            <Button
+              variant="primary"
+              disabled={deleting || !deleteTarget}
+              className="!bg-kirmizi hover:!bg-kirmizi/90"
+              onClick={() => deleteTarget && void removePost(deleteTarget)}
+            >
+              {deleting ? "Siliniyor…" : "Sil"}
             </Button>
           </div>
         </Modal>

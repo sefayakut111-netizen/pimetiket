@@ -117,6 +117,18 @@ export default function AdminUrunlerPage() {
     void reorderTab(reordered);
   };
 
+  const setCardSortOrder = (id: string, raw: number) => {
+    const target = Math.round(raw);
+    if (!Number.isFinite(target)) return;
+    const clamped = Math.max(1, Math.min(tabCards.length, target));
+    const fromIdx = tabCards.findIndex((c) => c.id === id);
+    if (fromIdx === -1 || fromIdx === clamped - 1) return;
+    const reordered = [...tabCards];
+    const [removed] = reordered.splice(fromIdx, 1);
+    reordered.splice(clamped - 1, 0, removed);
+    void reorderTab(reordered);
+  };
+
   const toggleActive = async (card: ProductCard) => {
     await patchCard(card.id, { is_active: !card.is_active });
     toast.success(
@@ -266,14 +278,38 @@ export default function AdminUrunlerPage() {
                           {card.is_active ? "Aktif" : "Pasif"}
                         </span>
                         <span className="text-gri-500">
-                          Sıra: {card.sort_order}
+                          Konum: {idx + 1}/{tabCards.length}
                         </span>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex flex-col items-end gap-2 shrink-0">
-                      {/* Sıra ↑↓ */}
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] text-gri-600 font-semibold uppercase tracking-wide">
+                          Sıra
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={tabCards.length}
+                          defaultValue={card.sort_order}
+                          key={`${card.id}-${card.sort_order}`}
+                          onBlur={(e) =>
+                            setCardSortOrder(
+                              card.id,
+                              parseInt(e.target.value, 10)
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-14 h-8 text-center text-[13px] rounded-lg ring-1 ring-gri-200 tabular-nums"
+                          aria-label={`${card.title_tr} sıra numarası`}
+                        />
+                      </div>
                       <div className="inline-flex rounded-lg ring-1 ring-gri-200 overflow-hidden">
                         <button
                           type="button"

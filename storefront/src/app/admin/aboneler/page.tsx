@@ -1,13 +1,5 @@
 /**
  * /admin/aboneler — Email abone listesi
- *
- * Lead magnet + bülten kayıtları. Sefa Resend gelene kadar burayı izler;
- * Resend aktifleşince welcome maili otomatikleşir.
- *
- * Özellikler:
- *   - Source filtresi (sablonlar / newsletter / order_complete / vs)
- *   - CSV export (Resend import için)
- *   - Welcome mail bekleyenler işaretli (welcomeSentAt null)
  */
 
 "use client";
@@ -18,14 +10,15 @@ import { Icon } from "@/components/Icon";
 import { Card, Button, Eyebrow, Skeleton, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { StatusDot } from "@/components/admin/ui";
+import { isTestSubscriber } from "@/lib/admin-order-filters";
 import type { SubscriberRow } from "@/app/api/admin/subscribers/route";
 
-const SOURCE_LABEL: Record<string, { label: string; emoji: string }> = {
-  sablonlar: { label: "Şablon", emoji: "" },
-  newsletter: { label: "Bülten", emoji: "" },
-  order_complete: { label: "Sipariş sonrası", emoji: "" },
-  gated_download: { label: "İçerik", emoji: "" },
-  manual_import: { label: "Manuel", emoji: "" },
+const SOURCE_LABEL: Record<string, { label: string }> = {
+  sablonlar: { label: "Şablon" },
+  newsletter: { label: "Bülten" },
+  order_complete: { label: "Sipariş sonrası" },
+  gated_download: { label: "İçerik" },
+  manual_import: { label: "Manuel" },
 };
 
 const FILTERS = [
@@ -51,21 +44,18 @@ function timeAgo(ts: string): string {
 }
 
 export default function AdminAbonelerPage() {
-  const [data, setData] = useState<SubscriberRow[]>([]);
+  const [allSubscribers, setAllSubscribers] = useState<SubscriberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showTestSubscribers, setShowTestSubscribers] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const url =
-      filter === "all"
-        ? "/api/admin/subscribers"
-        : `/api/admin/subscribers?source=${filter}`;
-    fetch(url)
+    fetch("/api/admin/subscribers")
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
@@ -75,7 +65,7 @@ export default function AdminAbonelerPage() {
       })
       .then((body) => {
         if (cancelled) return;
-        setData(body.subscribers);
+        setAllSubscribers(body.subscribers);
         setLoading(false);
       })
       .catch((e: Error) => {
@@ -86,7 +76,34 @@ export default function AdminAbonelerPage() {
     return () => {
       cancelled = true;
     };
-  }, [filter]);
+  }, []);
+
+  const visibleCatalog = useMemo(
+    () =>
+      showTestSubscribers
+        ? allSubscribers
+        : allSubscribers.filter((s) => !isTestSubscriber(s.email)),
+    [allSubscribers, showTestSubscribers]
+  );
+
+  const hiddenTestCount = useMemo(
+    () => allSubscribers.filter((s) => isTestSubscriber(s.email)).length,
+    [allSubscribers]
+  );
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: visibleCatalog.length };
+    for (const f of FILTERS) {
+      if (f.id === "all") continue;
+      counts[f.id] = visibleCatalog.filter((s) => s.source === f.id).length;
+    }
+    return counts;
+  }, [visibleCatalog]);
+
+  const data = useMemo(() => {
+    if (filter === "all") return visibleCatalog;
+    return visibleCatalog.filter((s) => s.source === filter);
+  }, [visibleCatalog, filter]);
 
   const filtered = useMemo(() => {
     if (!search) return data;
@@ -98,10 +115,12 @@ export default function AdminAbonelerPage() {
     );
   }, [data, search]);
 
-  const pendingWelcome = data.filter(
+  const pendingWelcome = visibleCatalog.filter(
     (s) => !s.welcomeSentAt && s.subscribed
   ).length;
-  const sablonlarCount = data.filter((s) => s.source === "sablonlar").length;
+  const sablonlarCount = visibleCatalog.filter(
+    (s) => s.source === "sablonlar"
+  ).length;
 
   const csvUrl =
     filter === "all"
@@ -111,23 +130,21 @@ export default function AdminAbonelerPage() {
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
           <div>
             <Eyebrow>Email Listesi</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
               Aboneler
             </h1>
-            {/* Sefa 21 May v68 (admin denetim P2 #16 + site denetim P1 #8):
-                dangling separator bug fix + loading sırasında "0 aktif abone"
-                flash'ını önle. */}
             {loading ? (
               <div className="mt-2 h-5 w-[220px] rounded bg-gri-100 animate-pulse" />
             ) : (
               <p className="mt-1.5 text-base text-gri-700">
                 {[
-                  `${data.length} aktif abone`,
-                  pendingWelcome > 0 ? `${pendingWelcome} welcome mail bekliyor` : null,
+                  `${visibleCatalog.length} aktif abone`,
+                  pendingWelcome > 0
+                    ? `${pendingWelcome} welcome mail bekliyor`
+                    : null,
                   sablonlarCount > 0 ? `${sablonlarCount} şablon kaydı` : null,
                 ]
                   .filter(Boolean)
@@ -154,7 +171,6 @@ export default function AdminAbonelerPage() {
           </a>
         </div>
 
-        {/* Resend bekleme uyarısı */}
         {pendingWelcome > 0 && (
           <Card padding="p-4" className="mb-6 bg-sari-soft ring-sari/20">
             <div className="flex items-start gap-3">
@@ -164,17 +180,19 @@ export default function AdminAbonelerPage() {
                   Resend mail otomasyonu henüz aktif değil
                 </h2>
                 <p className="text-[12.5px] text-gri-700 mt-0.5 leading-relaxed">
-                  {pendingWelcome} kişi welcome maili bekliyor. Mali pencere
-                  açılınca Resend aktifleştirilecek — o zaman bu kuyruk
-                  otomatik boşalır. Bu arada CSV'yi indirip manuel mail
-                  atabilirsin.
+                  {pendingWelcome} kişi welcome maili bekliyor. Resend
+                  dashboard&apos;dan domain doğrulayıp Vercel&apos;de{" "}
+                  <code className="text-[11px] bg-white/60 px-1 rounded">
+                    RESEND_API_KEY
+                  </code>{" "}
+                  aktifleştirince kuyruk otomatik boşalır. Bu arada CSV&apos;yi
+                  indirip manuel mail atabilirsin.
                 </p>
               </div>
             </div>
           </Card>
         )}
 
-        {/* Filtre + arama */}
         <Card padding="p-4" className="mb-5">
           <div className="flex flex-wrap gap-2 items-center">
             {FILTERS.map((f) => (
@@ -189,10 +207,22 @@ export default function AdminAbonelerPage() {
                     : "bg-gri-100 text-gri-700 hover:bg-gri-200"
                 )}
               >
-                {f.label}
+                {f.label} ({tabCounts[f.id] ?? 0})
               </button>
             ))}
-            <div className="ml-auto w-full sm:w-auto sm:min-w-[280px] relative">
+            <label className="ml-auto flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showTestSubscribers}
+                onChange={(e) => setShowTestSubscribers(e.target.checked)}
+                className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+              />
+              Test abonelerini göster
+              {hiddenTestCount > 0 && !showTestSubscribers && (
+                <span className="text-gri-500">({hiddenTestCount} gizli)</span>
+              )}
+            </label>
+            <div className="w-full sm:w-auto sm:min-w-[280px] relative">
               <Input
                 type="search"
                 value={search}
@@ -208,7 +238,6 @@ export default function AdminAbonelerPage() {
           </div>
         </Card>
 
-        {/* Tablo */}
         {loading ? (
           <Skeleton.AdminTable rows={4} />
         ) : error ? (
@@ -221,9 +250,7 @@ export default function AdminAbonelerPage() {
           <Card padding="p-12" className="text-center">
             <Pim pose="wait" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
-              {data.length === 0
-                ? "Henüz abone yok"
-                : "Bu aramada sonuç yok"}
+              {data.length === 0 ? "Henüz abone yok" : "Bu aramada sonuç yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
               {data.length === 0
@@ -257,7 +284,6 @@ export default function AdminAbonelerPage() {
                 {filtered.map((s) => {
                   const meta = SOURCE_LABEL[s.source] ?? {
                     label: s.source,
-                    emoji: "•",
                   };
                   return (
                     <tr key={s.id} className="hover:bg-gri-50">
@@ -273,7 +299,6 @@ export default function AdminAbonelerPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 h-[22px] px-2 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-bold">
-                          <span>{meta.emoji}</span>
                           {meta.label}
                         </span>
                       </td>

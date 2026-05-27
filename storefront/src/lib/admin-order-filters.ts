@@ -34,3 +34,9 @@ export function excludeTestOrderLikes<T extends TestOrderLike>(
 ): T[] {
   return orders.filter((o) => !isTestOrderLike(o));
 }
+
+/** Email aboneleri — test/QA kayitlari */
+export function isTestSubscriber(email: string): boolean {
+  const e = email.toLowerCase();
+  return e.includes("+test") || e.includes("test");
+}
