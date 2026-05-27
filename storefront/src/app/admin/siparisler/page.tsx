@@ -1205,15 +1205,6 @@ function AdminSiparislerPageInner() {
           </div>
         )}
 
-        {sorted.length > 0 && (
-          <p className="mt-3 text-[12px] text-gri-500 text-right">
-            {sorted.length} sipariş · Toplam{" "}
-            <span className="font-semibold text-lacivert">
-              {fmt(sorted.reduce((s, o) => s + o.total, 0))} ₺
-            </span>
-          </p>
-        )}
-
       </div>
     </main>
   );
