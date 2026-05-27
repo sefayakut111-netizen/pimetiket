@@ -92,9 +92,8 @@ export async function POST() {
     return NextResponse.json({
       ok: false,
       error:
-        "result" in result
-          ? String(result)
-          : "Resend reddetti — büyük ihtimalle domain pending. Resend dashboard kontrol et.",
+        result.error ??
+        "Resend reddetti — büyük ihtimalle domain pending. Resend dashboard kontrol et.",
       hint: "https://resend.com/domains adresinden pimetiket.com status'unu kontrol et",
     });
   }
@@ -102,7 +101,7 @@ export async function POST() {
   return NextResponse.json({
     ok: true,
     recipients,
-    messageId: (result as { messageId?: string }).messageId ?? null,
+    messageId: result.id ?? null,
     sentAt: now,
   });
 }

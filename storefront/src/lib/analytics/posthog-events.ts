@@ -1,18 +1,10 @@
 /**
  * PostHog event helper — tipli, anti-duplicate, consent-aware.
- *
- * Analytics.tsx PostHog snippet'i sayfa açılışında window.posthog kuruyor;
- * bu modül o instance'a güvenli erişim sağlıyor:
- *   - Consent yoksa veya posthog yüklenmediyse no-op
- *   - Event isim havuzu tek yerde — tipo yok
- *   - PII redaction (email, telefon) — gerekirse event-spesifik açılır
- *
- * Kullanım:
- *   import { track } from "@/lib/analytics/posthog-events";
- *   track("add_to_cart", { product: "sticker", total: 240 });
  */
 
-type PimEvent =
+import { hasConsent } from "@/lib/cookie-consent";
+
+export type PimEvent =
   | "add_to_cart"
   | "remove_from_cart"
   | "begin_checkout"
@@ -42,6 +34,7 @@ export interface PostHogClient {
   capture: (event: string, props?: Record<string, unknown>) => void;
   identify: (id: string, props?: Record<string, unknown>) => void;
   reset: () => void;
+  opt_out_capturing?: () => void;
   isFeatureEnabled?: (key: string) => boolean | undefined;
   getFeatureFlag?: (key: string) => string | boolean | undefined;
   onFeatureFlags?: (cb: () => void) => void;
@@ -54,9 +47,10 @@ declare global {
   }
 }
 
-/** Window.posthog yüklenmiş + consent verilmiş mi? */
+/** Window.posthog yüklenmiş + analytics consent verilmiş mi? */
 function getPostHog(): PostHogClient | null {
   if (typeof window === "undefined") return null;
+  if (!hasConsent("analytics")) return null;
   const ph = window.posthog;
   if (!ph || typeof ph.capture !== "function") return null;
   return ph;

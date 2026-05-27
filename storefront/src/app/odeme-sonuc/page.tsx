@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
@@ -14,6 +14,7 @@ import { Button, Card } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { track } from "@/lib/analytics/posthog-events";
 
 const EXTRA = {
   tr: {
@@ -177,6 +178,61 @@ function OdemeSonucInner() {
   const orderId = resolvedOrderId;
 
   const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const purchaseTracked = useRef(false);
+  const failTracked = useRef(false);
+
+  useEffect(() => {
+    if (status !== "fail" || failTracked.current) return;
+    failTracked.current = true;
+    track("payment_failed", {
+      reason: sp.get("reason") ?? "payment_failed",
+    });
+  }, [status, sp]);
+
+  useEffect(() => {
+    if (!order || purchaseTracked.current || status !== "success") return;
+    const postPaid =
+      order.status === "paid" ||
+      order.status === "qc_pending" ||
+      order.status === "proof_pending" ||
+      order.status === "proof_generating" ||
+      order.status === "proof_validating" ||
+      order.status === "human_review" ||
+      order.status === "proof_approved" ||
+      order.status === "in_production" ||
+      order.status === "ready_to_ship" ||
+      order.status === "fason_assigned" ||
+      order.status === "shipped" ||
+      order.status === "delivered";
+    if (!postPaid) return;
+
+    purchaseTracked.current = true;
+    track("purchase", {
+      order_id: order.id,
+      total: order.total,
+      subtotal: order.subtotal,
+      shipping: order.shipping,
+      item_count: order.items.length,
+      payment_method: order.payment.method,
+      source: "paytr_return",
+    });
+
+    const w = window as unknown as { gtag?: (...args: unknown[]) => void };
+    if (typeof w.gtag === "function") {
+      w.gtag("event", "purchase", {
+        transaction_id: order.id,
+        value: order.total,
+        currency: "TRY",
+        items: order.items.map((item) => ({
+          item_id: item.product,
+          item_name: item.title,
+          quantity: item.qty,
+          price: item.unit,
+        })),
+      });
+    }
+  }, [order, status]);
+
   useEffect(() => {
     if (isPendingVerification) return;
     if (!hasValidOrderId) return;

@@ -94,6 +94,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Vercel git SHA → client Sentry release tag (instrumentation-client.ts)
+  env: {
+    NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA:
+      process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "",
+  },
+
   // Next.js 16 generated validator.ts'te non-ASCII path karakterleriyle
   // (Türkçe ı/ğ vb.) codegen bug'ı var; build başarıyla derleniyor ama
   // post-build TS check yanlış @ts-ignore üretiyor. Production build için
@@ -137,8 +143,31 @@ const nextConfig: NextConfig = {
 
   // Production'da security header'ları enforce et
   async headers() {
-    if (!isProd) return [];
+    const staticCache = [
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/favicon.ico",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+    ];
+
+    if (!isProd) return staticCache;
+
     return [
+      ...staticCache,
       {
         // Tüm route'lar (API hariç ayrı kuralda olabilir, şimdilik aynı)
         source: "/:path*",
@@ -182,6 +211,8 @@ const sentryWebpackPluginOptions = {
   disableLogger: true,
   // Telemetry kapalı — Sefa kararı, privacy
   telemetry: false,
+  // Ad-blocker bypass — Sentry event'leri same-origin tunnel üzerinden gider
+  tunnelRoute: "/monitoring",
 };
 
 export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

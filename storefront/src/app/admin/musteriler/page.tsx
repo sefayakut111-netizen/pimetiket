@@ -123,6 +123,7 @@ export default function AdminMusterilerPage() {
   const [kpi, setKpi] = useState<KPI | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState<SegmentFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -131,6 +132,11 @@ export default function AdminMusterilerPage() {
   const [bulkSubject, setBulkSubject] = useState("");
   const [bulkBody, setBulkBody] = useState("");
   const [bulkSending, setBulkSending] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     let cancelled = false;
@@ -358,8 +364,8 @@ export default function AdminMusterilerPage() {
               <div className="relative">
                 <Input
                   type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Email, ad, telefon ara…"
                   className="!h-11 !pl-10"
                 />

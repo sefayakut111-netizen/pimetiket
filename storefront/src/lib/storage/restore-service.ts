@@ -7,7 +7,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { getSignedDownloadUrl, IS_ARCHIVE_DRY_RUN } from "./r2-client";
+import { getSignedDownloadUrl } from "./r2-client";
 
 function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -100,15 +100,8 @@ export async function getArchivedDesignFileUrl(params: {
 export async function restoreCustomerToHot(
   userId: string,
   reason: string
-): Promise<{ success: boolean; error?: string; dryRun?: boolean }> {
+): Promise<{ success: boolean; error?: string }> {
   const supabase = makeServiceClient();
-
-  if (IS_ARCHIVE_DRY_RUN) {
-    console.log(
-      `[restore-service:ARCHIVE_DRY_RUN] restore user=${userId} reason="${reason}"`
-    );
-    return { success: true, dryRun: true };
-  }
 
   try {
     // 1. 'restoring' status (geçici)

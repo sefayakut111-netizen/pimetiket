@@ -10,6 +10,8 @@ import {
   isAutoRefundCronHealthy,
   summarizeCronHealth,
 } from "@/lib/cron-health";
+import { IS_ARCHIVE_DRY_RUN } from "@/lib/storage/r2-client";
+import { isResendConfigured } from "@/lib/mail/resend";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +94,42 @@ export async function GET() {
     customersStatus = "error";
   }
 
+  const warnings: Array<{ code: string; message: string; severity: "info" | "warn" }> =
+    [];
+
+  if (IS_ARCHIVE_DRY_RUN) {
+    warnings.push({
+      code: "r2_archive_dry_run",
+      message:
+        "R2 arşiv DRY_RUN açık — cold storage yazılmıyor. Canlı arşiv için R2_ARCHIVE_DRY_RUN=false yap.",
+      severity: "warn",
+    });
+  }
+
+  if (!isResendConfigured()) {
+    warnings.push({
+      code: "resend_not_configured",
+      message: "RESEND_API_KEY tanımlı değil — e-posta bildirimleri çalışmaz.",
+      severity: "warn",
+    });
+  }
+
+  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    warnings.push({
+      code: "sentry_dsn_missing",
+      message: "NEXT_PUBLIC_SENTRY_DSN yok — client hata takibi kapalı.",
+      severity: "info",
+    });
+  }
+
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY && !process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID) {
+    warnings.push({
+      code: "analytics_not_configured",
+      message: "PostHog ve GA4 env'leri boş — analitik consent sonrası da yüklenmez.",
+      severity: "info",
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     crons: {
@@ -105,5 +143,6 @@ export async function GET() {
     mail: { status: mailStatus, sent24h, bounce },
     db: { status: dbStatus },
     customers: { status: customersStatus },
+    warnings,
   });
 }

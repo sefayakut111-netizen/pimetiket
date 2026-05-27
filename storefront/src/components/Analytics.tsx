@@ -40,7 +40,22 @@ export function Analytics() {
 
     const handler = () => {
       const consent = readConsent();
-      setAnalyticsAllowed(Boolean(consent?.categories.analytics));
+      const allowed = Boolean(consent?.categories.analytics);
+      setAnalyticsAllowed(allowed);
+
+      if (
+        !allowed &&
+        typeof window !== "undefined" &&
+        window.posthog &&
+        typeof window.posthog.opt_out_capturing === "function"
+      ) {
+        try {
+          window.posthog.opt_out_capturing();
+          window.posthog.reset?.();
+        } catch {
+          /* silent */
+        }
+      }
     };
 
     if (typeof window !== "undefined") {
