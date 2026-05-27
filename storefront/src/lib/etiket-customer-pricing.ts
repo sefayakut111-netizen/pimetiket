@@ -107,7 +107,7 @@ export function quoteCustomerEtiket(
       feePct: defaults.feePct,
     },
     margin: {
-      marginPct: defaults.marginPct,
+      marginPct: 0,
       vatPct: defaults.vatPct,
       minMarkupFraction: 0,
     },

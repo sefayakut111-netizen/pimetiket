@@ -135,13 +135,12 @@ export function quoteCustomerSticker(
     operation: {
       setup: defaults.setup,
       packaging: defaults.packaging,
-      cargo: defaults.cargo,
+      cargo: 0,
       feePct: defaults.feePct,
     },
     margin: {
-      marginPct: defaults.marginPct,
+      marginPct: 0,
       vatPct: defaults.vatPct,
-      // Customer flow: minMarkup floor düşük (zaten customer-side)
       minMarkupFraction: 0,
     },
   });

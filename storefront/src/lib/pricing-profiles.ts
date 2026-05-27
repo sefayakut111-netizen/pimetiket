@@ -7,8 +7,8 @@
  * Kullanım senaryosu:
  *   - "Standart kraft konfigi" — Sefa sık kullandığı default'ları kaydeder
  *   - "Premium yaldız" — özel kalemler farklı
- *   - "Numune fiyatlandırma" — düşük margin, hızlı bakış
- *   - "Sözleşmeli müşteri X" — özel margin, müşteri-tier
+ *   - "Numune fiyatlandırma" — düşük adet, hızlı bakış
+ *   - "Sözleşmeli müşteri X" — özel fason rate, müşteri-tier
  *   - vs.
  *
  * Her profile bir input snapshot'ı + meta (ad, notlar, son kullanım, müşteri tipi).
@@ -49,13 +49,9 @@ export interface ProfileInputSnapshot {
   // Operasyon
   setup: number;
   packaging: number;
-  cargo: number;
   feePct: number;
-  // Margin + KDV
-  marginPct: number;
+  // KDV
   vatPct: number;
-  // v0.4 yeni
-  minMarkupFraction: number;
   customerType: CustomerType;
 }
 
@@ -251,18 +247,18 @@ export function getSeedProfiles(): SaveProfileArgs[] {
   return [
     {
       name: "Standart Fason",
-      notes: "Default 250 sticker referans, %75 markup, fason 120 ₺/m²",
+      notes: "Default 250 sticker referans, fason 120 ₺/m²",
       input: getDefaultInput(),
     },
     {
       name: "Numune Paketi",
-      notes: "25 sticker, ekonomik (markup düşük, müşteri tanışsın)",
-      input: { ...getDefaultInput(), qty: 25, marginPct: 50 },
+      notes: "25 sticker, ekonomik küçük seri",
+      input: { ...getDefaultInput(), qty: 25 },
     },
     {
       name: "Premium Yaldız",
-      notes: "Yüksek markup, premium görünüm — müşteri özel istek",
-      input: { ...getDefaultInput(), marginPct: 110, fasonRate: 180 },
+      notes: "Premium görünüm — yüksek fason rate",
+      input: { ...getDefaultInput(), fasonRate: 180 },
     },
   ];
 }
@@ -283,11 +279,8 @@ export function getDefaultInput(): ProfileInputSnapshot {
     depreciation: 10,
     setup: 50,
     packaging: 15,
-    cargo: 80,
     feePct: 2.5,
-    marginPct: 75,
     vatPct: 20,
-    minMarkupFraction: 0.10,
     customerType: "standart",
   };
 }

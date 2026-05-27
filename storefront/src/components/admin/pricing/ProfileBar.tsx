@@ -388,7 +388,7 @@ function ManageProfilesModal({
                       <p className="text-[12.5px] text-gri-700 mt-0.5">{p.notes}</p>
                     )}
                     <div className="text-[11px] text-gri-500 mt-1 tabular-nums">
-                      {p.input.mode} · {p.input.cut} · {p.input.width}×{p.input.height}mm · {p.input.qty} adet · {p.input.marginPct}% markup
+                      {p.input.mode} · {p.input.cut} · {p.input.width}×{p.input.height}mm · {p.input.qty} adet · {p.input.fasonRate} ₺/m²
                       {p.lastUsedAt && (
                         <>
                           {" · "}
