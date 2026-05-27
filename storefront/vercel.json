@@ -1,4 +1,28 @@
 {
+  "regions": ["fra1"],
+  "functions": {
+    "src/app/api/payment/callback/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/orders/admin-bypass-promote/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/agents/cutline-generate/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/cron/poll-shipments/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/archive-inactive/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/shipments/bulk-poll/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/paytr-reconciler/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/admin-daily-summary",
