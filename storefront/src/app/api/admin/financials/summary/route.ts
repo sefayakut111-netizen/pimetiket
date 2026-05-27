@@ -7,11 +7,27 @@ export const dynamic = "force-dynamic";
 
 const DAY = 24 * 60 * 60 * 1000;
 
-type RangeKey = "7d" | "mtd" | "30d" | "all";
+type RangeKey = "today" | "7d" | "mtd" | "30d" | "all" | "custom";
 
-function getRangeWindow(range: RangeKey): { start: string | null; end: string } {
+function getRangeWindow(
+  range: RangeKey,
+  customFrom?: string | null,
+  customTo?: string | null
+): { start: string | null; end: string } {
   const now = new Date();
   const end = now.toISOString();
+  if (range === "today") {
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    return { start: startOfDay.toISOString(), end };
+  }
   if (range === "7d") {
     return { start: new Date(now.getTime() - 7 * DAY).toISOString(), end };
   }
@@ -29,6 +45,13 @@ function getRangeWindow(range: RangeKey): { start: string | null; end: string } 
       0
     );
     return { start: startOfMonth.toISOString(), end };
+  }
+  if (range === "custom" && customFrom && customTo) {
+    const from = new Date(customFrom);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(customTo);
+    to.setHours(23, 59, 59, 999);
+    return { start: from.toISOString(), end: to.toISOString() };
   }
   return { start: null, end };
 }
@@ -48,11 +71,16 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const range = (url.searchParams.get("range") ?? "mtd") as RangeKey;
+  const rangeParam = url.searchParams.get("range") ?? "mtd";
+  const customFrom = url.searchParams.get("from");
+  const customTo = url.searchParams.get("to");
+  const range = (
+    ["today", "7d", "mtd", "30d", "all", "custom"].includes(rangeParam)
+      ? rangeParam
+      : "mtd"
+  ) as RangeKey;
   const excludeTest = url.searchParams.get("excludeTest") === "1";
-  const { start, end } = getRangeWindow(
-    ["7d", "mtd", "30d", "all"].includes(range) ? range : "mtd"
-  );
+  const { start, end } = getRangeWindow(range, customFrom, customTo);
 
   const admin = serviceClient();
 

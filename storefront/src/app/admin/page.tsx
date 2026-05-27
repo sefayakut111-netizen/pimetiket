@@ -54,6 +54,11 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { getAdminModuleLabel } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
 import { excludeTestOrders } from "@/lib/admin-order-filters";
+import {
+  dashboardRangeToFinancialParams,
+  fetchFinancialSummary,
+  type FinancialSummary,
+} from "@/lib/admin-financial-metrics";
 
 type TimeRange = "today" | "7d" | "mtd" | "30d" | "custom";
 
@@ -168,16 +173,32 @@ function formatProofWaitDuration(hours: number): string {
   return `${Math.floor(hours)} saat`;
 }
 
-function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
+function buildTodoList(
+  orders: CustomerOrder[],
+  stuckDesignCount = 0
+): TodoItem[] {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
   const items: TodoItem[] = [];
+
+  if (stuckDesignCount > 0) {
+    items.push({
+      id: "stuck-designs",
+      priority: 1,
+      iconKey: "Sparkle",
+      title: "Tasarim dosyasi takili (analyzing)",
+      count: stuckDesignCount,
+      hint: "AI analizi 1 saatten uzun surdu — Tasarimlar sayfasindan onar",
+      href: "/admin/tasarimlar",
+      urgent: true,
+    });
+  }
 
   const aiQueue = countByStatuses(orders, AI_QC_ACTIVE_STATUSES);
   if (aiQueue > 0) {
     items.push({
       id: "ai-queue",
-      priority: 1,
+      priority: 2,
       iconKey: "Sparkle",
       title: "AI / operatör incelemesi",
       count: aiQueue,
@@ -193,7 +214,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
   if (operatorReview > 0) {
     items.push({
       id: "operator-review",
-      priority: 2,
+      priority: 3,
       iconKey: "Eye",
       title: "Operatör incelemesi",
       count: operatorReview,
@@ -233,7 +254,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
       count: unassigned,
       hint: "Üretime hazır siparişleri partnere ata",
       href: adminOrdersListHref(UNASSIGNED_PRODUCTION_STATUSES),
-      urgent: unassigned >= 5,
+      urgent: unassigned > 0,
     });
   }
 
@@ -349,6 +370,7 @@ interface SystemHealth {
   };
   mail: { status: "ok" | "error"; sent24h: number; bounce: number };
   db: { status: "ok" | "error" };
+  customers?: { status: "ok" | "error" };
 }
 
 interface PartnerProductionRow {
@@ -412,6 +434,8 @@ function AdminDashboardPageInner() {
   const canViewAuditors = canView("auditors");
   const canViewSettings = canView("settings");
   const canViewFason = canView("fason");
+  const canViewDesigns = canView("designs");
+  const canViewReviews = canView("reviews");
   const showFinancials = !permLoading && canViewFinancials;
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [now, setNow] = useState<Date | null>(null);
@@ -439,6 +463,12 @@ function AdminDashboardPageInner() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [ordersTruncated, setOrdersTruncated] = useState(false);
+  const [financialSummary, setFinancialSummary] =
+    useState<FinancialSummary | null>(null);
+  const [todayFinancial, setTodayFinancial] =
+    useState<FinancialSummary | null>(null);
+  const [stuckDesignCount, setStuckDesignCount] = useState(0);
+  const [pendingReviews, setPendingReviews] = useState(0);
 
   const loadOrders = useCallback(async () => {
     if (!canViewOrders) {
@@ -537,12 +567,13 @@ function AdminDashboardPageInner() {
     if (canViewSettings) {
       fetch("/api/admin/system-health")
         .then((r) => (r.ok ? r.json() : null))
-        .then((data: { ok?: boolean; crons?: SystemHealth["crons"]; mail?: SystemHealth["mail"]; db?: SystemHealth["db"] } | null) => {
+        .then((data: { ok?: boolean; crons?: SystemHealth["crons"]; mail?: SystemHealth["mail"]; db?: SystemHealth["db"]; customers?: SystemHealth["customers"] } | null) => {
           if (data?.ok && data.crons && data.mail && data.db) {
             setSystemHealth({
               crons: data.crons,
               mail: data.mail,
               db: data.db,
+              customers: data.customers,
             });
           }
         })
@@ -586,6 +617,31 @@ function AdminDashboardPageInner() {
         });
     }
 
+    if (canViewReviews) {
+      fetch("/api/admin/reviews", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json: { reviews?: Array<{ status?: string }> } | null) => {
+          const pending = (json?.reviews ?? []).filter(
+            (r) => r.status === "pending"
+          ).length;
+          setPendingReviews(pending);
+        })
+        .catch(() => {
+          /* sessiz */
+        });
+    }
+
+    if (canViewDesigns) {
+      fetch("/api/admin/designs/repair-stuck", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json: { stuckCount?: number } | null) => {
+          setStuckDesignCount(json?.stuckCount ?? 0);
+        })
+        .catch(() => {
+          /* sessiz */
+        });
+    }
+
     const w = globalThis.window;
     const refresh = () => void loadOrders();
     w.addEventListener("pim_customer_orders_updated", refresh);
@@ -594,7 +650,26 @@ function AdminDashboardPageInner() {
       w.removeEventListener("pim_customer_orders_updated", refresh);
       clearInterval(tick);
     };
-  }, [permLoading, loadOrders, canViewCustomers, canViewAuditors, canViewSettings, canViewFason, canViewOrders]);
+  }, [permLoading, loadOrders, canViewCustomers, canViewAuditors, canViewSettings, canViewFason, canViewOrders, canViewDesigns, canViewReviews]);
+
+  useEffect(() => {
+    if (!showFinancials) {
+      setFinancialSummary(null);
+      setTodayFinancial(null);
+      return;
+    }
+    const params = dashboardRangeToFinancialParams(range, customFrom, customTo);
+    void fetchFinancialSummary({
+      range: params.range,
+      from: params.from,
+      to: params.to,
+      excludeTest: true,
+    }).then(setFinancialSummary);
+    void fetchFinancialSummary({
+      range: "today",
+      excludeTest: true,
+    }).then(setTodayFinancial);
+  }, [showFinancials, range, customFrom, customTo]);
 
   useEffect(() => {
     if (permLoading || !canViewOrders) return;
@@ -632,8 +707,12 @@ function AdminDashboardPageInner() {
     () => metricOrders.filter((o) => o.createdAt >= todayStart),
     [metricOrders, todayStart]
   );
-  const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
-  const todayCount = todayOrders.length;
+  const todayPaidOrders = todayOrders.filter((o) => o.status !== "cancelled");
+  const todayRevenue =
+    todayFinancial?.grossOrderTotal ??
+    todayPaidOrders.reduce((s, o) => s + o.total, 0);
+  const todayCount =
+    todayFinancial?.orderCount ?? todayPaidOrders.length;
 
   const proofResponseMetric = funnelMetrics.proof_pending;
   const proofResponseHours =
@@ -661,13 +740,25 @@ function AdminDashboardPageInner() {
     [metricOrders, rangeWindow.prevStart, rangeWindow.prevEnd]
   );
 
-  // KPI hesaplamaları
-  const count = inRange.length;
-  const prevCount = inPrevRange.length;
-  const revenue = inRange.reduce((s, o) => s + o.total, 0);
-  const prevRevenue = inPrevRange.reduce((s, o) => s + o.total, 0);
+  // KPI hesaplamaları — brüt ciro iptal hariç; API varsa ortak kaynak
+  const paidInRange = useMemo(
+    () => inRange.filter((o) => o.status !== "cancelled"),
+    [inRange]
+  );
+  const paidInPrevRange = useMemo(
+    () => inPrevRange.filter((o) => o.status !== "cancelled"),
+    [inPrevRange]
+  );
+  const count = financialSummary?.orderCount ?? paidInRange.length;
+  const prevCount = paidInPrevRange.length;
+  const revenue =
+    financialSummary?.grossOrderTotal ??
+    paidInRange.reduce((s, o) => s + o.total, 0);
+  const collectedRevenue = financialSummary?.collectedTotal;
+  const prevRevenue = paidInPrevRange.reduce((s, o) => s + o.total, 0);
   const aov = count > 0 ? revenue / count : 0;
   const aiFlagged = countByStatuses(metricOrders, AI_QC_ACTIVE_STATUSES);
+  const aiQueueDirty = aiFlagged > 0 || stuckDesignCount > 0;
   const proofPending = metricOrders.filter(
     (o) => o.status === "proof_pending"
   ).length;
@@ -680,8 +771,9 @@ function AdminDashboardPageInner() {
   const revenueChange = formatChange(revenue, prevRevenue);
 
   const todoList = useMemo(
-    () => (canViewOrders ? buildTodoList(metricOrders) : []),
-    [metricOrders, canViewOrders]
+    () =>
+      canViewOrders ? buildTodoList(metricOrders, stuckDesignCount) : [],
+    [metricOrders, canViewOrders, stuckDesignCount]
   );
 
   // Chart datası — daima rangeWindow.days kullan
@@ -715,6 +807,9 @@ function AdminDashboardPageInner() {
     [metricOrders]
   );
   const isCancelOverTarget = ops.cancelRate > 5 && metricOrders.length > 0;
+  const isZeroDelivered =
+    statusDistribution.delivered === 0 && metricOrders.length > 0;
+  const showUrgentOpsBanner = isCancelOverTarget || isZeroDelivered;
   const isProofCancelOverTarget =
     proofStats30d.cancelRate > 30 && proofStats30d.total > 0;
   const insights = useMemo(
@@ -761,9 +856,12 @@ function AdminDashboardPageInner() {
     ...(showFinancials
       ? [
           {
-            label: `${RANGE_LABEL[range]} ciro`,
+            label: `${RANGE_LABEL[range]} ciro (brut)`,
             value: formatCurrency(revenue),
-            sub: revenueChange.label,
+            sub:
+              collectedRevenue != null
+                ? `Tahsil: ${formatCurrency(collectedRevenue)} · ${revenueChange.label}`
+                : revenueChange.label,
             trend: revenueChange.trend,
             accent: "text-yesil",
           },
@@ -789,10 +887,16 @@ function AdminDashboardPageInner() {
       : []),
     {
       label: "AI / operatör kuyruğu",
-      value: aiFlagged.toString(),
-      sub: aiFlagged > 0 ? "inceleme bekliyor" : "kuyruk temiz",
+      value: aiQueueDirty
+        ? String(aiFlagged + stuckDesignCount)
+        : aiFlagged.toString(),
+      sub: stuckDesignCount > 0
+        ? `${stuckDesignCount} dosya takili · ${aiFlagged} siparis kuyrugu`
+        : aiFlagged > 0
+          ? "inceleme bekliyor"
+          : "kuyruk temiz",
       trend: "flat" as const,
-      accent: aiFlagged > 0 ? "text-sari-koyu" : "text-gri-500",
+      accent: aiQueueDirty ? "text-sari-koyu" : "text-gri-500",
     },
     {
       label: "Prova bekleyen",
@@ -913,11 +1017,15 @@ function AdminDashboardPageInner() {
     ...(canView("pricing")
       ? [{ href: "/admin/fiyat-hesapla", label: "Hızlı teklif", desc: "Etiket/sticker", icon: <Icon.Bolt size={18} /> }]
       : []),
-    ...(canView("coupons")
-      ? [{ href: "/admin/kuponlar", label: "Kupon ekle", desc: "İndirim kodu", icon: <Icon.Sparkle size={18} /> }]
-      : []),
-    ...(canView("reviews")
-      ? [{ href: "/admin/yorumlar", label: "Yorum onayı", desc: "Bekleyen review", icon: <Icon.Star size={18} /> }]
+    ...(canViewReviews && pendingReviews > 0
+      ? [
+          {
+            href: "/admin/yorumlar",
+            label: "Yorum onayi",
+            desc: `${pendingReviews} bekleyen`,
+            icon: <Icon.Star size={18} />,
+          },
+        ]
       : []),
   ];
 
@@ -1093,12 +1201,35 @@ function AdminDashboardPageInner() {
           </div>
         )}
 
+        {canViewOrders && !ordersLoading && !ordersError && showUrgentOpsBanner && (
+          <div className="mb-4 rounded-xl px-5 py-3.5 ring-2 ring-kirmizi bg-kirmizi/10 text-kirmizi-koyu">
+            <div className="text-[14px] font-semibold text-kirmizi">
+              Operasyonel uyari
+            </div>
+            <ul className="mt-2 space-y-1 text-[13px] list-disc list-inside">
+              {isCancelOverTarget && (
+                <li>
+                  Iptal orani %{ops.cancelRate.toFixed(0)} — hedef %5 uzerinde
+                </li>
+              )}
+              {isZeroDelivered && (
+                <li>
+                  Henuz teslim edilmis siparis yok ({metricOrders.length} aktif
+                  kayit)
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
         {canViewOrders && !ordersLoading && !ordersError && systemHealth && (
           <div
             className={cn(
               "mb-4 rounded-lg px-4 py-2.5 flex items-center gap-4 text-[12.5px] flex-wrap",
               systemHealth.crons.error > 0 ||
-                systemHealth.mail.status === "error"
+                systemHealth.mail.status === "error" ||
+                systemHealth.db.status === "error" ||
+                systemHealth.customers?.status === "error"
                 ? "bg-kirmizi/10 text-kirmizi"
                 : "bg-yesil-soft/30 text-yesil-koyu"
             )}
@@ -1143,6 +1274,24 @@ function AdminDashboardPageInner() {
                 <Icon.X size={12} className="text-kirmizi" />
               )}
             </span>
+            {systemHealth.customers && (
+              <>
+                <span className="text-gri-300">|</span>
+                <span className="inline-flex items-center gap-1">
+                  Musteri API:{" "}
+                  {systemHealth.customers.status === "ok" ? (
+                    <Icon.Check size={12} className="text-yesil" />
+                  ) : (
+                    <Link
+                      href="/admin/musteriler"
+                      className="inline-flex items-center gap-0.5 text-kirmizi font-semibold underline"
+                    >
+                      <Icon.X size={12} /> hata
+                    </Link>
+                  )}
+                </span>
+              </>
+            )}
           </div>
         )}
 
@@ -1159,15 +1308,16 @@ function AdminDashboardPageInner() {
                     Bugün ne yapmalıyım?
                   </h2>
                   <p className="text-[11.5px] text-pim-mercan/80">
-                    {todoList.length} sıradaki iş — sırayla bitirince hat boş
+                    {todoList.length} is satiri — toplam{" "}
+                    {todoList.reduce((s, t) => s + t.count, 0)} kayit
                   </p>
                 </div>
               </div>
               <span
                 className="text-[12px] font-bold tabular-nums text-pim-mercan bg-white rounded-full h-7 min-w-7 px-2.5 grid place-items-center"
-                title="Toplam bekleyen aksiyon sayısı"
+                title="Is kategorisi sayisi"
               >
-                {todoList.reduce((s, t) => s + t.count, 0)} bekleyen
+                {todoList.length} satir
               </span>
             </div>
             <div className="divide-y divide-gri-100">
@@ -1732,7 +1882,16 @@ function AdminDashboardPageInner() {
                           p.overdueCount > 0 && "bg-kirmizi/5"
                         )}
                       >
-                        <td className="px-5 py-2.5 font-medium">{p.name}</td>
+                        <td className="px-5 py-2.5 font-medium">
+                          <span className="inline-flex items-center gap-2">
+                            {p.name}
+                            {p.overdueCount > 0 && (
+                              <span className="inline-flex items-center h-[18px] px-1.5 rounded-full bg-kirmizi text-white text-[9.5px] font-bold uppercase">
+                                Acil
+                              </span>
+                            )}
+                          </span>
+                        </td>
                         <td className="px-5 py-2.5 text-right tabular-nums">
                           {p.activeCount}
                         </td>

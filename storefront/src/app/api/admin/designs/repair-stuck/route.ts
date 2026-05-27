@@ -12,6 +12,31 @@ import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 
 export const runtime = "nodejs";
 
+export async function GET() {
+  const auth = await assertPermission("designs", "view");
+  if (!auth) {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+
+  const admin = createAdminClient();
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  const { count, error } = await admin
+    .from("design_files")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "analyzing")
+    .lt("created_at", cutoff);
+
+  if (error) {
+    return NextResponse.json(
+      { ok: false, error: error.message },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ ok: true, stuckCount: count ?? 0 });
+}
+
 export async function POST() {
   const auth = await assertPermission("designs", "update");
   if (!auth) {

@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Eyebrow, Input, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  fetchFinancialSummary,
+  type FinancialSummary,
+} from "@/lib/admin-financial-metrics";
 
 type StatusFilter = "all" | "success" | "pending" | "failed" | "refunded";
 
@@ -52,6 +56,13 @@ export default function AdminOdemelerPage() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<PaymentItem | null>(null);
   const [refunding, setRefunding] = useState(false);
+  const [mtdSummary, setMtdSummary] = useState<FinancialSummary | null>(null);
+
+  useEffect(() => {
+    void fetchFinancialSummary({ range: "mtd", excludeTest: true }).then(
+      setMtdSummary
+    );
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,12 +129,35 @@ export default function AdminOdemelerPage() {
         <Eyebrow>Yönetim</Eyebrow>
         <h1 className="mt-2 text-2xl font-semibold text-lacivert">Ödemeler</h1>
 
-        {totals && (
+        {mtdSummary && (
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Kpi label="Toplam gelir" value={fmt(totals.revenue)} />
-            <Kpi label="Bekleyen" value={fmt(totals.pending)} />
-            <Kpi label="İade" value={fmt(totals.refunded)} />
-            <Kpi label="Başarısız (adet)" value={String(totals.failed)} />
+            <Kpi
+              label="Bu ay tahsil (ortak kaynak)"
+              value={fmt(mtdSummary.collectedTotal)}
+            />
+            <Kpi
+              label="Bu ay brut siparis"
+              value={fmt(mtdSummary.grossOrderTotal)}
+            />
+            <Kpi label="Fark (brut - tahsil)" value={fmt(mtdSummary.gap)} />
+            <Kpi
+              label="Basarili odeme (bu ay)"
+              value={String(mtdSummary.paymentCount)}
+            />
+          </div>
+        )}
+
+        {totals && (
+          <div className="mt-6">
+            <p className="mb-2 text-xs text-gri-500">
+              Asagidaki tablo ozeti son 500 odeme kaydindan (filtresiz)
+            </p>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Kpi label="Tablo: basarili charge" value={fmt(totals.revenue)} />
+            <Kpi label="Tablo: bekleyen" value={fmt(totals.pending)} />
+            <Kpi label="Tablo: iade" value={fmt(totals.refunded)} />
+            <Kpi label="Tablo: basarisiz (adet)" value={String(totals.failed)} />
+            </div>
           </div>
         )}
 

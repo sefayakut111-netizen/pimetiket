@@ -64,6 +64,7 @@ export async function GET() {
   }
 
   let dbStatus: "ok" | "error" = "ok";
+  let customersStatus: "ok" | "error" = "ok";
   try {
     const { error } = await admin
       .from("orders")
@@ -72,6 +73,23 @@ export async function GET() {
     if (error) dbStatus = "error";
   } catch {
     dbStatus = "error";
+  }
+
+  try {
+    const { error: viewErr } = await admin
+      .from("v_admin_customers")
+      .select("user_id", { head: true, count: "exact" })
+      .limit(1);
+    if (viewErr) {
+      const { error: profErr } = await admin
+        .from("profiles")
+        .select("id", { head: true, count: "exact" })
+        .eq("role", "customer")
+        .limit(1);
+      if (profErr) customersStatus = "error";
+    }
+  } catch {
+    customersStatus = "error";
   }
 
   return NextResponse.json({
@@ -86,5 +104,6 @@ export async function GET() {
     autoRefundHealthy,
     mail: { status: mailStatus, sent24h, bounce },
     db: { status: dbStatus },
+    customers: { status: customersStatus },
   });
 }

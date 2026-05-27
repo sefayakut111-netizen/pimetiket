@@ -39,15 +39,7 @@ import {
 } from "@/lib/admin-analytics";
 import { excludeTestOrders } from "@/lib/admin-order-filters";
 import { DetailReports } from "@/components/admin/reports/DetailReports";
-
-type FinancialSummary = {
-  grossOrderTotal: number;
-  collectedTotal: number;
-  cancelledOrderTotal: number;
-  pendingTotal: number;
-  refundedTotal: number;
-  gap: number;
-};
+import type { FinancialSummary } from "@/lib/admin-financial-metrics";
 
 type ReportTab = "overview" | "detail";
 
@@ -258,18 +250,25 @@ function AdminFinansPageInner() {
     [inPrevRange]
   );
 
-  // KPI hesaplamaları
-  const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
+  // KPI hesaplamaları — ortak API brüt ciro öncelikli
+  const totalRevenue =
+    financialSummary?.grossOrderTotal ??
+    paidOrders.reduce((s, o) => s + o.total, 0);
   const prevRevenue = prevPaidOrders.reduce((s, o) => s + o.total, 0);
-  const cancelledRevenue = inRange
-    .filter((o) => o.status === "cancelled")
-    .reduce((s, o) => s + o.total, 0);
+  const cancelledRevenue =
+    financialSummary?.cancelledOrderTotal ??
+    inRange
+      .filter((o) => o.status === "cancelled")
+      .reduce((s, o) => s + o.total, 0);
 
   // KDV ayrımı: total KDV dahildir, net = total / 1.20, kdv = total - net
   const netRevenue = totalRevenue / (1 + KDV_RATE);
   const kdvAmount = totalRevenue - netRevenue;
 
-  const aov = paidOrders.length > 0 ? totalRevenue / paidOrders.length : 0;
+  const aov =
+    (financialSummary?.orderCount ?? paidOrders.length) > 0
+      ? totalRevenue / (financialSummary?.orderCount ?? paidOrders.length)
+      : 0;
   const dailyAvg =
     rangeWindow.days > 0 ? totalRevenue / rangeWindow.days : 0;
 
@@ -277,7 +276,7 @@ function AdminFinansPageInner() {
 
   const revenueChange = formatPercentChange(totalRevenue, prevRevenue);
   const orderCountChange = formatPercentChange(
-    paidOrders.length,
+    financialSummary?.orderCount ?? paidOrders.length,
     prevPaidOrders.length
   );
 
@@ -468,7 +467,7 @@ function AdminFinansPageInner() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-              {RANGE_LABEL[range]} ciro
+              {RANGE_LABEL[range]} ciro (brut)
             </div>
             <div className="text-[28px] font-bold mt-1 leading-none tabular-nums text-yesil">
               {formatCurrency(totalRevenue)}
@@ -509,7 +508,7 @@ function AdminFinansPageInner() {
               {paidOrders.length > 0 ? formatCurrency(aov) : "—"}
             </div>
             <div className="text-[11.5px] mt-1.5 text-gri-700">
-              {paidOrders.length} sipariş ·{" "}
+              {financialSummary?.orderCount ?? paidOrders.length} siparis ·{" "}
               <span
                 className={cn(
                   orderCountChange.trend === "up"

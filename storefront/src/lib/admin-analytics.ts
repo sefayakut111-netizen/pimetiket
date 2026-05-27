@@ -20,30 +20,65 @@ export interface DailyMetric {
   revenue: number;
 }
 
-/** Son N gün için günlük sipariş + ciro */
+const TR_TZ = "Europe/Istanbul";
+
+function trDayKey(ms: number): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: TR_TZ }).format(
+    new Date(ms)
+  );
+}
+
+function trHour(ms: number): number {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: TR_TZ,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date(ms))
+  );
+}
+
+function trWeekdayMon0(ms: number): number {
+  const wd = new Intl.DateTimeFormat("en-US", {
+    timeZone: TR_TZ,
+    weekday: "short",
+  }).format(new Date(ms));
+  const map: Record<string, number> = {
+    Mon: 0,
+    Tue: 1,
+    Wed: 2,
+    Thu: 3,
+    Fri: 4,
+    Sat: 5,
+    Sun: 6,
+  };
+  return map[wd] ?? 0;
+}
+
+/** Son N gün için günlük sipariş + ciro (Europe/Istanbul) */
 export function buildDailySeries(
   orders: CustomerOrder[],
   days: number
 ): DailyMetric[] {
   const now = new Date();
-  now.setHours(23, 59, 59, 999);
   const series: DailyMetric[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
     series.push({ date: new Date(d), count: 0, revenue: 0 });
   }
 
+  const keyToIdx = new Map(
+    series.map((s, idx) => [trDayKey(s.date.getTime()), idx])
+  );
+
   for (const o of orders) {
-    const od = new Date(o.createdAt);
-    od.setHours(0, 0, 0, 0);
-    const idx = series.findIndex(
-      (s) => s.date.getTime() === od.getTime()
-    );
-    if (idx >= 0) {
+    const idx = keyToIdx.get(trDayKey(o.createdAt));
+    if (idx !== undefined) {
       series[idx].count++;
-      series[idx].revenue += o.total;
+      if (o.status !== "cancelled") {
+        series[idx].revenue += o.total;
+      }
     }
   }
   return series;
@@ -55,10 +90,8 @@ export function buildHeatmapMatrix(orders: CustomerOrder[]): number[][] {
     Array.from({ length: 24 }, () => 0)
   );
   for (const o of orders) {
-    const d = new Date(o.createdAt);
-    // JS getDay: 0=Paz 1=Pzt ... 6=Cmt → bizim format 0=Pzt
-    const day = (d.getDay() + 6) % 7;
-    const hour = d.getHours();
+    const day = trWeekdayMon0(o.createdAt);
+    const hour = trHour(o.createdAt);
     matrix[day][hour]++;
   }
   return matrix;
