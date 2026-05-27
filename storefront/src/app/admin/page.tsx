@@ -51,6 +51,7 @@ import {
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { getAdminModuleLabel } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
+import { excludeTestOrders } from "@/lib/admin-order-filters";
 
 type TimeRange = "today" | "7d" | "mtd" | "30d" | "custom";
 
@@ -222,26 +223,28 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     });
   }
 
-  // Bugün kargoya verilecek: in_production + estimatedDelivery=bugün veya geçmiş
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const todayTs = today.getTime();
-  const toShip = orders.filter(
-    (o) =>
-      o.status === "in_production" &&
-      o.estimatedDelivery &&
-      new Date(o.estimatedDelivery).getTime() <= todayTs
-  ).length;
-  if (toShip > 0) {
+  // Bugün kargoya verilecek: üretimde + tahmini teslim bugün veya geçmiş
+  const inProductionTotal = orders.filter((o) => o.status === "in_production")
+    .length;
+  const toShipOrders = orders.filter((o) => {
+    if (o.status !== "in_production" || !o.estimatedDelivery) return false;
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    return new Date(o.estimatedDelivery).getTime() <= todayEnd.getTime();
+  });
+  if (toShipOrders.length > 0) {
     items.push({
       id: "to-ship",
       priority: 5,
       emoji: "📦",
       title: "Bugün kargoya verilecek",
-      count: toShip,
-      hint: "Üretim tamamsa kargo tetikle",
+      count: toShipOrders.length,
+      hint:
+        inProductionTotal > toShipOrders.length
+          ? `Tahmini teslim bugün/geçmiş (${inProductionTotal} üretimde toplam — hepsi değil)`
+          : "Tahmini teslim tarihi bugün veya geçmiş üretimdeki siparişler",
       href: "/admin/siparisler?status=in_production",
-      urgent: toShip > 0,
+      urgent: toShipOrders.length > 0,
     });
   }
 
@@ -590,9 +593,11 @@ function AdminDashboardPageInner() {
     return d.getTime();
   }, [now]);
 
+  const metricOrders = useMemo(() => excludeTestOrders(orders), [orders]);
+
   const todayOrders = useMemo(
-    () => orders.filter((o) => o.createdAt >= todayStart),
-    [orders, todayStart]
+    () => metricOrders.filter((o) => o.createdAt >= todayStart),
+    [metricOrders, todayStart]
   );
   const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
   const todayCount = todayOrders.length;
@@ -606,19 +611,21 @@ function AdminDashboardPageInner() {
   // Window içindeki siparişler (KPI ve chart'lar bunu kullanır)
   const inRange = useMemo(
     () =>
-      orders.filter(
+      metricOrders.filter(
         (o) =>
           o.createdAt >= rangeWindow.start &&
           (rangeWindow.end === undefined || o.createdAt <= rangeWindow.end)
       ),
-    [orders, rangeWindow.start, rangeWindow.end]
+    [metricOrders, rangeWindow.start, rangeWindow.end]
   );
   const inPrevRange = useMemo(
     () =>
-      orders.filter(
-        (o) => o.createdAt >= rangeWindow.prevStart && o.createdAt < rangeWindow.prevEnd
+      metricOrders.filter(
+        (o) =>
+          o.createdAt >= rangeWindow.prevStart &&
+          o.createdAt < rangeWindow.prevEnd
       ),
-    [orders, rangeWindow.prevStart, rangeWindow.prevEnd]
+    [metricOrders, rangeWindow.prevStart, rangeWindow.prevEnd]
   );
 
   // KPI hesaplamaları
@@ -627,10 +634,12 @@ function AdminDashboardPageInner() {
   const revenue = inRange.reduce((s, o) => s + o.total, 0);
   const prevRevenue = inPrevRange.reduce((s, o) => s + o.total, 0);
   const aov = count > 0 ? revenue / count : 0;
-  const aiFlagged = countByStatuses(orders, AI_QC_ACTIVE_STATUSES);
-  const proofPending = orders.filter((o) => o.status === "proof_pending").length;
+  const aiFlagged = countByStatuses(metricOrders, AI_QC_ACTIVE_STATUSES);
+  const proofPending = metricOrders.filter(
+    (o) => o.status === "proof_pending"
+  ).length;
   const productionPending = countByStatuses(
-    orders,
+    metricOrders,
     UNASSIGNED_PRODUCTION_STATUSES
   );
 
@@ -644,8 +653,8 @@ function AdminDashboardPageInner() {
 
   // Chart datası — daima rangeWindow.days kullan
   const dailySeries = useMemo(
-    () => buildDailySeries(orders, rangeWindow.days),
-    [orders, rangeWindow.days]
+    () => buildDailySeries(metricOrders, rangeWindow.days),
+    [metricOrders, rangeWindow.days]
   );
   const revenueSeries: LinePoint[] = dailySeries.map((d) => ({
     x: formatShortDate(d.date),
@@ -657,22 +666,31 @@ function AdminDashboardPageInner() {
   }));
 
   const productMix = useMemo(() => aggregateProductMix(inRange), [inRange]);
-  const statusDistribution = useMemo(() => aggregateStatus(orders), [orders]);
-  const heatmapMatrix = useMemo(() => buildHeatmapMatrix(orders), [orders]);
-  const tops = useMemo(() => topCustomers(orders, 5), [orders]);
-  const cities = useMemo(() => topCities(orders, 5), [orders]);
-  const ops = useMemo(() => operationalMetrics(orders), [orders]);
-  const insights = useMemo(() => generateInsights(orders), [orders]);
+  const statusDistribution = useMemo(
+    () => aggregateStatus(metricOrders),
+    [metricOrders]
+  );
+  const heatmapMatrix = useMemo(
+    () => buildHeatmapMatrix(metricOrders),
+    [metricOrders]
+  );
+  const tops = useMemo(() => topCustomers(metricOrders, 5), [metricOrders]);
+  const cities = useMemo(() => topCities(metricOrders, 5), [metricOrders]);
+  const ops = useMemo(() => operationalMetrics(metricOrders), [metricOrders]);
+  const insights = useMemo(
+    () => generateInsights(metricOrders),
+    [metricOrders]
+  );
 
   // Sefa 21 May v68 (admin denetim P2 #14): orders kaynak sıralaması statü
   // bazlı olabiliyordu — Son siparişler kullanıcının beklediği kronoloji
   // (createdAt DESC) ile gözüksün diye explicit sort.
   const recent = useMemo(
     () =>
-      [...orders]
+      [...metricOrders]
         .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
         .slice(0, 5),
-    [orders]
+    [metricOrders]
   );
 
   const dateLabel = now
