@@ -1,9 +1,14 @@
 /**
- * Sticker çift fiyat (alış/satış) — resolve + geriye uyumluluk.
- * Etiket profilleri bu modülü kullanmaz.
+ * Çift fiyat (alış/satış) — sticker + etiket tabaka.
+ * Etiket rulo (pricebook) bu modülü kullanmaz.
  */
 
-import type { MaterialItem, OptionItem, ProfileConfig } from "./pricing-config-types";
+import type {
+  MaterialItem,
+  OptionItem,
+  ProfileConfig,
+  ScopeName,
+} from "./pricing-config-types";
 
 const DEFAULT_SELL_MULTIPLIER = 1.5;
 const DEFAULT_COST_PCT_RATIO = 0.5;
@@ -43,23 +48,38 @@ export function resolveOptionCostPct(item: OptionItem): number {
   return resolveOptionSellPct(item) * DEFAULT_COST_PCT_RATIO;
 }
 
-/** Malzeme alış→satış kâr yüzdesi (gösterim için) */
-export function materialProfitPct(m: MaterialItem): number | null {
-  const cost = resolveM2Cost(m);
-  const sell = resolveM2Sell(m);
+/** Malzeme alış→satış kâr yüzdesi (admin UI) */
+export function materialProfitPct(
+  m: MaterialItem,
+  sheetMode = false
+): number | null {
+  const cost = sheetMode ? resolveSheetCost(m) : resolveM2Cost(m);
+  const sell = sheetMode ? resolveSheetSell(m) : resolveM2Sell(m);
   if (cost <= 0 || sell <= 0) return null;
   return Math.round(((sell - cost) / cost) * 100);
 }
 
-export function isStickerDualPriceScope(scope?: string): boolean {
-  return scope === "sticker";
+export function isDualPriceScope(scope?: ScopeName | string): boolean {
+  return scope === "sticker" || scope === "etiket_tabaka";
 }
 
-/** Canlı DB kaydı eski margin/cargo içeriyorsa sticker için yoksay */
-export function stickerOperationCost(
+/** @deprecated isDualPriceScope kullan */
+export function isStickerDualPriceScope(scope?: ScopeName | string): boolean {
+  return isDualPriceScope(scope);
+}
+
+export function dualPriceOperationCost(
   config: ProfileConfig,
   qty: number
 ): number {
   const op = config.operation;
   return op.setup + op.packaging_per_unit * qty;
+}
+
+/** @deprecated dualPriceOperationCost kullan */
+export function stickerOperationCost(
+  config: ProfileConfig,
+  qty: number
+): number {
+  return dualPriceOperationCost(config, qty);
 }

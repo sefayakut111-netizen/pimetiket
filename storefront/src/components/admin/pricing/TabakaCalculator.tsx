@@ -119,7 +119,8 @@ export function TabakaCalculator({
         // Tabaka mode: geometriden gelen tabaka sayısı
         sheets_needed: geometry.sheets_needed,
       },
-      config
+      config,
+      "etiket_tabaka"
     );
   }, [width, height, qty, materialId, coatingId, config, geometry.sheets_needed]);
 
@@ -335,12 +336,11 @@ export function TabakaCalculator({
                 <Field label="Kargo (₺)">
                   <input
                     type="number"
-                    value={config.operation.cargo}
+                    value={config.operation.cargo ?? 0}
                     step={5}
-                    onChange={(e) =>
-                      updateOpField("cargo", Number(e.target.value))
-                    }
-                    className="w-full px-3 h-10 rounded-lg bg-white ring-1 ring-gri-200 text-[14px] tabular-nums focus:outline-none focus:ring-pim-mercan"
+                    disabled
+                    title="Tabaka dual-price: kargo ana fiyatta"
+                    className="w-full px-3 h-10 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] tabular-nums opacity-50 cursor-not-allowed"
                   />
                 </Field>
                 <Field label="Komisyon (%)">
@@ -355,16 +355,7 @@ export function TabakaCalculator({
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <Field label="Kâr marjı (%)">
-                  <input
-                    type="number"
-                    value={config.margin?.pct ?? 0}
-                    step={1}
-                    onChange={(e) => updateMargin(Number(e.target.value))}
-                    className="w-full px-3 h-10 rounded-lg bg-white ring-1 ring-gri-200 text-[14px] tabular-nums focus:outline-none focus:ring-pim-mercan"
-                  />
-                </Field>
+              <div className="grid grid-cols-1 gap-3 mt-3">
                 <Field label="KDV (%)">
                   <input
                     type="number"
@@ -448,7 +439,7 @@ export function TabakaCalculator({
                     value={`+${fmt(priceResult.operation_cost, 2)}`}
                   />
                   <Row
-                    label={`+ Margin %${config.margin?.pct ?? 0}`}
+                    label="Satış + operasyon"
                     value={fmt(priceResult.with_margin, 2)}
                   />
                   <Row

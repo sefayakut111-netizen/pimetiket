@@ -23,12 +23,14 @@ import type {
   ScopeName,
 } from "./pricing-config-types";
 import {
-  isStickerDualPriceScope,
+  isDualPriceScope,
   resolveM2Cost,
   resolveM2Sell,
+  resolveSheetCost,
+  resolveSheetSell,
   resolveOptionCostPct,
   resolveOptionSellPct,
-  stickerOperationCost,
+  dualPriceOperationCost,
 } from "./pricing-dual-price";
 
 // ============================================================
@@ -199,30 +201,55 @@ export function calculatePrice(
         : area_m2 * input.qty
       : undefined;
 
-  const dualSticker = mode === "area" && isStickerDualPriceScope(scope);
+  const dualPrice = isDualPriceScope(scope);
 
   // 5. Tier (çarpansal)
   const tier = findTier(input.qty, config.tiers);
 
-  // --- Sticker dual-price (alış/satış ayrı, margin/cargo yok) ---
-  if (dualSticker) {
-    const m2Cost = resolveM2Cost(material);
-    const m2Sell = resolveM2Sell(material);
-    if (m2Sell <= 0) {
-      return {
-        ok: false,
-        reason: "missing_m2_sell",
-        hint: `"${material.name}" için satış fiyatı tanımlı değil`,
-      };
+  // --- Dual-price (sticker m² + etiket tabaka) — margin/cargo yok ---
+  if (dualPrice) {
+    let material_cost_base: number;
+    let material_sell_base: number;
+    let sheets_used: number | undefined;
+    let billable: number | undefined;
+
+    if (mode === "sheet") {
+      if (!input.sheets_needed || input.sheets_needed <= 0) {
+        return {
+          ok: false,
+          reason: "missing_sheets_needed",
+          hint: "Tabaka modunda sheets_needed (geometriden) gerekli",
+        };
+      }
+      const sheetCost = resolveSheetCost(material);
+      const sheetSell = resolveSheetSell(material);
+      if (sheetSell <= 0) {
+        return {
+          ok: false,
+          reason: "missing_sheet_sell",
+          hint: `"${material.name}" için tabaka satış fiyatı tanımlı değil`,
+        };
+      }
+      sheets_used = input.sheets_needed;
+      material_cost_base = sheetCost * input.sheets_needed;
+      material_sell_base = sheetSell * input.sheets_needed;
+    } else {
+      const m2Cost = resolveM2Cost(material);
+      const m2Sell = resolveM2Sell(material);
+      if (m2Sell <= 0) {
+        return {
+          ok: false,
+          reason: "missing_m2_sell",
+          hint: `"${material.name}" için satış fiyatı tanımlı değil`,
+        };
+      }
+      billable =
+        billable_m2 !== undefined && billable_m2 > 0
+          ? billable_m2
+          : area_m2 * input.qty;
+      material_cost_base = m2Cost * billable;
+      material_sell_base = m2Sell * billable;
     }
-
-    const billable =
-      billable_m2 !== undefined && billable_m2 > 0
-        ? billable_m2
-        : area_m2 * input.qty;
-
-    const material_cost_base = m2Cost * billable;
-    const material_sell_base = m2Sell * billable;
     const tiered_cost = material_cost_base * tier.multiplier;
     const tiered_sell = material_sell_base * tier.multiplier;
 
@@ -272,7 +299,7 @@ export function calculatePrice(
     const with_options = tiered_sell * (1 + options_sell_pct_total / 100);
     const opEnabled = config.operation.enabled !== false;
     const operation_cost = opEnabled
-      ? stickerOperationCost(config, input.qty)
+      ? dualPriceOperationCost(config, input.qty)
       : 0;
     const cost_total = with_options_cost + operation_cost;
     const sell_before_fee = with_options + operation_cost;
@@ -287,8 +314,9 @@ export function calculatePrice(
     return {
       ok: true,
       area_m2,
-      billable_m2: billable,
+      billable_m2: mode === "area" ? billable : billable_m2,
       pricing_mode: mode,
+      sheets_used,
       material,
       tier,
       base: material_sell_base,

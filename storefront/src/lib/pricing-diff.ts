@@ -14,7 +14,7 @@
  */
 
 import type { ProfileConfig, ScopeConfig, ScopeName } from "./pricing-config";
-import { isStickerDualPriceScope } from "./pricing-dual-price";
+import { isDualPriceScope } from "./pricing-dual-price";
 
 export interface DiffEntry {
   section: "materials" | "options" | "tiers" | "operation" | "margin" | "vat";
@@ -38,7 +38,7 @@ export function diffProfileConfig(
   const diffs: DiffEntry[] = [];
   if (!isProfileConfig(oldCfg) || !isProfileConfig(newCfg)) return diffs;
 
-  const dualSticker = isStickerDualPriceScope(scope);
+  const dualPrice = isDualPriceScope(scope);
 
   // Materials — sheet mode için sheet_cost_try, area mode için m2_cost_try
   const isSheetMode = newCfg.pricing_mode === "sheet" || oldCfg.pricing_mode === "sheet";
@@ -70,7 +70,7 @@ export function diffProfileConfig(
         new_value: `${newCost ?? "?"} ₺`,
       });
     }
-    if (dualSticker) {
+    if (dualPrice) {
       const oldSell = getSell(oldMat);
       const newSell = getSell(newMat);
       if (oldSell !== newSell) {
@@ -134,7 +134,7 @@ export function diffProfileConfig(
           new_value: `+%${newItem.pct_add}`,
         });
       }
-      if (dualSticker && oldItem.pct_cost !== newItem.pct_cost) {
+      if (dualPrice && oldItem.pct_cost !== newItem.pct_cost) {
         diffs.push({
           section: "options",
           label: `${newGroup.label} → ${newItem.name} maliyet %`,
@@ -196,7 +196,7 @@ export function diffProfileConfig(
     });
   }
   // Operation — numeric fields
-  const op_num_keys = dualSticker
+  const op_num_keys = dualPrice
     ? (["setup", "packaging_per_unit", "fee_pct"] as const)
     : (["setup", "packaging_per_unit", "cargo", "fee_pct"] as const);
   const op_labels: Record<string, string> = {
@@ -220,7 +220,7 @@ export function diffProfileConfig(
 
   // Margin — yalnızca etiket legacy
   if (
-    !dualSticker &&
+    !dualPrice &&
     oldCfg.margin?.pct !== undefined &&
     newCfg.margin?.pct !== undefined &&
     oldCfg.margin.pct !== newCfg.margin.pct
@@ -232,7 +232,7 @@ export function diffProfileConfig(
       new_value: `%${newCfg.margin.pct}`,
     });
   } else if (
-    !dualSticker &&
+    !dualPrice &&
     (oldCfg.margin?.pct ?? null) !== (newCfg.margin?.pct ?? null)
   ) {
     diffs.push({

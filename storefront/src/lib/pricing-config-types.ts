@@ -181,9 +181,9 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
 export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
   pricing_mode: "sheet",
   materials: [
-    { id: "kuse",  name: "Kuşe Etiket",    sheet_cost_try: 22, desc: "Mat kaplamalı baskı kağıdı (33×45 cm)" },
-    { id: "kraft", name: "Kraft Etiket",   sheet_cost_try: 20, desc: "Doğal, dokunsal (33×45 cm)" },
-    { id: "beyaz", name: "Opak PP Etiket", sheet_cost_try: 27, desc: "Klasik, dayanıklı, parlak (33×45 cm)" },
+    { id: "kuse",  name: "Kuşe Etiket",    sheet_cost_try: 22, sheet_sell_try: 33, desc: "Mat kaplamalı baskı kağıdı (33×45 cm)" },
+    { id: "kraft", name: "Kraft Etiket",   sheet_cost_try: 20, sheet_sell_try: 30, desc: "Doğal, dokunsal (33×45 cm)" },
+    { id: "beyaz", name: "Opak PP Etiket", sheet_cost_try: 27, sheet_sell_try: 40, desc: "Klasik, dayanıklı, parlak (33×45 cm)" },
   ],
   options: {
     coating: {
@@ -191,9 +191,9 @@ export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
       required: true,
       single_select: true,
       items: [
-        { id: "yok",    name: "Kaplamasız",     pct_add: 0 },
-        { id: "mat",    name: "Mat selefon",    pct_add: 15 },
-        { id: "parlak", name: "Parlak selefon", pct_add: 15 },
+        { id: "yok",    name: "Kaplamasız",     pct_cost: 0,  pct_add: 0 },
+        { id: "mat",    name: "Mat selefon",    pct_cost: 8,  pct_add: 15 },
+        { id: "parlak", name: "Parlak selefon", pct_cost: 8,  pct_add: 15 },
       ],
     },
   },
@@ -205,7 +205,6 @@ export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
     { qty: 5000, multiplier: 0.90, label: "-%10 indirim" },
     { qty: 10000, multiplier: 0.85, label: "-%15 indirim" },
   ],
-  operation: { setup: 60, packaging_per_unit: 0.02, cargo: 80, fee_pct: 2.5 },
-  margin: { pct: 50 },
+  operation: { setup: 60, packaging_per_unit: 0.02, fee_pct: 2.5 },
   vat: { pct: 20 },
 };

@@ -198,7 +198,10 @@ export function quoteEtiketFromConfig(
       sheets_needed,
       billable_m2,
     },
-    config
+    config,
+    formFactor === "tabaka" || config.pricing_mode === "sheet"
+      ? "etiket_tabaka"
+      : undefined
   );
 
   if (!priceResult.ok) {

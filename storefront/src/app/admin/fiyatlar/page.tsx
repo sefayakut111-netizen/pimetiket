@@ -371,7 +371,7 @@ function FiyatlarPageInner() {
     return isPricebookMode(draft);
   }, [draft, scope]);
 
-  const isStickerDual = scope === "sticker";
+  const isDualPrice = scope === "sticker" || scope === "etiket_tabaka";
 
   // Live preview hesaplama
   const previewResult = useMemo(() => {
@@ -427,7 +427,7 @@ function FiyatlarPageInner() {
     const unitPrice = unitPriceFromPreview(previewResult);
 
     if (
-      isStickerDual &&
+      isDualPrice &&
       "tier" in previewResult &&
       previewResult.material_cost_base != null &&
       previewResult.material_sell_base != null
@@ -483,7 +483,7 @@ function FiyatlarPageInner() {
       profitPct,
       dualSticker: false as const,
     };
-  }, [previewResult, draft, isStickerDual]);
+  }, [previewResult, draft, isDualPrice]);
 
   const previewUnitPrice = costBreakdown?.unitPrice ?? null;
 
@@ -840,7 +840,7 @@ function FiyatlarPageInner() {
                 <div
                   className={cn(
                     "grid gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700",
-                    isStickerDual
+                    isDualPrice
                       ? "grid-cols-[40px_32px_80px_1.5fr_2fr_100px_100px_160px]"
                       : "grid-cols-[40px_32px_80px_1.5fr_2fr_140px_160px]"
                   )}
@@ -850,10 +850,14 @@ function FiyatlarPageInner() {
                   <span>ID</span>
                   <span>Ad</span>
                   <span>Açıklama</span>
-                  {isStickerDual ? (
+                  {isDualPrice ? (
                     <>
-                      <span className="text-right">Alış (₺/m²)</span>
-                      <span className="text-right">Satış (₺/m²)</span>
+                      <span className="text-right">
+                        {isSheetMode ? "Alış (₺/tabaka)" : "Alış (₺/m²)"}
+                      </span>
+                      <span className="text-right">
+                        {isSheetMode ? "Satış (₺/tabaka)" : "Satış (₺/m²)"}
+                      </span>
                     </>
                   ) : (
                     <span className="text-right">
@@ -867,8 +871,14 @@ function FiyatlarPageInner() {
                   const costVal = isSheetMode
                     ? (m.sheet_cost_try ?? 0)
                     : (m.m2_cost_try ?? 0);
-                  const sellVal = isStickerDual ? (m.m2_sell_try ?? 0) : 0;
-                  const profitHint = isStickerDual ? materialProfitPct(m) : null;
+                  const sellVal = isDualPrice
+                    ? isSheetMode
+                      ? (m.sheet_sell_try ?? 0)
+                      : (m.m2_sell_try ?? 0)
+                    : 0;
+                  const profitHint = isDualPrice
+                    ? materialProfitPct(m, isSheetMode)
+                    : null;
                   const isFirst = i === 0;
                   const isLast = i === draft.materials.length - 1;
                   const isActive = m.active !== false;
@@ -877,7 +887,7 @@ function FiyatlarPageInner() {
                     key={m.id}
                     className={cn(
                       "grid gap-2 items-center rounded px-1 py-0.5",
-                      isStickerDual
+                      isDualPrice
                         ? "grid-cols-[40px_32px_80px_1.5fr_2fr_100px_100px_160px]"
                         : "grid-cols-[40px_32px_80px_1.5fr_2fr_140px_160px]",
                       changed && "bg-saman/10",
@@ -953,16 +963,20 @@ function FiyatlarPageInner() {
                         changed && "ring-saman bg-saman/10"
                       )}
                     />
-                    {isStickerDual ? (
+                    {isDualPrice ? (
                       <div>
                         <input
                           type="number"
                           value={sellVal}
-                          step={10}
+                          step={isSheetMode ? 1 : 10}
                           onChange={(e) => {
-                            updateMaterial(i, {
-                              m2_sell_try: Number(e.target.value),
-                            });
+                            const v = Number(e.target.value);
+                            updateMaterial(
+                              i,
+                              isSheetMode
+                                ? { sheet_sell_try: v }
+                                : { m2_sell_try: v }
+                            );
                           }}
                           className={cn(
                             "w-full px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
@@ -1017,7 +1031,7 @@ function FiyatlarPageInner() {
                   <div
                     className={cn(
                       "grid gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700",
-                      isStickerDual
+                      isDualPrice
                         ? "grid-cols-[32px_80px_1.5fr_2fr_90px_90px]"
                         : "grid-cols-[32px_80px_1.5fr_2fr_120px]"
                     )}
@@ -1026,7 +1040,7 @@ function FiyatlarPageInner() {
                     <span>ID</span>
                     <span>Ad</span>
                     <span>Açıklama</span>
-                    {isStickerDual ? (
+                    {isDualPrice ? (
                       <>
                         <span className="text-right">Maliyet %</span>
                         <span className="text-right">Satış %</span>
@@ -1044,7 +1058,7 @@ function FiyatlarPageInner() {
                       key={it.id}
                       className={cn(
                         "grid gap-2 items-center rounded px-1 py-0.5",
-                        isStickerDual
+                        isDualPrice
                           ? "grid-cols-[32px_80px_1.5fr_2fr_90px_90px]"
                           : "grid-cols-[32px_80px_1.5fr_2fr_120px]",
                         changed && "bg-saman/10"
@@ -1088,7 +1102,7 @@ function FiyatlarPageInner() {
                         className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] focus:outline-none focus:ring-pim-mercan"
                       />
                       <div className="relative">
-                        {isStickerDual ? (
+                        {isDualPrice ? (
                           <input
                             type="number"
                             value={it.pct_cost ?? 0}
@@ -1122,7 +1136,7 @@ function FiyatlarPageInner() {
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gri-500 text-[11px]">
                           %
                         </span>
-                        {!isStickerDual &&
+                        {!isDualPrice &&
                           previewUnitPrice != null &&
                           it.pct_add > 0 && (
                             <span className="block text-[10px] text-gri-500 mt-0.5 text-right whitespace-nowrap">
@@ -1134,7 +1148,7 @@ function FiyatlarPageInner() {
                             </span>
                           )}
                       </div>
-                      {isStickerDual ? (
+                      {isDualPrice ? (
                         <div className="relative">
                           <input
                             type="number"
@@ -1269,7 +1283,7 @@ function FiyatlarPageInner() {
                 </label>
               </div>
               <div className={draft.operation.enabled === false ? "opacity-40 pointer-events-none" : ""}>
-              <div className={cn("grid gap-3 mb-4", isStickerDual ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
+              <div className={cn("grid gap-3 mb-4", isDualPrice ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
                 <NumField
                   label="Setup (₺)"
                   value={draft.operation.setup}
@@ -1282,7 +1296,7 @@ function FiyatlarPageInner() {
                   step={0.005}
                   onChange={(v) => updateOperationField("packaging_per_unit", v)}
                 />
-                {!isStickerDual && (
+                {!isDualPrice && (
                   <NumField
                     label="Kargo (₺)"
                     value={draft.operation.cargo ?? 0}
@@ -1297,8 +1311,8 @@ function FiyatlarPageInner() {
                   onChange={(v) => updateOperationField("fee_pct", v)}
                 />
               </div>
-              <div className={cn("grid gap-3", isStickerDual ? "grid-cols-1" : "grid-cols-2")}>
-                {!isStickerDual && (
+              <div className={cn("grid gap-3", isDualPrice ? "grid-cols-1" : "grid-cols-2")}>
+                {!isDualPrice && (
                   <NumField
                     label="Kâr marjı (%)"
                     value={draft.margin?.pct ?? 0}
@@ -1428,8 +1442,8 @@ function FiyatlarPageInner() {
                     <option key={m.id} value={m.id}>
                       {m.name} (
                       {isSheetMode
-                        ? `${m.sheet_cost_try ?? "?"} ₺/tabaka`
-                        : isStickerDual
+                        ? `${m.sheet_sell_try ?? m.sheet_cost_try ?? "?"} ₺/tabaka satış`
+                        : isDualPrice
                           ? `${m.m2_sell_try ?? m.m2_cost_try ?? "?"} ₺/m² satış`
                           : `${m.m2_cost_try ?? "?"} ₺/m²`}
                       )

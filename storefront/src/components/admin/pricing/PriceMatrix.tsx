@@ -45,12 +45,14 @@ function profitPctFromTotal(
   calcResult?: ReturnType<typeof calculatePrice>
 ): number {
   if (
-    scope === "sticker" &&
+    (scope === "sticker" || scope === "etiket_tabaka") &&
     calcResult?.ok &&
     calcResult.material_profit != null
   ) {
     const subtotal = total / (1 + config.vat.pct / 100);
-    return subtotal > 0 ? (calcResult.material_profit / subtotal) * 100 : 0;
+    return subtotal > 0
+      ? (calcResult.material_profit / subtotal) * 100
+      : 0;
   }
   const marginPct = config.margin?.pct ?? 0;
   if (marginPct <= 0) return 0;
@@ -131,8 +133,8 @@ function quoteCell(
   const subtotal = total / (1 + config.vat.pct / 100);
   const feeAmount = subtotal * (config.operation.fee_pct / 100);
   const marginTry =
-    scope === "sticker" && r.material_profit != null
-      ? r.material_profit
+    scope === "sticker" || scope === "etiket_tabaka"
+      ? r.material_profit ?? 0
       : (() => {
           const marginPct = config.margin?.pct ?? 0;
           return marginPct > 0
