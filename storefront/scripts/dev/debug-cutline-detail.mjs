@@ -14,25 +14,21 @@ for (const f of [".env.local", ".env.agent"]) {
   }
 }
 
-const oid = process.argv[2];
+const oid = process.argv[2] || "260520262357";
 const { createClient } = await import("@supabase/supabase-js");
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const { data: ev } = await admin
-  .from("order_events")
-  .select("event_type, summary, created_at, detail")
-  .eq("order_id", oid)
-  .order("created_at", { ascending: true });
-console.log("events:", ev?.map((e) => `${e.created_at} ${e.event_type}: ${e.summary}`));
-
-const { data: items } = await admin
-  .from("order_items")
-  .select("meta")
+const { data: cut } = await admin
+  .from("cutline_designs")
+  .select("id, preview_png_url, design_file_id, status, svg_url")
   .eq("order_id", oid);
-for (const it of items ?? []) {
-  const m = it.meta;
-  console.log("\nmeta designCount:", m?.designCount, "additionalDesigns:", m?.additionalDesigns?.length ?? 0);
-}
+console.log("cutlines:", cut);
+
+const { data: dfs } = await admin
+  .from("design_files")
+  .select("id, original_name, status, order_item_id, version, storage_path")
+  .eq("order_id", oid);
+console.log("design_files:", dfs);

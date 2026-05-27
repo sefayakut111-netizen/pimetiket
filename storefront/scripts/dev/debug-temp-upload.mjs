@@ -14,25 +14,24 @@ for (const f of [".env.local", ".env.agent"]) {
   }
 }
 
-const oid = process.argv[2];
+const tid = process.argv[2] || "35a501ad-cad4-49e7-a0d0-d76f4100492e";
 const { createClient } = await import("@supabase/supabase-js");
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const { data: ev } = await admin
-  .from("order_events")
-  .select("event_type, summary, created_at, detail")
-  .eq("order_id", oid)
-  .order("created_at", { ascending: true });
-console.log("events:", ev?.map((e) => `${e.created_at} ${e.event_type}: ${e.summary}`));
+const { data } = await admin
+  .from("design_temp_uploads")
+  .select("id, original_name, promoted_to, storage_path, user_id")
+  .eq("id", tid)
+  .maybeSingle();
+console.log("temp upload:", data);
 
-const { data: items } = await admin
-  .from("order_items")
-  .select("meta")
-  .eq("order_id", oid);
-for (const it of items ?? []) {
-  const m = it.meta;
-  console.log("\nmeta designCount:", m?.designCount, "additionalDesigns:", m?.additionalDesigns?.length ?? 0);
-}
+const { data: recent } = await admin
+  .from("orders")
+  .select("id, status, created_at")
+  .in("status", ["proof_pending", "proof_generating", "human_review"])
+  .order("created_at", { ascending: false })
+  .limit(8);
+console.log("\nrecent stuck orders:", recent);

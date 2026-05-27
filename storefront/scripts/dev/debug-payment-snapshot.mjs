@@ -14,25 +14,29 @@ for (const f of [".env.local", ".env.agent"]) {
   }
 }
 
-const oid = process.argv[2];
+const oid = process.argv[2] || "260520262357";
 const { createClient } = await import("@supabase/supabase-js");
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const { data: ev } = await admin
-  .from("order_events")
-  .select("event_type, summary, created_at, detail")
+const { data: pay } = await admin
+  .from("payments")
+  .select("merchant_oid")
   .eq("order_id", oid)
-  .order("created_at", { ascending: true });
-console.log("events:", ev?.map((e) => `${e.created_at} ${e.event_type}: ${e.summary}`));
+  .maybeSingle();
+console.log("payment:", pay);
 
-const { data: items } = await admin
-  .from("order_items")
-  .select("meta")
-  .eq("order_id", oid);
-for (const it of items ?? []) {
-  const m = it.meta;
-  console.log("\nmeta designCount:", m?.designCount, "additionalDesigns:", m?.additionalDesigns?.length ?? 0);
+if (pay?.merchant_oid) {
+  const { data: intent } = await admin
+    .from("payment_intents")
+    .select("snapshot")
+    .eq("id", pay.merchant_oid)
+    .maybeSingle();
+  const items = intent?.snapshot?.items ?? [];
+  console.log("snapshot items meta:", JSON.stringify(items.map((i) => i.meta ?? i), null, 2));
 }
+
+const { data: order } = await admin.from("orders").select("status, sla_proof_deadline").eq("id", oid).single();
+console.log("order status:", order);

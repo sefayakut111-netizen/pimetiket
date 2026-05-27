@@ -21,18 +21,15 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const { data: ev } = await admin
-  .from("order_events")
-  .select("event_type, summary, created_at, detail")
-  .eq("order_id", oid)
-  .order("created_at", { ascending: true });
-console.log("events:", ev?.map((e) => `${e.created_at} ${e.event_type}: ${e.summary}`));
+const { data: items } = await admin.from("order_items").select("meta").eq("order_id", oid);
+const meta = items?.[0]?.meta ?? {};
+const ids = [
+  meta.designTempId,
+  ...(meta.additionalDesigns ?? []).map((d) => d.tempId),
+].filter(Boolean);
 
-const { data: items } = await admin
-  .from("order_items")
-  .select("meta")
-  .eq("order_id", oid);
-for (const it of items ?? []) {
-  const m = it.meta;
-  console.log("\nmeta designCount:", m?.designCount, "additionalDesigns:", m?.additionalDesigns?.length ?? 0);
+for (const id of ids) {
+  const path = `${oid}/${id}.png`;
+  const { data, error } = await admin.storage.from("designs").download(path);
+  console.log(path, error ? error.message : "OK " + (await data.arrayBuffer()).byteLength);
 }

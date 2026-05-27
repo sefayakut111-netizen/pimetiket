@@ -21,18 +21,33 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const { data: ev } = await admin
-  .from("order_events")
-  .select("event_type, summary, created_at, detail")
-  .eq("order_id", oid)
-  .order("created_at", { ascending: true });
-console.log("events:", ev?.map((e) => `${e.created_at} ${e.event_type}: ${e.summary}`));
-
 const { data: items } = await admin
   .from("order_items")
-  .select("meta")
+  .select("id")
   .eq("order_id", oid);
-for (const it of items ?? []) {
-  const m = it.meta;
-  console.log("\nmeta designCount:", m?.designCount, "additionalDesigns:", m?.additionalDesigns?.length ?? 0);
+const itemId = items?.[0]?.id;
+
+const { data: all } = await admin
+  .from("design_files")
+  .select("id, original_name, version, status")
+  .eq("order_id", oid)
+  .eq("order_item_id", itemId)
+  .order("version");
+
+for (const row of all ?? []) {
+  if (row.status === "superseded") {
+    await admin.from("design_files").update({ status: "qc_passed" }).eq("id", row.id);
+  } else if (row.status === "analyzing") {
+    await admin.from("design_files").update({ status: "qc_passed" }).eq("id", row.id);
+  }
 }
+
+const { data: after } = await admin
+  .from("design_files")
+  .select("id, original_name, version, status")
+  .eq("order_id", oid)
+  .eq("order_item_id", itemId)
+  .neq("status", "superseded")
+  .order("version");
+
+console.log("active:", after);

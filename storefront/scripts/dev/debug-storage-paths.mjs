@@ -14,25 +14,24 @@ for (const f of [".env.local", ".env.agent"]) {
   }
 }
 
-const oid = process.argv[2];
 const { createClient } = await import("@supabase/supabase-js");
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const { data: ev } = await admin
-  .from("order_events")
-  .select("event_type, summary, created_at, detail")
-  .eq("order_id", oid)
-  .order("created_at", { ascending: true });
-console.log("events:", ev?.map((e) => `${e.created_at} ${e.event_type}: ${e.summary}`));
+const paths = [
+  "temp/73c4bcab-5d2e-413d-87f0-5a1b1098aedd/d6a64232-7eed-4e9d-949b-47a7b84b72de.png",
+  "270520268437/d6a64232-7eed-4e9d-949b-47a7b84b72de.png",
+  "design-previews/73c4bcab-5d2e-413d-87f0-5a1b1098aedd/d6a64232-7eed-4e9d-949b-47a7b84b72de.png",
+];
 
-const { data: items } = await admin
-  .from("order_items")
-  .select("meta")
-  .eq("order_id", oid);
-for (const it of items ?? []) {
-  const m = it.meta;
-  console.log("\nmeta designCount:", m?.designCount, "additionalDesigns:", m?.additionalDesigns?.length ?? 0);
+for (const bucket of ["designs", "design-previews"]) {
+  for (const p of paths.filter((x) => !x.startsWith("design-previews"))) {
+    const { data, error } = await admin.storage.from(bucket).download(p);
+    console.log(
+      bucket + "/" + p,
+      error ? error.message : "OK " + (await data.arrayBuffer()).byteLength + "b"
+    );
+  }
 }
