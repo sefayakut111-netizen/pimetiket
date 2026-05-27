@@ -356,18 +356,18 @@ export default function TasarimlarimPage() {
                     )}
 
                     {/* Actions */}
-                    <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="mt-3 flex flex-col gap-2 sm:grid sm:grid-cols-3">
                       {downloadUrl ? (
                         <a
                           href={downloadUrl}
                           download={d.originalName}
-                          className="inline-flex items-center justify-center gap-1 h-8 px-2 rounded-full border border-gri-200 bg-white text-[11px] font-semibold text-gri-700 hover:border-pim-mercan hover:text-pim-mercan transition-colors"
+                          className="inline-flex items-center justify-center gap-1 min-h-11 h-11 px-2 rounded-full border border-gri-200 bg-white text-[11px] font-semibold text-gri-700 hover:border-pim-mercan hover:text-pim-mercan transition-colors"
                         >
                           <Icon.Doc size={12} /> {c.downloadCta}
                         </a>
                       ) : (
                         <span
-                          className="inline-flex items-center justify-center h-8 px-2 rounded-full border border-gri-100 bg-gri-50 text-[11px] font-semibold text-gri-400 cursor-not-allowed"
+                          className="inline-flex items-center justify-center min-h-11 h-11 px-2 rounded-full border border-gri-100 bg-gri-50 text-[11px] font-semibold text-gri-400 cursor-not-allowed"
                           aria-disabled
                         >
                           {c.downloadCta}
@@ -376,13 +376,13 @@ export default function TasarimlarimPage() {
                       <button
                         type="button"
                         onClick={() => handleReprint(d)}
-                        className="inline-flex items-center justify-center gap-1 h-8 px-2 rounded-full bg-pim-mercan text-white text-[11px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
+                        className="inline-flex items-center justify-center gap-1 min-h-11 h-11 px-2 rounded-full bg-pim-mercan text-white text-[11px] font-semibold hover:bg-pim-mercan-koyu transition-colors"
                       >
                         <Icon.Bolt size={12} /> {c.reprintCta}
                       </button>
                       <Link
                         href={`/siparis/${d.orderId}`}
-                        className="inline-flex items-center justify-center gap-0.5 h-8 px-2 rounded-full border border-gri-200 bg-white text-[11px] font-semibold text-gri-700 hover:border-pim-mercan hover:text-pim-mercan transition-colors"
+                        className="inline-flex items-center justify-center gap-0.5 min-h-11 h-11 px-2 rounded-full border border-gri-200 bg-white text-[11px] font-semibold text-gri-700 hover:border-pim-mercan hover:text-pim-mercan transition-colors"
                       >
                         {c.viewOrder} →
                       </Link>

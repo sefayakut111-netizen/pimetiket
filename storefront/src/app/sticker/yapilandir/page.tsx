@@ -1061,7 +1061,9 @@ function StickerPage() {
               <div
                 className={cn(
                   "grid gap-2.5",
-                  cutMode === "tabaka" ? "grid-cols-3" : "grid-cols-4"
+                  cutMode === "tabaka"
+                    ? "grid-cols-2 sm:grid-cols-3"
+                    : "grid-cols-2 sm:grid-cols-4"
                 )}
               >
                 {visibleShapes.map((s) => (
@@ -1418,7 +1420,7 @@ function StickerPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-end gap-3">
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                     {shape === "oval"

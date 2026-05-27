@@ -591,7 +591,7 @@ export default function ProofEditPage({
             sandbox="allow-scripts allow-same-origin allow-downloads"
           />
         ) : designLoadError ? (
-          <div className="grid min-h-[480px] place-items-center bg-kirmizi-soft p-6 text-center">
+          <div className="grid min-h-[60vh] sm:min-h-[480px] place-items-center bg-kirmizi-soft p-6 text-center">
             <div className="max-w-lg">
               <div className="mb-2 text-base font-semibold text-kirmizi">
                 Tasarım yüklenemedi
@@ -610,7 +610,7 @@ export default function ProofEditPage({
             </div>
           </div>
         ) : (
-          <div className="grid min-h-[480px] place-items-center bg-gri-100 text-sm text-gri-700">
+          <div className="grid min-h-[60vh] sm:min-h-[480px] place-items-center bg-gri-100 text-sm text-gri-700">
             Tasarım yükleniyor…
           </div>
         )}

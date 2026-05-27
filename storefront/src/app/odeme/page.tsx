@@ -1551,7 +1551,7 @@ export default function OdemePage() {
                                   e.stopPropagation();
                                   handleDeleteInvoiceProfile(p.id);
                                 }}
-                                className="grid place-items-center w-7 h-7 rounded-full text-kirmizi hover:bg-kirmizi/10 transition-colors"
+                                className="grid place-items-center min-w-11 min-h-11 w-11 h-11 rounded-full text-kirmizi hover:bg-kirmizi/10 transition-colors"
                                 aria-label={`${p.label ?? p.companyName} faturasını sil`}
                                 title="Sil"
                               >

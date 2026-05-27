@@ -1944,7 +1944,7 @@ function EtiketPage() {
                   </span>
                   <span aria-hidden className="flex-1 h-px bg-gri-200" />
                 </legend>
-                <div className="grid grid-cols-4 gap-2.5 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
                   {[1, 2, 3, 4].map((n) => (
                     <div key={n} className="relative">
                       {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge
@@ -1988,7 +1988,7 @@ function EtiketPage() {
                   </span>
                   <span aria-hidden className="flex-1 h-px bg-gri-200" />
                 </legend>
-                <div className="grid grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {[5, 6, 7, 8].map((n) => (
                     <SelectableCard
                       key={n}
@@ -2104,7 +2104,7 @@ function EtiketPage() {
                 <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
                   Bir rulodaki etiket adedi
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {ROLL_LABEL_COUNTS.map((q) => {
                     const active = touchedSteps.has(5) && rollLabelCount === q;
                     return (
@@ -2275,7 +2275,7 @@ function EtiketPage() {
                   </label>
                 </div>
               ) : (
-                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-end gap-3">
                   <label className="block">
                     <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                       {shape === "oval" ? "Uzun eksen (mm)" : "Genişlik (mm)"}

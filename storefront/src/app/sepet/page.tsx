@@ -310,7 +310,7 @@ export default function SepetPage() {
           <div className="flex flex-col gap-3">
             {cart.map((item) => (
               <Card key={item.id} padding="p-4 sm:p-5">
-                <div className="grid grid-cols-[60px_1fr_auto] sm:grid-cols-[80px_1fr_auto] gap-3 sm:gap-4 items-start">
+                <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_auto] gap-3 sm:gap-4 items-start">
                   {/* Sefa 20 May v68 Migration 072: DesignThumb 3 öncelikli:
                       1) preview render → asıl tasarım
                       2) MIME varsa → PDF/AI/PSD rozeti
@@ -374,7 +374,7 @@ export default function SepetPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-right shrink-0 flex flex-col items-end justify-between min-h-[80px]">
+                  <div className="sm:text-right shrink-0 flex flex-col items-stretch sm:items-end justify-between sm:min-h-[80px] gap-2">
                     <div>
                       {/* Sefa-3 + 20 May test #5: Toplam büyük + altta
                           "X ₺ × Y adet" net birimli hesap (önceden "3,64 × 100"
@@ -386,7 +386,7 @@ export default function SepetPage() {
                         {x.decimal(item.unit)} {x.currency} × {fmt(item.qty)} adet
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       {/* Sefa-11 + 20 May test #3: Düzenle butonu — item
                           snapshot localStorage'a yazılıp konfigüratöre yönlendirir.
                           Konfigüratör mount'ta loadEditIntent ile state'i geri
@@ -395,7 +395,7 @@ export default function SepetPage() {
                         type="button"
                         onClick={() => handleEdit(item)}
                         aria-label={`${item.title} düzenle`}
-                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-pim-mercan hover:bg-pim-mercan/5 font-semibold transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 min-h-11 h-11 px-3 rounded-lg text-[12.5px] text-pim-mercan hover:bg-pim-mercan/5 font-semibold transition-colors"
                       >
                         <Icon.Edit size={13} />
                         {x.editLink}
@@ -404,7 +404,7 @@ export default function SepetPage() {
                         type="button"
                         onClick={() => remove(item)}
                         aria-label={`${item.title} sepetten kaldır`}
-                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] text-gri-500 hover:text-kirmizi hover:bg-kirmizi/5 font-semibold transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 min-h-11 h-11 px-3 rounded-lg text-[12.5px] text-gri-500 hover:text-kirmizi hover:bg-kirmizi/5 font-semibold transition-colors"
                       >
                         <Icon.X size={13} />
                         {t.common.remove}

@@ -512,7 +512,7 @@ export default function SiparislerimPage() {
                 (o.status === "shipped" || o.status === "delivered");
               return (
                 <Card key={o.id} padding="p-5">
-                  <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-start">
+                  <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-4 items-start">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gri-100">
                       {o.previewUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -590,7 +590,7 @@ export default function SiparislerimPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2 shrink-0 items-stretch sm:items-end">
+                    <div className="mt-3 flex flex-col gap-2 sm:shrink-0 sm:items-end">
                       {o.status === "awaiting_upload" && (
                         <Button
                           variant="primary"
