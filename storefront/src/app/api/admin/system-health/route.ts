@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { CRON_REGISTRY } from "@/lib/cron-registry";
+import { summarizeCronHealth } from "@/lib/cron-health";
 
 export const dynamic = "force-dynamic";
 
@@ -18,26 +18,18 @@ export async function GET() {
 
   const admin = createAdminClient();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const totalCrons = CRON_REGISTRY.length;
-  let cronHealthy: number = totalCrons;
+
+  let cronHealthy = 0;
   let cronError = 0;
+  let totalCrons = 0;
   let lastError: string | undefined;
 
   try {
-    const { data: errorRuns } = await admin
-      .from("cron_runs")
-      .select("cron_name, error_message, status")
-      .gte("started_at", since)
-      .eq("status", "error");
-
-    const failedNames = new Set(
-      (errorRuns ?? []).map((r) => (r as { cron_name: string }).cron_name)
-    );
-    cronError = failedNames.size;
-    cronHealthy = Math.max(0, totalCrons - cronError);
-    lastError =
-      (errorRuns?.[0] as { error_message?: string | null } | undefined)
-        ?.error_message ?? undefined;
+    const cronSummary = await summarizeCronHealth(admin);
+    totalCrons = cronSummary.total;
+    cronHealthy = cronSummary.healthy;
+    cronError = cronSummary.error;
+    lastError = cronSummary.lastError;
   } catch {
     /* cron_runs yoksa veya erişim hatası — strip cron satırını nötr bırak */
   }
