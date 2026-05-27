@@ -122,7 +122,7 @@ export function Footer() {
 
   return (
     <footer className="bg-lacivert text-white/85 pt-14 pb-6 mt-20">
-      <div className="mx-auto max-w-[1280px] px-6 md:px-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {/* Newsletter — compact strip
             Sefa 17 May Dalga 3 #19: /odeme'de gizli */}
         {!isCheckout && (

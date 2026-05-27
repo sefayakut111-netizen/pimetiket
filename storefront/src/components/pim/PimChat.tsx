@@ -255,7 +255,7 @@ export function PimChat() {
       <div
         aria-hidden={!showTeaser}
         className={cn(
-          "fixed right-[96px] z-[56]",
+          "fixed right-[96px] z-[56] max-sm:hidden",
           "transition-all duration-300 ease-out origin-bottom-right",
           showTeaser && !open && !teaserDismissed
             ? "opacity-100 translate-x-0 scale-100 pointer-events-auto"
