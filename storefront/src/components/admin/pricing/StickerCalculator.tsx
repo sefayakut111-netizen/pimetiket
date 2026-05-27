@@ -1085,9 +1085,18 @@ function ProfitCompareStrip({
   const configProfit = siteSell - operatorCost;
   const pct =
     operatorCost > 0 ? (configProfit / operatorCost) * 100 : 0;
+  const isProfit = configProfit >= 0;
 
   return (
-    <Card padding="p-4" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
+    <Card
+      padding="p-4"
+      className={cn(
+        "ring-1",
+        isProfit
+          ? "ring-pim-mercan/30 bg-pim-mercan/5"
+          : "ring-kirmizi/30 bg-kirmizi-soft/40"
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
         <span className="font-semibold text-lacivert">Maliyet vs Satış Karşılaştırması</span>
         <div className="flex flex-wrap gap-4 tabular-nums">
@@ -1105,9 +1114,15 @@ function ProfitCompareStrip({
           <span>
             Site final (KDV dahil): <strong>{fmt(Math.round(siteFinal))} ₺</strong>
           </span>
-          <span className="text-pim-mercan-koyu font-bold">
-            Fark: {configProfit >= 0 ? "+" : ""}
-            {fmt(Math.round(configProfit))} ₺ ({pct.toFixed(0)}% kâr)
+          <span
+            className={cn(
+              "font-bold",
+              isProfit ? "text-pim-mercan-koyu" : "text-kirmizi"
+            )}
+          >
+            Fark: {isProfit ? "+" : ""}
+            {fmt(Math.round(configProfit))} ₺ ({Math.abs(pct).toFixed(0)}%{" "}
+            {isProfit ? "kâr" : "zarar"})
           </span>
         </div>
       </div>
@@ -1188,9 +1203,10 @@ function SitePriceHero({
             value={`${fmt(Math.round(liveSitePrice.with_margin))} ₺`}
           />
           <VatCell
-            label="Kâr"
+            label={profit >= 0 ? "Kâr" : "Zarar"}
             value={`${fmt(Math.round(profit))} ₺`}
-            subtitle={`%${profitPct.toFixed(0)} kâr`}
+            subtitle={`%${Math.abs(profitPct).toFixed(0)} ${profit >= 0 ? "kâr" : "zarar"}`}
+            warning={profit < 0}
           />
           <VatCell label="PSP" value={`${fmt(Math.round(fee))} ₺`} />
           <VatCell label="KDV" value={`${fmt(Math.round(vat))} ₺`} />
