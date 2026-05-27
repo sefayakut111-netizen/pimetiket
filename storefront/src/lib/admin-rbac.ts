@@ -62,6 +62,7 @@ export interface AdminNavItemDef {
 export const ADMIN_PATH_MODULES: Array<{ prefix: string; module: AdminModule }> =
   [
     { prefix: "/admin/finans", module: "finans" },
+    { prefix: "/admin/odemeler", module: "finans" },
     { prefix: "/admin/kuponlar", module: "coupons" },
     { prefix: "/admin/calisanlar", module: "staff" },
     { prefix: "/admin/fiyatlar", module: "pricing" },

@@ -27,7 +27,7 @@ import type {
 } from "@/app/api/admin/customers/route";
 
 type Segment = AdminCustomerWithSegment["segment"];
-type SegmentFilter = Segment | "all";
+type SegmentFilter = Segment | "all" | "risk_lost";
 
 interface KPI {
   total: number;
@@ -283,7 +283,7 @@ export default function AdminMusterilerPage() {
               value: (kpi?.risk ?? 0) + (kpi?.lost ?? 0),
               accent: "text-saman-koyu",
               bg: "bg-saman/15",
-              filter: "risk" as SegmentFilter,
+              filter: "risk_lost" as SegmentFilter,
             },
             {
               label: "Sipariş vermemiş",

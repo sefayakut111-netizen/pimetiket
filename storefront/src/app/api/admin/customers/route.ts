@@ -107,7 +107,9 @@ export async function GET(req: Request) {
   }));
 
   // Filter: segment
-  if (segment !== "all") {
+  if (segment === "risk_lost") {
+    rows = rows.filter((r) => r.segment === "risk" || r.segment === "lost");
+  } else if (segment !== "all") {
     rows = rows.filter((r) => r.segment === segment);
   }
 

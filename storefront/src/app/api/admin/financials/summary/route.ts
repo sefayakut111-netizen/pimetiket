@@ -92,7 +92,7 @@ export async function GET(req: Request) {
 
   let paymentsQuery = admin
     .from("payments")
-    .select("amount, action, status, created_at")
+    .select("amount, action, status, created_at, order_id")
     .lte("created_at", end);
   if (start) paymentsQuery = paymentsQuery.gte("created_at", start);
 
@@ -114,14 +114,24 @@ export async function GET(req: Request) {
   };
 
   let orderRows = (orders ?? []) as OrderRow[];
+  const allOrderRows = orderRows;
   if (excludeTest) {
     orderRows = orderRows.filter((o) => !isTestOrderLike(o));
   }
-  const paymentRows = (payments ?? []) as Array<{
+  let paymentRows = (payments ?? []) as Array<{
     amount: number;
     action: string;
     status: string;
+    order_id: string | null;
   }>;
+  if (excludeTest) {
+    const testIds = new Set(
+      allOrderRows.filter((o) => isTestOrderLike(o)).map((o) => o.id)
+    );
+    paymentRows = paymentRows.filter(
+      (p) => !p.order_id || !testIds.has(p.order_id)
+    );
+  }
 
   const grossOrderTotal = orderRows
     .filter((o) => o.status !== "cancelled")
