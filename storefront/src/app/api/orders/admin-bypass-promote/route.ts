@@ -1,7 +1,7 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 import {
@@ -11,25 +11,12 @@ import {
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await assertAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const admin = createAdminClient();
-
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("admin_role")
-    .eq("id", user.id)
-    .single();
-
-  if (!(profile as { admin_role: string | null } | null)?.admin_role) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const { orderId } = (await req.json()) as { orderId?: string };
   if (!orderId) {

@@ -211,13 +211,7 @@ export async function POST(req: NextRequest) {
     .eq("id", orderId)
     .single();
 
-  const qcTriggerStatuses = [
-    "awaiting_upload",
-    "paid",
-    "qc_pending",
-    "proof_pending",
-    "proof_generating",
-  ];
+  const qcTriggerStatuses = ["awaiting_upload", "paid", "qc_pending"];
 
   if (orderRow && qcTriggerStatuses.includes(orderRow.status)) {
     if (

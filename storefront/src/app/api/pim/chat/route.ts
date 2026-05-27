@@ -34,7 +34,7 @@ import {
   quoteEtiketFromConfig,
 } from "@/lib/customer-pricing-from-config";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
-import { PIM_NAV_TOOLS } from "@/lib/pim/navigation-tools";
+import { createPimNavTools } from "@/lib/pim/navigation-tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -270,12 +270,16 @@ export async function POST(req: Request) {
   // Upstash env varsa cluster-safe, yoksa in-memory fallback (cold start
   // sayacı sıfırlar — küçük leak ama maliyet kontrolü için yeterli).
   let limitKey = `chat:ip:${getClientIp(req)}`;
+  let callerUserId: string | null = null;
   try {
     const supa = await createServerClient();
     const {
       data: { user },
     } = await supa.auth.getUser();
-    if (user?.id) limitKey = `chat:user:${user.id}`;
+    if (user?.id) {
+      callerUserId = user.id;
+      limitKey = `chat:user:${user.id}`;
+    }
   } catch {
     /* anonim olarak devam */
   }
@@ -329,7 +333,7 @@ export async function POST(req: Request) {
   const modelMessages = await convertToModelMessages(body.messages);
 
   const tools = {
-    ...PIM_NAV_TOOLS,
+    ...createPimNavTools(callerUserId),
     ...(personaConfig.useTools
       ? { quote_sticker: stickerTool, quote_etiket: etiketTool }
       : {}),
