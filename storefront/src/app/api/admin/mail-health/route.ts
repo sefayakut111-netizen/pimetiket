@@ -23,6 +23,12 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getDefaultFrom,
+  getFromDomain,
+  getResendDomainStatus,
+  isResendConfigured,
+} from "@/lib/mail/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,17 +180,29 @@ export async function GET() {
     })
   );
 
+  const domainStatus = isResendConfigured()
+    ? await getResendDomainStatus(getFromDomain())
+    : {
+        ok: false,
+        domain: getFromDomain(),
+        error: "not_configured" as const,
+      };
+
   return NextResponse.json({
     ok: true,
     window: "24h",
     resend: {
-      configured: Boolean(process.env.RESEND_API_KEY),
+      configured: isResendConfigured(),
       webhook_configured: Boolean(process.env.RESEND_WEBHOOK_SECRET),
       unsubscribe_configured: Boolean(
         process.env.UNSUBSCRIBE_SECRET ?? process.env.CRON_SECRET
       ),
-      from_address:
-        process.env.RESEND_FROM_EMAIL ?? process.env.MAIL_FROM_ADDRESS ?? null,
+      from_address: getDefaultFrom(),
+      domain: getFromDomain(),
+      domain_status: domainStatus.status ?? null,
+      domain_verified: domainStatus.status === "verified",
+      domain_records: domainStatus.records ?? [],
+      domain_error: domainStatus.error ?? null,
     },
     stats24h,
     ratesPct,

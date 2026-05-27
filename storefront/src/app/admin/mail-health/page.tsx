@@ -75,6 +75,18 @@ interface HealthData {
     webhook_configured: boolean;
     unsubscribe_configured: boolean;
     from_address: string | null;
+    domain?: string | null;
+    domain_status?: string | null;
+    domain_verified?: boolean;
+    domain_records?: Array<{
+      record: string;
+      name: string;
+      type: string;
+      value: string;
+      status?: string;
+      priority?: number;
+    }>;
+    domain_error?: string | null;
   };
   stats24h: Stats24h;
   ratesPct: RatesPct;
@@ -113,6 +125,37 @@ export default function AdminMailHealthPage() {
   // Add form state
   const [addEmail, setAddEmail] = useState("");
   const [addReason, setAddReason] = useState("");
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  const sendTestMail = useCallback(async () => {
+    setBusy(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/admin/mail-health/test-send", {
+        method: "POST",
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        hint?: string;
+        to?: string;
+        messageId?: string;
+      };
+      if (!res.ok || !json.ok) {
+        setTestResult(
+          `Hata: ${json.error ?? "bilinmiyor"}${json.hint ? ` — ${json.hint}` : ""}`
+        );
+      } else {
+        setTestResult(
+          `Gönderildi → ${json.to ?? "admin"}${json.messageId ? ` (id: ${json.messageId})` : ""}`
+        );
+      }
+    } catch (e) {
+      setTestResult(e instanceof Error ? e.message : "network_error");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -213,6 +256,13 @@ export default function AdminMailHealthPage() {
           </div>
           <div className="flex gap-2">
             <Button
+              variant="primary"
+              onClick={() => void sendTestMail()}
+              disabled={loading || busy || !data?.resend.configured}
+            >
+              Test mail gönder
+            </Button>
+            <Button
               variant="secondary"
               onClick={() => void refresh()}
               disabled={loading || busy}
@@ -296,12 +346,22 @@ export default function AdminMailHealthPage() {
               <h2 className="text-lg font-semibold mb-3">
                 Resend bağlantı durumu
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                 <StatusPill
                   label="API key"
                   ok={data.resend.configured}
                   okText="Aktif"
                   failText="RESEND_API_KEY eksik"
+                />
+                <StatusPill
+                  label="Domain"
+                  ok={Boolean(data.resend.domain_verified)}
+                  okText={data.resend.domain_status ?? "verified"}
+                  failText={
+                    data.resend.domain_status ??
+                    data.resend.domain_error ??
+                    "DNS bekliyor"
+                  }
                 />
                 <StatusPill
                   label="Webhook"
@@ -322,6 +382,76 @@ export default function AdminMailHealthPage() {
                   </span>
                 </div>
               </div>
+
+              {testResult && (
+                <p
+                  className={cn(
+                    "mt-4 text-sm rounded-lg px-3 py-2",
+                    testResult.startsWith("Hata")
+                      ? "bg-kirmizi/10 text-kirmizi-koyu"
+                      : "bg-yesil-soft text-yesil-koyu"
+                  )}
+                >
+                  {testResult}
+                </p>
+              )}
+
+              {!data.resend.domain_verified &&
+                (data.resend.domain_records?.length ?? 0) > 0 && (
+                  <div className="mt-5 border-t border-gri-200 pt-4">
+                    <h3 className="text-sm font-semibold mb-2">
+                      DNS kayıtları — Cloudflare&apos;a ekle (
+                      {data.resend.domain ?? "pimetiket.com"})
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-left text-gri-700 border-b border-gri-200">
+                            <th className="py-2 pr-3">Tip</th>
+                            <th className="py-2 pr-3">Host</th>
+                            <th className="py-2 pr-3">Değer</th>
+                            <th className="py-2">Durum</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.resend.domain_records?.map((r) => (
+                            <tr
+                              key={`${r.type}-${r.name}-${r.record}`}
+                              className="border-b border-gri-100 align-top"
+                            >
+                              <td className="py-2 pr-3 font-mono">{r.type}</td>
+                              <td className="py-2 pr-3 font-mono break-all">
+                                {r.name}
+                              </td>
+                              <td className="py-2 pr-3 font-mono break-all max-w-[280px]">
+                                {r.value}
+                              </td>
+                              <td className="py-2">
+                                {r.status === "verified" ? "✓" : r.status ?? "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-3 text-xs text-gri-700">
+                      Kayıtları ekledikten sonra Resend dashboard&apos;da Verify
+                      de — birkaç dakika içinde yeşile döner. Sonra yukarıdaki
+                      &quot;Test mail gönder&quot; butonunu dene.
+                    </p>
+                  </div>
+                )}
+
+              {!data.resend.configured && (
+                <p className="mt-4 text-sm text-gri-700">
+                  Vercel Production env&apos;e{" "}
+                  <code className="text-xs bg-gri-100 px-1 rounded">
+                    RESEND_API_KEY
+                  </code>{" "}
+                  ekle, redeploy et. Detay:{" "}
+                  <code className="text-xs">docs/RESEND-SETUP.md</code>
+                </p>
+              )}
             </Card>
 
             {/* 24h KPI grid */}

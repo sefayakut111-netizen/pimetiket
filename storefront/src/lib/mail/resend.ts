@@ -37,6 +37,15 @@ export function getDefaultFrom(): string {
   );
 }
 
+/** RESEND_FROM_EMAIL içinden domain çıkar — örn. info@pimetiket.com → pimetiket.com */
+export function getFromDomain(): string {
+  const from = getDefaultFrom();
+  const match = from.match(/@([a-z0-9.-]+\.[a-z]{2,})>/i);
+  if (match?.[1]) return match[1].toLowerCase();
+  const plain = from.match(/@([a-z0-9.-]+\.[a-z]{2,})/i);
+  return plain?.[1]?.toLowerCase() ?? "pimetiket.com";
+}
+
 // ============================================================
 // API
 // ============================================================
@@ -58,6 +67,31 @@ export interface SendMailParams {
 export interface SendMailResult {
   ok: boolean;
   id?: string;
+  error?: string;
+}
+
+export type ResendDomainStatus =
+  | "not_started"
+  | "pending"
+  | "verified"
+  | "failed"
+  | "temporary_failure"
+  | string;
+
+export interface ResendDomainInfo {
+  ok: boolean;
+  domain: string;
+  status?: ResendDomainStatus;
+  region?: string;
+  sending?: string;
+  records?: Array<{
+    record: string;
+    name: string;
+    type: string;
+    value: string;
+    status?: string;
+    priority?: number;
+  }>;
   error?: string;
 }
 
@@ -94,6 +128,78 @@ export async function sendMail(
     console.error("[mail] sendMail threw:", err);
     return {
       ok: false,
+      error: err instanceof Error ? err.message : "unknown",
+    };
+  }
+}
+
+/**
+ * Resend API üzerinden domain doğrulama durumunu okur.
+ * /admin/mail-health dashboard'unda DNS adımlarını göstermek için.
+ */
+export async function getResendDomainStatus(
+  domain = getFromDomain()
+): Promise<ResendDomainInfo> {
+  if (!isResendConfigured()) {
+    return { ok: false, domain, error: "not_configured" };
+  }
+
+  try {
+    const client = getClient();
+    const { data, error } = await client.domains.list();
+
+    if (error) {
+      return { ok: false, domain, error: error.message };
+    }
+
+    const match = (data?.data ?? []).find(
+      (d) => d.name?.toLowerCase() === domain.toLowerCase()
+    );
+
+    if (!match) {
+      return {
+        ok: false,
+        domain,
+        error: `domain_not_found_in_resend:${domain}`,
+      };
+    }
+
+    const { data: detail, error: detailErr } = await client.domains.get(
+      match.id
+    );
+
+    if (detailErr || !detail) {
+      return {
+        ok: true,
+        domain: match.name,
+        status: match.status,
+        region: match.region,
+        sending: match.capabilities?.sending,
+        error: detailErr?.message,
+      };
+    }
+
+    return {
+      ok: true,
+      domain: detail.name,
+      status: detail.status,
+      region: detail.region,
+      sending: detail.capabilities?.sending,
+      records: (detail.records ?? []).map((r) => ({
+        record: r.record,
+        name: r.name,
+        type: r.type,
+        value: r.value,
+        status: r.status,
+        ...("priority" in r && typeof r.priority === "number"
+          ? { priority: r.priority }
+          : {}),
+      })),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      domain,
       error: err instanceof Error ? err.message : "unknown",
     };
   }
