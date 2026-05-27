@@ -183,23 +183,70 @@ export async function GET() {
 
   // Acil siparişlerin item başlıklarını çek
   const urgentOrderIds = urgent.map((u) => u.order_id);
-  type ItemTitleRow = { order_id: string; title: string; product: string };
-  let urgentItems: ItemTitleRow[] = [];
+  type ItemRow = {
+    id: string;
+    order_id: string;
+    title: string;
+    product: string;
+    qty: number;
+    proof_status: string;
+  };
+  let urgentItems: ItemRow[] = [];
   if (urgentOrderIds.length > 0) {
     const { data: itemRows } = await admin
       .from("order_items")
-      .select("order_id, title, product")
+      .select("id, order_id, title, product, qty, proof_status")
       .in("order_id", urgentOrderIds);
-    urgentItems = (itemRows as ItemTitleRow[] | null) ?? [];
+    urgentItems = (itemRows as ItemRow[] | null) ?? [];
+  }
+
+  const urgentItemIds = urgentItems.map((i) => i.id);
+  const designByItem = new Map<string, string>();
+  const cutlineByDesign = new Set<string>();
+  if (urgentItemIds.length > 0) {
+    const { data: dfRows } = await admin
+      .from("design_files")
+      .select("id, order_item_id")
+      .in("order_item_id", urgentItemIds)
+      .neq("status", "superseded")
+      .order("version", { ascending: false });
+    for (const df of (dfRows as Array<{ id: string; order_item_id: string }> | null) ?? []) {
+      if (!designByItem.has(df.order_item_id)) {
+        designByItem.set(df.order_item_id, df.id);
+      }
+    }
+    const designIds = [...designByItem.values()];
+    if (designIds.length > 0) {
+      const { data: clRows } = await admin
+        .from("cutline_designs")
+        .select("design_file_id")
+        .in("design_file_id", designIds)
+        .neq("status", "superseded");
+      for (const cl of (clRows as Array<{ design_file_id: string | null }> | null) ?? []) {
+        if (cl.design_file_id) cutlineByDesign.add(cl.design_file_id);
+      }
+    }
   }
 
   const urgentQueue = urgent.map((u) => {
-    const items = urgentItems.filter((i) => i.order_id === u.order_id);
+    const orderItems = urgentItems.filter((i) => i.order_id === u.order_id);
+    const mappedItems = orderItems.map((it) => {
+      const designFileId = designByItem.get(it.id) ?? null;
+      return {
+        id: it.id,
+        title: it.title,
+        product: it.product,
+        qty: it.qty,
+        proof_status: it.proof_status,
+        design_file_id: designFileId,
+        has_cutline: designFileId ? cutlineByDesign.has(designFileId) : false,
+      };
+    });
     const title =
-      items.length === 1
-        ? items[0].title
-        : items.length > 1
-          ? `${items[0].title} +${items.length - 1} ürün`
+      mappedItems.length === 1
+        ? mappedItems[0].title
+        : mappedItems.length > 1
+          ? `${mappedItems[0].title} +${mappedItems.length - 1} ürün`
           : "(başlık yok)";
     const hoursLeft = u.estimated_delivery
       ? Math.round(
@@ -212,8 +259,11 @@ export async function GET() {
       order_id: u.order_id,
       title,
       status: u.status,
+      assigned_at: u.assigned_at,
       estimated_delivery: u.estimated_delivery,
       hours_left: hoursLeft,
+      item_count: mappedItems.length,
+      items: mappedItems,
     };
   });
 

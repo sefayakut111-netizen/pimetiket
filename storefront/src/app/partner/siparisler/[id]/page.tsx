@@ -20,6 +20,11 @@
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
+import {
+  PartnerStatusActions,
+  PartnerStatusPill,
+  ProductionDownloadBar,
+} from "@/components/partner";
 
 interface CutlinePreview {
   preview_png_url: string | null;
@@ -92,28 +97,6 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   partner_revised: { label: "↻ Revize Ettin", cls: "bg-pim-mercan-tint text-pim-mercan" },
 };
 
-async function downloadProductionExport(
-  orderId: string,
-  itemId: string,
-  type: "cutline" | "design" | "composite",
-  designFileId?: string
-) {
-  const qs = new URLSearchParams({ type });
-  if (designFileId) qs.set("design_file_id", designFileId);
-  const res = await fetch(
-    `/api/orders/${orderId}/proof/${itemId}/production-export?${qs.toString()}`,
-    { credentials: "include" }
-  );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const blob = await res.blob();
-  const ext = type === "cutline" ? "svg" : type === "composite" ? "png" : "bin";
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `pim-${type}-${orderId.slice(-6)}.${ext}`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 export default function PartnerOrderDetailPage({
   params,
 }: {
@@ -124,6 +107,7 @@ export default function PartnerOrderDetailPage({
   const [data, setData] = useState<PartnerOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [assignmentStatus, setAssignmentStatus] = useState<string>("");
 
   useEffect(() => {
     void loadData();
@@ -141,6 +125,7 @@ export default function PartnerOrderDetailPage({
       }
       const j = (await res.json()) as PartnerOrderDetail;
       setData(j);
+      setAssignmentStatus(j.assignment.status);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
       toast.error("Sipariş yüklenemedi: " + msg);
@@ -224,15 +209,18 @@ export default function PartnerOrderDetailPage({
     <main className="container py-8">
       {/* Breadcrumb + header */}
       <Link
-        href="/partner"
+        href="/partner/siparisler"
         className="mb-2 inline-block text-xs text-gri-700 hover:text-lacivert"
       >
-        ← Dashboard
+        ← Siparişlerim
       </Link>
       <Eyebrow>SİPARİŞ #{order.id}</Eyebrow>
-      <h1 className="mt-2 text-2xl font-bold text-lacivert">
-        Tasarım İncelemesi ({items.length} ürün)
-      </h1>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-bold text-lacivert">
+          Tasarım İncelemesi ({items.length} ürün)
+        </h1>
+        <PartnerStatusPill status={assignmentStatus} />
+      </div>
       <p className="mt-1 text-sm text-gri-700">
         Kargo: {order.address.city ?? "—"}
         {order.address.district ? ` / ${order.address.district}` : ""}
@@ -244,6 +232,21 @@ export default function PartnerOrderDetailPage({
           </>
         )}
       </p>
+
+      <div className="mt-4 rounded-xl border border-gri-200 bg-white p-4">
+        <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-gri-600">
+          Üretim durumu
+        </p>
+        <PartnerStatusActions
+          orderId={order.id}
+          status={assignmentStatus}
+          onUpdated={(s) => {
+            setAssignmentStatus(s);
+            void loadData();
+          }}
+          onError={(msg) => toast.error(msg)}
+        />
+      </div>
 
       {/* Genel karar özeti */}
       <div className="mt-4 rounded-xl border border-gri-200 bg-white px-4 py-3">
@@ -279,6 +282,7 @@ export default function PartnerOrderDetailPage({
             orderId={orderId}
             actionLoading={actionLoading}
             onDecide={handleDecide}
+            onDownloadError={(msg) => toast.error(msg)}
           />
         ))}
       </div>
@@ -295,9 +299,16 @@ interface ItemCardProps {
     action: "approve" | "reject",
     note?: string
   ) => void;
+  onDownloadError?: (message: string) => void;
 }
 
-function ItemCard({ item, orderId, actionLoading, onDecide }: ItemCardProps) {
+function ItemCard({
+  item,
+  orderId,
+  actionLoading,
+  onDecide,
+  onDownloadError,
+}: ItemCardProps) {
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [uploadMode, setUploadMode] = useState(false);
@@ -344,33 +355,25 @@ function ItemCard({ item, orderId, actionLoading, onDecide }: ItemCardProps) {
             </div>
           )}
           {design?.cutline && (
-            <div className="mt-2 flex flex-col gap-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gri-700">
-                Üretim indir
-              </p>
-              {(["cutline", "design", "composite"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className="rounded border border-gri-200 bg-white px-2 py-1 text-left text-[11px] text-lacivert hover:border-pim-mercan hover:bg-pim-mercan-tint/30"
-                  onClick={() => {
-                    void downloadProductionExport(
-                      orderId,
-                      item.id,
-                      t,
-                      design.design_file_id
-                    ).catch(() => {
-                      /* toast parent */
-                    });
-                  }}
-                >
-                  {t === "cutline"
-                    ? "Bıçak SVG"
-                    : t === "design"
-                      ? "Görsel dosyası"
-                      : "Bıçak+Görsel PNG"}
-                </button>
-              ))}
+            <div className="mt-3">
+              <ProductionDownloadBar
+                orderId={orderId}
+                itemId={item.id}
+                designFileId={design.design_file_id}
+                hasCutline={!!design.cutline}
+                onError={onDownloadError}
+              />
+            </div>
+          )}
+          {design && !design.cutline && (
+            <div className="mt-3">
+              <ProductionDownloadBar
+                orderId={orderId}
+                itemId={item.id}
+                designFileId={design.design_file_id}
+                hasCutline={false}
+                onError={onDownloadError}
+              />
             </div>
           )}
         </div>

@@ -1,0 +1,249 @@
+/**
+ * Ortak fason assignment durum güncelleme mantığı.
+ * Token form (/api/fason/update) ve partner panel (/api/partner/orders/[id]/status) tarafından kullanılır.
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { logOrderEvent } from "@/lib/order-events-server";
+
+export type FasonAction =
+  | "acknowledge"
+  | "in_production"
+  | "ready"
+  | "shipped"
+  | "issue";
+
+export const VALID_FASON_ACTIONS: FasonAction[] = [
+  "acknowledge",
+  "in_production",
+  "ready",
+  "shipped",
+  "issue",
+];
+
+const ACTION_TO_STATUS: Record<FasonAction, string> = {
+  acknowledge: "acknowledged",
+  in_production: "in_production",
+  ready: "ready",
+  shipped: "shipped",
+  issue: "issue",
+};
+
+const ACTION_TO_EVENT: Record<FasonAction, string> = {
+  acknowledge: "fason_acknowledged",
+  in_production: "fason_in_production",
+  ready: "fason_ready",
+  shipped: "fason_shipped",
+  issue: "fason_issue_reported",
+};
+
+const ACTION_TIMESTAMP_COLUMN: Record<FasonAction, string> = {
+  acknowledge: "acknowledged_at",
+  in_production: "in_production_at",
+  ready: "ready_at",
+  shipped: "shipped_at",
+  issue: "issue_reported_at",
+};
+
+export interface FasonActionInput {
+  issue?: {
+    category?: unknown;
+    description?: unknown;
+    photoStoragePath?: unknown;
+  };
+  tracking?: {
+    company?: unknown;
+    number?: unknown;
+    url?: unknown;
+  };
+}
+
+export type BuildPayloadResult =
+  | { ok: true; payload: Record<string, unknown>; newStatus: string }
+  | { ok: false; error: string; status: number };
+
+export function buildAssignmentUpdatePayload(
+  action: FasonAction,
+  body: FasonActionInput
+): BuildPayloadResult {
+  const timestampCol = ACTION_TIMESTAMP_COLUMN[action];
+  const newStatus = ACTION_TO_STATUS[action];
+  const updatePayload: Record<string, unknown> = {
+    status: newStatus,
+    [timestampCol]: new Date().toISOString(),
+  };
+
+  if (action === "issue") {
+    const cat = body.issue?.category;
+    const desc = body.issue?.description;
+    const photo = body.issue?.photoStoragePath;
+    if (
+      typeof cat !== "string" ||
+      !["dosya", "malzeme", "sure", "diger"].includes(cat)
+    ) {
+      return {
+        ok: false,
+        error: "Sorun kategorisi geçersiz",
+        status: 400,
+      };
+    }
+    if (typeof desc !== "string" || desc.trim().length < 5) {
+      return {
+        ok: false,
+        error: "Açıklama en az 5 karakter olmalı",
+        status: 400,
+      };
+    }
+    updatePayload.issue_category = cat;
+    updatePayload.issue_description = desc.trim().slice(0, 2000);
+    if (typeof photo === "string") {
+      updatePayload.issue_photo_path = photo;
+    }
+  }
+
+  if (action === "shipped") {
+    const company = body.tracking?.company;
+    const number = body.tracking?.number;
+    const trackUrl = body.tracking?.url;
+    if (typeof company !== "string" || typeof number !== "string") {
+      return {
+        ok: false,
+        error: "Kargo firması ve takip no zorunlu",
+        status: 400,
+      };
+    }
+    const companyTrim = company.trim();
+    const numberTrim = number.trim();
+    if (companyTrim.length === 0 || companyTrim.length > 64) {
+      return {
+        ok: false,
+        error: "Kargo firması 1-64 karakter olmalı",
+        status: 400,
+      };
+    }
+    if (numberTrim.length === 0 || numberTrim.length > 64) {
+      return {
+        ok: false,
+        error: "Takip numarası 1-64 karakter olmalı",
+        status: 400,
+      };
+    }
+    updatePayload.tracking_company = companyTrim;
+    updatePayload.tracking_number = numberTrim;
+
+    if (typeof trackUrl === "string" && trackUrl.trim().length > 0) {
+      const raw = trackUrl.trim();
+      if (raw.length > 512) {
+        return {
+          ok: false,
+          error: "Takip linki çok uzun (max 512)",
+          status: 400,
+        };
+      }
+      try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== "https:") {
+          return {
+            ok: false,
+            error: "Takip linki sadece https:// olabilir",
+            status: 400,
+          };
+        }
+        updatePayload.tracking_url = parsed.toString();
+      } catch {
+        return {
+          ok: false,
+          error: "Takip linki geçerli bir URL değil",
+          status: 400,
+        };
+      }
+    }
+  }
+
+  return { ok: true, payload: updatePayload, newStatus };
+}
+
+export interface ApplyAssignmentActionOptions {
+  assignmentId: string;
+  orderId: string;
+  action: FasonAction;
+  body: FasonActionInput;
+  actorRole?: "fason" | "system";
+  via?: string;
+  accessLog?: {
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  };
+}
+
+export type ApplyAssignmentActionResult =
+  | { ok: true; newStatus: string }
+  | { ok: false; error: string; status: number };
+
+export async function applyAssignmentAction(
+  admin: SupabaseClient,
+  opts: ApplyAssignmentActionOptions
+): Promise<ApplyAssignmentActionResult> {
+  const built = buildAssignmentUpdatePayload(opts.action, opts.body);
+  if (!built.ok) {
+    return { ok: false, error: built.error, status: built.status };
+  }
+
+  const { error: updateErr } = await admin
+    .from("order_assignments")
+    .update(built.payload)
+    .eq("id", opts.assignmentId);
+
+  if (updateErr) {
+    console.error("[apply-assignment-action]", updateErr);
+    return { ok: false, error: "Güncelleme başarısız", status: 500 };
+  }
+
+  if (opts.accessLog) {
+    await admin.from("fason_link_access_log").insert({
+      assignment_id: opts.assignmentId,
+      ip_address: opts.accessLog.ipAddress ?? null,
+      user_agent: opts.accessLog.userAgent?.slice(0, 500) ?? null,
+      action: "status_update",
+      success: true,
+    });
+  }
+
+  const actorRole = opts.actorRole ?? "fason";
+  await logOrderEvent(admin, {
+    orderId: opts.orderId,
+    eventType: ACTION_TO_EVENT[opts.action],
+    actorRole,
+    summary: `Fason durum güncelledi: ${opts.action}`,
+    detail: {
+      assignment_id: opts.assignmentId,
+      action: opts.action,
+      via: opts.via ?? "fason_form",
+      ...(opts.action === "issue" && {
+        category: built.payload.issue_category,
+        description: built.payload.issue_description,
+      }),
+      ...(opts.action === "shipped" && {
+        tracking_company: built.payload.tracking_company,
+        tracking_number: built.payload.tracking_number,
+      }),
+    },
+  });
+
+  if (opts.action === "shipped") {
+    await admin
+      .from("orders")
+      .update({ status: "shipped" })
+      .eq("id", opts.orderId);
+    await logOrderEvent(admin, {
+      orderId: opts.orderId,
+      eventType: "shipped",
+      statusAfter: "shipped",
+      actorRole: "system",
+      summary: "Sipariş kargoya verildi",
+      detail: { via: opts.via ?? "fason_form" },
+    });
+  }
+
+  return { ok: true, newStatus: built.newStatus };
+}
