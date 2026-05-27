@@ -29,6 +29,15 @@ const QuickContractSchema = z.object({
   contractSignedAt: z.string().datetime(),
 });
 
+const CapabilitiesOnlySchema = z.object({
+  productTypes: z
+    .array(z.enum(["roll_label", "sheet_label", "sticker"]))
+    .min(1),
+  materials: z
+    .array(z.enum(["paper", "transparent", "metallic", "holographic"]))
+    .optional(),
+});
+
 const UpdatePartnerSchema = z.object({
   name: z.string().min(2).max(150),
   shortName: z.string().max(40).optional(),
@@ -208,6 +217,83 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       id,
       contract_signed_at: signedAt,
     });
+  }
+
+  const capsOnly = CapabilitiesOnlySchema.safeParse(raw);
+  if (
+    capsOnly.success &&
+    raw != null &&
+    typeof raw === "object" &&
+    Object.keys(raw as Record<string, unknown>).every(
+      (k) => k === "productTypes" || k === "materials"
+    )
+  ) {
+    const { data: existingCaps } = await admin
+      .from("fason_partners")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!existingCaps) {
+      return NextResponse.json({ error: "Partner bulunamadı" }, { status: 404 });
+    }
+
+    const { data: oldCaps } = await admin
+      .from("partner_capabilities")
+      .select("id, capability_type, capability_value, is_verified")
+      .eq("partner_id", id);
+
+    const verifiedMap = new Map<string, boolean>();
+    for (const c of oldCaps ?? []) {
+      verifiedMap.set(
+        `${c.capability_type}:${c.capability_value}`,
+        c.is_verified !== false
+      );
+    }
+
+    const body = capsOnly.data;
+    const desired = [
+      ...body.productTypes.map((v) => ({
+        capability_type: "product_type" as const,
+        capability_value: v,
+      })),
+      ...(body.materials ?? []).map((v) => ({
+        capability_type: "material" as const,
+        capability_value: v,
+      })),
+    ];
+    const desiredKeys = new Set(
+      desired.map((d) => `${d.capability_type}:${d.capability_value}`)
+    );
+
+    for (const old of oldCaps ?? []) {
+      const key = `${old.capability_type}:${old.capability_value}`;
+      if (!desiredKeys.has(key)) {
+        await admin.from("partner_capabilities").delete().eq("id", old.id);
+      }
+    }
+
+    for (const d of desired) {
+      const key = `${d.capability_type}:${d.capability_value}`;
+      const exists = (oldCaps ?? []).some(
+        (o) =>
+          o.capability_type === d.capability_type &&
+          o.capability_value === d.capability_value
+      );
+      if (exists) continue;
+      await admin.from("partner_capabilities").insert({
+        partner_id: id,
+        capability_type: d.capability_type,
+        capability_value: d.capability_value,
+        is_verified: verifiedMap.get(key) ?? true,
+      });
+    }
+
+    const { data: capabilities } = await admin
+      .from("partner_capabilities")
+      .select("id, capability_type, capability_value, is_verified")
+      .eq("partner_id", id);
+
+    return NextResponse.json({ ok: true, id, capabilities: capabilities ?? [] });
   }
 
   const parsed = UpdatePartnerSchema.safeParse(raw);
