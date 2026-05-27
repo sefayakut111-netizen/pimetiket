@@ -440,33 +440,13 @@ export function StickerCalculator({
 
         {/* 2-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-6 items-start">
-          {/* LEFT — Input */}
+          {/* LEFT — Input (müşteri akışı: kesim → ürün → miktar → simülasyon) */}
           <div className="space-y-4">
-            {/* Kart 1: Ürün özellikleri */}
-            <Card padding="p-5">
-              <h2 className="text-[15px] font-semibold mb-4">Ürün Özellikleri</h2>
-
-              <Field label="Malzeme">
-                <ChipGrid
-                  options={liveStickerConfig.materials.map((m) => ({
-                    id: m.id,
-                    label: m.name,
-                  }))}
-                  value={previewMaterialId}
-                  onChange={setPreviewMaterialId}
-                />
-              </Field>
-
-              <Field label="Finiş">
-                <ChipGrid
-                  options={(liveStickerConfig.options.finish?.items ?? []).map(
-                    (f) => ({ id: f.id, label: f.name })
-                  )}
-                  value={previewFinishId}
-                  onChange={setPreviewFinishId}
-                />
-              </Field>
-
+            <FlowStepCard
+              step={1}
+              title="Sipariş tanımı"
+              subtitle="Kesim tipi ve ürün seçimi — müşteri konfigüratörüyle aynı sıra"
+            >
               <Field label="Kesim">
                 <div className="grid grid-cols-2 gap-2">
                   <CutCard
@@ -485,41 +465,68 @@ export function StickerCalculator({
                   />
                 </div>
               </Field>
-            </Card>
 
-            {/* Kart 2: Boyut + Adet */}
-            <Card padding="p-5">
-              <h2 className="text-[15px] font-semibold mb-4">Boyut + Adet</h2>
+              <Field label="Malzeme">
+                <ChipGrid
+                  columns={2}
+                  options={liveStickerConfig.materials.map((m) => ({
+                    id: m.id,
+                    label: m.name,
+                  }))}
+                  value={previewMaterialId}
+                  onChange={setPreviewMaterialId}
+                />
+              </Field>
 
+              <Field label="Finiş">
+                <ChipGrid
+                  columns={3}
+                  options={(liveStickerConfig.options.finish?.items ?? []).map(
+                    (f) => ({ id: f.id, label: f.name })
+                  )}
+                  value={previewFinishId}
+                  onChange={setPreviewFinishId}
+                />
+              </Field>
+            </FlowStepCard>
+
+            <FlowStepCard
+              step={2}
+              title="Boyut ve adet"
+              subtitle="Dizgi, tabaka, m² ve fiyat kademesini belirler"
+            >
               <Field label="Boyut (mm)">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <NumInput
                     value={width}
                     onChange={setWidth}
-                    suffix="mm · GEN."
+                    suffix="GEN."
                     min={5}
                     max={400}
                   />
-                  <span className="text-gri-500 font-medium">×</span>
+                  <span className="text-gri-500 font-medium text-lg">×</span>
                   <NumInput
                     value={height}
                     onChange={setHeight}
-                    suffix="mm · YÜK."
+                    suffix="YÜK."
                     min={5}
                     max={650}
                   />
                 </div>
               </Field>
 
-              <Field label="Adet">
+              <Field label="Adet kademesi">
                 <TierGrid value={qty} onChange={setQty} />
               </Field>
-            </Card>
+            </FlowStepCard>
 
-            {/* Kart 3: Fason maliyet */}
-            <Card padding="p-5">
-              <h2 className="text-[15px] font-semibold mb-4">Fason Maliyet</h2>
-              <Field label="Fason Birim Maliyet">
+            <FlowStepCard
+              step={3}
+              title="Maliyet simülasyonu"
+              subtitle="Operatör referansı — site fiyatından bağımsız"
+              muted
+            >
+              <Field label="Fason birim maliyet">
                 <NumInput
                   value={fasonRate}
                   onChange={setFasonRate}
@@ -527,67 +534,68 @@ export function StickerCalculator({
                   step={5}
                 />
               </Field>
-            </Card>
 
-            {/* Kart 4: Operasyon */}
-            <Card padding="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[15px] font-semibold">Operasyon</h2>
-                <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <span className="text-xs text-gri-700">
-                    {operationEnabled ? "Aktif" : "Devre dışı"}
+              <div className="border-t border-gri-200 pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.02em]">
+                    Operasyon
                   </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={operationEnabled}
-                    onClick={() => setOperationEnabled((v) => !v)}
-                    className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
-                      operationEnabled ? "bg-yesil" : "bg-gri-300"
-                    )}
-                  >
-                    <span
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <span className="text-xs text-gri-700">
+                      {operationEnabled ? "Aktif" : "Devre dışı"}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={operationEnabled}
+                      onClick={() => setOperationEnabled((v) => !v)}
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform mt-0.5",
-                        operationEnabled ? "translate-x-5" : "translate-x-0.5"
+                        "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
+                        operationEnabled ? "bg-yesil" : "bg-gri-300"
                       )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform mt-0.5",
+                          operationEnabled ? "translate-x-5" : "translate-x-0.5"
+                        )}
+                      />
+                    </button>
+                  </label>
+                </div>
+                <div
+                  className={cn(
+                    "grid grid-cols-2 gap-3",
+                    !operationEnabled && "opacity-40 pointer-events-none"
+                  )}
+                >
+                  <Field label="Hazırlık">
+                    <NumInput
+                      value={setup}
+                      onChange={setSetup}
+                      suffix="₺"
+                      step={10}
                     />
-                  </button>
-                </label>
+                  </Field>
+                  <Field label="Paketleme">
+                    <NumInput
+                      value={packaging}
+                      onChange={setPackaging}
+                      suffix="₺/zarf"
+                      step={5}
+                    />
+                  </Field>
+                  <Field label="Komisyon">
+                    <NumInput
+                      value={feePct}
+                      onChange={setFeePct}
+                      suffix="%"
+                      step={0.5}
+                    />
+                  </Field>
+                </div>
               </div>
-              <div
-                className={cn(
-                  "grid grid-cols-2 gap-3",
-                  !operationEnabled && "opacity-40 pointer-events-none"
-                )}
-              >
-                <Field label="Hazırlık">
-                  <NumInput
-                    value={setup}
-                    onChange={setSetup}
-                    suffix="₺"
-                    step={10}
-                  />
-                </Field>
-                <Field label="Paketleme">
-                  <NumInput
-                    value={packaging}
-                    onChange={setPackaging}
-                    suffix="₺/zarf"
-                    step={5}
-                  />
-                </Field>
-                <Field label="Komisyon">
-                  <NumInput
-                    value={feePct}
-                    onChange={setFeePct}
-                    suffix="%"
-                    step={0.5}
-                  />
-                </Field>
-              </div>
-            </Card>
+            </FlowStepCard>
           </div>
 
           {/* RIGHT — Output */}
@@ -650,6 +658,51 @@ export function StickerCalculator({
 // ============================================================
 // Subcomponents
 // ============================================================
+
+function FlowStepCard({
+  step,
+  title,
+  subtitle,
+  muted,
+  children,
+}: {
+  step: number;
+  title: string;
+  subtitle?: string;
+  muted?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card
+      padding="p-5"
+      className={cn(muted && "bg-gri-50/80 ring-gri-200")}
+    >
+      <div className="flex items-start gap-3 mb-4 pb-3 border-b border-gri-100">
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold tabular-nums",
+            muted
+              ? "bg-gri-200 text-gri-700"
+              : "bg-lacivert text-white"
+          )}
+        >
+          {step}
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold leading-tight text-lacivert">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="text-[12px] text-gri-600 mt-0.5 leading-snug">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+      {children}
+    </Card>
+  );
+}
 
 function Field({
   label,
@@ -758,13 +811,20 @@ function ChipGrid({
   options,
   value,
   onChange,
+  columns = 2,
 }: {
   options: Array<{ id: string; label: string }>;
   value: string;
   onChange: (id: string) => void;
+  columns?: 2 | 3;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div
+      className={cn(
+        "grid gap-2",
+        columns === 2 ? "grid-cols-2" : "grid-cols-3"
+      )}
+    >
       {options.map((opt) => {
         const selected = value === opt.id;
         return (
@@ -774,9 +834,9 @@ function ChipGrid({
             onClick={() => onChange(opt.id)}
             aria-pressed={selected}
             className={cn(
-              "px-3 py-2 rounded-lg text-[13px] font-semibold ring-[1.5px] transition-all",
+              "px-3 py-2.5 rounded-lg text-[13px] font-semibold ring-[1.5px] transition-all text-center",
               selected
-                ? "ring-lacivert bg-lacivert text-white"
+                ? "ring-lacivert bg-lacivert text-white shadow-1"
                 : "ring-gri-200 bg-white text-lacivert hover:ring-pim-mercan-soft"
             )}
           >
@@ -830,7 +890,7 @@ function TierGrid({
                       : "text-gri-500"
               )}
             >
-              {ref ? "referans" : tier.label.replace("zam", "").replace("indirim", "").trim()}
+              {ref ? "referans" : tier.label}
             </div>
           </button>
         );
