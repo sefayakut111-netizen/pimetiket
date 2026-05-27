@@ -13,8 +13,8 @@
  *   ✓ Boyut input (W × H)
  *   ✓ Tier butonları (25/50/100/250/500/1000)
  *   ✓ Üretim parametre input'ları (fason rate / 6 üretim kalemi)
- *   ✓ Operasyon parametre input'ları
- *   ✓ Kar marjı + KDV
+ *   ✓ Site fiyatı (live config, alış/satış çift fiyat)
+ *   ✓ Fason/üretim simülasyonu (operatör referans)
  *   ✓ Anlık fiyat (büyük), birim fiyat
  *   ✓ Stat kartları (tabaka, m², rulo, fire)
  *   ✓ Maliyet detayı breakdown
@@ -69,6 +69,7 @@ import {
 import { StatsModal } from "@/components/admin/pricing/StatsModal";
 import { recordStat } from "@/lib/pricing-stats";
 import { calculatePrice } from "@/lib/pricing-calc";
+import { livePriceToCostResult } from "@/lib/pricing-live-snapshot";
 import {
   resolveM2Cost,
   resolveM2Sell,
@@ -82,6 +83,8 @@ import {
 // Defaults — v0.4: overhead 45 (SaaS recovery), customerType
 // ============================================================
 
+const DEFAULT_PREVIEW_MATERIAL = "vinil";
+const DEFAULT_PREVIEW_FINISH = "parlak";
 const DEFAULTS: ProfileInputSnapshot = getDefaultInput();
 
 // ============================================================
@@ -127,13 +130,14 @@ export function StickerCalculator({
   const [overhead, setOverhead] = useState<number>(DEFAULTS.overhead);
   const [depreciation, setDepreciation] = useState<number>(DEFAULTS.depreciation);
 
-  // Operasyon
-  const [setup, setSetup] = useState<number>(DEFAULTS.setup);
-  const [packaging, setPackaging] = useState<number>(DEFAULTS.packaging);
-  const [feePct, setFeePct] = useState<number>(DEFAULTS.feePct);
+  // Site fiyat önizleme (live config malzeme/finiş)
+  const [previewMaterialId, setPreviewMaterialId] = useState<string>(
+    DEFAULT_PREVIEW_MATERIAL
+  );
+  const [previewFinishId, setPreviewFinishId] = useState<string>(
+    DEFAULT_PREVIEW_FINISH
+  );
 
-  // KDV + müşteri tipi
-  const [vatPct, setVatPct] = useState<number>(DEFAULTS.vatPct);
   const [customerType, setCustomerType] = useState<CustomerType>(
     DEFAULTS.customerType
   );
@@ -183,24 +187,86 @@ export function StickerCalculator({
     };
   }, [liveConfig]);
 
+  // Hesap — geometri + fason simülasyonu (site fiyatından bağımsız)
+  const result = quoteSticker({
+    width,
+    height,
+    cut,
+    qty,
+    production:
+      mode === "fason"
+        ? { mode: "fason", rate: fasonRate }
+        : {
+            mode: "uretim",
+            paper,
+            ink,
+            coating,
+            labor,
+            overhead,
+            depreciation,
+          },
+    operation: { setup: 0, packaging: 0, cargo: 0, feePct: 0 },
+    margin: { marginPct: 0, vatPct: 0, minMarkupFraction: 0 },
+  });
+
+  const liveSitePrice = useMemo(() => {
+    if (!result.ok) return null;
+    return calculatePrice(
+      {
+        width_mm: width,
+        height_mm: height,
+        qty,
+        material_id: previewMaterialId,
+        selected_options: { finish: previewFinishId },
+        billable_m2: result.geometry.totalM2,
+      },
+      liveStickerConfig,
+      "sticker"
+    );
+  }, [
+    result,
+    width,
+    height,
+    qty,
+    previewMaterialId,
+    previewFinishId,
+    liveStickerConfig,
+  ]);
+
+  const displayTier = liveSitePrice?.ok ? liveSitePrice.tier : findTier(qty);
+  const siteVatPct = liveStickerConfig.vat.pct;
+
+  const fasonPartnerCost =
+    result.ok && mode === "fason"
+      ? result.geometry.totalM2 * fasonRate
+      : null;
+
   function handleGeneratePDF() {
     if (!result.ok) {
       toast.error("Önce geçerli bir hesaplama yap");
       return;
     }
-    const lot = nextLot("A"); // atomic increment
-    setNextLotPreview(peekNextLot("A")); // refresh badge
+    if (!liveSitePrice?.ok) {
+      toast.error(
+        liveSitePrice && !liveSitePrice.ok
+          ? liveSitePrice.reason
+          : "Site fiyatı hesaplanamadı"
+      );
+      return;
+    }
+    const siteCost = livePriceToCostResult(liveSitePrice);
+    const lot = nextLot("A");
+    setNextLotPreview(peekNextLot("A"));
 
     generateWorkOrderPDF({
       lot,
       geometry: result.geometry,
-      cost: result.cost,
+      cost: siteCost,
       requestedQty: qty,
       cut,
       mode,
     });
 
-    // İstatistik kaydı
     recordStat({
       lot,
       product: "sticker",
@@ -214,13 +280,13 @@ export function StickerCalculator({
       rollsNeeded: result.geometry.roll.rollsNeeded,
       totalM2: result.geometry.totalM2,
       wastePct: result.geometry.wastePct,
-      baseCost: result.cost.baseCost,
-      intendedProfit: result.cost.intendedProfit,
-      actualProfit: result.cost.actualProfit,
-      vatAmount: result.cost.vatAmount,
-      total: result.cost.total,
-      unitPrice: result.cost.unitPrice,
-      tierMultiplier: result.cost.tierMultiplier,
+      baseCost: siteCost.baseCost,
+      intendedProfit: siteCost.intendedProfit,
+      actualProfit: siteCost.actualProfit,
+      vatAmount: siteCost.vatAmount,
+      total: siteCost.total,
+      unitPrice: siteCost.unitPrice,
+      tierMultiplier: siteCost.tierMultiplier,
     });
 
     toast.success(`İş emri ${lot} üretildi (PDF indirildi)`);
@@ -231,27 +297,36 @@ export function StickerCalculator({
       toast.error("Önce geçerli bir hesaplama yap");
       return;
     }
+    if (!liveSitePrice?.ok) {
+      toast.error(
+        liveSitePrice && !liveSitePrice.ok
+          ? liveSitePrice.reason
+          : "Site fiyatı hesaplanamadı"
+      );
+      return;
+    }
+    const siteCost = livePriceToCostResult(liveSitePrice);
     const r = addToCart({
       product: "sticker",
       width,
       height,
       requestedQty: qty,
       producedQty: result.geometry.fit.producedQty,
-      preGroupSubtotal: result.cost.subtotal,
-      vatPct,
-      tierMultiplier: result.cost.tierMultiplier,
-      preGroupTotal: result.cost.total,
+      preGroupSubtotal: siteCost.subtotal,
+      vatPct: siteVatPct,
+      tierMultiplier: siteCost.tierMultiplier,
+      preGroupTotal: siteCost.total,
       mode,
       cut,
       layoutMode: result.geometry.fit.mode,
       rollsNeeded: result.geometry.roll.rollsNeeded,
       totalM2: result.geometry.totalM2,
-      baseCost: result.cost.baseCost,
-      intendedProfit: result.cost.intendedProfit,
-      actualProfit: result.cost.actualProfit,
-      vatAmount: result.cost.vatAmount,
-      total: result.cost.total,
-      unitPrice: result.cost.unitPrice,
+      baseCost: siteCost.baseCost,
+      intendedProfit: siteCost.intendedProfit,
+      actualProfit: siteCost.actualProfit,
+      vatAmount: siteCost.vatAmount,
+      total: siteCost.total,
+      unitPrice: siteCost.unitPrice,
     });
     if (!r.ok) {
       toast.error(r.reason);
@@ -287,28 +362,6 @@ export function StickerCalculator({
     toast.success(`${items.length} adet PDF iş emri üretiliyor`);
   }
 
-  // Hesap
-  const result = quoteSticker({
-    width,
-    height,
-    cut,
-    qty,
-    production:
-      mode === "fason"
-        ? { mode: "fason", rate: fasonRate }
-        : {
-            mode: "uretim",
-            paper,
-            ink,
-            coating,
-            labor,
-            overhead,
-            depreciation,
-          },
-    operation: { setup, packaging, cargo: 0, feePct },
-    margin: { marginPct: 0, vatPct, minMarkupFraction: 0 },
-  });
-
   // Profile snapshot — current state'i serialize et
   const currentInput: ProfileInputSnapshot = {
     mode,
@@ -323,10 +376,6 @@ export function StickerCalculator({
     labor,
     overhead,
     depreciation,
-    setup,
-    packaging,
-    feePct,
-    vatPct,
     customerType,
   };
 
@@ -344,37 +393,10 @@ export function StickerCalculator({
     setLabor(i.labor);
     setOverhead(i.overhead);
     setDepreciation(i.depreciation);
-    setSetup(i.setup);
-    setPackaging(i.packaging);
-    setFeePct(i.feePct);
-    setVatPct(i.vatPct);
     setCustomerType(i.customerType);
     setActiveProfileId(p.id);
     toast.success(`"${p.name}" profili yüklendi`);
   }
-
-  const tier = findTier(qty);
-
-  const liveSitePrice = useMemo(() => {
-    if (!result.ok) return null;
-    return calculatePrice(
-      {
-        width_mm: width,
-        height_mm: height,
-        qty,
-        material_id: "vinil",
-        selected_options: { finish: "parlak" },
-        billable_m2: result.geometry.totalM2,
-      },
-      liveStickerConfig,
-      "sticker"
-    );
-  }, [result, width, height, qty, liveStickerConfig]);
-
-  const fasonPartnerCost =
-    result.ok && mode === "fason"
-      ? result.geometry.totalM2 * fasonRate
-      : null;
 
   function reset() {
     setMode(DEFAULTS.mode);
@@ -389,17 +411,15 @@ export function StickerCalculator({
     setLabor(DEFAULTS.labor);
     setOverhead(DEFAULTS.overhead);
     setDepreciation(DEFAULTS.depreciation);
-    setSetup(DEFAULTS.setup);
-    setPackaging(DEFAULTS.packaging);
-    setFeePct(DEFAULTS.feePct);
-    setVatPct(DEFAULTS.vatPct);
+    setPreviewMaterialId(DEFAULT_PREVIEW_MATERIAL);
+    setPreviewFinishId(DEFAULT_PREVIEW_FINISH);
     setCustomerType(DEFAULTS.customerType);
     setActiveProfileId(undefined);
     toast.success("Varsayılan değerlere dönüldü");
   }
 
   function copyJSON() {
-    const payload = { input: currentInput, result };
+    const payload = { input: currentInput, result, liveSitePrice };
     navigator.clipboard
       .writeText(JSON.stringify(payload, null, 2))
       .then(() => toast.success("JSON kopyalandı"))
@@ -447,7 +467,7 @@ export function StickerCalculator({
               variant="ghost"
               size="sm"
               onClick={handleAddToCart}
-              disabled={!result.ok}
+              disabled={!result.ok || !liveSitePrice?.ok}
             >
               🛒 Sepete Ekle
             </Button>
@@ -455,7 +475,7 @@ export function StickerCalculator({
               variant="primary"
               size="sm"
               onClick={handleGeneratePDF}
-              disabled={!result.ok}
+              disabled={!result.ok || !liveSitePrice?.ok}
             >
               📄 İş Emri PDF
             </Button>
@@ -597,53 +617,72 @@ export function StickerCalculator({
               </Card>
             )}
 
-            {/* Operasyon */}
+            {/* Site fiyatı — live config */}
             <Card padding="p-5">
-              <SectionTitle accent="turuncu">② Operasyon</SectionTitle>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Hazırlık" hint="tek seferlik">
-                  <NumInput
-                    value={setup}
-                    onChange={setSetup}
-                    suffix="₺"
-                    step={10}
-                  />
-                </Field>
-                <Field label="Paketleme" hint="zarf">
-                  <NumInput
-                    value={packaging}
-                    onChange={setPackaging}
-                    suffix="₺/zarf"
-                    step={5}
-                  />
-                </Field>
-                <Field label="İşlem Ücreti" hint="ödeme komisyonu">
-                  <NumInput
-                    value={feePct}
-                    onChange={setFeePct}
-                    suffix="%"
-                    step={0.5}
-                  />
-                </Field>
+              <SectionTitle accent="turuncu">② Site Fiyatı (Live Config)</SectionTitle>
+              <p className="text-[12px] text-gri-600 mb-4">
+                Operasyon, komisyon ve KDV live config&apos;ten gelir — Fiyatlar
+                sekmesinden düzenlenir.
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-4 text-[13px] tabular-nums">
+                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
+                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
+                    Setup
+                  </div>
+                  {fmt(liveStickerConfig.operation.setup)} ₺
+                </div>
+                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
+                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
+                    Paketleme/adet
+                  </div>
+                  {liveStickerConfig.operation.packaging_per_unit.toFixed(3)} ₺
+                </div>
+                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
+                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
+                    Komisyon
+                  </div>
+                  {liveStickerConfig.operation.fee_pct}%
+                </div>
+                <div className="rounded-lg bg-gri-50 px-3 py-2 ring-1 ring-gri-200">
+                  <div className="text-[10px] uppercase text-gri-500 font-semibold">
+                    KDV
+                  </div>
+                  {liveStickerConfig.vat.pct}%
+                </div>
               </div>
-            </Card>
-
-            {/* Vergi + müşteri */}
-            <Card padding="p-5">
-              <SectionTitle accent="yesil">③ Vergi &amp; Müşteri</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="KDV">
-                  <NumInput
-                    value={vatPct}
-                    onChange={setVatPct}
-                    suffix="%"
-                    step={1}
-                  />
+                <Field label="Malzeme" hint="site fiyat önizleme">
+                  <select
+                    value={previewMaterialId}
+                    onChange={(e) => setPreviewMaterialId(e.target.value)}
+                    className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
+                  >
+                    {liveStickerConfig.materials.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Finiş" hint="site fiyat önizleme">
+                  <select
+                    value={previewFinishId}
+                    onChange={(e) => setPreviewFinishId(e.target.value)}
+                    className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
+                  >
+                    {(liveStickerConfig.options.finish?.items ?? []).map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Müşteri Tipi" hint="bilgi (Block C entegrasyon)">
                   <select
                     value={customerType}
-                    onChange={(e) => setCustomerType(e.target.value as CustomerType)}
+                    onChange={(e) =>
+                      setCustomerType(e.target.value as CustomerType)
+                    }
                     className="w-full h-11 px-3 rounded-lg bg-gri-50 ring-1 ring-gri-200 text-[14px] font-medium focus:outline-none focus:ring-pim-mercan focus:bg-white"
                   >
                     <option value="standart">Standart</option>
@@ -662,7 +701,7 @@ export function StickerCalculator({
             <PriceHero
               result={result}
               qty={qty}
-              tier={tier}
+              tier={displayTier}
               liveSitePrice={liveSitePrice}
             />
 
@@ -1036,7 +1075,7 @@ function PriceHero({
 }: {
   result: ReturnType<typeof quoteSticker>;
   qty: number;
-  tier: StickerTier;
+  tier: StickerTier | { qty: number; multiplier: number; label: string };
   liveSitePrice: ReturnType<typeof calculatePrice> | null;
 }) {
   if (!result.ok) {
@@ -1419,44 +1458,19 @@ function CostBreakdown({
         </span>
       </div>
       <div className="px-5 divide-y divide-gri-100">
-        {/* Üretim */}
-        {cost.productionItems.map((item, i) => (
-          <BreakdownRow key={`prod-${i}`} item={item} />
-        ))}
-        <BreakdownRow
-          item={{
-            name: "Üretim Ara Toplam",
-            formula: "①",
-            amount: cost.productionCost,
-          }}
-          subtotal
-        />
-
-        {/* Operasyon */}
-        {cost.operationItems.map((item, i) => (
-          <BreakdownRow key={`op-${i}`} item={item} />
-        ))}
-        <BreakdownRow
-          item={{
-            name: "Operasyon Ara Toplam",
-            formula: "②",
-            amount: cost.operationCost,
-          }}
-          subtotal
-        />
-
-        {/* Total cost — operatör simülasyonu */}
-        <BreakdownRow
-          item={{
-            name: "Operatör Simülasyon Maliyeti",
-            formula: "① + ②",
-            amount: cost.baseCost,
-          }}
-          highlight
-        />
-
         {useLive ? (
           <>
+            {cost.productionItems.map((item, i) => (
+              <BreakdownRow key={`prod-${i}`} item={item} />
+            ))}
+            <BreakdownRow
+              item={{
+                name: "Fason Simülasyon (referans)",
+                formula: "operatör üretim maliyeti",
+                amount: cost.productionCost,
+              }}
+              highlight
+            />
             <BreakdownRow
               item={{
                 name: "Maliyet (Alış)",
@@ -1503,6 +1517,38 @@ function CostBreakdown({
           </>
         ) : (
           <>
+            {cost.productionItems.map((item, i) => (
+              <BreakdownRow key={`prod-${i}`} item={item} />
+            ))}
+            <BreakdownRow
+              item={{
+                name: "Üretim Ara Toplam",
+                formula: "①",
+                amount: cost.productionCost,
+              }}
+              subtotal
+            />
+            {cost.operationItems.map((item, i) => (
+              <BreakdownRow key={`op-${i}`} item={item} />
+            ))}
+            {cost.operationCost > 0 && (
+              <BreakdownRow
+                item={{
+                  name: "Operasyon Ara Toplam",
+                  formula: "②",
+                  amount: cost.operationCost,
+                }}
+                subtotal
+              />
+            )}
+            <BreakdownRow
+              item={{
+                name: "Fason Simülasyon Maliyeti",
+                formula: "üretim only",
+                amount: cost.baseCost,
+              }}
+              highlight
+            />
             <BreakdownRow
               item={{
                 name: "İşlem Ücreti",

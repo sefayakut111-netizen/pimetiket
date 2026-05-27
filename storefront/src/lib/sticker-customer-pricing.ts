@@ -133,14 +133,14 @@ export function quoteCustomerSticker(
       rate: defaults.fasonRate * surchargeMultiplier,
     },
     operation: {
-      setup: defaults.setup,
-      packaging: defaults.packaging,
+      setup: 0,
+      packaging: 0,
       cargo: 0,
-      feePct: defaults.feePct,
+      feePct: 0,
     },
     margin: {
       marginPct: 0,
-      vatPct: defaults.vatPct,
+      vatPct: 20,
       minMarkupFraction: 0,
     },
   });

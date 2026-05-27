@@ -32,6 +32,11 @@ import {
   type EtiketCoatingId,
   type EtiketCustomId,
 } from "@/lib/etiket-customer-pricing";
+import { getLivePricingConfig } from "@/lib/pricing-config-client";
+import {
+  quoteStickerFromConfig,
+  quoteEtiketFromConfig,
+} from "@/lib/customer-pricing-from-config";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE,
@@ -420,14 +425,24 @@ export default function AdminCreateOrderPage() {
       setCalcLoadingId(item.id);
       try {
         if (item.product === "sticker") {
-          const result = quoteCustomerSticker({
-            width: w,
-            height: h,
-            qty: q,
-            material: item.material as StickerMaterial,
-            finish: mapStickerFinish(item.coating),
-            cut: "diecut",
-          });
+          const config = await getLivePricingConfig("sticker");
+          const result =
+            quoteStickerFromConfig(config, {
+              width: w,
+              height: h,
+              qty: q,
+              material: item.material as StickerMaterial,
+              finish: mapStickerFinish(item.coating),
+              cut: "diecut",
+            }) ??
+            quoteCustomerSticker({
+              width: w,
+              height: h,
+              qty: q,
+              material: item.material as StickerMaterial,
+              finish: mapStickerFinish(item.coating),
+              cut: "diecut",
+            });
           if (!result.ok) {
             toast.error(result.reason);
             return;
@@ -436,14 +451,28 @@ export default function AdminCreateOrderPage() {
           updateItem(item.id, { unit: unitExVat.toFixed(4) });
           toast.success(`Birim fiyat: ${unitExVat.toFixed(2)} ₺ (KDV hariç)`);
         } else {
-          const result = quoteCustomerEtiket({
-            width: w,
-            height: h,
-            qty: q,
-            material: mapEtiketMaterial(item.material),
-            coating: mapEtiketCoating(item.coating),
-            customization: mapCustomization(item.customization),
-          });
+          const config = await getLivePricingConfig("etiket_rulo");
+          const result =
+            quoteEtiketFromConfig(
+              config,
+              {
+                width: w,
+                height: h,
+                qty: q,
+                material: mapEtiketMaterial(item.material),
+                coating: mapEtiketCoating(item.coating),
+                customization: mapCustomization(item.customization),
+              },
+              { formFactor: "rulo" }
+            ) ??
+            quoteCustomerEtiket({
+              width: w,
+              height: h,
+              qty: q,
+              material: mapEtiketMaterial(item.material),
+              coating: mapEtiketCoating(item.coating),
+              customization: mapCustomization(item.customization),
+            });
           if (!result.ok) {
             toast.error(result.reason);
             return;

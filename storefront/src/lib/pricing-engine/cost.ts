@@ -219,16 +219,22 @@ function computeOperationItems(
       formula: `${envelopeCount} ${isBigMode ? "koli" : "zarf"} × ${packagingPerUnit} ₺`,
       amount: packagingTotal,
     },
-    {
+  ];
+
+  if (rates.cargo > 0) {
+    items.push({
       name: "Kargo",
       formula: isBigMode
         ? `${envelopeCount} koli · desi/m³ (×${cargoMultiplier.toFixed(2)})`
         : "yurtiçi",
       amount: cargoTotal,
-    },
-  ];
+    });
+  }
 
-  return { items, total: rates.setup + packagingTotal + cargoTotal };
+  return {
+    items,
+    total: rates.setup + packagingTotal + (rates.cargo > 0 ? cargoTotal : 0),
+  };
 }
 
 // ============================================================

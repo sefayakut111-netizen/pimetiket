@@ -28,7 +28,11 @@ import {
   ETIKET_COATINGS,
   ETIKET_CUSTOMIZATIONS,
 } from "@/lib/pricing-engine";
-import { getDefaultInput } from "@/lib/pricing-profiles";
+import { getLivePricingConfig } from "@/lib/pricing-config";
+import {
+  quoteStickerFromConfig,
+  quoteEtiketFromConfig,
+} from "@/lib/customer-pricing-from-config";
 import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
 import { PIM_NAV_TOOLS } from "@/lib/pim/navigation-tools";
 
@@ -72,13 +76,22 @@ const stickerTool = tool({
       .describe("Yüzey kaplaması (parlak / mat / yok=kaplamasız)"),
   }),
   execute: async ({ width, height, qty, material, finish }) => {
-    const result = quoteCustomerSticker({
-      width,
-      height,
-      material,
-      finish,
-      qty,
-    });
+    const config = await getLivePricingConfig("sticker");
+    const result =
+      quoteStickerFromConfig(config, {
+        width,
+        height,
+        material,
+        finish,
+        qty,
+      }) ??
+      quoteCustomerSticker({
+        width,
+        height,
+        material,
+        finish,
+        qty,
+      });
     if (!result.ok) {
       return {
         success: false,
@@ -134,7 +147,58 @@ const etiketTool = tool({
     coating_id,
     customization_id,
   }) => {
-    const defaults = getDefaultInput();
+    const config = await getLivePricingConfig("etiket_rulo");
+    const geom = quoteEtiket({
+      width,
+      height,
+      qty,
+      materialId: material_id,
+      coatingId: coating_id,
+      customizationId: customization_id,
+      production: { mode: "fason", rate: 100 },
+      operation: { setup: 0, packaging: 0, cargo: 0, feePct: 0 },
+      margin: { marginPct: 0, vatPct: 0, minMarkupFraction: 0 },
+    });
+    const bridged = quoteEtiketFromConfig(
+      config,
+      {
+        width,
+        height,
+        qty,
+        material: material_id,
+        coating: coating_id,
+        customization: customization_id,
+      },
+      { formFactor: "rulo" }
+    );
+
+    if (bridged?.ok) {
+      const matName =
+        ETIKET_MATERIALS.find((m) => m.id === material_id)?.name ?? material_id;
+      const coatName =
+        ETIKET_COATINGS.find((c) => c.id === coating_id)?.name ?? coating_id;
+      const custName =
+        ETIKET_CUSTOMIZATIONS.find((c) => c.id === customization_id)?.name ??
+        customization_id;
+      return {
+        success: true,
+        product: "etiket",
+        width_mm: width,
+        height_mm: height,
+        qty,
+        material: matName,
+        coating: coatName,
+        customization: custName,
+        total_kdv_dahil: Math.round(bridged.total),
+        unit_price_kdv_dahil: parseFloat(bridged.unitPrice.toFixed(2)),
+        rolls_needed: bridged.rollsNeeded,
+        total_m2: geom.ok
+          ? parseFloat(geom.geometry.totalM2.toFixed(3))
+          : 0,
+        configurator_url: "/etiket",
+      };
+    }
+
     const result = quoteEtiket({
       width,
       height,
@@ -142,16 +206,16 @@ const etiketTool = tool({
       materialId: material_id,
       coatingId: coating_id,
       customizationId: customization_id,
-      production: { mode: "fason", rate: defaults.fasonRate },
+      production: { mode: "fason", rate: 120 },
       operation: {
         setup: 100,
         packaging: 25,
-        cargo: 100,
-        feePct: defaults.feePct,
+        cargo: 0,
+        feePct: 0,
       },
       margin: {
         marginPct: 0,
-        vatPct: defaults.vatPct,
+        vatPct: 20,
         minMarkupFraction: 0,
       },
     });

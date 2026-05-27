@@ -104,11 +104,11 @@ export function quoteCustomerEtiket(
       setup: 100,
       packaging: 25,
       cargo: 100,
-      feePct: defaults.feePct,
+      feePct: 0,
     },
     margin: {
       marginPct: 0,
-      vatPct: defaults.vatPct,
+      vatPct: 20,
       minMarkupFraction: 0,
     },
   });
