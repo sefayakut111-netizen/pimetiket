@@ -5,8 +5,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CRON_REGISTRY } from "./cron-registry";
 
-const SKIPPED_CRONS = new Set(["auditors-agent"]);
-
 export async function summarizeCronHealth(
   admin: SupabaseClient
 ): Promise<{
@@ -15,7 +13,7 @@ export async function summarizeCronHealth(
   error: number;
   lastError?: string;
 }> {
-  const total = CRON_REGISTRY.filter((e) => !SKIPPED_CRONS.has(e.name)).length;
+  const total = CRON_REGISTRY.length;
 
   const { data: runs } = await admin
     .from("cron_runs")
@@ -38,7 +36,6 @@ export async function summarizeCronHealth(
   let lastError: string | undefined;
 
   for (const entry of CRON_REGISTRY) {
-    if (SKIPPED_CRONS.has(entry.name)) continue;
     const last = latestByName.get(entry.name);
     if (last?.status === "error") {
       cronError++;
