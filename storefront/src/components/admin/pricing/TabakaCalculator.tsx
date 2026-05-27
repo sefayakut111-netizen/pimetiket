@@ -359,7 +359,7 @@ export function TabakaCalculator({
                 <Field label="Kâr marjı (%)">
                   <input
                     type="number"
-                    value={config.margin.pct}
+                    value={config.margin?.pct ?? 0}
                     step={1}
                     onChange={(e) => updateMargin(Number(e.target.value))}
                     className="w-full px-3 h-10 rounded-lg bg-white ring-1 ring-gri-200 text-[14px] tabular-nums focus:outline-none focus:ring-pim-mercan"
@@ -448,7 +448,7 @@ export function TabakaCalculator({
                     value={`+${fmt(priceResult.operation_cost, 2)}`}
                   />
                   <Row
-                    label={`+ Margin %${config.margin.pct}`}
+                    label={`+ Margin %${config.margin?.pct ?? 0}`}
                     value={fmt(priceResult.with_margin, 2)}
                   />
                   <Row

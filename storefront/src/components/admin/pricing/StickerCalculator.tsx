@@ -375,7 +375,8 @@ export function StickerCalculator({
         selected_options: { finish: "parlak" },
         billable_m2: result.geometry.totalM2,
       },
-      liveStickerConfig
+      liveStickerConfig,
+      "sticker"
     );
   }, [result, width, height, qty, liveStickerConfig]);
 

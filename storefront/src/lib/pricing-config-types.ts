@@ -14,10 +14,14 @@ export type ScopeName =
 export interface MaterialItem {
   id: string;
   name: string;
-  /** Sticker + Rulo Etiket için: ₺/m² maliyet */
+  /** Sticker + Rulo Etiket için: ₺/m² alış (partner/maliyet) */
   m2_cost_try?: number;
-  /** Tabaka Etiket için: ₺/tabaka maliyet (23×31 cm 1 tabaka) */
+  /** Sticker için: ₺/m² satış (müşteri) */
+  m2_sell_try?: number;
+  /** Tabaka Etiket için: ₺/tabaka alış (23×31 cm 1 tabaka) */
   sheet_cost_try?: number;
+  /** Tabaka için: ₺/tabaka satış (sticker dışı gelecek kullanım) */
+  sheet_sell_try?: number;
   desc?: string;
   /** Rakip referans notu — hesaba girmez, bilgi amaçlı */
   competitor_ref?: string;
@@ -28,7 +32,10 @@ export interface MaterialItem {
 export interface OptionItem {
   id: string;
   name: string;
+  /** Müşteri satış yüzdesi */
   pct_add: number;
+  /** Maliyet/alış yüzdesi — yoksa pct_add × 0.5 */
+  pct_cost?: number;
   desc?: string;
 }
 
@@ -49,7 +56,8 @@ export interface OperationConfig {
   enabled?: boolean;
   setup: number;
   packaging_per_unit: number;
-  cargo: number;
+  /** Etiket legacy — sticker dual-price profillerinde kullanılmaz */
+  cargo?: number;
   fee_pct: number;
 }
 
@@ -69,7 +77,8 @@ export interface ProfileConfig {
   options: Record<string, OptionGroup>;
   tiers: TierConfig[];
   operation: OperationConfig;
-  margin: PercentConfig;
+  /** Etiket legacy — sticker dual-price profillerinde yok */
+  margin?: PercentConfig;
   vat: PercentConfig;
 }
 
@@ -91,10 +100,10 @@ export interface PricingHistoryRow {
 
 export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
   materials: [
-    { id: "vinil",      name: "Vinil",      m2_cost_try: 500,  desc: "Standart parlak vinil, açıkhava dayanımlı" },
-    { id: "transparan", name: "Transparan", m2_cost_try: 700,  desc: "Şeffaf, cam üstü görünmez efekt" },
-    { id: "holo",       name: "Holografik", m2_cost_try: 1200, desc: "Yansıtıcı, prizmatik efekt" },
-    { id: "simli",      name: "Simli",      m2_cost_try: 1500, desc: "Metalik gümüş/altın parıltı" },
+    { id: "vinil",      name: "Vinil",      m2_cost_try: 500,  m2_sell_try: 750,  desc: "Standart parlak vinil, açıkhava dayanımlı" },
+    { id: "transparan", name: "Transparan", m2_cost_try: 700,  m2_sell_try: 1050, desc: "Şeffaf, cam üstü görünmez efekt" },
+    { id: "holo",       name: "Holografik", m2_cost_try: 1200, m2_sell_try: 1800, desc: "Yansıtıcı, prizmatik efekt" },
+    { id: "simli",      name: "Simli",      m2_cost_try: 1500, m2_sell_try: 2250, desc: "Metalik gümüş/altın parıltı" },
   ],
   options: {
     finish: {
@@ -102,9 +111,9 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
       required: true,
       single_select: true,
       items: [
-        { id: "yok",    name: "Yok",    pct_add: 0 },
-        { id: "parlak", name: "Parlak", pct_add: 0 },
-        { id: "mat",    name: "Mat",    pct_add: 10 },
+        { id: "yok",    name: "Yok",    pct_cost: 0, pct_add: 0 },
+        { id: "parlak", name: "Parlak", pct_cost: 0, pct_add: 0 },
+        { id: "mat",    name: "Mat",    pct_cost: 5, pct_add: 10 },
       ],
     },
   },
@@ -116,8 +125,7 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
     { qty: 500, multiplier: 0.90, label: "-%10 indirim" },
     { qty: 1000, multiplier: 0.80, label: "-%20 indirim" },
   ],
-  operation: { setup: 50, packaging_per_unit: 0.01, cargo: 80, fee_pct: 2.5 },
-  margin: { pct: 50 },
+  operation: { setup: 50, packaging_per_unit: 0.01, fee_pct: 2.5 },
   vat: { pct: 20 },
 };
 

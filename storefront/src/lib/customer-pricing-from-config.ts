@@ -56,7 +56,8 @@ export function quoteStickerFromConfig(
       selected_options,
       billable_m2: geomResult.geometry.totalM2,
     },
-    config
+    config,
+    "sticker"
   );
 
   if (!priceResult.ok) {

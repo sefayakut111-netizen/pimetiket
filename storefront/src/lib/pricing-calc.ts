@@ -20,7 +20,16 @@ import type {
   MaterialItem,
   OptionItem,
   TierConfig,
+  ScopeName,
 } from "./pricing-config-types";
+import {
+  isStickerDualPriceScope,
+  resolveM2Cost,
+  resolveM2Sell,
+  resolveOptionCostPct,
+  resolveOptionSellPct,
+  stickerOperationCost,
+} from "./pricing-dual-price";
 
 // ============================================================
 // Input / Output
@@ -68,6 +77,14 @@ export interface PriceCalcOk {
   with_margin: number;
   with_fee: number;
   total_with_vat: number;
+  /** Sticker dual-price: malzeme alış tabanı */
+  material_cost_base?: number;
+  /** Sticker dual-price: malzeme satış tabanı */
+  material_sell_base?: number;
+  /** Sticker dual-price: seçenek maliyet % toplamı */
+  options_cost_pct_total?: number;
+  /** Sticker dual-price: malzeme kârı (satış - alış, tier+ops öncesi) */
+  material_profit?: number;
   /** Müşteri görür */
   final: number;
   /** Birim fiyat (final / qty) */
@@ -109,7 +126,8 @@ export function findTier(qty: number, tiers: TierConfig[]): TierConfig {
 
 export function calculatePrice(
   input: PriceCalcInput,
-  config: ProfileConfig
+  config: ProfileConfig,
+  scope?: ScopeName
 ): PriceCalcResult {
   // 1. Material bul
   const material = config.materials.find((m) => m.id === input.material_id);
@@ -181,8 +199,118 @@ export function calculatePrice(
         : area_m2 * input.qty
       : undefined;
 
+  const dualSticker = mode === "area" && isStickerDualPriceScope(scope);
+
   // 5. Tier (çarpansal)
   const tier = findTier(input.qty, config.tiers);
+
+  // --- Sticker dual-price (alış/satış ayrı, margin/cargo yok) ---
+  if (dualSticker) {
+    const m2Cost = resolveM2Cost(material);
+    const m2Sell = resolveM2Sell(material);
+    if (m2Sell <= 0) {
+      return {
+        ok: false,
+        reason: "missing_m2_sell",
+        hint: `"${material.name}" için satış fiyatı tanımlı değil`,
+      };
+    }
+
+    const billable =
+      billable_m2 !== undefined && billable_m2 > 0
+        ? billable_m2
+        : area_m2 * input.qty;
+
+    const material_cost_base = m2Cost * billable;
+    const material_sell_base = m2Sell * billable;
+    const tiered_cost = material_cost_base * tier.multiplier;
+    const tiered_sell = material_sell_base * tier.multiplier;
+
+    let options_cost_pct_total = 0;
+    let options_sell_pct_total = 0;
+    const selected_options_detail: PriceCalcOk["selected_options_detail"] = [];
+
+    for (const [group_id, group] of Object.entries(config.options)) {
+      const selected = input.selected_options[group_id];
+      if (group.required && !selected) {
+        return {
+          ok: false,
+          reason: `option_required:${group_id}`,
+          hint: `${group.label} seçilmeli`,
+        };
+      }
+      if (!selected) continue;
+
+      const applyItem = (item: OptionItem) => {
+        options_cost_pct_total += resolveOptionCostPct(item);
+        options_sell_pct_total += resolveOptionSellPct(item);
+        selected_options_detail.push({
+          group_id,
+          group_label: group.label,
+          item_id: item.id,
+          item_name: item.name,
+          pct_add: resolveOptionSellPct(item),
+        });
+      };
+
+      if (group.single_select) {
+        const id = typeof selected === "string" ? selected : null;
+        if (!id) continue;
+        const item = group.items.find((i: OptionItem) => i.id === id);
+        if (item) applyItem(item);
+      } else {
+        const ids = Array.isArray(selected) ? selected : [];
+        for (const id of ids) {
+          const item = group.items.find((i: OptionItem) => i.id === id);
+          if (item) applyItem(item);
+        }
+      }
+    }
+
+    const with_options_cost =
+      tiered_cost * (1 + options_cost_pct_total / 100);
+    const with_options = tiered_sell * (1 + options_sell_pct_total / 100);
+    const opEnabled = config.operation.enabled !== false;
+    const operation_cost = opEnabled
+      ? stickerOperationCost(config, input.qty)
+      : 0;
+    const cost_total = with_options_cost + operation_cost;
+    const sell_before_fee = with_options + operation_cost;
+    const fee_pct = config.operation.fee_pct ?? 0;
+    const with_fee =
+      fee_pct > 0 && fee_pct < 100
+        ? sell_before_fee / (1 - fee_pct / 100)
+        : sell_before_fee;
+    const final = with_fee * (1 + config.vat.pct / 100);
+    const unit_price = final / input.qty;
+
+    return {
+      ok: true,
+      area_m2,
+      billable_m2: billable,
+      pricing_mode: mode,
+      material,
+      tier,
+      base: material_sell_base,
+      tiered: tiered_sell,
+      options_pct_total: options_sell_pct_total,
+      selected_options_detail,
+      with_options,
+      operation_cost,
+      cost_total,
+      with_margin: sell_before_fee,
+      with_fee,
+      total_with_vat: final,
+      material_cost_base,
+      material_sell_base,
+      options_cost_pct_total,
+      material_profit: tiered_sell - tiered_cost,
+      final,
+      unit_price,
+    };
+  }
+
+  // 5. Tier (çarpansal) — legacy etiket / eski profil
   const tiered = base * tier.multiplier;
 
   // 6. Options (toplamsal %) — her grup için
@@ -241,11 +369,12 @@ export function calculatePrice(
   // 7. Operation cost
   const op = config.operation;
   const operation_cost =
-    op.setup + op.packaging_per_unit * input.qty + op.cargo;
+    op.setup + op.packaging_per_unit * input.qty + (op.cargo ?? 0);
   const cost_total = with_options + operation_cost;
 
-  // 8. Margin
-  const with_margin = cost_total * (1 + config.margin.pct / 100);
+  // 8. Margin (etiket legacy)
+  const marginPct = config.margin?.pct ?? 0;
+  const with_margin = cost_total * (1 + marginPct / 100);
 
   // 9. Fee gross-up (PayTR komisyonu müşteriye binsin)
   const fee_pct = op.fee_pct ?? 0;

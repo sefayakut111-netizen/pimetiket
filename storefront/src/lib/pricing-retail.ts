@@ -99,11 +99,11 @@ export function applyRetailLayer(
   const with_options = input.base_subtotal * (1 + options_pct_total / 100);
   const op = config.operation;
   const operation_cost =
-    op.setup + op.packaging_per_unit * input.qty + op.cargo;
+    op.setup + op.packaging_per_unit * input.qty + (op.cargo ?? 0);
   const cost_total = with_options + operation_cost;
 
   const markup_pct =
-    input.markup_pct_override ?? config.margin.pct;
+    input.markup_pct_override ?? config.margin?.pct ?? 0;
   const with_markup = cost_total * (1 + markup_pct / 100);
 
   const fee_pct = op.fee_pct ?? 0;

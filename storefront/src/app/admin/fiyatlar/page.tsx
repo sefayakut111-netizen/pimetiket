@@ -45,6 +45,7 @@ import {
   isTierChanged,
   type DiffEntry,
 } from "@/lib/pricing-diff";
+import { materialProfitPct } from "@/lib/pricing-dual-price";
 import { StickerCalculator } from "@/components/admin/pricing/StickerCalculator";
 import { RuloCalculator } from "@/components/admin/pricing/RuloCalculator";
 import { TabakaCalculator } from "@/components/admin/pricing/TabakaCalculator";
@@ -280,8 +281,8 @@ function FiyatlarPageInner() {
   // Form-anında diff (canlı vs şu anki form)
   const draftFormDiff = useMemo<DiffEntry[]>(() => {
     if (!data?.live || !draft) return [];
-    return diffProfileConfig(data.live, draft);
-  }, [data?.live, draft]);
+    return diffProfileConfig(data.live, draft, scope);
+  }, [data?.live, draft, scope]);
 
   // Material/option/tier satırlarında "değişti" rozet için
   // Satır seviyesi değişiklik kontrolü — form ↔ canlı
@@ -370,6 +371,8 @@ function FiyatlarPageInner() {
     return isPricebookMode(draft);
   }, [draft, scope]);
 
+  const isStickerDual = scope === "sticker";
+
   // Live preview hesaplama
   const previewResult = useMemo(() => {
     if (!draft || !previewMaterialId) return null;
@@ -396,7 +399,8 @@ function FiyatlarPageInner() {
         selected_options: previewOptions,
         sheets_needed,
       },
-      draft
+      draft,
+      scope
     );
   }, [
     draft,
@@ -407,6 +411,7 @@ function FiyatlarPageInner() {
     previewQty,
     isSheetMode,
     isRuloPricebook,
+    scope,
   ]);
 
   const costBreakdown = useMemo(() => {
@@ -419,11 +424,53 @@ function FiyatlarPageInner() {
     const subtotal = total - vatAmount;
     const opEnabled = draft.operation.enabled !== false;
     const feeAmount = opEnabled ? subtotal * (draft.operation.fee_pct / 100) : 0;
+    const unitPrice = unitPriceFromPreview(previewResult);
+
+    if (
+      isStickerDual &&
+      "tier" in previewResult &&
+      previewResult.material_cost_base != null &&
+      previewResult.material_sell_base != null
+    ) {
+      const pr = previewResult;
+      const matCostBase = pr.material_cost_base!;
+      const matSellBase = pr.material_sell_base!;
+      const tierMult = pr.tier.multiplier;
+      const matCost = matCostBase * tierMult;
+      const matSell = matSellBase * tierMult;
+      const optCostPct = pr.options_cost_pct_total ?? 0;
+      const optSellPct = pr.options_pct_total;
+      const optionCostAmt = matCost * (optCostPct / 100);
+      const optionSellAmt = matSell * (optSellPct / 100);
+      const materialProfit = matSell - matCost + (optionSellAmt - optionCostAmt);
+      const profitPct =
+        subtotal > 0 ? (materialProfit / subtotal) * 100 : 0;
+
+      return {
+        unitPrice,
+        subtotal,
+        vatAmount,
+        total,
+        feeAmount,
+        marginAmount: materialProfit,
+        partnerCost: pr.cost_total,
+        profitPct,
+        dualSticker: true as const,
+        matCost,
+        matSell,
+        optionCostAmt,
+        optionSellAmt,
+        materialProfit,
+      };
+    }
+
+    const marginPct = draft.margin?.pct ?? 0;
     const marginAmount =
-      (subtotal - feeAmount) * (draft.margin.pct / (100 + draft.margin.pct));
+      marginPct > 0
+        ? (subtotal - feeAmount) * (marginPct / (100 + marginPct))
+        : 0;
     const partnerCost = subtotal - feeAmount - marginAmount;
     const profitPct = subtotal > 0 ? (marginAmount / subtotal) * 100 : 0;
-    const unitPrice = unitPriceFromPreview(previewResult);
 
     return {
       unitPrice,
@@ -434,8 +481,9 @@ function FiyatlarPageInner() {
       marginAmount,
       partnerCost,
       profitPct,
+      dualSticker: false as const,
     };
-  }, [previewResult, draft]);
+  }, [previewResult, draft, isStickerDual]);
 
   const previewUnitPrice = costBreakdown?.unitPrice ?? null;
 
@@ -789,22 +837,38 @@ function FiyatlarPageInner() {
                 )}
               </p>
               <div className="space-y-2">
-                <div className="grid grid-cols-[40px_32px_80px_1.5fr_2fr_140px_160px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                <div
+                  className={cn(
+                    "grid gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700",
+                    isStickerDual
+                      ? "grid-cols-[40px_32px_80px_1.5fr_2fr_100px_100px_160px]"
+                      : "grid-cols-[40px_32px_80px_1.5fr_2fr_140px_160px]"
+                  )}
+                >
                   <span className="text-center">Aktif</span>
                   <span className="text-center">Sıra</span>
                   <span>ID</span>
                   <span>Ad</span>
                   <span>Açıklama</span>
-                  <span className="text-right">
-                    {isSheetMode ? "Tabaka (₺)" : "m² (₺)"}
-                  </span>
+                  {isStickerDual ? (
+                    <>
+                      <span className="text-right">Alış (₺/m²)</span>
+                      <span className="text-right">Satış (₺/m²)</span>
+                    </>
+                  ) : (
+                    <span className="text-right">
+                      {isSheetMode ? "Tabaka (₺)" : "m² (₺)"}
+                    </span>
+                  )}
                   <span>Rakip ref</span>
                 </div>
                 {draft.materials.map((m, i) => {
                   const changed = isItemChanged("material", m.id);
-                  const inputVal = isSheetMode
+                  const costVal = isSheetMode
                     ? (m.sheet_cost_try ?? 0)
                     : (m.m2_cost_try ?? 0);
+                  const sellVal = isStickerDual ? (m.m2_sell_try ?? 0) : 0;
+                  const profitHint = isStickerDual ? materialProfitPct(m) : null;
                   const isFirst = i === 0;
                   const isLast = i === draft.materials.length - 1;
                   const isActive = m.active !== false;
@@ -812,7 +876,10 @@ function FiyatlarPageInner() {
                   <div
                     key={m.id}
                     className={cn(
-                      "grid grid-cols-[40px_32px_80px_1.5fr_2fr_140px_160px] gap-2 items-center rounded px-1 py-0.5",
+                      "grid gap-2 items-center rounded px-1 py-0.5",
+                      isStickerDual
+                        ? "grid-cols-[40px_32px_80px_1.5fr_2fr_100px_100px_160px]"
+                        : "grid-cols-[40px_32px_80px_1.5fr_2fr_140px_160px]",
                       changed && "bg-saman/10",
                       !isActive && "opacity-40"
                     )}
@@ -870,7 +937,7 @@ function FiyatlarPageInner() {
                     />
                     <input
                       type="number"
-                      value={inputVal}
+                      value={costVal}
                       step={isSheetMode ? 1 : 10}
                       onChange={(e) => {
                         const v = Number(e.target.value);
@@ -886,6 +953,29 @@ function FiyatlarPageInner() {
                         changed && "ring-saman bg-saman/10"
                       )}
                     />
+                    {isStickerDual ? (
+                      <div>
+                        <input
+                          type="number"
+                          value={sellVal}
+                          step={10}
+                          onChange={(e) => {
+                            updateMaterial(i, {
+                              m2_sell_try: Number(e.target.value),
+                            });
+                          }}
+                          className={cn(
+                            "w-full px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
+                            changed && "ring-saman bg-saman/10"
+                          )}
+                        />
+                        {profitHint != null && (
+                          <span className="block text-[10px] text-gri-500 mt-0.5 text-right">
+                            %{profitHint} kâr
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
                     <input
                       type="text"
                       placeholder="Rakip ref (opsiyonel)"
@@ -924,12 +1014,26 @@ function FiyatlarPageInner() {
                   )}
                 </p>
                 <div className="space-y-2">
-                  <div className="grid grid-cols-[32px_80px_1.5fr_2fr_120px] gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700">
+                  <div
+                    className={cn(
+                      "grid gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700",
+                      isStickerDual
+                        ? "grid-cols-[32px_80px_1.5fr_2fr_90px_90px]"
+                        : "grid-cols-[32px_80px_1.5fr_2fr_120px]"
+                    )}
+                  >
                     <span className="text-center">Sıra</span>
                     <span>ID</span>
                     <span>Ad</span>
                     <span>Açıklama</span>
-                    <span className="text-right">% Ekleme</span>
+                    {isStickerDual ? (
+                      <>
+                        <span className="text-right">Maliyet %</span>
+                        <span className="text-right">Satış %</span>
+                      </>
+                    ) : (
+                      <span className="text-right">% Ekleme</span>
+                    )}
                   </div>
                   {(group.items ?? []).map((it: OptionItem, idx: number) => {
                     const changed = isItemChanged("option", it.id, group_id);
@@ -939,7 +1043,10 @@ function FiyatlarPageInner() {
                     <div
                       key={it.id}
                       className={cn(
-                        "grid grid-cols-[32px_80px_1.5fr_2fr_120px] gap-2 items-center rounded px-1 py-0.5",
+                        "grid gap-2 items-center rounded px-1 py-0.5",
+                        isStickerDual
+                          ? "grid-cols-[32px_80px_1.5fr_2fr_90px_90px]"
+                          : "grid-cols-[32px_80px_1.5fr_2fr_120px]",
                         changed && "bg-saman/10"
                       )}
                     >
@@ -981,33 +1088,82 @@ function FiyatlarPageInner() {
                         className="px-3 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] focus:outline-none focus:ring-pim-mercan"
                       />
                       <div className="relative">
-                        <input
-                          type="number"
-                          value={it.pct_add}
-                          step={1}
-                          onChange={(e) =>
-                            updateOptionItem(group_id, idx, {
-                              pct_add: Number(e.target.value),
-                            })
-                          }
-                          className={cn(
-                            "w-full px-3 pr-7 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
-                            it.pct_add === 0 && "text-gri-500"
-                          )}
-                        />
+                        {isStickerDual ? (
+                          <input
+                            type="number"
+                            value={it.pct_cost ?? 0}
+                            step={1}
+                            onChange={(e) =>
+                              updateOptionItem(group_id, idx, {
+                                pct_cost: Number(e.target.value),
+                              })
+                            }
+                            className={cn(
+                              "w-full px-3 pr-7 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
+                              (it.pct_cost ?? 0) === 0 && "text-gri-500"
+                            )}
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            value={it.pct_add}
+                            step={1}
+                            onChange={(e) =>
+                              updateOptionItem(group_id, idx, {
+                                pct_add: Number(e.target.value),
+                              })
+                            }
+                            className={cn(
+                              "w-full px-3 pr-7 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
+                              it.pct_add === 0 && "text-gri-500"
+                            )}
+                          />
+                        )}
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gri-500 text-[11px]">
                           %
                         </span>
-                        {previewUnitPrice != null && it.pct_add > 0 && (
-                          <span className="block text-[10px] text-gri-500 mt-0.5 text-right whitespace-nowrap">
-                            ≈ +
-                            {(previewUnitPrice * (it.pct_add / 100))
-                              .toFixed(2)
-                              .replace(".", ",")}
-                            ₺/birim @ {previewQty.toLocaleString("tr-TR")} ad
-                          </span>
-                        )}
+                        {!isStickerDual &&
+                          previewUnitPrice != null &&
+                          it.pct_add > 0 && (
+                            <span className="block text-[10px] text-gri-500 mt-0.5 text-right whitespace-nowrap">
+                              ≈ +
+                              {(previewUnitPrice * (it.pct_add / 100))
+                                .toFixed(2)
+                                .replace(".", ",")}
+                              ₺/birim @ {previewQty.toLocaleString("tr-TR")} ad
+                            </span>
+                          )}
                       </div>
+                      {isStickerDual ? (
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={it.pct_add}
+                            step={1}
+                            onChange={(e) =>
+                              updateOptionItem(group_id, idx, {
+                                pct_add: Number(e.target.value),
+                              })
+                            }
+                            className={cn(
+                              "w-full px-3 pr-7 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] text-right font-semibold tabular-nums focus:outline-none focus:ring-pim-mercan",
+                              it.pct_add === 0 && "text-gri-500"
+                            )}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gri-500 text-[11px]">
+                            %
+                          </span>
+                          {previewUnitPrice != null && it.pct_add > 0 && (
+                            <span className="block text-[10px] text-gri-500 mt-0.5 text-right whitespace-nowrap">
+                              ≈ +
+                              {(previewUnitPrice * (it.pct_add / 100))
+                                .toFixed(2)
+                                .replace(".", ",")}
+                              ₺/birim @ {previewQty.toLocaleString("tr-TR")} ad
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                     );
                   })}
@@ -1113,7 +1269,7 @@ function FiyatlarPageInner() {
                 </label>
               </div>
               <div className={draft.operation.enabled === false ? "opacity-40 pointer-events-none" : ""}>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className={cn("grid gap-3 mb-4", isStickerDual ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
                 <NumField
                   label="Setup (₺)"
                   value={draft.operation.setup}
@@ -1126,12 +1282,14 @@ function FiyatlarPageInner() {
                   step={0.005}
                   onChange={(v) => updateOperationField("packaging_per_unit", v)}
                 />
-                <NumField
-                  label="Kargo (₺)"
-                  value={draft.operation.cargo}
-                  step={5}
-                  onChange={(v) => updateOperationField("cargo", v)}
-                />
+                {!isStickerDual && (
+                  <NumField
+                    label="Kargo (₺)"
+                    value={draft.operation.cargo ?? 0}
+                    step={5}
+                    onChange={(v) => updateOperationField("cargo", v)}
+                  />
+                )}
                 <NumField
                   label="Komisyon (%)"
                   value={draft.operation.fee_pct}
@@ -1139,13 +1297,15 @@ function FiyatlarPageInner() {
                   onChange={(v) => updateOperationField("fee_pct", v)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <NumField
-                  label="Kâr marjı (%)"
-                  value={draft.margin.pct}
-                  step={1}
-                  onChange={updateMarginPct}
-                />
+              <div className={cn("grid gap-3", isStickerDual ? "grid-cols-1" : "grid-cols-2")}>
+                {!isStickerDual && (
+                  <NumField
+                    label="Kâr marjı (%)"
+                    value={draft.margin?.pct ?? 0}
+                    step={1}
+                    onChange={updateMarginPct}
+                  />
+                )}
                 <NumField
                   label="KDV (%)"
                   value={draft.vat.pct}
@@ -1269,7 +1429,9 @@ function FiyatlarPageInner() {
                       {m.name} (
                       {isSheetMode
                         ? `${m.sheet_cost_try ?? "?"} ₺/tabaka`
-                        : `${m.m2_cost_try ?? "?"} ₺/m²`}
+                        : isStickerDual
+                          ? `${m.m2_sell_try ?? m.m2_cost_try ?? "?"} ₺/m² satış`
+                          : `${m.m2_cost_try ?? "?"} ₺/m²`}
                       )
                     </option>
                   ))}
@@ -1377,22 +1539,60 @@ function FiyatlarPageInner() {
                         Maliyet kırılımı (sadece admin)
                       </div>
                       <div className="space-y-1 text-[11.5px] font-mono">
-                        <Row
-                          label="🏭 Partner maliyeti"
-                          value={fmtMoney(costBreakdown.partnerCost)}
-                        />
-                        <Row
-                          label="💵 Senin kârın"
-                          value={fmtMoney(costBreakdown.marginAmount)}
-                        />
-                        <Row
-                          label="📊 Kâr marjı"
-                          value={`%${costBreakdown.profitPct.toFixed(1)}`}
-                        />
-                        <Row
-                          label="💳 PSP komisyon"
-                          value={fmtMoney(costBreakdown.feeAmount)}
-                        />
+                        {costBreakdown.dualSticker ? (
+                          <>
+                            <Row
+                              label="Malzeme alış"
+                              value={fmtMoney(costBreakdown.matCost ?? 0)}
+                            />
+                            <Row
+                              label="Malzeme satış"
+                              value={fmtMoney(costBreakdown.matSell ?? 0)}
+                            />
+                            <Row
+                              label="Kâr (malzeme)"
+                              value={`${fmtMoney(costBreakdown.materialProfit ?? 0)} (%${costBreakdown.profitPct.toFixed(0)})`}
+                            />
+                            <Row
+                              label="Seçenek maliyeti"
+                              value={fmtMoney(costBreakdown.optionCostAmt ?? 0)}
+                            />
+                            <Row
+                              label="Seçenek satış"
+                              value={fmtMoney(costBreakdown.optionSellAmt ?? 0)}
+                            />
+                            <Row label="Setup" value={fmtMoney(draft.operation.setup)} />
+                            <Row
+                              label="Paketleme"
+                              value={fmtMoney(
+                                draft.operation.packaging_per_unit * previewQty
+                              )}
+                            />
+                            <Row
+                              label="PSP komisyon"
+                              value={fmtMoney(costBreakdown.feeAmount)}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Row
+                              label="🏭 Partner maliyeti"
+                              value={fmtMoney(costBreakdown.partnerCost)}
+                            />
+                            <Row
+                              label="💵 Senin kârın"
+                              value={fmtMoney(costBreakdown.marginAmount)}
+                            />
+                            <Row
+                              label="📊 Kâr marjı"
+                              value={`%${costBreakdown.profitPct.toFixed(1)}`}
+                            />
+                            <Row
+                              label="💳 PSP komisyon"
+                              value={fmtMoney(costBreakdown.feeAmount)}
+                            />
+                          </>
+                        )}
                       </div>
                     </div>
 

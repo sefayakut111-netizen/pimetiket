@@ -40,12 +40,24 @@ function fmtMoney(n: number): string {
 
 function profitPctFromTotal(
   total: number,
-  config: ProfileConfig
+  config: ProfileConfig,
+  scope?: MatrixScope,
+  calcResult?: ReturnType<typeof calculatePrice>
 ): number {
+  if (
+    scope === "sticker" &&
+    calcResult?.ok &&
+    calcResult.material_profit != null
+  ) {
+    const subtotal = total / (1 + config.vat.pct / 100);
+    return subtotal > 0 ? (calcResult.material_profit / subtotal) * 100 : 0;
+  }
+  const marginPct = config.margin?.pct ?? 0;
+  if (marginPct <= 0) return 0;
   const subtotal = total / (1 + config.vat.pct / 100);
   const feeAmount = subtotal * (config.operation.fee_pct / 100);
   const marginAmount =
-    (subtotal - feeAmount) * (config.margin.pct / (100 + config.margin.pct));
+    (subtotal - feeAmount) * (marginPct / (100 + marginPct));
   return subtotal > 0 ? (marginAmount / subtotal) * 100 : 0;
 }
 
@@ -83,11 +95,14 @@ function quoteCell(
       selected_options: selectedOptions,
     });
     if (!r.ok) return null;
-    const profitPct = profitPctFromTotal(r.total, config);
+    const profitPct = profitPctFromTotal(r.total, config, scope);
     const subtotal = r.total / (1 + config.vat.pct / 100);
     const feeAmount = subtotal * (config.operation.fee_pct / 100);
+    const marginPct = config.margin?.pct ?? 0;
     const marginTry =
-      (subtotal - feeAmount) * (config.margin.pct / (100 + config.margin.pct));
+      marginPct > 0
+        ? (subtotal - feeAmount) * (marginPct / (100 + marginPct))
+        : 0;
     return {
       total: r.total,
       unitPrice: r.unitPrice,
@@ -106,16 +121,24 @@ function quoteCell(
       selected_options: selectedOptions,
       sheets_needed,
     },
-    config
+    config,
+    scope
   );
   if (!r.ok) return null;
 
   const total = r.final;
-  const profitPct = profitPctFromTotal(total, config);
+  const profitPct = profitPctFromTotal(total, config, scope, r);
   const subtotal = total / (1 + config.vat.pct / 100);
   const feeAmount = subtotal * (config.operation.fee_pct / 100);
   const marginTry =
-    (subtotal - feeAmount) * (config.margin.pct / (100 + config.margin.pct));
+    scope === "sticker" && r.material_profit != null
+      ? r.material_profit
+      : (() => {
+          const marginPct = config.margin?.pct ?? 0;
+          return marginPct > 0
+            ? (subtotal - feeAmount) * (marginPct / (100 + marginPct))
+            : 0;
+        })();
 
   return {
     total,

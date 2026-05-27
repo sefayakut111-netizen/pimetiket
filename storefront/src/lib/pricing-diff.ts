@@ -13,7 +13,8 @@
  *   - "Tier 250 adet çarpan: 1.00 → 0.95"
  */
 
-import type { ProfileConfig, ScopeConfig } from "./pricing-config";
+import type { ProfileConfig, ScopeConfig, ScopeName } from "./pricing-config";
+import { isStickerDualPriceScope } from "./pricing-dual-price";
 
 export interface DiffEntry {
   section: "materials" | "options" | "tiers" | "operation" | "margin" | "vat";
@@ -31,10 +32,13 @@ function isProfileConfig(c: ScopeConfig): c is ProfileConfig {
  */
 export function diffProfileConfig(
   oldCfg: ScopeConfig,
-  newCfg: ScopeConfig
+  newCfg: ScopeConfig,
+  scope?: ScopeName
 ): DiffEntry[] {
   const diffs: DiffEntry[] = [];
   if (!isProfileConfig(oldCfg) || !isProfileConfig(newCfg)) return diffs;
+
+  const dualSticker = isStickerDualPriceScope(scope);
 
   // Materials — sheet mode için sheet_cost_try, area mode için m2_cost_try
   const isSheetMode = newCfg.pricing_mode === "sheet" || oldCfg.pricing_mode === "sheet";
@@ -42,6 +46,8 @@ export function diffProfileConfig(
   const costLabel = isSheetMode ? "tabaka maliyet" : "m² maliyet";
   const getCost = (m: { m2_cost_try?: number; sheet_cost_try?: number }): number | undefined =>
     isSheetMode ? m.sheet_cost_try : m.m2_cost_try;
+  const getSell = (m: { m2_sell_try?: number; sheet_sell_try?: number }): number | undefined =>
+    isSheetMode ? m.sheet_sell_try : m.m2_sell_try;
 
   for (const oldMat of oldCfg.materials) {
     const newMat = newCfg.materials.find((m) => m.id === oldMat.id);
@@ -63,6 +69,18 @@ export function diffProfileConfig(
         old_value: `${oldCost ?? "?"} ₺`,
         new_value: `${newCost ?? "?"} ₺`,
       });
+    }
+    if (dualSticker) {
+      const oldSell = getSell(oldMat);
+      const newSell = getSell(newMat);
+      if (oldSell !== newSell) {
+        diffs.push({
+          section: "materials",
+          label: `${newMat.name} m² satış`,
+          old_value: `${oldSell ?? "?"} ₺`,
+          new_value: `${newSell ?? "?"} ₺`,
+        });
+      }
     }
     if (oldMat.name !== newMat.name) {
       diffs.push({
@@ -111,9 +129,17 @@ export function diffProfileConfig(
       if (oldItem.pct_add !== newItem.pct_add) {
         diffs.push({
           section: "options",
-          label: `${newGroup.label} → ${newItem.name}`,
+          label: `${newGroup.label} → ${newItem.name} satış %`,
           old_value: `+%${oldItem.pct_add}`,
           new_value: `+%${newItem.pct_add}`,
+        });
+      }
+      if (dualSticker && oldItem.pct_cost !== newItem.pct_cost) {
+        diffs.push({
+          section: "options",
+          label: `${newGroup.label} → ${newItem.name} maliyet %`,
+          old_value: `+%${oldItem.pct_cost ?? "?"}`,
+          new_value: `+%${newItem.pct_cost ?? "?"}`,
         });
       }
       if (oldItem.name !== newItem.name) {
@@ -170,7 +196,9 @@ export function diffProfileConfig(
     });
   }
   // Operation — numeric fields
-  const op_num_keys = ["setup", "packaging_per_unit", "cargo", "fee_pct"] as const;
+  const op_num_keys = dualSticker
+    ? (["setup", "packaging_per_unit", "fee_pct"] as const)
+    : (["setup", "packaging_per_unit", "cargo", "fee_pct"] as const);
   const op_labels: Record<string, string> = {
     setup: "Setup",
     packaging_per_unit: "Paketleme/adet",
@@ -178,23 +206,40 @@ export function diffProfileConfig(
     fee_pct: "Komisyon %",
   };
   for (const k of op_num_keys) {
-    if (oldCfg.operation[k] !== newCfg.operation[k]) {
+    const oldVal = oldCfg.operation[k];
+    const newVal = newCfg.operation[k];
+    if (oldVal !== newVal) {
       diffs.push({
         section: "operation",
         label: op_labels[k],
-        old_value: oldCfg.operation[k],
-        new_value: newCfg.operation[k],
+        old_value: oldVal ?? "-",
+        new_value: newVal ?? "-",
       });
     }
   }
 
-  // Margin
-  if (oldCfg.margin.pct !== newCfg.margin.pct) {
+  // Margin — yalnızca etiket legacy
+  if (
+    !dualSticker &&
+    oldCfg.margin?.pct !== undefined &&
+    newCfg.margin?.pct !== undefined &&
+    oldCfg.margin.pct !== newCfg.margin.pct
+  ) {
     diffs.push({
       section: "margin",
       label: "Kâr marjı",
       old_value: `%${oldCfg.margin.pct}`,
       new_value: `%${newCfg.margin.pct}`,
+    });
+  } else if (
+    !dualSticker &&
+    (oldCfg.margin?.pct ?? null) !== (newCfg.margin?.pct ?? null)
+  ) {
+    diffs.push({
+      section: "margin",
+      label: "Kâr marjı",
+      old_value: oldCfg.margin ? `%${oldCfg.margin.pct}` : "-",
+      new_value: newCfg.margin ? `%${newCfg.margin.pct}` : "-",
     });
   }
 
@@ -225,7 +270,9 @@ export function isMaterialChanged(
   if (!live || !draft) return true;
   return (
     live.m2_cost_try !== draft.m2_cost_try ||
+    live.m2_sell_try !== draft.m2_sell_try ||
     live.sheet_cost_try !== draft.sheet_cost_try ||
+    live.sheet_sell_try !== draft.sheet_sell_try ||
     live.name !== draft.name ||
     (live.desc ?? "") !== (draft.desc ?? "")
   );
@@ -243,6 +290,7 @@ export function isOptionChanged(
   if (!liveItem || !draftItem) return true;
   return (
     liveItem.pct_add !== draftItem.pct_add ||
+    liveItem.pct_cost !== draftItem.pct_cost ||
     liveItem.name !== draftItem.name
   );
 }
