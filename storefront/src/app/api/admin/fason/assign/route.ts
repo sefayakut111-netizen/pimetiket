@@ -81,6 +81,11 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
+  const deliveryDate =
+    estimatedDelivery && estimatedDelivery.length > 0
+      ? estimatedDelivery
+      : new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
   // Atomik RPC — Migration 024
   const { data, error } = await admin.rpc(
     "fn_assign_order_to_fason",
@@ -88,7 +93,7 @@ export async function POST(req: Request) {
       p_order_id: orderId,
       p_fason_partner_id: fasonPartnerId,
       p_admin_user_id: auth.user.id,
-      p_estimated_delivery: estimatedDelivery ?? "",
+      p_estimated_delivery: deliveryDate,
       p_notes: notes ?? "",
       p_token_days: 14,
     }
@@ -155,7 +160,7 @@ export async function POST(req: Request) {
       assignment_id: row.assignment_id,
       fason_id: fasonPartnerId,
       fason_name: fasonName,
-      estimated_delivery: estimatedDelivery,
+      estimated_delivery: deliveryDate,
       status_before: row.order_status_before,
       status_after: row.order_status_after,
     },

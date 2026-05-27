@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Skeleton, useToast } from "@/components/ui";
+import { Button, Card, Modal, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   getAdminPillClasses,
@@ -147,18 +147,28 @@ function formatOrderLineSummary(
   return `${label} x ${first.qty.toLocaleString("tr-TR")}`;
 }
 
+function partnerCanReceiveAssignments(partner: FasonPartner): boolean {
+  return !!(
+    partner.contract_signed_at ||
+    (partner.contract_pdf_url && partner.contract_pdf_url.trim().length > 0)
+  );
+}
+
+function defaultEstimatedDeliveryIso(leadDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + Math.max(1, leadDays));
+  return d.toISOString().slice(0, 10);
+}
+
 function AssignOrderToPartner({
-  partnerId,
-  partnerName,
-  contractSigned,
+  partner,
   onAssigned,
 }: {
-  partnerId: string;
-  partnerName: string;
-  contractSigned: boolean;
+  partner: FasonPartner;
   onAssigned: () => void;
 }) {
   const toast = useToast();
+  const contractSigned = partnerCanReceiveAssignments(partner);
   const [unassigned, setUnassigned] = useState<
     Array<{
       id: string;
@@ -168,7 +178,13 @@ function AssignOrderToPartner({
     }>
   >([]);
   const [loading, setLoading] = useState(false);
-  const [assigning, setAssigning] = useState(false);
+  const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
+  const [confirmOrder, setConfirmOrder] = useState<{
+    id: string;
+    customer: string;
+    summary: string;
+    total: number;
+  } | null>(null);
 
   const loadUnassigned = useCallback(async () => {
     setLoading(true);
@@ -176,6 +192,10 @@ function AssignOrderToPartner({
       const res = await fetch(
         "/api/admin/orders/list?status=ready_to_ship,proof_approved&limit=20"
       );
+      if (!res.ok) {
+        toast.error("Atanabilir siparisler yuklenemedi");
+        return;
+      }
       const data = (await res.json()) as {
         orders?: Array<{
           id: string;
@@ -195,43 +215,64 @@ function AssignOrderToPartner({
             summary: formatOrderLineSummary(o.items ?? []),
           }))
       );
+    } catch {
+      toast.error("Atanabilir siparisler yuklenemedi (ag hatasi)");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     void loadUnassigned();
   }, [loadUnassigned]);
 
-  const assignOrder = async (orderId: string) => {
+  const requestAssign = (order: {
+    id: string;
+    customer: string;
+    summary: string;
+    total: number;
+  }) => {
     if (!contractSigned) {
       toast.error("Sozlesme imzalanmadan atama yapilamaz");
       return;
     }
-    if (
-      !confirm(
-        `Bu siparisi ${partnerName} partnere atamak istediginizden emin misiniz?`
-      )
-    ) {
-      return;
-    }
-    setAssigning(true);
+    setConfirmOrder(order);
+  };
+
+  const executeAssign = async () => {
+    if (!confirmOrder) return;
+    const orderId = confirmOrder.id;
+    setAssigningOrderId(orderId);
     try {
       const res = await fetch("/api/admin/fason/assign", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orderId, fasonPartnerId: partnerId }),
+        body: JSON.stringify({
+          orderId,
+          fasonPartnerId: partner.id,
+          estimatedDelivery: defaultEstimatedDeliveryIso(
+            partner.default_lead_days
+          ),
+        }),
       });
-      if (res.ok) {
-        setUnassigned((prev) => prev.filter((o) => o.id !== orderId));
-        onAssigned();
-      } else {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        toast.error(j.error ?? "Atama basarisiz");
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        fasonName?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Atama basarisiz");
+        return;
       }
+      setUnassigned((prev) => prev.filter((o) => o.id !== orderId));
+      setConfirmOrder(null);
+      toast.success(
+        `${orderId} siparisi ${json.fasonName ?? partner.name} partnere atandi`
+      );
+      onAssigned();
+    } catch {
+      toast.error("Atama basarisiz (ag hatasi)");
     } finally {
-      setAssigning(false);
+      setAssigningOrderId(null);
     }
   };
 
@@ -252,42 +293,96 @@ function AssignOrderToPartner({
   }
 
   return (
-    <div className="mt-6 pt-4 border-t border-gri-100">
-      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
-        Atanabilecek siparisler ({unassigned.length})
-      </h4>
-      <ul className="space-y-2">
-        {unassigned.slice(0, 8).map((o) => (
-          <li
-            key={o.id}
-            className="flex items-center justify-between gap-3 rounded-lg border border-gri-200 bg-gri-50/50 px-3 py-2.5"
-          >
-            <div className="min-w-0 text-[12px]">
-              <span className="font-mono font-semibold text-lacivert">
-                {o.id}
-              </span>
-              <span className="text-gri-700"> · {o.customer}</span>
-              {o.summary && (
-                <span className="text-gri-500"> · {o.summary}</span>
-              )}
-              <span className="text-gri-600 tabular-nums">
-                {" "}
-                · {o.total.toLocaleString("tr-TR")} TL
-              </span>
-            </div>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={assigning}
-              onClick={() => void assignOrder(o.id)}
-              className="shrink-0"
+    <>
+      <div className="mt-6 pt-4 border-t border-gri-100">
+        <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
+          Atanabilecek siparisler ({unassigned.length})
+        </h4>
+        <ul className="space-y-2">
+          {unassigned.slice(0, 8).map((o) => (
+            <li
+              key={o.id}
+              className="flex items-center justify-between gap-3 rounded-lg border border-gri-200 bg-gri-50/50 px-3 py-2.5"
             >
-              Ata
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
+              <div className="min-w-0 text-[12px]">
+                <span className="font-mono font-semibold text-lacivert">
+                  {o.id}
+                </span>
+                <span className="text-gri-700"> · {o.customer}</span>
+                {o.summary && (
+                  <span className="text-gri-500"> · {o.summary}</span>
+                )}
+                <span className="text-gri-600 tabular-nums">
+                  {" "}
+                  · {o.total.toLocaleString("tr-TR")} TL
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                disabled={assigningOrderId !== null}
+                onClick={() => requestAssign(o)}
+                className="shrink-0"
+              >
+                {assigningOrderId === o.id ? "Ataniyor..." : "Ata"}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <Modal
+        open={confirmOrder != null}
+        onClose={() => {
+          if (assigningOrderId) return;
+          setConfirmOrder(null);
+        }}
+        title="Siparis atama onayi"
+        maxWidthClassName="max-w-[480px]"
+      >
+        {confirmOrder && (
+          <div className="space-y-4">
+            <p className="text-[14px] text-gri-700 leading-relaxed">
+              <strong className="font-mono text-lacivert">
+                {confirmOrder.id}
+              </strong>{" "}
+              siparisini{" "}
+              <strong className="text-lacivert">{partner.name}</strong>{" "}
+              partnere atamak istediginizden emin misiniz?
+            </p>
+            <p className="text-[12px] text-gri-600">
+              {confirmOrder.customer}
+              {confirmOrder.summary ? ` · ${confirmOrder.summary}` : ""} ·{" "}
+              {confirmOrder.total.toLocaleString("tr-TR")} TL
+            </p>
+            <p className="text-[12px] text-gri-500">
+              Hedef teslim:{" "}
+              {defaultEstimatedDeliveryIso(partner.default_lead_days)} (
+              {partner.default_lead_days} gun)
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={assigningOrderId !== null}
+                onClick={() => setConfirmOrder(null)}
+              >
+                Vazgec
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={assigningOrderId !== null}
+                onClick={() => void executeAssign()}
+              >
+                {assigningOrderId ? "Ataniyor..." : "Ata"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
 
@@ -460,12 +555,7 @@ function JobsTabContent({
         </ul>
       )}
 
-      <AssignOrderToPartner
-        partnerId={partner.id}
-        partnerName={partner.name}
-        contractSigned={!!partner.contract_signed_at}
-        onAssigned={onAssigned}
-      />
+      <AssignOrderToPartner partner={partner} onAssigned={onAssigned} />
     </div>
   );
 }

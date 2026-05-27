@@ -96,7 +96,11 @@ export function Button(props: ButtonProps) {
   void _ch;
 
   return (
-    <button {...(buttonRest as ButtonHTMLAttributes<HTMLButtonElement>)} className={classes}>
+    <button
+      type="button"
+      {...(buttonRest as ButtonHTMLAttributes<HTMLButtonElement>)}
+      className={classes}
+    >
       {children}
     </button>
   );
