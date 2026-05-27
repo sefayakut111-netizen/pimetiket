@@ -699,6 +699,48 @@ export async function sendOrderProofReminder(args: {
 }
 
 // ============================================================
+// 9b) Auto-refund stale proof — cron SLA 36sa iptal
+// ============================================================
+
+export async function sendAutoRefundStaleProof(args: {
+  userId: string;
+  orderId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("total")
+    .eq("id", args.orderId)
+    .maybeSingle();
+
+  const total = order ? Number((order as { total: number }).total) : 0;
+  const refundAmount = total.toLocaleString("tr-TR", {
+    maximumFractionDigits: 0,
+  });
+
+  const result = await enqueueMail({
+    templateKey: "auto_refund_stale_proof",
+    to: email,
+    payload: {
+      order_id: args.orderId,
+      refund_amount: refundAmount,
+    },
+    category: "customer",
+    targetType: "order",
+    targetId: args.orderId,
+    idempotencyKey: `auto_refund_stale_proof:${args.orderId}`,
+  });
+
+  return {
+    ok: result.ok && !result.suppressed,
+    reason: result.error ?? (result.suppressed ? "suppressed" : undefined),
+  };
+}
+
+// ============================================================
 // 10) Order proof approved — fn_finalize_proof sonrası
 // ============================================================
 

@@ -1344,7 +1344,7 @@ function AdminDashboardPageInner() {
                       }
                     >
                       <span className="opacity-70">⏱</span>
-                      {hasMetric && metric
+                      {step.count > 0 && hasMetric && metric
                         ? formatDuration(metric.avgSeconds)
                         : "—"}
                     </div>

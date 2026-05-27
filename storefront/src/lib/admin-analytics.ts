@@ -218,7 +218,7 @@ export function topCities(orders: CustomerOrder[], limit = 5): TopCity[] {
     }
   }
   return Array.from(map.values())
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.revenue - a.revenue)
     .slice(0, limit);
 }
 

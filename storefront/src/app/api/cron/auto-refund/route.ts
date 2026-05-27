@@ -3,14 +3,9 @@
  *
  * Vercel Cron tarafından günlük 02:00'da çağrılır (vercel.json).
  *
- * Sefa 20 May v68 (P1 #10 SLA kaskadı):
- * Eskiden sadece 36 saat = iade kontrolü vardı. Artık iki aşamalı:
- *   1) 12sa+ onaysız → hatırlatma maili (sendOrderProofReminder, idempotent)
- *   2) 36sa+ onaysız → otomatik iptal (anayasa kuralı bozulmaz)
- *
- * Eski Mig 017 (fn_auto_refund_stale_proofs) yerine Mig 070
- * (fn_process_proof_pending_sla) kullanılır. Eski RPC geriye uyumluluk
- * için DB'de kalır ama bu route artık onu çağırmaz.
+ * SLA kaskadı (Migration 111 + bu route):
+ *   1) 12sa+ onaysız → hatırlatma maili + proof_reminder_sent event
+ *   2) 36sa+ onaysız → iptal + auto_refund_stale_proof event + iade maili
  *
  * Auth: CRON_SECRET env var (Vercel Cron otomatik Authorization header
  * gönderir).
@@ -20,12 +15,20 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
-import { sendOrderProofReminder } from "@/lib/mail/notifications";
+import {
+  sendAutoRefundStaleProof,
+  sendOrderProofReminder,
+} from "@/lib/mail/notifications";
+import { logOrderEvent } from "@/lib/order-events-server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
+
+type AdminClient = SupabaseClient<Database>;
 
 interface SlaProcessRow {
   order_id: string;
@@ -34,23 +37,94 @@ interface SlaProcessRow {
   hours_since_proof: number;
 }
 
+async function processReminder(
+  admin: AdminClient,
+  row: SlaProcessRow
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!row.user_id) {
+    return { ok: false, reason: "no_user_id" };
+  }
+
+  const result = await sendOrderProofReminder({
+    userId: row.user_id,
+    orderId: row.order_id,
+    pendingCount: 1,
+    hoursSincePaid: Math.round(row.hours_since_proof),
+  });
+
+  if (!result.ok) {
+    return result;
+  }
+
+  await logOrderEvent(admin, {
+    orderId: row.order_id,
+    eventType: "proof_reminder_sent",
+    statusAfter: "proof_pending",
+    actorRole: "system",
+    summary: "SLA hatırlatma maili gönderildi (12sa+ onaysız)",
+    detail: {
+      auto: true,
+      hours_since_proof: row.hours_since_proof,
+    },
+  });
+
+  return { ok: true };
+}
+
+async function processRefund(
+  admin: AdminClient,
+  row: SlaProcessRow
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data: updated, error: updateErr } = await admin
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("id", row.order_id)
+    .eq("status", "proof_pending")
+    .select("id")
+    .maybeSingle();
+
+  if (updateErr || !updated) {
+    return {
+      ok: false,
+      reason: updateErr?.message ?? "order_not_proof_pending",
+    };
+  }
+
+  await logOrderEvent(admin, {
+    orderId: row.order_id,
+    eventType: "auto_refund_stale_proof",
+    statusAfter: "cancelled",
+    actorRole: "system",
+    summary: "36 saat onaysız iade — müşteri prova onayı vermedi",
+    detail: {
+      auto: true,
+      hours_since_proof: row.hours_since_proof,
+    },
+  });
+
+  if (!row.user_id) {
+    return { ok: true, reason: "cancelled_no_user_mail" };
+  }
+
+  const mail = await sendAutoRefundStaleProof({
+    userId: row.user_id,
+    orderId: row.order_id,
+  });
+
+  return mail.ok ? { ok: true } : { ok: false, reason: mail.reason };
+}
+
 export async function GET(req: Request) {
   const authFail = assertCronAuth(req);
   if (authFail) return authFail;
 
   try {
     const payload = await withCronRun("auto-refund", async () => {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!url || !serviceKey) {
-        throw new Error("Supabase env eksik");
-      }
+      const admin = createAdminClient();
 
-      const admin = createClient(url, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
-      const { data, error } = await admin.rpc("fn_process_proof_pending_sla");
+      const { data, error } = await admin.rpc(
+        "fn_process_proof_pending_sla" as "fn_auto_refund_stale_proofs"
+      );
 
       if (error) {
         throw new Error(error.message);
@@ -61,40 +135,47 @@ export async function GET(req: Request) {
       const refunds = rows.filter((r) => r.action === "refund");
 
       const reminderResults = await Promise.allSettled(
-        reminders.map((r) =>
-          sendOrderProofReminder({
-            userId: r.user_id,
-            orderId: r.order_id,
-            pendingCount: 1,
-            hoursSincePaid: Math.round(r.hours_since_proof),
-          })
-        )
+        reminders.map((r) => processReminder(admin, r))
       );
 
-      const reminderFail = reminderResults.filter(
-        (r) =>
-          r.status === "rejected" ||
-          (r.status === "fulfilled" && !r.value.ok)
+      const refundResults = await Promise.allSettled(
+        refunds.map((r) => processRefund(admin, r))
       );
 
-      if (reminderFail.length > 0) {
+      const reminderOk = reminderResults.filter(
+        (r) => r.status === "fulfilled" && r.value.ok
+      ).length;
+      const reminderFail = reminderResults.length - reminderOk;
+
+      const refundOk = refundResults.filter(
+        (r) => r.status === "fulfilled" && r.value.ok
+      ).length;
+      const refundFail = refundResults.length - refundOk;
+
+      if (reminderFail > 0) {
         console.warn(
-          `[cron/auto-refund] ${reminderFail.length}/${reminders.length} reminder mail başarısız`
+          `[cron/auto-refund] ${reminderFail}/${reminders.length} reminder başarısız`
+        );
+      }
+      if (refundFail > 0) {
+        console.warn(
+          `[cron/auto-refund] ${refundFail}/${refunds.length} refund başarısız`
         );
       }
 
       console.log(
-        `[cron/auto-refund] SLA kaskadı: ${reminders.length} hatırlatma, ${refunds.length} iptal`
+        `[cron/auto-refund] SLA kaskadı: ${reminderOk} hatırlatma, ${refundOk} iptal`
       );
 
       return {
-        summary: `${reminders.length} hatırlatma, ${refunds.length} iptal`,
-        itemsProcessed: reminders.length + refunds.length,
+        summary: `${reminderOk} hatırlatma, ${refundOk} iptal`,
+        itemsProcessed: reminderOk + refundOk,
         data: {
           ok: true,
-          reminder_count: reminders.length,
-          refund_count: refunds.length,
-          reminder_failures: reminderFail.length,
+          reminder_count: reminderOk,
+          refund_count: refundOk,
+          reminder_failures: reminderFail,
+          refund_failures: refundFail,
           orders: { reminders, refunds },
           timestamp: new Date().toISOString(),
         },
