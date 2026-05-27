@@ -17,6 +17,7 @@ import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { getAdminStatusLabel } from "@/lib/admin-status";
+import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
 
 const fmtTotal = (n: number) =>
   Math.round(n).toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " ₺";
@@ -211,6 +212,22 @@ export default function AdminAiQcPage() {
     fixed: 0,
   });
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showTestOrders, setShowTestOrders] = useState(false);
+
+  const catalogQueue = useMemo(
+    () =>
+      showTestOrders
+        ? queue
+        : excludeTestOrderLikes(
+            queue.map((q) => ({
+              ...q,
+              id: q.orderId,
+              customer: q.customerName,
+            }))
+          ),
+    [queue, showTestOrders]
+  );
+  const hiddenTestCount = queue.length - catalogQueue.length;
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
@@ -264,33 +281,33 @@ export default function AdminAiQcPage() {
   }, [showHistory, fetchHistory]);
 
   const kpiStats = useMemo(() => {
-    const total = queue.length;
+    const total = catalogQueue.length;
     const avgWaitHours =
-      queue.length > 0
-        ? queue.reduce(
+      catalogQueue.length > 0
+        ? catalogQueue.reduce(
             (s, q) => s + (Date.now() - new Date(q.createdAt).getTime()),
             0
           ) /
-          queue.length /
+          catalogQueue.length /
           3600000
         : 0;
-    const kotu = queue.filter((q) => q.qcRuns[0]?.verdict === "kotu").length;
-    const error = queue.filter((q) => q.qcRuns[0]?.verdict === "error").length;
+    const kotu = catalogQueue.filter((q) => q.qcRuns[0]?.verdict === "kotu").length;
+    const error = catalogQueue.filter((q) => q.qcRuns[0]?.verdict === "error").length;
     return { total, avgWaitHours, kotu, error };
-  }, [queue]);
+  }, [catalogQueue]);
 
   const filteredQueue = useMemo(() => {
-    if (!verdictFilter) return queue;
-    return queue.filter((q) => q.qcRuns[0]?.verdict === verdictFilter);
-  }, [queue, verdictFilter]);
+    if (!verdictFilter) return catalogQueue;
+    return catalogQueue.filter((q) => q.qcRuns[0]?.verdict === verdictFilter);
+  }, [catalogQueue, verdictFilter]);
 
   const goodVerdictOrders = useMemo(
     () =>
-      queue.filter((q) => {
+      catalogQueue.filter((q) => {
         const runs = q.qcRuns;
         return runs.length > 0 && runs.every((r) => r.verdict === "iyi");
       }),
-    [queue]
+    [catalogQueue]
   );
 
   useEffect(() => {
@@ -318,9 +335,14 @@ export default function AdminAiQcPage() {
           note: note.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        detail?: string;
+      };
       if (!data.ok) {
-        toast.error(`Karar uygulanamadı: ${data.error ?? "unknown"}`);
+        const msg = [data.error, data.detail].filter(Boolean).join(": ");
+        toast.error(`Karar uygulanamadı${msg ? `: ${msg}` : ""}`);
         return;
       }
       setNote("");
@@ -328,6 +350,44 @@ export default function AdminAiQcPage() {
     } catch (err) {
       console.error("[ai-qc] decide failed:", err);
       toast.error("Karar uygulanamadı (ağ hatası)");
+    } finally {
+      setDeciding(false);
+    }
+  };
+
+  const cancelOrder = async () => {
+    if (!active || deciding) return;
+    if (
+      !confirm(
+        `${active.orderId} siparişi iptal edilsin mi? Bu işlem geri alınamaz.`
+      )
+    ) {
+      return;
+    }
+    setDeciding(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${active.orderId}/status`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          status: "cancelled",
+          note: note.trim() || "AI QC — dosya yok / operatör iptali",
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!res.ok || !data.ok) {
+        toast.error(`İptal başarısız: ${data.error ?? res.status}`);
+        return;
+      }
+      toast.success("Sipariş iptal edildi");
+      setNote("");
+      await fetchQueue();
+    } catch (err) {
+      console.error("[ai-qc] cancel failed:", err);
+      toast.error("İptal başarısız (ağ hatası)");
     } finally {
       setDeciding(false);
     }
@@ -407,16 +467,34 @@ export default function AdminAiQcPage() {
         <p className="mt-1.5 text-base text-gri-700">
           {showHistory
             ? "Son 30 günde operatör QC kararları"
-            : `${queue.length} sipariş AI ön kontrolünden geçti, operatör kararı bekliyor.`}
+            : `${catalogQueue.length} sipariş AI ön kontrolünden geçti, operatör kararı bekliyor.`}
+          {!showHistory && hiddenTestCount > 0 && (
+            <span className="ml-2 text-[12.5px] text-gri-500">
+              ({hiddenTestCount} test siparişi gizli)
+            </span>
+          )}
         </p>
       </div>
-      <Button
+      <div className="flex flex-wrap items-center gap-3">
+        {!showHistory && (
+          <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showTestOrders}
+              onChange={(e) => setShowTestOrders(e.target.checked)}
+              className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+            />
+            Test siparişlerini göster
+          </label>
+        )}
+        <Button
         variant="ghost"
         size="sm"
         onClick={() => setShowHistory((s) => !s)}
       >
         {showHistory ? "Kuyruk göster" : "📋 Geçmiş kararlar"}
       </Button>
+      </div>
     </div>
   );
 
@@ -874,6 +952,16 @@ export default function AdminAiQcPage() {
                 >
                   ✗ Reddet → Müşteriye geri
                 </Button>
+                {!hasDesignFile && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => void cancelOrder()}
+                    disabled={deciding}
+                    className="!text-kirmizi !ring-kirmizi/30 hover:!bg-kirmizi-soft/20"
+                  >
+                    Siparişi iptal et
+                  </Button>
+                )}
               </div>
             </Card>
           </div>

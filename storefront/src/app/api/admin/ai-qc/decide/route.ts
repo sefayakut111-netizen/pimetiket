@@ -23,6 +23,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { AI_QC_ACTIVE_STATUSES } from "@/lib/order";
 
 const BodySchema = z.object({
   orderId: z.string().min(1),
@@ -60,17 +61,12 @@ export async function POST(req: Request) {
         ? "proof_generating"
         : "human_review_failed";
 
-  // 1) Order status update — guard: yalnızca QC kuyruğundaki statüsler
+  // 1) Order status update — guard: yalnızca AI QC kuyruğundaki statüler
   const { data: updated, error: updateErr } = await admin
     .from("orders")
     .update({ status: nextStatus })
     .eq("id", body.orderId)
-    .in("status", [
-      "human_review",
-      "human_review_failed",
-      "proof_generating",
-      "operator_review", // P1 #7 — escalate edilmiş sipariş kararı
-    ])
+    .in("status", [...AI_QC_ACTIVE_STATUSES])
     .select("id, status")
     .single();
 

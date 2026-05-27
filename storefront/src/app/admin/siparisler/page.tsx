@@ -37,6 +37,7 @@ import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
+import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
 
 type AdminStatus = OrderStatus;
 
@@ -251,6 +252,13 @@ function AdminSiparislerPageInner() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeView, setActiveView] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState<AdminStatus | "">("");
+  const [showTestOrders, setShowTestOrders] = useState(false);
+
+  const catalogOrders = useMemo(
+    () => (showTestOrders ? orders : excludeTestOrderLikes(orders)),
+    [orders, showTestOrders]
+  );
+  const hiddenTestCount = orders.length - catalogOrders.length;
 
   const loadOrders = useCallback(async () => {
     setListLoading(true);
@@ -331,7 +339,7 @@ function AdminSiparislerPageInner() {
 
   /** Filtreli + aranmış + saved view uygulanmış siparişler */
   const filtered = useMemo(() => {
-    let base = orders;
+    let base = catalogOrders;
 
     if (activeView) {
       const view = SAVED_VIEWS.find((v) => v.id === activeView);
@@ -360,7 +368,7 @@ function AdminSiparislerPageInner() {
       }
       return true;
     });
-  }, [orders, statusFilters, search, activeView, dateFrom, dateTo]);
+  }, [catalogOrders, statusFilters, search, activeView, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -389,9 +397,9 @@ function AdminSiparislerPageInner() {
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const kpiStats = useMemo(() => {
-    const total = orders.length;
-    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
-    const pending = orders.filter((o) =>
+    const total = catalogOrders.length;
+    const totalRevenue = catalogOrders.reduce((s, o) => s + o.total, 0);
+    const pending = catalogOrders.filter((o) =>
       [
         "paid",
         "awaiting_upload",
@@ -406,9 +414,9 @@ function AdminSiparislerPageInner() {
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     })();
-    const todayCount = orders.filter((o) => o.createdAt >= todayStartTs).length;
+    const todayCount = catalogOrders.filter((o) => o.createdAt >= todayStartTs).length;
     return { total, totalRevenue, pending, todayCount };
-  }, [orders]);
+  }, [catalogOrders]);
 
   const toggleSort = useCallback((key: SortKey) => {
     if (sortKey === key) {
@@ -566,14 +574,14 @@ function AdminSiparislerPageInner() {
             Sipariş yönetimi
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {sorted.length === orders.length ? (
-              <>{orders.length} sipariş — filtrele ve durum güncelle</>
+            {sorted.length === catalogOrders.length ? (
+              <>{catalogOrders.length} sipariş — filtrele ve durum güncelle</>
             ) : (
               <>
                 <strong className="text-lacivert">{sorted.length}</strong>
-                /{orders.length} sipariş gösteriliyor
+                /{catalogOrders.length} sipariş gösteriliyor
                 <span className="ml-2 text-[12.5px] text-gri-500">
-                  ({orders.length - sorted.length} tanesi filtrelerle
+                  ({catalogOrders.length - sorted.length} tanesi filtrelerle
                   gizleniyor)
                 </span>
                 <button
@@ -594,6 +602,18 @@ function AdminSiparislerPageInner() {
           </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showTestOrders}
+                onChange={(e) => setShowTestOrders(e.target.checked)}
+                className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+              />
+              Test siparişlerini göster
+              {hiddenTestCount > 0 && !showTestOrders && (
+                <span className="text-gri-500">({hiddenTestCount} gizli)</span>
+              )}
+            </label>
             <button
               type="button"
               onClick={() => downloadCsv(orders, "tum-siparisler")}

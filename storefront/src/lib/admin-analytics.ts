@@ -296,13 +296,16 @@ export function generateInsights(orders: CustomerOrder[]): InsightItem[] {
     return insights;
   }
 
+  const uniqueCustomers = new Set(orders.map((o) => o.address.phone)).size;
+  const hasEnoughSample = uniqueCustomers >= 5;
+
   // 1) Ürün karışım trendi (son 7g vs önceki 7g)
   const now = Date.now();
   const last7 = orders.filter((o) => now - o.createdAt < 7 * DAY);
   const prev7 = orders.filter(
     (o) => now - o.createdAt >= 7 * DAY && now - o.createdAt < 14 * DAY
   );
-  if (last7.length > 0 && prev7.length > 0) {
+  if (hasEnoughSample && last7.length > 0 && prev7.length > 0) {
     const change = ((last7.length - prev7.length) / prev7.length) * 100;
     if (change > 20) {
       insights.push({
@@ -319,7 +322,7 @@ export function generateInsights(orders: CustomerOrder[]): InsightItem[] {
 
   // 2) Ürün dağılımı dönüşü
   const mix = aggregateProductMix(last7);
-  if (mix.etiket + mix.sticker > 0) {
+  if (hasEnoughSample && mix.etiket + mix.sticker > 0) {
     if (mix.sticker > mix.etiket * 1.5) {
       insights.push({
         level: "info",
@@ -335,12 +338,17 @@ export function generateInsights(orders: CustomerOrder[]): InsightItem[] {
 
   // 3) AI flag oranı yüksek mi
   const ops = operationalMetrics(orders);
-  if (ops.aiFlagRate > 30) {
+  if (hasEnoughSample && ops.aiFlagRate > 30) {
     insights.push({
       level: "warn",
       text: `AI flag oranı %${ops.aiFlagRate.toFixed(0)} — dosya kalite uyarısı yüksek, prompt'u gözden geçir`,
     });
-  } else if (ops.aiFlagRate > 0 && ops.aiFlagRate < 10 && orders.length >= 10) {
+  } else if (
+    hasEnoughSample &&
+    ops.aiFlagRate > 0 &&
+    ops.aiFlagRate < 10 &&
+    orders.length >= 10
+  ) {
     insights.push({
       level: "good",
       text: `AI flag oranı %${ops.aiFlagRate.toFixed(0)} — dosya kalitesi gayet iyi`,
@@ -348,7 +356,7 @@ export function generateInsights(orders: CustomerOrder[]): InsightItem[] {
   }
 
   // 4) İptal oranı uyarısı
-  if (ops.cancelRate > 15) {
+  if (hasEnoughSample && ops.cancelRate > 15) {
     insights.push({
       level: "warn",
       text: `İptal oranı %${ops.cancelRate.toFixed(0)} — checkout sürecinde takılma olabilir`,
@@ -362,10 +370,15 @@ export function generateInsights(orders: CustomerOrder[]): InsightItem[] {
     repeatMap.set(k, (repeatMap.get(k) ?? 0) + 1);
   }
   const repeats = Array.from(repeatMap.values()).filter((c) => c > 1).length;
-  if (orders.length >= 5 && repeats / repeatMap.size >= 0.3) {
+  if (hasEnoughSample && repeats / repeatMap.size >= 0.3) {
     insights.push({
       level: "good",
       text: `Müşterilerin %${((repeats / repeatMap.size) * 100).toFixed(0)}'i tekrar sipariş verdi — sadakat güçlü`,
+    });
+  } else if (!hasEnoughSample) {
+    insights.push({
+      level: "info",
+      text: "Yeterli veri yok (min. 5 müşteri)",
     });
   }
 

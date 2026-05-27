@@ -20,6 +20,7 @@ import {
 } from "@/lib/customer-order";
 import type { OrderStatus } from "@/lib/order";
 import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
+import { excludeTestOrders } from "@/lib/admin-order-filters";
 
 const PROOF_STATUSES = [
   "proof_generating",
@@ -223,21 +224,16 @@ function DesignThumb({
 
 export default function AdminProvaPage() {
   const toast = useToast();
-  const [items, setItems] = useState<CustomerOrder[]>([]);
   const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
   const [filter, setFilter] = useState<ProofFilter>("pending");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showTestOrders, setShowTestOrders] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const applyOrders = (all: CustomerOrder[]) => {
       if (cancelled) return;
       setAllOrders(all);
-      setItems(
-        all.filter((o) =>
-          (PROOF_STATUSES as readonly string[]).includes(o.status)
-        )
-      );
     };
     applyOrders(listCustomerOrders());
     void fetchAllOrdersForAdmin({ limit: 500 }).then(applyOrders);
@@ -252,14 +248,28 @@ export default function AdminProvaPage() {
     };
   }, []);
 
-  const inReview = allOrders.filter(
+  const catalogOrders = useMemo(
+    () => (showTestOrders ? allOrders : excludeTestOrders(allOrders)),
+    [allOrders, showTestOrders]
+  );
+  const hiddenTestCount = allOrders.length - catalogOrders.length;
+
+  const items = useMemo(
+    () =>
+      catalogOrders.filter((o) =>
+        (PROOF_STATUSES as readonly string[]).includes(o.status)
+      ),
+    [catalogOrders]
+  );
+
+  const inReview = catalogOrders.filter(
     (o) => o.status === "operator_review"
   ).length;
   const proofPending = items.filter((o) => o.status === "proof_pending").length;
-  const inProduction = allOrders.filter(
+  const inProduction = catalogOrders.filter(
     (o) => o.status === "in_production"
   ).length;
-  const flagged = allOrders.filter((o) => o.status === "qc_flagged").length;
+  const flagged = catalogOrders.filter((o) => o.status === "qc_flagged").length;
 
   const counts = useMemo(
     () => ({
@@ -309,7 +319,7 @@ export default function AdminProvaPage() {
 
   const last30Stats = useMemo(() => {
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const recent = allOrders.filter((o) => o.createdAt >= cutoff);
+    const recent = catalogOrders.filter((o) => o.createdAt >= cutoff);
     const approved = recent.filter((o) =>
       [
         "proof_approved",
@@ -331,7 +341,7 @@ export default function AdminProvaPage() {
           ) / proofDone.length
         : 0;
     return { approved, cancelled, total: recent.length, avgDays };
-  }, [allOrders]);
+  }, [catalogOrders]);
 
   const callStatusApi = async (
     orderId: string,
@@ -495,7 +505,8 @@ export default function AdminProvaPage() {
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
           <Eyebrow>Prova üretim</Eyebrow>
           <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
             Prova kuyruğu
@@ -504,8 +515,23 @@ export default function AdminProvaPage() {
             {items.length === 0
               ? "Prova sürecinde sipariş yok."
               : `${items.length} sipariş prova akışında · ${counts.pending} onay bekliyor`}
+            {hiddenTestCount > 0 && (
+              <span className="ml-2 text-[12.5px] text-gri-500">
+                ({hiddenTestCount} test siparişi gizli)
+              </span>
+            )}
           </p>
         </div>
+        <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none shrink-0">
+          <input
+            type="checkbox"
+            checked={showTestOrders}
+            onChange={(e) => setShowTestOrders(e.target.checked)}
+            className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+          />
+          Test siparişlerini göster
+        </label>
+      </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {(
@@ -727,4 +753,4 @@ export default function AdminProvaPage() {
     </main>
   );
 }
-
+

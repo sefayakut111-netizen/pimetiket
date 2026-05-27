@@ -647,8 +647,8 @@ function AdminDashboardPageInner() {
   const revenueChange = formatChange(revenue, prevRevenue);
 
   const todoList = useMemo(
-    () => (canViewOrders ? buildTodoList(orders) : []),
-    [orders, canViewOrders]
+    () => (canViewOrders ? buildTodoList(metricOrders) : []),
+    [metricOrders, canViewOrders]
   );
 
   // Chart datası — daima rangeWindow.days kullan
@@ -1386,18 +1386,44 @@ function AdminDashboardPageInner() {
             </div>
           </Card>
 
-          <Card padding="p-4">
+          <Card
+            padding="p-4"
+            className={cn(
+              ops.cancelRate > 5 &&
+                metricOrders.length > 0 &&
+                "bg-kirmizi-soft/20 ring-1 ring-kirmizi/30"
+            )}
+          >
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               İptal oranı
             </div>
-            <div className={cn(
-              "text-[22px] font-bold mt-1 tabular-nums",
-              ops.cancelRate > 15 ? "text-kirmizi" : ops.cancelRate > 0 ? "text-sari-koyu" : "text-gri-500"
-            )}>
-              {orders.length > 0 ? `%${ops.cancelRate.toFixed(0)}` : "—"}
+            <div
+              className={cn(
+                "text-[22px] font-bold mt-1 tabular-nums",
+                metricOrders.length === 0
+                  ? "text-gri-500"
+                  : ops.cancelRate > 5
+                    ? "text-kirmizi"
+                    : ops.cancelRate > 0
+                      ? "text-yesil"
+                      : "text-gri-500"
+              )}
+            >
+              {metricOrders.length > 0 ? `%${ops.cancelRate.toFixed(0)}` : "—"}
             </div>
             <div className="text-[11px] text-gri-700 mt-1">
-              {orders.length > 0 ? "hedef <%5" : "veri yok"}
+              {metricOrders.length > 0 ? (
+                ops.cancelRate > 5 ? (
+                  <span className="text-xs font-semibold text-kirmizi">
+                    Hedefin {(ops.cancelRate / 5).toFixed(1)}x üstünde (hedef
+                    &lt;%5)
+                  </span>
+                ) : (
+                  "hedef <%5"
+                )
+              ) : (
+                "veri yok"
+              )}
             </div>
           </Card>
 

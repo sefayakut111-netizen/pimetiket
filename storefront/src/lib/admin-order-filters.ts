@@ -4,17 +4,33 @@
 
 import type { CustomerOrder } from "./customer-order";
 
+export type TestOrderLike = {
+  id: string;
+  address?: { name?: string } | null;
+  customer?: string;
+};
+
 /** Simülatör / QA siparişleri — ciro ve top müşteri metriklerine dahil edilmez. */
-export function isTestOrder(order: CustomerOrder): boolean {
-  const name = (order.address?.name ?? "").toLowerCase();
-  const id = order.id.toLowerCase();
+export function isTestOrderLike(o: TestOrderLike): boolean {
+  const name = (o.address?.name ?? o.customer ?? "").toLowerCase();
+  const id = o.id.toLowerCase();
   return (
     name.includes("test") ||
     id.includes("test") ||
-    order.id === "00000001"
+    o.id === "00000001"
   );
+}
+
+export function isTestOrder(order: CustomerOrder): boolean {
+  return isTestOrderLike(order);
 }
 
 export function excludeTestOrders(orders: CustomerOrder[]): CustomerOrder[] {
   return orders.filter((o) => !isTestOrder(o));
+}
+
+export function excludeTestOrderLikes<T extends TestOrderLike>(
+  orders: T[]
+): T[] {
+  return orders.filter((o) => !isTestOrderLike(o));
 }
