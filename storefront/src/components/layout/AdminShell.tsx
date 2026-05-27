@@ -44,12 +44,15 @@ import {
 import {
   AI_QC_ACTIVE_STATUSES,
   countActiveOrdersForBadge,
+  countCancelledOrders,
 } from "@/lib/order";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import type { AdminModule } from "@/lib/admin-rbac";
 
 interface AdminBadges {
   active: number;
+  orderTotal: number;
+  orderCancelled: number;
   aiQc: number;
   proof: number;
   activePartners: number;
@@ -71,12 +74,15 @@ function aggregateBadges(
   let aiQc = 0;
   let proof = 0;
   const active = countActiveOrdersForBadge(orders);
+  const orderCancelled = countCancelledOrders(orders);
   for (const o of orders) {
     if ((AI_QC_ACTIVE_STATUSES as readonly string[]).includes(o.status)) aiQc++;
     if (o.status === "proof_pending") proof++;
   }
   return {
     active,
+    orderTotal: orders.length,
+    orderCancelled,
     aiQc,
     proof,
     activePartners: 0,
@@ -92,6 +98,7 @@ interface NavItem {
   label: string;
   icon: ReactNode;
   badge?: number;
+  badgeTitle?: string;
   badgeAccent?: boolean;
   /** RBAC modülü — null ise her zaman göster (profil vb.) */
   module?: AdminModule | null;
@@ -149,6 +156,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [badges, setBadges] = useState<AdminBadges>({
     active: 0,
+    orderTotal: 0,
+    orderCancelled: 0,
     aiQc: 0,
     proof: 0,
     activePartners: 0,
@@ -373,6 +382,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Siparişler",
             icon: <Icon.Box size={16} />,
             badge: badges.active,
+            badgeTitle:
+              badges.orderCancelled > 0
+                ? `${badges.active} aktif siparis (${badges.orderCancelled} iptal)`
+                : `${badges.active} siparis`,
             module: "orders",
           },
           {
@@ -725,6 +738,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                         <span className="flex-1 truncate">{item.label}</span>
                         {showBadge && (
                           <span
+                            title={item.badgeTitle}
                             className={cn(
                               "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold tabular-nums shrink-0",
                               item.badgeAccent

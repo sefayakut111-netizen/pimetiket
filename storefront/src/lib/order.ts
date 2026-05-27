@@ -77,13 +77,17 @@ export function isOrderStatus(value: string): value is OrderStatus {
   return (ORDER_STATUS_VALUES as readonly string[]).includes(value);
 }
 
-/** Sidebar badge — iptal ve teslim edilmiş hariç aktif sipariş sayısı */
+/** Sidebar badge — iptal hariç sipariş sayısı (liste ile uyumlu) */
 export function countActiveOrdersForBadge(
   orders: ReadonlyArray<{ status: string }>
 ): number {
-  return orders.filter(
-    (o) => o.status !== "cancelled" && o.status !== "delivered"
-  ).length;
+  return orders.filter((o) => o.status !== "cancelled").length;
+}
+
+export function countCancelledOrders(
+  orders: ReadonlyArray<{ status: string }>
+): number {
+  return orders.filter((o) => o.status === "cancelled").length;
 }
 
 /** Admin liste filtre chip'leri */
