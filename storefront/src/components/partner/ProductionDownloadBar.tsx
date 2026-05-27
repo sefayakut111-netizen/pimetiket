@@ -103,7 +103,7 @@ export function ProductionDownloadBar({
               "inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12.5px] font-semibold transition-colors",
               "border-gri-200 bg-white text-lacivert hover:border-pim-mercan hover:bg-pim-mercan-tint/40",
               "disabled:cursor-wait disabled:opacity-60",
-              compact && "min-h-[40px] flex-none px-3 py-2 text-[11.5px]"
+              compact && "min-h-[44px] flex-none px-3 py-2 text-[11.5px]"
             )}
           >
             <span aria-hidden>{EXPORT_ICONS[type]}</span>

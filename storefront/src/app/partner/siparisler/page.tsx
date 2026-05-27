@@ -97,7 +97,7 @@ function PartnerOrdersInner() {
             type="button"
             onClick={() => setFilter(f.id)}
             className={cn(
-              "inline-flex h-9 items-center rounded-full px-4 text-[12.5px] font-semibold transition-colors",
+              "inline-flex min-h-11 h-11 items-center rounded-full px-4 text-[12.5px] font-semibold transition-colors",
               filter === f.id
                 ? f.id === "urgent"
                   ? "bg-kirmizi text-white"

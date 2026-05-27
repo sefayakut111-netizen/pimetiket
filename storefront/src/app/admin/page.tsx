@@ -1047,7 +1047,7 @@ function AdminDashboardPageInner() {
 
   return (
     <main className="py-8 pb-20 bg-gri-50 min-h-[calc(100vh-56px)]">
-      <div className="mx-auto max-w-[1320px] px-6">
+      <div className="mx-auto max-w-[1320px] px-4 md:px-6">
         {/* Header — sidebar topbar zaten "Operatör paneli" gösteriyor, burada özet */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -1084,7 +1084,7 @@ function AdminDashboardPageInner() {
                     setShowDatePicker(false);
                   }}
                   className={cn(
-                    "h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-colors",
+                    "min-h-11 h-11 sm:min-h-8 sm:h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-colors",
                     range === r
                       ? "bg-lacivert text-white"
                       : "text-gri-700 hover:text-lacivert"
@@ -1100,7 +1100,7 @@ function AdminDashboardPageInner() {
                   if (range !== "custom") setRange("custom");
                 }}
                 className={cn(
-                  "h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-colors",
+                  "min-h-11 h-11 sm:min-h-8 sm:h-8 px-3.5 rounded-full text-[12.5px] font-semibold transition-colors",
                   range === "custom"
                     ? "bg-lacivert text-white"
                     : "text-gri-700 hover:text-lacivert"

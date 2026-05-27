@@ -823,7 +823,8 @@ function FiyatlarPageInner() {
                   </>
                 )}
               </p>
-              <div className="space-y-2">
+              <div className="overflow-x-auto -mx-1 px-1">
+              <div className="space-y-2 min-w-[780px]">
                 <div
                   className={cn(
                     "grid gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700",
@@ -990,6 +991,7 @@ function FiyatlarPageInner() {
                 );
                 })}
               </div>
+              </div>
             </Card>
 
             {/* Options groups — dynamic render */}
@@ -1014,7 +1016,8 @@ function FiyatlarPageInner() {
                     <> Birden fazla seçilebilir, %'ler toplanır.</>
                   )}
                 </p>
-                <div className="space-y-2">
+                <div className="overflow-x-auto -mx-1 px-1">
+                <div className="space-y-2 min-w-[640px]">
                   <div
                     className={cn(
                       "grid gap-2 text-[10.5px] uppercase tracking-[0.04em] font-bold text-gri-700",
@@ -1168,6 +1171,7 @@ function FiyatlarPageInner() {
                     </div>
                     );
                   })}
+                </div>
                 </div>
               </Card>
             ))}
@@ -1706,8 +1710,8 @@ function FiyatlarPageInner() {
       </div>
 
       {isDirty && activeTab === "config" && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 lg:left-[248px] bg-white border-t border-gri-200 shadow-lg px-6 py-3">
-          <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-4">
+        <div className="fixed bottom-0 left-0 right-0 z-40 lg:left-[248px] bg-white border-t border-gri-200 shadow-lg px-4 md:px-6 py-3">
+          <div className="mx-auto max-w-[1400px] flex flex-wrap items-center justify-between gap-3">
             <div className="text-[13px] text-sari-koyu font-medium">
                {draftFormDiff.length} değişiklik kaydedilmemiş
             </div>
