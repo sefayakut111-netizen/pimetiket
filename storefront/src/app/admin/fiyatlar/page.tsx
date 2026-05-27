@@ -590,20 +590,6 @@ function FiyatlarPageInner() {
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1400px] px-4 md:px-8">
-        {/* Header */}
-        <div className="mb-5">
-          <Eyebrow>Yönetim</Eyebrow>
-          <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-            Fiyat Yönetimi
-          </h1>
-          <p className="mt-1.5 text-base text-gri-700 leading-relaxed max-w-[700px]">
-            <strong>Birim maliyet</strong> gir (sticker/rulo &rarr; m² · tabaka
-            &rarr; 1 tabaka), sistem üstüne adet kademesi + özelleştirme % + kâr
-            marjı + KDV ekler. Tatmin olunca{" "}
-            <strong>Canlıya kaydet</strong>.
-          </p>
-        </div>
-
         {/* Scope tabs */}
         <div className="mb-5 flex gap-2 flex-wrap">
           {(["sticker", "etiket_rulo", "etiket_tabaka"] as Scope[]).map((s) => {
@@ -636,11 +622,6 @@ function FiyatlarPageInner() {
             );
           })}
         </div>
-
-        {/* Scope description */}
-        <p className="text-[12.5px] text-gri-700 italic mb-4">
-          {SCOPE_META[scope].desc}
-        </p>
 
         {/* Fiyat yönetimi / Hesaplayıcı */}
         <div className="flex gap-2 border-b border-gri-200 mb-5">
