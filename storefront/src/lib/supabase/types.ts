@@ -1737,6 +1737,8 @@ export type Database = {
           min_order_amount_try: number | null
           name: string
           notes: string | null
+          notify_email_on_assign: boolean
+          notify_sms_on_urgent: boolean
           payment_term: string | null
           score_updated_at: string | null
           short_name: string | null
@@ -1769,6 +1771,8 @@ export type Database = {
           min_order_amount_try?: number | null
           name: string
           notes?: string | null
+          notify_email_on_assign?: boolean
+          notify_sms_on_urgent?: boolean
           payment_term?: string | null
           score_updated_at?: string | null
           short_name?: string | null
@@ -1801,6 +1805,8 @@ export type Database = {
           min_order_amount_try?: number | null
           name?: string
           notes?: string | null
+          notify_email_on_assign?: boolean
+          notify_sms_on_urgent?: boolean
           payment_term?: string | null
           score_updated_at?: string | null
           short_name?: string | null
@@ -2115,6 +2121,7 @@ export type Database = {
           fason_partner_id: string
           id: string
           in_production_at: string | null
+          is_urgent: boolean
           issue_category: string | null
           issue_description: string | null
           issue_photo_path: string | null
@@ -2144,6 +2151,7 @@ export type Database = {
           fason_partner_id: string
           id?: string
           in_production_at?: string | null
+          is_urgent?: boolean
           issue_category?: string | null
           issue_description?: string | null
           issue_photo_path?: string | null
@@ -2173,6 +2181,7 @@ export type Database = {
           fason_partner_id?: string
           id?: string
           in_production_at?: string | null
+          is_urgent?: boolean
           issue_category?: string | null
           issue_description?: string | null
           issue_photo_path?: string | null

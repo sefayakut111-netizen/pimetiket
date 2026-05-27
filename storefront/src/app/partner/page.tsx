@@ -1,50 +1,29 @@
-/**
- * Pim Etiket — /partner (Sefa 23 May v68 — Partner P2)
- *
- * Dashboard ana sayfa:
- *   - Üst durum bar (bekleyen + üretimde + sorun)
- *   - 4 istatistik kartı (bekleyen / üretimde / bu ay shipped / iptal)
- *   - Üretim özeti (kalem adet + ürün mix)
- *   - Acil sıradakiler listesi (5 max)
- *
- * Auth: middleware /partner/* için role='partner' garantili.
- * Bu sayfa client component (fetch + live update yeteneği).
- *
- * Sefa kuralı: partner mali bilgi GÖRMEZ. ₺ hiçbir yerde gösterilmez.
- */
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Pim } from "@/components/Pim";
-import { Eyebrow, Skeleton, useToast } from "@/components/ui";
+import { Skeleton, useToast } from "@/components/ui";
 import {
   PartnerAssignmentCard,
   type PartnerAssignmentRow,
 } from "@/components/partner";
 
 interface DashboardPayload {
+  partner_name: string;
   stats: {
-    pending_review: number;
+    pending: number;
     in_production: number;
-    completed_this_month: number;
-    cancelled_this_month: number;
-    issue_open: number;
-  };
-  production_summary: {
-    items_count: number;
-    orders_count: number;
-    product_breakdown: { product_type: string; percent: number }[];
+    completed: number;
+    avg_delivery_days: number | null;
   };
   urgent_queue: PartnerAssignmentRow[];
+  recent_activity: Array<{
+    order_id: string;
+    label: string;
+    at: string;
+    relative: string;
+  }>;
 }
-
-const PRODUCT_LABEL: Record<string, string> = {
-  sticker: "Sticker",
-  etiket_rulo: "Etiket Rulo",
-  etiket_tabaka: "Etiket Tabaka",
-};
 
 export default function PartnerDashboardPage() {
   const toast = useToast();
@@ -54,15 +33,10 @@ export default function PartnerDashboardPage() {
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/partner/dashboard", { cache: "no-store" });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `HTTP ${res.status}`);
-      }
-      const j = (await res.json()) as DashboardPayload;
-      setData(j);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      toast.error("Dashboard yüklenemedi: " + msg);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData((await res.json()) as DashboardPayload);
+    } catch {
+      toast.error("Dashboard yüklenemedi");
     } finally {
       setLoading(false);
     }
@@ -74,167 +48,89 @@ export default function PartnerDashboardPage() {
 
   if (loading) {
     return (
-      <main className="container py-8">
-        <Skeleton className="mb-2 h-8 w-64" />
-        <Skeleton className="mb-6 h-4 w-48" />
+      <div className="p-6 pb-24 lg:pb-6">
+        <Skeleton className="mb-4 h-10 w-64" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <main className="container py-12 text-center">
-        <p className="text-sm text-gri-700">Veriler yüklenemedi.</p>
-      </main>
+      <div className="p-6 text-center text-sm text-gri-700">
+        Veriler yüklenemedi.
+      </div>
     );
   }
 
-  const { stats, production_summary, urgent_queue } = data;
+  const { partner_name, stats, urgent_queue, recent_activity } = data;
 
   return (
-    <main className="container py-8 pb-16">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <Eyebrow>PARTNER PANELİ</Eyebrow>
-          <h1 className="mt-2 text-2xl font-bold text-lacivert">
-            Bugünkü Sipariş Durumu
-          </h1>
-          <p className="mt-1 text-sm text-gri-700">
-            Sana atanan siparişleri, bekleyen onayları ve aylık üretim
-            performansını buradan takip et.
-          </p>
-        </div>
-        <Pim pose="happy" size={56} />
-      </div>
+    <div className="p-4 md:p-6 pb-24 lg:pb-6">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-lacivert">
+          Hoş geldin, {partner_name}
+        </h1>
+        <p className="mt-1 text-sm text-gri-700">
+          Son 30 günlük üretim performansın
+        </p>
+      </header>
 
-      <div className="mb-6 rounded-2xl border border-pim-mercan/30 bg-pim-mercan-tint/30 px-5 py-4">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <Link
-            href="/partner/siparisler?filter=pending"
-            className="font-semibold text-lacivert hover:text-pim-mercan"
-          >
-            BEKLEYEN ONAY:{" "}
-            <span className="text-pim-mercan">{stats.pending_review}</span>{" "}
-            sipariş
-          </Link>
-          <Link
-            href="/partner/siparisler?filter=active"
-            className="text-gri-700 hover:text-lacivert"
-          >
-            ÜRETİMDE:{" "}
-            <span className="font-semibold text-lacivert">
-              {stats.in_production}
-            </span>
-          </Link>
-          {stats.issue_open > 0 && (
-            <Link
-              href="/partner/siparisler?filter=issue"
-              className="font-semibold text-kirmizi hover:underline"
-            >
-              AÇIK SORUN: {stats.issue_open}
-            </Link>
-          )}
-        </div>
-      </div>
-
-      <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Bekleyen Onay"
-          value={stats.pending_review}
+          label="BEKLEYEN"
+          value={String(stats.pending)}
+          href="/partner/siparisler?status=pending"
           accent="mercan"
-          hint="Henüz kabul etmediğin"
-          href="/partner/siparisler?filter=pending"
         />
         <StatCard
-          label="Üretimde"
-          value={stats.in_production}
+          label="ÜRETİMDE"
+          value={String(stats.in_production)}
+          href="/partner/siparisler?status=active"
           accent="lacivert"
-          hint="Şu an üretim hattında"
-          href="/partner/siparisler?filter=active"
         />
         <StatCard
-          label="Bu Ay Tamamlanan"
-          value={stats.completed_this_month}
+          label="TAMAMLANAN"
+          value={String(stats.completed)}
+          href="/partner/siparisler?status=completed"
           accent="yesil"
-          hint="Kargoya verilen sipariş"
-          href="/partner/siparisler?filter=completed"
         />
         <StatCard
-          label="Bu Ay İptal"
-          value={stats.cancelled_this_month}
+          label="ORT. SÜRE"
+          value={
+            stats.avg_delivery_days != null
+              ? `${stats.avg_delivery_days} gün`
+              : "—"
+          }
+          href="/partner/siparisler?status=completed"
           accent="gri"
-          hint="İptal edilen sipariş"
-          href="/partner/siparisler?filter=all"
+          isText
         />
       </section>
 
-      <section className="mb-8 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-gri-200 bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gri-700">
-            Bu Ay Üretim Hacmin
-          </h3>
-          <p className="mt-2 text-3xl font-bold text-lacivert">
-            {production_summary.items_count.toLocaleString("tr-TR")}{" "}
-            <span className="text-base text-gri-700">adet</span>
-          </p>
-          <p className="mt-1 text-sm text-gri-700">
-            {production_summary.orders_count} sipariş tamamlandı
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gri-200 bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gri-700">Ürün Dağılımı</h3>
-          {production_summary.product_breakdown.length === 0 ? (
-            <p className="mt-3 text-sm text-gri-500">
-              Henüz bu ay tamamlanan sipariş yok.
-            </p>
-          ) : (
-            <div className="mt-3 space-y-2">
-              {production_summary.product_breakdown.map((p) => (
-                <div key={p.product_type}>
-                  <div className="flex justify-between text-xs text-gri-700">
-                    <span>{PRODUCT_LABEL[p.product_type] ?? p.product_type}</span>
-                    <span className="font-semibold">%{p.percent}</span>
-                  </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded bg-gri-100">
-                    <div
-                      className="h-full bg-pim-mercan"
-                      style={{ width: `${p.percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section>
+      <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-lacivert">Acil Sıradakiler</h2>
           <Link
-            href="/partner/siparisler"
+            href="/partner/siparisler?status=urgent"
             className="text-sm font-semibold text-pim-mercan hover:underline"
           >
-            Tümünü gör →
+            Tüm acil işler →
           </Link>
         </div>
 
         {urgent_queue.length === 0 ? (
           <div className="rounded-2xl border border-gri-200 bg-white p-8 text-center">
-            <p className="text-sm text-gri-700">
-              Şu an bekleyen aktif siparişin yok.
-            </p>
+            <p className="text-sm text-gri-700">Şu an acil iş yok.</p>
             <Link
               href="/partner/siparisler"
-              className="mt-3 inline-block text-sm font-semibold text-pim-mercan hover:underline"
+              className="mt-2 inline-block text-sm font-semibold text-pim-mercan hover:underline"
             >
-              Tüm siparişleri gör
+              Tüm işlere git
             </Link>
           </div>
         ) : (
@@ -250,35 +146,69 @@ export default function PartnerDashboardPage() {
           </div>
         )}
       </section>
-    </main>
+
+      <section>
+        <h2 className="mb-3 text-lg font-bold text-lacivert">Son Aktivite</h2>
+        {recent_activity.length === 0 ? (
+          <p className="text-sm text-gri-600">Henüz aktivite kaydı yok.</p>
+        ) : (
+          <ul className="rounded-2xl border border-gri-200 bg-white divide-y divide-gri-100">
+            {recent_activity.map((a) => (
+              <li
+                key={`${a.order_id}-${a.at}`}
+                className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+              >
+                <span className="text-gri-800">
+                  <span className="font-mono text-pim-mercan">
+                    #{a.order_id.slice(-8)}
+                  </span>{" "}
+                  {a.label}
+                </span>
+                <span className="shrink-0 text-[12px] text-gri-500">
+                  {a.relative}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 
-interface StatCardProps {
+function StatCard({
+  label,
+  value,
+  href,
+  accent,
+  isText,
+}: {
   label: string;
-  value: number;
-  accent: "mercan" | "lacivert" | "yesil" | "gri";
-  hint: string;
+  value: string;
   href: string;
-}
-
-function StatCard({ label, value, accent, hint, href }: StatCardProps) {
-  const accentColor =
+  accent: "mercan" | "lacivert" | "yesil" | "gri";
+  isText?: boolean;
+}) {
+  const color =
     accent === "mercan"
       ? "text-pim-mercan"
       : accent === "yesil"
         ? "text-yesil"
         : accent === "gri"
-          ? "text-gri-700"
+          ? "text-lacivert"
           : "text-lacivert";
+
   return (
     <Link
       href={href}
-      className="block rounded-2xl border border-gri-200 bg-white p-5 shadow-sm transition-colors hover:border-pim-mercan/40 hover:shadow-md"
+      className="block rounded-2xl border border-gri-200 bg-white p-5 shadow-sm transition-colors hover:border-pim-mercan/40"
     >
-      <p className="text-xs uppercase tracking-wide text-gri-700">{label}</p>
-      <p className={`mt-2 text-4xl font-bold ${accentColor}`}>{value}</p>
-      <p className="mt-2 text-[11px] text-gri-500">{hint}</p>
+      <p className="text-[11px] font-bold tracking-wide text-gri-600">{label}</p>
+      <p
+        className={`mt-2 font-bold ${color} ${isText ? "text-2xl" : "text-4xl tabular-nums"}`}
+      >
+        {value}
+      </p>
     </Link>
   );
 }
