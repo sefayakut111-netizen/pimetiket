@@ -327,7 +327,13 @@ function aggregateFunnelMetric(
 }
 
 interface SystemHealth {
-  crons: { total: number; healthy: number; error: number; lastError?: string };
+  crons: {
+    total: number;
+    healthy: number;
+    error: number;
+    lastError?: string;
+    failures?: Array<{ name: string; label: string; error?: string }>;
+  };
   mail: { status: "ok" | "error"; sent24h: number; bounce: number };
   db: { status: "ok" | "error" };
 }
@@ -1061,6 +1067,16 @@ function AdminDashboardPageInner() {
                 <Link
                   href="/admin/sistem/cronlar"
                   className="underline ml-1 font-semibold"
+                  title={
+                    systemHealth.crons.failures?.length
+                      ? systemHealth.crons.failures
+                          .map(
+                            (f) =>
+                              `${f.name}${f.error ? `: ${f.error}` : ""}`
+                          )
+                          .join("\n")
+                      : systemHealth.crons.lastError
+                  }
                 >
                   {systemHealth.crons.error} hata
                 </Link>
@@ -1411,6 +1427,10 @@ function AdminDashboardPageInner() {
             </div>
           </Card>
 
+          <Link
+            href="/admin/siparisler?status=cancelled"
+            className="block rounded-xl transition-shadow hover:ring-1 hover:ring-gri-200"
+          >
           <Card
             padding="p-4"
             className={cn(
@@ -1451,6 +1471,7 @@ function AdminDashboardPageInner() {
               )}
             </div>
           </Card>
+          </Link>
 
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
@@ -1770,22 +1791,10 @@ function AdminDashboardPageInner() {
                 Hangi gün-saatte sipariş geliyor
               </p>
             </div>
-            {orders.length >= 50 ? (
-              <HeatMap
-                matrix={heatmapMatrix}
-                emptyLabel="Yeterli sipariş gelince saatlik dağılım açılır"
-              />
-            ) : (
-              <div className="flex items-center gap-3 text-gri-500 text-sm py-6">
-                <Icon.Info size={24} className="text-gri-500 shrink-0" />
-                <div>
-                  <div className="font-medium">Saatlik yoğunluk haritası</div>
-                  <div className="text-[12px]">
-                    50+ sipariş sonrası aktif olacak ({orders.length}/50)
-                  </div>
-                </div>
-              </div>
-            )}
+            <HeatMap
+              matrix={heatmapMatrix}
+              emptyLabel="Yeterli sipariş gelince saatlik dağılım açılır"
+            />
           </Card>
         </div>
 

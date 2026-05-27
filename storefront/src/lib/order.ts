@@ -118,6 +118,42 @@ export const ADMIN_STATUS_FILTER_CHIPS: ReadonlyArray<{
 export const ADMIN_MANUAL_SET_STATUSES: readonly OrderStatus[] =
   ORDER_STATUS_VALUES;
 
+/** İleri yönlü durum geçiş sırası — admin detay sayfası */
+export const ADMIN_STATUS_FORWARD_ORDER: readonly OrderStatus[] = [
+  "paid",
+  "awaiting_upload",
+  "qc_pending",
+  "qc_flagged",
+  "operator_review",
+  "human_review",
+  "human_review_failed",
+  "proof_generating",
+  "proof_validating",
+  "proof_pending",
+  "proof_approved",
+  "ready_to_ship",
+  "fason_assigned",
+  "in_production",
+  "shipped",
+  "delivered",
+];
+
+/** Geri yönlü durum değişikliğine izin verme — cancelled hariç */
+export function isForwardStatusTransition(
+  current: OrderStatus,
+  target: OrderStatus
+): boolean {
+  if (target === "cancelled") {
+    return current !== "cancelled" && current !== "delivered";
+  }
+  if (target === current) return false;
+  const order = ADMIN_STATUS_FORWARD_ORDER;
+  const curIdx = order.indexOf(current);
+  const tgtIdx = order.indexOf(target);
+  if (curIdx === -1 || tgtIdx === -1) return target !== current;
+  return tgtIdx > curIdx;
+}
+
 /** Üretim partneri atanmamış — modern akış statüleri */
 export const UNASSIGNED_PRODUCTION_STATUSES: readonly OrderStatus[] = [
   "ready_to_ship",

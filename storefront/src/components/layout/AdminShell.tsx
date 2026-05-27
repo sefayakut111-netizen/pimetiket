@@ -382,10 +382,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             label: "Siparişler",
             icon: <Icon.Box size={16} />,
             badge: badges.active,
-            badgeTitle:
-              badges.orderCancelled > 0
-                ? `${badges.active} aktif siparis (${badges.orderCancelled} iptal)`
-                : `${badges.active} siparis`,
+            badgeTitle: `${badges.active} aktif siparis (iptal haric). Liste test siparislerini gizliyor — toggle ile goster.`,
             module: "orders",
           },
           {

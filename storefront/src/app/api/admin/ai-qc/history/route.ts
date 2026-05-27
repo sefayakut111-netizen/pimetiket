@@ -14,6 +14,94 @@ const QC_EVENT_TYPES = [
   "qc_fixed_by_operator",
 ] as const;
 
+async function computePeriodStats(
+  admin: ReturnType<typeof createAdminClient>,
+  sinceIso: string
+) {
+  const [
+    approvedRes,
+    rejectedRes,
+    fixedRes,
+    flaggedRes,
+    decisionsRes,
+  ] = await Promise.all([
+    admin
+      .from("order_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event_type", "qc_approved")
+      .gte("created_at", sinceIso),
+    admin
+      .from("order_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event_type", "qc_rejected")
+      .gte("created_at", sinceIso),
+    admin
+      .from("order_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event_type", "qc_fixed_by_operator")
+      .gte("created_at", sinceIso),
+    admin
+      .from("design_quality_checks")
+      .select("*", { count: "exact", head: true })
+      .in("verdict", ["normal", "kotu", "error"])
+      .gte("created_at", sinceIso),
+    admin
+      .from("order_events")
+      .select("order_id, created_at")
+      .in("event_type", [...QC_EVENT_TYPES])
+      .gte("created_at", sinceIso)
+      .order("created_at", { ascending: false })
+      .limit(500),
+  ]);
+
+  const decisions = decisionsRes.data ?? [];
+  let waitSumMs = 0;
+  let waitCount = 0;
+
+  if (decisions.length > 0) {
+    const orderIds = [
+      ...new Set(
+        decisions
+          .map((d) => d.order_id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    const { data: checks } = await admin
+      .from("design_quality_checks")
+      .select("order_id, created_at")
+      .in("order_id", orderIds)
+      .order("created_at", { ascending: true });
+
+    const firstCheckByOrder = new Map<string, string>();
+    for (const c of checks ?? []) {
+      if (!c.order_id || !c.created_at) continue;
+      if (!firstCheckByOrder.has(c.order_id)) {
+        firstCheckByOrder.set(c.order_id, c.created_at);
+      }
+    }
+
+    for (const d of decisions) {
+      if (!d.order_id || !d.created_at) continue;
+      const checkAt = firstCheckByOrder.get(d.order_id);
+      if (!checkAt) continue;
+      const waitMs =
+        new Date(d.created_at).getTime() - new Date(checkAt).getTime();
+      if (waitMs > 0) {
+        waitSumMs += waitMs;
+        waitCount++;
+      }
+    }
+  }
+
+  return {
+    approved: approvedRes.count ?? 0,
+    rejected: rejectedRes.count ?? 0,
+    fixed: fixedRes.count ?? 0,
+    flagged: flaggedRes.count ?? 0,
+    avgWaitHours: waitCount > 0 ? waitSumMs / waitCount / 3600000 : null,
+  };
+}
+
 export async function GET(req: Request) {
   const auth = await assertPermission("ai_qc", "view");
   if (!auth) {
@@ -33,6 +121,7 @@ export async function GET(req: Request) {
   const admin = createAdminClient();
   const since = new Date();
   since.setDate(since.getDate() - days);
+  const sinceIso = since.toISOString();
 
   const { data, error } = await admin
     .from("order_events")
@@ -40,7 +129,7 @@ export async function GET(req: Request) {
       "order_id, event_type, summary, created_at, detail, actor_id, profiles(display_name)"
     )
     .in("event_type", [...QC_EVENT_TYPES])
-    .gte("created_at", since.toISOString())
+    .gte("created_at", sinceIso)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -78,10 +167,14 @@ export async function GET(req: Request) {
     };
   });
 
+  const periodStats = await computePeriodStats(admin, sinceIso);
+
   const stats = {
-    approved: history.filter((h) => h.decision === "approve").length,
-    rejected: history.filter((h) => h.decision === "reject").length,
-    fixed: history.filter((h) => h.decision === "fix_and_proof").length,
+    approved: periodStats.approved,
+    rejected: periodStats.rejected,
+    fixed: periodStats.fixed,
+    flagged: periodStats.flagged,
+    avgWaitHours: periodStats.avgWaitHours,
   };
 
   return NextResponse.json({ ok: true, history, stats });

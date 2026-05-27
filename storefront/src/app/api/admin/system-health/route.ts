@@ -6,7 +6,10 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { summarizeCronHealth } from "@/lib/cron-health";
+import {
+  isAutoRefundCronHealthy,
+  summarizeCronHealth,
+} from "@/lib/cron-health";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,8 @@ export async function GET() {
   let cronError = 0;
   let totalCrons = 0;
   let lastError: string | undefined;
+  let cronFailures: Array<{ name: string; label: string; error?: string }> = [];
+  let autoRefundHealthy = false;
 
   try {
     const cronSummary = await summarizeCronHealth(admin);
@@ -30,6 +35,8 @@ export async function GET() {
     cronHealthy = cronSummary.healthy;
     cronError = cronSummary.error;
     lastError = cronSummary.lastError;
+    cronFailures = cronSummary.failures;
+    autoRefundHealthy = await isAutoRefundCronHealthy(admin);
   } catch {
     /* cron_runs yoksa veya erişim hatası — strip cron satırını nötr bırak */
   }
@@ -69,7 +76,14 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    crons: { total: totalCrons, healthy: cronHealthy, error: cronError, lastError },
+    crons: {
+      total: totalCrons,
+      healthy: cronHealthy,
+      error: cronError,
+      lastError,
+      failures: cronFailures,
+    },
+    autoRefundHealthy,
     mail: { status: mailStatus, sent24h, bounce },
     db: { status: dbStatus },
   });

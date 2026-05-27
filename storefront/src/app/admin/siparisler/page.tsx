@@ -260,6 +260,23 @@ function AdminSiparislerPageInner() {
   );
   const hiddenTestCount = orders.length - catalogOrders.length;
 
+  const statusCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    counts.set("all", catalogOrders.length);
+    for (const o of catalogOrders) {
+      counts.set(o.status, (counts.get(o.status) ?? 0) + 1);
+    }
+    return counts;
+  }, [catalogOrders]);
+
+  const savedViewCounts = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const v of SAVED_VIEWS) {
+      result[v.id] = v.apply(catalogOrders).length;
+    }
+    return result;
+  }, [catalogOrders]);
+
   const loadOrders = useCallback(async () => {
     setListLoading(true);
     setListError(null);
@@ -699,6 +716,11 @@ function AdminSiparislerPageInner() {
                 )}
               >
                 {v.label}
+                {savedViewCounts[v.id] != null && (
+                  <span className="tabular-nums opacity-80">
+                    ({savedViewCounts[v.id]})
+                  </span>
+                )}
               </button>
             );
           })}
@@ -734,6 +756,9 @@ function AdminSiparislerPageInner() {
                 )}
               >
                 {f.label}
+                <span className="ml-1 tabular-nums opacity-80">
+                  ({f.id === "all" ? statusCounts.get("all") ?? 0 : statusCounts.get(f.id) ?? 0})
+                </span>
               </button>
             ))}
             {statusFilters && statusFilters.length > 1 && (

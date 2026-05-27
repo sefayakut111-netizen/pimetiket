@@ -210,7 +210,10 @@ export default function AdminAiQcPage() {
     approved: 0,
     rejected: 0,
     fixed: 0,
+    flagged: 0,
+    avgWaitHours: null as number | null,
   });
+  const [periodStatsLoaded, setPeriodStatsLoaded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTestOrders, setShowTestOrders] = useState(false);
 
@@ -257,13 +260,25 @@ export default function AdminAiQcPage() {
       const data = (await res.json()) as {
         ok?: boolean;
         history?: HistoryItem[];
-        stats?: { approved: number; rejected: number; fixed: number };
+        stats?: {
+          approved: number;
+          rejected: number;
+          fixed: number;
+          flagged?: number;
+          avgWaitHours?: number | null;
+        };
       };
       if (data.ok) {
         setHistory(data.history ?? []);
-        setHistoryStats(
-          data.stats ?? { approved: 0, rejected: 0, fixed: 0 }
-        );
+        const s = data.stats;
+        setHistoryStats({
+          approved: s?.approved ?? 0,
+          rejected: s?.rejected ?? 0,
+          fixed: s?.fixed ?? 0,
+          flagged: s?.flagged ?? 0,
+          avgWaitHours: s?.avgWaitHours ?? null,
+        });
+        setPeriodStatsLoaded(true);
       }
     } catch (err) {
       console.error("[ai-qc] history fetch failed:", err);
@@ -272,13 +287,54 @@ export default function AdminAiQcPage() {
     }
   }, []);
 
+  const fetchPeriodStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/ai-qc/history?days=30&limit=1");
+      const data = (await res.json()) as {
+        ok?: boolean;
+        stats?: {
+          approved: number;
+          rejected: number;
+          fixed: number;
+          flagged?: number;
+          avgWaitHours?: number | null;
+        };
+      };
+      if (data.ok && data.stats) {
+        const s = data.stats;
+        setHistoryStats({
+          approved: s.approved ?? 0,
+          rejected: s.rejected ?? 0,
+          fixed: s.fixed ?? 0,
+          flagged: s.flagged ?? 0,
+          avgWaitHours: s.avgWaitHours ?? null,
+        });
+        setPeriodStatsLoaded(true);
+      }
+    } catch {
+      /* sessiz */
+    }
+  }, []);
+
   useEffect(() => {
     void fetchQueue();
-  }, [fetchQueue]);
+    void fetchPeriodStats();
+  }, [fetchQueue, fetchPeriodStats]);
 
   useEffect(() => {
     if (showHistory) void fetchHistory();
   }, [showHistory, fetchHistory]);
+
+  const periodSummaryLine = useMemo(() => {
+    if (!periodStatsLoaded) return null;
+    const wait =
+      historyStats.avgWaitHours != null
+        ? historyStats.avgWaitHours < 1
+          ? `${Math.round(historyStats.avgWaitHours * 60)} dk`
+          : `${historyStats.avgWaitHours.toFixed(1)} saat`
+        : "—";
+    return `Son 30 gun: ${historyStats.approved} onay, ${historyStats.rejected} red, ${historyStats.flagged} flag — ort. bekleme ${wait}`;
+  }, [historyStats, periodStatsLoaded]);
 
   const kpiStats = useMemo(() => {
     const total = catalogQueue.length;
@@ -514,7 +570,17 @@ export default function AdminAiQcPage() {
               <>
                 <div className="text-[13px] text-gri-700 mb-4 font-medium">
                    {historyStats.approved} onay ·  {historyStats.rejected}{" "}
-                  red ·  {historyStats.fixed} düzeltme
+                  red ·  {historyStats.fixed} düzeltme · {historyStats.flagged}{" "}
+                  flag
+                  {historyStats.avgWaitHours != null && (
+                    <>
+                      {" "}
+                      · ort. bekleme{" "}
+                      {historyStats.avgWaitHours < 1
+                        ? `${Math.round(historyStats.avgWaitHours * 60)} dk`
+                        : `${historyStats.avgWaitHours.toFixed(1)} saat`}
+                    </>
+                  )}
                 </div>
                 <div className="space-y-3">
                   {history.map((h) => (
@@ -563,6 +629,11 @@ export default function AdminAiQcPage() {
                Geçmiş kararlar
             </Button>
           </div>
+          {periodSummaryLine && (
+            <div className="mb-6 rounded-xl bg-white ring-1 ring-gri-200 px-4 py-3 text-[13.5px] font-medium text-lacivert text-center">
+              {periodSummaryLine}
+            </div>
+          )}
           <div className="text-center mb-10">
             <Pim pose="happy" size={140} />
             <h1 className="mt-4 text-[28px] font-semibold tracking-tight">

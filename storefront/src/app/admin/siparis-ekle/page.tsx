@@ -20,6 +20,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card, Button, Input, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { validateTcKimlik } from "@/lib/validation";
 import { addDaysIso } from "@/lib/customer-order";
 import {
   quoteCustomerSticker,
@@ -131,7 +132,7 @@ function newItem(product: ProductType = "etiket"): OrderItem {
     width: isSticker ? "70" : "60",
     height: isSticker ? "70" : "40",
     qty: isSticker ? "100" : "1000",
-    unit: isSticker ? "4.50" : "0.85",
+    unit: "",
     material: isSticker ? "vinil" : "kuse",
     coating: "mat",
     shape: "diecut",
@@ -308,11 +309,25 @@ export default function AdminCreateOrderPage() {
     () =>
       items.map((i) => {
         const q = Number(i.qty) || 0;
-        const u = Number(i.unit) || 0;
+        const u = i.unit.trim() === "" ? 0 : Number(i.unit) || 0;
         return q * u;
       }),
     [items]
   );
+
+  const hasValidPricing = useMemo(
+    () =>
+      items.every((i) => {
+        const q = Number(i.qty) || 0;
+        const u = i.unit.trim() === "" ? 0 : Number(i.unit) || 0;
+        return q > 0 && u > 0;
+      }),
+    [items]
+  );
+
+  const tcValidation = useMemo(() => validateTcKimlik(tc), [tc]);
+  const tcInvalid =
+    invoiceType === "individual" && tc.trim().length > 0 && !tcValidation.valid;
 
   const subtotal = itemTotals.reduce((s, t) => s + t, 0);
 
@@ -509,6 +524,8 @@ export default function AdminCreateOrderPage() {
     }
     if (invoiceType === "individual" && !tc.trim())
       return "TC kimlik no zorunlu";
+    if (invoiceType === "individual" && !validateTcKimlik(tc).valid)
+      return validateTcKimlik(tc).message ?? "TC kimlik numarası geçersiz";
     if (invoiceType === "corporate") {
       if (!vkn.trim()) return "VKN zorunlu";
       if (!companyName.trim()) return "Şirket ünvanı zorunlu";
@@ -988,7 +1005,13 @@ export default function AdminCreateOrderPage() {
                   placeholder="11 hane"
                   disabled={loading}
                   inputMode="numeric"
+                  className={cn(tcInvalid && "ring-kirmizi/50 ring-2")}
                 />
+                {tcInvalid && (
+                  <p className="mt-1.5 text-[12px] font-semibold text-kirmizi">
+                    {tcValidation.message ?? "TC kimlik numarası geçersiz"}
+                  </p>
+                )}
               </Field>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1443,7 +1466,7 @@ export default function AdminCreateOrderPage() {
                 variant="ghost"
                 size="lg"
                 className="flex-1 min-w-[160px]"
-                disabled={loading}
+                disabled={loading || !hasValidPricing}
                 onClick={() => {
                   setSubmitAction("new");
                   void handleSubmit("new");
@@ -1458,7 +1481,7 @@ export default function AdminCreateOrderPage() {
                 variant="primary"
                 size="lg"
                 className="flex-1 min-w-[160px]"
-                disabled={loading}
+                disabled={loading || !hasValidPricing}
               >
                 {loading && submitAction === "redirect"
                   ? "Kaydediliyor..."

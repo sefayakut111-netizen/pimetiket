@@ -22,6 +22,7 @@ import type { OrderStatus } from "@/lib/order";
 import {
   ADMIN_MANUAL_SET_STATUSES,
   FASON_ASSIGN_ELIGIBLE_STATUSES,
+  isForwardStatusTransition,
 } from "@/lib/order";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
@@ -520,13 +521,38 @@ export default function AdminOrderDetailPage({
                       plan/tier) + SVG signed URL'leri içeren JSON paket. RIP
                       sisteminize alabilirsiniz. URL'ler 1 saat geçerli.
                     </p>
-                    <a
-                      href={`/api/admin/print-job/${order.id}/manifest`}
-                      download={`print-manifest-${order.id}.json`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-yesil px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-yesil-koyu"
+                    <span
+                      title={
+                        assignmentInfo
+                          ? undefined
+                          : "Manifest indirmek icin once partner atayin"
+                      }
+                      className="mt-3 inline-block"
                     >
+                      <a
+                        href={
+                          assignmentInfo
+                            ? `/api/admin/print-job/${order.id}/manifest`
+                            : undefined
+                        }
+                        download={
+                          assignmentInfo
+                            ? `print-manifest-${order.id}.json`
+                            : undefined
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-disabled={!assignmentInfo}
+                        onClick={(e) => {
+                          if (!assignmentInfo) e.preventDefault();
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold",
+                          assignmentInfo
+                            ? "bg-yesil text-white hover:bg-yesil-koyu"
+                            : "bg-gri-200 text-gri-500 cursor-not-allowed pointer-events-none"
+                        )}
+                      >
                       <svg
                         width="14"
                         height="14"
@@ -542,7 +568,8 @@ export default function AdminOrderDetailPage({
                         <line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
                       Manifest JSON indir
-                    </a>
+                      </a>
+                    </span>
                   </div>
                 </div>
               </Card>
@@ -823,17 +850,20 @@ export default function AdminOrderDetailPage({
                 {ALL_STATUSES.map((s) => {
                   const m = getAdminStatusMeta(s);
                   const active = s === order.status;
+                  const allowed = isForwardStatusTransition(order.status, s);
                   return (
                     <button
                       key={s}
                       type="button"
-                      disabled={updating || active}
+                      disabled={updating || active || !allowed}
                       onClick={() => handleStatusChange(s)}
                       className={cn(
                         "w-full flex items-center gap-2 px-3 h-9 rounded-lg text-[12.5px] font-semibold transition-colors text-left",
                         active
                           ? "bg-lacivert text-white cursor-default"
-                          : "bg-white ring-1 ring-gri-200 hover:ring-pim-mercan text-lacivert hover:bg-gri-50"
+                          : !allowed
+                            ? "bg-gri-50 ring-1 ring-gri-200 text-gri-400 cursor-not-allowed"
+                            : "bg-white ring-1 ring-gri-200 hover:ring-pim-mercan text-lacivert hover:bg-gri-50"
                       )}
                     >
                       <span

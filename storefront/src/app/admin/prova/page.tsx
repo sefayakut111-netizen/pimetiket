@@ -82,9 +82,11 @@ function whatsappPhone(phone: string | undefined): string {
 function ProofSlaTag({
   createdAt,
   status,
+  autoRefundHealthy,
 }: {
   createdAt: number;
   status: string;
+  autoRefundHealthy: boolean;
 }) {
   if (status !== "proof_pending") return null;
 
@@ -96,7 +98,9 @@ function ProofSlaTag({
     return (
       <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-kirmizi text-white text-[11px] font-bold animate-pulse">
         <StatusDot color="gri" className="!bg-white" />
-        SLA AŞILDI — otomatik iade tetiklenecek
+        {autoRefundHealthy
+          ? "SLA asildi — otomatik iade tetiklenecek"
+          : "SLA asildi — otomatik iade pasif, manuel islem gerekli"}
       </span>
     );
   }
@@ -231,6 +235,22 @@ export default function AdminProvaPage() {
   const [filter, setFilter] = useState<ProofFilter>("pending");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showTestOrders, setShowTestOrders] = useState(false);
+  const [autoRefundHealthy, setAutoRefundHealthy] = useState(true);
+
+  useEffect(() => {
+    void fetch("/api/admin/system-health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: { ok?: boolean; autoRefundHealthy?: boolean } | null) => {
+          if (data?.ok && typeof data.autoRefundHealthy === "boolean") {
+            setAutoRefundHealthy(data.autoRefundHealthy);
+          }
+        }
+      )
+      .catch(() => {
+        setAutoRefundHealthy(false);
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -688,7 +708,11 @@ export default function AdminProvaPage() {
                         >
                           {meta.label}
                         </span>
-                        <ProofSlaTag createdAt={p.createdAt} status={p.status} />
+                        <ProofSlaTag
+                          createdAt={p.createdAt}
+                          status={p.status}
+                          autoRefundHealthy={autoRefundHealthy}
+                        />
                       </div>
                       <div className="font-semibold text-base">
                         {p.address.name}
