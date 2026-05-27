@@ -40,6 +40,7 @@ export default function AdminProfilPage() {
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
 
   // Password change
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
@@ -96,6 +97,10 @@ export default function AdminProfilPage() {
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
+    if (!currentPassword) {
+      toast.error("Mevcut sifrenizi girin");
+      return;
+    }
     if (newPassword.length < 8) {
       toast.error("Şifre en az 8 karakter olmalı");
       return;
@@ -104,9 +109,21 @@ export default function AdminProfilPage() {
       toast.error("Şifre eşleşmiyor");
       return;
     }
+    if (!profile?.email) {
+      toast.error("Oturum bilgisi alinamadi");
+      return;
+    }
     setPasswordSubmitting(true);
     try {
       const supabase = createClient();
+      const { error: verifyErr } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: currentPassword,
+      });
+      if (verifyErr) {
+        toast.error("Mevcut sifre hatali");
+        return;
+      }
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -115,6 +132,7 @@ export default function AdminProfilPage() {
         return;
       }
       toast.success("Şifre güncellendi");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } finally {
@@ -383,6 +401,18 @@ export default function AdminProfilPage() {
         <form onSubmit={handlePasswordChange} className="space-y-3 max-w-md">
           <div>
             <label className="text-[12.5px] font-medium text-lacivert mb-1 block">
+              Mevcut sifre
+            </label>
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-[12.5px] font-medium text-lacivert mb-1 block">
               Yeni şifre (en az 8 karakter)
             </label>
             <Input
@@ -408,7 +438,11 @@ export default function AdminProfilPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={passwordSubmitting || newPassword.length < 8}
+            disabled={
+              passwordSubmitting ||
+              currentPassword.length === 0 ||
+              newPassword.length < 8
+            }
           >
             {passwordSubmitting ? "Güncelleniyor..." : "Şifreyi güncelle"}
           </Button>

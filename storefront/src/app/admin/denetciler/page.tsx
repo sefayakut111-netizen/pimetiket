@@ -289,12 +289,12 @@ export default function DenetcilerDashboardPage() {
       summary: null,
     }));
 
-  const pending = data?.pending ?? {
-    criticalPending: 0,
-    warningPending: 0,
-    infoPending: 0,
-    totalPending: 0,
-  };
+  const cardAlertTotal = auditors.reduce(
+    (sum, a) => sum + a.criticalCount + a.warningCount,
+    0
+  );
+  const cardCriticalTotal = auditors.reduce((sum, a) => sum + a.criticalCount, 0);
+  const cardWarningTotal = auditors.reduce((sum, a) => sum + a.warningCount, 0);
 
   return (
     <main className="py-8 pb-20">
@@ -416,12 +416,12 @@ export default function DenetcilerDashboardPage() {
         <ActionHubGuide />
 
         {/* Pending action bar */}
-        {pending.totalPending > 0 && (
+        {cardAlertTotal > 0 && (
           <Link
             href="/admin/denetciler/bekleyen"
             className={cn(
               "block mb-6 rounded-2xl p-4 ring-1 transition-all hover:scale-[1.01]",
-              pending.criticalPending > 0
+              cardCriticalTotal > 0
                 ? "bg-kirmizi/10 ring-kirmizi/30"
                 : "bg-saman/15 ring-saman/30"
             )}
@@ -431,27 +431,26 @@ export default function DenetcilerDashboardPage() {
                 <span className="text-[24px]"></span>
                 <div>
                   <div className="font-semibold text-[15px] text-lacivert">
-                    {pending.totalPending} aksiyon senin onayını bekliyor
+                    {cardAlertTotal} bulgu dikkat gerektiriyor
                   </div>
                   <div className="text-[12.5px] text-gri-700 mt-0.5">
-                    {pending.criticalPending > 0 && (
+                    {cardCriticalTotal > 0 && (
                       <span className="text-kirmizi font-semibold">
-                        {pending.criticalPending} kritik
+                        {cardCriticalTotal} kritik
                       </span>
                     )}
-                    {pending.criticalPending > 0 &&
-                      pending.warningPending > 0 && (
-                        <span className="mx-1 text-gri-500">·</span>
-                      )}
-                    {pending.warningPending > 0 && (
+                    {cardCriticalTotal > 0 && cardWarningTotal > 0 && (
+                      <span className="mx-1 text-gri-500">·</span>
+                    )}
+                    {cardWarningTotal > 0 && (
                       <span className="text-saman-koyu font-semibold">
-                        {pending.warningPending} uyarı
+                        {cardWarningTotal} uyari
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-              <Pill>İncele →</Pill>
+              <Pill>Incele →</Pill>
             </div>
           </Link>
         )}

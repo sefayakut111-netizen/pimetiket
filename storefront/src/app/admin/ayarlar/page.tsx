@@ -11,10 +11,10 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Input, Eyebrow, useToast, Skeleton } from "@/components/ui";
+import { Button, Card, Input, Eyebrow, useToast, Skeleton, Modal } from "@/components/ui";
 
 const STORAGE_KEY = "pim_site_settings_v1";
 
@@ -59,12 +59,85 @@ const DEFAULTS: SiteSettings = {
   holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim + Ramazan + Kurban",
 };
 
+const NUMERIC_KEYS: Array<
+  keyof Pick<
+    SiteSettings,
+    | "vatPct"
+    | "shippingFee"
+    | "freeShippingThreshold"
+    | "welcomeCreditTry"
+    | "referralCreditTry"
+    | "minSubtotalForCredit"
+    | "minOrderTotal"
+    | "maxOrderTotal"
+    | "defaultStickerDelivery"
+    | "defaultEtiketDelivery"
+  >
+> = [
+  "vatPct",
+  "shippingFee",
+  "freeShippingThreshold",
+  "welcomeCreditTry",
+  "referralCreditTry",
+  "minSubtotalForCredit",
+  "minOrderTotal",
+  "maxOrderTotal",
+  "defaultStickerDelivery",
+  "defaultEtiketDelivery",
+];
+
+type DbNumericKey =
+  | "shipping_fee_try"
+  | "free_shipping_threshold"
+  | "welcome_credit_try"
+  | "referral_credit_try"
+  | "min_subtotal_for_credit"
+  | "min_order_total_try"
+  | "max_order_total_try";
+
+const DB_FIELD_MAP: Record<
+  | "shippingFee"
+  | "freeShippingThreshold"
+  | "welcomeCreditTry"
+  | "referralCreditTry"
+  | "minSubtotalForCredit"
+  | "minOrderTotal"
+  | "maxOrderTotal",
+  DbNumericKey
+> = {
+  shippingFee: "shipping_fee_try",
+  freeShippingThreshold: "free_shipping_threshold",
+  welcomeCreditTry: "welcome_credit_try",
+  referralCreditTry: "referral_credit_try",
+  minSubtotalForCredit: "min_subtotal_for_credit",
+  minOrderTotal: "min_order_total_try",
+  maxOrderTotal: "max_order_total_try",
+};
+
+function parseNum(val: unknown, fallback: number): number {
+  if (typeof val === "number" && Number.isFinite(val)) return val;
+  if (typeof val === "string" && val.trim() !== "") {
+    const n = Number(val);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+
+function sanitizeLocalSettings(local: Partial<SiteSettings>): Partial<SiteSettings> {
+  const out = { ...local };
+  for (const key of NUMERIC_KEYS) {
+    const fallback = DEFAULTS[key];
+    out[key] = parseNum(out[key], fallback) as SiteSettings[typeof key];
+  }
+  return out;
+}
+
 function loadLocalSettings(): Partial<SiteSettings> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
-    return JSON.parse(raw) as Partial<SiteSettings>;
+    return sanitizeLocalSettings(JSON.parse(raw) as Partial<SiteSettings>);
   } catch {
     return {};
   }
@@ -81,6 +154,9 @@ export default function AdminAyarlarPage() {
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
+  const [dbLoading, setDbLoading] = useState(true);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const dbBaselineRef = useRef<Partial<Record<DbNumericKey, number>>>({});
 
   const patchMaintenance = async (
     patch: Partial<Pick<SiteSettings, "maintenanceMode" | "maintenanceMessage">>
@@ -118,37 +194,43 @@ export default function AdminAyarlarPage() {
 
   useEffect(() => {
     const local = loadLocalSettings();
-    // Sefa 18 May v68: fastTrackEnabled deprecated, eski localStorage
-    // kayıtlarını sıfırla (true kalmışsa false'a çek)
-    const cleaned = { ...DEFAULTS, ...local, fastTrackEnabled: false };
+    const cleaned = {
+      ...DEFAULTS,
+      ...sanitizeLocalSettings(local),
+      fastTrackEnabled: false,
+    };
     setSettings(cleaned);
     setHydrated(true);
 
-    // DB'den canlı değerleri çek — kargo + sadakat fields override eder
     void fetch("/api/admin/settings", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (!r.ok) {
+          toast.error("DB ayarlari yuklenemedi — yetki veya ag hatasi");
+          return null;
+        }
+        return r.json();
+      })
       .then((json) => {
         if (!json?.settings) return;
-        const s = json.settings;
+        const s = json.settings as Record<string, unknown>;
+        const baseline: Partial<Record<DbNumericKey, number>> = {};
+        const dbPatch: Partial<SiteSettings> = {};
+
+        for (const [formKey, dbKey] of Object.entries(DB_FIELD_MAP) as Array<
+          [keyof typeof DB_FIELD_MAP, DbNumericKey]
+        >) {
+          const val = parseNum(
+            s[dbKey],
+            DEFAULTS[formKey as keyof typeof DB_FIELD_MAP]
+          );
+          baseline[dbKey] = val;
+          dbPatch[formKey as keyof SiteSettings] = val as never;
+        }
+
+        dbBaselineRef.current = baseline;
         setSettings((prev) => ({
           ...prev,
-          shippingFee: Number(s.shipping_fee_try ?? prev.shippingFee),
-          freeShippingThreshold: Number(
-            s.free_shipping_threshold ?? prev.freeShippingThreshold
-          ),
-          welcomeCreditTry: Number(s.welcome_credit_try ?? prev.welcomeCreditTry),
-          referralCreditTry: Number(
-            s.referral_credit_try ?? prev.referralCreditTry
-          ),
-          minSubtotalForCredit: Number(
-            s.min_subtotal_for_credit ?? prev.minSubtotalForCredit
-          ),
-          minOrderTotal: Number(
-            s.min_order_total_try ?? prev.minOrderTotal
-          ),
-          maxOrderTotal: Number(
-            s.max_order_total_try ?? prev.maxOrderTotal
-          ),
+          ...dbPatch,
           maintenanceMode: Boolean(s.maintenance_mode ?? prev.maintenanceMode),
           maintenanceMessage: String(
             s.maintenance_message ?? prev.maintenanceMessage
@@ -156,9 +238,12 @@ export default function AdminAyarlarPage() {
         }));
       })
       .catch(() => {
-        /* silent — local defaults kullanılır */
+        toast.error("DB ayarlari yuklenemedi");
+      })
+      .finally(() => {
+        setDbLoading(false);
       });
-  }, []);
+  }, [toast]);
 
   const update = <K extends keyof SiteSettings>(
     key: K,
@@ -173,24 +258,42 @@ export default function AdminAyarlarPage() {
     try {
       // 1. Local'e tamamını yaz (UI persist için)
       saveLocalSettings(settings);
-      // 2. DB'ye sadece kargo + sadakat alanları (Migration 029'da var)
+      const patchBody: Record<string, number> = {};
+      for (const [formKey, dbKey] of Object.entries(DB_FIELD_MAP) as Array<
+        [keyof typeof DB_FIELD_MAP, DbNumericKey]
+      >) {
+        const current = settings[formKey as keyof typeof DB_FIELD_MAP];
+        const baseline = dbBaselineRef.current[dbKey];
+        if (baseline === undefined || current !== baseline) {
+          patchBody[dbKey] = current;
+        }
+      }
+
+      if (Object.keys(patchBody).length === 0) {
+        toast.info("DB alanlarinda degisiklik yok (local ayarlar kaydedildi)");
+        return;
+      }
+
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          shipping_fee_try: settings.shippingFee,
-          free_shipping_threshold: settings.freeShippingThreshold,
-          welcome_credit_try: settings.welcomeCreditTry,
-          referral_credit_try: settings.referralCreditTry,
-          min_subtotal_for_credit: settings.minSubtotalForCredit,
-          min_order_total_try: settings.minOrderTotal,
-          max_order_total_try: settings.maxOrderTotal,
-        }),
+        body: JSON.stringify(patchBody),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        toast.error(j.error ?? "DB ayarları kaydedilemedi (local yine de yazıldı)");
+        toast.error(j.error ?? "DB ayarlari kaydedilemedi (local yine de yazildi)");
       } else {
+        const j = (await res.json()) as { settings?: Record<string, unknown> };
+        if (j.settings) {
+          for (const [formKey, dbKey] of Object.entries(DB_FIELD_MAP) as Array<
+            [keyof typeof DB_FIELD_MAP, DbNumericKey]
+          >) {
+            dbBaselineRef.current[dbKey] = parseNum(
+              j.settings[dbKey],
+              settings[formKey as keyof typeof DB_FIELD_MAP]
+            );
+          }
+        }
         toast.success("Ayarlar kaydedildi");
       }
     } catch (err) {
@@ -201,14 +304,14 @@ export default function AdminAyarlarPage() {
     }
   };
 
-  const onReset = () => {
-    if (!confirm("Tüm ayarlar varsayılana sıfırlansın mı?")) return;
+  const confirmReset = () => {
     setSettings(DEFAULTS);
     saveLocalSettings(DEFAULTS);
-    toast.info("Varsayılana döndü (kaydetmek için butona bas)");
+    setShowResetModal(false);
+    toast.info("Varsayilana dondu (kaydetmek icin butona bas)");
   };
 
-  if (!hydrated) {
+  if (!hydrated || dbLoading) {
     return (
       <main className="py-12">
         <div className="mx-auto max-w-[760px] px-6 space-y-3">
@@ -455,7 +558,7 @@ export default function AdminAyarlarPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={onReset}
+              onClick={() => setShowResetModal(true)}
             >
               Varsayılana sıfırla
             </Button>
@@ -468,6 +571,26 @@ export default function AdminAyarlarPage() {
             </div>
           </div>
         </form>
+
+        <Modal
+          open={showResetModal}
+          onClose={() => setShowResetModal(false)}
+          title="Varsayilana sifirla"
+        >
+          <p className="text-sm text-gri-700 leading-relaxed">
+            Tum ayarlari varsayilan degerlere dondurmek istediginizden emin
+            misiniz? Bu islem geri alinamaz. DB alanlari icin ayrica Kaydet
+            tusuna basmaniz gerekir.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowResetModal(false)}>
+              Iptal
+            </Button>
+            <Button variant="primary" onClick={confirmReset}>
+              Sifirla
+            </Button>
+          </div>
+        </Modal>
       </div>
     </main>
   );
@@ -489,8 +612,13 @@ function NumberField({
       <span className="text-[13px] font-semibold mb-1.5 block">{label}</span>
       <Input
         type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        value={Number.isFinite(value) ? value : ""}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") return;
+          const n = Number(raw);
+          if (Number.isFinite(n) && n >= 0) onChange(n);
+        }}
         step="any"
       />
       {hint && (

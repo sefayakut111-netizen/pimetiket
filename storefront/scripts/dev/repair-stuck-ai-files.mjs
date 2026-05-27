@@ -3,6 +3,7 @@
  * Takili "analyzing" design_files kayitlarini uploaded'a ceker ve QC tetikler.
  *
  *   node scripts/dev/repair-stuck-ai-files.mjs [--dry-run]
+ *   node scripts/dev/repair-stuck-ai-files.mjs --confirm
  *
  * Calistirmadan once kullaniciya sor — prod verisini etkiler.
  */
@@ -13,6 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const DRY = process.argv.includes("--dry-run");
+const CONFIRM = process.argv.includes("--confirm");
 
 for (const f of [".env.local", ".env.agent"]) {
   const p = join(ROOT, f);
@@ -62,6 +64,11 @@ for (const f of stuck) {
 
 if (DRY) {
   console.log("\n--dry-run: degisiklik yapilmadi.");
+  process.exit(0);
+}
+
+if (!CONFIRM) {
+  console.log("\nUygulamak icin: node scripts/dev/repair-stuck-ai-files.mjs --confirm");
   process.exit(0);
 }
 

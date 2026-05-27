@@ -64,7 +64,7 @@ export async function GET() {
       settings: {
         id: 1,
         shipping_fee_try: 49,
-        free_shipping_threshold: 1000,
+        free_shipping_threshold: 500,
         welcome_credit_try: 250,
         referral_credit_try: 250,
         min_subtotal_for_credit: 500,

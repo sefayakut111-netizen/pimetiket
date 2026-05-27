@@ -1556,11 +1556,20 @@ function FiyatlarPageInner() {
                               label="Seçenek satış"
                               value={fmtMoney(costBreakdown.optionSellAmt ?? 0)}
                             />
-                            <Row label="Setup" value={fmtMoney(draft.operation.setup)} />
+                            <Row
+                              label="Setup"
+                              value={fmtMoney(
+                                draft.operation.enabled !== false
+                                  ? draft.operation.setup
+                                  : 0
+                              )}
+                            />
                             <Row
                               label="Paketleme"
                               value={fmtMoney(
-                                draft.operation.packaging_per_unit * previewQty
+                                draft.operation.enabled !== false
+                                  ? draft.operation.packaging_per_unit * previewQty
+                                  : 0
                               )}
                             />
                             <Row

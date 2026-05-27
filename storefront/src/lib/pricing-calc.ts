@@ -396,8 +396,10 @@ export function calculatePrice(
 
   // 7. Operation cost
   const op = config.operation;
-  const operation_cost =
-    op.setup + op.packaging_per_unit * input.qty + (op.cargo ?? 0);
+  const opEnabled = op.enabled !== false;
+  const operation_cost = opEnabled
+    ? op.setup + op.packaging_per_unit * input.qty + (op.cargo ?? 0)
+    : 0;
   const cost_total = with_options + operation_cost;
 
   // 8. Margin (etiket legacy)
@@ -405,7 +407,7 @@ export function calculatePrice(
   const with_margin = cost_total * (1 + marginPct / 100);
 
   // 9. Fee gross-up (PayTR komisyonu müşteriye binsin)
-  const fee_pct = op.fee_pct ?? 0;
+  const fee_pct = opEnabled ? (op.fee_pct ?? 0) : 0;
   const with_fee = with_margin / (1 - fee_pct / 100);
 
   // 10. KDV

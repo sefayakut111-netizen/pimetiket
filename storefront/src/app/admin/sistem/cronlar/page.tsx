@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, Card, Eyebrow, Skeleton, useToast, Modal } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 interface CronLastRun {
@@ -33,6 +33,22 @@ interface HistoryRow {
   items_processed: number | null;
 }
 
+const CRON_WARNINGS: Record<string, string> = {
+  "auto-refund":
+    "36 saatten eski prova siparislerini otomatik iptal eder ve iade surecini baslatir.",
+  "archive-inactive":
+    "90 gun boyunca giris yapmayan musteri hesaplarini arsivler (KVKK m.7).",
+  "purge-expired-designs":
+    "Saklama suresi dolmus tasarim dosyalarini kalici olarak siler.",
+  "cleanup-stale-uploads":
+    "Tamamlanmamis yukleme oturumlarini temizler.",
+};
+
+function truncateError(msg: string, max = 100): string {
+  if (msg.length <= max) return msg;
+  return `${msg.slice(0, max)}…`;
+}
+
 export default function AdminCronlarPage() {
   const toast = useToast();
   const [crons, setCrons] = useState<CronEntry[]>([]);
@@ -41,6 +57,7 @@ export default function AdminCronlarPage() {
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const [confirmCron, setConfirmCron] = useState<CronEntry | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,9 +96,7 @@ export default function AdminCronlarPage() {
     }
   };
 
-  const trigger = async (cronName: string) => {
-    if (triggering) return;
-    if (!confirm(`${cronName} cron'unu şimdi çalıştırmak istiyor musun?`)) return;
+  const runTrigger = async (cronName: string) => {
     setTriggering(cronName);
     try {
       const res = await fetch("/api/admin/cron-status/trigger", {
@@ -104,6 +119,7 @@ export default function AdminCronlarPage() {
       toast.error("Tetikleme başarısız");
     } finally {
       setTriggering(null);
+      setConfirmCron(null);
     }
   };
 
@@ -143,7 +159,7 @@ export default function AdminCronlarPage() {
                     <th className="px-4 py-3">Son çalışma</th>
                     <th className="px-4 py-3">Durum</th>
                     <th className="px-4 py-3">Süre</th>
-                    <th className="px-4 py-3">Özet</th>
+                    <th className="px-4 py-3">Özet / Hata</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -152,6 +168,7 @@ export default function AdminCronlarPage() {
                     const last = c.lastRun;
                     const ok = last?.status === "success";
                     const err = last?.status === "error";
+                    const errorText = last?.errorMessage ?? null;
                     return (
                       <tr
                         key={c.name}
@@ -185,8 +202,19 @@ export default function AdminCronlarPage() {
                         <td className="px-4 py-3 font-mono text-xs">
                           {last?.durationMs != null ? `${last.durationMs}ms` : "—"}
                         </td>
-                        <td className="max-w-[220px] truncate px-4 py-3 text-xs text-gri-700">
-                          {last?.errorMessage ?? last?.summary ?? "—"}
+                        <td className="px-4 py-3 max-w-md">
+                          {errorText ? (
+                            <p
+                              className="text-xs text-kirmizi mt-0.5 truncate max-w-md"
+                              title={errorText}
+                            >
+                              {truncateError(errorText)}
+                            </p>
+                          ) : (
+                            <span className="text-xs text-gri-700">
+                              {last?.summary ?? "—"}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
@@ -202,7 +230,7 @@ export default function AdminCronlarPage() {
                                 variant="secondary"
                                 size="sm"
                                 disabled={triggering === c.name}
-                                onClick={() => void trigger(c.name)}
+                                onClick={() => setConfirmCron(c)}
                               >
                                 {triggering === c.name ? "…" : "Çalıştır"}
                               </Button>
@@ -267,6 +295,39 @@ export default function AdminCronlarPage() {
           </Card>
         )}
       </div>
+
+      <Modal
+        open={!!confirmCron}
+        onClose={() => setConfirmCron(null)}
+        title="Cron calistir"
+      >
+        {confirmCron && (
+          <>
+            <p className="text-sm text-gri-700 leading-relaxed">
+              <strong className="text-lacivert">{confirmCron.label}</strong> (
+              {confirmCron.name}) cron&apos;unu manuel tetiklemek istediginizden
+              emin misiniz?
+            </p>
+            {CRON_WARNINGS[confirmCron.name] && (
+              <p className="mt-3 text-sm text-sari-koyu bg-sari-soft/30 rounded-lg p-3">
+                {CRON_WARNINGS[confirmCron.name]}
+              </p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setConfirmCron(null)}>
+                Iptal
+              </Button>
+              <Button
+                variant="primary"
+                disabled={!!triggering}
+                onClick={() => void runTrigger(confirmCron.name)}
+              >
+                {triggering === confirmCron.name ? "Calistiriliyor…" : "Calistir"}
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
     </main>
   );
 }
