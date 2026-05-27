@@ -350,6 +350,7 @@ export async function createCustomerOrder(
   // PostHog purchase event — consent yoksa no-op
   try {
     const { track } = await import("@/lib/analytics/posthog-events");
+    const { ga4Purchase } = await import("@/lib/analytics/ga4-events");
     track("purchase", {
       order_id: result.id,
       total: result.total,
@@ -358,6 +359,7 @@ export async function createCustomerOrder(
       item_count: result.items.length,
       payment_method: result.payment.method,
     });
+    ga4Purchase(result.id, result.total);
   } catch {
     /* silent */
   }

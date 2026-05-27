@@ -46,6 +46,7 @@ import {
   orderAllDesignsApproved,
 } from "@/lib/order-item-meta";
 import { buildPocIframeSrc } from "@/lib/proof/build-poc-iframe-src";
+import { track } from "@/lib/analytics/posthog-events";
 
 // ============================================================
 // Types — fn_proof_summary RPC çıktısı
@@ -1277,6 +1278,11 @@ export default function ProofApprovalPage({
         return;
       }
 
+      track("proof_approved", {
+        orderId,
+        itemCount: data?.summary.total ?? 0,
+      });
+
       setData((prev) => {
         if (!prev) return prev;
         return {
@@ -1400,6 +1406,10 @@ export default function ProofApprovalPage({
         return;
       }
       toast.success("Talebin alındı, operatörümüz 1 iş günü içinde dönecek");
+      track("proof_rejected", {
+        orderId,
+        reason: "help_requested",
+      });
       setHelpOpen(false);
       setHelpMsg("");
       // Reload
@@ -1415,6 +1425,10 @@ export default function ProofApprovalPage({
       toast.error("Bıçak çizgisi henüz hazır değil");
       return;
     }
+    track("proof_rejected", {
+      orderId,
+      reason: "edit_requested",
+    });
     // Mig 063: multi-design — hangi tasarım düzenlenecek? query param ile geçir.
     const dfParam = activeDesignFileId
       ? `?design_file_id=${activeDesignFileId}`

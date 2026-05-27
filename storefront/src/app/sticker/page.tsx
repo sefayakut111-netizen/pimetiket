@@ -33,6 +33,8 @@ import { guardCards } from "@/lib/product-cards-guard";
 import Link from "next/link";
 import Image from "next/image";
 import { useT } from "@/lib/i18n/context";
+import { track } from "@/lib/analytics/posthog-events";
+import { ga4ViewItem } from "@/lib/analytics/ga4-events";
 import {
   getStickerCardSvg,
   DieCutIcon as RegistryDieCutIcon,
@@ -564,6 +566,11 @@ export default function StickerGridPage() {
   // Sefa 21 May v68 Mig 074: DB'den admin yönetimli kartlar.
   // İlk render fallback STICKER_CARDS, hidrate olunca DB değerleri.
   const [cards, setCards] = useState<StickerCard[]>(STICKER_CARDS);
+
+  useEffect(() => {
+    track("product_viewed", { product: "sticker" });
+    ga4ViewItem("sticker");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

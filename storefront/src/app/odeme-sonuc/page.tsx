@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n/context";
 import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { track } from "@/lib/analytics/posthog-events";
+import { ga4Purchase } from "@/lib/analytics/ga4-events";
 
 const EXTRA = {
   tr: {
@@ -217,20 +218,16 @@ function OdemeSonucInner() {
       source: "paytr_return",
     });
 
-    const w = window as unknown as { gtag?: (...args: unknown[]) => void };
-    if (typeof w.gtag === "function") {
-      w.gtag("event", "purchase", {
-        transaction_id: order.id,
-        value: order.total,
-        currency: "TRY",
-        items: order.items.map((item) => ({
-          item_id: item.product,
-          item_name: item.title,
-          quantity: item.qty,
-          price: item.unit,
-        })),
-      });
-    }
+    ga4Purchase(
+      order.id,
+      order.total,
+      order.items.map((item) => ({
+        item_id: item.product,
+        item_name: item.title,
+        quantity: item.qty,
+        price: item.unit,
+      }))
+    );
   }, [order, status]);
 
   useEffect(() => {

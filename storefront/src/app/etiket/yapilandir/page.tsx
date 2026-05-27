@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
+import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
@@ -483,6 +484,18 @@ const CORE_SIZES = [
 ] as const;
 const ROLL_LABEL_COUNTS = [250, 500, 750, 1000] as const;
 
+const ETIKET_STEP_NAMES: Record<number, string> = {
+  0: "form_factor",
+  1: "material",
+  2: "coating",
+  3: "customization",
+  4: "shape",
+  5: "winding",
+  6: "size",
+  8: "quantity",
+  7: "design",
+};
+
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 /**
  * Birim fiyat formatlama — smart precision.
@@ -641,6 +654,11 @@ function EtiketPage() {
   // ediyordu, sonra useEffect ile düzelirken kullanıcı yanlış başlık
   // görüyordu. Hook initial render'da doğru değeri verir.
   const initialParams = new URLSearchParams(searchParams.toString());
+
+  useEffect(() => {
+    track("configurator_started", { product: "etiket" });
+  }, []);
+
   const [formFactor, setFormFactor] = useState<FormFactor>(() =>
     readInitialFormFactor(initialParams)
   );
@@ -871,13 +889,21 @@ function EtiketPage() {
   // Sefa 18 May v60: Sepete eklendi pop-up'ı (toast yerine modal)
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
-  const markTouched = useCallback((n: number) => {
+  const markTouched = useCallback((n: number, value?: string | number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
       const next = new Set(prev);
       next.add(n);
       return next;
     });
+    const step = ETIKET_STEP_NAMES[n];
+    if (step) {
+      track("configurator_step", {
+        product: "etiket",
+        step,
+        ...(value != null ? { value } : {}),
+      });
+    }
   }, []);
 
   // Sefa 18 May v65: Form factor değişince TÜM seçimleri sıfırla
@@ -1662,6 +1688,10 @@ function EtiketPage() {
                     onClick={() => {
                       setMaterial(m.id);
                       markTouched(1);
+                      track("material_selected", {
+                        product: "etiket",
+                        material: m.id,
+                      });
                     }}
                   >
                     {/* Sefa 18 May v68 (Sefa feedback): h-14 → aspect-[2/1]
@@ -2261,6 +2291,12 @@ function EtiketPage() {
                         setWidth(v);
                         setHeight(v); // orantı kilidi — kare/daire için w=h
                         markTouched(6);
+                        track("size_selected", {
+                          product: "etiket",
+                          width: v,
+                          height: v,
+                          preset: false,
+                        });
                       }}
                       min={5}
                       max={520}
@@ -2509,6 +2545,11 @@ function EtiketPage() {
                       onClick={() => {
                         setQty(q);
                         markTouched(8);
+                        track("tier_selected", {
+                          product: "etiket",
+                          qty: q,
+                          tierLabel: label,
+                        });
                       }}
                       aria-pressed={active}
                       className={cn(

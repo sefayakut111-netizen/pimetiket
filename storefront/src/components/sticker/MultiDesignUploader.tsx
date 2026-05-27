@@ -28,6 +28,7 @@ import {
   type DesignFileKind,
 } from "@/lib/design-preview";
 import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
+import { track } from "@/lib/analytics/posthog-events";
 
 export interface PendingDesign {
   id: string;
@@ -192,6 +193,12 @@ export function MultiDesignUploader({
         onDesignCountChange(merged.length);
       }
       onDesignsChange(merged);
+      track("design_uploaded", {
+        product: "sticker",
+        fileType: accepted[0]?.mimeType ?? accepted[0]?.file.type ?? "unknown",
+        fileSize: accepted.reduce((sum, d) => sum + d.sizeBytes, 0),
+        designCount: merged.length,
+      });
       // Her PDF/AI/PSD için arka planda render başlat; sonuç hazır olunca
       // designs state'i güncelle (parent setDesigns callback). EPS/unknown
       // direkt failed → fallback badge.

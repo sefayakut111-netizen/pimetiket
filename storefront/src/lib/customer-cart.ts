@@ -437,12 +437,15 @@ export async function addToCustomerCart(
   // PostHog event — consent yoksa otomatik no-op
   try {
     const { track } = await import("@/lib/analytics/posthog-events");
+    const { ga4AddToCart } = await import("@/lib/analytics/ga4-events");
     track("add_to_cart", {
       product: item.product,
       material: item.material ?? item.materialId ?? null,
       qty: item.qty,
       total: item.total,
+      designCount: item.designCount ?? 1,
     });
+    ga4AddToCart(item.product, item.qty, item.total);
   } catch {
     /* silent — analytics opsiyonel */
   }

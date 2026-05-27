@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps } from "@/lib/use-sequential-steps";
+import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
 import {
@@ -199,6 +200,16 @@ const STICKER_PRESETS = CUSTOMER_STICKER_TIERS; // [25, 50, 100, 250, 500, 1000]
 /** En çok seçilen preset — "Popüler" rozeti gösterilir */
 const STICKER_POPULAR_PRESET = 250;
 
+/** Sequential step id → funnel adım adı (PostHog configurator_step) */
+const STICKER_STEP_NAMES: Record<number, string> = {
+  2: "shape",
+  3: "material",
+  4: "finish",
+  5: "size",
+  6: "quantity",
+  7: "design",
+};
+
 /** Qty'i step'e snap'le (25'in katı), min/max'a clamp et */
 function snapStickerQty(n: number): number {
   if (!Number.isFinite(n)) return STICKER_MIN_QTY;
@@ -311,6 +322,10 @@ function StickerPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    track("configurator_started", { product: "sticker" });
   }, []);
 
   // i18n'a bağlı array'ler — Sefa kuralı (16 May denetim #1):
@@ -623,13 +638,21 @@ function StickerPage() {
   // Sefa 18 May v60: Sepete eklendi pop-up'ı
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
-  const markTouched = useCallback((n: number) => {
+  const markTouched = useCallback((n: number, value?: string | number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
       const next = new Set(prev);
       next.add(n);
       return next;
     });
+    const step = STICKER_STEP_NAMES[n];
+    if (step) {
+      track("configurator_step", {
+        product: "sticker",
+        step,
+        ...(value != null ? { value } : {}),
+      });
+    }
   }, []);
 
   // Sefa 18 May v66: Cut mode değişince TÜM seçimleri sıfırla
@@ -1169,6 +1192,10 @@ function StickerPage() {
                     onClick={() => {
                       setMaterial(m.id);
                       markTouched(3);
+                      track("material_selected", {
+                        product: "sticker",
+                        material: m.id,
+                      });
                     }}
                     padding={12}
                   >
@@ -1401,6 +1428,12 @@ function StickerPage() {
                         setWidth(v);
                         setHeight(v); // orantı kilidi — daire/kare eş kenar
                         markTouched(5);
+                        track("size_selected", {
+                          product: "sticker",
+                          width: v,
+                          height: v,
+                          preset: false,
+                        });
                       }}
                       min={STICKER_MIN_DIM}
                       max={STICKER_MAX_W}
@@ -1571,6 +1604,12 @@ function StickerPage() {
                         setWidth(Math.max(STICKER_MIN_DIM, preset.w));
                         setHeight(Math.max(STICKER_MIN_DIM, preset.h));
                         markTouched(5);
+                        track("size_selected", {
+                          product: "sticker",
+                          width: preset.w,
+                          height: preset.h,
+                          preset: true,
+                        });
                         // Input pulse animasyonu
                         setPresetPulseAt(Date.now());
                         setTimeout(() => setPresetPulseAt(null), 700);
@@ -1651,6 +1690,11 @@ function StickerPage() {
                       onClick={() => {
                         setTier(q);
                         markTouched(6);
+                        track("tier_selected", {
+                          product: "sticker",
+                          qty: q,
+                          tierLabel: String(q),
+                        });
                       }}
                       aria-pressed={active}
                       className={cn(

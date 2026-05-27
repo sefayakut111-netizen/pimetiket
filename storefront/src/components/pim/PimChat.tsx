@@ -38,6 +38,7 @@ import {
   type ChatConsentValue,
 } from "@/lib/pim/chat-consent";
 import { addToCustomerCart } from "@/lib/customer-cart";
+import { track } from "@/lib/analytics/posthog-events";
 
 // Sefa kararı (UX audit): kullanıcı persona seçmez, hazır cevap chip'i
 // önerilmez. Pim akıllı bir sistem — pathname + soru içeriğine göre
@@ -180,6 +181,11 @@ export function PimChat() {
   useEffect(() => {
     if (open) setUnread(0);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    track("pim_chat_opened", { page: pathname });
+  }, [open, pathname]);
 
   // Pathname'e göre default persona'yı hizala — sohbet henüz başlamadıysa.
   // /sticker, /etiket → Tasarımcı Pim
@@ -423,6 +429,7 @@ export function PimChat() {
           disabled={status === "streaming" || status === "submitted"}
           onSend={(text) => {
             appendMessage({ role: "user", content: text, persona });
+            track("pim_chat_message_sent", { persona });
             // Adı düşürdüyse yakala
             const nameMatch = text.match(/(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/);
             const mem = readMemory();

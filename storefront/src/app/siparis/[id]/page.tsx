@@ -23,6 +23,7 @@ import { ensureAuthBindings } from "@/lib/customer-cart";
 import { OrderItemDesignPreview } from "@/components/orders/OrderItemDesignPreview";
 import { DesignThumb } from "@/components/cart/DesignThumb";
 import { buildSummaryItems } from "@/lib/order-summary";
+import { track } from "@/lib/analytics/posthog-events";
 import { reorderFromOrder } from "@/lib/customer-reorder";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
@@ -574,6 +575,10 @@ export default function SiparisDetailPage({
         method: "POST",
       });
       if (res.ok) {
+        track("order_cancelled", {
+          orderId: order.id,
+          total: order.total,
+        });
         toast.success(
           isEn
             ? "Order cancelled — refund initiated"

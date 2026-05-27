@@ -26,6 +26,8 @@ import { guardCards } from "@/lib/product-cards-guard";
 import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
+import { track } from "@/lib/analytics/posthog-events";
+import { ga4ViewItem } from "@/lib/analytics/ga4-events";
 import type { ProductCard as DbProductCard } from "@/lib/product-cards";
 
 interface EtiketCard {
@@ -229,6 +231,11 @@ export default function EtiketGridPage() {
   // — flicker yok, hidrate olunca DB değerleri ile değiştirilir.
   const [ruloCards, setRuloCards] = useState<EtiketCard[]>(RULO_CARDS);
   const [tabakaCards, setTabakaCards] = useState<EtiketCard[]>(TABAKA_CARDS);
+
+  useEffect(() => {
+    track("product_viewed", { product: "etiket" });
+    ga4ViewItem("etiket");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

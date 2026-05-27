@@ -398,10 +398,28 @@ export default function OdemePage() {
         // PostHog: begin_checkout event
         void import("@/lib/analytics/posthog-events")
           .then(({ track }) => {
+            const cartTotal = items.reduce((s, i) => s + i.total, 0);
+            const pendingCoupon =
+              typeof window !== "undefined"
+                ? window.sessionStorage.getItem("pim_pending_coupon")
+                : null;
+            track("checkout_started", {
+              itemCount: items.length,
+              total: cartTotal,
+              hasCoupon: Boolean(pendingCoupon),
+            });
             track("begin_checkout", {
               item_count: items.length,
-              total: items.reduce((s, i) => s + i.total, 0),
+              total: cartTotal,
             });
+          })
+          .catch(() => {
+            /* silent */
+          });
+        void import("@/lib/analytics/ga4-events")
+          .then(({ ga4BeginCheckout }) => {
+            const cartTotal = items.reduce((s, i) => s + i.total, 0);
+            ga4BeginCheckout(cartTotal, items.length);
           })
           .catch(() => {
             /* silent */

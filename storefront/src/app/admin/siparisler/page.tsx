@@ -551,6 +551,14 @@ function AdminSiparislerPageInner() {
             count: updated,
             new_status: bulkStatus,
           });
+          if (bulkStatus === "cancelled") {
+            track("order_cancelled", {
+              orderId: ids.join(","),
+              reason: reasonText,
+              bulk: true,
+              count: updated,
+            });
+          }
         })
         .catch(() => {
           /* silent */

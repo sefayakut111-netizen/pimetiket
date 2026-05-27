@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
@@ -39,6 +39,7 @@ import {
   ETIKET_MIN_QTY,
   ETIKET_QTY_STEP,
 } from "@/lib/etiket-customer-pricing";
+import { track } from "@/lib/analytics/posthog-events";
 
 const EXTRA = {
   tr: {
@@ -145,6 +146,7 @@ export default function SepetPage() {
   };
   const [cart, setCart] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const cartViewTracked = useRef(false);
   // Sefa 18 May v68 Migration 053: min/max sipariş tutarı limit
   const [minOrderTotal, setMinOrderTotal] = useState<number>(0);
   const [maxOrderTotal, setMaxOrderTotal] = useState<number>(0);
@@ -206,6 +208,16 @@ export default function SepetPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh]);
+
+  useEffect(() => {
+    if (!hydrated || cartViewTracked.current) return;
+    cartViewTracked.current = true;
+    const s = summarizeCustomerCart();
+    track("cart_viewed", {
+      itemCount: s.itemCount,
+      total: s.total,
+    });
+  }, [hydrated]);
 
   const summary = summarizeCustomerCart();
   const subtotal = summary.subtotal;

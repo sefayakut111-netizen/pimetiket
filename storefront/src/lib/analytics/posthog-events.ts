@@ -5,6 +5,18 @@
 import { hasConsent } from "@/lib/cookie-consent";
 
 export type PimEvent =
+  | "product_viewed"
+  | "configurator_started"
+  | "configurator_step"
+  | "design_uploaded"
+  | "cart_viewed"
+  | "checkout_started"
+  | "material_selected"
+  | "size_selected"
+  | "tier_selected"
+  | "pim_chat_opened"
+  | "pim_chat_message_sent"
+  | "order_cancelled"
   | "add_to_cart"
   | "remove_from_cart"
   | "begin_checkout"
