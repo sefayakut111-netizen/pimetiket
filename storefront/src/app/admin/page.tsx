@@ -50,6 +50,7 @@ import {
 } from "@/lib/admin-analytics";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { getAdminModuleLabel } from "@/lib/admin-rbac";
+import { getAdminStatusMeta } from "@/lib/admin-status";
 
 type TimeRange = "today" | "7d" | "mtd" | "30d" | "custom";
 
@@ -143,73 +144,6 @@ function getRangeWindow(
   };
 }
 
-interface AlertItem {
-  id: string;
-  level: "critical" | "warn" | "info";
-  message: string;
-  href: string;
-  cta: string;
-}
-
-function countByStatuses(
-  orders: CustomerOrder[],
-  statuses: readonly OrderStatus[]
-): number {
-  const set = new Set<string>(statuses);
-  return orders.filter((o) => set.has(o.status)).length;
-}
-
-function detectAlerts(orders: CustomerOrder[]): AlertItem[] {
-  const alerts: AlertItem[] = [];
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-
-  const stuckAi = orders.filter(
-    (o) =>
-      (AI_QC_ACTIVE_STATUSES as readonly string[]).includes(o.status) &&
-      now - o.createdAt > day
-  );
-  if (stuckAi.length > 0) {
-    alerts.push({
-      id: "stuck-ai",
-      level: "critical",
-      message: `${stuckAi.length} sipariş 24 saatten uzun süredir AI/operatör kuyruğunda — incele`,
-      href: "/admin/ai-qc",
-      cta: "AI QC kuyruğu",
-    });
-  }
-
-  const stuckProof = orders.filter(
-    (o) => o.status === "proof_pending" && now - o.createdAt > 2 * day
-  );
-  if (stuckProof.length > 0) {
-    alerts.push({
-      id: "stuck-proof",
-      level: "warn",
-      message: `${stuckProof.length} müşteriden 48 saatten fazla prova yanıtı yok`,
-      href: "/admin/prova",
-      cta: "Prova listesi",
-    });
-  }
-
-  const unassigned = countByStatuses(orders, UNASSIGNED_PRODUCTION_STATUSES);
-  if (unassigned >= 3) {
-    alerts.push({
-      id: "unassigned",
-      level: "warn",
-      message: `${unassigned} sipariş üretime hazır ama henüz partnere atanmadı`,
-      href: adminOrdersListHref(UNASSIGNED_PRODUCTION_STATUSES),
-      cta: "Sipariş listesi",
-    });
-  }
-
-  return alerts;
-}
-
-// ============================================================
-// "Bugün ne yapmalıyım" — günün iş kuyruğu
-// Alert strip = SLA patlamak üzere / Bugün widgetı = rutin iş listesi
-// ============================================================
 interface TodoItem {
   id: string;
   /** Sıra: küçük olan üstte. AI flag (1) > Operatör (2) > Prova geç yanıt (3)
@@ -314,26 +248,13 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
   return items.sort((a, b) => a.priority - b.priority);
 }
 
-const STATUS_LABEL: Record<OrderStatus, { label: string; color: string; bg: string; hex: string }> = {
-  paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
-  awaiting_upload: { label: "Tasarım bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FB923C" },
-  qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF8585" },
-  qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft", hex: "#FFC53D" },
-  operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FFA39E" },
-  // Sefa 19 May v68 (DB↔TS sync): 5 yeni statü
-  human_review: { label: "İnsan inceleme", color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FFA39E" },
-  human_review_failed: { label: "Düzeltme iste", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft", hex: "#CF1322" },
-  proof_generating: { label: "Prova hazırlanıyor", color: "text-lacivert", bg: "bg-gri-100", hex: "#94A3B8" },
-  proof_pending: { label: "Müşteri onayı", color: "text-lacivert", bg: "bg-gri-100", hex: "#1F2A4D" },
-  proof_validating: { label: "Düzenleme doğrulanıyor", color: "text-lacivert", bg: "bg-gri-100", hex: "#64748B" },
-  proof_approved: { label: "Müşteri onayladı", color: "text-yesil", bg: "bg-yesil-soft", hex: "#15803D" },
-  ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#1D4ED8" },
-  fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft", hex: "#2563EB" },
-  in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft", hex: "#52C41A" },
-  shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100", hex: "#597EF7" },
-  delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft", hex: "#389E0D" },
-  cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100", hex: "#CF1322" },
-};
+function countByStatuses(
+  orders: CustomerOrder[],
+  statuses: readonly OrderStatus[]
+): number {
+  const set = new Set<string>(statuses);
+  return orders.filter((o) => set.has(o.status)).length;
+}
 
 function timeAgo(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
@@ -716,22 +637,6 @@ function AdminDashboardPageInner() {
   const countChange = formatChange(count, prevCount);
   const revenueChange = formatChange(revenue, prevRevenue);
 
-  const alerts = useMemo(() => {
-    const baseAlerts = canViewOrders ? detectAlerts(orders) : [];
-    if (canViewAuditors && auditorPending.total > 0) {
-      baseAlerts.unshift({
-        id: "auditor-pending",
-        level: auditorPending.critical > 0 ? "critical" : "warn",
-        message:
-          auditorPending.critical > 0
-            ? `🔴 ${auditorPending.critical} kritik denetçi aksiyonu onayını bekliyor`
-            : `🟡 ${auditorPending.total} denetçi aksiyonu onayını bekliyor`,
-        href: "/admin/denetciler/bekleyen",
-        cta: "Onay paneli",
-      });
-    }
-    return baseAlerts;
-  }, [orders, auditorPending, canViewOrders, canViewAuditors]);
   const todoList = useMemo(
     () => (canViewOrders ? buildTodoList(orders) : []),
     [orders, canViewOrders]
@@ -938,11 +843,14 @@ function AdminDashboardPageInner() {
   // Status distribution as horizontal bar
   const statusBars: BarPoint[] = (Object.keys(statusDistribution) as OrderStatus[])
     .filter((s) => statusDistribution[s] > 0)
-    .map((s) => ({
-      label: STATUS_LABEL[s].label,
-      value: statusDistribution[s],
-      color: STATUS_LABEL[s].hex,
-    }));
+    .map((s) => {
+      const meta = getAdminStatusMeta(s);
+      return {
+        label: meta.label,
+        value: statusDistribution[s],
+        color: meta.hex ?? "#64748B",
+      };
+    });
 
   return (
     <main className="py-8 pb-20 bg-gri-50 min-h-[calc(100vh-56px)]">
@@ -1143,41 +1051,6 @@ function AdminDashboardPageInner() {
 
         {canViewOrders && !ordersLoading && !ordersError && (
           <>
-        {/* Alert strip */}
-        {alerts.length > 0 && (
-          <div className="mb-6 flex flex-col gap-2">
-            {alerts.map((a) => (
-              <Link
-                key={a.id}
-                href={a.href}
-                className={cn(
-                  "rounded-xl px-5 py-3.5 ring-1 flex items-center gap-3 text-[13.5px] hover:shadow-1 transition-shadow",
-                  a.level === "critical"
-                    ? "bg-kirmizi/5 ring-kirmizi/20 text-kirmizi"
-                    : a.level === "warn"
-                      ? "bg-sari-soft ring-sari/30 text-lacivert"
-                      : "bg-pim-mercan-tint ring-pim-mercan/20 text-pim-mercan"
-                )}
-              >
-                <span
-                  className={cn(
-                    "inline-flex w-2 h-2 rounded-full shrink-0",
-                    a.level === "critical"
-                      ? "bg-kirmizi animate-pulse"
-                      : a.level === "warn"
-                        ? "bg-sari"
-                        : "bg-pim-mercan"
-                  )}
-                />
-                <span className="flex-1 font-semibold">{a.message}</span>
-                <span className="text-[12px] font-bold flex items-center gap-1">
-                  {a.cta} <Icon.ArrowR size={14} />
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-
         {/* "Bugün ne yapmalıyım" — günün iş kuyruğu */}
         {todoList.length > 0 && (
           <Card padding="p-0" className="mb-6 ring-1 ring-pim-mercan/15">
@@ -1193,8 +1066,11 @@ function AdminDashboardPageInner() {
                   </p>
                 </div>
               </div>
-              <span className="text-[12px] font-bold tabular-nums text-pim-mercan bg-white rounded-full h-7 min-w-7 px-2.5 grid place-items-center">
-                {todoList.reduce((s, t) => s + t.count, 0)}
+              <span
+                className="text-[12px] font-bold tabular-nums text-pim-mercan bg-white rounded-full h-7 min-w-7 px-2.5 grid place-items-center"
+                title="Toplam bekleyen aksiyon sayısı"
+              >
+                {todoList.reduce((s, t) => s + t.count, 0)} bekleyen
               </span>
             </div>
             <div className="divide-y divide-gri-100">
@@ -1509,7 +1385,7 @@ function AdminDashboardPageInner() {
 
           <Card padding="p-4">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
-              Prova yanıt süresi
+              Prova bekleme
             </div>
             <div className="text-[22px] font-bold mt-1 tabular-nums text-lacivert">
               {proofResponseHours !== null
@@ -1518,7 +1394,7 @@ function AdminDashboardPageInner() {
             </div>
             <div className="text-[11px] text-gri-700 mt-1">
               {proofResponseHours !== null
-                ? "müşteri onay süresi"
+                ? "prova sonrası müşteri yanıt süresi"
                 : "henüz veri yok"}
             </div>
           </Card>
@@ -1977,7 +1853,7 @@ function AdminDashboardPageInner() {
           ) : (
             <div className="divide-y divide-gri-100">
               {recent.map((o) => {
-                const meta = STATUS_LABEL[o.status];
+                const meta = getAdminStatusMeta(o.status);
                 const title =
                   o.items.length === 1
                     ? `${o.address.name} — ${o.items[0].product === "sticker" ? "sticker" : "etiket"} × ${o.items[0].qty.toLocaleString("tr-TR")}`

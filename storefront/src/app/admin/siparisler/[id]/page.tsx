@@ -25,27 +25,7 @@ import {
 } from "@/lib/order";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
-
-const STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
-  paid: { label: "Yeni — dosya bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  awaiting_upload: { label: "Müşteri tasarım yüklemedi (Mig 061)", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  qc_flagged: { label: "AI flag — manuel kontrol", color: "text-sari-koyu", bg: "bg-sari-soft" },
-  operator_review: { label: "Operatör inceliyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  // Sefa 19 May v68 (DB↔TS sync): 5 yeni statü
-  human_review: { label: "İnsan incelemesi", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  human_review_failed: { label: "Düzeltme isteniyor", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft" },
-  proof_generating: { label: "Prova hazırlanıyor", color: "text-lacivert", bg: "bg-gri-100" },
-  proof_pending: { label: "Müşteri baskı onayı bekleniyor", color: "text-lacivert", bg: "bg-gri-100" },
-  proof_validating: { label: "Düzenleme doğrulanıyor", color: "text-lacivert", bg: "bg-gri-100" },
-  proof_approved: { label: "Müşteri tüm baskıları onayladı", color: "text-yesil", bg: "bg-yesil-soft" },
-  ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
-  shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
-  delivered: { label: "Teslim edildi", color: "text-yesil", bg: "bg-yesil-soft" },
-  cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100" },
-};
+import { getAdminStatusMeta } from "@/lib/admin-status";
 
 const ALL_STATUSES: OrderStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
 
@@ -292,7 +272,7 @@ export default function AdminOrderDetailPage({
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        toast.success(`Durum güncellendi → ${STATUS_META[newStatus].label}`);
+        toast.success(`Durum güncellendi → ${getAdminStatusMeta(newStatus).label}`);
         setOrder({ ...order, status: newStatus });
       } else {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
@@ -337,7 +317,7 @@ export default function AdminOrderDetailPage({
     );
   }
 
-  const meta = STATUS_META[order.status];
+  const meta = getAdminStatusMeta(order.status);
   const product =
     order.items.length === 1
       ? order.items[0].title
@@ -841,7 +821,7 @@ export default function AdminOrderDetailPage({
               </p>
               <div className="space-y-2">
                 {ALL_STATUSES.map((s) => {
-                  const m = STATUS_META[s];
+                  const m = getAdminStatusMeta(s);
                   const active = s === order.status;
                   return (
                     <button
@@ -877,11 +857,11 @@ export default function AdminOrderDetailPage({
               <span
                 className={cn(
                   "inline-flex items-center h-[26px] px-3 rounded-full text-[12.5px] font-semibold",
-                  STATUS_META[order.status].bg,
-                  STATUS_META[order.status].color
+                  getAdminStatusMeta(order.status).bg,
+                  getAdminStatusMeta(order.status).color
                 )}
               >
-                {STATUS_META[order.status].label}
+                {getAdminStatusMeta(order.status).label}
               </span>
             </Card>
             )}

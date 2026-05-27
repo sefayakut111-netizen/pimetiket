@@ -16,6 +16,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { getAdminStatusLabel } from "@/lib/admin-status";
 
 const fmtTotal = (n: number) =>
   Math.round(n).toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " ₺";
@@ -76,13 +77,6 @@ interface HistoryItem {
 }
 
 type Decision = "approve" | "reject" | "fix_and_proof";
-
-const STATUS_LABELS: Record<string, string> = {
-  human_review: "Manuel İnceleme",
-  human_review_failed: "Reddedildi (müşteriye)",
-  proof_generating: "Prova Üretiliyor",
-  operator_review: "Operatör İncelemesi",
-};
 
 const VERDICT_COLORS: Record<string, string> = {
   iyi: "bg-yesil text-white",
@@ -718,7 +712,7 @@ export default function AdminAiQcPage() {
                         isActive ? "text-white/70" : "text-gri-700"
                       )}
                     >
-                      {STATUS_LABELS[q.status] ?? q.status} ·{" "}
+                      {getAdminStatusLabel(q.status)} ·{" "}
                       {timeAgo(q.createdAt)}
                     </div>
                   </button>

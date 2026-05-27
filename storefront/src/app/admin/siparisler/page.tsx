@@ -36,6 +36,7 @@ import type { CustomerOrder } from "@/lib/customer-order";
 import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
+import { getAdminStatusMeta } from "@/lib/admin-status";
 
 type AdminStatus = OrderStatus;
 
@@ -52,27 +53,6 @@ interface AdminOrder {
   fason?: string;
   tracking_number?: string;
 }
-
-const STATUS_META: Record<AdminStatus, { label: string; color: string; bg: string }> = {
-  paid: { label: "Yeni", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  awaiting_upload: { label: "Tasarım bekleniyor", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  qc_pending: { label: "AI kontrol", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  qc_flagged: { label: "AI flag", color: "text-sari-koyu", bg: "bg-sari-soft" },
-  operator_review: { label: "Operatör", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  // Sefa 19 May v68 (DB↔TS sync): 5 yeni statü
-  human_review: { label: "İnsan incelemesi", color: "text-pim-mercan", bg: "bg-pim-mercan-tint" },
-  human_review_failed: { label: "Düzeltme isteniyor", color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft" },
-  proof_generating: { label: "Prova hazırlanıyor", color: "text-lacivert", bg: "bg-gri-100" },
-  proof_pending: { label: "Müşteri onayı bekliyor", color: "text-lacivert", bg: "bg-gri-100" },
-  proof_validating: { label: "Düzenleme doğrulanıyor", color: "text-lacivert", bg: "bg-gri-100" },
-  proof_approved: { label: "Müşteri onayladı", color: "text-yesil", bg: "bg-yesil-soft" },
-  ready_to_ship: { label: "Üretime hazır", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  fason_assigned: { label: "Partnere atandı", color: "text-mavi-koyu", bg: "bg-mavi-soft" },
-  in_production: { label: "Üretimde", color: "text-yesil", bg: "bg-yesil-soft" },
-  shipped: { label: "Kargoda", color: "text-lacivert", bg: "bg-gri-100" },
-  delivered: { label: "Teslim", color: "text-yesil", bg: "bg-yesil-soft" },
-  cancelled: { label: "İptal", color: "text-kirmizi", bg: "bg-gri-100" },
-};
 
 const FILTERS = ADMIN_STATUS_FILTER_CHIPS;
 
@@ -480,7 +460,7 @@ function AdminSiparislerPageInner() {
   const applyBulkStatus = useCallback(
     async (reason?: string) => {
       if (!bulkStatus || selected.size === 0) return;
-      const targetLabel = STATUS_META[bulkStatus].label;
+      const targetLabel = getAdminStatusMeta(bulkStatus).label;
       if (
         !reason &&
         !confirm(
@@ -826,7 +806,7 @@ function AdminSiparislerPageInner() {
                       value={st}
                       className="text-lacivert"
                     >
-                      {STATUS_META[st].label}
+                      {getAdminStatusMeta(st).label}
                     </option>
                   ))
                 )}
@@ -922,11 +902,7 @@ function AdminSiparislerPageInner() {
                 </tr>
               ) : (
                 paged.map((o) => {
-                  const s = STATUS_META[o.status] ?? {
-                    label: o.status || "—",
-                    bg: "bg-gri-100",
-                    color: "text-gri-700",
-                  };
+                  const s = getAdminStatusMeta(o.status);
                   const isSelected = selected.has(o.id);
                   const urgency = getOrderUrgency(o, Date.now());
                   const validTargets = getValidTransitions(o.status);
@@ -1027,7 +1003,7 @@ function AdminSiparislerPageInner() {
                             </option>
                             {validTargets.map((st) => (
                               <option key={st} value={st}>
-                                → {STATUS_META[st].label}
+                                → {getAdminStatusMeta(st).label}
                               </option>
                             ))}
                           </select>
