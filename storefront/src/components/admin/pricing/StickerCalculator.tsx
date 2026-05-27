@@ -1061,13 +1061,10 @@ function LivePricingPanel({
 
   return (
     <Card padding="p-5" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <h3 className="text-[15px] font-semibold text-lacivert">
-          Site Fiyatı (Live Config)
+          Site Fiyatı
         </h3>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-gri-500">
-          {liveConfigLoaded ? "DB live_config" : "yükleniyor…"}
-        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1082,13 +1079,8 @@ function LivePricingPanel({
                 <span className="text-[16px] text-gri-500">₺</span>
               </div>
               <div className="text-[12px] text-gri-600 mt-1">
-                {billableM2.toFixed(3)} m² × {fmt(m2Cost ?? 0, 2)} ₺/m² (m2_cost_try)
+                {billableM2.toFixed(3)} m² × {fmt(m2Cost ?? 0, 2)} ₺/m²
               </div>
-              {fasonPartnerCost !== null && (
-                <div className="text-[11px] text-gri-500 mt-2 tabular-nums">
-                  Fason referans: {fmt(Math.round(fasonPartnerCost))} ₺ (simülasyon)
-                </div>
-              )}
             </>
           ) : (
             <div className="text-[13px] text-gri-600">
@@ -1110,8 +1102,7 @@ function LivePricingPanel({
                 <span className="text-[16px] text-gri-500">₺</span>
               </div>
               <div className="text-[12px] text-gri-600 mt-1">
-                {billableM2.toFixed(3)} m² × {fmt(m2Sell ?? 0, 2)} ₺/m² (m2_sell_try) · tier{" "}
-                {liveSitePrice.tier.label}
+                {billableM2.toFixed(3)} m² × {fmt(m2Sell ?? 0, 2)} ₺/m² · {liveSitePrice.tier.label}
               </div>
             </>
           ) : (
