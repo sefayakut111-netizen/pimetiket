@@ -194,7 +194,11 @@ function buildTodoList(
     });
   }
 
-  const aiQueue = countByStatuses(orders, AI_QC_ACTIVE_STATUSES);
+  const aiQueue = orders.filter(
+    (o) =>
+      (AI_QC_ACTIVE_STATUSES as readonly string[]).includes(o.status) &&
+      o.status !== "operator_review"
+  ).length;
   if (aiQueue > 0) {
     items.push({
       id: "ai-queue",

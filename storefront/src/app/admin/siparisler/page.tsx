@@ -260,6 +260,14 @@ function AdminSiparislerPageInner() {
   );
   const hiddenTestCount = orders.length - catalogOrders.length;
 
+  useEffect(() => {
+    setSelected((prev) => {
+      const visible = new Set(catalogOrders.map((o) => o.id));
+      const next = new Set([...prev].filter((id) => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [catalogOrders]);
+
   const statusCounts = useMemo(() => {
     const counts = new Map<string, number>();
     counts.set("all", catalogOrders.length);
@@ -475,11 +483,11 @@ function AdminSiparislerPageInner() {
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   const bulkTargetStatuses = useMemo(() => {
-    const statuses = orders
+    const statuses = catalogOrders
       .filter((o) => selected.has(o.id))
       .map((o) => o.status);
     return getCommonBulkTransitionTargets(statuses);
-  }, [orders, selected]);
+  }, [catalogOrders, selected]);
 
   /** Toplu durum güncelle — POST /api/admin/orders/bulk-status */
   const applyBulkStatus = useCallback(

@@ -41,6 +41,7 @@ import {
   listCustomerOrders,
   type CustomerOrder,
 } from "@/lib/customer-order";
+import { excludeTestOrders } from "@/lib/admin-order-filters";
 import {
   AI_QC_ACTIVE_STATUSES,
   countActiveOrdersForBadge,
@@ -252,9 +253,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
     };
 
     const refresh = () => {
+      const badgeOrders = excludeTestOrders(adminOrders);
       setBadges({
         ...aggregateBadges(
-          adminOrders,
+          badgeOrders,
           auditorCounts.pending,
           auditorCounts.critical,
           helpRequestsCount,
