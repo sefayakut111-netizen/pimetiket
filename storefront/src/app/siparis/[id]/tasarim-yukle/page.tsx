@@ -359,7 +359,13 @@ export default function TasarimYuklePage({
       order.items.length > 0 &&
       order.items.every((i) => i.designsComplete);
 
-    if (allDone) {
+    const backendReady =
+      order.status === "proof_pending" ||
+      order.status === "proof_generating" ||
+      order.status === "qc_pending" ||
+      order.status === "proof_validating";
+
+    if (allDone && backendReady) {
       toast.success(
         "Tüm tasarımlar yüklendi — prova hazırlığı başlıyor..."
       );

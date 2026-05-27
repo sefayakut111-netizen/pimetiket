@@ -378,6 +378,8 @@ export default function OdemePage() {
   const [acceptCopyright, setAcceptCopyright] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [minOrderTotal, setMinOrderTotal] = useState(0);
+  const [maxOrderTotal, setMaxOrderTotal] = useState(0);
 
   // ============================================================
   // Hydration
@@ -389,10 +391,6 @@ export default function OdemePage() {
     // Cart
     void refreshCustomerCart().then(() => {
       const items = listCustomerCart();
-      console.log(
-        "[odeme] cartItems designTempIds:",
-        items.map((i) => ({ id: i.id, designTempId: i.designTempId ?? null }))
-      );
       setCartItems(items);
       setHydrated(true);
       if (items.length === 0) {
@@ -411,6 +409,18 @@ export default function OdemePage() {
           });
       }
     });
+
+    void fetch("/api/public/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json?.settings) {
+          setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
+          setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
+        }
+      })
+      .catch(() => {
+        /* silent */
+      });
 
     // Admin kontrolü
     void import("@/lib/supabase/client").then(({ createClient }) => {
@@ -506,9 +516,14 @@ export default function OdemePage() {
   });
 
   /** Form complete mi? Submit aktive olur mu? */
+  const orderTotalWithinLimits =
+    (minOrderTotal <= 0 || subtotal >= minOrderTotal) &&
+    (maxOrderTotal <= 0 || subtotal <= maxOrderTotal);
+
   const canSubmit =
     !loading &&
     cartItems.length > 0 &&
+    orderTotalWithinLimits &&
     acceptSatis &&
     acceptCopyright &&
     (selectedAddress !== undefined || isNewAddressFilled(newAddr)) &&
@@ -519,6 +534,12 @@ export default function OdemePage() {
   const submitMissing: string[] = [];
   // Sefa 17 May P1-9: "fatura bilgisi" yerine HANGI alan eksik söyle
   if (cartItems.length === 0) submitMissing.push("sepet boş");
+  if (minOrderTotal > 0 && subtotal < minOrderTotal) {
+    submitMissing.push(`minimum sipariş tutarı (${fmt(minOrderTotal)} ₺)`);
+  }
+  if (maxOrderTotal > 0 && subtotal > maxOrderTotal) {
+    submitMissing.push(`maksimum sipariş tutarı (${fmt(maxOrderTotal)} ₺)`);
+  }
   if (selectedAddress === undefined && !isNewAddressFilled(newAddr))
     submitMissing.push("teslimat adresi");
   if (!invoiceComplete) {
@@ -1699,9 +1720,11 @@ export default function OdemePage() {
                             ? c.couponAppliedFreeShip
                             : couponResult.kind === "percent"
                               ? c.couponAppliedPercent(
-                                  Math.round(
-                                    (couponResult.discount / subtotal) * 100
-                                  ),
+                                  subtotal > 0
+                                    ? Math.round(
+                                        (couponResult.discount / subtotal) * 100
+                                      )
+                                    : 0,
                                   fmt(couponResult.discount)
                                 )
                               : c.couponAppliedFixed(fmt(couponResult.discount))}

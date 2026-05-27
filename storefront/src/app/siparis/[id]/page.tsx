@@ -981,14 +981,17 @@ export default function SiparisDetailPage({
               </div>
             )}
 
-            {/* File upload card */}
-            <DesignUploadCard
-              orderId={order.id}
-              orderItem={order.items[0]}
-              orderItemId={order.items[0]?.id}
-              itemDesignFiles={itemDesignFiles}
-              c={c}
-            />
+            {/* File upload card — her order item icin ayri kart */}
+            {order.items.map((item) => (
+              <DesignUploadCard
+                key={item.id}
+                orderId={order.id}
+                orderItem={item}
+                orderItemId={item.id}
+                itemDesignFiles={itemDesignFiles}
+                c={c}
+              />
+            ))}
 
             {/* Tasarım versiyon geçmişi — 2+ versiyon varsa otomatik gösterir */}
             <OrderDesignHistory orderId={order.id} />

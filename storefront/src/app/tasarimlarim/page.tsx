@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Skeleton } from "@/components/ui";
+import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import {
   listMyDesigns,
@@ -139,10 +139,12 @@ export default function TasarimlarimPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
   const router = useRouter();
+  const toast = useToast();
 
   const [designs, setDesigns] = useState<CustomerDesign[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [reprintingId, setReprintingId] = useState<string | null>(null);
 
   useEffect(() => {
     ensureAuthBindings();
@@ -167,27 +169,52 @@ export default function TasarimlarimPage() {
     }
   }, []);
 
-  const handleReprint = (d: CustomerDesign) => {
-    // Tasarım referansını sessionStorage'a koy, konfigüratör pickup eder
-    if (typeof window !== "undefined" && d.previewUrl) {
-      try {
-        sessionStorage.setItem(
-          "pim_reprint_design",
-          JSON.stringify({
-            tempId: d.id, // gerçek tempId yok, design_files.id'yi reuse
-            previewUrl: d.previewUrl,
-            fileName: d.originalName,
-            sizeBytes: d.sizeBytes,
-            mimeType: d.mimeType,
-          })
+  const handleReprint = async (d: CustomerDesign) => {
+    if (reprintingId) return;
+    setReprintingId(d.id);
+    try {
+      const res = await fetch("/api/design/reprint-from-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ designFileId: d.id }),
+      });
+      const json = (await res.json()) as {
+        tempId?: string;
+        previewUrl?: string | null;
+        fileName?: string;
+        sizeBytes?: number;
+        mimeType?: string;
+        error?: string;
+      };
+      if (!res.ok || !json.tempId || !json.previewUrl) {
+        toast.error(
+          locale === "en"
+            ? "Could not prepare design for reprint."
+            : "Tasarım yeniden bastırma için hazırlanamadı."
         );
-      } catch {
-        // localStorage full
+        return;
       }
+      sessionStorage.setItem(
+        "pim_reprint_design",
+        JSON.stringify({
+          tempId: json.tempId,
+          previewUrl: json.previewUrl,
+          fileName: json.fileName ?? d.originalName,
+          sizeBytes: json.sizeBytes ?? d.sizeBytes,
+          mimeType: json.mimeType ?? d.mimeType,
+        })
+      );
+      const target = d.product === "etiket" ? "/etiket/yapilandir" : "/sticker/yapilandir";
+      router.push(`${target}?reprint=1`);
+    } catch {
+      toast.error(
+        locale === "en"
+          ? "Reprint failed. Try again."
+          : "Yeniden bastırma başarısız. Tekrar dene."
+      );
+    } finally {
+      setReprintingId(null);
     }
-    // Ürün tipi belliyse o sayfaya, yoksa sticker default
-    const target = d.product === "etiket" ? "/etiket" : "/sticker";
-    router.push(`${target}?reprint=1`);
   };
 
   // Loading skeleton

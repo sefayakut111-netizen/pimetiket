@@ -99,10 +99,13 @@ function OdemeSonucInner() {
 
   const status = sp.get("status") ?? "success";
   const oid = sp.get("oid");
-  const orderIdParam = sp.get("order") ?? "000000000000";
+  const orderParam = sp.get("order");
+  const orderIdParam = orderParam ?? "";
   const hasDesignsParam = sp.get("hasDesigns") === "true";
   const isPendingVerification =
     status === "success" && orderIdParam === "pending" && Boolean(oid);
+  const hasValidOrderId =
+    Boolean(orderIdParam) && orderIdParam !== "pending";
 
   const [resolvedOrderId, setResolvedOrderId] = useState(orderIdParam);
   const [verifyTimedOut, setVerifyTimedOut] = useState(false);
@@ -176,40 +179,44 @@ function OdemeSonucInner() {
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   useEffect(() => {
     if (isPendingVerification) return;
+    if (!hasValidOrderId) return;
     ensureAuthBindings();
 
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
     const poll = async () => {
       const o = await fetchCustomerOrder(orderId);
-      if (!cancelled && o) {
-        setOrder(o);
-        const terminal =
-          o.status === "proof_pending" ||
-          o.status === "proof_generating" ||
-          o.status === "proof_validating" ||
-          o.status === "human_review" ||
-          o.status === "proof_approved";
-        if (terminal) return;
-        if (o.status !== "paid" && o.status !== "awaiting_upload" && o.status !== "qc_pending") {
-          return;
-        }
+      if (cancelled || !o) return;
+      setOrder(o);
+      const terminal =
+        o.status === "proof_pending" ||
+        o.status === "proof_generating" ||
+        o.status === "proof_validating" ||
+        o.status === "human_review" ||
+        o.status === "proof_approved";
+      if (terminal && intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
       }
     };
 
     void poll();
-    const interval = setInterval(() => {
+    intervalId = setInterval(() => {
       if (cancelled) return;
       void poll();
     }, 3000);
 
-    const timeout = setTimeout(() => clearInterval(interval), 120000);
+    const timeout = setTimeout(() => {
+      if (intervalId) clearInterval(intervalId);
+    }, 120000);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (intervalId) clearInterval(intervalId);
       clearTimeout(timeout);
     };
-  }, [orderId, isPendingVerification]);
+  }, [orderId, isPendingVerification, hasValidOrderId]);
 
   const orderReadyForProof =
     order?.status === "proof_pending" ||
@@ -219,8 +226,17 @@ function OdemeSonucInner() {
   const orderHasDesigns =
     hasDesignsParam ||
     (order != null &&
-      order.status !== "awaiting_upload" &&
-      order.status !== "paid");
+      (order.status === "qc_pending" ||
+        order.status === "proof_pending" ||
+        order.status === "proof_generating" ||
+        order.status === "proof_validating" ||
+        order.status === "human_review" ||
+        order.status === "proof_approved" ||
+        order.status === "in_production" ||
+        order.status === "ready_to_ship" ||
+        order.status === "fason_assigned" ||
+        order.status === "shipped" ||
+        order.status === "delivered"));
 
   if (status === "fail") {
     const reason = sp.get("reason");
@@ -303,6 +319,32 @@ function OdemeSonucInner() {
               </Button>
             </div>
           )}
+        </div>
+      </main>
+    );
+  }
+
+  if (!hasValidOrderId) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[600px] px-6 text-center">
+          <Pim pose="think" size={160} />
+          <h1 className="mt-4 text-[24px] md:text-[32px] font-semibold tracking-tight">
+            {locale === "en" ? "Order not found" : "Sipariş bulunamadı"}
+          </h1>
+          <p className="mt-4 text-base text-gri-700 leading-relaxed">
+            {locale === "en"
+              ? "The payment return link is incomplete. Check My Orders for your recent purchase."
+              : "Ödeme dönüş bağlantısı eksik. Son siparişini Siparişlerim sayfasından kontrol edebilirsin."}
+          </p>
+          <div className="mt-6 flex gap-3 justify-center flex-wrap">
+            <Button variant="primary" size="lg" href="/siparislerim">
+              {t.orderSuccess.orderDetail}
+            </Button>
+            <Button variant="secondary" size="lg" href="/sepet">
+              {locale === "en" ? "Back to cart" : "Sepete dön"}
+            </Button>
+          </div>
         </div>
       </main>
     );
