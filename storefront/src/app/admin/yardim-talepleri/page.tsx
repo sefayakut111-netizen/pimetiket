@@ -16,9 +16,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 
 type HelpStatus = "open" | "in_progress" | "resolved" | "dismissed";
@@ -147,18 +146,11 @@ export default function AdminYardimTalepleriPage() {
 
   return (
     <main className="container py-6">
-      <div className="mb-6 flex items-start gap-4">
-        <Pim pose="inspect" size={56} />
-        <div>
-          <Eyebrow>UZMAN AKIŞI</Eyebrow>
-          <h1 className="mt-1 text-2xl font-bold text-lacivert">
-            Müşteri yardım talepleri
-          </h1>
-          <p className="mt-1 text-sm text-gri-700">
-            Prova aşamasında &quot;Ekibimizden yardım iste&quot; tıklayan
-            müşterilerin talepleri.
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-lacivert">Yardım Talepleri</h1>
+        <p className="mt-1 text-sm text-gri-700">
+          Prova aşamasında müşteri yardım istediği talepler.
+        </p>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
