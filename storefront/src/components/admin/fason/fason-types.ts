@@ -100,3 +100,19 @@ export function isAssignmentOverdue(a: AssignmentRow): boolean {
   }
   return new Date(a.estimated_delivery).getTime() < Date.now();
 }
+
+/** Yetkinlik chip renkleri — ürün tipi / malzeme tutarlılığı */
+export function capabilityChipClassName(
+  capabilityType: "product_type" | "material",
+  capabilityValue: string
+): string {
+  const base =
+    "inline-flex items-center h-[22px] px-2.5 rounded-full text-[11px] font-semibold";
+  if (capabilityType === "material") {
+    return `${base} bg-gri-100 text-lacivert`;
+  }
+  if (capabilityValue === "sticker") {
+    return `${base} bg-pim-mercan-tint text-pim-mercan`;
+  }
+  return `${base} bg-lacivert/10 text-lacivert`;
+}
