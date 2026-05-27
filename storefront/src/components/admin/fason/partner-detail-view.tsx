@@ -20,6 +20,7 @@ import {
   type JobsFilter,
   type PartnerDetailTab,
 } from "@/components/admin/fason/fason-types";
+import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
 
 export function PartnerAssignmentsPanel({
   partner,
@@ -55,36 +56,40 @@ export function PartnerAssignmentsPanel({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="rounded-lg bg-pim-mercan-tint ring-1 ring-pim-mercan/20 p-2.5">
-          <div className="text-[10px] font-bold uppercase text-gri-600">
-            Aktif iş
-          </div>
-          <div className="text-[18px] font-bold text-lacivert tabular-nums">
-            {jobStats.active}
-          </div>
-        </div>
-        <div
-          className={cn(
-            "rounded-lg p-2.5 ring-1",
-            jobStats.overdue > 0
-              ? "bg-kirmizi-soft ring-kirmizi/30"
-              : "bg-gri-50 ring-gri-200"
-          )}
-        >
-          <div className="text-[10px] font-bold uppercase text-gri-600">
-            Geciken
+      {jobStats.active === 0 && jobStats.overdue === 0 ? (
+        <p className="text-sm text-gri-500 mb-4">Henuz atanan is yok.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="rounded-lg bg-pim-mercan-tint ring-1 ring-pim-mercan/20 p-2.5">
+            <div className="text-[10px] font-bold uppercase text-gri-600">
+              Aktif is
+            </div>
+            <div className="text-[18px] font-bold text-lacivert tabular-nums">
+              {jobStats.active}
+            </div>
           </div>
           <div
             className={cn(
-              "text-[18px] font-bold tabular-nums",
-              jobStats.overdue > 0 ? "text-kirmizi" : "text-lacivert"
+              "rounded-lg p-2.5 ring-1",
+              jobStats.overdue > 0
+                ? "bg-kirmizi-soft ring-kirmizi/30"
+                : "bg-gri-50 ring-gri-200"
             )}
           >
-            {jobStats.overdue}
+            <div className="text-[10px] font-bold uppercase text-gri-600">
+              Geciken
+            </div>
+            <div
+              className={cn(
+                "text-[18px] font-bold tabular-nums",
+                jobStats.overdue > 0 ? "text-kirmizi" : "text-lacivert"
+              )}
+            >
+              {jobStats.overdue}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="flex gap-1.5 flex-wrap mb-4">
         {filterChips.map((chip) => (
@@ -665,7 +670,7 @@ export function AssignOrderToPartner({
         }>;
       };
       setUnassigned(
-        (data.orders ?? [])
+        excludeTestOrderLikes(data.orders ?? [])
           .filter((o) => !o.fasonName)
           .map((o) => ({
             id: o.id,
@@ -728,17 +733,128 @@ export function AssignOrderToPartner({
             <span className="font-mono text-[11px] truncate">
               {o.id} · {o.customer}
             </span>
-            <button
-              type="button"
-              onClick={() => void assignOrder(o.id)}
+            <Button
+              size="sm"
+              variant="primary"
               disabled={assigning}
-              className="text-pim-mercan font-semibold hover:underline text-[11px] shrink-0"
+              onClick={() => void assignOrder(o.id)}
             >
-              Ata →
-            </button>
+              Ata
+            </Button>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function PartnerDetailInfoSection({
+  partner,
+  history,
+  jobStats,
+  onPartnerUpdated,
+}: {
+  partner: FasonPartner;
+  history: AssignmentRow[];
+  jobStats: {
+    active: number;
+    overdue: number;
+    completed: number;
+    issues: number;
+  };
+  onPartnerUpdated: (p: FasonPartner) => void;
+}) {
+  const productTypes = (partner.capabilities ?? [])
+    .filter((c) => c.capability_type === "product_type")
+    .map((c) => CAPABILITY_LABEL[c.capability_value] ?? c.capability_value);
+  const materials = (partner.capabilities ?? [])
+    .filter((c) => c.capability_type === "material")
+    .map((c) => CAPABILITY_LABEL[c.capability_value] ?? c.capability_value);
+
+  const scoreLabel =
+    partner.cached_score == null
+      ? "— (ilk 5 is tamamlaninca hesaplanir)"
+      : `${Math.round(partner.cached_score * 100)} / 100`;
+
+  const completedCount = history.filter((a) => a.status === "shipped").length;
+
+  return (
+    <div className="space-y-6 text-[13px] text-gri-700">
+      <section>
+        <h3 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
+          Firma bilgileri
+        </h3>
+        <dl className="space-y-2">
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Ad:</dt>
+            <dd className="font-medium text-lacivert">{partner.name}</dd>
+          </div>
+          {partner.city && (
+            <div className="flex gap-2">
+              <dt className="text-gri-500 w-28 shrink-0">Sehir:</dt>
+              <dd>{partner.city}</dd>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">E-posta:</dt>
+            <dd>
+              <a
+                href={`mailto:${partner.contact_email}`}
+                className="text-pim-mercan hover:underline"
+              >
+                {partner.contact_email}
+              </a>
+            </dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Tipik teslim:</dt>
+            <dd>
+              <strong>{partner.default_lead_days} gun</strong>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h3 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
+          Kapasite
+        </h3>
+        <dl className="space-y-2">
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Urun gruplari:</dt>
+            <dd>{productTypes.length > 0 ? productTypes.join(", ") : "—"}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Malzemeler:</dt>
+            <dd>{materials.length > 0 ? materials.join(", ") : "—"}</dd>
+          </div>
+        </dl>
+        <PartnerCapabilitiesPanel
+          partner={partner}
+          onUpdated={onPartnerUpdated}
+        />
+      </section>
+
+      <section>
+        <h3 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
+          Performans
+        </h3>
+        <dl className="space-y-2">
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Ortalama skor:</dt>
+            <dd>{scoreLabel}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Tamamlanan is:</dt>
+            <dd>{completedCount}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="text-gri-500 w-28 shrink-0">Sorunlu is:</dt>
+            <dd>{jobStats.issues}</dd>
+          </div>
+        </dl>
+        <PartnerMailLog partnerId={partner.id} />
+      </section>
     </div>
   );
 }
@@ -851,81 +967,24 @@ export function PartnerDetailView({
       )}
 
       {tab === "partner" && (
-        <>
-          <PartnerCapabilitiesPanel
-            partner={partner}
-            onUpdated={onPartnerUpdated}
-          />
-          <PartnerScoreBreakdown partner={partner} history={history} />
-          <div className="space-y-1.5 text-[13px] text-gri-700">
-            <div>
-              Tipik teslim:{" "}
-              <strong>{partner.default_lead_days} gün</strong>
-            </div>
-            {partner.express_lead_time_days != null && (
-              <div>
-                Express:{" "}
-                <strong>{partner.express_lead_time_days} gün</strong>
-              </div>
-            )}
-            {partner.min_order_amount_try != null && (
-              <div>
-                Min. sipariş:{" "}
-                <strong>
-                  {partner.min_order_amount_try.toLocaleString("tr-TR")} TL
-                </strong>
-              </div>
-            )}
-            <div>
-              <a
-                href={`mailto:${partner.contact_email}`}
-                className="text-pim-mercan hover:underline"
-              >
-                {partner.contact_email}
-              </a>
-            </div>
-            {partner.contact_whatsapp && <div>{partner.contact_whatsapp}</div>}
-            {partner.contact_person && <div>{partner.contact_person}</div>}
-            <div className="pt-3 border-t border-gri-100 mt-3">
-              Sözleşme:{" "}
-              {partner.contract_signed_at ? (
-                <>
-                  <span className="text-yesil font-semibold">
-                    İmzalı (
-                    {new Date(partner.contract_signed_at).toLocaleDateString(
-                      "tr-TR"
-                    )}
-                    )
-                  </span>
-                  {partner.contract_pdf_url && (
-                    <a
-                      href={partner.contract_pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-pim-mercan font-semibold hover:underline text-[12px]"
-                    >
-                      PDF indir
-                    </a>
-                  )}
-                </>
-              ) : (
-                <span className="text-kirmizi font-semibold">İmzasız</span>
-              )}
-            </div>
-            <PartnerMailLog partnerId={partner.id} />
-          </div>
-        </>
+        <PartnerDetailInfoSection
+          partner={partner}
+          history={history}
+          jobStats={jobStats}
+          onPartnerUpdated={onPartnerUpdated}
+        />
       )}
 
       {tab === "history" && (
         <>
-          <PartnerScoreBreakdown partner={partner} history={history} />
           {completedHistory.length === 0 ? (
             <p className="text-[13px] text-gri-700 py-4">
-              Tamamlanan iş kaydı yok.
+              Henuz tamamlanan is yok. Ilk siparis atandiginda burada gorunur.
             </p>
           ) : (
-            <ul className="space-y-2 mt-4">
+            <>
+              <PartnerScoreBreakdown partner={partner} history={history} />
+              <ul className="space-y-2 mt-4">
               {completedHistory.map((a) => (
                 <li
                   key={a.id}
@@ -943,7 +1002,8 @@ export function PartnerDetailView({
                   </div>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
         </>
       )}
