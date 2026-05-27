@@ -7,15 +7,19 @@ import {
   formatDeliveryCountdown,
   isAssignmentOverdue,
 } from "@/lib/fason/assignment-utils";
+import { urgentReasonLabel, type UrgentReason } from "@/lib/fason/urgent-assignment";
 import { PartnerStatusPill } from "./PartnerStatusPill";
 import { PartnerStatusActions } from "./PartnerStatusActions";
 import { ProductionDownloadBar } from "./ProductionDownloadBar";
+import { PartnerCountdownTimer } from "./PartnerCountdownTimer";
 
 export interface PartnerAssignmentItem {
   id: string;
   title: string;
   product: string;
   qty: number;
+  width?: number;
+  height?: number;
   proof_status: string;
   design_file_id: string | null;
   has_cutline: boolean;
@@ -27,6 +31,9 @@ export interface PartnerAssignmentRow {
   status: string;
   assigned_at: string | null;
   estimated_delivery: string | null;
+  sla_deadline?: string | null;
+  is_urgent?: boolean;
+  urgent_reason?: UrgentReason | null;
   hours_left: number | null;
   title: string;
   item_count: number;
@@ -50,18 +57,23 @@ export function PartnerAssignmentCard({
 }: PartnerAssignmentCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [status, setStatus] = useState(row.status);
-  const overdue = isAssignmentOverdue(status, row.estimated_delivery);
+  const deadline = row.sla_deadline ?? row.estimated_delivery;
+  const overdue = isAssignmentOverdue(status, deadline);
+  const isUrgent = !!row.urgent_reason;
   const firstItem = row.items[0];
 
   return (
     <article
       className={cn(
         "rounded-2xl border bg-white p-4 shadow-sm transition-colors",
-        overdue
-          ? "border-kirmizi/40 bg-kirmizi-soft/20"
-          : status === "issue"
-            ? "border-sari/50 bg-sari-soft/30"
-            : "border-gri-200 hover:border-pim-mercan/30"
+        isUrgent && "border-l-4 border-l-kirmizi",
+        isUrgent
+          ? "border-kirmizi/40 bg-kirmizi-soft/10"
+          : overdue
+            ? "border-kirmizi/40 bg-kirmizi-soft/20"
+            : status === "issue"
+              ? "border-sari/50 bg-sari-soft/30"
+              : "border-gri-200 hover:border-pim-mercan/30"
       )}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -74,12 +86,17 @@ export function PartnerAssignmentCard({
               #{row.order_id.slice(-8)}
             </Link>
             <PartnerStatusPill status={status} />
+            {isUrgent && row.urgent_reason && (
+              <span className="rounded-full bg-kirmizi-soft px-2 py-0.5 text-[10px] font-bold text-kirmizi">
+                {urgentReasonLabel(row.urgent_reason)}
+              </span>
+            )}
           </div>
           <h3 className="mt-1 truncate text-[15px] font-semibold text-lacivert">
             {row.title}
           </h3>
-          <p className="mt-0.5 text-[12px] text-gri-600">
-            {row.item_count} kalem ·{" "}
+          <div className="mt-1 flex flex-wrap items-center gap-3 text-[12px] text-gri-600">
+            <span>{row.item_count} kalem</span>
             <span
               className={cn(
                 overdue ? "font-semibold text-kirmizi" : "text-gri-700"
@@ -87,7 +104,13 @@ export function PartnerAssignmentCard({
             >
               {formatDeliveryCountdown(row.hours_left)}
             </span>
-          </p>
+            {deadline && (
+              <span className="flex items-center gap-1">
+                Kalan:{" "}
+                <PartnerCountdownTimer deadline={deadline} />
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -132,9 +155,7 @@ export function PartnerAssignmentCard({
               <p className="text-[13px] font-semibold text-lacivert">
                 {item.title}
               </p>
-              <p className="text-[11px] text-gri-600">
-                {item.qty} adet
-              </p>
+              <p className="text-[11px] text-gri-600">{item.qty} adet</p>
               <div className="mt-2">
                 <ProductionDownloadBar
                   orderId={row.order_id}

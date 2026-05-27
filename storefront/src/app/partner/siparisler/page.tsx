@@ -1,7 +1,5 @@
 /**
- * Pim Etiket — /partner/siparisler
- *
- * Partner atama listesi — filtre sekmeleri + indirme + durum güncelleme.
+ * /partner/siparisler — İşlerim
  */
 
 "use client";
@@ -9,20 +7,20 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eyebrow, Skeleton, useToast } from "@/components/ui";
+import { Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   PartnerAssignmentCard,
   type PartnerAssignmentRow,
 } from "@/components/partner";
 
-type ListFilter = "active" | "pending" | "completed" | "issue" | "all";
+type ListFilter = "urgent" | "pending" | "active" | "completed" | "all";
 
 const FILTERS: { id: ListFilter; label: string }[] = [
-  { id: "active", label: "Aktif" },
+  { id: "urgent", label: "Acil" },
   { id: "pending", label: "Bekleyen" },
+  { id: "active", label: "Üretimde" },
   { id: "completed", label: "Tamamlanan" },
-  { id: "issue", label: "Sorunlu" },
   { id: "all", label: "Tümü" },
 ];
 
@@ -35,10 +33,10 @@ export default function PartnerOrdersPage() {
   return (
     <Suspense
       fallback={
-        <main className="container py-8">
+        <div className="p-6 pb-24">
           <Skeleton className="mb-4 h-8 w-48" />
           <Skeleton className="h-64 w-full" />
-        </main>
+        </div>
       }
     >
       <PartnerOrdersInner />
@@ -49,7 +47,7 @@ export default function PartnerOrdersPage() {
 function PartnerOrdersInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const filter = parseFilter(searchParams.get("filter"));
+  const filter = parseFilter(searchParams.get("status"));
   const toast = useToast();
   const [rows, setRows] = useState<PartnerAssignmentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,15 +80,14 @@ function PartnerOrdersInner() {
   }, [load]);
 
   const setFilter = (next: ListFilter) => {
-    router.push(`/partner/siparisler?filter=${next}`);
+    router.push(`/partner/siparisler?status=${next}`);
   };
 
   return (
-    <main className="container py-8 pb-16">
-      <Eyebrow>PARTNER PANELİ</Eyebrow>
-      <h1 className="mt-2 text-2xl font-bold text-lacivert">Siparişlerim</h1>
+    <div className="p-4 md:p-6 pb-24 lg:pb-6">
+      <h1 className="text-2xl font-bold text-lacivert">İşlerim</h1>
       <p className="mt-1 text-sm text-gri-700">
-        Atanan işler, üretim dosyaları ve durum güncellemeleri.
+        Acil işler üstte — indirme ve durum güncellemeleri buradan.
       </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -102,7 +99,9 @@ function PartnerOrdersInner() {
             className={cn(
               "inline-flex h-9 items-center rounded-full px-4 text-[12.5px] font-semibold transition-colors",
               filter === f.id
-                ? "bg-lacivert text-white"
+                ? f.id === "urgent"
+                  ? "bg-kirmizi text-white"
+                  : "bg-lacivert text-white"
                 : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-lacivert"
             )}
           >
@@ -119,16 +118,13 @@ function PartnerOrdersInner() {
           [1, 2, 3].map((i) => <Skeleton key={i} className="h-36 w-full" />)}
 
         {!loading && rows.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-gri-200 bg-gri-50/50 p-10 text-center">
+          <div className="rounded-2xl border border-dashed border-gri-200 bg-white p-10 text-center">
             <p className="text-sm font-semibold text-gri-700">
-              Bu filtrede sipariş yok
-            </p>
-            <p className="mt-1 text-[13px] text-gri-500">
-              Yeni atamalar geldiğinde burada listelenir.
+              Bu filtrede iş yok
             </p>
             <Link
               href="/partner"
-              className="mt-4 inline-block text-sm font-semibold text-pim-mercan hover:underline"
+              className="mt-3 inline-block text-sm font-semibold text-pim-mercan hover:underline"
             >
               ← Özet sayfasına dön
             </Link>
@@ -145,6 +141,6 @@ function PartnerOrdersInner() {
             />
           ))}
       </div>
-    </main>
+    </div>
   );
 }
