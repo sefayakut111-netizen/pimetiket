@@ -29,7 +29,7 @@ import {
 } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
-import { TR_CITIES } from "@/lib/tr-cities";
+import { TR_IL_LIST, getIlceler, isValidIlIlce } from "@/lib/locations/tr-locations";
 
 // ============================================================
 // Tipler
@@ -146,7 +146,8 @@ export default function YeniPartnerPage() {
     const e: string[] = [];
     if (name.trim().length < 2) e.push("Firma adı zorunlu (min 2 karakter)");
     if (!city) e.push("İl zorunlu");
-    if (town.trim().length < 2) e.push("İlçe zorunlu");
+    if (!town) e.push("İlçe zorunlu");
+    else if (!isValidIlIlce(city, town)) e.push("Geçerli bir il-ilçe seçin");
     if (taxNumber && !/^\d{10,11}$/.test(taxNumber))
       e.push("Vergi no 10 veya 11 hane olmalı");
     if (iban && !/^TR\d{24}$/.test(iban.replace(/\s/g, "")))
@@ -345,22 +346,36 @@ export default function YeniPartnerPage() {
             <Field label="İl *" required>
               <select
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  setTown("");
+                }}
                 className="w-full px-3 h-10 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] focus:outline-none focus:ring-pim-mercan"
               >
                 <option value="">— Seç —</option>
-                {TR_CITIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {TR_IL_LIST.map((il) => (
+                  <option key={il} value={il}>
+                    {il}
+                  </option>
                 ))}
               </select>
             </Field>
             <Field label="İlçe *" required>
-              <Input
+              <select
                 value={town}
                 onChange={(e) => setTown(e.target.value)}
-                placeholder="Sarıyer"
-                maxLength={50}
-              />
+                disabled={!city}
+                className="w-full px-3 h-10 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] focus:outline-none focus:ring-pim-mercan disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {city ? "— Seç —" : "Önce il seçin"}
+                </option>
+                {getIlceler(city).map((ilce) => (
+                  <option key={ilce} value={ilce}>
+                    {ilce}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Durum" fullWidth>
               <div className="flex gap-2">
