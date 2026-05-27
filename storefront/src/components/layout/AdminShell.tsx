@@ -43,7 +43,7 @@ import {
 } from "@/lib/customer-order";
 import {
   AI_QC_ACTIVE_STATUSES,
-  UNASSIGNED_PRODUCTION_STATUSES,
+  countActiveOrdersForBadge,
 } from "@/lib/order";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import type { AdminModule } from "@/lib/admin-rbac";
@@ -52,7 +52,7 @@ interface AdminBadges {
   active: number;
   aiQc: number;
   proof: number;
-  fason: number;
+  activePartners: number;
   // Sefa 16 May v3 — Domain denetçi agent sistemi
   auditorsPending: number;
   auditorsCritical: number;
@@ -68,22 +68,18 @@ function aggregateBadges(
   helpRequests: number = 0,
   supportOpen: number = 0
 ): AdminBadges {
-  let active = 0;
   let aiQc = 0;
   let proof = 0;
-  let fason = 0;
+  const active = countActiveOrdersForBadge(orders);
   for (const o of orders) {
-    if (o.status !== "delivered" && o.status !== "cancelled") active++;
     if ((AI_QC_ACTIVE_STATUSES as readonly string[]).includes(o.status)) aiQc++;
     if (o.status === "proof_pending") proof++;
-    if ((UNASSIGNED_PRODUCTION_STATUSES as readonly string[]).includes(o.status))
-      fason++;
   }
   return {
     active,
     aiQc,
     proof,
-    fason,
+    activePartners: 0,
     auditorsPending,
     auditorsCritical,
     helpRequests,
@@ -155,7 +151,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     active: 0,
     aiQc: 0,
     proof: 0,
-    fason: 0,
+    activePartners: 0,
     auditorsPending: 0,
     auditorsCritical: 0,
     helpRequests: 0,
@@ -222,6 +218,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     let adminOrders: CustomerOrder[] = [];
     let helpRequestsCount = 0;
     let supportOpenCount = 0;
+    let activePartnersCount = 0;
 
     // Sefa 21 May v68 (site denetim P2 #13): Sidebar badge'i admin-wide
     // /api/admin/orders/list'ten çeker; daha önce listCustomerOrders
@@ -243,16 +240,36 @@ export function AdminShell({ children }: { children: ReactNode }) {
     };
 
     const refresh = () => {
-      setBadges(
-        aggregateBadges(
+      setBadges({
+        ...aggregateBadges(
           adminOrders,
           auditorCounts.pending,
           auditorCounts.critical,
           helpRequestsCount,
           supportOpenCount
-        )
-      );
+        ),
+        activePartners: activePartnersCount,
+      });
     };
+
+    const fetchActivePartners = async () => {
+      try {
+        const res = await fetch("/api/admin/fason/partners", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          partners?: Array<{ active?: boolean }>;
+        };
+        activePartnersCount = (json.partners ?? []).filter((p) => p.active).length;
+        refresh();
+      } catch {
+        /* sessiz */
+      }
+    };
+
+    void fetchActivePartners();
+    const partnersInterval = setInterval(fetchActivePartners, 120_000);
 
     void fetchAdminOrders();
     const ordersInterval = setInterval(fetchAdminOrders, 60_000);
@@ -322,6 +339,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       window.removeEventListener("pim_customer_orders_updated", fetchAdminOrders);
       clearInterval(interval);
       clearInterval(ordersInterval);
+      clearInterval(partnersInterval);
       clearInterval(helpInterval);
       clearInterval(supportInterval);
     };
@@ -388,7 +406,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             href: "/admin/fason",
             label: "Üretim Partnerleri",
             icon: <Icon.Truck size={16} />,
-            badge: badges.fason,
+            badge: badges.activePartners,
             module: "fason",
           },
         ],
