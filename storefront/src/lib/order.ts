@@ -90,29 +90,80 @@ export function countCancelledOrders(
   return orders.filter((o) => o.status === "cancelled").length;
 }
 
-/** Admin liste filtre chip'leri */
+/** Admin liste filtre chip gruplari (8 chip) */
+export type AdminStatusChipId =
+  | "all"
+  | "tasarim"
+  | "inceleniyor"
+  | "musteri_onayi"
+  | "uretime_hazir"
+  | "uretimde"
+  | "kargo_teslim"
+  | "iptal";
+
+export const ADMIN_STATUS_CHIP_MAP: Record<
+  Exclude<AdminStatusChipId, "all">,
+  readonly OrderStatus[]
+> = {
+  tasarim: ["paid", "awaiting_upload"],
+  inceleniyor: [
+    "qc_pending",
+    "qc_flagged",
+    "human_review",
+    "human_review_failed",
+    "operator_review",
+  ],
+  musteri_onayi: ["proof_generating", "proof_validating", "proof_pending"],
+  uretime_hazir: ["proof_approved", "ready_to_ship"],
+  uretimde: ["fason_assigned", "in_production"],
+  kargo_teslim: ["shipped", "delivered"],
+  iptal: ["cancelled"],
+};
+
 export const ADMIN_STATUS_FILTER_CHIPS: ReadonlyArray<{
-  id: OrderStatus | "all";
+  id: AdminStatusChipId;
   label: string;
 }> = [
   { id: "all", label: "Tümü" },
-  { id: "paid", label: "Yeni (ödendi)" },
-  { id: "awaiting_upload", label: "Tasarım bekleniyor" },
-  { id: "qc_pending", label: "AI kontrol" },
-  { id: "qc_flagged", label: "AI sorun (acil)" },
-  { id: "human_review", label: "İnsan incelemesi" },
-  { id: "operator_review", label: "Operatör inceliyor" },
-  { id: "proof_generating", label: "Prova hazırlanıyor" },
-  { id: "proof_pending", label: "Müşteri onayı bekliyor" },
-  { id: "proof_validating", label: "Düzenleme doğrulanıyor" },
-  { id: "proof_approved", label: "Müşteri onayladı" },
-  { id: "ready_to_ship", label: "Üretime hazır" },
-  { id: "fason_assigned", label: "Partnere atandı" },
-  { id: "in_production", label: "Üretimde" },
-  { id: "shipped", label: "Kargoda" },
-  { id: "delivered", label: "Teslim edildi" },
-  { id: "cancelled", label: "İptal edildi" },
+  { id: "tasarim", label: "Tasarım bekleniyor" },
+  { id: "inceleniyor", label: "İnceleniyor" },
+  { id: "musteri_onayi", label: "Müşteri onayı" },
+  { id: "uretime_hazir", label: "Üretime hazır" },
+  { id: "uretimde", label: "Üretimde" },
+  { id: "kargo_teslim", label: "Kargo + Teslim" },
+  { id: "iptal", label: "İptal" },
 ];
+
+export function statusesForAdminChip(
+  chipId: AdminStatusChipId
+): OrderStatus[] | null {
+  if (chipId === "all") return null;
+  return [...ADMIN_STATUS_CHIP_MAP[chipId]];
+}
+
+export function adminChipMatchesFilters(
+  chipId: AdminStatusChipId,
+  filters: OrderStatus[] | null
+): boolean {
+  if (chipId === "all") return !filters || filters.length === 0;
+  if (!filters?.length) return false;
+  const expected = ADMIN_STATUS_CHIP_MAP[chipId];
+  return (
+    filters.length === expected.length &&
+    expected.every((s) => filters.includes(s))
+  );
+}
+
+export function countOrdersForAdminChip(
+  orders: ReadonlyArray<{ status: string }>,
+  chipId: AdminStatusChipId
+): number {
+  if (chipId === "all") return orders.length;
+  const statuses = ADMIN_STATUS_CHIP_MAP[chipId];
+  return orders.filter((o) =>
+    statuses.includes(o.status as OrderStatus)
+  ).length;
+}
 
 /** Admin manuel status güncelleme dropdown'u — tüm enum değerleri */
 export const ADMIN_MANUAL_SET_STATUSES: readonly OrderStatus[] =

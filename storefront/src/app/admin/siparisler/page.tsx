@@ -26,6 +26,9 @@ import {
   parseAdminStatusFilter,
   getCommonBulkTransitionTargets,
   getValidTransitions,
+  statusesForAdminChip,
+  adminChipMatchesFilters,
+  countOrdersForAdminChip,
 } from "@/lib/order";
 // Sefa 22 May v68: updateCustomerOrderStatus kaldırıldı — auth mode'da
 // no-op olduğu için admin "Uygula" sessizce başarısız oluyordu. Artık
@@ -270,9 +273,8 @@ function AdminSiparislerPageInner() {
 
   const statusCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    counts.set("all", catalogOrders.length);
-    for (const o of catalogOrders) {
-      counts.set(o.status, (counts.get(o.status) ?? 0) + 1);
+    for (const f of FILTERS) {
+      counts.set(f.id, countOrdersForAdminChip(catalogOrders, f.id));
     }
     return counts;
   }, [catalogOrders]);
@@ -751,21 +753,18 @@ function AdminSiparislerPageInner() {
                 key={f.id}
                 type="button"
                 onClick={() =>
-                  setStatusFilters(f.id === "all" ? null : [f.id as AdminStatus])
+                  setStatusFilters(statusesForAdminChip(f.id))
                 }
                 className={cn(
                   "px-4 py-2 rounded-full text-[13px] font-semibold transition-colors",
-                  (f.id === "all" && !statusFilters) ||
-                    (f.id !== "all" &&
-                      statusFilters?.length === 1 &&
-                      statusFilters[0] === f.id)
+                  adminChipMatchesFilters(f.id, statusFilters)
                     ? "bg-lacivert text-white"
                     : "bg-gri-100 text-gri-700 hover:bg-gri-200"
                 )}
               >
                 {f.label}
                 <span className="ml-1 tabular-nums opacity-80">
-                  ({f.id === "all" ? statusCounts.get("all") ?? 0 : statusCounts.get(f.id) ?? 0})
+                  ({statusCounts.get(f.id) ?? 0})
                 </span>
               </button>
             ))}
@@ -1214,6 +1213,7 @@ function AdminSiparislerPageInner() {
             </span>
           </p>
         )}
+
       </div>
     </main>
   );
