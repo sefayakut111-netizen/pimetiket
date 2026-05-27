@@ -11,7 +11,6 @@ import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { AdminShell } from "./AdminShell";
 import { ViewModeBanner } from "./ViewModeBanner";
-import { PartnerPreviewBanner } from "./PartnerPreviewBanner";
 import { PimChat } from "@/components/pim/PimChat";
 import { ReviewRequestBanner } from "@/components/reviews/ReviewRequestBanner";
 import { bumpSchemaVersionIfNeeded } from "@/lib/cache-invalidate";
@@ -38,16 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   if (isPartner) {
-    return (
-      <>
-        <PartnerPreviewBanner />
-        <TopBar />
-        <div id="main" tabIndex={-1} className="flex-1 outline-none">
-          {children}
-        </div>
-        <Footer />
-      </>
-    );
+    return <>{children}</>;
   }
 
   return (
