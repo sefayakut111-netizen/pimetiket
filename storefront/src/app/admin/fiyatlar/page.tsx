@@ -423,7 +423,13 @@ function FiyatlarPageInner() {
     const vatAmount = total - total / (1 + draft.vat.pct / 100);
     const subtotal = total - vatAmount;
     const opEnabled = draft.operation.enabled !== false;
-    const feeAmount = opEnabled ? subtotal * (draft.operation.fee_pct / 100) : 0;
+    const feeAmount =
+      opEnabled &&
+      previewResult.ok &&
+      "with_fee" in previewResult &&
+      "with_margin" in previewResult
+        ? previewResult.with_fee - previewResult.with_margin
+        : 0;
     const unitPrice = unitPriceFromPreview(previewResult);
 
     if (

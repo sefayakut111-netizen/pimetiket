@@ -364,7 +364,7 @@ export function calculatePrice(
       if (!id) continue;
       const item = group.items.find((i: OptionItem) => i.id === id);
       if (item) {
-        options_pct_total += item.pct_add;
+        options_pct_total += item.pct_add ?? 0;
         selected_options_detail.push({
           group_id,
           group_label: group.label,
@@ -379,7 +379,7 @@ export function calculatePrice(
       for (const id of ids) {
         const item = group.items.find((i: OptionItem) => i.id === id);
         if (item) {
-          options_pct_total += item.pct_add;
+          options_pct_total += item.pct_add ?? 0;
           selected_options_detail.push({
             group_id,
             group_label: group.label,
@@ -408,7 +408,10 @@ export function calculatePrice(
 
   // 9. Fee gross-up (PayTR komisyonu müşteriye binsin)
   const fee_pct = opEnabled ? (op.fee_pct ?? 0) : 0;
-  const with_fee = with_margin / (1 - fee_pct / 100);
+  const with_fee =
+    fee_pct > 0 && fee_pct < 100
+      ? with_margin / (1 - fee_pct / 100)
+      : with_margin;
 
   // 10. KDV
   const final = with_fee * (1 + config.vat.pct / 100);
