@@ -120,7 +120,7 @@ export function RollPlanSvg({
         y="4"
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="18"
+        fontSize="22"
         fill="#1F2937"
         fontWeight="700"
       >
@@ -135,7 +135,7 @@ export function RollPlanSvg({
       <text
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="18"
+        fontSize="22"
         fill="#1F2937"
         fontWeight="700"
         transform="rotate(90)"
@@ -146,7 +146,7 @@ export function RollPlanSvg({
         <text
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="18"
+          fontSize="22"
           fill="#10B981"
           fontWeight="600"
           transform={`rotate(90) translate(0, 20)`}
@@ -176,7 +176,7 @@ export function RollPlanSvg({
         y={PAD_TOP + maxRollsToShow * (rollW + ROLL_GAP) + 21}
         textAnchor="middle"
         fontFamily="Plus Jakarta Sans, sans-serif"
-        fontSize="18"
+        fontSize="22"
         fill="#1F2937"
         fontWeight="600"
       >
@@ -349,7 +349,7 @@ function RollGroup({
         y={rollY + ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="20"
+        fontSize="24"
         fill="#8B7B5C"
         fontWeight="700"
       >
@@ -368,7 +368,7 @@ function RollGroup({
         y={rollY + rollW - ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="20"
+        fontSize="24"
         fill="#8B7B5C"
         fontWeight="700"
       >
@@ -414,7 +414,7 @@ function RollGroup({
         y={rollY + rollW / 2}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="18"
+        fontSize="22"
         fill="#1F2937"
         fontWeight="700"
         transform={`rotate(-90 ${padX + ROLL_MARGIN_Y / 2} ${rollY + rollW / 2})`}
@@ -477,7 +477,7 @@ function RollGroup({
         <text
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="18"
+          fontSize="22"
           fill="#4B5563"
           fontWeight="700"
           transform="rotate(-90)"
@@ -558,7 +558,7 @@ function SheetRect({
         x={x + 14}
         y={y + 28}
         fontFamily="JetBrains Mono, monospace"
-        fontSize="20"
+        fontSize="24"
         fill="#FF6B5B"
         fontWeight="700"
       >
@@ -570,7 +570,7 @@ function SheetRect({
         y={y + height - 12}
         textAnchor="end"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="18"
+        fontSize="22"
         fill="#9CA3AF"
         fontWeight="500"
       >
@@ -610,7 +610,7 @@ function EmptySheet({
         y={y + height / 2 + 7}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="20"
+        fontSize="24"
         fill="#9CA3AF"
         opacity="0.7"
       >
