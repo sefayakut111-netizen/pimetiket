@@ -44,6 +44,7 @@ import {
   quoteSticker,
   findTier,
   computeCost,
+  type CostResult,
 } from "@/lib/pricing-engine";
 import { ProfileTabs } from "@/components/admin/pricing/ProfileTabs";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
@@ -591,22 +592,27 @@ export function StickerCalculator({
 
           {/* RIGHT — Output */}
           <div className="space-y-4">
-            <SitePriceHero
-              liveSitePrice={liveSitePrice}
-              qty={qty}
-              tier={displayTier}
-              totalM2={result.ok ? result.geometry.totalM2 : 0}
-              sheetsNeeded={result.ok ? result.geometry.fit.sheetsNeeded : 0}
-            />
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <OperatorCostHero
+                result={result}
+                simulationCost={simulationCost}
+                qty={qty}
+              />
+              <SitePriceHero
+                liveSitePrice={liveSitePrice}
+                qty={qty}
+                tier={displayTier}
+                totalM2={result.ok ? result.geometry.totalM2 : 0}
+                sheetsNeeded={result.ok ? result.geometry.fit.sheetsNeeded : 0}
+              />
+            </div>
 
             {result.ok && simulationCost && liveSitePrice?.ok && (
-              <SimulationCompareCard
+              <ProfitCompareStrip
+                operatorCost={simulationCost.baseCost}
                 simulationTotal={simulationCost.total}
-                simulationBase={simulationCost.baseCost}
-                siteFinal={liveSitePrice.final}
                 siteSell={liveSitePrice.with_margin}
-                totalM2={result.geometry.totalM2}
-                fasonRate={fasonRate}
+                siteFinal={liveSitePrice.final}
               />
             )}
 
@@ -833,54 +839,123 @@ function TierGrid({
   );
 }
 
-function SimulationCompareCard({
-  simulationTotal,
-  simulationBase,
-  siteFinal,
-  siteSell,
-  totalM2,
-  fasonRate,
+function OperatorCostHero({
+  result,
+  simulationCost,
+  qty,
 }: {
-  simulationTotal: number;
-  simulationBase: number;
-  siteFinal: number;
-  siteSell: number;
-  totalM2: number;
-  fasonRate: number;
+  result: ReturnType<typeof quoteSticker>;
+  simulationCost: CostResult | null;
+  qty: number;
 }) {
-  const diffKdvHaric = siteSell - simulationBase;
-  const diffKdvDahil = siteFinal - simulationTotal;
-  const pctKdvHaric =
-    simulationBase > 0 ? (diffKdvHaric / simulationBase) * 100 : 0;
+  if (!result.ok) {
+    return (
+      <Card padding="p-6" className="ring-1 ring-gri-200">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
+          Operatör Maliyet Simülasyonu
+        </div>
+        <div className="text-[32px] font-bold text-gri-400">—</div>
+        <p className="mt-2 text-[13px] text-gri-600">{result.reason}</p>
+      </Card>
+    );
+  }
+
+  const { geometry } = result;
+  const cost = simulationCost;
+  if (!cost) {
+    return (
+      <Card padding="p-6" className="ring-1 ring-gri-200">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
+          Operatör Maliyet Simülasyonu
+        </div>
+        <div className="text-[32px] font-bold text-gri-400">—</div>
+      </Card>
+    );
+  }
 
   return (
-    <Card padding="p-5" className="ring-1 ring-gri-200 bg-gri-50/60">
-      <div className="space-y-2 text-[14px] tabular-nums text-gri-800 font-mono">
-        <p>
-          <span className="text-[11px] uppercase tracking-wide text-gri-500 font-sans font-semibold">
-            Simülasyon maliyeti:
-          </span>{" "}
-          <strong>{fmt(Math.round(simulationTotal))} ₺</strong>{" "}
-          <span className="text-[12px] text-gri-500 font-sans">(KDV dahil)</span>
-        </p>
-        <p className="text-[12px] text-gri-500 font-sans">
-          Fason {fmt(fasonRate)} ₺/m² × {totalM2.toFixed(3)} m² · KDV hariç{" "}
-          {fmt(Math.round(simulationBase))} ₺
-        </p>
-        <p>
-          <span className="text-[11px] uppercase tracking-wide text-gri-500 font-sans font-semibold">
-            Site satış fiyatı:
-          </span>{" "}
-          <strong>{fmt(Math.round(siteFinal))} ₺</strong>
-        </p>
-        <p className="font-semibold text-lacivert pt-2 border-t border-gri-200">
-          Fark: {diffKdvDahil >= 0 ? "+" : ""}
-          {fmt(Math.round(diffKdvDahil))} ₺ ({pctKdvHaric.toFixed(0)}% kâr)
-        </p>
-        <p className="text-[12px] text-gri-600 font-sans">
-          Net kâr (KDV hariç): {diffKdvHaric >= 0 ? "+" : ""}
-          {fmt(Math.round(diffKdvHaric))} ₺ · tier simülasyona uygulanmaz
-        </p>
+    <Card
+      padding="p-6"
+      className="ring-1 ring-gri-300 bg-gradient-to-br from-gri-50 to-white"
+    >
+      <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
+        Operatör Maliyet Simülasyonu
+      </div>
+      <div className="text-[36px] font-bold tabular-nums text-lacivert leading-none">
+        {fmt(Math.round(cost.total))}{" "}
+        <span className="text-[20px] text-gri-500">₺</span>
+      </div>
+      <p className="text-[12px] text-gri-500 mt-0.5 tabular-nums">
+        KDV dahil · KDV hariç {fmt(Math.round(cost.baseCost))} ₺
+      </p>
+      <p className="text-[12px] text-gri-600 mt-1">
+        Fason + operasyon · tier uygulanmaz
+      </p>
+      <p className="text-[12px] text-gri-500 mt-2 tabular-nums">
+        {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka ·{" "}
+        {geometry.totalM2.toFixed(3)} m²
+      </p>
+      <div className="mt-4 pt-4 border-t border-gri-200 grid grid-cols-2 gap-3 text-[13px] tabular-nums">
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">Üretim</div>
+          {fmt(Math.round(cost.productionCost))} ₺
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">Operasyon</div>
+          {fmt(Math.round(cost.operationCost))} ₺
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil sim.</div>
+          {fmt(Math.round(cost.total))} ₺
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-gri-500 font-semibold">Birim (KDV dahil)</div>
+          {fmt(cost.unitPrice, 2)} ₺
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ProfitCompareStrip({
+  operatorCost,
+  simulationTotal,
+  siteSell,
+  siteFinal,
+}: {
+  operatorCost: number;
+  simulationTotal: number;
+  siteSell: number;
+  siteFinal: number;
+}) {
+  const configProfit = siteSell - operatorCost;
+  const pct =
+    operatorCost > 0 ? (configProfit / operatorCost) * 100 : 0;
+
+  return (
+    <Card padding="p-4" className="ring-1 ring-pim-mercan/30 bg-pim-mercan/5">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
+        <span className="font-semibold text-lacivert">Maliyet vs Satış Karşılaştırması</span>
+        <div className="flex flex-wrap gap-4 tabular-nums">
+          <span>
+            Simülasyon (KDV hariç):{" "}
+            <strong>{fmt(Math.round(operatorCost))} ₺</strong>
+          </span>
+          <span>
+            Simülasyon (KDV dahil):{" "}
+            <strong>{fmt(Math.round(simulationTotal))} ₺</strong>
+          </span>
+          <span>
+            Site satış (KDV hariç): <strong>{fmt(Math.round(siteSell))} ₺</strong>
+          </span>
+          <span>
+            Site final (KDV dahil): <strong>{fmt(Math.round(siteFinal))} ₺</strong>
+          </span>
+          <span className="text-pim-mercan-koyu font-bold">
+            Fark: {configProfit >= 0 ? "+" : ""}
+            {fmt(Math.round(configProfit))} ₺ ({pct.toFixed(0)}% kâr)
+          </span>
+        </div>
       </div>
     </Card>
   );
