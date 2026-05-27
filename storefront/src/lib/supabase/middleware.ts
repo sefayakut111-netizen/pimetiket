@@ -34,6 +34,7 @@ const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/bildirim-tercihleri",
   "/odeme",
   "/odeme-sonuc",
+  "/onay",
   "/yorum-yaz",
   "/demo", // staff/test sayfası — public erişimden gizlendi (UX audit P0)
   "/admin", // staff role check ileride; şimdilik login zorunlu

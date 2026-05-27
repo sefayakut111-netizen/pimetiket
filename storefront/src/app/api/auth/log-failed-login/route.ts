@@ -22,38 +22,35 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const BodySchema = z.object({
   email: z.string().email().max(254),
   reason: z.string().max(100).default("password_invalid"),
 });
 
-// Cloudflare CF-Connecting-IP > X-Forwarded-For > X-Real-IP
-function getClientIp(req: Request): string | null {
-  const cfIp = req.headers.get("cf-connecting-ip");
-  if (cfIp) return cfIp.trim();
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]?.trim() ?? null;
-  const xri = req.headers.get("x-real-ip");
-  if (xri) return xri.trim();
-  return null;
-}
-
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit({
+    key: `log-failed-login:${ip ?? "unknown"}`,
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!rl.success) {
+    return NextResponse.json({ ok: false, reason: "rate_limited" });
+  }
+
   let body: z.infer<typeof BodySchema>;
   try {
     const raw = (await req.json()) as unknown;
     body = BodySchema.parse(raw);
   } catch {
-    // Geçersiz body — yine de 200 dön ki client akışı bozulmasın
     return NextResponse.json({ ok: false, reason: "invalid_body" });
   }
 
-  const ip = getClientIp(req);
   const userAgent = req.headers.get("user-agent")?.slice(0, 500) ?? null;
 
   if (!ip) {
-    // IP yoksa logging anlamsız (auditor IP grupluyor). Sessiz skip.
     return NextResponse.json({ ok: false, reason: "no_ip" });
   }
 
@@ -67,7 +64,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true });
   } catch {
-    // RPC hatası kullanıcı akışını bozmaz, sessiz fail
     return NextResponse.json({ ok: false, reason: "rpc_failed" });
   }
 }

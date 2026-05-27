@@ -49,6 +49,13 @@ function genericOk() {
 }
 
 export async function POST(req: Request) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.ALLOW_AUTO_CONFIRM !== "true"
+  ) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
   // 0) Rate limit — IP başına
   const ip = getClientIp(req);
   const rl = await rateLimit({
