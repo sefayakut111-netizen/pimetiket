@@ -12,7 +12,6 @@
  */
 
 import type { CustomerCartItem } from "./customer-cart";
-import { buildOrderItemMeta } from "./order-item-meta";
 import type { OrderStatus } from "./order";
 import { createClient } from "./supabase/client";
 import type { Json } from "./supabase/types";
@@ -267,50 +266,19 @@ async function dbGet(orderId: string): Promise<CustomerOrder | null> {
 }
 
 /**
- * fn_create_order RPC çağrısı — atomik orders + items + ilk event.
+ * fn_create_order RPC çağrısı — KALDIRILDI (Mig 114 güvenlik).
+ * Authenticated kullanıcılar client'tan ücretsiz "paid" sipariş açamaz.
+ * Ödeme akışı: /api/payment/init → PayTR → callback (fn_finalize_paid_order).
+ * Admin/dev bypass: /api/admin/orders/bypass-checkout veya /api/dev/mock-checkout.
  */
 async function dbCreate(
-  userId: string,
-  payload: Omit<CustomerOrder, "id" | "status" | "createdAt" | "createdAtIso">
+  _userId: string,
+  _payload: Omit<CustomerOrder, "id" | "status" | "createdAt" | "createdAtIso">
 ): Promise<CustomerOrder | null> {
-  const supabase = createClient();
-  const orderId = generateOrderId();
-  const itemsJson = payload.items.map((i) => ({
-    product: i.product,
-    title: i.title,
-    config: i.config,
-    width: i.width,
-    height: i.height,
-    qty: i.qty,
-    unit: i.unit,
-    total: i.total,
-    meta: buildOrderItemMeta(i) as Json,
-  }));
-
-  console.log(
-    "[createCustomerOrder] items designTempIds:",
-    itemsJson.map((i) => (i.meta as { designTempId?: string }).designTempId ?? null)
+  console.error(
+    "[orders] dbCreate: client-side fn_create_order devre dışı. Ödeme akışını kullanın."
   );
-
-  const { error } = await supabase.rpc("fn_create_order", {
-    p_order_id: orderId,
-    p_user_id: userId,
-    p_subtotal: payload.subtotal,
-    p_shipping: payload.shipping,
-    p_total: payload.total,
-    p_address: payload.address as unknown as Json,
-    p_invoice: payload.invoice as unknown as Json,
-    p_payment: payload.payment as unknown as Json,
-    p_estimated_delivery: payload.estimatedDelivery ?? "",
-    p_items: itemsJson as Json,
-  });
-  if (error) {
-    console.error("[orders] dbCreate error:", error);
-    return null;
-  }
-
-  // Insert sonrası tek read ile dön
-  return dbGet(orderId);
+  return null;
 }
 
 // ============================================================

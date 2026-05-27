@@ -46,7 +46,6 @@ import {
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 import {
-  createCustomerOrder,
   addDaysIso,
 } from "@/lib/customer-order";
 import {
@@ -762,21 +761,28 @@ export default function OdemePage() {
           // engellemek için "Ödeme yakında" sayfasına yönlendir.
           if (process.env.NODE_ENV !== "production") {
             console.warn("[odeme] PSP not configured, dev mock fallback");
-            const masked = "**** **** **** 0000";
-            const order = await createCustomerOrder({
-              items: cartItems,
-              address: addr,
-              invoice,
-              payment: { method: "card", masked },
-              subtotal,
-              shipping: effectiveShipping,
-              total: effectiveTotal,
-              estimatedDelivery: addDaysIso(
-                cartItems.some((i) => i.product === "etiket") ? 10 : 5
-              ),
+            const mockRes = await fetch("/api/dev/mock-checkout", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                items: cartItems,
+                address: addr,
+                invoice,
+                subtotal,
+                shipping: effectiveShipping,
+                total: effectiveTotal,
+                estimatedDelivery: addDaysIso(
+                  cartItems.some((i) => i.product === "etiket") ? 10 : 5
+                ),
+              }),
             });
+            if (!mockRes.ok) {
+              throw new Error("dev_mock_checkout_failed");
+            }
+            const mockData = (await mockRes.json()) as { orderId?: string };
+            if (!mockData.orderId) throw new Error("missing_order_id");
             await clearCustomerCart();
-            router.push(`/odeme-sonuc?status=success&order=${order.id}`);
+            router.push(`/odeme-sonuc?status=success&order=${mockData.orderId}`);
             return;
           }
           // Production: ödeme aktif değil
@@ -1870,18 +1876,31 @@ export default function OdemePage() {
                             phone: newAddr.phone || "5551234567",
                           };
                       const invoice = { type: "individual" as const, tc: "00000000000" };
-                      const order = await createCustomerOrder({
-                        items: cartItems,
-                        address: addr,
-                        invoice,
-                        payment: { method: "card", masked: "**** 0000 (admin bypass)" },
-                        subtotal,
-                        shipping: effectiveShipping,
-                        total: effectiveTotal,
-                        estimatedDelivery: addDaysIso(
-                          cartItems.some((i) => i.product === "etiket") ? 10 : 5
-                        ),
+                      const bypassRes = await fetch("/api/admin/orders/bypass-checkout", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          items: cartItems,
+                          address: addr,
+                          invoice,
+                          subtotal,
+                          shipping: effectiveShipping,
+                          total: effectiveTotal,
+                          estimatedDelivery: addDaysIso(
+                            cartItems.some((i) => i.product === "etiket") ? 10 : 5
+                          ),
+                        }),
                       });
+                      if (!bypassRes.ok) {
+                        throw new Error("admin_bypass_checkout_failed");
+                      }
+                      const bypassData = (await bypassRes.json()) as {
+                        orderId?: string;
+                      };
+                      if (!bypassData.orderId) {
+                        throw new Error("missing_order_id");
+                      }
+                      const order = { id: bypassData.orderId };
                       await clearCustomerCart();
                       // Tasarım promote + QC tetikle (payment callback'in yaptığını burada da yap)
                       try {

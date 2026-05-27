@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   verifyCallback,
@@ -527,11 +528,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Intent'in son durumuna bak (POST callback işledi mi?)
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const admin = createAdminClient();
   const { data: row } = await admin
     .from("payment_intents")
-    .select("status, order_id, failure_reason")
+    .select("status, order_id, failure_reason, user_id")
     .eq("id", oid)
     .single();
 
@@ -546,7 +551,25 @@ export async function GET(req: NextRequest) {
     status: string;
     order_id: string | null;
     failure_reason: string | null;
+    user_id: string;
   };
+
+  if (!user) {
+    const nextPath =
+      ret === "ok"
+        ? `/odeme-sonuc?status=success&oid=${encodeURIComponent(oid)}`
+        : `/odeme-sonuc?status=fail&reason=login_required`;
+    const redirectUrl = new URL("/auth", siteUrl);
+    redirectUrl.searchParams.set("next", nextPath);
+    return NextResponse.redirect(redirectUrl.toString(), 303);
+  }
+
+  if (intent.user_id !== user.id) {
+    return NextResponse.redirect(
+      `${siteUrl}/odeme-sonuc?status=fail&reason=forbidden`,
+      303
+    );
+  }
 
   if (intent.status === "consumed") {
     const orderId = await resolveOrderIdFromIntent(
@@ -575,6 +598,7 @@ export async function GET(req: NextRequest) {
   // Pending — IPN henüz gelmemiş olabilir. PayTR Durum Sorgu ile recover dene.
   if (ret === "ok") {
     const recovered = await recoverPendingPaymentIntentWithRetries(admin, oid, {
+      userId: user.id,
       maxAttempts: 5,
       delayMs: 1500,
     });
