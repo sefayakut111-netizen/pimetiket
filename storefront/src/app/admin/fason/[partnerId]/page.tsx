@@ -93,7 +93,7 @@ export default function AdminFasonPartnerDetailPage() {
 
   return (
     <main className="py-8 pb-20">
-      <div className="mx-auto max-w-[1080px] px-4 md:px-8">
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-6">
           <Link
             href="/admin/fason"

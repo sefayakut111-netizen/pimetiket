@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Skeleton } from "@/components/ui";
+import { Button, Card, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   getAdminPillClasses,
@@ -12,7 +12,6 @@ import {
 } from "@/lib/fason/status-labels";
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
-  CAPABILITY_LABEL,
   formatShortDate,
   isAssignmentOverdue,
   type AssignmentRow,
@@ -20,9 +19,279 @@ import {
   type JobsFilter,
   type PartnerDetailTab,
 } from "@/components/admin/fason/fason-types";
+import { PartnerCapacityPanel } from "@/components/admin/fason/partner-capacity-panel";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
 
-export function PartnerAssignmentsPanel({
+function metricValueClass(value: number): string {
+  return value === 0 ? "text-gri-400" : "text-lacivert font-semibold";
+}
+
+function ScoreDisplay({ score }: { score: number | null }) {
+  if (score == null) {
+    return (
+      <span className="text-gri-400">
+        — <span className="text-[11px] font-normal">(ilk 5 is tamamlaninca)</span>
+      </span>
+    );
+  }
+  const pct = Math.round(score * 100);
+  const filled = Math.max(1, Math.round(pct / 20));
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="font-semibold text-lacivert tabular-nums">{pct}/100</span>
+      <span className="inline-flex items-center gap-0.5 text-sari-koyu">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Icon.Star
+            key={i}
+            size={12}
+            className={cn(i < filled ? "opacity-100" : "opacity-25")}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function PartnerSidebar({
+  partner,
+  jobStats,
+  onPartnerUpdated,
+}: {
+  partner: FasonPartner;
+  jobStats: {
+    active: number;
+    overdue: number;
+    completed: number;
+    issues: number;
+  };
+  onPartnerUpdated: (p: FasonPartner) => void;
+}) {
+  return (
+    <aside className="space-y-0 rounded-xl border border-gri-200 bg-white p-4 lg:sticky lg:top-20 lg:self-start">
+      <section className="pb-4">
+        <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
+          Performans
+        </h3>
+        <dl className="space-y-2 text-[13px]">
+          <div className="flex justify-between gap-3">
+            <dt className="text-gri-600">Aktif is:</dt>
+            <dd className={metricValueClass(jobStats.active)}>{jobStats.active}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-gri-600">Geciken:</dt>
+            <dd className={metricValueClass(jobStats.overdue)}>{jobStats.overdue}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-gri-600">Tamamlanan:</dt>
+            <dd className={metricValueClass(jobStats.completed)}>
+              {jobStats.completed}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 items-start">
+            <dt className="text-gri-600 shrink-0">Ortalama skor:</dt>
+            <dd className="text-right">
+              <ScoreDisplay score={partner.cached_score} />
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-gri-600">Tipik teslim:</dt>
+            <dd className="text-lacivert font-semibold">
+              {partner.default_lead_days} gun
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="py-4 border-t border-gri-100">
+        <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
+          Firma bilgileri
+        </h3>
+        <dl className="space-y-2 text-[13px]">
+          <div>
+            <dt className="text-gri-500 text-[11px]">Ad</dt>
+            <dd className="font-medium text-lacivert">{partner.name}</dd>
+          </div>
+          {partner.city && (
+            <div>
+              <dt className="text-gri-500 text-[11px]">Sehir</dt>
+              <dd>{partner.city}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-gri-500 text-[11px]">E-posta</dt>
+            <dd>
+              <a
+                href={`mailto:${partner.contact_email}`}
+                className="text-pim-mercan hover:underline break-all"
+              >
+                {partner.contact_email}
+              </a>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <PartnerCapacityPanel partner={partner} onUpdated={onPartnerUpdated} />
+    </aside>
+  );
+}
+
+function formatOrderLineSummary(
+  items: Array<{ product: string; title?: string; qty: number }>
+): string {
+  const first = items[0];
+  if (!first) return "";
+  const label =
+    first.title?.trim() ||
+    (first.product === "sticker" ? "Sticker" : "Etiket");
+  return `${label} x ${first.qty.toLocaleString("tr-TR")}`;
+}
+
+function AssignOrderToPartner({
+  partnerId,
+  partnerName,
+  contractSigned,
+  onAssigned,
+}: {
+  partnerId: string;
+  partnerName: string;
+  contractSigned: boolean;
+  onAssigned: () => void;
+}) {
+  const toast = useToast();
+  const [unassigned, setUnassigned] = useState<
+    Array<{
+      id: string;
+      customer: string;
+      total: number;
+      summary: string;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+
+  const loadUnassigned = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "/api/admin/orders/list?status=ready_to_ship,proof_approved&limit=20"
+      );
+      const data = (await res.json()) as {
+        orders?: Array<{
+          id: string;
+          total: number;
+          fasonName?: string;
+          address?: { name?: string } | null;
+          items?: Array<{ product: string; title?: string; qty: number }>;
+        }>;
+      };
+      setUnassigned(
+        excludeTestOrderLikes(data.orders ?? [])
+          .filter((o) => !o.fasonName)
+          .map((o) => ({
+            id: o.id,
+            customer: o.address?.name ?? "—",
+            total: o.total,
+            summary: formatOrderLineSummary(o.items ?? []),
+          }))
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUnassigned();
+  }, [loadUnassigned]);
+
+  const assignOrder = async (orderId: string) => {
+    if (!contractSigned) {
+      toast.error("Sozlesme imzalanmadan atama yapilamaz");
+      return;
+    }
+    if (
+      !confirm(
+        `Bu siparisi ${partnerName} partnere atamak istediginizden emin misiniz?`
+      )
+    ) {
+      return;
+    }
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/admin/fason/assign", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId, fasonPartnerId: partnerId }),
+      });
+      if (res.ok) {
+        setUnassigned((prev) => prev.filter((o) => o.id !== orderId));
+        onAssigned();
+      } else {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(j.error ?? "Atama basarisiz");
+      }
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <p className="text-[12px] text-gri-500 mt-6">
+        Atanabilir siparisler yukleniyor...
+      </p>
+    );
+  }
+
+  if (unassigned.length === 0) {
+    return (
+      <p className="text-[12px] text-gri-500 mt-6">
+        Su an atanabilecek hazir siparis yok.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-6 pt-4 border-t border-gri-100">
+      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
+        Atanabilecek siparisler ({unassigned.length})
+      </h4>
+      <ul className="space-y-2">
+        {unassigned.slice(0, 8).map((o) => (
+          <li
+            key={o.id}
+            className="flex items-center justify-between gap-3 rounded-lg border border-gri-200 bg-gri-50/50 px-3 py-2.5"
+          >
+            <div className="min-w-0 text-[12px]">
+              <span className="font-mono font-semibold text-lacivert">
+                {o.id}
+              </span>
+              <span className="text-gri-700"> · {o.customer}</span>
+              {o.summary && (
+                <span className="text-gri-500"> · {o.summary}</span>
+              )}
+              <span className="text-gri-600 tabular-nums">
+                {" "}
+                · {o.total.toLocaleString("tr-TR")} TL
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={assigning}
+              onClick={() => void assignOrder(o.id)}
+              className="shrink-0"
+            >
+              Ata
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function JobsTabContent({
   partner,
   history,
   filteredJobs,
@@ -49,47 +318,16 @@ export function PartnerAssignmentsPanel({
   const filterChips: Array<{ id: JobsFilter; label: string; count?: number }> =
     [
       { id: "active", label: "Aktif", count: jobStats.active },
-      { id: "all", label: "Tümü", count: history.length },
+      { id: "all", label: "Tumu", count: history.length },
       { id: "completed", label: "Tamamlanan", count: jobStats.completed },
       { id: "issue", label: "Sorunlu", count: jobStats.issues },
     ];
 
   return (
     <div>
-      {jobStats.active === 0 && jobStats.overdue === 0 ? (
-        <p className="text-sm text-gri-500 mb-4">Henuz atanan is yok.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div className="rounded-lg bg-pim-mercan-tint ring-1 ring-pim-mercan/20 p-2.5">
-            <div className="text-[10px] font-bold uppercase text-gri-600">
-              Aktif is
-            </div>
-            <div className="text-[18px] font-bold text-lacivert tabular-nums">
-              {jobStats.active}
-            </div>
-          </div>
-          <div
-            className={cn(
-              "rounded-lg p-2.5 ring-1",
-              jobStats.overdue > 0
-                ? "bg-kirmizi-soft ring-kirmizi/30"
-                : "bg-gri-50 ring-gri-200"
-            )}
-          >
-            <div className="text-[10px] font-bold uppercase text-gri-600">
-              Geciken
-            </div>
-            <div
-              className={cn(
-                "text-[18px] font-bold tabular-nums",
-                jobStats.overdue > 0 ? "text-kirmizi" : "text-lacivert"
-              )}
-            >
-              {jobStats.overdue}
-            </div>
-          </div>
-        </div>
-      )}
+      <h2 className="text-[13px] font-bold uppercase text-gri-500 mb-3">
+        Atanan isler
+      </h2>
 
       <div className="flex gap-1.5 flex-wrap mb-4">
         {filterChips.map((chip) => (
@@ -129,30 +367,19 @@ export function PartnerAssignmentsPanel({
       )}
 
       {!loading && history.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gri-200 bg-gri-50/50 p-6 text-center">
-          <div className="text-[13px] font-semibold text-gri-700 mb-1">
-            Henüz atanan iş yok
-          </div>
-          <p className="text-[12px] text-gri-500 mb-4">
-            Bu partnere sipariş atandığında burada durum takibi yapılır.
-          </p>
-          <AssignOrderToPartner
-            partnerId={partner.id}
-            partnerName={partner.name}
-            onAssigned={onAssigned}
-            alwaysShow
-          />
-        </div>
+        <p className="text-sm text-gri-500 mb-2">
+          Henuz atanan is yok. Asagidaki siparisleri bu partnere atayabilirsin.
+        </p>
       )}
 
       {!loading && history.length > 0 && filteredJobs.length === 0 && (
-        <p className="text-[13px] text-gri-700 py-4 text-center">
-          Bu filtrede kayıt yok.
+        <p className="text-[13px] text-gri-700 py-4">
+          Bu filtrede kayit yok.
         </p>
       )}
 
       {!loading && filteredJobs.length > 0 && (
-        <ul className="space-y-2 max-h-[min(520px,60vh)] overflow-y-auto pr-0.5">
+        <ul className="space-y-2 mb-2">
           {filteredJobs.map((a) => {
             const meta = getAdminPillClasses(a.status as AssignmentStatus);
             const statusMeta = getAssignmentStatusLabel(
@@ -184,7 +411,7 @@ export function PartnerAssignmentsPanel({
                       {a.customer_name ?? "—"}
                       {a.order_total != null && (
                         <span className="text-gri-500 ml-1.5 tabular-nums">
-                          · ₺{a.order_total.toLocaleString("tr-TR")}
+                          · {a.order_total.toLocaleString("tr-TR")} TL
                         </span>
                       )}
                     </div>
@@ -198,19 +425,16 @@ export function PartnerAssignmentsPanel({
                     {meta.label}
                   </span>
                 </div>
-
                 {statusMeta.hint && (
                   <p className="text-[11px] text-gri-600 mb-2 leading-snug">
                     {statusMeta.hint}
                   </p>
                 )}
-
                 {a.status === "issue" && a.issue_description && (
                   <p className="text-[11px] text-kirmizi-koyu mb-2 leading-snug">
                     {a.issue_description}
                   </p>
                 )}
-
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gri-600">
                   <span>
                     Atama:{" "}
@@ -229,135 +453,73 @@ export function PartnerAssignmentsPanel({
                       {overdue && " · gecikti"}
                     </strong>
                   </span>
-                  {a.shipped_at && (
-                    <span>
-                      Gönderim:{" "}
-                      <strong className="text-gri-800">
-                        {formatShortDate(a.shipped_at)}
-                      </strong>
-                    </span>
-                  )}
                 </div>
-
-                {a.tracking_number && (
-                  <div className="mt-2 text-[11px]">
-                    {" "}
-                    {a.tracking_url ? (
-                      <a
-                        href={a.tracking_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-pim-mercan font-semibold hover:underline"
-                      >
-                        {a.tracking_company ?? "Kargo"} · {a.tracking_number}
-                      </a>
-                    ) : (
-                      <span className="text-gri-700">
-                        {a.tracking_company ?? "Kargo"} · {a.tracking_number}
-                      </span>
-                    )}
-                  </div>
-                )}
               </li>
             );
           })}
         </ul>
       )}
 
-      {!loading && history.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-gri-100">
-          <AssignOrderToPartner
-            partnerId={partner.id}
-            partnerName={partner.name}
-            onAssigned={onAssigned}
-          />
-        </div>
-      )}
+      <AssignOrderToPartner
+        partnerId={partner.id}
+        partnerName={partner.name}
+        contractSigned={!!partner.contract_signed_at}
+        onAssigned={onAssigned}
+      />
     </div>
   );
 }
 
-// ============================================================
-// PartnerCapabilitiesPanel
-// ============================================================
-
-export function PartnerCapabilitiesPanel({
-  partner,
-  onUpdated,
-}: {
-  partner: FasonPartner;
-  onUpdated: (p: FasonPartner) => void;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const caps = partner.capabilities ?? [];
-
-  if (caps.length === 0) return null;
-
-  const verify = async (capabilityId: string, verified: boolean) => {
-    setBusyId(capabilityId);
-    try {
-      const res = await fetch(
-        `/api/admin/fason/partners/${partner.id}/capabilities/verify`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ capabilityId, verified }),
-        }
-      );
-      if (!res.ok) return;
-      const nextCaps = caps.map((c) =>
-        c.id === capabilityId ? { ...c, is_verified: verified } : c
-      );
-      onUpdated({ ...partner, capabilities: nextCaps });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
+function PartnerExtendedTab({ partner }: { partner: FasonPartner }) {
   return (
-    <div className="mb-4 pb-4 border-b border-gri-100">
-      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-2">
-        Yetkinlik onayı
-      </h4>
-      <ul className="space-y-2">
-        {caps.map((c) => {
-          const label =
-            CAPABILITY_LABEL[c.capability_value] ?? c.capability_value;
-          const verified = c.is_verified !== false;
-          return (
-            <li
-              key={c.id}
-              className="flex items-center justify-between gap-2 text-[12px]"
-            >
-              <span>
-                {c.capability_type === "product_type" ? "Ürün" : "Malzeme"}:{" "}
-                <strong>{label}</strong>
-              </span>
-              {verified ? (
-                <span className="inline-flex items-center gap-1 text-yesil font-semibold">
-                   Onaylı
-                </span>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={busyId === c.id}
-                  onClick={() => void verify(c.id, true)}
-                >
-                  Onayla
-                </Button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="space-y-5 text-[13px] text-gri-700">
+      <h2 className="text-[13px] font-bold uppercase text-gri-500">
+        Partner detayi
+      </h2>
+      <dl className="space-y-3">
+        {partner.contact_person && (
+          <div>
+            <dt className="text-gri-500 text-[11px]">Yetkili kisi</dt>
+            <dd>{partner.contact_person}</dd>
+          </div>
+        )}
+        {partner.contact_whatsapp && (
+          <div>
+            <dt className="text-gri-500 text-[11px]">WhatsApp</dt>
+            <dd>{partner.contact_whatsapp}</dd>
+          </div>
+        )}
+        {partner.express_lead_time_days != null && (
+          <div>
+            <dt className="text-gri-500 text-[11px]">Express teslim</dt>
+            <dd>{partner.express_lead_time_days} gun</dd>
+          </div>
+        )}
+        {partner.min_order_amount_try != null && (
+          <div>
+            <dt className="text-gri-500 text-[11px]">Min. siparis</dt>
+            <dd>
+              {partner.min_order_amount_try.toLocaleString("tr-TR")} TL
+            </dd>
+          </div>
+        )}
+        {partner.payment_term && (
+          <div>
+            <dt className="text-gri-500 text-[11px]">Odeme vadesi</dt>
+            <dd>{partner.payment_term}</dd>
+          </div>
+        )}
+        {partner.notes && (
+          <div>
+            <dt className="text-gri-500 text-[11px]">Notlar</dt>
+            <dd className="whitespace-pre-wrap">{partner.notes}</dd>
+          </div>
+        )}
+      </dl>
+      <PartnerMailLog partnerId={partner.id} />
     </div>
   );
 }
-
-// ============================================================
-// PartnerActions
-// ============================================================
 
 export function PartnerActions({
   partner,
@@ -408,11 +570,10 @@ export function PartnerActions({
           setOpen((o) => !o);
         }}
         className="w-8 h-8 rounded-lg hover:bg-gri-100 flex items-center justify-center text-gri-600"
-        title="İşlemler"
+        title="Islemler"
       >
         <Icon.Menu size={16} />
       </button>
-
       {open && (
         <div
           className="absolute right-0 top-9 z-20 w-48 rounded-lg bg-white shadow-lg ring-1 ring-gri-200 py-1"
@@ -425,13 +586,13 @@ export function PartnerActions({
               onClick={() =>
                 confirmAction(
                   "pause",
-                  `${partner.name} duraklatılsın mı? Yeni atama almaz.`,
-                  "Admin panelinden duraklatıldı"
+                  `${partner.name} duraklatilsin mi? Yeni atama almaz.`,
+                  "Admin panelinden duraklatildi"
                 )
               }
               disabled={busy}
             >
-              ◐ Duraklat
+              Duraklat
             </button>
           )}
           {(partner.status === "paused" || !partner.active) &&
@@ -448,7 +609,7 @@ export function PartnerActions({
                 }
                 disabled={busy}
               >
-                ▶ Devam ettir
+                Devam ettir
               </button>
             )}
           {partner.status !== "terminated" && (
@@ -458,13 +619,13 @@ export function PartnerActions({
               onClick={() =>
                 confirmAction(
                   "terminate",
-                  `${partner.name} kalıcı olarak sonlandırılsın mı? Bu işlem geri alınamaz.`,
-                  "Admin panelinden sonlandırıldı"
+                  `${partner.name} kalici olarak sonlandirilsin mi? Bu islem geri alinamaz.`,
+                  "Admin panelinden sonlandirildi"
                 )
               }
               disabled={busy}
             >
-               Sonlandır
+              Sonlandir
             </button>
           )}
           <div className="border-t border-gri-100 my-1" />
@@ -473,127 +634,13 @@ export function PartnerActions({
             className="block px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
             onClick={() => setOpen(false)}
           >
-             Düzenle
+            Duzenle
           </Link>
         </div>
       )}
     </div>
   );
 }
-
-// ============================================================
-// PartnerScoreBreakdown
-// ============================================================
-
-export function PartnerScoreBreakdown({
-  history,
-}: {
-  partner: FasonPartner;
-  history: AssignmentRow[];
-}) {
-  const metrics = useMemo(() => {
-    if (history.length === 0) return null;
-
-    const completed = history.filter(
-      (a) => a.status === "completed" || a.actual_delivery
-    );
-    const total = history.length;
-
-    const onTime = completed.filter((a) => {
-      if (!a.estimated_delivery || !a.actual_delivery) return false;
-      return (
-        new Date(a.actual_delivery).getTime() <=
-        new Date(a.estimated_delivery).getTime()
-      );
-    }).length;
-    const onTimeRate =
-      completed.length > 0
-        ? Math.round((onTime / completed.length) * 100)
-        : null;
-
-    const rejected = history.filter(
-      (a) => a.status === "rejected" || a.status === "cancelled"
-    ).length;
-    const rejectRate = total > 0 ? Math.round((rejected / total) * 100) : 0;
-
-    const deliveryDays = completed
-      .filter((a) => a.assigned_at && a.actual_delivery)
-      .map(
-        (a) =>
-          (new Date(a.actual_delivery!).getTime() -
-            new Date(a.assigned_at!).getTime()) /
-          86400000
-      );
-    const avgDays =
-      deliveryDays.length > 0
-        ? deliveryDays.reduce((s, d) => s + d, 0) / deliveryDays.length
-        : null;
-
-    return {
-      onTimeRate,
-      rejectRate,
-      avgDays,
-      totalOrders: total,
-      completedOrders: completed.length,
-    };
-  }, [history]);
-
-  if (!metrics) return null;
-
-  return (
-    <div className="mb-4 pb-4 border-b border-gri-100">
-      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
-        Performans kırılımı
-      </h4>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-gri-50 p-2.5">
-          <div className="text-[10px] text-gri-500">Zamanında teslim</div>
-          <div
-            className={cn(
-              "text-[16px] font-bold",
-              metrics.onTimeRate === null
-                ? "text-gri-400"
-                : metrics.onTimeRate >= 80
-                  ? "text-yesil"
-                  : "text-kirmizi"
-            )}
-          >
-            {metrics.onTimeRate !== null ? `%${metrics.onTimeRate}` : "—"}
-          </div>
-        </div>
-        <div className="rounded-lg bg-gri-50 p-2.5">
-          <div className="text-[10px] text-gri-500">Red oranı</div>
-          <div
-            className={cn(
-              "text-[16px] font-bold",
-              metrics.rejectRate <= 5 ? "text-yesil" : "text-kirmizi"
-            )}
-          >
-            %{metrics.rejectRate}
-          </div>
-        </div>
-        <div className="rounded-lg bg-gri-50 p-2.5">
-          <div className="text-[10px] text-gri-500">Ort. teslim</div>
-          <div className="text-[16px] font-bold text-lacivert">
-            {metrics.avgDays !== null
-              ? `${metrics.avgDays.toFixed(1)} gün`
-              : "—"}
-          </div>
-        </div>
-        <div className="rounded-lg bg-gri-50 p-2.5">
-          <div className="text-[10px] text-gri-500">Toplam iş</div>
-          <div className="text-[16px] font-bold text-lacivert">
-            {metrics.totalOrders}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// PartnerMailLog
-// ============================================================
 
 export function PartnerMailLog({ partnerId }: { partnerId: string }) {
   const [mails, setMails] = useState<
@@ -610,9 +657,9 @@ export function PartnerMailLog({ partnerId }: { partnerId: string }) {
   if (mails.length === 0) return null;
 
   return (
-    <div className="mt-3 pt-3 border-t border-gri-100">
+    <div className="pt-3 border-t border-gri-100">
       <h4 className="text-[11px] font-bold uppercase text-gri-500 mb-2">
-        Son iletişim
+        Son iletisim
       </h4>
       <ul className="space-y-1">
         {mails.map((m, i) => (
@@ -620,7 +667,7 @@ export function PartnerMailLog({ partnerId }: { partnerId: string }) {
             key={i}
             className="text-[11px] text-gri-600 flex justify-between gap-2"
           >
-            <span> {m.template.replace(/_/g, " ")}</span>
+            <span>{m.template.replace(/_/g, " ")}</span>
             <span className="text-gri-400 shrink-0">
               {new Date(m.sentAt).toLocaleDateString("tr-TR", {
                 day: "2-digit",
@@ -630,231 +677,6 @@ export function PartnerMailLog({ partnerId }: { partnerId: string }) {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-// ============================================================
-// AssignOrderToPartner
-// ============================================================
-
-export function AssignOrderToPartner({
-  partnerId,
-  partnerName,
-  onAssigned,
-  alwaysShow = false,
-}: {
-  partnerId: string;
-  partnerName: string;
-  onAssigned: () => void;
-  alwaysShow?: boolean;
-}) {
-  const [unassigned, setUnassigned] = useState<
-    Array<{ id: string; customer: string; total: number }>
-  >([]);
-  const [loading, setLoading] = useState(false);
-  const [assigning, setAssigning] = useState(false);
-
-  const loadUnassigned = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        "/api/admin/orders/list?status=ready_to_ship,proof_approved&limit=20"
-      );
-      const data = (await res.json()) as {
-        orders?: Array<{
-          id: string;
-          total: number;
-          fasonName?: string;
-          address?: { name?: string } | null;
-        }>;
-      };
-      setUnassigned(
-        excludeTestOrderLikes(data.orders ?? [])
-          .filter((o) => !o.fasonName)
-          .map((o) => ({
-            id: o.id,
-            customer: o.address?.name ?? "—",
-            total: o.total,
-          }))
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadUnassigned();
-  }, [loadUnassigned]);
-
-  const assignOrder = async (orderId: string) => {
-    if (!confirm(`${orderId} → ${partnerName} atasın mı?`)) return;
-    setAssigning(true);
-    try {
-      const res = await fetch("/api/admin/fason/assign", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orderId, fasonPartnerId: partnerId }),
-      });
-      if (res.ok) {
-        setUnassigned((prev) => prev.filter((o) => o.id !== orderId));
-        onAssigned();
-      }
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  if (loading) {
-    return alwaysShow ? (
-      <p className="text-[12px] text-gri-500">Atanabilir siparişler yükleniyor…</p>
-    ) : null;
-  }
-
-  if (unassigned.length === 0) {
-    return alwaysShow ? (
-      <p className="text-[12px] text-gri-500">
-        Şu an atanabilecek hazır sipariş yok.
-      </p>
-    ) : null;
-  }
-
-  return (
-    <div className={cn(!alwaysShow && "mt-4 pt-4 border-t border-gri-100")}>
-      <h4 className="text-[12px] font-bold uppercase text-gri-500 mb-2">
-        Atanabilecek siparişler ({unassigned.length})
-      </h4>
-      <ul className="space-y-1.5">
-        {unassigned.slice(0, 5).map((o) => (
-          <li
-            key={o.id}
-            className="flex items-center justify-between text-[12px] gap-2"
-          >
-            <span className="font-mono text-[11px] truncate">
-              {o.id} · {o.customer}
-            </span>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={assigning}
-              onClick={() => void assignOrder(o.id)}
-            >
-              Ata
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function PartnerDetailInfoSection({
-  partner,
-  history,
-  jobStats,
-  onPartnerUpdated,
-}: {
-  partner: FasonPartner;
-  history: AssignmentRow[];
-  jobStats: {
-    active: number;
-    overdue: number;
-    completed: number;
-    issues: number;
-  };
-  onPartnerUpdated: (p: FasonPartner) => void;
-}) {
-  const productTypes = (partner.capabilities ?? [])
-    .filter((c) => c.capability_type === "product_type")
-    .map((c) => CAPABILITY_LABEL[c.capability_value] ?? c.capability_value);
-  const materials = (partner.capabilities ?? [])
-    .filter((c) => c.capability_type === "material")
-    .map((c) => CAPABILITY_LABEL[c.capability_value] ?? c.capability_value);
-
-  const scoreLabel =
-    partner.cached_score == null
-      ? "— (ilk 5 is tamamlaninca hesaplanir)"
-      : `${Math.round(partner.cached_score * 100)} / 100`;
-
-  const completedCount = history.filter((a) => a.status === "shipped").length;
-
-  return (
-    <div className="space-y-6 text-[13px] text-gri-700">
-      <section>
-        <h3 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
-          Firma bilgileri
-        </h3>
-        <dl className="space-y-2">
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Ad:</dt>
-            <dd className="font-medium text-lacivert">{partner.name}</dd>
-          </div>
-          {partner.city && (
-            <div className="flex gap-2">
-              <dt className="text-gri-500 w-28 shrink-0">Sehir:</dt>
-              <dd>{partner.city}</dd>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">E-posta:</dt>
-            <dd>
-              <a
-                href={`mailto:${partner.contact_email}`}
-                className="text-pim-mercan hover:underline"
-              >
-                {partner.contact_email}
-              </a>
-            </dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Tipik teslim:</dt>
-            <dd>
-              <strong>{partner.default_lead_days} gun</strong>
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section>
-        <h3 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
-          Kapasite
-        </h3>
-        <dl className="space-y-2">
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Urun gruplari:</dt>
-            <dd>{productTypes.length > 0 ? productTypes.join(", ") : "—"}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Malzemeler:</dt>
-            <dd>{materials.length > 0 ? materials.join(", ") : "—"}</dd>
-          </div>
-        </dl>
-        <PartnerCapabilitiesPanel
-          partner={partner}
-          onUpdated={onPartnerUpdated}
-        />
-      </section>
-
-      <section>
-        <h3 className="text-[12px] font-bold uppercase text-gri-500 mb-3">
-          Performans
-        </h3>
-        <dl className="space-y-2">
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Ortalama skor:</dt>
-            <dd>{scoreLabel}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Tamamlanan is:</dt>
-            <dd>{completedCount}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-gri-500 w-28 shrink-0">Sorunlu is:</dt>
-            <dd>{jobStats.issues}</dd>
-          </div>
-        </dl>
-        <PartnerMailLog partnerId={partner.id} />
-      </section>
     </div>
   );
 }
@@ -928,85 +750,92 @@ export function PartnerDetailView({
   );
 
   const tabs: Array<{ id: PartnerDetailTab; label: string }> = [
-    { id: "jobs", label: "Atanan işler" },
-    { id: "partner", label: "Partner detayı" },
-    { id: "history", label: "Geçmiş işler" },
+    { id: "jobs", label: "Atanan isler" },
+    { id: "partner", label: "Partner detayi" },
+    { id: "history", label: "Gecmis isler" },
   ];
 
   return (
-    <Card padding="p-6">
-      <div className="flex flex-wrap gap-1 mb-6 p-1 bg-gri-50 rounded-lg">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "flex-1 min-w-[120px] h-10 rounded-md text-[13px] font-semibold transition-colors",
-              tab === t.id
-                ? "bg-white text-lacivert shadow-sm ring-1 ring-gri-200"
-                : "text-gri-600 hover:text-lacivert"
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)] gap-5 items-start">
+      <Card padding="p-5" className="min-w-0">
+        <div className="flex flex-wrap gap-1 mb-5 p-1 bg-gri-50 rounded-lg">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex-1 min-w-[100px] h-9 rounded-md text-[12.5px] font-semibold transition-colors",
+                tab === t.id
+                  ? "bg-white text-lacivert shadow-sm ring-1 ring-gri-200"
+                  : "text-gri-600 hover:text-lacivert"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-      {tab === "jobs" && (
-        <PartnerAssignmentsPanel
-          partner={partner}
-          history={history}
-          filteredJobs={filteredJobs}
-          jobStats={jobStats}
-          jobsFilter={jobsFilter}
-          onJobsFilterChange={setJobsFilter}
-          loading={historyLoading}
-          onAssigned={() => void loadHistory()}
-        />
-      )}
+        {tab === "jobs" && (
+          <JobsTabContent
+            partner={partner}
+            history={history}
+            filteredJobs={filteredJobs}
+            jobStats={jobStats}
+            jobsFilter={jobsFilter}
+            onJobsFilterChange={setJobsFilter}
+            loading={historyLoading}
+            onAssigned={() => void loadHistory()}
+          />
+        )}
 
-      {tab === "partner" && (
-        <PartnerDetailInfoSection
-          partner={partner}
-          history={history}
-          jobStats={jobStats}
-          onPartnerUpdated={onPartnerUpdated}
-        />
-      )}
+        {tab === "partner" && <PartnerExtendedTab partner={partner} />}
 
-      {tab === "history" && (
-        <>
-          {completedHistory.length === 0 ? (
-            <p className="text-[13px] text-gri-700 py-4">
-              Henuz tamamlanan is yok. Ilk siparis atandiginda burada gorunur.
-            </p>
-          ) : (
-            <>
-              <PartnerScoreBreakdown partner={partner} history={history} />
-              <ul className="space-y-2 mt-4">
-              {completedHistory.map((a) => (
-                <li
-                  key={a.id}
-                  className="rounded-xl border border-gri-200 p-3 text-[12px]"
-                >
-                  <Link
-                    href={`/admin/siparisler/${a.order_id}`}
-                    className="font-mono font-semibold text-pim-mercan hover:underline"
+        {tab === "history" && (
+          <div>
+            <h2 className="text-[13px] font-bold uppercase text-gri-500 mb-4">
+              Gecmis isler
+            </h2>
+            {completedHistory.length === 0 ? (
+              <p className="text-[13px] text-gri-700 py-4">
+                Henuz tamamlanan is yok. Ilk siparis atandiginda burada gorunur.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {completedHistory.map((a) => (
+                  <li
+                    key={a.id}
+                    className="rounded-xl border border-gri-200 p-3 text-[12px]"
                   >
-                    {a.order_id}
-                  </Link>
-                  <div className="text-gri-600 mt-1">
-                    {a.customer_name ?? "—"} · Teslim:{" "}
-                    {formatShortDate(a.shipped_at ?? a.actual_delivery)}
-                  </div>
-                </li>
-              ))}
+                    <Link
+                      href={`/admin/siparisler/${a.order_id}`}
+                      className="font-mono font-semibold text-pim-mercan hover:underline"
+                    >
+                      {a.order_id}
+                    </Link>
+                    <div className="text-gri-600 mt-1">
+                      {a.customer_name ?? "—"} · Teslim:{" "}
+                      {formatShortDate(a.shipped_at ?? a.actual_delivery)}
+                      {a.order_total != null && (
+                        <span className="tabular-nums">
+                          {" "}
+                          · {a.order_total.toLocaleString("tr-TR")} TL
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
               </ul>
-            </>
-          )}
-        </>
-      )}
-    </Card>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <PartnerSidebar
+        partner={partner}
+        jobStats={jobStats}
+        onPartnerUpdated={onPartnerUpdated}
+      />
+    </div>
   );
 }
