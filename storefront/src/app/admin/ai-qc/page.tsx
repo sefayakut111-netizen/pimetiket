@@ -557,6 +557,7 @@ export default function AdminAiQcPage() {
     active.items.length === 1
       ? active.items[0].title
       : `${active.items.length} ürün`;
+  const hasDesignFile = active.qcRuns.some((r) => Boolean(r.fileId));
 
   return (
     <main className="py-8 pb-20">
@@ -803,7 +804,11 @@ export default function AdminAiQcPage() {
               </Card>
             ) : (
               <Card padding="p-6">
-                <div className="text-center py-6">
+                <div className="rounded-lg bg-kirmizi-soft/30 border border-kirmizi/20 p-3 text-sm text-kirmizi mb-4">
+                  Tasarım dosyası bulunamadı. Müşteriyle iletişime geçip dosya
+                  yüklemesini isteyin veya siparişi iptal edin.
+                </div>
+                <div className="text-center py-4">
                   <Icon.Box size={40} className="text-gri-500 mx-auto mb-2" />
                   <div className="font-semibold text-lacivert">
                     Tasarım dosyası yok
@@ -814,6 +819,13 @@ export default function AdminAiQcPage() {
                   </div>
                 </div>
               </Card>
+            )}
+
+            {!hasDesignFile && active.qcRuns.length > 0 && (
+              <div className="rounded-lg bg-kirmizi-soft/30 border border-kirmizi/20 p-3 text-sm text-kirmizi">
+                Tasarım dosyası bulunamadı. Müşteriyle iletişime geçip dosya
+                yüklemesini isteyin veya siparişi iptal edin.
+              </div>
             )}
 
             <Card padding="p-6">
@@ -836,8 +848,13 @@ export default function AdminAiQcPage() {
                   variant="primary"
                   size="lg"
                   onClick={() => void decide("approve")}
-                  disabled={deciding}
+                  disabled={deciding || !hasDesignFile}
                   className="!bg-yesil hover:!bg-yesil-koyu"
+                  title={
+                    !hasDesignFile
+                      ? "Tasarım dosyası olmadan onay verilemez"
+                      : undefined
+                  }
                 >
                   <Icon.Check size={16} />{" "}
                   {deciding ? "..." : "Onayla → Baskıya"}
