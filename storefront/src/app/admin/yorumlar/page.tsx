@@ -231,7 +231,7 @@ export default function AdminYorumlarPage() {
           <Card padding="p-12" className="text-center">
             <Pim pose="happy" size={140} />
             <h3 className="mt-4 text-xl font-semibold">
-              {filter === "pending" ? "Bekleyen yorum yok 🎉" : "Sonuç yok"}
+              {filter === "pending" ? "Bekleyen yorum yok " : "Sonuç yok"}
             </h3>
             <p className="mt-2 text-base text-gri-700">
               {filter === "pending"
@@ -406,7 +406,7 @@ export default function AdminYorumlarPage() {
                             onClick={() => startEdit(r)}
                             className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-pim-mercan hover:underline"
                           >
-                            <span aria-hidden>✏️</span> Düzenle
+                            <span aria-hidden></span> Düzenle
                           </button>
                         </>
                       )}
@@ -458,7 +458,7 @@ export default function AdminYorumlarPage() {
                           )}
                         >
                           <Icon.Sparkle size={12} />
-                          {r.featured ? "Öne çıkan ✓" : "Öne çıkar"}
+                          {r.featured ? "Öne çıkan " : "Öne çıkar"}
                         </button>
                         <button
                           type="button"
@@ -477,7 +477,7 @@ export default function AdminYorumlarPage() {
                         >
                           <Icon.Home size={12} />
                           {r.show_on_homepage
-                            ? "Anasayfada ✓"
+                            ? "Anasayfada "
                             : "Sadece ürün sayfası"}
                         </button>
                         <button

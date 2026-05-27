@@ -70,25 +70,25 @@ const VERDICT_META: Record<
 > = {
   iyi: {
     label: "İYİ",
-    emoji: "🟢",
+    emoji: "",
     color: "text-yesil",
     bg: "bg-yesil-soft",
   },
   normal: {
     label: "NORMAL",
-    emoji: "🟡",
+    emoji: "",
     color: "text-sari-koyu",
     bg: "bg-sari-soft",
   },
   kotu: {
     label: "KÖTÜ",
-    emoji: "🔴",
+    emoji: "",
     color: "text-kirmizi",
     bg: "bg-kirmizi/10",
   },
   error: {
     label: "HATA",
-    emoji: "⚠️",
+    emoji: "",
     color: "text-gri-700",
     bg: "bg-gri-100",
   },
@@ -98,9 +98,9 @@ const SEVERITY_META: Record<
   string,
   { color: string; bg: string; emoji: string }
 > = {
-  info: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", emoji: "💡" },
-  warning: { color: "text-sari-koyu", bg: "bg-sari-soft", emoji: "⚠️" },
-  error: { color: "text-kirmizi", bg: "bg-kirmizi/10", emoji: "🚫" },
+  info: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", emoji: "" },
+  warning: { color: "text-sari-koyu", bg: "bg-sari-soft", emoji: "" },
+  error: { color: "text-kirmizi", bg: "bg-kirmizi/10", emoji: "" },
 };
 
 export default function DesignQcTestPage() {
@@ -183,7 +183,7 @@ export default function DesignQcTestPage() {
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="mb-4 rounded-lg border border-sari bg-sari-soft px-4 py-3 text-sm text-lacivert">
-          ⚠️ Bu sayfa geliştirici test aracıdır — gerçek sipariş QC işlemleri için{" "}
+           Bu sayfa geliştirici test aracıdır — gerçek sipariş QC işlemleri için{" "}
           <a href="/admin/ai-qc" className="underline font-medium">
             AI QC Kuyruğu
           </a>
@@ -328,7 +328,7 @@ export default function DesignQcTestPage() {
 
             {error && (
               <div className="mt-3 p-3 rounded-lg bg-kirmizi/10 ring-1 ring-kirmizi/30 text-[13px] text-kirmizi">
-                ⚠️ {error}
+                 {error}
               </div>
             )}
           </Card>
@@ -407,9 +407,9 @@ export default function DesignQcTestPage() {
                     </div>
                     <div className="mt-0.5 text-lacivert">
                       {result.analysis?.hasBleed === true
-                        ? "✓ Var"
+                        ? " Var"
                         : result.analysis?.hasBleed === false
-                          ? "✗ Yok"
+                          ? " Yok"
                           : "—"}
                     </div>
                   </div>
@@ -445,7 +445,7 @@ export default function DesignQcTestPage() {
                             </div>
                             {f.actionable && (
                               <div className="mt-1.5 text-gri-700 pl-5">
-                                💬 <strong>Çözüm:</strong> {f.actionable}
+                                 <strong>Çözüm:</strong> {f.actionable}
                               </div>
                             )}
                             <div className="mt-1 text-[10.5px] text-gri-500 uppercase tracking-[0.04em] pl-5">
@@ -461,13 +461,13 @@ export default function DesignQcTestPage() {
                 {/* Telemetry */}
                 {result.telemetry && (
                   <div className="flex flex-wrap gap-2 text-[11px]">
-                    <Pill>⏱️ {result.telemetry.durationMs}ms</Pill>
-                    <Pill>🤖 {result.telemetry.model}</Pill>
+                    <Pill>⏱ {result.telemetry.durationMs}ms</Pill>
+                    <Pill> {result.telemetry.model}</Pill>
                     {result.telemetry.costUsd !== undefined && (
-                      <Pill>💰 ${result.telemetry.costUsd.toFixed(4)}</Pill>
+                      <Pill> ${result.telemetry.costUsd.toFixed(4)}</Pill>
                     )}
                     {result.runId && (
-                      <Pill>📝 {result.runId.slice(0, 8)}</Pill>
+                      <Pill> {result.runId.slice(0, 8)}</Pill>
                     )}
                   </div>
                 )}
@@ -489,7 +489,7 @@ export default function DesignQcTestPage() {
         {/* Hızlı bilgi */}
         <Card padding="p-5" className="mt-6 !bg-krem">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">💡</span>
+            <span className="text-2xl"></span>
             <div className="text-[13px] text-gri-700 leading-relaxed">
               <strong className="text-lacivert">Test ipuçları:</strong>
               <ul className="mt-1.5 space-y-1 list-disc list-inside">

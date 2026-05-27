@@ -10,7 +10,7 @@
  *   - Segment chip filtresi (Tümü · VIP · Tekrar · Yeni · Risk · Kayıp · Sipariş yok)
  *   - Search (email/ad/telefon)
  *   - Bulk select skeleton (Sprint 3'te aksiyon eklenecek)
- *   - Tablo: müşteri · segment · sipariş · ciro · email✓ · 2FA · son hareket
+ *   - Tablo: müşteri · segment · sipariş · ciro · email · 2FA · son hareket
  */
 
 "use client";
@@ -20,6 +20,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Input, Eyebrow, Skeleton, Button, useToast } from "@/components/ui";
+import { StatusDot, type DotColor } from "@/components/admin/ui";
 import { cn } from "@/lib/cn";
 import type {
   AdminCustomerWithSegment,
@@ -41,46 +42,46 @@ interface KPI {
 
 const SEGMENT_META: Record<
   Segment,
-  { label: string; emoji: string; color: string; bg: string; ring: string }
+  { label: string; dot?: DotColor; color: string; bg: string; ring: string }
 > = {
   vip: {
     label: "VIP",
-    emoji: "⭐",
+    dot: "sari",
     color: "text-sari-koyu",
     bg: "bg-sari-soft",
     ring: "ring-sari-soft",
   },
   repeat: {
     label: "Tekrar",
-    emoji: "🔁",
+    dot: "yesil",
     color: "text-yesil",
     bg: "bg-yesil-soft",
     ring: "ring-yesil/30",
   },
   new: {
     label: "Yeni",
-    emoji: "✨",
+    dot: "mercan",
     color: "text-pim-mercan",
     bg: "bg-pim-mercan-tint",
     ring: "ring-pim-mercan-soft",
   },
   risk: {
     label: "Risk",
-    emoji: "⚠",
+    dot: "sari",
     color: "text-saman-koyu",
     bg: "bg-saman/15",
     ring: "ring-saman/30",
   },
   lost: {
     label: "Kayıp",
-    emoji: "💤",
+    dot: "kirmizi",
     color: "text-kirmizi",
     bg: "bg-kirmizi/10",
     ring: "ring-kirmizi/20",
   },
   no_order: {
     label: "Sipariş yok",
-    emoji: "🆕",
+    dot: "gri",
     color: "text-gri-700",
     bg: "bg-gri-100",
     ring: "ring-gri-200",
@@ -210,7 +211,7 @@ export default function AdminMusterilerPage() {
       };
       if (j.ok) {
         toast.success(
-          `✓ ${j.enqueued} email kuyruğa eklendi${j.skipped ? ` (${j.skipped} atlandı)` : ""}`
+          ` ${j.enqueued} email kuyruğa eklendi${j.skipped ? ` (${j.skipped} atlandı)` : ""}`
         );
         setBulkEmailOpen(false);
         setBulkSubject("");
@@ -394,14 +395,14 @@ export default function AdminMusterilerPage() {
                   size="sm"
                   onClick={() => setBulkEmailOpen(true)}
                 >
-                  📧 Toplu email at
+                   Toplu email at
                 </Button>
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={handleCsvExport}
                 >
-                  📤 CSV indir (filtreli)
+                   CSV indir (filtreli)
                 </Button>
               </div>
             </div>
@@ -412,7 +413,7 @@ export default function AdminMusterilerPage() {
         {selectedIds.size === 0 && customers.length > 0 && (
           <div className="mb-4 flex justify-end">
             <Button variant="ghost" size="sm" onClick={handleCsvExport}>
-              📤 Tüm filtreyi CSV olarak indir
+               Tüm filtreyi CSV olarak indir
             </Button>
           </div>
         )}
@@ -423,7 +424,7 @@ export default function AdminMusterilerPage() {
         {error && (
           <Card padding="p-4" className="mb-5 !bg-kirmizi/5 ring-kirmizi/20">
             <div className="flex items-start gap-3">
-              <span className="text-2xl shrink-0">⚠️</span>
+              <span className="text-2xl shrink-0"></span>
               <div className="flex-1 text-[13px] text-kirmizi-koyu">
                 <strong className="block mb-1">
                   Müşteri verisi şu an çekilemiyor
@@ -435,7 +436,7 @@ export default function AdminMusterilerPage() {
                     onClick={() => window.location.reload()}
                     className="text-pim-mercan font-semibold hover:underline"
                   >
-                    🔄 Yeniden dene
+                     Yeniden dene
                   </button>
                   <a
                     href="/api/admin/customers/diagnostic"
@@ -444,7 +445,7 @@ export default function AdminMusterilerPage() {
                     className="text-pim-mercan font-semibold hover:underline"
                     title="Hangi katmanda sorun var (auth/env/view) — JSON döner"
                   >
-                    🔍 Root cause (diagnostic) →
+                     Root cause (diagnostic) →
                   </a>
                   <Link
                     href="/admin/audit-log"
@@ -576,7 +577,7 @@ export default function AdminMusterilerPage() {
                           </span>
                           {isBanned && (
                             <span className="inline-flex items-center h-[16px] px-1.5 rounded bg-kirmizi/10 text-kirmizi text-[10px] font-bold">
-                              🚫 BAN
+                               BAN
                             </span>
                           )}
                         </div>
@@ -607,7 +608,8 @@ export default function AdminMusterilerPage() {
                             meta.ring
                           )}
                         >
-                          {meta.emoji} {meta.label}
+                          {meta.dot && <StatusDot color={meta.dot} />}
+                          {meta.label}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">
@@ -636,14 +638,14 @@ export default function AdminMusterilerPage() {
                                 : "Email doğrulanmamış"
                             }
                           >
-                            📧 {c.email_confirmed_at ? "✓" : "—"}
+                             {c.email_confirmed_at ? "" : "—"}
                           </span>
                           {c.has_2fa && (
                             <span
                               className="inline-flex items-center h-[20px] px-1.5 rounded bg-pim-mercan-tint text-pim-mercan text-[10.5px] font-bold"
                               title="2FA aktif"
                             >
-                              🔐
+                              
                             </span>
                           )}
                           {c.marketing_subscribed && (
@@ -651,7 +653,7 @@ export default function AdminMusterilerPage() {
                               className="inline-flex items-center h-[20px] px-1.5 rounded bg-krem text-lacivert text-[10.5px] font-bold"
                               title="Pazarlama abonesi"
                             >
-                              📨
+                              
                             </span>
                           )}
                         </div>
@@ -691,7 +693,7 @@ export default function AdminMusterilerPage() {
           <Card padding="p-6" className="max-w-[600px] w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold">
-                📧 Toplu email gönder ({selectedIds.size} alıcı)
+                 Toplu email gönder ({selectedIds.size} alıcı)
               </h3>
               <button
                 type="button"
@@ -699,7 +701,7 @@ export default function AdminMusterilerPage() {
                 className="text-gri-500 hover:text-lacivert text-[18px]"
                 aria-label="Kapat"
               >
-                ✕
+                
               </button>
             </div>
             <div className="text-[12px] text-gri-700 mb-3 leading-relaxed">

@@ -531,7 +531,7 @@ function PartnerFormPage() {
         {/* 1. Firma */}
         <Card padding="p-5" className="mb-4">
           <h2 className="text-[15px] font-semibold mb-4 flex items-center gap-2">
-            <span className="text-[18px]">🏢</span> 1. Firma bilgileri
+            <span className="text-[18px]"></span> 1. Firma bilgileri
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="Firma ünvanı *" required>
@@ -635,7 +635,7 @@ function PartnerFormPage() {
         {/* 2. Yetkili kişiler */}
         <Card padding="p-5" className="mb-4">
           <h2 className="text-[15px] font-semibold mb-4 flex items-center gap-2">
-            <span className="text-[18px]">👥</span> 2. Yetkili kişiler
+            <span className="text-[18px]"></span> 2. Yetkili kişiler
           </h2>
           <ContactBlock
             color="bg-pim-mercan-tint border-pim-mercan/30"
@@ -667,7 +667,7 @@ function PartnerFormPage() {
         {/* 3. Üretim yetkinliği */}
         <Card padding="p-5" className="mb-4">
           <h2 className="text-[15px] font-semibold mb-4 flex items-center gap-2">
-            <span className="text-[18px]">⚙️</span> 3. Üretim yetkinliği
+            <span className="text-[18px]"></span> 3. Üretim yetkinliği
           </h2>
 
           <div className="mb-4">
@@ -689,7 +689,7 @@ function PartnerFormPage() {
                         : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan"
                     )}
                   >
-                    {active ? "✓ " : ""}{PRODUCT_LABELS[pt]}
+                    {active ? " " : ""}{PRODUCT_LABELS[pt]}
                   </button>
                 );
               })}
@@ -763,7 +763,7 @@ function PartnerFormPage() {
         {/* 4. Sözleşme & Mali */}
         <Card padding="p-5" className="mb-4">
           <h2 className="text-[15px] font-semibold mb-4 flex items-center gap-2">
-            <span className="text-[18px]">📑</span> 4. Sözleşme & Mali
+            <span className="text-[18px]"></span> 4. Sözleşme & Mali
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="Ödeme vadesi">
@@ -909,7 +909,7 @@ function ProductMaterialPicker({
               : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-lacivert"
           )}
         >
-          {allSelected ? "✓ " : ""}Tümü
+          {allSelected ? " " : ""}Tümü
         </button>
         {options.map((m) => {
           const active = selected.includes(m);
@@ -926,7 +926,7 @@ function ProductMaterialPicker({
                   : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan"
               )}
             >
-              {active ? "✓ " : ""}
+              {active ? " " : ""}
               {MATERIAL_LABELS[m]}
             </button>
           );

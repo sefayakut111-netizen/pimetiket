@@ -17,14 +17,15 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Button, Eyebrow, Skeleton, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { StatusDot } from "@/components/admin/ui";
 import type { SubscriberRow } from "@/app/api/admin/subscribers/route";
 
 const SOURCE_LABEL: Record<string, { label: string; emoji: string }> = {
-  sablonlar: { label: "Şablon", emoji: "📥" },
-  newsletter: { label: "Bülten", emoji: "📰" },
-  order_complete: { label: "Sipariş sonrası", emoji: "🛍️" },
-  gated_download: { label: "İçerik", emoji: "🔒" },
-  manual_import: { label: "Manuel", emoji: "✏️" },
+  sablonlar: { label: "Şablon", emoji: "" },
+  newsletter: { label: "Bülten", emoji: "" },
+  order_complete: { label: "Sipariş sonrası", emoji: "" },
+  gated_download: { label: "İçerik", emoji: "" },
+  manual_import: { label: "Manuel", emoji: "" },
 };
 
 const FILTERS = [
@@ -157,7 +158,7 @@ export default function AdminAbonelerPage() {
         {pendingWelcome > 0 && (
           <Card padding="p-4" className="mb-6 bg-sari-soft ring-sari/20">
             <div className="flex items-start gap-3">
-              <span className="text-[20px]">⏳</span>
+              <StatusDot color="sari" className="w-3 h-3 mt-1.5 shrink-0" />
               <div className="flex-1">
                 <h2 className="text-[13.5px] font-semibold text-lacivert">
                   Resend mail otomasyonu henüz aktif değil
@@ -306,7 +307,7 @@ export default function AdminAbonelerPage() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-sari-koyu text-[11.5px] font-semibold">
-                            ⏳ Bekliyor
+                            Bekliyor
                           </span>
                         )}
                       </td>

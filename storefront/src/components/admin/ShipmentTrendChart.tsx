@@ -164,8 +164,8 @@ export function ShipmentTrendChart({ data }: { data: TrendPoint[] }) {
           }}
         >
           <div className="font-semibold">{fmtDay(data[hoverIdx].day)}</div>
-          <div>📦 {data[hoverIdx].shipped} kargolanan</div>
-          <div>✅ {data[hoverIdx].delivered} teslim</div>
+          <div> {data[hoverIdx].shipped} kargolanan</div>
+          <div> {data[hoverIdx].delivered} teslim</div>
         </div>
       )}
     </div>

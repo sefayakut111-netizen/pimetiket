@@ -232,7 +232,7 @@ export default function AdminUrunlerPage() {
                         />
                       ) : (
                         <div className="text-center p-1">
-                          <div className="text-[20px]">🎨</div>
+                          <div className="text-[20px]"></div>
                           <div className="text-[9px] text-gri-500 uppercase mt-0.5">
                             {card.svg_id}
                           </div>
@@ -319,7 +319,7 @@ export default function AdminUrunlerPage() {
                             card.is_active ? "Pasifle" : "Aktif et"
                           }
                         >
-                          {card.is_active ? "🚫 Gizle" : "✓ Göster"}
+                          {card.is_active ? " Gizle" : " Göster"}
                         </button>
                       </div>
                     </div>

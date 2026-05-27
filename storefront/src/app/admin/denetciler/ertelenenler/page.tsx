@@ -23,10 +23,10 @@ import {
   type PendingActionStatus,
 } from "@/lib/agents/_shared/types";
 
-const STATUS_TABS: Array<{ id: PendingActionStatus; label: string; emoji: string }> = [
-  { id: "snoozed", label: "Ertelenenler", emoji: "⏸" },
-  { id: "rejected", label: "Reddedilenler", emoji: "✗" },
-  { id: "applied", label: "Uygulananlar", emoji: "✓" },
+const STATUS_TABS: Array<{ id: PendingActionStatus; label: string }> = [
+  { id: "snoozed", label: "Ertelenenler" },
+  { id: "rejected", label: "Reddedilenler" },
+  { id: "applied", label: "Uygulananlar" },
 ];
 
 const SEVERITY_STYLES = {
@@ -117,7 +117,6 @@ export default function ErtelenenlerPage() {
                   : "text-gri-700 hover:text-pim-mercan"
               )}
             >
-              <span>{t.emoji}</span>
               <span>{t.label}</span>
             </button>
           ))}
@@ -131,7 +130,7 @@ export default function ErtelenenlerPage() {
         ) : items.length === 0 ? (
           <Card padding="p-12">
             <div className="text-center">
-              <div className="text-[48px] mb-3">📭</div>
+              <div className="text-[48px] mb-3"></div>
               <h2 className="text-[18px] font-semibold text-lacivert mb-2">
                 Burada kayıt yok
               </h2>
@@ -216,7 +215,7 @@ export default function ErtelenenlerPage() {
 
                 {item.review_note && (
                   <div className="mt-3 pt-3 border-t border-gri-100 text-[12.5px] text-gri-700 italic">
-                    📝 {item.review_note}
+                     {item.review_note}
                   </div>
                 )}
               </Card>

@@ -59,37 +59,37 @@ const STATUS_META: Record<
 > = {
   new: {
     tr: "Yeni",
-    emoji: "📝",
+    emoji: "",
     color: "text-gri-700",
     bg: "bg-gri-100",
   },
   in_transit: {
     tr: "Yolda",
-    emoji: "🚚",
+    emoji: "",
     color: "text-mavi-koyu",
     bg: "bg-mavi-soft",
   },
   out_for_delivery: {
     tr: "Dağıtımda",
-    emoji: "🛵",
+    emoji: "",
     color: "text-sari-koyu",
     bg: "bg-sari-soft",
   },
   delivered: {
     tr: "Teslim edildi",
-    emoji: "✅",
+    emoji: "",
     color: "text-yesil-koyu",
     bg: "bg-yesil-soft",
   },
   failed: {
     tr: "Başarısız",
-    emoji: "⚠️",
+    emoji: "",
     color: "text-kirmizi-koyu",
     bg: "bg-kirmizi-soft",
   },
   returned: {
     tr: "İade",
-    emoji: "↩️",
+    emoji: "↩",
     color: "text-mor",
     bg: "bg-mor/10",
   },
@@ -363,7 +363,7 @@ export default function AdminKargoPage() {
       {/* Failed Alarm Banner */}
       {failedAlarm && (
         <div className="mb-4 flex items-center gap-3 rounded-lg bg-kirmizi-soft p-3 ring-1 ring-kirmizi/30">
-          <span className="text-2xl">⚠️</span>
+          <span className="text-2xl"></span>
           <div className="flex-1">
             <div className="font-semibold text-kirmizi-koyu">
               {stats?.failed_recent} kargo son 7 günde başarısız teslim/iade
@@ -386,37 +386,37 @@ export default function AdminKargoPage() {
       {/* KPI Kartlar */}
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-6">
         <Card className="cursor-pointer p-4 hover:ring-2 hover:ring-pim-mercan transition" onClick={() => { setDateRange("today"); setStatusFilter("active"); }}>
-          <div className="text-[11px] text-gri-700">📦 Bugün</div>
+          <div className="text-[11px] text-gri-700"> Bugün</div>
           <div className="text-2xl font-bold text-lacivert mt-1">
             {stats ? stats.shipped_today : <Skeleton className="h-7 w-12" />}
           </div>
         </Card>
         <Card className="cursor-pointer p-4 hover:ring-2 hover:ring-mavi transition" onClick={() => setStatusFilter("in_transit")}>
-          <div className="text-[11px] text-gri-700">🚚 Yolda</div>
+          <div className="text-[11px] text-gri-700"> Yolda</div>
           <div className="text-2xl font-bold text-mavi-koyu mt-1">
             {stats ? stats.in_transit : <Skeleton className="h-7 w-12" />}
           </div>
         </Card>
         <Card className="cursor-pointer p-4 hover:ring-2 hover:ring-sari transition" onClick={() => setStatusFilter("out_for_delivery")}>
-          <div className="text-[11px] text-gri-700">🛵 Dağıtımda</div>
+          <div className="text-[11px] text-gri-700"> Dağıtımda</div>
           <div className="text-2xl font-bold text-sari-koyu mt-1">
             {stats ? stats.out_for_delivery : <Skeleton className="h-7 w-12" />}
           </div>
         </Card>
         <Card className="cursor-pointer p-4 hover:ring-2 hover:ring-yesil transition" onClick={() => { setDateRange("week"); setStatusFilter("delivered"); }}>
-          <div className="text-[11px] text-gri-700">✅ Teslim (7g)</div>
+          <div className="text-[11px] text-gri-700"> Teslim (7g)</div>
           <div className="text-2xl font-bold text-yesil-koyu mt-1">
             {stats ? stats.delivered_this_week : <Skeleton className="h-7 w-12" />}
           </div>
         </Card>
         <Card className={cn("cursor-pointer p-4 hover:ring-2 hover:ring-kirmizi transition", failedAlarm && "ring-2 ring-kirmizi-soft")} onClick={() => setStatusFilter("failed")}>
-          <div className="text-[11px] text-gri-700">⚠️ Başarısız</div>
+          <div className="text-[11px] text-gri-700"> Başarısız</div>
           <div className="text-2xl font-bold text-kirmizi-koyu mt-1">
             {stats ? stats.failed_recent : <Skeleton className="h-7 w-12" />}
           </div>
         </Card>
         <Card className="p-4">
-          <div className="text-[11px] text-gri-700">⏳ Event yok</div>
+          <div className="text-[11px] text-gri-700">Event yok</div>
           <div className="text-2xl font-bold text-gri-700 mt-1">
             {stats ? stats.pending_no_event : <Skeleton className="h-7 w-12" />}
           </div>
@@ -566,7 +566,7 @@ export default function AdminKargoPage() {
                   {s === "all"
                     ? "Tümü"
                     : s === "active"
-                    ? "🔥 Aktif"
+                    ? " Aktif"
                     : `${meta.emoji} ${meta.tr}`}
                 </button>
               );
@@ -579,7 +579,7 @@ export default function AdminKargoPage() {
               disabled={sorted.length === 0}
               className="text-[12px] font-semibold text-gri-500 hover:text-pim-mercan disabled:opacity-40"
             >
-              📥 CSV indir ({sorted.length})
+               CSV indir ({sorted.length})
             </button>
             <select
               value={dateRange}
@@ -614,7 +614,7 @@ export default function AdminKargoPage() {
               onClick={handleBulkPoll}
               disabled={bulkSubmitting}
             >
-              🔄 {bulkSubmitting ? "İşleniyor..." : "Toplu poll yap"}
+               {bulkSubmitting ? "İşleniyor..." : "Toplu poll yap"}
             </Button>
             <Button
               size="sm"
@@ -667,7 +667,7 @@ export default function AdminKargoPage() {
                     className="px-3 py-12 text-center"
                   >
                     <div className="mx-auto max-w-[360px] text-gri-700">
-                      <div className="text-[28px] mb-2">📦</div>
+                      <div className="text-[28px] mb-2"></div>
                       <div className="text-[14px] font-semibold text-lacivert">
                         {total === 0 && statusFilter === "all"
                           ? "Henüz kargo gönderimi yok"
@@ -762,7 +762,7 @@ export default function AdminKargoPage() {
                           s.shipped_at &&
                           s.last_event_time && (
                             <div className="text-[10px] text-yesil-koyu mt-0.5">
-                              ✅{" "}
+                              {" "}
                               {Math.ceil(
                                 (new Date(s.last_event_time).getTime() -
                                   new Date(s.shipped_at).getTime()) /
@@ -773,7 +773,7 @@ export default function AdminKargoPage() {
                           )}
                         {s.tracking_status === "failed" && (
                           <div className="text-[10px] text-kirmizi mt-0.5">
-                            ⚠️ Teslim edilemedi
+                             Teslim edilemedi
                           </div>
                         )}
                       </td>
@@ -787,7 +787,7 @@ export default function AdminKargoPage() {
                               className="inline-flex items-center gap-1 h-8 px-2 rounded-lg ring-1 ring-gri-200 bg-white text-[11.5px] font-semibold text-lacivert hover:ring-pim-mercan"
                               title="Kargo etiketi PDF indir"
                             >
-                              🏷️ Etiket
+                               Etiket
                             </a>
                           )}
                           <Link href={`/admin/kargo/${s.order_id}`}>

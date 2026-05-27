@@ -87,16 +87,16 @@ const VERDICT_COLORS: Record<string, string> = {
 };
 
 const VERDICT_LABELS: Record<string, string> = {
-  iyi: "✓ İYİ",
+  iyi: " İYİ",
   normal: "~ NORMAL",
-  kotu: "✗ KÖTÜ",
+  kotu: " KÖTÜ",
   error: "! HATA",
 };
 
 const HISTORY_DECISION_ICON: Record<HistoryItem["decision"], string> = {
-  approve: "✅",
-  reject: "❌",
-  fix_and_proof: "🔧",
+  approve: "",
+  reject: "",
+  fix_and_proof: "",
 };
 
 function QCRunCard({ run }: { run: QCRun }) {
@@ -114,7 +114,7 @@ function QCRunCard({ run }: { run: QCRun }) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-pim-mercan hover:underline ml-2"
               >
-                📥 İndir
+                 İndir
               </a>
             )}
           </div>
@@ -492,7 +492,7 @@ export default function AdminAiQcPage() {
         size="sm"
         onClick={() => setShowHistory((s) => !s)}
       >
-        {showHistory ? "Kuyruk göster" : "📋 Geçmiş kararlar"}
+        {showHistory ? "Kuyruk göster" : " Geçmiş kararlar"}
       </Button>
       </div>
     </div>
@@ -513,8 +513,8 @@ export default function AdminAiQcPage() {
             ) : (
               <>
                 <div className="text-[13px] text-gri-700 mb-4 font-medium">
-                  ✅ {historyStats.approved} onay · ❌ {historyStats.rejected}{" "}
-                  red · 🔧 {historyStats.fixed} düzeltme
+                   {historyStats.approved} onay ·  {historyStats.rejected}{" "}
+                  red ·  {historyStats.fixed} düzeltme
                 </div>
                 <div className="space-y-3">
                   {history.map((h) => (
@@ -560,13 +560,13 @@ export default function AdminAiQcPage() {
               size="sm"
               onClick={() => setShowHistory(true)}
             >
-              📋 Geçmiş kararlar
+               Geçmiş kararlar
             </Button>
           </div>
           <div className="text-center mb-10">
             <Pim pose="happy" size={140} />
             <h1 className="mt-4 text-[28px] font-semibold tracking-tight">
-              Kuyruk temiz! 🎉
+              Kuyruk temiz! 
             </h1>
             <p className="mt-3 text-base text-gri-700 leading-relaxed">
               Manuel inceleme bekleyen sipariş yok. Yeni QC flag&apos;i geldiğinde
@@ -575,7 +575,7 @@ export default function AdminAiQcPage() {
           </div>
           <div className="rounded-2xl bg-white ring-1 ring-gri-200 p-6">
             <h2 className="text-[15px] font-semibold mb-4 text-lacivert">
-              📚 AI QC nasıl çalışır?
+               AI QC nasıl çalışır?
             </h2>
             <ol className="space-y-3 text-[13.5px] text-gri-700 leading-relaxed">
               <li className="flex gap-3">
@@ -692,7 +692,7 @@ export default function AdminAiQcPage() {
         {goodVerdictOrders.length > 0 && (
           <div className="mb-4 rounded-lg bg-yesil-soft/30 ring-1 ring-yesil/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-yesil-koyu font-medium">
-              ✓ {goodVerdictOrders.length} sipariş tüm dosyaları &ldquo;İYİ&rdquo;
+               {goodVerdictOrders.length} sipariş tüm dosyaları &ldquo;İYİ&rdquo;
               — toplu onaylanabilir
             </span>
             <Button
@@ -712,7 +712,7 @@ export default function AdminAiQcPage() {
             { id: null, label: "Tümü", count: queue.length },
             {
               id: "kotu",
-              label: "✗ Kötü",
+              label: " Kötü",
               count: queue.filter((q) => q.qcRuns[0]?.verdict === "kotu").length,
             },
             {
@@ -728,7 +728,7 @@ export default function AdminAiQcPage() {
             },
             {
               id: "iyi",
-              label: "✓ İyi",
+              label: " İyi",
               count: queue.filter((q) => q.qcRuns[0]?.verdict === "iyi").length,
             },
           ]
@@ -815,7 +815,7 @@ export default function AdminAiQcPage() {
                     href={`/admin/siparisler/${active.orderId}#designs`}
                     className="mt-2 inline-flex text-[12px] font-semibold text-pim-mercan hover:underline"
                   >
-                    📁 Tüm dosyalar →
+                     Tüm dosyalar →
                   </a>
                 </div>
                 <div className="text-right">
@@ -850,13 +850,13 @@ export default function AdminAiQcPage() {
                     onClick={() => void rerunQc()}
                     disabled={deciding}
                   >
-                    🔄 QC tekrar çalıştır
+                     QC tekrar çalıştır
                   </Button>
                 </div>
 
                 {active.qcRuns.length > 1 && (
                   <div className="mb-3 rounded-lg bg-mavi-soft/20 ring-1 ring-mavi-koyu/20 px-4 py-2 text-[12.5px]">
-                    📊 Bu sipariş için {active.qcRuns.length} QC çalıştırması
+                     Bu sipariş için {active.qcRuns.length} QC çalıştırması
                     var (revizyon tespit edildi)
                   </div>
                 )}
@@ -866,7 +866,7 @@ export default function AdminAiQcPage() {
                     {active.qcRuns.slice(0, 2).map((run, idx) => (
                       <div key={run.runId}>
                         <div className="text-[11px] font-bold uppercase mb-2 text-gri-600">
-                          {idx === 0 ? "🆕 Son versiyon" : "📄 Önceki versiyon"}
+                          {idx === 0 ? "Son versiyon" : "Önceki versiyon"}
                         </div>
                         <QCRunCard run={run} />
                       </div>
@@ -942,7 +942,7 @@ export default function AdminAiQcPage() {
                   onClick={() => void decide("fix_and_proof")}
                   disabled={deciding}
                 >
-                  🔧 Düzelt → Prova hazırla
+                   Düzelt → Prova hazırla
                 </Button>
                 <Button
                   variant="secondary"
@@ -950,7 +950,7 @@ export default function AdminAiQcPage() {
                   disabled={deciding}
                   className="!text-kirmizi !ring-kirmizi/30 hover:!bg-kirmizi-soft/20"
                 >
-                  ✗ Reddet → Müşteriye geri
+                   Reddet → Müşteriye geri
                 </Button>
                 {!hasDesignFile && (
                   <Button

@@ -14,6 +14,8 @@
 
 import { useEffect, useState } from "react";
 import { Card, Eyebrow, Input, Button, useToast } from "@/components/ui";
+import { Icon } from "@/components/Icon";
+import { StatusDot, type DotColor } from "@/components/admin/ui";
 import { cn } from "@/lib/cn";
 
 interface AssignmentInfo {
@@ -35,15 +37,15 @@ interface StatusEvent {
   event_time: string;
 }
 
-const STATUS_LABEL: Record<string, { tr: string; emoji: string; color: string }> = {
-  created: { tr: "İşleme alındı", emoji: "📝", color: "text-gri-700" },
-  picked_up: { tr: "Kargo alındı", emoji: "📦", color: "text-mavi-koyu" },
-  in_transit: { tr: "Yolda", emoji: "🚚", color: "text-mavi-koyu" },
-  out_for_delivery: { tr: "Dağıtımda", emoji: "🛵", color: "text-sari-koyu" },
-  delivered: { tr: "Teslim edildi", emoji: "✅", color: "text-yesil-koyu" },
-  failed: { tr: "Teslim edilemedi", emoji: "⚠️", color: "text-kirmizi-koyu" },
-  returned: { tr: "İade edildi", emoji: "↩️", color: "text-mor" },
-  cancelled: { tr: "İptal", emoji: "❌", color: "text-kirmizi-koyu" },
+const STATUS_LABEL: Record<string, { tr: string; dot: DotColor; color: string }> = {
+  created: { tr: "İşleme alındı", dot: "gri", color: "text-gri-700" },
+  picked_up: { tr: "Kargo alındı", dot: "mavi", color: "text-mavi-koyu" },
+  in_transit: { tr: "Yolda", dot: "mavi", color: "text-mavi-koyu" },
+  out_for_delivery: { tr: "Dağıtımda", dot: "sari", color: "text-sari-koyu" },
+  delivered: { tr: "Teslim edildi", dot: "yesil", color: "text-yesil-koyu" },
+  failed: { tr: "Teslim edilemedi", dot: "kirmizi", color: "text-kirmizi-koyu" },
+  returned: { tr: "İade edildi", dot: "mavi", color: "text-mor" },
+  cancelled: { tr: "İptal", dot: "kirmizi", color: "text-kirmizi-koyu" },
 };
 
 function formatDateTime(iso: string | null | undefined): string {
@@ -205,7 +207,7 @@ export function AdminTrackingForm({ orderId }: { orderId: string }) {
                   STATUS_LABEL[assignment.tracking_status]?.color ?? "text-gri-700"
                 )}
               >
-                {STATUS_LABEL[assignment.tracking_status]?.emoji}{" "}
+                <StatusDot color={STATUS_LABEL[assignment.tracking_status]?.dot ?? "gri"} className="inline" />{" "}
                 {STATUS_LABEL[assignment.tracking_status]?.tr ??
                   assignment.tracking_status}
               </span>
@@ -267,7 +269,8 @@ export function AdminTrackingForm({ orderId }: { orderId: string }) {
             onClick={pollNow}
             disabled={submitting}
           >
-            🔄 Şimdi sorgula (manuel poll)
+            <Icon.Refresh size={14} className="inline mr-1" />
+            Şimdi sorgula (manuel poll)
           </Button>
         )}
       </form>
@@ -286,7 +289,7 @@ export function AdminTrackingForm({ orderId }: { orderId: string }) {
                   key={`${ev.status}-${ev.event_time}-${i}`}
                   className="flex gap-3 rounded-lg border border-gri-200 p-2 text-[13px]"
                 >
-                  <span className="text-base">{meta?.emoji ?? "📍"}</span>
+                  <StatusDot color={meta?.dot ?? "gri"} className="mt-1" />
                   <div className="flex-1">
                     <div
                       className={cn(

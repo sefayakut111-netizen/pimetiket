@@ -8,18 +8,18 @@
  * sticker-fiyatlama.html v0.3'ün operatör UI'ının React port'u.
  *
  * Kapsam (Faz 1):
- *   ✓ Mode toggle (fason/üretim)
- *   ✓ Cut type (tabaka/diecut)
- *   ✓ Boyut input (W × H)
- *   ✓ Tier butonları (25/50/100/250/500/1000)
- *   ✓ Üretim parametre input'ları (fason rate / 6 üretim kalemi)
- *   ✓ Site fiyatı (live config, alış/satış çift fiyat)
- *   ✓ Fason/üretim simülasyonu (operatör referans)
- *   ✓ Anlık fiyat (büyük), birim fiyat
- *   ✓ Stat kartları (tabaka, m², rulo, fire)
- *   ✓ Maliyet detayı breakdown
- *   ✓ Tolerans bandı (overrun bilgisi)
- *   ✓ Reset + varsayılana dön
+ *    Mode toggle (fason/üretim)
+ *    Cut type (tabaka/diecut)
+ *    Boyut input (W × H)
+ *    Tier butonları (25/50/100/250/500/1000)
+ *    Üretim parametre input'ları (fason rate / 6 üretim kalemi)
+ *    Site fiyatı (live config, alış/satış çift fiyat)
+ *    Fason/üretim simülasyonu (operatör referans)
+ *    Anlık fiyat (büyük), birim fiyat
+ *    Stat kartları (tabaka, m², rulo, fire)
+ *    Maliyet detayı breakdown
+ *    Tolerans bandı (overrun bilgisi)
+ *    Reset + varsayılana dön
  *
  * Sonraki faz (henüz yok):
  *   - Rulo plan SVG görseli
@@ -483,7 +483,7 @@ export function StickerCalculator({
           <div>
             <Eyebrow>Operatör · Hesaplama aracı</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              🏷 Sticker Fiyat Hesapla
+               Sticker Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
               Vinil / Transparan / Holografik / Simli için manuel hesap +
@@ -498,7 +498,7 @@ export function StickerCalculator({
               <Icon.Box size={12} /> Lot · {nextLotPreview}
             </span>
             <Button variant="ghost" size="sm" onClick={() => setStatsOpen(true)}>
-              📊 İstatistik
+               İstatistik
             </Button>
             <Button variant="ghost" size="sm" onClick={copyJSON}>
               <Icon.Sparkle size={14} /> JSON kopyala
@@ -512,7 +512,7 @@ export function StickerCalculator({
               onClick={handleGeneratePDF}
               disabled={!result.ok || !liveSitePrice?.ok}
             >
-              📄 İş Emri PDF
+               İş Emri PDF
             </Button>
           </div>
         </div>
@@ -1304,7 +1304,7 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
       {/* Foot */}
       <div className="px-5 py-3 text-[11px] text-gri-500 bg-gri-50 border-t border-dashed border-gri-200 flex flex-wrap justify-between gap-2 tabular-nums">
         <span>
-          ⚙ {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
+           {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
           {roll.rollsNeeded === 1
             ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka`
             : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}{" "}

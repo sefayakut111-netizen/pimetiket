@@ -46,11 +46,11 @@ const ROLE_COLOR: Record<AdminRole, string> = {
 };
 
 const ROLE_EMOJI: Record<AdminRole, string> = {
-  super_admin: "👑",
-  operations: "📦",
-  customer_service: "💬",
-  production: "🎨",
-  content_editor: "✍️",
+  super_admin: "",
+  operations: "",
+  customer_service: "",
+  production: "",
+  content_editor: "",
 };
 
 function timeAgo(iso: string | null): string {
@@ -251,7 +251,7 @@ export default function AdminCalisanlarPage() {
                         {isLegacy ? (
                           <div className="space-y-1">
                             <span className="inline-flex items-center rounded-full bg-sari-soft px-2 py-0.5 text-[11px] font-semibold text-sari-koyu">
-                              ⚠️ Legacy "{s.legacy_role}"
+                               Legacy "{s.legacy_role}"
                             </span>
                             <div className="text-[11px] text-gri-500">
                               Migration 054'e göre rol seçilmedi
@@ -275,11 +275,11 @@ export default function AdminCalisanlarPage() {
                       <td className="px-4 py-3">
                         {s.mfa_enabled ? (
                           <span className="inline-flex items-center gap-1 text-yesil-koyu text-[12px] font-semibold">
-                            🔒 Aktif
+                             Aktif
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-kirmizi-koyu text-[12px] font-semibold">
-                            ⚠️ Kapalı
+                             Kapalı
                           </span>
                         )}
                       </td>
@@ -328,7 +328,7 @@ export default function AdminCalisanlarPage() {
 
       {/* Bilgilendirme — davet akışı henüz yok */}
       <div className="mt-6 rounded-lg bg-mavi-soft p-4 text-[12.5px] text-mavi-koyu">
-        <strong className="block mb-1">💡 Yeni çalışan eklemek için:</strong>
+        <strong className="block mb-1"> Yeni çalışan eklemek için:</strong>
         Önce kişi <code>/auth</code> sayfasından kendi hesabını açar (email
         + şifre veya Google). Sonra buraya gelir, listede görünür → rol
         atarsın. Resend email davet akışı Faz 2'de aktif olacak.

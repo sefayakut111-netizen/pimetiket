@@ -85,7 +85,7 @@ export function GeoDistributionTreemap({
           {fastest && (
             <div className="rounded-lg bg-yesil-soft p-2 ring-1 ring-yesil/30">
               <div className="text-yesil-koyu font-semibold">
-                ⚡ En hızlı: {fastest.city}
+                 En hızlı: {fastest.city}
               </div>
               <div className="text-gri-700">
                 ortalama {fastest.avg_days} gün
@@ -95,7 +95,7 @@ export function GeoDistributionTreemap({
           {slowest && (
             <div className="rounded-lg bg-kirmizi-soft p-2 ring-1 ring-kirmizi/30">
               <div className="text-kirmizi-koyu font-semibold">
-                🐢 En yavaş: {slowest.city}
+                 En yavaş: {slowest.city}
               </div>
               <div className="text-gri-700">
                 ortalama {slowest.avg_days} gün
@@ -140,13 +140,13 @@ export function GeoDistributionTreemap({
                     </span>
                   )}
                   <span className="text-gri-500">
-                    {c.delivered > 0 && `✅ ${c.delivered}`}
+                    {c.delivered > 0 && ` ${c.delivered}`}
                     {c.in_transit > 0 && (
-                      <span className="ml-2">🚚 {c.in_transit}</span>
+                      <span className="ml-2"> {c.in_transit}</span>
                     )}
                     {c.failed > 0 && (
                       <span className="ml-2 text-kirmizi-koyu">
-                        ⚠️ {c.failed}
+                         {c.failed}
                       </span>
                     )}
                   </span>

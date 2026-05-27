@@ -35,31 +35,31 @@ const STATUS_META: Record<
 > = {
   hot: {
     label: "Aktif",
-    emoji: "🔥",
+    emoji: "",
     color: "text-yesil-koyu",
     bg: "bg-yesil-soft",
   },
   archiving: {
     label: "Arşivleniyor",
-    emoji: "⏳",
+    emoji: "",
     color: "text-sari-koyu",
     bg: "bg-sari-soft",
   },
   cold: {
     label: "Arşivde",
-    emoji: "❄️",
+    emoji: "",
     color: "text-mavi-koyu",
     bg: "bg-mavi-soft",
   },
   restoring: {
     label: "Geri alınıyor",
-    emoji: "🔄",
+    emoji: "",
     color: "text-mor",
     bg: "bg-mor/10",
   },
   deleted: {
     label: "KVKK silindi",
-    emoji: "🗑️",
+    emoji: "",
     color: "text-kirmizi-koyu",
     bg: "bg-kirmizi-soft",
   },

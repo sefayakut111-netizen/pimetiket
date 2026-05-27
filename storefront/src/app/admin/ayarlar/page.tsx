@@ -238,7 +238,7 @@ export default function AdminAyarlarPage() {
           className="mb-6 border-2 border-kirmizi/40 bg-kirmizi-soft/10"
         >
           <div className="mb-4 flex items-center gap-2">
-            <span className="text-lg">🔴</span>
+            <span className="text-lg"></span>
             <h2 className="text-lg font-semibold text-kirmizi-koyu">
               Bakım Modu
             </h2>
@@ -283,7 +283,7 @@ export default function AdminAyarlarPage() {
             />
           </label>
           <p className="mt-3 text-[12.5px] leading-relaxed text-gri-700">
-            ⚠️ Açıkken müşteriler siteye erişemez. Admin paneli etkilenmez.
+             Açıkken müşteriler siteye erişemez. Admin paneli etkilenmez.
           </p>
         </Card>
 

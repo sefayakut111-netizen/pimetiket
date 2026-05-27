@@ -3,10 +3,10 @@
  *
  * Bir pending_action kaydı için 4-yollu karar UI'ı:
  *
- *   1. ✓ Onayla → Uygula     (POST decide { decision: "approve" })
- *   2. 🛠️ Düzelt + Onayla    (JSON edit + approve_with_edit)
- *   3. ⏸ N gün ertele         (decision: "snooze", snoozeDays)
- *   4. ✗ Reddet               (decision: "reject")
+ *   1.  Onayla → Uygula     (POST decide { decision: "approve" })
+ *   2.  Düzelt + Onayla    (JSON edit + approve_with_edit)
+ *   3. N gun ertele         (decision: "snooze", snoozeDays)
+ *   4.  Reddet               (decision: "reject")
  *
  * Her kararda opsiyonel "Sefa notu" alanı audit'e geçer.
  */
@@ -31,9 +31,9 @@ const SEVERITY_STYLES = {
 } as const;
 
 const SEVERITY_LABEL = {
-  critical: "🔴 KRİTİK",
-  warning: "🟡 UYARI",
-  info: "🔵 BİLGİ",
+  critical: " KRİTİK",
+  warning: " UYARI",
+  info: " BİLGİ",
 } as const;
 
 const SNOOZE_OPTIONS = [
@@ -336,7 +336,7 @@ export function ApprovalCard({ action, onDecided }: ApprovalCardProps) {
                 onClick={() => setEditing(true)}
                 disabled={loading !== null}
               >
-                🛠️ Düzelt + Onayla
+                 Düzelt + Onayla
               </Button>
               <Button
                 variant="secondary"
@@ -344,7 +344,7 @@ export function ApprovalCard({ action, onDecided }: ApprovalCardProps) {
                 onClick={() => setSnoozeMode(true)}
                 disabled={loading !== null}
               >
-                ⏸ Ertele
+                Ertele
               </Button>
               <Button
                 variant="ghost"
@@ -352,7 +352,7 @@ export function ApprovalCard({ action, onDecided }: ApprovalCardProps) {
                 onClick={handleReject}
                 disabled={loading !== null}
               >
-                {loading === "reject" ? "..." : "✗ Reddet"}
+                {loading === "reject" ? "..." : " Reddet"}
               </Button>
             </>
           ) : (

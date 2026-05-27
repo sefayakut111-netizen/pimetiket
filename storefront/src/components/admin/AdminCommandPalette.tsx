@@ -125,7 +125,7 @@ export function AdminCommandPalette({ items, open, onClose }: Props) {
       >
         {/* Search input */}
         <div className="flex items-center gap-3 border-b border-gri-200 px-4 py-3">
-          <span className="text-gri-500">🔍</span>
+          <span className="text-gri-500"></span>
           <input
             ref={inputRef}
             type="text"
@@ -144,7 +144,7 @@ export function AdminCommandPalette({ items, open, onClose }: Props) {
         <div className="max-h-[60vh] overflow-y-auto py-2">
           {filtered.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-gri-500">
-              <div className="mb-2 text-2xl">🔍</div>
+              <div className="mb-2 text-2xl"></div>
               Eşleşen sayfa yok
               <div className="mt-1 text-[12px] text-gri-400">
                 "{query}" için sonuç bulunamadı

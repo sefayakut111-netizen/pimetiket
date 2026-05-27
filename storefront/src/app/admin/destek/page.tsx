@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { StatusDot, type DotColor } from "@/components/admin/ui";
 
 type TicketStatus =
   | "open"
@@ -34,13 +35,23 @@ const FILTERS = [
   { id: "all", label: "Tümü" },
 ];
 
-const STATUS_LABEL: Record<TicketStatus, string> = {
-  open: "🟡 açık",
-  in_progress: "🔵 işlemde",
-  waiting_customer: "⏳ bekliyor",
-  resolved: "🟢 çözüldü",
-  closed: "📦 kapalı",
+const STATUS_META: Record<TicketStatus, { label: string; dot: DotColor }> = {
+  open: { label: "açık", dot: "sari" },
+  in_progress: { label: "işlemde", dot: "mavi" },
+  waiting_customer: { label: "bekliyor", dot: "gri" },
+  resolved: { label: "çözüldü", dot: "yesil" },
+  closed: { label: "kapalı", dot: "gri" },
 };
+
+function StatusBadge({ status }: { status: TicketStatus }) {
+  const meta = STATUS_META[status];
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <StatusDot color={meta.dot} />
+      {meta.label}
+    </span>
+  );
+}
 
 export default function AdminDestekPage() {
   const toast = useToast();
@@ -158,7 +169,7 @@ export default function AdminDestekPage() {
                       <td className="px-4 py-3">
                         {t.customerName ?? t.customerEmail ?? "—"}
                       </td>
-                      <td className="px-4 py-3">{STATUS_LABEL[t.status]}</td>
+                      <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                     </tr>
                   ))}
                 </tbody>

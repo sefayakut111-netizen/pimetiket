@@ -190,7 +190,7 @@ export default function AdminYardimTalepleriPage() {
       ) : items.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="text-[15px] font-semibold text-lacivert">
-            🎉 Bekleyen yardım talebi yok
+             Bekleyen yardım talebi yok
           </div>
           <p className="mt-2 text-[13px] text-gri-700">
             Müşteriler /onay sayfasında "Ekibimizden yardım iste" tıkladığında
@@ -315,7 +315,7 @@ export default function AdminYardimTalepleriPage() {
                         disabled={submitting || draftNote.trim().length < 10}
                         onClick={() => void handleRespond(t, "resolved")}
                       >
-                        ✓ Çözüldü olarak işaretle
+                         Çözüldü olarak işaretle
                       </Button>
                       <Button
                         variant="secondary"

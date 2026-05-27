@@ -221,7 +221,7 @@ export default function GecmisPage() {
         ) : runs.length === 0 ? (
           <Card padding="p-12">
             <div className="text-center">
-              <div className="text-[48px] mb-3">📋</div>
+              <div className="text-[48px] mb-3"></div>
               <h2 className="text-[18px] font-semibold text-lacivert mb-2">
                 Filtre eşleşmedi
               </h2>
@@ -263,12 +263,12 @@ export default function GecmisPage() {
                       </span>
                       {r.critical_count > 0 && (
                         <span className="text-kirmizi font-bold tabular-nums">
-                          {r.critical_count} 🔴
+                          {r.critical_count} 
                         </span>
                       )}
                       {r.warning_count > 0 && (
                         <span className="text-saman-koyu font-bold tabular-nums">
-                          {r.warning_count} 🟡
+                          {r.warning_count} 
                         </span>
                       )}
                       <Pill>{r.status}</Pill>

@@ -166,7 +166,7 @@ export default function AdminProfilPage() {
         toast.error(verifyErr.message);
         return;
       }
-      toast.success("2FA aktif edildi 🎉");
+      toast.success("2FA aktif edildi ");
       setMfaQrCode(null);
       setMfaSecret(null);
       setMfaFactorId(null);
@@ -270,10 +270,10 @@ export default function AdminProfilPage() {
             <div className="font-medium">
               {profile.emailConfirmedAt ? (
                 <span className="text-yesil-koyu">
-                  ✓ {formatDateTime(profile.emailConfirmedAt)}
+                   {formatDateTime(profile.emailConfirmedAt)}
                 </span>
               ) : (
-                <span className="text-kirmizi-koyu">⚠️ Onaysız</span>
+                <span className="text-kirmizi-koyu"> Onaysız</span>
               )}
             </div>
           </div>
@@ -292,11 +292,11 @@ export default function AdminProfilPage() {
           <h2 className="text-lg font-semibold">İki adımlı doğrulama (2FA)</h2>
           {profile.mfaEnabled ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-yesil-soft px-2 py-0.5 text-[11.5px] font-semibold text-yesil-koyu">
-              ✓ Aktif
+               Aktif
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-kirmizi-soft px-2 py-0.5 text-[11.5px] font-semibold text-kirmizi-koyu">
-              ⚠️ Devre dışı
+               Devre dışı
             </span>
           )}
         </div>
@@ -333,7 +333,7 @@ export default function AdminProfilPage() {
           </div>
         ) : !mfaQrCode ? (
           <Button variant="primary" onClick={handleMfaEnroll} disabled={mfaEnrolling}>
-            {mfaEnrolling ? "Hazırlanıyor..." : "🔒 2FA'yı şimdi kur"}
+            {mfaEnrolling ? "Hazırlanıyor..." : " 2FA'yı şimdi kur"}
           </Button>
         ) : (
           <div className="space-y-4">
@@ -423,7 +423,7 @@ export default function AdminProfilPage() {
           oturumları kapat. Bir sonraki girişte tekrar şifre + 2FA istenir.
         </p>
         <Button variant="secondary" onClick={handleSignOutAllOther}>
-          🚪 Diğer cihazlardaki oturumları kapat
+           Diğer cihazlardaki oturumları kapat
         </Button>
       </Card>
 

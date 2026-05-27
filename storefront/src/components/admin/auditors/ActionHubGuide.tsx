@@ -22,7 +22,6 @@ import { cn } from "@/lib/cn";
 
 interface Step {
   num: number;
-  emoji: string;
   title: string;
   desc: string;
   href: string;
@@ -32,7 +31,6 @@ interface Step {
 const STEPS: Step[] = [
   {
     num: 1,
-    emoji: "🔔",
     title: "Bekleyen aksiyonlar",
     desc: "Senin onayını bekleyen kritik bulgular. Önce buraya bak — gerçek müdahale gerektirenler burada.",
     href: "/admin/denetciler/bekleyen",
@@ -40,7 +38,6 @@ const STEPS: Step[] = [
   },
   {
     num: 2,
-    emoji: "🔍",
     title: "Agent detayı",
     desc: "Bir bulgunun bağlamı için ilgili agent kartına tıkla. Son run + tüm bulgular + markdown rapor.",
     href: "#",
@@ -48,7 +45,6 @@ const STEPS: Step[] = [
   },
   {
     num: 3,
-    emoji: "⏸",
     title: "Karar arşivi",
     desc: "Ertelediğin / yok saydığın aksiyonlar. Sonradan yeniden değerlendirmek için dön.",
     href: "/admin/denetciler/ertelenenler",
@@ -56,7 +52,6 @@ const STEPS: Step[] = [
   },
   {
     num: 4,
-    emoji: "📋",
     title: "Tüm geçmiş",
     desc: "Her run'ın audit log'u — kim ne zaman çalıştırdı, ne çıktı. Compliance için kayıt.",
     href: "/admin/denetciler/gecmis",
@@ -74,7 +69,7 @@ export function ActionHubGuide() {
         onClick={() => setCollapsed(false)}
         className="mb-6 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-pim-mercan hover:underline"
       >
-        💡 Aksiyon rehberini göster →
+         Aksiyon rehberini göster →
       </button>
     );
   }
@@ -84,7 +79,7 @@ export function ActionHubGuide() {
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-2 h-[22px] rounded-full bg-pim-mercan text-white text-[11px] font-bold uppercase tracking-[0.04em]">
-            💡 REHBER
+             REHBER
           </div>
           <h2 className="mt-2 text-[18px] font-semibold tracking-tight text-lacivert">
             Bulgular için aksiyon akışı
@@ -102,7 +97,7 @@ export function ActionHubGuide() {
           aria-label="Rehberi gizle"
           title="Bu rehberi gizle"
         >
-          ✕ Gizle
+           Gizle
         </button>
       </div>
 
@@ -121,7 +116,6 @@ export function ActionHubGuide() {
                 <span className="grid place-items-center w-6 h-6 rounded-full bg-pim-mercan text-white text-[11px] font-bold">
                   {s.num}
                 </span>
-                <span className="text-[18px]">{s.emoji}</span>
                 <span className="font-semibold text-[13.5px] text-lacivert">
                   {s.title}
                 </span>

@@ -123,7 +123,7 @@ export function ProfileBar({
           {profiles.length === 0 && <option disabled>Henüz profil yok</option>}
           {profiles.map((p) => {
             const age = getProfileAge(p);
-            const ageBadge = age.status === "ancient" ? " ⚠️" : age.status === "stale" ? " ⏱" : "";
+            const ageBadge = age.status === "ancient" ? " " : age.status === "stale" ? " ⏱" : "";
             return (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -220,7 +220,7 @@ function ProfileAgeBadge({ profile }: { profile: PricingProfile }) {
       )}
       title={age.message}
     >
-      {age.status === "ancient" && "⚠️ "}
+      {age.status === "ancient" && " "}
       {age.message}
     </span>
   );

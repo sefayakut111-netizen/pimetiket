@@ -76,17 +76,17 @@ interface ApiResponse {
 const SCOPE_META: Record<Scope, { label: string; emoji: string; desc: string }> = {
   sticker: {
     label: "Sticker",
-    emoji: "🏷",
+    emoji: "",
     desc: "Vinil / Opak / Şeffaf / Holografik / Metalik · Finiş seçimi",
   },
   etiket_rulo: {
     label: "Rulo Etiket",
-    emoji: "📋",
+    emoji: "",
     desc: "Kraft / Kuşe / Beyaz / Ultra / Metalik · Kaplama + Özelleştirme",
   },
   etiket_tabaka: {
     label: "Tabaka Etiket",
-    emoji: "📄",
+    emoji: "",
     desc: "Kraft / Kuşe / Beyaz · Kaplama (özelleştirme yok)",
   },
 };
@@ -327,13 +327,13 @@ function FiyatlarPageInner() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (j.ok) {
-        toast.success("✓ Canlıya kaydedildi");
+        toast.success(" Canlıya kaydedildi");
         try {
           const cartRes = await fetch("/api/admin/cart-stats");
           const cartData = (await cartRes.json()) as { activeCarts?: number };
           if ((cartData.activeCarts ?? 0) > 0) {
             toast.info(
-              `ℹ️ ${cartData.activeCarts} aktif sepet kalemi var (son 24 saat) — müşteriler eski fiyatla devam edebilir.`
+              `ℹ ${cartData.activeCarts} aktif sepet kalemi var (son 24 saat) — müşteriler eski fiyatla devam edebilir.`
             );
           }
         } catch {
@@ -670,7 +670,7 @@ function FiyatlarPageInner() {
           )}
         >
           <div className="flex items-center gap-3 flex-wrap mb-3">
-            <span className="text-[28px]">{isDirty ? "✏" : "🟢"}</span>
+            <span className="text-[28px]">{isDirty ? "" : ""}</span>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-[15px] text-lacivert">
                 {isDirty
@@ -679,7 +679,7 @@ function FiyatlarPageInner() {
               </div>
               <div className="text-[12px] text-gri-700 mt-1 leading-relaxed">
                 <span className="inline-flex items-center gap-1">
-                  🟢 <strong>Son kayıt:</strong>
+                   <strong>Son kayıt:</strong>
                   <span>{timeAgo(data.live_updated_at ?? null)}</span>
                   {data.live_updated_by_email && (
                     <span className="text-gri-500">
@@ -694,7 +694,7 @@ function FiyatlarPageInner() {
               size="sm"
               onClick={() => setShowHistory((s) => !s)}
             >
-              {showHistory ? "Geçmiş gizle" : "📋 Tüm geçmiş"}
+              {showHistory ? "Geçmiş gizle" : " Tüm geçmiş"}
             </Button>
           </div>
 
@@ -702,7 +702,7 @@ function FiyatlarPageInner() {
           {isDirty && draftFormDiff.length > 0 && (
             <div className="rounded-lg bg-white/60 ring-1 ring-saman/30 p-3">
               <div className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-saman-koyu mb-2">
-                ✏ Kayıt sonrası canlıya çıkacak ({draftFormDiff.length})
+                 Kayıt sonrası canlıya çıkacak ({draftFormDiff.length})
               </div>
               <ul className="space-y-1 text-[12.5px] max-h-[180px] overflow-y-auto">
                 {draftFormDiff.slice(0, 8).map((d, i) => (
@@ -737,7 +737,7 @@ function FiyatlarPageInner() {
         {showHistory && (
           <Card padding="p-4" className="mb-5">
             <h3 className="font-semibold text-[14px] mb-3">
-              📋 Son 30 değişiklik
+               Son 30 değişiklik
             </h3>
             {!data.history || data.history.length === 0 ? (
               <div className="text-[13px] text-gri-500 italic">
@@ -762,10 +762,10 @@ function FiyatlarPageInner() {
                         )}
                       >
                         {h.action === "publish"
-                          ? "🚀 Yayın"
+                          ? " Yayın"
                           : h.action === "revert"
                             ? "↩ Geri"
-                            : "💾 Draft"}
+                            : " Draft"}
                       </span>
                       <span className="font-mono text-[11px] text-lacivert">
                         {fmtDateTime(h.changed_at)}
@@ -797,7 +797,7 @@ function FiyatlarPageInner() {
             {/* Materials — scope'a göre m² ya da tabaka bazlı */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
-                🎨{" "}
+                {" "}
                 <span>
                   Malzemeler (
                   {isSheetMode ? "1 tabaka maliyeti" : "m² maliyet"})
@@ -990,7 +990,7 @@ function FiyatlarPageInner() {
             {Object.entries(draft.options).map(([group_id, group]) => (
               <Card padding="p-5" key={group_id}>
                 <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
-                  ✨ <span>{group.label}</span>
+                   <span>{group.label}</span>
                   <span
                     className={cn(
                       "ml-2 inline-flex items-center h-[20px] px-2 rounded-full text-[10px] font-bold",
@@ -1169,7 +1169,7 @@ function FiyatlarPageInner() {
             {/* Tiers */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
-                📊 <span>Adet kademeleri (çarpansal)</span>
+                 <span>Adet kademeleri (çarpansal)</span>
               </h2>
               <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
                 Adet × çarpan. <strong>1.00 = referans</strong>, <strong>&gt;1.00 = zam</strong>,{" "}
@@ -1228,7 +1228,7 @@ function FiyatlarPageInner() {
             <Card padding="p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold text-[16px] flex items-center gap-2">
-                  💰 <span>Operasyon + Marj + KDV</span>
+                   <span>Operasyon + Marj + KDV</span>
                 </h2>
                 <label className="inline-flex items-center gap-2 cursor-pointer">
                   <span className="text-xs text-gri-700">
@@ -1316,7 +1316,7 @@ function FiyatlarPageInner() {
           <div className="space-y-4 xl:sticky xl:top-4 h-fit">
             {/* Sefa 17 May v4: Tek buton — direkt canlıya kaydet */}
             <Card padding="p-4">
-              <h3 className="font-semibold text-[13.5px] mb-3">⚡ Aksiyon</h3>
+              <h3 className="font-semibold text-[13.5px] mb-3"> Aksiyon</h3>
               <Button
                 variant="primary"
                 size="md"
@@ -1331,8 +1331,8 @@ function FiyatlarPageInner() {
                 {saving
                   ? "Kaydediliyor..."
                   : isDirty
-                    ? "💾 Canlıya kaydet"
-                    : "✓ Güncel"}
+                    ? " Canlıya kaydet"
+                    : " Güncel"}
               </Button>
               <div className="mt-3 text-[11px] text-gri-700 leading-relaxed">
                 Değişiklikler <strong>anında canlıya</strong> kaydedilir,
@@ -1344,7 +1344,7 @@ function FiyatlarPageInner() {
             {/* Live preview — interaktif simülasyon */}
             <Card padding="p-4" className="!bg-krem">
               <h3 className="font-semibold text-[13.5px] mb-3 flex items-center gap-2">
-                🔮 <span>Canlı Simülasyon</span>
+                 <span>Canlı Simülasyon</span>
               </h3>
 
               {/* Boyut */}
@@ -1433,7 +1433,7 @@ function FiyatlarPageInner() {
                 </select>
                 {selectedMaterial?.competitor_ref && (
                   <p className="text-[11px] text-gri-500 mt-1">
-                    📊 Rakip ref: {selectedMaterial.competitor_ref}
+                     Rakip ref: {selectedMaterial.competitor_ref}
                   </p>
                 )}
               </div>
@@ -1502,21 +1502,21 @@ function FiyatlarPageInner() {
                   <>
                     <div className="space-y-1.5 text-[12.5px]">
                       <Row
-                        label="🏷 Birim fiyat"
+                        label=" Birim fiyat"
                         value={fmtMoney2(costBreakdown.unitPrice ?? 0)}
                       />
                       <Row
-                        label="📦 Ara toplam"
+                        label=" Ara toplam"
                         value={fmtMoney(costBreakdown.subtotal)}
                       />
                       <Row
-                        label={`💰 KDV (%${draft.vat.pct})`}
+                        label={` KDV (%${draft.vat.pct})`}
                         value={fmtMoney(costBreakdown.vatAmount)}
                       />
                       <div className="border-t border-pim-mercan/30 pt-2 mt-2">
                         <div className="flex justify-between items-baseline gap-2">
                           <span className="font-bold text-lacivert">
-                            🧾 Müşteri toplam
+                             Müşteri toplam
                           </span>
                           <span className="text-[18px] font-bold text-pim-mercan tabular-nums">
                             {fmtMoney(costBreakdown.total)}
@@ -1571,19 +1571,19 @@ function FiyatlarPageInner() {
                         ) : (
                           <>
                             <Row
-                              label="🏭 Partner maliyeti"
+                              label=" Partner maliyeti"
                               value={fmtMoney(costBreakdown.partnerCost)}
                             />
                             <Row
-                              label="💵 Senin kârın"
+                              label=" Senin kârın"
                               value={fmtMoney(costBreakdown.marginAmount)}
                             />
                             <Row
-                              label="📊 Kâr marjı"
+                              label=" Kâr marjı"
                               value={`%${costBreakdown.profitPct.toFixed(1)}`}
                             />
                             <Row
-                              label="💳 PSP komisyon"
+                              label=" PSP komisyon"
                               value={fmtMoney(costBreakdown.feeAmount)}
                             />
                           </>
@@ -1593,14 +1593,14 @@ function FiyatlarPageInner() {
 
                     {costBreakdown.profitPct < 15 && (
                       <div className="mt-2 text-[12px] text-sari-koyu bg-sari-soft/30 rounded px-3 py-2">
-                        ⚠️ Kâr marjı %{costBreakdown.profitPct.toFixed(1)} —
+                         Kâr marjı %{costBreakdown.profitPct.toFixed(1)} —
                         eşik %15 altında
                       </div>
                     )}
                   </>
                 ) : previewResult && !previewResult.ok ? (
                   <div className="text-[12px] text-kirmizi">
-                    ⚠ {previewResult.reason}
+                     {previewResult.reason}
                     {"hint" in previewResult && previewResult.hint && (
                       <>
                         <br />
@@ -1657,7 +1657,7 @@ function FiyatlarPageInner() {
                 size="sm"
                 onClick={() => setShowMatrix((s) => !s)}
               >
-                {showMatrix ? "Tabloyu gizle" : "📊 Fiyat tablosu"}
+                {showMatrix ? "Tabloyu gizle" : " Fiyat tablosu"}
               </Button>
               {showMatrix && draft && (
                 <PriceMatrix
@@ -1694,7 +1694,7 @@ function FiyatlarPageInner() {
         <div className="fixed bottom-0 left-0 right-0 z-40 lg:left-[248px] bg-white border-t border-gri-200 shadow-lg px-6 py-3">
           <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-4">
             <div className="text-[13px] text-sari-koyu font-medium">
-              ✏ {draftFormDiff.length} değişiklik kaydedilmemiş
+               {draftFormDiff.length} değişiklik kaydedilmemiş
             </div>
             <div className="flex items-center gap-3">
               <Button

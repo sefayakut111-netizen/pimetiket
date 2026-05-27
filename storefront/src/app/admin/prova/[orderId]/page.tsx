@@ -280,7 +280,7 @@ export default function AdminProvaDetailPage({
         {error && (
           <Card className="p-6 text-center">
             <div className="text-pim-mercan font-semibold mb-2">
-              ⚠ Yükleme hatası
+               Yükleme hatası
             </div>
             <p className="text-sm text-gri-700">{error}</p>
             <Button
@@ -385,7 +385,7 @@ export default function AdminProvaDetailPage({
 
                           {df.cutline?.pim_feedback && (
                             <div className="mt-2 text-[11.5px] text-gri-700 italic">
-                              💡 {df.cutline.pim_feedback}
+                               {df.cutline.pim_feedback}
                             </div>
                           )}
 

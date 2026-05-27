@@ -173,7 +173,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
         <div className="px-6 py-4 border-b border-gri-200 flex items-center justify-between bg-gri-50">
           <div>
             <h3 className="text-[18px] font-semibold tracking-tight">
-              📊 Üretim İstatistikleri
+               Üretim İstatistikleri
             </h3>
             <p className="text-[12px] text-gri-700 mt-0.5">
               Tüm zamanların özeti — yerel kayıt ({records.length} kayıt)
@@ -193,12 +193,12 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
         <div className="flex-1 overflow-y-auto p-6">
           {isEmpty ? (
             <div className="text-center py-16">
-              <div className="text-[48px] opacity-30 mb-3">📊</div>
+              <div className="text-[48px] opacity-30 mb-3"></div>
               <p className="text-[14px] text-gri-700 mb-1">
                 Henüz kayıt yok.
               </p>
               <p className="text-[12px] text-gri-500">
-                Bir hesap yap → &ldquo;📄 İş Emri PDF&rdquo; → kayıt buraya düşer.
+                Bir hesap yap → &ldquo; İş Emri PDF&rdquo; → kayıt buraya düşer.
               </p>
             </div>
           ) : (
@@ -362,7 +362,7 @@ export function StatsModal({ open, onClose }: StatsModalProps) {
               onClick={handleExportCSV}
               disabled={isEmpty}
             >
-              📥 CSV indir
+               CSV indir
             </Button>
             <Button variant="primary" size="sm" onClick={onClose}>
               Kapat

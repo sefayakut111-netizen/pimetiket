@@ -104,7 +104,7 @@ export function CartPanel({ onGeneratePDF }: CartPanelProps) {
       {/* Header */}
       <div className="px-5 py-4 border-b border-gri-200 bg-gri-50 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="text-[20px]">🛒</span>
+          <span className="text-[20px]"></span>
           <div>
             <h3 className="text-[16px] font-semibold tracking-tight">Sepet</h3>
             <p className="text-[11px] text-gri-700 tabular-nums">
@@ -138,7 +138,7 @@ export function CartPanel({ onGeneratePDF }: CartPanelProps) {
                 onClick={handleGeneratePDF}
                 disabled={!onGeneratePDF}
               >
-                📄 Toplu PDF
+                 Toplu PDF
               </Button>
             </>
           )}
@@ -148,7 +148,7 @@ export function CartPanel({ onGeneratePDF }: CartPanelProps) {
       {/* Body */}
       {isEmpty ? (
         <div className="px-5 py-12 text-center">
-          <div className="text-[36px] opacity-40 mb-3">🎁</div>
+          <div className="text-[36px] opacity-40 mb-3"></div>
           <p className="text-[14px] text-gri-700 mb-1">
             Sepet boş — bir hesap yap, &ldquo;Sepete Ekle&rdquo; tıkla
           </p>
@@ -313,7 +313,7 @@ export function CartPanel({ onGeneratePDF }: CartPanelProps) {
           {summary.result.groupDiscountTotal > 0 && (
             <div className="px-5 py-3 bg-yesil-soft/30 border-t border-yesil/20">
               <div className="text-[11px] font-semibold text-yesil mb-1.5">
-                💰 Aktif grup indirimleri
+                 Aktif grup indirimleri
               </div>
               {Object.entries(summary.result.groups)
                 .filter(([, g]) => g.discountPct > 0)

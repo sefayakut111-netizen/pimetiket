@@ -80,9 +80,9 @@ const VERDICT_COLORS: Record<string, string> = {
 };
 
 const VERDICT_LABELS: Record<string, string> = {
-  iyi: "✓ İYİ",
+  iyi: " İYİ",
   normal: "~ NORMAL",
-  kotu: "✗ KÖTÜ",
+  kotu: " KÖTÜ",
   error: "! HATA",
 };
 
@@ -166,7 +166,7 @@ export default function AdminAiQcPage() {
           <div className="text-center mb-10">
             <Pim pose="happy" size={140} />
             <h1 className="mt-4 text-[28px] font-semibold tracking-tight">
-              Kuyruk temiz! 🎉
+              Kuyruk temiz! 
             </h1>
             <p className="mt-3 text-base text-gri-700 leading-relaxed">
               Manuel inceleme bekleyen sipariş yok. Yeni QC flag&rsquo;i
@@ -179,7 +179,7 @@ export default function AdminAiQcPage() {
               ilk girişte ne yapacaklarını anlaması için. */}
           <div className="rounded-2xl bg-white ring-1 ring-gri-200 p-6">
             <h2 className="text-[15px] font-semibold mb-4 text-lacivert">
-              📚 AI QC nasıl çalışır?
+               AI QC nasıl çalışır?
             </h2>
             <ol className="space-y-3 text-[13.5px] text-gri-700 leading-relaxed">
               <li className="flex gap-3">
@@ -210,7 +210,7 @@ export default function AdminAiQcPage() {
 
             <div className="mt-6 pt-4 border-t border-gri-200">
               <h3 className="text-[12.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-2">
-                💡 Operatör ipuçları
+                 Operatör ipuçları
               </h3>
               <ul className="space-y-1.5 text-[12.5px] text-gri-700">
                 <li>• DPI flag: müşteriye "300 DPI ile tekrar yükle" iste, override etme</li>

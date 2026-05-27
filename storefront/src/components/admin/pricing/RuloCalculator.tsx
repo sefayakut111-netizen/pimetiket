@@ -480,7 +480,7 @@ export function RuloCalculator({
           <div>
             <Eyebrow>Operatör · Hesaplama aracı</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              📋 Rulo Etiket Fiyat Hesapla
+               Rulo Etiket Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
               Kraft / Kuşe / Beyaz / Ultra clear / Metalik · min 1000 adet,
@@ -495,7 +495,7 @@ export function RuloCalculator({
               <Icon.Box size={12} /> Lot · {nextLotPreview}
             </span>
             <Button variant="ghost" size="sm" onClick={() => setStatsOpen(true)}>
-              📊 İstatistik
+               İstatistik
             </Button>
             <Button variant="ghost" size="sm" onClick={reset}>
               Sıfırla
@@ -506,7 +506,7 @@ export function RuloCalculator({
               onClick={handleAddToCart}
               disabled={!result.ok}
             >
-              🛒 Sepete Ekle
+               Sepete Ekle
             </Button>
             <Button
               variant="primary"
@@ -514,7 +514,7 @@ export function RuloCalculator({
               onClick={handleGeneratePDF}
               disabled={!result.ok}
             >
-              📄 İş Emri PDF
+               İş Emri PDF
             </Button>
           </div>
         </div>
@@ -754,7 +754,7 @@ export function RuloCalculator({
                   {result.cost.marginWarning && (
                     <div className="relative mt-4 px-3 py-2.5 rounded-lg bg-kirmizi/15 ring-2 ring-kirmizi/50 text-[12.5px]">
                       <div className="font-bold text-kirmizi mb-1">
-                        ⚠️ DÜŞÜK MARJ UYARISI
+                         DÜŞÜK MARJ UYARISI
                       </div>
                       <div className="text-white/90 tabular-nums">
                         Intended <strong>%{result.cost.marginWarning.intendedMarkupPct}</strong> →
@@ -823,7 +823,7 @@ export function RuloCalculator({
                   </div>
                   <div className="px-5 py-3 text-[11px] text-gri-500 bg-gri-50 border-t border-dashed border-gri-200 flex flex-wrap justify-between gap-2 tabular-nums">
                     <span>
-                      ⚙ {result.geometry.rollsNeeded === 1 ? "Tek rulo" : `${result.geometry.rollsNeeded} rulo`}
+                       {result.geometry.rollsNeeded === 1 ? "Tek rulo" : `${result.geometry.rollsNeeded} rulo`}
                       {" · "}
                       son: {result.geometry.etiketsOnLastRoll}/{result.geometry.perRoll}
                       {" · "}

@@ -11,11 +11,12 @@
 
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow, Button, useToast } from "@/components/ui";
+import { StatusDot, type DotColor } from "@/components/admin/ui";
 import { cn } from "@/lib/cn";
 import type {
   AdminCustomerWithSegment,
@@ -66,36 +67,36 @@ interface Customer360 {
 
 const SEGMENT_META: Record<
   string,
-  { label: string; emoji: string; color: string; bg: string }
+  { label: string; dot?: DotColor; color: string; bg: string }
 > = {
-  vip: { label: "VIP", emoji: "⭐", color: "text-sari-koyu", bg: "bg-sari-soft" },
+  vip: { label: "VIP", dot: "sari", color: "text-sari-koyu", bg: "bg-sari-soft" },
   repeat: {
     label: "Tekrar",
-    emoji: "🔁",
+    dot: "yesil",
     color: "text-yesil",
     bg: "bg-yesil-soft",
   },
   new: {
     label: "Yeni",
-    emoji: "✨",
+    dot: "mercan",
     color: "text-pim-mercan",
     bg: "bg-pim-mercan-tint",
   },
   risk: {
     label: "Risk",
-    emoji: "⚠",
+    dot: "sari",
     color: "text-saman-koyu",
     bg: "bg-saman/15",
   },
   lost: {
     label: "Kayıp",
-    emoji: "💤",
+    dot: "kirmizi",
     color: "text-kirmizi",
     bg: "bg-kirmizi/10",
   },
   no_order: {
     label: "Sipariş yok",
-    emoji: "🆕",
+    dot: "gri",
     color: "text-gri-700",
     bg: "bg-gri-100",
   },
@@ -370,10 +371,10 @@ export default function AdminMusteriDetailPage({
             4 anchor link ile bölüm gezinti — uzun sayfada hızlı scroll. */}
         <nav className="sticky top-14 z-30 -mx-4 md:-mx-8 px-4 md:px-8 mb-4 bg-white/80 backdrop-blur-md border-b border-gri-200 py-2 flex flex-wrap gap-2">
           {[
-            { id: "genel", label: "👤 Genel" },
-            { id: "siparisler", label: "📦 Siparişler" },
-            { id: "iletisim", label: "📧 İletişim" },
-            { id: "kvkk", label: "🛡️ KVKK & Audit" },
+            { id: "genel", label: " Genel" },
+            { id: "siparisler", label: " Siparişler" },
+            { id: "iletisim", label: " İletişim" },
+            { id: "kvkk", label: " KVKK & Audit" },
           ].map((t) => (
             <button
               key={t.id}
@@ -402,16 +403,17 @@ export default function AdminMusteriDetailPage({
                   segment.color
                 )}
               >
-                {segment.emoji} {segment.label}
+                {segment.dot && <StatusDot color={segment.dot} />}
+                {segment.label}
               </span>
               {isBanned && (
                 <span className="inline-flex items-center h-[26px] px-2.5 rounded-full bg-kirmizi/10 text-kirmizi text-[12px] font-bold">
-                  🚫 DONDURULMUŞ
+                   DONDURULMUŞ
                 </span>
               )}
               {hasVip && (
-                <span className="inline-flex items-center h-[26px] px-2.5 rounded-full bg-sari-soft text-sari-koyu text-[12px] font-bold">
-                  ⭐ VIP
+                <span className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full bg-sari-soft text-sari-koyu text-[12px] font-bold">
+                  <Icon.Star size={12} /> VIP
                 </span>
               )}
             </h1>
@@ -501,13 +503,13 @@ export default function AdminMusteriDetailPage({
                 />
                 {o.phone && (
                   <div className="flex items-center justify-between py-1 text-gri-700">
-                    <span>📞 Telefon</span>
+                    <span> Telefon</span>
                     <span className="font-mono text-lacivert">{o.phone}</span>
                   </div>
                 )}
                 {o.invoice_type && (
                   <div className="flex items-center justify-between py-1 text-gri-700">
-                    <span>📄 Fatura</span>
+                    <span> Fatura</span>
                     <span className="font-semibold text-lacivert">
                       {o.invoice_type === "corporate" ? "Kurumsal" : "Bireysel"}
                     </span>
@@ -544,7 +546,7 @@ export default function AdminMusteriDetailPage({
                     className="inline-flex items-center gap-1 h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11.5px] font-semibold hover:bg-kirmizi/10 hover:text-kirmizi"
                     title="Tıkla kaldır"
                   >
-                    {t} ✕
+                    {t} 
                   </button>
                 ))}
               </div>
@@ -553,65 +555,65 @@ export default function AdminMusteriDetailPage({
             {/* Hızlı aksiyonlar */}
             <Card padding="p-4">
               <h3 className="font-semibold text-[14px] mb-3 text-lacivert">
-                ⚡ Hızlı aksiyonlar
+                 Hızlı aksiyonlar
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 {o.phone && (
                   <>
                     <ActionBtn
-                      icon="💬"
+                      icon=""
                       label="WhatsApp"
                       href={waLink(o.phone)}
                       external
                     />
                     <ActionBtn
-                      icon="📞"
+                      icon=""
                       label="Telefon"
                       href={telLink(o.phone)}
                     />
                   </>
                 )}
                 <ActionBtn
-                  icon="📧"
+                  icon=""
                   label="Email at"
                   onClick={() => setModalKind("email")}
                 />
                 <ActionBtn
-                  icon="🎟️"
+                  icon=""
                   label="Kupon ver"
                   onClick={() => {
                     window.open("/admin/kuponlar", "_blank");
                   }}
                 />
                 <ActionBtn
-                  icon={hasVip ? "⭐" : "☆"}
+                  icon={hasVip ? <Icon.Star size={14} /> : undefined}
                   label={hasVip ? "VIP kaldır" : "VIP işaretle"}
                   onClick={() => void handleVipToggle()}
                   variant={hasVip ? "primary" : "default"}
                 />
                 <ActionBtn
-                  icon="📝"
+                  icon=""
                   label="Not ekle"
                   onClick={() => setModalKind("note")}
                 />
                 <ActionBtn
-                  icon="🛒"
+                  icon=""
                   label="Manuel sipariş"
                   href={`/admin/siparis-ekle?user=${o.user_id}`}
                 />
                 <ActionBtn
-                  icon="🔄"
+                  icon=""
                   label="Şifre sıfır"
                   onClick={() => void handlePasswordReset()}
                 />
                 <ActionBtn
-                  icon={isBanned ? "✓" : "🚫"}
+                  icon={isBanned ? "" : ""}
                   label={isBanned ? "Banı kaldır" : "Hesap dondur"}
                   onClick={() => setModalKind("suspend")}
                   variant={isBanned ? "default" : "danger"}
                 />
                 <ActionBtn
-                  icon="🗑"
+                  icon=""
                   label="KVKK sil"
                   href={`/admin/kvkk-talepleri?user=${o.user_id}`}
                   variant="danger"
@@ -626,7 +628,7 @@ export default function AdminMusteriDetailPage({
             <Card padding="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-[18px] text-lacivert">
-                  📌 Aktivite akışı
+                   Aktivite akışı
                 </h2>
                 <span className="text-[11.5px] text-gri-500">
                   Son {data.recent_activity.length} olay
@@ -675,7 +677,7 @@ export default function AdminMusteriDetailPage({
             <Card padding="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-[18px] text-lacivert">
-                  📝 Internal notlar
+                   Internal notlar
                 </h2>
                 <Button
                   variant="ghost"
@@ -705,7 +707,7 @@ export default function AdminMusteriDetailPage({
                         <div className="text-[11px] text-gri-500">
                           {n.pinned && (
                             <span className="text-pim-mercan font-bold mr-1.5">
-                              📌
+                              
                             </span>
                           )}
                           {n.author_name ?? "admin"} ·{" "}
@@ -717,7 +719,7 @@ export default function AdminMusteriDetailPage({
                           className="text-[11px] text-gri-500 hover:text-kirmizi"
                           aria-label="Notu sil"
                         >
-                          🗑
+                          
                         </button>
                       </div>
                       <div className="text-[13px] text-lacivert whitespace-pre-wrap leading-relaxed">
@@ -733,7 +735,7 @@ export default function AdminMusteriDetailPage({
             {data.orders.length > 0 && (
               <Card padding="p-5">
                 <h2 className="font-semibold text-[18px] text-lacivert mb-4">
-                  🛒 Son siparişler
+                   Son siparişler
                 </h2>
                 <div className="space-y-2">
                   {data.orders.map((o) => (
@@ -818,7 +820,7 @@ function StatusRow({
     <div className="flex items-center justify-between py-1">
       <div className="flex items-center gap-1.5">
         <span className={ok ? "text-yesil" : "text-gri-500"}>
-          {ok ? "✓" : "✗"}
+          {ok ? "" : ""}
         </span>
         <span className="text-gri-700">{label}</span>
       </div>
@@ -828,7 +830,7 @@ function StatusRow({
 }
 
 interface ActionBtnProps {
-  icon: string;
+  icon?: ReactNode;
   label: string;
   onClick?: () => void;
   href?: string;
@@ -860,14 +862,14 @@ function ActionBtn({
         rel={external ? "noopener noreferrer" : undefined}
         className={cls}
       >
-        <span className="text-[14px]">{icon}</span>
+        {icon ? <span className="shrink-0">{icon}</span> : null}
         <span className="truncate">{label}</span>
       </a>
     );
   }
   return (
     <button type="button" onClick={onClick} className={cls}>
-      <span className="text-[14px]">{icon}</span>
+      {icon ? <span className="shrink-0">{icon}</span> : null}
       <span className="truncate">{label}</span>
     </button>
   );
@@ -902,7 +904,7 @@ function ModalShell({
             className="text-gri-500 hover:text-lacivert text-[18px]"
             aria-label="Kapat"
           >
-            ✕
+            
           </button>
         </div>
         {children}
@@ -921,7 +923,7 @@ function NoteModal({
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   return (
-    <ModalShell title="📝 Yeni internal not" onClose={onClose}>
+    <ModalShell title=" Yeni internal not" onClose={onClose}>
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -936,7 +938,7 @@ function NoteModal({
           onChange={(e) => setPinned(e.target.checked)}
           className="accent-pim-mercan w-4 h-4"
         />
-        📌 Üstte sabitle
+         Üstte sabitle
       </label>
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>
@@ -966,7 +968,7 @@ function EmailModal({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   return (
-    <ModalShell title="📧 Email gönder" onClose={onClose}>
+    <ModalShell title=" Email gönder" onClose={onClose}>
       <div className="text-[12px] text-gri-700 mb-3">
         Alıcı: <strong className="text-lacivert">{email}</strong>
       </div>
@@ -1019,7 +1021,7 @@ function TagModal({
   const SUGGESTED = ["vip", "b2b", "ozel-ilgi", "iade-riski", "kurumsal"];
   const filtered = SUGGESTED.filter((s) => !existing.includes(s));
   return (
-    <ModalShell title="🏷 Etiket ekle" onClose={onClose}>
+    <ModalShell title=" Etiket ekle" onClose={onClose}>
       <input
         value={tag}
         onChange={(e) => setTag(e.target.value)}
@@ -1071,7 +1073,7 @@ function SuspendModal({
   const [reason, setReason] = useState("");
   return (
     <ModalShell
-      title={currentlyBanned ? "✓ Hesap dondurma kaldır" : "🚫 Hesap dondur"}
+      title={currentlyBanned ? " Hesap dondurma kaldır" : " Hesap dondur"}
       onClose={onClose}
     >
       <p className="text-[13px] text-gri-700 leading-relaxed mb-3">

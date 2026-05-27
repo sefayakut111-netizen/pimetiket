@@ -61,19 +61,19 @@ const STATUS_META: Record<
     color: "text-pim-mercan",
     bg: "bg-pim-mercan-tint",
     ring: "ring-pim-mercan",
-    icon: "⏳",
+    icon: "...",
   },
   success: {
     color: "text-yesil",
     bg: "bg-yesil-soft/50",
     ring: "ring-yesil/30",
-    icon: "✓",
+    icon: "",
   },
   fail: {
     color: "text-kirmizi",
     bg: "bg-kirmizi/10",
     ring: "ring-kirmizi/30",
-    icon: "✗",
+    icon: "",
   },
   skip: {
     color: "text-gri-500",
@@ -92,14 +92,14 @@ const STATUS_LABEL: Record<StepStatus, string> = {
 };
 
 const INITIAL_STEPS: SimStep[] = [
-  { id: "user", label: "Test kullanıcı oluştur", emoji: "👤", status: "pending" },
-  { id: "cart", label: "Sepete ürün ekle (2 kalem)", emoji: "🛒", status: "pending" },
-  { id: "address", label: "Adres ekle (Migration 044)", emoji: "📍", status: "pending" },
-  { id: "invoice", label: "Kurumsal fatura profili (Migration 044)", emoji: "📄", status: "pending" },
-  { id: "coupon", label: "Kupon kodu doğrula", emoji: "🎁", status: "pending" },
-  { id: "order", label: "Order kaydı oluştur", emoji: "📋", status: "pending" },
-  { id: "callback", label: "Mock PayTR callback (paid)", emoji: "💳", status: "pending" },
-  { id: "verify", label: "Doğrulama (status + outbox)", emoji: "✅", status: "pending" },
+  { id: "user", label: "Test kullanıcı oluştur", emoji: "", status: "pending" },
+  { id: "cart", label: "Sepete ürün ekle (2 kalem)", emoji: "", status: "pending" },
+  { id: "address", label: "Adres ekle (Migration 044)", emoji: "", status: "pending" },
+  { id: "invoice", label: "Kurumsal fatura profili (Migration 044)", emoji: "", status: "pending" },
+  { id: "coupon", label: "Kupon kodu doğrula", emoji: "", status: "pending" },
+  { id: "order", label: "Order kaydı oluştur", emoji: "", status: "pending" },
+  { id: "callback", label: "Mock PayTR callback (paid)", emoji: "", status: "pending" },
+  { id: "verify", label: "Doğrulama (status + outbox)", emoji: "", status: "pending" },
 ];
 
 // Sefa 18 May v68 (admin UX denetim — kritik güvenlik):
@@ -120,7 +120,7 @@ export default function TestSimulatorPage() {
     return (
       <main className="mx-auto max-w-[800px] px-4 py-10 md:px-6">
         <Card padding="p-10" className="text-center">
-          <div className="mb-3 text-4xl">🔒</div>
+          <div className="mb-3 text-4xl"></div>
           <h1 className="text-xl font-semibold text-lacivert mb-2">
             Sipariş simülatörü production'da devre dışı
           </h1>
@@ -155,7 +155,7 @@ export default function TestSimulatorPage() {
       setResult(data);
       if (data.ok) {
         toast.success(
-          `✓ Tüm akış başarılı (${Math.round((data.total_duration_ms ?? 0) / 100) / 10} sn)`
+          ` Tüm akış başarılı (${Math.round((data.total_duration_ms ?? 0) / 100) / 10} sn)`
         );
       } else if (data.error) {
         toast.error(`Simülasyon çöktü: ${data.error}`);
@@ -200,7 +200,7 @@ export default function TestSimulatorPage() {
       };
       if (data.ok) {
         toast.success(
-          `🧹 Temizlendi: ${data.deleted_users} user, ${data.deleted_orders} order silindi`
+          ` Temizlendi: ${data.deleted_users} user, ${data.deleted_orders} order silindi`
         );
         setResult(null);
       } else {
@@ -254,7 +254,7 @@ export default function TestSimulatorPage() {
               onClick={handleRun}
               disabled={running || cleaningUp}
             >
-              {running ? "⏳ Simülasyon çalışıyor..." : "▶ Tam akış başlat"}
+              {running ? "Simulasyon calisiyor..." : "Tam akis baslat"}
             </Button>
             <Button
               variant="ghost"
@@ -262,7 +262,7 @@ export default function TestSimulatorPage() {
               onClick={handleCleanup}
               disabled={running || cleaningUp}
             >
-              {cleaningUp ? "🧹 Temizleniyor..." : "🧹 Test verisini temizle"}
+              {cleaningUp ? " Temizleniyor..." : " Test verisini temizle"}
             </Button>
             <div className="ml-auto text-[12.5px] text-gri-700">
               {result && (
@@ -271,7 +271,7 @@ export default function TestSimulatorPage() {
                   <strong className="text-lacivert tabular-nums">
                     {(result.total_duration_ms / 1000).toFixed(2)} sn
                   </strong>{" "}
-                  · ✓ {successCount} · ✗ {failCount}
+                  ·  {successCount} ·  {failCount}
                   {skipCount > 0 && <> · → {skipCount}</>}
                 </>
               )}
@@ -291,7 +291,7 @@ export default function TestSimulatorPage() {
             )}
           >
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-[28px]">{result.ok ? "🎉" : "⚠"}</span>
+              <span className="text-[28px]">{result.ok ? "" : ""}</span>
               <div className="flex-1 min-w-0">
                 <div
                   className={cn(
@@ -367,7 +367,7 @@ export default function TestSimulatorPage() {
                     </div>
                     {step.error && (
                       <div className="mt-1 text-[12.5px] text-kirmizi font-mono line-clamp-2">
-                        ⚠ {step.error}
+                         {step.error}
                       </div>
                     )}
                   </div>
@@ -446,7 +446,7 @@ export default function TestSimulatorPage() {
 
         {/* Açıklama kartı */}
         <Card padding="p-5" className="mt-8 !bg-krem ring-black/[0.04]">
-          <h3 className="font-semibold text-[14px] mb-2">💡 Nasıl kullanılır?</h3>
+          <h3 className="font-semibold text-[14px] mb-2"> Nasıl kullanılır?</h3>
           <ul className="text-[12.5px] text-gri-700 space-y-1.5 leading-relaxed">
             <li>
               <strong>▶ Tam akış başlat:</strong> Backend'de yeni test
@@ -454,7 +454,7 @@ export default function TestSimulatorPage() {
               doğrulama. Hata olursa hangi adımda olduğu net görünür.
             </li>
             <li>
-              <strong>🧹 Test verisini temizle:</strong> Tüm simülator
+              <strong> Test verisini temizle:</strong> Tüm simülator
               test'leri silinir (auth user + order + items + events). Production
               müşterilerini ETKİLEMEZ — sadece <code className="font-mono bg-white px-1 rounded">simulator-*@pimetiket.test</code> ve <code className="font-mono bg-white px-1 rounded">PE-YYYY-SIM*</code> formatları.
             </li>

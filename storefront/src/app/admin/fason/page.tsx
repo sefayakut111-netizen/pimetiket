@@ -536,7 +536,7 @@ export default function AdminFasonPage() {
                       />
                       <div className="mt-4 pt-3 border-t border-gri-100 space-y-1.5 text-[12px] text-gri-700">
                         <div>
-                          📧{" "}
+                          {" "}
                           <a
                             href={`mailto:${selected.contact_email}`}
                             className="text-pim-mercan hover:underline"
@@ -545,13 +545,13 @@ export default function AdminFasonPage() {
                           </a>
                         </div>
                         {selected.contact_whatsapp && (
-                          <div>📱 {selected.contact_whatsapp}</div>
+                          <div> {selected.contact_whatsapp}</div>
                         )}
                         {selected.contact_person && (
-                          <div>👤 {selected.contact_person}</div>
+                          <div> {selected.contact_person}</div>
                         )}
                         <div>
-                          📑 Sözleşme:{" "}
+                           Sözleşme:{" "}
                           {selected.contract_signed_at ? (
                             <>
                               <span className="text-yesil font-semibold">
@@ -566,7 +566,7 @@ export default function AdminFasonPage() {
                                   rel="noopener noreferrer"
                                   className="ml-2 text-pim-mercan font-semibold hover:underline text-[11px]"
                                 >
-                                  📥 PDF indir
+                                   PDF indir
                                 </a>
                               )}
                             </>
@@ -857,7 +857,7 @@ function PartnerAssignmentsPanel({
 
                 {a.tracking_number && (
                   <div className="mt-2 text-[11px]">
-                    🚚{" "}
+                    {" "}
                     {a.tracking_url ? (
                       <a
                         href={a.tracking_url}
@@ -951,7 +951,7 @@ function PartnerCapabilitiesPanel({
               </span>
               {verified ? (
                 <span className="inline-flex items-center gap-1 text-yesil font-semibold">
-                  ✅ Onaylı
+                   Onaylı
                 </span>
               ) : (
                 <Button
@@ -960,7 +960,7 @@ function PartnerCapabilitiesPanel({
                   disabled={busyId === c.id}
                   onClick={() => void verify(c.id, true)}
                 >
-                  ⏳ Onayla
+                  Onayla
                 </Button>
               )}
             </li>
@@ -1080,7 +1080,7 @@ function PartnerActions({
               }
               disabled={busy}
             >
-              ✕ Sonlandır
+               Sonlandır
             </button>
           )}
           <div className="border-t border-gri-100 my-1" />
@@ -1089,7 +1089,7 @@ function PartnerActions({
             className="block px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
             onClick={() => setOpen(false)}
           >
-            ✏️ Düzenle
+             Düzenle
           </Link>
         </div>
       )}
@@ -1236,7 +1236,7 @@ function PartnerMailLog({ partnerId }: { partnerId: string }) {
             key={i}
             className="text-[11px] text-gri-600 flex justify-between gap-2"
           >
-            <span>📧 {m.template.replace(/_/g, " ")}</span>
+            <span> {m.template.replace(/_/g, " ")}</span>
             <span className="text-gri-400 shrink-0">
               {new Date(m.sentAt).toLocaleDateString("tr-TR", {
                 day: "2-digit",
@@ -1449,7 +1449,7 @@ function PartnerCard({
             )}
             {partner.status === "terminated" && (
               <span className="inline-flex items-center h-[24px] px-2.5 rounded-full bg-kirmizi-soft text-kirmizi text-[11px] font-semibold">
-                ✕ Sonlandırıldı
+                 Sonlandırıldı
               </span>
             )}
           </div>
@@ -1514,7 +1514,7 @@ function PartnerCard({
             )}
             title="Atanan işleri gör"
           >
-            📦 Aktif:{" "}
+             Aktif:{" "}
             <strong className="tabular-nums">
               {partner.active_order_count ?? 0}
             </strong>{" "}
@@ -1523,11 +1523,11 @@ function PartnerCard({
           </button>
           {partner.contract_signed_at ? (
             <span className="text-yesil font-semibold ml-auto">
-              ✓ Sözleşmeli
+               Sözleşmeli
             </span>
           ) : (
             <span className="text-kirmizi font-semibold ml-auto">
-              ⚠ Sözleşmesiz
+               Sözleşmesiz
             </span>
           )}
         </div>

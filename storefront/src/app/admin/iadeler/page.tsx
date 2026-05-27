@@ -172,7 +172,7 @@ export default function AdminIadelerPage() {
             <Pim pose="happy" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
               {items.length === 0
-                ? "İade talebi yok 🎉"
+                ? "İade talebi yok "
                 : "Bu filtrede sonuç yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
@@ -204,7 +204,7 @@ export default function AdminIadelerPage() {
                   ? { tr: "Yeni", bg: "bg-yesil-soft", color: "text-yesil-koyu" }
                   : ageHours < 72
                     ? { tr: `${Math.floor(ageHours)}sa`, bg: "bg-sari-soft", color: "text-sari-koyu" }
-                    : { tr: `⚠️ ${Math.floor(ageHours / 24)}g+`, bg: "bg-kirmizi-soft", color: "text-kirmizi-koyu" };
+                    : { tr: ` ${Math.floor(ageHours / 24)}g+`, bg: "bg-kirmizi-soft", color: "text-kirmizi-koyu" };
               return (
                 <Card key={r.id} padding="p-5">
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">

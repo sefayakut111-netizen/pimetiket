@@ -24,6 +24,7 @@ import { Card, Eyebrow } from "@/components/ui";
 import { LineChart, DonutChart } from "@/components/charts";
 import type { LinePoint } from "@/components/charts";
 import { cn } from "@/lib/cn";
+import { StatusDot } from "@/components/admin/ui";
 import {
   listCustomerOrders,
   refreshCustomerOrders,
@@ -348,7 +349,7 @@ function AdminFinansPageInner() {
         {/* PayTR uzlaşma uyarısı (mali pencere açılana kadar) */}
         <Card padding="p-4" className="mb-6 bg-sari-soft ring-sari/20">
           <div className="flex items-start gap-3">
-            <span className="text-[20px]">⏳</span>
+            <StatusDot color="sari" className="w-3 h-3 mt-1.5 shrink-0" />
             <div className="flex-1">
               <h2 className="text-[13.5px] font-semibold text-lacivert">
                 PayTR uzlaşma henüz aktif değil

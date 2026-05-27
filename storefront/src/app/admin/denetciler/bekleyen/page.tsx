@@ -79,8 +79,8 @@ export default function BekleyenPage() {
           {(
             [
               { id: "all", label: "Tümü" },
-              { id: "critical", label: "🔴 Kritik" },
-              { id: "warning", label: "🟡 Uyarı" },
+              { id: "critical", label: " Kritik" },
+              { id: "warning", label: " Uyarı" },
             ] as const
           ).map((f) => (
             <button
@@ -109,7 +109,7 @@ export default function BekleyenPage() {
         ) : items.length === 0 ? (
           <Card padding="p-12">
             <div className="text-center">
-              <div className="text-[48px] mb-3">✨</div>
+              <div className="text-[48px] mb-3"></div>
               <h2 className="text-[20px] font-semibold text-lacivert mb-2">
                 Kuyruk temiz
               </h2>

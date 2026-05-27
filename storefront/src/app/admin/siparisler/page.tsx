@@ -128,7 +128,7 @@ const SAVED_VIEWS: SavedView[] = [
   {
     id: "today",
     label: "Bugün gelenler",
-    emoji: "📅",
+    emoji: "",
     description: "Son 24 saat içinde açılan siparişler",
     apply: (orders) => {
       const cutoff = Date.now() - DAY;
@@ -138,7 +138,7 @@ const SAVED_VIEWS: SavedView[] = [
   {
     id: "stuck-proof",
     label: "36h+ prova",
-    emoji: "⏰",
+    emoji: "",
     description: "36 saatten uzun prova bekleyen — hatırlatma zamanı",
     apply: (orders) => {
       const cutoff = Date.now() - 1.5 * DAY;
@@ -150,7 +150,7 @@ const SAVED_VIEWS: SavedView[] = [
   {
     id: "unassigned",
     label: "Üretime atanmamış",
-    emoji: "🏭",
+    emoji: "",
     description: "Üretime hazır ama henüz partnere atanmadı",
     apply: (orders) =>
       orders.filter((o) =>
@@ -160,7 +160,7 @@ const SAVED_VIEWS: SavedView[] = [
   {
     id: "high-value",
     label: "Yüksek tutar",
-    emoji: "💰",
+    emoji: "",
     description: "5.000 ₺ ve üstü — özel ilgi",
     apply: (orders) => orders.filter((o) => o.total >= 5000),
   },
@@ -619,7 +619,7 @@ function AdminSiparislerPageInner() {
               onClick={() => downloadCsv(orders, "tum-siparisler")}
               className="text-[12px] font-semibold text-gri-500 hover:text-pim-mercan"
             >
-              📥 Tümünü indir ({orders.length})
+               Tümünü indir ({orders.length})
             </button>
             {sorted.length !== orders.length && (
               <button
@@ -627,7 +627,7 @@ function AdminSiparislerPageInner() {
                 onClick={() => downloadCsv(sorted, "filtreli-siparisler")}
                 className="text-[12px] font-semibold text-gri-500 hover:text-pim-mercan"
               >
-                📥 Filtreli indir ({sorted.length})
+                 Filtreli indir ({sorted.length})
               </button>
             )}
           </div>
@@ -698,7 +698,7 @@ function AdminSiparislerPageInner() {
                     : "bg-white text-gri-700 ring-gri-200 hover:ring-pim-mercan hover:text-pim-mercan"
                 )}
               >
-                <span>{v.emoji}</span> {v.label}
+                {v.label}
               </button>
             );
           })}
@@ -850,7 +850,7 @@ function AdminSiparislerPageInner() {
               }}
               className="text-[12.5px] font-semibold text-white/80 hover:text-white"
             >
-              📥 CSV indir
+               CSV indir
             </button>
             <button
               type="button"
@@ -981,7 +981,7 @@ function AdminSiparislerPageInner() {
                       <td className="px-4 py-3 text-[12px] text-gri-700">
                         {o.fason ? (
                           <span className="inline-flex items-center gap-1">
-                            🏭 {o.fason}
+                             {o.fason}
                           </span>
                         ) : (
                           <span className="text-gri-400">—</span>
@@ -991,7 +991,7 @@ function AdminSiparislerPageInner() {
                         {o.date}
                         {o.status === "shipped" && o.tracking_number && (
                           <div className="text-[10px] text-gri-500 mt-0.5 font-mono">
-                            📦 {o.tracking_number}
+                             {o.tracking_number}
                           </div>
                         )}
                         {(o.status === "shipped" || o.status === "delivered") &&

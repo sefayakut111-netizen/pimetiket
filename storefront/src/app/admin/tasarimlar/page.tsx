@@ -101,7 +101,7 @@ export default function AdminTasarimlarPage() {
     );
   }, [designs, search]);
 
-  // KPI: AI ✓ ratio (qc_passed / total qc_*)
+  // KPI: AI  ratio (qc_passed / total qc_*)
   const qcDone = designs.filter(
     (d) => d.status !== "uploaded" && d.status !== "approved"
   );
@@ -129,7 +129,7 @@ export default function AdminTasarimlarPage() {
             <p className="mt-1.5 text-base text-gri-700">
               {designs.length} aktif tasarım dosyası ·{" "}
               {qcDone.length > 0
-                ? `AI ✓ oranı: %${passRate.toFixed(0)}`
+                ? `AI  oranı: %${passRate.toFixed(0)}`
                 : "AI kontrolü bekliyor"}
             </p>
           )}
@@ -280,7 +280,7 @@ export default function AdminTasarimlarPage() {
                         className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi text-white text-[10px] font-bold"
                         title={`${errFlags} hata`}
                       >
-                        ✕ {errFlags}
+                         {errFlags}
                       </span>
                     )}
                     {warnFlags > 0 && (

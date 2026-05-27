@@ -381,11 +381,11 @@ export function PriceBookPanel({ config }: Props) {
             size="sm"
             onClick={() => exportMatrixCsv(snapshot, materialKey)}
           >
-            📥 CSV İndir
+             CSV İndir
           </Button>
           <label className="cursor-pointer">
             <span className="inline-flex items-center h-9 px-3 rounded-lg bg-gri-100 text-[13px] font-semibold hover:bg-gri-200">
-              📤 CSV Yükle
+               CSV Yükle
             </span>
             <input
               type="file"

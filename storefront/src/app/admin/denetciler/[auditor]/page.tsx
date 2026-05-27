@@ -61,9 +61,9 @@ const SEVERITY_STYLES = {
 } as const;
 
 const SEVERITY_LABEL = {
-  critical: "🔴 KRİTİK",
-  warning: "🟡 UYARI",
-  info: "🔵 BİLGİ",
+  critical: " KRİTİK",
+  warning: " UYARI",
+  info: " BİLGİ",
 } as const;
 
 function fmtDate(iso: string | null): string {
@@ -221,7 +221,7 @@ export default function AuditorDetailPage({
                     : "bg-pim-mercan text-white hover:bg-pim-mercan-koyu"
                 )}
               >
-                {running ? "⏳ Çalışıyor..." : "▶ Şimdi çalıştır"}
+                {running ? "Calisiyor..." : "Simdi calistir"}
               </button>
             ) : (
               <button
@@ -230,17 +230,17 @@ export default function AuditorDetailPage({
                 className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-gri-100 text-gri-500 text-[13px] font-semibold cursor-not-allowed"
                 title="Bu agent henüz canlı değil — sonraki adımlarda eklenecek"
               >
-                ⏳ Şimdi çalıştır (yakında)
+                Simdi calistir (yakinda)
               </button>
             )}
             {runError && (
               <span className="text-[12.5px] text-kirmizi font-semibold">
-                ⚠ {runError}
+                 {runError}
               </span>
             )}
             {runSuccess && (
               <span className="text-[12.5px] text-yesil font-semibold">
-                ✓ {runSuccess}
+                 {runSuccess}
               </span>
             )}
           </div>
@@ -267,7 +267,7 @@ export default function AuditorDetailPage({
         {!loading && data && !data.latestRun && (
           <Card padding="p-12">
             <div className="text-center">
-              <div className="text-[48px] mb-3">⏳</div>
+              <div className="text-[13px] text-gri-500 mb-3">Yukleniyor</div>
               <h2 className="text-[20px] font-semibold text-lacivert mb-2">
                 Bu denetçi henüz canlı değil
               </h2>
@@ -415,17 +415,17 @@ export default function AuditorDetailPage({
                   <TrendSparkline
                     data={data.recentRuns}
                     metric="findings"
-                    label="📊 Toplam bulgu"
+                    label=" Toplam bulgu"
                   />
                   <TrendSparkline
                     data={data.recentRuns}
                     metric="critical"
-                    label="🔴 Kritik"
+                    label=" Kritik"
                   />
                   <TrendSparkline
                     data={data.recentRuns}
                     metric="warning"
-                    label="🟡 Uyarı"
+                    label=" Uyarı"
                   />
                   <TrendSparkline
                     data={data.recentRuns}

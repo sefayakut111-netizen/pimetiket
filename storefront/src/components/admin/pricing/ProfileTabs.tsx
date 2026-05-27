@@ -4,9 +4,9 @@
  * Sefa 17 May v5: "tek link altında ama farklı başlıklarda — Sticker /
  * Rulo Etiket / Tabaka Etiket".
  *
- * /admin/fiyat-hesapla        → 🏷 Sticker
- * /admin/fiyat-hesapla-etiket → 📋 Rulo Etiket
- * /admin/fiyat-hesapla-tabaka → 📄 Tabaka Etiket
+ * /admin/fiyat-hesapla        →  Sticker
+ * /admin/fiyat-hesapla-etiket →  Rulo Etiket
+ * /admin/fiyat-hesapla-tabaka →  Tabaka Etiket
  *
  * Aktif sekme vurgulanır, diğerleri linklerle tıklanabilir.
  */
@@ -30,7 +30,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   {
     id: "sticker",
-    emoji: "🏷",
+    emoji: "",
     label: "Sticker",
     href: "/admin/fiyat-hesapla",
     accent: "text-pim-mercan",
@@ -38,7 +38,7 @@ const TABS: TabDef[] = [
   },
   {
     id: "rulo",
-    emoji: "📋",
+    emoji: "",
     label: "Rulo Etiket",
     href: "/admin/fiyat-hesapla-etiket",
     accent: "text-yesil",
@@ -46,7 +46,7 @@ const TABS: TabDef[] = [
   },
   {
     id: "tabaka",
-    emoji: "📄",
+    emoji: "",
     label: "Tabaka Etiket",
     href: "/admin/fiyat-hesapla-tabaka",
     accent: "text-saman-koyu",

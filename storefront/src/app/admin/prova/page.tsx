@@ -21,6 +21,7 @@ import {
 import type { OrderStatus } from "@/lib/order";
 import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import { excludeTestOrders } from "@/lib/admin-order-filters";
+import { StatusDot } from "@/components/admin/ui";
 
 const PROOF_STATUSES = [
   "proof_generating",
@@ -49,7 +50,7 @@ const PROOF_STATUS_META: Record<
     color: "text-sari-koyu",
   },
   proof_approved: {
-    label: "Onaylandı ✓",
+    label: "Onaylandı ",
     bg: "bg-yesil-soft",
     color: "text-yesil-koyu",
   },
@@ -93,8 +94,9 @@ function ProofSlaTag({
 
   if (remainingHours <= 0) {
     return (
-      <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-kirmizi text-white text-[11px] font-bold animate-pulse">
-        ⏰ SLA AŞILDI — otomatik iade tetiklenecek
+      <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-kirmizi text-white text-[11px] font-bold animate-pulse">
+        <StatusDot color="gri" className="!bg-white" />
+        SLA AŞILDI — otomatik iade tetiklenecek
       </span>
     );
   }
@@ -102,22 +104,23 @@ function ProofSlaTag({
   if (remainingHours <= 6) {
     return (
       <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-kirmizi-soft text-kirmizi-koyu text-[11px] font-bold">
-        🔴 {Math.floor(remainingHours)} sa kaldı
+         {Math.floor(remainingHours)} sa kaldı
       </span>
     );
   }
 
   if (remainingHours <= 12) {
     return (
-      <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-sari-soft text-sari-koyu text-[11px] font-bold">
-        ⏰ {Math.floor(remainingHours)} sa kaldı
+      <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-full bg-sari-soft text-sari-koyu text-[11px] font-bold">
+        <StatusDot color="sari" />
+        {Math.floor(remainingHours)} sa kaldı
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[11px] font-semibold">
-      ⏳ {Math.floor(remainingHours)} sa kaldı
+      {Math.floor(remainingHours)} sa kaldı
     </span>
   );
 }
@@ -129,7 +132,7 @@ function ProofReadinessIndicator({ status }: { status: string }) {
       done: ["proof_pending", "proof_approved", "proof_validating"].includes(
         status
       ),
-      icon: "✂️",
+      icon: "",
     },
     {
       label: "Beyaz",
@@ -141,7 +144,7 @@ function ProofReadinessIndicator({ status }: { status: string }) {
     {
       label: "Doğrulama",
       done: ["proof_pending", "proof_approved"].includes(status),
-      icon: "🤖",
+      icon: "",
     },
   ];
 
@@ -155,7 +158,7 @@ function ProofReadinessIndicator({ status }: { status: string }) {
               s.done ? "text-yesil font-semibold" : "text-gri-400"
             }
           >
-            {s.label} {s.done ? "✓" : "…"}
+            {s.label} {s.done ? "" : "…"}
           </span>
         </div>
       ))}
@@ -482,7 +485,7 @@ export default function AdminProvaPage() {
                 toast.success("Prova linki kopyalandı");
               }}
             >
-              🔗 Link kopyala
+               Link kopyala
             </Button>
             {waPhone && (
               <a
@@ -493,7 +496,7 @@ export default function AdminProvaPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg ring-1 ring-gri-200 bg-white text-[12.5px] font-semibold text-yesil hover:ring-yesil"
               >
-                💬 WhatsApp
+                 WhatsApp
               </a>
             )}
           </>
@@ -589,9 +592,9 @@ export default function AdminProvaPage() {
         </div>
 
         <div className="mb-5 text-[12px] text-gri-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span>📊 Son 30 gün: {last30Stats.total} sipariş</span>
-          <span>✅ {last30Stats.approved} onaylandı</span>
-          <span>❌ {last30Stats.cancelled} iptal</span>
+          <span> Son 30 gün: {last30Stats.total} sipariş</span>
+          <span> {last30Stats.approved} onaylandı</span>
+          <span> {last30Stats.cancelled} iptal</span>
           {last30Stats.avgDays > 0 && (
             <span>Sipariş → onay arası ort.: {last30Stats.avgDays.toFixed(1)} gün</span>
           )}
@@ -600,7 +603,7 @@ export default function AdminProvaPage() {
         {approvedOrders.length > 0 && (
           <div className="mb-4 rounded-lg bg-yesil-soft/30 ring-1 ring-yesil/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-yesil-koyu font-medium">
-              ✅ {approvedOrders.length} sipariş müşteri tarafından onaylandı —
+               {approvedOrders.length} sipariş müşteri tarafından onaylandı —
               üretime alınabilir
             </span>
             <Button
@@ -618,10 +621,10 @@ export default function AdminProvaPage() {
         <div className="flex gap-2 mb-5 flex-wrap">
           {(
             [
-              { id: "pending" as const, label: "Onay Bekliyor", emoji: "⏳" },
-              { id: "generating" as const, label: "Hazırlanıyor", emoji: "⚙️" },
-              { id: "approved" as const, label: "Onaylandı", emoji: "✅" },
-              { id: "all" as const, label: "Tümü", emoji: "📋" },
+              { id: "pending" as const, label: "Onay Bekliyor", emoji: "" },
+              { id: "generating" as const, label: "Hazırlanıyor", emoji: "" },
+              { id: "approved" as const, label: "Onaylandı", emoji: "" },
+              { id: "all" as const, label: "Tümü", emoji: "" },
             ] as const
           ).map((f) => (
             <button
@@ -635,7 +638,7 @@ export default function AdminProvaPage() {
                   : "bg-gri-100 text-gri-700 hover:bg-gri-200"
               )}
             >
-              {f.emoji} {f.label} ({counts[f.id]})
+              {f.label} ({counts[f.id]})
             </button>
           ))}
         </div>
@@ -645,7 +648,7 @@ export default function AdminProvaPage() {
             <Pim pose="happy" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
               {items.length === 0
-                ? "Prova kuyruğu temiz 🎉"
+                ? "Prova kuyruğu temiz "
                 : "Bu filtrede sipariş yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">

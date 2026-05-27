@@ -852,7 +852,7 @@ export default function AdminCreateOrderPage() {
 
         {hasDraft && (
           <div className="mb-3 text-[12px] text-sari-koyu bg-sari-soft/30 rounded px-3 py-2">
-            📝 Önceki oturumdan taslak yüklendi.
+             Önceki oturumdan taslak yüklendi.
             <button
               type="button"
               onClick={() => {
@@ -1047,7 +1047,7 @@ export default function AdminCreateOrderPage() {
                         onClick={() => removeItem(item.id)}
                         className="text-[12px] font-semibold text-kirmizi hover:underline"
                       >
-                        ✕ Kaldır
+                         Kaldır
                       </button>
                     )}
                   </div>
@@ -1206,7 +1206,7 @@ export default function AdminCreateOrderPage() {
                             className="shrink-0 h-10 px-3 rounded-lg ring-1 ring-gri-200 text-[12px] font-semibold hover:ring-pim-mercan disabled:opacity-40"
                             title="Malzeme + boyut + adet'e göre hesapla"
                           >
-                            {calcLoadingId === item.id ? "…" : "🔄"}
+                            {calcLoadingId === item.id ? "…" : ""}
                           </button>
                         </div>
                       </Field>
@@ -1244,14 +1244,14 @@ export default function AdminCreateOrderPage() {
                           <div className="flex items-center justify-between rounded-lg bg-gri-50 px-3 py-2">
                             <span className="text-[13px] truncate">
                               {item.designFile.name} —{" "}
-                              {(item.designFile.size / 1024 / 1024).toFixed(1)} MB ✓
+                              {(item.designFile.size / 1024 / 1024).toFixed(1)} MB 
                             </span>
                             <button
                               type="button"
                               onClick={() => handleDesignFile(item.id, null)}
                               className="text-[12px] text-kirmizi font-semibold ml-2"
                             >
-                              ✕ Kaldır
+                               Kaldır
                             </button>
                           </div>
                         ) : (

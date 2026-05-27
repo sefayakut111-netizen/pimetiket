@@ -23,7 +23,8 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Icon } from "@/components/Icon";
+import { Icon, type IconName } from "@/components/Icon";
+import { StatusDot, type DotColor } from "@/components/admin/ui";
 import { Card } from "@/components/ui";
 import { LineChart, DonutChart, BarChart, HeatMap } from "@/components/charts";
 import type { LinePoint, BarPoint } from "@/components/charts";
@@ -150,7 +151,7 @@ interface TodoItem {
   /** Sıra: küçük olan üstte. AI flag (1) > Operatör (2) > Prova geç yanıt (3)
    * > Fason atama (4) > Kargoya verilecek (5) > Yorum onayı (6) */
   priority: number;
-  emoji: string;
+  iconKey: IconName;
   title: string;
   count: number;
   hint: string;
@@ -168,7 +169,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     items.push({
       id: "ai-queue",
       priority: 1,
-      emoji: "🤖",
+      iconKey: "Sparkle",
       title: "AI / operatör incelemesi",
       count: aiQueue,
       hint: "Tasarım kontrolü veya prova üretimi bekliyor",
@@ -184,7 +185,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     items.push({
       id: "operator-review",
       priority: 2,
-      emoji: "👀",
+      iconKey: "Eye",
       title: "Operatör incelemesi",
       count: operatorReview,
       hint: "Tasarımı incele, prova hazırla",
@@ -200,7 +201,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     items.push({
       id: "stuck-proof",
       priority: 3,
-      emoji: "⏰",
+      iconKey: "Info",
       title: "36+ saattir prova yanıtı yok",
       count: stuckProof,
       hint: "WhatsApp ile hatırlat",
@@ -214,7 +215,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     items.push({
       id: "unassigned",
       priority: 4,
-      emoji: "🏭",
+      iconKey: "Package",
       title: "Partnere atanacak",
       count: unassigned,
       hint: "Üretime hazır siparişleri partnere ata",
@@ -236,7 +237,7 @@ function buildTodoList(orders: CustomerOrder[]): TodoItem[] {
     items.push({
       id: "to-ship",
       priority: 5,
-      emoji: "📦",
+      iconKey: "Box",
       title: "Bugün kargoya verilecek",
       count: toShipOrders.length,
       hint:
@@ -345,18 +346,31 @@ interface ActivityFeedEvent {
   actorName: string | null;
 }
 
-const EVENT_EMOJI: Record<string, string> = {
-  paid: "🟢",
-  design_uploaded: "📁",
-  proof_approved: "✅",
-  fason_assigned: "🏭",
-  shipped: "📦",
-  delivered: "🎉",
-  cancelled: "❌",
-  refund: "💸",
-  user_registered: "👤",
-  review_submitted: "⭐",
+type EventIndicator = { dot?: DotColor; icon?: IconName };
+
+const EVENT_INDICATOR: Record<string, EventIndicator> = {
+  paid: { dot: "yesil" },
+  design_uploaded: { icon: "Doc" },
+  proof_approved: { icon: "Check" },
+  fason_assigned: { icon: "Package" },
+  shipped: { icon: "Truck" },
+  delivered: { dot: "yesil" },
+  cancelled: { icon: "X" },
+  refund: { icon: "Wallet" },
+  user_registered: { icon: "User" },
+  review_submitted: { icon: "Star" },
 };
+
+function EventIndicatorIcon({ indicator }: { indicator: EventIndicator }) {
+  if (indicator.dot) {
+    return <StatusDot color={indicator.dot} className="mt-1.5" />;
+  }
+  if (indicator.icon) {
+    const I = Icon[indicator.icon];
+    return <I size={14} className="shrink-0 mt-0.5" />;
+  }
+  return <StatusDot color="gri" className="mt-1.5" />;
+}
 
 export default function AdminDashboardPage() {
   return (
@@ -931,7 +945,8 @@ function AdminDashboardPageInner() {
                     : "text-gri-700 hover:text-lacivert"
                 )}
               >
-                📅 Özel
+                <Icon.Calendar size={14} className="inline mr-1" />
+                Özel
               </button>
             </div>
             {showDatePicker && (
@@ -978,9 +993,7 @@ function AdminDashboardPageInner() {
 
         {deniedModule && (
           <div className="mb-6 rounded-xl px-5 py-3.5 ring-1 bg-sari-soft ring-sari/30 text-lacivert text-[13.5px] flex items-center gap-3">
-            <span className="text-[18px] shrink-0" aria-hidden>
-              ⚠️
-            </span>
+            <Icon.Info size={18} className="shrink-0 text-sari-koyu" aria-hidden />
             <span>
               <strong>{getAdminModuleLabel(deniedModule)}</strong> modülüne
               erişim yetkiniz yok — yönlendirildiniz.
@@ -1021,7 +1034,8 @@ function AdminDashboardPageInner() {
 
         {canViewOrders && ordersTruncated && !ordersLoading && !ordersError && (
           <div className="mb-4 rounded-lg border border-sari bg-sari-soft/30 px-4 py-3 text-sm text-lacivert">
-            ⚠️ <strong>Son 500 sipariş gösteriliyor.</strong> KPI değerleri bu
+            <Icon.Info size={14} className="inline shrink-0 text-sari-koyu mr-1" />
+            <strong>Son 500 sipariş gösteriliyor.</strong> KPI değerleri bu
             aralığa göre hesaplanıyor. Tam veriler için{" "}
             <Link href="/admin/finans" className="underline font-semibold">
               Finans &amp; Raporlar
@@ -1040,8 +1054,9 @@ function AdminDashboardPageInner() {
                 : "bg-yesil-soft/30 text-yesil-koyu"
             )}
           >
-            <span>
-              ⚙️ Cron: {systemHealth.crons.healthy}/{systemHealth.crons.total}
+            <span className="inline-flex items-center gap-1">
+              <Icon.Cog size={14} />
+              Cron: {systemHealth.crons.healthy}/{systemHealth.crons.total}
               {systemHealth.crons.error > 0 && (
                 <Link
                   href="/admin/sistem/cronlar"
@@ -1053,7 +1068,7 @@ function AdminDashboardPageInner() {
             </span>
             <span className="text-gri-300">|</span>
             <span>
-              📧 Mail: {systemHealth.mail.sent24h} gönderildi
+              Mail: {systemHealth.mail.sent24h} gönderildi
               {systemHealth.mail.bounce > 0 && (
                 <span className="text-kirmizi ml-1 font-semibold">
                   {systemHealth.mail.bounce} bounce
@@ -1061,8 +1076,13 @@ function AdminDashboardPageInner() {
               )}
             </span>
             <span className="text-gri-300">|</span>
-            <span>
-              🗄️ DB: {systemHealth.db.status === "ok" ? "✅" : "❌"}
+            <span className="inline-flex items-center gap-1">
+              DB:{" "}
+              {systemHealth.db.status === "ok" ? (
+                <Icon.Check size={12} className="text-yesil" />
+              ) : (
+                <Icon.X size={12} className="text-kirmizi" />
+              )}
             </span>
           </div>
         )}
@@ -1074,7 +1094,7 @@ function AdminDashboardPageInner() {
           <Card padding="p-0" className="mb-6 ring-1 ring-pim-mercan/15">
             <div className="px-5 py-3.5 border-b border-gri-200 flex items-center justify-between bg-pim-mercan-tint">
               <div className="flex items-center gap-2">
-                <span className="text-[18px]">☀️</span>
+                <Icon.Sparkle size={18} className="text-pim-mercan" />
                 <div>
                   <h2 className="text-[15px] font-semibold text-pim-mercan">
                     Bugün ne yapmalıyım?
@@ -1101,7 +1121,12 @@ function AdminDashboardPageInner() {
                     t.urgent && "bg-sari-soft/40"
                   )}
                 >
-                  <span className="text-[22px] shrink-0">{t.emoji}</span>
+                  {(() => {
+                    const TodoIcon = Icon[t.iconKey];
+                    return (
+                      <TodoIcon size={22} className="shrink-0 text-pim-mercan" />
+                    );
+                  })()}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-[13.5px] text-lacivert">
@@ -1140,7 +1165,7 @@ function AdminDashboardPageInner() {
         {todoList.length === 0 && orders.length > 0 && (
           <Card padding="p-5" className="mb-6 bg-yesil-soft ring-yesil/20">
             <div className="flex items-center gap-3">
-              <span className="text-[28px]">🎉</span>
+              <Icon.Check size={28} className="text-yesil shrink-0" />
               <div>
                 <h2 className="text-[15px] font-semibold text-lacivert">
                   Hat boş — tüm acil işler tamam
@@ -1273,7 +1298,7 @@ function AdminDashboardPageInner() {
                     className="text-[10px] text-kirmizi font-normal"
                     title="API hatası — veri yüklenemedi"
                   >
-                    ⚠️ yüklenemedi
+                     yüklenemedi
                   </span>
                 )}
               </h2>
@@ -1451,7 +1476,7 @@ function AdminDashboardPageInner() {
                   className="text-[9px] text-kirmizi normal-case"
                   title="API hatası — veri yüklenemedi"
                 >
-                  ⚠️
+                  
                 </span>
               )}
               {auditorError && canViewAuditors && (
@@ -1459,7 +1484,7 @@ function AdminDashboardPageInner() {
                   className="text-[9px] text-kirmizi normal-case"
                   title="Denetçi API hatası"
                 >
-                  ⚠️
+                  
                 </span>
               )}
             </div>
@@ -1488,7 +1513,7 @@ function AdminDashboardPageInner() {
                       className="text-[10px] text-kirmizi font-normal"
                       title="API hatası — veri yüklenemedi"
                     >
-                      ⚠️ yüklenemedi
+                       yüklenemedi
                     </span>
                   )}
                 </h2>
@@ -1594,7 +1619,14 @@ function AdminDashboardPageInner() {
                             p.overdueCount > 0 && "text-kirmizi font-semibold"
                           )}
                         >
-                          {p.overdueCount > 0 ? `${p.overdueCount} ⚠️` : "0"}
+                          {p.overdueCount > 0 ? (
+                            <span className="inline-flex items-center gap-1">
+                              {p.overdueCount}
+                              <Icon.Info size={12} className="text-kirmizi" />
+                            </span>
+                          ) : (
+                            "0"
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1651,7 +1683,7 @@ function AdminDashboardPageInner() {
           ) : (
             <Card padding="p-5" className="!bg-gri-50">
               <div className="flex items-center gap-3 text-gri-500 text-sm">
-                <span className="text-2xl">✨</span>
+                <Icon.Sparkle size={24} className="text-gri-500 shrink-0" />
                 <div>
                   <div className="font-medium">Otomatik içgörüler</div>
                   <div className="text-[12px]">
@@ -1745,7 +1777,7 @@ function AdminDashboardPageInner() {
               />
             ) : (
               <div className="flex items-center gap-3 text-gri-500 text-sm py-6">
-                <span className="text-2xl">📊</span>
+                <Icon.Info size={24} className="text-gri-500 shrink-0" />
                 <div>
                   <div className="font-medium">Saatlik yoğunluk haritası</div>
                   <div className="text-[12px]">
@@ -1852,7 +1884,7 @@ function AdminDashboardPageInner() {
             )
             ) : (
               <div className="p-6 flex items-center gap-3 text-gri-500 text-sm">
-                <span className="text-2xl">🗺️</span>
+                <Icon.Info size={24} className="text-gri-500 shrink-0" />
                 <div>
                   <div className="font-medium">Şehir dağılımı</div>
                   <div className="text-[12px]">
@@ -1950,7 +1982,8 @@ function AdminDashboardPageInner() {
             </div>
             <ul className="divide-y divide-gri-100">
               {activityFeed.map((ev, i) => {
-                const emoji = EVENT_EMOJI[ev.type] ?? "•";
+                const indicator =
+                  EVENT_INDICATOR[ev.type] ?? ({ dot: "gri" } as EventIndicator);
                 const time = new Date(ev.createdAt).toLocaleTimeString("tr-TR", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -1960,7 +1993,7 @@ function AdminDashboardPageInner() {
                     key={`${ev.createdAt}-${i}`}
                     className="px-5 py-2.5 text-[13px] flex items-start gap-2"
                   >
-                    <span className="shrink-0">{emoji}</span>
+                    <EventIndicatorIcon indicator={indicator} />
                     <span className="text-gri-500 tabular-nums shrink-0 w-12">
                       {time}
                     </span>

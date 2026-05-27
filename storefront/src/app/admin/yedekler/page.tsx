@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow, Button, Skeleton } from "@/components/ui";
+import { StatusDot } from "@/components/admin/ui";
 import { cn } from "@/lib/cn";
 
 interface BackupItem {
@@ -145,7 +146,13 @@ export default function AdminYedeklerPage() {
                 )}
                 aria-hidden="true"
               >
-                {latestDaysAgo > 14 ? "⚠️" : latestDaysAgo > 9 ? "⏰" : "✅"}
+                {latestDaysAgo > 14 ? (
+                  <StatusDot color="kirmizi" className="w-3 h-3" />
+                ) : latestDaysAgo > 9 ? (
+                  <StatusDot color="sari" className="w-3 h-3" />
+                ) : (
+                  <StatusDot color="yesil" className="w-3 h-3" />
+                )}
               </span>
               <div className="flex-1">
                 <h2 className="font-semibold text-[14.5px] mb-1">

@@ -18,6 +18,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { StatusDot, type DotColor } from "@/components/admin/ui";
 import { slugifyTitle } from "@/lib/blog-slug";
 import type { BlogPostRow, BlogPostStatus } from "@/app/api/admin/blog/route";
 
@@ -34,11 +35,21 @@ const CATEGORIES = [
   "hakkimizda",
 ] as const;
 
-const STATUS_LABEL: Record<BlogPostStatus, string> = {
-  draft: "📝 taslak",
-  published: "🟢 yayında",
-  archived: "📦 arşiv",
+const STATUS_META: Record<BlogPostStatus, { label: string; dot: DotColor }> = {
+  draft: { label: "taslak", dot: "gri" },
+  published: { label: "yayında", dot: "yesil" },
+  archived: { label: "arşiv", dot: "gri" },
 };
+
+function StatusBadge({ status }: { status: BlogPostStatus }) {
+  const meta = STATUS_META[status];
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <StatusDot color={meta.dot} />
+      {meta.label}
+    </span>
+  );
+}
 
 const emptyDraft = (): Partial<BlogPostRow> & { title_tr: string; body_tr: string } => ({
   title_tr: "",
@@ -240,7 +251,7 @@ export default function AdminBlogPage() {
                       <div className="text-[11px] text-gri-500 font-mono">{p.slug}</div>
                     </td>
                     <td className="px-4 py-3 text-gri-700">{p.category}</td>
-                    <td className="px-4 py-3">{STATUS_LABEL[p.status]}</td>
+                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-4 py-3 text-gri-700 tabular-nums">
                       {formatDate(p.published_at ?? p.created_at)}
                     </td>

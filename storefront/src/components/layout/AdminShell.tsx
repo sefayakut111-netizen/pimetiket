@@ -699,7 +699,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             onClick={() => setPaletteOpen(true)}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition-colors text-left"
           >
-            <span className="text-white/60 text-[13px]">🔍</span>
+            <Icon.Search size={13} className="text-white/60 shrink-0" />
             <span className="flex-1 text-[12.5px] text-white/60">
               Sayfa ara...
             </span>
@@ -794,8 +794,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* Main column — desktop'ta sidebar genişliği kadar margin */}
       <div className="lg:ml-[248px] flex flex-col min-h-screen">
         {maintenanceMode && (
-          <div className="bg-kirmizi px-4 py-2 text-center text-sm font-medium text-white">
-            ⚠️ BAKIM MODU AKTİF — müşteriler siteye erişemiyor.
+          <div className="bg-kirmizi px-4 py-2 text-center text-sm font-medium text-white flex items-center justify-center gap-1.5">
+            <Icon.Info size={14} className="shrink-0" />
+            BAKIM MODU AKTİF — müşteriler siteye erişemiyor.
             <Link href="/admin/ayarlar" className="ml-2 underline">
               Kapat
             </Link>

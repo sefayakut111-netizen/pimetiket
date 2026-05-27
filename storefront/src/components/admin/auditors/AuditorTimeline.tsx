@@ -8,9 +8,9 @@
  *
  * Görüntü:
  *   ╔══════════════════════════════════════════════╗
- *   ║ 🔒 Güvenlik         · 2 dk önce  · ✓ Temiz   ║
- *   ║ 💰 Finans           · 1 sa önce  · ⚠ 2 uyarı ║
- *   ║ 🛒 Workflow         · 3 sa önce  · ✗ 1 krit. ║
+ *   ║  Güvenlik         · 2 dk önce  ·  Temiz   ║
+ *   ║  Finans           · 1 sa önce  ·  2 uyarı ║
+ *   ║  Workflow         · 3 sa önce  ·  1 krit. ║
  *   ║ ...                                          ║
  *   ╚══════════════════════════════════════════════╝
  *
@@ -58,7 +58,7 @@ function statusBadge(run: Partial<AuditorRunRow>): {
 } {
   if (run.status === "failed") {
     return {
-      icon: "⛔",
+      icon: "",
       label: "Hata",
       cls: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",
     };
@@ -67,20 +67,20 @@ function statusBadge(run: Partial<AuditorRunRow>): {
   const warning = run.warning_count ?? 0;
   if (critical > 0) {
     return {
-      icon: "✗",
+      icon: "",
       label: `${critical} kritik`,
       cls: "bg-kirmizi/10 text-kirmizi ring-kirmizi/30",
     };
   }
   if (warning > 0) {
     return {
-      icon: "⚠",
+      icon: "",
       label: `${warning} uyarı`,
       cls: "bg-saman/15 text-saman-koyu ring-saman/30",
     };
   }
   return {
-    icon: "✓",
+    icon: "",
     label: "Temiz",
     cls: "bg-yesil-soft/40 text-yesil ring-yesil/30",
   };
@@ -145,7 +145,7 @@ export function AuditorTimeline({ limit = 20, hoursWindow }: Props) {
   if (!runs || runs.length === 0) {
     return (
       <div className="rounded-xl bg-gri-50 ring-1 ring-gri-200 p-6 text-center">
-        <div className="text-[28px] mb-2">⏳</div>
+        <div className="text-[13px] text-gri-500 mb-2">Bekliyor</div>
         <div className="font-semibold text-[14px] text-lacivert">
           Henüz hiç çalışma yok
         </div>
@@ -167,7 +167,7 @@ export function AuditorTimeline({ limit = 20, hoursWindow }: Props) {
       {runs.map((run, idx) => {
         const badge = statusBadge(run);
         const name = run.auditor_name as AuditorName;
-        const emoji = AUDITOR_EMOJI[name] ?? "❓";
+        const emoji = AUDITOR_EMOJI[name] ?? "";
         const label = AUDITOR_LABELS[name] ?? name;
         const findings = run.findings_count ?? 0;
         const isLast = idx === runs.length - 1;

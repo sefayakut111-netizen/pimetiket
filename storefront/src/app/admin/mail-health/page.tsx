@@ -461,7 +461,7 @@ export default function AdminMailHealthPage() {
               </h2>
               {data.suppressions.length === 0 ? (
                 <p className="text-sm text-gri-700">
-                  Hiç suppression kaydı yok — temiz liste 👍
+                  Hiç suppression kaydı yok — temiz liste 
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -525,7 +525,7 @@ export default function AdminMailHealthPage() {
               </h2>
               {data.failedRecent.length === 0 ? (
                 <p className="text-sm text-gri-700">
-                  Failed mail yok — gönderim akışı sağlıklı 👍
+                  Failed mail yok — gönderim akışı sağlıklı 
                 </p>
               ) : (
                 <div className="overflow-x-auto">

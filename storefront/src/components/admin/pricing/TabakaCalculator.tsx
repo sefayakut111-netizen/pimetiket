@@ -162,7 +162,7 @@ export function TabakaCalculator({
           <div>
             <Eyebrow>Operatör · Hesaplama aracı</Eyebrow>
             <h1 className="mt-3 text-[28px] md:text-[36px] font-semibold tracking-tight">
-              📄 Tabaka Etiket Fiyat Hesapla
+               Tabaka Etiket Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
               Kraft / Kuşe / Beyaz · 23×31 cm tabaka (zarf 24×32) ·
@@ -177,7 +177,7 @@ export function TabakaCalculator({
         {/* Bilgi notu */}
         <Card padding="p-3" className="mb-5 !bg-krem ring-black/[0.04]">
           <div className="flex items-center gap-3 text-[12.5px] text-gri-700 leading-relaxed">
-            <span className="text-[18px]">💡</span>
+            <span className="text-[18px]"></span>
             <div>
               <strong>Parametre yönetimi:</strong> Bu sayfa lokal hesap aracı —
               değişiklikler kalıcı değil. Müşteri tarafına yansıyan kalıcı
@@ -186,7 +186,7 @@ export function TabakaCalculator({
                 href="/admin/fiyatlar"
                 className="text-pim-mercan font-semibold hover:underline"
               >
-                /admin/fiyatlar → 📄 Tabaka Etiket
+                /admin/fiyatlar →  Tabaka Etiket
               </a>{" "}
               sayfasına git.
             </div>
@@ -200,7 +200,7 @@ export function TabakaCalculator({
             {/* Boyut + Adet */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[15px] mb-3 flex items-center gap-2">
-                📐 <span>Boyut + Adet</span>
+                 <span>Boyut + Adet</span>
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                 <Field label="Genişlik (mm)">
@@ -266,7 +266,7 @@ export function TabakaCalculator({
             {/* Malzeme + Kaplama */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[15px] mb-3 flex items-center gap-2">
-                🎨 <span>Malzeme + Kaplama</span>
+                 <span>Malzeme + Kaplama</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Field label="Malzeme">
@@ -301,7 +301,7 @@ export function TabakaCalculator({
             {/* Operation + Margin (override) */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[15px] mb-3 flex items-center gap-2">
-                ⚙ <span>Operasyon + Marj (lokal override)</span>
+                 <span>Operasyon + Marj (lokal override)</span>
               </h2>
               <p className="text-[11.5px] text-gri-700 mb-3 leading-relaxed">
                 Bu değerler sadece bu hesap için geçerli. Müşteri tarafına
@@ -371,7 +371,7 @@ export function TabakaCalculator({
             {/* Geometry detayı */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[15px] mb-3 flex items-center gap-2">
-                📐 <span>Tabaka dizgi planı</span>
+                 <span>Tabaka dizgi planı</span>
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <Stat label="Tabaka boyu" value={`${SHEET_W_MM}×${SHEET_H_MM}mm`} />
@@ -455,7 +455,7 @@ export function TabakaCalculator({
             ) : (
               <Card padding="p-5" className="!bg-kirmizi/5 ring-kirmizi/20">
                 <div className="text-[14px] font-semibold text-kirmizi mb-1">
-                  ⚠ Hesap hatası
+                   Hesap hatası
                 </div>
                 <div className="text-[12px] text-gri-700">
                   {priceResult.reason}

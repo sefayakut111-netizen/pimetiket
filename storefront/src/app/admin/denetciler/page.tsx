@@ -126,10 +126,10 @@ function statusLabel(summary: AuditorLatestRunSummary): string {
 }
 
 function statusIcon(summary: AuditorLatestRunSummary): string {
-  if (!summary.latestRunId) return "⏳";
-  if (summary.criticalCount > 0) return "✗";
-  if (summary.warningCount > 0) return "⚠";
-  return "✓";
+  if (!summary.latestRunId) return "—";
+  if (summary.criticalCount > 0) return "";
+  if (summary.warningCount > 0) return "";
+  return "";
 }
 
 export default function DenetcilerDashboardPage() {
@@ -192,17 +192,17 @@ export default function DenetcilerDashboardPage() {
       };
       if (json.ok) {
         setTestMailResult(
-          `✓ Mail gönderildi (${json.recipients?.[0] ?? "alıcı"})`
+          ` Mail gönderildi (${json.recipients?.[0] ?? "alıcı"})`
         );
       } else {
         setTestMailResult(
-          `✗ ${json.error ?? "Hata"}${json.hint ? " — " + json.hint : ""}`
+          ` ${json.error ?? "Hata"}${json.hint ? " — " + json.hint : ""}`
         );
       }
       setTimeout(() => setTestMailResult(null), 10000);
     } catch (err) {
       setTestMailResult(
-        "✗ " + (err instanceof Error ? err.message : "Ağ hatası")
+        " " + (err instanceof Error ? err.message : "Ağ hatası")
       );
     } finally {
       setTestingMail(false);
@@ -226,14 +226,14 @@ export default function DenetcilerDashboardPage() {
       };
       if (json.ok) {
         setDigestResult(
-          `✓ Digest gönderildi (${json.sent?.[0] ?? "alıcı"})`
+          ` Digest gönderildi (${json.sent?.[0] ?? "alıcı"})`
         );
       } else {
-        setDigestResult(`✗ ${json.error ?? "Hata"}`);
+        setDigestResult(` ${json.error ?? "Hata"}`);
       }
       setTimeout(() => setDigestResult(null), 8000);
     } catch (err) {
-      setDigestResult("✗ " + (err instanceof Error ? err.message : "?"));
+      setDigestResult(" " + (err instanceof Error ? err.message : "?"));
     } finally {
       setSendingDigest(false);
     }
@@ -257,16 +257,16 @@ export default function DenetcilerDashboardPage() {
       if (json.ok) {
         const dur = Math.round((json.totalDurationMs ?? 0) / 1000);
         setRunAllResult(
-          `✓ ${json.succeeded}/${json.total} agent çalıştı (${dur}s)`
+          ` ${json.succeeded}/${json.total} agent çalıştı (${dur}s)`
         );
         await refresh();
       } else {
-        setRunAllResult("✗ Hata oluştu");
+        setRunAllResult(" Hata oluştu");
       }
       setTimeout(() => setRunAllResult(null), 8000);
     } catch (err) {
       setRunAllResult(
-        "✗ " + (err instanceof Error ? err.message : "Ağ hatası")
+        " " + (err instanceof Error ? err.message : "Ağ hatası")
       );
     } finally {
       setRunningAll(false);
@@ -325,13 +325,13 @@ export default function DenetcilerDashboardPage() {
                   : "bg-pim-mercan text-white hover:bg-pim-mercan-koyu"
               )}
             >
-              {runningAll ? "⏳ Çalışıyor..." : "▶ Tümünü çalıştır"}
+              {runningAll ? "Calisiyor..." : "Tumunu calistir"}
             </button>
             {runAllResult && (
               <span
                 className={cn(
                   "text-[12px] font-semibold",
-                  runAllResult.startsWith("✓") ? "text-yesil" : "text-kirmizi"
+                  runAllResult.startsWith("") ? "text-yesil" : "text-kirmizi"
                 )}
               >
                 {runAllResult}
@@ -350,13 +350,13 @@ export default function DenetcilerDashboardPage() {
               )}
               title="Resend mail altyapısını anında test et"
             >
-              {testingMail ? "⏳ Test..." : "🧪 Test mail"}
+              {testingMail ? "Test..." : "Test mail"}
             </button>
             {testMailResult && (
               <span
                 className={cn(
                   "text-[12px] font-semibold max-w-[400px] truncate",
-                  testMailResult.startsWith("✓")
+                  testMailResult.startsWith("")
                     ? "text-yesil"
                     : "text-kirmizi"
                 )}
@@ -378,13 +378,13 @@ export default function DenetcilerDashboardPage() {
               )}
               title="9 agent özetini içeren günlük brifing mailini şimdi at"
             >
-              {sendingDigest ? "⏳ Gönder..." : "📨 Digest gönder"}
+              {sendingDigest ? "Gonder..." : "Digest gonder"}
             </button>
             {digestResult && (
               <span
                 className={cn(
                   "text-[12px] font-semibold",
-                  digestResult.startsWith("✓") ? "text-yesil" : "text-kirmizi"
+                  digestResult.startsWith("") ? "text-yesil" : "text-kirmizi"
                 )}
               >
                 {digestResult}
@@ -394,19 +394,19 @@ export default function DenetcilerDashboardPage() {
               href="/admin/denetciler/bekleyen"
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"
             >
-              🔔 Bekleyen
+               Bekleyen
             </Link>
             <Link
               href="/admin/denetciler/ertelenenler"
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"
             >
-              ⏸ Karar arşivi
+              Karar arşivi
             </Link>
             <Link
               href="/admin/denetciler/gecmis"
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white ring-1 ring-gri-200 text-[12.5px] font-semibold text-lacivert hover:ring-pim-mercan transition-colors"
             >
-              📋 Geçmiş
+               Geçmiş
             </Link>
           </div>
         </div>
@@ -428,7 +428,7 @@ export default function DenetcilerDashboardPage() {
           >
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
-                <span className="text-[24px]">🔔</span>
+                <span className="text-[24px]"></span>
                 <div>
                   <div className="font-semibold text-[15px] text-lacivert">
                     {pending.totalPending} aksiyon senin onayını bekliyor
@@ -529,7 +529,7 @@ export default function DenetcilerDashboardPage() {
                 {!isEmpty && CRON_SCHEDULE[a.auditorName] && (
                   <div className="mt-3 pt-3 border-t border-gri-100 flex items-center justify-between text-[10.5px] text-gri-500">
                     <span>
-                      ⏰ {CRON_SCHEDULE[a.auditorName].label}
+                      {CRON_SCHEDULE[a.auditorName].label}
                     </span>
                     <span className="font-semibold text-pim-mercan">
                       {CRON_SCHEDULE[a.auditorName].nextRun()}

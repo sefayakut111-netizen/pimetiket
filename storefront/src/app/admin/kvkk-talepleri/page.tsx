@@ -205,7 +205,7 @@ export default function AdminKvkkTalepleriPage() {
               <Pim pose="happy" size={120} />
               <h3 className="mt-3 font-semibold text-base">
                 {filter === "confirmed"
-                  ? "Bekleyen talep yok — kuyruk temiz 🎉"
+                  ? "Bekleyen talep yok — kuyruk temiz "
                   : "Bu filtrede kayıt yok"}
               </h3>
             </div>
