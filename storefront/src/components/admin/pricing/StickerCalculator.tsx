@@ -1292,7 +1292,7 @@ function SheetPreviewCard({
           {fit.perSheet} ad/tabaka
         </span>
       </div>
-      <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-4 flex items-center justify-center min-h-[260px]">
+      <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-3 flex items-center justify-center overflow-hidden min-h-[200px]">
         <SheetPreviewSvg geometry={geometry} />
       </div>
       {fit.rotated && (

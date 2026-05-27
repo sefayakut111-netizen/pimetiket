@@ -4,12 +4,9 @@
  * sticker-fiyatlama.html v0.3 → renderSheet() port'u.
  *
  * Görsel:
- *   - Tabaka modu: zarf (24×32) + iç tabaka (23×31) iç içe
- *   - Die-cut modu: sadece tabaka (büyük tabakada zarf yok)
- *   - Stickerlar grid içinde dolu (mercan) / boş (dashed)
- *   - Alternating dolu/light fill — checkerboard pattern (ilk satırda 1.,3.,5. dolu)
- *   - Sticker boyutu etiketi alt-orta
- *   - Adet/tabaka rozeti
+ *   - Tabaka küçük zarfa sığıyorsa: zarf + iç tabaka iç içe
+ *   - Tabaka zarftan büyükse (33×45 cm): yalnızca tabaka (viewBox tabakaya göre)
+ *   - Die-cut / büyük mod: zarf yok
  */
 
 import {
@@ -27,8 +24,6 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
   const { fit } = geometry;
   const dist = computeSheetDistribution(geometry);
 
-  // Bu önizlemede tek tabakanın görünümü — son tabakadaki adet veya
-  // dengeli adet (tek tabaka ise üretilen adet)
   const stickersOnThisSheet =
     fit.sheetsNeeded === 1 ? fit.producedQty : dist.balancedPerSheet;
 
@@ -37,9 +32,20 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
   const cutH = fit.sheetH;
   const envW = SMALL_ENVELOPE_W;
   const envH = SMALL_ENVELOPE_H;
-  const envMargin = isBigMode
-    ? 0
-    : Math.max(2, Math.min(envW - cutW, envH - cutH) / 2);
+
+  /** 33×45 tabaka artık 24×32 zarftan büyük — zarf yalnızca sığıyorsa çizilir */
+  const showEnvelope =
+    !isBigMode && cutW <= envW && cutH <= envH;
+
+  const sheetInsetX = showEnvelope
+    ? Math.max(2, (envW - cutW) / 2)
+    : 0;
+  const sheetInsetY = showEnvelope
+    ? Math.max(2, (envH - cutH) / 2)
+    : 0;
+
+  const outerW = showEnvelope ? envW : cutW;
+  const outerH = showEnvelope ? envH : cutH;
 
   const W = fit.stickerW;
   const H = fit.stickerH;
@@ -49,40 +55,35 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
 
   const usedWidth = cols * W + (cols - 1) * gap;
   const usedHeight = rows * H + (rows - 1) * gap;
-  const offsetX = (cutW - usedWidth) / 2;
-  const offsetY = (cutH - usedHeight) / 2;
+  const gridOffsetX = (cutW - usedWidth) / 2;
+  const gridOffsetY = (cutH - usedHeight) / 2;
 
-  // SVG viewport
-  const PAD = 30;
-  const outerW = isBigMode ? cutW : envW;
-  const outerH = isBigMode ? cutH : envH;
+  const PAD = 16;
+  const LABEL_H = 22;
   const svgW = outerW + PAD * 2;
-  const svgH = outerH + PAD * 2 + 40; // extra for size label
+  const svgH = outerH + PAD * 2 + LABEL_H;
 
-  // Stickers
+  const sheetX = PAD + sheetInsetX;
+  const sheetY = PAD + sheetInsetY;
+
   const stickers: React.ReactNode[] = [];
   let pos = 0;
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const sx = (envMargin + offsetX) + col * (W + gap);
-      const sy = (envMargin + offsetY) + row * (H + gap);
+      const sx = sheetX + gridOffsetX + col * (W + gap);
+      const sy = sheetY + gridOffsetY + row * (H + gap);
       const isFilled = pos < stickersOnThisSheet;
-      // Alternating coral intensity for visual variety (matches HTML aesthetic)
       const isAccent = isFilled && (row + col) % 2 === 0;
       stickers.push(
         <rect
           key={pos}
-          x={PAD + sx}
-          y={PAD + sy}
+          x={sx}
+          y={sy}
           width={W}
           height={H}
           rx="2"
           fill={
-            isFilled
-              ? isAccent
-                ? "#FF6B5B"
-                : "#FFA89E"
-              : "none"
+            isFilled ? (isAccent ? "#FF6B5B" : "#FFA89E") : "none"
           }
           stroke={isFilled ? "none" : "#C4B091"}
           strokeWidth={isFilled ? 0 : 1}
@@ -94,16 +95,18 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
     }
   }
 
+  const labelY = PAD + outerH + LABEL_H - 6;
+
   return (
     <svg
       viewBox={`0 0 ${svgW} ${svgH}`}
       xmlns="http://www.w3.org/2000/svg"
-      className="w-full h-auto"
+      className="w-full h-auto max-h-[340px]"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={`Tabaka önizleme: ${cutW}×${cutH} mm, ${stickersOnThisSheet}/${fit.perSheet} sticker`}
     >
-      {/* Envelope (sadece small mode) */}
-      {!isBigMode && (
+      {showEnvelope && (
         <rect
           x={PAD}
           y={PAD}
@@ -117,10 +120,9 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         />
       )}
 
-      {/* Cut sheet (içte) */}
       <rect
-        x={PAD + envMargin}
-        y={PAD + envMargin}
+        x={sheetX}
+        y={sheetY}
         width={cutW}
         height={cutH}
         fill="white"
@@ -129,13 +131,11 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         rx="3"
       />
 
-      {/* Stickers */}
       {stickers}
 
-      {/* Size label */}
       <text
         x={svgW / 2}
-        y={svgH - 8}
+        y={labelY}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize="11"
@@ -143,7 +143,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         fontWeight="600"
       >
         {cutW}×{cutH}mm
-        {!isBigMode && ` · zarf ${envW}×${envH}mm`}
+        {showEnvelope ? ` · zarf ${envW}×${envH}mm` : ""}
       </text>
     </svg>
   );
