@@ -23,6 +23,7 @@ export const runtime = "nodejs";
 const VALID_ROLES = [
   "super_admin",
   "operations",
+  "finance",
   "customer_service",
   "production",
   "content_editor",

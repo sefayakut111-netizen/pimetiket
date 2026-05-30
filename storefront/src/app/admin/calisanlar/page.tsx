@@ -1,18 +1,13 @@
 /**
  * Pim Etiket — /admin/calisanlar
  *
- * Sefa 18 May v68 (RBAC yayma — Migration 054):
- * Mevcut mock veri kaldırıldı, gerçek Supabase profiles tablosundan
- * admin_role NOT NULL kullanıcıları liste. 5 rol enum'una geçildi.
- *
- * Önceki mock roller (admin/operator/designer/accountant) artık geçerli
- * DEĞİL — Migration 054'teki 5 sabit role taşındı.
+ * Faz 4 RBAC UI: 3 rol preset (Admin / Operatör / Finans).
+ * Backend admin_role_permissions korunur; preset → admin_role ataması.
  */
 
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import {
   Button,
@@ -24,34 +19,34 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { StaffRow } from "@/app/api/admin/staff/route";
+import { PermissionMatrix } from "@/components/admin/PermissionMatrix";
+import {
+  ROLE_PRESET_LIST,
+  countGrantedPermissions,
+  presetById,
+  presetFromAdminRole,
+  type RolePresetId,
+} from "@/lib/admin-role-presets";
 
-type AdminRole =
-  | "super_admin"
-  | "operations"
-  | "customer_service"
-  | "production"
-  | "content_editor";
-
-interface RoleOption {
-  role: AdminRole;
-  label: string;
-  description: string;
-}
-
-const ROLE_COLOR: Record<AdminRole, string> = {
-  super_admin: "bg-pim-mercan text-white",
-  operations: "bg-mavi-soft text-mavi-koyu",
-  customer_service: "bg-yesil-soft text-yesil-koyu",
-  production: "bg-sari-soft text-sari-koyu",
-  content_editor: "bg-mor/10 text-mor",
-};
-
-const ROLE_EMOJI: Record<AdminRole, string> = {
-  super_admin: "",
-  operations: "",
-  customer_service: "",
-  production: "",
-  content_editor: "",
+const PRESET_STYLE: Record<
+  RolePresetId,
+  { ring: string; badge: string; icon: React.ReactNode }
+> = {
+  admin: {
+    ring: "ring-pim-mercan",
+    badge: "bg-pim-mercan text-white",
+    icon: <Icon.Shield size={20} />,
+  },
+  operator: {
+    ring: "ring-mavi",
+    badge: "bg-mavi-soft text-mavi-koyu",
+    icon: <Icon.Box size={20} />,
+  },
+  finance: {
+    ring: "ring-yesil",
+    badge: "bg-yesil-soft text-yesil-koyu",
+    icon: <Icon.Wallet size={20} />,
+  },
 };
 
 function timeAgo(iso: string | null): string {
@@ -71,10 +66,10 @@ export default function AdminCalisanlarPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState<StaffRow[]>([]);
-  const [roles, setRoles] = useState<RoleOption[]>([]);
   const [updating, setUpdating] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<StaffRow | null>(null);
+  const [activePreset, setActivePreset] = useState<RolePresetId>("operator");
 
   async function fetchStaff() {
     setLoading(true);
@@ -86,7 +81,6 @@ export default function AdminCalisanlarPage() {
         return;
       }
       setStaff(data.staff ?? []);
-      setRoles(data.roles ?? []);
       setCurrentUserId(data.currentUserId ?? null);
     } catch (e) {
       toast.error(`Yükleme hatası: ${(e as Error).message}`);
@@ -100,20 +94,21 @@ export default function AdminCalisanlarPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleRoleChange(userId: string, newRole: string | null) {
+  async function handlePresetAssign(userId: string, presetId: RolePresetId) {
+    const preset = presetById(presetId);
     setUpdating(userId);
     try {
       const res = await fetch(`/api/admin/staff/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_role: newRole }),
+        body: JSON.stringify({ admin_role: preset.adminRole }),
       });
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error ?? "Rol değiştirilemedi");
         return;
       }
-      toast.success("Rol güncellendi");
+      toast.success(`${preset.label} preset uygulandı`);
       await fetchStaff();
     } finally {
       setUpdating(null);
@@ -153,68 +148,67 @@ export default function AdminCalisanlarPage() {
     }
   }
 
+  const previewPreset = presetById(activePreset);
+
   return (
     <main className="mx-auto max-w-[1280px] px-4 py-6 md:px-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <Eyebrow>RBAC — 5 Rol</Eyebrow>
-          <h1 className="mt-1 text-2xl font-bold text-lacivert md:text-3xl">
-            Çalışanlar & Yetki
-          </h1>
-          <p className="mt-1 text-sm text-gri-700">
-            Migration 054 ile granular yetki. Her endpoint{" "}
-            <code className="rounded bg-gri-100 px-1 text-[12px]">
-              fn_has_permission(module, action)
-            </code>{" "}
-            ile korunur.
-          </p>
-        </div>
+      <div className="mb-6">
+        <Eyebrow>RBAC — Rol preset</Eyebrow>
+        <h1 className="mt-1 text-2xl font-bold text-lacivert md:text-3xl">
+          Çalışanlar & Yetki
+        </h1>
+        <p className="mt-1 text-sm text-gri-700">
+          Üç hazır rol şablonu — arka planda{" "}
+          {countGrantedPermissions(previewPreset.permissions)} izin hücresi (
+          {previewPreset.adminRole}).
+        </p>
       </div>
 
       <p className="text-sm text-sari-koyu bg-sari-soft/30 rounded-lg p-3 mb-4">
         Calisan eklemek icin: kisi /auth sayfasindan hesap acar, sonra burada
-        rolunu atarsiniz. Token bazli davet sistemi yakin zamanda eklenecek.
+        preset rol atarsiniz.
       </p>
 
-      {/* Rol açıklamaları */}
-      <Card padding="p-5" className="mb-6">
-        <h2 className="text-base font-semibold mb-3 text-lacivert">
-          Yetki matrisi (5 rol)
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-          {roles.length === 0 ? (
-            <>
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
-            </>
-          ) : (
-            roles.map((r) => (
-              <div
-                key={r.role}
-                className="rounded-lg border border-gri-200 p-3"
-              >
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span>{ROLE_EMOJI[r.role as AdminRole]}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                      ROLE_COLOR[r.role as AdminRole]
-                    )}
-                  >
-                    {r.label}
-                  </span>
-                </div>
-                <p className="text-[11.5px] text-gri-700 leading-relaxed">
-                  {r.description}
-                </p>
+      {/* 3 rol preset */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        {ROLE_PRESET_LIST.map((p) => {
+          const style = PRESET_STYLE[p.id];
+          const selected = activePreset === p.id;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setActivePreset(p.id)}
+              className={cn(
+                "rounded-xl border p-4 text-left transition-all",
+                selected
+                  ? `border-transparent ring-2 ${style.ring} bg-white shadow-1`
+                  : "border-gri-200 bg-gri-50/50 hover:bg-white hover:border-gri-300"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className={cn(
+                    "grid place-items-center w-9 h-9 rounded-lg",
+                    style.badge
+                  )}
+                >
+                  {style.icon}
+                </span>
+                <span className="font-semibold text-lacivert">{p.label}</span>
               </div>
-            ))
-          )}
-        </div>
-      </Card>
+              <p className="text-[12px] text-gri-700 leading-relaxed">
+                {p.description}
+              </p>
+              <p className="mt-2 text-[10.5px] font-mono text-gri-500">
+                → {p.adminRole}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      <PermissionMatrix preset={previewPreset} className="mb-6" />
 
       {/* Çalışan listesi */}
       <Card padding="p-0" className="overflow-hidden">
@@ -223,10 +217,10 @@ export default function AdminCalisanlarPage() {
             <thead className="bg-gri-50 border-b border-gri-200 text-[12px] uppercase text-gri-600">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">Kişi</th>
-                <th className="px-4 py-3 text-left font-semibold">Rol</th>
+                <th className="px-4 py-3 text-left font-semibold">Preset</th>
                 <th className="px-4 py-3 text-left font-semibold">2FA</th>
                 <th className="px-4 py-3 text-left font-semibold">Son giriş</th>
-                <th className="px-4 py-3 text-right font-semibold">İşlem</th>
+                <th className="px-4 py-3 text-right font-semibold">Atama</th>
               </tr>
             </thead>
             <tbody>
@@ -244,13 +238,13 @@ export default function AdminCalisanlarPage() {
                     colSpan={5}
                     className="px-4 py-10 text-center text-gri-500"
                   >
-                    Henüz çalışan yok. Sefa süper admin tek başına.
+                    Henüz çalışan yok.
                   </td>
                 </tr>
               ) : (
                 staff.map((s) => {
                   const isLegacy = !s.admin_role && s.legacy_role;
-                  const displayRole = s.admin_role ?? null;
+                  const currentPreset = presetFromAdminRole(s.admin_role);
                   return (
                     <tr
                       key={s.user_id}
@@ -266,24 +260,21 @@ export default function AdminCalisanlarPage() {
                       </td>
                       <td className="px-4 py-3">
                         {isLegacy ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center rounded-full bg-sari-soft px-2 py-0.5 text-[11px] font-semibold text-sari-koyu">
-                               Legacy "{s.legacy_role}"
-                            </span>
-                            <div className="text-[11px] text-gri-500">
-                              Migration 054'e göre rol seçilmedi
-                            </div>
-                          </div>
-                        ) : displayRole ? (
+                          <span className="inline-flex items-center rounded-full bg-sari-soft px-2 py-0.5 text-[11px] font-semibold text-sari-koyu">
+                            Legacy {s.legacy_role}
+                          </span>
+                        ) : currentPreset ? (
                           <span
                             className={cn(
-                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
-                              ROLE_COLOR[displayRole as AdminRole]
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
+                              PRESET_STYLE[currentPreset].badge
                             )}
                           >
-                            {ROLE_EMOJI[displayRole as AdminRole]}{" "}
-                            {roles.find((r) => r.role === displayRole)?.label ??
-                              displayRole}
+                            {presetById(currentPreset).label}
+                          </span>
+                        ) : s.admin_role ? (
+                          <span className="text-[12px] text-gri-600">
+                            Eski rol: {s.admin_role}
                           </span>
                         ) : (
                           <span className="text-gri-500 text-[12px]">—</span>
@@ -291,12 +282,12 @@ export default function AdminCalisanlarPage() {
                       </td>
                       <td className="px-4 py-3">
                         {s.mfa_enabled ? (
-                          <span className="inline-flex items-center gap-1 text-yesil-koyu text-[12px] font-semibold">
-                             Aktif
+                          <span className="text-yesil-koyu text-[12px] font-semibold">
+                            Aktif
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-kirmizi-koyu text-[12px] font-semibold">
-                             Kapalı
+                          <span className="text-kirmizi-koyu text-[12px] font-semibold">
+                            Kapalı
                           </span>
                         )}
                       </td>
@@ -304,22 +295,20 @@ export default function AdminCalisanlarPage() {
                         {timeAgo(s.last_sign_in_at)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-2 flex-wrap justify-end">
                           <select
-                            value={s.admin_role ?? ""}
-                            onChange={(e) =>
-                              handleRoleChange(
-                                s.user_id,
-                                e.target.value || null
-                              )
-                            }
+                            value={currentPreset ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value as RolePresetId;
+                              if (v) void handlePresetAssign(s.user_id, v);
+                            }}
                             disabled={updating === s.user_id}
                             className="rounded-lg border border-gri-200 px-2 py-1.5 text-[12px] disabled:opacity-50"
                           >
-                            <option value="">Rol seç…</option>
-                            {roles.map((r) => (
-                              <option key={r.role} value={r.role}>
-                                {ROLE_EMOJI[r.role as AdminRole]} {r.label}
+                            <option value="">Preset seç…</option>
+                            {ROLE_PRESET_LIST.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.label}
                               </option>
                             ))}
                           </select>
@@ -332,7 +321,6 @@ export default function AdminCalisanlarPage() {
                                 s.admin_role === "super_admin")
                             }
                             className="text-[12px] text-kirmizi-koyu hover:underline disabled:opacity-50"
-                            title="Calisanlardan cikar"
                           >
                             Kaldir
                           </button>
@@ -369,14 +357,6 @@ export default function AdminCalisanlarPage() {
           </Button>
         </div>
       </Modal>
-
-      {/* Bilgilendirme — davet akışı henüz yok */}
-      <div className="mt-6 rounded-lg bg-mavi-soft p-4 text-[12.5px] text-mavi-koyu">
-        <strong className="block mb-1"> Yeni çalışan eklemek için:</strong>
-        Önce kişi <code>/auth</code> sayfasından kendi hesabını açar (email
-        + şifre veya Google). Sonra buraya gelir, listede görünür → rol
-        atarsın. Resend email davet akışı Faz 2'de aktif olacak.
-      </div>
     </main>
   );
 }

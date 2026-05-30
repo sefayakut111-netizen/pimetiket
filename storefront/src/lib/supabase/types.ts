@@ -4132,6 +4132,7 @@ export type Database = {
       admin_role_v2:
         | "super_admin"
         | "operations"
+        | "finance"
         | "customer_service"
         | "production"
         | "content_editor"
@@ -4349,6 +4350,7 @@ export const Constants = {
       admin_role_v2: [
         "super_admin",
         "operations",
+        "finance",
         "customer_service",
         "production",
         "content_editor",
