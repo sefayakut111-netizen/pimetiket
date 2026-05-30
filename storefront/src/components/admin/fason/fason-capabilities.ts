@@ -70,6 +70,106 @@ export function toggleProductType(
   };
 }
 
+export type CapabilityApprovalStatus = "pending" | "approved" | "rejected";
+
+export function mapOrderItemToCapability(
+  product: string,
+  meta: {
+    material?: string;
+    materialId?: string;
+    formFactor?: string;
+  }
+): { productType: FasonProductType; material: FasonMaterial | null } {
+  const materialId = String(meta.materialId ?? meta.material ?? "").toLowerCase();
+  const formFactor = String(meta.formFactor ?? "").toLowerCase();
+
+  let productType: FasonProductType;
+  if (product === "sticker") {
+    productType = "sticker";
+  } else if (formFactor === "tabaka") {
+    productType = "sheet_label";
+  } else {
+    productType = "roll_label";
+  }
+
+  let material: FasonMaterial | null = null;
+  if (
+    ["vinil", "opak", "opakpp", "beyaz", "kuse", "kraft", "kuşe"].includes(
+      materialId
+    )
+  ) {
+    material = "paper";
+  } else if (
+    ["transparan", "seffaf", "ultra", "ultraclear"].includes(materialId)
+  ) {
+    material = "transparent";
+  } else if (["holo", "holografik", "holographic"].includes(materialId)) {
+    material = "holographic";
+  } else if (
+    ["simli", "metalik", "metalize", "metallic"].includes(materialId)
+  ) {
+    material = "metallic";
+  }
+
+  return { productType, material };
+}
+
+export function getCapabilityRecord(
+  capabilities: Array<{
+    id?: string;
+    capability_type: string;
+    capability_value: string;
+    is_verified?: boolean;
+    approval_status?: CapabilityApprovalStatus;
+  }> = [],
+  capabilityType: "product_type" | "material",
+  capabilityValue: string
+) {
+  return capabilities.find(
+    (c) =>
+      c.capability_type === capabilityType &&
+      c.capability_value === capabilityValue
+  );
+}
+
+export function resolveApprovalStatus(cap: {
+  is_verified?: boolean;
+  approval_status?: CapabilityApprovalStatus;
+}): CapabilityApprovalStatus {
+  if (cap.approval_status) return cap.approval_status;
+  return cap.is_verified ? "approved" : "pending";
+}
+
+export function partnerHasApprovedCapability(
+  capabilities: Array<{
+    id?: string;
+    capability_type: string;
+    capability_value: string;
+    is_verified?: boolean;
+    approval_status?: CapabilityApprovalStatus;
+  }> = [],
+  productType: FasonProductType,
+  material: FasonMaterial | null
+): { ok: boolean; productOk: boolean; materialOk: boolean } {
+  const productCap = getCapabilityRecord(
+    capabilities,
+    "product_type",
+    productType
+  );
+  const productOk =
+    !!productCap && resolveApprovalStatus(productCap) === "approved";
+
+  if (!material) {
+    return { ok: productOk, productOk, materialOk: true };
+  }
+
+  const materialCap = getCapabilityRecord(capabilities, "material", material);
+  const materialOk =
+    !!materialCap && resolveApprovalStatus(materialCap) === "approved";
+
+  return { ok: productOk && materialOk, productOk, materialOk };
+}
+
 export function setMaterialsForProduct(
   productType: FasonProductType,
   materials: FasonMaterial[],

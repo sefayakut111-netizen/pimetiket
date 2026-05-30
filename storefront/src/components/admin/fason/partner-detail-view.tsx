@@ -13,6 +13,7 @@ import {
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
   COMMUNICATION_CHANNEL_LABEL,
+  DEFAULT_MAX_CONCURRENT_ORDERS,
   formatShortDate,
   isAssignmentOverdue,
   type AssignmentRow,
@@ -25,73 +26,22 @@ import {
 import { PartnerCapacityPanel } from "@/components/admin/fason/partner-capacity-panel";
 import { ContractDownloadButton } from "@/components/admin/fason/contract-download-button";
 import { PerformanceScoreModal } from "@/components/admin/fason/performance-score-modal";
+import { PerformanceSummaryCard } from "@/components/admin/fason/performance-summary-card";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
+import {
+  FASON_MATERIAL_LABELS,
+  FASON_PRODUCT_LABELS,
+  mapOrderItemToCapability,
+  partnerHasApprovedCapability,
+} from "@/components/admin/fason/fason-capabilities";
 
 const HISTORY_PAGE_SIZE = 10;
 
-function metricValueClass(value: number): string {
-  return value === 0 ? "text-gri-400" : "text-lacivert font-semibold";
-}
-
-function ScoreDisplay({
-  score,
-  onClick,
-}: {
-  score: number | null;
-  onClick?: () => void;
-}) {
-  if (score == null) {
-    return (
-      <span className="text-gri-400">
-        — <span className="text-[11px] font-normal">(ilk 5 is tamamlaninca)</span>
-      </span>
-    );
-  }
-  const pct = Math.round(score * 100);
-  const filled = Math.max(1, Math.round(pct / 20));
-  const inner = (
-    <>
-      <span className="font-semibold text-lacivert tabular-nums">{pct}/100</span>
-      <span className="inline-flex items-center gap-0.5 text-sari-koyu">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Icon.Star
-            key={i}
-            size={12}
-            className={cn(i < filled ? "opacity-100" : "opacity-25")}
-          />
-        ))}
-      </span>
-    </>
-  );
-
-  if (!onClick) {
-    return <span className="inline-flex items-center gap-2">{inner}</span>;
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-md px-1 -mx-1 hover:bg-gri-100 transition-colors"
-      title="Performans detayini goster"
-    >
-      {inner}
-    </button>
-  );
-}
-
 function PartnerSidebar({
   partner,
-  jobStats,
   onPartnerUpdated,
 }: {
   partner: FasonPartner;
-  jobStats: {
-    active: number;
-    overdue: number;
-    completed: number;
-    issues: number;
-  };
   onPartnerUpdated: (p: FasonPartner) => void;
 }) {
   const [perfOpen, setPerfOpen] = useState(false);
@@ -102,46 +52,13 @@ function PartnerSidebar({
   return (
     <>
       <aside className="space-y-0 rounded-xl border border-gri-200 bg-white p-4 lg:sticky lg:top-20 lg:self-start">
-        <section className="pb-4">
-          <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
-            Performans
-          </h3>
-          <dl className="space-y-2 text-[13px]">
-            <div className="flex justify-between gap-3">
-              <dt className="text-gri-600">Aktif is:</dt>
-              <dd className={metricValueClass(jobStats.active)}>{jobStats.active}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-gri-600">Geciken:</dt>
-              <dd className={metricValueClass(jobStats.overdue)}>{jobStats.overdue}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-gri-600">Tamamlanan:</dt>
-              <dd className={metricValueClass(jobStats.completed)}>
-                {jobStats.completed}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3 items-start">
-              <dt className="text-gri-600 shrink-0">Ortalama skor:</dt>
-              <dd className="text-right">
-                <ScoreDisplay
-                  score={partner.cached_score}
-                  onClick={
-                    partner.cached_score != null
-                      ? () => setPerfOpen(true)
-                      : undefined
-                  }
-                />
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-gri-600">Tipik teslim:</dt>
-              <dd className="text-lacivert font-semibold">
-                {partner.default_lead_days} gun
-              </dd>
-            </div>
-          </dl>
-        </section>
+        <PerformanceSummaryCard
+          partnerId={partner.id}
+          partnerName={partner.name}
+          defaultLeadDays={partner.default_lead_days}
+          cachedScore={partner.cached_score}
+          onOpenDetail={() => setPerfOpen(true)}
+        />
 
         <section className="py-4 border-t border-gri-100">
           <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
@@ -218,6 +135,30 @@ function defaultEstimatedDeliveryIso(leadDays: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function AssignCheckRow({
+  ok,
+  label,
+  failHint,
+}: {
+  ok: boolean;
+  label: string;
+  failHint?: React.ReactNode;
+}) {
+  return (
+    <li className="flex items-start gap-2 text-[12px]">
+      <span className={cn("shrink-0 font-bold", ok ? "text-yesil" : "text-kirmizi")}>
+        {ok ? "✓" : "✗"}
+      </span>
+      <span className={ok ? "text-gri-700" : "text-kirmizi-koyu"}>
+        {label}
+        {!ok && failHint && (
+          <span className="block text-[11px] text-gri-600 mt-0.5">{failHint}</span>
+        )}
+      </span>
+    </li>
+  );
+}
+
 function AssignOrderToPartner({
   partner,
   onAssigned,
@@ -226,23 +167,33 @@ function AssignOrderToPartner({
   onAssigned: () => void;
 }) {
   const toast = useToast();
-  const contractSigned = partnerCanReceiveAssignments(partner);
-  const [unassigned, setUnassigned] = useState<
-    Array<{
-      id: string;
-      customer: string;
-      total: number;
-      summary: string;
-    }>
-  >([]);
-  const [loading, setLoading] = useState(false);
-  const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
-  const [confirmOrder, setConfirmOrder] = useState<{
+  type UnassignedOrder = {
     id: string;
     customer: string;
     summary: string;
+    detailLine: string;
     total: number;
-  } | null>(null);
+    firstItem: {
+      product: string;
+      qty: number;
+      width?: number;
+      height?: number;
+      material?: string;
+      materialId?: string;
+      formFactor?: string;
+    } | null;
+  };
+
+  const [unassigned, setUnassigned] = useState<UnassignedOrder[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
+  const [confirmOrder, setConfirmOrder] = useState<UnassignedOrder | null>(null);
+
+  const maxCapacity =
+    partner.max_concurrent_orders ?? DEFAULT_MAX_CONCURRENT_ORDERS;
+  const activeCount = partner.active_order_count ?? 0;
+  const capacityOk = activeCount < maxCapacity;
+  const contractSigned = partnerCanReceiveAssignments(partner);
 
   const loadUnassigned = useCallback(async () => {
     setLoading(true);
@@ -260,18 +211,54 @@ function AssignOrderToPartner({
           total: number;
           fasonName?: string;
           address?: { name?: string } | null;
-          items?: Array<{ product: string; title?: string; qty: number }>;
+          items?: Array<{
+            product: string;
+            title?: string;
+            qty: number;
+            width?: number;
+            height?: number;
+            material?: string;
+            materialId?: string;
+            formFactor?: string;
+          }>;
         }>;
       };
       setUnassigned(
         excludeTestOrderLikes(data.orders ?? [])
           .filter((o) => !o.fasonName)
-          .map((o) => ({
-            id: o.id,
-            customer: o.address?.name ?? "—",
-            total: o.total,
-            summary: formatOrderLineSummary(o.items ?? []),
-          }))
+          .map((o) => {
+            const first = o.items?.[0] ?? null;
+            const cap = first
+              ? mapOrderItemToCapability(first.product, {
+                  material: first.material,
+                  materialId: first.materialId,
+                  formFactor: String(first.formFactor ?? ""),
+                })
+              : null;
+            const matLabel =
+              cap?.material != null
+                ? FASON_MATERIAL_LABELS[cap.material]
+                : first?.material ?? "—";
+            const size =
+              first?.width && first?.height
+                ? `${first.width}×${first.height}mm`
+                : "";
+            const detailLine = [
+              first ? `${first.qty.toLocaleString("tr-TR")} adet` : null,
+              matLabel,
+              size,
+            ]
+              .filter(Boolean)
+              .join(" / ");
+            return {
+              id: o.id,
+              customer: o.address?.name ?? "—",
+              total: o.total,
+              summary: formatOrderLineSummary(o.items ?? []),
+              detailLine,
+              firstItem: first,
+            };
+          })
       );
     } catch {
       toast.error("Atanabilir siparisler yuklenemedi (ag hatasi)");
@@ -284,21 +271,39 @@ function AssignOrderToPartner({
     void loadUnassigned();
   }, [loadUnassigned]);
 
-  const requestAssign = (order: {
-    id: string;
-    customer: string;
-    summary: string;
-    total: number;
-  }) => {
-    if (!contractSigned) {
-      toast.error("Sozlesme imzalanmadan atama yapilamaz");
-      return;
+  const capabilityCheck = useMemo(() => {
+    if (!confirmOrder?.firstItem) {
+      return { ok: true, label: "Urun yetenegi eslesmesi" };
     }
+    const cap = mapOrderItemToCapability(confirmOrder.firstItem.product, {
+      material: confirmOrder.firstItem.material,
+      materialId: confirmOrder.firstItem.materialId,
+      formFactor: String(confirmOrder.firstItem.formFactor ?? ""),
+    });
+    const match = partnerHasApprovedCapability(
+      partner.capabilities ?? [],
+      cap.productType,
+      cap.material
+    );
+    const productLabel = FASON_PRODUCT_LABELS[cap.productType];
+    const materialLabel = cap.material
+      ? FASON_MATERIAL_LABELS[cap.material]
+      : null;
+    const label = materialLabel
+      ? `"${productLabel} + ${materialLabel}" yetenek onayli`
+      : `"${productLabel}" urun grubu onayli`;
+    return { ok: match.ok, label, cap, match };
+  }, [confirmOrder, partner.capabilities]);
+
+  const canAssign =
+    contractSigned && capacityOk && capabilityCheck.ok;
+
+  const requestAssign = (order: UnassignedOrder) => {
     setConfirmOrder(order);
   };
 
   const executeAssign = async () => {
-    if (!confirmOrder) return;
+    if (!confirmOrder || !canAssign) return;
     const orderId = confirmOrder.id;
     setAssigningOrderId(orderId);
     try {
@@ -396,29 +401,67 @@ function AssignOrderToPartner({
           if (assigningOrderId) return;
           setConfirmOrder(null);
         }}
-        title="Siparis atama onayi"
-        maxWidthClassName="max-w-[480px]"
+        title={`Siparisi ${partner.name} partnerine ata`}
+        maxWidthClassName="max-w-[520px]"
       >
         {confirmOrder && (
           <div className="space-y-4">
-            <p className="text-[14px] text-gri-700 leading-relaxed">
-              <strong className="font-mono text-lacivert">
-                {confirmOrder.id}
-              </strong>{" "}
-              siparisini{" "}
-              <strong className="text-lacivert">{partner.name}</strong>{" "}
-              partnere atamak istediginizden emin misiniz?
-            </p>
-            <p className="text-[12px] text-gri-600">
-              {confirmOrder.customer}
-              {confirmOrder.summary ? ` · ${confirmOrder.summary}` : ""} ·{" "}
-              {confirmOrder.total.toLocaleString("tr-TR")} TL
-            </p>
-            <p className="text-[12px] text-gri-500">
-              Hedef teslim:{" "}
-              {defaultEstimatedDeliveryIso(partner.default_lead_days)} (
-              {partner.default_lead_days} gun)
-            </p>
+            <div className="rounded-lg bg-gri-50 px-3 py-2.5 text-[13px]">
+              <p className="font-mono font-semibold text-lacivert">
+                #{confirmOrder.id}
+              </p>
+              <p className="text-gri-700 mt-1">{confirmOrder.customer}</p>
+              {confirmOrder.detailLine && (
+                <p className="text-gri-600 mt-1">{confirmOrder.detailLine}</p>
+              )}
+              <p className="text-gri-500 mt-1 text-[12px]">
+                Teslim: {partner.default_lead_days} gun (
+                {defaultEstimatedDeliveryIso(partner.default_lead_days)})
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-[11px] font-bold uppercase text-gri-500 mb-2">
+                Partner durumu
+              </h4>
+              <ul className="space-y-2">
+                <AssignCheckRow
+                  ok={contractSigned}
+                  label={
+                    contractSigned && partner.contract_signed_at
+                      ? `Sozlesme imzali (${new Date(partner.contract_signed_at).toLocaleDateString("tr-TR")})`
+                      : "Sozlesme imzali"
+                  }
+                  failHint={
+                    <Link
+                      href={`/admin/fason/${partner.id}`}
+                      className="text-pim-mercan underline"
+                    >
+                      Sozlesme yukle / imzalandi isaretle
+                    </Link>
+                  }
+                />
+                <AssignCheckRow
+                  ok={capacityOk}
+                  label={
+                    capacityOk
+                      ? `Kapasite musait (${activeCount}/${maxCapacity})`
+                      : `Kapasite dolu (${activeCount}/${maxCapacity})`
+                  }
+                />
+                <AssignCheckRow
+                  ok={capabilityCheck.ok}
+                  label={capabilityCheck.label}
+                  failHint={
+                    <span>
+                      Sag sidebar{" "}
+                      <strong>Yetenekler</strong> bolumunden ekleyip onaylayin
+                    </span>
+                  }
+                />
+              </ul>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
@@ -426,15 +469,15 @@ function AssignOrderToPartner({
                 disabled={assigningOrderId !== null}
                 onClick={() => setConfirmOrder(null)}
               >
-                Vazgec
+                Iptal
               </Button>
               <Button
                 type="button"
                 variant="primary"
-                disabled={assigningOrderId !== null}
+                disabled={assigningOrderId !== null || !canAssign}
                 onClick={() => void executeAssign()}
               >
-                {assigningOrderId ? "Ataniyor..." : "Ata"}
+                {assigningOrderId ? "Ataniyor..." : "Ata ve Bildir"}
               </Button>
             </div>
           </div>
@@ -1236,7 +1279,6 @@ export function PartnerDetailView({
 
       <PartnerSidebar
         partner={partner}
-        jobStats={jobStats}
         onPartnerUpdated={onPartnerUpdated}
       />
     </div>

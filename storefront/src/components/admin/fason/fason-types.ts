@@ -39,6 +39,7 @@ export interface FasonPartner {
     capability_type: "product_type" | "material";
     capability_value: string;
     is_verified?: boolean;
+    approval_status?: "pending" | "approved" | "rejected";
   }>;
 }
 

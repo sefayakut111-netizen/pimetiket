@@ -2475,6 +2475,7 @@ export type Database = {
       }
       partner_capabilities: {
         Row: {
+          approval_status: string
           capability_type: string
           capability_value: string
           created_at: string | null
@@ -2485,6 +2486,7 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          approval_status?: string
           capability_type: string
           capability_value: string
           created_at?: string | null
@@ -2495,6 +2497,7 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          approval_status?: string
           capability_type?: string
           capability_value?: string
           created_at?: string | null

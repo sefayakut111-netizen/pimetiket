@@ -3,6 +3,8 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logServerAudit } from "@/lib/audit-log-server";
 
+type ApprovalStatus = "pending" | "approved" | "rejected";
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -16,13 +18,24 @@ export async function POST(
   const body = (await req.json()) as {
     capabilityId?: string;
     verified?: boolean;
+    status?: ApprovalStatus;
   };
-  const { capabilityId, verified } = body;
+  const { capabilityId } = body;
 
-  if (!capabilityId || typeof verified !== "boolean") {
+  if (!capabilityId) {
     return NextResponse.json({ error: "Eksik alan" }, { status: 400 });
   }
 
+  let approvalStatus: ApprovalStatus;
+  if (body.status) {
+    approvalStatus = body.status;
+  } else if (typeof body.verified === "boolean") {
+    approvalStatus = body.verified ? "approved" : "rejected";
+  } else {
+    return NextResponse.json({ error: "status veya verified gerekli" }, { status: 400 });
+  }
+
+  const verified = approvalStatus === "approved";
   const admin = createAdminClient();
 
   const { data: cap } = await admin
@@ -33,12 +46,13 @@ export async function POST(
     .maybeSingle();
 
   if (!cap) {
-    return NextResponse.json({ error: "Capability bulunamadı" }, { status: 404 });
+    return NextResponse.json({ error: "Capability bulunamadi" }, { status: 404 });
   }
 
   const { error } = await admin
     .from("partner_capabilities")
     .update({
+      approval_status: approvalStatus,
       is_verified: verified,
       verified_at: verified ? new Date().toISOString() : null,
       verified_by: verified ? auth.user.id : null,
@@ -57,16 +71,17 @@ export async function POST(
     targetType: "partner_capability",
     targetId: capabilityId,
     summary: verified
-      ? `Partner capability onaylandı: ${cap.capability_type}/${cap.capability_value}`
-      : `Partner capability onayı kaldırıldı: ${cap.capability_type}/${cap.capability_value}`,
+      ? `Partner capability onaylandi: ${cap.capability_type}/${cap.capability_value}`
+      : `Partner capability ${approvalStatus}: ${cap.capability_type}/${cap.capability_value}`,
     detail: {
       partner_id: partnerId,
       capability_type: cap.capability_type,
       capability_value: cap.capability_value,
+      approval_status: approvalStatus,
     },
     ipAddress: req.headers.get("x-forwarded-for"),
     userAgent: req.headers.get("user-agent"),
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, approval_status: approvalStatus });
 }

@@ -116,7 +116,7 @@ export async function GET() {
   const { data: caps } = partnerIds.length
     ? await admin
         .from("partner_capabilities")
-        .select("partner_id, id, capability_type, capability_value, is_verified")
+        .select("partner_id, id, capability_type, capability_value, is_verified, approval_status")
         .in("partner_id", partnerIds)
     : { data: [] };
 
@@ -135,6 +135,7 @@ export async function GET() {
     capability_type: string;
     capability_value: string;
     is_verified: boolean;
+    approval_status?: string;
   };
 
   const contactsByPartner = new Map<string, CT[]>();

@@ -137,7 +137,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
 
   const { data: capabilities } = await admin
     .from("partner_capabilities")
-    .select("id, capability_type, capability_value, is_verified")
+    .select("id, capability_type, capability_value, is_verified, approval_status")
     .eq("partner_id", id);
 
   return NextResponse.json({
@@ -239,16 +239,8 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 
     const { data: oldCaps } = await admin
       .from("partner_capabilities")
-      .select("id, capability_type, capability_value, is_verified")
+      .select("id, capability_type, capability_value, is_verified, approval_status")
       .eq("partner_id", id);
-
-    const verifiedMap = new Map<string, boolean>();
-    for (const c of oldCaps ?? []) {
-      verifiedMap.set(
-        `${c.capability_type}:${c.capability_value}`,
-        c.is_verified !== false
-      );
-    }
 
     const body = capsOnly.data;
     const desired = [
@@ -284,13 +276,14 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
         partner_id: id,
         capability_type: d.capability_type,
         capability_value: d.capability_value,
-        is_verified: verifiedMap.get(key) ?? true,
+        is_verified: false,
+        approval_status: "pending",
       });
     }
 
     const { data: capabilities } = await admin
       .from("partner_capabilities")
-      .select("id, capability_type, capability_value, is_verified")
+      .select("id, capability_type, capability_value, is_verified, approval_status")
       .eq("partner_id", id);
 
     return NextResponse.json({ ok: true, id, capabilities: capabilities ?? [] });
@@ -409,16 +402,8 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 
   const { data: oldCaps } = await admin
     .from("partner_capabilities")
-    .select("id, capability_type, capability_value, is_verified")
+    .select("id, capability_type, capability_value, is_verified, approval_status")
     .eq("partner_id", id);
-
-  const verifiedMap = new Map<string, boolean>();
-  for (const c of oldCaps ?? []) {
-    verifiedMap.set(
-      `${c.capability_type}:${c.capability_value}`,
-      c.is_verified !== false
-    );
-  }
 
   const desired = [
     ...body.productTypes.map((v) => ({
@@ -453,7 +438,8 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       partner_id: id,
       capability_type: d.capability_type,
       capability_value: d.capability_value,
-      is_verified: verifiedMap.get(key) ?? false,
+      is_verified: false,
+      approval_status: "pending",
     });
   }
 

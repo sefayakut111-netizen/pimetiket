@@ -10,81 +10,111 @@ import {
   FASON_PRODUCT_LABELS,
   FASON_PRODUCT_MATERIALS,
   FASON_PRODUCT_TYPES,
+  getCapabilityRecord,
   materialsForProduct,
   parsePartnerCapabilities,
+  resolveApprovalStatus,
   setMaterialsForProduct,
   toggleProductType,
+  type CapabilityApprovalStatus,
   type FasonMaterial,
   type FasonProductType,
 } from "@/components/admin/fason/fason-capabilities";
+import { ProductMaterialPicker } from "@/components/admin/fason/product-material-picker";
 
-function MaterialChip({
-  label,
-  selected,
-  interactive,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  interactive?: boolean;
-  onClick?: () => void;
-}) {
-  const className = cn(
-    "inline-flex items-center h-7 px-2.5 rounded-full text-[11px] font-semibold transition-colors",
-    selected
-      ? "bg-pim-mercan text-white"
-      : "bg-gri-100 text-gri-600",
-    interactive && "cursor-pointer hover:ring-1 hover:ring-pim-mercan/40"
+function ApprovalBadge({ status }: { status: CapabilityApprovalStatus }) {
+  const map = {
+    approved: {
+      label: "Onayli",
+      className: "bg-yesil-soft text-yesil ring-yesil/30",
+    },
+    pending: {
+      label: "Beklemede",
+      className: "bg-sari-soft text-sari-koyu ring-sari/30",
+    },
+    rejected: {
+      label: "Ret",
+      className: "bg-kirmizi-soft text-kirmizi ring-kirmizi/30",
+    },
+  } as const;
+  const meta = map[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center rounded-full px-2 text-[10px] font-semibold ring-1",
+        meta.className
+      )}
+    >
+      {meta.label}
+    </span>
   );
-  if (interactive && onClick) {
-    return (
-      <button type="button" onClick={onClick} className={className}>
-        {label}
-      </button>
-    );
-  }
-  return <span className={className}>{label}</span>;
 }
 
-function ProductMaterialEditor({
-  productType,
-  materials,
-  onChange,
+function CapabilityApprovalActions({
+  partnerId,
+  capabilityId,
+  status,
+  onUpdated,
 }: {
-  productType: FasonProductType;
-  materials: FasonMaterial[];
-  onChange: (next: FasonMaterial[]) => void;
+  partnerId: string;
+  capabilityId: string;
+  status: CapabilityApprovalStatus;
+  onUpdated: () => void;
 }) {
-  const options = FASON_PRODUCT_MATERIALS[productType];
-  const selected = materialsForProduct(productType, materials);
-  const allSelected =
-    options.length > 0 && options.every((m) => selected.includes(m));
+  const [busy, setBusy] = useState(false);
+
+  const setStatus = async (next: CapabilityApprovalStatus) => {
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${partnerId}/capabilities/verify`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ capabilityId, status: next }),
+        }
+      );
+      if (res.ok) onUpdated();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className="ml-6 mt-2 space-y-2 border-l-2 border-gri-200 pl-3">
-      <div className="flex flex-wrap gap-1.5">
-        <MaterialChip
-          label="Tumu"
-          selected={allSelected}
-          interactive
-          onClick={() => onChange(allSelected ? [] : [...options])}
-        />
-        {options.map((m) => (
-          <MaterialChip
-            key={m}
-            label={FASON_MATERIAL_LABELS[m]}
-            selected={selected.includes(m)}
-            interactive
-            onClick={() =>
-              onChange(
-                selected.includes(m)
-                  ? selected.filter((x) => x !== m)
-                  : [...selected, m]
-              )
-            }
-          />
-        ))}
-      </div>
+    <div className="flex items-center gap-1 shrink-0">
+      {status !== "approved" && (
+        <button
+          type="button"
+          disabled={busy}
+          title="Onayla"
+          onClick={() => void setStatus("approved")}
+          className="h-7 w-7 rounded-md hover:bg-yesil-soft text-yesil flex items-center justify-center disabled:opacity-50"
+        >
+          <Icon.Check size={14} />
+        </button>
+      )}
+      {status !== "rejected" && (
+        <button
+          type="button"
+          disabled={busy}
+          title="Ret"
+          onClick={() => void setStatus("rejected")}
+          className="h-7 w-7 rounded-md hover:bg-kirmizi-soft text-kirmizi flex items-center justify-center disabled:opacity-50"
+        >
+          <Icon.X size={14} />
+        </button>
+      )}
+      {status === "rejected" && (
+        <button
+          type="button"
+          disabled={busy}
+          title="Beklemeye al"
+          onClick={() => void setStatus("pending")}
+          className="h-7 px-2 rounded-md text-[10px] font-semibold hover:bg-gri-100 text-gri-700 disabled:opacity-50"
+        >
+          Beklemede
+        </button>
+      )}
     </div>
   );
 }
@@ -102,12 +132,24 @@ export function PartnerCapacityPanel({
   const [productTypes, setProductTypes] = useState(parsed.productTypes);
   const [materials, setMaterials] = useState(parsed.materials);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<FasonProductType, boolean>>({
+    sticker: true,
+    roll_label: true,
+    sheet_label: true,
+  });
 
   useEffect(() => {
     const next = parsePartnerCapabilities(partner.capabilities);
     setProductTypes(next.productTypes);
     setMaterials(next.materials);
   }, [partner.capabilities]);
+
+  const reloadPartner = useCallback(async () => {
+    const res = await fetch("/api/admin/fason/partners", { cache: "no-store" });
+    const json = (await res.json()) as { partners?: FasonPartner[] };
+    const found = (json.partners ?? []).find((p) => p.id === partner.id);
+    if (found) onUpdated(found);
+  }, [onUpdated, partner.id]);
 
   const cancelEdit = () => {
     const next = parsePartnerCapabilities(partner.capabilities);
@@ -145,22 +187,12 @@ export function PartnerCapacityPanel({
         setError(json.error ?? "Kaydedilemedi");
         return;
       }
-      const nextCaps = [
-        ...productTypes.map((v) => ({
-          id: `pt-${v}`,
-          capability_type: "product_type" as const,
-          capability_value: v,
-          is_verified: true,
-        })),
-        ...materials.map((v) => ({
-          id: `mat-${v}`,
-          capability_type: "material" as const,
-          capability_value: v,
-          is_verified: true,
-        })),
-      ];
-      onUpdated({ ...partner, capabilities: json.capabilities ?? nextCaps });
+      onUpdated({
+        ...partner,
+        capabilities: json.capabilities ?? partner.capabilities,
+      });
       setEditing(false);
+      void reloadPartner();
     } finally {
       setSaving(false);
     }
@@ -170,13 +202,18 @@ export function PartnerCapacityPanel({
     const next = toggleProductType(productTypes, materials, pt);
     setProductTypes(next.productTypes);
     setMaterials(next.materials);
+    setExpanded((e) => ({ ...e, [pt]: true }));
+  };
+
+  const toggleExpanded = (pt: FasonProductType) => {
+    setExpanded((e) => ({ ...e, [pt]: !e[pt] }));
   };
 
   return (
     <section className="pt-4 border-t border-gri-100">
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="text-[11px] font-bold uppercase text-gri-500">
-          Kapasite
+          Yetenekler
         </h3>
         {!editing ? (
           <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
@@ -204,72 +241,141 @@ export function PartnerCapacityPanel({
         )}
       </div>
 
-      {error && (
-        <p className="text-[11px] text-kirmizi mb-2">{error}</p>
-      )}
+      {error && <p className="text-[11px] text-kirmizi mb-2">{error}</p>}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {FASON_PRODUCT_TYPES.map((pt) => {
           const active = productTypes.includes(pt);
           const selectedMats = materialsForProduct(pt, materials);
-          const options = FASON_PRODUCT_MATERIALS[pt];
-          const allSelected =
-            active &&
-            options.length > 0 &&
-            options.every((m) => selectedMats.includes(m));
+          const isOpen = expanded[pt] ?? active;
 
           return (
-            <div key={pt}>
-              {editing ? (
-                <button
-                  type="button"
-                  onClick={() => togglePt(pt)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] font-semibold transition-colors",
-                    active
-                      ? "bg-lacivert text-white"
-                      : "bg-gri-50 text-gri-700 ring-1 ring-gri-200 hover:ring-lacivert"
-                  )}
-                >
-                  {active && <Icon.Check size={14} className="shrink-0" />}
-                  {FASON_PRODUCT_LABELS[pt]}
-                </button>
-              ) : (
-                <div
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-semibold",
-                    active
-                      ? "bg-lacivert text-white"
-                      : "bg-gri-50 text-gri-500 ring-1 ring-gri-200"
-                  )}
-                >
-                  {active && <Icon.Check size={14} className="shrink-0" />}
-                  {FASON_PRODUCT_LABELS[pt]}
-                </div>
+            <div
+              key={pt}
+              className={cn(
+                "rounded-lg ring-1 overflow-hidden",
+                active ? "ring-gri-200 bg-white" : "ring-gri-100 bg-gri-50/50"
               )}
+            >
+              <div className="flex items-center gap-2">
+                {editing ? (
+                  <button
+                    type="button"
+                    onClick={() => togglePt(pt)}
+                    className={cn(
+                      "flex flex-1 items-center gap-2 px-3 py-2.5 text-left text-[12.5px] font-semibold transition-colors",
+                      active ? "text-lacivert" : "text-gri-600"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                        active
+                          ? "bg-lacivert border-lacivert text-white"
+                          : "border-gri-300 bg-white"
+                      )}
+                    >
+                      {active && <Icon.Check size={10} />}
+                    </span>
+                    {FASON_PRODUCT_LABELS[pt]}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => active && toggleExpanded(pt)}
+                    className={cn(
+                      "flex flex-1 items-center gap-2 px-3 py-2.5 text-left text-[12.5px] font-semibold",
+                      active ? "text-lacivert" : "text-gri-500"
+                    )}
+                  >
+                    {active ? (
+                      <Icon.ChevR
+                        size={14}
+                        className={cn(
+                          "shrink-0 transition-transform rotate-90",
+                          isOpen ? "rotate-[270deg]" : ""
+                        )}
+                      />
+                    ) : (
+                      <span className="w-3.5" />
+                    )}
+                    {FASON_PRODUCT_LABELS[pt]}
+                    {!active && (
+                      <span className="text-[10px] font-normal text-gri-400">
+                        (pasif)
+                      </span>
+                    )}
+                  </button>
+                )}
 
-              {active && editing && (
-                <ProductMaterialEditor
-                  productType={pt}
-                  materials={materials}
-                  onChange={(next) =>
-                    setMaterials(setMaterialsForProduct(pt, materials, next))
-                  }
-                />
-              )}
+                {active && !editing && (() => {
+                  const cap = getCapabilityRecord(
+                    partner.capabilities ?? [],
+                    "product_type",
+                    pt
+                  );
+                  if (!cap?.id) return null;
+                  const status = resolveApprovalStatus(cap);
+                  return (
+                    <div className="flex items-center gap-1 pr-2">
+                      <ApprovalBadge status={status} />
+                      <CapabilityApprovalActions
+                        partnerId={partner.id}
+                        capabilityId={cap.id}
+                        status={status}
+                        onUpdated={() => void reloadPartner()}
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
 
-              {active && !editing && (
-                <div className="ml-6 mt-2 flex flex-wrap gap-1.5 border-l-2 border-gri-200 pl-3">
-                  {allSelected ? (
-                    <MaterialChip label="Tumu" selected />
-                  ) : null}
-                  {options.map((m) => (
-                    <MaterialChip
-                      key={m}
-                      label={FASON_MATERIAL_LABELS[m]}
-                      selected={selectedMats.includes(m)}
+              {active && (editing || isOpen) && (
+                <div className="px-3 pb-3 pt-1 border-t border-gri-100">
+                  {editing ? (
+                    <ProductMaterialPicker
+                      productLabel={`${FASON_PRODUCT_LABELS[pt]} malzemeleri`}
+                      options={FASON_PRODUCT_MATERIALS[pt]}
+                      selected={selectedMats}
+                      onChange={(next) =>
+                        setMaterials(setMaterialsForProduct(pt, materials, next))
+                      }
                     />
-                  ))}
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {selectedMats.map((m) => {
+                        const cap = getCapabilityRecord(
+                          partner.capabilities ?? [],
+                          "material",
+                          m
+                        );
+                        const status = cap
+                          ? resolveApprovalStatus(cap)
+                          : "pending";
+                        return (
+                          <li
+                            key={m}
+                            className="flex items-center justify-between gap-2 rounded-md bg-gri-50 px-2 py-1.5"
+                          >
+                            <span className="text-[12px] font-medium text-lacivert">
+                              {FASON_MATERIAL_LABELS[m]}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <ApprovalBadge status={status} />
+                              {cap?.id && (
+                                <CapabilityApprovalActions
+                                  partnerId={partner.id}
+                                  capabilityId={cap.id}
+                                  status={status}
+                                  onUpdated={() => void reloadPartner()}
+                                />
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
