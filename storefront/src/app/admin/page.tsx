@@ -37,19 +37,23 @@ import {
   adminOrdersListHref,
 } from "@/lib/order";
 import {
-  buildDailySeries,
-  buildHeatmapMatrix,
-  aggregateProductMix,
-  aggregateStatus,
-  topCustomers,
-  topCities,
-  operationalMetrics,
-  proofFlowStatsLast30Days,
-  generateInsights,
   formatHours,
   formatCurrency,
   formatShortDate,
+  type ProductMix,
+  type StatusCount,
+  type OperationalMetrics,
+  type ProofFlowStats30d,
+  type InsightItem,
 } from "@/lib/admin-analytics";
+import {
+  getDashboardRangeWindow,
+  type DashboardTimeRange,
+} from "@/lib/admin-dashboard-range";
+import {
+  fetchDashboardAggregate,
+  type DashboardAggregateData,
+} from "@/lib/admin-dashboard-aggregate";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { getAdminModuleLabel } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
@@ -60,7 +64,32 @@ import {
   type FinancialSummary,
 } from "@/lib/admin-financial-metrics";
 
-type TimeRange = "today" | "7d" | "mtd" | "30d" | "custom";
+type TimeRange = DashboardTimeRange;
+
+const EMPTY_PRODUCT_MIX: ProductMix = {
+  etiket: 0,
+  sticker: 0,
+  etiketRevenue: 0,
+  stickerRevenue: 0,
+};
+
+const EMPTY_OPS: OperationalMetrics = {
+  aiFlagRate: 0,
+  cancelRate: 0,
+  avgFulfillmentHours: null,
+  avgProofResponseHours: null,
+};
+
+const EMPTY_PROOF_STATS: ProofFlowStats30d = {
+  approved: 0,
+  cancelled: 0,
+  total: 0,
+  cancelRate: 0,
+};
+
+const EMPTY_HEATMAP = Array.from({ length: 7 }, () =>
+  Array.from({ length: 24 }, () => 0)
+);
 
 const RANGE_LABEL: Record<TimeRange, string> = {
   today: "Bugün",
@@ -69,88 +98,6 @@ const RANGE_LABEL: Record<TimeRange, string> = {
   "30d": "30 gün",
   custom: "Özel",
 };
-
-interface RangeWindow {
-  start: number;
-  /** Üst sınır (custom / bugün için) */
-  end?: number;
-  /** Önceki periyot başlangıcı (kıyas için) */
-  prevStart: number;
-  /** Önceki periyot bitişi (default: start) — MTD için ayrı */
-  prevEnd: number;
-  /** Chart için günlük serisinin gün sayısı */
-  days: number;
-}
-
-function getRangeWindow(
-  range: TimeRange,
-  customFrom?: string,
-  customTo?: string
-): RangeWindow {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  if (range === "custom" && customFrom && customTo) {
-    const from = new Date(customFrom);
-    from.setHours(0, 0, 0, 0);
-    const to = new Date(customTo);
-    to.setHours(23, 59, 59, 999);
-    const duration = to.getTime() - from.getTime();
-    const days = Math.max(
-      1,
-      Math.ceil(duration / day)
-    );
-    return {
-      start: from.getTime(),
-      end: to.getTime(),
-      prevStart: from.getTime() - duration,
-      prevEnd: from.getTime(),
-      days,
-    };
-  }
-  if (range === "today") {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    return {
-      start: startOfDay.getTime(),
-      end: endOfDay.getTime(),
-      prevStart: startOfDay.getTime() - day,
-      prevEnd: startOfDay.getTime(),
-      days: 1,
-    };
-  }
-  if (range === "7d") {
-    return {
-      start: now - 7 * day,
-      prevStart: now - 14 * day,
-      prevEnd: now - 7 * day,
-      days: 7,
-    };
-  }
-  if (range === "mtd") {
-    // Bu ayın 1'i 00:00 → şu an
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
-    const startOfPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1, 0, 0, 0, 0);
-    const elapsedMs = now - startOfMonth.getTime();
-    const elapsedDays = Math.max(1, Math.ceil(elapsedMs / day));
-    // Önceki ayın aynı süresi (1'den elapsedDays'e kadar)
-    const prevEnd = startOfPrevMonth.getTime() + elapsedMs;
-    return {
-      start: startOfMonth.getTime(),
-      prevStart: startOfPrevMonth.getTime(),
-      prevEnd,
-      days: elapsedDays,
-    };
-  }
-  return {
-    start: now - 30 * day,
-    prevStart: now - 60 * day,
-    prevEnd: now - 30 * day,
-    days: 30,
-  };
-}
 
 interface TodoItem {
   id: string;
@@ -473,6 +420,11 @@ function AdminDashboardPageInner() {
     useState<FinancialSummary | null>(null);
   const [stuckDesignCount, setStuckDesignCount] = useState(0);
   const [pendingReviews, setPendingReviews] = useState(0);
+  const [aggregate, setAggregate] = useState<DashboardAggregateData | null>(
+    null
+  );
+  const [aggregateLoading, setAggregateLoading] = useState(true);
+  const [aggregateError, setAggregateError] = useState(false);
 
   const loadOrders = useCallback(async () => {
     if (!canViewOrders) {
@@ -676,6 +628,24 @@ function AdminDashboardPageInner() {
   }, [showFinancials, range, customFrom, customTo]);
 
   useEffect(() => {
+    if (permLoading || !canViewOrders) {
+      setAggregate(null);
+      setAggregateLoading(false);
+      setAggregateError(false);
+      return;
+    }
+    setAggregateLoading(true);
+    setAggregateError(false);
+    void fetchDashboardAggregate(range, customFrom, customTo)
+      .then((data) => {
+        if (data) setAggregate(data);
+        else setAggregateError(true);
+      })
+      .catch(() => setAggregateError(true))
+      .finally(() => setAggregateLoading(false));
+  }, [permLoading, canViewOrders, range, customFrom, customTo]);
+
+  useEffect(() => {
     if (permLoading || !canViewOrders) return;
     fetch("/api/admin/funnel-metrics")
       .then((r) => {
@@ -692,7 +662,7 @@ function AdminDashboardPageInner() {
       .catch(() => setFunnelError(true));
   }, [permLoading, canViewOrders]);
 
-  const rangeWindow = getRangeWindow(range, customFrom, customTo);
+  const rangeWindow = getDashboardRangeWindow(range, customFrom, customTo);
 
   const customLabel =
     customFrom && customTo
@@ -754,12 +724,15 @@ function AdminDashboardPageInner() {
     [inPrevRange]
   );
   const count = financialSummary?.orderCount ?? paidInRange.length;
-  const prevCount = paidInPrevRange.length;
+  const prevCount =
+    aggregate?.prevPeriod.count ?? paidInPrevRange.length;
   const revenue =
     financialSummary?.grossOrderTotal ??
     paidInRange.reduce((s, o) => s + o.total, 0);
   const collectedRevenue = financialSummary?.collectedTotal;
-  const prevRevenue = paidInPrevRange.reduce((s, o) => s + o.total, 0);
+  const prevRevenue =
+    aggregate?.prevPeriod.revenue ??
+    paidInPrevRange.reduce((s, o) => s + o.total, 0);
   const aov = count > 0 ? revenue / count : 0;
   const aiFlagged = countByStatuses(metricOrders, AI_QC_ACTIVE_STATUSES);
   const aiQueueDirty = aiFlagged > 0 || stuckDesignCount > 0;
@@ -780,46 +753,52 @@ function AdminDashboardPageInner() {
     [metricOrders, canViewOrders, stuckDesignCount]
   );
 
-  // Chart datası — daima rangeWindow.days kullan
-  const dailySeries = useMemo(
-    () => buildDailySeries(metricOrders, rangeWindow.days),
-    [metricOrders, rangeWindow.days]
-  );
+  const aggregateOrderCount = aggregate?.totalOrderCount ?? 0;
+  const dailySeries = aggregate?.dailySeries ?? [];
   const revenueSeries: LinePoint[] = dailySeries.map((d) => ({
-    x: formatShortDate(d.date),
+    x: formatShortDate(new Date(d.date)),
     y: d.revenue,
   }));
   const orderSeries: LinePoint[] = dailySeries.map((d) => ({
-    x: formatShortDate(d.date),
+    x: formatShortDate(new Date(d.date)),
     y: d.count,
   }));
 
-  const productMix = useMemo(() => aggregateProductMix(inRange), [inRange]);
-  const statusDistribution = useMemo(
-    () => aggregateStatus(metricOrders),
-    [metricOrders]
-  );
-  const heatmapMatrix = useMemo(
-    () => buildHeatmapMatrix(metricOrders),
-    [metricOrders]
-  );
-  const tops = useMemo(() => topCustomers(metricOrders, 5), [metricOrders]);
-  const cities = useMemo(() => topCities(metricOrders, 5), [metricOrders]);
-  const ops = useMemo(() => operationalMetrics(metricOrders), [metricOrders]);
-  const proofStats30d = useMemo(
-    () => proofFlowStatsLast30Days(metricOrders),
-    [metricOrders]
-  );
-  const isCancelOverTarget = ops.cancelRate > 5 && metricOrders.length > 0;
+  const productMix = aggregate?.productMix ?? EMPTY_PRODUCT_MIX;
+  const statusDistribution =
+    aggregate?.statusDistribution ??
+    ({
+      paid: 0,
+      awaiting_upload: 0,
+      qc_pending: 0,
+      qc_flagged: 0,
+      operator_review: 0,
+      human_review: 0,
+      human_review_failed: 0,
+      proof_generating: 0,
+      proof_pending: 0,
+      proof_validating: 0,
+      proof_approved: 0,
+      ready_to_ship: 0,
+      fason_assigned: 0,
+      in_production: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    } satisfies StatusCount);
+  const heatmapMatrix = aggregate?.heatmapMatrix ?? EMPTY_HEATMAP;
+  const tops = aggregate?.topCustomers ?? [];
+  const cities = aggregate?.topCities ?? [];
+  const ops = aggregate?.operationalMetrics ?? EMPTY_OPS;
+  const proofStats30d = aggregate?.proofFlowStats30d ?? EMPTY_PROOF_STATS;
+  const isCancelOverTarget =
+    ops.cancelRate > 5 && aggregateOrderCount > 0;
   const isZeroDelivered =
-    statusDistribution.delivered === 0 && metricOrders.length > 0;
+    statusDistribution.delivered === 0 && aggregateOrderCount > 0;
   const showUrgentOpsBanner = isCancelOverTarget || isZeroDelivered;
   const isProofCancelOverTarget =
     proofStats30d.cancelRate > 30 && proofStats30d.total > 0;
-  const insights = useMemo(
-    () => generateInsights(metricOrders),
-    [metricOrders]
-  );
+  const insights: InsightItem[] = aggregate?.insights ?? [];
 
   // Sefa 21 May v68 (admin denetim P2 #14): orders kaynak sıralaması statü
   // bazlı olabiliyordu — Son siparişler kullanıcının beklediği kronoloji
@@ -1193,11 +1172,19 @@ function AdminDashboardPageInner() {
           </Card>
         )}
 
+        {canViewOrders && aggregateError && !aggregateLoading && (
+          <div className="mb-4 rounded-lg border border-kirmizi/30 bg-kirmizi-soft/20 px-4 py-3 text-sm text-lacivert">
+            <Icon.Info size={14} className="inline shrink-0 text-kirmizi mr-1" />
+            Dashboard metrikleri yüklenemedi — grafikler güncel olmayabilir.
+          </div>
+        )}
+
         {canViewOrders && ordersTruncated && !ordersLoading && !ordersError && (
           <div className="mb-4 rounded-lg border border-sari bg-sari-soft/30 px-4 py-3 text-sm text-lacivert">
             <Icon.Info size={14} className="inline shrink-0 text-sari-koyu mr-1" />
-            <strong>Son 500 sipariş gösteriliyor.</strong> KPI değerleri bu
-            aralığa göre hesaplanıyor. Tam veriler için{" "}
+            <strong>Son 500 sipariş gösteriliyor.</strong> Grafik ve KPI
+            metrikleri tam veritabanından hesaplanır; yalnızca &quot;Son
+            siparişler&quot; listesi bu limite tabidir. Tam finans için{" "}
             <Link href="/admin/finans" className="underline font-semibold">
               Finans &amp; Raporlar
             </Link>{" "}
@@ -1218,7 +1205,7 @@ function AdminDashboardPageInner() {
               )}
               {isZeroDelivered && (
                 <li>
-                  Henuz teslim edilmis siparis yok ({metricOrders.length} aktif
+                  Henuz teslim edilmis siparis yok ({aggregateOrderCount} aktif
                   kayit)
                 </li>
               )}
@@ -1624,10 +1611,10 @@ function AdminDashboardPageInner() {
               "text-[22px] font-bold mt-1 tabular-nums",
               ops.aiFlagRate > 30 ? "text-kirmizi" : ops.aiFlagRate > 0 ? "text-sari-koyu" : "text-gri-500"
             )}>
-              {orders.length > 0 ? `%${ops.aiFlagRate.toFixed(0)}` : "—"}
+              {aggregateOrderCount > 0 ? `%${ops.aiFlagRate.toFixed(0)}` : "—"}
             </div>
             <div className="text-[11px] text-gri-700 mt-1">
-              {orders.length > 0 ? "hedef <%10" : "veri yok"}
+              {aggregateOrderCount > 0 ? "hedef <%10" : "veri yok"}
             </div>
           </Card>
 
@@ -1666,7 +1653,7 @@ function AdminDashboardPageInner() {
             <div
               className={cn(
                 "text-[22px] font-bold mt-1 tabular-nums",
-                metricOrders.length === 0
+                aggregateOrderCount === 0
                   ? "text-gri-500"
                   : ops.cancelRate > 5
                     ? "text-kirmizi"
@@ -1675,10 +1662,10 @@ function AdminDashboardPageInner() {
                       : "text-gri-500"
               )}
             >
-              {metricOrders.length > 0 ? `%${ops.cancelRate.toFixed(0)}` : "—"}
+              {aggregateOrderCount > 0 ? `%${ops.cancelRate.toFixed(0)}` : "—"}
             </div>
             <div className="text-[11px] text-gri-700 mt-1">
-              {metricOrders.length > 0 ? (
+              {aggregateOrderCount > 0 ? (
                 ops.cancelRate > 5 ? (
                   <span className="text-xs font-semibold text-kirmizi">
                     Hedefin {(ops.cancelRate / 5).toFixed(1)}x üstünde (hedef
@@ -1942,7 +1929,7 @@ function AdminDashboardPageInner() {
 
         {/* AI insights + Quick actions */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 mb-6">
-          {orders.length >= 10 ? (
+          {aggregateOrderCount >= 10 ? (
           <Card padding="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Icon.Sparkle size={16} className="text-pim-mercan" />
@@ -1983,7 +1970,7 @@ function AdminDashboardPageInner() {
                 <div>
                   <div className="font-medium">Otomatik içgörüler</div>
                   <div className="text-[12px]">
-                    10+ sipariş sonrası aktif ({orders.length}/10)
+                    10+ sipariş sonrası aktif ({aggregateOrderCount}/10)
                   </div>
                 </div>
               </div>
@@ -2066,7 +2053,7 @@ function AdminDashboardPageInner() {
                 Hangi gün-saatte sipariş geliyor
               </p>
             </div>
-            {orders.length >= 50 ? (
+            {aggregateOrderCount >= 50 ? (
               <HeatMap
                 matrix={heatmapMatrix}
                 emptyLabel="Bu aralıkta saatlik dağılım henüz oluşmadı"
@@ -2077,7 +2064,7 @@ function AdminDashboardPageInner() {
                 <div>
                   <div className="font-medium">Saatlik yoğunluk haritası</div>
                   <div className="text-[12px]">
-                    50+ sipariş sonrası aktif ({orders.length}/50)
+                    50+ sipariş sonrası aktif ({aggregateOrderCount}/50)
                   </div>
                 </div>
               </div>
@@ -2142,7 +2129,7 @@ function AdminDashboardPageInner() {
             <div className="px-5 py-3.5 border-b border-gri-200">
               <h2 className="text-[15px] font-semibold">Top şehirler</h2>
             </div>
-            {orders.length >= 30 ? (
+            {aggregateOrderCount >= 30 ? (
               cities.length === 0 ? (
               <div className="p-6 text-center text-[12.5px] text-gri-500 italic">
                 Coğrafi dağılım için sipariş bekleniyor
@@ -2184,7 +2171,7 @@ function AdminDashboardPageInner() {
                 <div>
                   <div className="font-medium">Şehir dağılımı</div>
                   <div className="text-[12px]">
-                    30+ sipariş sonrası aktif ({orders.length}/30)
+                    30+ sipariş sonrası aktif ({aggregateOrderCount}/30)
                   </div>
                 </div>
               </div>
