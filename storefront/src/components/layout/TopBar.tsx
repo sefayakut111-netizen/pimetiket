@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { PimAsset } from "@/components/PimAsset";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { MiniCartPopup } from "@/components/layout/MiniCartPopup";
+import { TopBarSearch } from "@/components/layout/TopBarSearch";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
@@ -45,14 +46,22 @@ export function TopBar() {
   //         dropdown'da "Giriş yap" butonu görüyor.
   const navItems = [
     { href: "/", label: t.nav.home },
-    { href: "/etiket", label: t.nav.etiket },
     { href: "/sticker", label: t.nav.sticker },
+    { href: "/etiket", label: t.nav.etiket },
     { href: "/sablonlar", label: t.nav.templates },
     ...(user ? [{ href: "/editor", label: t.nav.editor }] : []),
-    // { href: "/galeri", label: t.nav.gallery },
-    { href: "/blog", label: t.nav.blog },
     ...(user ? [{ href: "/panelim", label: t.nav.dashboard }] : []),
+    { href: "/blog", label: t.nav.blog },
   ];
+
+  const isNavActive = (href: string) => {
+    if (!pathname) return false;
+    if (href === "/") return pathname === "/";
+    if (href === "/sablonlar") return pathname.startsWith("/sablonlar");
+    if (href === "/editor") return pathname.startsWith("/editor");
+    if (href === "/panelim") return pathname.startsWith("/panelim");
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   useEffect(() => {
     ensureAuthBindings();
@@ -166,12 +175,7 @@ export function TopBar() {
         {!pathname?.startsWith("/odeme") ? (
           <nav className="hidden md:flex flex-1 gap-1 items-center">
             {navItems.map((item) => {
-              const active =
-                item.href === "/sablonlar"
-                  ? pathname?.startsWith("/sablonlar")
-                  : item.href === "/editor"
-                    ? pathname?.startsWith("/editor")
-                    : pathname === item.href;
+              const active = isNavActive(item.href);
               return (
                 <Link
                   key={item.href}
@@ -198,7 +202,13 @@ export function TopBar() {
         )}
 
         {/* Actions */}
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1 items-center shrink-0">
+          {!pathname?.startsWith("/odeme") && (
+            <>
+              <TopBarSearch isMember={Boolean(user)} className="hidden sm:block" />
+              <TopBarSearch isMember={Boolean(user)} className="sm:hidden" />
+            </>
+          )}
           <div className="hidden sm:block">
             <LanguageSwitcher />
           </div>
@@ -395,12 +405,7 @@ export function TopBar() {
           <div className="fixed inset-x-0 top-16 bg-white z-50 md:hidden border-t border-gri-200 shadow-2">
             <nav className="flex flex-col p-3 gap-1 max-h-[calc(100vh-64px)] overflow-y-auto">
               {navItems.map((item) => {
-                const active =
-                  item.href === "/sablonlar"
-                    ? pathname?.startsWith("/sablonlar")
-                    : item.href === "/editor"
-                      ? pathname?.startsWith("/editor")
-                      : pathname === item.href;
+                const active = isNavActive(item.href);
                 return (
                   <Link
                     key={item.href}

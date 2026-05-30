@@ -38,6 +38,9 @@ export const tr: TranslationDict = {
     returns: "İadelerim",
     templates: "Şablonlar",
     editor: "Editör",
+    searchOpen: "Ara",
+    searchPlaceholder: "Sayfa, blog veya sipariş…",
+    searchEmpty: "Sonuç bulunamadı",
   },
   home: {
     eyebrow: "Akıllı dijital baskı ekosistemi",

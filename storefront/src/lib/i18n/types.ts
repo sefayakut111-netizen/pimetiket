@@ -64,6 +64,9 @@ export type TranslationDict = {
     returns: string;
     templates: string;
     editor: string;
+    searchOpen: string;
+    searchPlaceholder: string;
+    searchEmpty: string;
   };
   // ====== Home ======
   home: {

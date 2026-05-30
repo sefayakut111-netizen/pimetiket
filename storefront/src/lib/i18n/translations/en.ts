@@ -38,6 +38,9 @@ export const en: TranslationDict = {
     returns: "My returns",
     templates: "Templates",
     editor: "Editor",
+    searchOpen: "Search",
+    searchPlaceholder: "Pages, blog or order…",
+    searchEmpty: "No results found",
   },
   home: {
     eyebrow: "Smart digital printing ecosystem",
