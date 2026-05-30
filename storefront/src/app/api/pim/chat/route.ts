@@ -121,8 +121,8 @@ const etiketTool = tool({
   description:
     "Etiket fiyatı hesapla. Rulo etiket (tabaka YOK). Min 1000 adet, max 25000. Boyut serbest (W×H mm).",
   inputSchema: z.object({
-    width: z.number().min(5).max(520).describe("Etiket genişliği mm"),
-    height: z.number().min(5).max(1470).describe("Etiket yüksekliği mm"),
+    width: z.number().min(15).max(300).describe("Etiket genişliği mm"),
+    height: z.number().min(25).max(500).describe("Etiket yüksekliği mm"),
     qty: z
       .number()
       .min(1000)

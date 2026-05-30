@@ -543,16 +543,16 @@ export function RuloCalculator({
                     value={width}
                     onChange={setWidth}
                     suffix="mm · GEN."
-                    min={5}
-                    max={520}
+                    min={15}
+                    max={300}
                   />
                   <span className="text-gri-500 font-medium">×</span>
                   <NumInput
                     value={height}
                     onChange={setHeight}
                     suffix="mm · YÜK."
-                    min={5}
-                    max={1470}
+                    min={25}
+                    max={500}
                   />
                 </div>
               </Field>

@@ -24,6 +24,10 @@ import {
   ETIKET_ROLL_L,
   ETIKET_ROLL_MARGIN_Y,
   ETIKET_GAP_DEFAULT,
+  ETIKET_RULO_MIN_W,
+  ETIKET_RULO_MIN_H,
+  ETIKET_RULO_MAX_W,
+  ETIKET_RULO_MAX_H,
   ETIKET_TIERS,
   ETIKET_MATERIALS,
   ETIKET_COATINGS,
@@ -352,8 +356,23 @@ export function quoteEtiket(input: EtiketQuoteInput): EtiketQuoteResult {
   if (input.qty < 1) {
     return { ok: false, reason: "Geçerli adet gir" };
   }
-  if (input.width < 5 || input.height < 5) {
-    return { ok: false, reason: "Geçerli boyut gir (min 5×5 mm)" };
+  if (
+    input.width < ETIKET_RULO_MIN_W ||
+    input.height < ETIKET_RULO_MIN_H
+  ) {
+    return {
+      ok: false,
+      reason: `Geçerli boyut gir (min ${ETIKET_RULO_MIN_W}×${ETIKET_RULO_MIN_H} mm)`,
+    };
+  }
+  if (
+    input.width > ETIKET_RULO_MAX_W ||
+    input.height > ETIKET_RULO_MAX_H
+  ) {
+    return {
+      ok: false,
+      reason: `Bu boyut rulo etiket limitini aşıyor (max ${ETIKET_RULO_MAX_W}×${ETIKET_RULO_MAX_H} mm)`,
+    };
   }
 
   const g = computeEtiketGeometry(
@@ -365,7 +384,7 @@ export function quoteEtiket(input: EtiketQuoteInput): EtiketQuoteResult {
   if (!g) {
     return {
       ok: false,
-      reason: "Bu boyut rulo planına yerleştirilemedi (max 520×1470 mm)",
+      reason: "Bu boyut rulo planına yerleştirilemedi",
     };
   }
 

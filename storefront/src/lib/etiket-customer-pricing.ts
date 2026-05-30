@@ -37,6 +37,13 @@ export const ETIKET_MIN_QTY = 1000;
 export const ETIKET_MAX_QTY = 25000;
 export const ETIKET_QTY_STEP = 500;
 
+export {
+  ETIKET_RULO_MIN_W,
+  ETIKET_RULO_MIN_H,
+  ETIKET_RULO_MAX_W,
+  ETIKET_RULO_MAX_H,
+} from "./pricing-engine/constants";
+
 export interface CustomerEtiketQuoteInput {
   width: number; // mm
   height: number; // mm

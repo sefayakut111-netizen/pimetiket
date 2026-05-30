@@ -66,6 +66,10 @@ import {
   ETIKET_MIN_QTY,
   ETIKET_MAX_QTY,
   ETIKET_QTY_STEP,
+  ETIKET_RULO_MIN_W,
+  ETIKET_RULO_MIN_H,
+  ETIKET_RULO_MAX_W,
+  ETIKET_RULO_MAX_H,
   type EtiketMaterialId,
   type EtiketCoatingId,
   type EtiketCustomId,
@@ -98,6 +102,10 @@ import {
 } from "@/lib/pricing-pricebook-types";
 import { isPricebookMode } from "@/lib/pricing-pricebook";
 import { deriveScopeFromProduct } from "@/lib/pricing-calc";
+import {
+  TABAKA_USABLE_H,
+  TABAKA_USABLE_W,
+} from "@/lib/pricing-engine/constants";
 import {
   addToCustomerCart,
   removeFromCustomerCart,
@@ -1065,6 +1073,21 @@ function EtiketPage() {
     formFactor === "rulo"
       ? ETIKET_POPULAR_PRESET
       : ETIKET_TABAKA_POPULAR_PRESET;
+
+  const sizeMinW = formFactor === "rulo" ? ETIKET_RULO_MIN_W : 5;
+  const sizeMinH = formFactor === "rulo" ? ETIKET_RULO_MIN_H : 5;
+  const sizeMaxW =
+    formFactor === "rulo" ? ETIKET_RULO_MAX_W : TABAKA_USABLE_W;
+  const sizeMaxH =
+    formFactor === "rulo" ? ETIKET_RULO_MAX_H : TABAKA_USABLE_H;
+  const sizeMinEqual =
+    formFactor === "rulo"
+      ? Math.max(ETIKET_RULO_MIN_W, ETIKET_RULO_MIN_H)
+      : 5;
+  const sizeMaxEqual =
+    formFactor === "rulo"
+      ? Math.min(ETIKET_RULO_MAX_W, ETIKET_RULO_MAX_H)
+      : Math.min(TABAKA_USABLE_W, TABAKA_USABLE_H);
 
   // Sefa 18 May v65: Form factor değişince incompatible seçim revert
   // useEffect'i kaldırıldı. handleFormFactorChange tüm reset'i yapıyor
@@ -2173,7 +2196,10 @@ function EtiketPage() {
                       placeholder={shape === "circle" ? "örn. 50" : "örn. 60"}
                       autoComplete="off"
                       onChange={(e) => {
-                        const v = Math.max(5, Number(e.target.value) || 5);
+                        const v = Math.max(
+                          sizeMinEqual,
+                          Number(e.target.value) || sizeMinEqual
+                        );
                         setWidth(v);
                         setHeight(v); // orantı kilidi — kare/daire için w=h
                         markTouched(6);
@@ -2184,8 +2210,8 @@ function EtiketPage() {
                           preset: false,
                         });
                       }}
-                      min={5}
-                      max={520}
+                      min={sizeMinEqual}
+                      max={sizeMaxEqual}
                       step={1}
                       className={cn(
                         "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
@@ -2212,8 +2238,8 @@ function EtiketPage() {
                         setWidth(v);
                         markTouched(6);
                       }}
-                      min={5}
-                      max={520}
+                      min={sizeMinW}
+                      max={sizeMaxW}
                       step={1}
                       className={cn(
                         "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
@@ -2264,8 +2290,8 @@ function EtiketPage() {
                         setHeight(v);
                         markTouched(6);
                       }}
-                      min={5}
-                      max={1470}
+                      min={sizeMinH}
+                      max={sizeMaxH}
                       step={1}
                       className={cn(
                         "block w-full h-12 px-3.5 rounded-[12px] bg-white text-[15px] font-medium text-lacivert ring-1 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-all tabular-nums",
@@ -2276,6 +2302,17 @@ function EtiketPage() {
                     />
                   </label>
                 </div>
+              )}
+
+              {formFactor === "rulo" && (
+                <p className="mt-2 text-[11.5px] text-gri-600 leading-relaxed">
+                  Rulo etiket ebat aralığı:{" "}
+                  <strong>
+                    {ETIKET_RULO_MIN_W}×{ETIKET_RULO_MIN_H} – {ETIKET_RULO_MAX_W}×
+                    {ETIKET_RULO_MAX_H} mm
+                  </strong>{" "}
+                  (genişlik × yükseklik, sarım yönü sabit).
+                </p>
               )}
 
               {/* Hızlı boyut chip'leri — Sefa kararı 18 May v49:

@@ -36,6 +36,10 @@ export const KUSE_BASE_CELLS: Array<{
   { width_mm: 300, height_mm: 450, qty: 3000, price_per_unit: 2.1 },
   { width_mm: 300, height_mm: 450, qty: 5000, price_per_unit: 1.85 },
   { width_mm: 300, height_mm: 450, qty: 10000, price_per_unit: 1.5 },
+  { width_mm: 300, height_mm: 500, qty: 1000, price_per_unit: 2.75 },
+  { width_mm: 300, height_mm: 500, qty: 3000, price_per_unit: 2.35 },
+  { width_mm: 300, height_mm: 500, qty: 5000, price_per_unit: 2.05 },
+  { width_mm: 300, height_mm: 500, qty: 10000, price_per_unit: 1.65 },
 ];
 
 /** m² maliyet oranı — kuşe referans (legacy pricing_config) */
@@ -53,7 +57,7 @@ export const RULO_MATERIAL_PRICE_MULTIPLIERS: Record<
 
 export const PRICEBOOK_DEFAULT_AXES = {
   width: [30, 50, 70, 100, 150, 300],
-  height: [30, 50, 70, 100, 150, 450],
+  height: [30, 50, 70, 100, 150, 450, 500],
   qty: [1000, 3000, 5000, 10000],
 };
 

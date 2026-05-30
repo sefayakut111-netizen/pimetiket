@@ -144,6 +144,12 @@ export const ETIKET_MIN_QTY = 1000;
 export const ETIKET_MAX_QTY = 25000;
 export const ETIKET_GAP_DEFAULT = 6;
 
+/** Rulo etiket müşteri ebat sınırları — genişlik/yükseklik yönü sabit (döndürme yok). */
+export const ETIKET_RULO_MIN_W = 15;
+export const ETIKET_RULO_MIN_H = 25;
+export const ETIKET_RULO_MAX_W = 300;
+export const ETIKET_RULO_MAX_H = 500;
+
 /**
  * Etiket rulo standart boyu (mm). Sticker'ın ROLL_L=1520 sabitinden
  * AYRI: gerçek etiket rulolarımız 50 metre (= 50000 mm) standardında.
