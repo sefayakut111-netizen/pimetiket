@@ -97,11 +97,63 @@ Maraton sprint. 6 büyük SIRA tamamlandı.
 - `test-embedded-poc-headless.ts` — yerel Chromium eksik (`@sparticuz/chromium` ENOENT), server'da çalışır. Commit edildi ama yerel test atlandı.
 - Mevcut sipariş #300520268195 — PDF tabanlı, mavi rozet ile test edilebilir (gerçek müşteri, dokunulmadı).
 
+## SIRA 8 — Admin Panel Revizyon (analiz sonrası, aynı gün)
+
+Claude (1000 ölçek) + Cursor (bugün 1-3 kişi) + kod doğrulama analizi → 7 faz revizyon planı.
+
+### Analiz doğrulaması — 3 yanlış varsayım düzeltildi
+- Kredi/cüzdan UI → zaten yok (410 Gone)
+- 3 fiyat hesaplayıcı → zaten redirect (sadece sidebar temizliği)
+- Destek vs Yardım → kasıtlı ayrı (birleştirme yok)
+
+### Fazlar
+| Faz | İçerik | Commit | Migration |
+|-----|--------|--------|-----------|
+| 1 | Temizlik (debug gizle, etiket) | `6e842cf` | — |
+| 2 | **Operasyon kuyruğu** (unified inbox) | `e0bb2d9` | — |
+| 3 | Server-side aggregation (dashboard) | `e3486dd` | — |
+| 4 | RBAC UI 3 rol (backend korundu) | `6b69085` | 119 |
+| 5 | Fason log + CRM log + Cmd+K + muhasebe PDF | 4 commit | 120 |
+| 7 | İçerik hub + 4-grup sidebar | 3 commit | — |
+| 6 | E-fatura + VKN | 🔒 BLOKE | 121 |
+
+### Bugfix
+- `41d77eb` — konfigüratör step kilit zinciri DOM sırasıyla hizalandı (SIRA 4 sonrası kaçak)
+
+### Yeni dokümanlar
+- `docs/ADMIN-ANALIZ-SONUC.md` — karar kaydı + 4-grup sidebar mental model
+- `CURSOR-PROMPT-ADMIN-REVIZE.md` — 7 faz planı
+- `CURSOR-PROMPT-OPERASYON-KUYRUGU.md` — operasyon kuyruğu spec
+- `docs/ADMIN-ANALIZ-PROMPT.md` — bağımsız analiz prompt'u
+- `docs/SERVISLER-ENVANTERI.md` — dış servisler envanteri
+- Commit'ler: `09ee688` (dokümanlar)
+
+### Dokunulmayanlar (Sefa kararı)
+- Denetçiler (9 auditor) — kalsın
+- Müşteri segment — dursun, veri gelecek
+- Dashboard funnel/ısı — dursun (sadece calc server-side'a taşındı)
+
+## Migration Durumu Güncel
+| Mig | İçerik | Prod |
+|-----|--------|------|
+| 115-117 | (önceki) | ✅ |
+| 119 | RBAC finance enum + presets | ⚠️ **Sefa apply edecek** |
+| 120 | fason_file_transfers + customer_activity_log | ✅ |
+| 121 | customer_billing_profiles (e-fatura) | 🔒 Faz 6'da |
+
 ## Launch Durumu
 
-- ✅ Kod: %100 hazır
-- ✅ Migration'lar: 117'ye kadar prod'da
-- ✅ TypeScript: 0 hata (her sprint'te doğrulandı)
-- 🔲 Sandbox → canlı PayTR (key bekleniyor)
-- 🔲 Tarayıcı testleri (Sefa)
-- 🔲 Manuel test maddeleri (yukarıda)
+- ✅ Kod: %100 hazır (admin revizyon dahil)
+- ✅ Migration'lar: 120'ye kadar prod'da (119 Sefa apply bekliyor)
+- ✅ TypeScript: 0 hata
+- 🔲 Mig 119 prod apply (Finans rolü için)
+- 🔲 Paraşüt API key → Faz 6 (e-fatura)
+- 🔲 Sandbox → canlı PayTR
+- 🔲 Tarayıcı testleri + manuel feature testleri
+
+## Bugünün Toplam Bilançosu
+- **~32 commit**, 6 migration (115-120 + 119 bekliyor)
+- **SIRA 2-7:** 70+ planlı görev
+- **SIRA 8:** admin analiz + 6 faz revizyon
+- **Yeni özellikler:** operasyon kuyruğu, server-side dashboard, 3-rol RBAC, Cmd+K arama, fason dosya log, CRM aktivite log, aylık muhasebe PDF, içerik hub, 4-grup sidebar, otomatik ölçü, bıçak algılama
+- **18+ doküman**
