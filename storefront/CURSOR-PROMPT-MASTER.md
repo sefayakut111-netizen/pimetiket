@@ -10,118 +10,50 @@
 
 1. Test sipariş temizliği — `cleanup-test-orders.mjs --confirm` çalıştır (Sefa onayı gerekli)
 2. Eksik migration'ları DB'de kontrol et (110, 092 vb.)
+3. **`.env.agent` explicit gitignore** (acil değil) — şu an `.env` pattern'i kapsıyor ama `core/.gitignore`'a `.env.agent` satırı eklemek temizlik için iyi. Doğrulama: `git check-ignore .env.agent` zaten OK döndürüyor, riski yok.
 
 ---
 
-## ═══ SIRA 2 — Dashboard Yeni Özellikler (13 görev) ═══
-`@CURSOR-GOREVLER-DASHBOARD.md` sırayla uygula:
-3. Sekonder API hata görünürlüğü
-4. Prova yanıt süresi metriği
-5. Error boundary ekle
-6. 500+ sipariş limiti KPI
-7. Isı haritası koşullu göster
-8. Top 5 şehir koşullu göster
-9. AI insights koşullu göster
-10. Bugünün geliri kartı
-11. Sistem sağlığı şeridi
-12. Partner üretim durumu
-13. 24 saat aktivite akışı
-14. Mail kuyruğu durumu
-15. Özel tarih aralığı seçici
+## ═══ SIRA 2 — Dashboard Yeni Özellikler (TAMAMLANDI ✅) ═══
+12/12 görev tamamlandı (commit 05320ff). Detay: yapılanlar tablosunda.
 
 ---
 
-## ═══ SIRA 3 — Admin Sayfaları Kalan Eksikler (22 görev) ═══
-
-### Siparişler — kalan 2 görev
-`@CURSOR-GOREVLER-SIPARISLER.md` içinden sadece bunları uygula:
-16. Partner kolonu ekle
-17. Acil satırları vurgula (SLA aşımı, geciken kargo)
-
-### Sipariş Ekle — kalan 1 görev
-`@CURSOR-GOREVLER-SIPARIS-EKLE.md` içinden sadece bunu uygula:
-18. İndirim / kupon alanı ekle
-
-### AI QC — kalan 7 görev
-`@CURSOR-GOREVLER-AI-QC.md` içinden bunları uygula:
-19. "Düzelt ve prova hazırla" 3. karar seçeneği
-20. QC yeniden çalıştır butonu
-21. Her kararda operatör notu
-22. Dosya indirme linki
-23. Karar geçmişi
-24. Toplu onay (verdict=good olanlar)
-25. Revizyon karşılaştırma
-
-### Prova — kalan 5 görev
-`@CURSOR-GOREVLER-PROVA.md` içinden bunları uygula:
-26. Bıçak + beyaz katman durum rozeti
-27. Durum filtre sekmeleri
-28. Toplu "üretime taşı" (proof_approved)
-29. Prova linki kopyala + WhatsApp paylaşım
-30. Mini istatistikler paneli
-
-### Kargo — kalan 4 görev
-`@CURSOR-GOREVLER-KARGO.md` içinden bunları uygula:
-31. Kargo etiketi yazdır butonu
-32. CSV dışa aktarma
-33. Tahmini vs gerçek teslimat karşılaştırma
-34. Teslimat süresini tablo satırında göster
-
-### Fason Yönetimi — kalan 5 görev
-`@CURSOR-GOREVLER-FASON.md` içinden bunları uygula:
-35. Performans skoru detay açılımı
-36. Atama geçmişi sayfalama
-37. Kapasite doluluk göstergesi
-38. Sözleşme dosyası indirme
-39. Partner iletişim logu
+## ═══ SIRA 3 — Bıçak Algılama Entegrasyonu (TAMAMLANDI ✅) ═══
+5/5 görev + ek `fn_proof_summary_cutline_source_fix` migration. Detay: yapılanlar tablosunda.
 
 ---
 
-## ═══ SIRA 4 — v2 Özellikler (24 görev) ═══
-
-### Proof Editor AI Pipeline (8 görev)
-`@CURSOR-GOREVLER-PROOF-EDITOR.md` sırayla uygula:
-40. EPS engeli + dosya tipi util
-41. proof_validating durumu
-42. JPG şekil seçici
-43. Bıçak algılama modülü
-44. Beyaz katman üretimi
-45. Kural bazlı doğrulayıcı
-46. AI görüş doğrulayıcı (Vision API)
-47. Otomatik düzeltme motoru + orkestratör
-
-### AI Ek + Final (8 görev)
-`@CURSOR-GOREVLER-FINAL.md` sırayla uygula:
-48. Bakım modu (maintenance mode)
-49. Cron izleme paneli
-50. Ödeme detay sayfası (/admin/odemeler)
-51. Arka plan algılama + kaldırma
-52. RGB → CMYK simülasyonu
-53. Çoklu tasarım tutarlılık kontrolü
-54. Baskıya hazır PDF üretimi
-55. Pim sohbet yönlendirme + prova bağlamı
-
-### Fiyatlandırma Gelişmiş (8 görev)
-`@CURSOR-GOREVLER-FIYAT.md` sırayla uygula:
-56. İnteraktif simülasyon paneli
-57. Toplu fiyat matrisi
-58. Rakip referans alanı
-59. Malzeme aktif/pasif toggle
-60. Kaplama TRY karşılığı
-61. Sticky kaydet çubuğu
-62. PriceBook CSV import/export
-63. Fiyat değişikliği bildirimi
+## ═══ SIRA 4 — Otomatik Ölçü Algılama + Boyut UX (TAMAMLANDI ✅) ═══
+4/4 görev, 4 ayrı commit (a60c01a → e2fb8f4). Detay: yapılanlar tablosunda.
 
 ---
 
-## ═══ SIRA 5 — v2 Polish (4 görev) ═══
+## ═══ SIRA 5 — Admin Sayfaları Kalan Eksikler (TAMAMLANDI ✅) ═══
+24/24 görev, 5 commit (300e6fe → 50acfd6) + Migration 116. Detay: yapılanlar tablosunda.
 
-### Fason Partner Detay v2 — kalan 4 görev
-`@CURSOR-PROMPT-FASON-DETAY-V2.md` içinden bunları uygula:
-64. Yetenek bölümünü ürün-malzeme hiyerarşik seçiciyle yeniden tasarla
-65. Ayrı "yetenek onayı" bölümünü kaldır
-66. Atanabilir siparişler bölümüne sözleşme kontrolü + onay modalı
-67. Performans kartı ekle
+---
+
+## ═══ SIRA 6 — v2 Özellikler (TAMAMLANDI ✅) ═══
+24/24 görev — çoğu zaten yapılmıştı. Tek commit (8eaf6fd) ile 3 yeni özellik. Detay: yapılanlar tablosunda.
+
+---
+
+## ═══ SIRA 7 — Fason Detay v2 Kalan (TAMAMLANDI ✅) ═══
+4/4 görev, commit f180028 + Migration 117. Detay: yapılanlar tablosunda.
+
+---
+
+## 🎉 TÜM CURSOR GÖREVLERİ TAMAMLANDI
+
+Sadece **SIRA 1 (OPS — manuel adımlar)** kaldı. Bunlar Sefa'nın işi:
+1. Test sipariş temizliği — `cleanup-test-orders.mjs --confirm`
+2. Migration 092 + 110 + 115 + 116 + 117 prod DB kontrolü (uygulanmamış varsa apply)
+
+**Launch için kalan diğer maddeler:**
+- PayTR sandbox → canlı mod (key gelince)
+- Tarayıcı testleri (Sefa)
+- RESEND_WEBHOOK_SECRET (düşük öncelik)
 
 ---
 
@@ -131,6 +63,55 @@
 - ✅ Hesaplayıcı toplu fix (8) — header, SVG, sepet/maliyet kaldırma, panel sırası, sol panel, tier
 - ✅ Fiyat sayfa temizlik (3) — A1 ile birlikte
 - ✅ POC bıçak editörü (7) — hideUpload, lockMaterial, hideDpi, kaydet, yardım, scroll
+
+### Fason Detay v2 SIRA 7 (4/4 tamamlandı, commit f180028 + Mig 117)
+- ✅ Migration 117: `approval_status` (pending/approved/rejected) + `is_verified=true` backfill + `fn_find_best_partner` sadece onaylı yetenekler
+- ✅ Yetenek hiyerarşik UI: `ProductMaterialPicker` paylaşılan bileşen, accordion ürün grubu → malzeme
+- ✅ Inline onay rozetleri (🟢/🟡/🔴) + satır içi onay/ret butonları, yeni yetenekler otomatik pending
+- ✅ Atama "Ata ve Bildir" modalı: sözleşme/kapasite/yetenek kontrolü, başarısızsa disabled
+- ✅ Performans kartı sağ sidebar üst (90 gün özeti), "Detayları gör" mevcut modal'a
+
+### v2 Özellikler SIRA 6 (24/24 tamamlandı, commit 8eaf6fd)
+- ✅ **Proof Editor AI Pipeline (8/8)** — hepsi önceki sprint'lerde yapılmış (EPS, JpgShape, white-layer, rule/AI validator, auto-fix, orchestrator)
+- ✅ **AI Ek + Final (5/8 zaten + 3 yeni)** — `/admin/sistem/bakim` (bakım modu UI), `/admin/odemeler/[id]` (PayTR detay + iade), PimChat `/onay` orderId context
+- ✅ **Fiyat Gelişmiş (8/8)** — hepsi zaten vardı (PriceMatrix, sticky, CSV, diff modal, m²/TRY)
+- ✅ Migration kontrolü: 101, 102, 103, 104, 105 hepsi prod'da, çift apply yapılmadı
+
+### Admin Kalan SIRA 5 (24/24 tamamlandı, 5 commit + Mig 116)
+- ✅ **Grup A** (300e6fe) — Siparişler partner kolonu + acil vurgu + manuel sipariş kupon
+- ✅ **Grup B** (db176eb) — AI QC: retry, timeline, 15sn bulk modal, "iyi" toplu onay
+- ✅ **Grup C** (7508b67) — Prova: rozet, sekmeler, e-posta paylaşım, KPI, bulk onaylı
+- ✅ **Grup D** (39bfd96) — Kargo: tahmini/gerçek gün, transit süre
+- ✅ **Grup E** (50acfd6) — Fason: performans modal, kapasite bar, sözleşme, iletişim sekmesi
+- ✅ **Migration 116** prod'da — `partner_communications` (profiles.role RLS)
+
+### Otomatik Ölçü SIRA 4 (4/4 tamamlandı, a60c01a → e2fb8f4)
+- ✅ `design-dimensions.ts` helper (a60c01a) — PNG/JPG (300 DPI), PDF/SVG (exact)
+- ✅ MultiDesignUploader callback + kart rozeti (bad287f)
+- ✅ Etiket + sticker step sıralama (tasarım→boyut) + mercan banner (bdc0f74)
+- ✅ Etiket + sticker W↔H swap butonu (e2fb8f4)
+
+### Bıçak Algılama SIRA 3 (5/5 + 1 fix tamamlandı, d105d3c)
+- ✅ Magenta spot color (#FF00FF) tespiti (`cutline-detect.ts`)
+- ✅ Orchestrator embedded öncelik (`orchestrator.ts` — POC atlanıyor)
+- ✅ Headless POC + run-order-cutline pass-through
+- ✅ Migration 115: `cutline_source` + `detection_method` kolonları
+- ✅ `fn_proof_summary_cutline_source_fix` (apply sonrası eksiklik)
+- ✅ /onay yeşil/mavi rozet
+- 🔲 **Manuel test:** embedded-magenta-cutline.svg ile gerçek sipariş aç → yeşil rozet doğrula
+
+### Dashboard SIRA 2 (12/12 tamamlandı, commit 05320ff)
+- ✅ Secondary API hata rozetleri (statsError, funnelError, auditorError)
+- ✅ Prova yanıt süresi (funnelMetrics.proof_pending)
+- ✅ Error boundary (admin/error.tsx)
+- ✅ 500 limit sarı banner + finans linki
+- ✅ Heatmap koşullu (50+), Top 5 şehir (30+), AI Insights (10+)
+- ✅ Bugünün geliri kartı (server todayFinancial)
+- ✅ Sistem sağlığı strip (/api/admin/system-health)
+- ✅ Partner üretim (/api/admin/partner-production-summary)
+- ✅ 24 saat aktivite (/api/admin/activity-feed)
+- ✅ Mail kuyruğu (sistem sağlığı strip'inde)
+- ✅ Özel tarih aralığı (custom range + date picker)
 
 ### Bölüm B — Yüksek (97/99 tamamlandı)
 - ✅ Partner panel redesign (6) — PartnerShell, sidebar, dashboard, acil sıra, ayarlar
