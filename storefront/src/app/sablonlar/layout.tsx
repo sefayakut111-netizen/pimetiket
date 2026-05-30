@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Ücretsiz Etiket Şablonları — Canva ve Illustrator uyumlu",
+  title: "Etiket Şablonları — Kesim Bıçağı (Die-Cut) + Tasarım Şablonları",
   description:
-    "60+ ücretsiz etiket ve sticker şablonu. Zeytinyağı, bal, kozmetik, kombucha, butik markalar için Canva/AI/Figma uyumlu hazır tasarımlar. Email bırak, paketi al.",
+    "65 adet 1:1 ölçekli kesim bıçağı şablonu (PDF/AI/EPS) ve 60+ ücretsiz tasarım şablonu. Canva, Illustrator, Figma uyumlu — üyeler indirebilir.",
   alternates: { canonical: "/sablonlar" },
   openGraph: {
-    title: "60+ Ücretsiz Etiket Şablonu — Pim Etiket",
+    title: "Etiket Şablonları — Kesim Bıçağı + Tasarım — Pim Etiket",
     description:
-      "Canva ve Illustrator uyumlu hazır şablonlar. 12 kategoride zengin tasarım paketi — ücretsiz indir.",
+      "Die-cut kesim şablonları ve Canva/Illustrator uyumlu hazır tasarım paketi.",
     url: "/sablonlar",
     type: "website",
   },

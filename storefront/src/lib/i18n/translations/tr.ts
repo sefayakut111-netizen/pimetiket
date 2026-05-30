@@ -36,6 +36,7 @@ export const tr: TranslationDict = {
     addresses: "Adres defteri",
     notifications: "Bildirimler",
     returns: "İadelerim",
+    templates: "Şablonlar",
   },
   home: {
     eyebrow: "Akıllı dijital baskı ekosistemi",

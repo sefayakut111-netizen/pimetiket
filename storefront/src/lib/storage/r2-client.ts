@@ -175,9 +175,19 @@ export async function uploadToR2Archive(params: {
  */
 export async function getSignedDownloadUrl(
   key: string,
-  expiresInSeconds = 3600
+  expiresInSeconds = 3600,
+  opts?: { downloadFilename?: string; contentType?: string }
 ): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    ...(opts?.downloadFilename
+      ? {
+          ResponseContentDisposition: `attachment; filename="${opts.downloadFilename.replace(/"/g, "")}"`,
+        }
+      : {}),
+    ...(opts?.contentType ? { ResponseContentType: opts.contentType } : {}),
+  });
   return await getSignedUrl(getClient(), command, {
     expiresIn: expiresInSeconds,
   });

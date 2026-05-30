@@ -47,6 +47,7 @@ export function TopBar() {
     { href: "/", label: t.nav.home },
     { href: "/etiket", label: t.nav.etiket },
     { href: "/sticker", label: t.nav.sticker },
+    { href: "/sablonlar", label: t.nav.templates },
     // { href: "/galeri", label: t.nav.gallery },
     { href: "/blog", label: t.nav.blog },
     ...(user ? [{ href: "/panelim", label: t.nav.dashboard }] : []),
@@ -164,7 +165,10 @@ export function TopBar() {
         {!pathname?.startsWith("/odeme") ? (
           <nav className="hidden md:flex flex-1 gap-1 items-center">
             {navItems.map((item) => {
-              const active = pathname === item.href;
+              const active =
+                item.href === "/sablonlar"
+                  ? pathname?.startsWith("/sablonlar")
+                  : pathname === item.href;
               return (
                 <Link
                   key={item.href}
@@ -388,7 +392,10 @@ export function TopBar() {
           <div className="fixed inset-x-0 top-16 bg-white z-50 md:hidden border-t border-gri-200 shadow-2">
             <nav className="flex flex-col p-3 gap-1 max-h-[calc(100vh-64px)] overflow-y-auto">
               {navItems.map((item) => {
-                const active = pathname === item.href;
+                const active =
+                  item.href === "/sablonlar"
+                    ? pathname?.startsWith("/sablonlar")
+                    : pathname === item.href;
                 return (
                   <Link
                     key={item.href}

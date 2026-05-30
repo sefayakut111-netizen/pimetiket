@@ -62,6 +62,7 @@ export type TranslationDict = {
     addresses: string;
     notifications: string;
     returns: string;
+    templates: string;
   };
   // ====== Home ======
   home: {
