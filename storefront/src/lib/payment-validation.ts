@@ -30,6 +30,11 @@ import type { ProfileConfig } from "./pricing-config-types";
 import { fetchPricebookSnapshot } from "./pricing-pricebook-db";
 import type { EtiketCustomId } from "./etiket-customer-pricing";
 import { isPricebookMode } from "./pricing-pricebook";
+import {
+  expectedCartLineFromPerDesignQuote,
+  perDesignQty,
+  resolveDesignCount,
+} from "./design-count-pricing";
 
 // ============================================================
 // Types
@@ -53,6 +58,7 @@ export interface CartItemForValidation {
   coatingId?: string | null;
   customizationId?: string | null;
   materialId?: string | null;
+  designCount?: number | null;
 }
 
 export interface ValidationFailDetail {
@@ -139,12 +145,24 @@ async function recalcSticker(
   if (!item.material || !item.finish) {
     return { recalced: false };
   }
-  // ID tipleri strict enum — string'leri cast et. Admin config'inde olmayan
-  // ID'ye düşünce bridge null döner, fallback'a düşeriz.
+
+  const designCount = resolveDesignCount(item);
+  const tierQty = perDesignQty(item.qty, designCount);
+  if (tierQty * designCount !== item.qty) {
+    return {
+      recalced: true,
+      failure: {
+        itemId: item.id,
+        reason: "sanity_total_inconsistent",
+        hint: `Sticker qty ${item.qty} designCount ${designCount} ile uyumsuz`,
+      },
+    };
+  }
+
   const result = quoteStickerFromConfig(config, {
     width: item.width,
     height: item.height,
-    qty: item.qty,
+    qty: tierQty,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cut: (item.cut ?? "diecut") as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -154,8 +172,13 @@ async function recalcSticker(
   });
   if (!result || !result.ok) return { recalced: false };
 
-  const expectedTotal = result.total;
-  const expectedUnit = result.unitPrice;
+  const expected = expectedCartLineFromPerDesignQuote(
+    result.unitPrice,
+    item.qty,
+    designCount
+  );
+  const expectedTotal = expected.total;
+  const expectedUnit = expected.unit;
   const totalDiff = Math.abs(item.total - expectedTotal);
   const unitDiff = Math.abs(item.unit - expectedUnit);
 
@@ -206,16 +229,19 @@ async function recalcEtiket(
   const materialId = item.materialId ?? item.material;
   if (!materialId) return { recalced: false };
 
-  // Note: formFactor parametre olarak alınmıyor — config.pricing_mode'a
-  // güvenilir (caller scope'a göre doğru config'i fetch eder). Hata mesajı
-  // için tutuluyor.
-  void formFactor;
+  const designCount = resolveDesignCount(item);
+  const tierQty = perDesignQty(item.qty, designCount);
+  if (tierQty * designCount !== item.qty) {
+    return {
+      recalced: true,
+      failure: {
+        itemId: item.id,
+        reason: "sanity_total_inconsistent",
+        hint: `Etiket qty ${item.qty} designCount ${designCount} ile uyumsuz`,
+      },
+    };
+  }
 
-  // CustomerEtiketQuoteInput strict ID tiplerini istiyor, ama biz string
-  // alıyoruz. Bridge null döndürürse zaten fallback'a düşeriz — type cast
-  // güvenli (üzerinde recalc yapılan üretim ID'leri client-side'da zaten
-  // validate ediliyor; admin config'inde de olmayan ID'ye düştüğünde
-  // priceResult.ok=false dönüyor).
   const metaCustomizations = parseCustomizationsFromMeta(item.meta);
   const customizationIds =
     metaCustomizations ??
@@ -226,7 +252,7 @@ async function recalcEtiket(
     {
       width: item.width,
       height: item.height,
-      qty: item.qty,
+      qty: tierQty,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       material: materialId as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -236,6 +262,7 @@ async function recalcEtiket(
       customizations: customizationIds as EtiketCustomId[] | undefined,
     },
     {
+      formFactor,
       pricebookSnapshot: isPricebookMode(config)
         ? await fetchPricebookSnapshot()
         : undefined,
@@ -243,8 +270,13 @@ async function recalcEtiket(
   );
   if (!result || !result.ok) return { recalced: false };
 
-  const expectedTotal = result.total;
-  const expectedUnit = result.unitPrice;
+  const expected = expectedCartLineFromPerDesignQuote(
+    result.unitPrice,
+    item.qty,
+    designCount
+  );
+  const expectedTotal = expected.total;
+  const expectedUnit = expected.unit;
   const totalDiff = Math.abs(item.total - expectedTotal);
   const unitDiff = Math.abs(item.unit - expectedUnit);
 

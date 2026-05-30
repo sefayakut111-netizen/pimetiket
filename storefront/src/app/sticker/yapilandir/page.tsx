@@ -2079,6 +2079,7 @@ function StickerPage() {
                   // — sadece designCount metadata gönder + sipariş sonrası
                   // mail ile gerçek dosyalar yüklenecek.
                   designCount: designCount > 1 ? designCount : undefined,
+                  meta: { designCount },
                   additionalDesigns:
                     persistedDesigns.length > 1
                       ? (

@@ -1375,6 +1375,7 @@ function EtiketPage() {
       meta: {
         customizations: customs.filter((id) => id !== "yok"),
         formFactor,
+        designCount,
       },
       winding,
       // Sefa 21 May v68 Mig 073: rulo göbek + adet/rulo structured kayıt
