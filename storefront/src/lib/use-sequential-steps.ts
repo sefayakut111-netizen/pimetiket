@@ -36,6 +36,8 @@ export interface SequentialStepsConfig {
   stepIds: readonly number[];
   /** Step başlıkları, stepIds ile aynı sırada (lock mesajında kullanılır). */
   stepLabels: readonly string[];
+  /** DOM step id'leri — lock zincirinde atlanabilir (touched olmadan sonraki adım açılır). */
+  optionalStepIds?: ReadonlySet<number>;
   /** Kullanıcının dokunduğu step'ler (her seçimde markTouched çağrılır).
    *  Stepper UI'da "TAMAM" göstergesi için kullanılır. */
   touchedSteps: Set<number>;
@@ -64,9 +66,26 @@ export function useSequentialSteps({
   stepLabels,
   touchedSteps,
   unlockedSteps,
+  optionalStepIds,
   prerequisiteForFirst,
   locale,
 }: SequentialStepsConfig): SequentialStepsResult {
+  const resolvePrevStepId = (idx: number): number | null => {
+    let prevIdx = idx - 1;
+    while (prevIdx >= 0) {
+      const candidate = stepIds[prevIdx];
+      if (
+        optionalStepIds?.has(candidate) &&
+        !touchedSteps.has(candidate)
+      ) {
+        prevIdx--;
+        continue;
+      }
+      return candidate;
+    }
+    return null;
+  };
+
   const isLocked = (domStepId: number): boolean => {
     const idx = stepIds.indexOf(domStepId);
     if (idx === -1) return false; // bilinmeyen step → locked değil
@@ -75,19 +94,14 @@ export function useSequentialSteps({
       if (prerequisiteForFirst === undefined) return false;
       return !prerequisiteForFirst;
     }
-    // Sonraki adımlar — bir öncekinin touched olduğunu kontrol.
-    //
-    // Sefa 21 May v68 (sistem denetim #12 fix): unlockedSteps lock için
-    // KULLANILMIYOR artık. URL pre-fill kullanıcının seçimi sayılmaz;
-    // kart UI'da "selected ring" gösterir (caller bunu kendisi yönetir)
-    // ama lock kapalı kalır — kullanıcı kartı kendisi onaylayana kadar
-    // bir sonraki adıma geçmez. Eski davranış: "Şeffaf Rulo'da Kaplama
-    // adımı malzeme seçilmeden kilitsiz" şikayetine yol açıyordu.
-    //
-    // unlockedSteps parametresi geriye uyum için imzada kalıyor (gelecek
-    // ihtiyaç için), ama lock hesabında dikkate alınmaz.
+    // Sonraki adımlar — zorunlu önceki adım touched olmalı (opsiyonel
+    // adımlar atlanır).
     void unlockedSteps;
-    const prev = stepIds[idx - 1];
+    const prev = resolvePrevStepId(idx);
+    if (prev == null) {
+      if (prerequisiteForFirst === false) return true;
+      return false;
+    }
     if (prev === stepIds[0] && prerequisiteForFirst === false) {
       return true; // ilk step prereq tamamlanmamış
     }
@@ -97,7 +111,10 @@ export function useSequentialSteps({
   const lockMessage = (domStepId: number): string => {
     const idx = stepIds.indexOf(domStepId);
     if (idx <= 0) return "";
-    const prevLabel = stepLabels[idx - 1] ?? "önceki";
+    const prev = resolvePrevStepId(idx);
+    if (prev == null) return "";
+    const prevIdx = stepIds.indexOf(prev);
+    const prevLabel = stepLabels[prevIdx] ?? "önceki";
     return locale === "en"
       ? `Complete "${prevLabel}" first.`
       : `Önce "${prevLabel}" adımını tamamla.`;

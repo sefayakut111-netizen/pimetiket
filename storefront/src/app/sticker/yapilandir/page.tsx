@@ -706,12 +706,9 @@ function StickerPage() {
     labels.push(
       t.config.materialTitle,
       t.config.finishTitle,
+      t.config.designTitle,
       t.config.sizeTitle,
-      t.config.qtyTitle,
-      // Sefa 21 May v68 (site denetim P1 #5): proper i18n key (locale
-      // hack'i yerine designTitle eklendi — sidebar artık "Design"
-      // göstermiyor TR'de).
-      t.config.designTitle
+      t.config.qtyTitle
     );
     return labels;
   })();
@@ -719,7 +716,8 @@ function StickerPage() {
     const ids: number[] = [];
     if (SHOW_STICKER_CUT_MODE_PICKER) ids.push(1);
     if (SHOW_STICKER_SHAPE_PICKER) ids.push(2);
-    ids.push(3, 4, 5, 6, 7);
+    // DOM: Tasarım (7) → Boyut (5) → Adet (6)
+    ids.push(3, 4, 7, 5, 6);
     return ids;
   })();
   const uiStepNumber = (domStepId: number): number => {
@@ -734,6 +732,7 @@ function StickerPage() {
       stepLabels,
       touchedSteps,
       unlockedSteps,
+      optionalStepIds: new Set([7]),
       locale,
     });
 

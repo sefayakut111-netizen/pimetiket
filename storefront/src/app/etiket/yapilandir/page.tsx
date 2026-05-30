@@ -456,21 +456,21 @@ const FORM_FACTORS: {
 //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → Step 3 çıkar (gizli, ASLA
 //     touched olmaz, sequential lock sonraki step'leri ASLA açmaz idi).
 //   Stepper ve useSequentialSteps gizli step'leri görmemeli.
-// Sefa 21 May v68 test: "etiket'te adetten önce tasarım yükleme adı geliyor,
-// bu yanlış. adetten sonra gelmeli." → 8 (Adet) önce, 7 (Tasarım) sonra.
-// Sequential lock 6 → 8 → 7 sırasıyla açar. JSX'te de FormSection swap.
+// Sefa 21 May v68: Adet tasarımdan sonra (fiyat/iskonto). DOM sırası:
+//   Tasarım (7) → Boyut (6) → Adet (8) — otomatik ölçü algılama için.
+// stepIds lock zinciri DOM ile aynı: … → 7 → 6 → 8. Tasarım opsiyonel.
+const OPTIONAL_DESIGN_STEP = 7;
 const STEP_IDS_FULL: readonly number[] = (() => {
   const ids: number[] = [];
   if (SHOW_ETIKET_FORM_FACTOR_PICKER) ids.push(0);
   ids.push(1, 2);
   if (SHOW_ETIKET_CUSTOMIZATION_STEP) ids.push(3);
-  ids.push(4, 5, 6, 8, 7); // Adet (8) → Tasarım (7)
+  ids.push(4, 5, 7, 6, 8);
   return ids;
 })();
-// Tabaka modu zaten customization step yok (mevcut davranış korundu).
 const STEP_IDS_TABAKA: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
-  ? [0, 1, 2, 6, 8, 7]
-  : [1, 2, 6, 8, 7];
+  ? [0, 1, 2, 7, 6, 8]
+  : [1, 2, 7, 6, 8];
 
 /** Rulo sarım fiziksel parametreleri (Sefa kuralı 15 May v3).
  *  Göbek çapı: rulonun iç çapı (mm). Endüstri standardı:
@@ -959,10 +959,7 @@ function EtiketPage() {
   //   - SHOW_ETIKET_FORM_FACTOR_PICKER=false → stepFormFactor çıkar
   //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → stepFeature çıkar
   //   STEP_IDS_FULL ile birebir eşleşmeli, yoksa sequential lock kırılır.
-  // Sefa 21 May v68 (site denetim P0 #3): stepLabels sırası stepIds ile
-  // birebir aynı olmalı. stepIds Boyut→Adet→Tasarım (6,8,7); label sıralaması
-  // da aynı sırada — sidebar stepper "Tasarım önce, Adet sonra" yanlış
-  // gösteriyordu, kilit mesajı da yanlış prev step söylüyordu.
+  // stepIds DOM sırası: … Sarım detay → Tasarım → Boyut → Adet (7,6,8).
   const STEP_LABELS_FULL_I18N: readonly string[] = (() => {
     const labels: string[] = [];
     if (SHOW_ETIKET_FORM_FACTOR_PICKER) labels.push(t.etiket.stepFormFactor);
@@ -971,9 +968,9 @@ function EtiketPage() {
     labels.push(
       t.etiket.stepWinding,
       t.etiket.stepWindingDetail,
+      t.etiket.stepDesign,
       t.etiket.stepSize,
-      t.etiket.stepQty,
-      t.etiket.stepDesign
+      t.etiket.stepQty
     );
     return labels;
   })();
@@ -982,16 +979,16 @@ function EtiketPage() {
         t.etiket.stepFormFactor,
         t.etiket.stepMaterial,
         t.etiket.stepCoating,
+        t.etiket.stepDesign,
         t.etiket.stepSize,
         t.etiket.stepQty,
-        t.etiket.stepDesign,
       ]
     : [
         t.etiket.stepMaterial,
         t.etiket.stepCoating,
+        t.etiket.stepDesign,
         t.etiket.stepSize,
         t.etiket.stepQty,
-        t.etiket.stepDesign,
       ];
   const stepLabels =
     formFactor === "rulo" ? STEP_LABELS_FULL_I18N : STEP_LABELS_TABAKA_I18N;
@@ -1013,6 +1010,7 @@ function EtiketPage() {
       stepLabels,
       touchedSteps,
       unlockedSteps,
+      optionalStepIds: new Set([OPTIONAL_DESIGN_STEP]),
       prerequisiteForFirst: formFactorTouched,
       locale,
     });
@@ -2554,12 +2552,9 @@ function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Sefa 21 May v68 test: Adet (step-8) ÖNCE, Tasarım (step-7)
-                SONRA gelir. Adet seçimi tasarım upload deneyiminden önce
-                gerekli (fiyat ve iskonto açısından). FormSection JSX order
-                + STEP_IDS_FULL array order ikisi de bu sıraya göre.
-                Step 6 — Adet (serbest input + preset chip'ler).
-                Hint formFactor'a göre dinamik (rulo 1000+, tabaka 100+). */}
+            {/* Sefa 21 May v68: DOM sırası Tasarım → Boyut → Adet; stepIds ile
+                aynı (7 → 6 → 8). Tasarım opsiyonel — boyuta geçmek için
+                dosya yüklemek zorunlu değil. */}
             <FormSection
               id="step-8"
               number={uiStepNumber(8)}
