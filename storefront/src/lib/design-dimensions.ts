@@ -1,3 +1,8 @@
+/**
+ * Tasarım dosyasından ölçü algılama (client-side).
+ * Ana değer: içerik (etiket) boyutu — sayfa/kağıt değil.
+ */
+
 export interface DetectedDimensions {
   widthMm: number;
   heightMm: number;
@@ -8,33 +13,41 @@ export interface DetectedDimensions {
     | "svg_viewbox"
     | "pdf_trimbox"
     | "pdf_artbox"
+    | "pdf_content_render"
     | "pdf_page"
     | "unsupported";
   dpi?: number;
   confidence: "exact" | "estimated";
-  /** Tam sayfa / tuval boyutu (referans) */
   pageWidthMm?: number;
   pageHeightMm?: number;
-  /** İçerik sayfadan küçük kırpıldı mı */
   trimmed?: boolean;
 }
 
 const PT_TO_MM = 25.4 / 72;
 const PX_AT_300DPI_TO_MM = 25.4 / 300;
-const MAX_RASTER_SCAN_PX = 1500;
-const ALPHA_CONTENT_THRESHOLD = 16;
-const JPG_WHITE_THRESHOLD = 245;
+const MAX_SCAN_PX = 1500;
+/** Kenar flood-fill: arka plan rengine bu kadar yakın piksel = boşluk */
+const BG_COLOR_TOLERANCE = 28;
+const ALPHA_BG_THRESHOLD = 16;
+/** İçerik sayfadan en az bu kadar küçükse kırpma uygula */
+const TRIM_RATIO = 0.98;
 
-interface BBox {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+type BBox = { x: number; y: number; w: number; h: number };
 
-interface PdfBox {
-  width: number;
-  height: number;
+export async function detectFileDimensions(
+  file: File
+): Promise<DetectedDimensions | null> {
+  const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? "";
+  try {
+    if (ext === ".pdf" || ext === ".ai") return await detectFromPdf(file);
+    if (ext === ".svg") return await detectFromSvg(file);
+    if ([".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
+      return await detectFromRaster(file, ext);
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /** Banner alt satırı — trimmed ise kağıt vs tasarım farkını göster */
@@ -49,40 +62,169 @@ export function detectedDimsTrimHint(dims: DetectedDimensions): string | null {
   return `(kağıt ${dims.pageWidthMm}×${dims.pageHeightMm}mm — içindeki tasarım baz alındı)`;
 }
 
-export async function detectFileDimensions(
-  file: File
-): Promise<DetectedDimensions | null> {
-  const name = file.name.toLowerCase();
-  const ext = name.slice(name.lastIndexOf("."));
-
-  try {
-    if (ext === ".png" || ext === ".jpg" || ext === ".jpeg") {
-      return detectFromRaster(file, ext);
-    }
-    if (ext === ".svg") {
-      return detectFromSvg(file);
-    }
-    if (ext === ".pdf") {
-      return detectFromPdf(file);
-    }
-    return {
-      widthMm: 0,
-      heightMm: 0,
-      source: "unsupported",
-      confidence: "exact",
-    };
-  } catch {
-    return null;
-  }
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("image load failed"));
+    img.src = url;
+  });
 }
 
-async function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
+function isMeaningfulTrim(
+  bbox: BBox | null,
+  fullW: number,
+  fullH: number
+): bbox is BBox {
+  if (!bbox || bbox.w <= 0 || bbox.h <= 0) return false;
+  return bbox.w < fullW * TRIM_RATIO || bbox.h < fullH * TRIM_RATIO;
+}
+
+function sampleCornerBackground(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  sample = 8
+): { r: number; g: number; b: number } {
+  const corners = [
+    [0, 0],
+    [width - sample, 0],
+    [0, height - sample],
+    [width - sample, height - sample],
+  ] as const;
+  let r = 0,
+    g = 0,
+    b = 0,
+    n = 0;
+  for (const [cx, cy] of corners) {
+    for (let dy = 0; dy < sample; dy++) {
+      for (let dx = 0; dx < sample; dx++) {
+        const x = Math.min(width - 1, cx + dx);
+        const y = Math.min(height - 1, cy + dy);
+        const i = (y * width + x) * 4;
+        const a = data[i + 3];
+        if (a <= ALPHA_BG_THRESHOLD) continue;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        n++;
+      }
+    }
+  }
+  if (n === 0) return { r: 255, g: 255, b: 255 };
+  return { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n) };
+}
+
+function isBackgroundPixel(
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+  bg: { r: number; g: number; b: number },
+  useAlpha: boolean
+): boolean {
+  if (useAlpha && a <= ALPHA_BG_THRESHOLD) return true;
+  const dr = r - bg.r;
+  const dg = g - bg.g;
+  const db = b - bg.b;
+  return Math.sqrt(dr * dr + dg * dg + db * db) <= BG_COLOR_TOLERANCE;
+}
+
+/**
+ * Kenarlardan flood-fill ile arka planı işaretle, kalan piksellerin bbox'ını bul.
+ * Beyaz/şeffaf kenar boşluklarını kırpar — etiket boyutunu verir.
+ */
+function computeContentBBoxFloodFill(
+  img: HTMLImageElement,
+  useAlpha: boolean
+): BBox | null {
+  const fullW = img.naturalWidth;
+  const fullH = img.naturalHeight;
+  if (fullW === 0 || fullH === 0) return null;
+
+  const scale = Math.min(1, MAX_SCAN_PX / Math.max(fullW, fullH));
+  const scanW = Math.max(1, Math.round(fullW * scale));
+  const scanH = Math.max(1, Math.round(fullH * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = scanW;
+  canvas.height = scanH;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, scanW, scanH);
+
+  const { data, width, height } = ctx.getImageData(0, 0, scanW, scanH);
+  const bg = sampleCornerBackground(data, width, height);
+  const total = width * height;
+  const bgMask = new Uint8Array(total);
+
+  const queue = new Int32Array(total);
+  let head = 0;
+  let tail = 0;
+
+  const trySeed = (x: number, y: number) => {
+    const idx = y * width + x;
+    if (bgMask[idx]) return;
+    const i = idx * 4;
+    if (
+      !isBackgroundPixel(
+        data[i],
+        data[i + 1],
+        data[i + 2],
+        data[i + 3],
+        bg,
+        useAlpha
+      )
+    ) {
+      return;
+    }
+    bgMask[idx] = 1;
+    queue[tail++] = idx;
+  };
+
+  for (let x = 0; x < width; x++) {
+    trySeed(x, 0);
+    trySeed(x, height - 1);
+  }
+  for (let y = 0; y < height; y++) {
+    trySeed(0, y);
+    trySeed(width - 1, y);
+  }
+
+  while (head < tail) {
+    const idx = queue[head++];
+    const x = idx % width;
+    const y = (idx / width) | 0;
+    if (x > 0) trySeed(x - 1, y);
+    if (x < width - 1) trySeed(x + 1, y);
+    if (y > 0) trySeed(x, y - 1);
+    if (y < height - 1) trySeed(x, y + 1);
+  }
+
+  let minX = width,
+    minY = height,
+    maxX = -1,
+    maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (bgMask[idx]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (maxX < 0) return null;
+
+  const inv = 1 / scale;
+  return {
+    x: Math.round(minX * inv),
+    y: Math.round(minY * inv),
+    w: Math.round((maxX - minX + 1) * inv),
+    h: Math.round((maxY - minY + 1) * inv),
+  };
 }
 
 async function detectFromRaster(
@@ -94,24 +236,10 @@ async function detectFromRaster(
     const img = await loadImage(url);
     const fullW = img.naturalWidth;
     const fullH = img.naturalHeight;
+    const isPng = ext === ".png" || ext === ".webp";
 
-    const bbox = computeContentBBox(img, ext);
-    const isPng = ext === ".png";
-
-    let useBox = false;
-    if (bbox) {
-      const smallerThanCanvas =
-        bbox.w < fullW * 0.98 || bbox.h < fullH * 0.98;
-      if (isPng) {
-        useBox = smallerThanCanvas;
-      } else {
-        // JPG: beyaz zemin riski — kenara dayalı tasarımda kırpma yapma
-        useBox =
-          smallerThanCanvas &&
-          bbox.w < fullW * 0.95 &&
-          bbox.h < fullH * 0.95;
-      }
-    }
+    const bbox = computeContentBBoxFloodFill(img, isPng);
+    const useBox = isMeaningfulTrim(bbox, fullW, fullH);
 
     const w = useBox && bbox ? bbox.w : fullW;
     const h = useBox && bbox ? bbox.h : fullH;
@@ -131,65 +259,6 @@ async function detectFromRaster(
   }
 }
 
-function computeContentBBox(
-  img: HTMLImageElement,
-  ext: string
-): BBox | null {
-  const fullW = img.naturalWidth;
-  const fullH = img.naturalHeight;
-  if (fullW <= 0 || fullH <= 0) return null;
-
-  const scale = Math.min(1, MAX_RASTER_SCAN_PX / Math.max(fullW, fullH));
-  const scanW = Math.max(1, Math.round(fullW * scale));
-  const scanH = Math.max(1, Math.round(fullH * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = scanW;
-  canvas.height = scanH;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return null;
-
-  ctx.drawImage(img, 0, 0, scanW, scanH);
-  const { data, width, height } = ctx.getImageData(0, 0, scanW, scanH);
-
-  const isPng = ext === ".png";
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-
-      const isContent = isPng
-        ? a > ALPHA_CONTENT_THRESHOLD
-        : !(r > JPG_WHITE_THRESHOLD && g > JPG_WHITE_THRESHOLD && b > JPG_WHITE_THRESHOLD);
-
-      if (isContent) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-
-  if (maxX < 0) return null;
-
-  const inv = 1 / scale;
-  return {
-    x: Math.round(minX * inv),
-    y: Math.round(minY * inv),
-    w: Math.round((maxX - minX + 1) * inv),
-    h: Math.round((maxY - minY + 1) * inv),
-  };
-}
-
 async function detectFromSvg(file: File): Promise<DetectedDimensions> {
   const text = await file.text();
   const wrapper = document.createElement("div");
@@ -198,56 +267,103 @@ async function detectFromSvg(file: File): Promise<DetectedDimensions> {
   wrapper.innerHTML = text;
   document.body.appendChild(wrapper);
 
+  const vbRef = parseSvgViewBox(text);
+
   try {
     const svg = wrapper.querySelector("svg");
     if (!svg) throw new Error("no svg root");
 
-    const vb = svg.getAttribute("viewBox")?.split(/\s+/).map(Number);
     const widthAttr = svg.getAttribute("width") || "";
-    const heightAttr = svg.getAttribute("height") || "";
     const isMm = widthAttr.includes("mm");
-
-    let contentBox: PdfBox | null = null;
-    try {
-      const bb = (svg as SVGGraphicsElement).getBBox();
-      if (bb && bb.width > 0 && bb.height > 0) {
-        contentBox = { width: bb.width, height: bb.height };
-      }
-    } catch {
-      /* getBBox başarısız → viewBox fallback */
-    }
-
+    const widthFromAttr = parseFloat(widthAttr.replace(/mm|px|pt/gi, ""));
+    const heightFromAttr = parseFloat(
+      (svg.getAttribute("height") || "").replace(/mm|px|pt/gi, "")
+    );
     const vbW =
-      vb && vb.length === 4 ? vb[2] : parseFloat(widthAttr.replace(/mm|px/gi, "") || "0");
+      vbRef?.w ??
+      (Number.isFinite(widthFromAttr) && widthFromAttr > 0
+        ? widthFromAttr
+        : svg.viewBox.baseVal.width) ??
+      0;
     const vbH =
-      vb && vb.length === 4
-        ? vb[3]
-        : parseFloat(heightAttr.replace(/mm|px/gi, "") || "0");
+      vbRef?.h ??
+      (Number.isFinite(heightFromAttr) && heightFromAttr > 0
+        ? heightFromAttr
+        : svg.viewBox.baseVal.height) ??
+      0;
 
-    const useContent =
-      contentBox != null &&
-      vbW > 0 &&
-      vbH > 0 &&
-      (contentBox.width < vbW * 0.98 || contentBox.height < vbH * 0.98);
-
-    const w = useContent && contentBox ? contentBox.width : vbW;
-    const h = useContent && contentBox ? contentBox.height : vbH;
     const toMm = (v: number) =>
       isMm ? Math.round(v) : Math.round(v * PX_AT_300DPI_TO_MM);
 
+    const pageWidthMm = toMm(vbW);
+    const pageHeightMm = toMm(vbH);
+
+    const blobUrl = URL.createObjectURL(
+      new Blob([text], { type: "image/svg+xml" })
+    );
+    try {
+      const img = await loadImage(blobUrl);
+      const bbox = computeContentBBoxFloodFill(img, true);
+      const useBox =
+        bbox &&
+        isMeaningfulTrim(bbox, img.naturalWidth, img.naturalHeight);
+
+      if (useBox && bbox && vbW > 0 && vbH > 0) {
+        const w = (bbox.w / img.naturalWidth) * vbW;
+        const h = (bbox.h / img.naturalHeight) * vbH;
+        return {
+          widthMm: toMm(w),
+          heightMm: toMm(h),
+          source: "svg_content",
+          confidence: isMm ? "exact" : "estimated",
+          pageWidthMm,
+          pageHeightMm,
+          trimmed: true,
+        };
+      }
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+
+    let contentW = vbW;
+    let contentH = vbH;
+    let useContent = false;
+    try {
+      const bb = (svg as unknown as SVGGraphicsElement).getBBox();
+      if (bb && bb.width > 0 && bb.height > 0) {
+        if (bb.width < vbW * TRIM_RATIO || bb.height < vbH * TRIM_RATIO) {
+          contentW = bb.width;
+          contentH = bb.height;
+          useContent = true;
+        }
+      }
+    } catch {
+      /* getBBox başarısız */
+    }
+
     return {
-      widthMm: toMm(w),
-      heightMm: toMm(h),
+      widthMm: toMm(contentW),
+      heightMm: toMm(contentH),
       source: useContent ? "svg_content" : "svg_viewbox",
       confidence: isMm ? "exact" : "estimated",
-      pageWidthMm: vbW > 0 ? toMm(vbW) : undefined,
-      pageHeightMm: vbH > 0 ? toMm(vbH) : undefined,
+      pageWidthMm,
+      pageHeightMm,
       trimmed: useContent,
     };
   } finally {
     document.body.removeChild(wrapper);
   }
 }
+
+function parseSvgViewBox(text: string): { w: number; h: number } | null {
+  const m = text.match(/viewBox\s*=\s*["']([^"']+)["']/i);
+  if (!m) return null;
+  const parts = m[1].trim().split(/[\s,]+/).map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return null;
+  return { w: parts[2], h: parts[3] };
+}
+
+type PdfBox = { width: number; height: number; x?: number; y?: number };
 
 function safePdfBox(fn: () => PdfBox): PdfBox | null {
   try {
@@ -260,11 +376,8 @@ function safePdfBox(fn: () => PdfBox): PdfBox | null {
 
 function isMeaningfulContentBox(box: PdfBox, media: PdfBox): boolean {
   return (
-    box.width <= media.width + 1 &&
-    box.height <= media.height + 1 &&
-    box.width > 0 &&
-    box.height > 0 &&
-    (box.width < media.width * 0.98 || box.height < media.height * 0.98)
+    box.width < media.width * TRIM_RATIO ||
+    box.height < media.height * TRIM_RATIO
   );
 }
 
@@ -284,6 +397,83 @@ function pickContentBox(boxes: {
   return { box: media, source: "pdf_page" };
 }
 
+async function renderPdfFirstPage(
+  file: File
+): Promise<{ canvas: HTMLCanvasElement; pageW: number; pageH: number } | null> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url
+  ).toString();
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({
+    data: arrayBuffer,
+    disableAutoFetch: true,
+    disableStream: true,
+  }).promise;
+
+  if (pdf.numPages === 0) {
+    await pdf.destroy();
+    return null;
+  }
+
+  const page = await pdf.getPage(1);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const scale = Math.min(1, MAX_SCAN_PX / Math.max(baseViewport.width, baseViewport.height));
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) {
+    await pdf.destroy();
+    return null;
+  }
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  await page.render({
+    canvasContext: ctx,
+    canvas,
+    viewport,
+  } as Parameters<typeof page.render>[0]).promise;
+
+  await pdf.cleanup();
+  await pdf.destroy();
+
+  return {
+    canvas,
+    pageW: baseViewport.width,
+    pageH: baseViewport.height,
+  };
+}
+
+async function detectPdfContentByRender(
+  file: File,
+  media: PdfBox
+): Promise<{ widthMm: number; heightMm: number } | null> {
+  const rendered = await renderPdfFirstPage(file);
+  if (!rendered) return null;
+
+  const { canvas, pageW, pageH } = rendered;
+  const img = await loadImage(canvas.toDataURL("image/png"));
+  const bbox = computeContentBBoxFloodFill(img, true);
+  if (!bbox || !isMeaningfulTrim(bbox, img.naturalWidth, img.naturalHeight)) {
+    return null;
+  }
+
+  const widthMm = Math.round(
+    (bbox.w / img.naturalWidth) * media.width * PT_TO_MM
+  );
+  const heightMm = Math.round(
+    (bbox.h / img.naturalHeight) * media.height * PT_TO_MM
+  );
+  return { widthMm, heightMm };
+}
+
 async function detectFromPdf(file: File): Promise<DetectedDimensions> {
   const { PDFDocument } = await import("pdf-lib");
   const buf = await file.arrayBuffer();
@@ -292,19 +482,45 @@ async function detectFromPdf(file: File): Promise<DetectedDimensions> {
   if (!page) throw new Error("no pages");
 
   const media = page.getMediaBox();
+  const pageWidthMm = Math.round(media.width * PT_TO_MM);
+  const pageHeightMm = Math.round(media.height * PT_TO_MM);
+
   const trim = safePdfBox(() => page.getTrimBox());
   const art = safePdfBox(() => page.getArtBox());
-
   const picked = pickContentBox({ trim, art, media });
-  const trimmed = picked.source !== "pdf_page";
+
+  if (picked.source !== "pdf_page") {
+    return {
+      widthMm: Math.round(picked.box.width * PT_TO_MM),
+      heightMm: Math.round(picked.box.height * PT_TO_MM),
+      source: picked.source,
+      confidence: "exact",
+      pageWidthMm,
+      pageHeightMm,
+      trimmed: true,
+    };
+  }
+
+  const rendered = await detectPdfContentByRender(file, media);
+  if (rendered) {
+    return {
+      widthMm: rendered.widthMm,
+      heightMm: rendered.heightMm,
+      source: "pdf_content_render",
+      confidence: "estimated",
+      pageWidthMm,
+      pageHeightMm,
+      trimmed: true,
+    };
+  }
 
   return {
-    widthMm: Math.round(picked.box.width * PT_TO_MM),
-    heightMm: Math.round(picked.box.height * PT_TO_MM),
-    source: picked.source,
-    confidence: picked.source === "pdf_page" ? "estimated" : "exact",
-    pageWidthMm: Math.round(media.width * PT_TO_MM),
-    pageHeightMm: Math.round(media.height * PT_TO_MM),
-    trimmed,
+    widthMm: pageWidthMm,
+    heightMm: pageHeightMm,
+    source: "pdf_page",
+    confidence: "estimated",
+    pageWidthMm,
+    pageHeightMm,
+    trimmed: false,
   };
 }
