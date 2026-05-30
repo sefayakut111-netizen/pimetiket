@@ -1412,6 +1412,25 @@
   html.pim-embed-restricted #canvas.pim-dragging {
     cursor: grabbing;
   }
+
+  /* Standalone pre-order editör — karmaşık kontroller + indir gizli */
+  html.pim-standalone-restricted #whitePlanPanel,
+  html.pim-standalone-restricted #tierPanel,
+  html.pim-standalone-restricted #dpiSliderRow,
+  html.pim-standalone-restricted #smoothSliderRow,
+  html.pim-standalone-restricted #pimComment,
+  html.pim-standalone-restricted .panel-output,
+  html.pim-standalone-restricted #partnerExportBtns,
+  html.pim-standalone-restricted header {
+    display: none !important;
+  }
+  html.pim-standalone-restricted #actionBar .btn-secondary,
+  html.pim-standalone-restricted #actionBar #btnHelp {
+    display: none !important;
+  }
+  html.pim-standalone-restricted #materialPanel .material-btn:not(.active) {
+    display: none;
+  }
   .meta-order-size .val {
     font-weight: 700;
     font-size: 15px;
@@ -1819,6 +1838,7 @@ const PIM_PARAMS = (() => {
       itemId: sp.get('itemId'),
       designFileId: sp.get('designFileId'),
       embed: sp.get('embed') === '1',
+      standalone: sp.get('standalone') === '1',
       headless: sp.get('headless') === '1',
       autoSave: sp.get('autoSave') === '1',
       hideUpload: sp.get('hideUpload') === '1',
@@ -1833,7 +1853,7 @@ const PIM_PARAMS = (() => {
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false, autoSave: false, embed: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour', embeddedCutline: null, embeddedSource: null };
+    return { headless: false, autoSave: false, embed: false, standalone: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour', embeddedCutline: null, embeddedSource: null };
   }
 })();
 
@@ -1870,11 +1890,31 @@ function pimApplyEmbedUiRestrictions() {
   pimReportHeight();
 }
 
+function pimApplyStandaloneUiRestrictions() {
+  if (!PIM_PARAMS.standalone) return;
+  document.documentElement.classList.add('pim-standalone-restricted');
+  if (PIM_PARAMS.orderWidthMm > 0 && PIM_PARAMS.orderHeightMm > 0) {
+    document.documentElement.classList.add('pim-has-order-dims');
+  }
+  const row = document.getElementById('dpiSliderRow');
+  if (row) row.style.display = 'none';
+  const btn = document.getElementById('btnApprove');
+  if (btn) {
+    for (const node of btn.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+        node.textContent = ' Kaydet';
+        break;
+      }
+    }
+  }
+  pimReportHeight();
+}
+
 /** Embed iframe — parent sayfa tek scroll kullansın diye yükseklik bildir */
 let pimLastReportedHeight = 0;
 
 function pimReportHeight() {
-  if (!PIM_PARAMS.embed) return;
+  if (!PIM_PARAMS.embed && !PIM_PARAMS.standalone) return;
   try {
     const mainEl = document.querySelector('main');
     if (!mainEl) return;
@@ -1896,7 +1936,7 @@ function pimScheduleHeightReport() {
 }
 
 function pimObserveEmbedHeight() {
-  if (!PIM_PARAMS.embed) return;
+  if (!PIM_PARAMS.embed && !PIM_PARAMS.standalone) return;
   const mainEl = document.querySelector('main');
   if (!mainEl || typeof ResizeObserver === 'undefined') return;
   const ro = new ResizeObserver(() => pimScheduleHeightReport());
@@ -1906,10 +1946,12 @@ function pimObserveEmbedHeight() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     pimApplyEmbedUiRestrictions();
+    pimApplyStandaloneUiRestrictions();
     pimObserveEmbedHeight();
   });
 } else {
   pimApplyEmbedUiRestrictions();
+  pimApplyStandaloneUiRestrictions();
   pimObserveEmbedHeight();
 }
 
@@ -1984,6 +2026,36 @@ window.addEventListener('message', (e) => {
         if (msg.fileName) PIM_PARAMS.designName = msg.fileName;
         if (msg.mimeType) PIM_PARAMS.designMime = msg.mimeType;
         void pimAutoLoadDesign();
+      }
+    } else if (msg.type === 'pim-editor-set-size') {
+      if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
+        PIM_PARAMS.orderWidthMm = msg.widthMm;
+      }
+      if (typeof msg.heightMm === 'number' && msg.heightMm > 0) {
+        PIM_PARAMS.orderHeightMm = msg.heightMm;
+      }
+      if (currentMat) {
+        generateCutline();
+        render();
+        pimScheduleHeightReport();
+      }
+    } else if (msg.type === 'pim-editor-set-shape') {
+      if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
+        PIM_PARAMS.orderWidthMm = msg.widthMm;
+      }
+      if (typeof msg.heightMm === 'number' && msg.heightMm > 0) {
+        PIM_PARAMS.orderHeightMm = msg.heightMm;
+      }
+      const mode = msg.mode || (msg.shape === 'circle' ? 'circle' : msg.shape === 'rect' || msg.shape === 'ellipse' ? 'rect' : 'contour');
+      currentMode = mode;
+      document.querySelectorAll('.mode-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.mode === mode);
+      });
+      if (currentMat) {
+        generateCutline();
+        generateWhitePlan();
+        render();
+        updateMetadataDisplay();
       }
     }
   } catch (err) {
@@ -2487,7 +2559,10 @@ function getCutlineReferenceMm(orderW, orderH, mode) {
 }
 
 function useFixedCutlineFrame() {
-  return PIM_PARAMS.embed && getOrderDimsMm() && (currentMode === 'circle' || currentMode === 'rect');
+  const hasDims = getOrderDimsMm();
+  const fixedMode = currentMode === 'circle' || currentMode === 'rect';
+  if (PIM_PARAMS.standalone && hasDims && fixedMode) return true;
+  return PIM_PARAMS.embed && hasDims && fixedMode;
 }
 
 function buildFixedCutlineFrame() {
@@ -3824,6 +3899,31 @@ function pimIsIntegrationMode() {
   return !!(PIM_PARAMS.orderId && PIM_PARAMS.itemId);
 }
 
+function pimIsStandaloneMode() {
+  return !!PIM_PARAMS.standalone;
+}
+
+function pimSaveToParentStandalone() {
+  if (!currentMat) return false;
+  if (!currentPaths || currentPaths.length === 0) {
+    showStatus('Önce bir görsel yükleyin', 'warn');
+    return false;
+  }
+  const svg = pimBuildCutlineSvg();
+  if (!svg) {
+    showStatus('SVG üretilemedi', 'err');
+    return false;
+  }
+  pimPostToParent({
+    type: 'pim-editor-saved',
+    svg,
+    meta: pimBuildCutlineMeta(),
+    preview_png_base64: pimCapturePreviewPng(),
+  });
+  showStatus('Kaydedildi', 'ok');
+  return true;
+}
+
 function pimSaveToParent() {
   if (!currentMat) return false;
   if (!currentPaths || currentPaths.length === 0) {
@@ -3861,6 +3961,10 @@ if (PIM_PARAMS.embed && pimIsIntegrationMode()) {
 // "Bıçağı onayla" — entegrasyon modunda parent'a kaydet
 document.getElementById('btnApprove').addEventListener('click', () => {
   if (!currentMat) return;
+  if (pimIsStandaloneMode()) {
+    pimSaveToParentStandalone();
+    return;
+  }
   if (pimIsIntegrationMode()) {
     pimSaveToParent();
     return;

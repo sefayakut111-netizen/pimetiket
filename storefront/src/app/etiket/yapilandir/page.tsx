@@ -58,6 +58,7 @@ import {
   type DetectedDimensions,
   detectedDimsTrimHint,
 } from "@/lib/design-dimensions";
+import { useEditorPrefill } from "@/lib/editor/use-editor-prefill";
 import { useT } from "@/lib/i18n/context";
 import {
   quoteCustomerEtiket,
@@ -833,6 +834,21 @@ function EtiketPage() {
   // detay sayfasından gerçek upload yapılır.
   // designs[0] mockup preview için primary, diğerleri metadata.
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
+  const editorCutlineDraftIdRef = useRef<string | undefined>(undefined);
+  const editorDesignRef = useRef<DesignTempState | null>(null);
+  useEditorPrefill({
+    onDesign: (d) => {
+      editorDesignRef.current = d;
+    },
+    onDimensions: (w, h) => {
+      setWidth(w);
+      setHeight(h);
+    },
+    onCutlineDraftId: (id) => {
+      editorCutlineDraftIdRef.current = id;
+    },
+    toastInfo: toast.info,
+  });
   const primaryDesign = designs[0] ?? null;
   const [detectedDims, setDetectedDims] = useState<DetectedDimensions | null>(
     null
@@ -1372,7 +1388,12 @@ function EtiketPage() {
     }
 
     let resolvedDesignTempId: string | undefined;
-    if (primaryPersisted) {
+    if (editorDesignRef.current?.tempId) {
+      resolvedDesignTempId = editorDesignRef.current.tempId;
+      if (editorDesignRef.current.generatedPreviewUrl) {
+        _resolvedPreviewUrl = editorDesignRef.current.generatedPreviewUrl;
+      }
+    } else if (primaryPersisted) {
       const { uploadFileToTempDesign } = await import(
         "@/lib/design-temp-upload"
       );
@@ -1410,6 +1431,9 @@ function EtiketPage() {
         customizations: customs.filter((id) => id !== "yok"),
         formFactor,
         designCount,
+        ...(editorCutlineDraftIdRef.current
+          ? { editorCutlineDraftId: editorCutlineDraftIdRef.current }
+          : {}),
       },
       winding,
       // Sefa 21 May v68 Mig 073: rulo göbek + adet/rulo structured kayıt

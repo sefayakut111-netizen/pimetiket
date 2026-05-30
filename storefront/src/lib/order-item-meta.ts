@@ -65,6 +65,10 @@ export function buildOrderItemMeta(item: CartMetaSource): Record<string, unknown
     designMimeType: item.designMimeType,
     additionalDesigns:
       additionalDesigns.length > 0 ? additionalDesigns : undefined,
+    editor_cutline_draft_id:
+      typeof item.meta?.editorCutlineDraftId === "string"
+        ? item.meta.editorCutlineDraftId
+        : undefined,
   };
 }
 

@@ -66,6 +66,24 @@ export function r2PendingDesignKey(
   return `customers-hot/${userId}/pending/${fileId}.${ext}`;
 }
 
+/** Pre-order editör cutline SVG: editor-drafts/{userId}/{tempDesignId}/{ts}.svg */
+export function r2EditorDraftSvgKey(
+  userId: string,
+  tempDesignId: string,
+  timestamp: number
+): string {
+  return `editor-drafts/${userId}/${tempDesignId}/${timestamp}.svg`;
+}
+
+/** Pre-order editör cutline preview PNG */
+export function r2EditorDraftPreviewKey(
+  userId: string,
+  tempDesignId: string,
+  timestamp: number
+): string {
+  return `editor-drafts/${userId}/${tempDesignId}/${timestamp}-preview.png`;
+}
+
 /** Upload API zinciri (statik doğrulama / dokümantasyon) */
 export const UPLOAD_CHAIN_ENDPOINTS = {
   preview: "POST /api/cart/upload-preview",

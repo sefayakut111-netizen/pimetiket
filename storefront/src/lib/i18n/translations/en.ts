@@ -37,6 +37,7 @@ export const en: TranslationDict = {
     notifications: "Notifications",
     returns: "My returns",
     templates: "Templates",
+    editor: "Editor",
   },
   home: {
     eyebrow: "Smart digital printing ecosystem",

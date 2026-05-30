@@ -236,10 +236,12 @@ export async function saveCutlineEdit(
     actorUserId: string;
     actorRole: "customer" | "partner" | "system";
     isPartner?: boolean;
+    /** Pre-order editör draft → sipariş bağlama (status check gevşetilir) */
+    editorPromote?: boolean;
     body: SaveCutlineEditBody;
   }
 ): Promise<SaveCutlineEditResult> {
-  const { orderId, itemId, actorUserId, isPartner = false, body } = args;
+  const { orderId, itemId, actorUserId, isPartner = false, editorPromote = false, body } = args;
   const parsedResult = parseBody(body);
   if ("ok" in parsedResult && !parsedResult.ok) {
     return parsedResult;
@@ -281,7 +283,7 @@ export async function saveCutlineEdit(
     return { ok: false, error: "Sipariş bulunamadı", status: 404 };
   }
 
-  if (!isPartner) {
+  if (!isPartner && !editorPromote) {
     const allowedStatuses = isAuto
       ? ["proof_generating", "proof_pending"]
       : ["proof_pending"];

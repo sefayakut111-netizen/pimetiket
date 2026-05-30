@@ -48,6 +48,7 @@ export function TopBar() {
     { href: "/etiket", label: t.nav.etiket },
     { href: "/sticker", label: t.nav.sticker },
     { href: "/sablonlar", label: t.nav.templates },
+    ...(user ? [{ href: "/editor", label: t.nav.editor }] : []),
     // { href: "/galeri", label: t.nav.gallery },
     { href: "/blog", label: t.nav.blog },
     ...(user ? [{ href: "/panelim", label: t.nav.dashboard }] : []),
@@ -168,7 +169,9 @@ export function TopBar() {
               const active =
                 item.href === "/sablonlar"
                   ? pathname?.startsWith("/sablonlar")
-                  : pathname === item.href;
+                  : item.href === "/editor"
+                    ? pathname?.startsWith("/editor")
+                    : pathname === item.href;
               return (
                 <Link
                   key={item.href}
@@ -395,7 +398,9 @@ export function TopBar() {
                 const active =
                   item.href === "/sablonlar"
                     ? pathname?.startsWith("/sablonlar")
-                    : pathname === item.href;
+                    : item.href === "/editor"
+                      ? pathname?.startsWith("/editor")
+                      : pathname === item.href;
                 return (
                   <Link
                     key={item.href}

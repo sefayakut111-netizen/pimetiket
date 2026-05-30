@@ -33,6 +33,7 @@ import {
   sendOrderProofRequired,
 } from "@/lib/mail/notifications";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
+import { promoteEditorCutlines } from "@/lib/editor/promote-editor-cutline";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
 import { enqueueMail } from "@/lib/mail/enqueue";
@@ -377,6 +378,17 @@ export async function POST(req: NextRequest) {
           .eq("id", orderId);
 
         scheduleOrderDesignQC(admin, orderId);
+      }
+
+      try {
+        await promoteEditorCutlines({
+          admin,
+          orderId,
+          userId: intent.user_id,
+          orderItems: orderItemsForPromote,
+        });
+      } catch (err) {
+        console.error("[payment/callback] editor cutline promote failed:", err);
       }
     } catch (err) {
       console.error("[payment/callback] promote failed:", err);

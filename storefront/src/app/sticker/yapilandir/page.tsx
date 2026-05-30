@@ -62,6 +62,7 @@ import {
   type DetectedDimensions,
   detectedDimsTrimHint,
 } from "@/lib/design-dimensions";
+import { useEditorPrefill } from "@/lib/editor/use-editor-prefill";
 import { useT } from "@/lib/i18n/context";
 import { useExperiment } from "@/lib/analytics/feature-flags";
 import { deliveryEstimate } from "@/lib/pricing";
@@ -569,6 +570,18 @@ function StickerPage() {
   const [presetPulseAt, setPresetPulseAt] = useState<number | null>(null);
   // Pre-purchase tasarım — sepete eklemeden önce yüklenip mockup'ta görünür
   const [design, setDesign] = useState<DesignTempState | null>(null);
+  const editorCutlineDraftIdRef = useRef<string | undefined>(undefined);
+  useEditorPrefill({
+    onDesign: setDesign,
+    onDimensions: (w, h) => {
+      setWidth(w);
+      setHeight(h);
+    },
+    onCutlineDraftId: (id) => {
+      editorCutlineDraftIdRef.current = id;
+    },
+    toastInfo: toast.info,
+  });
   // Sefa Madde 9 (11 May): müşteri çoklu tasarım yükleyebilir.
   // designCount × tier adet = toplam sticker. Tasarımlar local-preview.
   const [designCount, setDesignCount] = useState<number>(1);
@@ -2080,7 +2093,12 @@ function StickerPage() {
                   // — sadece designCount metadata gönder + sipariş sonrası
                   // mail ile gerçek dosyalar yüklenecek.
                   designCount: designCount > 1 ? designCount : undefined,
-                  meta: { designCount },
+                  meta: {
+                    designCount,
+                    ...(editorCutlineDraftIdRef.current
+                      ? { editorCutlineDraftId: editorCutlineDraftIdRef.current }
+                      : {}),
+                  },
                   additionalDesigns:
                     persistedDesigns.length > 1
                       ? (
