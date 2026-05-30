@@ -44,9 +44,30 @@
 
 ---
 
-## 🎉 TÜM CURSOR GÖREVLERİ TAMAMLANDI
+## ═══ SIRA 8 — Admin Panel Revizyon (YENİ — analiz sonrası) ═══
 
-Sadece **SIRA 1 (OPS — manuel adımlar)** kaldı. Bunlar Sefa'nın işi:
+> Claude + Cursor analizi + kod doğrulaması sonucu. Karar kaydı: `@docs/ADMIN-ANALIZ-SONUC.md`
+> 7 faz, ~13 saat. Faz 6 (e-fatura) Paraşüt key bekliyor.
+
+`@CURSOR-PROMPT-ADMIN-REVIZE.md` fazları sırayla uygula.
+
+| Faz | İçerik | Durum |
+|-----|--------|-------|
+| 1 | Temizlik (sidebar, debug, etiket) | ✅ `6e842cf` |
+| 2 | **Operasyon kuyruğu** (en yüksek değer) | ✅ `e0bb2d9` |
+| 3 | Server-side aggregation | ✅ `e3486dd` |
+| 4 | RBAC UI 3 rol | ✅ `6b69085` + Mig 119 |
+| 5 | Orta eklemeler (fason log, CRM log, arama, muhasebe) | ✅ 4 commit + Mig 120 |
+| 6 | E-fatura + VKN (Paraşüt key bekliyor) | 🔒 bloke, Mig 121 |
+| 7 | Düşük sadeleştirme (içerik hub, taşıma) | ✅ 3 commit |
+
+**Dokunulmayacak:** denetçiler, müşteri segment, dashboard funnel (Sefa: kalsın)
+
+---
+
+## 🎉 PLANLI CURSOR GÖREVLERİ TAMAMLANDI (SIRA 2-7)
+
+Sadece **SIRA 1 (OPS — manuel)** + **SIRA 8 (admin revizyon — yeni)** kaldı. OPS Sefa'nın işi:
 1. Test sipariş temizliği — `cleanup-test-orders.mjs --confirm`
 2. Migration 092 + 110 + 115 + 116 + 117 prod DB kontrolü (uygulanmamış varsa apply)
 
