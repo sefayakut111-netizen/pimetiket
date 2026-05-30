@@ -127,6 +127,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/fason": "Üretim Partnerleri",
   "/admin/musteriler": "Müşteriler",
   "/admin/finans": "Finans & Raporlar",
+  "/admin/trafik": "Trafik",
   "/admin/odemeler": "Ödemeler",
   "/admin/tasarimlar": "Tasarım kütüphanesi",
   "/admin/aboneler": "Email aboneleri",
@@ -553,6 +554,12 @@ function AdminShellInner({ children }: { children: ReactNode }) {
       {
         label: "Finans",
         items: [
+          {
+            href: "/admin/trafik",
+            label: "Trafik",
+            icon: <Icon.Eye size={16} />,
+            module: "dashboard",
+          },
           {
             href: "/admin/finans",
             label: "Finans & Raporlar",

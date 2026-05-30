@@ -155,6 +155,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItemDef[] = [
   { href: "/admin/gorseller", label: "Site Görselleri", module: "site_images" },
   { href: "/admin/blog", label: "Blog", module: "blog" },
   { href: "/admin/finans", label: "Finans", module: "finans" },
+  { href: "/admin/trafik", label: "Trafik", module: "dashboard" },
   { href: "/admin/kuponlar", label: "Kuponlar", module: "coupons" },
   { href: "/admin/calisanlar", label: "Çalışanlar", module: "staff" },
   { href: "/admin/fiyat-hesapla", label: "Fiyat hesapla", module: "pricing" },
