@@ -54,9 +54,62 @@ const PROOF_STATUS_META: Record<
     bg: "bg-yesil-soft",
     color: "text-yesil-koyu",
   },
+  cancelled: {
+    label: "İptal",
+    bg: "bg-gri-100",
+    color: "text-gri-700",
+  },
+  human_review_failed: {
+    label: "Reddedildi",
+    bg: "bg-kirmizi-soft",
+    color: "text-kirmizi-koyu",
+  },
 };
 
-type ProofFilter = "all" | "generating" | "pending" | "approved";
+type ProofFilter =
+  | "all"
+  | "generating"
+  | "validating"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "sla_breached";
+
+type ReadinessLevel = "ok" | "cutline_only" | "missing";
+
+type OrderReadiness = {
+  level: ReadinessLevel;
+  hasCutline: boolean;
+  hasWhite: boolean;
+};
+
+const SLA_MS = 36 * 60 * 60 * 1000;
+
+function isProofSlaBreached(createdAt: number, status: string): boolean {
+  if (status !== "proof_pending") return false;
+  return Date.now() - createdAt > SLA_MS;
+}
+
+const READINESS_BADGE: Record<
+  ReadinessLevel,
+  { emoji: string; label: string; className: string }
+> = {
+  ok: {
+    emoji: "🟢",
+    label: "Bıçak + beyaz",
+    className: "bg-yesil-soft text-yesil-koyu",
+  },
+  cutline_only: {
+    emoji: "🟡",
+    label: "Bıçak var, beyaz eksik",
+    className: "bg-sari-soft text-sari-koyu",
+  },
+  missing: {
+    emoji: "🔴",
+    label: "Bıçak / beyaz eksik",
+    className: "bg-kirmizi-soft text-kirmizi-koyu",
+  },
+};
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
@@ -139,44 +192,24 @@ function ProofSlaTag({
   );
 }
 
-function ProofReadinessIndicator({ status }: { status: string }) {
-  const steps = [
-    {
-      label: "Bıçak",
-      done: ["proof_pending", "proof_approved", "proof_validating"].includes(
-        status
-      ),
-      icon: "",
-    },
-    {
-      label: "Beyaz",
-      done: ["proof_pending", "proof_approved", "proof_validating"].includes(
-        status
-      ),
-      icon: "⬜",
-    },
-    {
-      label: "Doğrulama",
-      done: ["proof_pending", "proof_approved"].includes(status),
-      icon: "",
-    },
-  ];
-
+function CutlineReadinessBadge({
+  readiness,
+}: {
+  readiness: OrderReadiness | undefined;
+}) {
+  const level = readiness?.level ?? "missing";
+  const meta = READINESS_BADGE[level];
   return (
-    <div className="flex items-center gap-3 mt-2 flex-wrap">
-      {steps.map((s, i) => (
-        <div key={i} className="flex items-center gap-1 text-[11px]">
-          <span>{s.icon}</span>
-          <span
-            className={
-              s.done ? "text-yesil font-semibold" : "text-gri-400"
-            }
-          >
-            {s.label} {s.done ? "" : "…"}
-          </span>
-        </div>
-      ))}
-    </div>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 h-[22px] px-2 rounded-full text-[11px] font-semibold mt-2",
+        meta.className
+      )}
+      title={meta.label}
+    >
+      <span aria-hidden>{meta.emoji}</span>
+      {meta.label}
+    </span>
   );
 }
 
@@ -250,6 +283,15 @@ export default function AdminProvaPage() {
   const [reminderLog, setReminderLog] = useState<
     Record<string, { lastAt: string; count: number }>
   >({});
+  const [readinessMap, setReadinessMap] = useState<
+    Record<string, OrderReadiness>
+  >({});
+  const [kpi, setKpi] = useState({
+    pending: 0,
+    approvedToday: 0,
+    avgResponseHours: 0,
+    slaBreached: 0,
+  });
 
   useEffect(() => {
     void fetch("/api/admin/system-health")
@@ -322,43 +364,51 @@ export default function AdminProvaPage() {
     [catalogOrders]
   );
 
-  const inReview = catalogOrders.filter(
-    (o) => o.status === "operator_review"
-  ).length;
-  const proofPending = items.filter((o) => o.status === "proof_pending").length;
-  const inProduction = catalogOrders.filter(
-    (o) => o.status === "in_production"
-  ).length;
-  const flagged = catalogOrders.filter((o) => o.status === "qc_flagged").length;
+  const rejectedItems = useMemo(
+    () =>
+      catalogOrders.filter(
+        (o) => o.status === "cancelled" || o.status === "human_review_failed"
+      ),
+    [catalogOrders]
+  );
 
   const counts = useMemo(
     () => ({
       all: items.length,
-      generating: items.filter(
-        (o) =>
-          o.status === "proof_generating" || o.status === "proof_validating"
-      ).length,
+      generating: items.filter((o) => o.status === "proof_generating").length,
+      validating: items.filter((o) => o.status === "proof_validating").length,
       pending: items.filter((o) => o.status === "proof_pending").length,
       approved: items.filter((o) => o.status === "proof_approved").length,
+      rejected: rejectedItems.length,
+      sla_breached: items.filter(
+        (o) => o.status === "proof_pending" && isProofSlaBreached(o.createdAt, o.status)
+      ).length,
     }),
-    [items]
+    [items, rejectedItems]
   );
 
   const filteredItems = useMemo(() => {
     switch (filter) {
       case "generating":
-        return items.filter(
-          (o) =>
-            o.status === "proof_generating" || o.status === "proof_validating"
-        );
+        return items.filter((o) => o.status === "proof_generating");
+      case "validating":
+        return items.filter((o) => o.status === "proof_validating");
       case "pending":
         return items.filter((o) => o.status === "proof_pending");
       case "approved":
         return items.filter((o) => o.status === "proof_approved");
+      case "rejected":
+        return rejectedItems;
+      case "sla_breached":
+        return items.filter(
+          (o) =>
+            o.status === "proof_pending" &&
+            isProofSlaBreached(o.createdAt, o.status)
+        );
       default:
         return items;
     }
-  }, [items, filter]);
+  }, [items, rejectedItems, filter]);
 
   const sortedItems = useMemo(() => {
     return [...filteredItems].sort((a, b) => {
@@ -402,36 +452,75 @@ export default function AdminProvaPage() {
     void loadReminderLog(ids);
   }, [sortedItems, loadReminderLog]);
 
+  const loadReadiness = useCallback(async (orderIds: string[]) => {
+    if (orderIds.length === 0) {
+      setReadinessMap({});
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/admin/prova/readiness?orderIds=${encodeURIComponent(orderIds.join(","))}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        ok?: boolean;
+        readiness?: Record<string, OrderReadiness>;
+      };
+      if (data.ok && data.readiness) {
+        setReadinessMap(data.readiness);
+      }
+    } catch {
+      /* sessiz */
+    }
+  }, []);
+
+  useEffect(() => {
+    const ids = sortedItems.map((o) => o.id);
+    void loadReadiness(ids);
+  }, [sortedItems, loadReadiness]);
+
+  useEffect(() => {
+    void fetch("/api/admin/prova/readiness?stats=1", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (
+          data: {
+            ok?: boolean;
+            kpi?: {
+              pending: number;
+              approvedToday: number;
+              avgResponseHours: number;
+              slaBreached: number;
+            };
+          } | null
+        ) => {
+          if (data?.ok && data.kpi) setKpi(data.kpi);
+        }
+      )
+      .catch(() => {
+        /* client fallback below */
+      });
+  }, [catalogOrders]);
+
   const approvedOrders = useMemo(
     () => items.filter((o) => o.status === "proof_approved"),
     [items]
   );
 
-  const last30Stats = useMemo(() => {
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const recent = catalogOrders.filter((o) => o.createdAt >= cutoff);
-    const approved = recent.filter((o) =>
-      [
-        "proof_approved",
-        "ready_to_ship",
-        "in_production",
-        "shipped",
-        "delivered",
-      ].includes(o.status)
-    ).length;
-    const cancelled = recent.filter((o) => o.status === "cancelled").length;
-    const proofDone = recent.filter((o) =>
-      ["in_production", "shipped", "delivered"].includes(o.status)
-    );
-    const avgDays =
-      proofDone.length > 0
-        ? proofDone.reduce(
-            (s, o) => s + (Date.now() - o.createdAt) / 86400000,
-            0
-          ) / proofDone.length
-        : 0;
-    return { approved, cancelled, total: recent.length, avgDays };
-  }, [catalogOrders]);
+  const kpiDisplay = useMemo(
+    () => ({
+      pending: items.filter((o) => o.status === "proof_pending").length,
+      approvedToday: kpi.approvedToday,
+      avgResponseHours: kpi.avgResponseHours,
+      slaBreached: items.filter(
+        (o) =>
+          o.status === "proof_pending" &&
+          isProofSlaBreached(o.createdAt, o.status)
+      ).length,
+    }),
+    [items, kpi]
+  );
 
   const callStatusApi = async (
     orderId: string,
@@ -628,6 +717,16 @@ export default function AdminProvaPage() {
                  WhatsApp
               </a>
             )}
+            <a
+              href={`mailto:?subject=${encodeURIComponent(
+                `Baskı provası — ${p.id}`
+              )}&body=${encodeURIComponent(
+                `Merhaba ${p.address?.name ?? ""},\n\nSiparişinizin baskı provası hazır. Onaylamak için:\n${proofUrl}\n\nTeşekkürler,\nPim Etiket`
+              )}`}
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg ring-1 ring-gri-200 bg-white text-[12.5px] font-semibold text-lacivert hover:ring-lacivert"
+            >
+              E-posta
+            </a>
           </>
         )}
       </div>
@@ -669,26 +768,28 @@ export default function AdminProvaPage() {
           {(
             [
               {
-                label: "Operatör inceliyor",
-                count: inReview,
-                accent: "text-pim-mercan",
-                bg: "bg-pim-mercan-tint",
-              },
-              {
-                label: "Onay bekliyor",
-                count: proofPending,
+                label: "Bekleyen",
+                count: kpiDisplay.pending,
                 accent: "text-sari-koyu",
                 bg: "bg-sari-soft",
               },
               {
-                label: "Üretimde",
-                count: inProduction,
+                label: "Bugün onaylanan",
+                count: kpiDisplay.approvedToday,
                 accent: "text-yesil",
                 bg: "bg-yesil-soft",
               },
               {
-                label: "AI flag",
-                count: flagged,
+                label: "Ort. yanıt süresi",
+                count: kpiDisplay.avgResponseHours,
+                accent: "text-lacivert",
+                bg: "bg-gri-100",
+                suffix: " sa",
+                isHours: true,
+              },
+              {
+                label: "SLA aşılan",
+                count: kpiDisplay.slaBreached,
                 accent: "text-kirmizi",
                 bg: "bg-kirmizi/10",
               },
@@ -712,7 +813,12 @@ export default function AdminProvaPage() {
                   <div
                     className={cn("text-2xl font-bold tabular-nums", k.accent)}
                   >
-                    {k.count}
+                    {"isHours" in k && k.isHours
+                      ? k.count > 0
+                        ? k.count.toFixed(1)
+                        : "—"
+                      : k.count}
+                    {"suffix" in k && k.suffix && k.count > 0 ? k.suffix : ""}
                   </div>
                 </div>
               </div>
@@ -720,16 +826,7 @@ export default function AdminProvaPage() {
           ))}
         </div>
 
-        <div className="mb-5 text-[12px] text-gri-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span> Son 30 gün: {last30Stats.total} sipariş</span>
-          <span> {last30Stats.approved} onaylandı</span>
-          <span> {last30Stats.cancelled} iptal</span>
-          {last30Stats.avgDays > 0 && (
-            <span>Sipariş → onay arası ort.: {last30Stats.avgDays.toFixed(1)} gün</span>
-          )}
-        </div>
-
-        {approvedOrders.length > 0 && (
+        {filter === "approved" && approvedOrders.length > 0 && (
           <div className="mb-4 rounded-lg bg-yesil-soft/30 ring-1 ring-yesil/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-yesil-koyu font-medium">
                {approvedOrders.length} sipariş müşteri tarafından onaylandı —
@@ -747,7 +844,7 @@ export default function AdminProvaPage() {
                   : undefined
               }
             >
-              Tümünü üretime al ({approvedOrders.length})
+              Üretime taşı ({approvedOrders.length})
             </Button>
           </div>
         )}
@@ -755,10 +852,13 @@ export default function AdminProvaPage() {
         <div className="flex gap-2 mb-5 flex-wrap">
           {(
             [
-              { id: "pending" as const, label: "Onay Bekliyor", emoji: "" },
-              { id: "generating" as const, label: "Hazırlanıyor", emoji: "" },
-              { id: "approved" as const, label: "Onaylandı", emoji: "" },
-              { id: "all" as const, label: "Tümü", emoji: "" },
+              { id: "pending" as const, label: "Bekliyor" },
+              { id: "validating" as const, label: "Validating" },
+              { id: "generating" as const, label: "Hazırlanıyor" },
+              { id: "approved" as const, label: "Onaylı" },
+              { id: "rejected" as const, label: "Reddedildi" },
+              { id: "sla_breached" as const, label: "SLA Aşıldı" },
+              { id: "all" as const, label: "Tümü" },
             ] as const
           ).map((f) => (
             <button
@@ -781,12 +881,12 @@ export default function AdminProvaPage() {
           <Card padding="p-10" className="text-center">
             <Pim pose="happy" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
-              {items.length === 0
+              {items.length === 0 && filter !== "rejected"
                 ? "Prova kuyruğu temiz "
                 : "Bu filtrede sipariş yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
-              {items.length === 0
+              {items.length === 0 && filter !== "rejected"
                 ? "Prova sürecinde sipariş yok. Yeni siparişler operatör incelemesinden geçince burada görünür."
                 : "Başka bir filtre sekmesine geçin veya tümünü görüntüleyin."}
             </p>
@@ -849,7 +949,7 @@ export default function AdminProvaPage() {
                           />
                         ))}
                       </div>
-                      <ProofReadinessIndicator status={p.status} />
+                      <CutlineReadinessBadge readiness={readinessMap[p.id]} />
 
                       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
                         <Link
