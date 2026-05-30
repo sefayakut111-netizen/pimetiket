@@ -59,6 +59,12 @@ interface ManualOrderBody {
     amount: number;
     reason?: string;
   };
+  coupon?: {
+    code: string;
+    discount: number;
+    kind: string;
+  };
+  customerUserId?: string;
 }
 
 // Sefa kuralı (12 May): orderId 8-char nanoid — tek kaynak
@@ -114,6 +120,15 @@ export async function POST(req: Request) {
     ...(body.discount && body.discount.amount > 0
       ? { manualDiscount: body.discount }
       : {}),
+    ...(body.coupon
+      ? {
+          coupon: {
+            code: body.coupon.code,
+            discount: body.coupon.discount,
+            kind: body.coupon.kind,
+          },
+        }
+      : {}),
   };
 
   const { error: rpcErr } = await admin.rpc(
@@ -136,6 +151,26 @@ export async function POST(req: Request) {
       { error: rpcErr.message ?? "Sipariş oluşturulamadı" },
       { status: 500 }
     );
+  }
+
+  if (body.coupon?.code && body.coupon.discount > 0) {
+    const { data: couponRow } = await admin
+      .from("coupons")
+      .select("id")
+      .eq("code", body.coupon.code.toUpperCase())
+      .maybeSingle();
+    if (couponRow?.id) {
+      const couponUserId = body.customerUserId ?? auth.user.id;
+      const { error: useErr } = await admin.from("coupon_uses").insert({
+        coupon_id: couponRow.id,
+        order_id: orderId,
+        user_id: couponUserId,
+        discount_amount: body.coupon.discount,
+      });
+      if (useErr) {
+        console.error("[admin/manual] coupon_uses insert:", useErr);
+      }
+    }
   }
 
   // order_events için aktör admin

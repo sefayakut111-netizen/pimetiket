@@ -54,6 +54,8 @@ interface AdminOrder {
   date: string;
   /** Ham createdAt ms — saved view filtreleri için */
   createdAt: number;
+  /** Tahmini teslim (ISO) — gecikme vurgusu için */
+  estimatedDelivery?: string;
   fason?: string;
   tracking_number?: string;
 }
@@ -99,6 +101,13 @@ function getOrderUrgency(
 ): "critical" | "warn" | "high_value" | null {
   const day = 24 * 60 * 60 * 1000;
   if (o.status === "proof_pending" && now - o.createdAt > 1.5 * day) {
+    return "critical";
+  }
+  if (
+    o.status === "in_production" &&
+    o.estimatedDelivery &&
+    new Date(o.estimatedDelivery).getTime() < now
+  ) {
     return "critical";
   }
   if (
@@ -208,6 +217,7 @@ function toAdminOrderRow(o: CustomerOrder): AdminOrder {
     status: o.status,
     date,
     createdAt: o.createdAt ?? Date.now(),
+    estimatedDelivery: o.estimatedDelivery,
     fason: (o as CustomerOrder & { fasonName?: string }).fasonName,
     tracking_number: (o as CustomerOrder & { trackingNumber?: string })
       .trackingNumber,

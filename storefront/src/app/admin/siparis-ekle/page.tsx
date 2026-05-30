@@ -43,6 +43,10 @@ import {
   MAX_FILE_SIZE,
 } from "@/lib/storage/design-files";
 import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
+import {
+  validateCoupon,
+  type CouponValidateOk,
+} from "@/lib/customer-coupon";
 
 type ProductType = "etiket" | "sticker";
 type InvoiceType = "individual" | "corporate";
@@ -235,6 +239,9 @@ export default function AdminCreateOrderPage() {
   const [customerResults, setCustomerResults] = useState<CustomerSearchRow[]>(
     []
   );
+  const [linkedCustomerUserId, setLinkedCustomerUserId] = useState<
+    string | null
+  >(null);
   const [searchLoading, setSearchLoading] = useState(false);
 
   // Fatura
@@ -253,6 +260,11 @@ export default function AdminCreateOrderPage() {
   const [discountType, setDiscountType] = useState<DiscountType>("none");
   const [discountValue, setDiscountValue] = useState("");
   const [discountReason, setDiscountReason] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidateOk | null>(
+    null
+  );
+  const [couponLoading, setCouponLoading] = useState(false);
   const [deliveryDays, setDeliveryDays] = useState(12);
   const [calcLoadingId, setCalcLoadingId] = useState<string | null>(null);
 
@@ -285,6 +297,7 @@ export default function AdminCreateOrderPage() {
     setAddress("");
     setCustomerSearch("");
     setCustomerResults([]);
+    setLinkedCustomerUserId(null);
     setInvoiceType("individual");
     setTc("");
     setVkn("");
@@ -301,6 +314,8 @@ export default function AdminCreateOrderPage() {
     setDiscountType("none");
     setDiscountValue("");
     setDiscountReason("");
+    setCouponCode("");
+    setAppliedCoupon(null);
     setDeliveryDays(12);
     setHasDraft(false);
   }, []);
@@ -331,12 +346,16 @@ export default function AdminCreateOrderPage() {
 
   const subtotal = itemTotals.reduce((s, t) => s + t, 0);
 
-  const discountAmount = useMemo(() => {
+  const manualDiscountAmount = useMemo(() => {
     const val = Number(discountValue) || 0;
     if (discountType === "percent") return Math.round((subtotal * val) / 100);
     if (discountType === "fixed") return Math.min(val, subtotal);
     return 0;
   }, [discountType, discountValue, subtotal]);
+
+  const couponDiscountAmount = appliedCoupon?.discount ?? 0;
+
+  const discountAmount = manualDiscountAmount + couponDiscountAmount;
 
   const vatBase = Math.max(0, subtotal - discountAmount);
   const vat = Math.round(vatBase * VAT_RATE);
@@ -374,8 +393,36 @@ export default function AdminCreateOrderPage() {
     return () => clearTimeout(timer);
   }, [customerSearch]);
 
+  const applyCouponCode = useCallback(async () => {
+    const code = couponCode.trim();
+    if (!code) {
+      toast.error("Kupon kodu girin");
+      return;
+    }
+    setCouponLoading(true);
+    try {
+      const result = await validateCoupon(code, subtotal);
+      if (!result.ok) {
+        setAppliedCoupon(null);
+        toast.error(
+          result.reason === "min_subtotal" && result.minSubtotal
+            ? `Minimum tutar ${result.minSubtotal.toLocaleString("tr-TR")} ₺`
+            : "Kupon geçersiz veya süresi dolmuş"
+        );
+        return;
+      }
+      setAppliedCoupon(result);
+      toast.success(
+        `Kupon uygulandı: −${result.discount.toLocaleString("tr-TR")} ₺`
+      );
+    } finally {
+      setCouponLoading(false);
+    }
+  }, [couponCode, subtotal, toast]);
+
   const selectCustomer = useCallback(
     async (c: CustomerSearchRow) => {
+      setLinkedCustomerUserId(c.user_id);
       setName(c.display_name ?? "");
       setPhone(c.phone ?? "");
       setEmail(c.email ?? "");
@@ -627,14 +674,23 @@ export default function AdminCreateOrderPage() {
           estimatedDelivery: addDaysIso(deliveryDays),
           items: itemPayloads,
           discount:
-            discountAmount > 0
+            manualDiscountAmount > 0
               ? {
                   type: discountType,
                   value: Number(discountValue) || 0,
-                  amount: discountAmount,
+                  amount: manualDiscountAmount,
                   reason: discountReason.trim(),
                 }
               : undefined,
+          coupon:
+            appliedCoupon && couponCode.trim()
+              ? {
+                  code: couponCode.trim().toUpperCase(),
+                  discount: appliedCoupon.discount,
+                  kind: appliedCoupon.kind,
+                }
+              : undefined,
+          customerUserId: linkedCustomerUserId ?? undefined,
         }),
       });
 
@@ -1399,9 +1455,57 @@ export default function AdminCreateOrderPage() {
                   </Field>
                 </div>
               )}
-              {discountAmount > 0 && (
+              {manualDiscountAmount > 0 && (
                 <p className="text-[12px] text-pim-mercan mt-2 font-semibold">
-                  → {discountAmount.toLocaleString("tr-TR")} ₺ indirim
+                  → {manualDiscountAmount.toLocaleString("tr-TR")} ₺ manuel indirim
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-gri-100">
+              <h3 className="text-[13px] font-semibold mb-3">Kupon kodu</h3>
+              <div className="flex flex-wrap gap-2 items-end">
+                <Field label="Kod" className="flex-1 min-w-[160px]">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setAppliedCoupon(null);
+                    }}
+                    placeholder="YAZ2026"
+                    disabled={loading || couponLoading}
+                  />
+                </Field>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={loading || couponLoading || !couponCode.trim()}
+                  onClick={() => void applyCouponCode()}
+                >
+                  {couponLoading ? "Kontrol…" : "Uygula"}
+                </Button>
+                {appliedCoupon && (
+                  <button
+                    type="button"
+                    className="text-[12px] text-gri-600 underline"
+                    onClick={() => {
+                      setAppliedCoupon(null);
+                      setCouponCode("");
+                    }}
+                  >
+                    Kaldır
+                  </button>
+                )}
+              </div>
+              {appliedCoupon && (
+                <p className="text-[12px] text-yesil mt-2 font-semibold">
+                  ✓ Kupon: −{appliedCoupon.discount.toLocaleString("tr-TR")} ₺
+                  {appliedCoupon.kind === "free_ship" && " (ücretsiz kargo)"}
+                </p>
+              )}
+              {!linkedCustomerUserId && appliedCoupon && (
+                <p className="text-[11px] text-sari-koyu mt-1">
+                  Kayıtlı müşteri seçilmedi — kupon kullanım kaydı operatör hesabına yazılır.
                 </p>
               )}
             </div>
@@ -1435,9 +1539,13 @@ export default function AdminCreateOrderPage() {
               {discountAmount > 0 && (
                 <Row
                   label={
-                    discountType === "percent"
-                      ? `İndirim (%${discountValue})`
-                      : "İndirim"
+                    appliedCoupon && manualDiscountAmount > 0
+                      ? "Toplam indirim"
+                      : appliedCoupon
+                        ? "Kupon indirimi"
+                        : discountType === "percent"
+                          ? `İndirim (%${discountValue})`
+                          : "İndirim"
                   }
                   value={`-${discountAmount.toLocaleString("tr-TR")} ₺`}
                   accent="text-pim-mercan"
