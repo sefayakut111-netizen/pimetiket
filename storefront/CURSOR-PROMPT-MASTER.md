@@ -65,6 +65,28 @@
 
 ---
 
+## ═══ SIRA 9 — Bug Avı Düzeltmeleri (Cursor analizi sonrası) ═══
+
+> Cursor tarama: 5 kritik + 10 yüksek + 14 orta + 6 düşük. Claude 4 kritiği koddan doğruladı (4/4 DOĞRU).
+
+**Batch 1 — Kritik (para + KVKK + veri):** `@CURSOR-PROMPT-BUG-FIX-KRITIK.md`
+- K1 KVKK iptal route (reprint handler yanlış dosyada) · K2 cart_items.meta kolonu (Mig 122) · K3 designCount+iskonto fiyat doğrulama
+
+**Batch 2 — Yüksek güvenlik:** `@CURSOR-PROMPT-BUG-FIX-GUVENLIK.md`
+- H1/H2 cancel atomic+rollback · H3 bypass checkout fiyat · H4 refund permission · H5 dev guard · H6 support ownership · M7 middleware fail-closed · H10 CRM izin
+
+**Batch 1 ✅** — K1/K2/K3 (commit e8084af, 3219dfa, 2f7ec9d) + Mig 122 prod'da
+**Batch 2 ✅** — H1-H6, H10, M7 (local, push bekliyor) + Mig 123 (apply bekliyor)
+
+**Batch 3 — Migration durumu (HEPSİ ✅):**
+- 113 ✅ · 114 ✅ · 119 ✅ (finance enum + preset — 55P04 enum hatası 2 adımda çözüldü) · 123 ✅ (operatör customers.update)
+- Doğrulama: finance enum'da, operatör customers can_view+can_update=true
+- Script: `apply-migrations-119-123.mjs` + `verify-migrations-113-114-119.mjs`
+
+**Orta/Düşük (14+6):** ertelendi — Cursor raporu referans, launch sonrası
+
+---
+
 ## 🎉 PLANLI CURSOR GÖREVLERİ TAMAMLANDI (SIRA 2-7)
 
 Sadece **SIRA 1 (OPS — manuel)** + **SIRA 8 (admin revizyon — yeni)** kaldı. OPS Sefa'nın işi:
