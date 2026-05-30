@@ -86,6 +86,38 @@ export function productSchema(input: ProductSchemaInput): JsonLdData {
         "@type": "Organization",
         name: "Pim Etiket",
       },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "TR",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 5,
+            maxValue: 10,
+            unitCode: "DAY",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 1,
+            maxValue: 3,
+            unitCode: "DAY",
+          },
+        },
+      },
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "TR",
+        returnPolicyCategory:
+          "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 14,
+        returnMethod: "https://schema.org/ReturnByMail",
+        returnFees: "https://schema.org/FreeReturn",
+        returnPolicyUrl: `${SITE_URL}/iade-degisim-politikasi`,
+      },
     },
   };
   if (input.image) {
@@ -159,6 +191,8 @@ export function articleSchema(input: ArticleSchemaInput): JsonLdData {
 interface LocalBusinessInput {
   phone?: string;
   address?: string;
+  email?: string;
+  openingHours?: string;
 }
 
 export function localBusinessSchema(
@@ -176,9 +210,10 @@ export function localBusinessSchema(
       "AI destekli dijital baskı atölyesi — etiket ve sticker. İstanbul ve Ankara fason ortaklarıyla Türkiye geneli teslimat.",
     address: {
       "@type": "PostalAddress",
+      addressLocality: "Ankara",
       addressRegion: "Ankara",
       addressCountry: "TR",
-      streetAddress: input.address,
+      streetAddress: input.address ?? undefined,
     },
     areaServed: {
       "@type": "Country",
@@ -187,6 +222,12 @@ export function localBusinessSchema(
   };
   if (input.phone) {
     ld.telephone = input.phone;
+  }
+  if (input.email) {
+    ld.email = input.email;
+  }
+  if (input.openingHours) {
+    ld.openingHours = input.openingHours;
   }
   return ld;
 }

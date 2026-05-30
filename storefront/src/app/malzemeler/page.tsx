@@ -4,12 +4,19 @@
  * Sefa kuralı (Madde 11, 11 May): Konfigüratörlerden "Malzeme detayı"
  * linki bu sayfaya açar, müşteri detaylı bilgi alıp geri döner.
  *
- * İçerik: 4 etiket + 4 sticker malzemesi · kaplamalar · özelleştirmeler
+ * Malzeme verisi: src/lib/seo/materials.ts (tek kaynak)
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 import { Eyebrow, MaterialSwatch, type SurfaceId } from "@/components/ui";
+import {
+  ETIKET_MATERIALS,
+  STICKER_MATERIALS,
+  materialDetailPath,
+  type MaterialInfo,
+} from "@/lib/seo/materials";
 
 export const metadata: Metadata = {
   title: "Malzemeler — Pim Etiket",
@@ -17,103 +24,6 @@ export const metadata: Metadata = {
     "Etiket ve sticker malzemelerinin detayları: kraft, beyaz semi-glos, ultra clear, metalik, vinil, transparan, holografik, simli. Kaplama seçenekleri ve özelleştirmeler.",
   alternates: { canonical: "/malzemeler" },
 };
-
-interface MaterialInfo {
-  id: string;
-  name: string;
-  description: string;
-  use: string;
-  surface: string;
-  durability: string;
-  /** Sefa 18 May v67: SVG surface preview (photorealistic doku) */
-  swatchSurface?: SurfaceId;
-}
-
-const ETIKET_MATERIALS: MaterialInfo[] = [
-  {
-    id: "kraft",
-    name: "Kraft",
-    description:
-      "Geri dönüştürülmüş, doğal kahverengi kağıt. Doğallık vurgusu yapan markalar için.",
-    use: "Doğal kozmetik, organik gıda, el yapımı sabun, kuru çay/baharat",
-    surface: "Mat, hafif dokulu yüzey. Yazı baskısı net, fotoğraf baskısı daha soft görünür.",
-    durability: "Suya orta dayanım. Buzdolabı/kavanoz ürünleri için kaplama tavsiye edilir.",
-    swatchSurface: "kraft",
-  },
-  {
-    id: "beyaz_semi_glos",
-    name: "Beyaz Semi-Glos",
-    description:
-      "Yarı parlak beyaz kağıt etiket. Klasik üretim standardı, renkleri canlı gösterir.",
-    use: "Genel amaçlı — gıda, kozmetik, ev temizlik ürünleri",
-    surface: "Yarı parlak, pürüzsüz. CMYK baskı tam doygunlukta basılır.",
-    durability: "Yüksek kaplama ile su geçirmez hale getirilebilir.",
-    swatchSurface: "kuse",
-  },
-  {
-    id: "ultra_clear",
-    name: "Ultra Clear (Şeffaf)",
-    description:
-      "Tamamen transparan film. Cam şişe ve şeffaf kavanozlarda ürünün görüntüsünü bozmadan etiket basar.",
-    use: "Cam şişeli içecekler, parfüm, şeffaf kavanozlu sos/reçel",
-    surface: "Parlak şeffaf. Sadece basılan kısımları görünür, gerisi şeffaf kalır.",
-    durability: "Suya dayanıklı. Soğuk zincir + buzdolabı uygundur.",
-    swatchSurface: "ultraclear",
-  },
-  {
-    id: "metalik",
-    name: "Metalik",
-    description:
-      "Altın veya gümüş metalik yüzeyli kağıt. Premium ürün hissi yaratır.",
-    use: "Lüks parfüm, premium çikolata, şarap, viski etiketleri",
-    surface: "Pürüzsüz metalik parlak. Renkler metalik zemin üzerinde yumuşak görünür.",
-    durability: "Yüksek. Premium ürünlerde standart kaplama yeter.",
-    swatchSurface: "metalik",
-  },
-];
-
-const STICKER_MATERIALS: MaterialInfo[] = [
-  {
-    id: "vinil",
-    name: "Vinil",
-    description:
-      "Kalın, esnek vinil film. Sticker'ın klasiği — UV ve suya dayanıklı.",
-    use: "Laptop, su şişesi, araba, dış mekan, ürün ambalajı",
-    surface: "Standart parlak ya da mat. Renkler canlı, kontrast yüksek.",
-    durability: "3-5 yıl dış mekan dayanımı. Çamaşır makinesi tehlikesi DEĞİL.",
-    swatchSurface: "opakpp",
-  },
-  {
-    id: "transparan",
-    name: "Transparan Vinil",
-    description:
-      "Şeffaf zeminli vinil. Sticker, ürün ya da yüzey üzerine yapıştığında 'havada duruyor' etkisi yaratır.",
-    use: "Cam kavanoz, şampuan/krem şişeleri, vitrin etiketleri",
-    surface: "Şeffaf, sadece basılan kısımlar görünür.",
-    durability: "Vinil ile aynı — dış mekan + su uygundur.",
-    swatchSurface: "transparan",
-  },
-  {
-    id: "holografik",
-    name: "Holografik",
-    description:
-      "Yansıyan, ışıkta renk değiştiren özel film. Etkinlik ve marka coşkusu için.",
-    use: "Etkinlik sticker, sınırlı koleksiyon, dergi ekleri, çocuk ürünleri",
-    surface: "Parlak, ışıkta renkler kayar (gökkuşağı/baklava efekti).",
-    durability: "İç mekan optimum. Dış mekanda yansıma 6-12 ayda solar.",
-    swatchSurface: "holografik",
-  },
-  {
-    id: "simli",
-    name: "Simli (Glitter)",
-    description:
-      "Simli, ışıltılı yüzey. Ürünü düz baskıdan ayırmak isteyen markalar için.",
-    use: "Çocuk ürünleri, parti malzemeleri, kozmetik, kırtasiye",
-    surface: "Simli parlak. Renkler sim arasından parlar.",
-    durability: "İç mekan. Yıkamada sim dökülmez, ama çamaşır makinesi önerilmez.",
-    swatchSurface: "simli",
-  },
-];
 
 const COATINGS: { name: string; desc: string; swatchSurface: SurfaceId }[] = [
   {
@@ -160,7 +70,6 @@ function MaterialCard({ m }: { m: MaterialInfo }) {
   return (
     <div className="rounded-xl bg-white p-5 ring-1 ring-gri-200">
       {m.swatchSurface && (
-        // Sefa 18 May v68: aspect-[2/1] SVG native oran (sünme yok)
         <MaterialSwatch
           surface={m.swatchSurface}
           className="w-full aspect-[2/1] mb-3"
@@ -184,6 +93,12 @@ function MaterialCard({ m }: { m: MaterialInfo }) {
           <dd className="text-lacivert mt-0.5">{m.durability}</dd>
         </div>
       </dl>
+      <Link
+        href={materialDetailPath(m.slug)}
+        className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-pim-mercan hover:underline"
+      >
+        {m.name} detay sayfası <Icon.ArrowR size={14} />
+      </Link>
     </div>
   );
 }
@@ -252,7 +167,6 @@ export default function MalzemelerPage() {
                 key={c.name}
                 className="rounded-xl bg-white p-4 ring-1 ring-gri-200 flex gap-4 items-start"
               >
-                {/* Sefa 18 May v68: 20×14 zaten yaklaşık 2:1 → mevcut */}
                 <MaterialSwatch
                   surface={c.swatchSurface}
                   className="w-24 aspect-[2/1] shrink-0"

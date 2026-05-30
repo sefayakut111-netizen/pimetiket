@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { SchemaJsonLd, localBusinessSchema } from "@/components/SchemaJsonLd";
 
 export const metadata: Metadata = {
   title: "İletişim — Pim Sohbet, e-posta, atölye bilgileri",
@@ -15,6 +16,19 @@ export const metadata: Metadata = {
   },
 };
 
+/* SEFA: telefon/adres/saat doldur — placeholder değerleri gerçek bilgiyle değiştir */
+const ILETISIM_LOCAL_BUSINESS = localBusinessSchema({
+  phone: "+90 XXX XXX XX XX",
+  address: "Üretim adresi — Sefa dolduracak",
+  email: "info@pimetiket.com",
+  openingHours: "Mo-Fr 09:00-18:00",
+});
+
 export default function IletisimLayout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <SchemaJsonLd data={ILETISIM_LOCAL_BUSINESS} />
+      {children}
+    </>
+  );
 }
