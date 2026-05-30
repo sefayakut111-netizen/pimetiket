@@ -89,6 +89,24 @@ export interface PartnerCommunication {
   created_at: string;
 }
 
+export type FasonFileTransferType = "image" | "cutline" | "both";
+
+export interface FasonFileTransfer {
+  id: string;
+  order_id: string;
+  partner_id: string;
+  file_type: FasonFileTransferType;
+  file_url: string;
+  sent_by: string | null;
+  sent_at: string;
+}
+
+export const FILE_TRANSFER_TYPE_LABEL: Record<FasonFileTransferType, string> = {
+  image: "Tasarim dosyasi",
+  cutline: "Kesim hatti",
+  both: "Tasarim + kesim",
+};
+
 export interface FasonPartnerPerformance {
   partnerId?: string;
   partnerName?: string;

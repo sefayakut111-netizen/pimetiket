@@ -22,6 +22,8 @@ import {
   type PartnerCommunication,
   type PartnerCommunicationChannel,
   type PartnerDetailTab,
+  type FasonFileTransfer,
+  FILE_TRANSFER_TYPE_LABEL,
 } from "@/components/admin/fason/fason-types";
 import { PartnerCapacityPanel } from "@/components/admin/fason/partner-capacity-panel";
 import { ContractDownloadButton } from "@/components/admin/fason/contract-download-button";
@@ -487,6 +489,133 @@ function AssignOrderToPartner({
   );
 }
 
+function SendPrintFilesButton({
+  partnerId,
+  orderId,
+  onSent,
+}: {
+  partnerId: string;
+  orderId: string;
+  onSent?: () => void;
+}) {
+  const toast = useToast();
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    setSending(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${encodeURIComponent(partnerId)}/file-transfers`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ order_id: orderId, file_type: "both" }),
+        }
+      );
+      const json = (await res.json()) as {
+        error?: string;
+        signed_urls?: Array<{ label: string; url: string }>;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Dosyalar gonderilemedi");
+        return;
+      }
+      const count = json.signed_urls?.length ?? 0;
+      toast.success(`${count} dosya linki olusturuldu ve loglandi`);
+      onSent?.();
+    } catch {
+      toast.error("Ag hatasi — tekrar deneyin");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      disabled={sending}
+      onClick={() => void send()}
+      className="mt-2"
+    >
+      {sending ? "Hazirlaniyor..." : "Baski dosyalarini gonder"}
+    </Button>
+  );
+}
+
+function PartnerFileTransferLog({ partnerId }: { partnerId: string }) {
+  const [items, setItems] = useState<FasonFileTransfer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${encodeURIComponent(partnerId)}/file-transfers`
+      );
+      const json = (await res.json()) as { transfers?: FasonFileTransfer[] };
+      setItems(json.transfers ?? []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [partnerId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (loading) {
+    return <Skeleton className="h-20 w-full mt-4" />;
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-6 pt-4 border-t border-gri-200">
+      <h3 className="text-[13px] font-bold uppercase text-gri-500 mb-3">
+        Dosya gonderim gecmisi
+      </h3>
+      <ul className="space-y-2">
+        {items.slice(0, 15).map((t) => {
+          let fileCount = 0;
+          try {
+            const parsed = JSON.parse(t.file_url) as { files?: unknown[] };
+            fileCount = parsed.files?.length ?? 0;
+          } catch {
+            fileCount = 0;
+          }
+          return (
+            <li
+              key={t.id}
+              className="rounded-lg border border-gri-200 bg-gri-50 px-3 py-2 text-[12px]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Link
+                  href={`/admin/siparisler/${t.order_id}`}
+                  className="font-mono font-semibold text-pim-mercan hover:underline"
+                >
+                  {t.order_id}
+                </Link>
+                <span className="text-gri-500">
+                  {formatShortDate(t.sent_at)}
+                </span>
+              </div>
+              <div className="text-gri-600 mt-1">
+                {FILE_TRANSFER_TYPE_LABEL[t.file_type]} · {fileCount} dosya
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function JobsTabContent({
   partner,
   history,
@@ -511,6 +640,7 @@ function JobsTabContent({
   loading: boolean;
   onAssigned: () => void;
 }) {
+  const [transferKey, setTransferKey] = useState(0);
   const filterChips: Array<{ id: JobsFilter; label: string; count?: number }> =
     [
       { id: "active", label: "Aktif", count: jobStats.active },
@@ -650,11 +780,18 @@ function JobsTabContent({
                     </strong>
                   </span>
                 </div>
+                <SendPrintFilesButton
+                  partnerId={partner.id}
+                  orderId={a.order_id}
+                  onSent={() => setTransferKey((k) => k + 1)}
+                />
               </li>
             );
           })}
         </ul>
       )}
+
+      <PartnerFileTransferLog key={transferKey} partnerId={partner.id} />
 
       <AssignOrderToPartner partner={partner} onAssigned={onAssigned} />
     </div>

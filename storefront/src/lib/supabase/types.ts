@@ -2524,6 +2524,78 @@ export type Database = {
           },
         ]
       }
+      customer_activity_log: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          summary: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          summary: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          summary?: string
+        }
+        Relationships: []
+      }
+      fason_file_transfers: {
+        Row: {
+          file_type: string
+          file_url: string
+          id: string
+          order_id: string
+          partner_id: string
+          sent_at: string
+          sent_by: string | null
+        }
+        Insert: {
+          file_type: string
+          file_url: string
+          id?: string
+          order_id: string
+          partner_id: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Update: {
+          file_type?: string
+          file_url?: string
+          id?: string
+          order_id?: string
+          partner_id?: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fason_file_transfers_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fason_file_transfers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "fason_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_communications: {
         Row: {
           channel: string
