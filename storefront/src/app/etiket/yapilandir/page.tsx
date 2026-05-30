@@ -54,6 +54,7 @@ import {
 import { deliveryEstimate } from "@/lib/pricing";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import type { DetectedDimensions } from "@/lib/design-dimensions";
 import { useT } from "@/lib/i18n/context";
 import {
   quoteCustomerEtiket,
@@ -814,6 +815,11 @@ function EtiketPage() {
   // designs[0] mockup preview için primary, diğerleri metadata.
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
   const primaryDesign = designs[0] ?? null;
+  const [detectedDims, setDetectedDims] = useState<DetectedDimensions | null>(
+    null
+  );
+  const [dimsPromptShown, setDimsPromptShown] = useState(false);
+  const [dimsAccepted, setDimsAccepted] = useState(false);
 
   // Sefa 20-21 May v68 test #3: Sepetten "Düzenle" — URL ?edit=ID + cart
   // lookup + localStorage intent fallback. State restore + editingItemId
@@ -2174,6 +2180,51 @@ function EtiketPage() {
             </FormSection>
             )}
 
+            {/* Step 7 — Tasarım (Boyut'tan önce — otomatik ölçü algılama) */}
+            <FormSection
+              id="step-7"
+              number={uiStepNumber(7)}
+              title="Tasarımlar"
+              hint="Tasarımın hazırsa şimdi yükle; değilse boş bırak, ödeme sonrası yükleyebilirsin."
+              locked={isStepLocked(7)}
+              lockMessage={getLockMessage(7)}
+            >
+              <MultiDesignUploader
+                designCount={designCount}
+                onDesignCountChange={(n) => {
+                  setDesignCount(n);
+                  markTouched(7);
+                }}
+                designs={designs}
+                onDesignsChange={(d) => {
+                  setDesigns(d);
+                  markTouched(7);
+                }}
+                qtyPerDesign={qty}
+                productLabel="etiket"
+                onDimensionsDetected={(dims) => {
+                  setDetectedDims(dims);
+                  setDimsPromptShown(true);
+                  setDimsAccepted(false);
+                }}
+              />
+              {designDiscountPct > 0 && (
+                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
+                  ✨ {designCount} tasarım için{" "}
+                  <strong>%{designDiscountPct} iskonto</strong> uygulanıyor —
+                  fiyat kartında görünür
+                </p>
+              )}
+              {designs.length === 0 && (
+                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3 text-[12px] leading-relaxed text-lacivert">
+                  <strong>Sonra yükleme akışı aktif:</strong> Tasarımsız da
+                  sepete ekleyebilirsin. Ödeme yaptıktan sonra "Tasarımını
+                  yükle" sayfasına yönlendirileceksin (ve hatırlatma mail'i
+                  alacaksın).
+                </div>
+              )}
+            </FormSection>
+
             {/* Step 6 — Boyut (UI numarası formFactor'a göre) */}
             <FormSection
               id="step-6"
@@ -2183,6 +2234,53 @@ function EtiketPage() {
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
             >
+              {detectedDims && dimsPromptShown && !dimsAccepted && (
+                <div className="mb-4 p-3 rounded-lg bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/40 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-[13px] text-lacivert">
+                    <strong>Tasarımının ölçüsünü tespit ettim:</strong>{" "}
+                    {detectedDims.widthMm}×{detectedDims.heightMm}mm
+                    {detectedDims.confidence === "estimated" && (
+                      <span className="text-gri-500 ml-1">
+                        (300 DPI varsayımıyla)
+                      </span>
+                    )}
+                    <div className="text-[11px] text-gri-600 mt-0.5">
+                      Boyut alanına yazmamı ister misin?
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSingleDimensionShape(shape)) {
+                          const v = Math.max(
+                            detectedDims.widthMm,
+                            detectedDims.heightMm
+                          );
+                          setWidth(v);
+                          setHeight(v);
+                        } else {
+                          setWidth(detectedDims.widthMm);
+                          setHeight(detectedDims.heightMm);
+                        }
+                        markTouched(6);
+                        setDimsAccepted(true);
+                        setDimsPromptShown(false);
+                      }}
+                      className="px-3 py-1.5 bg-pim-mercan text-white text-[12px] font-semibold rounded-lg hover:bg-pim-mercan-koyu"
+                    >
+                      Evet, kullan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDimsPromptShown(false)}
+                      className="px-3 py-1.5 bg-white text-gri-700 text-[12px] font-medium rounded-lg ring-1 ring-gri-200 hover:bg-gri-50"
+                    >
+                      Hayır, elle gireceğim
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Sefa 20 May v68 (2. revize): Köşe seçeneği — sticker
                   CornerStyleCard pattern'ine paralel. L ikonu + başlık +
                   alt başlık. 2 kart yan yana, aktif olan mercan border. */}
@@ -2564,49 +2662,6 @@ function EtiketPage() {
                   );
                 })}
               </div>
-            </FormSection>
-
-            {/* Step 7 — Tasarım dosyaları (Adet'ten SONRA, Sefa 21 May v68):
-                Boyut altına eklenir, max 50 dosya, her biri 30 MB.
-                Mig 061: Tasarım zorunlu değil — boş bırakırsan ödeme sonrası
-                /siparis/[id]/tasarim-yukle sayfasından yükleyebilirsin. */}
-            <FormSection
-              id="step-7"
-              number={uiStepNumber(7)}
-              title="Tasarımlar"
-              hint="Tasarımın hazırsa şimdi yükle; değilse boş bırak, ödeme sonrası yükleyebilirsin."
-              locked={isStepLocked(7)}
-              lockMessage={getLockMessage(7)}
-            >
-              <MultiDesignUploader
-                designCount={designCount}
-                onDesignCountChange={(n) => {
-                  setDesignCount(n);
-                  markTouched(7);
-                }}
-                designs={designs}
-                onDesignsChange={(d) => {
-                  setDesigns(d);
-                  markTouched(7);
-                }}
-                qtyPerDesign={qty}
-                productLabel="etiket"
-              />
-              {designDiscountPct > 0 && (
-                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
-                  ✨ {designCount} tasarım için{" "}
-                  <strong>%{designDiscountPct} iskonto</strong> uygulanıyor —
-                  fiyat kartında görünür
-                </p>
-              )}
-              {designs.length === 0 && (
-                <div className="mt-3 rounded-lg border border-pim-mercan/30 bg-pim-mercan-tint/30 p-3 text-[12px] leading-relaxed text-lacivert">
-                  <strong>Sonra yükleme akışı aktif:</strong> Tasarımsız da
-                  sepete ekleyebilirsin. Ödeme yaptıktan sonra "Tasarımını
-                  yükle" sayfasına yönlendirileceksin (ve hatırlatma mail'i
-                  alacaksın).
-                </div>
-              )}
             </FormSection>
 
             {/* Price card — Intersection observer için ref'li wrapper */}
