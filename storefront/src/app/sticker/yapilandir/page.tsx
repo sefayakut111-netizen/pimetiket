@@ -58,7 +58,10 @@ import {
 // (eskiz modu) zaten tabaka yerleşimini gösteriyor. Admin tarafında kalır.
 // import { TabakaPreview } from "@/components/sticker/TabakaPreview";
 import { cn } from "@/lib/cn";
-import type { DetectedDimensions } from "@/lib/design-dimensions";
+import {
+  type DetectedDimensions,
+  detectedDimsTrimHint,
+} from "@/lib/design-dimensions";
 import { useT } from "@/lib/i18n/context";
 import { useExperiment } from "@/lib/analytics/feature-flags";
 import { deliveryEstimate } from "@/lib/pricing";
@@ -1363,6 +1366,11 @@ function StickerPage() {
                       <span className="text-gri-500 ml-1">
                         (300 DPI varsayımıyla)
                       </span>
+                    )}
+                    {detectedDimsTrimHint(detectedDims) && (
+                      <div className="text-[11px] text-gri-600 mt-0.5">
+                        {detectedDimsTrimHint(detectedDims)}
+                      </div>
                     )}
                     <div className="text-[11px] text-gri-600 mt-0.5">
                       Boyut alanına yazmamı ister misin?
