@@ -29,6 +29,10 @@ import {
 } from "@/lib/design-preview";
 import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import { track } from "@/lib/analytics/posthog-events";
+import {
+  detectFileDimensions,
+  type DetectedDimensions,
+} from "@/lib/design-dimensions";
 
 export interface PendingDesign {
   id: string;
@@ -46,6 +50,7 @@ export interface PendingDesign {
   name: string;
   sizeBytes: number;
   mimeType: string;
+  detectedDimensions?: DetectedDimensions | null;
 }
 
 interface Props {
@@ -61,6 +66,7 @@ interface Props {
    *  "sticker" → "...= 250 sticker"
    *  "etiket"  → "...= 250 etiket" */
   productLabel?: string;
+  onDimensionsDetected?: (dims: DetectedDimensions) => void;
 }
 
 // PDF/PNG/JPG/AI/PSD/SVG — EPS desteklenmez
@@ -104,6 +110,7 @@ export function MultiDesignUploader({
   qtyPerDesign,
   maxCount = 50,
   productLabel = "sticker",
+  onDimensionsDetected,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [lightbox, setLightbox] = useState<PendingDesign | null>(null);
@@ -119,7 +126,7 @@ export function MultiDesignUploader({
   const [designCountTouched, setDesignCountTouched] = useState(false);
   const touchDesignCount = () => setDesignCountTouched(true);
 
-  const handleFiles = (files: FileList | File[]) => {
+  const handleFiles = async (files: FileList | File[]) => {
     setError(null);
     const arr = Array.from(files);
     const maxAllowed = (maxCount ?? 50) - designs.length;
@@ -130,12 +137,11 @@ export function MultiDesignUploader({
       return;
     }
     const accepted: PendingDesign[] = [];
-    // Sefa 18 May v64: Duplicate kontrolü — aynı dosya (ad + boyut)
-    // tekrar yüklenmesin. Set'te mevcut dosyalar referans alınır.
     const existingKeys = new Set(
       designs.map((d) => `${d.name}__${d.sizeBytes}`)
     );
-    const newKeys = new Set<string>(); // aynı batch içinde de duplicate engelle
+    const newKeys = new Set<string>();
+    const hadNoDesigns = designs.length === 0;
     for (const file of arr.slice(0, maxAllowed)) {
       if (!isAcceptedFile(file)) {
         setError(
@@ -167,19 +173,27 @@ export function MultiDesignUploader({
           ? crypto.randomUUID()
           : Math.random().toString(36).slice(2);
       const kind = detectKind(file);
+
+      let detectedDimensions: DetectedDimensions | null | undefined;
+      const dims = await detectFileDimensions(file);
+      if (dims && dims.source !== "unsupported" && dims.widthMm > 0) {
+        if (hadNoDesigns && accepted.length === 0 && onDimensionsDetected) {
+          onDimensionsDetected(dims);
+        }
+        detectedDimensions = dims;
+      }
+
       accepted.push({
         id: uid,
         file,
         previewUrl,
-        // Native image (PNG/JPG/SVG/WebP) için preview = orijinal blob URL
-        // (zaten render edilir). PDF/AI/PSD için async render bekliyor → null,
-        // sonra setDesigns ile güncellenir.
         generatedPreviewUrl: kind === "image" ? previewUrl : null,
         kind,
         previewStatus: kind === "image" ? "ready" : "pending",
         name: file.name,
         sizeBytes: file.size,
         mimeType: file.type,
+        detectedDimensions,
       });
     }
     if (arr.length > maxAllowed) {
@@ -392,7 +406,8 @@ export function MultiDesignUploader({
               : "ring-2 ring-transparent"
           )}>
           {designs.map((d) => (
-            <div key={d.id} className="relative aspect-square group">
+            <div key={d.id} className="relative">
+              <div className="relative aspect-square group">
               <button
                 type="button"
                 onClick={() => setLightbox(d)}
@@ -427,6 +442,17 @@ export function MultiDesignUploader({
               <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 bg-gradient-to-t from-black/60 to-transparent text-white text-[9px] text-center truncate rounded-b-lg">
                 {d.name}
               </div>
+              </div>
+              {d.detectedDimensions &&
+                d.detectedDimensions.source !== "unsupported" && (
+                  <div className="mt-1 text-[11px] text-gri-500 leading-tight">
+                    Tespit edilen ölçü: {d.detectedDimensions.widthMm}×
+                    {d.detectedDimensions.heightMm}mm
+                    {d.detectedDimensions.confidence === "estimated" && (
+                      <span className="text-gri-400 ml-1">(yaklaşık)</span>
+                    )}
+                  </div>
+                )}
             </div>
           ))}
 
