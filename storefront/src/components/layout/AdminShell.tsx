@@ -108,6 +108,8 @@ interface NavItem {
   badgeAccent?: boolean;
   /** RBAC modülü — null ise her zaman göster (profil vb.) */
   module?: AdminModule | null;
+  /** Sadece tam admin (legacy veya admin rolü) */
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -135,7 +137,8 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/calisanlar": "Çalışanlar",
   "/admin/fiyatlar": "Fiyatlar",
   "/admin/kuyruk": "Operasyon kuyruğu",
-  "/admin/raporlar": "Raporlar",
+  "/admin/raporlar": "Finans & Raporlar",
+  "/admin/icerik": "İçerik",
   "/admin/audit-log": "Denetim kaydı",
   "/admin/kvkk-talepleri": "KVKK talepleri",
   "/admin/yedekler": "Yedekler",
@@ -195,7 +198,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
   // Sefa 18 May v68 (CRO denetim): Cmd+K global arama palette
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const { canView, legacyFullAccess, loading: permLoading } =
+  const { canView, legacyFullAccess, loading: permLoading, permissions } =
     useAdminPermissions();
 
   // Global Cmd+K / Ctrl+K listener

@@ -399,7 +399,7 @@ function AdminFinansPageInner() {
                 : "text-gri-700 hover:text-lacivert"
             )}
           >
-            Detay Raporlar
+            Raporlar
           </button>
         </div>
 

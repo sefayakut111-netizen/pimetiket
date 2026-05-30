@@ -278,10 +278,10 @@ export default function DemoPage() {
                 </li>
                 <li>
                   <Link
-                    href="/admin/raporlar"
+                    href="/admin/finans?tab=detail"
                     className="text-pim-mercan font-semibold hover:underline"
                   >
-                    /admin/raporlar
+                    /admin/finans?tab=detail
                   </Link>{" "}
                   — aylık ciro chart + Top 5 boyut
                 </li>
