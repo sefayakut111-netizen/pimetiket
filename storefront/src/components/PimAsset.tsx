@@ -55,6 +55,8 @@ interface PimAssetProps {
   bob?: boolean;
   className?: string;
   ariaLabel?: string;
+  /** Header gibi above-the-fold logo için LCP optimizasyonu */
+  priority?: boolean;
 }
 
 export function PimAsset({
@@ -64,6 +66,7 @@ export function PimAsset({
   bob = true,
   className,
   ariaLabel,
+  priority = false,
 }: PimAssetProps) {
   const { src, aspect } = ASSETS[variant][bg];
   const w = aspect >= 1 ? size : size * aspect;
@@ -90,6 +93,7 @@ export function PimAsset({
         height={Math.round(h)}
         draggable={false}
         unoptimized
+        priority={priority}
         style={{
           width: "100%",
           height: "100%",

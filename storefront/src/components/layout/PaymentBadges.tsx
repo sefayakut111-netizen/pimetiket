@@ -90,7 +90,8 @@ export function PaymentBadges({ copyrightText }: PaymentBadgesProps) {
             alt="PayTR"
             width={56}
             height={14}
-            className="opacity-95"
+            className="opacity-95 h-[14px] w-auto"
+            style={{ width: "auto", height: 14 }}
             unoptimized
           />
         </div>
