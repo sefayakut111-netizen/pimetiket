@@ -8,5 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function EditorLayout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <div className="editor-route-root [--sticky-cta-h:4.5rem]">{children}</div>
+  );
 }

@@ -11,12 +11,17 @@ import {
   EditorCanvas,
   type EditorCanvasHandle,
 } from "@/components/editor/EditorCanvas";
+import {
+  EditorPreviewToolbar,
+  type EditorLayer,
+} from "@/components/editor/EditorPreviewToolbar";
 import { CutColorNote } from "@/components/editor/CutColorNote";
 import { ShapePreview } from "@/components/templates/ShapePreview";
 import { Button, Card, Eyebrow, Input, Pill, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { buildEditorIframeSrc } from "@/lib/editor/build-editor-iframe-src";
 import { writeEditorHandoff } from "@/lib/editor/editor-handoff";
+import { suggestMmFromPixels } from "@/lib/editor/suggest-mm-from-pixels";
 import {
   CATEGORY_LABELS,
   DIE_CUT_BY_ID,
@@ -26,15 +31,18 @@ import {
 } from "@/lib/templates/die-cut-templates";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
 
-const STEPS = [
-  "Görsel yükle",
-  "Bıçak seç",
-  "Ebatlandır",
-  "Arka plan",
-  "Ürüne ekle",
-] as const;
+const STEPS = ["Dosya", "Bıçak", "Boyut", "Ürüne ekle"] as const;
+
+const CANVAS_HEIGHT = 520;
 
 type BladeTab = "template" | "auto";
+
+const DEFAULT_LAYERS: Record<EditorLayer, boolean> = {
+  cut: true,
+  white: false,
+  bleed: false,
+  safe: false,
+};
 
 export default function EditorShell() {
   const router = useRouter();
@@ -42,6 +50,9 @@ export default function EditorShell() {
   const toast = useToast();
   const canvasRef = useRef<EditorCanvasHandle>(null);
   const sablonPrefilledRef = useRef(false);
+  const canvasReadyRef = useRef(false);
+  const pendingShapeRef = useRef<DieCutTemplate | "contour" | null>(null);
+  const exportWaitRef = useRef<((id: string | null) => void) | null>(null);
 
   const [step, setStep] = useState(1);
   const [design, setDesign] = useState<DesignTempState | null>(null);
@@ -49,6 +60,9 @@ export default function EditorShell() {
   const [heightMm, setHeightMm] = useState(50);
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1);
+  const [offsetMm, setOffsetMm] = useState(2);
+  const [viewZoom, setViewZoom] = useState(1);
+  const [layers, setLayers] = useState(DEFAULT_LAYERS);
   const [bladeTab, setBladeTab] = useState<BladeTab>("template");
   const [category, setCategory] = useState<ShapeCategory | "all">("all");
   const [selectedTpl, setSelectedTpl] = useState<DieCutTemplate | null>(null);
@@ -57,10 +71,17 @@ export default function EditorShell() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [canvasMounted, setCanvasMounted] = useState(false);
+  const dimsAppliedRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    dimsAppliedRef.current = null;
+  }, [design?.tempId]);
   useEffect(() => {
     if (!design) {
       setIframeSrc(null);
+      setCanvasMounted(false);
+      canvasReadyRef.current = false;
       return;
     }
     setIframeSrc(
@@ -73,19 +94,20 @@ export default function EditorShell() {
         origin: window.location.origin,
       })
     );
-  }, [design?.tempId, design?.fileName, design?.mimeType, widthMm, heightMm]);
+    setCanvasMounted(true);
+    canvasReadyRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mm ilk URL'de; sonrası postMessage
+  }, [design?.tempId, design?.fileName, design?.mimeType]);
 
   useEffect(() => {
-    if (!design?.tempId || step < 4) return;
+    if (!design?.tempId) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch(
           `/api/editor/background?tempDesignId=${design.tempId}`
         );
-        const data = (await res.json()) as {
-          detect?: BgDetectResult;
-        };
+        const data = (await res.json()) as { detect?: BgDetectResult };
         if (!cancelled && data.detect) setBgDetect(data.detect);
       } catch {
         /* silent */
@@ -94,13 +116,31 @@ export default function EditorShell() {
     return () => {
       cancelled = true;
     };
-  }, [design?.tempId, step]);
+  }, [design?.tempId]);
+
+  const syncSizeToCanvas = useCallback((w: number, h: number) => {
+    canvasRef.current?.postMessage({
+      type: "pim-editor-set-size",
+      widthMm: w,
+      heightMm: h,
+    });
+  }, []);
+
+  const syncOffsetToCanvas = useCallback((mm: number) => {
+    canvasRef.current?.postMessage({ type: "pim-set-offset", offsetMm: mm });
+  }, []);
+
+  const syncZoomToCanvas = useCallback((zoom: number) => {
+    canvasRef.current?.postMessage({ type: "pim-set-view-zoom", zoom });
+  }, []);
 
   const applyTemplate = useCallback((tpl: DieCutTemplate) => {
     setSelectedTpl(tpl);
     setWidthMm(tpl.widthMm);
     setHeightMm(tpl.heightMm);
     setAspect(tpl.widthMm / tpl.heightMm);
+    pendingShapeRef.current = tpl;
+    if (!canvasReadyRef.current) return;
     const mode =
       tpl.shape === "circle"
         ? "circle"
@@ -117,7 +157,23 @@ export default function EditorShell() {
     });
   }, []);
 
-  /** ?sablon=<id> — URL'den şablon ön-seçimi */
+  const flushPendingShape = useCallback(() => {
+    if (!canvasReadyRef.current || !pendingShapeRef.current) return;
+    const pending = pendingShapeRef.current;
+    pendingShapeRef.current = null;
+    if (pending === "contour") {
+      canvasRef.current?.postMessage({
+        type: "pim-editor-set-shape",
+        shape: "contour",
+        mode: "contour",
+        widthMm,
+        heightMm,
+      });
+    } else {
+      applyTemplate(pending);
+    }
+  }, [applyTemplate, widthMm, heightMm]);
+
   useEffect(() => {
     const id = searchParams.get("sablon")?.trim();
     if (!id || sablonPrefilledRef.current) return;
@@ -130,33 +186,80 @@ export default function EditorShell() {
     setWidthMm(tpl.widthMm);
     setHeightMm(tpl.heightMm);
     setAspect(tpl.widthMm / tpl.heightMm);
+    pendingShapeRef.current = tpl;
   }, [searchParams]);
 
   const handleCanvasReady = useCallback(() => {
-    if (step < 2 || !selectedTpl) return;
-    applyTemplate(selectedTpl);
-  }, [step, selectedTpl, applyTemplate]);
+    canvasReadyRef.current = true;
+    syncSizeToCanvas(widthMm, heightMm);
+    syncOffsetToCanvas(offsetMm);
+    syncZoomToCanvas(viewZoom);
+    for (const [layer, on] of Object.entries(layers) as [EditorLayer, boolean][]) {
+      canvasRef.current?.postMessage({ type: "pim-toggle-layer", layer, on });
+    }
+    flushPendingShape();
+    if (step >= 2 && bladeTab === "auto" && !selectedTpl) {
+      pendingShapeRef.current = "contour";
+      flushPendingShape();
+    }
+  }, [
+    bladeTab,
+    flushPendingShape,
+    layers,
+    offsetMm,
+    selectedTpl,
+    step,
+    syncOffsetToCanvas,
+    syncSizeToCanvas,
+    syncZoomToCanvas,
+    viewZoom,
+    widthMm,
+    heightMm,
+  ]);
+
+  const handleDesignLoaded = useCallback(
+    ({ widthPx, heightPx }: { widthPx: number; heightPx: number }) => {
+      if (!design?.tempId || selectedTpl) return;
+      if (dimsAppliedRef.current === design.tempId) return;
+      dimsAppliedRef.current = design.tempId;
+      const suggested = suggestMmFromPixels(widthPx, heightPx);
+      setAspect(suggested.aspect);
+      setWidthMm(suggested.widthMm);
+      setHeightMm(suggested.heightMm);
+      canvasReadyRef.current = true;
+      syncSizeToCanvas(suggested.widthMm, suggested.heightMm);
+    },
+    [design?.tempId, selectedTpl, syncSizeToCanvas]
+  );
 
   const setAutoContour = useCallback(() => {
     setSelectedTpl(null);
-    canvasRef.current?.postMessage({
-      type: "pim-editor-set-shape",
-      shape: "contour",
-      mode: "contour",
-      widthMm,
-      heightMm,
-    });
-  }, [widthMm, heightMm]);
-
-  useEffect(() => {
-    if (step >= 3 && design) {
+    pendingShapeRef.current = "contour";
+    if (canvasReadyRef.current) {
       canvasRef.current?.postMessage({
-        type: "pim-editor-set-size",
+        type: "pim-editor-set-shape",
+        shape: "contour",
+        mode: "contour",
         widthMm,
         heightMm,
       });
     }
-  }, [widthMm, heightMm, step, design]);
+  }, [widthMm, heightMm]);
+
+  useEffect(() => {
+    if (!design || !canvasReadyRef.current) return;
+    syncSizeToCanvas(widthMm, heightMm);
+  }, [widthMm, heightMm, design, syncSizeToCanvas]);
+
+  useEffect(() => {
+    if (!canvasReadyRef.current) return;
+    syncOffsetToCanvas(offsetMm);
+  }, [offsetMm, syncOffsetToCanvas]);
+
+  useEffect(() => {
+    if (!canvasReadyRef.current) return;
+    syncZoomToCanvas(viewZoom);
+  }, [viewZoom, syncZoomToCanvas]);
 
   const handleWidthChange = (w: number) => {
     setWidthMm(w);
@@ -170,6 +273,11 @@ export default function EditorShell() {
     if (lockAspect && aspect > 0) {
       setWidthMm(Math.round(h * aspect));
     }
+  };
+
+  const handleToggleLayer = (layer: EditorLayer, on: boolean) => {
+    setLayers((prev) => ({ ...prev, [layer]: on }));
+    canvasRef.current?.postMessage({ type: "pim-toggle-layer", layer, on });
   };
 
   const persistDraft = useCallback(
@@ -190,7 +298,7 @@ export default function EditorShell() {
             preview_png_base64: payload.preview_png_base64 ?? undefined,
             source: payload.meta.source ?? "raster",
             mode: payload.meta.mode ?? "contour",
-            offset_mm: payload.meta.offset_mm,
+            offset_mm: payload.meta.offset_mm ?? offsetMm,
             width_mm: payload.meta.width_mm ?? widthMm,
             height_mm: payload.meta.height_mm ?? heightMm,
             cutline_width_mm: payload.meta.cutline_width_mm,
@@ -202,18 +310,24 @@ export default function EditorShell() {
         const data = (await res.json()) as { draftId?: string; error?: string };
         if (!res.ok || !data.draftId) {
           toast.error(data.error ?? "Kayıt başarısız");
+          exportWaitRef.current?.(null);
+          exportWaitRef.current = null;
           return null;
         }
         setDraftId(data.draftId);
+        exportWaitRef.current?.(data.draftId);
+        exportWaitRef.current = null;
         return data.draftId;
       } catch {
         toast.error("Kayıt sırasında bağlantı hatası");
+        exportWaitRef.current?.(null);
+        exportWaitRef.current = null;
         return null;
       } finally {
         setSaving(false);
       }
     },
-    [design, widthMm, heightMm, toast]
+    [design, widthMm, heightMm, offsetMm, toast]
   );
 
   const handleSaved = useCallback(
@@ -261,6 +375,25 @@ export default function EditorShell() {
     }
   };
 
+  const waitForExportSave = useCallback((): Promise<string | null> => {
+    return new Promise((resolve) => {
+      exportWaitRef.current = resolve;
+      canvasRef.current?.postMessage({ type: "pim-request-export" });
+      window.setTimeout(() => {
+        if (exportWaitRef.current) {
+          exportWaitRef.current(null);
+          exportWaitRef.current = null;
+        }
+      }, 12_000);
+    });
+  }, []);
+
+  /** Adım 4'e geçince bıçağı arka planda kaydet */
+  useEffect(() => {
+    if (step !== 4 || draftId || !design || !canvasReadyRef.current) return;
+    canvasRef.current?.postMessage({ type: "pim-request-export" });
+  }, [step, draftId, design]);
+
   const addToProduct = async (product: "sticker" | "etiket") => {
     if (!design) {
       toast.error("Önce görsel yükle");
@@ -269,13 +402,11 @@ export default function EditorShell() {
 
     let resolvedDraftId = draftId;
     if (!resolvedDraftId) {
-      canvasRef.current?.postMessage({ type: "pim-request-export" });
       toast.info("Bıçak kaydediliyor…");
-      await new Promise((r) => setTimeout(r, 800));
-      resolvedDraftId = draftId;
+      resolvedDraftId = await waitForExportSave();
     }
     if (!resolvedDraftId) {
-      toast.error("Bıçak kaydı alınamadı — POC'ta Kaydet'e basıp tekrar dene");
+      toast.error("Bıçak kaydı alınamadı — tekrar dene");
       return;
     }
 
@@ -297,67 +428,79 @@ export default function EditorShell() {
     );
   };
 
+  const goNext = () => {
+    if (step === 1 && !design) {
+      toast.error("Önce bir görsel yükle");
+      return;
+    }
+    if (step < STEPS.length) setStep(step + 1);
+  };
+
+  const goBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
+
   const filteredTemplates = DIE_CUT_TEMPLATES.filter(
     (t) => category === "all" || t.category === category
   );
 
   return (
-    <main className="py-8 pb-24">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-8">
-        <Eyebrow>Üye editörü · İndirme yok</Eyebrow>
-        <h1 className="mt-2 text-[28px] md:text-[36px] font-semibold tracking-tight">
+    <main className="py-6 pb-28 editor-workspace" data-editor-workspace>
+      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+        <Eyebrow>Üye editörü · Sıfırdan hazırla</Eyebrow>
+        <h1 className="mt-2 text-[26px] md:text-[32px] font-semibold tracking-tight">
           Bıçak & baskı hazırlama
         </h1>
-        <p className="mt-2 text-[14px] text-gri-700 max-w-[560px]">
-          Görselini yükle, bıçağı seç, ebatlandır — çıktı doğrudan siparişe
-          akar. Bu sayfada dosya indirme yok.
+        <p className="mt-2 text-[14px] text-gri-700 max-w-[600px]">
+          Görselini yükle, bıçağı belirle, boyutlandır — çıktı doğrudan ürün
+          konfigüratörüne aktarılır. İndirme yok; bu ekran sipariş onayı (
+          <span className="text-gri-600">/onay</span>) değildir.
         </p>
 
-        <div className="mt-6 flex gap-1 overflow-x-auto pb-1">
+        <nav
+          className="mt-6 flex gap-1 overflow-x-auto pb-1"
+          aria-label="Editör adımları"
+        >
           {STEPS.map((label, i) => {
             const n = i + 1;
             const active = step === n;
             const done = step > n;
+            const reachable = n <= step;
             return (
               <button
                 key={label}
                 type="button"
-                onClick={() => n <= step && setStep(n)}
+                disabled={!reachable}
+                aria-current={active ? "step" : undefined}
+                aria-disabled={!reachable}
+                onClick={() => reachable && setStep(n)}
                 className={cn(
                   "shrink-0 h-9 px-3 rounded-full text-[12.5px] font-semibold transition-colors",
-                  active
-                    ? "bg-pim-mercan text-white"
-                    : done
-                      ? "bg-yesil-soft text-yesil"
-                      : "bg-gri-100 text-gri-600"
+                  active && "bg-pim-mercan text-white",
+                  !active && done && "bg-yesil-soft text-yesil",
+                  !active && !done && reachable && "bg-gri-100 text-gri-600",
+                  !reachable &&
+                    "bg-gri-50 text-gri-400 cursor-not-allowed opacity-70"
                 )}
               >
                 {n}. {label}
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
-          <Card padding="p-5" className="h-fit">
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(300px,360px)_1fr] gap-5 items-start">
+          <Card padding="p-5" className="h-fit lg:sticky lg:top-4">
             {step === 1 && (
               <>
-                <h2 className="text-[16px] font-semibold">Görsel yükle</h2>
+                <h2 className="text-[16px] font-semibold">Dosya yükle</h2>
                 <p className="mt-1 text-[13px] text-gri-700">
-                  PNG, JPG, PDF, AI veya PSD — konfigüratördekiyle aynı akış.
+                  PNG, JPG, PDF, AI veya PSD. Yükleme sonrası önizleme sağda
+                  açılır.
                 </p>
                 <div className="mt-4">
                   <DesignDropZone value={design} onChange={setDesign} />
                 </div>
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="mt-4 w-full"
-                  disabled={!design}
-                  onClick={() => setStep(2)}
-                >
-                  Devam
-                </Button>
               </>
             )}
 
@@ -423,7 +566,7 @@ export default function EditorShell() {
                         )
                       )}
                     </div>
-                    <div className="mt-3 max-h-[320px] overflow-y-auto grid grid-cols-2 gap-2">
+                    <div className="mt-3 max-h-[280px] overflow-y-auto grid grid-cols-2 gap-2">
                       {filteredTemplates.map((tpl) => (
                         <button
                           key={tpl.id}
@@ -455,29 +598,49 @@ export default function EditorShell() {
                 ) : (
                   <p className="mt-3 text-[13px] text-gri-700">
                     Kontur modu — görselin şeklinden otomatik bıçak üretilir.
-                    Sağdaki önizlemede offset ayarlayabilirsin.
                   </p>
                 )}
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="mt-4 w-full"
-                  onClick={() => setStep(3)}
-                >
-                  Devam
-                </Button>
+
+                <div className="mt-4">
+                  <label
+                    htmlFor="editor-offset"
+                    className="flex items-center justify-between text-[12px] font-semibold"
+                  >
+                    <span>Kesim mesafesi</span>
+                    <span className="tabular-nums text-gri-600">
+                      {offsetMm.toFixed(1)} mm
+                    </span>
+                  </label>
+                  <input
+                    id="editor-offset"
+                    type="range"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={offsetMm}
+                    onChange={(e) => setOffsetMm(parseFloat(e.target.value))}
+                    className="mt-2 w-full accent-pim-mercan"
+                  />
+                  <p className="mt-1 text-[11px] text-gri-600">
+                    Bıçak ile görsel arasındaki boşluk — önizlemede anında
+                    güncellenir.
+                  </p>
+                </div>
               </>
             )}
 
             {step === 3 && (
               <>
-                <h2 className="text-[16px] font-semibold">Ebatlandır</h2>
+                <h2 className="text-[16px] font-semibold">Boyutlandır</h2>
                 <p className="mt-1 text-[13px] text-gri-700">
-                  Gerçek baskı boyutu (mm). Canlı önizleme sağda güncellenir.
+                  Gerçek baskı boyutu (mm). Oran kilidi görselin en-boy oranını
+                  korur.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[12px] font-semibold">Genişlik</label>
+                    <label className="text-[12px] font-semibold">
+                      Genişlik
+                    </label>
                     <Input
                       type="number"
                       min={5}
@@ -490,7 +653,9 @@ export default function EditorShell() {
                     />
                   </div>
                   <div>
-                    <label className="text-[12px] font-semibold">Yükseklik</label>
+                    <label className="text-[12px] font-semibold">
+                      Yükseklik
+                    </label>
                     <Input
                       type="number"
                       min={5}
@@ -515,55 +680,37 @@ export default function EditorShell() {
                 <Pill variant="gri" className="mt-3">
                   {widthMm}×{heightMm} mm
                 </Pill>
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="mt-4 w-full"
-                  onClick={() => setStep(4)}
-                >
-                  Devam
-                </Button>
-              </>
-            )}
 
-            {step === 4 && (
-              <>
-                <h2 className="text-[16px] font-semibold">Arka plan</h2>
                 {bgDetect?.needsRemoval ? (
-                  <>
-                    <p className="mt-1 text-[13px] text-gri-700">
+                  <div className="mt-4 rounded-lg border border-sari/40 bg-sari-soft/50 p-3">
+                    <p className="text-[12.5px] text-lacivert">
                       Beyaz/düz zemin tespit edildi — kaldırmak baskı kalitesini
                       artırır.
                     </p>
                     <Button
                       type="button"
-                      variant="primary"
-                      className="mt-4 w-full"
+                      variant="secondary"
+                      size="sm"
+                      className="mt-2 w-full"
                       disabled={bgLoading}
                       onClick={() => void removeBackground()}
                     >
                       {bgLoading ? "Kaldırılıyor…" : "Arka planı kaldır"}
                     </Button>
-                  </>
+                  </div>
+                ) : bgDetect ? (
+                  <p className="mt-4 text-[12px] text-gri-600">
+                    Zemin uygun — ek arka plan işlemi gerekmiyor.
+                  </p>
                 ) : (
-                  <p className="mt-1 text-[13px] text-gri-700">
-                    {bgDetect
-                      ? "Şeffaf veya uygun zemin — ek işlem gerekmiyor."
-                      : "Analiz ediliyor…"}
+                  <p className="mt-4 text-[12px] text-gri-500">
+                    Zemin analizi…
                   </p>
                 )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-4 w-full"
-                  onClick={() => setStep(5)}
-                >
-                  Devam
-                </Button>
               </>
             )}
 
-            {step === 5 && (
+            {step === 4 && (
               <>
                 <h2 className="text-[16px] font-semibold">Ürüne ekle</h2>
                 <p className="mt-1 text-[13px] text-gri-700">
@@ -609,22 +756,66 @@ export default function EditorShell() {
                 </Button>
               </>
             )}
+
+            {step < 4 && (
+              <div className="mt-5 flex gap-2 border-t border-gri-100 pt-4">
+                {step > 1 && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={goBack}
+                  >
+                    Geri
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="flex-1"
+                  disabled={step === 1 && !design}
+                  onClick={goNext}
+                >
+                  Devam
+                </Button>
+              </div>
+            )}
           </Card>
 
-          <div className="min-h-[480px]">
-            {design && step >= 2 ? (
-              <EditorCanvas
-                ref={canvasRef}
-                iframeSrc={iframeSrc}
-                onSaved={handleSaved}
-                onReady={handleCanvasReady}
-                onError={(m) => toast.error(m)}
-              />
+          <div className="min-h-[480px] flex flex-col rounded-xl ring-1 ring-gri-200 bg-white overflow-hidden shadow-1">
+            {design && canvasMounted ? (
+              <>
+                <EditorPreviewToolbar
+                  zoom={viewZoom}
+                  layers={layers}
+                  widthMm={widthMm}
+                  heightMm={heightMm}
+                  onZoomIn={() =>
+                    setViewZoom((z) => Math.min(3, Math.round((z + 0.1) * 10) / 10))
+                  }
+                  onZoomOut={() =>
+                    setViewZoom((z) =>
+                      Math.max(0.25, Math.round((z - 0.1) * 10) / 10)
+                    )
+                  }
+                  onZoomReset={() => setViewZoom(1)}
+                  onToggleLayer={handleToggleLayer}
+                />
+                <EditorCanvas
+                  ref={canvasRef}
+                  iframeSrc={iframeSrc}
+                  fixedHeight={CANVAS_HEIGHT}
+                  onSaved={handleSaved}
+                  onReady={handleCanvasReady}
+                  onDesignLoaded={handleDesignLoaded}
+                  onError={(m) => toast.error(m)}
+                />
+              </>
             ) : (
-              <div className="h-full min-h-[480px] rounded-xl bg-gri-50 grid place-items-center text-gri-600 text-[14px] p-8 text-center">
-                {step === 1
-                  ? "Görsel yükleyince bıçak önizlemesi burada açılır."
-                  : "Önce görsel yükle."}
+              <div className="flex flex-1 min-h-[480px] items-center justify-center bg-gri-50 text-gri-600 text-[14px] p-8 text-center">
+                {step === 1 && !design
+                  ? "Dosya yükleyince bıçak önizlemesi burada açılır."
+                  : "Önizleme hazırlanıyor…"}
               </div>
             )}
           </div>

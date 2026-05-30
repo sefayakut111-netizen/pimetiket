@@ -1259,7 +1259,9 @@
   html.pim-headless .upload-zone,
   html.pim-headless .action-bar,
   html.pim-headless #helpModal,
-  html.pim-headless #approvalOverlay {
+  html.pim-headless #approvalOverlay,
+  html.pim-headless .preview-header,
+  html.pim-headless #infoPanel {
     display: none !important;
   }
   html.pim-headless main {
@@ -1430,6 +1432,10 @@
   }
   html.pim-standalone-restricted #materialPanel .material-btn:not(.active) {
     display: none;
+  }
+  html.pim-standalone-restricted.pim-hide-upload #fileUploadPanel,
+  html.pim-standalone-restricted.pim-hide-upload #btnRemoveBg {
+    display: none !important;
   }
   .meta-order-size .val {
     font-weight: 700;
@@ -1893,6 +1899,9 @@ function pimApplyEmbedUiRestrictions() {
 function pimApplyStandaloneUiRestrictions() {
   if (!PIM_PARAMS.standalone) return;
   document.documentElement.classList.add('pim-standalone-restricted');
+  if (PIM_PARAMS.hideUpload) {
+    document.documentElement.classList.add('pim-hide-upload');
+  }
   if (PIM_PARAMS.orderWidthMm > 0 && PIM_PARAMS.orderHeightMm > 0) {
     document.documentElement.classList.add('pim-has-order-dims');
   }
@@ -2016,9 +2025,12 @@ window.addEventListener('message', (e) => {
         if (btn) btn.click();
       }
     } else if (msg.type === 'pim-request-export') {
-      // Export SVG yapıp parent'a yolla (save handler tetikle)
-      const btn = document.getElementById('btnApprove');
-      if (btn) btn.click();
+      if (PIM_PARAMS.standalone) {
+        pimSaveToParentStandalone();
+      } else {
+        const btn = document.getElementById('btnApprove');
+        if (btn) btn.click();
+      }
     } else if (msg.type === 'pim-load-design') {
       // Parent'tan tasarım URL — query string kesildiyse yedek yükleme
       if (msg.url && typeof msg.url === 'string') {
@@ -2034,10 +2046,35 @@ window.addEventListener('message', (e) => {
       if (typeof msg.heightMm === 'number' && msg.heightMm > 0) {
         PIM_PARAMS.orderHeightMm = msg.heightMm;
       }
+      pimEditorOnOrderSizeChange();
       if (currentMat) {
+        if (
+          PIM_PARAMS.standalone &&
+          currentMode === 'contour' &&
+          getPlacementFrame()
+        ) {
+          applyPlacementPreset('contain');
+        }
         generateCutline();
         render();
         pimScheduleHeightReport();
+      }
+    } else if (msg.type === 'pim-set-offset') {
+      const slider = document.getElementById('offsetSlider');
+      if (slider && typeof msg.offsetMm === 'number') {
+        slider.value = String(Math.max(0, Math.min(5, msg.offsetMm)));
+        document.getElementById('offsetVal').textContent = parseFloat(slider.value).toFixed(1);
+        updateOffsetNote();
+        if (currentMat) {
+          generateCutline();
+          generateWhitePlan();
+          render();
+        }
+      }
+    } else if (msg.type === 'pim-set-view-zoom') {
+      if (typeof msg.zoom === 'number' && msg.zoom > 0) {
+        viewZoom = Math.max(0.25, Math.min(3, msg.zoom));
+        applyViewZoom();
       }
     } else if (msg.type === 'pim-editor-set-shape') {
       if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
@@ -2068,12 +2105,34 @@ window.addEventListener('message', (e) => {
 let pimAutoLoadPending = false;
 
 function pimNotifyLoaded() {
+  const w = imageMetadata?.originalW ?? (currentMat ? currentMat.cols : 0);
+  const h = imageMetadata?.originalH ?? (currentMat ? currentMat.rows : 0);
   pimPostToParent({
     type: 'pim-poc-loaded',
     source: currentFileSource,
-    width: currentMat ? currentMat.cols : 0,
-    height: currentMat ? currentMat.rows : 0,
+    width: w,
+    height: h,
   });
+  pimScheduleHeightReport();
+}
+
+/** Pre-order editör — mm değişince zoom ile görsel geri bildirim */
+let pimEditorLastDimW = null;
+function pimEditorOnOrderSizeChange() {
+  const dims = getOrderDimsMm();
+  if (!PIM_PARAMS.standalone || !dims) return;
+  if (pimEditorLastDimW != null && pimEditorLastDimW > 0 && dims.w > 0) {
+    const factor = dims.w / pimEditorLastDimW;
+    viewZoom = Math.max(0.25, Math.min(3, Math.round(viewZoom * factor * 10) / 10));
+    applyViewZoom();
+  }
+  pimEditorLastDimW = dims.w;
+  if (imageMetadata) {
+    imageMetadata.orderWidthMm = dims.w;
+    imageMetadata.orderHeightMm = dims.h;
+  }
+  updateCutlineSizeRow();
+  updateMetadataDisplay();
   pimScheduleHeightReport();
 }
 function pimShowError(message) {
@@ -2579,11 +2638,12 @@ function buildFixedCutlineFrame() {
   return { cx, cy, w: fw, h: fh, mode: currentMode, refW: ref.w, refH: ref.h };
 }
 
-/** Yerleşim preset'leri için referans çerçeve — sabit bıçak veya sipariş boyutu (kontur embed). */
+/** Yerleşim preset'leri için referans çerçeve — sipariş / editör boyutu */
 function getPlacementFrame() {
-  if (cutlineFrame) return cutlineFrame;
+  if (cutlineFrame && PIM_PARAMS.embed) return cutlineFrame;
   const dims = getOrderDimsMm();
-  if (!PIM_PARAMS.embed || !dims || !imageMetadata) return null;
+  if (!dims || !imageMetadata) return null;
+  if (!PIM_PARAMS.embed && !PIM_PARAMS.standalone) return null;
   const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
   const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
   const fw = dims.w * pxPerMm;
@@ -2591,6 +2651,30 @@ function getPlacementFrame() {
   const cx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
   const cy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
   return { cx, cy, w: fw, h: fh };
+}
+
+/** Standalone editör — hedef baskı mm çerçevesi (kontur modu geri bildirimi) */
+function drawOrderDimReference(ctx) {
+  const dims = getOrderDimsMm();
+  if (!PIM_PARAMS.standalone || !dims || !imageMetadata) return;
+  if (useFixedCutlineFrame()) return;
+  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
+  const fw = dims.w * pxPerMm;
+  const fh = dims.h * pxPerMm;
+  const cx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
+  const cy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 77, 79, 0.4)';
+  ctx.fillStyle = 'rgba(255, 77, 79, 0.05)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 6]);
+  const x = cx - fw / 2;
+  const y = cy - fh / 2;
+  ctx.fillRect(x, y, fw, fh);
+  ctx.strokeRect(x, y, fw, fh);
+  ctx.setLineDash([]);
+  ctx.restore();
 }
 
 function trimTransparentBounds(img) {
@@ -2859,6 +2943,12 @@ function processImage(img, file) {
   generateWhitePlan();
   if (getPlacementFrame() && PIM_PARAMS.embed) {
     applyPlacementPreset('center');
+  } else if (
+    PIM_PARAMS.standalone &&
+    getOrderDimsMm() &&
+    currentMode === 'contour'
+  ) {
+    applyPlacementPreset('contain');
   } else {
     render();
   }
@@ -3467,6 +3557,8 @@ function render() {
   // ============================================================
   // 3. BLEED / CUT / SAFE — en üst katman (overlay)
   // ============================================================
+  drawOrderDimReference(ctx);
+
   if (layers.bleed && bleedPaths.length > 0) {
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = 1.5;

@@ -14,13 +14,19 @@ interface EditorCanvasProps {
     meta: Record<string, unknown>;
   }) => void;
   onReady?: () => void;
+  onDesignLoaded?: (dims: { widthPx: number; heightPx: number }) => void;
   onError?: (msg: string) => void;
+  /** Headless POC — sabit yükseklik */
+  fixedHeight?: number;
 }
 
 export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
-  function EditorCanvas({ iframeSrc, onSaved, onReady, onError }, ref) {
+  function EditorCanvas(
+    { iframeSrc, onSaved, onReady, onDesignLoaded, onError, fixedHeight },
+    ref
+  ) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const [height, setHeight] = useState(720);
+    const [height, setHeight] = useState(fixedHeight ?? 720);
 
     useImperativeHandle(ref, () => ({
       postMessage(msg: object) {
@@ -37,13 +43,25 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
         const msg = e.data;
         if (!msg || typeof msg !== "object") return;
 
-        if (msg.type === "pim-poc-ready" || msg.type === "pim-poc-loaded") {
+        if (msg.type === "pim-poc-ready") {
           onReady?.();
+        }
+        if (msg.type === "pim-poc-loaded") {
+          onReady?.();
+          const w = Number(msg.width);
+          const h = Number(msg.height);
+          if (w > 0 && h > 0) {
+            onDesignLoaded?.({ widthPx: w, heightPx: h });
+          }
         }
         if (msg.type === "pim-poc-error") {
           onError?.(String(msg.error ?? "POC hatası"));
         }
-        if (msg.type === "pim-poc-resize" && typeof msg.height === "number") {
+        if (
+          !fixedHeight &&
+          msg.type === "pim-poc-resize" &&
+          typeof msg.height === "number"
+        ) {
           setHeight(Math.min(Math.max(msg.height, 480), 1200));
         }
         if (msg.type === "pim-editor-saved") {
@@ -56,7 +74,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
       };
       window.addEventListener("message", onMessage);
       return () => window.removeEventListener("message", onMessage);
-    }, [onSaved, onReady, onError]);
+    }, [onSaved, onReady, onDesignLoaded, onError, fixedHeight]);
 
     if (!iframeSrc) {
       return (
@@ -72,7 +90,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
         src={iframeSrc}
         title="Bıçak editörü"
         className="w-full border-0 rounded-xl bg-gri-50"
-        style={{ height }}
+        style={{ height: fixedHeight ?? height }}
         sandbox="allow-scripts allow-same-origin"
       />
     );

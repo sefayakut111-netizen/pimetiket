@@ -11,11 +11,13 @@ export function buildEditorIframeSrc(args: {
   const designUrl = `${args.origin}/api/editor/design-file/${args.tempDesignId}`;
   const p = new URLSearchParams({
     standalone: "1",
+    headless: "1",
     designUrl,
     designName: args.fileName,
     designMime: args.mimeType,
     mode: "contour",
-    hideUpload: "0",
+    hideUpload: "1",
+    hideDpi: "1",
   });
   if (args.widthMm != null && args.widthMm > 0) {
     p.set("orderWidthMm", String(args.widthMm));

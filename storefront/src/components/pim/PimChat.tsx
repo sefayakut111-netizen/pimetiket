@@ -268,6 +268,8 @@ export function PimChat() {
 
   // /admin altında render etme — AdminShell'in kendi flow'u var
   if (pathname?.startsWith("/admin")) return null;
+  // Bıçak hazırlık editörü — odaklı akış; sohbet CTA ile çakışmasın
+  if (pathname?.startsWith("/editor")) return null;
 
   return (
     <>
