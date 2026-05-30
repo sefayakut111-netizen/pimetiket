@@ -444,9 +444,9 @@ const FORM_FACTORS: {
  *
  *  Sefa kuralları (15 May v3):
  *
- *  Rulo (8 adım):
- *   1 Malzeme → 2 Kaplama → 3 Özellik → 4 Sarım yönü →
- *   5 Sarım detayı → 6 Boyut → 7 Tasarım → 8 Adet
+ *  Rulo (9 adım, form factor picker kapalıysa 8):
+ *   Malzeme → Kaplama → Özelleştirme → Tasarım → Boyut → Adet →
+ *   Sarım yönü → Sarım detayı
  *
  *  Tabaka (5 adım):
  *   1 Malzeme → 2 Kaplama → 3 Boyut → 4 Tasarım → 5 Adet
@@ -467,16 +467,16 @@ const FORM_FACTORS: {
 //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → Step 3 çıkar (gizli, ASLA
 //     touched olmaz, sequential lock sonraki step'leri ASLA açmaz idi).
 //   Stepper ve useSequentialSteps gizli step'leri görmemeli.
-// Sefa 21 May v68: Adet tasarımdan sonra (fiyat/iskonto). DOM sırası:
-//   Tasarım (7) → Boyut (6) → Adet (8) — otomatik ölçü algılama için.
-// stepIds lock zinciri DOM ile aynı: … → 7 → 6 → 8. Tasarım opsiyonel.
+// Sefa 21 May v68: Adet tasarımdan sonra (fiyat/iskonto). Sarım adet altında.
+//   Tasarım (7) → Boyut (6) → Adet (8) → Sarım Yönü (4) → Sarım Detayı (5)
+// stepIds lock zinciri DOM ile aynı: … → 7 → 6 → 8 → 4 → 5. Tasarım opsiyonel.
 const OPTIONAL_DESIGN_STEP = 7;
 const STEP_IDS_FULL: readonly number[] = (() => {
   const ids: number[] = [];
   if (SHOW_ETIKET_FORM_FACTOR_PICKER) ids.push(0);
   ids.push(1, 2);
   if (SHOW_ETIKET_CUSTOMIZATION_STEP) ids.push(3);
-  ids.push(4, 5, 7, 6, 8);
+  ids.push(7, 6, 8, 4, 5);
   return ids;
 })();
 const STEP_IDS_TABAKA: readonly number[] = SHOW_ETIKET_FORM_FACTOR_PICKER
@@ -970,18 +970,18 @@ function EtiketPage() {
   //   - SHOW_ETIKET_FORM_FACTOR_PICKER=false → stepFormFactor çıkar
   //   - SHOW_ETIKET_CUSTOMIZATION_STEP=false → stepFeature çıkar
   //   STEP_IDS_FULL ile birebir eşleşmeli, yoksa sequential lock kırılır.
-  // stepIds DOM sırası: … Sarım detay → Tasarım → Boyut → Adet (7,6,8).
+  // stepIds DOM sırası: … Tasarım → Boyut → Adet → Sarım Yönü → Sarım detayı.
   const STEP_LABELS_FULL_I18N: readonly string[] = (() => {
     const labels: string[] = [];
     if (SHOW_ETIKET_FORM_FACTOR_PICKER) labels.push(t.etiket.stepFormFactor);
     labels.push(t.etiket.stepMaterial, t.etiket.stepCoating);
     if (SHOW_ETIKET_CUSTOMIZATION_STEP) labels.push(t.etiket.stepFeature);
     labels.push(
-      t.etiket.stepWinding,
-      t.etiket.stepWindingDetail,
       t.etiket.stepDesign,
       t.etiket.stepSize,
-      t.etiket.stepQty
+      t.etiket.stepQty,
+      t.etiket.stepWinding,
+      t.etiket.stepWindingDetail
     );
     return labels;
   })();
@@ -1963,247 +1963,6 @@ function EtiketPage() {
             </FormSection>
             )}
 
-            {/* Step 4 — Sarım yönü (sadece RULO modunda görünür).
-                Tabaka etiket: düz tabaka, sarım yok → adım gizli. */}
-            {formFactor === "rulo" && (
-            <FormSection
-              id="step-4"
-              number={uiStepNumber(4)}
-              title={t.etiket.windingTitle}
-              hint={t.etiket.windingHint}
-              locked={isStepLocked(4)}
-              lockMessage={getLockMessage(4)}
-            >
-              {/* Sefa 18 May v46: Kalın guidance — eski alt info kutusunun
-                  içeriği üstte vurgulu olarak. */}
-              <div className="mb-3.5 text-[13.5px] text-lacivert leading-relaxed">
-                {locale === "en" ? (
-                  <>
-                    Not sure? Pick{" "}
-                    <strong className="font-bold text-pim-mercan">
-                      Winding 1 (straight)
-                    </strong>{" "}
-                    — the most common direction.
-                  </>
-                ) : (
-                  <>
-                    Emin değilsen{" "}
-                    <strong className="font-bold text-pim-mercan">
-                      Sarım 1 (düz)
-                    </strong>{" "}
-                    seç — en yaygın kullanılan yön.
-                  </>
-                )}
-              </div>
-
-              {/* DIŞA SARIM */}
-              <fieldset className="border-0 p-0 m-0">
-                <legend className="flex items-center gap-2.5 mb-2.5 w-full">
-                  <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
-                    {t.etiket.windingOuter}
-                  </span>
-                  <span aria-hidden className="flex-1 h-px bg-gri-200" />
-                </legend>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-                  {[1, 2, 3, 4].map((n) => (
-                    <div key={n} className="relative">
-                      {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge
-                          ile değiştirildi — tüm sayfalarda tek tutarlı rozet. */}
-                      {n === 1 && (
-                        <PopulerBadge tooltip="En yaygın kullanılan yön" />
-                      )}
-                      <SelectableCard
-                        selected={touchedSteps.has(4) && winding === n}
-                        onClick={() => {
-                          setWinding(n);
-                          markTouched(4);
-                        }}
-                        padding={10}
-                        style={{ textAlign: "center", paddingTop: 12 }}
-                        aria-label={`Dışa sarım yön ${n}${n === 1 ? " (önerilen)" : ""}`}
-                      >
-                        <WindingIcon n={n} />
-                        <div
-                          className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
-                          style={{
-                            color:
-                              touchedSteps.has(4) && winding === n
-                                ? "var(--color-pim-mercan)"
-                                : "var(--color-gri-700)",
-                          }}
-                        >
-                          SARIM {n}
-                        </div>
-                      </SelectableCard>
-                    </div>
-                  ))}
-                </div>
-              </fieldset>
-
-              {/* İÇE SARIM */}
-              <fieldset className="border-0 p-0 m-0">
-                <legend className="flex items-center gap-2.5 mb-2.5 w-full">
-                  <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
-                    {t.etiket.windingInner}
-                  </span>
-                  <span aria-hidden className="flex-1 h-px bg-gri-200" />
-                </legend>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {[5, 6, 7, 8].map((n) => (
-                    <SelectableCard
-                      key={n}
-                      selected={touchedSteps.has(4) && winding === n}
-                      onClick={() => {
-                        setWinding(n);
-                        markTouched(4);
-                      }}
-                      padding={10}
-                      style={{ textAlign: "center", paddingTop: 12 }}
-                      aria-label={`İçe sarım yön ${n}`}
-                    >
-                      <WindingIcon n={n} />
-                      <div
-                        className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
-                        style={{
-                          color:
-                            touchedSteps.has(4) && winding === n
-                              ? "var(--color-pim-mercan)"
-                              : "var(--color-gri-700)",
-                        }}
-                      >
-                        SARIM {n}
-                      </div>
-                    </SelectableCard>
-                  ))}
-                </div>
-              </fieldset>
-
-              {/* Sefa 18 May v46: Alt info kutusu kaldırıldı (vurgulu
-                  guidance üstte). */}
-            </FormSection>
-            )}
-
-            {/* Step 4.5 — Göbek çapı + Sarım adeti (Sefa 15 May v3).
-                Sadece RULO modunda. Sarım yönü kutusunun altında ayrı kutu.
-                Operasyonel bilgi — fason'a iletilir, pricing'e doğrudan
-                etki etmez (şimdilik). */}
-            {formFactor === "rulo" && (
-            <FormSection
-              id="step-5"
-              number={uiStepNumber(5)}
-              title="Sarım detayı"
-              hint="Göbek çapı ve rulo başına etiket adedi — makine uyumu için."
-              locked={isStepLocked(5)}
-              lockMessage={getLockMessage(5)}
-            >
-              {/* Göbek çapı — Sefa 20 May v68 (Aşama B):
-                  Picker gizli, 76mm sabit badge gösterilir. 25/40mm gizlendi
-                  (üretim partneri endüstri standardı 76mm istiyor).
-                  SHOW_ETIKET_CORE_SIZE_PICKER true yapılırsa eski 3-buton
-                  grid'i geri gelir. */}
-              <div>
-                <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
-                  Göbek çapı
-                </div>
-                {SHOW_ETIKET_CORE_SIZE_PICKER ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {CORE_SIZES.map((c) => {
-                      const active = touchedSteps.has(5) && coreSize === c.id;
-                      return (
-                        <div key={c.id} className="relative">
-                          {c.id === 76 && (
-                            <PopulerBadge tooltip="Endüstri standardı (3 inch)" />
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCoreSize(c.id);
-                              markTouched(5);
-                            }}
-                            aria-pressed={active}
-                            className={cn(
-                              "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
-                              active
-                                ? "bg-pim-mercan-tint ring-pim-mercan"
-                                : "bg-white ring-gri-200 hover:ring-pim-mercan"
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                "font-semibold text-[14px]",
-                                active ? "text-pim-mercan" : "text-lacivert"
-                              )}
-                            >
-                              {c.label}
-                            </div>
-                            <div className="text-[11px] text-gri-700 mt-0.5">
-                              {c.desc}
-                            </div>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* Sefa 20 May v68: kompakt pill — eski 2xl badge çok
-                     büyüktü, sayfada görsel ağırlık dengelensin. */
-                  <div className="inline-flex items-center gap-2 rounded-full bg-pim-mercan-tint ring-1 ring-pim-mercan/40 px-3 py-1.5 text-[13px]">
-                    <span className="font-bold text-pim-mercan tabular-nums">
-                      {ETIKET_DEFAULT_CORE_SIZE}mm
-                    </span>
-                    <span className="text-gri-500">·</span>
-                    <span className="text-gri-700">
-                      3 inç, endüstri standardı
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Sarım adeti */}
-              <div className="mt-4">
-                <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
-                  Bir rulodaki etiket adedi
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {ROLL_LABEL_COUNTS.map((q) => {
-                    const active = touchedSteps.has(5) && rollLabelCount === q;
-                    return (
-                      <div key={q} className="relative">
-                        {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge */}
-                        {q === 500 && (
-                          <PopulerBadge tooltip="En yaygın seçim" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRollLabelCount(q);
-                            markTouched(5);
-                          }}
-                          aria-pressed={active}
-                          className={cn(
-                            "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
-                            active
-                              ? "bg-pim-mercan-tint ring-pim-mercan"
-                              : "bg-white ring-gri-200 hover:ring-pim-mercan"
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "font-semibold text-[14px] tabular-nums",
-                              active ? "text-pim-mercan" : "text-lacivert"
-                            )}
-                          >
-                            {q}
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </FormSection>
-            )}
-
             {/* Step 7 — Tasarım (Boyut'tan önce — otomatik ölçü algılama) */}
             <FormSection
               id="step-7"
@@ -2583,9 +2342,7 @@ function EtiketPage() {
               </div>
             </FormSection>
 
-            {/* Sefa 21 May v68: DOM sırası Tasarım → Boyut → Adet; stepIds ile
-                aynı (7 → 6 → 8). Tasarım opsiyonel — boyuta geçmek için
-                dosya yüklemek zorunlu değil. */}
+            {/* DOM sırası: Tasarım → Boyut → Adet → Sarım Yönü → Sarım Detayı */}
             <FormSection
               id="step-8"
               number={uiStepNumber(8)}
@@ -2713,6 +2470,247 @@ function EtiketPage() {
                 })}
               </div>
             </FormSection>
+
+            {/* Step 4 — Sarım yönü (sadece RULO modunda görünür).
+                Tabaka etiket: düz tabaka, sarım yok → adım gizli. */}
+            {formFactor === "rulo" && (
+            <FormSection
+              id="step-4"
+              number={uiStepNumber(4)}
+              title={t.etiket.windingTitle}
+              hint={t.etiket.windingHint}
+              locked={isStepLocked(4)}
+              lockMessage={getLockMessage(4)}
+            >
+              {/* Sefa 18 May v46: Kalın guidance — eski alt info kutusunun
+                  içeriği üstte vurgulu olarak. */}
+              <div className="mb-3.5 text-[13.5px] text-lacivert leading-relaxed">
+                {locale === "en" ? (
+                  <>
+                    Not sure? Pick{" "}
+                    <strong className="font-bold text-pim-mercan">
+                      Winding 1 (straight)
+                    </strong>{" "}
+                    — the most common direction.
+                  </>
+                ) : (
+                  <>
+                    Emin değilsen{" "}
+                    <strong className="font-bold text-pim-mercan">
+                      Sarım 1 (düz)
+                    </strong>{" "}
+                    seç — en yaygın kullanılan yön.
+                  </>
+                )}
+              </div>
+
+              {/* DIŞA SARIM */}
+              <fieldset className="border-0 p-0 m-0">
+                <legend className="flex items-center gap-2.5 mb-2.5 w-full">
+                  <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
+                    {t.etiket.windingOuter}
+                  </span>
+                  <span aria-hidden className="flex-1 h-px bg-gri-200" />
+                </legend>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+                  {[1, 2, 3, 4].map((n) => (
+                    <div key={n} className="relative">
+                      {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge
+                          ile değiştirildi — tüm sayfalarda tek tutarlı rozet. */}
+                      {n === 1 && (
+                        <PopulerBadge tooltip="En yaygın kullanılan yön" />
+                      )}
+                      <SelectableCard
+                        selected={touchedSteps.has(4) && winding === n}
+                        onClick={() => {
+                          setWinding(n);
+                          markTouched(4);
+                        }}
+                        padding={10}
+                        style={{ textAlign: "center", paddingTop: 12 }}
+                        aria-label={`Dışa sarım yön ${n}${n === 1 ? " (önerilen)" : ""}`}
+                      >
+                        <WindingIcon n={n} />
+                        <div
+                          className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
+                          style={{
+                            color:
+                              touchedSteps.has(4) && winding === n
+                                ? "var(--color-pim-mercan)"
+                                : "var(--color-gri-700)",
+                          }}
+                        >
+                          SARIM {n}
+                        </div>
+                      </SelectableCard>
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* İÇE SARIM */}
+              <fieldset className="border-0 p-0 m-0">
+                <legend className="flex items-center gap-2.5 mb-2.5 w-full">
+                  <span className="text-[11.5px] font-bold tracking-[0.1em] text-lacivert">
+                    {t.etiket.windingInner}
+                  </span>
+                  <span aria-hidden className="flex-1 h-px bg-gri-200" />
+                </legend>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {[5, 6, 7, 8].map((n) => (
+                    <SelectableCard
+                      key={n}
+                      selected={touchedSteps.has(4) && winding === n}
+                      onClick={() => {
+                        setWinding(n);
+                        markTouched(4);
+                      }}
+                      padding={10}
+                      style={{ textAlign: "center", paddingTop: 12 }}
+                      aria-label={`İçe sarım yön ${n}`}
+                    >
+                      <WindingIcon n={n} />
+                      <div
+                        className="text-[11.5px] font-bold tracking-[0.1em] mt-2"
+                        style={{
+                          color:
+                            touchedSteps.has(4) && winding === n
+                              ? "var(--color-pim-mercan)"
+                              : "var(--color-gri-700)",
+                        }}
+                      >
+                        SARIM {n}
+                      </div>
+                    </SelectableCard>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* Sefa 18 May v46: Alt info kutusu kaldırıldı (vurgulu
+                  guidance üstte). */}
+            </FormSection>
+            )}
+
+            {/* Step 4.5 — Göbek çapı + Sarım adeti (Sefa 15 May v3).
+                Sadece RULO modunda. Sarım yönü kutusunun altında ayrı kutu.
+                Operasyonel bilgi — fason'a iletilir, pricing'e doğrudan
+                etki etmez (şimdilik). */}
+            {formFactor === "rulo" && (
+            <FormSection
+              id="step-5"
+              number={uiStepNumber(5)}
+              title="Sarım detayı"
+              hint="Göbek çapı ve rulo başına etiket adedi — makine uyumu için."
+              locked={isStepLocked(5)}
+              lockMessage={getLockMessage(5)}
+            >
+              {/* Göbek çapı — Sefa 20 May v68 (Aşama B):
+                  Picker gizli, 76mm sabit badge gösterilir. 25/40mm gizlendi
+                  (üretim partneri endüstri standardı 76mm istiyor).
+                  SHOW_ETIKET_CORE_SIZE_PICKER true yapılırsa eski 3-buton
+                  grid'i geri gelir. */}
+              <div>
+                <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
+                  Göbek çapı
+                </div>
+                {SHOW_ETIKET_CORE_SIZE_PICKER ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {CORE_SIZES.map((c) => {
+                      const active = touchedSteps.has(5) && coreSize === c.id;
+                      return (
+                        <div key={c.id} className="relative">
+                          {c.id === 76 && (
+                            <PopulerBadge tooltip="Endüstri standardı (3 inch)" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCoreSize(c.id);
+                              markTouched(5);
+                            }}
+                            aria-pressed={active}
+                            className={cn(
+                              "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                              active
+                                ? "bg-pim-mercan-tint ring-pim-mercan"
+                                : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "font-semibold text-[14px]",
+                                active ? "text-pim-mercan" : "text-lacivert"
+                              )}
+                            >
+                              {c.label}
+                            </div>
+                            <div className="text-[11px] text-gri-700 mt-0.5">
+                              {c.desc}
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Sefa 20 May v68: kompakt pill — eski 2xl badge çok
+                     büyüktü, sayfada görsel ağırlık dengelensin. */
+                  <div className="inline-flex items-center gap-2 rounded-full bg-pim-mercan-tint ring-1 ring-pim-mercan/40 px-3 py-1.5 text-[13px]">
+                    <span className="font-bold text-pim-mercan tabular-nums">
+                      {ETIKET_DEFAULT_CORE_SIZE}mm
+                    </span>
+                    <span className="text-gri-500">·</span>
+                    <span className="text-gri-700">
+                      3 inç, endüstri standardı
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sarım adeti */}
+              <div className="mt-4">
+                <div className="text-[11.5px] font-bold tracking-[0.06em] text-lacivert mb-2 uppercase">
+                  Bir rulodaki etiket adedi
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {ROLL_LABEL_COUNTS.map((q) => {
+                    const active = touchedSteps.has(5) && rollLabelCount === q;
+                    return (
+                      <div key={q} className="relative">
+                        {/* Sefa 18 May v68 (UX uzman 2.3): Standart PopulerBadge */}
+                        {q === 500 && (
+                          <PopulerBadge tooltip="En yaygın seçim" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRollLabelCount(q);
+                            markTouched(5);
+                          }}
+                          aria-pressed={active}
+                          className={cn(
+                            "w-full rounded-xl px-3 py-2.5 ring-1 text-center transition-all",
+                            active
+                              ? "bg-pim-mercan-tint ring-pim-mercan"
+                              : "bg-white ring-gri-200 hover:ring-pim-mercan"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "font-semibold text-[14px] tabular-nums",
+                              active ? "text-pim-mercan" : "text-lacivert"
+                            )}
+                          >
+                            {q}
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </FormSection>
+            )}
 
             {/* Price card — Intersection observer için ref'li wrapper */}
             <div ref={priceCardRef}>
