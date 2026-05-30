@@ -20,6 +20,11 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveAdminPathModule } from "@/lib/admin-rbac";
+import { getMaintenanceModeActive } from "@/lib/maintenance-cache";
+import {
+  hasSupabaseAuthCookie,
+  isRscPrefetchRequest,
+} from "@/lib/middleware-request";
 import { VIEW_MODE_COOKIE, parseViewMode } from "@/lib/view-mode";
 
 const PROTECTED_PATHS: ReadonlyArray<string> = [
@@ -143,15 +148,34 @@ export async function updateSession(request: NextRequest) {
   }
 
   const pathname = request.nextUrl.pathname;
+  const prefetch = isRscPrefetchRequest(request);
+
+  // RSC prefetch — public rotalarda auth + bakım atla (503 burst azaltır).
+  // Gerçek navigasyonda tam middleware çalışır.
+  if (
+    prefetch &&
+    !isProtected(pathname) &&
+    !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/partner")
+  ) {
+    return supabaseResponse;
+  }
+
+  // Korumalı rota prefetch + oturum cookie yok → Supabase çağrısına gerek yok
+  if (prefetch && isProtected(pathname) && !hasSupabaseAuthCookie(request)) {
+    return supabaseResponse;
+  }
 
   // Bakım modu — admin/API/bakim sayfası hariç müşteri trafiğini yönlendir
   const isAdminPath = pathname.startsWith("/admin");
   const isApiPath = pathname.startsWith("/api");
   const isMaintenancePath = pathname === "/bakim";
 
-  if (!isAdminPath && !isApiPath && !isMaintenancePath) {
+  if (!prefetch && !isAdminPath && !isApiPath && !isMaintenancePath) {
     try {
-      if (await isMaintenanceModeActive()) {
+      if (
+        await getMaintenanceModeActive(() => isMaintenanceModeActive())
+      ) {
         return NextResponse.rewrite(new URL("/bakim", request.url));
       }
     } catch {

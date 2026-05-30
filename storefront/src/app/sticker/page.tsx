@@ -507,6 +507,7 @@ function StickerProductCard({
   return (
     <Link
       href={`/sticker/yapilandir?${card.query}`}
+      prefetch={false}
       className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
       {/* Sefa 20 May v68: aspect reservation → CLS=0.

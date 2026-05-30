@@ -32,6 +32,7 @@ export function BlogPreview({ limit = 3 }: { limit?: number }) {
         <Link
           key={post.slug}
           href={`/blog/${post.slug}`}
+          prefetch={false}
           className="group rounded-2xl bg-white ring-1 ring-gri-200 overflow-hidden hover:ring-pim-mercan hover:shadow-lg transition-all"
         >
           {post.cover_image_url && (
@@ -101,6 +102,7 @@ export function HomeBlogSection({
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
+              prefetch={false}
               className="group rounded-2xl bg-white ring-1 ring-gri-200 overflow-hidden hover:ring-pim-mercan hover:shadow-lg transition-all"
             >
               {post.cover_image_url && (

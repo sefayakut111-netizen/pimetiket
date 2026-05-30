@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/blog" },
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const months = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -57,7 +57,7 @@ export default async function BlogIndexPage() {
         ) : (
           <>
             {featured && (
-              <Link href={`/blog/${featured.slug}`} className="block mb-8 group">
+              <Link href={`/blog/${featured.slug}`} prefetch={false} className="block mb-8 group">
                 <Card
                   padding=""
                   className="!p-0 overflow-hidden grid grid-cols-1 md:grid-cols-2 hover:-translate-y-0.5 transition-transform"
@@ -102,7 +102,7 @@ export default async function BlogIndexPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {rest.map((p) => (
-                <Link key={p.slug} href={`/blog/${p.slug}`} className="block group">
+                <Link key={p.slug} href={`/blog/${p.slug}`} prefetch={false} className="block group">
                   <Card
                     padding=""
                     className="!p-0 overflow-hidden h-full hover:-translate-y-0.5 transition-transform"

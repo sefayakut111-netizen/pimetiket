@@ -189,6 +189,7 @@ export function Footer() {
                   veriyorum (
                   <Link
                     href="/kvkk"
+                    prefetch={false}
                     className="text-pim-mercan font-semibold hover:underline"
                   >
                     KVKK aydınlatma
@@ -255,15 +256,24 @@ export function Footer() {
                 {g.t}
               </div>
               <div className="flex flex-col gap-2">
-                {g.links.map((l) => (
+                {g.links.map((l) => {
+                  const skipPrefetch =
+                    g.t === t.footer.groupCompany ||
+                    g.t === t.footer.groupSupport ||
+                    g.t === t.footer.groupAccount ||
+                    l.href.includes("/yapilandir") ||
+                    l.href.includes("tab=tasarim");
+                  return (
                   <Link
                     key={l.label}
                     href={l.href}
+                    prefetch={!skipPrefetch}
                     className="text-[13px] text-white/80 hover:text-white transition-colors"
                   >
                     {l.label}
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

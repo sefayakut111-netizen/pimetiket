@@ -180,6 +180,7 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
                     <Link
                       key={`${row.href}-${row.label}`}
                       href={row.href}
+                      prefetch={false}
                       role="option"
                       aria-selected={i === selectedIdx}
                       onClick={() => close()}

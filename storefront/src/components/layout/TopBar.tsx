@@ -10,6 +10,7 @@ import { MiniCartPopup } from "@/components/layout/MiniCartPopup";
 import { TopBarSearch } from "@/components/layout/TopBarSearch";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { isHeavyRoute } from "@/lib/middleware-request";
 import {
   customerCartCount,
   listCustomerCart,
@@ -180,6 +181,7 @@ export function TopBar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={!isHeavyRoute(item.href)}
                   className={cn(
                     "px-3.5 py-2 rounded-full text-[14.5px] font-medium transition-colors",
                     active
@@ -410,6 +412,7 @@ export function TopBar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={!isHeavyRoute(item.href)}
                     className={cn(
                       "px-4 py-3 rounded-lg text-[15px] font-medium transition-colors",
                       active
