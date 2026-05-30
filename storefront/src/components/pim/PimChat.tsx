@@ -7,7 +7,7 @@
  *   - Floating button (sağ alt) → açılır panel (380×520)
  *   - Vercel AI SDK useChat hook ile streaming
  *   - Memory: localStorage (KVKK opt-in toggle)
- *   - İlk açılışta consent prompt
+ *   - İlk açılışta KVKK onayı sohbet paneli içinde
  *
  * AppShell'de mount edilir. /admin altında render OLMAZ
  * (AdminShell zaten ayrı).
@@ -87,12 +87,12 @@ export function PimChat() {
 
   // Sefa 21 May v68 (KVKK m.9 sınır ötesi açık rıza):
   // Pim sohbeti OpenAI (ABD) altyapısı kullanıyor → KVKK m.9 açık rıza
-  // şart. İlk açılışta consent modal, kullanıcı kabul edene kadar chat
-  // panel render olmaz.
+  // şart. İlk açılışta onay metni sohbet paneli içinde gösterilir;
+  // kabul sonrası normal sohbet akışı devam eder.
   //
   // State değerleri:
   //   null         — henüz okunmadı (SSR/mount öncesi)
-  //   "needs-prompt" — karar verilmemiş, panel açılınca modal gösterilir
+  //   "needs-prompt" — karar verilmemiş, panel içinde onay gösterilir
   //   "accepted"   — chat tam çalışır
   //   "declined"   — chat hiç açılmaz, kullanıcı butonu görür ama
   //                  tıklayınca tekrar prompt çıkar
@@ -101,7 +101,7 @@ export function PimChat() {
   >(null);
 
   // Mount'ta memory'yi oku (sadece client). Sefa 21 May v68: KVKK m.9
-  // sınır ötesi rıza ChatConsentModal'da alınır; memory + sohbet sadece
+  // sınır ötesi rıza sohbet paneli içinde alınır; memory + composer sadece
   // accepted iken aktif.
   // Sefa 22 May v68: sessionStorage'dan teaserDismissed durumunu yükle —
   // önce kapatınca tekrar tekrar geliyordu, spam hissi vardı.
@@ -148,7 +148,7 @@ export function PimChat() {
     }),
     onFinish: ({ message }) => {
       // Sefa 21 May v68: KVKK m.9 sınır ötesi (OpenAI ABD) açık rıza
-      // ChatConsentModal'da alınıyor; bu noktaya gelinmişse zaten
+      // ChatConsentInline'da alınıyor; bu noktaya gelinmişse zaten
       // "accepted" — memory yazımı güvenli.
       const text = extractText(message);
       if (text) {
@@ -366,16 +366,7 @@ export function PimChat() {
         <span className="sr-only">Pim ile konuş</span>
       </button>
 
-      {/* Sefa 21 May v68 (KVKK m.9): consent gerekli — panel açıkken
-          consent verilmediyse modal göster, chat panel'i kapalı tut. */}
-      {open && consent !== "accepted" && consent !== null && (
-        <ChatConsentModal
-          onDecision={handleConsentDecision}
-          onClose={() => setOpen(false)}
-        />
-      )}
-
-      {/* Chat panel — sadece consent accepted iken render */}
+      {/* Chat panel — açılınca göster; KVKK onayı panel içinde */}
       <div
         role="dialog"
         aria-modal="false"
@@ -385,7 +376,7 @@ export function PimChat() {
           "w-[min(380px,calc(100vw-2.5rem))] h-[min(560px,calc(100vh-7rem))]",
           "flex flex-col rounded-2xl bg-white shadow-2 ring-1 ring-gri-200 overflow-hidden",
           "transition-all duration-200 ease-out origin-bottom-right",
-          open && consent === "accepted"
+          open
             ? "opacity-100 scale-100 translate-y-0"
             : "opacity-0 scale-95 translate-y-3 pointer-events-none"
         )}
@@ -417,14 +408,15 @@ export function PimChat() {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 bg-gri-50">
-          {messages.length === 0 ? (
+          {consent !== "accepted" ? (
+            <ChatConsentInline onDecision={handleConsentDecision} />
+          ) : messages.length === 0 ? (
             <WelcomeView
               persona={persona}
               memory={memory}
               onClearHistory={() => {
                 setMessages([]);
                 setUnread(0);
-                // Memory history sıfırla
                 const mem = readMemory();
                 mem.history = [];
                 mem.lastConversationSummary = undefined;
@@ -444,13 +436,13 @@ export function PimChat() {
           )}
         </div>
 
-        {/* Composer */}
+        {/* Composer — yalnızca KVKK onayı sonrası */}
+        {consent === "accepted" && (
         <Composer
           disabled={status === "streaming" || status === "submitted"}
           onSend={(text) => {
             appendMessage({ role: "user", content: text, persona });
             track("pim_chat_message_sent", { persona });
-            // Adı düşürdüyse yakala
             const nameMatch = text.match(/(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/);
             const mem = readMemory();
             if (nameMatch && !mem.displayName) {
@@ -459,6 +451,7 @@ export function PimChat() {
             sendMessage({ text });
           }}
         />
+        )}
       </div>
     </>
   );
@@ -1018,96 +1011,64 @@ function extractText(m: unknown): string {
 }
 
 // ============================================================
-// ChatConsentModal — KVKK m.9 sınır ötesi açık rıza prompt'u
-// Sefa 21 May v68: Pim sohbeti OpenAI (ABD) altyapısı kullandığı için
-// kullanıcıdan açık rıza gerekli. Kabul edene kadar chat panel açılmaz.
+// ChatConsentInline — KVKK m.9 açık rıza (sohbet paneli içinde)
 // ============================================================
 
-function ChatConsentModal({
+function ChatConsentInline({
   onDecision,
-  onClose,
 }: {
   onDecision: (value: ChatConsentValue) => void;
-  onClose: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-[9000] flex items-end sm:items-center justify-center bg-lacivert/40 backdrop-blur-[2px] p-4 animate-fade-up"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="chat-consent-title"
-      onClick={(e) => {
-        // Backdrop tıklaması = kapat (karar verilmemiş)
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="relative max-w-[460px] w-full bg-white rounded-2xl shadow-2 ring-1 ring-black/[0.06] overflow-hidden">
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3 border-b border-gri-100">
-          <div className="flex items-start gap-3">
-            <span className="grid place-items-center w-10 h-10 rounded-full bg-pim-mercan-tint shrink-0">
-              <span className="text-[20px]" aria-hidden>
-                💬
-              </span>
-            </span>
-            <div className="flex-1">
-              <h3
-                id="chat-consent-title"
-                className="text-[16px] font-semibold text-lacivert leading-snug"
-              >
-                Pim sohbeti — KVKK aydınlatma
-              </h3>
-              <p className="mt-1 text-[12.5px] text-gri-700 leading-relaxed">
-                Sohbete başlamadan önce kısa bir izin gerekiyor.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="px-5 py-4 space-y-3 text-[13.5px] text-lacivert leading-relaxed">
-          <p>
-            Pim asistanı yapay zekâ tabanlıdır. Yazdığın sorular ve verdiğimiz
-            yanıtlar <strong>OpenAI (ABD)</strong> altyapısı üzerinde işlenir.
-            Bu, KVKK madde 9 kapsamında <strong>yurt dışına veri aktarımı</strong>{" "}
-            sayılır; senin açık rızana bağlıdır.
+    <div className="space-y-3 animate-fade-up">
+      <div className="flex gap-2.5 items-start">
+        <span className="grid place-items-center h-8 w-8 rounded-full bg-pim-mercan shrink-0 mt-0.5">
+          <PimAsset variant="icon" bg="dark" size={20} bob={false} />
+        </span>
+        <div className="flex-1 min-w-0 rounded-xl rounded-tl-sm bg-white ring-1 ring-gri-200 p-3.5">
+          <h3
+            id="chat-consent-title"
+            className="text-[14px] font-semibold text-lacivert leading-snug"
+          >
+            Sohbete başlamadan kısa bir izin
+          </h3>
+          <p className="mt-2 text-[12.5px] text-gri-700 leading-relaxed">
+            Pim yapay zekâ tabanlıdır. Yazdığın sorular ve yanıtlar{" "}
+            <strong>OpenAI (ABD)</strong> altyapısında işlenir — KVKK m.9
+            kapsamında yurt dışına veri aktarımı için açık rızan gerekir.
           </p>
-          <p className="text-[12.5px] text-gri-700">
-            Kabul edersen sohbet açılır. Vazgeçersen Pim butonu görünür kalır
-            ama sohbet etkin değildir. Kararını her zaman değiştirebilirsin —
-            tarayıcı ayarlarından <code>pim_ai_chat_consent_v1</code> kaydını
-            silmen yeterli. Detay için{" "}
+          <ul className="mt-2.5 text-[11.5px] text-gri-700 space-y-1 list-disc pl-4">
+            <li>Sohbet içeriği hesabına bağlanmaz</li>
+            <li>Sipariş bilgilerin sohbete dahil edilmez</li>
+            <li>Veriler reklam için kullanılmaz</li>
+          </ul>
+          <p className="mt-2.5 text-[11.5px] text-gri-600 leading-relaxed">
+            Detay:{" "}
             <Link
               href="/kvkk"
               className="text-pim-mercan font-semibold hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               KVKK aydınlatma metni
             </Link>
-            .
           </p>
-          <ul className="text-[12px] text-gri-700 space-y-1 list-disc pl-5">
-            <li>Sohbet içeriği kişisel hesabımıza atfedilmez (anonim sayılır)</li>
-            <li>Sipariş bilgilerin sohbete dahil edilmez</li>
-            <li>Verilerin reklam için kullanılmaz</li>
-          </ul>
-        </div>
-
-        {/* Actions */}
-        <div className="px-5 py-4 bg-gri-50 flex flex-wrap gap-2 justify-end border-t border-gri-100">
-          <button
-            type="button"
-            onClick={() => onDecision("declined")}
-            className="h-10 px-5 rounded-full bg-white ring-1 ring-lacivert text-[13.5px] font-semibold text-lacivert hover:bg-lacivert/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lacivert focus-visible:ring-offset-2 transition-colors"
-          >
-            Vazgeç
-          </button>
-          <button
-            type="button"
-            onClick={() => onDecision("accepted")}
-            className="h-10 px-5 rounded-full bg-pim-mercan text-white text-[13.5px] font-semibold hover:bg-pim-mercan-koyu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2 transition-colors"
-          >
-            Kabul ediyorum
-          </button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onDecision("accepted")}
+              className="h-9 px-4 rounded-full bg-pim-mercan text-white text-[13px] font-semibold hover:bg-pim-mercan-koyu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2 transition-colors"
+            >
+              Kabul ediyorum
+            </button>
+            <button
+              type="button"
+              onClick={() => onDecision("declined")}
+              className="h-9 px-4 rounded-full bg-white ring-1 ring-gri-200 text-[13px] font-semibold text-gri-700 hover:bg-gri-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lacivert focus-visible:ring-offset-2 transition-colors"
+            >
+              Vazgeç
+            </button>
+          </div>
         </div>
       </div>
     </div>
