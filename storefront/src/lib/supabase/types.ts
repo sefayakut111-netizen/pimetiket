@@ -512,6 +512,7 @@ export type Database = {
           id: string
           material: string | null
           material_id: string | null
+          meta: Json | null
           product: string
           qty: number
           roll_label_count: number | null
@@ -543,6 +544,7 @@ export type Database = {
           id?: string
           material?: string | null
           material_id?: string | null
+          meta?: Json | null
           product: string
           qty: number
           roll_label_count?: number | null
@@ -574,6 +576,7 @@ export type Database = {
           id?: string
           material?: string | null
           material_id?: string | null
+          meta?: Json | null
           product?: string
           qty?: number
           roll_label_count?: number | null

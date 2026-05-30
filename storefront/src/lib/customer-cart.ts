@@ -223,6 +223,10 @@ function rowToItem(r: CartRow): CustomerCartItem {
     designPreviewUrl: r.design_preview_url ?? undefined,
     designFileName: r.design_file_name ?? undefined,
     designMimeType: r.design_mime_type ?? undefined,
+    meta:
+      r.meta && typeof r.meta === "object" && !Array.isArray(r.meta)
+        ? (r.meta as Record<string, unknown>)
+        : undefined,
     addedAt: new Date(r.added_at).getTime(),
   };
 }
@@ -266,6 +270,7 @@ function itemToInsert(
     design_mime_type: it.designMimeType ?? null,
     core_size: it.coreSize ?? null,
     roll_label_count: it.rollLabelCount ?? null,
+    meta: (it.meta ?? null) as Json | null,
   };
 }
 
