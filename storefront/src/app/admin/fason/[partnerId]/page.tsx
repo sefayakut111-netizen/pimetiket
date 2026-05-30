@@ -11,6 +11,8 @@ import {
   type FasonPartner,
 } from "@/components/admin/fason/fason-types";
 import { PartnerDetailView } from "@/components/admin/fason/partner-detail-view";
+import { ContractDownloadButton } from "@/components/admin/fason/contract-download-button";
+import { PerformanceScoreModal } from "@/components/admin/fason/performance-score-modal";
 import { useSetAdminPathLabel } from "@/hooks/useAdminPathLabel";
 
 export default function AdminFasonPartnerDetailPage() {
@@ -22,6 +24,11 @@ export default function AdminFasonPartnerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingContract, setMarkingContract] = useState(false);
+  const [perfOpen, setPerfOpen] = useState(false);
+
+  const hasContractPdf = !!(
+    partner?.contract_pdf_url && partner.contract_pdf_url.trim().length > 0
+  );
 
   useSetAdminPathLabel(partnerId, partner?.name);
 
@@ -152,11 +159,22 @@ export default function AdminFasonPartnerDetailPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                   {scorePct != null && (
-                    <span className="inline-flex items-center h-[28px] px-3 rounded-full bg-gri-100 text-[12px] font-semibold tabular-nums">
+                    <button
+                      type="button"
+                      onClick={() => setPerfOpen(true)}
+                      className="inline-flex items-center h-[28px] px-3 rounded-full bg-gri-100 text-[12px] font-semibold tabular-nums hover:bg-gri-200 transition-colors"
+                      title="Performans detayini goster"
+                    >
                       Skor: {scorePct}/100
-                    </span>
+                    </button>
+                  )}
+                  {hasContractPdf && (
+                    <ContractDownloadButton
+                      partnerId={partner.id}
+                      hasContract={hasContractPdf}
+                    />
                   )}
                   <Button
                     variant="secondary"
@@ -209,6 +227,13 @@ export default function AdminFasonPartnerDetailPage() {
               <PartnerDetailView
                 partner={partner}
                 onPartnerUpdated={(updated) => setPartner(updated)}
+              />
+
+              <PerformanceScoreModal
+                partnerId={partner.id}
+                partnerName={partner.name}
+                open={perfOpen}
+                onClose={() => setPerfOpen(false)}
               />
             </>
           )}

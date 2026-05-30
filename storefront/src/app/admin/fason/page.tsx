@@ -24,6 +24,9 @@ import {
   type FasonPartner,
 } from "@/components/admin/fason/fason-types";
 import { PartnerActions } from "@/components/admin/fason/partner-detail-view";
+import { CapacityBar } from "@/components/admin/fason/capacity-bar";
+import { ContractDownloadButton } from "@/components/admin/fason/contract-download-button";
+import { PerformanceScoreModal } from "@/components/admin/fason/performance-score-modal";
 
 type SortBy = "score" | "name" | "lead_days" | "active_orders";
 
@@ -326,6 +329,11 @@ function PartnerCard({
 }) {
   const toast = useToast();
   const [markingContract, setMarkingContract] = useState(false);
+  const [perfOpen, setPerfOpen] = useState(false);
+
+  const hasContractPdf = !!(
+    partner.contract_pdf_url && partner.contract_pdf_url.trim().length > 0
+  );
 
   const markContractSigned = async () => {
     if (
@@ -371,46 +379,52 @@ function PartnerCard({
           : "bg-kirmizi-soft text-kirmizi";
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="block w-full text-left transition-all cursor-pointer hover:ring-2 hover:ring-pim-mercan/40 rounded-xl"
-    >
-      <Card padding="p-5">
-        <div className="flex items-start justify-between gap-3 mb-2.5">
-          <div className="min-w-0">
-            <h3 className="font-semibold text-base truncate">
-              {partner.name}
-              {/* Sefa 20 May v68: Mig 067 city göster */}
-              {partner.city && (
-                <span className="text-[12px] font-normal text-gri-700 ml-2">
-                  · {partner.city}
-                </span>
-              )}
-            </h3>
-            <div className="text-[12px] text-gri-700 mt-0.5 truncate">
-              {partner.contact_email}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {scorePct != null && (
-              <span
-                className={cn(
-                  "inline-flex items-center h-[24px] px-2.5 rounded-full text-[11.5px] font-semibold tabular-nums",
-                  scoreColor
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        className="block w-full text-left transition-all cursor-pointer hover:ring-2 hover:ring-pim-mercan/40 rounded-xl"
+      >
+        <Card padding="p-5">
+          <div className="flex items-start justify-between gap-3 mb-2.5">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-base truncate">
+                {partner.name}
+                {partner.city && (
+                  <span className="text-[12px] font-normal text-gri-700 ml-2">
+                    · {partner.city}
+                  </span>
                 )}
-              >
-                {scorePct} / 100
-              </span>
-            )}
-            <PartnerActions partner={partner} onUpdated={onRefresh} />
+              </h3>
+              <div className="text-[12px] text-gri-700 mt-0.5 truncate">
+                {partner.contact_email}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {scorePct != null && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPerfOpen(true);
+                  }}
+                  className={cn(
+                    "inline-flex items-center h-[24px] px-2.5 rounded-full text-[11.5px] font-semibold tabular-nums transition-opacity hover:opacity-90",
+                    scoreColor
+                  )}
+                  title="Performans detayini goster"
+                >
+                  {scorePct} / 100
+                </button>
+              )}
+              <PartnerActions partner={partner} onUpdated={onRefresh} />
             {/* Mig 067 status enum (paused/terminated), legacy active fallback */}
             {(partner.status === "paused" ||
               (partner.status === undefined && !partner.active)) && (
@@ -471,9 +485,9 @@ function PartnerCard({
 
         <div className="flex items-center gap-3 text-[12px] text-gri-700 pt-3 border-t border-gri-100 flex-wrap">
           <span>
-            ⏱ Tipik teslim:{" "}
+            Tipik teslim:{" "}
             <strong className="text-lacivert">{partner.default_lead_days}</strong>{" "}
-            gün
+            gun
           </span>
           <button
             type="button"
@@ -487,48 +501,73 @@ function PartnerCard({
             )}
             title="Atanan isleri gor"
           >
-             Aktif:{" "}
+            Aktif:{" "}
             <strong className="tabular-nums">
               {partner.active_order_count ?? 0}
             </strong>{" "}
-            sipariş
+            siparis
             <Icon.ChevR size={10} className="opacity-70" />
           </button>
+          <CapacityBar
+            partner={partner}
+            className="w-full sm:w-auto sm:min-w-[180px]"
+          />
           {partner.contract_signed_at ? (
-            <span className="text-yesil font-semibold ml-auto">
-               Sözleşmeli
+            <span className="text-yesil font-semibold sm:ml-auto">
+              Sozlesmeli
             </span>
           ) : (
-            <span className="text-kirmizi font-semibold ml-auto">
-               Sözleşmesiz
+            <span className="text-kirmizi font-semibold sm:ml-auto">
+              Sozlesmesiz
             </span>
           )}
         </div>
-        {!partner.contract_signed_at && (
+        {(hasContractPdf || !partner.contract_signed_at) && (
           <div
             className="mt-3 flex flex-wrap gap-2"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={markingContract}
-              onClick={() => void markContractSigned()}
-            >
-              {markingContract ? "Kaydediliyor..." : "Sozlesme imzalandi olarak isaretle"}
-            </Button>
-            <a
-              href={`mailto:${partner.contact_email}?subject=${encodeURIComponent("KVKK Veri Isleyici Sozlesmesi")}`}
-              className="inline-flex items-center h-8 px-3 rounded-lg text-[12px] font-semibold text-gri-700 hover:bg-gri-100 ring-1 ring-gri-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Sozlesme talep et (e-posta)
-            </a>
+            {hasContractPdf && (
+              <ContractDownloadButton
+                partnerId={partner.id}
+                hasContract={hasContractPdf}
+                onClickStopPropagation
+              />
+            )}
+            {!partner.contract_signed_at && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={markingContract}
+                  onClick={() => void markContractSigned()}
+                >
+                  {markingContract
+                    ? "Kaydediliyor..."
+                    : "Sozlesme imzalandi olarak isaretle"}
+                </Button>
+                <a
+                  href={`mailto:${partner.contact_email}?subject=${encodeURIComponent("KVKK Veri Isleyici Sozlesmesi")}`}
+                  className="inline-flex items-center h-8 px-3 rounded-lg text-[12px] font-semibold text-gri-700 hover:bg-gri-100 ring-1 ring-gri-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Sozlesme talep et (e-posta)
+                </a>
+              </>
+            )}
           </div>
         )}
-      </Card>
-    </div>
+        </Card>
+      </div>
+
+      <PerformanceScoreModal
+        partnerId={partner.id}
+        partnerName={partner.name}
+        open={perfOpen}
+        onClose={() => setPerfOpen(false)}
+      />
+    </>
   );
 }
 

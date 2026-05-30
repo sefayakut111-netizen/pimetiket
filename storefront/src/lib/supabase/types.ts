@@ -2521,6 +2521,41 @@ export type Database = {
           },
         ]
       }
+      partner_communications: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          id: string
+          partner_id: string
+          summary: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          partner_id: string
+          summary: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          partner_id?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_communications_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "fason_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_contacts: {
         Row: {
           auto_notification: boolean | null

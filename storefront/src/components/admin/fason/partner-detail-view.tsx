@@ -12,21 +12,34 @@ import {
 } from "@/lib/fason/status-labels";
 import {
   ACTIVE_ASSIGNMENT_STATUSES,
+  COMMUNICATION_CHANNEL_LABEL,
   formatShortDate,
   isAssignmentOverdue,
   type AssignmentRow,
   type FasonPartner,
   type JobsFilter,
+  type PartnerCommunication,
+  type PartnerCommunicationChannel,
   type PartnerDetailTab,
 } from "@/components/admin/fason/fason-types";
 import { PartnerCapacityPanel } from "@/components/admin/fason/partner-capacity-panel";
+import { ContractDownloadButton } from "@/components/admin/fason/contract-download-button";
+import { PerformanceScoreModal } from "@/components/admin/fason/performance-score-modal";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
+
+const HISTORY_PAGE_SIZE = 10;
 
 function metricValueClass(value: number): string {
   return value === 0 ? "text-gri-400" : "text-lacivert font-semibold";
 }
 
-function ScoreDisplay({ score }: { score: number | null }) {
+function ScoreDisplay({
+  score,
+  onClick,
+}: {
+  score: number | null;
+  onClick?: () => void;
+}) {
   if (score == null) {
     return (
       <span className="text-gri-400">
@@ -36,8 +49,8 @@ function ScoreDisplay({ score }: { score: number | null }) {
   }
   const pct = Math.round(score * 100);
   const filled = Math.max(1, Math.round(pct / 20));
-  return (
-    <span className="inline-flex items-center gap-2">
+  const inner = (
+    <>
       <span className="font-semibold text-lacivert tabular-nums">{pct}/100</span>
       <span className="inline-flex items-center gap-0.5 text-sari-koyu">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -48,7 +61,22 @@ function ScoreDisplay({ score }: { score: number | null }) {
           />
         ))}
       </span>
-    </span>
+    </>
+  );
+
+  if (!onClick) {
+    return <span className="inline-flex items-center gap-2">{inner}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-md px-1 -mx-1 hover:bg-gri-100 transition-colors"
+      title="Performans detayini goster"
+    >
+      {inner}
+    </button>
   );
 }
 
@@ -66,73 +94,103 @@ function PartnerSidebar({
   };
   onPartnerUpdated: (p: FasonPartner) => void;
 }) {
+  const [perfOpen, setPerfOpen] = useState(false);
+  const hasContractPdf = !!(
+    partner.contract_pdf_url && partner.contract_pdf_url.trim().length > 0
+  );
+
   return (
-    <aside className="space-y-0 rounded-xl border border-gri-200 bg-white p-4 lg:sticky lg:top-20 lg:self-start">
-      <section className="pb-4">
-        <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
-          Performans
-        </h3>
-        <dl className="space-y-2 text-[13px]">
-          <div className="flex justify-between gap-3">
-            <dt className="text-gri-600">Aktif is:</dt>
-            <dd className={metricValueClass(jobStats.active)}>{jobStats.active}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-gri-600">Geciken:</dt>
-            <dd className={metricValueClass(jobStats.overdue)}>{jobStats.overdue}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-gri-600">Tamamlanan:</dt>
-            <dd className={metricValueClass(jobStats.completed)}>
-              {jobStats.completed}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3 items-start">
-            <dt className="text-gri-600 shrink-0">Ortalama skor:</dt>
-            <dd className="text-right">
-              <ScoreDisplay score={partner.cached_score} />
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-gri-600">Tipik teslim:</dt>
-            <dd className="text-lacivert font-semibold">
-              {partner.default_lead_days} gun
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="py-4 border-t border-gri-100">
-        <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
-          Firma bilgileri
-        </h3>
-        <dl className="space-y-2 text-[13px]">
-          <div>
-            <dt className="text-gri-500 text-[11px]">Ad</dt>
-            <dd className="font-medium text-lacivert">{partner.name}</dd>
-          </div>
-          {partner.city && (
-            <div>
-              <dt className="text-gri-500 text-[11px]">Sehir</dt>
-              <dd>{partner.city}</dd>
+    <>
+      <aside className="space-y-0 rounded-xl border border-gri-200 bg-white p-4 lg:sticky lg:top-20 lg:self-start">
+        <section className="pb-4">
+          <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
+            Performans
+          </h3>
+          <dl className="space-y-2 text-[13px]">
+            <div className="flex justify-between gap-3">
+              <dt className="text-gri-600">Aktif is:</dt>
+              <dd className={metricValueClass(jobStats.active)}>{jobStats.active}</dd>
             </div>
-          )}
-          <div>
-            <dt className="text-gri-500 text-[11px]">E-posta</dt>
-            <dd>
-              <a
-                href={`mailto:${partner.contact_email}`}
-                className="text-pim-mercan hover:underline break-all"
-              >
-                {partner.contact_email}
-              </a>
-            </dd>
-          </div>
-        </dl>
-      </section>
+            <div className="flex justify-between gap-3">
+              <dt className="text-gri-600">Geciken:</dt>
+              <dd className={metricValueClass(jobStats.overdue)}>{jobStats.overdue}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-gri-600">Tamamlanan:</dt>
+              <dd className={metricValueClass(jobStats.completed)}>
+                {jobStats.completed}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3 items-start">
+              <dt className="text-gri-600 shrink-0">Ortalama skor:</dt>
+              <dd className="text-right">
+                <ScoreDisplay
+                  score={partner.cached_score}
+                  onClick={
+                    partner.cached_score != null
+                      ? () => setPerfOpen(true)
+                      : undefined
+                  }
+                />
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-gri-600">Tipik teslim:</dt>
+              <dd className="text-lacivert font-semibold">
+                {partner.default_lead_days} gun
+              </dd>
+            </div>
+          </dl>
+        </section>
 
-      <PartnerCapacityPanel partner={partner} onUpdated={onPartnerUpdated} />
-    </aside>
+        <section className="py-4 border-t border-gri-100">
+          <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
+            Firma bilgileri
+          </h3>
+          <dl className="space-y-2 text-[13px]">
+            <div>
+              <dt className="text-gri-500 text-[11px]">Ad</dt>
+              <dd className="font-medium text-lacivert">{partner.name}</dd>
+            </div>
+            {partner.city && (
+              <div>
+                <dt className="text-gri-500 text-[11px]">Sehir</dt>
+                <dd>{partner.city}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-gri-500 text-[11px]">E-posta</dt>
+              <dd>
+                <a
+                  href={`mailto:${partner.contact_email}`}
+                  className="text-pim-mercan hover:underline break-all"
+                >
+                  {partner.contact_email}
+                </a>
+              </dd>
+            </div>
+            {hasContractPdf && (
+              <div className="pt-1">
+                <ContractDownloadButton
+                  partnerId={partner.id}
+                  hasContract={hasContractPdf}
+                  size="sm"
+                />
+              </div>
+            )}
+          </dl>
+        </section>
+
+        <PartnerCapacityPanel partner={partner} onUpdated={onPartnerUpdated} />
+      </aside>
+
+      <PerformanceScoreModal
+        partnerId={partner.id}
+        partnerName={partner.name}
+        open={perfOpen}
+        onClose={() => setPerfOpen(false)}
+      />
+    </>
   );
 }
 
@@ -611,6 +669,206 @@ function PartnerExtendedTab({ partner }: { partner: FasonPartner }) {
   );
 }
 
+function PartnerCommunicationsTab({ partnerId }: { partnerId: string }) {
+  const toast = useToast();
+  const [items, setItems] = useState<PartnerCommunication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [channel, setChannel] = useState<PartnerCommunicationChannel>("whatsapp");
+  const [summary, setSummary] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${encodeURIComponent(partnerId)}/communications`
+      );
+      const json = (await res.json()) as {
+        communications?: PartnerCommunication[];
+      };
+      setItems(json.communications ?? []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [partnerId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!summary.trim()) {
+      toast.error("Ozet alani zorunlu");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${encodeURIComponent(partnerId)}/communications`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ channel, summary: summary.trim() }),
+        }
+      );
+      const json = (await res.json()) as {
+        communication?: PartnerCommunication;
+        error?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Kaydedilemedi");
+        return;
+      }
+      if (json.communication) {
+        setItems((prev) => [json.communication!, ...prev]);
+      }
+      setSummary("");
+      toast.success("Iletisim kaydi eklendi");
+    } catch {
+      toast.error("Kaydedilemedi (ag hatasi)");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Bu kayit silinsin mi?")) return;
+    try {
+      const res = await fetch(
+        `/api/admin/fason/partners/${encodeURIComponent(partnerId)}/communications`,
+        {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ id }),
+        }
+      );
+      if (!res.ok) {
+        toast.error("Silinemedi");
+        return;
+      }
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      toast.success("Kayit silindi");
+    } catch {
+      toast.error("Silinemedi (ag hatasi)");
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <h2 className="text-[13px] font-bold uppercase text-gri-500">
+        Iletisim gecmisi
+      </h2>
+
+      <form
+        onSubmit={(e) => void submit(e)}
+        className="rounded-xl border border-gri-200 bg-gri-50/50 p-4 space-y-3"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3">
+          <div>
+            <label
+              htmlFor={`comm-channel-${partnerId}`}
+              className="text-[11px] font-semibold text-gri-600 block mb-1"
+            >
+              Kanal
+            </label>
+            <select
+              id={`comm-channel-${partnerId}`}
+              value={channel}
+              onChange={(e) =>
+                setChannel(e.target.value as PartnerCommunicationChannel)
+              }
+              className="w-full h-9 px-2 text-[12px] border border-gri-200 rounded-lg bg-white"
+            >
+              {(Object.keys(COMMUNICATION_CHANNEL_LABEL) as PartnerCommunicationChannel[]).map(
+                (c) => (
+                  <option key={c} value={c}>
+                    {COMMUNICATION_CHANNEL_LABEL[c]}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor={`comm-summary-${partnerId}`}
+              className="text-[11px] font-semibold text-gri-600 block mb-1"
+            >
+              Ozet
+            </label>
+            <textarea
+              id={`comm-summary-${partnerId}`}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              rows={3}
+              placeholder="Ornek: Teslim tarihi guncellendi, onay alindi..."
+              className="w-full px-3 py-2 rounded-lg ring-1 ring-gri-200 focus:ring-2 focus:ring-pim-mercan outline-none text-[13px] resize-y bg-white"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button type="submit" variant="primary" size="sm" disabled={saving}>
+            {saving ? "Kaydediliyor..." : "Kayit ekle"}
+          </Button>
+        </div>
+      </form>
+
+      {loading && (
+        <div className="space-y-2">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+      )}
+
+      {!loading && items.length === 0 && (
+        <p className="text-[13px] text-gri-600 py-2">
+          Henuz manuel iletisim kaydi yok.
+        </p>
+      )}
+
+      {!loading && items.length > 0 && (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="rounded-xl border border-gri-200 p-3 text-[12px]"
+            >
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-lacivert/10 text-lacivert text-[10.5px] font-semibold">
+                  {COMMUNICATION_CHANNEL_LABEL[item.channel]}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-gri-500">
+                    {new Date(item.created_at).toLocaleString("tr-TR", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void remove(item.id)}
+                    className="text-[11px] text-kirmizi hover:underline"
+                  >
+                    Sil
+                  </button>
+                </div>
+              </div>
+              <p className="text-gri-700 whitespace-pre-wrap leading-relaxed">
+                {item.summary}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function PartnerActions({
   partner,
   onUpdated,
@@ -782,6 +1040,7 @@ export function PartnerDetailView({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [tab, setTab] = useState<PartnerDetailTab>("jobs");
   const [jobsFilter, setJobsFilter] = useState<JobsFilter>("active");
+  const [historyPage, setHistoryPage] = useState(1);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -801,6 +1060,10 @@ export function PartnerDetailView({
   useEffect(() => {
     void loadHistory();
   }, [loadHistory]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [partner.id, tab]);
 
   const filteredJobs = useMemo(() => {
     switch (jobsFilter) {
@@ -839,10 +1102,20 @@ export function PartnerDetailView({
     [history]
   );
 
+  const historyTotalPages = Math.max(
+    1,
+    Math.ceil(completedHistory.length / HISTORY_PAGE_SIZE)
+  );
+  const pagedCompletedHistory = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return completedHistory.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [completedHistory, historyPage]);
+
   const tabs: Array<{ id: PartnerDetailTab; label: string }> = [
     { id: "jobs", label: "Atanan isler" },
     { id: "partner", label: "Partner detayi" },
     { id: "history", label: "Gecmis isler" },
+    { id: "communications", label: "Iletisim gecmisi" },
   ];
 
   return (
@@ -891,33 +1164,73 @@ export function PartnerDetailView({
                 Henuz tamamlanan is yok. Ilk siparis atandiginda burada gorunur.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {completedHistory.map((a) => (
-                  <li
-                    key={a.id}
-                    className="rounded-xl border border-gri-200 p-3 text-[12px]"
-                  >
-                    <Link
-                      href={`/admin/siparisler/${a.order_id}`}
-                      className="font-mono font-semibold text-pim-mercan hover:underline"
+              <>
+                <ul className="space-y-2">
+                  {pagedCompletedHistory.map((a) => (
+                    <li
+                      key={a.id}
+                      className="rounded-xl border border-gri-200 p-3 text-[12px]"
                     >
-                      {a.order_id}
-                    </Link>
-                    <div className="text-gri-600 mt-1">
-                      {a.customer_name ?? "—"} · Teslim:{" "}
-                      {formatShortDate(a.shipped_at ?? a.actual_delivery)}
-                      {a.order_total != null && (
-                        <span className="tabular-nums">
-                          {" "}
-                          · {a.order_total.toLocaleString("tr-TR")} TL
-                        </span>
-                      )}
+                      <Link
+                        href={`/admin/siparisler/${a.order_id}`}
+                        className="font-mono font-semibold text-pim-mercan hover:underline"
+                      >
+                        {a.order_id}
+                      </Link>
+                      <div className="text-gri-600 mt-1">
+                        {a.customer_name ?? "—"} · Teslim:{" "}
+                        {formatShortDate(a.shipped_at ?? a.actual_delivery)}
+                        {a.order_total != null && (
+                          <span className="tabular-nums">
+                            {" "}
+                            · {a.order_total.toLocaleString("tr-TR")} TL
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {historyTotalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between gap-3 text-[12px]">
+                    <span className="text-gri-600 tabular-nums">
+                      Sayfa {historyPage} / {historyTotalPages} ·{" "}
+                      {completedHistory.length} kayit
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={historyPage <= 1}
+                        onClick={() =>
+                          setHistoryPage((p) => Math.max(1, p - 1))
+                        }
+                      >
+                        Onceki
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={historyPage >= historyTotalPages}
+                        onClick={() =>
+                          setHistoryPage((p) =>
+                            Math.min(historyTotalPages, p + 1)
+                          )
+                        }
+                      >
+                        Sonraki
+                      </Button>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                )}
+              </>
             )}
           </div>
+        )}
+
+        {tab === "communications" && (
+          <PartnerCommunicationsTab partnerId={partner.id} />
         )}
       </Card>
 

@@ -1,6 +1,9 @@
+export const DEFAULT_MAX_CONCURRENT_ORDERS = 12;
+
 export interface FasonPartner {
   id: string;
   name: string;
+  max_concurrent_orders?: number | null;
   short_name?: string | null;
   city?: string | null;
   town?: string | null;
@@ -64,7 +67,53 @@ export interface AssignmentRow {
 }
 
 export type JobsFilter = "active" | "all" | "completed" | "issue";
-export type PartnerDetailTab = "jobs" | "partner" | "history";
+export type PartnerDetailTab =
+  | "jobs"
+  | "partner"
+  | "history"
+  | "communications";
+
+export type PartnerCommunicationChannel =
+  | "whatsapp"
+  | "email"
+  | "phone"
+  | "other";
+
+export interface PartnerCommunication {
+  id: string;
+  partner_id: string;
+  channel: PartnerCommunicationChannel;
+  summary: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface FasonPartnerPerformance {
+  partnerId?: string;
+  partnerName?: string;
+  cached_score: number | null;
+  score_updated_at: string | null;
+  on_time_rate: number | null;
+  avg_response_hours: number | null;
+  issue_rate: number | null;
+  return_rate: number | null;
+  shipped_count: number;
+  cancelled_count: number;
+  issue_count: number;
+  total_assignments: number;
+  active_assignments: number;
+  last_assigned_at: string | null;
+}
+
+export const COMMUNICATION_CHANNEL_LABEL: Record<
+  PartnerCommunicationChannel,
+  string
+> = {
+  whatsapp: "WhatsApp",
+  email: "E-posta",
+  phone: "Telefon aramasi",
+  other: "Diger",
+};
 
 export const CAPABILITY_LABEL: Record<string, string> = {
   roll_label: "Rulo",
