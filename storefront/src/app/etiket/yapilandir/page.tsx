@@ -1541,10 +1541,10 @@ function EtiketPage() {
         {/* Sefa 18 May v68: preview kolonu sticker ile aynı oran (1fr).
             Eskiden 1.3fr → çok genişti; sticker'daki kompakt görünüm
             daha dengeli + config alanı daha geniş okunur kalıyor. */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_160px] gap-6 lg:gap-7 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview (Sefa 18 May v67: yeni ProductPreviewShell
               + EtiketLivePreview kompozisyonu, eski PreviewCanvas kaldırıldı) */}
-          <div className="lg:sticky lg:top-20">
+          <div className="min-w-0 lg:sticky lg:top-20 self-start">
             <ProductPreviewShell
               width={width}
               height={height}
@@ -1585,9 +1585,9 @@ function EtiketPage() {
                 ProductPreviewShell içinde — eski legacy buttonlar silindi. */}
           </div>
 
-          {/* RIGHT — config (Sefa 17 May v40: h1 duplicate kaldırıldı,
-              üstte büyük strip'e taşındı) */}
-          <div className="flex flex-col gap-5">
+          {/* RIGHT — config + dikey ADIMLAR rail (iç içe grid — rail config ile hizalı) */}
+          <div className="min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_160px] gap-6 lg:gap-5 items-start">
+          <div className="min-w-0 flex flex-col gap-5">
 
             {/* Step 0 — Etiket türü (Sefa 17 May v40: form factor seçimi
                 FormSection olarak kutu içine alındı, ADIM 1 numaralı).
@@ -2834,12 +2834,10 @@ function EtiketPage() {
             </div>
           </div>
 
-          {/* RAIL — desktop only dikey stepper. Sefa kararı (15 May):
-              "sağ kenarda dikey rail daha şık" — Linear/Stripe/Notion
-              checkout pattern. Sticky sayfa boyunca sabit. Mobile'da
-              gizli (mobile için yatay <StepProgress> üstte var). */}
+          {/* RAIL — desktop only dikey stepper. Config sütunu ile aynı
+              grid hücresinde — preview yüksekliğinden bağımsız üst hizalı. */}
           <aside
-            className="hidden lg:block lg:sticky lg:top-[88px]"
+            className="hidden lg:block lg:sticky lg:top-20 self-start min-w-0"
             aria-label="Konfigürasyon adımları (dikey rail)"
           >
             <div className="bg-white rounded-xl px-3 py-3 ring-1 ring-gri-200 shadow-1">
@@ -2855,6 +2853,7 @@ function EtiketPage() {
               />
             </div>
           </aside>
+          </div>
         </div>
       </div>
       {/* Bilgi bandı kaldırıldı (Sefa kuralı 15 May v5) */}

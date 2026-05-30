@@ -978,12 +978,12 @@ function StickerPage() {
         {/* Sefa 18 May v43: page hero kaldırıldı (üstte strip var, duplicate
             başlık + '25 adetten başlar' rozeti gereksizdi) */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_160px] gap-6 lg:gap-7 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-6 lg:gap-7 items-start">
           {/* LEFT — sticky preview (Sefa 18 May v67: yeni ProductPreviewShell
               + StickerLivePreview kompozisyonu. Cut mode + şekil + malzeme
               canlı yansır. Die-cut'ta beyaz kontur belirgin → ürün tipi
               görsel olarak anlatılır.) */}
-          <div className="lg:sticky lg:top-20">
+          <div className="min-w-0 lg:sticky lg:top-20 self-start">
             <ProductPreviewShell
               width={width}
               height={height}
@@ -1033,8 +1033,9 @@ function StickerPage() {
                 Persona C (Canva tasarımcı) bounce ediyordu. */}
           </div>
 
-          {/* RIGHT — config */}
-          <div className="flex flex-col gap-4">
+          {/* RIGHT — config + dikey ADIMLAR rail */}
+          <div className="min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_160px] gap-6 lg:gap-5 items-start">
+          <div className="min-w-0 flex flex-col gap-4">
             {/* Mobile horizontal stepper — desktop'ta dikey rail var */}
             {/* Sefa 18 May v68 (UX uzman 4-mobile): Sticky mobile stepper —
                 etiket page ile aynı pattern. */}
@@ -2145,9 +2146,9 @@ function StickerPage() {
             </div>
           </div>
 
-          {/* RAIL — desktop only dikey stepper (Sefa 15 May v4) */}
+          {/* RAIL — config sütunu ile hizalı (preview yüksekliğinden bağımsız) */}
           <aside
-            className="hidden lg:block lg:sticky lg:top-[88px]"
+            className="hidden lg:block lg:sticky lg:top-20 self-start min-w-0"
             aria-label="Konfigürasyon adımları (dikey rail)"
           >
             <div className="bg-white rounded-xl px-3 py-3 ring-1 ring-gri-200 shadow-1">
@@ -2163,6 +2164,7 @@ function StickerPage() {
               />
             </div>
           </aside>
+          </div>
         </div>
       </div>
       {/* Bilgi bandı kaldırıldı (Sefa kuralı 15 May v5) */}

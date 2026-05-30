@@ -21,6 +21,7 @@ export function Footer() {
   // Sefa 17 May Dalga 3 #19: checkout sayfasında newsletter friction yaratır
   // (kullanıcı ödeme dikkati dağılmasın). Footer'ı minimal göster.
   const isCheckout = pathname?.startsWith("/odeme") ?? false;
+  const isConfigurator = pathname?.includes("/yapilandir") ?? false;
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -119,6 +120,11 @@ export function Footer() {
       setLoading(false);
     }
   };
+
+  // Konfigüratör + checkout: footer scroll/layout karışıklığı yaratmasın
+  if (isCheckout || isConfigurator) {
+    return null;
+  }
 
   return (
     <footer className="bg-lacivert text-white/85 pt-14 pb-6 mt-20">
