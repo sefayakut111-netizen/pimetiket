@@ -173,6 +173,16 @@ function AdminFinansPageInner() {
   const [showTestOrders, setShowTestOrders] = useState(false);
   const [financialSummary, setFinancialSummary] =
     useState<FinancialSummary | null>(null);
+  const [packMonth, setPackMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const downloadMonthlyPack = (format: "pdf" | "csv") => {
+    const params = new URLSearchParams({ month: packMonth, format });
+    if (!showTestOrders) params.set("excludeTest", "1");
+    window.location.href = `/api/admin/financials/monthly-pack?${params.toString()}`;
+  };
 
   useEffect(() => {
     setReportTab(searchParams.get("tab") === "detail" ? "detail" : "overview");
@@ -392,6 +402,41 @@ function AdminFinansPageInner() {
             Detay Raporlar
           </button>
         </div>
+
+        {reportTab === "overview" && (
+          <Card padding="p-4" className="mb-6 flex flex-wrap items-end gap-4">
+            <div>
+              <p className="text-[12px] font-semibold text-gri-600 mb-1.5">
+                Aylık muhasebe paketi
+              </p>
+              <p className="text-[11.5px] text-gri-500 mb-2">
+                Tahsilat, iade, KDV özeti ve sipariş sayısı — muhasebeci formatı
+              </p>
+              <input
+                type="month"
+                value={packMonth}
+                onChange={(e) => setPackMonth(e.target.value)}
+                className="rounded-lg border border-gri-200 px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-pim-mercan/30"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => downloadMonthlyPack("pdf")}
+                className="h-9 px-4 rounded-lg bg-lacivert text-white text-[12.5px] font-semibold hover:bg-lacivert/90 transition-colors"
+              >
+                PDF indir
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadMonthlyPack("csv")}
+                className="h-9 px-4 rounded-lg bg-white ring-1 ring-gri-200 text-gri-800 text-[12.5px] font-semibold hover:ring-lacivert transition-colors"
+              >
+                CSV indir
+              </button>
+            </div>
+          </Card>
+        )}
 
         {reportTab === "overview" && (
           <>
