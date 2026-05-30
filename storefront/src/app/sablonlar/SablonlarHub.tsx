@@ -13,7 +13,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "tasarim", label: "Tasarım Şablonları" },
 ];
 
-export function SablonlarHub() {
+export function SablonlarHub({ isMember = false }: { isMember?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -60,7 +60,11 @@ export function SablonlarHub() {
       </div>
 
       <div role="tabpanel">
-        {tab === "kesim" ? <KesimSablonlari /> : <TasarimSablonlari />}
+        {tab === "kesim" ? (
+          <KesimSablonlari isMember={isMember} />
+        ) : (
+          <TasarimSablonlari isMember={isMember} />
+        )}
       </div>
     </>
   );

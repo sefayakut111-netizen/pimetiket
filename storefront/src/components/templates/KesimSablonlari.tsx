@@ -27,10 +27,16 @@ const FORMAT_LABELS: Record<TemplateFormat, string> = {
   eps: "EPS",
 };
 
-export default function KesimSablonlari() {
+export default function KesimSablonlari({
+  isMember: isMemberFromServer = false,
+}: {
+  isMember?: boolean;
+}) {
   const [set, setSet] = useState<CutSet>("kisscut");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [query, setQuery] = useState("");
+  const { user, loading: authLoading } = useUser();
+  const isMember = isMemberFromServer || Boolean(user);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -169,7 +175,13 @@ export default function KesimSablonlari() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {filtered.map((tpl) => (
-          <TemplateCard key={tpl.id} tpl={tpl} set={set} />
+          <TemplateCard
+            key={tpl.id}
+            tpl={tpl}
+            set={set}
+            isMember={isMember}
+            authPending={!isMemberFromServer && authLoading}
+          />
         ))}
       </div>
 
@@ -182,7 +194,17 @@ export default function KesimSablonlari() {
   );
 }
 
-function TemplateCard({ tpl, set }: { tpl: DieCutTemplate; set: CutSet }) {
+function TemplateCard({
+  tpl,
+  set,
+  isMember,
+  authPending,
+}: {
+  tpl: DieCutTemplate;
+  set: CutSet;
+  isMember: boolean;
+  authPending: boolean;
+}) {
   const dimLabel =
     tpl.shape === "circle"
       ? `Ø${tpl.widthMm} mm`
@@ -208,12 +230,36 @@ function TemplateCard({ tpl, set }: { tpl: DieCutTemplate; set: CutSet }) {
           )}
         </div>
       </div>
-      <div className="mt-3 flex gap-1">
+      <div className="mt-3 flex flex-col gap-1">
         {ALL_FORMATS.map((fmt) => (
-          <DownloadButton key={fmt} tpl={tpl} set={set} format={fmt} />
+          <DownloadButton
+            key={fmt}
+            tpl={tpl}
+            set={set}
+            format={fmt}
+            isMember={isMember}
+            authPending={authPending}
+          />
         ))}
+        <UseInEditorButton templateId={tpl.id} />
       </div>
     </Card>
+  );
+}
+
+function UseInEditorButton({ templateId }: { templateId: string }) {
+  const router = useRouter();
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className="w-full !h-8 !text-[11px] !font-semibold"
+      onClick={() => router.push(`/editor?sablon=${encodeURIComponent(templateId)}`)}
+    >
+      Editörde kullan
+    </Button>
   );
 }
 
@@ -221,18 +267,22 @@ function DownloadButton({
   tpl,
   set,
   format,
+  isMember,
+  authPending,
 }: {
   tpl: DieCutTemplate;
   set: CutSet;
   format: TemplateFormat;
+  isMember: boolean;
+  authPending: boolean;
 }) {
-  const { user } = useUser();
   const toast = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
-    if (!user) {
+    if (authPending) return;
+    if (!isMember) {
       toast.info("İndirmek için giriş yap veya üye ol.");
       router.push("/auth?next=/sablonlar");
       return;
@@ -280,9 +330,11 @@ function DownloadButton({
       disabled={loading}
       onClick={handleClick}
       title={
-        user
-          ? `${FORMAT_LABELS[format]} indir`
-          : `${FORMAT_LABELS[format]} — üye girişi gerekli`
+        authPending
+          ? "Oturum doğrulanıyor…"
+          : isMember
+            ? `${FORMAT_LABELS[format]} indir`
+            : `${FORMAT_LABELS[format]} — üye girişi gerekli`
       }
     >
       {loading ? "…" : FORMAT_LABELS[format]}

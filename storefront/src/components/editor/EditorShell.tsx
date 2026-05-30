@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   DesignDropZone,
   type DesignTempState,
@@ -10,6 +11,7 @@ import {
   EditorCanvas,
   type EditorCanvasHandle,
 } from "@/components/editor/EditorCanvas";
+import { CutColorNote } from "@/components/editor/CutColorNote";
 import { ShapePreview } from "@/components/templates/ShapePreview";
 import { Button, Card, Eyebrow, Input, Pill, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -17,6 +19,7 @@ import { buildEditorIframeSrc } from "@/lib/editor/build-editor-iframe-src";
 import { writeEditorHandoff } from "@/lib/editor/editor-handoff";
 import {
   CATEGORY_LABELS,
+  DIE_CUT_BY_ID,
   DIE_CUT_TEMPLATES,
   type DieCutTemplate,
   type ShapeCategory,
@@ -35,8 +38,10 @@ type BladeTab = "template" | "auto";
 
 export default function EditorShell() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const canvasRef = useRef<EditorCanvasHandle>(null);
+  const sablonPrefilledRef = useRef(false);
 
   const [step, setStep] = useState(1);
   const [design, setDesign] = useState<DesignTempState | null>(null);
@@ -111,6 +116,26 @@ export default function EditorShell() {
       mode,
     });
   }, []);
+
+  /** ?sablon=<id> — URL'den şablon ön-seçimi */
+  useEffect(() => {
+    const id = searchParams.get("sablon")?.trim();
+    if (!id || sablonPrefilledRef.current) return;
+    const tpl = DIE_CUT_BY_ID.get(id);
+    if (!tpl) return;
+    sablonPrefilledRef.current = true;
+    setBladeTab("template");
+    setCategory(tpl.category);
+    setSelectedTpl(tpl);
+    setWidthMm(tpl.widthMm);
+    setHeightMm(tpl.heightMm);
+    setAspect(tpl.widthMm / tpl.heightMm);
+  }, [searchParams]);
+
+  const handleCanvasReady = useCallback(() => {
+    if (step < 2 || !selectedTpl) return;
+    applyTemplate(selectedTpl);
+  }, [step, selectedTpl, applyTemplate]);
 
   const setAutoContour = useCallback(() => {
     setSelectedTpl(null);
@@ -339,6 +364,7 @@ export default function EditorShell() {
             {step === 2 && (
               <>
                 <h2 className="text-[16px] font-semibold">Bıçak seç</h2>
+                <CutColorNote />
                 <div className="mt-3 flex gap-1 p-1 rounded-lg bg-gri-100">
                   <button
                     type="button"
@@ -417,6 +443,14 @@ export default function EditorShell() {
                         </button>
                       ))}
                     </div>
+                    <Link
+                      href="/sablonlar?tab=kesim"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 block text-center text-[12px] font-semibold text-pim-mercan hover:underline"
+                    >
+                      Tüm kesim şablonlarını gör →
+                    </Link>
                   </>
                 ) : (
                   <p className="mt-3 text-[13px] text-gri-700">
@@ -583,6 +617,7 @@ export default function EditorShell() {
                 ref={canvasRef}
                 iframeSrc={iframeSrc}
                 onSaved={handleSaved}
+                onReady={handleCanvasReady}
                 onError={(m) => toast.error(m)}
               />
             ) : (

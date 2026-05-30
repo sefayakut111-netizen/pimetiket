@@ -42,16 +42,22 @@ const CATEGORIES: Array<{
   { emoji: "🏢", label: "Kurumsal & Marka", desc: "Logo etiketleri, kargo etiketleri", examples: "Modern · Endüstriyel · Profesyonel" },
 ];
 
-export default function TasarimSablonlari() {
+export default function TasarimSablonlari({
+  isMember: isMemberFromServer = false,
+}: {
+  isMember?: boolean;
+}) {
   const heroImage = useSiteImage("sablonlar_hero");
-  const { user } = useUser();
+  const { user, loading: authLoading } = useUser();
+  const isMember = isMemberFromServer || Boolean(user);
+  const authPending = !isMemberFromServer && authLoading;
 
   return (
     <>
       {/* Hero */}
       <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-8 items-center mb-10">
         <div>
-          <Eyebrow>Üyelere özel</Eyebrow>
+          <Eyebrow>{isMember ? "Üye avantajın" : "Üyelere özel"}</Eyebrow>
           <h1 className="mt-4 text-[34px] md:text-[48px] leading-[1.05] font-semibold tracking-[-0.01em]">
             Hazır <span className="text-pim-mercan">tasarım şablonları</span>
             <br />
@@ -127,41 +133,69 @@ export default function TasarimSablonlari() {
         </div>
       </section>
 
-      {/* Üye kapısı / durum — e-posta YOK */}
+      {/* Durum kartı — üye / misafir ayrımı */}
       <Card padding="p-7" className="bg-gradient-to-br from-krem-soft to-white">
         <div className="max-w-[560px]">
           <div className="grid place-items-center w-14 h-14 rounded-2xl bg-pim-mercan-tint text-pim-mercan">
             <Icon.Sparkle size={28} />
           </div>
-          <h2 className="mt-4 text-[24px] font-semibold leading-tight">
-            Tasarım şablonları üyelere açılıyor
-          </h2>
-          <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
-            Düzenlenebilir tasarım paketini son rötuşlardan geçiriyoruz.
-            Yayına girdiğinde, <strong>üye girişi yapan</strong> herkes
-            buradan ücretsiz indirebilecek. Şimdi hazır kesim şablonlarına da
-            göz at.
-          </p>
-          <div className="mt-5 flex flex-col sm:flex-row gap-3">
-            {user ? (
-              <Link href="/sablonlar?tab=kesim">
-                <Button variant="primary" size="lg">
-                  Kesim şablonlarına göz at
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/auth?next=/sablonlar%3Ftab%3Dtasarim">
-                <Button variant="primary" size="lg">
-                  <Icon.User size={16} /> Üye ol / Giriş yap
-                </Button>
-              </Link>
-            )}
-            <Link href="/sablonlar?tab=kesim">
-              <Button variant="secondary" size="lg">
-                Kesim şablonları
-              </Button>
-            </Link>
-          </div>
+          {authPending ? (
+            <>
+              <h2 className="mt-4 text-[24px] font-semibold leading-tight">
+                Oturum kontrol ediliyor…
+              </h2>
+              <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
+                Bir saniye — üyelik durumun doğrulanıyor.
+              </p>
+            </>
+          ) : isMember ? (
+            <>
+              <h2 className="mt-4 text-[24px] font-semibold leading-tight">
+                Tasarım paketi hazırlanıyor — sen üyesin ✓
+              </h2>
+              <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
+                Düzenlenebilir tasarım şablonlarını son rötuşlardan geçiriyoruz.
+                Yayına girince <strong>buradan ücretsiz indireceksin</strong> — ek
+                giriş gerekmez. Bu arada kesim şablonları ve editör hazır.
+              </p>
+              <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                <Link href="/sablonlar?tab=kesim">
+                  <Button variant="primary" size="lg">
+                    Kesim şablonlarını indir
+                  </Button>
+                </Link>
+                <Link href="/editor">
+                  <Button variant="secondary" size="lg">
+                    Editörde tasarla
+                  </Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="mt-4 text-[24px] font-semibold leading-tight">
+                Tasarım şablonları üyelere açılıyor
+              </h2>
+              <p className="mt-2 text-[14px] text-gri-700 leading-relaxed">
+                Düzenlenebilir tasarım paketini son rötuşlardan geçiriyoruz.
+                Yayına girdiğinde, <strong>üye girişi yapan</strong> herkes
+                buradan ücretsiz indirebilecek. Şimdi hazır kesim şablonlarına da
+                göz at.
+              </p>
+              <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                <Link href="/auth?next=/sablonlar%3Ftab%3Dtasarim">
+                  <Button variant="primary" size="lg">
+                    <Icon.User size={16} /> Üye ol / Giriş yap
+                  </Button>
+                </Link>
+                <Link href="/sablonlar?tab=kesim">
+                  <Button variant="secondary" size="lg">
+                    Kesim şablonları
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 

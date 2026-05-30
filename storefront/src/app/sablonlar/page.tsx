@@ -1,9 +1,13 @@
-"use client";
-
 import { Suspense } from "react";
+import { createClient } from "@/lib/supabase/server";
 import { SablonlarHub } from "./SablonlarHub";
 
-export default function SablonlarPage() {
+export default async function SablonlarPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <main className="py-10 pb-24">
       <div className="mx-auto max-w-[1100px] px-4 md:px-8">
@@ -14,7 +18,7 @@ export default function SablonlarPage() {
             </div>
           }
         >
-          <SablonlarHub />
+          <SablonlarHub isMember={Boolean(user)} />
         </Suspense>
       </div>
     </main>
