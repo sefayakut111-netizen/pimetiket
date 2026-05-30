@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" width="200" height="120">
+  <!-- Tasar1m içerii -->
+  <rect x="20" y="20" width="160" height="80" fill="#2563eb" rx="8"/>
+  <text x="100" y="68" text-anchor="middle" fill="white" font-family="Arial" font-size="14">PIM Test Etiket</text>
+  <!-- Gömülü b1çak  magenta spot color (Illustrator CutContour) -->
+  <path
+    d="M 30 35 Q 100 10 170 35 L 170 85 Q 100 110 30 85 Z"
+    fill="none"
+    stroke="#FF00FF"
+    stroke-width="0.75"
+  />
+</svg>

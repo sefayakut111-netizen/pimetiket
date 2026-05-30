@@ -28,6 +28,13 @@ const ALLOWED_WHITE_MODES = new Set([
   "custom",
 ]);
 const ALLOWED_TIERS = new Set(["pro", "standard", "improve"]);
+const ALLOWED_CUTLINE_SOURCES = new Set([
+  "file_embedded",
+  "auto_generated",
+  "prior",
+  "geo_shape",
+  "operator",
+]);
 
 const MAX_SVG_SIZE = 2 * 1024 * 1024;
 const MAX_PREVIEW_PNG_SIZE = 1 * 1024 * 1024;
@@ -53,6 +60,8 @@ export interface SaveCutlineEditBody {
   has_custom_white_plan?: boolean;
   tier?: string | null;
   detected_cut_contour_names?: string[];
+  cutline_source?: string | null;
+  detection_method?: string | null;
   auto?: boolean;
   design_file_id?: string | null;
 }
@@ -81,6 +90,8 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
     hasCustomWhitePlan: boolean;
     tier: string | null;
     detectedCutNames: string[];
+    cutlineSource: string | null;
+    detectionMethod: string | null;
     designFileId: string | null;
     isAuto: boolean;
     previewB64: string | null;
@@ -135,6 +146,17 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
       .slice(0, 10)
       .map((s) => s.slice(0, 100));
   })();
+  const cutlineSource =
+    typeof raw.cutline_source === "string" &&
+    ALLOWED_CUTLINE_SOURCES.has(raw.cutline_source)
+      ? raw.cutline_source
+      : raw.auto === true
+        ? "auto_generated"
+        : null;
+  const detectionMethod =
+    typeof raw.detection_method === "string"
+      ? raw.detection_method.slice(0, 64)
+      : null;
   const designFileId =
     typeof raw.design_file_id === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -182,6 +204,8 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
       hasCustomWhitePlan,
       tier,
       detectedCutNames,
+      cutlineSource,
+      detectionMethod,
       designFileId,
       isAuto: raw.auto === true,
       previewB64,
@@ -231,6 +255,8 @@ export async function saveCutlineEdit(
     hasCustomWhitePlan,
     tier,
     detectedCutNames,
+    cutlineSource,
+    detectionMethod,
     designFileId,
     isAuto,
     previewB64,
@@ -342,6 +368,8 @@ export async function saveCutlineEdit(
     has_custom_white_plan: hasCustomWhitePlan,
     tier,
     detected_cut_contour_names: detectedCutNames as Json | null,
+    cutline_source: cutlineSource,
+    detection_method: detectionMethod,
   };
 
   const { data: cd, error: cdErr } = await admin

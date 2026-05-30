@@ -1079,9 +1079,11 @@ export type Database = {
           approved_at: string | null
           created_at: string
           cutline_height_mm: number | null
+          cutline_source: string | null
           cutline_width_mm: number | null
           design_file_id: string | null
           detected_cut_contour_names: Json | null
+          detection_method: string | null
           dpi: number | null
           has_custom_white_plan: boolean | null
           height_mm: number | null
@@ -1110,9 +1112,11 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           cutline_height_mm?: number | null
+          cutline_source?: string | null
           cutline_width_mm?: number | null
           design_file_id?: string | null
           detected_cut_contour_names?: Json | null
+          detection_method?: string | null
           dpi?: number | null
           has_custom_white_plan?: boolean | null
           height_mm?: number | null
@@ -1141,9 +1145,11 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           cutline_height_mm?: number | null
+          cutline_source?: string | null
           cutline_width_mm?: number | null
           design_file_id?: string | null
           detected_cut_contour_names?: Json | null
+          detection_method?: string | null
           dpi?: number | null
           has_custom_white_plan?: boolean | null
           height_mm?: number | null

@@ -18,6 +18,9 @@ export async function generateCutlineHeadless(args: {
   orderId: string;
   itemId: string;
   siteUrl: string;
+  /** Gömülü bıçak path — varsa POC bounding-box üretmez */
+  detectedCutlineSvg?: string;
+  detectionSource?: string;
 }): Promise<CutlineResult | null> {
   const chromium = await import("@sparticuz/chromium");
   const puppeteer = await import("puppeteer-core");
@@ -99,12 +102,17 @@ export async function generateCutlineHeadless(args: {
       designName: args.designName,
       designMime: args.designMime,
       material: args.material,
-      mode: "contour",
+      mode: args.detectedCutlineSvg ? "use-embedded" : "contour",
       autoSave: "1",
       headless: "1",
       orderId: args.orderId,
       itemId: args.itemId,
     });
+
+    if (args.detectedCutlineSvg) {
+      params.set("embeddedCutline", args.detectedCutlineSvg);
+      params.set("embeddedSource", args.detectionSource ?? "unknown");
+    }
 
     await page.goto(`${args.siteUrl}/poc.html?${params.toString()}`, {
       waitUntil: "networkidle2",

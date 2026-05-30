@@ -151,19 +151,21 @@ export async function runProofPipeline(
     }
   }
 
-  let cutlinePath = input.cutlineSvgPath ?? "";
-  let partCount = cutlinePath ? 1 : 0;
+  let cutlinePath = "";
+  let partCount = 0;
 
-  if (!cutlinePath) {
-    const detected = await detectCutlineInFile(
-      input.designFileUrl,
-      input.fileName,
-      ""
-    );
-    if (detected.found && detected.svgPath) {
-      cutlinePath = detected.svgPath;
-      partCount = detected.partCount ?? 1;
-    }
+  const detected = await detectCutlineInFile(
+    input.designFileUrl,
+    input.fileName,
+    ""
+  );
+
+  if (detected.found && detected.valid !== false && detected.svgPath) {
+    cutlinePath = detected.svgPath;
+    partCount = detected.partCount ?? 1;
+  } else if (input.cutlineSvgPath) {
+    cutlinePath = extractPathFromSvg(input.cutlineSvgPath) || input.cutlineSvgPath;
+    partCount = 1;
   }
 
   let whiteResult = { generated: false, coverage: 0, whitePngUrl: undefined as string | undefined };

@@ -3,6 +3,20 @@
  * Dosyada gömülü bıçak varsa parse eder, yoksa POC'a bırakır.
  */
 
+export type CutlineDetectionMethod =
+  | "magenta_spot_color"
+  | "named_layer"
+  | "alpha_channel"
+  | "pdf_annotation"
+  | "psd_layer";
+
+export type CutlineSourceKind =
+  | "file_embedded"
+  | "auto_generated"
+  | "prior"
+  | "geo_shape"
+  | "operator";
+
 export interface CutlineDetectResult {
   found: boolean;
   source:
@@ -15,10 +29,46 @@ export interface CutlineDetectResult {
   partCount?: number;
   valid?: boolean;
   issues?: string[];
+  detectionMethod?: CutlineDetectionMethod;
 }
 
 const CUT_LAYER_NAMES =
   /die|cut|knife|bicak|bıçak|cutline|contour|kesim|cutcontour|thru-cut/i;
+
+const MAGENTA_STROKES = new Set([
+  "#ff00ff",
+  "magenta",
+  "rgb(255,0,255)",
+  "rgb(255, 0, 255)",
+]);
+
+function isMagentaStroke(value: string): boolean {
+  return MAGENTA_STROKES.has(value.trim().toLowerCase());
+}
+
+function findMagentaStrokePath(svgText: string): string | null {
+  const pathRegex = /<path\b([^>]*)\/?>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pathRegex.exec(svgText)) !== null) {
+    const attrs = match[1];
+    const stroke = attrs.match(/\bstroke=["']([^"']+)["']/i)?.[1];
+    if (!stroke || !isMagentaStroke(stroke)) continue;
+    const d = attrs.match(/\bd=["']([^"']+)["']/i)?.[1];
+    if (d) return d;
+  }
+  return null;
+}
+
+/** Gömülü path d → CutContour SVG (POC/depolama uyumlu) */
+export function buildEmbeddedCutlineSvg(pathD: string): string {
+  const safeD = pathD.replace(/"/g, "'");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g id="CutContour" data-pim-cutline="true" data-pim-embedded="true">
+    <path d="${safeD}" fill="none" stroke="#FF0080" stroke-width="0.5"/>
+  </g>
+</svg>`;
+}
 
 export async function detectCutlineInFile(
   fileUrl: string,
@@ -65,6 +115,20 @@ export async function detectCutlineFromSvg(
   try {
     const text = await fetchText(fileUrl);
 
+    const magentaPath = findMagentaStrokePath(text);
+    if (magentaPath) {
+      const validation = validateCutlineSvg(magentaPath);
+      return {
+        found: true,
+        source: "file_embedded",
+        svgPath: magentaPath,
+        partCount: countPathParts(magentaPath),
+        valid: validation.valid,
+        issues: validation.issues,
+        detectionMethod: "magenta_spot_color",
+      };
+    }
+
     const cutPathById = text.match(
       /<path[^>]*\bid=["'][^"']*cut[^"']*["'][^>]*\bd=["']([^"']+)["']/i
     );
@@ -78,6 +142,7 @@ export async function detectCutlineFromSvg(
         partCount: countPathParts(path),
         valid: validation.valid,
         issues: validation.issues,
+        detectionMethod: "named_layer",
       };
     }
 
@@ -94,6 +159,7 @@ export async function detectCutlineFromSvg(
           partCount: countPathParts(path),
           valid: validation.valid,
           issues: validation.issues,
+          detectionMethod: "named_layer",
         };
       }
     }
@@ -109,6 +175,7 @@ export async function detectCutlineFromSvg(
         partCount: countPathParts(path),
         valid: validation.valid,
         issues: validation.issues,
+        detectionMethod: "named_layer",
       };
     }
 
@@ -136,17 +203,21 @@ export async function detectCutlineFromPdf(
         const annot = doc.context.lookup(ref);
         if (!annot || typeof annot !== "object" || !("dict" in annot)) continue;
         const dict = (annot as { dict: Map<unknown, unknown> }).dict;
-        const subtype = dict.get(PDFName.of("Subtype"));
         const contents = String(dict.get(PDFName.of("Contents")) ?? "");
         const name = String(dict.get(PDFName.of("NM")) ?? "");
-        const label = `${name} ${contents}`;
-        if (CUT_LAYER_NAMES.test(label)) {
+        const subtype = String(dict.get(PDFName.of("Subtype")) ?? "");
+        const label = `${name} ${contents} ${subtype}`;
+        if (
+          CUT_LAYER_NAMES.test(label) ||
+          /cutcontour|thru-cut|spot/i.test(label)
+        ) {
           return {
             found: true,
             source: "file_embedded",
             partCount: 1,
             valid: true,
             issues: [],
+            detectionMethod: "pdf_annotation",
           };
         }
       }
@@ -170,7 +241,10 @@ export async function detectCutlineFromPsd(
   try {
     const buf = await fetchBuffer(fileUrl);
     const { readPsd } = await import("ag-psd");
-    const psd = readPsd(new Uint8Array(buf), { skipLayerImageData: true, skipCompositeImageData: true });
+    const psd = readPsd(new Uint8Array(buf), {
+      skipLayerImageData: true,
+      skipCompositeImageData: true,
+    });
     const layers = flattenLayerNames(psd.children ?? []);
     const cutLayer = layers.find((n) => CUT_LAYER_NAMES.test(n));
     if (cutLayer) {
@@ -180,6 +254,7 @@ export async function detectCutlineFromPsd(
         partCount: 1,
         valid: true,
         issues: [`PSD katmanı tespit edildi: ${cutLayer}`],
+        detectionMethod: "psd_layer",
       };
     }
     return { found: false, source: "none" };
@@ -224,6 +299,7 @@ export async function detectCutlineFromPng(
       partCount: 1,
       valid: true,
       issues: ["Alpha kanalı var — bıçak POC tarafından üretilecek"],
+      detectionMethod: "alpha_channel",
     };
   } catch {
     return { found: false, source: "none" };

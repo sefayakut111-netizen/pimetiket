@@ -6,6 +6,10 @@ import { generateCutlineHeadless } from "./generate-cutline-headless";
 import { categorizeFile } from "@/lib/design-file-types";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { saveCutlineEdit } from "@/lib/proof/save-cutline-edit";
+import {
+  buildEmbeddedCutlineSvg,
+  detectCutlineInFile,
+} from "@/lib/proof/cutline-detect";
 import { runProofPipeline } from "@/lib/proof/orchestrator";
 import { sendProofReady } from "@/lib/mail/notifications";
 
@@ -96,6 +100,63 @@ export async function runOrderCutlineGeneration(
               ? "metallic"
               : "paper";
 
+      const detected = await detectCutlineInFile(
+        signedData.signedUrl,
+        df.original_name,
+        df.mime_type ?? ""
+      );
+
+      if (detected.found && detected.valid !== false && detected.svgPath) {
+        const svg = buildEmbeddedCutlineSvg(detected.svgPath);
+        const saveResult = await saveCutlineEdit(admin, {
+          orderId,
+          itemId: item.id,
+          actorUserId: orderUserId,
+          actorRole: "system",
+          body: {
+            svg,
+            source: "vector-with-cutline",
+            mode: "contour",
+            auto: true,
+            design_file_id: df.id,
+            cutline_source: "file_embedded",
+            detection_method: detected.detectionMethod ?? null,
+            pim_feedback:
+              "Tasarımının içindeki bıçak çizgisini olduğu gibi kullandım. İncele ve onayla.",
+            pim_severity: "ok",
+            tier: "pro",
+            width_mm: item.width,
+            height_mm: item.height,
+            detected_cut_contour_names: detected.detectionMethod
+              ? [detected.detectionMethod]
+              : [],
+          },
+        });
+
+        if (saveResult.ok) {
+          generated++;
+          pendingProofs.push({
+            itemId: item.id,
+            designFileId: df.id,
+            storagePath: df.storage_path,
+            originalName: df.original_name,
+            width: item.width,
+            height: item.height,
+            materialKey: material,
+            cutlineSvg: svg,
+          });
+        } else {
+          failed++;
+          console.error(
+            "[run-order-cutline] embedded save failed:",
+            saveResult.error,
+            orderId,
+            item.id
+          );
+        }
+        continue;
+      }
+
       const result = await generateCutlineHeadless({
         designUrl: signedData.signedUrl,
         designName: df.original_name,
@@ -104,6 +165,9 @@ export async function runOrderCutlineGeneration(
         orderId,
         itemId: item.id,
         siteUrl,
+        detectedCutlineSvg:
+          detected.found && detected.svgPath ? detected.svgPath : undefined,
+        detectionSource: detected.detectionMethod,
       });
 
       if (!result) {
@@ -174,6 +238,14 @@ export async function runOrderCutlineGeneration(
           has_custom_white_plan: result.meta.has_custom_white_plan === true,
           tier:
             typeof result.meta.tier === "string" ? result.meta.tier : null,
+          cutline_source:
+            typeof result.meta.cutline_source === "string"
+              ? result.meta.cutline_source
+              : "auto_generated",
+          detection_method:
+            typeof result.meta.detection_method === "string"
+              ? result.meta.detection_method
+              : null,
           detected_cut_contour_names: Array.isArray(
             result.meta.detected_cut_contour_names
           )

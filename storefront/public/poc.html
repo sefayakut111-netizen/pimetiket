@@ -1828,10 +1828,12 @@ const PIM_PARAMS = (() => {
       orderWidthMm: parseFloat(sp.get('orderWidthMm') || '0') || 0,
       orderHeightMm: parseFloat(sp.get('orderHeightMm') || '0') || 0,
       mode: sp.get('mode') || 'contour',
+      embeddedCutline: sp.get('embeddedCutline'),
+      embeddedSource: sp.get('embeddedSource'),
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false, autoSave: false, embed: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour' };
+    return { headless: false, autoSave: false, embed: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour', embeddedCutline: null, embeddedSource: null };
   }
 })();
 
@@ -1914,6 +1916,13 @@ if (document.readyState === 'loading') {
 // Headless mode CSS — toolbar/sidebar gizle (parent iframe minimal göstersin)
 if (PIM_PARAMS.headless) {
   document.documentElement.classList.add('pim-headless');
+  if (
+    PIM_PARAMS.autoSave &&
+    PIM_PARAMS.mode === 'use-embedded' &&
+    PIM_PARAMS.embeddedCutline
+  ) {
+    setTimeout(pimTryAutoSave, 150);
+  }
 }
 
 // Parent'a sinyal — POC ready
@@ -4277,8 +4286,58 @@ ${svgPaths}  </g>
 </svg>`;
 }
 
+function pimSaveEmbeddedCutline() {
+  if (pimAutoSaveDone) return;
+  const pathD = PIM_PARAMS.embeddedCutline;
+  if (!pathD) {
+    pimAutoSaveDone = true;
+    pimPostToParent({ type: 'pim-cutline-auto-failed', error: 'no_embedded_cutline' });
+    return;
+  }
+  const safeD = String(pathD).replace(/"/g, "'");
+  const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g id="CutContour" data-pim-cutline="true" data-pim-embedded="true">
+    <path d="${safeD}" fill="none" stroke="#FF0080" stroke-width="0.5"/>
+  </g>
+</svg>`;
+  pimAutoSaveDone = true;
+  pimPostToParent({
+    type: 'pim-cutline-saved',
+    svg,
+    meta: {
+      source: 'vector-with-cutline',
+      mode: 'use-embedded',
+      offset_mm: 0,
+      smoothness: 0,
+      dpi: null,
+      width_mm: PIM_PARAMS.orderWidthMm || null,
+      height_mm: PIM_PARAMS.orderHeightMm || null,
+      cutline_width_mm: null,
+      cutline_height_mm: null,
+      pim_feedback: null,
+      pim_severity: 'ok',
+      material_type: PIM_PARAMS.material || 'paper',
+      white_plan_mode: 'off',
+      white_plan_path_count: 0,
+      has_custom_white_plan: false,
+      tier: 'pro',
+      cutline_source: 'file_embedded',
+      detection_method: PIM_PARAMS.embeddedSource || 'file_embedded',
+      detected_cut_contour_names: PIM_PARAMS.embeddedSource ? [PIM_PARAMS.embeddedSource] : [],
+    },
+    preview_png_base64: null,
+  });
+}
+
 function pimTryAutoSave() {
   if (!PIM_PARAMS.autoSave || pimAutoSaveDone) return;
+
+  if (PIM_PARAMS.mode === 'use-embedded' && PIM_PARAMS.embeddedCutline) {
+    pimSaveEmbeddedCutline();
+    return;
+  }
+
   if (!currentMat || !imageMetadata) return;
 
   if (!currentPaths || currentPaths.length === 0) {

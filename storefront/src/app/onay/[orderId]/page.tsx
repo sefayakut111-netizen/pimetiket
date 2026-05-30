@@ -72,6 +72,14 @@ interface ProofCutline {
   has_custom_white_plan: boolean | null;
   tier: "pro" | "standard" | "improve" | null;
   detected_cut_contour_names: string[] | null;
+  cutline_source:
+    | "file_embedded"
+    | "auto_generated"
+    | "prior"
+    | "geo_shape"
+    | "operator"
+    | null;
+  detection_method: string | null;
 }
 
 // POC v2 — yardımcı sabitler
@@ -2417,6 +2425,36 @@ export default function ProofApprovalPage({
                     <p className="text-sm leading-relaxed text-lacivert">
                       {activeCutline.pim_feedback}
                     </p>
+                  </div>
+                )}
+
+                {activeCutline?.cutline_source === "file_embedded" && (
+                  <div className="border-t border-gri-200 bg-white px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yesil-soft/30 text-yesil-koyu text-[11px] font-medium">
+                      <Icon.Check size={12} className="shrink-0" />
+                      Tasarımındaki bıçak çizgisi kullanıldı
+                    </span>
+                    {!activeCutline.pim_feedback && (
+                      <p className="mt-2 text-[12px] text-gri-700">
+                        Tasarımının içindeki bıçak çizgisini olduğu gibi
+                        kullandım. İncele ve onayla.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {activeCutline?.cutline_source === "auto_generated" && (
+                  <div className="border-t border-gri-200 bg-white px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mavi-soft/30 text-mavi-koyu text-[11px] font-medium">
+                      <Icon.Info size={12} className="shrink-0" />
+                      Bıçak çizgisi otomatik üretildi
+                    </span>
+                    {!activeCutline.pim_feedback && (
+                      <p className="mt-2 text-[12px] text-gri-700">
+                        Tasarımının dış sınırına otomatik bıçak çizgisi koydum.
+                        İstersen düzenleyebilirsin.
+                      </p>
+                    )}
                   </div>
                 )}
 
