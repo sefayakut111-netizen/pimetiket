@@ -61,6 +61,32 @@ export interface SequentialStepsResult {
   lockMessage: (domStepId: number) => string;
 }
 
+/** Adım tamamlandı mı? touched = kullanıcı seçimi; unlocked = URL pre-fill. */
+export function isStepComplete(
+  stepId: number,
+  touchedSteps: Set<number>,
+  unlockedSteps?: Set<number>
+): boolean {
+  return touchedSteps.has(stepId) || (unlockedSteps?.has(stepId) ?? false);
+}
+
+/** Zorunlu adımlardan ilk eksik olanı bul (sepet / PriceCard için). */
+export function findFirstIncompleteStep(
+  stepIds: readonly number[],
+  touchedSteps: Set<number>,
+  options?: {
+    unlockedSteps?: Set<number>;
+    optionalStepIds?: ReadonlySet<number>;
+  }
+): number | undefined {
+  const optional = options?.optionalStepIds ?? new Set<number>();
+  return stepIds.find(
+    (id) =>
+      !optional.has(id) &&
+      !isStepComplete(id, touchedSteps, options?.unlockedSteps)
+  );
+}
+
 export function useSequentialSteps({
   stepIds,
   stepLabels,
@@ -70,6 +96,9 @@ export function useSequentialSteps({
   prerequisiteForFirst,
   locale,
 }: SequentialStepsConfig): SequentialStepsResult {
+  const isDone = (stepId: number): boolean =>
+    isStepComplete(stepId, touchedSteps, unlockedSteps);
+
   const resolvePrevStepId = (idx: number): number | null => {
     let prevIdx = idx - 1;
     while (prevIdx >= 0) {
@@ -94,9 +123,8 @@ export function useSequentialSteps({
       if (prerequisiteForFirst === undefined) return false;
       return !prerequisiteForFirst;
     }
-    // Sonraki adımlar — zorunlu önceki adım touched olmalı (opsiyonel
-    // adımlar atlanır).
-    void unlockedSteps;
+    // Sonraki adımlar — zorunlu önceki adım tamamlanmış olmalı (touched
+    // veya URL pre-fill unlocked; opsiyonel adımlar atlanır).
     const prev = resolvePrevStepId(idx);
     if (prev == null) {
       if (prerequisiteForFirst === false) return true;
@@ -105,7 +133,7 @@ export function useSequentialSteps({
     if (prev === stepIds[0] && prerequisiteForFirst === false) {
       return true; // ilk step prereq tamamlanmamış
     }
-    return !touchedSteps.has(prev);
+    return !isDone(prev);
   };
 
   const lockMessage = (domStepId: number): string => {

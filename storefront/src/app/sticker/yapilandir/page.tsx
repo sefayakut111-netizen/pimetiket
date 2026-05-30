@@ -20,7 +20,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSequentialSteps } from "@/lib/use-sequential-steps";
+import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/lib/use-sequential-steps";
 import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
@@ -598,14 +598,14 @@ function StickerPage() {
   });
   const unlockedSteps = useMemo(() => {
     const set = new Set<number>();
-    if (initialParams.get("material")) set.add(3);
-    if (initialParams.get("shape")) {
+    if (searchParams.get("material")) set.add(3);
+    if (searchParams.get("shape")) {
       set.add(2);
       set.add(1);
     }
-    if (initialParams.get("cut")) set.add(1);
+    if (searchParams.get("cut")) set.add(1);
     return set;
-  }, [initialParams]);
+  }, [searchParams]);
 
   // Sefa 21 May v68 (konfigüratör denetim #8): geçersiz URL parametresi
   // ile geldiyse kullanıcıya bilgilendirici toast — sessizce default'a
@@ -729,6 +729,11 @@ function StickerPage() {
   };
 
   // Sefa 18 May v53: Sequential UX — basamak tamamlanmadan sonraki kilitli
+  const stepComplete = useCallback(
+    (stepId: number) => isStepComplete(stepId, touchedSteps, unlockedSteps),
+    [touchedSteps, unlockedSteps]
+  );
+
   const { isLocked: isStepLocked, lockMessage: getLockMessage } =
     useSequentialSteps({
       stepIds,
@@ -1100,7 +1105,7 @@ function StickerPage() {
                 {visibleShapes.map((s) => (
                   <SelectableCard
                     key={s.id}
-                    selected={touchedSteps.has(2) && shape === s.id}
+                    selected={stepComplete(2) && shape === s.id}
                     onClick={() => {
                       setShape(s.id);
                       markTouched(2);
@@ -1194,8 +1199,7 @@ function StickerPage() {
                     // (?material=) ile gelen seçim de "selected ring"
                     // göstersin — kart visual preselect.
                     selected={
-                      (touchedSteps.has(3) || unlockedSteps.has(3)) &&
-                      material === m.id
+                      stepComplete(3) && material === m.id
                     }
                     onClick={() => {
                       setMaterial(m.id);
@@ -1282,7 +1286,7 @@ function StickerPage() {
                 {FINISHES.map((f) => (
                   <SelectableCard
                     key={f.id}
-                    selected={touchedSteps.has(4) && finish === f.id}
+                    selected={stepComplete(4) && finish === f.id}
                     onClick={() => {
                       setFinish(f.id);
                       markTouched(4);
@@ -1894,12 +1898,17 @@ function StickerPage() {
               footnote={null}
               pendingStepsCount={
                 stepIds.filter(
-                  (id) => id !== 7 && !touchedSteps.has(id)
+                  (id) => id !== 7 && !stepComplete(id)
                 ).length
               }
               firstPendingStepLabel={(() => {
-                const firstPending = stepIds.find(
-                  (id) => id !== 7 && !touchedSteps.has(id)
+                const firstPending = findFirstIncompleteStep(
+                  stepIds,
+                  touchedSteps,
+                  {
+                    optionalStepIds: new Set([7]),
+                    unlockedSteps,
+                  }
                 );
                 if (firstPending == null) return undefined;
                 const idx = stepIds.indexOf(firstPending);
@@ -1911,8 +1920,13 @@ function StickerPage() {
                 // Sefa 20 May v68: zorunlu step kontrolü — touched değilse
                 // o adıma scroll + flash + toast. Tasarım (7) opsiyonel.
                 const OPTIONAL_STEPS = new Set([7]);
-                const missingStepId = stepIds.find(
-                  (id) => !OPTIONAL_STEPS.has(id) && !touchedSteps.has(id)
+                const missingStepId = findFirstIncompleteStep(
+                  stepIds,
+                  touchedSteps,
+                  {
+                    optionalStepIds: OPTIONAL_STEPS,
+                    unlockedSteps,
+                  }
                 );
                 if (missingStepId != null) {
                   const idx = stepIds.indexOf(missingStepId);

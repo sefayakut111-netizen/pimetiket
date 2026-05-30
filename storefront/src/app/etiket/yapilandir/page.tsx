@@ -19,7 +19,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSequentialSteps } from "@/lib/use-sequential-steps";
+import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/lib/use-sequential-steps";
 import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
@@ -883,12 +883,12 @@ function EtiketPage() {
   );
   const unlockedSteps = useMemo(() => {
     const set = new Set<number>();
-    if (initialParams.get("material") || initialParams.get("shape") === "clear") {
+    if (searchParams.get("material") || searchParams.get("shape") === "clear") {
       set.add(1);
     }
-    if (initialParams.get("shape")) set.add(6);
+    if (searchParams.get("shape")) set.add(6);
     return set;
-  }, [initialParams]);
+  }, [searchParams]);
   // Sefa 20 May v68 (Aşama B+): Form factor picker gizliyse müşteri URL'den
   // pre-fill ile zaten geldi → formFactorTouched her zaman true varsay (Step 1
   // Malzeme locked kalmasın). Picker açıksa eski davranış: kullanıcı seçmeli.
@@ -927,7 +927,7 @@ function EtiketPage() {
       // State'leri default'a döndür
       setFormFactor(next);
       setFormFactorTouched(true);
-      setTouchedSteps(new Set([0])); // sadece etiket türü touched
+      setTouchedSteps(new Set(SHOW_ETIKET_FORM_FACTOR_PICKER ? [0] : []));
       setMaterial("kuse");
       setCoating("yok");
       setCustoms(["yok"]);
@@ -1007,6 +1007,11 @@ function EtiketPage() {
 
   // Sefa 18 May v53: Sequential UX → useSequentialSteps hook'una
   // taşındı (tüm konfigüratör sayfaları aynı sistemi kullanır).
+  const stepComplete = useCallback(
+    (stepId: number) => isStepComplete(stepId, touchedSteps, unlockedSteps),
+    [touchedSteps, unlockedSteps]
+  );
+
   const { isLocked: isStepLocked, lockMessage: getLockMessage } =
     useSequentialSteps({
       stepIds,
@@ -1232,9 +1237,10 @@ function EtiketPage() {
     // scroll + flash + toast. Tasarım step (7) opsiyonel (sonra yükleme
     // akışı aktif).
     const OPTIONAL_STEPS = new Set([7]);
-    const missingStepId = stepIds.find(
-      (id) => !OPTIONAL_STEPS.has(id) && !touchedSteps.has(id)
-    );
+    const missingStepId = findFirstIncompleteStep(stepIds, touchedSteps, {
+      optionalStepIds: OPTIONAL_STEPS,
+      unlockedSteps,
+    });
     if (missingStepId != null) {
       const idx = stepIds.indexOf(missingStepId);
       const label = stepLabels[idx] ?? "önceki";
@@ -1461,6 +1467,7 @@ function EtiketPage() {
     stepIds,
     stepLabels,
     touchedSteps,
+    unlockedSteps,
     scrollToStep,
     locale,
   ]);
@@ -1666,6 +1673,13 @@ function EtiketPage() {
               locked={isStepLocked(1)}
               lockMessage={getLockMessage(1)}
             >
+              {!stepComplete(1) && (
+                <p className="mb-3 text-[13px] font-medium text-pim-mercan bg-pim-mercan-tint/40 rounded-lg px-3 py-2">
+                  {locale === "en"
+                    ? "Select a material to unlock the next steps."
+                    : "Devam etmek için bir malzeme seç — sonraki adımlar açılacak."}
+                </p>
+              )}
               {/* Sefa 20 May v68: grid kart sayısına göre dinamik (gridColsForCount).
                   HIDDEN_ETIKET_MATERIALS + formFactor filtresi sonrası görünür
                   kart sayısı, sütun sayısı = kart sayısı → kutu doldurulur,
@@ -1688,10 +1702,7 @@ function EtiketPage() {
                     // Sefa 21 May v68 (sistem denetim #12): URL pre-fill
                     // (unlockedSteps) ile gelen seçim de "selected ring"
                     // göstersin — kart visual preselect.
-                    selected={
-                      (touchedSteps.has(1) || unlockedSteps.has(1)) &&
-                      material === m.id
-                    }
+                    selected={stepComplete(1) && material === m.id}
                     onClick={() => {
                       setMaterial(m.id);
                       markTouched(1);
@@ -1779,7 +1790,7 @@ function EtiketPage() {
                     {visibleCoatings.map((c) => (
                   <SelectableCard
                     key={c.id}
-                    selected={touchedSteps.has(2) && coating === c.id}
+                    selected={stepComplete(2) && coating === c.id}
                     onClick={() => {
                       setCoating(c.id);
                       markTouched(2);
@@ -2387,7 +2398,7 @@ function EtiketPage() {
                     </span>
                     <input
                       type="number"
-                      value={touchedSteps.has(6) ? width : ""}
+                      value={stepComplete(6) ? width : ""}
                       placeholder={shape === "circle" ? "örn. 50" : "örn. 60"}
                       autoComplete="off"
                       onChange={(e) => {
@@ -2423,7 +2434,7 @@ function EtiketPage() {
                     {/* Sefa 18 May v64: touched değilse value boş gözüksün.
                         Sefa 21 May v68: clamp on blur (silme bug fix). */}
                     <ClampedNumberInput
-                      value={touchedSteps.has(6) ? width : undefined}
+                      value={stepComplete(6) ? width : undefined}
                       placeholder="örn. 60"
                       autoComplete="off"
                       onChange={(v) => {
@@ -2475,7 +2486,7 @@ function EtiketPage() {
                       {shape === "oval" ? "Kısa eksen (mm)" : "Yükseklik (mm)"}
                     </span>
                     <ClampedNumberInput
-                      value={touchedSteps.has(6) ? height : undefined}
+                      value={stepComplete(6) ? height : undefined}
                       placeholder="örn. 80"
                       autoComplete="off"
                       onChange={(v) => {
@@ -2529,7 +2540,7 @@ function EtiketPage() {
                   )
                   .map((preset) => {
                   const active =
-                    touchedSteps.has(6) &&
+                    stepComplete(6) &&
                     width === preset.w &&
                     height === preset.h;
                   return (
@@ -2792,12 +2803,17 @@ function EtiketPage() {
                   stepIds.filter(
                     (id) =>
                       id !== 7 /* Tasarım opsiyonel */ &&
-                      !touchedSteps.has(id)
+                      !stepComplete(id)
                   ).length
                 }
                 firstPendingStepLabel={(() => {
-                  const firstPending = stepIds.find(
-                    (id) => id !== 7 && !touchedSteps.has(id)
+                  const firstPending = findFirstIncompleteStep(
+                    stepIds,
+                    touchedSteps,
+                    {
+                      optionalStepIds: new Set([7]),
+                      unlockedSteps,
+                    }
                   );
                   if (firstPending == null) return undefined;
                   const idx = stepIds.indexOf(firstPending);
