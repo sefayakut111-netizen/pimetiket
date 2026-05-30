@@ -15,6 +15,7 @@ import { z } from "zod";
 import {
   buildSystemPromptWithMemory,
   PERSONAS,
+  type PimPageContext,
   type PimPersona,
 } from "@/lib/pim/personas";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
@@ -49,6 +50,7 @@ interface ChatRequestBody {
   messages: UIMessage[];
   persona?: PimPersona;
   memory?: MemorySnapshot;
+  pageContext?: PimPageContext;
 }
 
 // ============================================================
@@ -329,7 +331,11 @@ export async function POST(req: Request) {
   const personaConfig = PERSONAS[persona];
 
   const memory = body.memory ?? {};
-  const systemPrompt = buildSystemPromptWithMemory(persona, memory);
+  const systemPrompt = buildSystemPromptWithMemory(
+    persona,
+    memory,
+    body.pageContext
+  );
   const modelMessages = await convertToModelMessages(body.messages);
 
   const tools = {

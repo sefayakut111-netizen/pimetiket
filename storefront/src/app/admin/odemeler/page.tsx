@@ -243,6 +243,12 @@ export default function AdminOdemelerPage() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
                           <Link
+                            href={`/admin/odemeler/${p.id}`}
+                            className="inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold text-lacivert hover:bg-gri-100"
+                          >
+                            Detay
+                          </Link>
+                          <Link
                             href={`/admin/siparisler/${p.orderId}`}
                             className="inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold text-pim-mercan hover:bg-pim-mercan-tint/30"
                           >

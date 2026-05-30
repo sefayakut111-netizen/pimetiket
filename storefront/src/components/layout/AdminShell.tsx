@@ -144,6 +144,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/kargo": "Kargo yönetimi",
   "/admin/ayarlar": "Ayarlar",
   "/admin/sistem/cronlar": "Cron izleme",
+  "/admin/sistem/bakim": "Bakım modu",
 };
 
 function getPageTitle(
@@ -595,6 +596,12 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             href: "/admin/sistem/cronlar",
             label: "Cron İzleme",
             icon: <Icon.Refresh size={16} />,
+            module: "settings",
+          },
+          {
+            href: "/admin/sistem/bakim",
+            label: "Bakım modu",
+            icon: <Icon.Info size={16} />,
             module: "settings",
           },
           {

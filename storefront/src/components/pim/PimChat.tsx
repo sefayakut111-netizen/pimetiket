@@ -23,7 +23,7 @@ import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
-import type { PimPersona } from "@/lib/pim/personas";
+import type { PimPageContext, PimPersona } from "@/lib/pim/personas";
 import {
   appendMessage,
   isReturningUser,
@@ -43,6 +43,23 @@ import { track } from "@/lib/analytics/posthog-events";
 // Sefa kararı (UX audit): kullanıcı persona seçmez, hazır cevap chip'i
 // önerilmez. Pim akıllı bir sistem — pathname + soru içeriğine göre
 // otomatik doğru tonda yanıt verir. Chip'ler bot hissi yaratıyordu.
+
+function extractPageContext(pathname: string | null): PimPageContext | undefined {
+  if (!pathname) return undefined;
+  const proofMatch = pathname.match(/^\/onay\/([^/]+)/);
+  if (proofMatch) {
+    return { page: "proof", orderId: proofMatch[1] };
+  }
+  const uploadMatch = pathname.match(/^\/siparis\/([^/]+)\/tasarim-yukle/);
+  if (uploadMatch) {
+    return { page: "upload", orderId: uploadMatch[1] };
+  }
+  const orderMatch = pathname.match(/^\/siparis\/([^/]+)/);
+  if (orderMatch) {
+    return { page: "order", orderId: orderMatch[1] };
+  }
+  return undefined;
+}
 
 export function PimChat() {
   const pathname = usePathname();
@@ -118,11 +135,13 @@ export function PimChat() {
       api: "/api/pim/chat",
       prepareSendMessagesRequest({ messages }) {
         const mem = readMemory();
+        const pageContext = extractPageContext(pathname);
         return {
           body: {
             messages,
             persona,
             memory: memorySnapshotForPrompt(mem),
+            pageContext,
           },
         };
       },
@@ -201,6 +220,7 @@ export function PimChat() {
       setPersona((p) => (p === "designer" ? p : "designer"));
     } else if (
       pathname.startsWith("/siparis") ||
+      pathname.startsWith("/onay") ||
       pathname.startsWith("/siparislerim") ||
       pathname.startsWith("/odeme-sonuc") ||
       pathname.startsWith("/panelim")

@@ -381,6 +381,11 @@ export const ACTIVE_PERSONAS: PimPersona[] = [
   "shipper",
 ];
 
+export interface PimPageContext {
+  page?: "proof" | "order" | "upload";
+  orderId?: string;
+}
+
 /** Memory'den gelen fact'leri system prompt'a inject eder. */
 export function buildSystemPromptWithMemory(
   persona: PimPersona,
@@ -388,10 +393,28 @@ export function buildSystemPromptWithMemory(
     displayName?: string;
     facts?: Array<{ key: string; value: string }>;
     lastConversationSummary?: string;
-  }
+  },
+  pageContext?: PimPageContext
 ): string {
   const base = PERSONAS[persona].systemPrompt;
   const blocks: string[] = [base];
+
+  if (pageContext?.orderId) {
+    const oid = pageContext.orderId;
+    if (pageContext.page === "proof") {
+      blocks.push(
+        `\nSAYFA BAĞLAMI:\nMüşteri şu an /onay/${oid} prova onay sayfasında. Sipariş no: ${oid}. Prova, bıçak, beyaz katman, CMYK veya onay süreci sorularında \`get_proof_status\` tool'unu orderId="${oid}" ile çağır — müşteriden tekrar sipariş numarası isteme. Gerekirse \`redirect_to_order\` ile aynı sayfaya yönlendir.`
+      );
+    } else if (pageContext.page === "upload") {
+      blocks.push(
+        `\nSAYFA BAĞLAMI:\nMüşteri /siparis/${oid}/tasarim-yukle sayfasında. Sipariş no: ${oid}. Tasarım yükleme veya dosya formatı sorularında bu bağlamı kullan.`
+      );
+    } else if (pageContext.page === "order") {
+      blocks.push(
+        `\nSAYFA BAĞLAMI:\nMüşteri /siparis/${oid} sipariş detay sayfasında. Sipariş no: ${oid}. Durum sorularında \`get_proof_status\` veya \`redirect_to_order\` kullan.`
+      );
+    }
+  }
 
   if (memory.displayName) {
     blocks.push(
