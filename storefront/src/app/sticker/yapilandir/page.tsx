@@ -1578,7 +1578,35 @@ function StickerPage() {
                     )}
                   />
                 </label>
-                <span className="text-gri-500 font-medium pb-3.5 text-lg">×</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const w = width;
+                    const h = height;
+                    setWidth(h);
+                    setHeight(w);
+                    markTouched(5);
+                  }}
+                  disabled={!width || !height}
+                  className="self-end mb-3 p-2 rounded-lg text-gri-500 hover:bg-pim-mercan-tint hover:text-pim-mercan transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gri-500"
+                  title="Genişlik ↔ Yükseklik ters çevir"
+                  aria-label="Boyutları ters çevir"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    aria-hidden
+                  >
+                    <path
+                      d="M3 5h10M3 5l3-3M3 5l3 3M13 11H3M13 11l-3-3M13 11l-3 3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
                 <label className="block">
                   <span className="text-[12px] font-semibold text-gri-700 mb-1.5 block">
                     {shape === "oval"
