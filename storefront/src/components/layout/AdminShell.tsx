@@ -31,10 +31,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
-import {
-  AdminCommandPalette,
-  type CommandItem,
-} from "@/components/admin/AdminCommandPalette";
+import { type CommandItem } from "@/components/admin/AdminCommandPalette";
+import { CommandPalette } from "@/components/admin/CommandPalette";
 import { AdminBreadcrumb } from "@/components/admin/AdminBreadcrumb";
 import {
   AdminPathLabelProvider,
@@ -729,8 +727,8 @@ function AdminShellInner({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gri-50">
       {/* Cmd+K Command Palette */}
-      <AdminCommandPalette
-        items={commandItems}
+      <CommandPalette
+        navItems={commandItems}
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
       />
