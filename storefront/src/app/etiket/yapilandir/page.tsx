@@ -339,6 +339,14 @@ const ETIKET_TABAKA_QTY_STEP = 1; // step yok — serbest sürükle/yaz
 const ETIKET_TABAKA_PRESETS = [250, 500, 1000, 2500, 5000, 10000] as const;
 const ETIKET_TABAKA_POPULAR_PRESET = 1000;
 
+/** Slider tick adayları — maxQty (pricebook vb.) ile filtrelenir */
+const RULO_QTY_TICK_CANDIDATES = [
+  1000, 5000, 10000, 15000, 20000, 25000,
+] as const;
+const TABAKA_QTY_TICK_CANDIDATES = [
+  250, 500, 1000, 2500, 5000, 10000,
+] as const;
+
 /** Qty'i step'e snap'le (500'ün katı), min/max'a clamp et */
 function snapEtiketQty(n: number): number {
   if (!Number.isFinite(n)) return ETIKET_MIN_QTY;
@@ -1042,6 +1050,9 @@ function EtiketPage() {
   const qtyStep =
     formFactor === "rulo" ? ETIKET_QTY_STEP : ETIKET_TABAKA_QTY_STEP;
   const snapQty = formFactor === "rulo" ? snapEtiketQty : snapTabakaQty;
+  const qtySliderTicks = (
+    formFactor === "rulo" ? RULO_QTY_TICK_CANDIDATES : TABAKA_QTY_TICK_CANDIDATES
+  ).filter((t) => t >= minQty && t <= maxQty);
   // Faz 2 (Sefa 19 May v68): adminConfig.tiers > ETIKET_PRESETS/ETIKET_TABAKA_PRESETS
   const qtyPresets: readonly number[] = adminConfig?.tiers
     ? [...adminConfig.tiers]
@@ -2590,7 +2601,7 @@ function EtiketPage() {
               {/* Sefa 18 May v58: Slider + inline +/− step butonları.
                   Manuel input kutusu kaldırıldı (slider yeterli, kullanıcı
                   istediği değeri sağdaki ok'larla fine tune ediyor). */}
-              <div className="px-1">
+              <div className="px-1 min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between mb-2 gap-3">
                   {/* Sefa 18 May v66: 'adet en alt adetten başlasın'
                       → touched check kaldırıldı, default minQty her zaman gözüküyor */}
@@ -2645,11 +2656,7 @@ function EtiketPage() {
                     markTouched(8);
                   }}
                   ariaLabel="Etiket adedi (slider)"
-                  ticks={
-                    formFactor === "rulo"
-                      ? [1000, 5000, 10000, 15000, 20000, 25000]
-                      : [250, 500, 1000, 2500, 5000, 10000]
-                  }
+                  ticks={qtySliderTicks}
                   showTickLabels
                 />
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -2674,7 +2681,7 @@ function EtiketPage() {
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
                 </span>
-                {qtyPresets.map((q) => {
+                {qtyPresets.filter((q) => q >= minQty && q <= maxQty).map((q) => {
                   const active = touchedSteps.has(8) && qty === q;
                   // Sefa 18 May v58: popüler yıldız gösterimi kaldırıldı
                   // Sefa kuralı (15 May v2): binler nokta ile (10.000 not 10K)

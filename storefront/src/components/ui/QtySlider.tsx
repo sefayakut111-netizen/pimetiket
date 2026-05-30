@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 
@@ -48,47 +48,63 @@ export function QtySlider({
 
   return (
     <>
-      <input
-        type="range"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={handleChange}
-        aria-label={ariaLabel}
-        aria-valuemin={min}
-        aria-valuemax={max}
-        aria-valuenow={value}
-        list={ticks && ticks.length > 0 ? listId : undefined}
-        className={cn("pim-qty-slider w-full h-1.5 bg-gri-200 rounded-[3px]", className)}
-      />
-      {ticks && ticks.length > 0 && (
-        <>
-          <datalist id={listId}>
-            {ticks.map((t) => (
-              <option key={t} value={t} label={formatTick(t)} />
-            ))}
-          </datalist>
-          {showTickLabels && (
-            <div
-              className="relative mt-1 h-3.5 text-[10px] font-medium text-gri-500 tabular-nums select-none"
-              aria-hidden="true"
-            >
-              {ticks.map((t) => {
-                const pct = ((t - min) / (max - min)) * 100;
-                return (
-                  <span
-                    key={t}
-                    className="absolute -translate-x-1/2"
-                    style={{ left: `${pct}%` }}
-                  >
-                    {formatTick(t)}
-                  </span>
-                );
-              })}
-            </div>
+      <div className="w-full min-w-0 overflow-hidden">
+        <input
+          type="range"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          onChange={handleChange}
+          aria-label={ariaLabel}
+          aria-valuemin={min}
+          aria-valuemax={max}
+          aria-valuenow={value}
+          list={ticks && ticks.length > 0 ? listId : undefined}
+          className={cn(
+            "pim-qty-slider w-full h-1.5 bg-gri-200 rounded-[3px]",
+            className
           )}
-        </>
+        />
+        {ticks && ticks.length > 0 && showTickLabels && (
+          <div
+            className="relative mt-1 h-3.5 w-full overflow-hidden text-[10px] font-medium text-gri-500 tabular-nums select-none"
+            aria-hidden="true"
+          >
+            {ticks.map((t, index) => {
+              const span = max - min;
+              const rawPct = span <= 0 ? 0 : ((t - min) / span) * 100;
+              const pct = Math.min(100, Math.max(0, rawPct));
+              const isFirst = index === 0;
+              const isLast = index === ticks.length - 1;
+              return (
+                <span
+                  key={t}
+                  className={cn(
+                    "absolute top-0 whitespace-nowrap",
+                    isFirst && "left-0",
+                    isLast && !isFirst && "right-0",
+                    !isFirst && !isLast && "-translate-x-1/2"
+                  )}
+                  style={
+                    !isFirst && !isLast
+                      ? ({ left: `${pct}%` } satisfies CSSProperties)
+                      : undefined
+                  }
+                >
+                  {formatTick(t)}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {ticks && ticks.length > 0 && (
+        <datalist id={listId}>
+          {ticks.map((t) => (
+            <option key={t} value={t} label={formatTick(t)} />
+          ))}
+        </datalist>
       )}
       <style>{`
         .pim-qty-slider {
