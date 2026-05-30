@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, Modal, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { getAdminStatusLabel } from "@/lib/admin-status";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
@@ -98,6 +98,14 @@ const HISTORY_DECISION_ICON: Record<HistoryItem["decision"], string> = {
   reject: "",
   fix_and_proof: "",
 };
+
+const HISTORY_DECISION_LABEL: Record<HistoryItem["decision"], string> = {
+  approve: "Onaylandı",
+  reject: "Reddedildi",
+  fix_and_proof: "Düzelt → Prova",
+};
+
+const BULK_CONFIRM_SECONDS = 15;
 
 function QCRunCard({ run }: { run: QCRun }) {
   return (
@@ -216,6 +224,10 @@ export default function AdminAiQcPage() {
   const [periodStatsLoaded, setPeriodStatsLoaded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTestOrders, setShowTestOrders] = useState(false);
+  const [orderHistory, setOrderHistory] = useState<HistoryItem[]>([]);
+  const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkCountdown, setBulkCountdown] = useState(BULK_CONFIRM_SECONDS);
 
   const catalogQueue = useMemo(
     () =>
@@ -325,6 +337,49 @@ export default function AdminAiQcPage() {
     if (showHistory) void fetchHistory();
   }, [showHistory, fetchHistory]);
 
+  const fetchOrderHistory = useCallback(async (orderId: string) => {
+    setOrderHistoryLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/ai-qc/history?orderId=${encodeURIComponent(orderId)}&days=90&limit=30`
+      );
+      const data = (await res.json()) as {
+        ok?: boolean;
+        history?: HistoryItem[];
+      };
+      if (data.ok) {
+        setOrderHistory(data.history ?? []);
+      } else {
+        setOrderHistory([]);
+      }
+    } catch (err) {
+      console.error("[ai-qc] order history fetch failed:", err);
+      setOrderHistory([]);
+    } finally {
+      setOrderHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activeOrderId || showHistory) {
+      setOrderHistory([]);
+      return;
+    }
+    void fetchOrderHistory(activeOrderId);
+  }, [activeOrderId, showHistory, fetchOrderHistory]);
+
+  useEffect(() => {
+    if (!bulkModalOpen) {
+      setBulkCountdown(BULK_CONFIRM_SECONDS);
+      return;
+    }
+    setBulkCountdown(BULK_CONFIRM_SECONDS);
+    const id = setInterval(() => {
+      setBulkCountdown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [bulkModalOpen]);
+
   const periodSummaryLine = useMemo(() => {
     if (!periodStatsLoaded) return null;
     const wait =
@@ -357,14 +412,13 @@ export default function AdminAiQcPage() {
     return catalogQueue.filter((q) => q.qcRuns[0]?.verdict === verdictFilter);
   }, [catalogQueue, verdictFilter]);
 
-  const goodVerdictOrders = useMemo(
-    () =>
-      catalogQueue.filter((q) => {
-        const runs = q.qcRuns;
-        return runs.length > 0 && runs.every((r) => r.verdict === "iyi");
-      }),
-    [catalogQueue]
-  );
+  const bulkGoodOrders = useMemo(() => {
+    if (verdictFilter !== "iyi") return [];
+    return filteredQueue.filter((q) => {
+      const runs = q.qcRuns;
+      return runs.length > 0 && runs.every((r) => r.verdict === "iyi");
+    });
+  }, [filteredQueue, verdictFilter]);
 
   useEffect(() => {
     if (
@@ -403,6 +457,7 @@ export default function AdminAiQcPage() {
       }
       setNote("");
       await fetchQueue();
+      void fetchOrderHistory(active.orderId);
     } catch (err) {
       console.error("[ai-qc] decide failed:", err);
       toast.error("Karar uygulanamadı (ağ hatası)");
@@ -449,8 +504,8 @@ export default function AdminAiQcPage() {
     }
   };
 
-  const rerunQc = async () => {
-    if (!active || deciding) return;
+  const rerunQcForOrder = async (orderId: string) => {
+    if (deciding) return;
     if (
       !confirm("AI QC tekrar çalıştırılsın mı? (10-30 saniye sürebilir)")
     ) {
@@ -461,7 +516,7 @@ export default function AdminAiQcPage() {
       const res = await fetch("/api/agents/design-qc", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orderId: active.orderId, force: true }),
+        body: JSON.stringify({ orderId, force: true }),
       });
       if (res.ok) {
         toast.success("QC tekrar çalıştırıldı");
@@ -474,16 +529,16 @@ export default function AdminAiQcPage() {
     }
   };
 
+  const rerunQc = () => {
+    if (!active) return;
+    void rerunQcForOrder(active.orderId);
+  };
+
   const bulkApprove = async () => {
-    if (deciding || goodVerdictOrders.length === 0) return;
-    if (
-      !confirm(`${goodVerdictOrders.length} siparişi toplu onaylayalım mı?`)
-    ) {
-      return;
-    }
+    if (deciding || bulkGoodOrders.length === 0) return;
     setDeciding(true);
     try {
-      for (const o of goodVerdictOrders) {
+      for (const o of bulkGoodOrders) {
         await fetch("/api/admin/ai-qc/decide", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -494,7 +549,8 @@ export default function AdminAiQcPage() {
           }),
         });
       }
-      toast.success(`${goodVerdictOrders.length} sipariş onaylandı`);
+      toast.success(`${bulkGoodOrders.length} sipariş onaylandı`);
+      setBulkModalOpen(false);
       await fetchQueue();
     } finally {
       setDeciding(false);
@@ -760,20 +816,20 @@ export default function AdminAiQcPage() {
           </Card>
         </div>
 
-        {goodVerdictOrders.length > 0 && (
+        {verdictFilter === "iyi" && bulkGoodOrders.length > 0 && (
           <div className="mb-4 rounded-lg bg-yesil-soft/30 ring-1 ring-yesil/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-yesil-koyu font-medium">
-               {goodVerdictOrders.length} sipariş tüm dosyaları &ldquo;İYİ&rdquo;
-              — toplu onaylanabilir
+              {bulkGoodOrders.length} sipariş (filtrelenmiş) tüm dosyaları
+              &ldquo;İYİ&rdquo; — toplu onaylanabilir
             </span>
             <Button
               variant="primary"
               size="sm"
               className="!bg-yesil hover:!bg-yesil-koyu"
-              onClick={() => void bulkApprove()}
+              onClick={() => setBulkModalOpen(true)}
               disabled={deciding}
             >
-              Tümünü onayla ({goodVerdictOrders.length})
+              Tümünü onayla ({bulkGoodOrders.length})
             </Button>
           </div>
         )}
@@ -828,44 +884,66 @@ export default function AdminAiQcPage() {
                 const latestVerdict = q.qcRuns[0]?.verdict;
                 const isActive = q.orderId === activeOrderId;
                 return (
-                  <button
+                  <div
                     key={q.orderId}
-                    type="button"
-                    onClick={() => setActiveOrderId(q.orderId)}
                     className={cn(
-                      "text-left p-3 rounded-lg transition-colors",
+                      "rounded-lg transition-colors",
                       isActive ? "bg-lacivert text-white" : "hover:bg-gri-100"
                     )}
                   >
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-mono text-[12px] opacity-80">
-                        {q.orderId.slice(0, 8)}
-                      </span>
-                      {latestVerdict && (
-                        <span
-                          className={cn(
-                            "inline-flex items-center h-[18px] px-1.5 rounded-full text-[10px] font-bold",
-                            VERDICT_COLORS[latestVerdict] ??
-                              VERDICT_COLORS.error
-                          )}
-                        >
-                          {VERDICT_LABELS[latestVerdict] ?? latestVerdict}
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-semibold text-[13px] truncate">
-                      {q.customerName}
-                    </div>
-                    <div
-                      className={cn(
-                        "text-[11.5px] mt-0.5",
-                        isActive ? "text-white/70" : "text-gri-700"
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveOrderId(q.orderId)}
+                      className="text-left w-full p-3 pb-1"
                     >
-                      {getAdminStatusLabel(q.status)} ·{" "}
-                      {timeAgo(q.createdAt)}
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-mono text-[12px] opacity-80">
+                          {q.orderId.slice(0, 8)}
+                        </span>
+                        {latestVerdict && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[18px] px-1.5 rounded-full text-[10px] font-bold",
+                              VERDICT_COLORS[latestVerdict] ??
+                                VERDICT_COLORS.error
+                            )}
+                          >
+                            {VERDICT_LABELS[latestVerdict] ?? latestVerdict}
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-semibold text-[13px] truncate">
+                        {q.customerName}
+                      </div>
+                      <div
+                        className={cn(
+                          "text-[11.5px] mt-0.5",
+                          isActive ? "text-white/70" : "text-gri-700"
+                        )}
+                      >
+                        {getAdminStatusLabel(q.status)} ·{" "}
+                        {timeAgo(q.createdAt)}
+                      </div>
+                    </button>
+                    <div className="px-3 pb-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void rerunQcForOrder(q.orderId);
+                        }}
+                        disabled={deciding}
+                        className={cn(
+                          "text-[10.5px] font-semibold underline-offset-2 hover:underline disabled:opacity-50",
+                          isActive
+                            ? "text-white/90"
+                            : "text-pim-mercan"
+                        )}
+                      >
+                        Tekrar çalıştır
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -977,6 +1055,47 @@ export default function AdminAiQcPage() {
               </div>
             )}
 
+            {(orderHistoryLoading || orderHistory.length > 0) && (
+              <Card padding="p-6">
+                <h3 className="font-semibold text-base mb-3">
+                  Karar geçmişi (bu sipariş)
+                </h3>
+                {orderHistoryLoading ? (
+                  <p className="text-[13px] text-gri-700">Yükleniyor…</p>
+                ) : (
+                  <ol className="relative border-l border-gri-200 ml-2 space-y-4">
+                    {orderHistory.map((h) => (
+                      <li
+                        key={`${h.orderId}-${h.createdAt}`}
+                        className="ml-4"
+                      >
+                        <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-gri-300 ring-2 ring-white" />
+                        <div className="text-[13px]">
+                          <span className="font-semibold text-lacivert">
+                            {HISTORY_DECISION_LABEL[h.decision]}
+                          </span>
+                          <span className="text-gri-500">
+                            {" "}
+                            · {h.operatorName} · {timeAgo(h.createdAt)}
+                          </span>
+                        </div>
+                        {h.note && (
+                          <p className="text-[12px] text-gri-600 mt-0.5">
+                            &ldquo;{h.note}&rdquo;
+                          </p>
+                        )}
+                        {h.summary && (
+                          <p className="text-[11.5px] text-gri-500 mt-0.5">
+                            {h.summary}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </Card>
+            )}
+
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-3">Operatör kararı</h3>
               <p className="text-[13px] text-gri-700 mb-3 leading-relaxed">
@@ -1037,6 +1156,49 @@ export default function AdminAiQcPage() {
             </Card>
           </div>
         </div>
+
+        <Modal
+          open={bulkModalOpen}
+          onClose={() => setBulkModalOpen(false)}
+          title="Toplu onay"
+          closeOnBackdrop={bulkCountdown === 0}
+        >
+          <p className="text-[13.5px] text-gri-700 leading-relaxed mb-4">
+            <strong className="text-lacivert">{bulkGoodOrders.length}</strong>{" "}
+            sipariş toplu olarak onaylanacak. Bu işlem geri alınamaz; devam
+            etmeden önce {BULK_CONFIRM_SECONDS} saniye bekleyin.
+          </p>
+          <div className="text-center mb-5">
+            <div className="text-[42px] font-bold tabular-nums text-lacivert">
+              {bulkCountdown > 0 ? bulkCountdown : "✓"}
+            </div>
+            <div className="text-[12px] text-gri-600 mt-1">
+              {bulkCountdown > 0
+                ? "Onay butonu açılıyor…"
+                : "Onaylamaya hazırsınız"}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setBulkModalOpen(false)}
+            >
+              İptal
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="!bg-yesil hover:!bg-yesil-koyu"
+              onClick={() => void bulkApprove()}
+              disabled={deciding || bulkCountdown > 0}
+            >
+              {bulkCountdown > 0
+                ? `Bekleyin (${bulkCountdown}s)`
+                : `${bulkGoodOrders.length} siparişi onayla`}
+            </Button>
+          </div>
+        </Modal>
       </div>
     </main>
   );

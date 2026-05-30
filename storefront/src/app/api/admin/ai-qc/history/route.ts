@@ -1,7 +1,8 @@
 /**
- * GET /api/admin/ai-qc/history?days=30&limit=50
+ * GET /api/admin/ai-qc/history?days=30&limit=50&orderId=<uuid>
  *
  * Son QC operatör kararları — order_events audit trail.
+ * orderId verilirse yalnızca o siparişin karar geçmişi döner (stats atlanır).
  */
 
 import { NextResponse } from "next/server";
@@ -117,13 +118,14 @@ export async function GET(req: Request) {
     parseInt(url.searchParams.get("limit") ?? "50", 10) || 50,
     100
   );
+  const orderId = url.searchParams.get("orderId")?.trim() || null;
 
   const admin = createAdminClient();
   const since = new Date();
   since.setDate(since.getDate() - days);
   const sinceIso = since.toISOString();
 
-  const { data, error } = await admin
+  let historyQuery = admin
     .from("order_events")
     .select(
       "order_id, event_type, summary, created_at, detail, actor_id, profiles(display_name)"
@@ -132,6 +134,12 @@ export async function GET(req: Request) {
     .gte("created_at", sinceIso)
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (orderId) {
+    historyQuery = historyQuery.eq("order_id", orderId);
+  }
+
+  const { data, error } = await historyQuery;
 
   if (error) {
     return NextResponse.json(
@@ -166,6 +174,10 @@ export async function GET(req: Request) {
       summary: row.summary,
     };
   });
+
+  if (orderId) {
+    return NextResponse.json({ ok: true, history });
+  }
 
   const periodStats = await computePeriodStats(admin, sinceIso);
 
