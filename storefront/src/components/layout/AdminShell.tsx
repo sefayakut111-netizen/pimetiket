@@ -66,6 +66,7 @@ interface AdminBadges {
   helpRequests: number;
   supportOpen: number;
   pendingReviews: number;
+  queueCritical: number;
 }
 
 function aggregateBadges(
@@ -96,6 +97,7 @@ function aggregateBadges(
     helpRequests,
     supportOpen,
     pendingReviews,
+    queueCritical: 0,
   };
 }
 
@@ -133,7 +135,8 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/iadeler": "İade talepleri",
   "/admin/kuponlar": "Kuponlar",
   "/admin/calisanlar": "Çalışanlar",
-  "/admin/fiyatlar": "Fiyat yönetimi",
+  "/admin/fiyatlar": "Fiyatlar",
+  "/admin/kuyruk": "Operasyon kuyruğu",
   "/admin/raporlar": "Raporlar",
   "/admin/audit-log": "Denetim kaydı",
   "/admin/kvkk-talepleri": "KVKK talepleri",
@@ -187,6 +190,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
     helpRequests: 0,
     supportOpen: 0,
     pendingReviews: 0,
+    queueCritical: 0,
   });
   const [switching, setSwitching] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -251,6 +255,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
     let supportOpenCount = 0;
     let pendingReviewsCount = 0;
     let activePartnersCount = 0;
+    let queueCriticalCount = 0;
 
     // Sefa 21 May v68 (site denetim P2 #13): Sidebar badge'i admin-wide
     // /api/admin/orders/list'ten çeker; daha önce listCustomerOrders
@@ -283,6 +288,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
           pendingReviewsCount
         ),
         activePartners: activePartnersCount,
+        queueCritical: queueCriticalCount,
       });
     };
 
@@ -369,6 +375,22 @@ function AdminShellInner({ children }: { children: ReactNode }) {
     void fetchSupportTickets();
     const supportInterval = setInterval(fetchSupportTickets, 60_000);
 
+    const fetchQueueCritical = async () => {
+      try {
+        const res = await fetch("/api/admin/operation-queue", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { criticalCount?: number };
+        queueCriticalCount = json.criticalCount ?? 0;
+        refresh();
+      } catch {
+        /* sessiz */
+      }
+    };
+    void fetchQueueCritical();
+    const queueInterval = setInterval(fetchQueueCritical, 60_000);
+
     const fetchPendingReviews = async () => {
       try {
         const res = await fetch("/api/admin/reviews", { cache: "no-store" });
@@ -394,6 +416,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
       clearInterval(partnersInterval);
       clearInterval(helpInterval);
       clearInterval(supportInterval);
+      clearInterval(queueInterval);
       clearInterval(reviewsInterval);
     };
   }, []);
@@ -420,6 +443,14 @@ function AdminShellInner({ children }: { children: ReactNode }) {
       {
         label: "Operasyon",
         items: [
+          {
+            href: "/admin/kuyruk",
+            label: "Operasyon Kuyruğu",
+            icon: <Icon.Doc size={16} />,
+            badge: badges.queueCritical,
+            badgeAccent: badges.queueCritical > 0,
+            module: "dashboard",
+          },
           { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} />, module: "dashboard" },
           {
             href: "/admin/siparisler",
@@ -496,7 +527,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
           },
           {
             href: "/admin/yardim-talepleri",
-            label: "Yardım Talepleri",
+            label: "Prova Yardımı",
             icon: <Icon.ChatBubble size={16} />,
             badge: badges.helpRequests,
             badgeAccent: badges.helpRequests > 0,
@@ -504,7 +535,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
           },
           {
             href: "/admin/destek",
-            label: "Destek",
+            label: "Destek (Genel)",
             icon: <Icon.ChatBubble size={16} />,
             badge: badges.supportOpen,
             badgeAccent: badges.supportOpen > 0,
@@ -628,7 +659,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             icon: <Icon.Box size={16} />,
             module: "archive",
           },
-          ...(process.env.NEXT_PUBLIC_ALLOW_SIMULATOR === "true"
+          ...(process.env.NODE_ENV !== "production"
             ? [
                 {
                   href: "/admin/test-siparis-simulator",
@@ -646,7 +677,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             : []),
           {
             href: "/admin/fiyatlar",
-            label: "Fiyat yönetimi",
+            label: "Fiyatlar",
             icon: <Icon.Sparkle size={16} />,
             module: "pricing",
           },

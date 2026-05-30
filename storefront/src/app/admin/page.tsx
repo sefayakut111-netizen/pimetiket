@@ -1317,12 +1317,20 @@ function AdminDashboardPageInner() {
                   </p>
                 </div>
               </div>
-              <span
-                className="text-[12px] font-bold tabular-nums text-pim-mercan bg-white rounded-full h-7 min-w-7 px-2.5 grid place-items-center"
-                title="Is kategorisi sayisi"
-              >
-                {todoList.length} satir
-              </span>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/admin/kuyruk"
+                  className="text-[12px] font-semibold text-pim-mercan hover:underline whitespace-nowrap"
+                >
+                  Tüm acil işleri gör →
+                </Link>
+                <span
+                  className="text-[12px] font-bold tabular-nums text-pim-mercan bg-white rounded-full h-7 min-w-7 px-2.5 grid place-items-center"
+                  title="Is kategorisi sayisi"
+                >
+                  {todoList.length} satir
+                </span>
+              </div>
             </div>
             <div className="divide-y divide-gri-100">
               {todoList.map((t) => (
