@@ -116,12 +116,15 @@ export async function persistDesignPreview(
     let blob: Blob | null = null;
 
     if (kind === "image") {
-      // Native image — dosyanın kendisi preview
-      blob = file;
+      const { compressPreviewBlob } = await import("./compress-preview");
+      blob = await compressPreviewBlob(file);
     } else {
       // PDF/PSD/AI/EPS — render gerek
       const result = await generatePreview(file);
-      if (result.ok && result.blob) blob = result.blob;
+      if (result.ok && result.blob) {
+        const { compressPreviewBlob } = await import("./compress-preview");
+        blob = await compressPreviewBlob(result.blob);
+      }
     }
 
     if (!blob) return null;

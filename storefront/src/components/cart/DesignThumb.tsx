@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Cart Design Thumbnail — Sefa 20 May v68
  *
@@ -12,6 +14,7 @@
  *   - PSD: #001E36 / #31A8FF (Photoshop deep blue)
  */
 
+import { useState } from "react";
 import { Icon } from "@/components/Icon";
 
 type Product = "sticker" | "etiket";
@@ -27,6 +30,8 @@ interface DesignThumbProps {
   product: Product;
   /** Kart boyutu — sepet 80px, /odeme 56px */
   size?: "sm" | "md";
+  /** img yüklenemezse (expire URL vb.) parent fetch tetikleyebilir */
+  onImageError?: () => void;
 }
 
 function getKindFromMime(mime?: string): "pdf" | "ai" | "psd" | "eps" | "img" | null {
@@ -94,11 +99,13 @@ export function DesignThumb({
   mimeType,
   product,
   size = "md",
+  onImageError,
 }: DesignThumbProps) {
+  const [imgFailed, setImgFailed] = useState(false);
   const sizeClass = size === "sm" ? "w-14 h-14" : "w-15 h-15 sm:w-20 sm:h-20";
 
   // Öncelik 1 — render edilmiş preview varsa direkt göster
-  if (previewUrl) {
+  if (previewUrl && !imgFailed) {
     return (
       <div
         className={`grid place-items-center ${sizeClass} rounded-lg shrink-0 overflow-hidden bg-white ring-1 ring-gri-200`}
@@ -110,6 +117,10 @@ export function DesignThumb({
           title={fileName}
           className="w-full h-full object-contain"
           loading="lazy"
+          onError={() => {
+            setImgFailed(true);
+            onImageError?.();
+          }}
         />
       </div>
     );

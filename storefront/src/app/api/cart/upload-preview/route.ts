@@ -13,7 +13,7 @@
  *   - Bucket public read flag'i kalır → URL'ler kalıcı erişilir
  *
  * Request: multipart/form-data
- *   - file: image/png blob (max 5 MB)
+ *   - file: image/png blob (max 1 MB)
  *   - design_id: string (UUID veya local-<uuid>) — storage path için
  *
  * Response:
@@ -31,7 +31,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BUCKET = "design-previews";
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_SIZE = 1024 * 1024; // 1 MB — sepet/panel thumbnail
 const ALLOWED_MIME = ["image/png"];
 // design_id formatı: UUID veya "local-<UUID>" — alfanumerik + tire
 const DESIGN_ID_RE = /^(local-)?[a-f0-9-]{36}$/i;

@@ -1,5 +1,6 @@
 import type { OrderDesignFilesByItem } from "@/components/orders/OrderCardDesignPreview";
 import { getExpectedDesignCount } from "@/lib/order-item-meta";
+import { metaPreviewUrlsArePersistent, isPersistentPreviewUrl } from "@/lib/design-preview/preview-url";
 
 export type OrderDesignFilesMap = Record<string, OrderDesignFilesByItem>;
 
@@ -75,7 +76,9 @@ function itemHasAllMetaPreviews(item: OrderPreviewItem): boolean {
     0
   );
   if (expected <= 1) {
-    return Boolean(item.designPreviewUrl?.trim());
+    return metaPreviewUrlsArePersistent({
+      designPreviewUrl: item.designPreviewUrl,
+    });
   }
   const slotUrls: (string | undefined)[] = [
     item.designPreviewUrl,
@@ -83,7 +86,7 @@ function itemHasAllMetaPreviews(item: OrderPreviewItem): boolean {
   ];
   for (let i = 0; i < expected; i++) {
     const url = slotUrls[i];
-    if (!url?.trim()) return false;
+    if (!isPersistentPreviewUrl(url)) return false;
   }
   return true;
 }

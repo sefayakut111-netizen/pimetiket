@@ -7,7 +7,8 @@ import {
   type DesignPreviewEntry,
 } from "@/components/cart/DesignThumbnailGroup";
 import type { OrderDesignFilesByItem } from "./OrderCardDesignPreview";
-import { OrderItemDesignPreview } from "./OrderItemDesignPreview";
+import { OrderItemDesignPreview, OrderItemDesignThumb } from "./OrderItemDesignPreview";
+import { isPersistentPreviewUrl } from "@/lib/design-preview/preview-url";
 
 type OrderItem = CustomerOrder["items"][number];
 
@@ -15,14 +16,24 @@ function resolvePreviews(
   item: OrderItem,
   designFiles?: OrderDesignFilesByItem[string]
 ): DesignPreviewEntry[] {
+  const cartPreviews = designPreviewsFromCartItem(item).map((entry) => ({
+    ...entry,
+    previewUrl: isPersistentPreviewUrl(entry.previewUrl)
+      ? entry.previewUrl
+      : undefined,
+  }));
   const apiPreviews: DesignPreviewEntry[] =
-    designFiles?.map((df) => ({
-      previewUrl: df.previewUrl,
-      fileName: df.fileName,
-      mimeType: df.mimeType,
+    designFiles?.map((df, i) => ({
+      previewUrl:
+        df.previewUrl ??
+        (isPersistentPreviewUrl(cartPreviews[i]?.previewUrl)
+          ? cartPreviews[i].previewUrl
+          : undefined),
+      fileName: df.fileName ?? cartPreviews[i]?.fileName,
+      mimeType: df.mimeType ?? cartPreviews[i]?.mimeType,
     })) ?? [];
-  const cartPreviews = designPreviewsFromCartItem(item);
-  return apiPreviews.length > 0 ? apiPreviews : cartPreviews;
+  if (apiPreviews.length > 0) return apiPreviews;
+  return cartPreviews;
 }
 
 /** Sol sütun — birincil tasarım (eski büyük önizleme boyutu). */
@@ -48,10 +59,14 @@ export function PanelimPrimaryPreview({
   }
   const primary = previews[0];
   return (
-    <DesignThumb
-      previewUrl={primary.previewUrl}
-      fileName={primary.fileName}
-      mimeType={primary.mimeType}
+    <OrderItemDesignThumb
+      orderId={orderId}
+      itemId={item.id}
+      fallbackPreviewUrl={
+        isPersistentPreviewUrl(primary.previewUrl) ? primary.previewUrl : undefined
+      }
+      fileName={primary.fileName ?? item.designFileName}
+      mimeType={primary.mimeType ?? item.designMimeType}
       product={item.product}
       size="md"
     />

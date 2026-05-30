@@ -8,6 +8,7 @@ import {
   designPreviewsFromCartItem,
   type DesignPreviewEntry,
 } from "@/components/cart/DesignThumbnailGroup";
+import { isPersistentPreviewUrl } from "@/lib/design-preview/preview-url";
 
 export interface OrderDesignFilePreview {
   id: string;
@@ -46,7 +47,12 @@ export function OrderItemDesignPreview({
       mimeType: df.mimeType,
     })) ?? [];
 
-  const cartPreviews = designPreviewsFromCartItem(item);
+  const cartPreviews = designPreviewsFromCartItem(item).map((entry) => ({
+    ...entry,
+    previewUrl: isPersistentPreviewUrl(entry.previewUrl)
+      ? entry.previewUrl
+      : undefined,
+  }));
   const previews = apiPreviews.length > 0 ? apiPreviews : cartPreviews;
 
   if (previews.length > 1) {
@@ -76,7 +82,11 @@ export function OrderItemDesignPreview({
     <OrderItemDesignThumb
       orderId={orderId}
       itemId={item.id}
-      fallbackPreviewUrl={item.designPreviewUrl ?? previews[0]?.previewUrl}
+      fallbackPreviewUrl={
+        isPersistentPreviewUrl(item.designPreviewUrl ?? previews[0]?.previewUrl)
+          ? (item.designPreviewUrl ?? previews[0]?.previewUrl)
+          : undefined
+      }
       fileName={item.designFileName ?? previews[0]?.fileName}
       mimeType={item.designMimeType ?? previews[0]?.mimeType}
       product={item.product}
@@ -86,7 +96,7 @@ export function OrderItemDesignPreview({
   );
 }
 
-function OrderItemDesignThumb({
+export function OrderItemDesignThumb({
   orderId,
   itemId,
   fallbackPreviewUrl,
@@ -108,11 +118,15 @@ function OrderItemDesignThumb({
   const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
   const [fetchedMime, setFetchedMime] = useState<string | undefined>(undefined);
   const [fetchedName, setFetchedName] = useState<string | undefined>(undefined);
+  const [fallbackBroken, setFallbackBroken] = useState(false);
+  const [retryFetch, setRetryFetch] = useState(0);
 
-  const previewUrl = fallbackPreviewUrl ?? fetchedUrl ?? undefined;
+  const stableFallback =
+    fallbackPreviewUrl && !fallbackBroken ? fallbackPreviewUrl : undefined;
+  const previewUrl = stableFallback ?? fetchedUrl ?? undefined;
 
   useEffect(() => {
-    if (fallbackPreviewUrl) return;
+    if (stableFallback && retryFetch === 0) return;
     let active = true;
     void fetch(`/api/orders/${orderId}/items/${itemId}/design-url?thumb=1`, {
       cache: "no-store",
@@ -137,7 +151,7 @@ function OrderItemDesignThumb({
     return () => {
       active = false;
     };
-  }, [orderId, itemId, fallbackPreviewUrl]);
+  }, [orderId, itemId, stableFallback, retryFetch]);
 
   const thumb = (
     <DesignThumb
@@ -146,6 +160,12 @@ function OrderItemDesignThumb({
       mimeType={mimeType ?? fetchedMime}
       product={product}
       size={size}
+      onImageError={() => {
+        if (stableFallback) {
+          setFallbackBroken(true);
+          setRetryFetch((n) => n + 1);
+        }
+      }}
     />
   );
 
