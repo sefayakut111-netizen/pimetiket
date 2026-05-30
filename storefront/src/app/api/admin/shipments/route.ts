@@ -50,6 +50,8 @@ export interface AdminShipmentRow {
   last_event_description: string | null;
   last_event_location: string | null;
   last_event_time: string | null;
+  /** orders.estimated_delivery — müşteriye vaat edilen teslim tarihi */
+  estimated_delivery: string | null;
 }
 
 function dateRangeStart(range: string): string | null {
@@ -98,7 +100,7 @@ export async function GET(req: NextRequest) {
       `id, order_id, status, tracking_company, tracking_number, tracking_url,
        tracking_status, tracking_last_polled_at, tracking_delivered_at,
        shipped_at,
-       orders!inner(id, user_id, address)`,
+       orders!inner(id, user_id, address, estimated_delivery)`,
       { count: "exact" }
     )
     .not("tracking_number", "is", null)
@@ -159,6 +161,7 @@ export async function GET(req: NextRequest) {
     orders: {
       id: string;
       user_id: string;
+      estimated_delivery: string | null;
       // address JSON snapshot: { name, city, district, ... }
       address: { city?: string; district?: string } | null;
     };
@@ -236,6 +239,7 @@ export async function GET(req: NextRequest) {
       last_event_description: lastEv?.description ?? null,
       last_event_location: lastEv?.location ?? null,
       last_event_time: lastEv?.event_time ?? null,
+      estimated_delivery: r.orders.estimated_delivery ?? null,
     };
   });
 

@@ -122,6 +122,62 @@ function daysAgo(iso: string | null): string {
   return formatDate(iso);
 }
 
+const MS_PER_DAY = 86400000;
+
+function deliveryDaysBetween(fromIso: string, toIso: string): number {
+  return Math.max(
+    1,
+    Math.ceil(
+      (new Date(toIso).getTime() - new Date(fromIso).getTime()) / MS_PER_DAY
+    )
+  );
+}
+
+function daysInTransit(shippedAt: string): number {
+  return Math.max(
+    0,
+    Math.floor((Date.now() - new Date(shippedAt).getTime()) / MS_PER_DAY)
+  );
+}
+
+function deliveredAgoLabel(deliveredAt: string): string {
+  const days = Math.floor(
+    (Date.now() - new Date(deliveredAt).getTime()) / MS_PER_DAY
+  );
+  if (days === 0) return "bugün teslim";
+  if (days === 1) return "dün teslim";
+  return `${days} gün önce teslim`;
+}
+
+const IN_TRANSIT_STATUSES = new Set([
+  "new",
+  "in_transit",
+  "out_for_delivery",
+]);
+
+function deliveryComparisonLabel(s: AdminShipmentRow): string | null {
+  const deliveredAt = s.tracking_delivered_at ?? s.last_event_time;
+  if (
+    s.tracking_status !== "delivered" ||
+    !s.shipped_at ||
+    !s.estimated_delivery ||
+    !deliveredAt
+  ) {
+    return null;
+  }
+  const estDays = deliveryDaysBetween(s.shipped_at, s.estimated_delivery);
+  const actDays = deliveryDaysBetween(s.shipped_at, deliveredAt);
+  return `tahmini ${estDays} gün / gerçek ${actDays} gün`;
+}
+
+function isDeliveryLate(s: AdminShipmentRow): boolean {
+  const deliveredAt = s.tracking_delivered_at ?? s.last_event_time;
+  if (!s.shipped_at || !s.estimated_delivery || !deliveredAt) return false;
+  const estDays = deliveryDaysBetween(s.shipped_at, s.estimated_delivery);
+  const actDays = deliveryDaysBetween(s.shipped_at, deliveredAt);
+  return actDays > estDays;
+}
+
 export default function AdminKargoPage() {
   const toast = useToast();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
@@ -758,19 +814,40 @@ export default function AdminKargoPage() {
                             Henüz event yok
                           </span>
                         )}
-                        {s.tracking_status === "delivered" &&
-                          s.shipped_at &&
-                          s.last_event_time && (
-                            <div className="text-[10px] text-yesil-koyu mt-0.5">
-                              {" "}
-                              {Math.ceil(
-                                (new Date(s.last_event_time).getTime() -
-                                  new Date(s.shipped_at).getTime()) /
-                                  86400000
-                              )}{" "}
-                              günde teslim
+                        {s.shipped_at &&
+                          IN_TRANSIT_STATUSES.has(
+                            s.tracking_status ?? "new"
+                          ) && (
+                            <div className="text-[10px] text-mavi-koyu mt-0.5">
+                              {daysInTransit(s.shipped_at) === 0
+                                ? "bugün yola çıktı"
+                                : `${daysInTransit(s.shipped_at)} gündür yolda`}
                             </div>
                           )}
+                        {s.tracking_status === "delivered" && (
+                          <>
+                            {(s.tracking_delivered_at ?? s.last_event_time) && (
+                              <div className="text-[10px] text-yesil-koyu mt-0.5">
+                                {deliveredAgoLabel(
+                                  s.tracking_delivered_at ??
+                                    s.last_event_time!
+                                )}
+                              </div>
+                            )}
+                            {deliveryComparisonLabel(s) && (
+                              <div
+                                className={cn(
+                                  "text-[10px] mt-0.5",
+                                  isDeliveryLate(s)
+                                    ? "text-kirmizi-koyu font-medium"
+                                    : "text-gri-600"
+                                )}
+                              >
+                                {deliveryComparisonLabel(s)}
+                              </div>
+                            )}
+                          </>
+                        )}
                         {s.tracking_status === "failed" && (
                           <div className="text-[10px] text-kirmizi mt-0.5">
                              Teslim edilemedi
