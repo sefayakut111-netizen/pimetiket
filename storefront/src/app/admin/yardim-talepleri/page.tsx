@@ -147,9 +147,10 @@ export default function AdminYardimTalepleriPage() {
   return (
     <main className="container py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-lacivert">Yardım Talepleri</h1>
+        <h1 className="text-2xl font-bold text-lacivert">Prova Yardımı</h1>
         <p className="mt-1 text-sm text-gri-700">
-          Prova aşamasında müşteri yardım istediği talepler.
+          Müşterinin /onay sayfasından açtığı prova yardım talepleri — bıçak,
+          beyaz veya onay süreci soruları buraya düşer.
         </p>
       </div>
 

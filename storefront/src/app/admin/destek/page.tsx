@@ -217,10 +217,10 @@ export default function AdminDestekPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <Eyebrow>Müşteri</Eyebrow>
-            <h1 className="mt-3 text-[28px] font-semibold">Destek Talepleri</h1>
+            <h1 className="mt-3 text-[28px] font-semibold">Destek (Genel)</h1>
             <p className="text-sm text-gri-600 mt-2">
-              Genel müşteri destek talepleri — iletişim formu, e-posta ve Pim
-              sohbet üzerinden gelen.
+              İletişim formu, e-posta ve genel Pim sohbetinden gelen talepler —
+              prova ekranı yardımı için Prova Yardımı sayfasını kullanın.
             </p>
           </div>
           <Button
