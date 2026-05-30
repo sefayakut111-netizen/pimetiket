@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateCartPricing } from "@/lib/payment-validation";
 import {
   createPaidOrderViaServiceRole,
   type ServerCreateOrderPayload,
@@ -70,6 +71,60 @@ export async function POST(req: Request) {
     body = BodySchema.parse(await req.json());
   } catch {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const calcSubtotal = body.items.reduce((s, i) => s + i.total, 0);
+  if (Math.abs(calcSubtotal - body.subtotal) > 0.05) {
+    return NextResponse.json(
+      { error: "subtotal_mismatch", expected: calcSubtotal },
+      { status: 400 }
+    );
+  }
+  const calcTotal = body.subtotal + body.shipping;
+  if (Math.abs(calcTotal - body.total) > 0.05) {
+    return NextResponse.json(
+      { error: "total_mismatch", expected: calcTotal },
+      { status: 400 }
+    );
+  }
+
+  const itemsForValidation = body.items.map((item, idx) => ({
+    id: `bypass-${idx}`,
+    product: item.product,
+    title: item.title,
+    config: item.config,
+    width: item.width,
+    height: item.height,
+    qty: item.qty,
+    unit: item.unit,
+    total: item.total,
+    meta: item.meta,
+    shape: item.shape,
+    cut: item.cut,
+    material: item.material,
+    finish: item.finish,
+    coatingId: item.coatingId,
+    customizationId: item.customizationId,
+    materialId: item.materialId,
+    designCount:
+      item.meta && typeof item.meta.designCount === "number"
+        ? item.meta.designCount
+        : null,
+  }));
+
+  const pricingValidation = await validateCartPricing(
+    itemsForValidation,
+    body.subtotal
+  );
+  if (!pricingValidation.ok) {
+    console.warn("[admin/bypass-checkout] pricing validation failed:", {
+      adminId: auth.user.id,
+      failures: pricingValidation.failures,
+    });
+    return NextResponse.json(
+      { error: "pricing_validation_failed" },
+      { status: 400 }
+    );
   }
 
   const admin = createAdminClient();

@@ -56,7 +56,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await assertPermission("customers", "create");
+  const auth = await assertPermission("customers", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id: customerId } = await params;

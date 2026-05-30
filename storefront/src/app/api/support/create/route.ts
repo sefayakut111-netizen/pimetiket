@@ -53,13 +53,35 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
 
   const admin = createAdminClient();
+
+  const orderId = body.order_id?.trim() || null;
+  if (orderId) {
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, error: "Siparişe bağlı destek için giriş gerekli" },
+        { status: 401 }
+      );
+    }
+    const { data: orderRow } = await admin
+      .from("orders")
+      .select("user_id")
+      .eq("id", orderId)
+      .maybeSingle();
+    const orderOwner = (orderRow as { user_id?: string } | null)?.user_id;
+    if (!orderOwner || orderOwner !== user.id) {
+      return NextResponse.json(
+        { ok: false, error: "Bu sipariş size ait değil" },
+        { status: 403 }
+      );
+    }
+  }
   const row: SupportInsert = user
     ? {
         user_id: user.id,
         subject,
         message,
         category,
-        order_id: body.order_id?.trim() || null,
+        order_id: orderId,
         status: "open",
       }
     : {
@@ -68,7 +90,7 @@ export async function POST(req: Request) {
         subject,
         message,
         category,
-        order_id: body.order_id?.trim() || null,
+        order_id: orderId,
         status: "open",
       };
 

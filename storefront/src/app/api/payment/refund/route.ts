@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { refundPayment, isPayTrConfigured } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 const RefundBodySchema = z.object({
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   // önceden x-admin-secret header'da service_role taşınıyordu; logs/proxy/
   // shell history'den sızma riski vardı. Şu an sadece auth.users + profiles.role
   // üzerinden RBAC kontrolü yapılıyor.
-  const auth = await assertAdmin();
+  const auth = await assertPermission("finans", "update");
   if (!auth) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }

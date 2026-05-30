@@ -338,7 +338,18 @@ export async function updateSession(request: NextRequest) {
           "fn_has_permission",
           { p_module: pathModule, p_action: "view" }
         );
-        if (!permErr && hasPerm !== true) {
+        if (permErr) {
+          if (process.env.NODE_ENV === "production") {
+            return new NextResponse(
+              "Service Unavailable — Permission check failed.",
+              {
+                status: 503,
+                headers: { "content-type": "text/plain; charset=utf-8" },
+              }
+            );
+          }
+          console.error("[middleware] fn_has_permission error:", permErr);
+        } else if (hasPerm !== true) {
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = "/admin";
           redirectUrl.searchParams.set("denied", pathModule);

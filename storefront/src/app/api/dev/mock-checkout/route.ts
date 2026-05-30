@@ -49,9 +49,15 @@ const BodySchema = z.object({
   estimatedDelivery: z.string().optional(),
 });
 
+function devMockCheckoutBlocked(): boolean {
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.VERCEL_ENV === "production") return true;
+  return process.env.ENABLE_DEV_ENDPOINTS !== "true";
+}
+
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (devMockCheckoutBlocked()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const supabase = await createServerClient();
