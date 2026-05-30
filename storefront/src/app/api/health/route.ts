@@ -19,6 +19,11 @@ export async function GET() {
         process.env.NEXT_PUBLIC_POSTHOG_KEY ||
           process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID
       ),
+      googleSearchConsole: Boolean(
+        process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim()
+      ),
+      ga4: Boolean(process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim()),
+      posthog: Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim()),
       mail: Boolean(process.env.RESEND_API_KEY),
     },
     {

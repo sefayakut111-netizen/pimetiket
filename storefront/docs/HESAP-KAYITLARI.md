@@ -103,8 +103,9 @@
 |---|---|---|---|---|
 | **Sentry** | ? | Free (5k event/ay) | https://sentry.io | Hata izleme · DSN Vercel env'de |
 | **Vercel Analytics** | (Vercel hesabı) | Hobby | Vercel dashboard | Web vitals + funnel |
-| **PostHog** | ? | Free tier | https://eu.i.posthog.com | _Opsiyonel, henüz aktif değil_ |
-| **GA4** | ? | Free | https://analytics.google.com | _Opsiyonel, henüz aktif değil_ |
+| **PostHog** | `pimetiket@gmail.com` veya proje hesabı | Free tier | https://eu.posthog.com/project/177669 | Vercel env `NEXT_PUBLIC_POSTHOG_KEY` — canlıda analytics açık |
+| **GA4** | `sefayakut111@gmail.com` | Free | https://analytics.google.com | Vercel env `NEXT_PUBLIC_GA4_MEASUREMENT_ID` — canlıda analytics açık |
+| **Google Search Console** | `sefayakut111@gmail.com` | Free | https://search.google.com/search-console | `pimetiket.com` doğrulandı (HTML meta · May 2026) · Sitemap: `https://pimetiket.com/sitemap.xml` |
 
 ---
 

@@ -26,8 +26,8 @@ Mevcut durum denetimi: teknik SEO ~%85 hazır (robots, sitemap, canonical, OG, s
 ## A. GOOGLE TARAFI
 
 ### P0 — Hızlı kazanımlar (kod + kurulum, gün içinde)
-1. **[SEFA] Google Search Console** — domain doğrula + `sitemap.xml` submit. Tüm Google görünürlüğünün ön koşulu; index durumu + arama sorguları buradan görünür. (Env: `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`.)
-2. **[SEFA] GA4** — `NEXT_PUBLIC_GA4_MEASUREMENT_ID` (analytics oturumundan kalan iş).
+1. **[SEFA] Google Search Console** — ✅ doğrulama canlıda (`google-site-verification` meta). **Kalan:** Sitemaps → `https://pimetiket.com/sitemap.xml` gönder/yenile (SEO deploy sonrası 8 malzeme URL dahil). Legacy ping endpoint'leri kapalı → sadece GSC UI.
+2. **[SEFA] GA4** — ✅ canlıda `analytics: true` (`/api/health`). **Kalan (opsiyonel):** Data API env → `/admin/trafik` paneli (`GA4_PROPERTY_ID` + service account).
 3. **[KOD] /iletisim'e LocalBusiness schema + canonical** — Google "İşletme Bilgileri" paneli + yerel arama. (`SchemaJsonLd` zaten `localBusinessSchema()` içeriyor, sadece mount edilecek; telefon/adres/saat Sefa verecek.)
 4. **[KOD] Blog `revalidate=3600`** — `blog/[slug]/page.tsx` ISR cache (şu an her istekte render).
 5. **[SEFA] Sosyal medya linkleri** — `NEXT_PUBLIC_SOCIAL_LINKS` → Organization `sameAs` (knowledge graph + güven).

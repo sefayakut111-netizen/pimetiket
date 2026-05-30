@@ -11,7 +11,8 @@
 - **Sentry** error tracking + source map → `packanalyz-47.sentry.io/pimetiket-prod`
 - **Vercel Speed Insights** (Core Web Vitals LCP/CLS/INP) — auto-aktif
 - **Vercel Analytics** (free pageview tracking) — auto-aktif
-- **Robots.txt** + **Sitemap.xml** dinamik (19 statik + blog dinamik)
+- **Robots.txt** + **Sitemap.xml** dinamik (statik + 8 malzeme landing + blog)
+- **Search Console doğrulama** — canlıda `google-site-verification` meta aktif (Vercel env)
 - **JSON-LD Organization + WebSite** schema (layout global)
 - **JSON-LD Product** schema (etiket + sticker sayfaları)
 - **JSON-LD FAQ** schema (/sss)

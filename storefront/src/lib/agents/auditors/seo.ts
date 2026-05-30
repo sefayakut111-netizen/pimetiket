@@ -3,25 +3,23 @@
  *
  * Haftalık Çarşamba 11:00. Görünürlük + teknik SEO kontrolleri.
  *
- * 4 kontrol:
- *   A. Sitemap güncelliği (son fetch tarihi)
- *   B. Aktif blog yazısı sayısı (organik trafik için minimum 5)
- *   C. Aktif kupon süresi (Finance'de günlük; burada haftalık özet)
- *   D. Yasal sayfa erişim kontrolü (basit reachability — stub)
+ * Kontroller: sitemap (+ malzeme landing URL'leri), blog hacmi, yasal sayfalar,
+ * llms.txt, robots (AI retrieval), Search Console env, sitemap ping (Google/Bing).
  *
- * NOT: Core Web Vitals + Google Search Console gerçek metrikleri için
- * PostHog Web Vitals + GSC API entegrasyonu gerek (Sefa'nın gelecek
- * dalga işi). Şu an basit DB tabanlı + reachability check.
+ * NOT: GSC Performance API (sorgu/tıklama) OAuth gerektirir — ayrı faz.
  */
 
 import { AuditorBase } from "../_shared/base";
 import type { AuditorFinding, AuditorRunResult } from "../_shared/types";
+import { MATERIAL_SLUGS } from "@/lib/seo/materials";
+import { pingAllSearchEngines } from "@/lib/seo/search-engine-ping";
 
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
 
 const TUNE = {
   minBlogPosts: 5,
+  minSitemapUrls: 27, // ~18 statik + 8 malzeme + 4+ blog
   legalPages: [
     "/kvkk",
     "/gizlilik",
@@ -54,6 +52,24 @@ export class SeoAuditor extends AuditorBase {
     const legal = await this.checkLegalPages();
     findings.push(...legal.findings);
     metrics.legal = legal.metrics;
+
+    const llms = await this.checkLlmsTxt();
+    findings.push(...llms.findings);
+    metrics.llms = llms.metrics;
+
+    const robots = await this.checkRobotsAiRetrieval();
+    findings.push(...robots.findings);
+    metrics.robots = robots.metrics;
+
+    const gsc = this.checkSearchConsoleEnv();
+    findings.push(...gsc.findings);
+    metrics.searchConsole = gsc.metrics;
+
+    if (sitemap.metrics.reachable) {
+      const ping = await this.pingSearchEngines();
+      findings.push(...ping.findings);
+      metrics.sitemapPing = ping.metrics;
+    }
 
     const counts = countFindings(findings);
     return {
@@ -90,17 +106,54 @@ export class SeoAuditor extends AuditorBase {
 
       const xml = await res.text();
       const urlCount = (xml.match(/<url>/g) ?? []).length;
-
-      findings.push(
-        this.info(
-          "sitemap_ok",
-          `Sitemap erişilebilir (${urlCount} URL)`,
-          `${SITE_URL()}/sitemap.xml ✓ — ${urlCount} URL listelenmiş.`,
-          { urlCount, sizeKB: Math.round(xml.length / 1024) }
-        )
+      const missingMaterials = MATERIAL_SLUGS.filter(
+        (slug) => !xml.includes(`/malzeme/${slug}`)
       );
 
-      return { findings, metrics: { reachable: true, urlCount } };
+      if (urlCount < TUNE.minSitemapUrls) {
+        findings.push(
+          this.warning(
+            "sitemap_low_url_count",
+            `Sitemap ${urlCount} URL (beklenen ≥${TUNE.minSitemapUrls})`,
+            `SEO deploy eksik olabilir (8 malzeme landing + statik). Search Console'da sitemap yeniden gönder; deploy sonrası otomatik ping çalışır.`,
+            { urlCount, minExpected: TUNE.minSitemapUrls }
+          )
+        );
+      } else {
+        findings.push(
+          this.info(
+            "sitemap_ok",
+            `Sitemap erişilebilir (${urlCount} URL)`,
+            `${SITE_URL()}/sitemap.xml ✓ — ${urlCount} URL listelenmiş.`,
+            { urlCount, sizeKB: Math.round(xml.length / 1024) }
+          )
+        );
+      }
+
+      if (missingMaterials.length > 0) {
+        findings.push(
+          this.warning(
+            "sitemap_missing_material_landings",
+            `${missingMaterials.length} malzeme URL'si sitemap'te yok`,
+            `Eksik slug'lar: ${missingMaterials.join(", ")}. \`/malzeme/[slug]\` deploy edilmeli.`,
+            { missing: missingMaterials }
+          )
+        );
+      } else {
+        findings.push(
+          this.info(
+            "sitemap_materials_ok",
+            "8 malzeme landing sitemap'te",
+            "Programatik SEO sayfaları indeks için hazır.",
+            { count: MATERIAL_SLUGS.length }
+          )
+        );
+      }
+
+      return {
+        findings,
+        metrics: { reachable: true, urlCount, missingMaterials },
+      };
     } catch (err) {
       findings.push(
         this.warning(
@@ -189,6 +242,175 @@ export class SeoAuditor extends AuditorBase {
     }
 
     return { findings, metrics: { total: results.length, broken: broken.length } };
+  }
+
+  private async checkLlmsTxt() {
+    const findings: AuditorFinding[] = [];
+    try {
+      const res = await fetch(`${SITE_URL()}/llms.txt`, { cache: "no-store" });
+      if (!res.ok) {
+        findings.push(
+          this.warning(
+            "llms_txt_missing",
+            "llms.txt erişilemiyor",
+            `${SITE_URL()}/llms.txt HTTP ${res.status} — AI arama özet rehberi yok.`,
+            { status: res.status }
+          )
+        );
+        return { findings, metrics: { ok: false } };
+      }
+      const body = await res.text();
+      const hasPim = body.includes("Pim Etiket");
+      findings.push(
+        this.info(
+          "llms_txt_ok",
+          "llms.txt erişilebilir",
+          hasPim
+            ? "AI özet rehberi canlı."
+            : "Dosya var ama marka başlığı eksik — içeriği kontrol et.",
+          { bytes: body.length }
+        )
+      );
+      return { findings, metrics: { ok: true, bytes: body.length } };
+    } catch (err) {
+      findings.push(
+        this.warning(
+          "llms_txt_fetch_failed",
+          "llms.txt fetch başarısız",
+          err instanceof Error ? err.message : String(err),
+          {}
+        )
+      );
+      return { findings, metrics: { ok: false } };
+    }
+  }
+
+  private async checkRobotsAiRetrieval() {
+    const findings: AuditorFinding[] = [];
+    try {
+      const res = await fetch(`${SITE_URL()}/robots.txt`, { cache: "no-store" });
+      if (!res.ok) {
+        findings.push(
+          this.warning(
+            "robots_unreachable",
+            "robots.txt erişilemiyor",
+            `HTTP ${res.status}`,
+            { status: res.status }
+          )
+        );
+        return { findings, metrics: { ok: false } };
+      }
+      const text = await res.text();
+      const perplexityOpen =
+        /User-agent:\s*PerplexityBot[\s\S]*?Allow:\s*\//i.test(text);
+      const gptbotBlocked =
+        /User-agent:\s*GPTBot[\s\S]*?Disallow:\s*\//i.test(text);
+
+      if (!perplexityOpen) {
+        findings.push(
+          this.warning(
+            "robots_ai_retrieval_closed",
+            "AI retrieval botları kapalı görünüyor",
+            "PerplexityBot için Allow: / yok — SEO Faz 1 deploy kontrol et.",
+            {}
+          )
+        );
+      } else if (!gptbotBlocked) {
+        findings.push(
+          this.warning(
+            "robots_training_open",
+            "GPTBot engeli eksik",
+            "Eğitim botu GPTBot disallow: / olmalı.",
+            {}
+          )
+        );
+      } else {
+        findings.push(
+          this.info(
+            "robots_ai_policy_ok",
+            "robots.txt AI politikası uygun",
+            "Retrieval botları açık, GPTBot (training) kapalı.",
+            {}
+          )
+        );
+      }
+      return { findings, metrics: { perplexityOpen, gptbotBlocked } };
+    } catch (err) {
+      findings.push(
+        this.warning(
+          "robots_fetch_failed",
+          "robots.txt fetch başarısız",
+          err instanceof Error ? err.message : String(err),
+          {}
+        )
+      );
+      return { findings, metrics: { ok: false } };
+    }
+  }
+
+  private checkSearchConsoleEnv() {
+    const findings: AuditorFinding[] = [];
+    const token = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+    if (!token) {
+      findings.push(
+        this.warning(
+          "gsc_verification_env_missing",
+          "Search Console doğrulama env yok",
+          "Vercel'de `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` tanımlı değil (canlıda meta tag varsa eski deploy'dan kalıyor olabilir).",
+          {}
+        )
+      );
+      return { findings, metrics: { configured: false } };
+    }
+    findings.push(
+      this.info(
+        "gsc_verification_env_ok",
+        "Search Console doğrulama env tanımlı",
+        "google-site-verification meta tag build'de üretilir.",
+        { tokenLength: token.length }
+      )
+    );
+    return { findings, metrics: { configured: true } };
+  }
+
+  private async pingSearchEngines() {
+    const findings: AuditorFinding[] = [];
+    if (process.env.SEO_SKIP_SITEMAP_PING === "1") {
+      return { findings, metrics: { skipped: true } };
+    }
+    const results = await pingAllSearchEngines();
+    for (const r of results) {
+      const deprecated = r.status === 404 || r.status === 410;
+      if (r.ok) {
+        findings.push(
+          this.info(
+            `sitemap_ping_${r.engine}`,
+            `${r.engine} sitemap ping ✓`,
+            `HTTP ${r.status} — ${r.detail.slice(0, 80)}`,
+            { status: r.status }
+          )
+        );
+      } else if (deprecated) {
+        findings.push(
+          this.info(
+            `sitemap_ping_${r.engine}_deprecated`,
+            `${r.engine} legacy ping kapalı (HTTP ${r.status})`,
+            "Google/Bing ping endpoint'leri kaldırıldı. Search Console → Sitemaps → `sitemap.xml` manuel gönder / yenile.",
+            { status: r.status }
+          )
+        );
+      } else {
+        findings.push(
+          this.warning(
+            `sitemap_ping_${r.engine}_failed`,
+            `${r.engine} sitemap ping başarısız`,
+            `HTTP ${r.status} — ${r.detail}`,
+            { status: r.status }
+          )
+        );
+      }
+    }
+    return { findings, metrics: { results } };
   }
 }
 
