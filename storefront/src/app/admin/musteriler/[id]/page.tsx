@@ -11,7 +11,7 @@
 
 "use client";
 
-import { use, useCallback, useEffect, useState, type ReactNode } from "react";
+import { use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
@@ -21,6 +21,11 @@ import { cn } from "@/lib/cn";
 import type {
   AdminCustomerWithSegment,
 } from "@/app/api/admin/customers/route";
+import {
+  CustomerActivityLogPanel,
+  manualActivityToTimelineItem,
+  type CustomerActivityLogEntry,
+} from "@/components/admin/customers/CustomerActivityLogPanel";
 
 interface Note {
   id: string;
@@ -159,6 +164,20 @@ export default function AdminMusteriDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalKind, setModalKind] = useState<ModalKind>(null);
+  const [manualActivities, setManualActivities] = useState<
+    CustomerActivityLogEntry[]
+  >([]);
+
+  const mergedActivity = useMemo(() => {
+    if (!data) return [];
+    const manual = manualActivities.map(manualActivityToTimelineItem);
+    const combined = [...data.recent_activity, ...manual];
+    combined.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    return combined.slice(0, 30);
+  }, [data, manualActivities]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -631,10 +650,22 @@ export default function AdminMusteriDetailPage({
                    Aktivite akışı
                 </h2>
                 <span className="text-[11.5px] text-gri-500">
-                  Son {data.recent_activity.length} olay
+                  Son {mergedActivity.length} olay
                 </span>
               </div>
-              {data.recent_activity.length === 0 ? (
+
+              <div className="mb-5 pb-5 border-b border-gri-200">
+                <p className="text-[12px] font-semibold text-gri-600 mb-3">
+                  Manuel iletişim notu
+                </p>
+                <CustomerActivityLogPanel
+                  customerId={id}
+                  showTimeline={false}
+                  onActivitiesChange={setManualActivities}
+                />
+              </div>
+
+              {mergedActivity.length === 0 ? (
                 <div className="text-center py-8 text-[13px] text-gri-500 italic">
                   Henüz hiç aktivite yok
                 </div>
@@ -644,7 +675,7 @@ export default function AdminMusteriDetailPage({
                     aria-hidden
                     className="absolute left-[14px] top-2 bottom-2 w-px bg-gri-200"
                   />
-                  {data.recent_activity.map((a, i) => (
+                  {mergedActivity.map((a, i) => (
                     <li key={`${a.ref_id}-${i}`} className="relative pl-10">
                       <span
                         aria-hidden
