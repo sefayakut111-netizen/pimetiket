@@ -1750,18 +1750,20 @@ function AdminDashboardPageInner() {
               {customerStats ? "Yeni kayıt (7g)" : "Tekrar müşteri"}
               {statsError && (
                 <span
-                  className="text-[9px] text-kirmizi normal-case"
+                  className="text-[9px] text-kirmizi normal-case inline-flex items-center gap-0.5"
                   title="API hatası — veri yüklenemedi"
                 >
-                  
+                  <Icon.Info size={10} />
+                  yüklenemedi
                 </span>
               )}
               {auditorError && canViewAuditors && (
                 <span
-                  className="text-[9px] text-kirmizi normal-case"
+                  className="text-[9px] text-kirmizi normal-case inline-flex items-center gap-0.5"
                   title="Denetçi API hatası"
                 >
-                  
+                  <Icon.Info size={10} />
+                  yüklenemedi
                 </span>
               )}
             </div>
@@ -2056,10 +2058,22 @@ function AdminDashboardPageInner() {
                 Hangi gün-saatte sipariş geliyor
               </p>
             </div>
-            <HeatMap
-              matrix={heatmapMatrix}
-              emptyLabel="Yeterli sipariş gelince saatlik dağılım açılır"
-            />
+            {orders.length >= 50 ? (
+              <HeatMap
+                matrix={heatmapMatrix}
+                emptyLabel="Bu aralıkta saatlik dağılım henüz oluşmadı"
+              />
+            ) : (
+              <div className="h-[140px] flex items-center gap-3 text-gri-500 text-sm px-2">
+                <Icon.Info size={24} className="text-gri-500 shrink-0" />
+                <div>
+                  <div className="font-medium">Saatlik yoğunluk haritası</div>
+                  <div className="text-[12px]">
+                    50+ sipariş sonrası aktif ({orders.length}/50)
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
 
