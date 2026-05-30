@@ -442,7 +442,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
   const navGroups: NavGroup[] = useMemo(
     () => [
       {
-        label: "Operasyon",
+        label: "Operatör Modu",
         items: [
           {
             href: "/admin/kuyruk",
@@ -495,10 +495,26 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             badge: badges.activePartners,
             module: "fason",
           },
+          {
+            href: "/admin/destek",
+            label: "Destek (Genel)",
+            icon: <Icon.ChatBubble size={16} />,
+            badge: badges.supportOpen,
+            badgeAccent: badges.supportOpen > 0,
+            module: "help_requests",
+          },
+          {
+            href: "/admin/yardim-talepleri",
+            label: "Prova Yardımı",
+            icon: <Icon.ChatBubble size={16} />,
+            badge: badges.helpRequests,
+            badgeAccent: badges.helpRequests > 0,
+            module: "help_requests",
+          },
         ],
       },
       {
-        label: "Müşteri",
+        label: "Müşteri & Büyüme",
         items: [
           {
             href: "/admin/musteriler",
@@ -527,63 +543,15 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             module: "designs",
           },
           {
-            href: "/admin/yardim-talepleri",
-            label: "Prova Yardımı",
-            icon: <Icon.ChatBubble size={16} />,
-            badge: badges.helpRequests,
-            badgeAccent: badges.helpRequests > 0,
-            module: "help_requests",
-          },
-          {
-            href: "/admin/destek",
-            label: "Destek (Genel)",
-            icon: <Icon.ChatBubble size={16} />,
-            badge: badges.supportOpen,
-            badgeAccent: badges.supportOpen > 0,
-            module: "help_requests",
-          },
-        ],
-      },
-      // Sefa 18 May v68 (admin UX denetim — yeni İÇERİK grubu):
-      // Galeri/Site Görselleri Müşteri'de yanlış kategorize idi.
-      // İçerik editörü (Persona D) için tek grup altında.
-      {
-        label: "İçerik",
-        items: [
-          {
-            href: "/admin/urunler",
-            label: "Ürünler",
-            icon: <Icon.Tag size={16} />,
-            module: "products",
-          },
-          {
             href: "/admin/aboneler",
             label: "Aboneler",
             icon: <Icon.ChatBubble size={16} />,
             module: "subscribers",
           },
-          {
-            href: "/admin/galeri",
-            label: "Galeri",
-            icon: <Icon.Sparkle size={16} />,
-            module: "gallery",
-          },
-          {
-            href: "/admin/blog",
-            label: "Blog",
-            icon: <Icon.Doc size={16} />,
-            module: "blog",
-          },
-          {
-            href: "/admin/gorseller",
-            label: "Site Görselleri",
-            icon: <Icon.Box size={16} />,
-            module: "site_images",
-          },
         ],
       },
       {
-        label: "Yönetim",
+        label: "Finans",
         items: [
           {
             href: "/admin/finans",
@@ -604,18 +572,22 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             module: "coupons",
           },
           {
-            href: "/admin/calisanlar",
-            label: "Çalışanlar",
-            icon: <Icon.User size={16} />,
-            module: "staff",
+            href: "/admin/fiyatlar",
+            label: "Fiyatlar",
+            icon: <Icon.Sparkle size={16} />,
+            module: "pricing",
           },
         ],
       },
       {
         label: "Sistem",
         items: [
-          // Sefa 16 May v3 — Domain denetçi agent dashboard'u.
-          // Bekleyen aksiyon sayısı badge'inde gösterilir (kritikler kırmızı).
+          {
+            href: "/admin/calisanlar",
+            label: "Çalışanlar",
+            icon: <Icon.User size={16} />,
+            module: "staff",
+          },
           {
             href: "/admin/denetciler",
             label: "Denetçiler",
@@ -649,16 +621,24 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             module: "kvkk",
           },
           {
-            href: "/admin/yedekler",
-            label: "Yedekler",
-            icon: <Icon.Box size={16} />,
-            module: "backups",
+            href: "/admin/icerik",
+            label: "İçerik",
+            icon: <Icon.Tag size={16} />,
+            module: "products",
           },
           {
             href: "/admin/arsiv",
             label: "Arşiv (R2)",
             icon: <Icon.Box size={16} />,
             module: "archive",
+            adminOnly: true,
+          },
+          {
+            href: "/admin/yedekler",
+            label: "Yedekler",
+            icon: <Icon.Box size={16} />,
+            module: "backups",
+            adminOnly: true,
           },
           ...(process.env.NODE_ENV !== "production"
             ? [
@@ -677,12 +657,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
               ]
             : []),
           {
-            href: "/admin/fiyatlar",
-            label: "Fiyatlar",
-            icon: <Icon.Sparkle size={16} />,
-            module: "pricing",
-          },
-          {
             href: "/admin/ayarlar",
             label: "Ayarlar",
             icon: <Icon.Cog size={16} />,
@@ -700,17 +674,21 @@ function AdminShellInner({ children }: { children: ReactNode }) {
     [badges]
   );
 
+  const isFullAdmin =
+    legacyFullAccess || permissions.role === "admin";
+
   const filteredNavGroups = useMemo(() => {
     if (permLoading || legacyFullAccess) return navGroups;
     return navGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter(
-          (item) => item.module == null || canView(item.module)
-        ),
+        items: group.items.filter((item) => {
+          if (item.adminOnly && !isFullAdmin) return false;
+          return item.module == null || canView(item.module);
+        }),
       }))
       .filter((group) => group.items.length > 0);
-  }, [navGroups, permLoading, legacyFullAccess, canView]);
+  }, [navGroups, permLoading, legacyFullAccess, canView, isFullAdmin]);
 
   const pageTitle = getPageTitle(pathname, pathLabels);
 
