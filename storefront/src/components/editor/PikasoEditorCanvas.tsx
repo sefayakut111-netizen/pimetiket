@@ -1,7 +1,7 @@
 "use client";
 
 import { getOpaqueBoundsPx } from "@/lib/editor/alpha-contour";
-import { mmToPx } from "@/lib/editor/coords";
+import { EDITOR_PX_PER_MM, mmToPx } from "@/lib/editor/coords";
 import {
   computeCutlineBundle,
   computeCutlineBundleFast,
@@ -324,7 +324,16 @@ export const PikasoEditorCanvas = forwardRef<
       offMm: number
     ) => {
       const placementMm = shape
-        ? placementFromPikasoImage(shape).placementMm
+        ? (() => {
+            const p = placementFromPikasoImage(shape).placementMm;
+            // Board-mutlak → label-local: renderer grubu zaten {labelX,labelY}'ye kaydırıyor,
+            // yani kontur yolları label köşesine göreli olmalı (rect/circle ile aynı çerçeve).
+            return {
+              ...p,
+              x: p.x - labelX / EDITOR_PX_PER_MM,
+              y: p.y - labelY / EDITOR_PX_PER_MM,
+            };
+          })()
         : undefined;
       return {
         mode: resolveMode(blade),
