@@ -4,16 +4,24 @@ import {
   effectiveCutOffsetMm,
 } from "@/lib/editor/coords";
 import {
-  computeContourPathsPx,
+  computeContourPathsPxMulti,
   mapPixelPathsToLabelMm,
 } from "@/lib/editor/cutline/contour";
 import { fixedFramePathsMm, templatePathsMm } from "@/lib/editor/cutline/offsets";
 import { ringBoundsMm } from "@/lib/editor/cutline/shapes";
+import type { PathRing } from "@/lib/editor/cutline/types";
 import type {
   ComputeCutlineInput,
   CutlineBundle,
   CutlineMode,
 } from "@/lib/editor/cutline/types";
+
+/** PathRing[] vs tek PathRing karışıklığını önler */
+function ensurePathRings(v: PathRing[] | PathRing | undefined): PathRing[] {
+  if (!v || !Array.isArray(v) || v.length === 0) return [];
+  if (Array.isArray(v[0]?.[0])) return v as PathRing[];
+  return [v as PathRing];
+}
 
 export async function computeCutlineBundle(
   input: ComputeCutlineInput
@@ -49,27 +57,17 @@ export async function computeCutlineBundle(
     const pxPerMmInImage =
       image.naturalWidth / Math.max(imagePlacementMm.w, 0.01);
     const eff = effectiveCutOffsetMm(offsetMm);
-    const cutPx = await computeContourPathsPx(
+    const hull = mode === "hull";
+    const ringsList = await computeContourPathsPxMulti(
       image,
-      offsetMm,
+      [offsetMm, eff + EDITOR_BLEED_MM, eff - EDITOR_SAFE_MM],
       smoothness,
-      mode === "hull",
+      hull,
       pxPerMmInImage
     );
-    const bleedPx = await computeContourPathsPx(
-      image,
-      eff + EDITOR_BLEED_MM,
-      smoothness,
-      mode === "hull",
-      pxPerMmInImage
-    );
-    const safePx = await computeContourPathsPx(
-      image,
-      eff - EDITOR_SAFE_MM,
-      smoothness,
-      mode === "hull",
-      pxPerMmInImage
-    );
+    const cutPx = ensurePathRings(ringsList[0]);
+    const bleedPx = ensurePathRings(ringsList[1]);
+    const safePx = ensurePathRings(ringsList[2]);
     const nat = { w: image.naturalWidth, h: image.naturalHeight };
     const cut = mapPixelPathsToLabelMm(cutPx, imagePlacementMm, nat);
     const bleed = mapPixelPathsToLabelMm(bleedPx, imagePlacementMm, nat);

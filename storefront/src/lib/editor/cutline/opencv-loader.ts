@@ -83,14 +83,10 @@ declare global {
 
 let loadPromise: Promise<OpenCvModule> | null = null;
 
-export function loadOpenCv(): Promise<OpenCvModule> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("OpenCV yalnız tarayıcıda"));
-  }
-  if (window.cv?.Mat) {
-    return Promise.resolve(window.cv);
-  }
-  loadPromise ??= new Promise((resolve, reject) => {
+const OPENCV_LOAD_TIMEOUT_MS = 12_000;
+
+function loadOpenCvScript(): Promise<OpenCvModule> {
+  return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://docs.opencv.org/4.10.0/opencv.js";
     script.async = true;
@@ -104,6 +100,27 @@ export function loadOpenCv(): Promise<OpenCvModule> {
       },
     } as Window["cv"];
     document.head.appendChild(script);
+  });
+}
+
+export function loadOpenCv(): Promise<OpenCvModule> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("OpenCV yalnız tarayıcıda"));
+  }
+  if (window.cv?.Mat) {
+    return Promise.resolve(window.cv);
+  }
+  loadPromise ??= Promise.race([
+    loadOpenCvScript(),
+    new Promise<OpenCvModule>((_, reject) => {
+      setTimeout(
+        () => reject(new Error("OpenCV yükleme zaman aşımı")),
+        OPENCV_LOAD_TIMEOUT_MS
+      );
+    }),
+  ]).catch((err) => {
+    loadPromise = null;
+    throw err;
   });
   return loadPromise;
 }

@@ -11,8 +11,19 @@ const STYLES = {
   safe: { stroke: "#3b82f6", dash: [4, 4] as number[], width: 1.5 },
 };
 
+function listBoardShapes(editor: Pikaso) {
+  const shapes = editor.board.shapes;
+  if (!shapes) return [];
+  if (Array.isArray(shapes)) return shapes;
+  try {
+    return [...shapes];
+  } catch {
+    return Array.from(shapes as ArrayLike<(typeof shapes)[number]>);
+  }
+}
+
 function removeOverlays(editor: Pikaso) {
-  for (const shape of [...editor.board.shapes]) {
+  for (const shape of listBoardShapes(editor)) {
     if (shape.name?.startsWith(OVERLAY_PREFIX)) {
       shape.destroy();
     }

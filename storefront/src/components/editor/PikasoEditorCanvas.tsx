@@ -6,6 +6,7 @@ import {
   computeCutlineBundle,
   computeTemplateBundle,
 } from "@/lib/editor/cutline/compute";
+import { loadOpenCv } from "@/lib/editor/cutline/opencv-loader";
 import type { CutlineBundle, CutlineMode } from "@/lib/editor/cutline/types";
 import {
   buildCutlineSvgMm,
@@ -60,6 +61,9 @@ type ImageShape = Awaited<ReturnType<Pikaso["shapes"]["image"]["insert"]>>;
 const labelX = LABEL_ORIGIN_X;
 const labelY = LABEL_ORIGIN_Y;
 
+/** Kontur OpenCV — sürükleme/offset sırasında debounce */
+const CONTOUR_RECOMPUTE_DEBOUNCE_MS = 400;
+
 function resolveMode(blade: BladeShapeConfig): CutlineMode {
   if (blade.kind === "none") return "contour";
   if (blade.kind === "contour") return "contour";
@@ -97,17 +101,28 @@ export const PikasoEditorCanvas = forwardRef<
   const bundleRef = useRef<CutlineBundle | null>(null);
   const readyFiredRef = useRef(false);
   const htmlImageRef = useRef<HTMLImageElement | null>(null);
+  const designObjectUrlRef = useRef<string | null>(null);
   const loadedUrlRef = useRef<string | null>(null);
   const layersRef = useRef(layers);
   layersRef.current = layers;
 
   const widthMmRef = useRef(widthMm);
   const heightMmRef = useRef(heightMm);
+  const offsetMmRef = useRef(offsetMm);
   const viewZoomRef = useRef(viewZoom);
   const lastStageSizeRef = useRef({ w: 0, h: 0 });
   const resizeRafRef = useRef<number | null>(null);
+  const recomputeGenRef = useRef(0);
+  const recomputeRunningRef = useRef(false);
+  const recomputeQueuedRef = useRef(false);
+  const recomputeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const bladeShapeRef = useRef(bladeShape);
+  bladeShapeRef.current = bladeShape;
   widthMmRef.current = widthMm;
   heightMmRef.current = heightMm;
+  offsetMmRef.current = offsetMm;
   viewZoomRef.current = viewZoom;
 
   const syncViewTransform = useCallback(() => {
@@ -136,61 +151,111 @@ export const PikasoEditorCanvas = forwardRef<
     const w = Math.max(1, Math.round(el.clientWidth));
     const h = Math.max(1, Math.round(el.clientHeight));
     const last = lastStageSizeRef.current;
-    if (last.w === w && last.h === h) return;
+    const stage = editor.board.stage;
+    const stageW = Math.round(stage.width());
+    const stageH = Math.round(stage.height());
+    if (last.w === w && last.h === h && stageW === w && stageH === h) {
+      return;
+    }
     lastStageSizeRef.current = { w, h };
-    editor.board.stage.size({ width: w, height: h });
+    if (stageW !== w || stageH !== h) {
+      stage.size({ width: w, height: h });
+    }
     syncViewTransform();
   }, [editorRef, syncViewTransform]);
 
   const recomputeCutline = useCallback(async () => {
-    const editor = editorRef.current;
-    const img = htmlImageRef.current;
-    const shape = imageShapeRef.current;
-    if (!editor || !img || !shape) return;
-
-    if (bladeShape.kind === "none") {
-      clearCutlineOverlays(editor);
-      bundleRef.current = null;
-      syncViewTransform();
+    if (recomputeRunningRef.current) {
+      recomputeQueuedRef.current = true;
       return;
     }
+    recomputeRunningRef.current = true;
+    const gen = ++recomputeGenRef.current;
+    try {
+      const blade = bladeShapeRef.current;
+      const editor = editorRef.current;
+      const img = htmlImageRef.current;
+      const shape = imageShapeRef.current;
+      const wMm = widthMmRef.current;
+      const hMm = heightMmRef.current;
+      const offMm = offsetMmRef.current;
+      if (!editor || !img || !shape) return;
 
-    const { placementMm } = placementFromPikasoImage(shape);
-    let bundle: CutlineBundle;
+      if (blade.kind === "none") {
+        clearCutlineOverlays(editor);
+        bundleRef.current = null;
+        return;
+      }
 
-    if (bladeShape.kind === "template") {
-      const t = bladeShape.template;
-      bundle = computeTemplateBundle({
-        shape: t.shape,
-        widthMm: t.widthMm,
-        heightMm: t.heightMm,
-        offsetMm,
+      const { placementMm } = placementFromPikasoImage(shape);
+      let bundle: CutlineBundle;
+
+      if (blade.kind === "template") {
+        const t = blade.template;
+        bundle = computeTemplateBundle({
+          shape: t.shape,
+          widthMm: t.widthMm,
+          heightMm: t.heightMm,
+          offsetMm: offMm,
+        });
+      } else {
+        bundle = await computeCutlineBundle({
+          mode: resolveMode(blade),
+          labelWidthMm: wMm,
+          labelHeightMm: hMm,
+          offsetMm: offMm,
+          cornerRadiusMm:
+            blade.kind === "rect" ? (blade.cornerRadiusMm ?? 0) : 0,
+          image: img,
+          imagePlacementMm: placementMm,
+        });
+      }
+
+      if (gen !== recomputeGenRef.current) return;
+
+      bundleRef.current = bundle;
+      renderCutlineOverlays(editor, bundle, {
+        labelX,
+        labelY,
+        layers: {
+          cut: layersRef.current.cut,
+          bleed: layersRef.current.bleed,
+          safe: layersRef.current.safe,
+        },
       });
-    } else {
-      bundle = await computeCutlineBundle({
-        mode: resolveMode(bladeShape),
-        labelWidthMm: widthMm,
-        labelHeightMm: heightMm,
-        offsetMm,
-        cornerRadiusMm:
-          bladeShape.kind === "rect" ? (bladeShape.cornerRadiusMm ?? 0) : 0,
-        image: img,
-        imagePlacementMm: placementMm,
-      });
+    } finally {
+      recomputeRunningRef.current = false;
+      if (recomputeQueuedRef.current) {
+        recomputeQueuedRef.current = false;
+        void recomputeCutline();
+      }
     }
+  }, [editorRef]);
 
-    bundleRef.current = bundle;
-    renderCutlineOverlays(editor, bundle, {
-      labelX,
-      labelY,
-      layers: {
-        cut: layersRef.current.cut,
-        bleed: layersRef.current.bleed,
-        safe: layersRef.current.safe,
-      },
-    });
-    syncViewTransform();
-  }, [bladeShape, editorRef, heightMm, offsetMm, syncViewTransform, widthMm]);
+  const scheduleRecomputeCutline = useCallback(
+    (opts?: { immediate?: boolean }) => {
+      if (recomputeDebounceRef.current) {
+        clearTimeout(recomputeDebounceRef.current);
+        recomputeDebounceRef.current = null;
+      }
+      const blade = bladeShapeRef.current;
+      const immediate =
+        opts?.immediate === true ||
+        blade.kind === "none" ||
+        blade.kind === "template";
+      const delay = immediate ? 0 : CONTOUR_RECOMPUTE_DEBOUNCE_MS;
+
+      if (delay === 0) {
+        void recomputeCutline();
+        return;
+      }
+      recomputeDebounceRef.current = setTimeout(() => {
+        recomputeDebounceRef.current = null;
+        void recomputeCutline();
+      }, delay);
+    },
+    [recomputeCutline]
+  );
 
   const fitImageContain = useCallback(() => {
     const shape = imageShapeRef.current;
@@ -217,8 +282,8 @@ export const PikasoEditorCanvas = forwardRef<
       rotation: 0,
     });
     imageShapeRef.current?.select();
-    void recomputeCutline();
-  }, [heightMm, recomputeCutline, widthMm]);
+    scheduleRecomputeCutline({ immediate: true });
+  }, [heightMm, scheduleRecomputeCutline, widthMm]);
 
   const loadDesign = useCallback(async () => {
     const editor = editorRef.current;
@@ -230,21 +295,50 @@ export const PikasoEditorCanvas = forwardRef<
       const file = new File([blob], "design", {
         type: blob.type || "image/png",
       });
-      const img = await createImageBitmap(blob);
-      const natW = img.width;
-      const natH = img.height;
-      img.close();
+      let natW: number;
+      let natH: number;
+      try {
+        const bmp = await createImageBitmap(blob);
+        natW = bmp.width;
+        natH = bmp.height;
+        bmp.close();
+      } catch (bitmapErr) {
+        const probeUrl = URL.createObjectURL(blob);
+        try {
+          const probe = new window.Image();
+          await new Promise<void>((resolve, reject) => {
+            probe.onload = () => resolve();
+            probe.onerror = () =>
+              reject(
+                bitmapErr instanceof Error
+                  ? bitmapErr
+                  : new Error("image decode")
+              );
+            probe.src = probeUrl;
+          });
+          natW = probe.naturalWidth;
+          natH = probe.naturalHeight;
+        } finally {
+          URL.revokeObjectURL(probeUrl);
+        }
+      }
 
       editor.reset();
       imageShapeRef.current = null;
       bundleRef.current = null;
 
+      if (designObjectUrlRef.current) {
+        URL.revokeObjectURL(designObjectUrlRef.current);
+        designObjectUrlRef.current = null;
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      designObjectUrlRef.current = objectUrl;
       const htmlImg = new window.Image();
       htmlImg.crossOrigin = "anonymous";
       await new Promise<void>((resolve, reject) => {
         htmlImg.onload = () => resolve();
         htmlImg.onerror = () => reject(new Error("image decode"));
-        htmlImg.src = URL.createObjectURL(blob);
+        htmlImg.src = objectUrl;
       });
       htmlImageRef.current = htmlImg;
 
@@ -274,7 +368,7 @@ export const PikasoEditorCanvas = forwardRef<
       shape.select();
 
       onDesignLoaded?.({ widthPx: natW, heightPx: natH });
-      await recomputeCutline();
+      scheduleRecomputeCutline({ immediate: true });
       syncViewTransform();
 
       if (!readyFiredRef.current) {
@@ -292,7 +386,7 @@ export const PikasoEditorCanvas = forwardRef<
     onError,
     onReady,
     ready,
-    recomputeCutline,
+    scheduleRecomputeCutline,
     syncViewTransform,
     widthMm,
   ]);
@@ -355,6 +449,11 @@ export const PikasoEditorCanvas = forwardRef<
         /* Katman görünürlüğü layers prop effect ile — OpenCV yok */
       },
       isReady: () => ready && !!imageShapeRef.current,
+      isCutlineReady: () => {
+        const blade = bladeShapeRef.current;
+        if (blade.kind === "none") return false;
+        return bundleRef.current != null;
+      },
     }),
     [exportCutline, fitImageContain, ready]
   );
@@ -367,6 +466,11 @@ export const PikasoEditorCanvas = forwardRef<
       loadedUrlRef.current = null;
     }
   }, [designUrl]);
+
+  useEffect(() => {
+    if (!ready) return;
+    void loadOpenCv();
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -405,8 +509,8 @@ export const PikasoEditorCanvas = forwardRef<
   }, [ready, editorRef, applyStageSize]);
 
   useEffect(() => {
-    void recomputeCutline();
-  }, [widthMm, heightMm, offsetMm, bladeShape, recomputeCutline]);
+    scheduleRecomputeCutline();
+  }, [widthMm, heightMm, offsetMm, bladeShape, scheduleRecomputeCutline]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -421,31 +525,31 @@ export const PikasoEditorCanvas = forwardRef<
         safe: layers.safe,
       },
     });
-    syncViewTransform();
-  }, [
-    layers.cut,
-    layers.bleed,
-    layers.safe,
-    ready,
-    editorRef,
-    syncViewTransform,
-  ]);
+  }, [layers.cut, layers.bleed, layers.safe, ready, editorRef]);
 
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor || !ready) return;
-    const bump = () => void recomputeCutline();
-    editor.on(
-      ["selection:dragend", "selection:transformend", "shape:move", "shape:rotate"],
-      bump
-    );
+    const onTransformEnd = () =>
+      scheduleRecomputeCutline({ immediate: true });
+    editor.on(["selection:dragend", "selection:transformend"], onTransformEnd);
     return () => {
-      editor.off(
-        ["selection:dragend", "selection:transformend", "shape:move", "shape:rotate"],
-        bump
-      );
+      editor.off(["selection:dragend", "selection:transformend"], onTransformEnd);
     };
-  }, [ready, editorRef, recomputeCutline]);
+  }, [ready, editorRef, scheduleRecomputeCutline]);
+
+  useEffect(() => {
+    return () => {
+      if (recomputeDebounceRef.current) {
+        clearTimeout(recomputeDebounceRef.current);
+      }
+      recomputeGenRef.current += 1;
+      if (designObjectUrlRef.current) {
+        URL.revokeObjectURL(designObjectUrlRef.current);
+        designObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div

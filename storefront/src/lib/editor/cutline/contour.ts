@@ -202,6 +202,49 @@ function scalePathsPx(paths: PathRing[], invScale: number): PathRing[] {
   );
 }
 
+function offsetMmToPx(
+  offsetMm: number,
+  pxPerMmInImage: number,
+  downscale: number
+): number {
+  const effectiveOffsetMm = offsetMm === 0 ? -0.3 : offsetMm;
+  return Math.round(effectiveOffsetMm * pxPerMmInImage * downscale);
+}
+
+/** Tek mask — cut/bleed/safe için (OpenCV 3× tekrar yok) */
+export async function computeContourPathsPxMulti(
+  image: HTMLImageElement,
+  offsetsMm: number[],
+  smoothness: number,
+  useHull: boolean,
+  pxPerMmInImage: number
+): Promise<PathRing[][]> {
+  if (offsetsMm.length === 0) return [];
+  try {
+    const cv = await loadOpenCv();
+    const { mat: src, downscale } = imageToCvMatScaled(cv, image);
+    const mask = buildMask(cv, src);
+    const inv = downscale > 0 ? 1 / downscale : 1;
+    const out = offsetsMm.map((offsetMm) => {
+      const offsetPx = offsetMmToPx(offsetMm, pxPerMmInImage, downscale);
+      const pathsSmall = generateOffsetPaths(
+        cv,
+        mask,
+        offsetPx,
+        smoothness,
+        useHull
+      );
+      return scalePathsPx(pathsSmall, inv);
+    });
+    mask.delete();
+    src.delete();
+    return out;
+  } catch {
+    const hull = hullFromImage(image, useHull);
+    return offsetsMm.map(() => [hull]);
+  }
+}
+
 export async function computeContourPathsPx(
   image: HTMLImageElement,
   offsetMm: number,
@@ -209,27 +252,12 @@ export async function computeContourPathsPx(
   useHull: boolean,
   pxPerMmInImage: number
 ): Promise<PathRing[]> {
-  try {
-    const cv = await loadOpenCv();
-    const { mat: src, downscale } = imageToCvMatScaled(cv, image);
-    const mask = buildMask(cv, src);
-    const effectiveOffsetMm = offsetMm === 0 ? -0.3 : offsetMm;
-    const offsetPx = Math.round(
-      effectiveOffsetMm * pxPerMmInImage * downscale
-    );
-    const pathsSmall = generateOffsetPaths(
-      cv,
-      mask,
-      offsetPx,
-      smoothness,
-      useHull
-    );
-    const paths = scalePathsPx(pathsSmall, downscale > 0 ? 1 / downscale : 1);
-    mask.delete();
-    src.delete();
-    return paths;
-  } catch {
-    const hull = hullFromImage(image, useHull);
-    return [hull];
-  }
+  const [paths] = await computeContourPathsPxMulti(
+    image,
+    [offsetMm],
+    smoothness,
+    useHull,
+    pxPerMmInImage
+  );
+  return paths ?? [];
 }

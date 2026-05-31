@@ -351,13 +351,29 @@ export default function EditorShell() {
     }
   };
 
+  const waitForCutlineReady = useCallback(async (maxMs = 15_000): Promise<boolean> => {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      if (canvasRef.current?.isCutlineReady?.()) return true;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    return false;
+  }, []);
+
   const ensureDraftSaved = useCallback((): Promise<string | null> => {
     if (draftId) return Promise.resolve(draftId);
     if (pendingSavePromiseRef.current) {
       return pendingSavePromiseRef.current;
     }
 
-    const promise = new Promise<string | null>((resolve) => {
+    const promise = (async () => {
+      if (bladeShape.kind === "none") {
+        return null;
+      }
+      const cutlineReady = await waitForCutlineReady();
+      if (!cutlineReady) return null;
+
+      return await new Promise<string | null>((resolve) => {
       exportWaitRef.current = (id) => {
         exportWaitRef.current = null;
         resolve(id);
@@ -368,17 +384,23 @@ export default function EditorShell() {
           exportWaitRef.current(null);
         }
       }, 12_000);
-    }).finally(() => {
+      });
+    })().finally(() => {
       pendingSavePromiseRef.current = null;
     });
 
     pendingSavePromiseRef.current = promise;
     return promise;
-  }, [draftId]);
+  }, [bladeShape.kind, draftId, waitForCutlineReady]);
 
   const addToProduct = async (product: "sticker" | "etiket") => {
     if (!design) {
       toast.error("Önce görsel yükle");
+      return;
+    }
+    if (bladeShape.kind === "none") {
+      toast.error("Önce bıçak seçin (şablon veya otomatik kontur)");
+      setLeftPanel("blade");
       return;
     }
 
