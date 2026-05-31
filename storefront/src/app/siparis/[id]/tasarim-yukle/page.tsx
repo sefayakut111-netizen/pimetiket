@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { PimMini } from "@/components/Pim";
 import { cn } from "@/lib/cn";
+import { mapApiError } from "@/lib/api-error-messages";
 import {
   ALLOWED_MIME_TYPES,
   isAllowedByExtension,
@@ -76,6 +77,8 @@ const STAY_ON_PAGE_STATUSES = [
   "qc_pending",
   "qc_flagged",
   "human_review",
+  "human_review_failed",
+  "operator_review",
   "proof_generating",
 ] as const;
 
@@ -513,7 +516,7 @@ export default function TasarimYuklePage({
       await load({ silent: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-      toast.error(`Yükleme başarısız: ${msg}`);
+      toast.error(mapApiError(msg, "tr", `Yükleme başarısız: ${msg}`));
     } finally {
       setUploadingItemId(null);
       setUploadProgress(0);

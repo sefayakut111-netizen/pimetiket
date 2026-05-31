@@ -31,6 +31,7 @@ import {
 } from "@/lib/reviews";
 import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 import { createClient } from "@/lib/supabase/client";
+import { mapApiError } from "@/lib/api-error-messages";
 
 export default function YorumYazPage() {
   const params = useParams<{ orderId: string }>();
@@ -120,7 +121,10 @@ export default function YorumYazPage() {
       toast.error("Yorum en az 30 karakter olmalı");
       return;
     }
-    if (!order) return;
+    if (!order) {
+      toast.error("Sipariş bilgisi yüklenemedi. Sayfayı yenileyip tekrar dene.");
+      return;
+    }
 
     // Product type'ı order'ın ilk item'ından türet
     const productType: ProductType =
@@ -148,7 +152,7 @@ export default function YorumYazPage() {
       toast.success("Yorumun alındı, ekip inceleyecek.");
       setTimeout(() => router.push("/panelim"), 1500);
     } else {
-      toast.error(result.error);
+      toast.error(mapApiError(result.error, "tr", "Yorum gönderilemedi"));
     }
   };
 

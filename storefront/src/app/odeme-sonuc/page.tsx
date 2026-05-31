@@ -15,13 +15,16 @@ import { useT } from "@/lib/i18n/context";
 import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { track } from "@/lib/analytics/posthog-events";
+import { mapApiError } from "@/lib/api-error-messages";
 import { ga4Purchase } from "@/lib/analytics/ga4-events";
 
 const EXTRA = {
   tr: {
     failTitle: "Ödeme alınamadı",
     failDesc:
-      "Bankadan onay gelmedi. Kart bilgilerini kontrol edip tekrar denemen gerekiyor. Tutar hesabından çekilmedi.",
+      "Bankadan onay gelmedi veya ödeme tamamlanamadı. Kart bilgilerini kontrol edip tekrar deneyebilirsin.",
+    failDescCharged:
+      "Ödemen alınmış olabilir ama sipariş oluşturulamadı. Destek ekibimiz bilgilendirildi — kısa sürede dönüş yapacağız veya siparişlerimden kontrol edebilirsin.",
     pspUnavailableTitle: "Ödeme şu an alınamıyor",
     pspUnavailableDesc:
       "PayTR ödeme altyapımızda geçici bir sorun olabilir. Birkaç dakika sonra tekrar dene. Acil siparişin varsa e-posta veya iletişim formundan bize yaz — fiyatı manuel hazırlarız, havale ile başlatırız.",
@@ -53,7 +56,9 @@ const EXTRA = {
   en: {
     failTitle: "Payment failed",
     failDesc:
-      "We didn't get bank approval. Please check your card details and try again. Your account hasn't been charged.",
+      "We didn't get bank approval. Please check your card details and try again.",
+    failDescCharged:
+      "Your payment may have gone through but the order could not be created. Support has been notified — check My Orders shortly or contact us.",
     pspUnavailableTitle: "Payment temporarily unavailable",
     pspUnavailableDesc:
       "There may be a temporary issue with our PayTR payment infrastructure. Try again in a few minutes. For urgent orders, message us via email or the contact form — we'll prepare the quote manually and accept bank transfer.",
@@ -294,6 +299,15 @@ function OdemeSonucInner() {
   if (status === "fail") {
     const reason = sp.get("reason");
     const isPspUnavailable = reason === "psp_unavailable";
+    const mayBeCharged =
+      reason === "amount_mismatch" ||
+      (reason?.startsWith("RPC error") ?? false) ||
+      reason === "rpc_finalize_failed";
+    const failMessage = isPspUnavailable
+      ? x.pspUnavailableDesc
+      : mayBeCharged
+        ? x.failDescCharged
+        : mapApiError(reason, locale === "en" ? "en" : "tr", x.failDesc);
     return (
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
         <div className="mx-auto max-w-[600px] px-6 text-center">
@@ -302,7 +316,7 @@ function OdemeSonucInner() {
             {isPspUnavailable ? x.pspUnavailableTitle : x.failTitle}
           </h1>
           <p className="mt-3 text-base text-gri-700 leading-relaxed">
-            {isPspUnavailable ? x.pspUnavailableDesc : x.failDesc}
+            {failMessage}
           </p>
           {/* Sefa 21 May v68 — PayTR debug: müşteri bildirirken kopyalasın */}
           {!isPspUnavailable && reason && (

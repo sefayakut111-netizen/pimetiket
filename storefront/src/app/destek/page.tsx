@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Button, Card, Eyebrow, Input, useToast } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { mapApiError } from "@/lib/api-error-messages";
 
 const CATEGORIES = [
   { id: "genel", label: "Genel" },
@@ -55,7 +56,7 @@ export default function DestekPage() {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!json.ok) {
-        toast.error(json.error ?? "Gönderilemedi");
+        toast.error(mapApiError(json.error, "tr", "Gönderilemedi"));
         return;
       }
       toast.success("Talebiniz alındı — en kısa sürede dönüş yapacağız");

@@ -16,6 +16,7 @@ import { Pim, PimMini } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Skeleton, StageDot, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { mapApiError } from "@/lib/api-error-messages";
 import { buildDesignSlotDisplay } from "@/lib/order-design-previews";
 import type { CustomerOrder } from "@/lib/customer-order";
 import { fetchCustomerOrder } from "@/lib/customer-order";
@@ -588,8 +589,11 @@ export default function SiparisDetailPage({
       } else {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         toast.error(
-          j.error ??
-            (isEn ? "Cancellation failed" : "İptal başarısız")
+          mapApiError(
+            j.error,
+            isEn ? "en" : "tr",
+            isEn ? "Cancellation failed" : "İptal başarısız"
+          )
         );
       }
     } catch {

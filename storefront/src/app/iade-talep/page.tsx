@@ -24,6 +24,7 @@ import {
 } from "@/lib/customer-order";
 import { createReturn, type ReturnReason } from "@/lib/customer-return";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { getCurrentUser } from "@/lib/supabase/auth-bridge";
 import { useT } from "@/lib/i18n/context";
 
 const REASON_OPTIONS: ReturnReason[] = [
@@ -63,7 +64,7 @@ const COPY = {
       "Üretim hatası / kargo hasarı için fotoğraf çok yardımcı olur. Aldığın ürünü ve problemi gösteren 1-3 foto yükle.",
     addMock: "Foto ekle (mock)",
     photoMockNote: (
-      <>Gerçek dosya yükleme akışı Faz 2&rsquo;de aktif olacak.</>
+      <>Fotoğraf yükleme henüz aktif değil — opsiyonel etiketler yalnızca talebin kaydı içindir. Gerçek dosya yükleme yakında eklenecek.</>
     ),
     cancel: "İptal",
     submit: "İade talebi gönder",
@@ -115,7 +116,9 @@ const COPY = {
     photoIntro:
       "For production errors / shipping damage, photos help a lot. Upload 1-3 photos showing the product and the issue.",
     addMock: "Add photo (mock)",
-    photoMockNote: <>Real file upload will be active in Phase 2.</>,
+    photoMockNote: (
+      <>Photo upload is not active yet — optional labels are for your request record only.</>
+    ),
     cancel: "Cancel",
     submit: "Submit return request",
     submitting: "Submitting...",
@@ -151,10 +154,14 @@ export default function IadeTalepPage() {
   const [description, setDescription] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     ensureAuthBindings();
+    void getCurrentUser().then((u) => {
+      if (u?.email) setCustomerEmail(u.email);
+    });
     void refreshCustomerOrders().then(() => {
       const eligible = listCustomerOrders().filter(
         (o) =>
@@ -185,7 +192,7 @@ export default function IadeTalepPage() {
       const created = await createReturn({
         orderId,
         customerName: selectedOrder.address.name,
-        customerEmail: "musteri@ornek.com", // auth gelene kadar
+        customerEmail: customerEmail || "no-reply@pimetiket.com",
         reason,
         description: description.trim(),
         attachments,
@@ -357,6 +364,7 @@ export default function IadeTalepPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={c.descriptionPh}
                 rows={5}
+                maxLength={500}
                 className="block w-full px-3.5 py-2.5 rounded-[12px] bg-white text-[14px] text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan focus:shadow-[0_0_0_4px_var(--color-pim-mercan-tint)] transition-shadow resize-none"
               />
               <div className="text-[12px] text-gri-500 mt-1.5 tabular-nums">

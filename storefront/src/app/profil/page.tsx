@@ -15,6 +15,7 @@ import {
   updateMyProfile,
 } from "@/lib/customer-profile";
 import { ensureAuthBindings } from "@/lib/customer-cart";
+import { createClient } from "@/lib/supabase/client";
 
 const COPY = {
   tr: {
@@ -26,7 +27,7 @@ const COPY = {
     email: "E-posta",
     verified: "Doğrulandı",
     save: "Kaydet",
-    saved: "Bilgiler güncellendi (mock)",
+    saved: "Bilgiler güncellendi",
     pwTitle: "Şifre değiştir",
     pwDesc: "Güvenlik için 3-6 ayda bir değiştirmeni öneririz.",
     pwCurrent: "Mevcut şifre",
@@ -35,7 +36,7 @@ const COPY = {
     pwRepeat: "Yeni şifreyi tekrarla",
     pwRepeatPh: "Yeniden gir",
     pwUpdate: "Şifreyi güncelle",
-    pwUpdated: "Şifre güncellendi (mock)",
+    pwUpdated: "Şifre güncellendi",
     notifTitle: "Bildirim tercihleri",
     notifDesc: "Hangi durumlarda haber vereyim?",
     notifs: [
@@ -70,7 +71,7 @@ const COPY = {
     cancel: "Vazgeç",
     confirmDelete: "Hesabımı kalıcı olarak sil",
     deleteSubmitted:
-      "Hesap silme talebi alındı (mock — gerçek silme I adımında)",
+      "Hesap silme talebin alındı. 48 saat içinde işleme alınacak.",
   },
   en: {
     eyebrow: "My account",
@@ -81,7 +82,7 @@ const COPY = {
     email: "Email",
     verified: "Verified",
     save: "Save",
-    saved: "Info updated (mock)",
+    saved: "Info updated",
     pwTitle: "Change password",
     pwDesc: "We recommend changing it every 3-6 months for security.",
     pwCurrent: "Current password",
@@ -90,7 +91,7 @@ const COPY = {
     pwRepeat: "Repeat new password",
     pwRepeatPh: "Re-enter",
     pwUpdate: "Update password",
-    pwUpdated: "Password updated (mock)",
+    pwUpdated: "Password updated",
     notifTitle: "Notification preferences",
     notifDesc: "When should I let you know?",
     notifs: [
@@ -125,7 +126,7 @@ const COPY = {
     cancel: "Cancel",
     confirmDelete: "Delete my account permanently",
     deleteSubmitted:
-      "Account deletion request received (mock — real deletion in step I)",
+      "Account deletion request received. It will be processed within 48 hours.",
   },
 };
 
@@ -141,6 +142,11 @@ export default function ProfilPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwNew2, setPwNew2] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     ensureAuthBindings();
@@ -167,6 +173,69 @@ export default function ProfilPage() {
     setSavingProfile(false);
     if (r.ok) toast.success(c.saved);
     else toast.error(r.reason);
+  };
+
+  const onUpdatePassword = async () => {
+    if (pwNew.length < 8) {
+      toast.error(locale === "en" ? "Password must be at least 8 characters" : "Şifre en az 8 karakter olmalı");
+      return;
+    }
+    if (pwNew !== pwNew2) {
+      toast.error(locale === "en" ? "Passwords do not match" : "Şifreler eşleşmiyor");
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const supabase = createClient();
+      if (pwCurrent.trim()) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email,
+          password: pwCurrent,
+        });
+        if (signInErr) {
+          toast.error(
+            locale === "en"
+              ? "Current password is incorrect"
+              : "Mevcut şifre hatalı"
+          );
+          return;
+        }
+      }
+      const { error } = await supabase.auth.updateUser({ password: pwNew });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(c.pwUpdated);
+      setPwCurrent("");
+      setPwNew("");
+      setPwNew2("");
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const onRequestAccountDelete = async () => {
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch("/api/me/kvkk-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "account_delete" }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Talep gönderilemedi");
+        return;
+      }
+      toast.warning(c.deleteSubmitted);
+      setShowDelete(false);
+      setConfirmText("");
+    } finally {
+      setDeleteSubmitting(false);
+    }
   };
 
   return (
@@ -236,6 +305,8 @@ export default function ProfilPage() {
                 type="password"
                 placeholder="••••••••"
                 autoComplete="current-password"
+                value={pwCurrent}
+                onChange={(e) => setPwCurrent(e.target.value)}
               />
             </label>
             <label className="block">
@@ -246,6 +317,8 @@ export default function ProfilPage() {
                 type="password"
                 placeholder={c.pwNewPh}
                 autoComplete="new-password"
+                value={pwNew}
+                onChange={(e) => setPwNew(e.target.value)}
               />
             </label>
             <label className="block">
@@ -256,13 +329,16 @@ export default function ProfilPage() {
                 type="password"
                 placeholder={c.pwRepeatPh}
                 autoComplete="new-password"
+                value={pwNew2}
+                onChange={(e) => setPwNew2(e.target.value)}
               />
             </label>
           </div>
           <div className="mt-5 flex justify-end">
             <Button
               variant="primary"
-              onClick={() => toast.success(c.pwUpdated)}
+              onClick={() => void onUpdatePassword()}
+              disabled={pwSaving}
             >
               {c.pwUpdate}
             </Button>
@@ -338,12 +414,8 @@ export default function ProfilPage() {
                 </Button>
                 <button
                   type="button"
-                  disabled={confirmText !== c.confirmKeyword}
-                  onClick={() => {
-                    toast.warning(c.deleteSubmitted);
-                    setShowDelete(false);
-                    setConfirmText("");
-                  }}
+                  disabled={confirmText !== c.confirmKeyword || deleteSubmitting}
+                  onClick={() => void onRequestAccountDelete()}
                   className="h-9 px-3.5 rounded-full bg-kirmizi text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-kirmizi-koyu"
                 >
                   {c.confirmDelete}

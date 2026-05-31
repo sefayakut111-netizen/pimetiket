@@ -51,11 +51,35 @@ function SifreSifirlaInner() {
 
   const configured = isSupabaseConfigured();
 
-  // Recovery flow detection — Supabase callback URL'i ?code= ile gelir
+  // Recovery flow — PKCE code exchange
   useEffect(() => {
-    // Supabase v2'de auth/callback otomatik token exchange yapar.
-    // Bu sayfaya geldiğinde session var olur, useruser sayfada update password yapar.
-  }, [recoveryToken]);
+    if (!recoveryToken || !configured) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          recoveryToken
+        );
+        if (cancelled) return;
+        if (error) {
+          toast.error(
+            `Şifre sıfırlama linki geçersiz veya süresi dolmuş: ${error.message}`
+          );
+        }
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : "Beklenmedik hata");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recoveryToken, configured, toast]);
 
   // ============================================================
   // Step 1: Reset link iste

@@ -112,11 +112,15 @@ export default async function UnsubscribePage({
           gönderilmeye devam edecek (hizmetin parçası).
         </p>
         <p style={p}>
-          Fikrin değişirse{" "}
-          <Link href="/bildirim-tercihleri" style={a}>
-            bildirim tercihleri sayfası
-          </Link>
-          ndan tekrar açabilirsin.
+          Fikrin değişirse hesabın varsa{" "}
+          <Link href="/auth?next=/bildirim-tercihleri" style={a}>
+            giriş yaparak bildirim tercihlerini
+          </Link>{" "}
+          tekrar açabilirsin. Hesabın yoksa{" "}
+          <a href="mailto:destek@pimetiket.com" style={a}>
+            destek@pimetiket.com
+          </a>{" "}
+          adresine yaz.
         </p>
       </Shell>
     );
@@ -136,9 +140,13 @@ export default async function UnsubscribePage({
           {messages[err] ?? "Bilinmeyen hata. Lütfen tekrar dene."}
         </p>
         <p style={p}>
-          <Link href="/bildirim-tercihleri" style={a}>
-            Bildirim tercihlerine git →
+          <Link href="/auth?next=/bildirim-tercihleri" style={a}>
+            Giriş yap → bildirim tercihleri
           </Link>
+          {" · "}
+          <a href="mailto:destek@pimetiket.com" style={a}>
+            destek@pimetiket.com
+          </a>
         </p>
         <p style={pMuted}>
           Sorun devam ederse:{" "}
@@ -164,11 +172,15 @@ export default async function UnsubscribePage({
     return (
       <Shell title="Link geçersiz">
         <p style={p}>
-          Bağlantı geçersiz veya süresi dolmuş. Lütfen{" "}
-          <Link href="/bildirim-tercihleri" style={a}>
-            bildirim tercihleri sayfasından
+          Bağlantı geçersiz veya süresi dolmuş. Hesabın varsa{" "}
+          <Link href="/auth?next=/bildirim-tercihleri" style={a}>
+            giriş yaparak tercihlerini
           </Link>{" "}
-          manuel olarak ayarla.
+          yönet; hesabın yoksa{" "}
+          <a href="mailto:destek@pimetiket.com" style={a}>
+            destek@pimetiket.com
+          </a>
+          .
         </p>
       </Shell>
     );

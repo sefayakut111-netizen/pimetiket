@@ -22,6 +22,7 @@ import Link from "next/link";
 import { Button, Card, Eyebrow, Input, useToast } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeNextPath } from "@/lib/auth/sanitize-next-path";
 
 export default function MfaChallengePage() {
   return (
@@ -35,7 +36,7 @@ function MfaChallengeInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const toast = useToast();
-  const next = sp.get("next") ?? "/admin";
+  const next = sanitizeNextPath(sp.get("next"), "/admin");
 
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -61,9 +62,8 @@ function MfaChallengeInner() {
       }
       const totp = data?.totp?.find((f) => f.status === "verified");
       if (!totp) {
-        // Verified TOTP yok — direkt geç (admin değilse)
-        toast.error("Aktif 2FA faktörü bulunamadı");
-        router.replace(next);
+        toast.error("Aktif 2FA faktörü bulunamadı. Yönetici profilinden 2FA kur.");
+        router.replace("/admin/profil?force_2fa=1");
         return;
       }
       setFactorId(totp.id);

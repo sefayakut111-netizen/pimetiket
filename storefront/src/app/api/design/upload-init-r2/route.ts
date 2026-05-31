@@ -42,6 +42,8 @@ const ACCEPTED_ORDER_STATUSES = [
   "qc_pending",
   "qc_flagged",
   "operator_review",
+  "human_review",
+  "human_review_failed",
 ] as const;
 
 export async function POST(req: NextRequest) {

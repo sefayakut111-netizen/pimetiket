@@ -309,6 +309,16 @@ async function finalizeFromPaytrSuccess(
     return { status: "consumed", orderId };
   }
 
+  if (intent.snapshot.couponCode) {
+    const { applyCouponAfterOrder } = await import("@/lib/payment/coupon-server");
+    await applyCouponAfterOrder(admin, {
+      code: intent.snapshot.couponCode,
+      subtotal: intent.snapshot.subtotal,
+      userId: intent.user_id,
+      orderId,
+    });
+  }
+
   await runPostFinalizeSideEffects(admin, intent, orderId);
   return { status: "consumed", orderId };
 }

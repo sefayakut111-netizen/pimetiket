@@ -14,6 +14,7 @@ import {
   getCurrentUser,
   isLoggedInSync,
 } from "./supabase/auth-bridge";
+import { mapApiError } from "./api-error-messages";
 import type { Enums, TablesInsert } from "./supabase/types";
 
 const STORAGE_KEY = "pim_customer_returns_v1";
@@ -230,11 +231,28 @@ export async function createReturn(
 ): Promise<ReturnRequest> {
   const user = await getCurrentUser();
   if (user) {
-    const created = await dbInsert(user.id, payload);
-    if (!created) throw new Error("İade oluşturulamadı, tekrar dene.");
-    cache = [created, ...cache];
+    const res = await fetch("/api/me/returns", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orderId: payload.orderId,
+        reason: payload.reason,
+        description: payload.description,
+        attachments: payload.attachments,
+        customerName: payload.customerName,
+        customerEmail: payload.customerEmail,
+      }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      return?: ReturnRequest;
+    };
+    if (!res.ok || !data.return) {
+      throw new Error(mapApiError(data.error, "tr"));
+    }
+    cache = [data.return, ...cache];
     notifyChange();
-    return created;
+    return data.return;
   }
 
   const now = Date.now();

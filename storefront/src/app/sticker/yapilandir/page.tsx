@@ -102,6 +102,7 @@ import {
   listCustomerCart,
 } from "@/lib/customer-cart";
 import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
+import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 import { quantizeForCart } from "@/lib/pricing-quantize";
 import { buildSummaryItems } from "@/lib/order-summary";
 
@@ -586,6 +587,18 @@ function StickerPage() {
   // designCount × tier adet = toplam sticker. Tasarımlar local-preview.
   const [designCount, setDesignCount] = useState<number>(1);
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
+  const [cartAuthed, setCartAuthed] = useState(false);
+
+  useEffect(() => {
+    setCartAuthed(isLoggedInSync());
+    const onAuth = () => setCartAuthed(isLoggedInSync());
+    window.addEventListener("pim_auth_signed_in", onAuth);
+    window.addEventListener("pim_auth_signed_out", onAuth);
+    return () => {
+      window.removeEventListener("pim_auth_signed_in", onAuth);
+      window.removeEventListener("pim_auth_signed_out", onAuth);
+    };
+  }, []);
   const [detectedDims, setDetectedDims] = useState<DetectedDimensions | null>(
     null
   );
@@ -1333,6 +1346,20 @@ function StickerPage() {
               locked={isStepLocked(7)}
               lockMessage={getLockMessage(7)}
             >
+              {!cartAuthed && designs.length > 0 && (
+                <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] leading-relaxed text-lacivert">
+                  Tasarımların şu an yalnızca bu cihazda önizlenir; sunucuya
+                  kayıt için{" "}
+                  <Link
+                    href="/auth?next=/sticker/yapilandir"
+                    className="font-semibold text-pim-mercan underline"
+                  >
+                    giriş yap
+                  </Link>
+                  . Giriş yapmadan sepete eklersen ödeme sonrası yükleme
+                  sayfasından dosyalarını iletebilirsin.
+                </div>
+              )}
               <MultiDesignUploader
                 designCount={designCount}
                 onDesignCountChange={(n) => {

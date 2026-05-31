@@ -49,10 +49,12 @@ const InitBodySchema = z.object({
 
 const ACCEPTED_ORDER_STATUSES = [
   "paid",
-  "awaiting_upload", // Mig 061 — ödeme sonrası tasarım yükleme
+  "awaiting_upload",
   "qc_pending",
   "qc_flagged",
   "operator_review",
+  "human_review",
+  "human_review_failed",
 ] as const;
 
 export async function POST(req: NextRequest) {

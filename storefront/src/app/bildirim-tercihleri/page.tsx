@@ -6,7 +6,7 @@
  *   - Pazarlama (kampanya, blog) — opt-in
  *   - Acil durum SMS (kargo gecikme, prova bekleyen) — opt-in
  *
- * localStorage; backend swap'te `notification_preferences` tablosuna geçer.
+ * notification_prefs tablosu (Supabase RLS) — cihazlar arası senkron.
  */
 
 "use client";
@@ -18,35 +18,17 @@ import { Icon } from "@/components/Icon";
 import { Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  fetchNotificationPrefs,
+  updateNotificationPrefs,
+  type NotificationPrefsUi,
+  type NotificationPrefsPatch,
+} from "@/lib/customer-notification-prefs";
 
-const STORAGE_KEY = "pim_notification_prefs_v1";
+type Prefs = NotificationPrefsUi;
 
-interface Prefs {
-  email: {
-    orderUpdates: boolean;
-    proofReady: boolean;
-    shippingUpdates: boolean;
-    marketing: boolean;
-    blog: boolean;
-  };
-  sms: {
-    // Sefa 18 May v68: urgentOrder + proofReady SMS iptal edildi.
-    delivery: boolean;
-  };
-}
-
-const DEFAULTS: Prefs = {
-  email: {
-    orderUpdates: true,
-    proofReady: true,
-    shippingUpdates: true,
-    marketing: false,
-    blog: false,
-  },
-  sms: {
-    delivery: false,
-  },
-};
+const DEFAULTS = DEFAULT_NOTIFICATION_PREFS;
 
 const COPY = {
   tr: {
@@ -143,26 +125,6 @@ const COPY = {
   },
 };
 
-function loadPrefs(): Prefs {
-  if (typeof window === "undefined") return DEFAULTS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULTS;
-    const parsed = JSON.parse(raw) as Partial<Prefs>;
-    return {
-      email: { ...DEFAULTS.email, ...(parsed.email ?? {}) },
-      sms: { ...DEFAULTS.sms, ...(parsed.sms ?? {}) },
-    };
-  } catch {
-    return DEFAULTS;
-  }
-}
-
-function savePrefs(p: Prefs): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
-}
-
 export default function BildirimTercihleriPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
@@ -172,28 +134,38 @@ export default function BildirimTercihleriPage() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setPrefs(loadPrefs());
-    setHydrated(true);
+    void fetchNotificationPrefs().then((loaded) => {
+      if (loaded) setPrefs(loaded);
+      setHydrated(true);
+    });
   }, []);
 
+  const persist = async (next: Prefs, patch: NotificationPrefsPatch) => {
+    setPrefs(next);
+    const r = await updateNotificationPrefs(patch);
+    if (r.ok) toast.success(c.prefSaved);
+    else toast.error(r.reason);
+  };
+
   const toggleEmail = (key: keyof Prefs["email"]) => {
+    if (key === "orderUpdates") return;
+    const newVal = !prefs.email[key];
     const next = {
       ...prefs,
-      email: { ...prefs.email, [key]: !prefs.email[key] },
+      email: { ...prefs.email, [key]: newVal },
     };
-    setPrefs(next);
-    savePrefs(next);
-    toast.success(c.prefSaved);
+    const emailPatch = { [key]: newVal } as Partial<Prefs["email"]>;
+    void persist(next, { email: emailPatch });
   };
 
   const toggleSms = (key: keyof Prefs["sms"]) => {
+    const newVal = !prefs.sms[key];
     const next = {
       ...prefs,
-      sms: { ...prefs.sms, [key]: !prefs.sms[key] },
+      sms: { ...prefs.sms, [key]: newVal },
     };
-    setPrefs(next);
-    savePrefs(next);
-    toast.success(c.prefSaved);
+    const smsPatch = { [key]: newVal } as Partial<Prefs["sms"]>;
+    void persist(next, { sms: smsPatch });
   };
 
   if (!hydrated) {

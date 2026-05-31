@@ -36,6 +36,7 @@ import { DesignThumbnailGroup } from "@/components/cart/DesignThumbnailGroup";
 import { filterConfigString } from "@/lib/cart-config-filter";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
+import { mapApiError } from "@/lib/api-error-messages";
 import { validateTcKimlik, validateVkn } from "@/lib/validation";
 import {
   listCustomerCart,
@@ -43,6 +44,7 @@ import {
   clearCustomerCart,
   refreshCustomerCart,
   ensureAuthBindings,
+  setCustomerCartShippingSettings,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 import {
@@ -70,6 +72,21 @@ import {
   formatTrPhoneForDb,
   dbPhoneToInputValue,
 } from "@/lib/validation/phone-tr";
+
+const CHECKOUT_INIT_LOCK_KEY = "pim_checkout_init_lock";
+
+const CHECKOUT_STAY_ON_PAGE_ERRORS = new Set([
+  "coupon_invalid",
+  "subtotal_mismatch",
+  "total_mismatch",
+  "shipping_mismatch",
+  "pricing_validation_failed",
+  "min_order_not_met",
+  "max_order_exceeded",
+  "invalid_body",
+  "amount_too_low",
+  "checkout_in_progress",
+]);
 
 // ============================================================
 // Types
@@ -433,6 +450,10 @@ export default function OdemePage() {
         if (json?.settings) {
           setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
           setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
+          setCustomerCartShippingSettings(
+            Number(json.settings.shipping_fee_try ?? 49),
+            Number(json.settings.free_shipping_threshold ?? 500)
+          );
         }
       })
       .catch(() => {
@@ -698,6 +719,18 @@ export default function OdemePage() {
 
     setLoading(true);
 
+    if (
+      typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem(CHECKOUT_INIT_LOCK_KEY)
+    ) {
+      toast.error(mapApiError("checkout_in_progress", locale));
+      setLoading(false);
+      return;
+    }
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(CHECKOUT_INIT_LOCK_KEY, String(Date.now()));
+    }
+
     // Adres çöz: seçili kayıtlı veya inline form
     const addr = selectedAddress
       ? {
@@ -768,9 +801,36 @@ export default function OdemePage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          reason?: string;
+          detail?: string;
+          code?: string;
+          hint?: string;
+        };
         if (res.status === 401) {
+          if (typeof sessionStorage !== "undefined") {
+            sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
+          }
           router.push(`/auth?next=${encodeURIComponent("/odeme")}`);
+          return;
+        }
+        const errCode = data.error ?? `payment_init_failed_${res.status}`;
+        if (
+          res.status === 409 ||
+          CHECKOUT_STAY_ON_PAGE_ERRORS.has(errCode)
+        ) {
+          if (typeof sessionStorage !== "undefined") {
+            sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
+          }
+          toast.error(
+            mapApiError(
+              errCode,
+              locale,
+              data.hint ?? data.reason ?? data.detail
+            )
+          );
+          setLoading(false);
           return;
         }
         if (res.status === 503) {
@@ -815,16 +875,30 @@ export default function OdemePage() {
         throw new Error(`${baseErr}${detail}`);
       }
 
-      const { paymentPageUrl } = await res.json();
-      if (!paymentPageUrl) throw new Error("missing_payment_page_url");
-      window.location.href = paymentPageUrl;
+      const payload = (await res.json()) as {
+        paymentPageUrl?: string;
+        checkoutInProgress?: boolean;
+      };
+      if (payload.checkoutInProgress) {
+        toast.info(mapApiError("checkout_in_progress", locale));
+      }
+      if (!payload.paymentPageUrl) throw new Error("missing_payment_page_url");
+      window.location.href = payload.paymentPageUrl;
     } catch (err) {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
+      }
       setLoading(false);
       console.error("[odeme] payment init failed:", err);
+      const raw =
+        err instanceof Error ? err.message : "unknown";
+      const errCode = raw.split(" (")[0]?.split(":")[0] ?? raw;
+      if (CHECKOUT_STAY_ON_PAGE_ERRORS.has(errCode)) {
+        toast.error(mapApiError(errCode, locale, raw));
+        return;
+      }
       router.push(
-        `/odeme-sonuc?status=fail&reason=${encodeURIComponent(
-          err instanceof Error ? err.message : "unknown"
-        )}`
+        `/odeme-sonuc?status=fail&reason=${encodeURIComponent(raw)}`
       );
     }
   };

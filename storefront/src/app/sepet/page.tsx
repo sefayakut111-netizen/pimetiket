@@ -25,9 +25,14 @@ import {
   summarizeCustomerCart,
   refreshCustomerCart,
   ensureAuthBindings,
+  setCustomerCartShippingSettings,
+  isCustomerCartHydrating,
   FREE_SHIPPING_THRESHOLD,
+  CUSTOMER_CART_LIMIT,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
+
+const MAX_ITEMS = CUSTOMER_CART_LIMIT;
 import { setEditIntent } from "@/lib/cart-edit-intent";
 import { parseConfigChips } from "@/lib/cart-config-filter";
 import { useRouter } from "next/navigation";
@@ -180,6 +185,10 @@ export default function SepetPage() {
         if (json?.settings) {
           setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
           setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
+          setCustomerCartShippingSettings(
+            Number(json.settings.shipping_fee_try ?? 49),
+            Number(json.settings.free_shipping_threshold ?? 500)
+          );
         }
       })
       .catch(() => {
@@ -199,12 +208,22 @@ export default function SepetPage() {
       clearTimeout(skeletonTimer);
     });
     const handler = () => refresh();
+    const onMergeDropped = (ev: Event) => {
+      const count = (ev as CustomEvent<{ count: number }>).detail?.count ?? 0;
+      if (count > 0) {
+        toast.warning(
+          `Giriş sonrası sepet limiti (${MAX_ITEMS} ürün) nedeniyle ${count} ürün eklenemedi.`
+        );
+      }
+    };
     window.addEventListener("pim_customer_cart_updated", handler);
     window.addEventListener("storage", handler);
+    window.addEventListener("pim_cart_merge_dropped", onMergeDropped);
     return () => {
       clearTimeout(skeletonTimer);
       window.removeEventListener("pim_customer_cart_updated", handler);
       window.removeEventListener("storage", handler);
+      window.removeEventListener("pim_cart_merge_dropped", onMergeDropped);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh]);
@@ -223,6 +242,10 @@ export default function SepetPage() {
   const subtotal = summary.subtotal;
   const shipping = summary.shipping;
   const total = summary.total;
+  const belowMinOrder =
+    minOrderTotal > 0 && subtotal < minOrderTotal && subtotal > 0;
+  const aboveMaxOrder = maxOrderTotal > 0 && subtotal > maxOrderTotal;
+  const checkoutBlocked = belowMinOrder || aboveMaxOrder;
 
   const updateQty = (item: CustomerCartItem, delta: number) => {
     // Sefa 19 May v68 (UX agent P1 #11): step + min konfigüratörle hizalandı.
@@ -249,29 +272,28 @@ export default function SepetPage() {
   };
 
   // Hydration guard — Sefa 16 May denetim #10:
-  // Skeleton sadece 300ms+ yükleme uzarsa görünür. Hızlı load'larda
-  // direkt empty state veya cart render edilir (flicker yok).
+  // Girişli kullanıcı DB hydrate olana kadar skeleton; misafirde 300ms eşiği.
   if (!hydrated) {
-    if (!showSkeleton) {
-      return <main className="bg-gri-50 min-h-[calc(100vh-64px)]" />;
-    }
-    return (
-      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <div className="mb-5 md:mb-7 space-y-3">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-9 w-48" />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
-            <div className="flex flex-col gap-3">
-              <Skeleton.OrderRow />
-              <Skeleton.OrderRow />
+    if (isCustomerCartHydrating() || showSkeleton) {
+      return (
+        <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+          <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+            <div className="mb-5 md:mb-7 space-y-3">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-9 w-48" />
             </div>
-            <Skeleton.Card className="lg:sticky lg:top-20" />
+            <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
+              <div className="flex flex-col gap-3">
+                <Skeleton.OrderRow />
+                <Skeleton.OrderRow />
+              </div>
+              <Skeleton.Card className="lg:sticky lg:top-20" />
+            </div>
           </div>
-        </div>
-      </main>
-    );
+        </main>
+      );
+    }
+    return <main className="bg-gri-50 min-h-[calc(100vh-64px)]" />;
   }
 
   if (cart.length === 0) {
@@ -535,18 +557,18 @@ export default function SepetPage() {
               </div>
 
               {/* Sefa 18 May v68 Migration 053: min/max sipariş limit uyarıları */}
-              {minOrderTotal > 0 && total < minOrderTotal && total > 0 && (
+              {belowMinOrder && (
                 <div className="mt-4 rounded-lg bg-sari-soft p-3 ring-1 ring-sari/30 text-[12.5px] text-sari-koyu">
                   <div className="font-semibold mb-1">
                     ⚠️ Minimum sipariş tutarı {fmt(minOrderTotal)} ₺
                   </div>
                   <p className="leading-relaxed">
-                    Sepete <strong>{fmt(minOrderTotal - total)} ₺</strong> daha
+                    Sepete <strong>{fmt(minOrderTotal - subtotal)} ₺</strong> daha
                     eklemen gerekiyor. Adet yükselt veya yeni ürün ekle.
                   </p>
                 </div>
               )}
-              {maxOrderTotal > 0 && total > maxOrderTotal && (
+              {aboveMaxOrder && (
                 <div className="mt-4 rounded-lg bg-mavi-soft p-3 ring-1 ring-mavi/30 text-[12.5px] text-mavi-koyu">
                   <div className="font-semibold mb-1">
                     📞 Toplu sipariş — WhatsApp'a yönlendir
@@ -571,13 +593,9 @@ export default function SepetPage() {
                 variant="primary"
                 size="lg"
                 block
-                href={
-                  minOrderTotal > 0 && total < minOrderTotal
-                    ? "#"
-                    : "/odeme"
-                }
+                href={checkoutBlocked ? "#" : "/odeme"}
                 className={`mt-5 ${
-                  minOrderTotal > 0 && total < minOrderTotal
+                  checkoutBlocked
                     ? "opacity-50 cursor-not-allowed pointer-events-none"
                     : ""
                 }`}
@@ -670,15 +688,9 @@ export default function SepetPage() {
           <Button
             variant="primary"
             size="md"
-            href={
-              minOrderTotal > 0 && total < minOrderTotal
-                ? "#"
-                : "/odeme"
-            }
+            href={checkoutBlocked ? "#" : "/odeme"}
             className={
-              minOrderTotal > 0 && total < minOrderTotal
-                ? "opacity-50 pointer-events-none"
-                : ""
+              checkoutBlocked ? "opacity-50 pointer-events-none" : ""
             }
           >
             {t.cart.proceedToCheckout} <Icon.ArrowR />

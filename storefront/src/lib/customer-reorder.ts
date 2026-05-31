@@ -91,10 +91,10 @@ export async function reorderFromOrder(
       coatingId: item.coatingId,
       customizationId: item.customizationId,
       winding: item.winding,
-      // Tasarım — eski sipariş tasarımı yeni siparişe otomatik bağlanmaz
-      // (storage path değişti, design_files başka order'a ait).
-      // Müşteri /sepet'te yeniden yükleyebilir veya konfigüratörden
-      // /tasarımlarım üzerinden seçebilir.
+      coreSize: item.coreSize,
+      rollLabelCount: item.rollLabelCount,
+      designCount: item.designCount,
+      meta: item.meta,
     };
 
     const r = await addToCustomerCart(payload);

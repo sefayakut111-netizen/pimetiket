@@ -36,7 +36,7 @@ interface PublicSettings {
 // Migration 029 çalışmadıysa fallback default'lar
 const DEFAULTS: PublicSettings = {
   shipping_fee_try: 49,
-  free_shipping_threshold: 1000,
+  free_shipping_threshold: 500,
   welcome_credit_try: 250,
   referral_credit_try: 250,
   min_subtotal_for_credit: 500,

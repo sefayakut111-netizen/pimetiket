@@ -25,6 +25,7 @@ import { Icon } from "@/components/Icon";
 import { Button, Input, Eyebrow, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { sanitizeNextPath } from "@/lib/auth/sanitize-next-path";
 import { useSiteImage } from "@/lib/site-images-client";
 
 type AuthMode = "login" | "signup";
@@ -42,7 +43,7 @@ function AuthInner() {
   const toast = useToast();
   const router = useRouter();
   const sp = useSearchParams();
-  const next = sp.get("next") ?? "/panelim";
+  const next = sanitizeNextPath(sp.get("next"), "/panelim");
   const initialMode = (sp.get("mode") === "signup" ? "signup" : "login") as AuthMode;
   const referralCode = sp.get("ref")?.toUpperCase() ?? null;
   const authHero = useSiteImage("auth_hero");

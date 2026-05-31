@@ -36,6 +36,7 @@ import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { promoteEditorCutlines } from "@/lib/editor/promote-editor-cutline";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
+import { applyCouponAfterOrder } from "@/lib/payment/coupon-server";
 import { enqueueMail } from "@/lib/mail/enqueue";
 import type { Json } from "@/lib/supabase/types";
 
@@ -87,6 +88,9 @@ interface IntentRow {
     shipping: number;
     total: number;
     couponCode: string | null;
+    couponDiscount?: number | null;
+    couponKind?: string | null;
+    effectiveShipping?: number | null;
   };
   status: string;
 }
@@ -303,9 +307,6 @@ export async function POST(req: NextRequest) {
   }
 
   if (rpcErr) {
-    // Audit P0 (4-agent 15 May): RPC silently swallowed → şikayet
-    // gelene kadar fark edilmiyor. Sentry'a captureException + intent
-    // failure_reason'a yaz → admin/finans paneli görür.
     console.error("[payment/callback] finalize RPC error:", rpcErr);
     Sentry.captureException(rpcErr, {
       tags: {
@@ -317,14 +318,15 @@ export async function POST(req: NextRequest) {
         rpc: "fn_finalize_paid_order",
       },
     });
-    // Intent kaydına failure_reason yaz — admin sonradan görsün
     await admin
       .from("payment_intents")
       .update({
         failure_reason: `RPC error: ${rpcErr.message ?? "unknown"}`,
+        status: "pending",
       })
       .eq("id", merchantOid);
-    return new NextResponse("OK"); // PayTR retry yapmasın
+    // PayTR retry yapsın — sipariş oluşturma tekrar denenebilir
+    return new NextResponse("finalize_failed", { status: 500 });
   }
 
   const rpcRow = rpcData?.[0];
@@ -344,6 +346,32 @@ export async function POST(req: NextRequest) {
       `[payment/callback] duplicate IPN ${merchantOid} → existing ${orderId}`
     );
     return new NextResponse("OK");
+  }
+
+  if (intent.snapshot.couponCode) {
+    const applyResult = await applyCouponAfterOrder(admin, {
+      code: intent.snapshot.couponCode,
+      subtotal: intent.snapshot.subtotal,
+      userId: intent.user_id,
+      orderId,
+      chargedDiscount: intent.snapshot.couponDiscount ?? undefined,
+    });
+    if (!applyResult.ok) {
+      console.warn(
+        "[payment/callback] coupon apply failed:",
+        applyResult.reason,
+        merchantOid
+      );
+      Sentry.captureMessage("coupon_apply_failed_after_payment", {
+        level: "warning",
+        extra: {
+          merchantOid,
+          orderId,
+          reason: applyResult.reason,
+          code: intent.snapshot.couponCode,
+        },
+      });
+    }
   }
 
   // 7) Pre-purchase tasarım promote (RPC dışı — Storage işlemleri

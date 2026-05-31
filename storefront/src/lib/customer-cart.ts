@@ -124,6 +124,21 @@ export interface CustomerCartSummary {
 export const FREE_SHIPPING_THRESHOLD = 500;
 export const SHIPPING_FEE = 49;
 
+let runtimeShippingFee = SHIPPING_FEE;
+let runtimeFreeShippingThreshold = FREE_SHIPPING_THRESHOLD;
+
+/** /api/public/settings yanıtından kargo sabitlerini güncelle */
+export function setCustomerCartShippingSettings(
+  fee: number,
+  freeThreshold: number
+): void {
+  if (Number.isFinite(fee) && fee >= 0) runtimeShippingFee = fee;
+  if (Number.isFinite(freeThreshold) && freeThreshold >= 0) {
+    runtimeFreeShippingThreshold = freeThreshold;
+  }
+  notifyChange();
+}
+
 // ============================================================
 // In-memory cache (sync API + UI ilk paint için)
 // ============================================================
@@ -355,41 +370,69 @@ export async function refreshCustomerCart(): Promise<CustomerCartItem[]> {
  * Çift kayıt olmasın diye benzer item'ı arar (config + product match);
  * varsa qty'leri toplar.
  */
-export async function mergeGuestCartIntoDb(): Promise<void> {
+export async function mergeGuestCartIntoDb(): Promise<{
+  dropped: number;
+  merged: number;
+  added: number;
+}> {
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user) return { dropped: 0, merged: 0, added: 0 };
   const guestItems = readLocal();
-  if (guestItems.length === 0) return;
+  if (guestItems.length === 0) return { dropped: 0, merged: 0, added: 0 };
 
   const dbItems = await dbList(user.id);
   let dbCount = dbItems.length;
+  let dropped = 0;
+  let merged = 0;
+  let added = 0;
+
+  function mergeKey(it: CustomerCartItem): string {
+    return [
+      it.product,
+      it.config,
+      it.width,
+      it.height,
+      it.material ?? "",
+      it.finish ?? "",
+      it.materialId ?? "",
+      it.coatingId ?? "",
+      it.customizationId ?? "",
+      JSON.stringify(it.meta ?? {}),
+    ].join("|");
+  }
   for (const guest of guestItems) {
     if (dbCount >= MAX_ITEMS) {
-      console.warn(
-        `[cart] mergeGuestCartIntoDb: max ${MAX_ITEMS} items — kalan guest item atlandi`
-      );
-      break;
+      dropped += 1;
+      continue;
     }
-    const match = dbItems.find(
-      (db) =>
-        db.product === guest.product &&
-        db.config === guest.config &&
-        db.width === guest.width &&
-        db.height === guest.height
-    );
+    const match = dbItems.find((db) => mergeKey(db) === mergeKey(guest));
     if (match) {
-      const newQty = match.qty + guest.qty;
-      const newTotal = match.unit * newQty;
-      await dbUpdateQty(match.id, newQty, newTotal);
-    } else {
-      const { id: _, addedAt: __, ...rest } = guest;
-      void _; void __;
+      // Qty birleştirme tier fiyatını bozar — ayrı satır olarak ekle (checkout recalc doğru kalır)
+      const { id: _dropId, addedAt: _dropAt, ...rest } = guest;
+      void _dropId;
+      void _dropAt;
       await dbInsert(user.id, rest);
       dbCount += 1;
+      added += 1;
+    } else {
+      const { id: _dropId, addedAt: _dropAt, ...rest } = guest;
+      void _dropId;
+      void _dropAt;
+      await dbInsert(user.id, rest);
+      dbCount += 1;
+      added += 1;
     }
   }
   clearLocal();
   await refreshCustomerCart();
+
+  if (dropped > 0 && typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("pim_cart_merge_dropped", { detail: { count: dropped } })
+    );
+  }
+
+  return { dropped, merged, added };
 }
 
 // ============================================================
@@ -405,6 +448,11 @@ export function listCustomerCart(): CustomerCartItem[] {
     }
   }
   return cache;
+}
+
+/** Girişli kullanıcı DB sepeti hydrate olana kadar true */
+export function isCustomerCartHydrating(): boolean {
+  return isLoggedInSync() && !cacheLoaded;
 }
 
 export async function addToCustomerCart(
@@ -511,7 +559,9 @@ export function summarizeCustomerCart(): CustomerCartSummary {
   const items = listCustomerCart();
   const subtotal = items.reduce((sum, i) => sum + i.total, 0);
   const shipping =
-    subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
+    subtotal >= runtimeFreeShippingThreshold || subtotal === 0
+      ? 0
+      : runtimeShippingFee;
   return {
     items,
     subtotal,

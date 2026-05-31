@@ -754,6 +754,8 @@ function ToolResultCard({ result }: { result: unknown }) {
         qty: quote.qty,
         unit: quote.unit_price_kdv_dahil,
         total: Math.round(quote.total_kdv_dahil),
+        material: quote.material as "vinil" | "transparan" | "holo" | "simli",
+        finish: quote.finish as "parlak" | "mat" | "yok",
         cut: "diecut",
         hediyeAdet: quote.hediye_adet,
       });
@@ -777,6 +779,11 @@ function ToolResultCard({ result }: { result: unknown }) {
         qty: quote.qty,
         unit: quote.unit_price_kdv_dahil,
         total: Math.round(quote.total_kdv_dahil),
+        meta: {
+          materialLabel: quote.material,
+          coatingLabel: quote.coating,
+          customizationLabel: quote.customization,
+        },
       });
       if (r.ok) toast.success("Sepete eklendi 🛒");
       else toast.error(r.reason);

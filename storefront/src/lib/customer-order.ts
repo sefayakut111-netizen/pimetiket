@@ -193,6 +193,10 @@ function rowsToOrder(
       designFileName: meta.designFileName,
       designMimeType: meta.designMimeType,
       additionalDesigns: meta.additionalDesigns,
+      meta:
+        i.meta && typeof i.meta === "object" && !Array.isArray(i.meta)
+          ? (i.meta as Record<string, unknown>)
+          : undefined,
       addedAt: ts,
     };
   });

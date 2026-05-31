@@ -104,7 +104,7 @@ export default function VerilerimPage() {
         if (json) setRequests(json.requests ?? []);
       })
       .catch(() => {
-        /* silent */
+        toast.error("Talepler yüklenemedi. Sayfayı yenileyip tekrar dene.");
       })
       .finally(() => setLoading(false));
   }, [router]);

@@ -26,6 +26,7 @@ import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { PimMini, Pim } from "@/components/Pim";
 import { cn } from "@/lib/cn";
+import { mapApiError } from "@/lib/api-error-messages";
 import type { OrderStatus } from "@/lib/order";
 import { categorizeFile, needsWhiteLayer } from "@/lib/design-file-types";
 import {
@@ -722,12 +723,12 @@ export default function ProofApprovalPage({
           /* sessizce geç — kritik değil */
         });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      const msg = err instanceof Error ? err.message : "unknown";
       if (!silent) {
-        setLoadError(msg);
+        setLoadError(mapApiError(msg.split(" (")[0], "tr", msg));
         setData(null);
       }
-      toast.error(`Sipariş yüklenemedi: ${msg}`);
+      toast.error(`Sipariş yüklenemedi: ${mapApiError(msg.split(" (")[0], "tr", msg)}`);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -1393,7 +1394,7 @@ export default function ProofApprovalPage({
         router.push(`/onay/${orderId}/tamamlandi`);
         return;
       }
-      toast.error(fin.error ?? "Sonlandırma başarısız");
+      toast.error(mapApiError(fin.error, "tr", "Sonlandırma başarısız"));
     } finally {
       setFinalizing(false);
     }
@@ -1539,7 +1540,7 @@ export default function ProofApprovalPage({
                 Hata detayı
               </p>
               <p className="mt-1 font-mono text-xs text-kirmizi-koyu">
-                {loadError}
+                {mapApiError(loadError.split(" (")[0], "tr", loadError)}
               </p>
             </div>
           )}

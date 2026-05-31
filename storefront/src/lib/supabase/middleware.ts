@@ -21,10 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveAdminPathModule } from "@/lib/admin-rbac";
 import { getMaintenanceModeActive } from "@/lib/maintenance-cache";
-import {
-  hasSupabaseAuthCookie,
-  isRscPrefetchRequest,
-} from "@/lib/middleware-request";
+import { isRscPrefetchRequest } from "@/lib/middleware-request";
 import { VIEW_MODE_COOKIE, parseViewMode } from "@/lib/view-mode";
 
 const PROTECTED_PATHS: ReadonlyArray<string> = [
@@ -37,6 +34,9 @@ const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/adreslerim",
   "/fatura-bilgileri",
   "/bildirim-tercihleri",
+  "/tasarimlarim",
+  "/ayarlar/",
+  "/editor",
   "/odeme",
   "/odeme-sonuc",
   "/onay",
@@ -161,10 +161,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Korumalı rota prefetch + oturum cookie yok → Supabase çağrısına gerek yok
-  if (prefetch && isProtected(pathname) && !hasSupabaseAuthCookie(request)) {
-    return supabaseResponse;
-  }
+  // Korumalı rota prefetch — auth kontrolü atlanmaz (RSC prefetch bypass kapatıldı)
 
   // Bakım modu — admin/API/bakim sayfası hariç müşteri trafiğini yönlendir
   const isAdminPath = pathname.startsWith("/admin");
@@ -218,7 +215,33 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // 1a) /partner — partner rolü VEYA admin/staff partner preview cookie
+  // 1a) /demo — yalnızca admin/staff
+  if (
+    user &&
+    (pathname === "/demo" || pathname.startsWith("/demo/"))
+  ) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      const role = (profile as { role?: string } | null)?.role;
+      if (role !== "admin" && role !== "staff") {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/";
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+    } catch {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
+  // 1b) /partner — partner rolü VEYA admin/staff partner preview cookie
   if (user && pathname.startsWith("/partner") && pathname !== "/partner/giris") {
     try {
       const { data: profile } = await supabase
@@ -332,7 +355,18 @@ export async function updateSession(request: NextRequest) {
           return NextResponse.redirect(redirectUrl);
         }
       } catch {
-        // AAL check başarısız olursa admin'e izin ver (Supabase MFA env'i yoksa)
+        // MFA kontrolü başarısız — fail-closed. AMA kurtarma/enroll sayfaları erişilebilir
+        // kalmalı; yoksa /admin/profil → mfa-challenge → /admin/profil sonsuz döngü (sole-admin lockout).
+        if (
+          !pathname.startsWith("/admin/profil") &&
+          !pathname.startsWith("/admin/ayarlar/2fa")
+        ) {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = "/auth/mfa-challenge";
+          redirectUrl.searchParams.set("next", pathname + request.nextUrl.search);
+          return NextResponse.redirect(redirectUrl);
+        }
+        // İstisna sayfalar → akışın devamına bırak (admin 2FA kurabilsin / profile erişebilsin)
       }
 
       const viewMode = parseViewMode(

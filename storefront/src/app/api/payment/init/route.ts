@@ -30,6 +30,14 @@ import {
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateCartPricing } from "@/lib/payment-validation";
+import {
+  resolveCouponForCheckout,
+  computeCheckoutTotals,
+} from "@/lib/payment/coupon-server";
+import {
+  fetchCheckoutSiteSettings,
+  expectedShippingFee,
+} from "@/lib/payment/checkout-site-settings";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 // ============================================================
@@ -195,6 +203,34 @@ export async function POST(req: NextRequest) {
   // gönderirse subtotal mismatch'e takılmıyordu. Şimdi her item ayrı
   // doğrulanıyor + toplam tolerans 0.05 TL'ye sıkıştırıldı.
   // ---------------------------------------------------------
+  const siteSettings = await fetchCheckoutSiteSettings();
+
+  if (
+    siteSettings.minOrderTotalTry > 0 &&
+    body.subtotal < siteSettings.minOrderTotalTry
+  ) {
+    return NextResponse.json(
+      {
+        error: "min_order_not_met",
+        min: siteSettings.minOrderTotalTry,
+      },
+      { status: 400 }
+    );
+  }
+
+  if (
+    siteSettings.maxOrderTotalTry > 0 &&
+    body.subtotal > siteSettings.maxOrderTotalTry
+  ) {
+    return NextResponse.json(
+      {
+        error: "max_order_exceeded",
+        max: siteSettings.maxOrderTotalTry,
+      },
+      { status: 400 }
+    );
+  }
+
   const calcSubtotal = body.items.reduce((s, i) => s + i.total, 0);
   if (Math.abs(calcSubtotal - body.subtotal) > 0.05) {
     return NextResponse.json(
@@ -202,10 +238,59 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const calcTotal = body.subtotal + body.shipping;
-  if (Math.abs(calcTotal - body.total) > 0.05) {
+
+  let couponDiscount = 0;
+  let couponKind: string | null = null;
+  const couponCode = body.couponCode?.trim() ?? "";
+  if (couponCode) {
+    const couponResult = await resolveCouponForCheckout(
+      supabase,
+      couponCode,
+      body.subtotal
+    );
+    if (!couponResult.ok) {
+      return NextResponse.json(
+        { error: "coupon_invalid", reason: couponResult.reason },
+        { status: 400 }
+      );
+    }
+    couponDiscount = couponResult.discount;
+    couponKind = couponResult.kind;
+  }
+
+  const checkoutTotals = computeCheckoutTotals(
+    body.subtotal,
+    body.shipping,
+    couponCode
+      ? {
+          ok: true,
+          discount: couponDiscount,
+          kind: couponKind as "percent" | "fixed" | "free_ship",
+        }
+      : null
+  );
+
+  const serverShipping = expectedShippingFee(body.subtotal, siteSettings);
+  const expectedClientShipping =
+    couponKind === "free_ship" ? 0 : serverShipping;
+  if (Math.abs(expectedClientShipping - body.shipping) > 0.05) {
     return NextResponse.json(
-      { error: "total_mismatch", expected: calcTotal },
+      {
+        error: "shipping_mismatch",
+        expected: expectedClientShipping,
+      },
+      { status: 400 }
+    );
+  }
+
+  if (Math.abs(checkoutTotals.total - body.total) > 0.05) {
+    return NextResponse.json(
+      {
+        error: "total_mismatch",
+        expected: checkoutTotals.total,
+        discount: checkoutTotals.discount,
+        shipping: checkoutTotals.effectiveShipping,
+      },
       { status: 400 }
     );
   }
@@ -240,6 +325,37 @@ export async function POST(req: NextRequest) {
       { error: "amount_too_low" },
       { status: 400 }
     );
+  }
+
+  const admin = createAdminClient();
+
+  // Çift ödeme kilidi — aynı kullanıcı için bekleyen intent varsa mevcut PayTR oturumunu döndür
+  const { data: pendingIntent } = await admin
+    .from("payment_intents")
+    .select("id, iyzico_token, created_at")
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pendingIntent?.iyzico_token) {
+    const createdAt = new Date(pendingIntent.created_at).getTime();
+    const ageMs = Date.now() - createdAt;
+    const MAX_PENDING_MS = 30 * 60 * 1000;
+    if (ageMs < MAX_PENDING_MS) {
+      return NextResponse.json({
+        paymentPageUrl: `https://www.paytr.com/odeme/guvenli/${pendingIntent.iyzico_token}`,
+        token: pendingIntent.iyzico_token,
+        merchantOid: pendingIntent.id,
+        checkoutInProgress: true,
+      });
+    }
+    await admin
+      .from("payment_intents")
+      .update({ status: "expired" })
+      .eq("id", pendingIntent.id)
+      .eq("status", "pending");
   }
 
   // 6) PayTR sepeti
@@ -289,7 +405,6 @@ export async function POST(req: NextRequest) {
   }
 
   // 9) payment_intents snapshot
-  const admin = createAdminClient();
   const copyrightAcceptedAt = new Date().toISOString();
   const snapshot = {
     items: body.items,
@@ -298,7 +413,10 @@ export async function POST(req: NextRequest) {
     subtotal: body.subtotal,
     shipping: body.shipping,
     total: body.total,
-    couponCode: body.couponCode ?? null,
+    couponCode: couponCode || null,
+    couponDiscount: couponDiscount > 0 ? couponDiscount : null,
+    couponKind: couponKind,
+    effectiveShipping: checkoutTotals.effectiveShipping,
     // FSEK m.66 telif ispatı — snapshot içinde de saklanır
     copyright_accepted: true,
     copyright_accepted_at: copyrightAcceptedAt,
