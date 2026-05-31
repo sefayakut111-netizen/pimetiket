@@ -1,36 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { forwardRef } from "react";
-import type { EditorLayer } from "@/components/editor/EditorPreviewToolbar";
-import type { BladeShapeConfig } from "@/lib/editor/pikaso/controller-types";
-import type { PikasoEditorController } from "@/lib/editor/pikaso/controller-types";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
-const PikasoEditorCanvas = dynamic(
-  () =>
-    import("@/components/editor/PikasoEditorCanvas").then(
-      (m) => m.PikasoEditorCanvas
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full min-h-[200px] items-center justify-center bg-gri-50 text-sm text-gri-600">
-        Editör tuvali yükleniyor…
-      </div>
-    ),
-  }
-);
-
-export type EditorCanvasHandle = PikasoEditorController;
+export interface EditorCanvasHandle {
+  postMessage: (msg: object) => void;
+}
 
 interface EditorCanvasProps {
-  designUrl: string | null;
-  widthMm: number;
-  heightMm: number;
-  offsetMm: number;
-  viewZoom: number;
-  layers: Record<EditorLayer, boolean>;
-  bladeShape: BladeShapeConfig;
+  iframeSrc: string | null;
   onSaved: (payload: {
     svg: string;
     preview_png_base64: string | null;
@@ -39,52 +16,83 @@ interface EditorCanvasProps {
   onReady?: () => void;
   onDesignLoaded?: (dims: { widthPx: number; heightPx: number }) => void;
   onError?: (msg: string) => void;
+  /** Headless POC — sabit yükseklik */
   fixedHeight?: number;
 }
 
 export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
-  function EditorCanvas(props, ref) {
-    const {
-      designUrl,
-      widthMm,
-      heightMm,
-      offsetMm,
-      viewZoom,
-      layers,
-      bladeShape,
-      onSaved,
-      onReady,
-      onDesignLoaded,
-      onError,
-      fixedHeight = 520,
-    } = props;
+  function EditorCanvas(
+    { iframeSrc, onSaved, onReady, onDesignLoaded, onError, fixedHeight },
+    ref
+  ) {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [height, setHeight] = useState(fixedHeight ?? 720);
 
-    if (!designUrl) {
+    useImperativeHandle(ref, () => ({
+      postMessage(msg: object) {
+        iframeRef.current?.contentWindow?.postMessage(
+          msg,
+          window.location.origin
+        );
+      },
+    }));
+
+    useEffect(() => {
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        const msg = e.data;
+        if (!msg || typeof msg !== "object") return;
+
+        if (msg.type === "pim-poc-ready") {
+          onReady?.();
+        }
+        if (msg.type === "pim-poc-loaded") {
+          onReady?.();
+          const w = Number(msg.width);
+          const h = Number(msg.height);
+          if (w > 0 && h > 0) {
+            onDesignLoaded?.({ widthPx: w, heightPx: h });
+          }
+        }
+        if (msg.type === "pim-poc-error") {
+          onError?.(String(msg.error ?? "POC hatası"));
+        }
+        if (
+          !fixedHeight &&
+          msg.type === "pim-poc-resize" &&
+          typeof msg.height === "number"
+        ) {
+          setHeight(Math.min(Math.max(msg.height, 480), 1200));
+        }
+        if (msg.type === "pim-editor-saved") {
+          onSaved({
+            svg: msg.svg,
+            preview_png_base64: msg.preview_png_base64 ?? null,
+            meta: (msg.meta as Record<string, unknown>) ?? {},
+          });
+        }
+      };
+      window.addEventListener("message", onMessage);
+      return () => window.removeEventListener("message", onMessage);
+    }, [onSaved, onReady, onDesignLoaded, onError, fixedHeight]);
+
+    if (!iframeSrc) {
       return (
-        <div className="flex h-[480px] items-center justify-center rounded-xl bg-gri-50 text-sm text-gri-600">
+        <div className="h-[480px] grid place-items-center text-gri-600 text-sm rounded-xl bg-gri-50">
           Editör yükleniyor…
         </div>
       );
     }
 
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col">
-        <PikasoEditorCanvas
-          ref={ref}
-          designUrl={designUrl}
-          widthMm={widthMm}
-          heightMm={heightMm}
-          offsetMm={offsetMm}
-          viewZoom={viewZoom}
-          layers={layers}
-          bladeShape={bladeShape}
-          fixedHeight={fixedHeight}
-          onSaved={onSaved}
-          onReady={onReady}
-          onDesignLoaded={onDesignLoaded}
-          onError={onError}
-        />
-      </div>
+      <iframe
+        ref={iframeRef}
+        src={iframeSrc}
+        title="Bıçak editörü"
+        className="w-full border-0 rounded-xl bg-gri-50"
+        style={{ height: fixedHeight ?? height }}
+        sandbox="allow-scripts allow-same-origin"
+      />
     );
   }
 );
