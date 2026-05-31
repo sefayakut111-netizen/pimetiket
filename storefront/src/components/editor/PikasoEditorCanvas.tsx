@@ -1,5 +1,6 @@
 "use client";
 
+import { getOpaqueBoundsPx } from "@/lib/editor/alpha-contour";
 import { mmToPx } from "@/lib/editor/coords";
 import {
   computeCutlineBundle,
@@ -626,25 +627,32 @@ export const PikasoEditorCanvas = forwardRef<
       });
       htmlImageRef.current = htmlImg;
 
+      const bounds = getOpaqueBoundsPx(htmlImg);
+      const contentW = bounds.w;
+      const contentH = bounds.h;
+
       const marginMm = 2;
       const maxWmm = widthMm - marginMm * 2;
       const maxHmm = heightMm - marginMm * 2;
-      const aspect = natW / natH;
+      const aspect = contentW / contentH;
       let drawWMm = maxWmm;
       let drawHMm = drawWMm / aspect;
       if (drawHMm > maxHmm) {
         drawHMm = maxHmm;
         drawWMm = drawHMm * aspect;
       }
-      const drawW = mmToPx(drawWMm);
+      const scale = mmToPx(drawWMm) / contentW;
+
+      const drawAreaX = labelX + mmToPx((widthMm - drawWMm) / 2);
+      const drawAreaY = labelY + mmToPx((heightMm - drawHMm) / 2);
 
       const shape = await editor.shapes.image.insert(file, {
-        x: labelX + mmToPx((widthMm - drawWMm) / 2),
-        y: labelY + mmToPx((heightMm - drawHMm) / 2),
+        x: drawAreaX - bounds.x * scale,
+        y: drawAreaY - bounds.y * scale,
         width: natW,
         height: natH,
-        scaleX: drawW / natW,
-        scaleY: drawW / natW,
+        scaleX: scale,
+        scaleY: scale,
         draggable: true,
         name: USER_IMAGE_NAME,
       });
@@ -653,7 +661,7 @@ export const PikasoEditorCanvas = forwardRef<
       syncLabelWorkspace();
       syncEditorZOrder(editor);
 
-      onDesignLoaded?.({ widthPx: natW, heightPx: natH });
+      onDesignLoaded?.({ widthPx: contentW, heightPx: contentH });
       scheduleRecomputeCutline({ fastImmediate: true });
       syncViewTransform();
 

@@ -232,3 +232,61 @@ export function hullToPathD(points: Point2[]): string {
   }
   return `${d} Z`;
 }
+
+export interface OpaqueBoundsPx {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Görselin opak (alpha>eşik) içerik sınır kutusu — doğal piksel uzayında.
+ *  Şeffaf kenar boşluklarını kırpmak için. Alpha yok / CORS-tainted / tamamen
+ *  şeffaf ise tüm görseli (kırpmasız) döndürür. */
+export function getOpaqueBoundsPx(
+  image: HTMLImageElement,
+  alphaThreshold = 10,
+  maxDim = 1024
+): OpaqueBoundsPx {
+  const nw = image.naturalWidth || image.width;
+  const nh = image.naturalHeight || image.height;
+  const full: OpaqueBoundsPx = { x: 0, y: 0, w: nw, h: nh };
+  if (nw < 1 || nh < 1) return full;
+  const scale = Math.min(1, maxDim / Math.max(nw, nh));
+  const w = Math.max(1, Math.round(nw * scale));
+  const h = Math.max(1, Math.round(nh * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return full;
+  ctx.drawImage(image, 0, 0, w, h);
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return full;
+  }
+  let minX = w;
+  let minY = h;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3]! > alphaThreshold) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX || maxY < minY) return full;
+  const inv = 1 / scale;
+  return {
+    x: Math.max(0, Math.floor(minX * inv)),
+    y: Math.max(0, Math.floor(minY * inv)),
+    w: Math.min(nw, Math.ceil((maxX - minX + 1) * inv)),
+    h: Math.min(nh, Math.ceil((maxY - minY + 1) * inv)),
+  };
+}
