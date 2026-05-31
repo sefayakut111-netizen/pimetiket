@@ -64,6 +64,17 @@ Rapor: `docs/ADMIN-NEGATIF-ANALIZ.md` · Araç: `scripts/admin-negative-audit.mj
 
 ---
 
+## 6) Ürün/yapılandırıcı negatif analiz + fix (31 May) — ✅ kod canlıda (`76b7f82`)
+Rapor: `docs/URUN-NEGATIF-ANALIZ.md` · Araç: `product-configurator-audit.mjs` (`npm run verify:product-audit`) · E2E: `customer-product-matrix.spec.ts` + `customer-sarim-step-order.spec.ts` (`npm run bot:product` 26/26). Bulgu: **0 P0 · 2 P1 · 5 P2 · 3 P3**. 22/22 yapılandırıcı OK.
+- **P1 #1 bumper duplicate `#step-3`** → ✅ fix: i18n `context.tsx` `hydrated` flag (locale oturana kadar skeleton, hydration mismatch önlenir) + `use-sanitize-empty-query-param.ts` (`?form=` boş param temizlenir). Origin'de doğrulandı (hydrated ×7, dosya var).
+- **P1 #2 yuvarlak rulo malzeme adı drift** → ✅ fix: müşteri tarafında adlar her zaman `MATERIALS` const'tan; **Migration 126** admin `pricing_config` etiket_rulo adlarını normalize etti.
+- **P2 #3 sticker sheet başlık** → ✅ fix: **Migration 082** prod'a uygulandı, "Tabaka Sticker" → "Sticker Sayfası".
+- **P2 #4 kiss-cut fiyat şeffaflığı** → ✅ fix: PriceCard üstüne not — *"Fiyat özel kesim tarifesinden hesaplanır; yarı kesim üretim aşamasında uygulanır."* (origin'de doğrulandı).
+- **Senkron:** Cursor yine ayrı yerden commit'lemiş; `core` working tree'deki redundant edit'ler origin'le (76b7f82) eşleşti, stash→ff ile hizalandı. Divergence yok.
+- **⏳ Doğrulanacak (prod read):** Mig 082 (sheet başlığı) + 126 (etiket_rulo adları) gerçekten prod DB'ye yazıldı mı — onayınla read-only sorgu ile teyit edebilirim (110/075'i yaptığım gibi).
+
+---
+
 ## 🚦 Production durumu (31 May — tamam)
 1. ✅ **Push edildi** → `0d6109e` (bug+güvenlik) + `a6da8fc` (konumlandırma) + `19a9a3d` (admin P1) `origin/main`'de → Vercel auto-deploy
 2. ✅ **Migration 125 uygulandı** → uzak Supabase'de `returns_one_pending_per_order_idx` doğrulandı (`apply-migrations-125.mjs`)
