@@ -6,6 +6,24 @@ import { useEffect, useRef, useState } from "react";
 const DEFAULT_STAGE_W = 800;
 const DEFAULT_STAGE_H = 520;
 
+/** Pikaso arka planı — dış kareli CSS görünsün */
+function configureTransparentStage(editor: Pikaso) {
+  const container = editor.board.container;
+  if (container) container.style.background = "transparent";
+  const content = editor.board.stage.getContent();
+  if (content) content.style.background = "transparent";
+  try {
+    editor.board.background.fill("transparent");
+  } catch {
+    /* background.fill */
+  }
+  try {
+    editor.board.background.overlay.node.visible(false);
+  } catch {
+    /* overlay */
+  }
+}
+
 /**
  * Pikaso v3 mount — tek sefer; stage boyutu ResizeObserver ile güncellenir.
  */
@@ -47,6 +65,7 @@ export function usePikasoEditor(
         },
       },
     });
+    configureTransparentStage(editor);
     editorRef.current = editor;
     setReady(true);
 

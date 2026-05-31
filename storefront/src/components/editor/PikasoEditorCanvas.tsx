@@ -19,6 +19,7 @@ import type {
   PikasoEditorController,
 } from "@/lib/editor/pikaso/controller-types";
 import { placementFromPikasoImage } from "@/lib/editor/pikaso/placement";
+import { renderLabelWorkspace } from "@/lib/editor/pikaso/render-label-workspace";
 import {
   clearCutlineOverlays,
   renderCutlineOverlays,
@@ -128,6 +129,17 @@ export const PikasoEditorCanvas = forwardRef<
   heightMmRef.current = heightMm;
   offsetMmRef.current = offsetMm;
   viewZoomRef.current = viewZoom;
+
+  const syncLabelWorkspace = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor || !ready) return;
+    renderLabelWorkspace(editor, {
+      labelX,
+      labelY,
+      widthMm: widthMmRef.current,
+      heightMm: heightMmRef.current,
+    });
+  }, [editorRef, ready]);
 
   const syncViewTransform = useCallback(() => {
     const editor = editorRef.current;
@@ -352,6 +364,12 @@ export const PikasoEditorCanvas = forwardRef<
       editor.reset();
       imageShapeRef.current = null;
       bundleRef.current = null;
+      renderLabelWorkspace(editor, {
+        labelX,
+        labelY,
+        widthMm,
+        heightMm,
+      });
 
       if (designObjectUrlRef.current) {
         URL.revokeObjectURL(designObjectUrlRef.current);
@@ -392,6 +410,7 @@ export const PikasoEditorCanvas = forwardRef<
       });
       imageShapeRef.current = shape;
       shape.select();
+      syncLabelWorkspace();
 
       onDesignLoaded?.({ widthPx: natW, heightPx: natH });
       scheduleRecomputeCutline({ immediate: true });
@@ -413,6 +432,7 @@ export const PikasoEditorCanvas = forwardRef<
     onReady,
     ready,
     scheduleRecomputeCutline,
+    syncLabelWorkspace,
     syncViewTransform,
     widthMm,
   ]);
@@ -506,6 +526,10 @@ export const PikasoEditorCanvas = forwardRef<
   }, [designUrl, ready]);
 
   useEffect(() => {
+    syncLabelWorkspace();
+  }, [widthMm, heightMm, ready, syncLabelWorkspace]);
+
+  useEffect(() => {
     syncViewTransform();
   }, [viewZoom, widthMm, heightMm, ready, syncViewTransform]);
 
@@ -580,7 +604,7 @@ export const PikasoEditorCanvas = forwardRef<
   return (
     <div
       ref={containerRef}
-      className="h-full w-full min-h-0 overflow-hidden bg-gri-50"
+      className="editor-stage-host h-full w-full min-h-0 overflow-hidden"
     />
   );
 });

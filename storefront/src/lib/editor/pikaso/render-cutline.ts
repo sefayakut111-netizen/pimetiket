@@ -1,6 +1,7 @@
 import { EDITOR_PX_PER_MM } from "@/lib/editor/coords";
 import { pathRingToSvgD } from "@/lib/editor/cutline/shapes";
 import type { CutlineBundle } from "@/lib/editor/cutline/types";
+import { lowerLabelWorkspaceToBottom } from "@/lib/editor/pikaso/render-label-workspace";
 import type Pikaso from "pikaso";
 
 const OVERLAY_PREFIX = "pim-cutline-";
@@ -109,5 +110,6 @@ export function renderCutlineOverlays(
       );
     }
   }
+  lowerLabelWorkspaceToBottom(editor);
   editor.board.draw();
 }

@@ -727,12 +727,12 @@ export default function EditorShell() {
         </aside>
 
         <section
-          className="relative flex min-h-0 flex-col overflow-hidden bg-gri-100"
+          className="editor-canvas-wrap relative flex min-h-0 flex-col overflow-hidden"
           style={{ gridArea: "canvas" }}
           onPointerDown={showCanvasHint ? dismissCanvasHint : undefined}
           onKeyDown={showCanvasHint ? dismissCanvasHint : undefined}
         >
-          <div className="relative flex flex-1 min-h-0 flex-col m-3 rounded-xl ring-1 ring-gri-200 bg-white overflow-hidden shadow-1">
+          <div className="relative flex flex-1 min-h-0 flex-col m-3 rounded-xl ring-1 ring-gri-200 bg-transparent overflow-hidden shadow-1">
             {design && canvasMounted ? (
               <EditorCanvas
                 ref={canvasRef}
