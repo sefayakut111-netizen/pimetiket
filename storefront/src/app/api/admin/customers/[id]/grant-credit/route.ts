@@ -17,6 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 export const runtime = "nodejs";
 
@@ -31,22 +32,30 @@ function gone() {
   );
 }
 
-export async function GET() {
+async function guardedGone() {
+  const auth = await assertAdmin();
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   return gone();
+}
+
+export async function GET() {
+  return guardedGone();
 }
 
 export async function POST() {
-  return gone();
+  return guardedGone();
 }
 
 export async function PUT() {
-  return gone();
+  return guardedGone();
 }
 
 export async function PATCH() {
-  return gone();
+  return guardedGone();
 }
 
 export async function DELETE() {
-  return gone();
+  return guardedGone();
 }

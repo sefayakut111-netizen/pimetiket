@@ -116,6 +116,9 @@ export default function AdminOrderDetailPage({
   const canUpdateFason = canAccessModule(permissions, "fason", "update");
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<"not_found" | "network" | null>(
+    null
+  );
   const [updating, setUpdating] = useState(false);
   const [proofUploading, setProofUploading] = useState(false);
 
@@ -228,6 +231,7 @@ export default function AdminOrderDetailPage({
 
   const loadOrder = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/admin/orders/${id}`);
       if (res.ok) {
@@ -235,12 +239,17 @@ export default function AdminOrderDetailPage({
           typeof mapAdminOrderResponse
         >[0];
         setOrder(mapAdminOrderResponse(json));
+      } else if (res.status === 404) {
+        setOrder(null);
+        setLoadError("not_found");
       } else {
         setOrder(null);
+        setLoadError("network");
       }
     } catch (e) {
       console.error("[admin/orders GET]", e);
       setOrder(null);
+      setLoadError("network");
     } finally {
       setLoading(false);
     }
@@ -305,10 +314,29 @@ export default function AdminOrderDetailPage({
       <main className="py-12">
         <div className="mx-auto max-w-[640px] px-6 text-center">
           <Icon.Box size={48} className="mx-auto text-gri-500 mb-3" />
-          <h1 className="text-[24px] font-semibold mb-2">Sipariş bulunamadı</h1>
+          <h1 className="text-[24px] font-semibold mb-2">
+            {loadError === "network"
+              ? "Sipariş yüklenemedi"
+              : "Sipariş bulunamadı"}
+          </h1>
           <p className="text-[14px] text-gri-700 mb-5">
-            <span className="font-mono">{id}</span> numaralı sipariş kayıtlarda
-            yok. Silinmiş veya başka bir hesaba ait olabilir.
+            {loadError === "network" ? (
+              <>
+                Bağlantı veya sunucu hatası.{" "}
+                <button
+                  type="button"
+                  onClick={() => void loadOrder()}
+                  className="text-pim-mercan font-semibold hover:underline"
+                >
+                  Yeniden dene
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="font-mono">{id}</span> numaralı sipariş
+                kayıtlarda yok. Silinmiş veya başka bir hesaba ait olabilir.
+              </>
+            )}
           </p>
           <Button variant="primary" size="md" href="/admin/siparisler">
             Tüm siparişlere dön

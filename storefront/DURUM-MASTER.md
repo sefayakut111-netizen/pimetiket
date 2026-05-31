@@ -10,7 +10,7 @@
 
 ---
 
-## 1) Kullanıcı tarafı bug paketi (Cursor, 2 tur — 11 + 9 madde) — 🔵 yerelde
+## 1) Kullanıcı tarafı bug paketi (Cursor, 2 tur — 11 + 9 madde) — ✅ canlıda (`0d6109e`)
 
 **Tur 1 (P0–P2, 11 madde):**
 - Ödeme/güvenlik: server-side kupon+tutar (`coupon-server.ts`, `payment/init`); PayTR callback RPC hatasında sessiz "OK" yok → 500 retry; checkout min/max + kargo eşiği + site ayarları sepet subtotal ile hizalı
@@ -34,7 +34,7 @@
 
 ---
 
-## 2) Güvenlik checkout cila (review düzeltmeleri) — 🔵 yerelde
+## 2) Güvenlik checkout cila (review düzeltmeleri) — ✅ canlıda (`0d6109e`)
 - MFA fail-closed döngüsü: `getAAL` throw → `/admin/profil` + `/2fa` erişilebilir, sole-admin kilitlenmez (`middleware.ts`)
 - Ölü ikinci `shipping_mismatch` bloğu kaldırıldı (`payment/init`)
 - Kupon audit: `couponDiscount` → `coupon_uses.discount_amount` (`payment/callback`)
@@ -53,9 +53,20 @@
 
 ---
 
+## 5) Admin negatif analiz (31 May) — ✅ kod canlıda
+Rapor: `docs/ADMIN-NEGATIF-ANALIZ.md` · Araç: `scripts/admin-negative-audit.mjs` · E2E: `admin-journey.spec.ts` (45 rota). Bulgu: 1 P0 · 12 P1 · 11 P2 · 6 P3.
+- **P1 sessiz fetch + RBAC** (`19a9a3d`): `AdminFetchErrorBanner` + fason/kvkk/denetçiler/finans/ai-qc hata banner'ı; `ADMIN_PATH_MODULES` → sistem=staff, kuyruk=orders, trafik=dashboard. ✅ canlıda.
+- **P0 grant-credit + P1 siparisler** (`<bu commit>`): Raporun "zaten remote'da var" dediği bu iki fix aslında origin'de **yoktu** (deploy ayrı klona gitmiş). `core`'da commit'siz duruyordu → senkron + commit edildi: grant-credit `assertAdmin` guard, siparisler/[id] `loadError` + 404 ayrımı. ✅
+- **Pencere senkronu:** `core` (gerçek repo, `pim-etiket/core/.git`) origin'e hizalandı; gereksiz `_deploy-pimetiket` klonu silinebilir. Pre-sync yedeği: `git stash` (`core-pre-sync-backup-31may`).
+
+**Hâlâ manuel (prod/env):** mig 110/075 apply doğrulaması, müşteriler RLS diagnostic, E2E runtime (Supabase env). Bunları Claude penceresinde onayınla yapabilirim.
+
+---
+
 ## 🚦 Production durumu (31 May — tamam)
-1. ✅ **Push edildi** → `0d6109e` (bug+güvenlik) + `a6da8fc` (konumlandırma) `origin/main`'de → Vercel auto-deploy tetiklendi
+1. ✅ **Push edildi** → `0d6109e` (bug+güvenlik) + `a6da8fc` (konumlandırma) + `19a9a3d` (admin P1) `origin/main`'de → Vercel auto-deploy
 2. ✅ **Migration 125 uygulandı** → uzak Supabase'de `returns_one_pending_per_order_idx` doğrulandı (`apply-migrations-125.mjs`)
+3. ✅ **Admin P0/P1 tamamlandı** → grant-credit guard + siparisler hata gösterimi (`core` senkron sonrası commit)
 
 ---
 
