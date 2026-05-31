@@ -1975,7 +1975,6 @@ function StickerPage() {
                   touchedSteps,
                   {
                     optionalStepIds: new Set([7]),
-                    unlockedSteps,
                   }
                 );
                 if (firstPending == null) return undefined;
@@ -1993,7 +1992,6 @@ function StickerPage() {
                   touchedSteps,
                   {
                     optionalStepIds: OPTIONAL_STEPS,
-                    unlockedSteps,
                   }
                 );
                 if (missingStepId != null) {

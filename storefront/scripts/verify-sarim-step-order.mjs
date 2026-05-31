@@ -86,6 +86,22 @@ assert(
   !isStepComplete(5, new Set([1, 2, 6, 8, 4]))
 );
 
+// URL pre-fill: shape → boyut unlocked sayılmamalı, adet kilitli kalmalı
+{
+  const unlocked = new Set([6]);
+  const { isLocked } = useSequentialSteps({
+    stepIds,
+    stepLabels,
+    touchedSteps: new Set([1, 2]),
+    unlockedSteps: unlocked,
+    optionalStepIds: optionalStepIds,
+    prerequisiteForFirst: true,
+    locale: "tr",
+  });
+  assert("URL shape prefill: adet kilitli", isLocked(8));
+  assert("URL shape prefill: sarım kilitli", isLocked(4));
+}
+
 // Tabaka stepIds sarım içermez
 const tabakaIds = [1, 2, 7, 6, 8];
 assert("tabaka stepIds sarım yok", !tabakaIds.includes(4) && !tabakaIds.includes(5));
