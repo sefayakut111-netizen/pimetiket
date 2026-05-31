@@ -97,6 +97,23 @@ export function ringBoundsMm(rings: PathRing[]): {
   return { w: maxX - minX, h: maxY - minY };
 }
 
+export function ringCenterMm(rings: PathRing[]): { x: number; y: number } {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const ring of rings) {
+    for (const [x, y] of ring) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (!Number.isFinite(minX)) return { x: NaN, y: NaN };
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+}
+
 export function pathRingToSvgD(ring: PathRing): string {
   if (ring.length < 2) return "";
   const [first, ...rest] = ring;

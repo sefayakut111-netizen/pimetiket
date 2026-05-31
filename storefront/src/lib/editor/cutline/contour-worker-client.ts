@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  expandHullFromCentroid,
   hullFromImage,
+  offsetPolygonPx,
 } from "@/lib/editor/alpha-contour";
 import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
 import type { PathRing } from "@/lib/editor/cutline/types";
@@ -48,7 +48,7 @@ function fallbackFastPaths(
   const baseHull = hullFromImage(image, useHull);
   return offsetsMm.map((offsetMm) => {
     const expandPx = offsetMmToPx(offsetMm, pxPerMmInImage, 1);
-    const expanded = expandHullFromCentroid(baseHull, expandPx);
+    const expanded = offsetPolygonPx(baseHull, expandPx);
     return [expanded.map((p) => [p.x, p.y] as [number, number])];
   });
 }

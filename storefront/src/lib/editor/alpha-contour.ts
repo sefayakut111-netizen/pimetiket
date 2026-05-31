@@ -290,3 +290,45 @@ export function getOpaqueBoundsPx(
     h: Math.min(nh, Math.ceil((maxY - minY + 1) * inv)),
   };
 }
+
+function unitPerp(ex: number, ey: number, sign: number): Point2 {
+  const nx = ey * sign;
+  const ny = -ex * sign;
+  const len = Math.hypot(nx, ny) || 1;
+  return { x: nx / len, y: ny / len };
+}
+
+/** Gerçek paralel offset — her köşeyi açıortay normal yönünde offsetPx kadar taşır. */
+export function offsetPolygonPx(ring: Point2[], offsetPx: number): Point2[] {
+  const n = ring.length;
+  if (n < 3 || offsetPx === 0) return ring.slice();
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const a = ring[i]!;
+    const b = ring[(i + 1) % n]!;
+    area += a.x * b.y - b.x * a.y;
+  }
+  const sign = area >= 0 ? 1 : -1;
+  const out: Point2[] = [];
+  for (let i = 0; i < n; i++) {
+    const prev = ring[(i - 1 + n) % n]!;
+    const cur = ring[i]!;
+    const next = ring[(i + 1) % n]!;
+    const n1 = unitPerp(cur.x - prev.x, cur.y - prev.y, sign);
+    const n2 = unitPerp(next.x - cur.x, next.y - cur.y, sign);
+    let bx = n1.x + n2.x;
+    let by = n1.y + n2.y;
+    const blen = Math.hypot(bx, by);
+    if (blen < 1e-6) {
+      bx = n1.x;
+      by = n1.y;
+    } else {
+      bx /= blen;
+      by /= blen;
+    }
+    const cosHalf = bx * n1.x + by * n1.y;
+    const miter = offsetPx / Math.max(Math.abs(cosHalf), 0.25);
+    out.push({ x: cur.x + bx * miter, y: cur.y + by * miter });
+  }
+  return out;
+}

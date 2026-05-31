@@ -12,6 +12,7 @@ import {
   terminateContourWorker,
 } from "@/lib/editor/cutline/contour-worker-client";
 import type { CutlineBundle, CutlineMode } from "@/lib/editor/cutline/types";
+import { ringCenterMm } from "@/lib/editor/cutline/shapes";
 import {
   buildCutlineSvgMm,
   buildEditorCutlineMeta,
@@ -535,6 +536,31 @@ export const PikasoEditorCanvas = forwardRef<
         widthMmRef.current,
         heightMmRef.current
       );
+
+      if (preset === "center") {
+        const sx = shape.scaleX();
+        const sy = shape.scaleY();
+        const scaledW = img.naturalWidth * Math.abs(sx);
+        const scaledH = img.naturalHeight * Math.abs(sy);
+        let targetCx = frame.cx;
+        let targetCy = frame.cy;
+        const cut = bundleRef.current?.cut;
+        if (cut && cut.length) {
+          const c = ringCenterMm(cut);
+          if (Number.isFinite(c.x)) {
+            targetCx = mmToPx(c.x);
+            targetCy = mmToPx(c.y);
+          }
+        }
+        shape.update({
+          x: targetCx - scaledW / 2,
+          y: targetCy - scaledH / 2,
+        });
+        imageShapeRef.current?.select();
+        scheduleRecomputeCutline({ fastImmediate: true });
+        return;
+      }
+
       const attrs = imageAttrsForPreset(
         preset,
         frame,

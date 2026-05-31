@@ -1,8 +1,4 @@
-import {
-  expandHullFromCentroid,
-  hullFromImage,
-} from "@/lib/editor/alpha-contour";
-import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
+import { hullFromImage, offsetPolygonPx } from "@/lib/editor/alpha-contour";import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
 import { computeContourPathsPxMultiViaWorker } from "@/lib/editor/cutline/contour-worker-client";
 import type { PathRing } from "@/lib/editor/cutline/types";
 
@@ -32,7 +28,7 @@ export function computeContourPathsPxMultiFast(
   const baseHull = hullFromImage(image, useHull);
   return offsetsMm.map((offsetMm) => {
     const expandPx = offsetMmToPx(offsetMm, pxPerMmInImage, 1);
-    const expanded = expandHullFromCentroid(baseHull, expandPx);
+    const expanded = offsetPolygonPx(baseHull, expandPx);
     return [expanded.map((p) => [p.x, p.y] as [number, number])];
   });
 }
