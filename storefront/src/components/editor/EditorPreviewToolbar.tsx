@@ -16,7 +16,6 @@ interface EditorZoomControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
-  onFitContain?: () => void;
 }
 
 export function EditorZoomControls({
@@ -24,7 +23,6 @@ export function EditorZoomControls({
   onZoomIn,
   onZoomOut,
   onZoomReset,
-  onFitContain,
 }: EditorZoomControlsProps) {
   return (
     <div
@@ -58,16 +56,6 @@ export function EditorZoomControls({
       >
         Sıfırla
       </button>
-      {onFitContain ? (
-        <button
-          type="button"
-          onClick={onFitContain}
-          className="h-8 px-2.5 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
-          aria-label="Görseli bıçağa sığdır"
-        >
-          Sığdır
-        </button>
-      ) : null}
     </div>
   );
 }

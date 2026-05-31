@@ -1,4 +1,5 @@
-import { hullFromImage, offsetPolygonPx } from "@/lib/editor/alpha-contour";import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
+import { hullFromImage, offsetPolygonPx } from "@/lib/editor/alpha-contour";
+import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
 import { computeContourPathsPxMultiViaWorker } from "@/lib/editor/cutline/contour-worker-client";
 import type { PathRing } from "@/lib/editor/cutline/types";
 

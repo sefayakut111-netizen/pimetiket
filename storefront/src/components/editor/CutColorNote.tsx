@@ -18,9 +18,9 @@ export function CutColorNote() {
           const isKiss = set === "kisscut";
           return (
             <div key={set}>
-              <div className="flex items-center gap-1.5 font-semibold text-lacivert">
+              <div className="font-semibold text-lacivert">
                 <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle"
                   style={{ backgroundColor: meta.color }}
                   aria-hidden
                 />

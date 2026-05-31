@@ -574,7 +574,6 @@ export default function EditorShell() {
               onZoomIn={zoomIn}
               onZoomOut={zoomOut}
               onZoomReset={() => setViewZoom(1)}
-              onFitContain={handleFitContain}
             />
           </div>
 

@@ -107,10 +107,22 @@ export function renderCutlineOverlays(
   const addPath = (
     name: string,
     ringMm: PathRing,
-    style: (typeof STYLES)["cut"]
+    style: (typeof STYLES)["cut"],
+    interactive = false
   ) => {
     const pathD = pathRingToSvgD(ringMmToPx(ringMm));
     if (!pathD) return;
+    if (interactive) {
+      group.add(
+        new Konva.Path({
+          name: `${name}-hit`,
+          data: pathD,
+          fill: "rgba(0,0,0,0.001)",
+          strokeEnabled: false,
+          listening: true,
+        })
+      );
+    }
     group.add(
       new Konva.Path({
         name,
@@ -121,7 +133,8 @@ export function renderCutlineOverlays(
         lineJoin: "round",
         lineCap: "round",
         strokeScaleEnabled: false,
-        listening: false,
+        listening: interactive,
+        hitStrokeWidth: interactive ? 24 : 0,
       })
     );
   };
@@ -138,7 +151,12 @@ export function renderCutlineOverlays(
   }
   if (layers.cut) {
     for (let i = 0; i < displayBundle.cut.length; i++) {
-      addPath(`${OVERLAY_PREFIX}cut-${i}`, displayBundle.cut[i]!, STYLES.cut);
+      addPath(
+        `${OVERLAY_PREFIX}cut-${i}`,
+        displayBundle.cut[i]!,
+        STYLES.cut,
+        bladeInteractive
+      );
     }
   }
 
