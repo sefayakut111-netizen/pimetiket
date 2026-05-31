@@ -62,7 +62,7 @@ export function EditorZoomControls({
         <button
           type="button"
           onClick={onFitContain}
-          className="h-8 px-2.5 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+          className="h-8 px-2.5 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
           aria-label="Görseli bıçağa sığdır"
         >
           Sığdır
@@ -92,14 +92,22 @@ export function EditorLayerToggles({
             role="switch"
             aria-checked={on}
             aria-label={`${label} katmanı`}
+            title={on ? `${label} açık` : `${label} kapalı`}
             onClick={() => onToggleLayer(id, !on)}
             className={cn(
-              "h-8 px-3 rounded-full text-[11.5px] font-semibold transition-colors",
+              "inline-flex h-8 items-center gap-1.5 px-3 rounded-full text-[11.5px] font-semibold whitespace-nowrap transition-colors",
               on
-                ? "bg-pim-mercan-tint text-pim-mercan ring-1 ring-pim-mercan/30"
-                : "bg-gri-100 text-gri-600"
+                ? "bg-pim-mercan-tint text-pim-mercan ring-1 ring-pim-mercan"
+                : "bg-white text-gri-500 ring-1 ring-gri-200"
             )}
           >
+            <span
+              aria-hidden
+              className={cn(
+                "inline-block h-2 w-2 rounded-full",
+                on ? "bg-pim-mercan" : "bg-gri-300"
+              )}
+            />
             {label}
           </button>
         );

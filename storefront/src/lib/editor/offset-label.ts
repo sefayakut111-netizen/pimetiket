@@ -1,12 +1,20 @@
 /** Kesim mesafesi slider etiketi (POC offsetNote ile uyumlu). */
 
+/** Range input'un step kayması (ör. -1e-16) sıfırı boş bırakmasın diye snap. */
+function snapMm(offsetMm: number): number {
+  const v = Math.round(offsetMm * 10) / 10;
+  return Object.is(v, -0) ? 0 : v;
+}
+
 export function formatOffsetLabel(offsetMm: number): string {
-  if (offsetMm === 0) return "Sıfır kesim";
-  if (offsetMm < 0) return `${Math.abs(offsetMm).toFixed(1)} mm içeri`;
-  return `${offsetMm.toFixed(1)} mm dışarı`;
+  const v = snapMm(offsetMm);
+  if (v === 0) return "Sıfır kesim";
+  if (v < 0) return `${Math.abs(v).toFixed(1)} mm içeri`;
+  return `${v.toFixed(1)} mm dışarı`;
 }
 
 export function offsetNoteText(offsetMm: number): string | null {
+  offsetMm = snapMm(offsetMm);
   if (offsetMm === 0) {
     return "Sıfır kesim — kayma toleransı için bıçak 0,3 mm içerden geçirilir.";
   }

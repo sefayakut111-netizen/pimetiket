@@ -672,10 +672,10 @@ export default function EditorShell() {
             <>
               <h2 className="text-[15px] font-semibold">Bıçak</h2>
               <CutColorNote />
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="mt-3 space-y-2">
                 {design ? (
                   <div
-                    className="flex shrink-0 gap-1"
+                    className="flex gap-1"
                     role="group"
                     aria-label="Görsel yerleştirme"
                   >
@@ -683,7 +683,7 @@ export default function EditorShell() {
                       type="button"
                       title="Ortala"
                       onClick={handleFitCenter}
-                      className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+                      className="h-8 flex-1 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
                     >
                       Ortala
                     </button>
@@ -691,7 +691,7 @@ export default function EditorShell() {
                       type="button"
                       title="Doldur"
                       onClick={handleFitCover}
-                      className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+                      className="h-8 flex-1 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
                     >
                       Doldur
                     </button>
@@ -699,7 +699,7 @@ export default function EditorShell() {
                       type="button"
                       title="Sığdır"
                       onClick={handleFitContain}
-                      className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+                      className="h-8 flex-1 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
                     >
                       Sığdır
                     </button>
@@ -708,7 +708,7 @@ export default function EditorShell() {
                 <Button
                   type="button"
                   variant="primary"
-                  className="min-w-0 flex-1"
+                  block
                   onClick={openAutoBlade}
                 >
                   Otomatik bıçak oluştur
@@ -1060,7 +1060,11 @@ export default function EditorShell() {
               max={5}
               step={0.1}
               value={offsetMm}
-              onChange={(e) => setOffsetMm(parseFloat(e.target.value))}
+              aria-label="Kesim mesafesi"
+              aria-valuetext={formatOffsetLabel(offsetMm)}
+              onChange={(e) =>
+                setOffsetMm(Math.round(parseFloat(e.target.value) * 10) / 10)
+              }
               className="mt-2 w-full accent-pim-mercan"
             />
             {offsetNoteText(offsetMm) ? (
@@ -1087,6 +1091,8 @@ export default function EditorShell() {
               max={100}
               step={1}
               value={smoothness}
+              aria-label="Bıçak yumuşatma"
+              aria-valuetext={`${smoothness}%`}
               onChange={(e) => setSmoothness(parseInt(e.target.value, 10))}
               className="mt-2 w-full accent-pim-mercan"
             />
