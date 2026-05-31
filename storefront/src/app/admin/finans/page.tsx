@@ -21,6 +21,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow } from "@/components/ui";
+import { AdminFetchErrorBanner } from "@/components/admin/AdminFetchErrorBanner";
 import { LineChart, DonutChart } from "@/components/charts";
 import type { LinePoint } from "@/components/charts";
 import { cn } from "@/lib/cn";
@@ -173,6 +174,7 @@ function AdminFinansPageInner() {
   const [showTestOrders, setShowTestOrders] = useState(false);
   const [financialSummary, setFinancialSummary] =
     useState<FinancialSummary | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [packMonth, setPackMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -215,12 +217,21 @@ function AdminFinansPageInner() {
     void fetch(`/api/admin/financials/summary?${params.toString()}`, {
       cache: "no-store",
     })
-      .then((r) => r.json())
-      .then((j: FinancialSummary & { ok?: boolean }) => {
-        if (j.ok !== false) setFinancialSummary(j);
+      .then(async (r) => {
+        const j = (await r.json()) as FinancialSummary & {
+          ok?: boolean;
+          error?: string;
+        };
+        if (!r.ok || j.ok === false) {
+          throw new Error(j.error ?? "summary_fetch_failed");
+        }
+        setFinancialSummary(j);
+        setSummaryError(null);
       })
-      .catch(() => {
-        /* silent */
+      .catch((err: unknown) => {
+        setSummaryError(
+          err instanceof Error ? err.message : "Finansal özet yüklenemedi"
+        );
       });
   }, [range, showTestOrders]);
 
@@ -440,6 +451,37 @@ function AdminFinansPageInner() {
 
         {reportTab === "overview" && (
           <>
+        {summaryError && (
+          <AdminFetchErrorBanner
+            title="Finansal özet API'den alınamadı"
+            message={`${summaryError} — yerel sipariş verisi ile sınırlı KPI gösteriliyor olabilir.`}
+            onRetry={() => {
+              const params = new URLSearchParams({ range });
+              if (!showTestOrders) params.set("excludeTest", "1");
+              void fetch(`/api/admin/financials/summary?${params.toString()}`, {
+                cache: "no-store",
+              })
+                .then(async (r) => {
+                  const j = (await r.json()) as FinancialSummary & {
+                    ok?: boolean;
+                    error?: string;
+                  };
+                  if (!r.ok || j.ok === false) {
+                    throw new Error(j.error ?? "summary_fetch_failed");
+                  }
+                  setFinancialSummary(j);
+                  setSummaryError(null);
+                })
+                .catch((err: unknown) => {
+                  setSummaryError(
+                    err instanceof Error
+                      ? err.message
+                      : "Finansal özet yüklenemedi"
+                  );
+                });
+            }}
+          />
+        )}
         {/* PayTR uzlaşma uyarısı (mali pencere açılana kadar) */}
         <Card padding="p-4" className="mb-6 bg-sari-soft ring-sari/20">
           <div className="flex items-start gap-3">

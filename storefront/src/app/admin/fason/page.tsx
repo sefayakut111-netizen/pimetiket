@@ -24,6 +24,7 @@ import {
   type FasonPartner,
 } from "@/components/admin/fason/fason-types";
 import { PartnerActions } from "@/components/admin/fason/partner-detail-view";
+import { AdminFetchErrorBanner } from "@/components/admin/AdminFetchErrorBanner";
 import { CapacityBar } from "@/components/admin/fason/capacity-bar";
 import { ContractDownloadButton } from "@/components/admin/fason/contract-download-button";
 import { PerformanceScoreModal } from "@/components/admin/fason/performance-score-modal";
@@ -44,6 +45,7 @@ export default function AdminFasonPage() {
   );
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("score");
+  const [listError, setListError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,8 +54,12 @@ export default function AdminFasonPage() {
       const json = (await res.json()) as { partners?: FasonPartner[]; error?: string };
       if (!res.ok) throw new Error(json.error ?? "list_failed");
       setPartners(json.partners ?? []);
+      setListError(null);
     } catch (err) {
       console.error("[admin/fason] list error:", err);
+      setListError(
+        err instanceof Error ? err.message : "Partner listesi yüklenemedi"
+      );
     } finally {
       setLoading(false);
     }
@@ -150,6 +156,14 @@ export default function AdminFasonPage() {
             <Icon.Plus size={14} /> Yeni partner ekle
           </Link>
         </div>
+
+        {listError && (
+          <AdminFetchErrorBanner
+            title="Partner listesi şu an yüklenemedi"
+            message={listError}
+            onRetry={() => void refresh()}
+          />
+        )}
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

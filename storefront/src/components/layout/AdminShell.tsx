@@ -451,7 +451,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             icon: <Icon.Doc size={16} />,
             badge: badges.queueCritical,
             badgeAccent: badges.queueCritical > 0,
-            module: "dashboard",
+            module: "orders",
           },
           { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} />, module: "dashboard" },
           {
@@ -607,13 +607,15 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             href: "/admin/sistem/cronlar",
             label: "Cron İzleme",
             icon: <Icon.Refresh size={16} />,
-            module: "settings",
+            module: "staff",
+            adminOnly: true,
           },
           {
             href: "/admin/sistem/bakim",
             label: "Bakım modu",
             icon: <Icon.Info size={16} />,
-            module: "settings",
+            module: "staff",
+            adminOnly: true,
           },
           {
             href: "/admin/audit-log",

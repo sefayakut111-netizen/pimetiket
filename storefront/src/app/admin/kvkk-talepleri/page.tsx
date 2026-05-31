@@ -18,6 +18,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Modal, useToast, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { AdminFetchErrorBanner } from "@/components/admin/AdminFetchErrorBanner";
 
 interface KvkkAdminRow {
   id: string;
@@ -93,6 +94,7 @@ export default function AdminKvkkTalepleriPage() {
   );
   const [adminNote, setAdminNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
 
   const refresh = useCallback(async (status: StatusFilter) => {
     setLoading(true);
@@ -101,8 +103,12 @@ export default function AdminKvkkTalepleriPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "list_failed");
       setRequests(json.requests ?? []);
+      setListError(null);
     } catch (err) {
       console.error("[admin/kvkk-talepleri]", err);
+      setListError(
+        err instanceof Error ? err.message : "KVKK talepleri yüklenemedi"
+      );
     } finally {
       setLoading(false);
     }
@@ -163,6 +169,14 @@ export default function AdminKvkkTalepleriPage() {
             yasal azami 30 gün (KVKK m.13).
           </p>
         </div>
+
+        {listError && (
+          <AdminFetchErrorBanner
+            title="KVKK talepleri yüklenemedi"
+            message={listError}
+            onRetry={() => void refresh(filter)}
+          />
+        )}
 
         {/* Filter tabs */}
         <div className="flex gap-2 flex-wrap mb-4">

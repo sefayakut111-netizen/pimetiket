@@ -18,6 +18,7 @@ import { Button, Card, Eyebrow, Modal, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { getAdminStatusLabel } from "@/lib/admin-status";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
+import { AdminFetchErrorBanner } from "@/components/admin/AdminFetchErrorBanner";
 
 const fmtTotal = (n: number) =>
   Math.round(n).toLocaleString("tr-TR", { maximumFractionDigits: 0 }) + " ₺";
@@ -209,6 +210,7 @@ export default function AdminAiQcPage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [note, setNote] = useState("");
   const [verdictFilter, setVerdictFilter] = useState<string | null>(null);
@@ -250,16 +252,27 @@ export default function AdminAiQcPage() {
       const res = await fetch("/api/admin/ai-qc/queue", {
         cache: "no-store",
       });
-      const data = (await res.json()) as { ok?: boolean; queue?: QueueItem[] };
-      if (data.ok && Array.isArray(data.queue)) {
+      const data = (await res.json()) as {
+        ok?: boolean;
+        queue?: QueueItem[];
+        error?: string;
+      };
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error ?? "queue_fetch_failed");
+      }
+      if (Array.isArray(data.queue)) {
         setQueue(data.queue);
         setActiveOrderId((prev) => {
           if (prev && data.queue!.some((q) => q.orderId === prev)) return prev;
           return data.queue![0]?.orderId ?? null;
         });
+        setQueueError(null);
       }
     } catch (err) {
       console.error("[ai-qc] queue fetch failed:", err);
+      setQueueError(
+        err instanceof Error ? err.message : "QC kuyruğu yüklenemedi"
+      );
     } finally {
       setLoading(false);
     }
@@ -768,6 +781,14 @@ export default function AdminAiQcPage() {
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         {headerBlock}
+
+        {queueError && !showHistory && (
+          <AdminFetchErrorBanner
+            title="QC kuyruğu yüklenemedi"
+            message={queueError}
+            onRetry={() => void fetchQueue()}
+          />
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           <Card padding="p-3">

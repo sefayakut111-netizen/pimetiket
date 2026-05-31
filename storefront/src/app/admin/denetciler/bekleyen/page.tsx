@@ -16,6 +16,7 @@ import Link from "next/link";
 import { Card, Eyebrow } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { ApprovalCard } from "@/components/admin/auditors/ApprovalCard";
+import { AdminFetchErrorBanner } from "@/components/admin/AdminFetchErrorBanner";
 import type { AuditorPendingActionRow } from "@/lib/agents/_shared/types";
 
 // (Severity helper'ları ApprovalCard içinde — burada gerek yok)
@@ -24,6 +25,7 @@ export default function BekleyenPage() {
   const [items, setItems] = useState<AuditorPendingActionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "critical" | "warning">("all");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -37,11 +39,18 @@ export default function BekleyenPage() {
       const json = (await res.json()) as {
         ok?: boolean;
         items?: AuditorPendingActionRow[];
+        error?: string;
       };
+      if (!res.ok || json.ok === false) {
+        throw new Error(json.error ?? "fetch_failed");
+      }
       setItems(json.items ?? []);
+      setFetchError(null);
     } catch (err) {
       console.error("[bekleyen] fetch failed:", err);
-      setItems([]);
+      setFetchError(
+        err instanceof Error ? err.message : "Bekleyen liste yüklenemedi"
+      );
     } finally {
       setLoading(false);
     }
@@ -73,6 +82,14 @@ export default function BekleyenPage() {
             uygulasın.
           </p>
         </div>
+
+        {fetchError && (
+          <AdminFetchErrorBanner
+            title="Bekleyen aksiyonlar yüklenemedi"
+            message={fetchError}
+            onRetry={() => void refresh()}
+          />
+        )}
 
         {/* Filter chips */}
         <div className="flex gap-2 flex-wrap mb-6">
@@ -106,7 +123,7 @@ export default function BekleyenPage() {
               Onay kuyruğu yükleniyor…
             </div>
           </Card>
-        ) : items.length === 0 ? (
+        ) : fetchError ? null : items.length === 0 ? (
           <Card padding="p-12">
             <div className="text-center">
               <div className="text-[48px] mb-3"></div>

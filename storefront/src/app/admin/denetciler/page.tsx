@@ -504,7 +504,7 @@ export default function DenetcilerDashboardPage() {
                   )}
                   {isEmpty && (
                     <span className="inline-flex items-center h-[22px] px-2 rounded-full bg-gri-100 text-gri-700 text-[10.5px] font-semibold shrink-0">
-                      Çok yakında
+                      Henüz çalışmadı
                     </span>
                   )}
                 </div>

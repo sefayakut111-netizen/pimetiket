@@ -53,29 +53,58 @@ function attachErrorTracking(page: Page, errors: string[]) {
   });
 }
 
-// Admin sayfaları (sidebar'daki tüm linkler)
+// Admin sayfaları — sidebar + denetçi alt sayfaları + içerik hub (56 page.tsx statik rotalar)
 const ADMIN_PAGES: { path: string; expect: RegExp }[] = [
-  { path: "/admin", expect: /dashboard|admin|operatör/i },
+  // Operasyon
+  { path: "/admin", expect: /dashboard|admin|operatör|panel/i },
+  { path: "/admin/kuyruk", expect: /kuyruk|operasyon|acil/i },
   { path: "/admin/siparisler", expect: /sipariş/i },
-  { path: "/admin/siparis-ekle", expect: /sipariş|yeni|ekle/i },
+  { path: "/admin/siparis-ekle", expect: /sipariş|yeni|ekle|manuel/i },
+  { path: "/admin/ai-qc", expect: /qc|kalite|kuyruk/i },
+  { path: "/admin/prova", expect: /prova/i },
+  { path: "/admin/kargo", expect: /kargo|gönderi|shipment/i },
+  { path: "/admin/fason", expect: /fason|partner|üretim/i },
+  { path: "/admin/fason/yeni", expect: /fason|partner|yeni/i },
+  { path: "/admin/destek", expect: /destek|ticket|talep/i },
+  { path: "/admin/yardim-talepleri", expect: /yardım|prova|talep/i },
+  // Müşteri & büyüme
   { path: "/admin/musteriler", expect: /müşteri/i },
   { path: "/admin/yorumlar", expect: /yorum/i },
   { path: "/admin/iadeler", expect: /iade/i },
   { path: "/admin/tasarimlar", expect: /tasarım/i },
-  { path: "/admin/aboneler", expect: /abone|email/i },
+  { path: "/admin/aboneler", expect: /abone|email|bülten/i },
+  // Finans
+  { path: "/admin/trafik", expect: /trafik|analytics|ga/i },
+  { path: "/admin/finans", expect: /finans|gelir/i },
+  { path: "/admin/odemeler", expect: /ödeme|paytr|tahsilat/i },
+  { path: "/admin/kuponlar", expect: /kupon/i },
+  { path: "/admin/fiyatlar", expect: /fiyat/i },
+  { path: "/admin/raporlar", expect: /rapor/i },
+  { path: "/admin/fiyat-hesapla", expect: /fiyat|hesap|sticker/i },
+  { path: "/admin/fiyat-hesapla-etiket", expect: /fiyat|etiket|rulo/i },
+  { path: "/admin/fiyat-hesapla-tabaka", expect: /fiyat|tabaka/i },
+  // İçerik (hub + legacy rotalar)
+  { path: "/admin/icerik", expect: /içerik|ürün|blog|galeri/i },
+  { path: "/admin/urunler", expect: /ürün/i },
   { path: "/admin/galeri", expect: /galeri/i },
   { path: "/admin/gorseller", expect: /görsel/i },
-  { path: "/admin/finans", expect: /finans|gelir/i },
-  { path: "/admin/kuponlar", expect: /kupon/i },
-  { path: "/admin/calisanlar", expect: /çalışan/i },
-  { path: "/admin/raporlar", expect: /rapor/i },
+  { path: "/admin/blog", expect: /blog/i },
+  // Sistem
+  { path: "/admin/calisanlar", expect: /çalışan|personel|rbac/i },
+  { path: "/admin/denetciler", expect: /denetçi|auditor/i },
+  { path: "/admin/denetciler/bekleyen", expect: /bekleyen|onay|pending/i },
+  { path: "/admin/denetciler/ertelenenler", expect: /ertelen|snooze/i },
+  { path: "/admin/denetciler/gecmis", expect: /geçmiş|run|tarih/i },
+  { path: "/admin/sistem/cronlar", expect: /cron|zamanlan/i },
+  { path: "/admin/sistem/bakim", expect: /bakım|maintenance/i },
+  { path: "/admin/sistem/denetciler", expect: /denetçi|sistem/i },
   { path: "/admin/audit-log", expect: /denetim|audit|log/i },
   { path: "/admin/kvkk-talepleri", expect: /kvkk/i },
-  { path: "/admin/yedekler", expect: /yedek/i },
-  { path: "/admin/fiyatlar", expect: /fiyat/i },
-  { path: "/admin/ayarlar", expect: /ayar/i },
-  // Sefa 18 May: R2 arşiv paneli
   { path: "/admin/arsiv", expect: /arşiv|R2/i },
+  { path: "/admin/yedekler", expect: /yedek/i },
+  { path: "/admin/mail-health", expect: /mail|e-posta|resend/i },
+  { path: "/admin/ayarlar", expect: /ayar/i },
+  { path: "/admin/profil", expect: /profil|2fa|hesap/i },
 ];
 
 // ============================================================
