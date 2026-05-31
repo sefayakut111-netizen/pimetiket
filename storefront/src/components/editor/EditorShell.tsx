@@ -721,11 +721,12 @@ export default function EditorShell() {
                 <>
                   <p className="mt-3 text-[13px] text-gri-700">
                     Kontur modu — görselin şeklinden otomatik bıçak üretilir.
-                    Önizleme ortada güncellenir.
+                    Önce kaba çizgi gelir; birkaç saniye içinde kesim hattı
+                    netleşir.
                   </p>
                   {contourRefining ? (
                     <p className="mt-2 text-[12px] font-medium text-pim-mercan">
-                      Kontur iyileştiriliyor…
+                      Kesim hattı iyileştiriliyor…
                     </p>
                   ) : null}
                 </>

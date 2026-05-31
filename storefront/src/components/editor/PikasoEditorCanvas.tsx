@@ -68,7 +68,7 @@ const labelY = LABEL_ORIGIN_Y;
 /** Hızlı önizleme — sürükleme/offset */
 const FAST_PREVIEW_DEBOUNCE_MS = 350;
 /** OpenCV — kullanıcı durunca arka planda (UI donmasın) */
-const OPENCV_REFINE_DEBOUNCE_MS = 2200;
+const OPENCV_REFINE_DEBOUNCE_MS = 1400;
 
 function needsOpenCvRefine(blade: BladeShapeConfig): boolean {
   return blade.kind === "contour" || blade.kind === "hull";

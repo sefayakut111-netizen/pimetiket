@@ -1,6 +1,6 @@
 import { EDITOR_PX_PER_MM } from "@/lib/editor/coords";
 import { pathRingToSvgD } from "@/lib/editor/cutline/shapes";
-import type { CutlineBundle } from "@/lib/editor/cutline/types";
+import type { CutlineBundle, PathRing } from "@/lib/editor/cutline/types";
 import { lowerLabelWorkspaceToBottom } from "@/lib/editor/pikaso/render-label-workspace";
 import type Pikaso from "pikaso";
 
@@ -37,24 +37,34 @@ export function clearCutlineOverlays(editor: Pikaso) {
   editor.board.draw();
 }
 
+/** mm path → px (scaleX ile çarpılınca dash kalınlaşmasın diye) */
+function ringMmToPx(ring: PathRing): PathRing {
+  const s = EDITOR_PX_PER_MM;
+  return ring.map(([x, y]) => [x * s, y * s]);
+}
+
 function insertOverlay(
   editor: Pikaso,
   name: string,
-  pathD: string,
+  ringMm: PathRing,
   x: number,
   y: number,
   style: (typeof STYLES)["cut"]
 ) {
+  const pathD = pathRingToSvgD(ringMmToPx(ringMm));
   if (!pathD) return;
   const model = editor.shapes.svg.insert({
     data: pathD,
     x,
     y,
-    scaleX: EDITOR_PX_PER_MM,
-    scaleY: EDITOR_PX_PER_MM,
+    scaleX: 1,
+    scaleY: 1,
     stroke: style.stroke,
     strokeWidth: style.width,
     dash: style.dash,
+    lineJoin: "round",
+    lineCap: "round",
+    strokeScaleEnabled: false,
     listening: false,
     draggable: false,
     name,
@@ -79,7 +89,7 @@ export function renderCutlineOverlays(
       insertOverlay(
         editor,
         `${OVERLAY_PREFIX}bleed-${i}`,
-        pathRingToSvgD(bundle.bleed[i]!),
+        bundle.bleed[i]!,
         labelX,
         labelY,
         STYLES.bleed
@@ -91,7 +101,7 @@ export function renderCutlineOverlays(
       insertOverlay(
         editor,
         `${OVERLAY_PREFIX}safe-${i}`,
-        pathRingToSvgD(bundle.safe[i]!),
+        bundle.safe[i]!,
         labelX,
         labelY,
         STYLES.safe
@@ -103,7 +113,7 @@ export function renderCutlineOverlays(
       insertOverlay(
         editor,
         `${OVERLAY_PREFIX}cut-${i}`,
-        pathRingToSvgD(bundle.cut[i]!),
+        bundle.cut[i]!,
         labelX,
         labelY,
         STYLES.cut
