@@ -13,6 +13,8 @@
     "verify:upload-chain": "node scripts/verify-upload-chain.mjs",
     "verify:r2": "node scripts/verify-r2.mjs",
     "verify:pricebook": "node scripts/verify-pricebook.mjs",
+    "verify:product-audit": "node scripts/product-configurator-audit.mjs",
+    "migrate:082-126": "node scripts/apply-migrations-082-126.mjs",
     "migrate:085-092": "node scripts/apply-migrations-085-092.mjs",
     "migrate:090-092": "node scripts/apply-migrations-090-092.mjs",
     "verify:auditor-fixes": "node scripts/verify-auditor-fixes.mjs",
@@ -29,6 +31,7 @@
     "bot:headless": "playwright test",
     "bot:customer": "playwright test --headed --project=setup --project=customer",
     "bot:admin": "playwright test --headed --project=setup --project=admin",
+    "bot:product": "playwright test --project=product",
     "bot:report": "playwright show-report"
   },
   "dependencies": {

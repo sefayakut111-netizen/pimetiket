@@ -37,6 +37,8 @@ interface I18nContextValue {
   locale: Locale;
   t: TranslationDict;
   setLocale: (l: Locale) => void;
+  /** Client locale localStorage'dan okunduktan sonra true — konfigüratör hydration guard. */
+  hydrated: boolean;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -87,8 +89,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       locale,
       t: TRANSLATIONS[locale],
       setLocale,
+      hydrated,
     }),
-    [locale, setLocale]
+    [locale, setLocale, hydrated]
   );
 
   // Hydration mismatch'i önlemek için: server her zaman default render eder,
@@ -100,6 +103,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           locale: DEFAULT_LOCALE,
           t: TRANSLATIONS[DEFAULT_LOCALE],
           setLocale,
+          hydrated: false,
         }}
       >
         {children}
@@ -134,6 +138,7 @@ export function useT(): I18nContextValue {
       setLocale: () => {
         /* no-op */
       },
+      hydrated: false,
     };
   }
   return ctx;

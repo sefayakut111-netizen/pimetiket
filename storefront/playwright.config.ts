@@ -70,6 +70,15 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+
+    // Konfigüratör matrisi — auth gerektirmez (public yapılandırıcı)
+    {
+      name: "product",
+      testMatch: /customer-(product-matrix|sarim-step-order)\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+    },
   ],
 
   outputDir: "test-results/",

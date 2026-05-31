@@ -64,6 +64,7 @@ import {
 } from "@/lib/design-dimensions";
 import { useEditorPrefill } from "@/lib/editor/use-editor-prefill";
 import { useT } from "@/lib/i18n/context";
+import { useSanitizeEmptyQueryParam } from "@/lib/use-sanitize-empty-query-param";
 import { useExperiment } from "@/lib/analytics/feature-flags";
 import { deliveryEstimate } from "@/lib/pricing";
 import {
@@ -312,8 +313,9 @@ export default function StickerPageWrapper() {
 
 function StickerPage() {
   const toast = useToast();
-  const { t, locale } = useT();
+  const { t, locale, hydrated } = useT();
   const searchParams = useSearchParams();
+  useSanitizeEmptyQueryParam("form");
 
   // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
   //   - name/desc override edilir (admin'den gelen önceliklidir)
@@ -932,6 +934,24 @@ function StickerPage() {
     tier
   );
   const sizeError = !quote.ok ? quote.reason : null;
+
+  if (!hydrated) {
+    return (
+      <main
+        className="min-h-[calc(100vh-64px)] bg-gri-50"
+        aria-busy="true"
+        aria-label={locale === "en" ? "Loading configurator" : "Konfigüratör yükleniyor"}
+      >
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-8 animate-pulse">
+          <div className="h-10 w-72 max-w-full bg-gri-200 rounded-lg mb-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-[360px] bg-gri-100 rounded-xl" />
+            <div className="h-[560px] bg-gri-100 rounded-xl" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -1894,6 +1914,13 @@ function StickerPage() {
                 ayrıca üretim diagramı olarak kalır. */}
 
             <div ref={priceCardRef}>
+            {cutMode === "kisscut" && (
+              <p className="text-[12px] text-gri-600 leading-relaxed mb-2 px-0.5">
+                {locale === "en"
+                  ? "Price uses die-cut rates; kiss-cut (partial cut) is applied in production."
+                  : "Fiyat özel kesim tarifesinden hesaplanır; yarı kesim üretim aşamasında uygulanır."}
+              </p>
+            )}
             <PriceCard
               /* Sefa 21 May v68: /etiket konfigüratör pattern'ine taşındı.
                  variant=bold (lacivert SEÇİMİN) → variant=quiet (krem TOPLAM)

@@ -60,6 +60,7 @@ import {
 } from "@/lib/design-dimensions";
 import { useEditorPrefill } from "@/lib/editor/use-editor-prefill";
 import { useT } from "@/lib/i18n/context";
+import { useSanitizeEmptyQueryParam } from "@/lib/use-sanitize-empty-query-param";
 import {
   quoteCustomerEtiket,
   computeEtiketTierSavings,
@@ -663,8 +664,9 @@ export default function EtiketPageWrapper() {
 
 function EtiketPage() {
   const toast = useToast();
-  const { t, locale } = useT();
+  const { t, locale, hydrated } = useT();
   const searchParams = useSearchParams();
+  useSanitizeEmptyQueryParam("form");
   // Sefa kuralları (15 May v2):
   //  - Varsayılan: Kuşe Etiket + Kaplama yok (1. sıra)
   //  - Adet: minimum'dan başlasın (rulo→1000, tabaka→250)
@@ -1531,6 +1533,24 @@ function EtiketPage() {
     locale,
   ]);
 
+  if (!hydrated) {
+    return (
+      <main
+        className="bg-gri-50 min-h-[calc(100vh-64px)]"
+        aria-busy="true"
+        aria-label={locale === "en" ? "Loading configurator" : "Konfigüratör yükleniyor"}
+      >
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8 py-8 animate-pulse">
+          <div className="h-10 w-72 max-w-full bg-gri-200 rounded-lg mb-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-[360px] bg-gri-100 rounded-xl" />
+            <div className="h-[560px] bg-gri-100 rounded-xl" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="bg-gri-50 min-h-[calc(100vh-64px)] animate-fade-up">
       <SchemaJsonLd
@@ -1778,14 +1798,14 @@ function EtiketPage() {
                       surface={m.surface}
                       fallback={m.swatch}
                       className="w-full aspect-[2/1] mb-2.5"
-                      label={adminText("material", m.id, "name") ?? (locale === "en" ? m.name_en : m.name)}
+                      label={locale === "en" ? m.name_en : m.name}
                     />
                     {/* Sefa 18 May v68 (Sefa feedback): sağ üst Icon.Info "i"
                         ikonu kaldırıldı — tooltip için zaten title yanında "?"
                         gösterilir. Başlık satırına min-h ekle ki 1 ya da 2
                         satır olsa da içerikler eşit hizada üstten başlasın. */}
                     <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
-                      <span>{adminText("material", m.id, "name") ?? (locale === "en" ? m.name_en : m.name)}</span>
+                      <span>{locale === "en" ? m.name_en : m.name}</span>
                       {"tooltip" in m && m.tooltip ? (
                         <InfoTooltip text={m.tooltip} />
                       ) : null}

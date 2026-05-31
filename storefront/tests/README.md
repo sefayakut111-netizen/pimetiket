@@ -21,6 +21,12 @@ npm run bot:customer
 # Sadece admin senaryosu
 npm run bot:admin
 
+# Konfigüratör ürün matrisi (22 URL, auth gerektirmez)
+npm run bot:product
+
+# Statik konfigüratör audit (stepIds, product_cards API)
+npm run verify:product-audit
+
 # Headless mode (görsel olmadan, daha hızlı)
 npm run bot:headless
 
