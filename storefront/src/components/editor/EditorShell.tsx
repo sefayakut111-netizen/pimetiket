@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -12,14 +12,24 @@ import {
   type EditorCanvasHandle,
 } from "@/components/editor/EditorCanvas";
 import {
-  EditorPreviewToolbar,
+  EditorLayerToggles,
+  EditorZoomControls,
   type EditorLayer,
 } from "@/components/editor/EditorPreviewToolbar";
+import {
+  EditorCanvasHint,
+  isCanvasHintSeen,
+  markCanvasHintSeen,
+} from "@/components/editor/EditorCanvasHint";
+import {
+  EditorCoachmark,
+  isEditorOnboarded,
+  markEditorOnboarded,
+} from "@/components/editor/EditorCoachmark";
 import { CutColorNote } from "@/components/editor/CutColorNote";
 import { ShapePreview } from "@/components/templates/ShapePreview";
-import { Button, Card, Eyebrow, Input, Pill, useToast } from "@/components/ui";
+import { Button, Input, Pill, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { buildEditorIframeSrc } from "@/lib/editor/build-editor-iframe-src";
 import { writeEditorHandoff } from "@/lib/editor/editor-handoff";
 import { suggestMmFromPixels } from "@/lib/editor/suggest-mm-from-pixels";
 import {
@@ -30,12 +40,13 @@ import {
   type ShapeCategory,
 } from "@/lib/templates/die-cut-templates";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
-
-const STEPS = ["Dosya", "Bıçak", "Boyut", "Ürüne ekle"] as const;
+import type { BladeShapeConfig } from "@/lib/editor/pikaso/controller-types";
+import type { CutlineMode } from "@/lib/editor/cutline/types";
 
 const CANVAS_HEIGHT = 520;
 
 type BladeTab = "template" | "auto";
+type LeftPanel = "file" | "blade";
 
 const DEFAULT_LAYERS: Record<EditorLayer, boolean> = {
   cut: true,
@@ -56,7 +67,8 @@ export default function EditorShell() {
   const skipDimResetRef = useRef(false);
   const pendingSavePromiseRef = useRef<Promise<string | null> | null>(null);
 
-  const [step, setStep] = useState(1);
+  const [leftPanel, setLeftPanel] = useState<LeftPanel>("file");
+  const [bladeSearch, setBladeSearch] = useState("");
   const [design, setDesign] = useState<DesignTempState | null>(null);
   const [widthMm, setWidthMm] = useState(50);
   const [heightMm, setHeightMm] = useState(50);
@@ -72,9 +84,35 @@ export default function EditorShell() {
   const [bgLoading, setBgLoading] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [designUrl, setDesignUrl] = useState<string | null>(null);
   const [canvasMounted, setCanvasMounted] = useState(false);
   const dimsAppliedRef = useRef<string | null>(null);
+  const prevDesignRef = useRef<DesignTempState | null>(null);
+  const [showCoach, setShowCoach] = useState(false);
+  const [showCanvasHint, setShowCanvasHint] = useState(false);
+
+  useEffect(() => {
+    if (!isEditorOnboarded()) setShowCoach(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prevDesignRef.current && design) {
+      setLeftPanel("blade");
+    }
+    prevDesignRef.current = design;
+  }, [design]);
+
+  useEffect(() => {
+    if (!design?.tempId || isCanvasHintSeen()) return;
+    setShowCanvasHint(true);
+  }, [design?.tempId]);
+
+  const dismissCanvasHint = useCallback(() => {
+    setShowCanvasHint((v) => {
+      if (v) markCanvasHintSeen();
+      return false;
+    });
+  }, []);
 
   useEffect(() => {
     if (skipDimResetRef.current) {
@@ -86,25 +124,17 @@ export default function EditorShell() {
   }, [design?.tempId]);
   useEffect(() => {
     if (!design) {
-      setIframeSrc(null);
+      setDesignUrl(null);
       setCanvasMounted(false);
       canvasReadyRef.current = false;
       return;
     }
-    setIframeSrc(
-      buildEditorIframeSrc({
-        tempDesignId: design.tempId,
-        fileName: design.fileName,
-        mimeType: design.mimeType,
-        widthMm,
-        heightMm,
-        origin: window.location.origin,
-      })
+    setDesignUrl(
+      `${window.location.origin}/api/editor/design-file/${design.tempId}`
     );
     setCanvasMounted(true);
     canvasReadyRef.current = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mm ilk URL'de; sonrası postMessage
-  }, [design?.tempId, design?.fileName, design?.mimeType]);
+  }, [design?.tempId]);
 
   useEffect(() => {
     if (!design?.tempId) return;
@@ -125,21 +155,21 @@ export default function EditorShell() {
     };
   }, [design?.tempId]);
 
-  const syncSizeToCanvas = useCallback((w: number, h: number) => {
-    canvasRef.current?.postMessage({
-      type: "pim-editor-set-size",
-      widthMm: w,
-      heightMm: h,
-    });
-  }, []);
-
-  const syncOffsetToCanvas = useCallback((mm: number) => {
-    canvasRef.current?.postMessage({ type: "pim-set-offset", offsetMm: mm });
-  }, []);
-
-  const syncZoomToCanvas = useCallback((zoom: number) => {
-    canvasRef.current?.postMessage({ type: "pim-set-view-zoom", zoom });
-  }, []);
+  const bladeShape = useMemo((): BladeShapeConfig => {
+    if (selectedTpl) {
+      const mode: CutlineMode =
+        selectedTpl.shape === "circle"
+          ? "circle"
+          : selectedTpl.shape === "rect" || selectedTpl.shape === "ellipse"
+            ? "rect"
+            : "contour";
+      return { kind: "template", template: selectedTpl, mode };
+    }
+    if (bladeTab === "auto") {
+      return { kind: "contour" };
+    }
+    return { kind: "contour" };
+  }, [selectedTpl, bladeTab]);
 
   const applyTemplate = useCallback((tpl: DieCutTemplate) => {
     setSelectedTpl(tpl);
@@ -147,21 +177,6 @@ export default function EditorShell() {
     setHeightMm(tpl.heightMm);
     setAspect(tpl.widthMm / tpl.heightMm);
     pendingShapeRef.current = tpl;
-    if (!canvasReadyRef.current) return;
-    const mode =
-      tpl.shape === "circle"
-        ? "circle"
-        : tpl.shape === "rect" || tpl.shape === "ellipse"
-          ? "rect"
-          : "contour";
-    canvasRef.current?.postMessage({
-      type: "pim-editor-set-shape",
-      shape: tpl.shape,
-      widthMm: tpl.widthMm,
-      heightMm: tpl.heightMm,
-      cornerRadiusMm: tpl.cornerRadiusMm,
-      mode,
-    });
   }, []);
 
   const flushPendingShape = useCallback(() => {
@@ -169,17 +184,14 @@ export default function EditorShell() {
     const pending = pendingShapeRef.current;
     pendingShapeRef.current = null;
     if (pending === "contour") {
-      canvasRef.current?.postMessage({
-        type: "pim-editor-set-shape",
-        shape: "contour",
-        mode: "contour",
-        widthMm,
-        heightMm,
-      });
+      setSelectedTpl(null);
     } else {
-      applyTemplate(pending);
+      setSelectedTpl(pending);
+      setWidthMm(pending.widthMm);
+      setHeightMm(pending.heightMm);
+      setAspect(pending.widthMm / pending.heightMm);
     }
-  }, [applyTemplate, widthMm, heightMm]);
+  }, []);
 
   useEffect(() => {
     const id = searchParams.get("sablon")?.trim();
@@ -198,31 +210,12 @@ export default function EditorShell() {
 
   const handleCanvasReady = useCallback(() => {
     canvasReadyRef.current = true;
-    syncSizeToCanvas(widthMm, heightMm);
-    syncOffsetToCanvas(offsetMm);
-    syncZoomToCanvas(viewZoom);
-    for (const [layer, on] of Object.entries(layers) as [EditorLayer, boolean][]) {
-      canvasRef.current?.postMessage({ type: "pim-toggle-layer", layer, on });
-    }
     flushPendingShape();
-    if (step >= 2 && bladeTab === "auto" && !selectedTpl) {
+    if (bladeTab === "auto" && !selectedTpl) {
       pendingShapeRef.current = "contour";
       flushPendingShape();
     }
-  }, [
-    bladeTab,
-    flushPendingShape,
-    layers,
-    offsetMm,
-    selectedTpl,
-    step,
-    syncOffsetToCanvas,
-    syncSizeToCanvas,
-    syncZoomToCanvas,
-    viewZoom,
-    widthMm,
-    heightMm,
-  ]);
+  }, [bladeTab, flushPendingShape, selectedTpl]);
 
   const handleDesignLoaded = useCallback(
     ({ widthPx, heightPx }: { widthPx: number; heightPx: number }) => {
@@ -234,39 +227,14 @@ export default function EditorShell() {
       setWidthMm(suggested.widthMm);
       setHeightMm(suggested.heightMm);
       canvasReadyRef.current = true;
-      syncSizeToCanvas(suggested.widthMm, suggested.heightMm);
     },
-    [design?.tempId, selectedTpl, syncSizeToCanvas]
+    [design?.tempId, selectedTpl]
   );
 
   const setAutoContour = useCallback(() => {
     setSelectedTpl(null);
     pendingShapeRef.current = "contour";
-    if (canvasReadyRef.current) {
-      canvasRef.current?.postMessage({
-        type: "pim-editor-set-shape",
-        shape: "contour",
-        mode: "contour",
-        widthMm,
-        heightMm,
-      });
-    }
-  }, [widthMm, heightMm]);
-
-  useEffect(() => {
-    if (!design || !canvasReadyRef.current) return;
-    syncSizeToCanvas(widthMm, heightMm);
-  }, [widthMm, heightMm, design, syncSizeToCanvas]);
-
-  useEffect(() => {
-    if (!canvasReadyRef.current) return;
-    syncOffsetToCanvas(offsetMm);
-  }, [offsetMm, syncOffsetToCanvas]);
-
-  useEffect(() => {
-    if (!canvasReadyRef.current) return;
-    syncZoomToCanvas(viewZoom);
-  }, [viewZoom, syncZoomToCanvas]);
+  }, []);
 
   const handleWidthChange = (w: number) => {
     setWidthMm(w);
@@ -284,7 +252,7 @@ export default function EditorShell() {
 
   const handleToggleLayer = (layer: EditorLayer, on: boolean) => {
     setLayers((prev) => ({ ...prev, [layer]: on }));
-    canvasRef.current?.postMessage({ type: "pim-toggle-layer", layer, on });
+    canvasRef.current?.setLayerVisibility(layer, on);
   };
 
   const persistDraft = useCallback(
@@ -394,7 +362,7 @@ export default function EditorShell() {
         exportWaitRef.current = null;
         resolve(id);
       };
-      canvasRef.current?.postMessage({ type: "pim-request-export" });
+      canvasRef.current?.requestExport();
       window.setTimeout(() => {
         if (exportWaitRef.current) {
           exportWaitRef.current(null);
@@ -407,13 +375,6 @@ export default function EditorShell() {
     pendingSavePromiseRef.current = promise;
     return promise;
   }, [draftId]);
-
-  /** Adım 4'e geçince bıçağı arka planda kaydet (single-flight) */
-  useEffect(() => {
-    if (step !== 4 || !design || !canvasReadyRef.current) return;
-    if (draftId) return;
-    void ensureDraftSaved();
-  }, [step, draftId, design, ensureDraftSaved]);
 
   const addToProduct = async (product: "sticker" | "etiket") => {
     if (!design) {
@@ -450,155 +411,248 @@ export default function EditorShell() {
   };
 
   const handleFitContain = useCallback(() => {
-    canvasRef.current?.postMessage({ type: "pim-fit-contain" });
+    canvasRef.current?.fitContain();
   }, []);
 
-  const handleResaveDraft = useCallback(() => {
-    pendingSavePromiseRef.current = null;
-    exportWaitRef.current = null;
-    canvasRef.current?.postMessage({ type: "pim-request-export" });
-  }, []);
+  const bladeSearchNorm = bladeSearch.trim().toLocaleLowerCase("tr");
 
-  const goNext = () => {
-    if (step === 1 && !design) {
-      toast.error("Önce bir görsel yükle");
-      return;
+  const filteredTemplates = DIE_CUT_TEMPLATES.filter((t) => {
+    if (category !== "all" && t.category !== category) return false;
+    if (
+      bladeSearchNorm &&
+      !t.label.toLocaleLowerCase("tr").includes(bladeSearchNorm)
+    ) {
+      return false;
     }
-    if (step < STEPS.length) setStep(step + 1);
+    return true;
+  });
+
+  const openAutoBlade = () => {
+    setLeftPanel("blade");
+    setBladeTab("auto");
+    setAutoContour();
   };
 
-  const goBack = () => {
-    if (step > 1) setStep(step - 1);
-  };
-
-  const filteredTemplates = DIE_CUT_TEMPLATES.filter(
-    (t) => category === "all" || t.category === category
-  );
+  const zoomIn = () =>
+    setViewZoom((z) => Math.min(3, Math.round((z + 0.1) * 10) / 10));
+  const zoomOut = () =>
+    setViewZoom((z) => Math.max(0.25, Math.round((z - 0.1) * 10) / 10));
 
   return (
-    <main className="py-6 pb-28 editor-workspace" data-editor-workspace>
-      <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        <Eyebrow>Üye editörü · Sıfırdan hazırla</Eyebrow>
-        <h1 className="mt-2 text-[26px] md:text-[32px] font-semibold tracking-tight">
-          Bıçak & baskı hazırlama
-        </h1>
-        <p className="mt-2 text-[14px] text-gri-700 max-w-[600px]">
-          Görselini yükle, bıçağı belirle, boyutlandır — çıktı doğrudan ürün
-          konfigüratörüne aktarılır. İndirme yok; bu ekran sipariş onayı (
-          <span className="text-gri-600">/onay</span>) değildir.
-        </p>
+    <main
+      className="editor-workspace min-h-[calc(100dvh-56px)] bg-gri-50"
+      data-editor-workspace
+    >
+      <EditorCoachmark
+        open={showCoach}
+        onComplete={() => {
+          markEditorOnboarded();
+          setShowCoach(false);
+        }}
+        onDismissSession={() => setShowCoach(false)}
+      />
+      <div
+        className="grid h-[calc(100dvh-56px)] w-full max-w-[1600px] mx-auto grid-cols-[52px_minmax(240px,300px)_1fr_minmax(248px,300px)] grid-rows-[auto_1fr]"
+        style={{
+          gridTemplateAreas: `
+            "top top top top"
+            "rail flyout canvas right"
+          `,
+        }}
+      >
+        <header
+          className="sticky top-0 z-30 col-span-4 flex flex-wrap items-center gap-3 border-b border-gri-200 bg-white px-3 py-2.5 shadow-1"
+          style={{ gridArea: "top" }}
+        >
+          <h1 className="shrink-0 text-[15px] md:text-[17px] font-semibold tracking-tight text-lacivert">
+            Bıçak & baskı hazırlama
+          </h1>
+
+          <div className="flex flex-1 justify-center min-w-0">
+            <EditorZoomControls
+              zoom={viewZoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onZoomReset={() => setViewZoom(1)}
+              onFitContain={handleFitContain}
+            />
+          </div>
+
+          <div
+            className="flex shrink-0 flex-wrap items-center gap-2 ml-auto"
+            data-onboard="export"
+          >
+            {saving ? (
+              <span className="text-[11px] text-gri-600">Kaydediliyor…</span>
+            ) : null}
+            {draftId ? (
+              <Pill variant="yesil" className="hidden sm:inline-flex">
+                Kayıtlı
+              </Pill>
+            ) : null}
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={saving}
+              onClick={() => void addToProduct("sticker")}
+            >
+              Sticker&apos;a ekle
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => void addToProduct("etiket")}
+            >
+              Etiket&apos;e ekle
+            </Button>
+          </div>
+        </header>
 
         <nav
-          className="mt-6 flex gap-1 overflow-x-auto pb-1"
-          aria-label="Editör adımları"
+          className="flex flex-col items-center gap-1 border-r border-gri-200 bg-white py-3"
+          style={{ gridArea: "rail" }}
+          aria-label="Sol menü"
         >
-          {STEPS.map((label, i) => {
-            const n = i + 1;
-            const active = step === n;
-            const done = step > n;
-            const reachable = n <= step;
-            return (
-              <button
-                key={label}
-                type="button"
-                disabled={!reachable}
-                aria-current={active ? "step" : undefined}
-                aria-disabled={!reachable}
-                onClick={() => reachable && setStep(n)}
-                className={cn(
-                  "shrink-0 h-9 px-3 rounded-full text-[12.5px] font-semibold transition-colors",
-                  active && "bg-pim-mercan text-white",
-                  !active && done && "bg-yesil-soft text-yesil",
-                  !active && !done && reachable && "bg-gri-100 text-gri-600",
-                  !reachable &&
-                    "bg-gri-50 text-gri-400 cursor-not-allowed opacity-70"
-                )}
-              >
-                {n}. {label}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            title="Dosya"
+            data-onboard="file"
+            aria-current={leftPanel === "file" ? "true" : undefined}
+            onClick={() => setLeftPanel("file")}
+            className={cn(
+              "flex h-11 w-11 flex-col items-center justify-center gap-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wide transition-colors",
+              leftPanel === "file"
+                ? "bg-pim-mercan-tint text-pim-mercan"
+                : "text-gri-600 hover:bg-gri-100"
+            )}
+          >
+            <span className="text-[18px] leading-none" aria-hidden>
+              📁
+            </span>
+            Dosya
+          </button>
+          <button
+            type="button"
+            title="Bıçak"
+            data-onboard="blade"
+            aria-current={leftPanel === "blade" ? "true" : undefined}
+            onClick={() => setLeftPanel("blade")}
+            className={cn(
+              "flex h-11 w-11 flex-col items-center justify-center gap-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wide transition-colors",
+              leftPanel === "blade"
+                ? "bg-pim-mercan-tint text-pim-mercan"
+                : "text-gri-600 hover:bg-gri-100"
+            )}
+          >
+            <span className="text-[18px] leading-none" aria-hidden>
+              ✂
+            </span>
+            Bıçak
+          </button>
         </nav>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(300px,360px)_1fr] gap-5 items-start">
-          <Card padding="p-5" className="h-fit lg:sticky lg:top-4">
-            {step === 1 && (
-              <>
-                <h2 className="text-[16px] font-semibold">Dosya yükle</h2>
-                <p className="mt-1 text-[13px] text-gri-700">
-                  PNG, JPG, PDF, AI veya PSD. Yükleme sonrası önizleme sağda
-                  açılır.
-                </p>
-                <div className="mt-4">
-                  <DesignDropZone value={design} onChange={setDesign} />
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <h2 className="text-[16px] font-semibold">Bıçak seç</h2>
-                <CutColorNote />
-                <div className="mt-3 flex gap-1 p-1 rounded-lg bg-gri-100">
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex-1 h-8 rounded-md text-[12px] font-semibold",
-                      bladeTab === "template" && "bg-white shadow-1"
-                    )}
-                    onClick={() => setBladeTab("template")}
-                  >
-                    Hazır şablon
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex-1 h-8 rounded-md text-[12px] font-semibold",
-                      bladeTab === "auto" && "bg-white shadow-1"
-                    )}
-                    onClick={() => {
-                      setBladeTab("auto");
-                      setAutoContour();
-                    }}
-                  >
-                    Görselden otomatik
-                  </button>
-                </div>
-                {bladeTab === "template" ? (
-                  <>
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        className={cn(
-                          "h-7 px-2 rounded-full text-[11px] font-semibold",
-                          category === "all"
-                            ? "bg-pim-mercan-tint text-pim-mercan"
-                            : "bg-gri-100"
-                        )}
-                        onClick={() => setCategory("all")}
-                      >
-                        Hepsi
-                      </button>
-                      {(Object.keys(CATEGORY_LABELS) as ShapeCategory[]).map(
-                        (c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            className={cn(
-                              "h-7 px-2 rounded-full text-[11px] font-semibold",
-                              category === c
-                                ? "bg-pim-mercan-tint text-pim-mercan"
-                                : "bg-gri-100"
-                            )}
-                            onClick={() => setCategory(c)}
-                          >
-                            {CATEGORY_LABELS[c]}
-                          </button>
-                        )
+        <aside
+          className="overflow-y-auto border-r border-gri-200 bg-white p-4"
+          style={{ gridArea: "flyout" }}
+        >
+          {leftPanel === "file" ? (
+            <>
+              <h2 className="text-[15px] font-semibold">Dosya</h2>
+              <p className="mt-1 text-[12.5px] text-gri-700">
+                Desteklenen formatlar: PNG, JPG, PDF, AI, PSD.
+              </p>
+              <div className="mt-4">
+                <DesignDropZone value={design} onChange={setDesign} />
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-[15px] font-semibold">Bıçak</h2>
+              <CutColorNote />
+              <Button
+                type="button"
+                variant="primary"
+                className="mt-3 w-full"
+                onClick={openAutoBlade}
+              >
+                Otomatik bıçak oluştur
+              </Button>
+              <div className="mt-3 flex gap-1 rounded-lg bg-gri-100 p-1">
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 h-8 rounded-md text-[12px] font-semibold",
+                    bladeTab === "template" && "bg-white shadow-1"
+                  )}
+                  onClick={() => setBladeTab("template")}
+                >
+                  Hazır şablon
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 h-8 rounded-md text-[12px] font-semibold",
+                    bladeTab === "auto" && "bg-white shadow-1"
+                  )}
+                  onClick={() => {
+                    setBladeTab("auto");
+                    setAutoContour();
+                  }}
+                >
+                  Otomatik
+                </button>
+              </div>
+              {bladeTab === "template" ? (
+                <>
+                  <Input
+                    type="search"
+                    placeholder="Şablon ara…"
+                    value={bladeSearch}
+                    onChange={(e) => setBladeSearch(e.target.value)}
+                    className="mt-3"
+                    aria-label="Bıçak şablonu ara"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      className={cn(
+                        "h-7 px-2 rounded-full text-[11px] font-semibold",
+                        category === "all"
+                          ? "bg-pim-mercan-tint text-pim-mercan"
+                          : "bg-gri-100"
                       )}
-                    </div>
-                    <div className="mt-3 max-h-[280px] overflow-y-auto grid grid-cols-2 gap-2">
-                      {filteredTemplates.map((tpl) => (
+                      onClick={() => setCategory("all")}
+                    >
+                      Hepsi
+                    </button>
+                    {(Object.keys(CATEGORY_LABELS) as ShapeCategory[]).map(
+                      (c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={cn(
+                            "h-7 px-2 rounded-full text-[11px] font-semibold",
+                            category === c
+                              ? "bg-pim-mercan-tint text-pim-mercan"
+                              : "bg-gri-100"
+                          )}
+                          onClick={() => setCategory(c)}
+                        >
+                          {CATEGORY_LABELS[c]}
+                        </button>
+                      )
+                    )}
+                  </div>
+                  <div className="mt-3 max-h-[min(420px,50vh)] overflow-y-auto grid grid-cols-2 gap-2">
+                    {filteredTemplates.length === 0 ? (
+                      <p className="col-span-2 py-4 text-center text-[12px] text-gri-600">
+                        Eşleşen şablon yok.
+                      </p>
+                    ) : (
+                      filteredTemplates.map((tpl) => (
                         <button
                           key={tpl.id}
                           type="button"
@@ -615,241 +669,214 @@ export default function EditorShell() {
                             {tpl.label}
                           </div>
                         </button>
-                      ))}
-                    </div>
-                    <Link
-                      href="/sablonlar?tab=kesim"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 block text-center text-[12px] font-semibold text-pim-mercan hover:underline"
-                    >
-                      Tüm kesim şablonlarını gör →
-                    </Link>
-                  </>
-                ) : (
-                  <p className="mt-3 text-[13px] text-gri-700">
-                    Kontur modu — görselin şeklinden otomatik bıçak üretilir.
-                  </p>
-                )}
-
-                <div className="mt-4">
-                  <label
-                    htmlFor="editor-offset"
-                    className="flex items-center justify-between text-[12px] font-semibold"
+                      ))
+                    )}
+                  </div>
+                  <Link
+                    href="/sablonlar?tab=kesim"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 block text-center text-[12px] font-semibold text-pim-mercan hover:underline"
                   >
-                    <span>Kesim mesafesi</span>
-                    <span className="tabular-nums text-gri-600">
-                      {offsetMm.toFixed(1)} mm
-                    </span>
-                  </label>
-                  <input
-                    id="editor-offset"
-                    type="range"
-                    min={0}
-                    max={5}
-                    step={0.1}
-                    value={offsetMm}
-                    onChange={(e) => setOffsetMm(parseFloat(e.target.value))}
-                    className="mt-2 w-full accent-pim-mercan"
-                  />
-                  <p className="mt-1 text-[11px] text-gri-600">
-                    Bıçak ile görsel arasındaki boşluk — önizlemede anında
-                    güncellenir.
-                  </p>
-                </div>
-              </>
-            )}
-
-            {step === 3 && (
-              <>
-                <h2 className="text-[16px] font-semibold">Boyutlandır</h2>
-                <p className="mt-1 text-[13px] text-gri-700">
-                  Gerçek baskı boyutu (mm). Oran kilidi görselin en-boy oranını
-                  korur.
+                    Tüm kesim şablonları →
+                  </Link>
+                </>
+              ) : (
+                <p className="mt-3 text-[13px] text-gri-700">
+                  Kontur modu — görselin şeklinden otomatik bıçak üretilir.
+                  Önizleme ortada güncellenir.
                 </p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[12px] font-semibold">
-                      Genişlik
-                    </label>
-                    <Input
-                      type="number"
-                      min={5}
-                      max={500}
-                      value={widthMm}
-                      onChange={(e) =>
-                        handleWidthChange(Number(e.target.value) || 50)
-                      }
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[12px] font-semibold">
-                      Yükseklik
-                    </label>
-                    <Input
-                      type="number"
-                      min={5}
-                      max={500}
-                      value={heightMm}
-                      onChange={(e) =>
-                        handleHeightChange(Number(e.target.value) || 50)
-                      }
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-[12.5px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={lockAspect}
-                    onChange={(e) => setLockAspect(e.target.checked)}
-                    className="accent-pim-mercan"
-                  />
-                  Oran kilidi
-                </label>
-                <Pill variant="gri" className="mt-3">
-                  {widthMm}×{heightMm} mm
-                </Pill>
+              )}
+            </>
+          )}
+        </aside>
 
-                {bgDetect?.needsRemoval ? (
-                  <div className="mt-4 rounded-lg border border-sari/40 bg-sari-soft/50 p-3">
-                    <p className="text-[12.5px] text-lacivert">
-                      Beyaz/düz zemin tespit edildi — kaldırmak baskı kalitesini
-                      artırır.
+        <section
+          className="relative flex min-h-0 flex-col overflow-hidden bg-gri-100"
+          style={{ gridArea: "canvas" }}
+          onPointerDown={showCanvasHint ? dismissCanvasHint : undefined}
+          onKeyDown={showCanvasHint ? dismissCanvasHint : undefined}
+        >
+          <div className="relative flex flex-1 min-h-0 flex-col m-3 rounded-xl ring-1 ring-gri-200 bg-white overflow-hidden shadow-1">
+            {design && canvasMounted ? (
+              <EditorCanvas
+                ref={canvasRef}
+                designUrl={designUrl}
+                widthMm={widthMm}
+                heightMm={heightMm}
+                offsetMm={offsetMm}
+                viewZoom={viewZoom}
+                layers={layers}
+                bladeShape={bladeShape}
+                fixedHeight={CANVAS_HEIGHT}
+                onSaved={handleSaved}
+                onReady={handleCanvasReady}
+                onDesignLoaded={handleDesignLoaded}
+                onError={(m) => toast.error(m)}
+              />
+            ) : (
+              <div className="flex flex-1 min-h-[480px] flex-col items-center justify-center gap-4 bg-gri-50 p-8 text-center">
+                {!design ? (
+                  <>
+                    <p className="text-[15px] font-semibold text-gri-800">
+                      Tasarımını burada önizle
+                    </p>
+                    <p className="max-w-[320px] text-[13px] text-gri-600">
+                      Sol panelden görsel yükle; ardından bıçak ve boyut
+                      ayarlarını yan panellerden yap.
+                    </p>
+                    <p className="text-[12px] text-gri-500">
+                      Desteklenen formatlar: PNG, JPG, PDF, AI, PSD.
                     </p>
                     <Button
                       type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="mt-2 w-full"
-                      disabled={bgLoading}
-                      onClick={() => void removeBackground()}
+                      variant="primary"
+                      onClick={() => setLeftPanel("file")}
                     >
-                      {bgLoading ? "Kaldırılıyor…" : "Arka planı kaldır"}
+                      Görselini yükle
                     </Button>
-                  </div>
-                ) : bgDetect ? (
-                  <p className="mt-4 text-[12px] text-gri-600">
-                    Zemin uygun — ek arka plan işlemi gerekmiyor.
-                  </p>
+                  </>
                 ) : (
-                  <p className="mt-4 text-[12px] text-gri-500">
-                    Zemin analizi…
-                  </p>
+                  <p className="text-[14px] text-gri-600">Önizleme hazırlanıyor…</p>
                 )}
-              </>
+              </div>
             )}
+            <EditorCanvasHint
+              visible={showCanvasHint && !!design && canvasMounted}
+              onDismiss={dismissCanvasHint}
+            />
+          </div>
+        </section>
 
-            {step === 4 && (
-              <>
-                <h2 className="text-[16px] font-semibold">Ürüne ekle</h2>
-                <p className="mt-1 text-[13px] text-gri-700">
-                  Sticker veya etiket konfigüratörüne geç — ölçü ve tasarım
-                  ön-dolu gelir.
+        <aside
+          className="overflow-y-auto border-l border-gri-200 bg-white p-4 space-y-5"
+          style={{ gridArea: "right" }}
+          aria-label="Özellikler"
+          data-onboard="size"
+        >
+          <section>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
+              Boyut
+            </h2>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label
+                  htmlFor="editor-width-mm"
+                  className="text-[11.5px] font-semibold"
+                >
+                  Genişlik (mm)
+                </label>
+                <Input
+                  id="editor-width-mm"
+                  type="number"
+                  min={5}
+                  max={500}
+                  value={widthMm}
+                  onChange={(e) =>
+                    handleWidthChange(Number(e.target.value) || 50)
+                  }
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="editor-height-mm"
+                  className="text-[11.5px] font-semibold"
+                >
+                  Yükseklik (mm)
+                </label>
+                <Input
+                  id="editor-height-mm"
+                  type="number"
+                  min={5}
+                  max={500}
+                  value={heightMm}
+                  onChange={(e) =>
+                    handleHeightChange(Number(e.target.value) || 50)
+                  }
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <label className="mt-2 flex items-center gap-2 text-[12px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={lockAspect}
+                onChange={(e) => setLockAspect(e.target.checked)}
+                className="accent-pim-mercan"
+              />
+              Oran kilidi
+            </label>
+            <Pill variant="gri" className="mt-2">
+              {widthMm}×{heightMm} mm
+            </Pill>
+          </section>
+
+          <section>
+            <label
+              htmlFor="editor-offset-right"
+              className="flex items-center justify-between text-[13px] font-semibold uppercase tracking-wide text-gri-600"
+            >
+              <span>Kesim mesafesi</span>
+              <span className="tabular-nums text-[12px] font-semibold text-gri-800 normal-case">
+                {offsetMm.toFixed(1)} mm
+              </span>
+            </label>
+            <input
+              id="editor-offset-right"
+              type="range"
+              min={0}
+              max={5}
+              step={0.1}
+              value={offsetMm}
+              onChange={(e) => setOffsetMm(parseFloat(e.target.value))}
+              className="mt-2 w-full accent-pim-mercan"
+            />
+          </section>
+
+          <section>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
+              Arka plan
+            </h2>
+            {!design ? (
+              <p className="mt-2 text-[12px] text-gri-500">
+                Görsel yüklendikten sonra zemin analizi yapılır.
+              </p>
+            ) : bgDetect?.needsRemoval ? (
+              <div className="mt-2 rounded-lg border border-sari/40 bg-sari-soft/50 p-3">
+                <p className="text-[12px] text-lacivert">
+                  Beyaz/düz zemin tespit edildi.
                 </p>
-                {draftId && (
-                  <Pill variant="yesil" className="mt-2">
-                    Bıçak kaydedildi
-                  </Pill>
-                )}
-                {saving && (
-                  <p className="mt-2 text-[12px] text-gri-600">Kaydediliyor…</p>
-                )}
-                <div className="mt-4 flex flex-col gap-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    disabled={saving}
-                    onClick={() => void addToProduct("sticker")}
-                  >
-                    Sticker&apos;a ekle
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={saving}
-                    onClick={() => void addToProduct("etiket")}
-                  >
-                    Etiket&apos;e ekle
-                  </Button>
-                </div>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="mt-3 w-full"
-                  onClick={handleResaveDraft}
+                  className="mt-2 w-full"
+                  disabled={bgLoading}
+                  onClick={() => void removeBackground()}
                 >
-                  Bıçağı yeniden kaydet
-                </Button>
-              </>
-            )}
-
-            {step < 4 && (
-              <div className="mt-5 flex gap-2 border-t border-gri-100 pt-4">
-                {step > 1 && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={goBack}
-                  >
-                    Geri
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="flex-1"
-                  disabled={step === 1 && !design}
-                  onClick={goNext}
-                >
-                  Devam
+                  {bgLoading ? "Kaldırılıyor…" : "Arka planı kaldır"}
                 </Button>
               </div>
-            )}
-          </Card>
-
-          <div className="min-h-[480px] flex flex-col rounded-xl ring-1 ring-gri-200 bg-white overflow-hidden shadow-1">
-            {design && canvasMounted ? (
-              <>
-                <EditorPreviewToolbar
-                  zoom={viewZoom}
-                  layers={layers}
-                  widthMm={widthMm}
-                  heightMm={heightMm}
-                  onZoomIn={() =>
-                    setViewZoom((z) => Math.min(3, Math.round((z + 0.1) * 10) / 10))
-                  }
-                  onZoomOut={() =>
-                    setViewZoom((z) =>
-                      Math.max(0.25, Math.round((z - 0.1) * 10) / 10)
-                    )
-                  }
-                  onZoomReset={() => setViewZoom(1)}
-                  onFitContain={handleFitContain}
-                  onToggleLayer={handleToggleLayer}
-                />
-                <EditorCanvas
-                  ref={canvasRef}
-                  iframeSrc={iframeSrc}
-                  fixedHeight={CANVAS_HEIGHT}
-                  onSaved={handleSaved}
-                  onReady={handleCanvasReady}
-                  onDesignLoaded={handleDesignLoaded}
-                  onError={(m) => toast.error(m)}
-                />
-              </>
+            ) : bgDetect ? (
+              <p className="mt-2 text-[12px] text-gri-600">
+                Zemin uygun — ek işlem gerekmiyor.
+              </p>
             ) : (
-              <div className="flex flex-1 min-h-[480px] items-center justify-center bg-gri-50 text-gri-600 text-[14px] p-8 text-center">
-                {step === 1 && !design
-                  ? "Dosya yükleyince bıçak önizlemesi burada açılır."
-                  : "Önizleme hazırlanıyor…"}
-              </div>
+              <p className="mt-2 text-[12px] text-gri-500">Zemin analizi…</p>
             )}
-          </div>
-        </div>
+          </section>
+
+          <section>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600 mb-2">
+              Katmanlar
+            </h2>
+            <EditorLayerToggles
+              layers={layers}
+              onToggleLayer={handleToggleLayer}
+            />
+          </section>
+        </aside>
       </div>
     </main>
   );

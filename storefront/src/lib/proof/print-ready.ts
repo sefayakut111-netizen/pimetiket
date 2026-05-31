@@ -163,28 +163,150 @@ function parseSvgPathToPoints(d: string): Pt[] {
   return points;
 }
 
+type SvgViewFrame = {
+  minX: number;
+  minY: number;
+  vbW: number;
+  vbH: number;
+};
+
+function parseSvgDimAttr(raw: string): number | null {
+  const n = parseFloat(raw.replace(/mm$/i, "").trim());
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** viewBox → yoksa width/height → yoksa label mm (1:1 design boyutu). */
+function parseSvgViewFrame(
+  svgText: string,
+  designWidthMm: number,
+  designHeightMm: number
+): SvgViewFrame {
+  const vbMatch = svgText.match(/viewBox\s*=\s*["']([^"']+)["']/i);
+  if (vbMatch) {
+    const parts = vbMatch[1]
+      .trim()
+      .split(/[\s,]+/)
+      .map((s) => parseFloat(s));
+    if (
+      parts.length >= 4 &&
+      parts.every((n) => Number.isFinite(n)) &&
+      (parts[2] ?? 0) > 0 &&
+      (parts[3] ?? 0) > 0
+    ) {
+      return {
+        minX: parts[0]!,
+        minY: parts[1]!,
+        vbW: parts[2]!,
+        vbH: parts[3]!,
+      };
+    }
+  }
+
+  const wMatch = svgText.match(/\bwidth\s*=\s*["']([^"']+)["']/i);
+  const hMatch = svgText.match(/\bheight\s*=\s*["']([^"']+)["']/i);
+  const w = wMatch ? parseSvgDimAttr(wMatch[1]) : null;
+  const h = hMatch ? parseSvgDimAttr(hMatch[1]) : null;
+  if (w != null && h != null) {
+    return { minX: 0, minY: 0, vbW: w, vbH: h };
+  }
+
+  return {
+    minX: 0,
+    minY: 0,
+    vbW: designWidthMm,
+    vbH: designHeightMm,
+  };
+}
+
+function svgPointToLabelMm(
+  px: number,
+  py: number,
+  frame: SvgViewFrame,
+  designWidthMm: number,
+  designHeightMm: number
+): { labelXmm: number; labelYmm: number } {
+  return {
+    labelXmm: (px - frame.minX) * (designWidthMm / frame.vbW),
+    labelYmm: (py - frame.minY) * (designHeightMm / frame.vbH),
+  };
+}
+
+function labelMmToPdfPt(
+  labelXmm: number,
+  labelYmm: number,
+  designHeightMm: number,
+  bleedPt: number
+): { x: number; y: number } {
+  return {
+    x: mmToPt(labelXmm) + bleedPt,
+    y: mmToPt(designHeightMm - labelYmm) + bleedPt,
+  };
+}
+
+function extractSvgPathDs(svgText: string): string[] {
+  const matches = [...svgText.matchAll(/\bd=["']([^"']+)["']/gi)];
+  if (matches.length > 0) {
+    return matches.map((m) => m[1]!);
+  }
+  if (svgText.includes("M") || svgText.includes("m")) {
+    return [svgText];
+  }
+  return [];
+}
+
+/** Cutline: viewBox/width ile label-mm normalize → pdf-lib (alttan-yukarı) + bleed. */
 function drawCutlineAsSpotColor(
   page: ReturnType<PDFDocument["addPage"]>,
-  svgPath: string,
-  bleedMm: number
+  svgText: string,
+  bleedMm: number,
+  designWidthMm: number,
+  designHeightMm: number
 ) {
-  const dMatch = svgPath.match(/\bd=["']([^"']+)["']/i);
-  const d = dMatch?.[1] ?? svgPath;
-  const points = parseSvgPathToPoints(d);
-  if (points.length < 2) return;
+  const pathDs = extractSvgPathDs(svgText);
+  if (pathDs.length === 0) return;
 
+  const frame = parseSvgViewFrame(svgText, designWidthMm, designHeightMm);
   const bleedPt = mmToPt(bleedMm);
   const thickness = 0.5;
 
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1];
-    const b = points[i];
-    page.drawLine({
-      start: { x: a.x + bleedPt, y: a.y + bleedPt },
-      end: { x: b.x + bleedPt, y: b.y + bleedPt },
-      thickness,
-      color: CUTCONTOUR_COLOR,
-    });
+  for (const d of pathDs) {
+    const points = parseSvgPathToPoints(d);
+    if (points.length < 2) continue;
+
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1]!;
+      const b = points[i]!;
+      const aLabel = svgPointToLabelMm(
+        a.x,
+        a.y,
+        frame,
+        designWidthMm,
+        designHeightMm
+      );
+      const bLabel = svgPointToLabelMm(
+        b.x,
+        b.y,
+        frame,
+        designWidthMm,
+        designHeightMm
+      );
+      page.drawLine({
+        start: labelMmToPdfPt(
+          aLabel.labelXmm,
+          aLabel.labelYmm,
+          designHeightMm,
+          bleedPt
+        ),
+        end: labelMmToPdfPt(
+          bLabel.labelXmm,
+          bLabel.labelYmm,
+          designHeightMm,
+          bleedPt
+        ),
+        thickness,
+        color: CUTCONTOUR_COLOR,
+      });
+    }
   }
 }
 
@@ -216,7 +338,13 @@ export async function generatePrintReadyPdf(
   drawCropMarks(page, input.designWidth, input.designHeight, bleedMm);
 
   if (input.cutlineSvgPath) {
-    drawCutlineAsSpotColor(page, input.cutlineSvgPath, bleedMm);
+    drawCutlineAsSpotColor(
+      page,
+      input.cutlineSvgPath,
+      bleedMm,
+      input.designWidth,
+      input.designHeight
+    );
   }
 
   pdfDoc.setKeywords(["CutContour", "print-ready"]);
