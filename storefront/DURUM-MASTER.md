@@ -79,7 +79,7 @@ Rapor: `docs/URUN-NEGATIF-ANALIZ.md` · Araç: `product-configurator-audit.mjs` 
 - **Hâlâ açık (ürün kararı):** kiss-cut ayrı fiyat çarpanı.
 - **🆕 Sepet fiyat tazeleme — ✅ uygulandı (Claude verify), push + migration bekliyor** (`CURSOR-PROMPT-SEPET-FIYAT-TAZELEME.md`): Fiyat-sürümü bazlı tazeleme (zaman bazlı silme değil). Cursor uyguladı, ben doğruladım: `computeStickerQuote`/`computeEtiketQuote` saf çekirdek ayrıştırıldı, checkout `recalc*` bunları sarıyor (davranış korundu); `cart-reprice.ts` paylaşılan `quoteCartItemPrice`'ı çağırıyor (uydurma fiyat yok); bayat kuralı `pricedAt ?? addedAt < max(scopeTs, globalTs)`; `payment/init` dokunulmadı; tsc temiz.
   - **Dosyalar:** mig `127_cart_priced_at.sql` + `apply-migrations-127.mjs`, `cart-reprice.ts`, `POST /api/cart/reprice`, `customer-cart.ts` (reprice/apply), `/sepet`+`/odeme` entegrasyon, `payment-validation.ts` refactor, events `pim_cart_prices_updated`/`pim_cart_items_removed`.
-  - **⏳ Açık:** yerel commit'li, **push (deploy) + migration 127 prod apply** Sefa onayı bekliyor. Sıra: migration önce (kolon eksikken auth reprice UPDATE hata vermesin), sonra push.
+  - **✅ Canlıda** (`69d4c9f`): Migration 127 prod'a uygulandı (`cart_items.priced_at` doğrulandı: timestamptz, not null, default now()), sonra push → Vercel deploy. Sıra korundu (migration önce).
 
 ---
 
