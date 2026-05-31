@@ -39,6 +39,7 @@ interface EditorCanvasProps {
   onReady?: () => void;
   onDesignLoaded?: (dims: { widthPx: number; heightPx: number }) => void;
   onError?: (msg: string) => void;
+  onContourRefining?: (refining: boolean) => void;
   fixedHeight?: number;
 }
 
@@ -56,6 +57,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
       onReady,
       onDesignLoaded,
       onError,
+      onContourRefining,
       fixedHeight = 520,
     } = props;
 
@@ -83,6 +85,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
           onReady={onReady}
           onDesignLoaded={onDesignLoaded}
           onError={onError}
+          onContourRefining={onContourRefining}
         />
       </div>
     );

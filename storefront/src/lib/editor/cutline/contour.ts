@@ -1,4 +1,7 @@
-import { hullFromImage } from "@/lib/editor/alpha-contour";
+import {
+  expandHullFromCentroid,
+  hullFromImage,
+} from "@/lib/editor/alpha-contour";
 import type { PathRing } from "@/lib/editor/cutline/types";
 import { loadOpenCv, type OpenCvModule } from "@/lib/editor/cutline/opencv-loader";
 
@@ -175,7 +178,7 @@ export function mapPixelPathsToLabelMm(
   );
 }
 
-const OPENCV_MAX_EDGE_PX = 1000;
+const OPENCV_MAX_EDGE_PX = 640;
 
 function imageToCvMatScaled(
   cv: OpenCvModule,
@@ -209,6 +212,21 @@ function offsetMmToPx(
 ): number {
   const effectiveOffsetMm = offsetMm === 0 ? -0.3 : offsetMm;
   return Math.round(effectiveOffsetMm * pxPerMmInImage * downscale);
+}
+
+/** OpenCV beklemeden anında önizleme (alpha hull) */
+export function computeContourPathsPxMultiFast(
+  image: HTMLImageElement,
+  offsetsMm: number[],
+  useHull: boolean,
+  pxPerMmInImage: number
+): PathRing[][] {
+  const baseHull = hullFromImage(image, useHull);
+  return offsetsMm.map((offsetMm) => {
+    const expandPx = offsetMmToPx(offsetMm, pxPerMmInImage, 1);
+    const expanded = expandHullFromCentroid(baseHull, expandPx);
+    return [expanded.map((p) => [p.x, p.y] as [number, number])];
+  });
 }
 
 /** Tek mask — cut/bleed/safe için (OpenCV 3× tekrar yok) */

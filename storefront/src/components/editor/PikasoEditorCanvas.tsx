@@ -4,6 +4,7 @@ import type { EditorLayer } from "@/components/editor/EditorPreviewToolbar";
 import { mmToPx } from "@/lib/editor/coords";
 import {
   computeCutlineBundle,
+  computeCutlineBundleFast,
   computeTemplateBundle,
 } from "@/lib/editor/cutline/compute";
 import { loadOpenCv } from "@/lib/editor/cutline/opencv-loader";
@@ -54,6 +55,8 @@ export interface PikasoEditorCanvasProps {
     meta: Record<string, unknown>;
   }) => void;
   onError?: (msg: string) => void;
+  /** OpenCV kontur iyileştirmesi sürüyor */
+  onContourRefining?: (refining: boolean) => void;
 }
 
 type ImageShape = Awaited<ReturnType<Pikaso["shapes"]["image"]["insert"]>>;
@@ -89,6 +92,7 @@ export const PikasoEditorCanvas = forwardRef<
     onDesignLoaded,
     onSaved,
     onError,
+    onContourRefining,
   },
   ref
 ) {
@@ -199,7 +203,7 @@ export const PikasoEditorCanvas = forwardRef<
           offsetMm: offMm,
         });
       } else {
-        bundle = await computeCutlineBundle({
+        const contourInput = {
           mode: resolveMode(blade),
           labelWidthMm: wMm,
           labelHeightMm: hMm,
@@ -208,7 +212,29 @@ export const PikasoEditorCanvas = forwardRef<
             blade.kind === "rect" ? (blade.cornerRadiusMm ?? 0) : 0,
           image: img,
           imagePlacementMm: placementMm,
-        });
+        };
+        const preview = computeCutlineBundleFast(contourInput);
+        if (preview) {
+          if (gen !== recomputeGenRef.current) return;
+          bundleRef.current = preview;
+          renderCutlineOverlays(editor, preview, {
+            labelX,
+            labelY,
+            layers: {
+              cut: layersRef.current.cut,
+              bleed: layersRef.current.bleed,
+              safe: layersRef.current.safe,
+            },
+          });
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        }
+        if (gen !== recomputeGenRef.current) return;
+        onContourRefining?.(true);
+        try {
+          bundle = await computeCutlineBundle(contourInput);
+        } finally {
+          onContourRefining?.(false);
+        }
       }
 
       if (gen !== recomputeGenRef.current) return;

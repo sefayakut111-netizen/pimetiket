@@ -30,6 +30,7 @@ import { CutColorNote } from "@/components/editor/CutColorNote";
 import { ShapePreview } from "@/components/templates/ShapePreview";
 import { Button, Input, Pill, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { loadOpenCv } from "@/lib/editor/cutline/opencv-loader";
 import { writeEditorHandoff } from "@/lib/editor/editor-handoff";
 import { suggestMmFromPixels } from "@/lib/editor/suggest-mm-from-pixels";
 import {
@@ -90,6 +91,7 @@ export default function EditorShell() {
   const prevDesignRef = useRef<DesignTempState | null>(null);
   const [showCoach, setShowCoach] = useState(false);
   const [showCanvasHint, setShowCanvasHint] = useState(false);
+  const [contourRefining, setContourRefining] = useState(false);
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
@@ -123,10 +125,16 @@ export default function EditorShell() {
     dimsAppliedRef.current = null;
   }, [design?.tempId]);
   useEffect(() => {
+    if (!design?.tempId) return;
+    void loadOpenCv();
+  }, [design?.tempId]);
+
+  useEffect(() => {
     if (!design) {
       setDesignUrl(null);
       setCanvasMounted(false);
       canvasReadyRef.current = false;
+      setContourRefining(false);
       return;
     }
     setDesignUrl(
@@ -708,6 +716,11 @@ export default function EditorShell() {
                   Kontur modu — görselin şeklinden otomatik bıçak üretilir.
                   Önizleme ortada güncellenir.
                 </p>
+                {contourRefining ? (
+                  <p className="mt-2 text-[12px] font-medium text-pim-mercan">
+                    Kontur iyileştiriliyor…
+                  </p>
+                ) : null}
               )}
             </>
           )}
@@ -735,6 +748,7 @@ export default function EditorShell() {
                 onReady={handleCanvasReady}
                 onDesignLoaded={handleDesignLoaded}
                 onError={(m) => toast.error(m)}
+                onContourRefining={setContourRefining}
               />
             ) : (
               <div className="flex flex-1 min-h-[480px] flex-col items-center justify-center gap-4 bg-gri-50 p-8 text-center">
