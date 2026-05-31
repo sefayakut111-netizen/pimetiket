@@ -13,13 +13,14 @@ import { AuditorBase } from "../_shared/base";
 import type { AuditorFinding, AuditorRunResult } from "../_shared/types";
 import { MATERIAL_SLUGS } from "@/lib/seo/materials";
 import { pingAllSearchEngines } from "@/lib/seo/search-engine-ping";
+import { fetchGscTopQueries } from "@/lib/seo/gsc-performance";
+import { getSiteUrl } from "@/lib/site-url";
 
-const SITE_URL = () =>
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
+const SITE_URL = () => getSiteUrl();
 
 const TUNE = {
   minBlogPosts: 5,
-  minSitemapUrls: 27, // ~18 statik + 8 malzeme + 4+ blog
+  minSitemapUrls: 35, // statik + malzeme + tür landing + blog + konu
   legalPages: [
     "/kvkk",
     "/gizlilik",
@@ -64,6 +65,10 @@ export class SeoAuditor extends AuditorBase {
     const gsc = this.checkSearchConsoleEnv();
     findings.push(...gsc.findings);
     metrics.searchConsole = gsc.metrics;
+
+    const gscPerf = await this.checkGscPerformance();
+    findings.push(...gscPerf.findings);
+    metrics.gscPerformance = gscPerf.metrics;
 
     if (sitemap.metrics.reachable) {
       const ping = await this.pingSearchEngines();
@@ -371,6 +376,46 @@ export class SeoAuditor extends AuditorBase {
       )
     );
     return { findings, metrics: { configured: true } };
+  }
+
+  private async checkGscPerformance() {
+    const findings: AuditorFinding[] = [];
+    const result = await fetchGscTopQueries(28);
+    if (!result.configured) {
+      findings.push(
+        this.info(
+          "gsc_performance_skipped",
+          "GSC Performance API yapılandırılmamış",
+          result.detail,
+          {}
+        )
+      );
+      return { findings, metrics: { configured: false } };
+    }
+    if (!result.ok) {
+      findings.push(
+        this.warning(
+          "gsc_performance_error",
+          "GSC sorgu verisi alınamadı",
+          result.detail,
+          {}
+        )
+      );
+      return { findings, metrics: { configured: true, ok: false } };
+    }
+    const top = result.rows.slice(0, 3).map((r) => r.query).join(", ");
+    findings.push(
+      this.info(
+        "gsc_performance_ok",
+        `GSC Performance: ${result.rows.length} sorgu`,
+        top ? `Örnek sorgular: ${top}` : result.detail,
+        { rowCount: result.rows.length }
+      )
+    );
+    return {
+      findings,
+      metrics: { configured: true, ok: true, rowCount: result.rows.length },
+    };
   }
 
   private async pingSearchEngines() {

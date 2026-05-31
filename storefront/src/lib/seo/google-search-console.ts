@@ -10,6 +10,7 @@
  */
 
 import { GoogleAuth } from "google-auth-library";
+import { getSiteUrl } from "@/lib/site-url";
 
 const WEBMASTERS_SCOPE = "https://www.googleapis.com/auth/webmasters";
 
@@ -34,10 +35,7 @@ function getCredentials():
 }
 
 function siteUrl(): string {
-  const raw =
-    process.env.GSC_SITE_URL?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    "https://pimetiket.com";
+  const raw = process.env.GSC_SITE_URL?.trim() || getSiteUrl();
   return raw.endsWith("/") ? raw : `${raw}/`;
 }
 

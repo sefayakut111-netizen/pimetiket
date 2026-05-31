@@ -7,7 +7,9 @@ import {
   SchemaJsonLd,
   faqSchema,
   breadcrumbSchema,
+  productSchema,
 } from "@/components/SchemaJsonLd";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
 import {
   MATERIAL_SLUGS,
   getMaterialBySlug,
@@ -28,16 +30,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!material) return { title: "Malzeme bulunamadı" };
 
   const title = `${material.name} Etiket & Sticker Baskı — Pim Etiket`;
+  const canonical = materialDetailPath(slug);
   return {
     title,
     description: material.description,
-    alternates: { canonical: materialDetailPath(slug) },
-    openGraph: {
+    alternates: { canonical },
+    ...withSocialMetadata({
       title,
       description: material.description,
-      url: materialDetailPath(slug),
-      type: "website",
-    },
+      canonical,
+    }),
   };
 }
 
@@ -53,6 +55,15 @@ export default async function MalzemeLandingPage({ params }: Props) {
   return (
     <main className="bg-gri-50 animate-fade-up py-8 pb-20">
       <SchemaJsonLd data={faqSchema(material.faqs)} />
+      <SchemaJsonLd
+        data={productSchema({
+          name: `${material.name} etiket ve sticker baskı`,
+          description: material.description,
+          category:
+            material.productType === "etiket" ? "Print/Labels" : "Print/Stickers",
+          priceFrom: material.productType === "etiket" ? 500 : 200,
+        })}
+      />
       <SchemaJsonLd
         data={breadcrumbSchema([
           { label: "Anasayfa", url: "/" },

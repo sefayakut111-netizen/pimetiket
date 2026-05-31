@@ -3,7 +3,10 @@
 
 ## Ürünler
 - [Etiket baskı](https://pimetiket.com/etiket): rulo + tabaka; kuşe, şeffaf, kraft, metalik...
+- [Rulo etiket](https://pimetiket.com/etiket/rulo): yüksek adet, otomatik etiketleme
+- [Tabaka etiket](https://pimetiket.com/etiket/tabaka): düşük adet, butik üretim
 - [Sticker baskı](https://pimetiket.com/sticker): die-cut, kiss-cut, holografik, transparan, bumper
+- [Die-cut sticker](https://pimetiket.com/sticker/die-cut): özel kesim logo sticker
 - [Malzemeler](https://pimetiket.com/malzemeler): 8 malzeme + kaplama + özelleştirme
 - [Hazır kesim şablonları](https://pimetiket.com/sablonlar): 65 die-cut şablon
 

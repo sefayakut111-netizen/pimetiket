@@ -1,5 +1,6 @@
 /**
  * Pim Etiket — /blog
+ * ?q= arama (TopBarSearch ile uyumlu), ?page= sayfalama
  */
 
 import type { Metadata } from "next";
@@ -8,13 +9,23 @@ import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow, Pill } from "@/components/ui";
-import { getPublishedPosts, getReadMinutes } from "@/lib/blog-posts";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
+import {
+  filterPostsByQuery,
+  getPublishedPosts,
+  getPublishedPostsPaginated,
+  getReadMinutes,
+} from "@/lib/blog-posts";
+
+const title = "Blog — Etiket ve sticker rehberleri";
+const description =
+  "Etiket malzemesi nasıl seçilir, sticker baskı ipuçları, AI ön kontrol nasıl çalışır — Pim Etiket'in marka rehberi.";
 
 export const metadata: Metadata = {
-  title: "Blog — Etiket ve sticker rehberleri",
-  description:
-    "Etiket malzemesi nasıl seçilir, sticker baskı ipuçları, AI ön kontrol nasıl çalışır — Pim Etiket'in marka rehberi.",
+  title,
+  description,
   alternates: { canonical: "/blog" },
+  ...withSocialMetadata({ title, description, canonical: "/blog" }),
 };
 
 export const revalidate = 300;
@@ -29,9 +40,39 @@ function formatDate(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-export default async function BlogIndexPage() {
-  const posts = await getPublishedPosts();
-  const [featured, ...rest] = posts;
+interface Props {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}
+
+export default async function BlogIndexPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const q = sp.q?.trim() ?? "";
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+
+  let posts: Awaited<ReturnType<typeof getPublishedPosts>>;
+  let totalPages = 1;
+  let currentPage = 1;
+
+  if (q) {
+    const all = await getPublishedPosts();
+    posts = filterPostsByQuery(all, q);
+    totalPages = 1;
+    currentPage = 1;
+  } else {
+    const paged = await getPublishedPostsPaginated(page);
+    posts = paged.posts;
+    totalPages = paged.totalPages;
+    currentPage = page;
+  }
+
+  const [featured, ...rest] = q ? posts : posts.length > 0 ? [posts[0], ...posts.slice(1)] : [];
+
+  const paginationHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `/blog?${qs}` : "/blog";
+  };
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-8 pb-20">
@@ -46,17 +87,29 @@ export default async function BlogIndexPage() {
             Marka kuruyorsan veya raf etkisini büyütmek istiyorsan — burada
             Pim&rsquo;in atölye notları var.
           </p>
+          {q ? (
+            <p className="mt-4 text-[14px] text-gri-600">
+              Arama: <strong className="text-lacivert">{q}</strong> ({posts.length} sonuç) ·{" "}
+              <Link href="/blog" className="text-pim-mercan font-medium hover:underline">
+                Tüm yazılar
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         {posts.length === 0 ? (
           <Card padding="p-12" className="text-center">
             <Pim pose="think" size={120} />
-            <h2 className="mt-4 text-xl font-semibold">Yakında yeni yazılar</h2>
-            <p className="mt-2 text-gri-700">Blog içerikleri hazırlanıyor.</p>
+            <h2 className="mt-4 text-xl font-semibold">
+              {q ? "Sonuç bulunamadı" : "Yakında yeni yazılar"}
+            </h2>
+            <p className="mt-2 text-gri-700">
+              {q ? "Farklı bir anahtar kelime deneyin." : "Blog içerikleri hazırlanıyor."}
+            </p>
           </Card>
         ) : (
           <>
-            {featured && (
+            {featured && !q && currentPage === 1 && (
               <Link href={`/blog/${featured.slug}`} prefetch={false} className="block mb-8 group">
                 <Card
                   padding=""
@@ -101,7 +154,7 @@ export default async function BlogIndexPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rest.map((p) => (
+              {(q || currentPage > 1 ? posts : rest).map((p) => (
                 <Link key={p.slug} href={`/blog/${p.slug}`} prefetch={false} className="block group">
                   <Card
                     padding=""
@@ -144,6 +197,35 @@ export default async function BlogIndexPage() {
                 </Link>
               ))}
             </div>
+
+            {!q && totalPages > 1 && (
+              <nav
+                className="mt-8 flex items-center justify-center gap-4 text-[14px]"
+                aria-label="Blog sayfalama"
+              >
+                {currentPage > 1 ? (
+                  <Link
+                    href={paginationHref(currentPage - 1)}
+                    rel="prev"
+                    className="font-medium text-pim-mercan hover:underline"
+                  >
+                    ← Önceki
+                  </Link>
+                ) : null}
+                <span className="text-gri-600">
+                  Sayfa {currentPage} / {totalPages}
+                </span>
+                {currentPage < totalPages ? (
+                  <Link
+                    href={paginationHref(currentPage + 1)}
+                    rel="next"
+                    className="font-medium text-pim-mercan hover:underline"
+                  >
+                    Sonraki →
+                  </Link>
+                ) : null}
+              </nav>
+            )}
           </>
         )}
 

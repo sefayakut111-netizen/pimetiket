@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { YorumlarSchema } from "@/components/seo/YorumlarSchema";
 
 export const metadata: Metadata = {
   title: "Müşteri Yorumları — Pim Etiket bastıranlar ne diyor?",
@@ -16,5 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default function YorumlarLayout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <YorumlarSchema />
+      {children}
+    </>
+  );
 }

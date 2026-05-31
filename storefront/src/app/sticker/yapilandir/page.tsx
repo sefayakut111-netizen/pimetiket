@@ -24,11 +24,7 @@ import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/l
 import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
-import {
-  SchemaJsonLd,
-  productSchema,
-  breadcrumbSchema,
-} from "@/components/SchemaJsonLd";
+import { SchemaJsonLd, breadcrumbSchema } from "@/components/SchemaJsonLd";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 // Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
 // import { ProductInfoSection } from "@/components/ProductInfoSection";
@@ -962,21 +958,10 @@ function StickerPage() {
       }}
     >
       <SchemaJsonLd
-        data={[
-          productSchema({
-            // Sefa 21 May v68 (ürün denetim P2 #20): "Die-cut/holo" karışık
-            // dil → tam Türkçe terimler.
-            name: "Sticker — özel baskı",
-            description:
-              "Özel kesim veya tabaka. Vinil, şeffaf, holografik, simli. Laptop, defter, kampanya için. AI dosya kontrolü ile 5 iş günü içinde kargoda. 25 adetten başlar.",
-            category: "Sticker",
-            priceFrom: 113,
-          }),
-          breadcrumbSchema([
-            { label: "Anasayfa", url: "/" },
-            { label: "Sticker", url: "/sticker" },
-          ]),
-        ]}
+        data={breadcrumbSchema([
+          { label: "Anasayfa", url: "/" },
+          { label: "Sticker", url: "/sticker" },
+        ])}
       />
       {/* Sefa 18 May v43: /etiket sayfasıyla aynı yapı.
           Tam-genişlik strip + mercan eyebrow 'KONFIGÜRATÖR' + büyük h1.

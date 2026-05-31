@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { getSiteUrl } from "@/lib/site-url";
 
 /** Kullanıcı / admin / ödeme yolları — tüm public crawler kurallarında paylaşılır */
 const PRIVATE_DISALLOW = [
@@ -63,6 +61,7 @@ const SEO_SCRAPER_BOTS = [
  * - SEO scraper'lar: disallow /
  */
 export default function robots(): MetadataRoute.Robots {
+  const SITE_URL = getSiteUrl();
   const publicCrawlRule = {
     allow: "/" as const,
     disallow: [...PRIVATE_DISALLOW],

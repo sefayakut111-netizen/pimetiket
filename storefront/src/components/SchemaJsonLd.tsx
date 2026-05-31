@@ -30,8 +30,9 @@ export function SchemaJsonLd({ data }: Props) {
 // Helper builders
 // ============================================================
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
+import { getSiteUrl } from "@/lib/site-url";
+
+const SITE_URL = getSiteUrl();
 
 interface FaqItem {
   q: string;

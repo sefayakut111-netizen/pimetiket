@@ -9,6 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
 import { Icon } from "@/components/Icon";
 import { Eyebrow, MaterialSwatch, type SurfaceId } from "@/components/ui";
 import {
@@ -18,11 +19,15 @@ import {
   type MaterialInfo,
 } from "@/lib/seo/materials";
 
+const title = "Malzemeler — Pim Etiket";
+const description =
+  "Etiket ve sticker malzemelerinin detayları: kraft, beyaz semi-glos, ultra clear, metalik, vinil, transparan, holografik, simli. Kaplama seçenekleri ve özelleştirmeler.";
+
 export const metadata: Metadata = {
-  title: "Malzemeler — Pim Etiket",
-  description:
-    "Etiket ve sticker malzemelerinin detayları: kraft, beyaz semi-glos, ultra clear, metalik, vinil, transparan, holografik, simli. Kaplama seçenekleri ve özelleştirmeler.",
+  title,
+  description,
   alternates: { canonical: "/malzemeler" },
+  ...withSocialMetadata({ title, description, canonical: "/malzemeler" }),
 };
 
 const COATINGS: { name: string; desc: string; swatchSurface: SurfaceId }[] = [

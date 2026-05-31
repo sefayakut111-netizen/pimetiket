@@ -36,6 +36,10 @@ interface SiteSettings {
   contactPhone: string;
   contactWhatsapp: string;
   holidays: string;
+  /** Organization sameAs — virgülle ayrılmış HTTPS URL */
+  seoSocialLinks: string;
+  /** Schema.org contactPoint telefon */
+  seoContactPhone: string;
 }
 
 const DEFAULTS: SiteSettings = {
@@ -57,6 +61,8 @@ const DEFAULTS: SiteSettings = {
   contactPhone: "", // Henüz hat yok — Sefa açacak
   contactWhatsapp: "", // Henüz aktif değil
   holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim + Ramazan + Kurban",
+  seoSocialLinks: "",
+  seoContactPhone: "+90 531 934 01 23",
 };
 
 const NUMERIC_KEYS: Array<
@@ -156,7 +162,12 @@ export default function AdminAyarlarPage() {
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [dbLoading, setDbLoading] = useState(true);
   const [showResetModal, setShowResetModal] = useState(false);
-  const dbBaselineRef = useRef<Partial<Record<DbNumericKey, number>>>({});
+  const dbBaselineRef = useRef<
+    Partial<Record<DbNumericKey, number>> & {
+      seoSocialLinks?: string;
+      seoContactPhone?: string;
+    }
+  >({});
 
   const patchMaintenance = async (
     patch: Partial<Pick<SiteSettings, "maintenanceMode" | "maintenanceMessage">>
@@ -227,13 +238,21 @@ export default function AdminAyarlarPage() {
           dbPatch[formKey as keyof SiteSettings] = val as never;
         }
 
-        dbBaselineRef.current = baseline;
+        dbBaselineRef.current = {
+          ...baseline,
+          seoSocialLinks: String(s.social_links ?? ""),
+          seoContactPhone: String(s.seo_contact_phone ?? DEFAULTS.seoContactPhone),
+        };
         setSettings((prev) => ({
           ...prev,
           ...dbPatch,
           maintenanceMode: Boolean(s.maintenance_mode ?? prev.maintenanceMode),
           maintenanceMessage: String(
             s.maintenance_message ?? prev.maintenanceMessage
+          ),
+          seoSocialLinks: String(s.social_links ?? prev.seoSocialLinks),
+          seoContactPhone: String(
+            s.seo_contact_phone ?? prev.seoContactPhone
           ),
         }));
       })
@@ -269,7 +288,17 @@ export default function AdminAyarlarPage() {
         }
       }
 
-      if (Object.keys(patchBody).length === 0) {
+      const seoPatch: Record<string, string> = {};
+      if (settings.seoSocialLinks !== dbBaselineRef.current.seoSocialLinks) {
+        seoPatch.social_links = settings.seoSocialLinks;
+      }
+      if (settings.seoContactPhone !== dbBaselineRef.current.seoContactPhone) {
+        seoPatch.seo_contact_phone = settings.seoContactPhone;
+      }
+
+      const fullPatch = { ...patchBody, ...seoPatch };
+
+      if (Object.keys(fullPatch).length === 0) {
         toast.info("DB alanlarinda degisiklik yok (local ayarlar kaydedildi)");
         return;
       }
@@ -277,7 +306,7 @@ export default function AdminAyarlarPage() {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(patchBody),
+        body: JSON.stringify(fullPatch),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -529,6 +558,39 @@ export default function AdminAyarlarPage() {
                   placeholder="Aktif olunca ekle"
                 />
               </div>
+            </div>
+          </Card>
+
+          <Card padding="p-6">
+            <h2 className="text-lg font-semibold mb-4">SEO ve sosyal</h2>
+            <p className="text-[12.5px] text-gri-700 mb-4 leading-relaxed">
+              Organization schema (<code className="text-[12px]">sameAs</code>,{" "}
+              <code className="text-[12px]">contactPoint</code>). OG görselleri
+              için{" "}
+              <a href="/admin/gorseller" className="text-pim-mercan font-medium">
+                Görsel yönetimi
+              </a>
+              .
+            </p>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-[13px] font-semibold mb-1.5 block">
+                  Sosyal profil URL&apos;leri
+                </span>
+                <textarea
+                  value={settings.seoSocialLinks}
+                  onChange={(e) => update("seoSocialLinks", e.target.value)}
+                  rows={2}
+                  className="block w-full px-3.5 py-2.5 rounded-[12px] bg-white text-[14px] text-lacivert ring-1 ring-gri-200 focus:outline-none focus:ring-pim-mercan resize-none"
+                  placeholder="https://instagram.com/pimetiket,https://x.com/pimetiket"
+                />
+              </label>
+              <TextField
+                label="Schema telefon (contactPoint)"
+                value={settings.seoContactPhone}
+                onChange={(v) => update("seoContactPhone", v)}
+                placeholder="+90 5XX XXX XX XX"
+              />
             </div>
           </Card>
 

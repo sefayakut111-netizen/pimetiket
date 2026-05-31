@@ -26,11 +26,7 @@ import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
 // kaldırıldı, Pim sadece PimChat floating button'da tek tutarlı persona.
 import { Icon } from "@/components/Icon";
-import {
-  SchemaJsonLd,
-  productSchema,
-  breadcrumbSchema,
-} from "@/components/SchemaJsonLd";
+import { SchemaJsonLd, breadcrumbSchema } from "@/components/SchemaJsonLd";
 import {
   FormSection,
   SelectableCard,
@@ -1554,32 +1550,10 @@ function EtiketPage() {
   return (
     <main className="bg-gri-50 min-h-[calc(100vh-64px)] animate-fade-up">
       <SchemaJsonLd
-        data={[
-          // Sefa 21 May v68 (sistem denetim #3): formFactor'a göre dinamik
-          // schema — tabaka sayfası rulo schema'sı kullanıyordu (1.000
-          // adet + Vinil yanlıştı). Şimdi rulo vs tabaka ayrı.
-          productSchema(
-            formFactor === "rulo"
-              ? {
-                  name: "Rulo etiket — özel baskı",
-                  description:
-                    "Kozmetik, gıda, içecek, parfüm etiketleri. Kuşe / Opak PP / Şeffaf / Metalize. AI dosya kontrolü ile 10 iş günü içinde kargoda. 1.000 adetten başlar.",
-                  category: "Etiket / Label",
-                  priceFrom: 850,
-                }
-              : {
-                  name: "Tabaka etiket — düşük adet özel baskı",
-                  description:
-                    "Butik ürün, el yapımı, hediye paketleri için tabaka etiket. Kuşe / Kraft / Opak PP. AI dosya kontrolü ile 10 iş günü içinde kargoda. 250 adetten başlar.",
-                  category: "Etiket / Label",
-                  priceFrom: 350,
-                }
-          ),
-          breadcrumbSchema([
-            { label: "Anasayfa", url: "/" },
-            { label: "Etiket", url: "/etiket" },
-          ]),
-        ]}
+        data={breadcrumbSchema([
+          { label: "Anasayfa", url: "/" },
+          { label: "Etiket", url: "/etiket" },
+        ])}
       />
       {/* Sefa 17 May v40: küçük breadcrumb yerine BÜYÜK başlık strip'i.
           Title Case, full-width, görsel olarak güçlü açılış. */}

@@ -30,6 +30,8 @@ interface BodyShape {
   max_order_total_try?: unknown;
   maintenance_mode?: unknown;
   maintenance_message?: unknown;
+  social_links?: unknown;
+  seo_contact_phone?: unknown;
 }
 
 function serviceClient() {
@@ -119,6 +121,13 @@ export async function PATCH(req: Request) {
   }
   if (typeof body.maintenance_message === "string") {
     update.maintenance_message = body.maintenance_message.slice(0, 500);
+  }
+
+  if (typeof body.social_links === "string") {
+    update.social_links = body.social_links.slice(0, 2000);
+  }
+  if (typeof body.seo_contact_phone === "string") {
+    update.seo_contact_phone = body.seo_contact_phone.slice(0, 32);
   }
 
   if (Object.keys(update).length === 0) {

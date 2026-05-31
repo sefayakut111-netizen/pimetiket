@@ -8,10 +8,11 @@ import { Analytics } from "@/components/Analytics";
 import { VercelInsights } from "@/components/VercelInsights";
 import { CopyProtection } from "@/components/security/CopyProtection";
 import { getSiteImage } from "@/lib/site-images";
+import { getSiteUrl } from "@/lib/site-url";
+import { RootJsonLd } from "@/components/seo/RootJsonLd";
 import "./globals.css";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const SITE_URL = getSiteUrl();
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -140,61 +141,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// Sosyal medya URL'leri — Sefa env'e ekleyince Knowledge Graph + sameAs aktif olur.
-// Format: virgülle ayrılmış URL listesi:
-//   NEXT_PUBLIC_SOCIAL_LINKS=https://instagram.com/pimetiket,https://x.com/pimetiket
-const SOCIAL_LINKS = (process.env.NEXT_PUBLIC_SOCIAL_LINKS ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter((s) => s.length > 0 && s.startsWith("https://"));
-
-// Sefa 21 May v68 SEO Sprint: Organization schema zenginleştirildi.
-// Tam adres (Mesafeli Satış sözleşmesinden), legalName, vatID + email.
-// Google Knowledge Graph "Şirket Bilgileri" panel için kritik.
-// Telefon eklenecek (BEKLEYEN-ISLER.md — Sefa numarayı verince).
-const ORGANIZATION_LD = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Pim Etiket",
-  legalName: "SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ",
-  url: SITE_URL,
-  logo: `${SITE_URL}/icon.svg`,
-  description:
-    "Türkiye'de online etiket ve sticker baskı hizmeti — etiket baskıda uzman, küçük adet dahil, AI destekli. Türkiye geneli teslimat.",
-  email: "info@pimetiket.com",
-  vatID: "7580607612",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress:
-      "Workinton Ankara Söğütözü, Beştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28",
-    addressLocality: "Çankaya",
-    addressRegion: "Ankara",
-    postalCode: "06510",
-    addressCountry: "TR",
-  },
-  sameAs: SOCIAL_LINKS,
-  contactPoint: {
-    "@type": "ContactPoint",
-    telephone: "+90 531 934 01 23",
-    contactType: "customer support",
-    areaServed: "TR",
-    availableLanguage: ["tr"],
-  },
-};
-
-const WEBSITE_LD = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "Pim Etiket",
-  url: SITE_URL,
-  inLanguage: "tr-TR",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: `${SITE_URL}/?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
-  },
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -222,14 +168,7 @@ export default function RootLayout({
         {/* Vercel built-in pageview + Core Web Vitals — KVKK gated (sadece
             analytics izni varsa beacon gönderir). Bkz. VercelInsights.tsx. */}
         <VercelInsights />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_LD) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_LD) }}
-        />
+        <RootJsonLd />
       </body>
     </html>
   );

@@ -19,6 +19,8 @@ export interface BlogPost {
   slug: string;
   title: string;
   excerpt: string;
+  /** DB category slug (URL: /blog/konu/[categoryRaw]) */
+  categoryRaw: string;
   category: string;
   author: string;
   publishedAt: string;
@@ -67,6 +69,7 @@ function rowToPost(row: BlogPostRow): BlogPost {
     slug: row.slug,
     title: row.title_tr,
     excerpt: row.excerpt_tr ?? body.slice(0, 160),
+    categoryRaw: (row.category ?? "genel").toLowerCase().trim(),
     category: formatCategoryLabel(row.category),
     author: row.author_name ?? "Pim Etiket",
     publishedAt: row.published_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
@@ -127,4 +130,44 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 /** @deprecated getPublishedPosts kullan */
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   return getPostBySlug(slug);
+}
+
+export const BLOG_POSTS_PER_PAGE = 12;
+
+export async function getPublishedPostsPaginated(
+  page: number,
+  perPage = BLOG_POSTS_PER_PAGE
+): Promise<{ posts: BlogPost[]; total: number; totalPages: number }> {
+  const all = await getPublishedPosts();
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * perPage;
+  return {
+    posts: all.slice(start, start + perPage),
+    total,
+    totalPages,
+  };
+}
+
+export function filterPostsByQuery(posts: BlogPost[], q: string): BlogPost[] {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return posts;
+  return posts.filter(
+    (p) =>
+      p.title.toLowerCase().includes(needle) ||
+      p.excerpt.toLowerCase().includes(needle) ||
+      p.body.toLowerCase().includes(needle)
+  );
+}
+
+export async function getPostsByCategory(categorySlug: string): Promise<BlogPost[]> {
+  const slug = categorySlug.toLowerCase().trim();
+  const all = await getPublishedPosts();
+  return all.filter((p) => p.categoryRaw === slug);
+}
+
+export function getBlogCategoryLabel(slug: string): string {
+  if (!slug) return "Genel";
+  return slug.charAt(0).toLocaleUpperCase("tr-TR") + slug.slice(1);
 }

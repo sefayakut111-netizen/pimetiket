@@ -20,6 +20,7 @@ import {
   articleSchema,
   breadcrumbSchema,
 } from "@/components/SchemaJsonLd";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -36,16 +37,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) return { title: "Yazı bulunamadı" };
+  const title = post.seoTitle ?? post.title;
+  const description = post.seoDescription ?? post.excerpt;
+  const canonical = `/blog/${post.slug}`;
   return {
-    title: post.seoTitle ?? post.title,
-    description: post.seoDescription ?? post.excerpt,
-    alternates: { canonical: `/blog/${post.slug}` },
+    title,
+    description,
+    alternates: { canonical },
+    ...withSocialMetadata({
+      title: post.title,
+      description: post.excerpt,
+      canonical,
+      ogType: "article",
+    }),
     openGraph: {
       title: post.title,
       description: post.excerpt,
       type: "article",
       publishedTime: post.publishedAt,
       authors: [post.author],
+      url: canonical,
     },
   };
 }

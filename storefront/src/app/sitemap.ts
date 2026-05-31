@@ -1,9 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/blog-posts";
 import { MATERIAL_SLUGS } from "@/lib/seo/materials";
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { ETIKET_TYPE_SLUGS, STICKER_TYPE_SLUGS } from "@/lib/seo/type-landings";
+import { getSiteUrl } from "@/lib/site-url";
 
 interface RouteEntry {
   path: string;
@@ -36,9 +35,11 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   { path: "/on-bilgilendirme", changeFrequency: "yearly", priority: 0.3 },
   { path: "/cayma-hakki", changeFrequency: "yearly", priority: 0.3 },
   { path: "/iade-degisim-politikasi", changeFrequency: "yearly", priority: 0.4 },
+  { path: "/telif-sikayet", changeFrequency: "yearly", priority: 0.3 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const SITE_URL = getSiteUrl();
   const lastModified = new Date();
   const staticEntries = PUBLIC_ROUTES.map(({ path, changeFrequency, priority }) => ({
     url: `${SITE_URL}${path}`,
@@ -62,5 +63,36 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticEntries, ...materialEntries, ...blogEntries];
+  const typeLandingEntries = [
+    ...ETIKET_TYPE_SLUGS.map((slug) => ({
+      url: `${SITE_URL}/etiket/${slug}`,
+      lastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.75,
+    })),
+    ...STICKER_TYPE_SLUGS.map((slug) => ({
+      url: `${SITE_URL}/sticker/${slug}`,
+      lastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.75,
+    })),
+  ];
+
+  const blogTagSlugs = [
+    ...new Set(posts.map((p) => p.categoryRaw).filter(Boolean)),
+  ];
+  const blogTagEntries = blogTagSlugs.map((tag) => ({
+    url: `${SITE_URL}/blog/konu/${tag}`,
+    lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.55,
+  }));
+
+  return [
+    ...staticEntries,
+    ...materialEntries,
+    ...typeLandingEntries,
+    ...blogEntries,
+    ...blogTagEntries,
+  ];
 }

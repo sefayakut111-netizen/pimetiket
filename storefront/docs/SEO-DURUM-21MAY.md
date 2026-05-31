@@ -1,117 +1,64 @@
-# 🔍 SEO Durumu Snapshot — 21 Mayıs 2026
+# SEO Durumu — Güncelleme (Haziran 2026)
 
-> Sefa "şimdilik beklesin" dedi — bu doküman bulguları + yarım kalan
-> işleri saklar. İleride döndüğümüzde sıfırdan analiz gerekmez.
-
----
-
-## 📊 Genel Skor
-
-- **Önceki:** 7/10
-- **Şu an:** 9/10 (sosyal medya env + telefon eklenince 9.5)
+> Önceki snapshot (21 Mayıs 2026) aşağıda arşivlendi. Bu bölüm plan implementasyonu sonrası güncel durumu özetler.
 
 ---
 
-## ✅ Bugün tamamlananlar (commits: c0c0340, 9022e4e, 1d26084)
+## Genel skor (tahmini)
 
-| # | İş | Durum |
-|---|---|---|
-| 1 | `src/app/opengraph-image.tsx` (anasayfa OG) | 🟡 v3 deploy bekliyor (v1 ve v2 0 byte fail oldu) |
-| 2 | `src/app/etiket/opengraph-image.tsx` | ✅ **40 KB PNG canlı** |
-| 3 | `src/app/sticker/opengraph-image.tsx` | ✅ **72 KB PNG canlı** |
-| 4 | `layout.tsx` — `images: undefined` koşullu | ✅ File convention çalışır |
-| 5 | `/etiket/layout.tsx` — Product + Breadcrumb schema | ✅ Rich Results adayı |
-| 6 | `/sticker/layout.tsx` — Product + Breadcrumb schema | ✅ Rich Results adayı |
-| 7 | `layout.tsx` Organization zenginleştirme | ✅ legalName + vatID + tam adres |
-| 8 | ISR `revalidate = 3600` | ✅ **TTFB 1.2s → 0.4s** (-%67) |
+| Boyut | Skor |
+|-------|------|
+| Teknik SEO | 9/10 |
+| Yapılandırılmış veri | 8.5/10 |
+| İçerik / long-tail | 8/10 (tür landing + blog konu eklendi) |
+| i18n / hreflang | 3/10 (bilinçli TR-only) |
+| AEO / AI | 7.5/10 |
+| Operasyon | 8.5/10 (GSC Performance API denetçide) |
 
 ---
 
-## ⏳ Yarım kalan / bekleyen
+## Tamamlanan implementasyonlar (plan)
 
-### 🟡 1. Anasayfa og:image v3 deploy verify (ScheduleWakeup tetiklendiğinde)
-**Sorun:** v1 (gradient + 3-bölüm + nested span) → 0 byte. v2 (solid color) → hala 0 byte. v3 (/etiket pattern'i taklit, span yok, sade) deploy oldu, henüz verify etmedik.
+### P0 — Tutarlılık
 
-**Aksiyon:** `curl -s -o /dev/null -w "%{size_download}" https://pimetiket.com/opengraph-image` > 0 dönmeli.
+- `getSiteUrl()` tek kaynak: [`src/lib/site-url.ts`](../src/lib/site-url.ts)
+- WebSite `SearchAction` → `/blog?q={search_term_string}` (TopBarSearch ile uyumlu)
+- `/telif-sikayet` sitemap'e eklendi
+- `/destek`, `/iade-talep` → `noindex, follow` layout metadata
+- Kök JSON-LD: [`RootJsonLd`](../src/components/seo/RootJsonLd.tsx) + admin DB sosyal/telefon
 
-**Eğer hala 0 byte:** Satori'nin başka bir kısıtı var. Vercel function logs'a bak veya **statik PNG fallback** (`public/og-home.png` 1200×630) yaratıp `layout.tsx`'te explicit URL set et.
+### P1 — Organik kazanım
 
----
+- Tür/kesim landing: `/etiket/rulo`, `/etiket/tabaka`, `/sticker/die-cut`, `kiss-cut`, `holografik`, `transparan` — [`type-landings.ts`](../src/lib/seo/type-landings.ts)
+- Blog konu: `/blog/konu/[tag]` (category slug)
+- Blog: `?q=` arama + `?page=` sayfalama (`rel=prev/next`)
+- Malzeme sayfaları: Product schema + OG/twitter
+- `/yorumlar`: AggregateRating JSON-LD (yayınlanmış yorum varsa)
+- Yapılandırıcı: Product schema kaldırıldı (çift sinyal önlendi)
 
-## 🔴 Admin SEO Panel Eksik Alanları (analiz raporu)
+### P2 — Strateji / operasyon
 
-### Mevcut admin SEO kapsamı
-
-| Admin sayfa | SEO işlevi | Durum |
-|---|---|---|
-| `/admin/gorseller` | **Site_images (9 slot)** — og_default, og_home, hero'lar | ✅ Mevcut ama **DB boş** (Sefa kullanmıyor) |
-| `/admin/urunler` | product_cards title/desc | 🟡 SEO meta yok |
-| `/admin/ayarlar` | Kargo + kredi + limitler | ❌ **Sosyal medya YOK, iletişim YOK** |
-| Blog admin | — | ❌ **HİÇ YOK** (4 yazı statik) |
-
-### 9 site_image slot (admin'den yönetilebilir, kullanılmıyor)
-```
-Anasayfa:    home_hero, home_etiket_card, home_sticker_card
-Sayfalar:    sablonlar_hero, auth_hero, demo_hero
-Sosyal:      og_default, og_home   ← og:image override için
-Blog:        blog_default_hero
-```
-
-### Önerilen 4 seçenek (Sefa karar verecek)
-
-| Seçenek | Süre | Etki |
-|---|---|---|
-| 🅰️ `/admin/ayarlar`'a SEO/iletişim sekmesi (Mig 078 + UI) | 30 dk | Sosyal medya + telefon admin'den yönetilir, Vercel env'e girmesin |
-| 🅱️ A + Blog admin (Mig 079 + sayfalar) | ~3.5 saat | A + düzenli blog yazısı yazma kolaylığı |
-| 🅲 Şimdi yapma — env yöntemi yeterli | 0 | Mevcut akış devam |
-| 🅳 Sadece `/admin/gorseller` kullanım rehberi | 5 dk | Sefa og:image yüklemeyi öğrenir |
-
-**Sefa'nın eğilimi:** A — sosyal medya + iletişim sekmesi mantıklı (sürekli değişen veri, Vercel env sürtünmesi yok).
+- **hreflang:** Uygulanmadı — hedef pazar TR; EN yalnızca client i18n. `/en` prefix açılmadan `alternates.languages` eklenmeyecek ([`SEO-PLAN-2026-05.md`](../SEO-PLAN-2026-05.md) notu).
+- **GSC Performance API:** [`gsc-performance.ts`](../src/lib/seo/gsc-performance.ts) + `SeoAuditor` kontrolü
+- **Admin SEO sekmesi:** `/admin/ayarlar` → "SEO ve sosyal" (social_links, seo_contact_phone) + Mig `104_seo_site_settings.sql`
+- **OG helper:** [`page-metadata.ts`](../src/lib/seo/page-metadata.ts) — blog, malzemeler, malzeme detay
 
 ---
 
-## 🟢 Sefa-tarafı yapacaklar (BEKLEYEN-ISLER.md ile çakışıyor)
+## Manuel / Sefa aksiyonları
 
-1. **`NEXT_PUBLIC_SOCIAL_LINKS` env ekle** (Vercel, geçici çözüm — A seçeneği yapılırsa gereksiz)
-   ```
-   NEXT_PUBLIC_SOCIAL_LINKS=https://instagram.com/pimetiket,https://x.com/pimetiket
-   ```
-2. **Telefon numarası ver** — `contactPoint` schema'ya eklenir
-3. **Opsiyonel:** `/admin/gorseller` → `og_default` slot'a özel 1200×630 PNG yükle
-
----
-
-## 📈 Detaylı SEO bulgular (21 May sabah analiz)
-
-### İyi durumdaki 11 alan
-- robots.txt sağlam (AI bot block — GPTBot, ChatGPT, anthropic-ai bloke)
-- sitemap.xml 23 URL canlı
-- Anasayfa title + description doğru
-- Canonical URL'ler doğru
-- Open Graph kısmen (og:title, og:description, og:url, og:site_name, og:locale, og:type) ✅
-- Twitter Card (summary_large_image)
-- JSON-LD (Organization + WebSite)
-- Search Console doğrulama (Google + Yandex meta)
-- Sayfa-bazlı metadata (20+ sayfada)
-- Multi-lang sinyali (tr-TR)
-- ISR çalışıyor
-
-### Hala eksik (P2, ileride)
-- Blog Article schema (`/blog/[slug]`)
-- FAQ schema (`/sss`)
-- Breadcrumb schema (iç sayfalarda)
-- Telefon (`contactPoint` Organization schema)
-- Anasayfa `<img>` tag sayısı düşük — LCP optimizasyonu
+1. Migration `104_seo_site_settings.sql` remote Supabase'e uygula
+2. `/admin/ayarlar` → SEO ve sosyal alanlarını doldur + kaydet
+3. `/admin/gorseller` → `og_default` yükle (anasayfa OG)
+4. Search Console → sitemap yeniden gönder
+5. GSC Performance için `GSC_SA_*` (veya GA4 SA + webmasters scope) env
 
 ---
 
-## 🚀 Devam edileceğinde nereden başla?
+## Arşiv — 21 Mayıs 2026 snapshot (özet)
 
-1. **Anasayfa og:image v3 verify** (ScheduleWakeup zaten programlı, otomatik geliyor)
-2. **A seçeneği** — sosyal medya/iletişim admin sekmesi (30 dk)
-3. **Telefon eklenince** — schema contactPoint + footer + KVKK (5 dk)
+- OG: etiket/sticker canlı; anasayfa v3 deploy doğrulaması bekleniyordu
+- Article/FAQ schema o tarihte eksik denmişti — **artık kodda var**
+- Blog admin o tarihte yok denmişti — **artık var**
 
----
-
-**İlgili dokümanlar:** `LAUNCH-READINESS-21MAY.md`, `BEKLEYEN-ISLER.md`, `HESAP-KAYITLARI.md`
-**Son commit:** `1d26084 fix(seo): anasayfa og:image v3`
+Tam arşiv metin git geçmişinde `docs/SEO-DURUM-21MAY.md` önceki sürümünde.

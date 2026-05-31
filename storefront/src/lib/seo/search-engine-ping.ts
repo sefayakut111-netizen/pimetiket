@@ -3,8 +3,9 @@
  * Search Console API OAuth gerektirmez; deploy veya haftalık SEO cron sonrası kullanılır.
  */
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
+import { getSiteUrl } from "@/lib/site-url";
+
+const SITE_URL = getSiteUrl();
 
 export interface SitemapPingResult {
   engine: "google" | "bing";

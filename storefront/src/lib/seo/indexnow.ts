@@ -3,10 +3,11 @@
  * Key dosyası: public/{INDEXNOW_KEY}.txt
  */
 
-const SITE_HOST =
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com")
-    .replace(/^https?:\/\//, "")
-    .replace(/\/$/, "");
+import { getSiteUrl } from "@/lib/site-url";
+
+function siteHost(): string {
+  return getSiteUrl().replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
 
 export interface IndexNowResult {
   configured: boolean;
@@ -22,7 +23,7 @@ export function indexNowKey(): string | undefined {
 }
 
 export function indexNowKeyLocation(key: string): string {
-  return `https://${SITE_HOST}/${key}.txt`;
+  return `https://${siteHost()}/${key}.txt`;
 }
 
 /** Sitemap.xml içinden <loc> URL'lerini çıkar */
@@ -59,7 +60,7 @@ export async function submitIndexNow(
   }
 
   const body = {
-    host: SITE_HOST,
+    host: siteHost(),
     key,
     keyLocation: indexNowKeyLocation(key),
     urlList: urls.slice(0, 10_000),
@@ -95,10 +96,7 @@ export async function submitIndexNow(
 export async function submitIndexNowFromSitemap(
   sitemapUrl?: string
 ): Promise<IndexNowResult> {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    "https://pimetiket.com";
-  const url = sitemapUrl ?? `${base}/sitemap.xml`;
+  const url = sitemapUrl ?? `${getSiteUrl()}/sitemap.xml`;
 
   try {
     const res = await fetch(url, { cache: "no-store" });
