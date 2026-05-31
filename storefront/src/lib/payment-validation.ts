@@ -30,6 +30,7 @@ import type { ProfileConfig } from "./pricing-config-types";
 import { fetchPricebookSnapshot } from "./pricing-pricebook-db";
 import type { EtiketCustomId } from "./etiket-customer-pricing";
 import { isPricebookMode } from "./pricing-pricebook";
+import { PRICEBOOK_MAX_QTY } from "./pricing-pricebook-types";
 import {
   expectedCartLineFromPerDesignQuote,
   perDesignQty,
@@ -295,6 +296,19 @@ async function recalcEtiket(
   config: ProfileConfig,
   formFactor: "rulo" | "tabaka"
 ): Promise<RecalcOutcome> {
+  if (item.qty > PRICEBOOK_MAX_QTY) {
+    return {
+      recalced: true,
+      failure: {
+        itemId: item.id,
+        reason: "qty_above_max",
+        expected: PRICEBOOK_MAX_QTY,
+        actual: item.qty,
+        hint: `Etiket qty ${item.qty} pricebook üst sınırı ${PRICEBOOK_MAX_QTY}`,
+      },
+    };
+  }
+
   const designCount = resolveDesignCount(item);
   const tierQty = perDesignQty(item.qty, designCount);
   if (tierQty * designCount !== item.qty) {

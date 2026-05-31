@@ -64,7 +64,7 @@ const CartItemSchema = z.object({
   config: z.string().min(1),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
-  qty: z.number().int().positive(),
+  qty: z.number().int().positive().max(10000),
   unit: z.number().nonnegative(),
   total: z.number().nonnegative(),
   meta: z.record(z.string(), z.unknown()).nullish(),

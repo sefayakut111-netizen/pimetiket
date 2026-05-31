@@ -140,8 +140,8 @@ export const LOT_PREFIX_ETIKET = "B";
 // ============================================================
 
 export const ETIKET_MIN_QTY = 1000;
-// Sefa 20 May v68: max 50.000 → 25.000 (yüksek talepler manuel teklif).
-export const ETIKET_MAX_QTY = 25000;
+// Sefa 20 May v68: max 50.000 → 25.000; Mig audit P0: pricebook 10K ile hizala.
+export const ETIKET_MAX_QTY = 10000;
 export const ETIKET_GAP_DEFAULT = 6;
 
 /** Rulo etiket müşteri ebat sınırları — genişlik/yükseklik yönü sabit (döndürme yok). */

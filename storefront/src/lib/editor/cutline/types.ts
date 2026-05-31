@@ -16,6 +16,7 @@ export interface ImagePlacementMm {
   y: number;
   w: number;
   h: number;
+  rotationDeg: number;
 }
 
 export interface ComputeCutlineInput {

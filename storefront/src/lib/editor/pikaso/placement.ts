@@ -36,6 +36,7 @@ export function placementFromPikasoImage(shape: {
       y: yPx / EDITOR_PX_PER_MM,
       w: wPx / EDITOR_PX_PER_MM,
       h: hPx / EDITOR_PX_PER_MM,
+      rotationDeg: shape.node.rotation(),
     },
     scale: Math.abs(shape.scaleX()),
   };

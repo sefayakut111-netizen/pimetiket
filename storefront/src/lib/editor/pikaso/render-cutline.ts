@@ -57,6 +57,7 @@ function applyGroupTransform(
     y: labelY + cy + mmToPx(transform.offsetYmm),
   });
   group.scale({ x: transform.scale, y: transform.scale });
+  group.rotation(transform.rotationDeg);
 }
 
 export function renderCutlineOverlays(

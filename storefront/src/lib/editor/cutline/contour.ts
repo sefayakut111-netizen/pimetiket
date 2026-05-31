@@ -1,21 +1,43 @@
 import { hullFromImage, offsetPolygonPx } from "@/lib/editor/alpha-contour";
 import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
 import { computeContourPathsPxMultiViaWorker } from "@/lib/editor/cutline/contour-worker-client";
-import type { PathRing } from "@/lib/editor/cutline/types";
+import type { ImagePlacementMm, PathRing } from "@/lib/editor/cutline/types";
+
+function rotatePoint(
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  deg: number
+): [number, number] {
+  if (deg === 0) return [x, y];
+  const rad = (deg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const dx = x - cx;
+  const dy = y - cy;
+  return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+}
 
 /** Piksel uzayındaki konturları etiket mm uzayına taşı */
 export function mapPixelPathsToLabelMm(
   pathsPx: PathRing[],
-  imagePlacementMm: { x: number; y: number; w: number; h: number },
+  imagePlacementMm: ImagePlacementMm,
   imageNatural: { w: number; h: number }
 ): PathRing[] {
   const sx = imagePlacementMm.w / imageNatural.w;
   const sy = imagePlacementMm.h / imageNatural.h;
+  const rotDeg = imagePlacementMm.rotationDeg ?? 0;
+  const icx = imageNatural.w / 2;
+  const icy = imageNatural.h / 2;
   return pathsPx.map((ring) =>
-    ring.map(([px, py]) => [
-      imagePlacementMm.x + px * sx,
-      imagePlacementMm.y + py * sy,
-    ])
+    ring.map(([px, py]) => {
+      const [rpx, rpy] = rotatePoint(px, py, icx, icy, rotDeg);
+      return [
+        imagePlacementMm.x + rpx * sx,
+        imagePlacementMm.y + rpy * sy,
+      ];
+    })
   );
 }
 

@@ -23,6 +23,7 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
+import { generateOrderId } from "@/lib/customer-order";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import { queryPaymentStatus, isPayTrConfigured } from "@/lib/payment/paytr";
@@ -176,16 +177,32 @@ export async function GET(req: Request) {
           .toISOString()
           .split("T")[0];
 
-        const { data: finalizeResult, error: rpcErr } = await admin.rpc(
-          "fn_finalize_paid_order",
-          {
-            p_merchant_oid: intent.id,
-            p_order_id: "RECONCILER", // sequence override edilir (Mig 065)
-            p_items: snapshot.items as Json,
-            p_payment_meta: paymentMeta as Json,
-            p_estimated_delivery: estimatedDelivery,
+        let candidateOrderId = generateOrderId();
+        let finalizeResult: Array<{ order_id: string }> | null = null;
+        let rpcErr: { message?: string; code?: string } | null = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const { data: d, error: e } = await admin.rpc(
+            "fn_finalize_paid_order",
+            {
+              p_merchant_oid: intent.id,
+              p_order_id: candidateOrderId,
+              p_items: snapshot.items as Json,
+              p_payment_meta: paymentMeta as Json,
+              p_estimated_delivery: estimatedDelivery,
+            }
+          );
+          finalizeResult = d as Array<{ order_id: string }> | null;
+          rpcErr = e as { message?: string; code?: string } | null;
+
+          if (rpcErr && rpcErr.code === "23505" && attempt < 3) {
+            console.warn(
+              `[paytr_reconciler] order_id çakışması (attempt ${attempt}): ${candidateOrderId} → yeni üretiliyor`
+            );
+            candidateOrderId = generateOrderId();
+            continue;
           }
-        );
+          break;
+        }
 
         if (rpcErr) {
           Sentry.captureException(rpcErr, {

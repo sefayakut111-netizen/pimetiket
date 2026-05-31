@@ -128,6 +128,10 @@ function AuthInner() {
   // Sefa 16 May üyelik audit Kritik 2: Google OAuth
   const onGoogleSignIn = async () => {
     if (loading) return;
+    if (mode === "signup" && !acceptKvkk) {
+      toast.error("Devam etmek için KVKK metnini onayla");
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();

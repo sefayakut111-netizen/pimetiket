@@ -32,9 +32,8 @@ export type CustomerEtiketTier = (typeof CUSTOMER_ETIKET_TIERS)[number];
 
 /** Etiket qty sınırları — UI input için */
 export const ETIKET_MIN_QTY = 1000;
-// Sefa 20 May v68: max 50.000 → 25.000 (toplu üretim cap'i daraltıldı,
-// daha yüksek talepler manuel teklif olarak alınır).
-export const ETIKET_MAX_QTY = 25000;
+// Sefa 20 May v68: max 50.000 → 25.000; Mig audit P0: pricebook 10K ile hizala.
+export const ETIKET_MAX_QTY = 10000;
 export const ETIKET_QTY_STEP = 500;
 
 export {
