@@ -359,10 +359,16 @@ export default function EditorShell() {
     }
   };
 
-  const waitForCutlineReady = useCallback(async (maxMs = 15_000): Promise<boolean> => {
+  const waitForCutlineReady = useCallback(async (maxMs = 20_000): Promise<boolean> => {
     const start = Date.now();
     while (Date.now() - start < maxMs) {
-      if (canvasRef.current?.isCutlineReady?.()) return true;
+      const canvas = canvasRef.current;
+      if (
+        canvas?.isCutlineReady?.() &&
+        !canvas.isContourRefining?.()
+      ) {
+        return true;
+      }
       await new Promise((r) => setTimeout(r, 150));
     }
     return false;

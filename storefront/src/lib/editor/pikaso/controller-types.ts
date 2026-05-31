@@ -17,6 +17,8 @@ export interface PikasoEditorController {
   requestExport(): void;
   setLayerVisibility(layer: EditorLayer, on: boolean): void;
   isReady(): boolean;
-  /** Kesim bundle hazır (kontur hesabı bitti veya şablon) */
+  /** Kesim bundle hazır (hızlı önizleme veya şablon) */
   isCutlineReady(): boolean;
+  /** OpenCV kontur iyileştirmesi sürüyor */
+  isContourRefining(): boolean;
 }
