@@ -53,9 +53,9 @@
 
 ---
 
-## 🚦 Production'a alınacaklar (sıra)
-1. **Push** → `a6da8fc` (konumlandırma) + bug paketi + güvenlik cila → Vercel auto-deploy
-2. **Migration 125** → uzak Supabase (`supabase db push` / SQL). Push edilmezse API yine 409 döner ama DB seviyesinde duplicate kilidi olmaz.
+## 🚦 Production durumu (31 May — tamam)
+1. ✅ **Push edildi** → `0d6109e` (bug+güvenlik) + `a6da8fc` (konumlandırma) `origin/main`'de → Vercel auto-deploy tetiklendi
+2. ✅ **Migration 125 uygulandı** → uzak Supabase'de `returns_one_pending_per_order_idx` doğrulandı (`apply-migrations-125.mjs`)
 
 ---
 
