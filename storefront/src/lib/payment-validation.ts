@@ -82,6 +82,11 @@ export interface ValidationResult {
   recalcedItemIds: string[];
 }
 
+export interface CartItemQuote {
+  unit: number;
+  total: number;
+}
+
 // ============================================================
 // Constants
 // ============================================================
@@ -138,25 +143,18 @@ interface RecalcOutcome {
   failure?: ValidationFailDetail;
 }
 
-async function recalcSticker(
+async function computeStickerQuote(
   item: CartItemForValidation,
   config: ProfileConfig
-): Promise<RecalcOutcome> {
+): Promise<CartItemQuote | null> {
   if (!item.material || !item.finish) {
-    return { recalced: false };
+    return null;
   }
 
   const designCount = resolveDesignCount(item);
   const tierQty = perDesignQty(item.qty, designCount);
   if (tierQty * designCount !== item.qty) {
-    return {
-      recalced: true,
-      failure: {
-        itemId: item.id,
-        reason: "sanity_total_inconsistent",
-        hint: `Sticker qty ${item.qty} designCount ${designCount} ile uyumsuz`,
-      },
-    };
+    return null;
   }
 
   const result = quoteStickerFromConfig(config, {
@@ -170,13 +168,35 @@ async function recalcSticker(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     finish: item.finish as any,
   });
-  if (!result || !result.ok) return { recalced: false };
+  if (!result || !result.ok) return null;
 
-  const expected = expectedCartLineFromPerDesignQuote(
+  return expectedCartLineFromPerDesignQuote(
     result.unitPrice,
     item.qty,
     designCount
   );
+}
+
+async function recalcSticker(
+  item: CartItemForValidation,
+  config: ProfileConfig
+): Promise<RecalcOutcome> {
+  const designCount = resolveDesignCount(item);
+  const tierQty = perDesignQty(item.qty, designCount);
+  if (tierQty * designCount !== item.qty) {
+    return {
+      recalced: true,
+      failure: {
+        itemId: item.id,
+        reason: "sanity_total_inconsistent",
+        hint: `Sticker qty ${item.qty} designCount ${designCount} ile uyumsuz`,
+      },
+    };
+  }
+
+  const expected = await computeStickerQuote(item, config);
+  if (!expected) return { recalced: false };
+
   const expectedTotal = expected.total;
   const expectedUnit = expected.unit;
   const totalDiff = Math.abs(item.total - expectedTotal);
@@ -221,25 +241,18 @@ function parseCustomizationsFromMeta(
   return ids.length > 0 ? ids : undefined;
 }
 
-async function recalcEtiket(
+async function computeEtiketQuote(
   item: CartItemForValidation,
   config: ProfileConfig,
   formFactor: "rulo" | "tabaka"
-): Promise<RecalcOutcome> {
+): Promise<CartItemQuote | null> {
   const materialId = item.materialId ?? item.material;
-  if (!materialId) return { recalced: false };
+  if (!materialId) return null;
 
   const designCount = resolveDesignCount(item);
   const tierQty = perDesignQty(item.qty, designCount);
   if (tierQty * designCount !== item.qty) {
-    return {
-      recalced: true,
-      failure: {
-        itemId: item.id,
-        reason: "sanity_total_inconsistent",
-        hint: `Etiket qty ${item.qty} designCount ${designCount} ile uyumsuz`,
-      },
-    };
+    return null;
   }
 
   const metaCustomizations = parseCustomizationsFromMeta(item.meta);
@@ -268,13 +281,36 @@ async function recalcEtiket(
         : undefined,
     }
   );
-  if (!result || !result.ok) return { recalced: false };
+  if (!result || !result.ok) return null;
 
-  const expected = expectedCartLineFromPerDesignQuote(
+  return expectedCartLineFromPerDesignQuote(
     result.unitPrice,
     item.qty,
     designCount
   );
+}
+
+async function recalcEtiket(
+  item: CartItemForValidation,
+  config: ProfileConfig,
+  formFactor: "rulo" | "tabaka"
+): Promise<RecalcOutcome> {
+  const designCount = resolveDesignCount(item);
+  const tierQty = perDesignQty(item.qty, designCount);
+  if (tierQty * designCount !== item.qty) {
+    return {
+      recalced: true,
+      failure: {
+        itemId: item.id,
+        reason: "sanity_total_inconsistent",
+        hint: `Etiket qty ${item.qty} designCount ${designCount} ile uyumsuz`,
+      },
+    };
+  }
+
+  const expected = await computeEtiketQuote(item, config, formFactor);
+  if (!expected) return { recalced: false };
+
   const expectedTotal = expected.total;
   const expectedUnit = expected.unit;
   const totalDiff = Math.abs(item.total - expectedTotal);
@@ -428,4 +464,34 @@ export async function validateCartPricing(
     failures,
     recalcedItemIds,
   };
+}
+
+/** Sepet reprice — checkout ile aynı quote motoru, tolerans yok */
+export async function quoteCartItemPrice(
+  item: CartItemForValidation
+): Promise<CartItemQuote | null> {
+  if (item.product === "sticker") {
+    try {
+      const cfg = await getLivePricingConfig<ProfileConfig>("sticker");
+      return computeStickerQuote(item, cfg);
+    } catch (e) {
+      console.warn("[payment-validation] sticker quote failed", e);
+      return null;
+    }
+  }
+
+  if (item.product === "etiket") {
+    const ff = inferEtiketFormFactor(item);
+    if (!ff) return null;
+    const scope = ff === "rulo" ? "etiket_rulo" : "etiket_tabaka";
+    try {
+      const cfg = await getLivePricingConfig<ProfileConfig>(scope);
+      return computeEtiketQuote(item, cfg, ff);
+    } catch (e) {
+      console.warn(`[payment-validation] etiket quote failed (${scope})`, e);
+      return null;
+    }
+  }
+
+  return null;
 }

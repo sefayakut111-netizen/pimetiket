@@ -24,6 +24,7 @@ import {
   addToCustomerCart,
   summarizeCustomerCart,
   refreshCustomerCart,
+  repriceCustomerCart,
   ensureAuthBindings,
   setCustomerCartShippingSettings,
   isCustomerCartHydrating,
@@ -159,6 +160,7 @@ export default function SepetPage() {
   // skeleton flicker'ı önler. Cart genelde localStorage'dan anında gelir,
   // 300ms öncesi skeleton göstermiyoruz.
   const [showSkeleton, setShowSkeleton] = useState(false);
+  const [repricedIds, setRepricedIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(() => {
     setCart(listCustomerCart());
@@ -206,6 +208,9 @@ export default function SepetPage() {
       refresh();
       setHydrated(true);
       clearTimeout(skeletonTimer);
+      void repriceCustomerCart().then(() => {
+        refresh();
+      });
     });
     const handler = () => refresh();
     const onMergeDropped = (ev: Event) => {
@@ -216,14 +221,41 @@ export default function SepetPage() {
         );
       }
     };
+    const onPricesUpdated = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ count: number; ids?: string[] }>)
+        .detail;
+      const count = detail?.count ?? 0;
+      if (count > 0) {
+        toast.info(
+          `${count} ürünün fiyatı güncel tarifeye göre yenilendi.`
+        );
+        if (detail?.ids?.length) {
+          setRepricedIds(new Set(detail.ids));
+        }
+      }
+    };
+    const onItemsRemoved = (ev: Event) => {
+      const titles =
+        (ev as CustomEvent<{ titles: string[] }>).detail?.titles ?? [];
+      if (titles.length > 0) {
+        toast.warning(
+          `Bazı ürünler artık sunulmadığı için sepetten kaldırıldı: ${titles.join(", ")}`
+        );
+        refresh();
+      }
+    };
     window.addEventListener("pim_customer_cart_updated", handler);
     window.addEventListener("storage", handler);
     window.addEventListener("pim_cart_merge_dropped", onMergeDropped);
+    window.addEventListener("pim_cart_prices_updated", onPricesUpdated);
+    window.addEventListener("pim_cart_items_removed", onItemsRemoved);
     return () => {
       clearTimeout(skeletonTimer);
       window.removeEventListener("pim_customer_cart_updated", handler);
       window.removeEventListener("storage", handler);
       window.removeEventListener("pim_cart_merge_dropped", onMergeDropped);
+      window.removeEventListener("pim_cart_prices_updated", onPricesUpdated);
+      window.removeEventListener("pim_cart_items_removed", onItemsRemoved);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh]);
@@ -354,6 +386,11 @@ export default function SepetPage() {
                     <div className="font-semibold text-base truncate">
                       {item.title}
                     </div>
+                    {repricedIds.has(item.id) && (
+                      <span className="inline-flex mt-1 px-2 py-0.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10px] font-semibold">
+                        Fiyat güncellendi
+                      </span>
+                    )}
                     {/* Sefa 20 May v68 UX paket B Madde #4: Config artık chip
                         listesi — taranabilir; "Özelleştirme yok" gibi negatif
                         gürültü filtrelendi (parseConfigChips). */}

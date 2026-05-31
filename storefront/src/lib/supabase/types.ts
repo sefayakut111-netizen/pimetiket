@@ -524,6 +524,7 @@ export type Database = {
           user_id: string
           width: number
           winding: number | null
+          priced_at: string
         }
         Insert: {
           added_at?: string
@@ -556,6 +557,7 @@ export type Database = {
           user_id: string
           width: number
           winding?: number | null
+          priced_at?: string
         }
         Update: {
           added_at?: string
@@ -588,6 +590,7 @@ export type Database = {
           user_id?: string
           width?: number
           winding?: number | null
+          priced_at?: string
         }
         Relationships: [
           {

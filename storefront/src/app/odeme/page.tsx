@@ -43,6 +43,7 @@ import {
   summarizeCustomerCart,
   clearCustomerCart,
   refreshCustomerCart,
+  repriceCustomerCart,
   ensureAuthBindings,
   setCustomerCartShippingSettings,
   type CustomerCartItem,
@@ -406,13 +407,14 @@ export default function OdemePage() {
 
     // Cart
     void refreshCustomerCart().then(() => {
-      const items = listCustomerCart();
-      setCartItems(items);
-      setHydrated(true);
-      if (items.length === 0) {
-        router.replace("/sepet");
-      } else {
-        // PostHog: begin_checkout event
+      void repriceCustomerCart().then((repriceResult) => {
+        const items = repriceResult?.items ?? listCustomerCart();
+        setCartItems(items);
+        setHydrated(true);
+        if (items.length === 0) {
+          router.replace("/sepet");
+          return;
+        }
         void import("@/lib/analytics/posthog-events")
           .then(({ track }) => {
             const cartTotal = items.reduce((s, i) => s + i.total, 0);
@@ -441,7 +443,7 @@ export default function OdemePage() {
           .catch(() => {
             /* silent */
           });
-      }
+      });
     });
 
     void fetch("/api/public/settings", { cache: "no-store" })
@@ -719,6 +721,31 @@ export default function OdemePage() {
 
     setLoading(true);
 
+    const repriceResult = await repriceCustomerCart();
+    const paymentItems = repriceResult?.items ?? listCustomerCart();
+    if (paymentItems.length === 0) {
+      toast.error("Sepetiniz boş — ödeme yapılamaz.");
+      setLoading(false);
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
+      }
+      router.replace("/sepet");
+      return;
+    }
+    setCartItems(paymentItems);
+    const paymentSummary = summarizeCustomerCart();
+    const paymentSubtotal = paymentSummary.subtotal;
+    const paymentShipping = paymentSummary.shipping;
+    const paymentCouponDiscount =
+      couponResult?.ok && couponResult.kind !== "free_ship"
+        ? couponResult.discount
+        : 0;
+    const paymentCouponFreeShip =
+      couponResult?.ok && couponResult.kind === "free_ship";
+    const paymentEffectiveShipping = paymentCouponFreeShip ? 0 : paymentShipping;
+    const paymentTotal =
+      paymentSubtotal - paymentCouponDiscount + paymentEffectiveShipping;
+
     if (
       typeof sessionStorage !== "undefined" &&
       sessionStorage.getItem(CHECKOUT_INIT_LOCK_KEY)
@@ -788,12 +815,12 @@ export default function OdemePage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          items: cartItems,
+          items: paymentItems,
           address: addr,
           invoice,
-          subtotal,
-          shipping: effectiveShipping,
-          total: effectiveTotal,
+          subtotal: paymentSubtotal,
+          shipping: paymentEffectiveShipping,
+          total: paymentTotal,
           couponCode: couponResult?.ok ? couponCode.trim() : undefined,
           // FSEK m.66 telif ispatı — server-side audit log (Sefa 12 May)
           acceptCopyright: acceptCopyright as true,
@@ -843,14 +870,14 @@ export default function OdemePage() {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
-                items: cartItems,
+                items: paymentItems,
                 address: addr,
                 invoice,
-                subtotal,
-                shipping: effectiveShipping,
-                total: effectiveTotal,
+                subtotal: paymentSubtotal,
+                shipping: paymentEffectiveShipping,
+                total: paymentTotal,
                 estimatedDelivery: addDaysIso(
-                  cartItems.some((i) => i.product === "etiket") ? 10 : 5
+                  paymentItems.some((i) => i.product === "etiket") ? 10 : 5
                 ),
               }),
             });

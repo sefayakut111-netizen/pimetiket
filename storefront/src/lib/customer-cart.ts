@@ -107,6 +107,8 @@ export interface CustomerCartItem {
 
   /** Eklendi tarih (timestamp ms) */
   addedAt: number;
+  /** Son fiyatlandırma anı (ms) — yoksa addedAt */
+  pricedAt?: number;
 }
 
 export interface CustomerCartSummary {
@@ -243,6 +245,9 @@ function rowToItem(r: CartRow): CustomerCartItem {
         ? (r.meta as Record<string, unknown>)
         : undefined,
     addedAt: new Date(r.added_at).getTime(),
+    pricedAt: r.priced_at
+      ? new Date(r.priced_at).getTime()
+      : new Date(r.added_at).getTime(),
   };
 }
 
@@ -286,6 +291,9 @@ function itemToInsert(
     core_size: it.coreSize ?? null,
     roll_label_count: it.rollLabelCount ?? null,
     meta: (it.meta ?? null) as Json | null,
+    priced_at: it.pricedAt
+      ? new Date(it.pricedAt).toISOString()
+      : undefined,
   };
 }
 
@@ -477,10 +485,12 @@ export async function addToCustomerCart(
     if (!inserted) return { ok: false, reason: "Kaydedilemedi, tekrar dene." };
     cache = [...cache, inserted];
   } else {
+    const now = Date.now();
     const fresh: CustomerCartItem = {
       ...item,
       id: generateId(),
-      addedAt: Date.now(),
+      addedAt: now,
+      pricedAt: now,
     };
     cache = [...cache, fresh];
     writeLocal(cache);
@@ -576,6 +586,66 @@ export function customerCartCount(): number {
 }
 
 export const CUSTOMER_CART_LIMIT = MAX_ITEMS;
+
+export interface CartRepriceResult {
+  items: CustomerCartItem[];
+  changed: Array<{ id: string; oldTotal: number; newTotal: number }>;
+  removed: Array<{ id: string; title: string }>;
+}
+
+/** Reprice yanıtını cache + guest localStorage'a uygula */
+export function applyRepricedCartItems(items: CustomerCartItem[]): void {
+  cache = items;
+  cacheLoaded = true;
+  if (!isLoggedInSync()) {
+    writeLocal(items);
+  }
+  notifyChange();
+}
+
+/**
+ * Bayat sepet satırlarını sunucuda yeniden fiyatla.
+ * Hata olursa null — snapshot fiyatla devam (checkout doğrular).
+ */
+export async function repriceCustomerCart(): Promise<CartRepriceResult | null> {
+  const current = listCustomerCart();
+  if (current.length === 0) {
+    return { items: [], changed: [], removed: [] };
+  }
+
+  try {
+    const res = await fetch("/api/cart/reprice", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: current }),
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as CartRepriceResult;
+    if (!Array.isArray(data.items)) return null;
+
+    applyRepricedCartItems(data.items);
+
+    if (data.changed.length > 0 && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pim_cart_prices_updated", {
+          detail: { count: data.changed.length, ids: data.changed.map((c) => c.id) },
+        })
+      );
+    }
+    if (data.removed.length > 0 && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pim_cart_items_removed", {
+          detail: { titles: data.removed.map((r) => r.title) },
+        })
+      );
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
 
 // ============================================================
 // Auth event binding — mount edilen ilk page setup yapar
