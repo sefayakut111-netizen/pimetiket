@@ -12,6 +12,7 @@ interface EditorPreviewToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+  onFitContain?: () => void;
   onToggleLayer: (layer: EditorLayer, on: boolean) => void;
 }
 
@@ -30,6 +31,7 @@ export function EditorPreviewToolbar({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  onFitContain,
   onToggleLayer,
 }: EditorPreviewToolbarProps) {
   return (
@@ -72,6 +74,16 @@ export function EditorPreviewToolbar({
         >
           Sıfırla
         </button>
+        {onFitContain ? (
+          <button
+            type="button"
+            onClick={onFitContain}
+            className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+            aria-label="Görseli bıçağa sığdır"
+          >
+            Sığdır
+          </button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

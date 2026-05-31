@@ -1807,6 +1807,7 @@ let hasCustomWhitePlan = false;    // PDF/AI/PSD içinde white spot color bulund
 // === SABIT BIÇAK + HAREKETLI GÖRSEL ===
 let sourceImage = null;            // trim edilmiş görsel (offscreen canvas)
 let imageTransform = { x: 0, y: 0, scale: 1 }; // px, contentOffset'a göre
+let pimUserMovedImage = false;     // standalone: kullanıcı görseli elle oynattı mı
 let cutlineFrame = null;         // { cx, cy, w, h, mode, refW, refH }
 let isCutlineLocked = true;        // drag sırasında path yeniden üretilmez
 let viewZoom = 1;                  // yalnızca önizleme (0.25–3.0)
@@ -2051,13 +2052,23 @@ window.addEventListener('message', (e) => {
         if (
           PIM_PARAMS.standalone &&
           currentMode === 'contour' &&
-          getPlacementFrame()
+          getPlacementFrame() &&
+          !pimUserMovedImage
         ) {
           applyPlacementPreset('contain');
         }
         generateCutline();
         render();
         pimScheduleHeightReport();
+      }
+    } else if (msg.type === 'pim-fit-contain') {
+      if (PIM_PARAMS.standalone && currentMat) {
+        pimUserMovedImage = false;
+        if (getPlacementFrame() && currentMode === 'contour') {
+          applyPlacementPreset('contain');
+        } else {
+          render();
+        }
       }
     } else if (msg.type === 'pim-set-offset') {
       const slider = document.getElementById('offsetSlider');
@@ -2088,6 +2099,9 @@ window.addEventListener('message', (e) => {
       document.querySelectorAll('.mode-btn').forEach((b) => {
         b.classList.toggle('active', b.dataset.mode === mode);
       });
+      if (PIM_PARAMS.standalone) {
+        pimUserMovedImage = false;
+      }
       if (currentMat) {
         generateCutline();
         generateWhitePlan();
@@ -2894,6 +2908,7 @@ function processImage(img, file) {
   sourceImage.width = w;
   sourceImage.height = h;
   sourceImage.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
+  pimUserMovedImage = false;
   resetImageTransform();
 
   if (currentMat) currentMat.delete();
@@ -4307,7 +4322,10 @@ document.getElementById('exportCompositeApi')?.addEventListener('click', () => p
   }
 
   canvas.addEventListener('pointerdown', (e) => {
-    if (!PIM_PARAMS.embed || !isCutlineLocked || !sourceImage || !imageMetadata) return;
+    if (!sourceImage || !imageMetadata) return;
+    const canDrag =
+      (PIM_PARAMS.embed && isCutlineLocked) || PIM_PARAMS.standalone;
+    if (!canDrag) return;
     isDraggingArt = true;
     canvas.classList.add('pim-dragging');
     canvas.setPointerCapture(e.pointerId);
@@ -4321,6 +4339,9 @@ document.getElementById('exportCompositeApi')?.addEventListener('click', () => p
     const pt = canvasPoint(e);
     imageTransform.x = dragStart.tx + (pt.x - dragStart.x);
     imageTransform.y = dragStart.ty + (pt.y - dragStart.y);
+    if (PIM_PARAMS.standalone) {
+      pimUserMovedImage = true;
+    }
     render();
   });
 
@@ -4328,6 +4349,11 @@ document.getElementById('exportCompositeApi')?.addEventListener('click', () => p
     if (!isDraggingArt) return;
     isDraggingArt = false;
     canvas.classList.remove('pim-dragging');
+    if (PIM_PARAMS.standalone && pimUserMovedImage) {
+      pimScheduleAutoSave();
+      pimScheduleHeightReport();
+      return;
+    }
     pimScheduleAutoSave();
     pimScheduleHeightReport();
   }

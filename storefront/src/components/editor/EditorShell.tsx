@@ -53,6 +53,8 @@ export default function EditorShell() {
   const canvasReadyRef = useRef(false);
   const pendingShapeRef = useRef<DieCutTemplate | "contour" | null>(null);
   const exportWaitRef = useRef<((id: string | null) => void) | null>(null);
+  const skipDimResetRef = useRef(false);
+  const pendingSavePromiseRef = useRef<Promise<string | null> | null>(null);
 
   const [step, setStep] = useState(1);
   const [design, setDesign] = useState<DesignTempState | null>(null);
@@ -75,6 +77,11 @@ export default function EditorShell() {
   const dimsAppliedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (skipDimResetRef.current) {
+      skipDimResetRef.current = false;
+      dimsAppliedRef.current = design?.tempId ?? null;
+      return;
+    }
     dimsAppliedRef.current = null;
   }, [design?.tempId]);
   useEffect(() => {
@@ -359,6 +366,7 @@ export default function EditorShell() {
         toast.error(data.error ?? "Arka plan kaldırılamadı");
         return;
       }
+      skipDimResetRef.current = true;
       setDesign({
         ...design,
         tempId: data.newTempDesignId,
@@ -375,24 +383,37 @@ export default function EditorShell() {
     }
   };
 
-  const waitForExportSave = useCallback((): Promise<string | null> => {
-    return new Promise((resolve) => {
-      exportWaitRef.current = resolve;
+  const ensureDraftSaved = useCallback((): Promise<string | null> => {
+    if (draftId) return Promise.resolve(draftId);
+    if (pendingSavePromiseRef.current) {
+      return pendingSavePromiseRef.current;
+    }
+
+    const promise = new Promise<string | null>((resolve) => {
+      exportWaitRef.current = (id) => {
+        exportWaitRef.current = null;
+        resolve(id);
+      };
       canvasRef.current?.postMessage({ type: "pim-request-export" });
       window.setTimeout(() => {
         if (exportWaitRef.current) {
           exportWaitRef.current(null);
-          exportWaitRef.current = null;
         }
       }, 12_000);
+    }).finally(() => {
+      pendingSavePromiseRef.current = null;
     });
-  }, []);
 
-  /** Adım 4'e geçince bıçağı arka planda kaydet */
+    pendingSavePromiseRef.current = promise;
+    return promise;
+  }, [draftId]);
+
+  /** Adım 4'e geçince bıçağı arka planda kaydet (single-flight) */
   useEffect(() => {
-    if (step !== 4 || draftId || !design || !canvasReadyRef.current) return;
-    canvasRef.current?.postMessage({ type: "pim-request-export" });
-  }, [step, draftId, design]);
+    if (step !== 4 || !design || !canvasReadyRef.current) return;
+    if (draftId) return;
+    void ensureDraftSaved();
+  }, [step, draftId, design, ensureDraftSaved]);
 
   const addToProduct = async (product: "sticker" | "etiket") => {
     if (!design) {
@@ -403,7 +424,7 @@ export default function EditorShell() {
     let resolvedDraftId = draftId;
     if (!resolvedDraftId) {
       toast.info("Bıçak kaydediliyor…");
-      resolvedDraftId = await waitForExportSave();
+      resolvedDraftId = await ensureDraftSaved();
     }
     if (!resolvedDraftId) {
       toast.error("Bıçak kaydı alınamadı — tekrar dene");
@@ -427,6 +448,16 @@ export default function EditorShell() {
         : "/sticker/yapilandir?from=editor"
     );
   };
+
+  const handleFitContain = useCallback(() => {
+    canvasRef.current?.postMessage({ type: "pim-fit-contain" });
+  }, []);
+
+  const handleResaveDraft = useCallback(() => {
+    pendingSavePromiseRef.current = null;
+    exportWaitRef.current = null;
+    canvasRef.current?.postMessage({ type: "pim-request-export" });
+  }, []);
 
   const goNext = () => {
     if (step === 1 && !design) {
@@ -748,9 +779,7 @@ export default function EditorShell() {
                   variant="secondary"
                   size="sm"
                   className="mt-3 w-full"
-                  onClick={() =>
-                    canvasRef.current?.postMessage({ type: "pim-request-export" })
-                  }
+                  onClick={handleResaveDraft}
                 >
                   Bıçağı yeniden kaydet
                 </Button>
@@ -799,6 +828,7 @@ export default function EditorShell() {
                     )
                   }
                   onZoomReset={() => setViewZoom(1)}
+                  onFitContain={handleFitContain}
                   onToggleLayer={handleToggleLayer}
                 />
                 <EditorCanvas
