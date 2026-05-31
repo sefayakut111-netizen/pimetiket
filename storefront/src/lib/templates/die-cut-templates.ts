@@ -37,7 +37,7 @@ const CUT_SETS: Record<
 > = {
   kisscut: {
     dir: "KissCut-CutContour-Magenta",
-    label: "KissCut (Kontur)",
+    label: "kisscut (yarım kesim)",
     spot: "CutContour",
     color: "#E5007E",
     desc: "Yarım kesim — sadece etiket katmanı kesilir, arka kağıt (liner) bütün kalır. Sticker/etiket soyularak çıkar.",
