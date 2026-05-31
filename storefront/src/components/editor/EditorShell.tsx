@@ -712,15 +712,17 @@ export default function EditorShell() {
                   </Link>
                 </>
               ) : (
-                <p className="mt-3 text-[13px] text-gri-700">
-                  Kontur modu — görselin şeklinden otomatik bıçak üretilir.
-                  Önizleme ortada güncellenir.
-                </p>
-                {contourRefining ? (
-                  <p className="mt-2 text-[12px] font-medium text-pim-mercan">
-                    Kontur iyileştiriliyor…
+                <>
+                  <p className="mt-3 text-[13px] text-gri-700">
+                    Kontur modu — görselin şeklinden otomatik bıçak üretilir.
+                    Önizleme ortada güncellenir.
                   </p>
-                ) : null}
+                  {contourRefining ? (
+                    <p className="mt-2 text-[12px] font-medium text-pim-mercan">
+                      Kontur iyileştiriliyor…
+                    </p>
+                  ) : null}
+                </>
               )}
             </>
           )}
