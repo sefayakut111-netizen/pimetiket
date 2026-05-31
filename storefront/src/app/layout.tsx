@@ -54,17 +54,23 @@ export async function generateMetadata(): Promise<Metadata> {
       ]
     : undefined;
 
-  // Sefa 17 May v33: Description + OG güncellendi (hero copy ile uyumlu —
-  // "ekosistemi" + AI sohbet odaklı). Keywords genişletildi, "İstanbul
-  // Ankara baskı" çıkarıldı (footer'da yer adı yok artık).
+  // Konumlandırma (May 2026): somut kategori — online etiket & sticker baskı,
+  // etikette uzman; "ekosistem" kaldırıldı.
+  const siteDescription =
+    "Türkiye'de online etiket ve sticker baskı. Kuşe, şeffaf, kraft etikette uzman; küçük adetten, AI destekli. Tasarımını yükle ya da şablon seç, baskıya gönder.";
+
+  // Sefa kararı (1 Haz): ana sayfa başlığı ŞİİRSEL kalır (marka). Kategori-net
+  // ifade ("Online Etiket & Sticker Baskı") diğer sayfaların kendi title'larında
+  // ve description'da kullanılır.
+  const siteTitleDefault = "Pim Etiket — Markanın Etiketi, Fikrinin Sticker'ı";
+
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: "Pim Etiket — Markanın Etiketi, Fikrinin Sticker'ı",
+      default: siteTitleDefault,
       template: "%s · Pim Etiket",
     },
-    description:
-      "AI destekli dijital baskı ekosistemi. Etiket veya sticker çözümleriniz için Pim ile sohbet edin — fiyat, malzeme, teslim sorularına anında cevap.",
+    description: siteDescription,
     applicationName: "Pim Etiket",
     authors: [{ name: "Pim Etiket" }],
     generator: "Next.js",
@@ -82,34 +88,32 @@ export async function generateMetadata(): Promise<Metadata> {
       shortcut: ["/pim/pim-etiket-mark-dark.svg"],
     },
     keywords: [
-      "AI etiket baskı",
-      "yapay zeka destekli dijital baskı",
-      "sticker baskı",
-      "dijital baskı",
+      "online etiket baskı",
+      "etiket baskı",
+      "kuşe etiket",
+      "şeffaf etiket",
+      "kraft etiket",
       "rulo etiket baskı",
       "tabaka etiket",
+      "küçük adet etiket baskı",
+      "sticker baskı",
       "die cut sticker",
       "hologram sticker",
-      "şeffaf etiket",
-      "soft touch etiket",
-      "küçük adet etiket baskı",
-      "online etiket tasarım",
+      "AI destekli etiket baskı",
     ],
     openGraph: {
       type: "website",
       locale: "tr_TR",
       url: SITE_URL,
       siteName: "Pim Etiket",
-      title: "Pim Etiket — Markanın Etiketi, Fikrinin Sticker'ı",
-      description:
-        "AI destekli dijital baskı ekosistemi. Pim ile sohbet et, fiyat ve teslim sorularına anında cevap al.",
+      title: siteTitleDefault,
+      description: siteDescription,
       images: ogImages,
     },
     twitter: {
       card: "summary_large_image",
-      title: "Pim Etiket",
-      description:
-        "AI destekli dijital baskı ekosistemi. Etiket ve sticker çözümleri için Pim ile sohbet et.",
+      title: siteTitleDefault,
+      description: siteDescription,
       images: og ? [og.publicUrl] : undefined,
     },
     robots: {
@@ -156,7 +160,7 @@ const ORGANIZATION_LD = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
-    "AI destekli dijital baskı ekosistemi. Etiket ve sticker çözümleri — Türkiye geneli teslimat.",
+    "Türkiye'de online etiket ve sticker baskı hizmeti — etiket baskıda uzman, küçük adet dahil, AI destekli. Türkiye geneli teslimat.",
   email: "info@pimetiket.com",
   vatID: "7580607612",
   address: {

@@ -95,7 +95,7 @@ export default async function OpengraphImage() {
               fontWeight: 500,
             }}
           >
-            AI destekli dijital baskı — Pim ile sohbet et, fiyat ve teslim sorularına anında cevap al.
+            Türkiye'de online etiket ve sticker baskı — etikette uzman, küçük adetten, AI destekli.
           </div>
         </div>
 

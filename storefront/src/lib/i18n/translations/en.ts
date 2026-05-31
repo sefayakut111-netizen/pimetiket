@@ -43,11 +43,11 @@ export const en: TranslationDict = {
     searchEmpty: "No results found",
   },
   home: {
-    eyebrow: "Smart digital printing ecosystem",
+    eyebrow: "Online label & sticker printing — label specialists",
     h1Brand: "Your Brand's Label,",
     h1Idea: "Your Idea's Sticker.",
     heroDescription:
-      "For label or sticker solutions tailored to your needs, chat with our AI-powered assistant Pim for support.",
+      "Online label and sticker printing in Türkiye; low volumes, AI-assisted. Upload your design or pick a template — Pim answers pricing, materials and delivery in chat.",
     ctaEtiket: "Print labels",
     ctaSticker: "Print stickers",
     socialProof: "Trusted by brands across Türkiye",

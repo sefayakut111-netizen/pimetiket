@@ -1,7 +1,5 @@
 # Pim Etiket
-> Türkiye'de online etiket ve sticker baskı hizmeti. Kuşe, şeffaf/transparan, kraft, metalik,
-> holografik, vinil malzemelerde rulo ve tabaka etiket; die-cut, kiss-cut, bumper sticker baskısı.
-> Online yapılandır, tasarım yükle/şablon seç, baskıya gönder.
+> Türkiye'de online etiket ve sticker baskı hizmeti — etiket baskıda uzman. Kuşe, şeffaf/transparan, kraft, metalik, holografik, vinil malzemelerde rulo ve tabaka etiket; die-cut, kiss-cut, bumper sticker. Küçük adetten, AI destekli: online yapılandır, tasarım yükle ya da şablon seç, baskıya gönder.
 
 ## Ürünler
 - [Etiket baskı](https://pimetiket.com/etiket): rulo + tabaka; kuşe, şeffaf, kraft, metalik...

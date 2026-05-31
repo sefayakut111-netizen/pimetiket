@@ -43,11 +43,11 @@ export const tr: TranslationDict = {
     searchEmpty: "Sonuç bulunamadı",
   },
   home: {
-    eyebrow: "Akıllı dijital baskı ekosistemi",
+    eyebrow: "Online etiket ve sticker baskı — etikette uzman",
     h1Brand: "Markanın Etiketi,",
     h1Idea: "Fikrinin Sticker'ı.",
     heroDescription:
-      "İhtiyacınıza özel etiket veya sticker çözümleri için yapay zeka tabanlı Pim ile sohbet edip destek alabilirsiniz.",
+      "Türkiye'de online etiket ve sticker baskı; küçük adetten, AI destekli. Tasarımını yükle ya da şablon seç — fiyat, malzeme ve teslim için Pim sohbetten yanıtlar.",
     ctaEtiket: "Etiket bastır",
     ctaSticker: "Sticker bastır",
     socialProof: "Türkiye'den markaların tercihi",
