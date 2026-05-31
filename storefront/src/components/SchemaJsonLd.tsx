@@ -207,7 +207,7 @@ export function localBusinessSchema(
     url: SITE_URL,
     priceRange: "₺",
     description:
-      "AI destekli dijital baskı atölyesi — etiket ve sticker. İstanbul ve Ankara fason ortaklarıyla Türkiye geneli teslimat.",
+      "Türkiye'de online etiket ve sticker baskı — etikette uzman, küçük adetten, AI destekli. Türkiye geneli teslimat.",
     address: {
       "@type": "PostalAddress",
       addressLocality: "Ankara",

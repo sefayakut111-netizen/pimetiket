@@ -16,10 +16,10 @@ export const metadata: Metadata = {
   },
 };
 
-/* SEFA: telefon/adres/saat doldur — placeholder değerleri gerçek bilgiyle değiştir */
 const ILETISIM_LOCAL_BUSINESS = localBusinessSchema({
-  phone: "+90 XXX XXX XX XX",
-  address: "Üretim adresi — Sefa dolduracak",
+  phone: "+90 531 934 01 23",
+  address:
+    "Workinton Söğütözü, Beştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, Çankaya",
   email: "info@pimetiket.com",
   openingHours: "Mo-Fr 09:00-18:00",
 });

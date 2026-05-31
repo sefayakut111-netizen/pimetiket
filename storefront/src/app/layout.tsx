@@ -173,8 +173,13 @@ const ORGANIZATION_LD = {
     addressCountry: "TR",
   },
   sameAs: SOCIAL_LINKS,
-  // Telefon BEKLEYEN — Sefa numarayı verince:
-  // contactPoint: { "@type": "ContactPoint", telephone: "+90-XXX-...", contactType: "customer support" }
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+90 531 934 01 23",
+    contactType: "customer support",
+    areaServed: "TR",
+    availableLanguage: ["tr"],
+  },
 };
 
 const WEBSITE_LD = {
