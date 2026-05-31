@@ -511,8 +511,8 @@ const ETIKET_STEP_NAMES: Record<number, string> = {
   1: "material",
   2: "coating",
   3: "customization",
-  4: "shape",
-  5: "winding",
+  4: "winding_direction",
+  5: "winding_detail",
   6: "size",
   8: "quantity",
   7: "design",
@@ -920,7 +920,8 @@ function EtiketPage() {
     if (searchParams.get("material") || searchParams.get("shape") === "clear") {
       set.add(1);
     }
-    if (searchParams.get("shape")) set.add(6);
+    // shape URL boyut state'ini pre-fill eder (readInitialShape) ama
+    // unlockedSteps'e eklenmez — aksi halde Adet (8) erken açılıyordu.
     return set;
   }, [searchParams]);
   // Sefa 20 May v68 (Aşama B+): Form factor picker gizliyse müşteri URL'den
@@ -1291,7 +1292,6 @@ function EtiketPage() {
     const OPTIONAL_STEPS = new Set([7]);
     const missingStepId = findFirstIncompleteStep(stepIds, touchedSteps, {
       optionalStepIds: OPTIONAL_STEPS,
-      unlockedSteps,
     });
     if (missingStepId != null) {
       const idx = stepIds.indexOf(missingStepId);
@@ -2236,7 +2236,7 @@ function EtiketPage() {
                     </span>
                     <input
                       type="number"
-                      value={stepComplete(6) ? width : ""}
+                      value={touchedSteps.has(6) ? width : ""}
                       placeholder={shape === "circle" ? "örn. 50" : "örn. 60"}
                       autoComplete="off"
                       onChange={(e) => {
@@ -2275,7 +2275,7 @@ function EtiketPage() {
                     {/* Sefa 18 May v64: touched değilse value boş gözüksün.
                         Sefa 21 May v68: clamp on blur (silme bug fix). */}
                     <ClampedNumberInput
-                      value={stepComplete(6) ? width : undefined}
+                      value={touchedSteps.has(6) ? width : undefined}
                       placeholder="örn. 60"
                       autoComplete="off"
                       onChange={(v) => {
@@ -2327,7 +2327,7 @@ function EtiketPage() {
                       {shape === "oval" ? "Kısa eksen (mm)" : "Yükseklik (mm)"}
                     </span>
                     <ClampedNumberInput
-                      value={stepComplete(6) ? height : undefined}
+                      value={touchedSteps.has(6) ? height : undefined}
                       placeholder="örn. 80"
                       autoComplete="off"
                       onChange={(v) => {
@@ -2392,7 +2392,7 @@ function EtiketPage() {
                   )
                   .map((preset) => {
                   const active =
-                    stepComplete(6) &&
+                    touchedSteps.has(6) &&
                     width === preset.w &&
                     height === preset.h;
                   return (
@@ -2436,6 +2436,14 @@ function EtiketPage() {
               locked={isStepLocked(8)}
               lockMessage={getLockMessage(8)}
             >
+              {isStepLocked(8) ? (
+                <p className="text-[14px] text-gri-600 leading-relaxed">
+                  {locale === "en"
+                    ? `From ${minQty.toLocaleString("en-US")} pcs — unlocks after you set size.`
+                    : `${minQty.toLocaleString("tr-TR")} adetten başlayabilirsin — önce boyutu seç.`}
+                </p>
+              ) : (
+              <>
               {/* Sefa 18 May v58: Slider + inline +/− step butonları.
                   Manuel input kutusu kaldırıldı (slider yeterli, kullanıcı
                   istediği değeri sağdaki ok'larla fine tune ediyor). */}
@@ -2550,6 +2558,8 @@ function EtiketPage() {
                   );
                 })}
               </div>
+              </>
+              )}
             </FormSection>
 
             {/* Step 4 — Sarım yönü (sadece RULO modunda görünür).
@@ -2899,7 +2909,6 @@ function EtiketPage() {
                     touchedSteps,
                     {
                       optionalStepIds: new Set([7]),
-                      unlockedSteps,
                     }
                   );
                   if (firstPending == null) return undefined;

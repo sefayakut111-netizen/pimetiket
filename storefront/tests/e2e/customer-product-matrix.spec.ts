@@ -51,7 +51,8 @@ function attachErrorTracking(page: Page, errors: string[]) {
     if (
       url.includes("posthog.com") ||
       url.includes("sentry.io") ||
-      url.includes("google-analytics")
+      url.includes("google-analytics") ||
+      url.includes("_rsc=")
     ) {
       return;
     }

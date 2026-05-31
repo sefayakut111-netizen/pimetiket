@@ -25,7 +25,8 @@
  * Kural:
  *  - stepIds[0] her zaman açık (ilk adım, prerequisite yoksa)
  *  - stepIds[0] için `prerequisiteForFirst` verilirse: false ise locked
- *  - stepIds[N] (N>0) için: stepIds[N-1] touched değilse locked
+ *  - stepIds[N] (N>0) için: önceki zorunlu adım touched değilse locked
+ *  - unlockedSteps yalnızca görsel preselect içindir; sonraki adımı açmaz
  *
  * NOT: Bu hook stateless — sadece hesaplayıcı. State (touchedSteps)
  * dışarıda yönetilir.
@@ -42,9 +43,8 @@ export interface SequentialStepsConfig {
    *  Stepper UI'da "TAMAM" göstergesi için kullanılır. */
   touchedSteps: Set<number>;
   /** Sefa 21 May v68 (konfigüratör denetim #2/#10): URL pre-fill ile
-   *  kilidi açılan ama henüz kullanıcının seçim yapmadığı adımlar. Lock
-   *  hesabında touched + unlocked birleştirilir; "TAMAM" göstergesi
-   *  sadece touched'a bakar. Default boş Set. */
+   *  kart/preselect görseli (örn. malzeme ring). Kilit zincirinde
+   *  kullanılmaz — sonraki adım yalnızca touchedSteps ile açılır. */
   unlockedSteps?: Set<number>;
   /** İlk adım (stepIds[0]) için opsiyonel ön koşul.
    *  Örn. /etiket'te step-0 etiket türü → formFactorTouched gereklidir
@@ -61,7 +61,7 @@ export interface SequentialStepsResult {
   lockMessage: (domStepId: number) => string;
 }
 
-/** Adım tamamlandı mı? touched = kullanıcı seçimi; unlocked = URL pre-fill. */
+/** Görsel preselect / stepper: touched veya URL pre-fill. */
 export function isStepComplete(
   stepId: number,
   touchedSteps: Set<number>,
@@ -70,20 +70,25 @@ export function isStepComplete(
   return touchedSteps.has(stepId) || (unlockedSteps?.has(stepId) ?? false);
 }
 
+/** Kilit zinciri + sepet doğrulama: yalnızca kullanıcı seçimi. */
+export function isStepTouched(
+  stepId: number,
+  touchedSteps: Set<number>
+): boolean {
+  return touchedSteps.has(stepId);
+}
+
 /** Zorunlu adımlardan ilk eksik olanı bul (sepet / PriceCard için). */
 export function findFirstIncompleteStep(
   stepIds: readonly number[],
   touchedSteps: Set<number>,
   options?: {
-    unlockedSteps?: Set<number>;
     optionalStepIds?: ReadonlySet<number>;
   }
 ): number | undefined {
   const optional = options?.optionalStepIds ?? new Set<number>();
   return stepIds.find(
-    (id) =>
-      !optional.has(id) &&
-      !isStepComplete(id, touchedSteps, options?.unlockedSteps)
+    (id) => !optional.has(id) && !isStepTouched(id, touchedSteps)
   );
 }
 
@@ -91,14 +96,11 @@ export function useSequentialSteps({
   stepIds,
   stepLabels,
   touchedSteps,
-  unlockedSteps,
+  unlockedSteps: _unlockedSteps,
   optionalStepIds,
   prerequisiteForFirst,
   locale,
 }: SequentialStepsConfig): SequentialStepsResult {
-  const isDone = (stepId: number): boolean =>
-    isStepComplete(stepId, touchedSteps, unlockedSteps);
-
   const resolvePrevStepId = (idx: number): number | null => {
     let prevIdx = idx - 1;
     while (prevIdx >= 0) {
@@ -123,8 +125,7 @@ export function useSequentialSteps({
       if (prerequisiteForFirst === undefined) return false;
       return !prerequisiteForFirst;
     }
-    // Sonraki adımlar — zorunlu önceki adım tamamlanmış olmalı (touched
-    // veya URL pre-fill unlocked; opsiyonel adımlar atlanır).
+    // Sonraki adımlar — önceki zorunlu adım touched olmalı (opsiyonel atlanır).
     const prev = resolvePrevStepId(idx);
     if (prev == null) {
       if (prerequisiteForFirst === false) return true;
@@ -133,7 +134,7 @@ export function useSequentialSteps({
     if (prev === stepIds[0] && prerequisiteForFirst === false) {
       return true; // ilk step prereq tamamlanmamış
     }
-    return !isDone(prev);
+    return !isStepTouched(prev, touchedSteps);
   };
 
   const lockMessage = (domStepId: number): string => {

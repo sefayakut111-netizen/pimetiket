@@ -5,6 +5,8 @@ test("rulo sarım adımları adet altında — DOM + kilit", async ({ page }) =>
     waitUntil: "domcontentloaded",
   });
 
+  await expect(page.locator("#step-1")).toBeVisible({ timeout: 20_000 });
+
   const domOrder = await page.locator('[id^="step-"]').evaluateAll((els) =>
     els.map((e) => e.id)
   );
@@ -23,18 +25,19 @@ test("rulo sarım adımları adet altında — DOM + kilit", async ({ page }) =>
     return (await section.getByText("🔒").count()) > 0;
   };
 
-  // URL ?shape= → unlockedSteps step-6 (boyut) açar; opsiyonel tasarım
-  // atlanınca adet (8) de açık olabilir — bilinçli davranış.
+  // Grid ?shape= ile gelince boyut/adet erken açılmamalı.
+  expect(await isLocked("step-8")).toBe(true);
   expect(await isLocked("step-4")).toBe(true);
 
   await page.locator("#step-1 button").first().click();
   await page.locator("#step-2 button").first().click();
 
   expect(await isLocked("step-6")).toBe(false);
+  expect(await isLocked("step-8")).toBe(true);
 
   await page.locator("#step-6 button").filter({ hasText: "60" }).first().click();
 
-  expect(await isLocked("step-4")).toBe(true);
+  expect(await isLocked("step-8")).toBe(false);
 
   await page.locator("#step-8 button").filter({ hasText: "1.000" }).first().click();
 
