@@ -59,7 +59,8 @@ Rapor: `docs/ADMIN-NEGATIF-ANALIZ.md` · Araç: `scripts/admin-negative-audit.mj
 - **P0 grant-credit + P1 siparisler** (`<bu commit>`): Raporun "zaten remote'da var" dediği bu iki fix aslında origin'de **yoktu** (deploy ayrı klona gitmiş). `core`'da commit'siz duruyordu → senkron + commit edildi: grant-credit `assertAdmin` guard, siparisler/[id] `loadError` + 404 ayrımı. ✅
 - **Pencere senkronu:** `core` (gerçek repo, `pim-etiket/core/.git`) origin'e hizalandı; gereksiz `_deploy-pimetiket` klonu silinebilir. Pre-sync yedeği: `git stash` (`core-pre-sync-backup-31may`).
 
-**Hâlâ manuel (prod/env):** mig 110/075 apply doğrulaması, müşteriler RLS diagnostic, E2E runtime (Supabase env). Bunları Claude penceresinde onayınla yapabilirim.
+**Migration doğrulandı (31 May, read-only prod sorgu):** Mig **110** ✅ uygulanmış (`orders.paid_at`, `design_files.created_at`, `fn_process_proof_pending_sla` mevcut) · Mig **075** ✅ uygulanmış (product_cards 22 satır, U+FFFD = 0). "Belirsiz" değil — ikisi de canlıda.
+**Hâlâ manuel (prod/env):** müşteriler RLS diagnostic, E2E runtime (Supabase env gerekli — `bot:admin`).
 
 ---
 

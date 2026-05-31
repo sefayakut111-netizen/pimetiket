@@ -17,7 +17,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Eyebrow, Pill } from "@/components/ui";
-import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
 import {
   AUDITOR_NAMES,
