@@ -3,6 +3,7 @@ import type { DieCutTemplate } from "@/lib/templates/die-cut-templates";
 import type { CutlineMode } from "@/lib/editor/cutline/types";
 
 export type BladeShapeConfig =
+  | { kind: "none" }
   | { kind: "contour" | "hull" }
   | {
       kind: "template";

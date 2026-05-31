@@ -168,7 +168,7 @@ export default function EditorShell() {
     if (bladeTab === "auto") {
       return { kind: "contour" };
     }
-    return { kind: "contour" };
+    return { kind: "none" };
   }, [selectedTpl, bladeTab]);
 
   const applyTemplate = useCallback((tpl: DieCutTemplate) => {
@@ -811,6 +811,12 @@ export default function EditorShell() {
               {widthMm}×{heightMm} mm
             </Pill>
           </section>
+
+          {bladeShape.kind === "none" ? (
+            <p className="text-[12px] text-gri-600 leading-snug">
+              Önce bıçak seç — hazır şablon veya otomatik kontur.
+            </p>
+          ) : null}
 
           <section>
             <label

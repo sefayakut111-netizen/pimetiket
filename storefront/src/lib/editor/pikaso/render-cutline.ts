@@ -19,6 +19,12 @@ function removeOverlays(editor: Pikaso) {
   }
 }
 
+/** Bıçak seçilmeden overlay temizliği */
+export function clearCutlineOverlays(editor: Pikaso) {
+  removeOverlays(editor);
+  editor.board.draw();
+}
+
 function insertOverlay(
   editor: Pikaso,
   name: string,

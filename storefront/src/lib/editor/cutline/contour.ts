@@ -1,10 +1,6 @@
 import { hullFromImage } from "@/lib/editor/alpha-contour";
 import type { PathRing } from "@/lib/editor/cutline/types";
-import {
-  imageToCvMat,
-  loadOpenCv,
-  type OpenCvModule,
-} from "@/lib/editor/cutline/opencv-loader";
+import { loadOpenCv, type OpenCvModule } from "@/lib/editor/cutline/opencv-loader";
 
 function detectBackgroundColor(cv: OpenCvModule, gray: OpenCvMat): number {
   const w = gray.cols;
@@ -179,6 +175,33 @@ export function mapPixelPathsToLabelMm(
   );
 }
 
+const OPENCV_MAX_EDGE_PX = 1000;
+
+function imageToCvMatScaled(
+  cv: OpenCvModule,
+  image: HTMLImageElement
+): { mat: OpenCvMat; downscale: number } {
+  const natW = image.naturalWidth;
+  const natH = image.naturalHeight;
+  const maxDim = Math.max(natW, natH, 1);
+  const downscale =
+    maxDim > OPENCV_MAX_EDGE_PX ? OPENCV_MAX_EDGE_PX / maxDim : 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(natW * downscale));
+  canvas.height = Math.max(1, Math.round(natH * downscale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas 2d yok");
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return { mat: cv.imread(canvas), downscale };
+}
+
+function scalePathsPx(paths: PathRing[], invScale: number): PathRing[] {
+  if (invScale === 1) return paths;
+  return paths.map((ring) =>
+    ring.map(([px, py]) => [px * invScale, py * invScale])
+  );
+}
+
 export async function computeContourPathsPx(
   image: HTMLImageElement,
   offsetMm: number,
@@ -188,12 +211,20 @@ export async function computeContourPathsPx(
 ): Promise<PathRing[]> {
   try {
     const cv = await loadOpenCv();
-    const src = imageToCvMat(cv, image);
+    const { mat: src, downscale } = imageToCvMatScaled(cv, image);
     const mask = buildMask(cv, src);
-    const effectiveOffsetMm =
-      offsetMm === 0 ? -0.3 : offsetMm;
-    const offsetPx = Math.round(effectiveOffsetMm * pxPerMmInImage);
-    const paths = generateOffsetPaths(cv, mask, offsetPx, smoothness, useHull);
+    const effectiveOffsetMm = offsetMm === 0 ? -0.3 : offsetMm;
+    const offsetPx = Math.round(
+      effectiveOffsetMm * pxPerMmInImage * downscale
+    );
+    const pathsSmall = generateOffsetPaths(
+      cv,
+      mask,
+      offsetPx,
+      smoothness,
+      useHull
+    );
+    const paths = scalePathsPx(pathsSmall, downscale > 0 ? 1 / downscale : 1);
     mask.delete();
     src.delete();
     return paths;

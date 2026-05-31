@@ -17,7 +17,10 @@ import type {
   PikasoEditorController,
 } from "@/lib/editor/pikaso/controller-types";
 import { placementFromPikasoImage } from "@/lib/editor/pikaso/placement";
-import { renderCutlineOverlays } from "@/lib/editor/pikaso/render-cutline";
+import {
+  clearCutlineOverlays,
+  renderCutlineOverlays,
+} from "@/lib/editor/pikaso/render-cutline";
 import { usePikasoEditor } from "@/lib/editor/pikaso/usePikasoEditor";
 import {
   LABEL_ORIGIN_X,
@@ -58,6 +61,7 @@ const labelX = LABEL_ORIGIN_X;
 const labelY = LABEL_ORIGIN_Y;
 
 function resolveMode(blade: BladeShapeConfig): CutlineMode {
+  if (blade.kind === "none") return "contour";
   if (blade.kind === "contour") return "contour";
   if (blade.kind === "hull") return "hull";
   if (blade.kind === "template") return blade.mode;
@@ -100,6 +104,8 @@ export const PikasoEditorCanvas = forwardRef<
   const widthMmRef = useRef(widthMm);
   const heightMmRef = useRef(heightMm);
   const viewZoomRef = useRef(viewZoom);
+  const lastStageSizeRef = useRef({ w: 0, h: 0 });
+  const resizeRafRef = useRef<number | null>(null);
   widthMmRef.current = widthMm;
   heightMmRef.current = heightMm;
   viewZoomRef.current = viewZoom;
@@ -123,11 +129,31 @@ export const PikasoEditorCanvas = forwardRef<
     });
   }, [editorRef]);
 
+  const applyStageSize = useCallback(() => {
+    const el = containerRef.current;
+    const editor = editorRef.current;
+    if (!el || !editor) return;
+    const w = Math.max(1, Math.round(el.clientWidth));
+    const h = Math.max(1, Math.round(el.clientHeight));
+    const last = lastStageSizeRef.current;
+    if (last.w === w && last.h === h) return;
+    lastStageSizeRef.current = { w, h };
+    editor.board.stage.size({ width: w, height: h });
+    syncViewTransform();
+  }, [editorRef, syncViewTransform]);
+
   const recomputeCutline = useCallback(async () => {
     const editor = editorRef.current;
     const img = htmlImageRef.current;
     const shape = imageShapeRef.current;
     if (!editor || !img || !shape) return;
+
+    if (bladeShape.kind === "none") {
+      clearCutlineOverlays(editor);
+      bundleRef.current = null;
+      syncViewTransform();
+      return;
+    }
 
     const { placementMm } = placementFromPikasoImage(shape);
     let bundle: CutlineBundle;
@@ -355,23 +381,28 @@ export const PikasoEditorCanvas = forwardRef<
 
   useEffect(() => {
     const el = containerRef.current;
-    const editor = editorRef.current;
-    if (!el || !editor || !ready) return;
+    if (!el || !editorRef.current || !ready) return;
 
     const ro = new ResizeObserver(() => {
-      const w = Math.max(1, el.clientWidth);
-      const h = Math.max(1, el.clientHeight);
-      editor.board.stage.size({ width: w, height: h });
-      syncViewTransform();
+      if (resizeRafRef.current != null) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+      resizeRafRef.current = requestAnimationFrame(() => {
+        resizeRafRef.current = null;
+        applyStageSize();
+      });
     });
     ro.observe(el);
-    const w = Math.max(1, el.clientWidth);
-    const h = Math.max(1, el.clientHeight);
-    editor.board.stage.size({ width: w, height: h });
-    syncViewTransform();
+    applyStageSize();
 
-    return () => ro.disconnect();
-  }, [ready, editorRef, syncViewTransform]);
+    return () => {
+      ro.disconnect();
+      if (resizeRafRef.current != null) {
+        cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = null;
+      }
+    };
+  }, [ready, editorRef, applyStageSize]);
 
   useEffect(() => {
     void recomputeCutline();
