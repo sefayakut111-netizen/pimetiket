@@ -71,7 +71,8 @@ Rapor: `docs/URUN-NEGATIF-ANALIZ.md` · Araç: `product-configurator-audit.mjs` 
 - **P2 #3 sticker sheet başlık** → ✅ fix: **Migration 082** prod'a uygulandı, "Tabaka Sticker" → "Sticker Sayfası".
 - **P2 #4 kiss-cut fiyat şeffaflığı** → ✅ fix: PriceCard üstüne not — *"Fiyat özel kesim tarifesinden hesaplanır; yarı kesim üretim aşamasında uygulanır."* (origin'de doğrulandı).
 - **Senkron:** Cursor yine ayrı yerden commit'lemiş; `core` working tree'deki redundant edit'ler origin'le (76b7f82) eşleşti, stash→ff ile hizalandı. Divergence yok.
-- **⏳ Doğrulanacak (prod read):** Mig 082 (sheet başlığı) + 126 (etiket_rulo adları) gerçekten prod DB'ye yazıldı mı — onayınla read-only sorgu ile teyit edebilirim (110/075'i yaptığım gibi).
+- **✅ Prod doğrulandı (read-only, Cursor):** Mig 082 → `product_cards.sheet.title_tr` = "Sticker Sayfası" ✓ · Mig 126 → etiket_rulo adları (Kraft/Kuşe/Opak PP/Ultra Clear/Metalize), "Beyaz semi-glos" drifti yok ✓. Script çalıştırılmadı, prod zaten hedef durumdaydı.
+- **🔎 Küçük açık soru (Cursor'a):** Prod etiket_rulo'da "seffaf" malzeme id'si yok; ama ürün matrisinde **E2 Şeffaf Rulo** (`shape=clear`) var → muhtemelen "ultra/Ultra Clear" malzemesine map oluyor. Şeffaf Rulo'nun fiyatı doğru malzemeden mi geliyor, bir teyit edilsin (kritik değil).
 
 ---
 
