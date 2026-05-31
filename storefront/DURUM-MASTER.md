@@ -73,6 +73,9 @@ Rapor: `docs/URUN-NEGATIF-ANALIZ.md` · Araç: `product-configurator-audit.mjs` 
 - **Senkron:** Cursor yine ayrı yerden commit'lemiş; `core` working tree'deki redundant edit'ler origin'le (76b7f82) eşleşti, stash→ff ile hizalandı. Divergence yok.
 - **✅ Prod doğrulandı (read-only, Cursor):** Mig 082 → `product_cards.sheet.title_tr` = "Sticker Sayfası" ✓ · Mig 126 → etiket_rulo adları (Kraft/Kuşe/Opak PP/Ultra Clear/Metalize), "Beyaz semi-glos" drifti yok ✓. Script çalıştırılmadı, prod zaten hedef durumdaydı.
 - **🔎 Küçük açık soru (Cursor'a):** Prod etiket_rulo'da "seffaf" malzeme id'si yok; ama ürün matrisinde **E2 Şeffaf Rulo** (`shape=clear`) var → muhtemelen "ultra/Ultra Clear" malzemesine map oluyor. Şeffaf Rulo'nun fiyatı doğru malzemeden mi geliyor, bir teyit edilsin (kritik değil).
+- **Derin re-verify (31 May, Cursor):** verify:product-audit 0 bulgu · pricebook geçti · sarım kilit 14/14 · tsc temiz · `bot:product` 17/26 — **9 fail = test gürültüsü** (RSC `_rsc=` prefetch requestfailed + hydration beklemeden DOM okuma), gerçek sayfa kırılması değil. **Kritik bug yok.**
+- **Yeni P3 (analytics, doğrulandı):** `etiket/yapilandir/page.tsx:509-519` `ETIKET_STEP_NAMES` — step 4="shape" (gerçekte sarım yönü), 5="winding" (gerçekte sarım detayı). Kilit mantığını **etkilemez**, sadece PostHog adım etiketi yanlış. → opsiyonel patch.
+- **Açık opsiyonel işler (Cursor / ürün kararı):** (a) E2E iyileştir — `_rsc` prefetch hatalarını ignore + sarım testine `toBeVisible()` hydration bekleme; (b) ETIKET_STEP_NAMES 4/5 düzelt (analytics); (c) kiss-cut ayrı fiyat çarpanı (ürün kararı); (d) sepet "Düzenle" 10dk TTL expire'da toast.
 
 ---
 
