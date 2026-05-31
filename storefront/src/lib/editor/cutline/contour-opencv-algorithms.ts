@@ -176,7 +176,8 @@ export function offsetMmToPx(
   pxPerMmInImage: number,
   downscale: number
 ): number {
-  const effectiveOffsetMm = offsetMm === 0 ? -0.3 : offsetMm;
+  const effectiveOffsetMm =
+    offsetMm < 0 ? offsetMm : offsetMm === 0 ? -0.3 : offsetMm;
   return Math.round(effectiveOffsetMm * pxPerMmInImage * downscale);
 }
 

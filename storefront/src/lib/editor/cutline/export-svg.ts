@@ -27,22 +27,25 @@ ${pathsXml}  </g>
 export function buildEditorCutlineMeta(args: {
   mode: string;
   offsetMm: number;
+  smoothness: number;
   widthMm: number;
   heightMm: number;
   bundle: CutlineBundle;
   imagePlacement: { x: number; y: number; scale: number };
+  bladeTransform?: { offsetXmm: number; offsetYmm: number; scale: number };
 }): Record<string, unknown> {
   return {
     source: "raster",
     mode: args.mode,
     offset_mm: args.offsetMm,
-    smoothness: 0,
+    smoothness: args.smoothness,
     dpi: null,
     width_mm: args.widthMm,
     height_mm: args.heightMm,
     cutline_width_mm: args.bundle.cutlineWidthMm,
     cutline_height_mm: args.bundle.cutlineHeightMm,
     image_placement: args.imagePlacement,
+    blade_transform: args.bladeTransform ?? null,
     pim_feedback: null,
     pim_severity: "ok",
     material_type: "paper",

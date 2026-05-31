@@ -3,8 +3,13 @@
 import dynamic from "next/dynamic";
 import { forwardRef } from "react";
 import type { EditorLayer } from "@/components/editor/EditorPreviewToolbar";
-import type { BladeShapeConfig } from "@/lib/editor/pikaso/controller-types";
-import type { PikasoEditorController } from "@/lib/editor/pikaso/controller-types";
+import type {
+  AutoCutMode,
+  BladeShapeConfig,
+  EditorEditTarget,
+  PikasoEditorController,
+} from "@/lib/editor/pikaso/controller-types";
+import type { BladeTransformMm } from "@/lib/editor/pikaso/blade-transform";
 
 const PikasoEditorCanvas = dynamic(
   () =>
@@ -28,9 +33,13 @@ interface EditorCanvasProps {
   widthMm: number;
   heightMm: number;
   offsetMm: number;
+  smoothness: number;
   viewZoom: number;
   layers: Record<EditorLayer, boolean>;
   bladeShape: BladeShapeConfig;
+  bladeTransform: BladeTransformMm;
+  editTarget: EditorEditTarget;
+  onBladeTransformChange?: (t: BladeTransformMm) => void;
   onSaved: (payload: {
     svg: string;
     preview_png_base64: string | null;
@@ -50,9 +59,13 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
       widthMm,
       heightMm,
       offsetMm,
+      smoothness,
       viewZoom,
       layers,
       bladeShape,
+      bladeTransform,
+      editTarget,
+      onBladeTransformChange,
       onSaved,
       onReady,
       onDesignLoaded,
@@ -77,9 +90,13 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(
           widthMm={widthMm}
           heightMm={heightMm}
           offsetMm={offsetMm}
+          smoothness={smoothness}
           viewZoom={viewZoom}
           layers={layers}
           bladeShape={bladeShape}
+          bladeTransform={bladeTransform}
+          editTarget={editTarget}
+          onBladeTransformChange={onBladeTransformChange}
           fixedHeight={fixedHeight}
           onSaved={onSaved}
           onReady={onReady}

@@ -1,12 +1,8 @@
 /** Piksel boyutundan editör mm önerisi (300 DPI varsayım). */
 
-const DEFAULT_DPI = 300;
-const MIN_MM = 5;
-const MAX_MM = 500;
+import { roundEditorMm } from "@/lib/editor/coords";
 
-function clampMm(n: number): number {
-  return Math.max(MIN_MM, Math.min(MAX_MM, Math.round(n)));
-}
+const DEFAULT_DPI = 300;
 
 export function suggestMmFromPixels(
   widthPx: number,
@@ -16,11 +12,12 @@ export function suggestMmFromPixels(
   if (widthPx <= 0 || heightPx <= 0) {
     return { widthMm: 50, heightMm: 50, aspect: 1 };
   }
-  const widthMm = clampMm((widthPx / dpi) * 25.4);
-  const heightMm = clampMm((heightPx / dpi) * 25.4);
+  const aspect = widthPx / heightPx;
+  const widthMm = roundEditorMm((widthPx / dpi) * 25.4);
+  const heightMm = roundEditorMm(widthMm / aspect);
   return {
     widthMm,
     heightMm,
-    aspect: widthPx / heightPx,
+    aspect,
   };
 }

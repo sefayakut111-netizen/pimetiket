@@ -21,6 +21,7 @@ const Body = z.object({
   source: z.enum(["raster", "vector", "vector-with-cutline", "psd"]),
   mode: z.enum(["contour", "hull", "rect", "circle"]),
   offset_mm: z.number().optional().nullable(),
+  smoothness: z.number().min(0).max(100).optional().nullable(),
   width_mm: z.number().positive().optional().nullable(),
   height_mm: z.number().positive().optional().nullable(),
   cutline_width_mm: z.number().positive().optional().nullable(),
@@ -132,6 +133,9 @@ export async function POST(req: Request) {
       cutline_height_mm: body.cutline_height_mm ?? body.height_mm ?? null,
       placement_json: body.placement_json ?? null,
       material_type: body.material_type ?? "paper",
+      meta: {
+        smoothness: body.smoothness ?? 0,
+      },
     })
     .select("id")
     .single();

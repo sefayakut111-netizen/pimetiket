@@ -1,7 +1,11 @@
 import { mmToPx } from "@/lib/editor/coords";
+import {
+  destroyShapesByPrefix,
+  LABEL_PREFIX,
+  syncEditorZOrder,
+} from "@/lib/editor/pikaso/board-shapes";
 import type Pikaso from "pikaso";
 
-const LABEL_PREFIX = "pim-label-";
 const LABEL_BG_NAME = `${LABEL_PREFIX}bg`;
 
 /** poc.html .canvas-wrap — sarı/bej kareli zemin */
@@ -28,23 +32,8 @@ function getGridPatternCanvas(): HTMLCanvasElement {
   return c;
 }
 
-function listBoardShapes(editor: Pikaso) {
-  const shapes = editor.board.shapes;
-  if (!shapes) return [];
-  if (Array.isArray(shapes)) return shapes;
-  try {
-    return [...shapes];
-  } catch {
-    return Array.from(shapes as ArrayLike<{ name?: string; destroy: () => void }>);
-  }
-}
-
 function removeLabelWorkspace(editor: Pikaso) {
-  for (const shape of listBoardShapes(editor)) {
-    if (shape.name?.startsWith(LABEL_PREFIX)) {
-      shape.destroy();
-    }
-  }
+  destroyShapesByPrefix(editor, LABEL_PREFIX);
 }
 
 /** Baskı alanı (mm) — grid zemin + referans çerçevesi; cutline/image üstte kalır */
@@ -78,20 +67,13 @@ export function renderLabelWorkspace(
     name: LABEL_BG_NAME,
   });
   model.isSelectable = false;
-  lowerLabelWorkspaceToBottom(editor);
+  syncEditorZOrder(editor);
   editor.board.draw();
 }
 
-/** Cutline/görsel eklendikten sonra label zemini en alta */
+/** @deprecated syncEditorZOrder kullan */
 export function lowerLabelWorkspaceToBottom(editor: Pikaso): void {
-  for (const shape of listBoardShapes(editor)) {
-    if (!shape.name?.startsWith(LABEL_PREFIX)) continue;
-    try {
-      shape.node.moveToBottom();
-    } catch {
-      /* z-order */
-    }
-  }
+  syncEditorZOrder(editor);
 }
 
 export function clearLabelWorkspace(editor: Pikaso): void {

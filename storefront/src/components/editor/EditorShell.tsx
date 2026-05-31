@@ -31,7 +31,21 @@ import { ShapePreview } from "@/components/templates/ShapePreview";
 import { Button, Input, Pill, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { preloadContourWorker } from "@/lib/editor/cutline/contour-worker-client";
+import { roundEditorMm } from "@/lib/editor/coords";
 import { writeEditorHandoff } from "@/lib/editor/editor-handoff";
+import {
+  formatOffsetLabel,
+  offsetNoteText,
+} from "@/lib/editor/offset-label";
+import {
+  DEFAULT_BLADE_TRANSFORM,
+  type BladeTransformMm,
+} from "@/lib/editor/pikaso/blade-transform";
+import type {
+  AutoCutMode,
+  BladeShapeConfig,
+  EditorEditTarget,
+} from "@/lib/editor/pikaso/controller-types";
 import { suggestMmFromPixels } from "@/lib/editor/suggest-mm-from-pixels";
 import {
   CATEGORY_LABELS,
@@ -41,12 +55,11 @@ import {
   type ShapeCategory,
 } from "@/lib/templates/die-cut-templates";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
-import type { BladeShapeConfig } from "@/lib/editor/pikaso/controller-types";
 import type { CutlineMode } from "@/lib/editor/cutline/types";
 
 const CANVAS_HEIGHT = 520;
 
-type BladeTab = "template" | "auto";
+type BladeTab = "template" | "auto" | "shape";
 type LeftPanel = "file" | "blade";
 
 const DEFAULT_LAYERS: Record<EditorLayer, boolean> = {
@@ -76,9 +89,15 @@ export default function EditorShell() {
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1);
   const [offsetMm, setOffsetMm] = useState(2);
+  const [smoothness, setSmoothness] = useState(0);
   const [viewZoom, setViewZoom] = useState(1);
   const [layers, setLayers] = useState(DEFAULT_LAYERS);
   const [bladeTab, setBladeTab] = useState<BladeTab>("template");
+  const [shapeMode, setShapeMode] = useState<AutoCutMode>("contour");
+  const [bladeTransform, setBladeTransform] = useState<BladeTransformMm>(
+    DEFAULT_BLADE_TRANSFORM
+  );
+  const [editTarget, setEditTarget] = useState<EditorEditTarget>("image");
   const [category, setCategory] = useState<ShapeCategory | "all">("all");
   const [selectedTpl, setSelectedTpl] = useState<DieCutTemplate | null>(null);
   const [bgDetect, setBgDetect] = useState<BgDetectResult | null>(null);
@@ -176,10 +195,21 @@ export default function EditorShell() {
     if (bladeTab === "auto") {
       return { kind: "contour" };
     }
+    if (bladeTab === "shape") {
+      if (shapeMode === "rect" || shapeMode === "circle") {
+        return { kind: shapeMode };
+      }
+      return { kind: shapeMode };
+    }
     return { kind: "none" };
-  }, [selectedTpl, bladeTab]);
+  }, [selectedTpl, bladeTab, shapeMode]);
+
+  useEffect(() => {
+    setBladeTransform(DEFAULT_BLADE_TRANSFORM);
+  }, [selectedTpl?.id, bladeTab, shapeMode]);
 
   const applyTemplate = useCallback((tpl: DieCutTemplate) => {
+    setBladeTab("template");
     setSelectedTpl(tpl);
     setWidthMm(tpl.widthMm);
     setHeightMm(tpl.heightMm);
@@ -231,7 +261,7 @@ export default function EditorShell() {
       if (dimsAppliedRef.current === design.tempId) return;
       dimsAppliedRef.current = design.tempId;
       const suggested = suggestMmFromPixels(widthPx, heightPx);
-      setAspect(suggested.aspect);
+      setAspect(suggested.widthMm / suggested.heightMm);
       setWidthMm(suggested.widthMm);
       setHeightMm(suggested.heightMm);
       canvasReadyRef.current = true;
@@ -245,17 +275,26 @@ export default function EditorShell() {
   }, []);
 
   const handleWidthChange = (w: number) => {
-    setWidthMm(w);
+    const nw = roundEditorMm(w);
+    setWidthMm(nw);
     if (lockAspect && aspect > 0) {
-      setHeightMm(Math.round(w / aspect));
+      setHeightMm(roundEditorMm(nw / aspect));
     }
   };
 
   const handleHeightChange = (h: number) => {
-    setHeightMm(h);
+    const nh = roundEditorMm(h);
+    setHeightMm(nh);
     if (lockAspect && aspect > 0) {
-      setWidthMm(Math.round(h * aspect));
+      setWidthMm(roundEditorMm(nh * aspect));
     }
+  };
+
+  const handleLockAspectChange = (on: boolean) => {
+    if (on && heightMm > 0) {
+      setAspect(widthMm / heightMm);
+    }
+    setLockAspect(on);
   };
 
   const handleToggleLayer = (layer: EditorLayer, on: boolean) => {
@@ -282,6 +321,7 @@ export default function EditorShell() {
             source: payload.meta.source ?? "raster",
             mode: payload.meta.mode ?? "contour",
             offset_mm: payload.meta.offset_mm ?? offsetMm,
+            smoothness: payload.meta.smoothness ?? smoothness,
             width_mm: payload.meta.width_mm ?? widthMm,
             height_mm: payload.meta.height_mm ?? heightMm,
             cutline_width_mm: payload.meta.cutline_width_mm,
@@ -310,7 +350,7 @@ export default function EditorShell() {
         setSaving(false);
       }
     },
-    [design, widthMm, heightMm, offsetMm, toast]
+    [design, widthMm, heightMm, offsetMm, smoothness, toast]
   );
 
   const handleSaved = useCallback(
@@ -450,6 +490,23 @@ export default function EditorShell() {
     canvasRef.current?.fitContain();
   }, []);
 
+  const handleFitCenter = useCallback(() => {
+    canvasRef.current?.fitCenter();
+  }, []);
+
+  const handleFitCover = useCallback(() => {
+    canvasRef.current?.fitCover();
+  }, []);
+
+  const handleEditTargetChange = useCallback((target: EditorEditTarget) => {
+    setEditTarget(target);
+    canvasRef.current?.setEditTarget(target);
+  }, []);
+
+  const handleBladeTransformChange = useCallback((t: BladeTransformMm) => {
+    setBladeTransform(t);
+  }, []);
+
   const bladeSearchNorm = bladeSearch.trim().toLocaleLowerCase("tr");
 
   const filteredTemplates = DIE_CUT_TEMPLATES.filter((t) => {
@@ -462,6 +519,13 @@ export default function EditorShell() {
     }
     return true;
   });
+
+  const selectShapeMode = useCallback((mode: AutoCutMode) => {
+    setSelectedTpl(null);
+    setShapeMode(mode);
+    setBladeTab("shape");
+    setLeftPanel("blade");
+  }, []);
 
   const openAutoBlade = () => {
     setLeftPanel("blade");
@@ -608,29 +672,63 @@ export default function EditorShell() {
             <>
               <h2 className="text-[15px] font-semibold">Bıçak</h2>
               <CutColorNote />
-              <Button
-                type="button"
-                variant="primary"
-                className="mt-3 w-full"
-                onClick={openAutoBlade}
-              >
-                Otomatik bıçak oluştur
-              </Button>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {design ? (
+                  <div
+                    className="flex shrink-0 gap-1"
+                    role="group"
+                    aria-label="Görsel yerleştirme"
+                  >
+                    <button
+                      type="button"
+                      title="Ortala"
+                      onClick={handleFitCenter}
+                      className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+                    >
+                      Ortala
+                    </button>
+                    <button
+                      type="button"
+                      title="Doldur"
+                      onClick={handleFitCover}
+                      className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+                    >
+                      Doldur
+                    </button>
+                    <button
+                      type="button"
+                      title="Sığdır"
+                      onClick={handleFitContain}
+                      className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+                    >
+                      Sığdır
+                    </button>
+                  </div>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="min-w-0 flex-1"
+                  onClick={openAutoBlade}
+                >
+                  Otomatik bıçak oluştur
+                </Button>
+              </div>
               <div className="mt-3 flex gap-1 rounded-lg bg-gri-100 p-1">
                 <button
                   type="button"
                   className={cn(
-                    "flex-1 h-8 rounded-md text-[12px] font-semibold",
+                    "flex-1 h-8 rounded-md text-[11px] font-semibold",
                     bladeTab === "template" && "bg-white shadow-1"
                   )}
                   onClick={() => setBladeTab("template")}
                 >
-                  Hazır şablon
+                  Şablon
                 </button>
                 <button
                   type="button"
                   className={cn(
-                    "flex-1 h-8 rounded-md text-[12px] font-semibold",
+                    "flex-1 h-8 rounded-md text-[11px] font-semibold",
                     bladeTab === "auto" && "bg-white shadow-1"
                   )}
                   onClick={() => {
@@ -639,6 +737,16 @@ export default function EditorShell() {
                   }}
                 >
                   Otomatik
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 h-8 rounded-md text-[11px] font-semibold",
+                    bladeTab === "shape" && "bg-white shadow-1"
+                  )}
+                  onClick={() => selectShapeMode(shapeMode)}
+                >
+                  Şekil
                 </button>
               </div>
               {bladeTab === "template" ? (
@@ -717,7 +825,7 @@ export default function EditorShell() {
                     Tüm kesim şablonları →
                   </Link>
                 </>
-              ) : (
+              ) : bladeTab === "auto" ? (
                 <>
                   <p className="mt-3 text-[13px] text-gri-700">
                     Kontur modu — görselin şeklinden otomatik bıçak üretilir.
@@ -729,6 +837,37 @@ export default function EditorShell() {
                       Kesim hattı iyileştiriliyor…
                     </p>
                   ) : null}
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-[13px] text-gri-700">
+                    Serbest ölçeklenebilir bıçak şekli — boyutu sağ panelden
+                    ayarla.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        ["contour", "Kontur"],
+                        ["hull", "Çevresel"],
+                        ["rect", "Dikdörtgen"],
+                        ["circle", "Yuvarlak"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => selectShapeMode(id)}
+                        className={cn(
+                          "h-9 rounded-lg text-[12px] font-semibold ring-1 transition-colors",
+                          shapeMode === id
+                            ? "ring-pim-mercan bg-pim-mercan-tint text-pim-mercan"
+                            : "ring-gri-200 hover:ring-pim-mercan"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </>
               )}
             </>
@@ -749,9 +888,13 @@ export default function EditorShell() {
                 widthMm={widthMm}
                 heightMm={heightMm}
                 offsetMm={offsetMm}
+                smoothness={smoothness}
                 viewZoom={viewZoom}
                 layers={layers}
                 bladeShape={bladeShape}
+                bladeTransform={bladeTransform}
+                editTarget={editTarget}
+                onBladeTransformChange={handleBladeTransformChange}
                 fixedHeight={CANVAS_HEIGHT}
                 onSaved={handleSaved}
                 onReady={handleCanvasReady}
@@ -816,6 +959,7 @@ export default function EditorShell() {
                   type="number"
                   min={5}
                   max={500}
+                  step={0.1}
                   value={widthMm}
                   onChange={(e) =>
                     handleWidthChange(Number(e.target.value) || 50)
@@ -835,6 +979,7 @@ export default function EditorShell() {
                   type="number"
                   min={5}
                   max={500}
+                  step={0.1}
                   value={heightMm}
                   onChange={(e) =>
                     handleHeightChange(Number(e.target.value) || 50)
@@ -847,7 +992,7 @@ export default function EditorShell() {
               <input
                 type="checkbox"
                 checked={lockAspect}
-                onChange={(e) => setLockAspect(e.target.checked)}
+                onChange={(e) => handleLockAspectChange(e.target.checked)}
                 className="accent-pim-mercan"
               />
               Oran kilidi
@@ -863,6 +1008,41 @@ export default function EditorShell() {
             </p>
           ) : null}
 
+          {bladeShape.kind !== "none" ? (
+            <section>
+              <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
+                Düzenleme
+              </h2>
+              <div className="mt-2 flex gap-1 rounded-lg bg-gri-100 p-1">
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 h-8 rounded-md text-[12px] font-semibold",
+                    editTarget === "image" && "bg-white shadow-1"
+                  )}
+                  onClick={() => handleEditTargetChange("image")}
+                >
+                  Görsel
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex-1 h-8 rounded-md text-[12px] font-semibold",
+                    editTarget === "blade" && "bg-white shadow-1"
+                  )}
+                  onClick={() => handleEditTargetChange("blade")}
+                >
+                  Bıçak
+                </button>
+              </div>
+              {editTarget === "blade" ? (
+                <p className="mt-2 text-[11px] text-gri-600 leading-snug">
+                  Bıçağı sürükleyip köşelerden büyüt/küçült.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
           <section>
             <label
               htmlFor="editor-offset-right"
@@ -870,17 +1050,44 @@ export default function EditorShell() {
             >
               <span>Kesim mesafesi</span>
               <span className="tabular-nums text-[12px] font-semibold text-gri-800 normal-case">
-                {offsetMm.toFixed(1)} mm
+                {formatOffsetLabel(offsetMm)}
               </span>
             </label>
             <input
               id="editor-offset-right"
               type="range"
-              min={0}
+              min={-5}
               max={5}
               step={0.1}
               value={offsetMm}
               onChange={(e) => setOffsetMm(parseFloat(e.target.value))}
+              className="mt-2 w-full accent-pim-mercan"
+            />
+            {offsetNoteText(offsetMm) ? (
+              <p className="mt-1.5 text-[11px] text-gri-600 leading-snug">
+                {offsetNoteText(offsetMm)}
+              </p>
+            ) : null}
+          </section>
+
+          <section>
+            <label
+              htmlFor="editor-smoothness"
+              className="flex items-center justify-between text-[13px] font-semibold uppercase tracking-wide text-gri-600"
+            >
+              <span>Yumuşatma</span>
+              <span className="tabular-nums text-[12px] font-semibold text-gri-800 normal-case">
+                {smoothness}
+              </span>
+            </label>
+            <input
+              id="editor-smoothness"
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={smoothness}
+              onChange={(e) => setSmoothness(parseInt(e.target.value, 10))}
               className="mt-2 w-full accent-pim-mercan"
             />
           </section>

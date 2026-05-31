@@ -1,10 +1,17 @@
-import { EDITOR_PX_PER_MM } from "@/lib/editor/coords";
+import { EDITOR_PX_PER_MM, mmToPx } from "@/lib/editor/coords";
 import { pathRingToSvgD } from "@/lib/editor/cutline/shapes";
 import type { CutlineBundle, PathRing } from "@/lib/editor/cutline/types";
-import { lowerLabelWorkspaceToBottom } from "@/lib/editor/pikaso/render-label-workspace";
+import type { BladeTransformMm } from "@/lib/editor/pikaso/blade-transform";
+import {
+  CUTLINE_GROUP_NAME,
+  CUTLINE_PREFIX,
+  destroyShapesByPrefix,
+  syncEditorZOrder,
+} from "@/lib/editor/pikaso/board-shapes";
 import type Pikaso from "pikaso";
+import Konva from "konva";
 
-const OVERLAY_PREFIX = "pim-cutline-";
+const OVERLAY_PREFIX = CUTLINE_PREFIX;
 
 const STYLES = {
   cut: { stroke: "#E5007E", dash: [8, 4] as number[], width: 2 },
@@ -12,23 +19,14 @@ const STYLES = {
   safe: { stroke: "#3b82f6", dash: [4, 4] as number[], width: 1.5 },
 };
 
-function listBoardShapes(editor: Pikaso) {
-  const shapes = editor.board.shapes;
-  if (!shapes) return [];
-  if (Array.isArray(shapes)) return shapes;
-  try {
-    return [...shapes];
-  } catch {
-    return Array.from(shapes as ArrayLike<(typeof shapes)[number]>);
-  }
+function removeCutlineGroup(layer: Konva.Layer) {
+  const existing = layer.findOne(`.${CUTLINE_GROUP_NAME}`);
+  existing?.destroy();
 }
 
 function removeOverlays(editor: Pikaso) {
-  for (const shape of listBoardShapes(editor)) {
-    if (shape.name?.startsWith(OVERLAY_PREFIX)) {
-      shape.destroy();
-    }
-  }
+  destroyShapesByPrefix(editor, OVERLAY_PREFIX);
+  removeCutlineGroup(editor.board.layer);
 }
 
 /** Bıçak seçilmeden overlay temizliği */
@@ -43,33 +41,22 @@ function ringMmToPx(ring: PathRing): PathRing {
   return ring.map(([x, y]) => [x * s, y * s]);
 }
 
-function insertOverlay(
-  editor: Pikaso,
-  name: string,
-  ringMm: PathRing,
-  x: number,
-  y: number,
-  style: (typeof STYLES)["cut"]
+function applyGroupTransform(
+  group: Konva.Group,
+  labelX: number,
+  labelY: number,
+  labelWidthMm: number,
+  labelHeightMm: number,
+  transform: BladeTransformMm
 ) {
-  const pathD = pathRingToSvgD(ringMmToPx(ringMm));
-  if (!pathD) return;
-  const model = editor.shapes.svg.insert({
-    data: pathD,
-    x,
-    y,
-    scaleX: 1,
-    scaleY: 1,
-    stroke: style.stroke,
-    strokeWidth: style.width,
-    dash: style.dash,
-    lineJoin: "round",
-    lineCap: "round",
-    strokeScaleEnabled: false,
-    listening: false,
-    draggable: false,
-    name,
+  const cx = mmToPx(labelWidthMm / 2);
+  const cy = mmToPx(labelHeightMm / 2);
+  group.offset({ x: cx, y: cy });
+  group.position({
+    x: labelX + cx + mmToPx(transform.offsetXmm),
+    y: labelY + cy + mmToPx(transform.offsetYmm),
   });
-  model.isSelectable = false;
+  group.scale({ x: transform.scale, y: transform.scale });
 }
 
 export function renderCutlineOverlays(
@@ -78,48 +65,85 @@ export function renderCutlineOverlays(
   opts: {
     labelX: number;
     labelY: number;
+    labelWidthMm: number;
+    labelHeightMm: number;
     layers: { cut: boolean; bleed: boolean; safe: boolean };
+    bladeTransform?: BladeTransformMm;
+    bladeInteractive?: boolean;
   }
 ) {
   removeOverlays(editor);
-  const { labelX, labelY, layers } = opts;
+  const {
+    labelX,
+    labelY,
+    labelWidthMm,
+    labelHeightMm,
+    layers,
+    bladeTransform,
+    bladeInteractive = false,
+  } = opts;
+
+  const displayBundle = bundle;
+
+  const group = new Konva.Group({
+    name: CUTLINE_GROUP_NAME,
+    draggable: bladeInteractive,
+    listening: bladeInteractive,
+  });
+
+  if (bladeTransform) {
+    applyGroupTransform(
+      group,
+      labelX,
+      labelY,
+      labelWidthMm,
+      labelHeightMm,
+      bladeTransform
+    );
+  } else {
+    group.position({ x: labelX, y: labelY });
+  }
+
+  const addPath = (
+    name: string,
+    ringMm: PathRing,
+    style: (typeof STYLES)["cut"]
+  ) => {
+    const pathD = pathRingToSvgD(ringMmToPx(ringMm));
+    if (!pathD) return;
+    group.add(
+      new Konva.Path({
+        name,
+        data: pathD,
+        stroke: style.stroke,
+        strokeWidth: style.width,
+        dash: style.dash,
+        lineJoin: "round",
+        lineCap: "round",
+        strokeScaleEnabled: false,
+        listening: false,
+      })
+    );
+  };
 
   if (layers.bleed) {
-    for (let i = 0; i < bundle.bleed.length; i++) {
-      insertOverlay(
-        editor,
-        `${OVERLAY_PREFIX}bleed-${i}`,
-        bundle.bleed[i]!,
-        labelX,
-        labelY,
-        STYLES.bleed
-      );
+    for (let i = 0; i < displayBundle.bleed.length; i++) {
+      addPath(`${OVERLAY_PREFIX}bleed-${i}`, displayBundle.bleed[i]!, STYLES.bleed);
     }
   }
   if (layers.safe) {
-    for (let i = 0; i < bundle.safe.length; i++) {
-      insertOverlay(
-        editor,
-        `${OVERLAY_PREFIX}safe-${i}`,
-        bundle.safe[i]!,
-        labelX,
-        labelY,
-        STYLES.safe
-      );
+    for (let i = 0; i < displayBundle.safe.length; i++) {
+      addPath(`${OVERLAY_PREFIX}safe-${i}`, displayBundle.safe[i]!, STYLES.safe);
     }
   }
   if (layers.cut) {
-    for (let i = 0; i < bundle.cut.length; i++) {
-      insertOverlay(
-        editor,
-        `${OVERLAY_PREFIX}cut-${i}`,
-        bundle.cut[i]!,
-        labelX,
-        labelY,
-        STYLES.cut
-      );
+    for (let i = 0; i < displayBundle.cut.length; i++) {
+      addPath(`${OVERLAY_PREFIX}cut-${i}`, displayBundle.cut[i]!, STYLES.cut);
     }
   }
-  lowerLabelWorkspaceToBottom(editor);
+
+  editor.board.layer.add(group);
+  syncEditorZOrder(editor);
   editor.board.draw();
+  return group;
 }

@@ -15,5 +15,17 @@ export function pxToMm(px: number, viewZoom = 1): number {
 }
 
 export function effectiveCutOffsetMm(offsetMm: number): number {
+  if (offsetMm < 0) return offsetMm;
   return offsetMm === 0 ? -EDITOR_SLIP_TOLERANCE_MM : offsetMm;
+}
+
+export const EDITOR_MIN_MM = 5;
+export const EDITOR_MAX_MM = 500;
+
+/** Editör boyut girişi — 0,1 mm hassasiyet */
+export function roundEditorMm(n: number): number {
+  return Math.max(
+    EDITOR_MIN_MM,
+    Math.min(EDITOR_MAX_MM, Math.round(n * 10) / 10)
+  );
 }

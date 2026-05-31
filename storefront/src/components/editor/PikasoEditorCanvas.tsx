@@ -1,6 +1,5 @@
 "use client";
 
-import type { EditorLayer } from "@/components/editor/EditorPreviewToolbar";
 import { mmToPx } from "@/lib/editor/coords";
 import {
   computeCutlineBundle,
@@ -17,12 +16,25 @@ import {
   buildEditorCutlineMeta,
 } from "@/lib/editor/cutline/export-svg";
 import { applyViewTransform } from "@/lib/editor/pikaso/apply-view-transform";
+import {
+  applyBladeTransformToBundle,
+  bladeTransformFromGroup,
+  type BladeTransformMm,
+} from "@/lib/editor/pikaso/blade-transform";
+import { CUTLINE_GROUP_NAME, USER_IMAGE_NAME } from "@/lib/editor/pikaso/board-shapes";
 import type {
   BladeShapeConfig,
+  EditorEditTarget,
   PikasoEditorController,
 } from "@/lib/editor/pikaso/controller-types";
 import { placementFromPikasoImage } from "@/lib/editor/pikaso/placement";
+import {
+  imageAttrsForPreset,
+  labelPlacementFrame,
+  type PlacementPreset,
+} from "@/lib/editor/pikaso/placement-presets";
 import { renderLabelWorkspace } from "@/lib/editor/pikaso/render-label-workspace";
+import { syncEditorZOrder } from "@/lib/editor/pikaso/board-shapes";
 import {
   clearCutlineOverlays,
   renderCutlineOverlays,
@@ -33,6 +45,8 @@ import {
   LABEL_ORIGIN_Y,
 } from "@/lib/editor/pikaso/world-coords";
 import type Pikaso from "pikaso";
+import Konva from "konva";
+import type { EditorLayer } from "@/components/editor/EditorPreviewToolbar";
 import {
   forwardRef,
   useCallback,
@@ -46,9 +60,13 @@ export interface PikasoEditorCanvasProps {
   widthMm: number;
   heightMm: number;
   offsetMm: number;
+  smoothness: number;
   viewZoom: number;
   layers: Record<EditorLayer, boolean>;
   bladeShape: BladeShapeConfig;
+  bladeTransform: BladeTransformMm;
+  editTarget: EditorEditTarget;
+  onBladeTransformChange?: (t: BladeTransformMm) => void;
   /** İlk mount için yedek stage boyutu (ResizeObserver devralır) */
   fixedHeight?: number;
   onReady?: () => void;
@@ -77,6 +95,14 @@ function needsOpenCvRefine(blade: BladeShapeConfig): boolean {
   return blade.kind === "contour" || blade.kind === "hull";
 }
 
+function isStaticBlade(blade: BladeShapeConfig): boolean {
+  return (
+    blade.kind === "template" ||
+    blade.kind === "rect" ||
+    blade.kind === "circle"
+  );
+}
+
 function resolveMode(blade: BladeShapeConfig): CutlineMode {
   if (blade.kind === "none") return "contour";
   if (blade.kind === "contour") return "contour";
@@ -94,9 +120,13 @@ export const PikasoEditorCanvas = forwardRef<
     widthMm,
     heightMm,
     offsetMm,
+    smoothness,
     viewZoom,
     layers,
     bladeShape,
+    bladeTransform,
+    editTarget,
+    onBladeTransformChange,
     fixedHeight = 520,
     onReady,
     onDesignLoaded,
@@ -123,7 +153,11 @@ export const PikasoEditorCanvas = forwardRef<
   const widthMmRef = useRef(widthMm);
   const heightMmRef = useRef(heightMm);
   const offsetMmRef = useRef(offsetMm);
+  const smoothnessRef = useRef(smoothness);
   const viewZoomRef = useRef(viewZoom);
+  const bladeTransformRef = useRef(bladeTransform);
+  const editTargetRef = useRef(editTarget);
+  const bladeTransformerRef = useRef<Konva.Transformer | null>(null);
   const lastStageSizeRef = useRef({ w: 0, h: 0 });
   const resizeRafRef = useRef<number | null>(null);
   const recomputeGenRef = useRef(0);
@@ -139,7 +173,10 @@ export const PikasoEditorCanvas = forwardRef<
   widthMmRef.current = widthMm;
   heightMmRef.current = heightMm;
   offsetMmRef.current = offsetMm;
+  smoothnessRef.current = smoothness;
   viewZoomRef.current = viewZoom;
+  bladeTransformRef.current = bladeTransform;
+  editTargetRef.current = editTarget;
 
   const syncLabelWorkspace = useCallback(() => {
     const editor = editorRef.current;
@@ -200,40 +237,102 @@ export const PikasoEditorCanvas = forwardRef<
     [onContourRefining]
   );
 
+  const syncBladeTransformer = useCallback(
+    (editor: Pikaso) => {
+      const layer = editor.board.layer;
+      const existing = bladeTransformerRef.current;
+      if (existing) {
+        existing.destroy();
+        bladeTransformerRef.current = null;
+      }
+      if (editTargetRef.current !== "blade" || !bundleRef.current) return;
+
+      const group = layer.findOne(`.${CUTLINE_GROUP_NAME}`);
+      if (!group) return;
+
+      const tr = new Konva.Transformer({
+        nodes: [group],
+        rotateEnabled: true,
+        enabledAnchors: [
+          "top-left",
+          "top-right",
+          "bottom-left",
+          "bottom-right",
+        ],
+        boundBoxFunc: (_old, next) => {
+          if (next.width < 8 || next.height < 8) return _old;
+          return next;
+        },
+      });
+      layer.add(tr);
+      bladeTransformerRef.current = tr;
+      tr.on("transformend", () => {
+        const t = bladeTransformFromGroup(
+          group,
+          labelX,
+          labelY,
+          widthMmRef.current,
+          heightMmRef.current
+        );
+        onBladeTransformChange?.(t);
+      });
+      group.on("dragend", () => {
+        const t = bladeTransformFromGroup(
+          group,
+          labelX,
+          labelY,
+          widthMmRef.current,
+          heightMmRef.current
+        );
+        onBladeTransformChange?.(t);
+      });
+      editor.board.draw();
+    },
+    [onBladeTransformChange]
+  );
+
   const renderBundle = useCallback(
     (editor: Pikaso, bundle: CutlineBundle) => {
       bundleRef.current = bundle;
       renderCutlineOverlays(editor, bundle, {
         labelX,
         labelY,
+        labelWidthMm: widthMmRef.current,
+        labelHeightMm: heightMmRef.current,
         layers: {
           cut: layersRef.current.cut,
           bleed: layersRef.current.bleed,
           safe: layersRef.current.safe,
         },
+        bladeTransform: bladeTransformRef.current,
+        bladeInteractive: editTargetRef.current === "blade",
       });
+      syncBladeTransformer(editor);
     },
-    []
+    [syncBladeTransformer]
   );
 
   const buildContourInput = useCallback(
     (
       blade: BladeShapeConfig,
-      shape: ImageShape,
-      img: HTMLImageElement,
+      shape: ImageShape | null,
+      img: HTMLImageElement | null,
       wMm: number,
       hMm: number,
       offMm: number
     ) => {
-      const { placementMm } = placementFromPikasoImage(shape);
+      const placementMm = shape
+        ? placementFromPikasoImage(shape).placementMm
+        : undefined;
       return {
         mode: resolveMode(blade),
         labelWidthMm: wMm,
         labelHeightMm: hMm,
         offsetMm: offMm,
+        smoothness: smoothnessRef.current,
         cornerRadiusMm:
           blade.kind === "rect" ? (blade.cornerRadiusMm ?? 0) : 0,
-        image: img,
+        image: img ?? undefined,
         imagePlacementMm: placementMm,
       };
     },
@@ -279,7 +378,9 @@ export const PikasoEditorCanvas = forwardRef<
       const wMm = widthMmRef.current;
       const hMm = heightMmRef.current;
       const offMm = offsetMmRef.current;
-      if (!editor || !img || !shape) return;
+      if (!editor) return;
+      const staticBlade = isStaticBlade(blade);
+      if (!staticBlade && (!img || !shape)) return;
 
       if (blade.kind === "none") {
         clearCutlineOverlays(editor);
@@ -290,12 +391,18 @@ export const PikasoEditorCanvas = forwardRef<
       let bundle: CutlineBundle;
       if (blade.kind === "template") {
         const t = blade.template;
+        const scale = Math.min(wMm / t.widthMm, hMm / t.heightMm);
         bundle = computeTemplateBundle({
           shape: t.shape,
-          widthMm: t.widthMm,
-          heightMm: t.heightMm,
+          widthMm: wMm,
+          heightMm: hMm,
           offsetMm: offMm,
+          cornerRadiusMm: t.cornerRadiusMm * scale,
         });
+      } else if (blade.kind === "rect" || blade.kind === "circle") {
+        bundle = await computeCutlineBundle(
+          buildContourInput(blade, null, null, wMm, hMm, offMm)
+        );
       } else {
         bundle = await computeCutlineBundle(
           buildContourInput(blade, shape, img, wMm, hMm, offMm)
@@ -382,7 +489,7 @@ export const PikasoEditorCanvas = forwardRef<
         applyFastCutlinePreview();
         return;
       }
-      if (blade.kind === "template") {
+      if (isStaticBlade(blade)) {
         void recomputeStaticCutline();
         return;
       }
@@ -416,33 +523,45 @@ export const PikasoEditorCanvas = forwardRef<
     await runOpenCvRefine();
   }, [cancelScheduledCutline, runOpenCvRefine]);
 
+  const applyImagePreset = useCallback(
+    (preset: PlacementPreset) => {
+      const shape = imageShapeRef.current;
+      const img = htmlImageRef.current;
+      if (!shape || !img) return;
+      const frame = labelPlacementFrame(
+        labelX,
+        labelY,
+        widthMmRef.current,
+        heightMmRef.current
+      );
+      const attrs = imageAttrsForPreset(
+        preset,
+        frame,
+        img.naturalWidth,
+        img.naturalHeight
+      );
+      shape.update({
+        ...attrs,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+      imageShapeRef.current?.select();
+      scheduleRecomputeCutline({ fastImmediate: true });
+    },
+    [scheduleRecomputeCutline]
+  );
+
   const fitImageContain = useCallback(() => {
-    const shape = imageShapeRef.current;
-    const img = htmlImageRef.current;
-    if (!shape || !img) return;
-    const marginMm = 2;
-    const maxWmm = widthMm - marginMm * 2;
-    const maxHmm = heightMm - marginMm * 2;
-    const aspect = img.naturalWidth / img.naturalHeight;
-    let drawWMm = maxWmm;
-    let drawHMm = drawWMm / aspect;
-    if (drawHMm > maxHmm) {
-      drawHMm = maxHmm;
-      drawWMm = drawHMm * aspect;
-    }
-    const drawW = mmToPx(drawWMm);
-    shape.update({
-      x: labelX + mmToPx((widthMm - drawWMm) / 2),
-      y: labelY + mmToPx((heightMm - drawHMm) / 2),
-      width: img.naturalWidth,
-      height: img.naturalHeight,
-      scaleX: drawW / img.naturalWidth,
-      scaleY: drawW / img.naturalWidth,
-      rotation: 0,
-    });
-    imageShapeRef.current?.select();
-    scheduleRecomputeCutline({ fastImmediate: true });
-  }, [heightMm, scheduleRecomputeCutline, widthMm]);
+    applyImagePreset("contain");
+  }, [applyImagePreset]);
+
+  const fitImageCenter = useCallback(() => {
+    applyImagePreset("center");
+  }, [applyImagePreset]);
+
+  const fitImageCover = useCallback(() => {
+    applyImagePreset("cover");
+  }, [applyImagePreset]);
 
   const loadDesign = useCallback(async () => {
     const editor = editorRef.current;
@@ -527,11 +646,12 @@ export const PikasoEditorCanvas = forwardRef<
         scaleX: drawW / natW,
         scaleY: drawW / natW,
         draggable: true,
-        name: "pim-user-image",
+        name: USER_IMAGE_NAME,
       });
       imageShapeRef.current = shape;
       shape.select();
       syncLabelWorkspace();
+      syncEditorZOrder(editor);
 
       onDesignLoaded?.({ widthPx: natW, heightPx: natH });
       scheduleRecomputeCutline({ fastImmediate: true });
@@ -570,8 +690,14 @@ export const PikasoEditorCanvas = forwardRef<
       return;
     }
     const { placementMm, scale } = placementFromPikasoImage(shape);
-    const svg = buildCutlineSvgMm({
+    const exportBundle = applyBladeTransformToBundle(
       bundle,
+      widthMm,
+      heightMm,
+      bladeTransformRef.current
+    );
+    const svg = buildCutlineSvgMm({
+      bundle: exportBundle,
       labelWidthMm: widthMm,
       labelHeightMm: heightMm,
     });
@@ -590,14 +716,16 @@ export const PikasoEditorCanvas = forwardRef<
       meta: buildEditorCutlineMeta({
         mode: resolveMode(bladeShape),
         offsetMm,
+        smoothness: smoothnessRef.current,
         widthMm,
         heightMm,
-        bundle,
+        bundle: exportBundle,
         imagePlacement: {
           x: placementMm.x,
           y: placementMm.y,
           scale,
         },
+        bladeTransform: bladeTransformRef.current,
       }),
     });
   }, [
@@ -615,11 +743,26 @@ export const PikasoEditorCanvas = forwardRef<
     ref,
     () => ({
       fitContain: () => fitImageContain(),
+      fitCenter: () => fitImageCenter(),
+      fitCover: () => fitImageCover(),
       requestExport: () => {
         void exportCutline();
       },
       setLayerVisibility: () => {
         /* Katman görünürlüğü layers prop effect ile — OpenCV yok */
+      },
+      setEditTarget: (target: EditorEditTarget) => {
+        editTargetRef.current = target;
+        const editor = editorRef.current;
+        if (!editor) return;
+        if (target === "blade") {
+          imageShapeRef.current?.deselect();
+        } else {
+          imageShapeRef.current?.select();
+        }
+        if (bundleRef.current) {
+          renderBundle(editor, bundleRef.current);
+        }
       },
       isReady: () => ready && !!imageShapeRef.current,
       isCutlineReady: () => {
@@ -629,7 +772,15 @@ export const PikasoEditorCanvas = forwardRef<
       },
       isContourRefining: () => contourRefiningRef.current,
     }),
-    [exportCutline, fitImageContain, ready]
+    [
+      exportCutline,
+      fitImageContain,
+      fitImageCenter,
+      fitImageCover,
+      ready,
+      renderBundle,
+      editorRef,
+    ]
   );
 
   const loadDesignRef = useRef(loadDesign);
@@ -694,7 +845,13 @@ export const PikasoEditorCanvas = forwardRef<
       fastImmediate:
         bladeShape.kind === "contour" || bladeShape.kind === "hull",
     });
-  }, [widthMm, heightMm, offsetMm, bladeShape, scheduleRecomputeCutline]);
+  }, [widthMm, heightMm, offsetMm, smoothness, bladeShape, scheduleRecomputeCutline]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || !ready || !bundleRef.current) return;
+    renderBundle(editor, bundleRef.current);
+  }, [bladeTransform, editTarget, ready, renderBundle, editorRef]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -703,13 +860,29 @@ export const PikasoEditorCanvas = forwardRef<
     renderCutlineOverlays(editor, bundle, {
       labelX,
       labelY,
+      labelWidthMm: widthMm,
+      labelHeightMm: heightMm,
       layers: {
         cut: layers.cut,
         bleed: layers.bleed,
         safe: layers.safe,
       },
+      bladeTransform,
+      bladeInteractive: editTarget === "blade",
     });
-  }, [layers.cut, layers.bleed, layers.safe, ready, editorRef]);
+    syncBladeTransformer(editor);
+  }, [
+    layers.cut,
+    layers.bleed,
+    layers.safe,
+    ready,
+    editorRef,
+    widthMm,
+    heightMm,
+    bladeTransform,
+    editTarget,
+    syncBladeTransformer,
+  ]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -724,6 +897,8 @@ export const PikasoEditorCanvas = forwardRef<
   useEffect(() => {
     return () => {
       cancelScheduledCutline();
+      bladeTransformerRef.current?.destroy();
+      bladeTransformerRef.current = null;
       terminateContourWorker();
       recomputeGenRef.current += 1;
       if (designObjectUrlRef.current) {
