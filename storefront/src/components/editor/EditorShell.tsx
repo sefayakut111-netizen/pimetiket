@@ -30,7 +30,7 @@ import { CutColorNote } from "@/components/editor/CutColorNote";
 import { ShapePreview } from "@/components/templates/ShapePreview";
 import { Button, Input, Pill, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { loadOpenCv } from "@/lib/editor/cutline/opencv-loader";
+import { preloadContourWorker } from "@/lib/editor/cutline/contour-worker-client";
 import { writeEditorHandoff } from "@/lib/editor/editor-handoff";
 import { suggestMmFromPixels } from "@/lib/editor/suggest-mm-from-pixels";
 import {
@@ -126,7 +126,7 @@ export default function EditorShell() {
   }, [design?.tempId]);
   useEffect(() => {
     if (!design?.tempId) return;
-    void loadOpenCv();
+    void preloadContourWorker();
   }, [design?.tempId]);
 
   useEffect(() => {

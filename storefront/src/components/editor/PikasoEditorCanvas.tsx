@@ -7,7 +7,10 @@ import {
   computeCutlineBundleFast,
   computeTemplateBundle,
 } from "@/lib/editor/cutline/compute";
-import { loadOpenCv } from "@/lib/editor/cutline/opencv-loader";
+import {
+  preloadContourWorker,
+  terminateContourWorker,
+} from "@/lib/editor/cutline/contour-worker-client";
 import type { CutlineBundle, CutlineMode } from "@/lib/editor/cutline/types";
 import {
   buildCutlineSvgMm,
@@ -639,17 +642,12 @@ export const PikasoEditorCanvas = forwardRef<
   }, [designUrl]);
 
   useEffect(() => {
-    if (!ready || !htmlImageRef.current) return;
-    const preload = () => {
-      void loadOpenCv();
+    if (!ready) return;
+    void preloadContourWorker();
+    return () => {
+      terminateContourWorker();
     };
-    if (typeof requestIdleCallback === "function") {
-      const id = requestIdleCallback(preload, { timeout: 4000 });
-      return () => cancelIdleCallback(id);
-    }
-    const t = window.setTimeout(preload, 800);
-    return () => window.clearTimeout(t);
-  }, [ready, designUrl]);
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -726,6 +724,7 @@ export const PikasoEditorCanvas = forwardRef<
   useEffect(() => {
     return () => {
       cancelScheduledCutline();
+      terminateContourWorker();
       recomputeGenRef.current += 1;
       if (designObjectUrlRef.current) {
         URL.revokeObjectURL(designObjectUrlRef.current);
