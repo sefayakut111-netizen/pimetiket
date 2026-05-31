@@ -22,6 +22,7 @@ export const CRON_REGISTRY = [
   { name: "detect-abandoned-carts", schedule: "0 10 * * *", label: "Terk sepet" },
   { name: "request-reviews", schedule: "0 11 * * *", label: "Yorum daveti" },
   { name: "auditors-seo", schedule: "0 11 * * 3", label: "Denetçi: SEO" },
+  { name: "seo-indexing", schedule: "30 11 * * 3", label: "IndexNow + GSC sitemap" },
   { name: "upload-reminders", schedule: "0 12 * * *", label: "Upload hatırlatma" },
   { name: "auditors-brand", schedule: "0 14 * * 5", label: "Denetçi: marka" },
   { name: "poll-shipments", schedule: "0 9 * * *", label: "Kargo takip" },
