@@ -491,6 +491,51 @@ const STICKER_CARDS: StickerCard[] = [
     svg: <SheetIcon />,
     imageSrc: "/assets/img/cards/sticker-sheet.jpg",
   },
+  {
+    query: "cut=tabaka&shape=circle&kilit=tabaka",
+    titleTr: "Yuvarlak Etiket Sayfası",
+    titleEn: "Circle Label Sheet",
+    descTr: "Tek tabakada çok adet yuvarlak — sticker fiyatına",
+    descEn: "Many circles on one sheet",
+    svg: <CircleIcon />,
+    imageSrc: "/assets/img/cards/sticker-circle.jpg",
+  },
+  {
+    query: "cut=tabaka&shape=square&kilit=tabaka",
+    titleTr: "Kare Etiket Sayfası",
+    titleEn: "Square Label Sheet",
+    descTr: "Tek tabakada çok adet kare — sticker fiyatına",
+    descEn: "Many squares on one sheet",
+    svg: <SquareIcon />,
+    imageSrc: "/assets/img/cards/sticker-square.jpg",
+  },
+  {
+    query: "cut=tabaka&shape=rectangle&kilit=tabaka",
+    titleTr: "Dikdörtgen Etiket Sayfası",
+    titleEn: "Rectangle Label Sheet",
+    descTr: "Tek tabakada çok adet dikdörtgen — sticker fiyatına",
+    descEn: "Many rectangles on one sheet",
+    svg: <RectangleIcon />,
+    imageSrc: "/assets/img/cards/sticker-rectangle.jpg",
+  },
+  {
+    query: "cut=tabaka&shape=ozel&material=holo&kilit=tabaka",
+    titleTr: "Hologram Sticker Sayfası",
+    titleEn: "Holographic Sticker Sheet",
+    descTr: "Gökkuşağı yansımalı tabaka — premium",
+    descEn: "Rainbow-reflective sheet — premium",
+    svg: <HoloIcon />,
+    imageSrc: "/assets/img/cards/sticker-hologram.jpg",
+  },
+  {
+    query: "cut=tabaka&shape=ozel&material=simli&kilit=tabaka",
+    titleTr: "Simli Sticker Sayfası",
+    titleEn: "Glitter Sticker Sheet",
+    descTr: "Parıltılı dokulu tabaka — hediye, çocuk",
+    descEn: "Sparkly-texture sheet — gifts, kids",
+    svg: <GlitterIcon />,
+    imageSrc: "/assets/img/cards/sticker-glitter-holo.jpg",
+  },
 ];
 
 // ============================================================
@@ -541,7 +586,6 @@ function StickerProductCard({
 // Sayfa component
 // ============================================================
 
-// Sefa 21 May v68 Mig 074: DB card → STICKER_CARDS UI format
 function dbCardToStickerCard(db: DbProductCard): StickerCard | null {
   // Sefa 22 May v68: image_src DB column'u var ama buraya map edilmemişti
   // → kart hep svg fallback'e düşüyordu (coral blob). Mig 080 ile DB'de
@@ -558,6 +602,11 @@ function dbCardToStickerCard(db: DbProductCard): StickerCard | null {
     svg: <SvgComponent />,
     imageSrc: db.image_src ?? undefined,
   };
+}
+
+function cutOf(card: StickerCard): string {
+  const q = card.query.startsWith("?") ? card.query.slice(1) : card.query;
+  return new URLSearchParams(q).get("cut") ?? "diecut";
 }
 
 export default function StickerGridPage() {
@@ -595,6 +644,12 @@ export default function StickerGridPage() {
     };
   }, []);
 
+  const diecutCards = cards.filter((c) => cutOf(c) === "diecut");
+  const kissCutCards = cards.filter((c) => {
+    const cut = cutOf(c);
+    return cut === "kisscut" || cut === "tabaka";
+  });
+
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
@@ -613,15 +668,48 @@ export default function StickerGridPage() {
         {/* Sefa 20 May v68: başlık ile ürünler arasında ince ayırıcı çizgi */}
         <div className="h-px bg-gri-200 max-w-5xl mx-auto mb-8" />
 
-        {/* Sefa 20 May v68: tek grid (eski 2 section birleşti — section
-            başlıkları kaldırıldı). 11 sticker kartı tek listede sıralanır. */}
-        <section className="mb-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-            {cards.map((card) => (
-              <StickerProductCard key={card.query} card={card} isEn={isEn} />
-            ))}
-          </div>
-        </section>
+        {/* Sefa 1 Haz 2026: 2 sütun — sol Die Cut, sağ Kiss Cut / tabaka (etiket deseni) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 lg:divide-x lg:divide-gri-200 mb-12">
+          <section className="lg:pr-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-px flex-1 bg-gri-200" />
+              <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+                {isEn ? "Die cut" : "Die cut"}
+              </h2>
+              <div className="h-px flex-1 bg-gri-200" />
+            </div>
+            <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
+              {isEn
+                ? "Cut to your design's edge — pieces peel off individually. Ideal for logos, brand marks, and custom silhouettes."
+                : "Tasarımın kenarından tam kesim, parçalar ayrı. Logo, marka ve özel silüetler için."}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {diecutCards.map((card) => (
+                <StickerProductCard key={card.query} card={card} isEn={isEn} />
+              ))}
+            </div>
+          </section>
+
+          <section className="lg:pl-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-px flex-1 bg-gri-200" />
+              <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+                {isEn ? "Kiss cut" : "Kiss cut"}
+              </h2>
+              <div className="h-px flex-1 bg-gri-200" />
+            </div>
+            <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
+              {isEn
+                ? "Kiss-cut on intact backing — sheet or page format. Peel stickers without separating the liner."
+                : "Yarım kesim, arka kağıt sağlam; tabaka/sayfa halinde. Liner ayrılmadan sticker çıkar."}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {kissCutCards.map((card) => (
+                <StickerProductCard key={card.query} card={card} isEn={isEn} />
+              ))}
+            </div>
+          </section>
+        </div>
 
         {/* Alt CTA — etiket yönlendirme */}
         <div className="mt-12 text-center">

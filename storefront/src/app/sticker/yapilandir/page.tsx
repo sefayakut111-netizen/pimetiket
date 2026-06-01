@@ -246,6 +246,9 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 // Sefa 20 May v68 (Sticker reform): /sticker grid'den gelen URL pre-fill helper'ları
 function readInitialCutMode(searchParams: URLSearchParams): CutMode {
+  if (searchParams.get("kilit") === "tabaka") {
+    return "tabaka";
+  }
   const formParam = searchParams.get("form");
   if (formParam !== null && formParam.length === 0) {
     return "diecut";
@@ -314,6 +317,7 @@ function StickerPage() {
   const { t, locale, hydrated } = useT();
   const searchParams = useSearchParams();
   useSanitizeEmptyQueryParam("form");
+  const cutLocked = searchParams.get("kilit") === "tabaka";
 
   // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
   //   - name/desc override edilir (admin'den gelen önceliklidir)
@@ -487,13 +491,17 @@ function StickerPage() {
   // kullanıcı farklı karttan yeni girerse state'ler yeniden eşleşir
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
-    const formParam = params.get("form");
-    if (formParam !== null && formParam.length === 0) {
-      setCutMode("diecut");
-    }
-    const cut = params.get("cut");
-    if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") {
-      setCutMode(cut);
+    if (params.get("kilit") === "tabaka") {
+      setCutMode("tabaka");
+    } else {
+      const formParam = params.get("form");
+      if (formParam !== null && formParam.length === 0) {
+        setCutMode("diecut");
+      }
+      const cut = params.get("cut");
+      if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") {
+        setCutMode(cut);
+      }
     }
     setShape(readInitialShape(params));
     const sp = params.get("shape");
@@ -701,6 +709,7 @@ function StickerPage() {
   // sadece touched işaretle, state reset etmeden geç.
   const handleCutModeChange = useCallback(
     (next: "diecut" | "tabaka") => {
+      if (cutLocked) return;
       // Aynı seçimde state'i resetleme, ama step 1'i touched yap → unlock
       if (next === cutMode) {
         setTouchedSteps((prev) =>
@@ -725,7 +734,7 @@ function StickerPage() {
       setDesigns([]);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cutMode, designs]
+    [cutLocked, cutMode, designs]
   );
   // Sefa 16 May denetim #1: i18n. EN locale'de İngilizce stepper.
   // Sefa 20 May v68 (2. revize): SHOW_STICKER_SHAPE_PICKER=false ise
@@ -1091,7 +1100,7 @@ function StickerPage() {
                 Sefa 20 May v68 (Sticker reform): /sticker grid'den
                 ?cut=... ile pre-fill geldiği için bu adım gizli.
                 SHOW_STICKER_CUT_MODE_PICKER true yapılırsa geri gelir. */}
-            {SHOW_STICKER_CUT_MODE_PICKER && (
+            {SHOW_STICKER_CUT_MODE_PICKER && !cutLocked && (
             <FormSection
               id="step-1"
               number={uiStepNumber(1)}
@@ -1112,6 +1121,14 @@ function StickerPage() {
               </div>
             </FormSection>
             )}
+
+            {cutLocked ? (
+              <p className="mb-4 rounded-xl border border-gri-200 bg-white px-4 py-3 text-[13px] text-gri-700 leading-relaxed">
+                {locale === "en"
+                  ? "This product is produced as a sheet (tabaka)."
+                  : "Bu ürün sayfa (tabaka) olarak üretilir."}
+              </p>
+            ) : null}
 
             {/* Step 2 — Şekil seçici. Sefa 20 May v68 (2. revize):
                 SHOW_STICKER_SHAPE_PICKER false ise tüm FormSection gizli.
