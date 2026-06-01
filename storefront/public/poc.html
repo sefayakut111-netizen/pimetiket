@@ -2032,6 +2032,34 @@ window.addEventListener('message', (e) => {
         const btn = document.getElementById('btnApprove');
         if (btn) btn.click();
       }
+    } else if (msg.type === 'pim-request-design-file') {
+      void (async () => {
+        if (!currentFile) {
+          pimPostToParent({ type: 'pim-design-file', error: 'no_file' });
+          return;
+        }
+        try {
+          const buf = await currentFile.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let binary = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(
+              null,
+              bytes.subarray(i, i + chunk)
+            );
+          }
+          pimPostToParent({
+            type: 'pim-design-file',
+            fileName: currentFile.name,
+            mimeType: currentFile.type || 'application/octet-stream',
+            sizeBytes: currentFile.size,
+            base64: btoa(binary),
+          });
+        } catch (err) {
+          pimPostToParent({ type: 'pim-design-file', error: String(err) });
+        }
+      })();
     } else if (msg.type === 'pim-load-design') {
       // Parent'tan tasarım URL — query string kesildiyse yedek yükleme
       if (msg.url && typeof msg.url === 'string') {

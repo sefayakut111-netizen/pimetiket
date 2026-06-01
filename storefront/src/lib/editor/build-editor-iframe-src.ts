@@ -1,29 +1,16 @@
-/** POC iframe src — pre-order standalone editör modu. */
+/** POC iframe src — pre-order standalone editör (upload iframe içinde). */
 
-export function buildEditorIframeSrc(args: {
-  tempDesignId: string;
-  fileName: string;
-  mimeType: string;
-  widthMm?: number;
-  heightMm?: number;
-  origin: string;
+export function buildEditorIframeSrc(args?: {
+  material?: string;
+  mode?: "contour" | "hull" | "rect" | "circle";
 }): string {
-  const designUrl = `${args.origin}/api/editor/design-file/${args.tempDesignId}`;
   const p = new URLSearchParams({
+    embed: "1",
     standalone: "1",
-    headless: "1",
-    designUrl,
-    designName: args.fileName,
-    designMime: args.mimeType,
-    mode: "contour",
-    hideUpload: "1",
-    hideDpi: "1",
+    mode: args?.mode ?? "contour",
   });
-  if (args.widthMm != null && args.widthMm > 0) {
-    p.set("orderWidthMm", String(args.widthMm));
-  }
-  if (args.heightMm != null && args.heightMm > 0) {
-    p.set("orderHeightMm", String(args.heightMm));
+  if (args?.material) {
+    p.set("material", args.material);
   }
   return `/poc.html?${p.toString()}`;
 }
