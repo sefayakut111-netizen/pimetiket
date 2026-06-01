@@ -85,3 +85,6 @@ deps.png
 
 test-assets/
 !test-assets/README.md
+
+# Claude/Cursor calisma prompt'lari (urun kodu degil)
+CURSOR-PROMPT-*.md
