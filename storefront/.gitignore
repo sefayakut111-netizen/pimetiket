@@ -88,3 +88,8 @@ test-assets/
 
 # Claude/Cursor calisma prompt'lari (urun kodu degil)
 CURSOR-PROMPT-*.md
+
+# Google service account keys (GA4/GSC Data API kurulumu)
+*-gserviceaccount*.json
+ga4-*-key.json
+gsc-*-key.json

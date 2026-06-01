@@ -144,6 +144,43 @@ Clarity tamamen ücretsiz + Microsoft.
 
 ---
 
+### 5️⃣ Admin trafik paneli — GA4 Data API (10 dk, opsiyonel)
+
+**Amaç:** `/admin/trafik` sayfasında GA4 grafikleri (7g/28g/90g). Site ziyaretçi toplama (`NEXT_PUBLIC_GA4_MEASUREMENT_ID`) ile **ayrı** katman; sunucu tarafı Data API + service account ister.
+
+**Google Cloud (bir kez):**
+1. https://console.cloud.google.com → proje seç/oluştur
+2. **APIs & Services → Enable APIs** → **Google Analytics Data API** etkinleştir
+3. **IAM → Service Accounts** → Create → JSON key indir
+
+**GA4 yetki:**
+1. https://analytics.google.com → **Yönetici → Mülk erişim yönetimi**
+2. Service account e-postasını ekle → rol: **Görüntüleyen**
+
+**Vercel Production env (3 değişken):**
+
+| Name | Value |
+|------|-------|
+| `GA4_PROPERTY_ID` | Mülk Ayarları → sayısal mülk kimliği (G-XXXX değil) |
+| `GA4_SA_CLIENT_EMAIL` | JSON → `client_email` |
+| `GA4_SA_PRIVATE_KEY` | JSON → `private_key` (tek satır, `\n` kaçışlı) |
+
+**Otomatik kurulum (önerilen):**
+```bash
+cd pim-etiket/core/storefront
+node scripts/setup-ga4-vercel-env.mjs --sa-json ./ga4-reader-key.json
+```
+Mülk kimliği measurement ID'den otomatik bulunur; Vercel env + production redeploy yapar.
+
+**Durum kontrolü:**
+```bash
+node scripts/check-ga4-vercel-env.mjs
+```
+
+**Doğrulama:** https://pimetiket.com/admin/trafik — grafikler + yeşil “Site trafiği toplanıyor”.
+
+---
+
 ## 🧪 Doğrulama checklist
 
 Tüm env'leri ekledikten + redeploy sonrası:
