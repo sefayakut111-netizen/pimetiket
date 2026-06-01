@@ -150,6 +150,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/ayarlar": "Ayarlar",
   "/admin/sistem/cronlar": "Cron izleme",
   "/admin/sistem/bakim": "Bakım modu",
+  "/admin/mail-health": "Mail sağlığı",
 };
 
 function getPageTitle(
@@ -446,6 +447,12 @@ function AdminShellInner({ children }: { children: ReactNode }) {
         items: [
           { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} />, module: "dashboard" },
           {
+            href: "/admin/trafik",
+            label: "Trafik",
+            icon: <Icon.Eye size={16} />,
+            module: "dashboard",
+          },
+          {
             href: "/admin/kuyruk",
             label: "Operasyon Kuyruğu",
             icon: <Icon.Doc size={16} />,
@@ -554,12 +561,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
         label: "Finans",
         items: [
           {
-            href: "/admin/trafik",
-            label: "Trafik",
-            icon: <Icon.Eye size={16} />,
-            module: "dashboard",
-          },
-          {
             href: "/admin/finans",
             label: "Finans & Raporlar",
             icon: <Icon.Wallet size={16} />,
@@ -608,6 +609,12 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             icon: <Icon.Refresh size={16} />,
             module: "staff",
             adminOnly: true,
+          },
+          {
+            href: "/admin/mail-health",
+            label: "Mail sağlığı",
+            icon: <Icon.ChatBubble size={16} />,
+            module: "mail_health",
           },
           {
             href: "/admin/audit-log",
