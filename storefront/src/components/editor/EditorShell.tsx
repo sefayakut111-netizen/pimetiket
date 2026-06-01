@@ -19,10 +19,23 @@ import {
 } from "@/lib/editor/editor-handoff";
 import { uploadFileToTempDesign } from "@/lib/design-temp-upload";
 import { roundEditorMm } from "@/lib/editor/coords";
+import {
+  effectivePrintDpi,
+  printDpiStatus,
+} from "@/lib/editor/suggest-mm-from-pixels";
 import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
+import { EditorPreviewLegend } from "@/components/editor/EditorPreviewLegend";
 import { cn } from "@/lib/cn";
 
 type PocStatusState = "loading" | "ready" | "loaded" | "error" | "timeout";
+type CutMode = "contour" | "hull" | "rect" | "circle";
+
+const CUT_MODES: { mode: CutMode; label: string }[] = [
+  { mode: "contour", label: "Kontur" },
+  { mode: "hull", label: "Çevresel" },
+  { mode: "rect", label: "Dikdörtgen" },
+  { mode: "circle", label: "Yuvarlak" },
+];
 
 const DEFAULT_WIDTH_MM = 50;
 const DEFAULT_HEIGHT_MM = 50;
@@ -81,6 +94,10 @@ export default function EditorShell() {
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1);
   const [pocMeta, setPocMeta] = useState<PocCutlineMeta | null>(null);
+  const [cutMode, setCutMode] = useState<CutMode>("contour");
+  const [imagePixelW, setImagePixelW] = useState(0);
+  const [imagePixelH, setImagePixelH] = useState(0);
+  const [imageScalePct, setImageScalePct] = useState(100);
   const [pocStatus, setPocStatus] = useState<{
     state: PocStatusState;
     message: string;
@@ -113,6 +130,13 @@ export default function EditorShell() {
     setWidthMm(tpl.widthMm);
     setHeightMm(tpl.heightMm);
     setAspect(tpl.widthMm / tpl.heightMm);
+    setCutMode(
+      tpl.shape === "circle"
+        ? "circle"
+        : tpl.shape === "rect" || tpl.shape === "ellipse"
+          ? "rect"
+          : "contour"
+    );
   }, [searchParams]);
 
   const postToPoc = useCallback((payload: Record<string, unknown>) => {
@@ -170,16 +194,36 @@ export default function EditorShell() {
         loaded = true;
         setDesignLoaded(true);
         setCutlineReady(false);
+        if (typeof data.width === "number" && data.width > 0) {
+          setImagePixelW(data.width);
+        }
+        if (typeof data.height === "number" && data.height > 0) {
+          setImagePixelH(data.height);
+        }
         setPocStatus({
           state: "loaded",
           message: "Tasarım yüklendi — kontur hesaplanıyor…",
         });
         postToPoc({ type: "pim-fit-contain" });
+      } else if (data.type === "pim-image-scale-changed") {
+        if (typeof data.scale === "number" && data.scale > 0) {
+          setImageScalePct(
+            Math.round(Math.max(25, Math.min(200, data.scale * 100)))
+          );
+        }
       } else if (data.type === "pim-cutline-ready") {
         setCutlineReady(true);
         const meta = data.meta as PocCutlineMeta | undefined;
         if (meta) {
           setPocMeta((prev) => ({ ...prev, ...meta }));
+          if (
+            meta.mode === "contour" ||
+            meta.mode === "hull" ||
+            meta.mode === "rect" ||
+            meta.mode === "circle"
+          ) {
+            setCutMode(meta.mode);
+          }
           if (typeof meta.width_mm === "number" && meta.width_mm > 0) {
             setWidthMm(meta.width_mm);
           }
@@ -281,6 +325,34 @@ export default function EditorShell() {
     if (on && heightMm > 0) setAspect(widthMm / heightMm);
     setLockAspect(on);
   };
+
+  const handleCutModeChange = (mode: CutMode) => {
+    setCutMode(mode);
+    setCutlineReady(false);
+    postToPoc({
+      type: "pim-editor-set-shape",
+      mode,
+      widthMm,
+      heightMm,
+    });
+  };
+
+  const handleImageScaleChange = (pct: number) => {
+    const clamped = Math.max(25, Math.min(200, pct));
+    setImageScalePct(clamped);
+    postToPoc({ type: "pim-set-image-scale", scale: clamped / 100 });
+  };
+
+  const dpiInfo = useMemo(() => {
+    if (imagePixelW <= 0 || imagePixelH <= 0) return null;
+    const dpi = effectivePrintDpi(
+      imagePixelW,
+      imagePixelH,
+      widthMm,
+      heightMm
+    );
+    return printDpiStatus(dpi);
+  }, [imagePixelW, imagePixelH, widthMm, heightMm]);
 
   const requestDesignFile = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {
@@ -533,6 +605,35 @@ export default function EditorShell() {
 
           <section className="mt-4 border-t border-gri-100 pt-3">
             <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
+              Görsel ölçek
+            </h2>
+            <label className="mt-2 block text-[11px] text-gri-600">
+              <span className="flex items-center justify-between gap-2">
+                <span>Ölçek</span>
+                <span className="tabular-nums font-medium text-lacivert">
+                  %{imageScalePct}
+                </span>
+              </span>
+              <input
+                type="range"
+                min={25}
+                max={200}
+                step={1}
+                value={imageScalePct}
+                disabled={!designLoaded}
+                onChange={(e) =>
+                  handleImageScaleChange(parseInt(e.target.value, 10))
+                }
+                className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+              />
+            </label>
+            <p className="mt-1 text-[10px] text-gri-500 leading-snug">
+              %25–%200 arası. Ortala / Sığdır / Doldur ile sıfırlanır.
+            </p>
+          </section>
+
+          <section className="mt-4 border-t border-gri-100 pt-3">
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
               Özet
             </h2>
             <dl className="mt-2 space-y-1.5 text-[12px]">
@@ -557,7 +658,40 @@ export default function EditorShell() {
                   {cutlineReady ? "Hazır" : designLoaded ? "Hesaplanıyor…" : "—"}
                 </dd>
               </div>
+              {dpiInfo ? (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-gri-600">Baskı DPI</dt>
+                  <dd
+                    className={cn(
+                      "font-medium tabular-nums text-right",
+                      dpiInfo.level === "ok"
+                        ? "text-yesil"
+                        : dpiInfo.level === "warn"
+                          ? "text-sari"
+                          : "text-kirmizi"
+                    )}
+                  >
+                    ≈{dpiInfo.dpi}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
+            {dpiInfo?.message ? (
+              <p
+                className={cn(
+                  "mt-2 rounded-lg px-2 py-1.5 text-[11px] leading-snug",
+                  dpiInfo.level === "warn"
+                    ? "bg-sari-soft text-lacivert"
+                    : "bg-kirmizi-soft text-kirmizi"
+                )}
+              >
+                {dpiInfo.level === "ok"
+                  ? "Baskı kalitesi iyi"
+                  : dpiInfo.message}
+              </p>
+            ) : dpiInfo?.level === "ok" ? (
+              <p className="mt-2 text-[11px] text-yesil">Baskı kalitesi iyi</p>
+            ) : null}
           </section>
 
           <p className="mt-4 text-[11px] text-gri-600 leading-snug">
@@ -568,7 +702,55 @@ export default function EditorShell() {
           </p>
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col p-3 lg:p-4">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 lg:p-4">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-gri-200 bg-white p-1">
+              <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
+                Yerleştir
+              </span>
+              {(
+                [
+                  { id: "pim-fit-center", label: "Ortala" },
+                  { id: "pim-fit-contain", label: "Sığdır" },
+                  { id: "pim-fit-cover", label: "Doldur" },
+                ] as const
+              ).map((btn) => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  disabled={!designLoaded}
+                  onClick={() => postToPoc({ type: btn.id })}
+                  className="rounded-md px-2.5 py-1 text-[12px] font-medium text-gri-700 hover:bg-gri-100 disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-gri-200 bg-white p-1">
+              <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
+                Kesim
+              </span>
+              {CUT_MODES.map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={!designLoaded}
+                  onClick={() => handleCutModeChange(mode)}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none",
+                    cutMode === mode
+                      ? "bg-pim-mercan text-white shadow-sm"
+                      : "text-gri-700 hover:bg-gri-100"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <EditorPreviewLegend />
+
           <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
             <iframe
               ref={iframeRef}

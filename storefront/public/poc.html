@@ -1441,6 +1441,7 @@
   html.pim-editor-shell #materialPanel,
   html.pim-editor-shell #settingsPanel,
   html.pim-editor-shell #placementPanel,
+  html.pim-editor-shell #cutModePanel,
   html.pim-editor-shell #resetSettingsPanel,
   html.pim-editor-shell #actionBar,
   html.pim-editor-shell #outputPanel,
@@ -1537,7 +1538,7 @@
     </div>
 
     <!-- Kesim modu -->
-    <div class="panel">
+    <div class="panel" id="cutModePanel">
       <div class="panel-title">Kesim modu</div>
       <div class="mode-grid">
         <button class="mode-btn active" data-mode="contour">
@@ -2097,26 +2098,63 @@ window.addEventListener('message', (e) => {
       }
       pimEditorOnOrderSizeChange();
       if (currentMat) {
-        if (
-          PIM_PARAMS.standalone &&
-          currentMode === 'contour' &&
-          getPlacementFrame() &&
-          !pimUserMovedImage
-        ) {
-          applyPlacementPreset('contain');
+        if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
+          pimFitEditorPreviewToFrame();
         }
         generateCutline();
+        generateWhitePlan();
         render();
+        if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
+          pimAutoFitViewZoomToWrap();
+        }
         pimScheduleHeightReport();
       }
     } else if (msg.type === 'pim-fit-contain') {
-      if (PIM_PARAMS.standalone && currentMat) {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat) {
         pimUserMovedImage = false;
-        if (getPlacementFrame() && currentMode === 'contour') {
+        if (getPlacementFrame()) {
           applyPlacementPreset('contain');
         } else {
           render();
         }
+        pimAutoFitViewZoomToWrap();
+      }
+    } else if (msg.type === 'pim-fit-center') {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat) {
+        pimUserMovedImage = false;
+        if (getPlacementFrame()) {
+          applyPlacementPreset('center');
+        } else {
+          render();
+        }
+        pimAutoFitViewZoomToWrap();
+      }
+    } else if (msg.type === 'pim-fit-cover') {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat) {
+        pimUserMovedImage = false;
+        if (getPlacementFrame()) {
+          applyPlacementPreset('cover');
+        } else {
+          render();
+        }
+        pimAutoFitViewZoomToWrap();
+      }
+    } else if (msg.type === 'pim-set-image-scale') {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat && imageMetadata) {
+        const s = Math.max(0.25, Math.min(2, Number(msg.scale)));
+        if (!Number.isFinite(s)) return;
+        imageTransform.scale = s;
+        const frame = getPlacementFrame();
+        if (frame) {
+          const artCx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
+          const artCy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
+          imageTransform.x = frame.cx - artCx;
+          imageTransform.y = frame.cy - artCy;
+        }
+        pimUserMovedImage = true;
+        render();
+        pimPostImageScaleChanged();
+        pimScheduleHeightReport();
       }
     } else if (msg.type === 'pim-set-offset') {
       const slider = document.getElementById('offsetSlider');
@@ -2150,10 +2188,18 @@ window.addEventListener('message', (e) => {
       if (PIM_PARAMS.standalone) {
         pimUserMovedImage = false;
       }
+      pimEditorOnOrderSizeChange();
       if (currentMat) {
+        if (PIM_PARAMS.editorShell && getPlacementFrame()) {
+          pimUserMovedImage = false;
+          applyPlacementPreset('contain');
+        }
         generateCutline();
         generateWhitePlan();
         render();
+        if (PIM_PARAMS.editorShell) {
+          pimAutoFitViewZoomToWrap();
+        }
         updateMetadataDisplay();
       }
     }
@@ -2178,17 +2224,40 @@ function pimNotifyLoaded() {
   pimScheduleHeightReport();
 }
 
-/** Pre-order editör — mm değişince zoom ile görsel geri bildirim */
-let pimEditorLastDimW = null;
+/** Dış editör kabuğu — canvas'ı önizleme alanına sığdır */
+function pimAutoFitViewZoomToWrap() {
+  const wrap = document.getElementById('canvasWrap');
+  const canvas = document.getElementById('canvas');
+  if (!wrap || !canvas || canvas.width <= 0 || canvas.height <= 0) return;
+  const pad = 20;
+  const availW = Math.max(120, wrap.clientWidth - pad);
+  const availH = Math.max(120, (wrap.clientHeight || 480) - pad);
+  const fitScale = Math.min(availW / canvas.width, availH / canvas.height);
+  viewZoom = Math.max(0.25, Math.min(1, fitScale));
+  applyViewZoom();
+}
+
+function pimPostImageScaleChanged() {
+  if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone) return;
+  pimPostToParent({ type: 'pim-image-scale-changed', scale: imageTransform.scale });
+}
+
+function pimFitEditorPreviewToFrame() {
+  if (!PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) return;
+  if (!currentMat || !imageMetadata) return;
+  pimUserMovedImage = false;
+  if (getPlacementFrame()) {
+    applyPlacementPreset('contain');
+  } else {
+    render();
+  }
+  pimAutoFitViewZoomToWrap();
+}
+
+/** Pre-order editör — mm değişince metadata güncelle (viewZoom çarpanı kaldırıldı) */
 function pimEditorOnOrderSizeChange() {
   const dims = getOrderDimsMm();
   if (!PIM_PARAMS.standalone || !dims) return;
-  if (pimEditorLastDimW != null && pimEditorLastDimW > 0 && dims.w > 0) {
-    const factor = dims.w / pimEditorLastDimW;
-    viewZoom = Math.max(0.25, Math.min(3, Math.round(viewZoom * factor * 10) / 10));
-    applyViewZoom();
-  }
-  pimEditorLastDimW = dims.w;
   if (imageMetadata) {
     imageMetadata.orderWidthMm = dims.w;
     imageMetadata.orderHeightMm = dims.h;
@@ -2886,6 +2955,9 @@ function applyPlacementPreset(preset) {
   render();
   pimScheduleHeightReport();
   pimScheduleAutoSave();
+  if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
+    pimPostImageScaleChanged();
+  }
 }
 
 function applyViewZoom() {
@@ -3007,11 +3079,12 @@ function processImage(img, file) {
   if (getPlacementFrame() && PIM_PARAMS.embed) {
     applyPlacementPreset('center');
   } else if (
-    PIM_PARAMS.standalone &&
-    getOrderDimsMm() &&
-    currentMode === 'contour'
+    (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) &&
+    getOrderDimsMm()
   ) {
     applyPlacementPreset('contain');
+    pimAutoFitViewZoomToWrap();
+    pimPostImageScaleChanged();
   } else {
     render();
   }
