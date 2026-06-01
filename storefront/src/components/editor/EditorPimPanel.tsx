@@ -22,7 +22,7 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
     {
       id: "welcome",
       role: "pim",
-      text: "Boyut, kesim şekli veya arka plan için yaz — uygularım. Tasarım çizmem.",
+      text: "Boyut, kesim veya arka plan — yaz, uygularım.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -111,22 +111,17 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
   }, [input, sending, disabled, onCommand, scrollToBottom]);
 
   return (
-    <aside className="hidden min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-gri-100 px-3 py-3">
-        <PimMini pose="chat" size={32} />
-        <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-lacivert leading-tight">
-            Pim&apos;e söyle
-          </p>
-          <p className="text-[11px] text-gri-500 leading-snug">
-            Doğal dille komut ver
-          </p>
-        </div>
+    <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
+      <div className="flex shrink-0 items-center gap-2 border-b border-gri-100 px-3 py-2.5">
+        <PimMini pose="chat" size={28} />
+        <p className="text-[13px] font-semibold text-lacivert leading-tight">
+          Pim&apos;e söyle
+        </p>
       </div>
 
       <div
         ref={listRef}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 space-y-2.5 bg-gri-50"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5 space-y-2 bg-gri-50"
         aria-live="polite"
       >
         {messages.map((msg) => (
@@ -148,7 +143,7 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
       </div>
 
       <form
-        className="shrink-0 border-t border-gri-200 p-3 bg-white"
+        className="shrink-0 border-t border-gri-200 bg-white p-3"
         onSubmit={(e) => {
           e.preventDefault();
           void sendMessage();
@@ -158,10 +153,10 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Örn: 1 lira boyutu yap, yuvarlak kes, arka planı sil"
+            placeholder="1 lira boyutu, yuvarlak kes…"
             disabled={disabled || sending}
             maxLength={500}
-            className="text-[13px]"
+            className="min-w-0 flex-1 text-[13px]"
             aria-label="Pim komutu"
           />
           <Button

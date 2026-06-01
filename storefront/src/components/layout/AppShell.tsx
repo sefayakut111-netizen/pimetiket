@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       {!isEditor ? <Footer /> : null}
-      <PimChat />
+      {!isEditor ? <PimChat /> : null}
     </>
   );
 }

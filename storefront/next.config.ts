@@ -77,7 +77,7 @@ const securityHeaders = [
       // `data:` — OpenCV.js runtime icinde WASM binary'sini base64 data URL
       // olarak embed ediyor ve kendi kendine fetch ediyor (xhr.open data:...).
       // Bunu izin vermezsek opencv init asamasinda console hatasi atar.
-      "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://www.paytr.com https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://eu.sentry.io https://*.ingest.de.sentry.io https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev https://huggingface.co https://*.huggingface.co",
+      "connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://www.paytr.com https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://eu.sentry.io https://*.ingest.de.sentry.io https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev https://huggingface.co https://*.huggingface.co https://staticimgly.com",
       // Session replay worker (PostHog) + POC PDF.js worker (cdnjs)
       "worker-src 'self' blob: https://cdnjs.cloudflare.com",
       // PayTR hosted checkout iframe

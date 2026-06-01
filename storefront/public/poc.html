@@ -4196,9 +4196,8 @@ async function performBackgroundRemoval() {
     }
     const { removeBackground } = bgRemovalModule;
 
-    // Blob'a dönüştür — publicPath: CSP'de izinli jsdelivr
+    // Blob'a dönüştür — model staticimgly.com'dan (CSP connect-src)
     const blob = await removeBackground(currentFile, {
-      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/dist/',
       progress: (key, current, total) => {
         const pct = total > 0 ? Math.round((current / total) * 100) : 0;
         document.getElementById('loadingText').textContent =
