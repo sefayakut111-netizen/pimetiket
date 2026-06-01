@@ -135,7 +135,7 @@ export default function EditorShell() {
   const [imageScalePct, setImageScalePct] = useState(100);
   const baseWidthMmRef = useRef(DEFAULT_WIDTH_MM);
   const baseHeightMmRef = useRef(DEFAULT_HEIGHT_MM);
-  const suppressScaleEchoRef = useRef(false);
+  const scaleEchoSuppressUntilRef = useRef(0);
   const [offsetMm, setOffsetMm] = useState(0);
   const [smoothness, setSmoothness] = useState(0);
   const [cornerRadiusMm, setCornerRadiusMm] = useState(0);
@@ -257,7 +257,7 @@ export default function EditorShell() {
 
   const syncSizeToPoc = useCallback(
     (w: number, h: number) => {
-      suppressScaleEchoRef.current = true;
+      scaleEchoSuppressUntilRef.current = performance.now() + 800;
       postToPoc({ type: "pim-editor-set-size", widthMm: w, heightMm: h });
     },
     [postToPoc]
@@ -395,14 +395,13 @@ export default function EditorShell() {
         });
       } else if (data.type === "pim-image-scale-changed") {
         if (typeof data.scale === "number" && data.scale > 0) {
-          if (suppressScaleEchoRef.current) {
-            suppressScaleEchoRef.current = false;
+          // Shell kaynaklı set-size'dan gelen echo penceresi → TÜMÜNÜ yok say (slider zıplamasın)
+          if (performance.now() < scaleEchoSuppressUntilRef.current) {
             return;
           }
           const pct = Math.round(
             Math.max(25, Math.min(200, data.scale * 100))
           );
-          // ECHO: POC kaynaklı — geri post yok, sadece state (sonsuz döngüyü kırar)
           if (pct !== imageScalePct) {
             applyCoordinatedScale(pct, {
               syncPocScale: false,
