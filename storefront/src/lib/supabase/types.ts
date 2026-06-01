@@ -3090,6 +3090,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pim_conversations: {
+        Row: {
+          id: string
+          user_id: string | null
+          display_name: string | null
+          facts: Json
+          history: Json
+          last_summary: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          display_name?: string | null
+          facts?: Json
+          history?: Json
+          last_summary?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          display_name?: string | null
+          facts?: Json
+          history?: Json
+          last_summary?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           admin_role: Database["public"]["Enums"]["admin_role_v2"] | null

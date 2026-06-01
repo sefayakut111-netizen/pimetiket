@@ -13,6 +13,10 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
+import {
+  deletePimConversationForUser,
+  scopeIncludesPimChat,
+} from "@/lib/pim/kvkk-pim-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +65,7 @@ export async function POST(
   // Mevcut kaydı çek + status uygun mu kontrol
   const { data: existing } = await admin
     .from("kvkk_requests")
-    .select("id, user_id, kind, status")
+    .select("id, user_id, kind, status, scope")
     .eq("id", id)
     .maybeSingle();
   const row = existing as {
@@ -69,6 +73,7 @@ export async function POST(
     user_id: string;
     kind: string;
     status: string;
+    scope: Record<string, unknown> | null;
   } | null;
   if (!row) {
     return NextResponse.json({ error: "Talep bulunamadı" }, { status: 404 });
@@ -83,6 +88,20 @@ export async function POST(
   }
 
   const nextStatus = action === "complete" ? "completed" : "rejected";
+
+  if (
+    action === "complete" &&
+    row.kind === "partial_delete" &&
+    scopeIncludesPimChat(row.scope)
+  ) {
+    const del = await deletePimConversationForUser(admin, row.user_id);
+    if (!del.ok) {
+      return NextResponse.json(
+        { error: del.error ?? "Pim sohbet silinemedi" },
+        { status: 500 }
+      );
+    }
+  }
 
   const { error: updateErr } = await admin
     .from("kvkk_requests")

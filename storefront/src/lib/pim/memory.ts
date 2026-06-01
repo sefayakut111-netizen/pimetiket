@@ -192,3 +192,189 @@ export function memorySnapshotForPrompt(mem: PimMemory) {
 export function isReturningUser(mem: PimMemory): boolean {
   return mem.history.length > 0 || !!mem.displayName;
 }
+
+// ============================================================
+// Memory providers — anonim localStorage vs üye server-side
+// ============================================================
+
+export interface PimMemoryProvider {
+  read(): Promise<PimMemory>;
+  appendMessage(msg: Omit<PimMessage, "id" | "createdAt">): Promise<void>;
+  upsertFact(fact: Omit<PimFact, "learnedAt">): Promise<void>;
+  setSummary(summary: string): Promise<void>;
+  setDisplayName(name: string): Promise<void>;
+  clearHistory(): Promise<void>;
+  /** Server provider: bekleyen yazımları hemen gönder (logout öncesi). */
+  flush?(): Promise<void>;
+}
+
+interface MemoryApiPayload {
+  displayName?: string | null;
+  facts?: PimFact[];
+  history?: PimMessage[];
+  lastSummary?: string | null;
+}
+
+function apiPayloadToMemory(
+  userId: string,
+  payload: MemoryApiPayload
+): PimMemory {
+  return {
+    userId,
+    consent: true,
+    consentAt: Date.now(),
+    displayName: payload.displayName ?? undefined,
+    facts: Array.isArray(payload.facts) ? payload.facts : [],
+    history: Array.isArray(payload.history) ? payload.history : [],
+    lastConversationSummary: payload.lastSummary ?? undefined,
+  };
+}
+
+function memoryToApiPayload(mem: PimMemory): MemoryApiPayload {
+  return {
+    displayName: mem.displayName ?? null,
+    facts: mem.facts,
+    history: mem.history,
+    lastSummary: mem.lastConversationSummary ?? null,
+  };
+}
+
+export class LocalMemoryProvider implements PimMemoryProvider {
+  async read(): Promise<PimMemory> {
+    return readMemory();
+  }
+
+  async appendMessage(
+    msg: Omit<PimMessage, "id" | "createdAt">
+  ): Promise<void> {
+    appendMessage(msg);
+  }
+
+  async upsertFact(fact: Omit<PimFact, "learnedAt">): Promise<void> {
+    upsertFact(fact);
+  }
+
+  async setSummary(summary: string): Promise<void> {
+    const mem = readMemory();
+    mem.lastConversationSummary = summary.slice(0, 2000);
+    writeMemory(mem);
+  }
+
+  async setDisplayName(name: string): Promise<void> {
+    setDisplayName(name);
+  }
+
+  async clearHistory(): Promise<void> {
+    const mem = readMemory();
+    mem.history = [];
+    mem.lastConversationSummary = undefined;
+    writeMemory(mem);
+  }
+}
+
+export class ServerMemoryProvider implements PimMemoryProvider {
+  private cache: PimMemory | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly userId: string;
+
+  constructor(userId: string) {
+    this.userId = userId;
+  }
+
+  private scheduleFlush(): void {
+    if (this.flushTimer) clearTimeout(this.flushTimer);
+    this.flushTimer = setTimeout(() => {
+      void this.flush();
+    }, 1000);
+  }
+
+  async flush(): Promise<void> {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    if (!this.cache) return;
+    await fetch("/api/pim/memory", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(memoryToApiPayload(this.cache)),
+    });
+  }
+
+  async read(): Promise<PimMemory> {
+    const res = await fetch("/api/pim/memory");
+    if (!res.ok) {
+      return {
+        userId: this.userId,
+        consent: true,
+        facts: [],
+        history: [],
+      };
+    }
+    const payload = (await res.json()) as MemoryApiPayload;
+    this.cache = apiPayloadToMemory(this.userId, payload);
+    return this.cache;
+  }
+
+  async appendMessage(
+    msg: Omit<PimMessage, "id" | "createdAt">
+  ): Promise<void> {
+    const mem = this.cache ?? (await this.read());
+    const next: PimMessage = {
+      ...msg,
+      id: generateUserId(),
+      createdAt: Date.now(),
+    };
+    mem.history = [...mem.history, next].slice(-MAX_HISTORY);
+    this.cache = mem;
+    this.scheduleFlush();
+  }
+
+  async upsertFact(fact: Omit<PimFact, "learnedAt">): Promise<void> {
+    const mem = this.cache ?? (await this.read());
+    const existing = mem.facts.findIndex((f) => f.key === fact.key);
+    const entry: PimFact = { ...fact, learnedAt: Date.now() };
+    if (existing >= 0) {
+      mem.facts[existing] = entry;
+    } else {
+      mem.facts.push(entry);
+    }
+    mem.facts = mem.facts
+      .sort((a, b) => b.learnedAt - a.learnedAt)
+      .slice(0, MAX_FACTS);
+    this.cache = mem;
+    this.scheduleFlush();
+  }
+
+  async setSummary(summary: string): Promise<void> {
+    const mem = this.cache ?? (await this.read());
+    mem.lastConversationSummary = summary.slice(0, 2000);
+    this.cache = mem;
+    this.scheduleFlush();
+  }
+
+  async setDisplayName(name: string): Promise<void> {
+    const mem = this.cache ?? (await this.read());
+    mem.displayName = name.trim().slice(0, 60) || undefined;
+    this.cache = mem;
+    this.scheduleFlush();
+  }
+
+  async clearHistory(): Promise<void> {
+    const mem = this.cache ?? (await this.read());
+    mem.history = [];
+    mem.lastConversationSummary = undefined;
+    this.cache = mem;
+    await this.flush();
+  }
+}
+
+export function getPimMemoryProvider(
+  isAuthenticated: boolean,
+  userId?: string
+): PimMemoryProvider {
+  if (isAuthenticated && userId) {
+    return new ServerMemoryProvider(userId);
+  }
+  return new LocalMemoryProvider();
+}

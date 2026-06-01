@@ -13,7 +13,7 @@
  * (AdminShell zaten ayrı).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -25,13 +25,14 @@ import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import type { PimPageContext, PimPersona } from "@/lib/pim/personas";
 import {
-  appendMessage,
+  getPimMemoryProvider,
   isReturningUser,
   memorySnapshotForPrompt,
   readMemory,
-  setDisplayName,
   type PimMemory,
+  type PimMemoryProvider,
 } from "@/lib/pim/memory";
+import { useUser } from "@/lib/supabase/use-user";
 import {
   readChatConsent,
   writeChatConsent,
@@ -64,6 +65,9 @@ function extractPageContext(pathname: string | null): PimPageContext | undefined
 export function PimChat() {
   const pathname = usePathname();
   const toast = useToast();
+  const { user, loading: authLoading } = useUser();
+  const providerRef = useRef<PimMemoryProvider>(getPimMemoryProvider(false));
+  const memoryRef = useRef<PimMemory>(readMemory());
   const [open, setOpen] = useState(false);
   const [memory, setMemory] = useState<PimMemory | null>(null);
   const [persona, setPersona] = useState<PimPersona>("welcome");
@@ -100,18 +104,10 @@ export function PimChat() {
     "needs-prompt" | "accepted" | "declined" | null
   >(null);
 
-  // Mount'ta memory'yi oku (sadece client). Sefa 21 May v68: KVKK m.9
-  // sınır ötesi rıza sohbet paneli içinde alınır; memory + composer sadece
-  // accepted iken aktif.
-  // Sefa 22 May v68: sessionStorage'dan teaserDismissed durumunu yükle —
-  // önce kapatınca tekrar tekrar geliyordu, spam hissi vardı.
+  // Mount: KVKK chat consent + teaser dismiss (memory auth effect'te yüklenir)
   useEffect(() => {
-    const mem = readMemory();
-    setMemory(mem);
-    // KVKK chat consent kaydını oku
     const record = readChatConsent();
     setConsent(record ? record.value : "needs-prompt");
-    // Teaser dismiss flag (session-scoped)
     try {
       if (sessionStorage.getItem("pim_teaser_dismissed") === "1") {
         setTeaserDismissedState(true);
@@ -134,7 +130,7 @@ export function PimChat() {
     transport: new DefaultChatTransport({
       api: "/api/pim/chat",
       prepareSendMessagesRequest({ messages }) {
-        const mem = readMemory();
+        const mem = memoryRef.current;
         const pageContext = extractPageContext(pathname);
         return {
           body: {
@@ -147,18 +143,30 @@ export function PimChat() {
       },
     }),
     onFinish: ({ message }) => {
-      // Sefa 21 May v68: KVKK m.9 sınır ötesi (OpenAI ABD) açık rıza
-      // ChatConsentInline'da alınıyor; bu noktaya gelinmişse zaten
-      // "accepted" — memory yazımı güvenli.
-      const text = extractText(message);
-      if (text) {
-        appendMessage({
-          role: "assistant",
-          content: text,
-          persona,
-        });
-      }
-      if (!open) setUnread((n) => n + 1);
+      void (async () => {
+        const text = extractText(message);
+        if (text) {
+          await providerRef.current.appendMessage({
+            role: "assistant",
+            content: text,
+            persona,
+          });
+        }
+        const mem = await providerRef.current.read();
+        memoryRef.current = mem;
+        setMemory(mem);
+        if (providerRef.current.flush && mem.history.length > 20) {
+          void fetch("/api/pim/summarize", { method: "POST" }).then(
+            async (res) => {
+              if (!res.ok) return;
+              const updated = await providerRef.current.read();
+              memoryRef.current = updated;
+              setMemory(updated);
+            }
+          );
+        }
+        if (!open) setUnread((n) => n + 1);
+      })();
     },
     onError: (error) => {
       // Backend hatası — büyük olasılıkla OPENAI_API_KEY yok ya da
@@ -170,31 +178,52 @@ export function PimChat() {
     },
   });
 
-  // Mount'ta memory'deki history'yi useChat'e yükle (sayfa yenileme sonrası)
+  // Auth-aware memory provider: üye → server, anonim → localStorage
   useEffect(() => {
-    if (!memory) return;
-    if (memory.history.length === 0) return;
-    if (messages.length > 0) return; // useChat zaten dolu
-    // Sefa 21 May v68 (site denetim P1 #9): ardışık duplicate kullanıcı
-    // mesajlarını filtrele — eski memory'de aynı soru çift baloncuk olarak
-    // saklanabiliyordu (double-submit, network retry, vs.).
-    const deduped: typeof memory.history = [];
-    for (const m of memory.history) {
-      const prev = deduped[deduped.length - 1];
-      if (prev && prev.role === m.role && prev.content === m.content) continue;
-      deduped.push(m);
+    if (authLoading) return;
+    let cancelled = false;
+
+    async function syncAuthMemory() {
+      const isAuth = !!user;
+      if (isAuth) {
+        const local = readMemory();
+        try {
+          await fetch("/api/pim/memory/migrate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              displayName: local.displayName ?? null,
+              facts: local.facts,
+              history: local.history,
+            }),
+          });
+        } catch {
+          /* migrate best-effort */
+        }
+        if (providerRef.current.flush) {
+          await providerRef.current.flush().catch(() => {});
+        }
+        providerRef.current = getPimMemoryProvider(true, user.id);
+        const mem = await providerRef.current.read();
+        if (cancelled) return;
+        applyMemoryToChat(mem, setMemory, setMessages, memoryRef);
+      } else {
+        if (providerRef.current.flush) {
+          await providerRef.current.flush().catch(() => {});
+        }
+        providerRef.current = getPimMemoryProvider(false);
+        setMessages([]);
+        const mem = await providerRef.current.read();
+        if (cancelled) return;
+        applyMemoryToChat(mem, setMemory, setMessages, memoryRef);
+      }
     }
-    // PimMessage → UIMessage çevirisi (parts[type=text])
-    const restored = deduped.map((m) => ({
-      id: m.id,
-      role: m.role,
-      parts: [{ type: "text" as const, text: m.content }],
-    }));
-    // useChat type'ı UIMessage[] bekler — runtime safe cast
-    setMessages(restored);
-    // sendMessage'ı no-op kullanmak için referansı tüket (lint pacification yerine no-op)
-    void sendMessage;
-  }, [memory, messages.length, setMessages, sendMessage]);
+
+    void syncAuthMemory();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading, setMessages]);
 
   // Açılınca unread sıfırla
   useEffect(() => {
@@ -417,20 +446,14 @@ export function PimChat() {
               persona={persona}
               memory={memory}
               onClearHistory={() => {
-                setMessages([]);
-                setUnread(0);
-                const mem = readMemory();
-                mem.history = [];
-                mem.lastConversationSummary = undefined;
-                try {
-                  localStorage.setItem(
-                    "pim:memory:v1",
-                    JSON.stringify(mem)
-                  );
-                } catch {
-                  /* ignore */
-                }
-                setMemory(mem);
+                void (async () => {
+                  await providerRef.current.clearHistory();
+                  setMessages([]);
+                  setUnread(0);
+                  const mem = await providerRef.current.read();
+                  memoryRef.current = mem;
+                  setMemory(mem);
+                })();
               }}
             />
           ) : (
@@ -443,20 +466,58 @@ export function PimChat() {
         <Composer
           disabled={status === "streaming" || status === "submitted"}
           onSend={(text) => {
-            appendMessage({ role: "user", content: text, persona });
-            track("pim_chat_message_sent", { persona });
-            const nameMatch = text.match(/(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/);
-            const mem = readMemory();
-            if (nameMatch && !mem.displayName) {
-              setDisplayName(nameMatch[1]);
-            }
-            sendMessage({ text });
+            void (async () => {
+              await providerRef.current.appendMessage({
+                role: "user",
+                content: text,
+                persona,
+              });
+              track("pim_chat_message_sent", { persona });
+              const nameMatch = text.match(
+                /(?:adım|ben)\s+([A-ZÇĞİÖŞÜa-zçğıöşü]+)/
+              );
+              const mem = await providerRef.current.read();
+              if (nameMatch && !mem.displayName) {
+                await providerRef.current.setDisplayName(nameMatch[1]);
+              }
+              const updated = await providerRef.current.read();
+              memoryRef.current = updated;
+              setMemory(updated);
+              sendMessage({ text });
+            })();
           }}
         />
         )}
       </div>
     </>
   );
+}
+
+// ============================================================
+// Memory → useChat restore
+// ============================================================
+
+function applyMemoryToChat(
+  mem: PimMemory,
+  setMemory: (m: PimMemory) => void,
+  setMessages: ReturnType<typeof useChat>["setMessages"],
+  memoryRef: MutableRefObject<PimMemory>
+) {
+  memoryRef.current = mem;
+  setMemory(mem);
+  if (mem.history.length === 0) return;
+  const deduped: typeof mem.history = [];
+  for (const m of mem.history) {
+    const prev = deduped[deduped.length - 1];
+    if (prev && prev.role === m.role && prev.content === m.content) continue;
+    deduped.push(m);
+  }
+  const restored = deduped.map((m) => ({
+    id: m.id,
+    role: m.role,
+    parts: [{ type: "text" as const, text: m.content }],
+  }));
+  setMessages(restored);
 }
 
 // ============================================================
