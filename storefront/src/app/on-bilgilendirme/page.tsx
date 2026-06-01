@@ -50,6 +50,9 @@ export default function OnBilgilendirmePage() {
           Çankaya/Ankara
         </li>
         <li>
+          <strong>Telefon:</strong> [Sefa tarafından eklenecek — Workinton ofis hattı]
+        </li>
+        <li>
           <strong>E-posta:</strong>{" "}
           <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
         </li>

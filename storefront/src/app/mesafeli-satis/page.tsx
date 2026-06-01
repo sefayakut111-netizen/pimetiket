@@ -40,6 +40,8 @@ export default function MesafeliSatisPage() {
         <br />
         E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
         <br />
+        Telefon: [Sefa tarafından eklenecek — Workinton ofis hattı]
+        <br />
         Web: <a href="https://pimetiket.com">pimetiket.com</a>
       </p>
       <p>
@@ -141,7 +143,7 @@ export default function MesafeliSatisPage() {
       <p>
         Üretim hatası, baskı bozukluğu, kargo hasarı veya sipariş edilen
         ürün özelliklerinden farklı ürün gönderilmesi durumlarında
-        ALICI&rsquo;nın yasal hakları saklıdır. Bu tür durumlarda 7 gün
+        ALICI&rsquo;nın yasal hakları saklıdır. Bu tür durumlarda 30 gün
         içinde fotoğraflı bildirim ile SATICI&rsquo;ya başvurulması halinde
         ürün ücretsiz yeniden üretilir veya ödenen tutar iade edilir.
       </p>

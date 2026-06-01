@@ -64,8 +64,9 @@ function SifreSifirlaInner() {
         );
         if (cancelled) return;
         if (error) {
+          console.error("[sifre-sifirla] exchangeCodeForSession:", error.message);
           toast.error(
-            `Şifre sıfırlama linki geçersiz veya süresi dolmuş: ${error.message}`
+            "Sıfırlama bağlantısı geçersiz veya süresi dolmuş — yeni link iste."
           );
         }
       } catch (err) {
@@ -102,7 +103,8 @@ function SifreSifirlaInner() {
         redirectTo: `${window.location.origin}/sifre-sifirla`,
       });
       if (error) {
-        toast.error(`Sıfırlama hatası: ${error.message}`);
+        console.error("[sifre-sifirla] resetPasswordForEmail:", error.message);
+        toast.error("İşlem tamamlanamadı, tekrar dene.");
       } else {
         setEmailSent(true);
         toast.success("Sıfırlama bağlantısı yollandı");
@@ -137,7 +139,8 @@ function SifreSifirlaInner() {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password: newPw });
       if (error) {
-        toast.error(`Şifre güncelleme hatası: ${error.message}`);
+        console.error("[sifre-sifirla] updateUser:", error.message);
+        toast.error("İşlem tamamlanamadı, tekrar dene.");
       } else {
         setResetDone(true);
         toast.success("Şifren güncellendi");

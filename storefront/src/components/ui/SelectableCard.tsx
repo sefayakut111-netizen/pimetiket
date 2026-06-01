@@ -45,6 +45,7 @@ export function SelectableCard({
         "ring-[1.5px] ring-gri-200",
         "transition-[box-shadow,transform,border-color] duration-200",
         "hover:ring-pim-mercan-soft hover:-translate-y-0.5",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2",
         selected &&
           "ring-pim-mercan shadow-[0_0_0_3px_var(--color-pim-mercan-tint)]",
         className

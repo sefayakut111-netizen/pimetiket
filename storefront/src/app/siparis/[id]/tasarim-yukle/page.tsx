@@ -286,6 +286,8 @@ export default function TasarimYuklePage({
             await new Promise((r) => setTimeout(r, 1500));
             return load({ silent: true });
           }
+          toast.error("Durum güncellenemedi, sayfa yenileniyor...");
+          return load({ silent: true });
         }
 
         if (

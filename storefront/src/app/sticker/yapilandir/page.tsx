@@ -38,9 +38,11 @@ import {
   MaterialSwatch,
   PopulerBadge,
   InfoTooltip,
+  Button,
   type DesignTempState,
   type SurfaceId,
 } from "@/components/ui";
+import { Modal } from "@/components/ui/Modal";
 import {
   ProductPreviewShell,
   StickerLivePreview,
@@ -671,6 +673,9 @@ function StickerPage() {
   // Sefa 18 May v60: Sepete eklendi pop-up'ı
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
+  const [noDesignModalOpen, setNoDesignModalOpen] = useState(false);
+  const bypassNoDesignConfirmRef = useRef(false);
+  const stickerAddToCartRef = useRef<(() => Promise<void>) | null>(null);
   const markTouched = useCallback((n: number, value?: string | number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
@@ -1969,6 +1974,7 @@ function StickerPage() {
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={ctaLabel}
               onCta={async () => {
+                const runAddToCart = async () => {
                 // Sefa 20 May v68: zorunlu step kontrolü — touched değilse
                 // o adıma scroll + flash + toast. Tasarım (7) opsiyonel.
                 const OPTIONAL_STEPS = new Set([7]);
@@ -2039,21 +2045,11 @@ function StickerPage() {
                   );
                   return;
                 }
-                if (hasNoDesign) {
-                  const confirmed = window.confirm(
-                    "Tasarım yüklemeden devam etmek istiyor musun?\n\n" +
-                      "Ödeme sonrası 'Tasarımını yükle' sayfasına yönlendirileceksin (3 gün süre, hatırlatma mail'i alacaksın).\n\n" +
-                      "TAMAM = Sonra yükleyeceğim, sepete ekle\n" +
-                      "İPTAL = Önce tasarımı yükleyeceğim (geri dön)"
-                  );
-                  if (!confirmed) {
-                    const designStepId = stepIds.find((id) => id === 7);
-                    if (designStepId !== undefined) {
-                      scrollToStep(designStepId);
-                    }
-                    return;
-                  }
+                if (hasNoDesign && !bypassNoDesignConfirmRef.current) {
+                  setNoDesignModalOpen(true);
+                  return;
                 }
+                bypassNoDesignConfirmRef.current = false;
 
                 // Sefa 20 May v68 (test): Native image/PSD/PDF için kalıcı
                 // Supabase URL üret. design.generatedPreviewUrl varsa onu kullan
@@ -2196,6 +2192,9 @@ function StickerPage() {
                   setDesigns([]);
                   setDesignCount(1);
                 }
+                };
+                stickerAddToCartRef.current = runAddToCart;
+                await runAddToCart();
               }}
             />
             </div>
@@ -2252,7 +2251,8 @@ function StickerPage() {
           href="#step-1"
           onClick={(e) => {
             e.preventDefault();
-            scrollToStep(7);
+            const idx = stepIds.indexOf(7);
+            if (idx >= 0) scrollToStep(idx + 1);
           }}
           className={cn(
             "shrink-0 inline-flex items-center gap-1.5",
@@ -2265,6 +2265,40 @@ function StickerPage() {
           <Icon.ArrowR size={14} />
         </Link>
       </div>
+
+      {/* Tasarımsız sepete ekle — iOS PWA uyumlu onay */}
+      <Modal
+        open={noDesignModalOpen}
+        onClose={() => setNoDesignModalOpen(false)}
+        title="Tasarım yüklemeden devam?"
+      >
+        <p className="text-[14px] text-gri-700 leading-relaxed mb-4">
+          Ödeme sonrası &ldquo;Tasarımını yükle&rdquo; sayfasına yönlendirileceksin
+          (3 gün süre, hatırlatma mail&apos;i alacaksın).
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-end">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setNoDesignModalOpen(false);
+              const idx = stepIds.indexOf(7);
+              if (idx >= 0) scrollToStep(idx + 1);
+            }}
+          >
+            Önce tasarımı yükle
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              bypassNoDesignConfirmRef.current = true;
+              setNoDesignModalOpen(false);
+              void stickerAddToCartRef.current?.();
+            }}
+          >
+            Sonra yükleyeceğim, sepete ekle
+          </Button>
+        </div>
+      </Modal>
 
       {/* Sefa 18 May v60: Sepete eklendi onay pop-up'ı */}
       <AddToCartSuccessModal

@@ -101,7 +101,7 @@
 
 | Servis | Email | Plan | Login | Notlar |
 |---|---|---|---|---|
-| **Sentry** | ? | Free (5k event/ay) | https://sentry.io | Hata izleme · DSN Vercel env'de |
+| **Sentry** | `pimetiket@gmail.com` | Free (5k event/ay) | https://pimetiket.sentry.io | Org: `pimetiket` · Proje: `javascript-nextjs` · EU (de) · DSN Vercel env |
 | **Vercel Analytics** | (Vercel hesabı) | Hobby | Vercel dashboard | Web vitals + funnel |
 | **PostHog** | `pimetiket@gmail.com` veya proje hesabı | Free tier | https://eu.posthog.com/project/177669 | Vercel env `NEXT_PUBLIC_POSTHOG_KEY` — canlıda analytics açık |
 | **GA4** | `sefayakut111@gmail.com` | Free | https://analytics.google.com | Vercel env `NEXT_PUBLIC_GA4_MEASUREMENT_ID` — canlıda analytics açık |

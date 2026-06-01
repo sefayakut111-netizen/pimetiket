@@ -867,8 +867,25 @@ export const PikasoEditorCanvas = forwardRef<
       requestExport: () => {
         void exportCutline();
       },
-      setLayerVisibility: () => {
-        /* Katman görünürlüğü layers prop effect ile — OpenCV yok */
+      setLayerVisibility: (layer: EditorLayer, on: boolean) => {
+        layersRef.current = { ...layersRef.current, [layer]: on };
+        const editor = editorRef.current;
+        const bundle = bundleRef.current;
+        if (!editor || !ready || !bundle) return;
+        renderCutlineOverlays(editor, bundle, {
+          labelX,
+          labelY,
+          labelWidthMm: widthMm,
+          labelHeightMm: heightMm,
+          layers: {
+            cut: layersRef.current.cut,
+            bleed: layersRef.current.bleed,
+            safe: layersRef.current.safe,
+          },
+          bladeTransform,
+          bladeInteractive: editTarget === "blade",
+        });
+        syncBladeTransformer(editor);
       },
       setEditTarget: (target: EditorEditTarget) => {
         editTargetRef.current = target;
@@ -901,6 +918,11 @@ export const PikasoEditorCanvas = forwardRef<
       ready,
       renderBundle,
       editorRef,
+      syncBladeTransformer,
+      widthMm,
+      heightMm,
+      bladeTransform,
+      editTarget,
     ]
   );
 

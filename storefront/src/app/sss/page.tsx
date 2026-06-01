@@ -544,14 +544,14 @@ const FAQS_TR: Record<Category, FaqItem[]> = {
       summary:
         "Hayır, tasarım dosyalarınız yalnızca üretim süreci için kullanılır ve üçüncü taraflarla kesinlikle paylaşılmaz.",
       detail:
-        "Tasarım dosyalarınız (PDF, PNG, AI, PSD, EPS), Supabase Storage altyapısında Row Level Security (RLS) ile kişisel hesabınıza bağlı olarak şifreli saklanır. Bu dosyalara yalnızca siz ve üretim ekibimiz erişebilir. Pazarlama, reklam veya başka müşterilere örnek gösterme gibi amaçlarla asla kullanılmaz. Yapay zeka model eğitimi için anonim veri katkısı yalnızca opsiyonel açık rızanız doğrultusunda gerçekleştirilir ve dilediğiniz zaman geri alabilirsiniz.",
+        "Tasarım dosyalarınız (PDF, PNG, AI, PSD, EPS), Supabase Storage altyapısında Row Level Security (RLS) ile kişisel hesabınıza bağlı olarak şifreli saklanır. Bu dosyalara yalnızca siz ve üretim ekibimiz erişebilir. Pazarlama, reklam veya başka müşterilere örnek gösterme gibi amaçlarla asla kullanılmaz. OpenAI API kullanımında sohbet verileri model eğitimi için kullanılmaz (OpenAI API tier kuralı).",
     },
     {
       q: "Verilerim ne kadar süre saklanıyor?",
       summary:
-        "Sipariş kayıtları 10 yıl (VUK gereği), pazarlama verileri silme talebine kadar, tasarım dosyaları 90 gün saklanır.",
+        "Sipariş kayıtları 10 yıl (VUK gereği), pazarlama verileri silme talebine kadar, tasarım dosyaları son siparişten itibaren 24 ay saklanır.",
       detail:
-        "Vergi Usul Kanunu gereği fatura ve sipariş kayıtları 10 yıl boyunca muhasebe ve denetim amacıyla korunur; bu süreçte pazarlama amaçlı kullanılmaz. Tasarım dosyaları, yeniden basım taleplerini desteklemek için son siparişten itibaren 90 gün boyunca tutulur ve sonrasında otomatik olarak silinir. Hesap silme talebinde bulunmanız halinde KVKK kapsamındaki tüm kişisel verileriniz 30 gün içinde tamamen silinir veya anonimleştirilir.",
+        "Vergi Usul Kanunu gereği fatura ve sipariş kayıtları 10 yıl boyunca muhasebe ve denetim amacıyla korunur; bu süreçte pazarlama amaçlı kullanılmaz. Tasarım dosyaları, yeniden basım taleplerini desteklemek için son siparişten itibaren 24 ay boyunca tutulur ve sonrasında otomatik olarak silinir. Hesap silme talebinde bulunmanız halinde KVKK kapsamındaki tüm kişisel verileriniz 30 gün içinde tamamen silinir veya anonimleştirilir.",
     },
     {
       q: "Mesafeli satış sözleşmesi nedir, nasıl onaylanıyor?",

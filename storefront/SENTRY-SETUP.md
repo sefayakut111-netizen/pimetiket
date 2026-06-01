@@ -29,7 +29,7 @@ Bu dosya tek seferlik. Tamamladıktan sonra silebilirsin.
 
 1. "Create Project" → **Platform: Next.js** seç
 2. Alert frequency: "On every new issue" (default)
-3. Project name: `pimetiket-prod`
+3. Project name: `javascript-nextjs` (Sentry onboarding slug; org: `pimetiket`)
 4. Team: `#pimetiket` (default)
 5. **Create Project** → DSN ekranına yönlendirir
 
@@ -51,7 +51,7 @@ Vercel dashboard → Pim Etiket → **Settings → Environment Variables**:
 | `NEXT_PUBLIC_SENTRY_DSN` | (az önce kopyaladığın DSN) | Production, Preview |
 | `SENTRY_AUTH_TOKEN` | (Sentry → User Settings → Auth Tokens → Create) — source map upload için | Production |
 | `SENTRY_ORG` | `pimetiket` | Production |
-| `SENTRY_PROJECT` | `pimetiket-prod` | Production |
+| `SENTRY_PROJECT` | `javascript-nextjs` | Production |
 
 **Save** → Vercel otomatik deploy başlar (~40 sn).
 

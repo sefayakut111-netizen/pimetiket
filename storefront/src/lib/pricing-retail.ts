@@ -107,7 +107,10 @@ export function applyRetailLayer(
   const with_markup = cost_total * (1 + markup_pct / 100);
 
   const fee_pct = op.fee_pct ?? 0;
-  const with_fee = with_markup / (1 - fee_pct / 100);
+  const with_fee =
+    fee_pct > 0 && fee_pct < 100
+      ? with_markup / (1 - fee_pct / 100)
+      : with_markup;
   const final = with_fee * (1 + config.vat.pct / 100);
   const unit_price = final / input.qty;
 

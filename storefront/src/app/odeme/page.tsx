@@ -721,6 +721,18 @@ export default function OdemePage() {
 
     setLoading(true);
 
+    if (
+      typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem(CHECKOUT_INIT_LOCK_KEY)
+    ) {
+      toast.error(mapApiError("checkout_in_progress", locale));
+      setLoading(false);
+      return;
+    }
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(CHECKOUT_INIT_LOCK_KEY, String(Date.now()));
+    }
+
     const repriceResult = await repriceCustomerCart();
     const paymentItems = repriceResult?.items ?? listCustomerCart();
     if (paymentItems.length === 0) {
@@ -745,18 +757,6 @@ export default function OdemePage() {
     const paymentEffectiveShipping = paymentCouponFreeShip ? 0 : paymentShipping;
     const paymentTotal =
       paymentSubtotal - paymentCouponDiscount + paymentEffectiveShipping;
-
-    if (
-      typeof sessionStorage !== "undefined" &&
-      sessionStorage.getItem(CHECKOUT_INIT_LOCK_KEY)
-    ) {
-      toast.error(mapApiError("checkout_in_progress", locale));
-      setLoading(false);
-      return;
-    }
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem(CHECKOUT_INIT_LOCK_KEY, String(Date.now()));
-    }
 
     // Adres çöz: seçili kayıtlı veya inline form
     const addr = selectedAddress
@@ -1951,9 +1951,16 @@ export default function OdemePage() {
               </label>
 
               {/* Sefa 20 May v68 (test): "Eksik: ..." satırı kaldırıldı —
-                  buton zaten disabled görünür, kullanıcı kafası karışmasın.
-                  submitMissing değişkeni submit guard'da hala kullanılıyor
-                  (boş form submit'i engeller + ilk eksik alana scroll). */}
+                  submitMissing submit guard'da kullanılıyor. */}
+              {submitMissing.length > 0 && !canSubmit && (
+                <p
+                  id="checkout-submit-hint"
+                  role="alert"
+                  className="text-xs text-kirmizi mt-2"
+                >
+                  Eksik: {submitMissing[0]}
+                </p>
+              )}
 
               <Button
                 variant="primary"
@@ -1961,6 +1968,9 @@ export default function OdemePage() {
                 block
                 onClick={submit}
                 disabled={!canSubmit}
+                aria-describedby={
+                  submitMissing.length > 0 ? "checkout-submit-hint" : undefined
+                }
                 className={cn(
                   "mt-3 font-bold !text-white",
                   !canSubmit && "!bg-gri-300 !text-gri-500 cursor-not-allowed",

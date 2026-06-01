@@ -13,6 +13,7 @@
 
 import { quoteEtiket, type QuoteResult } from "./pricing-engine";
 import { getDefaultInput } from "./pricing-profiles";
+import { FALLBACK_ETIKET_RULO_CONFIG } from "./pricing-config-types";
 
 // Sefa 18 May v42: "seffaf" eklendi (Şeffaf Etiket). Pricing engine
 // fiyatı henüz tanımlı değil → quoteEtiket içinde MATERIAL_RATES'e
@@ -110,7 +111,7 @@ export function quoteCustomerEtiket(
       setup: 100,
       packaging: 25,
       cargo: 100,
-      feePct: 0,
+      feePct: FALLBACK_ETIKET_RULO_CONFIG.operation.fee_pct ?? 2.5,
     },
     margin: {
       marginPct: 0,

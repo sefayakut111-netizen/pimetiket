@@ -20,6 +20,7 @@ import {
   type QuoteResult,
 } from "./pricing-engine";
 import { getDefaultInput } from "./pricing-profiles";
+import { FALLBACK_STICKER_CONFIG } from "./pricing-config-types";
 
 // ============================================================
 // Customer-facing types
@@ -135,7 +136,7 @@ export function quoteCustomerSticker(
     operation: {
       setup: 0,
       packaging: 0,
-      feePct: 0,
+      feePct: FALLBACK_STICKER_CONFIG.operation.fee_pct ?? 2.5,
     },
     vatPct: 20,
   });

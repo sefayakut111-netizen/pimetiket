@@ -8,7 +8,7 @@
 ## ✅ Kod tarafı zaten kurulu
 
 - **PostHog** event tracking + A/B test → `eu.posthog.com/project/177669`
-- **Sentry** error tracking + source map → `packanalyz-47.sentry.io/pimetiket-prod`
+- **Sentry** error tracking + source map → `pimetiket.sentry.io` (proje: `javascript-nextjs`)
 - **Vercel Speed Insights** (Core Web Vitals LCP/CLS/INP) — auto-aktif
 - **Vercel Analytics** (free pageview tracking) — auto-aktif
 - **Robots.txt** + **Sitemap.xml** dinamik (statik + 8 malzeme landing + blog)
@@ -185,7 +185,7 @@ Setup bitince elinde 4 dashboard olacak:
 | **Search Console** | search.google.com/search-console | Hangi Google sorgularıyla geliyor, index hatası var mı, tıklama oranı |
 | **Vercel Speed Insights** | vercel.com/.../speed-insights | LCP / CLS / INP — Google ranking factor olan Core Web Vitals |
 | **Vercel Analytics** | vercel.com/.../analytics | Basit pageview, top pages, referrer |
-| **Sentry** | packanalyz-47.sentry.io/pimetiket-prod | Production hatalar, source map'li stack trace |
+| **Sentry** | pimetiket.sentry.io/javascript-nextjs | Production hatalar, source map'li stack trace |
 
 Sabah PostHog + Search Console'a bakman yeterli — günlük 5 dk.
 

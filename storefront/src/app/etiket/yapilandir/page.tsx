@@ -36,8 +36,10 @@ import {
   MaterialSwatch,
   PopulerBadge,
   InfoTooltip,
+  Button,
   type DesignTempState,
 } from "@/components/ui";
+import { Modal } from "@/components/ui/Modal";
 import {
   ProductPreviewShell,
   EtiketLivePreview,
@@ -929,6 +931,8 @@ function EtiketPage() {
   // Sefa 18 May v60: Sepete eklendi pop-up'ı (toast yerine modal)
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
+  const [noDesignModalOpen, setNoDesignModalOpen] = useState(false);
+  const bypassNoDesignConfirmRef = useRef(false);
   const markTouched = useCallback((n: number, value?: string | number) => {
     setTouchedSteps((prev) => {
       if (prev.has(n)) return prev;
@@ -1352,22 +1356,11 @@ function EtiketPage() {
     // Sefa 22 May v68 — C sorun fix: tasarımsız sepete ekle BİLİNÇLİ
     // olsun. Modal yok, native confirm yeterli (hızlı, mobile uyumlu).
     // Bilinçsiz "atlama" sonucu awaiting_upload sipariş açılmasını önler.
-    if (hasNoDesign) {
-      const confirmed = window.confirm(
-        "Tasarım yüklemeden devam etmek istiyor musun?\n\n" +
-          "Ödeme sonrası 'Tasarımını yükle' sayfasına yönlendirileceksin (3 gün süre, hatırlatma mail'i alacaksın).\n\n" +
-          "TAMAM = Sonra yükleyeceğim, sepete ekle\n" +
-          "İPTAL = Önce tasarımı yükleyeceğim (geri dön)"
-      );
-      if (!confirmed) {
-        // Tasarım step'ine kaydır — kullanıcı yüklemesi için
-        const designStepId = stepIds.find((id) => id === 7);
-        if (designStepId !== undefined) {
-          scrollToStep(designStepId);
-        }
-        return;
-      }
+    if (hasNoDesign && !bypassNoDesignConfirmRef.current) {
+      setNoDesignModalOpen(true);
+      return;
     }
+    bypassNoDesignConfirmRef.current = false;
 
     // Sefa 20 May v68 (test "önizleme gözükmüyor"): Native image için
     // kalıcı Supabase URL üret. Yoksa sayfa refresh sonrası blob URL invalid.
@@ -2973,6 +2966,39 @@ function EtiketPage() {
           <Icon.ArrowR size={14} />
         </button>
       </div>
+
+      <Modal
+        open={noDesignModalOpen}
+        onClose={() => setNoDesignModalOpen(false)}
+        title="Tasarım yüklemeden devam?"
+      >
+        <p className="text-[14px] text-gri-700 leading-relaxed mb-4">
+          Ödeme sonrası &ldquo;Tasarımını yükle&rdquo; sayfasına yönlendirileceksin
+          (3 gün süre, hatırlatma mail&apos;i alacaksın).
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-end">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setNoDesignModalOpen(false);
+              const idx = stepIds.indexOf(7);
+              if (idx >= 0) scrollToStep(idx + 1);
+            }}
+          >
+            Önce tasarımı yükle
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              bypassNoDesignConfirmRef.current = true;
+              setNoDesignModalOpen(false);
+              void handleAddToCart();
+            }}
+          >
+            Sonra yükleyeceğim, sepete ekle
+          </Button>
+        </div>
+      </Modal>
 
       {/* Sefa 18 May v60: Sepete eklendi onay pop-up'ı */}
       <AddToCartSuccessModal
