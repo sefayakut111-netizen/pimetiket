@@ -31,8 +31,13 @@ import { EditorPanelSection } from "@/components/editor/EditorPanelSection";
 import { EditorUploadZone } from "@/components/editor/EditorUploadZone";
 import {
   EditorLayerToggles,
+  EditorZoomControls,
   type EditorLayer,
 } from "@/components/editor/EditorPreviewToolbar";
+import {
+  formatOffsetLabel,
+  offsetNoteText,
+} from "@/lib/editor/offset-label";
 import { cn } from "@/lib/cn";
 import { dispatchPimCommand } from "@/lib/editor/dispatch-pim-command";
 import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
@@ -128,6 +133,12 @@ export default function EditorShell() {
   const [imagePixelW, setImagePixelW] = useState(0);
   const [imagePixelH, setImagePixelH] = useState(0);
   const [imageScalePct, setImageScalePct] = useState(100);
+  const baseWidthMmRef = useRef(DEFAULT_WIDTH_MM);
+  const baseHeightMmRef = useRef(DEFAULT_HEIGHT_MM);
+  const [offsetMm, setOffsetMm] = useState(0);
+  const [smoothness, setSmoothness] = useState(0);
+  const [cornerRadiusMm, setCornerRadiusMm] = useState(0);
+  const [viewZoom, setViewZoom] = useState(1);
   const [fileName, setFileName] = useState<string | null>(null);
   const [canRemoveBg, setCanRemoveBg] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
@@ -170,7 +181,13 @@ export default function EditorShell() {
     };
     setWidthMm(tpl.widthMm);
     setHeightMm(tpl.heightMm);
+    baseWidthMmRef.current = tpl.widthMm;
+    baseHeightMmRef.current = tpl.heightMm;
+    setImageScalePct(100);
     setAspect(tpl.widthMm / tpl.heightMm);
+    if (typeof tpl.cornerRadiusMm === "number") {
+      setCornerRadiusMm(tpl.cornerRadiusMm);
+    }
     setCutMode(
       tpl.shape === "circle"
         ? "circle"
@@ -244,6 +261,64 @@ export default function EditorShell() {
     [postToPoc]
   );
 
+  const setBaseFromSize = useCallback((w: number, h: number, scalePct: number) => {
+    const factor = scalePct / 100;
+    if (factor <= 0) return;
+    baseWidthMmRef.current = roundEditorMm(w / factor);
+    baseHeightMmRef.current = roundEditorMm(h / factor);
+  }, []);
+
+  const sizeFromScalePct = useCallback((pct: number) => {
+    const factor = pct / 100;
+    return {
+      w: roundEditorMm(baseWidthMmRef.current * factor),
+      h: roundEditorMm(baseHeightMmRef.current * factor),
+    };
+  }, []);
+
+  const scalePctFromWidth = useCallback((w: number) => {
+    if (baseWidthMmRef.current <= 0) return 100;
+    return Math.max(
+      25,
+      Math.min(200, Math.round((w / baseWidthMmRef.current) * 100))
+    );
+  }, []);
+
+  const applyCoordinatedScale = useCallback(
+    (pct: number, options?: { syncPocSize?: boolean; syncPocScale?: boolean }) => {
+      const clamped = Math.max(25, Math.min(200, pct));
+      const { syncPocSize = true, syncPocScale = true } = options ?? {};
+      setImageScalePct(clamped);
+      const { w, h } = sizeFromScalePct(clamped);
+      setWidthMm(w);
+      setHeightMm(h);
+      if (syncPocScale) {
+        postToPoc({ type: "pim-set-image-scale", scale: clamped / 100 });
+      }
+      if (syncPocSize) {
+        syncSizeToPoc(w, h);
+        setCutlineReady(false);
+      }
+      return { w, h, pct: clamped };
+    },
+    [postToPoc, sizeFromScalePct, syncSizeToPoc]
+  );
+
+  const applyCoordinatedSize = useCallback(
+    (w: number, h: number) => {
+      const nw = roundEditorMm(w);
+      const nh = roundEditorMm(h);
+      setWidthMm(nw);
+      setHeightMm(nh);
+      const pct = scalePctFromWidth(nw);
+      setImageScalePct(pct);
+      postToPoc({ type: "pim-set-image-scale", scale: pct / 100 });
+      syncSizeToPoc(nw, nh);
+      setCutlineReady(false);
+    },
+    [postToPoc, scalePctFromWidth, syncSizeToPoc]
+  );
+
   const applyPendingSablon = useCallback(() => {
     const tpl = pendingSablonRef.current;
     if (!tpl || !iframeRef.current?.contentWindow) return;
@@ -286,6 +361,12 @@ export default function EditorShell() {
         setDesignLoaded(false);
         setCutlineReady(false);
         setImageScalePct(100);
+        baseWidthMmRef.current = DEFAULT_WIDTH_MM;
+        baseHeightMmRef.current = DEFAULT_HEIGHT_MM;
+        setOffsetMm(0);
+        setSmoothness(0);
+        setCornerRadiusMm(0);
+        setViewZoom(1);
         setFileName(null);
         setCanRemoveBg(false);
         setRemovingBg(false);
@@ -313,9 +394,10 @@ export default function EditorShell() {
         });
       } else if (data.type === "pim-image-scale-changed") {
         if (typeof data.scale === "number" && data.scale > 0) {
-          setImageScalePct(
-            Math.round(Math.max(25, Math.min(200, data.scale * 100)))
+          const pct = Math.round(
+            Math.max(25, Math.min(200, data.scale * 100))
           );
+          applyCoordinatedScale(pct, { syncPocScale: false });
         }
       } else if (data.type === "pim-cutline-ready") {
         setCutlineReady(true);
@@ -336,6 +418,15 @@ export default function EditorShell() {
           if (typeof meta.height_mm === "number" && meta.height_mm > 0) {
             setHeightMm(meta.height_mm);
           }
+          const resolvedW =
+            typeof meta.width_mm === "number" && meta.width_mm > 0
+              ? meta.width_mm
+              : widthMm;
+          const resolvedH =
+            typeof meta.height_mm === "number" && meta.height_mm > 0
+              ? meta.height_mm
+              : heightMm;
+          setBaseFromSize(resolvedW, resolvedH, imageScalePct);
         }
         setPocStatus({
           state: "loaded",
@@ -396,7 +487,7 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm]);
+  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct]);
 
   useEffect(() => {
     if (!designLoaded || cutlineReady) return;
@@ -425,18 +516,16 @@ export default function EditorShell() {
 
   const handleWidthChange = (raw: number) => {
     const w = roundEditorMm(raw);
-    setWidthMm(w);
-    const h = lockAspect && aspect > 0 ? roundEditorMm(w / aspect) : heightMm;
-    if (lockAspect && aspect > 0) setHeightMm(h);
-    syncSizeToPoc(w, h);
+    const h =
+      lockAspect && aspect > 0 ? roundEditorMm(w / aspect) : heightMm;
+    applyCoordinatedSize(w, h);
   };
 
   const handleHeightChange = (raw: number) => {
     const h = roundEditorMm(raw);
-    setHeightMm(h);
-    const w = lockAspect && aspect > 0 ? roundEditorMm(h * aspect) : widthMm;
-    if (lockAspect && aspect > 0) setWidthMm(w);
-    syncSizeToPoc(w, h);
+    const w =
+      lockAspect && aspect > 0 ? roundEditorMm(h * aspect) : widthMm;
+    applyCoordinatedSize(w, h);
   };
 
   const handleLockAspectChange = (on: boolean) => {
@@ -452,14 +541,65 @@ export default function EditorShell() {
       mode,
       widthMm,
       heightMm,
+      ...(mode === "rect" ? { cornerRadiusMm } : {}),
     });
   };
 
   const handleImageScaleChange = (pct: number) => {
-    const clamped = Math.max(25, Math.min(200, pct));
-    setImageScalePct(clamped);
-    postToPoc({ type: "pim-set-image-scale", scale: clamped / 100 });
+    applyCoordinatedScale(pct);
   };
+
+  const handleOffsetChange = (raw: number) => {
+    const clamped = Math.max(0, Math.min(5, raw));
+    setOffsetMm(clamped);
+    postToPoc({ type: "pim-set-offset", offsetMm: clamped });
+  };
+
+  const handleSmoothnessChange = (raw: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(raw)));
+    setSmoothness(clamped);
+    postToPoc({ type: "pim-set-smoothness", smoothness: clamped });
+  };
+
+  const maxCornerRadiusMm = useMemo(
+    () => Math.min(20, widthMm / 2, heightMm / 2),
+    [widthMm, heightMm]
+  );
+
+  const handleCornerRadiusChange = (raw: number) => {
+    const clamped = Math.max(0, Math.min(maxCornerRadiusMm, raw));
+    setCornerRadiusMm(clamped);
+    setCutlineReady(false);
+    postToPoc({
+      type: "pim-editor-set-shape",
+      shape: "rect",
+      mode: "rect",
+      widthMm,
+      heightMm,
+      cornerRadiusMm: clamped,
+    });
+  };
+
+  const zoomIn = useCallback(() => {
+    setViewZoom((z) => {
+      const next = Math.min(3, Math.round((z + 0.1) * 10) / 10);
+      postToPoc({ type: "pim-set-view-zoom", zoom: next });
+      return next;
+    });
+  }, [postToPoc]);
+
+  const zoomOut = useCallback(() => {
+    setViewZoom((z) => {
+      const next = Math.max(0.25, Math.round((z - 0.1) * 10) / 10);
+      postToPoc({ type: "pim-set-view-zoom", zoom: next });
+      return next;
+    });
+  }, [postToPoc]);
+
+  const zoomReset = useCallback(() => {
+    setViewZoom(1);
+    postToPoc({ type: "pim-set-view-zoom", zoom: 1 });
+  }, [postToPoc]);
 
   const handlePimCommand = useCallback(
     (command: PimEditorCommand) => {
@@ -475,6 +615,9 @@ export default function EditorShell() {
         setLayers,
         handleRemoveBg,
         syncSizeToPoc,
+        applyCoordinatedScale,
+        applyCoordinatedSize,
+        setBaseFromSize,
       });
     },
     [
@@ -483,6 +626,9 @@ export default function EditorShell() {
       postToPoc,
       handleRemoveBg,
       syncSizeToPoc,
+      applyCoordinatedScale,
+      applyCoordinatedSize,
+      setBaseFromSize,
     ]
   );
 
@@ -737,32 +883,6 @@ export default function EditorShell() {
                     onRemoveBg={handleRemoveBg}
                   />
                 </EditorPanelSection>
-
-                <EditorPanelSection title="Görsel ölçek">
-                  <label className="block text-[11px] text-gri-600">
-                    <span className="flex items-center justify-between gap-2">
-                      <span>Ölçek</span>
-                      <span className="tabular-nums font-medium text-lacivert">
-                        %{imageScalePct}
-                      </span>
-                    </span>
-                    <input
-                      type="range"
-                      min={25}
-                      max={200}
-                      step={1}
-                      value={imageScalePct}
-                      disabled={!designLoaded}
-                      onChange={(e) =>
-                        handleImageScaleChange(parseInt(e.target.value, 10))
-                      }
-                      className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
-                    />
-                  </label>
-                  <p className="mt-1 text-[10px] text-gri-500 leading-snug">
-                    %25–%200 arası. Ortala / Sığdır / Doldur ile sıfırlanır.
-                  </p>
-                </EditorPanelSection>
               </>
             ) : null}
 
@@ -833,12 +953,88 @@ export default function EditorShell() {
                     ))}
                   </div>
                 </EditorPanelSection>
+
+                <EditorPanelSection title="Kesim mesafesi (ofset)">
+                  <label className="block text-[11px] text-gri-600">
+                    <span className="flex items-center justify-between gap-2">
+                      <span>Bıçağı genişlet</span>
+                      <span className="tabular-nums font-medium text-lacivert">
+                        {formatOffsetLabel(offsetMm)}
+                      </span>
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={5}
+                      step={0.1}
+                      value={offsetMm}
+                      disabled={!designLoaded}
+                      onChange={(e) =>
+                        handleOffsetChange(parseFloat(e.target.value))
+                      }
+                      className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+                    />
+                  </label>
+                  {offsetNoteText(offsetMm) ? (
+                    <p className="mt-1 text-[10px] text-gri-500 leading-snug">
+                      {offsetNoteText(offsetMm)}
+                    </p>
+                  ) : null}
+                </EditorPanelSection>
+
+                <EditorPanelSection title="Yumuşatma">
+                  <label className="block text-[11px] text-gri-600">
+                    <span className="flex items-center justify-between gap-2">
+                      <span>Kontur köşeleri</span>
+                      <span className="tabular-nums font-medium text-lacivert">
+                        {smoothness}
+                      </span>
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={smoothness}
+                      disabled={!designLoaded}
+                      onChange={(e) =>
+                        handleSmoothnessChange(parseInt(e.target.value, 10))
+                      }
+                      className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+                    />
+                  </label>
+                </EditorPanelSection>
+
+                {cutMode === "rect" ? (
+                  <EditorPanelSection title="Köşe yuvarlama">
+                    <label className="block text-[11px] text-gri-600">
+                      <span className="flex items-center justify-between gap-2">
+                        <span>Yarıçap</span>
+                        <span className="tabular-nums font-medium text-lacivert">
+                          {cornerRadiusMm.toFixed(1)} mm
+                        </span>
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={maxCornerRadiusMm}
+                        step={0.5}
+                        value={Math.min(cornerRadiusMm, maxCornerRadiusMm)}
+                        disabled={!designLoaded}
+                        onChange={(e) =>
+                          handleCornerRadiusChange(parseFloat(e.target.value))
+                        }
+                        className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+                      />
+                    </label>
+                  </EditorPanelSection>
+                ) : null}
               </>
             ) : null}
 
             {toolTab === "boyut" ? (
               <>
-                <EditorPanelSection title="Baskı boyutu" first>
+                <EditorPanelSection title="Baskı boyutu (mm)" first>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block text-[11px] text-gri-600">
                       Genişlik (mm)
@@ -849,6 +1045,7 @@ export default function EditorShell() {
                         step={0.1}
                         value={widthMm}
                         className="mt-1"
+                        disabled={!designLoaded}
                         onChange={(e) =>
                           handleWidthChange(parseFloat(e.target.value) || DEFAULT_WIDTH_MM)
                         }
@@ -863,6 +1060,7 @@ export default function EditorShell() {
                         step={0.1}
                         value={heightMm}
                         className="mt-1"
+                        disabled={!designLoaded}
                         onChange={(e) =>
                           handleHeightChange(parseFloat(e.target.value) || DEFAULT_HEIGHT_MM)
                         }
@@ -880,6 +1078,30 @@ export default function EditorShell() {
                   </label>
                   <p className="mt-2 text-[12px] tabular-nums text-gri-800">
                     {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
+                  </p>
+
+                  <label className="mt-4 block text-[11px] text-gri-600">
+                    <span className="flex items-center justify-between gap-2">
+                      <span>Görsel ölçek (baskı boyutunu büyütür/küçültür)</span>
+                      <span className="shrink-0 tabular-nums font-medium text-lacivert">
+                        %{imageScalePct}
+                      </span>
+                    </span>
+                    <input
+                      type="range"
+                      min={25}
+                      max={200}
+                      step={1}
+                      value={imageScalePct}
+                      disabled={!designLoaded}
+                      onChange={(e) =>
+                        handleImageScaleChange(parseInt(e.target.value, 10))
+                      }
+                      className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+                    />
+                  </label>
+                  <p className="mt-1 text-[10px] text-gri-500 leading-snug">
+                    %25–%200. Ölçek ve mm birlikte güncellenir.
                   </p>
                 </EditorPanelSection>
 
@@ -962,7 +1184,15 @@ export default function EditorShell() {
         </aside>
 
         <section className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden p-3 lg:p-4">
-          <EditorPreviewLegend cutType={cutType} />
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+            <EditorPreviewLegend cutType={cutType} />
+            <EditorZoomControls
+              zoom={viewZoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onZoomReset={zoomReset}
+            />
+          </div>
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm">
             <iframe

@@ -28,6 +28,9 @@ export interface PimCommandDispatchContext {
   setLayers: Dispatch<SetStateAction<Record<EditorLayer, boolean>>>;
   handleRemoveBg: () => void;
   syncSizeToPoc: (w: number, h: number) => void;
+  applyCoordinatedScale?: (pct: number) => void;
+  applyCoordinatedSize?: (w: number, h: number) => void;
+  setBaseFromSize?: (w: number, h: number, scalePct: number) => void;
 }
 
 export function dispatchPimCommand(
@@ -46,24 +49,36 @@ export function dispatchPimCommand(
     setLayers,
     handleRemoveBg,
     syncSizeToPoc,
+    applyCoordinatedScale,
+    applyCoordinatedSize,
+    setBaseFromSize,
   } = ctx;
 
   switch (command.action) {
     case "set_size": {
       const w = roundEditorMm(command.widthMm ?? widthMm);
       const h = roundEditorMm(command.heightMm ?? heightMm);
-      setWidthMm(w);
-      setHeightMm(h);
-      syncSizeToPoc(w, h);
+      if (applyCoordinatedSize) {
+        applyCoordinatedSize(w, h);
+      } else {
+        setWidthMm(w);
+        setHeightMm(h);
+        syncSizeToPoc(w, h);
+      }
       triggerFitContain(postToPoc);
       return true;
     }
     case "set_size_from_reference": {
       const w = roundEditorMm(command.estimatedWidthMm ?? widthMm);
       const h = roundEditorMm(command.estimatedHeightMm ?? heightMm);
-      setWidthMm(w);
-      setHeightMm(h);
-      syncSizeToPoc(w, h);
+      if (applyCoordinatedSize) {
+        applyCoordinatedSize(w, h);
+      } else {
+        setWidthMm(w);
+        setHeightMm(h);
+        syncSizeToPoc(w, h);
+      }
+      setBaseFromSize?.(w, h, 100);
       const ref =
         SIZE_REFERENCES.find((r) => r.labelTr === command.referenceKey) ??
         SIZE_REFERENCES.find(
@@ -127,11 +142,16 @@ export function dispatchPimCommand(
           : tpl.shape === "rect" || tpl.shape === "ellipse"
             ? "rect"
             : "contour";
-      setWidthMm(tpl.widthMm);
-      setHeightMm(tpl.heightMm);
       setCutMode(mode);
       setCutlineReady(false);
-      syncSizeToPoc(tpl.widthMm, tpl.heightMm);
+      setBaseFromSize?.(tpl.widthMm, tpl.heightMm, 100);
+      if (applyCoordinatedSize) {
+        applyCoordinatedSize(tpl.widthMm, tpl.heightMm);
+      } else {
+        setWidthMm(tpl.widthMm);
+        setHeightMm(tpl.heightMm);
+        syncSizeToPoc(tpl.widthMm, tpl.heightMm);
+      }
       postToPoc({
         type: "pim-editor-set-shape",
         shape: tpl.shape,
@@ -168,8 +188,12 @@ export function dispatchPimCommand(
       return true;
     case "set_image_scale": {
       const pct = Math.max(25, Math.min(200, command.scalePct));
-      setImageScalePct(pct);
-      postToPoc({ type: "pim-set-image-scale", scale: pct / 100 });
+      if (applyCoordinatedScale) {
+        applyCoordinatedScale(pct);
+      } else {
+        setImageScalePct(pct);
+        postToPoc({ type: "pim-set-image-scale", scale: pct / 100 });
+      }
       return true;
     }
     case "suggest_product":

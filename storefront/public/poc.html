@@ -2274,6 +2274,9 @@ window.addEventListener('message', (e) => {
       if (typeof msg.zoom === 'number' && msg.zoom > 0) {
         viewZoom = Math.max(0.25, Math.min(3, msg.zoom));
         applyViewZoom();
+        if (PIM_PARAMS.editorShell && currentMat) {
+          render();
+        }
       }
     } else if (msg.type === 'pim-editor-set-shape') {
       if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
@@ -2334,7 +2337,6 @@ function pimAutoFitViewZoomToWrap() {
   const canvas = document.getElementById('canvas');
   if (!wrap || !canvas) return;
   if (PIM_PARAMS.editorShell && currentMat) {
-    viewZoom = 1;
     applyViewZoom();
     render();
     return;
@@ -3125,7 +3127,7 @@ function pimComputeEditorShellViewport(contentW, contentH) {
   const ch = Math.max(120, wrap.clientHeight || 480);
   if (cw <= 0 || ch <= 0) return null;
   const fitScale = Math.min((cw - pad * 2) / contentW, (ch - pad * 2) / contentH);
-  const scale = Math.max(0.25, Math.min(1, fitScale));
+  const scale = Math.max(0.25, Math.min(3, fitScale * viewZoom));
   return {
     cw,
     ch,
