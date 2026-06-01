@@ -63,13 +63,31 @@ export async function GET(
   const buffer = Buffer.from(await data.arrayBuffer());
   const safeName = resolved.file.original_name.replace(/[^\w.\-()+ ]/g, "_");
   const asDownload = url.searchParams.get("download") === "1";
+  const mime = resolved.file.mime_type || "application/octet-stream";
+  const isSvg =
+    mime.includes("svg") || safeName.toLowerCase().endsWith(".svg");
+
+  if (isSvg) {
+    const text = buffer.toString("utf-8");
+    if (/<script[\s>]/i.test(text) || /\bon[a-z]+\s*=/i.test(text)) {
+      return NextResponse.json(
+        { error: "SVG güvenlik kontrolünden geçemedi" },
+        { status: 400 }
+      );
+    }
+  }
+
+  const contentType = isSvg ? "application/octet-stream" : mime;
+  const disposition =
+    isSvg || asDownload ? "attachment" : "inline";
 
   return new NextResponse(buffer, {
     status: 200,
     headers: {
-      "Content-Type": resolved.file.mime_type || "application/octet-stream",
-      "Content-Disposition": `${asDownload ? "attachment" : "inline"}; filename="${safeName}"`,
+      "Content-Type": contentType,
+      "Content-Disposition": `${disposition}; filename="${safeName}"`,
       "Cache-Control": "private, no-cache, max-age=0",
+      ...(isSvg ? { "X-Content-Type-Options": "nosniff" } : {}),
     },
   });
 }

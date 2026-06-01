@@ -321,6 +321,34 @@ function drawCutlineAsSpotColor(
 export async function generatePrintReadyPdf(
   input: PrintReadyInput
 ): Promise<PrintReadyResult> {
+  const built = await buildPrintReadyDocument(input);
+  const pdfBytes = await built.pdfDoc.save();
+  const { storagePath } = await uploadPrintReadyPdf(
+    input.orderId,
+    input.itemId,
+    pdfBytes
+  );
+
+  return {
+    pdfStoragePath: storagePath,
+    pageCount: built.pageCount,
+    includesBleed: true,
+    includesCutline: built.includesCutline,
+    includesWhiteLayer: built.includesWhiteLayer,
+    fileSizeBytes: pdfBytes.length,
+    cutcontourIsRgbFallback: built.cutcontourIsRgbFallback,
+  };
+}
+
+async function buildPrintReadyDocument(
+  input: PrintReadyInput
+): Promise<{
+  pdfDoc: PDFDocument;
+  pageCount: number;
+  includesCutline: boolean;
+  includesWhiteLayer: boolean;
+  cutcontourIsRgbFallback: boolean;
+}> {
   const bleedMm = input.bleedMm ?? 2;
   const pdfDoc = await PDFDocument.create();
 
@@ -384,20 +412,11 @@ export async function generatePrintReadyPdf(
   pdfDoc.setProducer("Pim Etiket Print System");
   pdfDoc.setCreationDate(new Date());
 
-  const pdfBytes = await pdfDoc.save();
-  const { storagePath } = await uploadPrintReadyPdf(
-    input.orderId,
-    input.itemId,
-    pdfBytes
-  );
-
   return {
-    pdfStoragePath: storagePath,
+    pdfDoc,
     pageCount: input.whiteLayerPngUrl ? 2 : 1,
-    includesBleed: true,
     includesCutline,
     includesWhiteLayer: !!input.whiteLayerPngUrl,
-    fileSizeBytes: pdfBytes.length,
     cutcontourIsRgbFallback: includesCutline,
   };
 }
@@ -426,31 +445,22 @@ export async function generatePrintReadyForOrder(
       meta: Record<string, unknown> | null;
     };
 
-    const { data: df } = await admin
+    const { data: allDf } = await admin
       .from("design_files")
       .select("id, storage_path, mime_type")
       .eq("order_id", orderId)
       .eq("order_item_id", item.id)
       .neq("status", "superseded")
-      .order("version", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("version", { ascending: true });
 
-    const designFile = df as {
+    const designFiles = (allDf ?? []) as {
       id: string;
       storage_path: string;
       mime_type: string;
-    } | null;
-    if (!designFile) {
-      errors.push(`${item.id}: design_file_missing`);
-      continue;
-    }
+    }[];
 
-    const { data: signed } = await admin.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(designFile.storage_path, 600);
-    if (!signed?.signedUrl) {
-      errors.push(`${item.id}: signed_url_failed`);
+    if (designFiles.length === 0) {
+      errors.push(`${item.id}: design_file_missing`);
       continue;
     }
 
@@ -499,16 +509,90 @@ export async function generatePrintReadyForOrder(
     );
 
     try {
-      const result = await generatePrintReadyPdf({
-        orderId,
-        itemId: item.id,
-        designFileUrl: signed.signedUrl,
-        cutlineSvgPath,
-        whiteLayerPngUrl,
-        designWidth: item.width,
-        designHeight: item.height,
-        materialKey,
-      });
+      let result: PrintReadyResult;
+
+      if (designFiles.length === 1) {
+        const designFile = designFiles[0]!;
+        const { data: signed } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(designFile.storage_path, 600);
+        if (!signed?.signedUrl) {
+          errors.push(`${item.id}: signed_url_failed`);
+          continue;
+        }
+        result = await generatePrintReadyPdf({
+          orderId,
+          itemId: item.id,
+          designFileUrl: signed.signedUrl,
+          cutlineSvgPath,
+          whiteLayerPngUrl,
+          designWidth: item.width,
+          designHeight: item.height,
+          materialKey,
+        });
+      } else {
+        const mergedDoc = await PDFDocument.create();
+        let pageCountTotal = 0;
+        let includesCutline = false;
+        let includesWhiteLayer = false;
+        let cutcontourFallback = false;
+
+        for (const designFile of designFiles) {
+          const { data: signed } = await admin.storage
+            .from(STORAGE_BUCKET)
+            .createSignedUrl(designFile.storage_path, 600);
+          if (!signed?.signedUrl) {
+            throw new Error(`signed_url_failed:${designFile.id}`);
+          }
+          const built = await buildPrintReadyDocument({
+            orderId,
+            itemId: item.id,
+            designFileUrl: signed.signedUrl,
+            cutlineSvgPath:
+              designFile === designFiles[designFiles.length - 1]
+                ? cutlineSvgPath
+                : undefined,
+            whiteLayerPngUrl:
+              designFile === designFiles[designFiles.length - 1]
+                ? whiteLayerPngUrl
+                : undefined,
+            designWidth: item.width,
+            designHeight: item.height,
+            materialKey,
+          });
+          const pages = await mergedDoc.copyPages(
+            built.pdfDoc,
+            built.pdfDoc.getPageIndices()
+          );
+          for (const p of pages) {
+            mergedDoc.addPage(p);
+          }
+          pageCountTotal += built.pageCount;
+          includesCutline = includesCutline || built.includesCutline;
+          includesWhiteLayer = includesWhiteLayer || built.includesWhiteLayer;
+          cutcontourFallback =
+            cutcontourFallback || built.cutcontourIsRgbFallback;
+        }
+
+        mergedDoc.setTitle(`Pim Etiket — ${orderId} — ${item.id}`);
+        mergedDoc.setProducer("Pim Etiket Print System");
+        mergedDoc.setCreationDate(new Date());
+        const pdfBytes = await mergedDoc.save();
+        const { storagePath } = await uploadPrintReadyPdf(
+          orderId,
+          item.id,
+          pdfBytes
+        );
+        result = {
+          pdfStoragePath: storagePath,
+          pageCount: pageCountTotal,
+          includesBleed: true,
+          includesCutline,
+          includesWhiteLayer,
+          fileSizeBytes: pdfBytes.length,
+          cutcontourIsRgbFallback: cutcontourFallback,
+        };
+      }
 
       const nextMeta = {
         ...(item.meta ?? {}),

@@ -35,6 +35,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { sendOrderProofRequired } from "@/lib/mail/notifications";
 
 export const runtime = "nodejs";
 
@@ -280,8 +281,12 @@ export async function POST(
   ]);
 
   // TODO (Sefa 23 May v68): müşteriye mail
-  // sendProofRevisedByPartner({ userId: order.user_id, orderId: order.id,
-  //   itemTitle: item.title, partnerName: contact.name }).catch(console.error);
+  void sendOrderProofRequired({
+    userId: order.user_id,
+    orderId: order.id,
+  }).catch((err) => {
+    console.error("[partner/upload-revision] proof mail:", err);
+  });
 
   return NextResponse.json({
     ok: true,

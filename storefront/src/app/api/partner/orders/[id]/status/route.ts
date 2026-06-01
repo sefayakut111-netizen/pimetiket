@@ -79,6 +79,13 @@ export async function POST(
     .from("order_assignments")
     .select("id, fason_partner_id, status")
     .eq("order_id", order.id)
+    .in("status", [
+      "assigned",
+      "sent",
+      "acknowledged",
+      "in_production",
+      "ready",
+    ])
     .order("assigned_at", { ascending: false })
     .limit(1)
     .maybeSingle();

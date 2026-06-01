@@ -103,6 +103,14 @@ export async function POST(
     .select("id")
     .eq("order_id", orderId)
     .eq("fason_partner_id", partnerId)
+    .in("status", [
+      "assigned",
+      "sent",
+      "acknowledged",
+      "in_production",
+      "ready",
+      "shipped",
+    ])
     .maybeSingle();
 
   if (!assignment) {

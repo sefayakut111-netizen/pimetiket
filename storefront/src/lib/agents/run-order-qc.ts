@@ -394,7 +394,8 @@ async function runOrderDesignQCInner(
   // 4) Aggregate karar — MVP müşteri akışı:
   // Sadece QC agent hatası (error) insan gözüne gider.
   // iyi / normal / kotu → proof_generating (uyarılar /onay'da gösterilir).
-  const needsHumanReview = verdictCounts.error > 0;
+  const needsHumanReview =
+    verdictCounts.error > 0 || verdictCounts.kotu > 0;
   const hasAnyVerdict =
     verdictCounts.iyi + verdictCounts.normal + verdictCounts.kotu > 0;
 

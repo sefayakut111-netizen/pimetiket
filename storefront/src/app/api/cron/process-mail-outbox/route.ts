@@ -138,10 +138,45 @@ export async function GET(req: Request) {
       }
     }
 
-    const renderPayload = {
+    const renderPayload: Record<string, unknown> = {
       ...(row.payload ?? {}),
       ...(unsubscribeUrl ? { _unsubscribe_url: unsubscribeUrl } : {}),
     };
+
+    if (
+      row.template_key === "fason_new_assignment" &&
+      !renderPayload.fason_token &&
+      row.assignment_id
+    ) {
+      const { data: tokRow } = await admin
+        .from("fason_access_tokens")
+        .select("token")
+        .eq("assignment_id", row.assignment_id)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const plain = (tokRow as { token: string } | null)?.token;
+      if (plain) {
+        renderPayload.fason_token = plain;
+      } else {
+        await admin
+          .from("fason_mail_outbox")
+          .update({
+            status: "failed",
+            attempts: row.attempts + 1,
+            last_error: "fason_token_resolve_failed",
+            next_retry_at: new Date(
+              Date.now() + backoffMinutes(row.attempts + 1) * 60_000
+            ).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", row.id);
+        failed++;
+        continue;
+      }
+    }
+
     const rendered = renderMailTemplate(row.template_key, renderPayload);
 
     // Template tanımsızsa hard-fail (retry yapmaya gerek yok)

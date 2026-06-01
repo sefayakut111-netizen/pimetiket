@@ -123,6 +123,17 @@ export async function GET(
     );
   }
 
+  const { error: incErr } = await admin.rpc("fn_increment_fason_token_use", {
+    p_token: token,
+  });
+  if (incErr) {
+    console.error("[fason/download] token use increment:", incErr);
+    return NextResponse.json(
+      { error: "Token kullanım kaydı başarısız" },
+      { status: 500 }
+    );
+  }
+
   // 4) Access log
   await admin.from("fason_link_access_log").insert({
     assignment_id: validation.assignment_id,

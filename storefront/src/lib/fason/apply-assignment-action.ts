@@ -29,6 +29,15 @@ const ACTION_TO_STATUS: Record<FasonAction, string> = {
   issue: "issue",
 };
 
+/** Geçerli assignment status geçişleri (FSM) */
+const ALLOWED_FROM_STATUS: Record<FasonAction, readonly string[]> = {
+  acknowledge: ["assigned", "sent"],
+  in_production: ["acknowledged"],
+  ready: ["in_production"],
+  shipped: ["ready"],
+  issue: ["assigned", "sent", "acknowledged", "in_production", "ready"],
+};
+
 const ACTION_TO_EVENT: Record<FasonAction, string> = {
   acknowledge: "fason_acknowledged",
   in_production: "fason_in_production",
@@ -187,6 +196,26 @@ export async function applyAssignmentAction(
   const built = buildAssignmentUpdatePayload(opts.action, opts.body);
   if (!built.ok) {
     return { ok: false, error: built.error, status: built.status };
+  }
+
+  const { data: currentRow, error: readErr } = await admin
+    .from("order_assignments")
+    .select("status")
+    .eq("id", opts.assignmentId)
+    .maybeSingle();
+
+  if (readErr || !currentRow) {
+    return { ok: false, error: "Atama bulunamadı", status: 404 };
+  }
+
+  const currentStatus = (currentRow as { status: string }).status;
+  const allowedFrom = ALLOWED_FROM_STATUS[opts.action];
+  if (!allowedFrom.includes(currentStatus)) {
+    return {
+      ok: false,
+      error: `Geçersiz durum geçişi: ${currentStatus} → ${built.newStatus}`,
+      status: 409,
+    };
   }
 
   const { error: updateErr } = await admin

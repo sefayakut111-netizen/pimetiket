@@ -21,6 +21,8 @@
 import { createClient } from "@supabase/supabase-js";
 import {
   uploadToR2Archive,
+  getR2ObjectInfo,
+  deleteFromR2,
   r2KeyBuilders,
   IS_ARCHIVE_DRY_RUN,
 } from "./r2-client";
@@ -227,18 +229,38 @@ export async function archiveCustomer(
         }
 
         if (!IS_ARCHIVE_DRY_RUN) {
-          // Postgres'i güncelle
-          await supabase
+          const info = await getR2ObjectInfo(r2Key);
+          if (!info.exists || info.size !== buffer.length) {
+            await deleteFromR2(r2Key);
+            await supabase
+              .from("design_files")
+              .update({ checksum_verified: false })
+              .eq("id", df.id);
+            result.errors.push(
+              `Design file ${df.id} R2 checksum mismatch (expected ${buffer.length}, got ${info.size ?? 0})`
+            );
+            continue;
+          }
+
+          const { error: pgErr } = await supabase
             .from("design_files")
             .update({
               archive_status: "cold",
               archive_path: r2Key,
               archive_size_bytes: buffer.length,
               archived_at: new Date().toISOString(),
+              checksum_verified: true,
             })
             .eq("id", df.id);
 
-          // Supabase Storage'dan sil (yer açmak için)
+          if (pgErr) {
+            await deleteFromR2(r2Key);
+            result.errors.push(
+              `Design file ${df.id} postgres update failed: ${pgErr.message}`
+            );
+            continue;
+          }
+
           if (df.storage_path) {
             await supabase.storage.from("designs").remove([df.storage_path]);
           }

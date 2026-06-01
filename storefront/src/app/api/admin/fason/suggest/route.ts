@@ -46,7 +46,6 @@ export async function GET(req: Request) {
     legacySpecialtyToProductType(specialtyParam);
 
   if (!productType) {
-    // Hiç filtre yok → tüm aktif partnerleri döndür (legacy behavior)
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("fason_partners")
@@ -54,6 +53,7 @@ export async function GET(req: Request) {
         "id, name, default_lead_days, cached_score, status, specialties"
       )
       .eq("status", "active")
+      .or("contract_signed_at.not.is.null,contract_pdf_url.not.is.null")
       .order("cached_score", { ascending: false, nullsFirst: false })
       .order("default_lead_days", { ascending: true });
     if (error) {
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     "fn_find_best_partner",
     {
       p_product_type: productType,
-      p_material: material ?? "",
+      p_material: (material ?? null) as unknown as string,
       p_order_amount: Number.isFinite(amount) ? amount : 0,
     }
   );

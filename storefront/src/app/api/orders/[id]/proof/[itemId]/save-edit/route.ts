@@ -45,6 +45,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveCutlineEdit } from "@/lib/proof/save-cutline-edit";
+import { sendOrderProofRequired } from "@/lib/mail/notifications";
 
 interface Body {
   svg?: unknown;
@@ -191,6 +192,15 @@ export async function POST(
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+
+  if (isPartner) {
+    void sendOrderProofRequired({
+      userId: orderRow.user_id,
+      orderId,
+    }).catch((err) => {
+      console.error("[proof/save-edit] partner revise proof mail:", err);
+    });
   }
 
   return NextResponse.json({

@@ -18,6 +18,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
 import { collectDesignTempIds, type AdditionalDesignMeta } from "@/lib/order-item-meta";
+import { retryPendingEditorCutlineForItem } from "@/lib/editor/promote-editor-cutline";
 import { STORAGE_BUCKET } from "./design-files";
 
 interface OrderItemWithDesign {
@@ -133,7 +134,26 @@ async function promoteOneTemp(args: {
     orderItemId
   );
 
-  const orderPath = `${orderId}/${designTempId}.png`;
+  const { data: tempDataEarly } = await admin
+    .from("design_temp_uploads")
+    .select(
+      "id, storage_path, original_name, size_bytes, mime_type, sha256, promoted_to"
+    )
+    .eq("id", designTempId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const tempEarly = tempDataEarly as unknown as TempUploadRow | null;
+  if (tempEarly?.promoted_to) {
+    return false;
+  }
+
+  const metaFallbackEarly = metaForTempId(itemMeta, designTempId);
+  const tempPathEarly =
+    tempEarly?.storage_path ?? `temp/${userId}/${designTempId}.png`;
+  const fileNameEarly =
+    tempPathEarly.split("/").pop() ?? `${designTempId}.png`;
+  const orderPath = `${orderId}/${fileNameEarly}`;
 
   const { data: existingByPath } = await admin
     .from("design_files")
@@ -154,31 +174,17 @@ async function promoteOneTemp(args: {
     return false;
   }
 
-  const { data: tempData } = await admin
-    .from("design_temp_uploads")
-    .select(
-      "id, storage_path, original_name, size_bytes, mime_type, sha256, promoted_to"
-    )
-    .eq("id", designTempId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  const temp = tempData as unknown as TempUploadRow | null;
-  if (temp?.promoted_to) {
-    return false;
-  }
-
-  const metaFallback = metaForTempId(itemMeta, designTempId);
+  const temp = tempEarly;
+  const metaFallback = metaFallbackEarly;
   const originalName =
     temp?.original_name ?? metaFallback?.original_name ?? `${designTempId}.png`;
   const sizeBytes = temp?.size_bytes ?? metaFallback?.size_bytes ?? 0;
   const mimeType = temp?.mime_type ?? metaFallback?.mime_type ?? "image/png";
   const sha256 = temp?.sha256 ?? null;
 
-  const tempPath =
-    temp?.storage_path ?? `temp/${userId}/${designTempId}.png`;
-  const fileName = tempPath.split("/").pop() ?? `${designTempId}.png`;
-  const newPath = `${orderId}/${fileName}`;
+  const tempPath = tempPathEarly;
+  const fileName = fileNameEarly;
+  const newPath = orderPath;
 
   const ready = await ensureFileAtOrderPath({
     admin,
@@ -249,6 +255,14 @@ async function promoteOneTemp(args: {
       },
     } satisfies TablesInsert<"order_events">,
   ]);
+
+  await retryPendingEditorCutlineForItem({
+    admin,
+    orderId,
+    userId,
+    orderItemId,
+    itemMeta,
+  });
 
   return true;
 }
