@@ -44,15 +44,16 @@ function loadOpenCvInWorker(): Promise<OpenCvModule> {
       importScripts(OPENCV_JS_URL);
       const raw = (g as { cv?: unknown }).cv;
 
-      // OpenCV 4.10+: cv global bir Promise — .then ile gerçek modül gelir
+      // OpenCV 4.10+: cv thenable (gerçek Promise değil) — Promise.resolve ile sar
       if (raw && typeof (raw as { then?: unknown }).then === "function") {
-        (raw as Promise<OpenCvModule>)
-          .then((real) => {
+        Promise.resolve(raw as PromiseLike<OpenCvModule>).then(
+          (real) => {
             g.cv = real;
             if (real?.Mat) finish(real);
-            else fail(new Error("OpenCV Promise resolved ama Mat yok"));
-          })
-          .catch(fail);
+            else fail(new Error("OpenCV resolved ama Mat yok"));
+          },
+          (err) => fail(err)
+        );
         return;
       }
 

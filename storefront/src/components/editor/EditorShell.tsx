@@ -190,6 +190,11 @@ export default function EditorShell() {
     };
   }, [design?.tempId]);
 
+  const maxCornerRadiusMm = useMemo(
+    () => Math.min(20, widthMm / 2, heightMm / 2),
+    [widthMm, heightMm]
+  );
+
   const bladeShape = useMemo((): BladeShapeConfig => {
     if (selectedTpl) {
       const mode: CutlineMode =
@@ -206,13 +211,22 @@ export default function EditorShell() {
     if (bladeTab === "shape") {
       if (shapeMode === "rect" || shapeMode === "circle") {
         return shapeMode === "rect"
-          ? { kind: "rect", cornerRadiusMm }
+          ? {
+              kind: "rect",
+              cornerRadiusMm: Math.min(cornerRadiusMm, maxCornerRadiusMm),
+            }
           : { kind: shapeMode };
       }
       return { kind: shapeMode };
     }
     return { kind: "none" };
-  }, [selectedTpl, bladeTab, shapeMode, cornerRadiusMm]);
+  }, [selectedTpl, bladeTab, shapeMode, cornerRadiusMm, maxCornerRadiusMm]);
+
+  useEffect(() => {
+    setCornerRadiusMm((prev) =>
+      prev > maxCornerRadiusMm ? maxCornerRadiusMm : prev
+    );
+  }, [maxCornerRadiusMm]);
 
   const productHint = useMemo((): {
     primary: "sticker" | "etiket" | null;
@@ -1114,20 +1128,22 @@ export default function EditorShell() {
               >
                 <span>Köşe yuvarlaklığı</span>
                 <span className="tabular-nums text-[12px] font-semibold text-gri-800 normal-case">
-                  {cornerRadiusMm} mm
+                  {Math.min(cornerRadiusMm, maxCornerRadiusMm).toFixed(1)} mm
                 </span>
               </label>
               <input
                 id="editor-corner-radius"
                 type="range"
                 min={0}
-                max={20}
+                max={maxCornerRadiusMm}
                 step={0.5}
-                value={cornerRadiusMm}
+                value={Math.min(cornerRadiusMm, maxCornerRadiusMm)}
                 aria-label="Köşe yuvarlaklığı"
-                aria-valuetext={`${cornerRadiusMm} mm`}
+                aria-valuetext={`${Math.min(cornerRadiusMm, maxCornerRadiusMm)} mm`}
                 onChange={(e) =>
-                  setCornerRadiusMm(parseFloat(e.target.value) || 0)
+                  setCornerRadiusMm(
+                    Math.min(parseFloat(e.target.value) || 0, maxCornerRadiusMm)
+                  )
                 }
                 className="mt-2 w-full accent-pim-mercan"
               />
