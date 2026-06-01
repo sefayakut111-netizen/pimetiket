@@ -850,13 +850,6 @@ function AdminDashboardPageInner() {
           },
         ]
       : []),
-    {
-      label: `${RANGE_LABEL[range]} sipariş`,
-      value: count.toString(),
-      sub: countChange.label,
-      trend: countChange.trend,
-      accent: "text-pim-mercan",
-    },
     ...(showFinancials
       ? [
           {
@@ -1602,8 +1595,8 @@ function AdminDashboardPageInner() {
         </Card>
 
         {/* Operational metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          <Card padding="p-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 items-stretch">
+          <Card padding="p-4" className="h-full flex flex-col">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               AI flag oranı
             </div>
@@ -1618,7 +1611,7 @@ function AdminDashboardPageInner() {
             </div>
           </Card>
 
-          <Card padding="p-4">
+          <Card padding="p-4" className="h-full flex flex-col">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               Ort. tamamlanma
             </div>
@@ -1634,17 +1627,13 @@ function AdminDashboardPageInner() {
 
           <Link
             href="/admin/siparisler?status=cancelled"
-            className={cn(
-              "block rounded-xl transition-shadow",
-              isCancelOverTarget
-                ? "ring-2 ring-kirmizi bg-kirmizi-soft/10 hover:ring-kirmizi"
-                : "hover:ring-1 hover:ring-gri-200"
-            )}
+            className="block h-full rounded-xl transition-shadow hover:ring-1 hover:ring-gri-200"
           >
           <Card
             padding="p-4"
             className={cn(
-              isCancelOverTarget && "bg-kirmizi-soft/10 ring-0"
+              "h-full flex flex-col",
+              isCancelOverTarget && "ring-2 ring-kirmizi bg-kirmizi-soft/10"
             )}
           >
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
@@ -1681,10 +1670,11 @@ function AdminDashboardPageInner() {
           </Card>
           </Link>
 
-          <Link href="/admin/prova" className="block rounded-xl hover:ring-1 hover:ring-gri-200 transition-shadow">
+          <Link href="/admin/prova" className="block h-full rounded-xl transition-shadow hover:ring-1 hover:ring-gri-200">
           <Card
             padding="p-4"
             className={cn(
+              "h-full flex flex-col",
               isProofCancelOverTarget && "ring-2 ring-kirmizi bg-kirmizi-soft/10"
             )}
           >
@@ -1724,7 +1714,7 @@ function AdminDashboardPageInner() {
           </Card>
           </Link>
 
-          <Card padding="p-4">
+          <Card padding="p-4" className="h-full flex flex-col">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700">
               Prova bekleme
             </div>
@@ -1740,7 +1730,7 @@ function AdminDashboardPageInner() {
             </div>
           </Card>
 
-          <Card padding="p-4">
+          <Card padding="p-4" className="h-full flex flex-col">
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 flex items-center gap-1">
               {customerStats ? "Yeni kayıt (7g)" : "Tekrar müşteri"}
               {statsError && (

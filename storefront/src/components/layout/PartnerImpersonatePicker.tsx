@@ -5,7 +5,6 @@
 
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function PartnerImpersonatePicker({
@@ -13,7 +12,6 @@ export function PartnerImpersonatePicker({
 }: {
   variant: "topbar" | "sidebar";
 }) {
-  const router = useRouter();
   const [switching, setSwitching] = useState(false);
 
   async function switchToPartnerPreview() {
@@ -33,8 +31,7 @@ export function PartnerImpersonatePicker({
         );
         return;
       }
-      router.push("/partner");
-      router.refresh();
+      window.location.href = "/partner";
     } catch (err) {
       alert("Hata: " + (err instanceof Error ? err.message : "Bilinmeyen"));
     } finally {

@@ -242,8 +242,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
         body: JSON.stringify({ mode: "customer" }),
       });
       if (res.ok) {
-        router.push("/panelim");
-        router.refresh();
+        window.location.href = "/panelim";
       }
     } finally {
       setSwitching(false);
@@ -445,6 +444,7 @@ function AdminShellInner({ children }: { children: ReactNode }) {
       {
         label: "Operatör Modu",
         items: [
+          { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} />, module: "dashboard" },
           {
             href: "/admin/kuyruk",
             label: "Operasyon Kuyruğu",
@@ -453,7 +453,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             badgeAccent: badges.queueCritical > 0,
             module: "orders",
           },
-          { href: "/admin", label: "Dashboard", icon: <Icon.Home size={16} />, module: "dashboard" },
           {
             href: "/admin/siparisler",
             label: "Siparişler",
@@ -484,6 +483,14 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             module: "proof",
           },
           {
+            href: "/admin/yardim-talepleri",
+            label: "Prova Yardımı",
+            icon: <Icon.ChatBubble size={16} />,
+            badge: badges.helpRequests,
+            badgeAccent: badges.helpRequests > 0,
+            module: "help_requests",
+          },
+          {
             href: "/admin/kargo",
             label: "Kargo",
             icon: <Icon.Truck size={16} />,
@@ -502,14 +509,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             icon: <Icon.ChatBubble size={16} />,
             badge: badges.supportOpen,
             badgeAccent: badges.supportOpen > 0,
-            module: "help_requests",
-          },
-          {
-            href: "/admin/yardim-talepleri",
-            label: "Prova Yardımı",
-            icon: <Icon.ChatBubble size={16} />,
-            badge: badges.helpRequests,
-            badgeAccent: badges.helpRequests > 0,
             module: "help_requests",
           },
         ],
@@ -607,13 +606,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             href: "/admin/sistem/cronlar",
             label: "Cron İzleme",
             icon: <Icon.Refresh size={16} />,
-            module: "staff",
-            adminOnly: true,
-          },
-          {
-            href: "/admin/sistem/bakim",
-            label: "Bakım modu",
-            icon: <Icon.Info size={16} />,
             module: "staff",
             adminOnly: true,
           },
@@ -828,23 +820,8 @@ function AdminShellInner({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        {/* User panel + view-mode toggle */}
-        <div className="border-t border-white/10 p-3 shrink-0 space-y-2">
-          <button
-            type="button"
-            onClick={switchToCustomer}
-            disabled={switching}
-            className="w-full flex items-center gap-2 h-9 px-3 rounded-lg bg-pim-mercan hover:bg-pim-mercan/90 text-white text-[12.5px] font-semibold transition-colors disabled:opacity-50"
-            title="Müşteri olarak gör — analiz/test için"
-          >
-            <Icon.Eye size={14} />
-            {switching ? "…" : "Müşteri görünümü"}
-            <Icon.ArrowR size={14} className="ml-auto opacity-70" />
-          </button>
-          {/* Sefa 23 May v68 (Partner): "Müşteri görünümü" ile tutarlı
-              tek-tıkla seçici. Modal açar → partner seç → magic-link
-              yeni sekmede partner paneline login. */}
-          <PartnerImpersonatePicker variant="sidebar" />
+        {/* User panel */}
+        <div className="border-t border-white/10 p-3 shrink-0">
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/5">
             <span className="grid place-items-center w-8 h-8 rounded-full bg-pim-mercan font-bold text-[13px] shrink-0">
               S
