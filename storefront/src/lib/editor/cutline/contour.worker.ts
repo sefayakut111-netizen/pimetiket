@@ -69,10 +69,15 @@ type ComputeMessage = {
 
 type WorkerInMessage = InitMessage | ComputeMessage;
 
-type ReadyOut = { type: "ready" };
-type ComputeOkOut = { id: number; paths: PathRing[][] };
-type ComputeErrOut = { id: number; error: string };
-type InitErrOut = { type: "error"; error: string };
+export type ReadyOut = { type: "ready" };
+export type ComputeOkOut = { id: number; paths: PathRing[][] };
+export type ComputeErrOut = { id: number; error: string };
+export type InitErrOut = { type: "error"; error: string };
+export type WorkerOut =
+  | ReadyOut
+  | ComputeOkOut
+  | ComputeErrOut
+  | InitErrOut;
 
 self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
   const msg = event.data;

@@ -48,6 +48,18 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
   "auth.login": "Giriş yapıldı",
   "auth.logout": "Çıkış yapıldı",
   "profile.delete": "Hesap silme talebi",
+  "customer.note_add": "Müşteri notu eklendi",
+  "customer.note_delete": "Müşteri notu silindi",
+  "customer.tag_add": "Müşteri etiketi eklendi",
+  "customer.tag_remove": "Müşteri etiketi kaldırıldı",
+  "customer.suspend": "Müşteri askıya alındı",
+  "customer.unsuspend": "Müşteri askısı kaldırıldı",
+  "customer.reset_password": "Müşteri şifresi sıfırlandı",
+  "customer.email_sent": "Müşteriye e-posta gönderildi",
+  "customer.view_360": "Müşteri 360° profili görüntülendi",
+  "partner.capability_verify": "Partner yeteneği doğrulandı",
+  "partner.capability_unverify": "Partner yetenek doğrulaması kaldırıldı",
+  "admin.impersonate_partner": "Partner görünümüne geçildi",
 };
 
 export interface AuditEntry {

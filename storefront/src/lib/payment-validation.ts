@@ -70,7 +70,8 @@ export interface ValidationFailDetail {
     | "sanity_unit_too_low"
     | "sanity_area_too_small"
     | "sanity_total_inconsistent"
-    | "sanity_subtotal_too_low";
+    | "sanity_subtotal_too_low"
+    | "qty_above_max";
   expected?: number;
   actual?: number;
   hint?: string;

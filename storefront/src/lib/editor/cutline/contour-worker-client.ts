@@ -6,6 +6,7 @@ import {
 } from "@/lib/editor/alpha-contour";
 import { offsetMmToPx } from "@/lib/editor/cutline/contour-opencv-algorithms";
 import type { PathRing } from "@/lib/editor/cutline/types";
+import type { WorkerOut } from "@/lib/editor/cutline/contour.worker";
 
 const WORKER_TIMEOUT_MS = 12_000;
 
@@ -19,13 +20,6 @@ type ComputeMessage = {
   useHull: boolean;
   pxPerMmInImage: number;
 };
-
-type ReadyOut = { type: "ready" };
-type ComputeOkOut = { id: number; paths: PathRing[][] };
-type ComputeErrOut = { id: number; error: string };
-type InitErrOut = { type: "error"; error: string };
-
-type WorkerOut = ReadyOut | ComputeOkOut | ComputeErrOut | InitErrOut;
 
 let worker: Worker | null = null;
 let readyPromise: Promise<void> | null = null;
@@ -71,10 +65,10 @@ function rejectAllPending(reason: string) {
 }
 
 function handleWorkerMessage(data: WorkerOut) {
-  if (data.type === "ready") {
+  if ("type" in data && data.type === "ready") {
     return;
   }
-  if (data.type === "error" && !("id" in data)) {
+  if ("type" in data && data.type === "error") {
     readyPromise = null;
     return;
   }
@@ -119,13 +113,13 @@ function waitForWorkerReady(w: Worker): Promise<void> {
 
     const onReady = (event: MessageEvent<WorkerOut>) => {
       const data = event.data;
-      if (data.type === "ready") {
+      if ("type" in data && data.type === "ready") {
         clearTimeout(timeout);
         w.removeEventListener("message", onReady);
         resolve();
         return;
       }
-      if (data.type === "error") {
+      if ("type" in data && data.type === "error") {
         clearTimeout(timeout);
         w.removeEventListener("message", onReady);
         readyPromise = null;

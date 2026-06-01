@@ -1,14 +1,4 @@
-﻿/**
- * Supabase Database types — remote şemadan otomatik üretildi.
- *
- * Yeniden üretmek için:
- *   npm run supabase:types
- *
- * Kaynak: Supabase project ucmpwxnoaqjpzhijnxtp (migrations 001–089)
- * Son güncelleme: 2026-05-24
- */
-
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -492,6 +482,69 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_posts: {
+        Row: {
+          author_name: string | null
+          body_en: string | null
+          body_tr: string
+          category: string
+          cover_image_url: string | null
+          created_at: string
+          excerpt_en: string | null
+          excerpt_tr: string | null
+          id: string
+          published_at: string | null
+          read_minutes: number | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          status: string
+          title_en: string | null
+          title_tr: string
+          updated_at: string
+        }
+        Insert: {
+          author_name?: string | null
+          body_en?: string | null
+          body_tr: string
+          category?: string
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt_en?: string | null
+          excerpt_tr?: string | null
+          id?: string
+          published_at?: string | null
+          read_minutes?: number | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: string
+          title_en?: string | null
+          title_tr: string
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string | null
+          body_en?: string | null
+          body_tr?: string
+          category?: string
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt_en?: string | null
+          excerpt_tr?: string | null
+          id?: string
+          published_at?: string | null
+          read_minutes?: number | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: string
+          title_en?: string | null
+          title_tr?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           added_at: string
@@ -513,6 +566,7 @@ export type Database = {
           material: string | null
           material_id: string | null
           meta: Json | null
+          priced_at: string
           product: string
           qty: number
           roll_label_count: number | null
@@ -524,7 +578,6 @@ export type Database = {
           user_id: string
           width: number
           winding: number | null
-          priced_at: string
         }
         Insert: {
           added_at?: string
@@ -546,6 +599,7 @@ export type Database = {
           material?: string | null
           material_id?: string | null
           meta?: Json | null
+          priced_at?: string
           product: string
           qty: number
           roll_label_count?: number | null
@@ -557,7 +611,6 @@ export type Database = {
           user_id: string
           width: number
           winding?: number | null
-          priced_at?: string
         }
         Update: {
           added_at?: string
@@ -579,6 +632,7 @@ export type Database = {
           material?: string | null
           material_id?: string | null
           meta?: Json | null
+          priced_at?: string
           product?: string
           qty?: number
           roll_label_count?: number | null
@@ -590,7 +644,6 @@ export type Database = {
           user_id?: string
           width?: number
           winding?: number | null
-          priced_at?: string
         }
         Relationships: [
           {
@@ -658,222 +711,6 @@ export type Database = {
           },
         ]
       }
-      blog_posts: {
-        Row: {
-          id: string
-          slug: string
-          title_tr: string
-          title_en: string | null
-          body_tr: string
-          body_en: string | null
-          excerpt_tr: string | null
-          excerpt_en: string | null
-          category: string
-          cover_image_url: string | null
-          author_name: string | null
-          status: string
-          read_minutes: number | null
-          seo_title: string | null
-          seo_description: string | null
-          published_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          slug: string
-          title_tr: string
-          title_en?: string | null
-          body_tr: string
-          body_en?: string | null
-          excerpt_tr?: string | null
-          excerpt_en?: string | null
-          category?: string
-          cover_image_url?: string | null
-          author_name?: string | null
-          status?: string
-          read_minutes?: number | null
-          seo_title?: string | null
-          seo_description?: string | null
-          published_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          slug?: string
-          title_tr?: string
-          title_en?: string | null
-          body_tr?: string
-          body_en?: string | null
-          excerpt_tr?: string | null
-          excerpt_en?: string | null
-          category?: string
-          cover_image_url?: string | null
-          author_name?: string | null
-          status?: string
-          read_minutes?: number | null
-          seo_title?: string | null
-          seo_description?: string | null
-          published_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      support_tickets: {
-        Row: {
-          id: string
-          user_id: string | null
-          guest_email: string | null
-          guest_name: string | null
-          subject: string
-          message: string
-          category: string
-          status: string
-          order_id: string | null
-          admin_response: string | null
-          admin_responded_by: string | null
-          admin_responded_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id?: string | null
-          guest_email?: string | null
-          guest_name?: string | null
-          subject: string
-          message: string
-          category?: string
-          status?: string
-          order_id?: string | null
-          admin_response?: string | null
-          admin_responded_by?: string | null
-          admin_responded_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string | null
-          guest_email?: string | null
-          guest_name?: string | null
-          subject?: string
-          message?: string
-          category?: string
-          status?: string
-          order_id?: string | null
-          admin_response?: string | null
-          admin_responded_by?: string | null
-          admin_responded_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      cron_runs: {
-        Row: {
-          id: string
-          cron_name: string
-          started_at: string
-          finished_at: string | null
-          status: string
-          duration_ms: number | null
-          summary: string | null
-          error_message: string | null
-          items_processed: number | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          cron_name: string
-          started_at?: string
-          finished_at?: string | null
-          status?: string
-          duration_ms?: number | null
-          summary?: string | null
-          error_message?: string | null
-          items_processed?: number | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          cron_name?: string
-          started_at?: string
-          finished_at?: string | null
-          status?: string
-          duration_ms?: number | null
-          summary?: string | null
-          error_message?: string | null
-          items_processed?: number | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      proof_validations: {
-        Row: {
-          id: string
-          order_id: string
-          order_item_id: string | null
-          design_file_id: string | null
-          rule_check_passed: boolean | null
-          rule_issues: Json | null
-          ai_validated: boolean | null
-          ai_verdict: string | null
-          ai_cutline: Json | null
-          ai_white_layer: Json | null
-          ai_suggestions: Json | null
-          ai_pim_message: string | null
-          ai_tokens_used: number | null
-          ai_cost_usd: number | null
-          auto_fixed: boolean | null
-          fix_log: Json | null
-          final_verdict: string | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          order_id: string
-          order_item_id?: string | null
-          design_file_id?: string | null
-          rule_check_passed?: boolean | null
-          rule_issues?: Json | null
-          ai_validated?: boolean | null
-          ai_verdict?: string | null
-          ai_cutline?: Json | null
-          ai_white_layer?: Json | null
-          ai_suggestions?: Json | null
-          ai_pim_message?: string | null
-          ai_tokens_used?: number | null
-          ai_cost_usd?: number | null
-          auto_fixed?: boolean | null
-          fix_log?: Json | null
-          final_verdict?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          order_id?: string
-          order_item_id?: string | null
-          design_file_id?: string | null
-          rule_check_passed?: boolean | null
-          rule_issues?: Json | null
-          ai_validated?: boolean | null
-          ai_verdict?: string | null
-          ai_cutline?: Json | null
-          ai_white_layer?: Json | null
-          ai_suggestions?: Json | null
-          ai_pim_message?: string | null
-          ai_tokens_used?: number | null
-          ai_cost_usd?: number | null
-          auto_fixed?: boolean | null
-          fix_log?: Json | null
-          final_verdict?: string | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
       coupons: {
         Row: {
           code: string
@@ -940,6 +777,87 @@ export type Database = {
           {
             foreignKeyName: "coupons_target_user_id_fkey"
             columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      cron_runs: {
+        Row: {
+          created_at: string | null
+          cron_name: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          items_processed: number | null
+          started_at: string
+          status: string
+          summary: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cron_name: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_processed?: number | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cron_name?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_processed?: number | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+        }
+        Relationships: []
+      }
+      customer_activity_log: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          summary: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          summary: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_activity_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "customer_activity_log_customer_id_fkey"
+            columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "v_admin_customers"
             referencedColumns: ["user_id"]
@@ -1221,6 +1139,7 @@ export type Database = {
           archive_status: Database["public"]["Enums"]["archive_status"]
           archived_at: string | null
           checksum_verified: boolean | null
+          created_at: string | null
           deletion_due_at: string | null
           id: string
           last_used_at: string | null
@@ -1251,6 +1170,7 @@ export type Database = {
           archive_status?: Database["public"]["Enums"]["archive_status"]
           archived_at?: string | null
           checksum_verified?: boolean | null
+          created_at?: string | null
           deletion_due_at?: string | null
           id?: string
           last_used_at?: string | null
@@ -1281,6 +1201,7 @@ export type Database = {
           archive_status?: Database["public"]["Enums"]["archive_status"]
           archived_at?: string | null
           checksum_verified?: boolean | null
+          created_at?: string | null
           deletion_due_at?: string | null
           id?: string
           last_used_at?: string | null
@@ -1482,6 +1403,88 @@ export type Database = {
           },
         ]
       }
+      editor_cutline_drafts: {
+        Row: {
+          created_at: string
+          cutline_height_mm: number | null
+          cutline_width_mm: number | null
+          height_mm: number | null
+          id: string
+          material_type: string | null
+          meta: Json
+          mode: string
+          offset_mm: number | null
+          placement_json: Json | null
+          preview_key: string | null
+          promoted_to: string | null
+          source: string
+          svg_key: string
+          temp_design_id: string | null
+          user_id: string
+          width_mm: number | null
+        }
+        Insert: {
+          created_at?: string
+          cutline_height_mm?: number | null
+          cutline_width_mm?: number | null
+          height_mm?: number | null
+          id?: string
+          material_type?: string | null
+          meta?: Json
+          mode: string
+          offset_mm?: number | null
+          placement_json?: Json | null
+          preview_key?: string | null
+          promoted_to?: string | null
+          source: string
+          svg_key: string
+          temp_design_id?: string | null
+          user_id: string
+          width_mm?: number | null
+        }
+        Update: {
+          created_at?: string
+          cutline_height_mm?: number | null
+          cutline_width_mm?: number | null
+          height_mm?: number | null
+          id?: string
+          material_type?: string | null
+          meta?: Json
+          mode?: string
+          offset_mm?: number | null
+          placement_json?: Json | null
+          preview_key?: string | null
+          promoted_to?: string | null
+          source?: string
+          svg_key?: string
+          temp_design_id?: string | null
+          user_id?: string
+          width_mm?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editor_cutline_drafts_promoted_to_fkey"
+            columns: ["promoted_to"]
+            isOneToOne: false
+            referencedRelation: "cutline_designs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "editor_cutline_drafts_temp_design_id_fkey"
+            columns: ["temp_design_id"]
+            isOneToOne: false
+            referencedRelation: "design_temp_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "editor_cutline_drafts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       email_subscribers: {
         Row: {
           consent_at: string
@@ -1538,8 +1541,10 @@ export type Database = {
           fason_partner_id: string
           id: string
           last_used_at: string | null
+          max_use_count: number
           revoked_at: string | null
           token: string
+          token_hash: string | null
           use_count: number
         }
         Insert: {
@@ -1549,8 +1554,10 @@ export type Database = {
           fason_partner_id: string
           id?: string
           last_used_at?: string | null
+          max_use_count?: number
           revoked_at?: string | null
           token: string
+          token_hash?: string | null
           use_count?: number
         }
         Update: {
@@ -1560,8 +1567,10 @@ export type Database = {
           fason_partner_id?: string
           id?: string
           last_used_at?: string | null
+          max_use_count?: number
           revoked_at?: string | null
           token?: string
+          token_hash?: string | null
           use_count?: number
         }
         Relationships: [
@@ -1585,6 +1594,65 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_fason_performance"
             referencedColumns: ["fason_id"]
+          },
+        ]
+      }
+      fason_file_transfers: {
+        Row: {
+          file_type: string
+          file_url: string
+          id: string
+          order_id: string
+          partner_id: string
+          sent_at: string
+          sent_by: string | null
+        }
+        Insert: {
+          file_type: string
+          file_url: string
+          id?: string
+          order_id: string
+          partner_id: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Update: {
+          file_type?: string
+          file_url?: string
+          id?: string
+          order_id?: string
+          partner_id?: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fason_file_transfers_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fason_file_transfers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "fason_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fason_file_transfers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_fason_performance"
+            referencedColumns: ["fason_id"]
+          },
+          {
+            foreignKeyName: "fason_file_transfers_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -2305,12 +2373,12 @@ export type Database = {
           partner_decided_at: string | null
           partner_decided_by: string | null
           partner_decision_note: string | null
+          print_ready_pdf_url: string | null
           product: string
           proof_approved_at: string | null
           proof_edited_at: string | null
           proof_status: string
           proof_viewed_at: string | null
-          print_ready_pdf_url: string | null
           qty: number
           reprint_source_order_id: string | null
           title: string
@@ -2328,12 +2396,12 @@ export type Database = {
           partner_decided_at?: string | null
           partner_decided_by?: string | null
           partner_decision_note?: string | null
+          print_ready_pdf_url?: string | null
           product: string
           proof_approved_at?: string | null
           proof_edited_at?: string | null
           proof_status?: string
           proof_viewed_at?: string | null
-          print_ready_pdf_url?: string | null
           qty: number
           reprint_source_order_id?: string | null
           title: string
@@ -2351,12 +2419,12 @@ export type Database = {
           partner_decided_at?: string | null
           partner_decided_by?: string | null
           partner_decision_note?: string | null
+          print_ready_pdf_url?: string | null
           product?: string
           proof_approved_at?: string | null
           proof_edited_at?: string | null
           proof_status?: string
           proof_viewed_at?: string | null
-          print_ready_pdf_url?: string | null
           qty?: number
           reprint_source_order_id?: string | null
           title?: string
@@ -2406,10 +2474,12 @@ export type Database = {
           id: string
           invoice: Json
           is_manual: boolean
+          paid_at: string | null
           payment: Json
           proof_storage_path: string | null
           proof_uploaded_at: string | null
           proof_uploaded_by: string | null
+          qc_attempt_count: number
           shipping: number
           sla_proof_deadline: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -2428,10 +2498,12 @@ export type Database = {
           id: string
           invoice: Json
           is_manual?: boolean
+          paid_at?: string | null
           payment: Json
           proof_storage_path?: string | null
           proof_uploaded_at?: string | null
           proof_uploaded_by?: string | null
+          qc_attempt_count?: number
           shipping?: number
           sla_proof_deadline?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -2450,10 +2522,12 @@ export type Database = {
           id?: string
           invoice?: Json
           is_manual?: boolean
+          paid_at?: string | null
           payment?: Json
           proof_storage_path?: string | null
           proof_uploaded_at?: string | null
           proof_uploaded_by?: string | null
+          qc_attempt_count?: number
           shipping?: number
           sla_proof_deadline?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -2528,77 +2602,12 @@ export type Database = {
             referencedRelation: "v_fason_performance"
             referencedColumns: ["fason_id"]
           },
-        ]
-      }
-      customer_activity_log: {
-        Row: {
-          channel: string
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          id: string
-          summary: string
-        }
-        Insert: {
-          channel: string
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          id?: string
-          summary: string
-        }
-        Update: {
-          channel?: string
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          id?: string
-          summary?: string
-        }
-        Relationships: []
-      }
-      fason_file_transfers: {
-        Row: {
-          file_type: string
-          file_url: string
-          id: string
-          order_id: string
-          partner_id: string
-          sent_at: string
-          sent_by: string | null
-        }
-        Insert: {
-          file_type: string
-          file_url: string
-          id?: string
-          order_id: string
-          partner_id: string
-          sent_at?: string
-          sent_by?: string | null
-        }
-        Update: {
-          file_type?: string
-          file_url?: string
-          id?: string
-          order_id?: string
-          partner_id?: string
-          sent_at?: string
-          sent_by?: string | null
-        }
-        Relationships: [
           {
-            foreignKeyName: "fason_file_transfers_order_id_fkey"
-            columns: ["order_id"]
+            foreignKeyName: "partner_capabilities_verified_by_fkey"
+            columns: ["verified_by"]
             isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fason_file_transfers_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "fason_partners"
-            referencedColumns: ["id"]
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -2629,11 +2638,25 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "partner_communications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "partner_communications_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "fason_partners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_communications_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_fason_performance"
+            referencedColumns: ["fason_id"]
           },
         ]
       }
@@ -2703,6 +2726,101 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      partner_pricebook_axes: {
+        Row: {
+          axis: string
+          created_at: string
+          display_order: number
+          id: string
+          product_type: string
+          value_mm: number
+        }
+        Insert: {
+          axis: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_type?: string
+          value_mm: number
+        }
+        Update: {
+          axis?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_type?: string
+          value_mm?: number
+        }
+        Relationships: []
+      }
+      partner_pricebook_cells: {
+        Row: {
+          height_mm: number
+          matrix_id: string
+          price_per_unit: number
+          qty: number
+          updated_at: string
+          width_mm: number
+        }
+        Insert: {
+          height_mm: number
+          matrix_id: string
+          price_per_unit: number
+          qty: number
+          updated_at?: string
+          width_mm: number
+        }
+        Update: {
+          height_mm?: number
+          matrix_id?: string
+          price_per_unit?: number
+          qty?: number
+          updated_at?: string
+          width_mm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_pricebook_cells_matrix_id_fkey"
+            columns: ["matrix_id"]
+            isOneToOne: false
+            referencedRelation: "partner_pricebook_matrices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_pricebook_matrices: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_name: string
+          id: string
+          material_key: string
+          product_type: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_name: string
+          id?: string
+          material_key: string
+          product_type?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_name?: string
+          id?: string
+          material_key?: string
+          product_type?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
       }
       payment_intents: {
         Row: {
@@ -2921,101 +3039,6 @@ export type Database = {
           },
         ]
       }
-      partner_pricebook_axes: {
-        Row: {
-          axis: string
-          created_at: string
-          display_order: number
-          id: string
-          product_type: string
-          value_mm: number
-        }
-        Insert: {
-          axis: string
-          created_at?: string
-          display_order?: number
-          id?: string
-          product_type?: string
-          value_mm: number
-        }
-        Update: {
-          axis?: string
-          created_at?: string
-          display_order?: number
-          id?: string
-          product_type?: string
-          value_mm?: number
-        }
-        Relationships: []
-      }
-      partner_pricebook_matrices: {
-        Row: {
-          active: boolean
-          created_at: string
-          display_name: string
-          id: string
-          material_key: string
-          product_type: string
-          updated_at: string
-          version: number
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          display_name: string
-          id?: string
-          material_key: string
-          product_type?: string
-          updated_at?: string
-          version?: number
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          display_name?: string
-          id?: string
-          material_key?: string
-          product_type?: string
-          updated_at?: string
-          version?: number
-        }
-        Relationships: []
-      }
-      partner_pricebook_cells: {
-        Row: {
-          height_mm: number
-          matrix_id: string
-          price_per_unit: number
-          qty: number
-          updated_at: string
-          width_mm: number
-        }
-        Insert: {
-          height_mm: number
-          matrix_id: string
-          price_per_unit: number
-          qty: number
-          updated_at?: string
-          width_mm: number
-        }
-        Update: {
-          height_mm?: number
-          matrix_id?: string
-          price_per_unit?: number
-          qty?: number
-          updated_at?: string
-          width_mm?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "partner_pricebook_cells_matrix_id_fkey"
-            columns: ["matrix_id"]
-            isOneToOne: false
-            referencedRelation: "partner_pricebook_matrices"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       product_cards: {
         Row: {
           created_at: string
@@ -3231,6 +3254,69 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      proof_validations: {
+        Row: {
+          ai_cost_usd: number | null
+          ai_cutline: Json | null
+          ai_pim_message: string | null
+          ai_suggestions: Json | null
+          ai_tokens_used: number | null
+          ai_validated: boolean | null
+          ai_verdict: string | null
+          ai_white_layer: Json | null
+          auto_fixed: boolean | null
+          created_at: string | null
+          design_file_id: string | null
+          final_verdict: string | null
+          fix_log: Json | null
+          id: string
+          order_id: string
+          order_item_id: string | null
+          rule_check_passed: boolean | null
+          rule_issues: Json | null
+        }
+        Insert: {
+          ai_cost_usd?: number | null
+          ai_cutline?: Json | null
+          ai_pim_message?: string | null
+          ai_suggestions?: Json | null
+          ai_tokens_used?: number | null
+          ai_validated?: boolean | null
+          ai_verdict?: string | null
+          ai_white_layer?: Json | null
+          auto_fixed?: boolean | null
+          created_at?: string | null
+          design_file_id?: string | null
+          final_verdict?: string | null
+          fix_log?: Json | null
+          id?: string
+          order_id: string
+          order_item_id?: string | null
+          rule_check_passed?: boolean | null
+          rule_issues?: Json | null
+        }
+        Update: {
+          ai_cost_usd?: number | null
+          ai_cutline?: Json | null
+          ai_pim_message?: string | null
+          ai_suggestions?: Json | null
+          ai_tokens_used?: number | null
+          ai_validated?: boolean | null
+          ai_verdict?: string | null
+          ai_white_layer?: Json | null
+          auto_fixed?: boolean | null
+          created_at?: string | null
+          design_file_id?: string | null
+          final_verdict?: string | null
+          fix_log?: Json | null
+          id?: string
+          order_id?: string
+          order_item_id?: string | null
+          rule_check_passed?: boolean | null
+          rule_issues?: Json | null
+        }
+        Relationships: []
       }
       referrals: {
         Row: {
@@ -3755,6 +3841,72 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          admin_responded_at: string | null
+          admin_responded_by: string | null
+          admin_response: string | null
+          category: string
+          created_at: string
+          guest_email: string | null
+          guest_name: string | null
+          id: string
+          message: string
+          order_id: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_responded_at?: string | null
+          admin_responded_by?: string | null
+          admin_response?: string | null
+          category?: string
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          message: string
+          order_id?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_responded_at?: string | null
+          admin_responded_by?: string | null
+          admin_response?: string | null
+          category?: string
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          message?: string
+          order_id?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_admin_responded_by_fkey"
+            columns: ["admin_responded_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       v_admin_customers: {
@@ -3839,8 +3991,16 @@ export type Database = {
       }
       v_pricing_live: {
         Row: {
-          scope: string
-          live_config: Json
+          live_config: Json | null
+          scope: string | null
+        }
+        Insert: {
+          live_config?: Json | null
+          scope?: string | null
+        }
+        Update: {
+          live_config?: Json | null
+          scope?: string | null
         }
         Relationships: []
       }
@@ -3857,6 +4017,17 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_apply_coupon_admin: {
+        Args: {
+          p_charged_discount?: number
+          p_code: string
+          p_order_id: string
+          p_subtotal: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      fn_apply_kvkk_order_design_retention: { Args: never; Returns: number }
       fn_apply_referral_code: {
         Args: { p_new_user_id: string; p_referral_code: string }
         Returns: boolean
@@ -3971,6 +4142,13 @@ export type Database = {
         }[]
       }
       fn_finalize_proof: { Args: { p_order_id: string }; Returns: Json }
+      fn_find_auth_user_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          email_confirmed_at: string
+          user_id: string
+        }[]
+      }
       fn_find_best_partner: {
         Args: {
           p_material: string
@@ -4061,6 +4239,7 @@ export type Database = {
           has_template: boolean
         }[]
       }
+      fn_list_user_permissions: { Args: never; Returns: Json }
       fn_log_audit: {
         Args: {
           p_action: Database["public"]["Enums"]["audit_action"]
@@ -4101,6 +4280,15 @@ export type Database = {
       fn_process_kvkk_deletion: {
         Args: { p_request_id: string }
         Returns: Json
+      }
+      fn_process_proof_pending_sla: {
+        Args: never
+        Returns: {
+          action: string
+          hours_since_proof: number
+          order_id: string
+          user_id: string
+        }[]
       }
       fn_proof_summary: { Args: { p_order_id: string }; Returns: Json }
       fn_publish_pricing_config: {
@@ -4217,10 +4405,10 @@ export type Database = {
       admin_role_v2:
         | "super_admin"
         | "operations"
-        | "finance"
         | "customer_service"
         | "production"
         | "content_editor"
+        | "finance"
       archive_status: "hot" | "archiving" | "cold" | "restoring" | "deleted"
       assignment_status:
         | "assigned"
@@ -4253,6 +4441,17 @@ export type Database = {
         | "auth.login"
         | "auth.logout"
         | "profile.delete"
+        | "customer.note_add"
+        | "customer.note_delete"
+        | "customer.tag_add"
+        | "customer.tag_remove"
+        | "customer.suspend"
+        | "customer.unsuspend"
+        | "customer.reset_password"
+        | "customer.email_sent"
+        | "customer.view_360"
+        | "partner.capability_verify"
+        | "partner.capability_unverify"
         | "admin.impersonate_partner"
       coupon_kind: "percent" | "fixed" | "free_ship"
       design_file_status:
@@ -4436,10 +4635,10 @@ export const Constants = {
       admin_role_v2: [
         "super_admin",
         "operations",
-        "finance",
         "customer_service",
         "production",
         "content_editor",
+        "finance",
       ],
       archive_status: ["hot", "archiving", "cold", "restoring", "deleted"],
       assignment_status: [
@@ -4474,6 +4673,17 @@ export const Constants = {
         "auth.login",
         "auth.logout",
         "profile.delete",
+        "customer.note_add",
+        "customer.note_delete",
+        "customer.tag_add",
+        "customer.tag_remove",
+        "customer.suspend",
+        "customer.unsuspend",
+        "customer.reset_password",
+        "customer.email_sent",
+        "customer.view_360",
+        "partner.capability_verify",
+        "partner.capability_unverify",
         "admin.impersonate_partner",
       ],
       coupon_kind: ["percent", "fixed", "free_ship"],

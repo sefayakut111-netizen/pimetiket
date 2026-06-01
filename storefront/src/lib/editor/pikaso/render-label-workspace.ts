@@ -57,7 +57,7 @@ export function renderLabelWorkspace(
     width: w,
     height: h,
     fill: GRID_BASE,
-    fillPatternImage: getGridPatternCanvas(),
+    fillPatternImage: getGridPatternCanvas() as unknown as HTMLImageElement,
     fillPatternRepeat: "repeat",
     stroke: "rgba(217, 119, 6, 0.72)",
     strokeWidth: 2,
