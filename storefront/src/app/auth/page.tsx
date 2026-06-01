@@ -26,6 +26,13 @@ import { Button, Input, Eyebrow, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { sanitizeNextPath } from "@/lib/auth/sanitize-next-path";
+import {
+  initialReferralCode,
+  isReferralCodePresent,
+  normalizeReferralCode,
+  persistReferralToSession,
+  setReferralCookie,
+} from "@/lib/auth/referral-code";
 import { useSiteImage } from "@/lib/site-images-client";
 
 type AuthMode = "login" | "signup";
@@ -45,19 +52,33 @@ function AuthInner() {
   const sp = useSearchParams();
   const next = sanitizeNextPath(sp.get("next"), "/panelim");
   const initialMode = (sp.get("mode") === "signup" ? "signup" : "login") as AuthMode;
-  const referralCode = sp.get("ref")?.toUpperCase() ?? null;
+  const urlReferralCode = sp.get("ref");
   const authHero = useSiteImage("auth_hero");
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [inviteCode, setInviteCode] = useState(() =>
+    initialReferralCode(urlReferralCode)
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [acceptKvkk, setAcceptKvkk] = useState(false);
   const [loading, setLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
 
   const configured = isSupabaseConfigured();
+
+  useEffect(() => {
+    const fromUrl = normalizeReferralCode(urlReferralCode);
+    if (fromUrl) setInviteCode(fromUrl);
+  }, [urlReferralCode]);
+
+  useEffect(() => {
+    persistReferralToSession(inviteCode);
+  }, [inviteCode]);
+
+  const resolvedInviteCode = normalizeReferralCode(inviteCode);
 
   // Sefa 16 May UX bug fix: URL'deki error parametrelerini görünür yap.
   // Hem ?error= (query) hem #error= (hash) parse edilir.
@@ -135,14 +156,19 @@ function AuthInner() {
     setLoading(true);
     try {
       const supabase = createClient();
+      const oauthRedirect = new URL(`${window.location.origin}/auth/callback`);
+      oauthRedirect.searchParams.set("next", next);
+      if (isReferralCodePresent(resolvedInviteCode)) {
+        oauthRedirect.searchParams.set("ref", resolvedInviteCode);
+        setReferralCookie(resolvedInviteCode);
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          queryParams: {
-            // referral code varsa URL'de aktar
-            ...(referralCode ? { ref: referralCode } : {}),
-          },
+          redirectTo: oauthRedirect.toString(),
+          ...(isReferralCodePresent(resolvedInviteCode)
+            ? { data: { referral_code: resolvedInviteCode } }
+            : {}),
         },
       });
       if (error) {
@@ -254,9 +280,8 @@ function AuthInner() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          // Referans kodu varsa raw_user_meta_data'ya koy — handle_new_user trigger uygular
-          ...(referralCode && {
-            data: { referral_code: referralCode },
+          ...(isReferralCodePresent(resolvedInviteCode) && {
+            data: { referral_code: resolvedInviteCode },
           }),
         },
       });
@@ -411,11 +436,11 @@ function AuthInner() {
               ? "E-posta ve şifrenle hızlıca giriş yap."
               : "30 saniyelik form, sonra sipariş geçmeye hazırsın."}
           </p>
-          {mode === "signup" && referralCode && (
+          {mode === "signup" && isReferralCodePresent(resolvedInviteCode) && (
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-yesil-soft ring-1 ring-yesil/30 text-[12.5px] font-semibold text-yesil">
-              <Icon.Check size={12} /> Referans kodu uygulandı:{" "}
-              <code className="font-mono font-bold">{referralCode}</code> — ilk
-              siparişinde %10 indirim
+              <Icon.Check size={12} /> Davet kodu:{" "}
+              <code className="font-mono font-bold">{resolvedInviteCode}</code> —
+              üye olunca hesabına %10 indirim kuponu tanımlanır
             </div>
           )}
         </div>
@@ -543,6 +568,26 @@ function AuthInner() {
                     Şifreler eşleşmiyor
                   </p>
                 )}
+              </label>
+            )}
+
+            {mode === "signup" && (
+              <label className="block">
+                <span className="text-[13px] font-semibold mb-1.5 block text-gri-700">
+                  Davet / referans kodu{" "}
+                  <span className="font-normal text-gri-500">(isteğe bağlı)</span>
+                </span>
+                <Input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) =>
+                    setInviteCode(e.target.value.toUpperCase())
+                  }
+                  placeholder="Örn: PIM-ABC12345"
+                  autoComplete="off"
+                  disabled={loading}
+                  className="font-mono uppercase"
+                />
               </label>
             )}
 

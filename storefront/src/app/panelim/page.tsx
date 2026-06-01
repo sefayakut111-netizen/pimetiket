@@ -805,6 +805,7 @@ export default function PanelimPage() {
               desc={c.qaReorderLast(reorderSummary(lastReorderTarget))}
               onClick={() => void handleQuickReorder(lastReorderTarget)}
               disabled={reordering}
+              primary
             />
           ) : (
             <QuickAction
@@ -812,6 +813,7 @@ export default function PanelimPage() {
               title={c.qaReorder}
               desc={c.qaReorderSoon}
               href="/siparislerim"
+              primary
             />
           )}
           <QuickAction
@@ -819,7 +821,6 @@ export default function PanelimPage() {
             title={c.qaNewEtiket}
             desc={c.qaNewEtiketDesc}
             href="/etiket"
-            primary
           />
           <QuickAction
             icon={<Icon.Sticker size={20} />}
@@ -1199,9 +1200,10 @@ export default function PanelimPage() {
                   </h3>
                 </div>
                 <p className="text-[12px] text-gri-700 leading-relaxed mb-3">
-                  Senin kodunla kayıt olan herkes ilk siparişinde{" "}
-                  <strong className="text-pim-mercan">%10 indirim</strong>{" "}
-                  kazanır. İlk siparişini verince sen de %10 kupon alırsın.
+                  Senin kodunla üye olan arkadaşın{" "}
+                  <strong className="text-pim-mercan">kayıt anında %10 indirim</strong>{" "}
+                  kuponu alır (sipariş vermesi gerekmez). Arkadaşın ilk siparişini
+                  verince sen de %10 kupon kazanırsın.
                 </p>
                 <div className="flex items-stretch gap-2">
                   <div className="flex-1 px-3 py-2 rounded-lg bg-gri-50 ring-1 ring-gri-200 font-mono text-[13px] font-bold text-lacivert truncate">

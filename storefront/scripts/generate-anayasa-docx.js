@@ -131,6 +131,18 @@ const KATEGORILER = [
       ["Fason aktarım yaklaşımı D (Hibrit)", " — bazı işler iç, bazı işler dış."],
     ],
   },
+  {
+    title: "11. Kupon & Davet Programı",
+    items: [
+      ["Davet kodu (PIM-XXXXXXXX) ile üye olan arkadaş", " kayıt anında %10 indirim kuponu alır — sipariş vermesi gerekmez."],
+      ["Davet eden kişi", " davet ettiği arkadaş ilk ödenmiş siparişini tamamlayınca %10 kupon alır."],
+      ["Tek sipariş = tek kupon", " — kupon birleştirme yasak; cüzdan/bakiye sistemi yok."],
+      ["Davet kodu kayıtta isteğe bağlı", " — URL ?ref= veya kayıt formundaki alan; zorunlu değil."],
+      ["Google OAuth kayıt", " — davet kodu user metadata + callback cookie/ref fallback ile uygulanır."],
+      ["Kişiye özel kuponlar (target_user_id)", " başka hesapta geçersiz; fn_validate_coupon kontrol eder."],
+      ["Hoşgeldin (HOSGELDIN-*) + davet (REF-NEW-*)", " aynı hesapta birlikte durabilir; checkout'ta yalnızca biri kullanılır."],
+    ],
+  },
 ];
 
 // Document oluştur

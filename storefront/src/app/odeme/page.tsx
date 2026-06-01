@@ -159,6 +159,8 @@ const COPY = {
 
     // Coupon
     couponTitle: "Kupon kodun var mı?",
+    couponRulesHint:
+      "Her siparişte yalnızca 1 kupon kullanılabilir; kuponlar birleştirilemez.",
     couponPh: "ÖRN: HOSGELDIN10",
     couponApply: "Uygula",
     couponRemove: "Kaldır",
@@ -174,6 +176,7 @@ const COPY = {
       `Min sepet tutarı ${n} ₺ — bu indirimden faydalanmıyor.`,
     couponUserLimit: "Bu kuponu zaten kullandın.",
     couponTotalLimit: "Bu kuponun kullanım limiti doldu.",
+    couponWrongUser: "Bu kupon senin hesabına tanımlı değil.",
     couponDefault: "Kupon uygulanamadı, tekrar dene.",
 
     // Summary
@@ -268,6 +271,8 @@ const COPY = {
       "Maximum 5 addresses can be saved. Delete one to add new.",
 
     couponTitle: "Got a coupon?",
+    couponRulesHint:
+      "Only one coupon per order; coupons cannot be combined.",
     couponPh: "EXAMPLE: WELCOME10",
     couponApply: "Apply",
     couponRemove: "Remove",
@@ -283,6 +288,7 @@ const COPY = {
       `Min subtotal ${n} TRY — discount doesn't apply.`,
     couponUserLimit: "You've already used this coupon.",
     couponTotalLimit: "Coupon usage limit reached.",
+    couponWrongUser: "This coupon is not assigned to your account.",
     couponDefault: "Coupon couldn't be applied, try again.",
 
     subtotal: "Subtotal (VAT excl.)",
@@ -1784,8 +1790,11 @@ export default function OdemePage() {
                 {/* Kupon alani — her zaman gorunur */}
                 <div className="pt-2">
                   <div id="coupon-form">
-                    <p className="text-[12px] font-semibold text-gri-700 mb-2">
+                    <p className="text-[12px] font-semibold text-gri-700 mb-1">
                       {c.couponTitle}
+                    </p>
+                    <p className="text-[11.5px] text-gri-500 mb-2 leading-relaxed">
+                      {c.couponRulesHint}
                     </p>
                     <div className="flex gap-2">
                         <Input
@@ -1832,7 +1841,9 @@ export default function OdemePage() {
                                 ? c.couponUserLimit
                                 : couponResult.reason === "total_limit_reached"
                                   ? c.couponTotalLimit
-                                  : couponResult.reason === "rpc_error" ||
+                                  : couponResult.reason === "wrong_user"
+                                    ? c.couponWrongUser
+                                    : couponResult.reason === "rpc_error" ||
                                       couponResult.reason === "invalid_response"
                                     ? c.couponRpcError
                                     : c.couponDefault}

@@ -270,6 +270,25 @@ export default function AdminKuponlarPage() {
           </Button>
         </div>
 
+        <Card padding="p-5" className="mb-6 !bg-gri-50 ring-gri-200">
+          <h2 className="font-semibold text-[15px] mb-2">Kupon kuralları</h2>
+          <ul className="text-[13px] text-gri-700 space-y-1.5 leading-relaxed list-disc pl-4">
+            <li>
+              Davet: arkadaş üye olunca %10 kupon alır (sipariş şartı yok); davet
+              eden, arkadaşın ilk siparişinde %10 kupon alır.
+            </li>
+            <li>Her siparişte yalnızca 1 kupon kullanılabilir; birleştirme yok.</li>
+            <li>
+              Kişiye özel kuponlar (REF-*, HOSGELDIN-*) yalnızca ilgili hesapta
+              geçerlidir.
+            </li>
+            <li>
+              Hoşgeldin ve davet kuponu aynı anda hesapta olabilir; checkout&apos;ta
+              birini seçersin.
+            </li>
+          </ul>
+        </Card>
+
         {/* Analitik KPI */}
         {analytics && (
           <>
