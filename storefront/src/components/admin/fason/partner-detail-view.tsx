@@ -63,9 +63,17 @@ function PartnerSidebar({
         />
 
         <section className="py-4 border-t border-gri-100">
-          <h3 className="text-[11px] font-bold uppercase text-gri-500 mb-3">
-            Firma bilgileri
-          </h3>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h3 className="text-[11px] font-bold uppercase text-gri-500">
+              Firma bilgileri
+            </h3>
+            <Link
+              href={`/admin/fason/yeni?edit=${encodeURIComponent(partner.id)}`}
+              className="text-[12px] font-semibold text-pim-mercan hover:underline shrink-0"
+            >
+              Duzenle
+            </Link>
+          </div>
           <dl className="space-y-2 text-[13px]">
             <div>
               <dt className="text-gri-500 text-[11px]">Ad</dt>
@@ -537,9 +545,81 @@ function SendPrintFilesButton({
       size="sm"
       disabled={sending}
       onClick={() => void send()}
-      className="mt-2"
     >
       {sending ? "Hazirlaniyor..." : "Baski dosyalarini gonder"}
+    </Button>
+  );
+}
+
+function RevokeAssignmentButton({
+  assignmentId,
+  orderId,
+  partnerName,
+  assignmentStatus,
+  onRevoked,
+}: {
+  assignmentId: string;
+  orderId: string;
+  partnerName: string;
+  assignmentStatus: string;
+  onRevoked?: () => void;
+}) {
+  const toast = useToast();
+  const [revoking, setRevoking] = useState(false);
+
+  if (!ACTIVE_ASSIGNMENT_STATUSES.has(assignmentStatus)) {
+    return null;
+  }
+
+  const revoke = async () => {
+    if (
+      !confirm(
+        `#${orderId} siparisini ${partnerName} partnerinden geri almak istediginize emin misiniz?\n\nPartner erisimi iptal edilir; siparis baska partnere atanabilir.`
+      )
+    ) {
+      return;
+    }
+    setRevoking(true);
+    try {
+      const res = await fetch(
+        `/api/admin/fason/assignments/${encodeURIComponent(assignmentId)}/revoke`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        }
+      );
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        orderStatusAfter?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Atama geri alinamadi");
+        return;
+      }
+      toast.success(
+        `${orderId} atamasi geri alindi${
+          json.orderStatusAfter ? ` (${json.orderStatusAfter})` : ""
+        }`
+      );
+      onRevoked?.();
+    } catch {
+      toast.error("Ag hatasi — tekrar deneyin");
+    } finally {
+      setRevoking(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      disabled={revoking}
+      onClick={() => void revoke()}
+      className="text-kirmizi hover:bg-kirmizi-soft/40"
+    >
+      {revoking ? "Geri aliniyor..." : "Atamayi geri al"}
     </Button>
   );
 }
@@ -780,11 +860,20 @@ function JobsTabContent({
                     </strong>
                   </span>
                 </div>
-                <SendPrintFilesButton
-                  partnerId={partner.id}
-                  orderId={a.order_id}
-                  onSent={() => setTransferKey((k) => k + 1)}
-                />
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <SendPrintFilesButton
+                    partnerId={partner.id}
+                    orderId={a.order_id}
+                    onSent={() => setTransferKey((k) => k + 1)}
+                  />
+                  <RevokeAssignmentButton
+                    assignmentId={a.id}
+                    orderId={a.order_id}
+                    partnerName={partner.name}
+                    assignmentStatus={a.status}
+                    onRevoked={onAssigned}
+                  />
+                </div>
               </li>
             );
           })}

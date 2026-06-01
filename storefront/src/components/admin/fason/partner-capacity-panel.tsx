@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Button } from "@/components/ui";
+import { Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { FasonPartner } from "@/components/admin/fason/fason-types";
 import {
@@ -126,6 +126,7 @@ export function PartnerCapacityPanel({
   partner: FasonPartner;
   onUpdated: (p: FasonPartner) => void;
 }) {
+  const toast = useToast();
   const parsed = parsePartnerCapabilities(partner.capabilities);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -184,7 +185,9 @@ export function PartnerCapacityPanel({
         capabilities?: FasonPartner["capabilities"];
       };
       if (!res.ok) {
-        setError(json.error ?? "Kaydedilemedi");
+        const msg = json.error ?? "Kaydedilemedi";
+        setError(msg);
+        toast.error(msg);
         return;
       }
       onUpdated({
@@ -192,6 +195,7 @@ export function PartnerCapacityPanel({
         capabilities: json.capabilities ?? partner.capabilities,
       });
       setEditing(false);
+      toast.success("Yetenekler guncellendi");
       void reloadPartner();
     } finally {
       setSaving(false);
@@ -216,9 +220,13 @@ export function PartnerCapacityPanel({
           Yetenekler
         </h3>
         {!editing ? (
-          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-[12px] font-semibold text-pim-mercan hover:underline"
+          >
             Duzenle
-          </Button>
+          </button>
         ) : (
           <div className="flex gap-1">
             <Button

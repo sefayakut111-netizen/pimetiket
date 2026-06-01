@@ -176,12 +176,12 @@ export default function AdminFasonPartnerDetailPage() {
                       hasContract={hasContractPdf}
                     />
                   )}
-                  <Button
-                    variant="secondary"
+                  <Link
                     href={`/admin/fason/yeni?edit=${encodeURIComponent(partner.id)}`}
+                    className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-[15px] font-semibold whitespace-nowrap bg-white text-lacivert ring-[1.5px] ring-lacivert hover:bg-lacivert hover:text-white transition-all"
                   >
                     <Icon.Edit size={14} /> Duzenle
-                  </Button>
+                  </Link>
                 </div>
               </div>
 

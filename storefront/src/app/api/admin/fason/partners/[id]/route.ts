@@ -98,6 +98,9 @@ type PartnerDetailRow = {
   contract_uploaded_at: string | null;
   notes: string | null;
   contact_email: string | null;
+  contact_person: string | null;
+  contact_whatsapp: string | null;
+  specialties: string[] | null;
   created_at: string;
 };
 
@@ -116,7 +119,8 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       "id, name, short_name, tax_number, tax_office, address_line, city, town, " +
         "status, status_reason, default_lead_days, express_lead_time_days, " +
         "min_order_amount_try, payment_term, iban, contract_pdf_url, " +
-        "contract_uploaded_at, notes, contact_email, created_at"
+        "contract_uploaded_at, notes, contact_email, contact_person, " +
+        "contact_whatsapp, specialties, created_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -161,6 +165,9 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       contract_uploaded_at: row.contract_uploaded_at,
       notes: row.notes,
       contact_email: row.contact_email,
+      contact_person: row.contact_person,
+      contact_whatsapp: row.contact_whatsapp,
+      specialties: row.specialties ?? [],
       created_at: row.created_at,
       contacts: contacts ?? [],
       capabilities: capabilities ?? [],

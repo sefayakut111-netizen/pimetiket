@@ -101,6 +101,65 @@ function phoneFromE164(e164: string): string {
   return formatPhoneTr(d.slice(0, 10));
 }
 
+function legacySpecialtiesToProductTypes(specialties: string[]): ProductType[] {
+  const pts = new Set<ProductType>();
+  for (const raw of specialties) {
+    const s = raw.toLowerCase();
+    if (s.includes("sticker")) pts.add("sticker");
+    if (s.includes("rulo") || s.includes("roll")) pts.add("roll_label");
+    if (s.includes("tabaka") || s.includes("sheet")) pts.add("sheet_label");
+  }
+  return [...pts];
+}
+
+function defaultMaterialsForProductTypes(pts: ProductType[]): Material[] {
+  const mats = new Set<Material>();
+  for (const pt of pts) {
+    for (const m of PRODUCT_MATERIALS[pt]) mats.add(m);
+  }
+  return [...mats];
+}
+
+function defaultTownForCity(city: string): string {
+  const ilceler = getIlceler(city);
+  if (ilceler.length === 0) return "";
+  const preferred = ilceler.find(
+    (i) =>
+      i === "Merkez" ||
+      i === "Çankaya" ||
+      i === "Kadıköy" ||
+      i === "Konak" ||
+      i === "Nilüfer"
+  );
+  return preferred ?? ilceler[0];
+}
+
+function backfillLegacyContact(
+  partner: {
+    contact_email?: string | null;
+    contact_person?: string | null;
+    contact_whatsapp?: string | null;
+  },
+  role: "owner" | "operator"
+): ContactForm {
+  const email = (partner.contact_email ?? "").trim().toLowerCase();
+  const name =
+    (partner.contact_person ?? "").trim() ||
+    email.split("@")[0]?.replace(/[._-]+/g, " ").trim() ||
+    "Yetkili";
+  let phone = "";
+  if (partner.contact_whatsapp) {
+    phone = phoneFromE164(partner.contact_whatsapp);
+  }
+  return {
+    name: name.length >= 3 ? name : `${name} Yetkili`.slice(0, 100),
+    title: "",
+    email,
+    phone,
+    ...(role === "operator" ? { autoNotify: true } : {}),
+  };
+}
+
 function buildSubmitBody(state: {
   name: string;
   shortName: string;
@@ -275,6 +334,10 @@ function PartnerFormPage() {
             iban: string | null;
             notes: string | null;
             contract_pdf_url: string | null;
+            contact_email: string | null;
+            contact_person: string | null;
+            contact_whatsapp: string | null;
+            specialties?: string[];
             contacts: Array<{
               role: string;
               name: string;
@@ -303,7 +366,10 @@ function PartnerFormPage() {
         setTaxOffice(p.tax_office ?? "");
         setAddressLine(p.address_line ?? "");
         setCity(p.city ?? "");
-        setTown(p.town ?? "");
+        setTown(
+          p.town?.trim() ||
+            (p.city ? defaultTownForCity(p.city) : "")
+        );
         setStatus(p.status === "paused" ? "paused" : "active");
         setDefaultLeadTimeDays(p.default_lead_days ?? 7);
         setExpressLeadTimeDays(p.express_lead_time_days);
@@ -321,8 +387,19 @@ function PartnerFormPage() {
         const mats = p.capabilities
           .filter((c) => c.capability_type === "material")
           .map((c) => c.capability_value as Material);
-        setProductTypes(pts);
-        setMaterials(mats);
+        const legacyPts =
+          pts.length === 0
+            ? legacySpecialtiesToProductTypes(p.specialties ?? [])
+            : [];
+        const resolvedPts = pts.length > 0 ? pts : legacyPts;
+        setProductTypes(resolvedPts);
+        setMaterials(
+          mats.length > 0
+            ? mats
+            : resolvedPts.length > 0
+              ? defaultMaterialsForProductTypes(resolvedPts)
+              : []
+        );
 
         const contactByRole = (role: string) =>
           p.contacts.find((c) => c.role === role);
@@ -336,6 +413,8 @@ function PartnerFormPage() {
             email: ow.email,
             phone: phoneFromE164(ow.phone_e164),
           });
+        } else if (p.contact_email) {
+          setOwner(backfillLegacyContact(p, "owner"));
         }
         if (op) {
           setOperator({
@@ -345,6 +424,8 @@ function PartnerFormPage() {
             phone: phoneFromE164(op.phone_e164),
             autoNotify: op.auto_notification,
           });
+        } else if (p.contact_email) {
+          setOperator(backfillLegacyContact(p, "operator"));
         }
         if (ac) {
           setAccounting({
@@ -458,7 +539,16 @@ function PartnerFormPage() {
         details?: unknown;
       };
       if (!res.ok || (!isEdit && !json.id) || (isEdit && !json.ok)) {
-        toast.error(json.error ?? "Kayıt başarısız");
+        const detailMsg =
+          Array.isArray(json.details) && json.details.length > 0
+            ? (json.details as Array<{ message?: string }>)
+                .map((d) => d.message)
+                .filter(Boolean)
+                .join(" · ")
+            : "";
+        toast.error(
+          detailMsg || json.error || "Kayit basarisiz"
+        );
         console.error("[partner save]", json);
         return;
       }
@@ -481,8 +571,8 @@ function PartnerFormPage() {
         }
       }
 
-      toast.success(isEdit ? `${name.trim()} güncellendi` : `${name.trim()} eklendi`);
-      router.push("/admin/fason");
+      toast.success(isEdit ? `${name.trim()} guncellendi` : `${name.trim()} eklendi`);
+      router.push(isEdit ? `/admin/fason/${partnerId}` : "/admin/fason");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Beklenmedik hata");
     } finally {
