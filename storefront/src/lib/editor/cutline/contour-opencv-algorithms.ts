@@ -82,7 +82,7 @@ export function buildMask(
   }
 
   const minDim = Math.min(srcMat.cols, srcMat.rows);
-  const closeSize = Math.max(5, Math.min(9, Math.round(minDim / 120) * 2 + 1));
+  const closeSize = Math.max(5, Math.min(15, Math.round(minDim / 60) * 2 + 1));
   const closeKernel = cv.getStructuringElement(
     cv.MORPH_ELLIPSE,
     new cv.Size(closeSize, closeSize)
@@ -161,7 +161,7 @@ export function generateOffsetPaths(
     }
   } else {
     const totalArea = workingMask.rows * workingMask.cols;
-    const minArea = Math.max(100, totalArea * 0.003);
+    const minArea = Math.max(totalArea * 0.01, 200);
     for (let i = 0; i < contours.size(); i++) {
       const c = contours.get(i);
       if (cv.contourArea(c) < minArea) continue;

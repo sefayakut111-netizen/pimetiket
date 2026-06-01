@@ -666,24 +666,24 @@ export const PikasoEditorCanvas = forwardRef<
       const contentW = bounds.w;
       const contentH = bounds.h;
 
-      const marginMm = 2;
+      const marginMm = 0;
       const maxWmm = widthMm - marginMm * 2;
       const maxHmm = heightMm - marginMm * 2;
-      const aspect = contentW / contentH;
+      const aspect = natW / natH;
       let drawWMm = maxWmm;
       let drawHMm = drawWMm / aspect;
       if (drawHMm > maxHmm) {
         drawHMm = maxHmm;
         drawWMm = drawHMm * aspect;
       }
-      const scale = mmToPx(drawWMm) / contentW;
+      const scale = mmToPx(drawWMm) / natW;
 
       const drawAreaX = labelX + mmToPx((widthMm - drawWMm) / 2);
       const drawAreaY = labelY + mmToPx((heightMm - drawHMm) / 2);
 
       const shape = await editor.shapes.image.insert(file, {
-        x: drawAreaX - bounds.x * scale,
-        y: drawAreaY - bounds.y * scale,
+        x: drawAreaX,
+        y: drawAreaY,
         width: natW,
         height: natH,
         scaleX: scale,

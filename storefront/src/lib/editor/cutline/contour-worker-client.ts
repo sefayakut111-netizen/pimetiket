@@ -69,6 +69,9 @@ function handleWorkerMessage(data: WorkerOut) {
     return;
   }
   if ("type" in data && data.type === "error") {
+    if (!("id" in data)) {
+      console.error("[contour-worker] init error:", data.error);
+    }
     readyPromise = null;
     return;
   }
@@ -93,7 +96,8 @@ function ensureWorker(): Worker {
     worker.onmessage = (event: MessageEvent<WorkerOut>) => {
       handleWorkerMessage(event.data);
     };
-    worker.onerror = () => {
+    worker.onerror = (event) => {
+      console.error("[contour-worker] worker error:", event.message ?? event);
       readyPromise = null;
       rejectAllPending("Contour worker hatası");
       worker?.terminate();
@@ -141,7 +145,8 @@ export function preloadContourWorker(): Promise<void> {
   try {
     const w = ensureWorker();
     return waitForWorkerReady(w);
-  } catch {
+  } catch (err) {
+    console.error("[contour-worker] preload failed:", err);
     return Promise.resolve();
   }
 }
@@ -210,7 +215,11 @@ export async function computeContourPathsPxMultiViaWorker(
       useHull,
       pxPerMmInImage
     );
-  } catch {
+  } catch (err) {
+    console.error(
+      "[contour-worker] OpenCV refine failed, falling back to fast preview:",
+      err
+    );
     return fallbackFastPaths(image, offsetsMm, useHull, pxPerMmInImage);
   }
 }
