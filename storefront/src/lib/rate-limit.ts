@@ -164,14 +164,14 @@ export async function rateLimit(
   return inMemoryCheck(opts);
 }
 
-/** Header'dan client IP'yi normalize ederek çıkar */
+/** Header'dan client IP'yi normalize ederek çıkar (Vercel: güvenilir IP sonda) */
 export function getClientIp(req: Request): string {
+  const real = req.headers.get("x-real-ip");
+  if (real?.trim()) return real.trim();
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
-    const first = xff.split(",")[0]?.trim();
-    if (first) return first;
+    const last = xff.split(",").at(-1)?.trim();
+    if (last) return last;
   }
-  const real = req.headers.get("x-real-ip");
-  if (real) return real.trim();
   return "unknown";
 }

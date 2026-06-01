@@ -76,8 +76,7 @@ function getFallback(scope: ScopeName): ScopeConfig {
 /**
  * Browser-safe live config reader. Müşteri /sticker, /etiket'ten çağrılır.
  *
- * Pricing config tablosunun RLS'i `SELECT` için public olmalı
- * (Migration 047 ile zaten public read açık).
+ * Pricing config view'inin RLS'i yalnızca live_config açar (Migration 132).
  */
 export async function getLivePricingConfig<
   T extends ScopeConfig = ProfileConfig
@@ -88,7 +87,7 @@ export async function getLivePricingConfig<
   try {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from("pricing_config")
+      .from("v_pricing_live")
       .select("live_config")
       .eq("scope", scope)
       .maybeSingle();

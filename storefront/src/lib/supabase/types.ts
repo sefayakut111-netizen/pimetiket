@@ -3837,6 +3837,13 @@ export type Database = {
         }
         Relationships: []
       }
+      v_pricing_live: {
+        Row: {
+          scope: string
+          live_config: Json
+        }
+        Relationships: []
+      }
     }
     Functions: {
       fn_admin_customer_360: { Args: { p_user_id: string }; Returns: Json }
@@ -4246,6 +4253,7 @@ export type Database = {
         | "auth.login"
         | "auth.logout"
         | "profile.delete"
+        | "admin.impersonate_partner"
       coupon_kind: "percent" | "fixed" | "free_ship"
       design_file_status:
         | "uploaded"
@@ -4466,6 +4474,7 @@ export const Constants = {
         "auth.login",
         "auth.logout",
         "profile.delete",
+        "admin.impersonate_partner",
       ],
       coupon_kind: ["percent", "fixed", "free_ship"],
       design_file_status: [

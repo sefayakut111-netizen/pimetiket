@@ -21,6 +21,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertCustomerOnlyTarget } from "@/lib/admin/assert-customer-target";
 import type { Enums } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
@@ -70,6 +71,9 @@ export async function POST(
   const isSuspending = until === "permanent";
 
   const admin = createAdminClient();
+
+  const roleBlock = await assertCustomerOnlyTarget(admin, id);
+  if (roleBlock) return roleBlock;
 
   const { error } = await admin.auth.admin.updateUserById(id, {
     ban_duration: isSuspending ? PERMANENT_BAN : "none",

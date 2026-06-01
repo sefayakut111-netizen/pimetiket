@@ -76,9 +76,11 @@ export async function POST(req: Request) {
   }>)?.[0];
 
   if (!validation?.is_valid) {
+    const status =
+      validation?.reason === "token_limit_exceeded" ? 403 : 401;
     return NextResponse.json(
       { error: "Token geçersiz", reason: validation?.reason ?? "unknown" },
-      { status: 401 }
+      { status }
     );
   }
 

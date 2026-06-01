@@ -33,6 +33,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findAuthUserIdByEmail } from "@/lib/auth-user-lookup";
+import type { Enums } from "@/lib/supabase/types";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -42,8 +43,8 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  // Auth
-  const auth = await assertPermission("fason", "view");
+  // Auth — impersonation yüksek yetki gerektirir (view-only staff engellenir)
+  const auth = await assertPermission("fason", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -165,12 +166,27 @@ export async function POST(req: Request) {
     );
   }
 
-  // 6) Audit — order_events partner_id'ye bağlı değil, partner_audit logu
-  // ayrı tablo gerek. Şimdilik console + (varsa) admin_audit tablosuna
-  // yazılabilir. Minimal audit: console log + supabase log.
-  console.log(
-    `[admin/impersonate/partner] Admin ${auth.user.email} impersonating partner ${partner.name} (${email})`
-  );
+  const { error: auditErr } = await admin.from("audit_log").insert([
+    {
+      actor_id: auth.user.id,
+      actor_email: auth.user.email,
+      actor_role: "admin",
+      action: "admin.impersonate_partner" as Enums<"audit_action">,
+      target_type: "fason_partner",
+      target_id: partnerId,
+      summary: `Partner impersonation: ${partner.name} (${email})`,
+      detail: {
+        partner_id: partnerId,
+        partner_name: partner.name,
+        contact_email: email,
+        contact_role: primary.role,
+      },
+    },
+  ]);
+  if (auditErr) {
+    console.error("[admin/impersonate/partner] audit insert error:", auditErr);
+    return NextResponse.json({ error: "audit_failed" }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
