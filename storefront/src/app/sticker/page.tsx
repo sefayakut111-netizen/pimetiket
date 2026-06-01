@@ -498,7 +498,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Tek tabakada çok adet yuvarlak — sticker fiyatına",
     descEn: "Many circles on one sheet",
     svg: <CircleIcon />,
-    imageSrc: "/assets/img/cards/sticker-circle.jpg",
+    imageSrc: "/assets/img/cards/sticker-tabaka-circle.jpg",
   },
   {
     query: "cut=tabaka&shape=square&kilit=tabaka",
@@ -507,7 +507,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Tek tabakada çok adet kare — sticker fiyatına",
     descEn: "Many squares on one sheet",
     svg: <SquareIcon />,
-    imageSrc: "/assets/img/cards/sticker-square.jpg",
+    imageSrc: "/assets/img/cards/sticker-tabaka-square.jpg",
   },
   {
     query: "cut=tabaka&shape=rectangle&kilit=tabaka",
@@ -516,7 +516,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Tek tabakada çok adet dikdörtgen — sticker fiyatına",
     descEn: "Many rectangles on one sheet",
     svg: <RectangleIcon />,
-    imageSrc: "/assets/img/cards/sticker-rectangle.jpg",
+    imageSrc: "/assets/img/cards/sticker-tabaka-rectangle.jpg",
   },
   {
     query: "cut=tabaka&shape=ozel&material=holo&kilit=tabaka",
@@ -525,7 +525,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Gökkuşağı yansımalı tabaka — premium",
     descEn: "Rainbow-reflective sheet — premium",
     svg: <HoloIcon />,
-    imageSrc: "/assets/img/cards/sticker-hologram.jpg",
+    imageSrc: "/assets/img/cards/sticker-tabaka-holo.jpg",
   },
   {
     query: "cut=tabaka&shape=ozel&material=simli&kilit=tabaka",
@@ -534,7 +534,7 @@ const STICKER_CARDS: StickerCard[] = [
     descTr: "Parıltılı dokulu tabaka — hediye, çocuk",
     descEn: "Sparkly-texture sheet — gifts, kids",
     svg: <GlitterIcon />,
-    imageSrc: "/assets/img/cards/sticker-glitter-holo.jpg",
+    imageSrc: "/assets/img/cards/sticker-tabaka-simli.jpg",
   },
 ];
 
