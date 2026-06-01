@@ -1455,19 +1455,50 @@
   html.pim-editor-shell #emptyState {
     display: none !important;
   }
+  html.pim-editor-shell,
+  html.pim-editor-shell body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
   html.pim-editor-shell main {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+    max-width: none;
     padding: 0;
-    grid-template-columns: 1fr;
+    margin: 0;
   }
   html.pim-editor-shell .preview {
-    min-height: 420px;
-  }
-  html.pim-editor-shell .canvas-wrap {
-    margin: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     border: none;
     border-radius: 0;
-    min-height: 420px;
+    background: transparent;
+    box-shadow: none;
+  }
+  html.pim-editor-shell .canvas-wrap {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    place-items: center;
+  }
+  html.pim-editor-shell #canvas {
+    box-shadow: none;
+    border-radius: 0;
+    background: transparent;
   }
   .meta-order-size .val {
     font-weight: 700;
@@ -1956,6 +1987,13 @@ function pimApplyStandaloneUiRestrictions() {
 function pimApplyEditorShellUi() {
   if (!PIM_PARAMS.editorShell) return;
   document.documentElement.classList.add('pim-editor-shell');
+  pimSyncEditorShellViewport();
+  window.addEventListener('resize', pimSyncEditorShellViewport);
+}
+
+function pimSyncEditorShellViewport() {
+  if (!PIM_PARAMS.editorShell) return;
+  pimAutoFitViewZoomToWrap();
 }
 
 /** Embed iframe — parent sayfa tek scroll kullansın diye yükseklik bildir */
@@ -1963,6 +2001,7 @@ let pimLastReportedHeight = 0;
 
 function pimReportHeight() {
   if (!PIM_PARAMS.embed && !PIM_PARAMS.standalone) return;
+  if (PIM_PARAMS.editorShell) return;
   try {
     const mainEl = document.querySelector('main');
     if (!mainEl) return;
@@ -4131,9 +4170,12 @@ async function performBackgroundRemoval() {
   }
 
   const btn = document.getElementById('btnRemoveBg');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
 
   showLoading('AI modeli yükleniyor ve arka plan kaldırılıyor...\n(İlk kullanımda 30sn-1dk sürer, sonraki kullanımlarda hızlı)');
+  if (PIM_PARAMS.editorShell) {
+    pimPostToParent({ type: 'pim-bg-remove-started' });
+  }
 
   try {
     // Lazy load — ilk tıklamada modülü indir
@@ -4142,8 +4184,9 @@ async function performBackgroundRemoval() {
     }
     const { removeBackground } = bgRemovalModule;
 
-    // Blob'a dönüştür
+    // Blob'a dönüştür — publicPath: CSP'de izinli jsdelivr
     const blob = await removeBackground(currentFile, {
+      publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/dist/',
       progress: (key, current, total) => {
         const pct = total > 0 ? Math.round((current / total) * 100) : 0;
         document.getElementById('loadingText').textContent =
@@ -4160,19 +4203,28 @@ async function performBackgroundRemoval() {
       currentFileSource = 'raster';
       currentFile = newFile;
       processImage(img, newFile);
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
+      if (PIM_PARAMS.editorShell) {
+        pimPostToParent({ type: 'pim-bg-remove-done' });
+      }
       showStatus('✓ Arka plan kaldırıldı. Bıçak yeniden üretildi.', 'ok');
     };
     img.onerror = () => {
       hideLoading();
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
+      if (PIM_PARAMS.editorShell) {
+        pimPostToParent({ type: 'pim-bg-remove-done', error: true });
+      }
       showStatus('Sonuç görseli yüklenemedi', 'err');
     };
     img.src = URL.createObjectURL(blob);
 
   } catch (err) {
     hideLoading();
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done', error: true });
+    }
     console.error('BG removal hatası:', err);
     showStatus('Arka plan kaldırılamadı: ' + (err.message || 'Bilinmeyen hata. İnternet bağlantını kontrol et.'), 'err');
   }

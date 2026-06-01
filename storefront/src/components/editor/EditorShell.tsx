@@ -59,16 +59,6 @@ function base64ToFile(
   return new File([bytes], fileName, { type: mimeType });
 }
 
-function iframeMaxHeightPx(): number {
-  if (typeof window === "undefined") return 720;
-  return Math.max(420, window.innerHeight - 168);
-}
-
-function capIframeHeight(reported: number): number {
-  const max = iframeMaxHeightPx();
-  return Math.max(420, Math.min(reported + 8, max));
-}
-
 export default function EditorShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -90,7 +80,6 @@ export default function EditorShell() {
   >(null);
 
   const [iframeSrc] = useState(() => buildEditorIframeSrc());
-  const [iframeHeight, setIframeHeight] = useState(() => capIframeHeight(720));
   const [designLoaded, setDesignLoaded] = useState(false);
   const [cutlineReady, setCutlineReady] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -120,14 +109,6 @@ export default function EditorShell() {
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => {
-      setIframeHeight((h) => capIframeHeight(h - 8));
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
@@ -194,7 +175,6 @@ export default function EditorShell() {
   const handleRemoveBg = useCallback(() => {
     setRemovingBg(true);
     postToPoc({ type: "pim-trigger-bg-remove" });
-    window.setTimeout(() => setRemovingBg(false), 120_000);
   }, [postToPoc]);
 
   const syncSizeToPoc = useCallback(
@@ -301,16 +281,15 @@ export default function EditorShell() {
           message: "Bıçak hazır — ürüne ekleyebilirsin",
         });
         window.setTimeout(() => setPocStatus(null), 2500);
+      } else if (data.type === "pim-bg-remove-started") {
+        setRemovingBg(true);
+      } else if (data.type === "pim-bg-remove-done") {
+        setRemovingBg(false);
       } else if (data.type === "pim-poc-error") {
         setPocStatus({
           state: "error",
           message: `Editör hatası: ${String(data.error ?? "(boş)")}`,
         });
-      } else if (
-        data.type === "pim-poc-resize" &&
-        typeof data.height === "number"
-      ) {
-        setIframeHeight(capIframeHeight(data.height));
       } else if (data.type === "pim-editor-saved") {
         const payload = data as unknown as PocEditorSavedPayload;
         setPocMeta(payload.meta);
@@ -556,9 +535,10 @@ export default function EditorShell() {
 
   return (
     <main
-      className="editor-workspace flex h-[calc(100dvh-56px)] flex-col overflow-hidden bg-gri-50"
+      className="editor-workspace flex h-[calc(100dvh-56px)] flex-col overflow-hidden bg-gri-50 px-4 md:px-6 lg:px-8"
       data-editor-workspace
     >
+      <div className="mx-auto flex h-full w-full max-w-[1600px] min-h-0 flex-col overflow-hidden">
       <EditorCoachmark
         open={showCoach}
         onComplete={() => {
@@ -631,8 +611,8 @@ export default function EditorShell() {
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[360px_1fr]">
-        <aside className="min-h-0 overflow-y-auto border-b border-gri-200 bg-white lg:border-b-0 lg:border-r">
+      <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[360px_1fr_320px]">
+        <aside className="min-h-0 max-h-full overflow-y-auto border-b border-gri-200 bg-white lg:border-b-0 lg:border-r">
           <div className="px-4 py-4">
             <EditorPanelSection title="Dosya yükle" first>
               <EditorUploadZone
@@ -811,8 +791,8 @@ export default function EditorShell() {
           </div>
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-col gap-2 p-3 lg:p-4">
-          <div className="flex flex-wrap items-center gap-1 shrink-0 rounded-lg bg-white px-1 py-1">
+        <section className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden p-3 lg:p-4">
+          <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-lg bg-white px-1 py-1">
             <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
               Yerleştir
             </span>
@@ -837,18 +817,30 @@ export default function EditorShell() {
 
           <EditorPreviewLegend />
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm">
             <iframe
               ref={iframeRef}
               src={iframeSrc}
               title="Bıçak editörü"
               className="block h-full w-full min-h-[420px] border-0"
-              style={{ height: iframeHeight, maxHeight: iframeMaxHeightPx() }}
               scrolling="no"
               sandbox="allow-scripts allow-same-origin allow-downloads"
             />
           </div>
         </section>
+
+        <aside className="hidden min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
+          <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pim-mercan-tint text-[15px] font-bold text-pim-mercan">
+              P
+            </div>
+            <p className="mt-3 text-[13px] font-semibold text-lacivert">Pim sohbet</p>
+            <p className="mt-1.5 text-[12px] leading-snug text-gri-600">
+              Yakında — tasarımın ve bıçağın hakkında soru sorabileceksin.
+            </p>
+          </div>
+        </aside>
+      </div>
       </div>
     </main>
   );
