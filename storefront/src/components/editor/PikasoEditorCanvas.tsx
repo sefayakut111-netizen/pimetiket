@@ -458,6 +458,8 @@ export const PikasoEditorCanvas = forwardRef<
       );
       if (gen !== recomputeGenRef.current) return;
       renderBundle(editor, bundle);
+    } catch (err) {
+      console.error("[editor] OpenCV refine failed:", err);
     } finally {
       setContourRefining(false);
       opencvRunningRef.current = false;
@@ -599,6 +601,42 @@ export const PikasoEditorCanvas = forwardRef<
     applyImagePreset("cover");
   }, [applyImagePreset]);
 
+  /** Opak içerik label'ı doldursun — şeffaf kenarlar kırpılmış bbox ile cover */
+  const fitImageOpaqueCover = useCallback(() => {
+    const shape = imageShapeRef.current;
+    const img = htmlImageRef.current;
+    if (!shape || !img) return;
+
+    const wMm = widthMmRef.current;
+    const hMm = heightMmRef.current;
+    const bounds = getOpaqueBoundsPx(img);
+    const contentW = Math.max(1, bounds.w);
+    const contentH = Math.max(1, bounds.h);
+
+    const aspect = contentW / contentH;
+    let drawWMm = wMm;
+    let drawHMm = drawWMm / aspect;
+    if (drawHMm < hMm) {
+      drawHMm = hMm;
+      drawWMm = drawHMm * aspect;
+    }
+    const scale = mmToPx(drawWMm) / contentW;
+
+    const drawAreaX = labelX + mmToPx((wMm - drawWMm) / 2);
+    const drawAreaY = labelY + mmToPx((hMm - drawHMm) / 2);
+
+    shape.update({
+      x: drawAreaX - bounds.x * scale,
+      y: drawAreaY - bounds.y * scale,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      scaleX: scale,
+      scaleY: scale,
+    });
+    imageShapeRef.current?.select();
+    scheduleRecomputeCutline({ fastImmediate: true });
+  }, [scheduleRecomputeCutline]);
+
   const loadDesign = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor || !ready) return;
@@ -666,38 +704,23 @@ export const PikasoEditorCanvas = forwardRef<
       const contentW = bounds.w;
       const contentH = bounds.h;
 
-      const marginMm = 0;
-      const maxWmm = widthMm - marginMm * 2;
-      const maxHmm = heightMm - marginMm * 2;
-      const aspect = natW / natH;
-      let drawWMm = maxWmm;
-      let drawHMm = drawWMm / aspect;
-      if (drawHMm > maxHmm) {
-        drawHMm = maxHmm;
-        drawWMm = drawHMm * aspect;
-      }
-      const scale = mmToPx(drawWMm) / natW;
-
-      const drawAreaX = labelX + mmToPx((widthMm - drawWMm) / 2);
-      const drawAreaY = labelY + mmToPx((heightMm - drawHMm) / 2);
-
       const shape = await editor.shapes.image.insert(file, {
-        x: drawAreaX,
-        y: drawAreaY,
+        x: labelX,
+        y: labelY,
         width: natW,
         height: natH,
-        scaleX: scale,
-        scaleY: scale,
+        scaleX: 1,
+        scaleY: 1,
         draggable: true,
         name: USER_IMAGE_NAME,
       });
       imageShapeRef.current = shape;
+      fitImageOpaqueCover();
       shape.select();
       syncLabelWorkspace();
       syncEditorZOrder(editor);
 
       onDesignLoaded?.({ widthPx: contentW, heightPx: contentH });
-      scheduleRecomputeCutline({ fastImmediate: true });
       syncViewTransform();
 
       if (!readyFiredRef.current) {
@@ -718,6 +741,7 @@ export const PikasoEditorCanvas = forwardRef<
     scheduleRecomputeCutline,
     syncLabelWorkspace,
     syncViewTransform,
+    fitImageOpaqueCover,
     widthMm,
   ]);
 
@@ -853,6 +877,11 @@ export const PikasoEditorCanvas = forwardRef<
   useEffect(() => {
     syncLabelWorkspace();
   }, [widthMm, heightMm, ready, syncLabelWorkspace]);
+
+  useEffect(() => {
+    if (!ready || !htmlImageRef.current || !imageShapeRef.current) return;
+    fitImageOpaqueCover();
+  }, [widthMm, heightMm, ready, fitImageOpaqueCover]);
 
   useEffect(() => {
     syncViewTransform();

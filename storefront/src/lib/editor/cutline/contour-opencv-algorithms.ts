@@ -162,9 +162,12 @@ export function generateOffsetPaths(
   } else {
     const totalArea = workingMask.rows * workingMask.cols;
     const minArea = Math.max(totalArea * 0.01, 200);
+    let bestPath: PathRing | null = null;
+    let bestArea = 0;
     for (let i = 0; i < contours.size(); i++) {
       const c = contours.get(i);
-      if (cv.contourArea(c) < minArea) continue;
+      const area = cv.contourArea(c);
+      if (area < minArea) continue;
       const approx = new cv.Mat();
       const epsilon = (smoothness / 100) * 0.015 * cv.arcLength(c, true);
       cv.approxPolyDP(c, approx, epsilon, true);
@@ -172,9 +175,13 @@ export function generateOffsetPaths(
       for (let j = 0; j < approx.rows; j++) {
         path.push([approx.data32S[j * 2]!, approx.data32S[j * 2 + 1]!]);
       }
-      paths.push(path);
       approx.delete();
+      if (area > bestArea) {
+        bestArea = area;
+        bestPath = path;
+      }
     }
+    if (bestPath) paths.push(bestPath);
   }
 
   contours.delete();

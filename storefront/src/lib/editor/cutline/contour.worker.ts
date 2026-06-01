@@ -21,7 +21,10 @@ function loadOpenCvInWorker(): Promise<OpenCvModule> {
   if (g.cv?.Mat) {
     return Promise.resolve(g.cv);
   }
-  cvPromise ??= new Promise<OpenCvModule>((resolve, reject) => {
+  if (cvPromise) {
+    return cvPromise;
+  }
+  cvPromise = new Promise<OpenCvModule>((resolve, reject) => {
     const timeout = setTimeout(() => {
       cvPromise = null;
       reject(new Error("OpenCV yükleme zaman aşımı"));
@@ -38,16 +41,38 @@ function loadOpenCvInWorker(): Promise<OpenCvModule> {
     };
 
     try {
-      const prev = g.cv?.onRuntimeInitialized;
-      g.cv = {
-        onRuntimeInitialized: () => {
-          prev?.();
+      importScripts(OPENCV_JS_URL);
+      const raw = (g as { cv?: unknown }).cv;
+
+      // OpenCV 4.10+: cv global bir Promise — .then ile gerçek modül gelir
+      if (raw && typeof (raw as { then?: unknown }).then === "function") {
+        (raw as Promise<OpenCvModule>)
+          .then((real) => {
+            g.cv = real;
+            if (real?.Mat) finish(real);
+            else fail(new Error("OpenCV Promise resolved ama Mat yok"));
+          })
+          .catch(fail);
+        return;
+      }
+
+      if (g.cv?.Mat) {
+        finish(g.cv);
+        return;
+      }
+
+      // Legacy 4.5.x: onRuntimeInitialized callback
+      const mod = g.cv as
+        | (OpenCvModule & { onRuntimeInitialized?: () => void })
+        | undefined;
+      if (mod) {
+        mod.onRuntimeInitialized = () => {
           if (g.cv?.Mat) finish(g.cv);
           else fail(new Error("OpenCV init başarısız"));
-        },
-      } as CvGlobal["cv"];
-      importScripts(OPENCV_JS_URL);
-      if (g.cv?.Mat) finish(g.cv);
+        };
+      } else {
+        fail(new Error("OpenCV global yok (importScripts başarısız?)"));
+      }
     } catch (err) {
       fail(err);
     }
@@ -88,6 +113,7 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
         self.postMessage(out);
       })
       .catch((err: unknown) => {
+        console.error("[contour-worker] init:", err);
         const out: InitErrOut = {
           type: "error",
           error: err instanceof Error ? err.message : String(err),
