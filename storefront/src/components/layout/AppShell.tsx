@@ -20,6 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isAdmin = pathname?.startsWith("/admin") ?? false;
   const isPartner = pathname?.startsWith("/partner") ?? false;
   const isFason = pathname?.startsWith("/fason/") ?? false;
+  const isEditor = pathname?.startsWith("/editor") ?? false;
 
   // Şema bump'ında stale cache temizliği — sadece bir kez boot'ta çalışır
   useEffect(() => {
@@ -48,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div id="main" tabIndex={-1} className="flex-1 outline-none">
         {children}
       </div>
-      <Footer />
+      {!isEditor ? <Footer /> : null}
       <PimChat />
     </>
   );

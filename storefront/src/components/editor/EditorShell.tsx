@@ -25,6 +25,12 @@ import {
 } from "@/lib/editor/suggest-mm-from-pixels";
 import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
 import { EditorPreviewLegend } from "@/components/editor/EditorPreviewLegend";
+import { EditorPanelSection } from "@/components/editor/EditorPanelSection";
+import { EditorUploadZone } from "@/components/editor/EditorUploadZone";
+import {
+  EditorLayerToggles,
+  type EditorLayer,
+} from "@/components/editor/EditorPreviewToolbar";
 import { cn } from "@/lib/cn";
 
 type PocStatusState = "loading" | "ready" | "loaded" | "error" | "timeout";
@@ -98,6 +104,15 @@ export default function EditorShell() {
   const [imagePixelW, setImagePixelW] = useState(0);
   const [imagePixelH, setImagePixelH] = useState(0);
   const [imageScalePct, setImageScalePct] = useState(100);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [canRemoveBg, setCanRemoveBg] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const [layers, setLayers] = useState<Record<EditorLayer, boolean>>({
+    cut: true,
+    white: false,
+    bleed: false,
+    safe: false,
+  });
   const [pocStatus, setPocStatus] = useState<{
     state: PocStatusState;
     message: string;
@@ -145,6 +160,42 @@ export default function EditorShell() {
       window.location.origin
     );
   }, []);
+
+  const uploadFileToPoc = useCallback(
+    async (file: File) => {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(
+          null,
+          bytes.subarray(i, i + chunk) as unknown as number[]
+        );
+      }
+      postToPoc({
+        type: "pim-upload-file",
+        base64: btoa(binary),
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+      });
+    },
+    [postToPoc]
+  );
+
+  const handleToggleLayer = useCallback(
+    (layer: EditorLayer, on: boolean) => {
+      setLayers((prev) => ({ ...prev, [layer]: on }));
+      postToPoc({ type: "pim-toggle-layer", layer, on });
+    },
+    [postToPoc]
+  );
+
+  const handleRemoveBg = useCallback(() => {
+    setRemovingBg(true);
+    postToPoc({ type: "pim-trigger-bg-remove" });
+    window.setTimeout(() => setRemovingBg(false), 120_000);
+  }, [postToPoc]);
 
   const syncSizeToPoc = useCallback(
     (w: number, h: number) => {
@@ -194,9 +245,21 @@ export default function EditorShell() {
         setDesignLoaded(false);
         setCutlineReady(false);
         setImageScalePct(100);
+        setFileName(null);
+        setCanRemoveBg(false);
+        setRemovingBg(false);
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
         setDesignLoaded(true);
+        setRemovingBg(false);
+        if (typeof data.fileName === "string" && data.fileName) {
+          setFileName(data.fileName);
+        }
+        if (typeof data.canRemoveBg === "boolean") {
+          setCanRemoveBg(data.canRemoveBg);
+        } else if (data.source === "raster") {
+          setCanRemoveBg(true);
+        }
         if (typeof data.width === "number" && data.width > 0) {
           setImagePixelW(data.width);
         }
@@ -568,200 +631,208 @@ export default function EditorShell() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-0 lg:flex-row">
-        <aside className="shrink-0 border-b border-gri-200 bg-white px-4 py-3 lg:w-[280px] lg:border-b-0 lg:border-r">
-          <section>
-            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
-              Baskı boyutu
-            </h2>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <label className="block text-[11px] text-gri-600">
-                Genişlik (mm)
-                <Input
-                  type="number"
-                  min={5}
-                  max={500}
-                  step={0.1}
-                  value={widthMm}
-                  className="mt-1"
-                  onChange={(e) =>
-                    handleWidthChange(parseFloat(e.target.value) || DEFAULT_WIDTH_MM)
-                  }
-                />
-              </label>
-              <label className="block text-[11px] text-gri-600">
-                Yükseklik (mm)
-                <Input
-                  type="number"
-                  min={5}
-                  max={500}
-                  step={0.1}
-                  value={heightMm}
-                  className="mt-1"
-                  onChange={(e) =>
-                    handleHeightChange(parseFloat(e.target.value) || DEFAULT_HEIGHT_MM)
-                  }
-                />
-              </label>
-            </div>
-            <label className="mt-2 flex items-center gap-2 text-[12px] text-gri-700">
-              <input
-                type="checkbox"
-                checked={lockAspect}
-                onChange={(e) => handleLockAspectChange(e.target.checked)}
-                className="accent-pim-mercan"
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[360px_1fr]">
+        <aside className="min-h-0 overflow-y-auto border-b border-gri-200 bg-white lg:border-b-0 lg:border-r">
+          <div className="px-4 py-4">
+            <EditorPanelSection title="Dosya yükle" first>
+              <EditorUploadZone
+                designLoaded={designLoaded}
+                fileName={fileName}
+                canRemoveBg={canRemoveBg}
+                removingBg={removingBg}
+                disabled={pocStatus?.state === "loading"}
+                onFileSelected={(file) => void uploadFileToPoc(file)}
+                onRemoveBg={handleRemoveBg}
               />
-              Oran kilidi
-            </label>
-            <p className="mt-2 text-[12px] tabular-nums text-gri-800">
-              {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
-            </p>
-          </section>
+            </EditorPanelSection>
 
-          <section className="mt-4 border-t border-gri-100 pt-3">
-            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
-              Görsel ölçek
-            </h2>
-            <label className="mt-2 block text-[11px] text-gri-600">
-              <span className="flex items-center justify-between gap-2">
-                <span>Ölçek</span>
-                <span className="tabular-nums font-medium text-lacivert">
-                  %{imageScalePct}
-                </span>
-              </span>
-              <input
-                type="range"
-                min={25}
-                max={200}
-                step={1}
-                value={imageScalePct}
-                disabled={!designLoaded}
-                onChange={(e) =>
-                  handleImageScaleChange(parseInt(e.target.value, 10))
-                }
-                className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
-              />
-            </label>
-            <p className="mt-1 text-[10px] text-gri-500 leading-snug">
-              %25–%200 arası. Ortala / Sığdır / Doldur ile sıfırlanır.
-            </p>
-          </section>
+            <EditorPanelSection title="Baskı boyutu">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-[11px] text-gri-600">
+                  Genişlik (mm)
+                  <Input
+                    type="number"
+                    min={5}
+                    max={500}
+                    step={0.1}
+                    value={widthMm}
+                    className="mt-1"
+                    onChange={(e) =>
+                      handleWidthChange(parseFloat(e.target.value) || DEFAULT_WIDTH_MM)
+                    }
+                  />
+                </label>
+                <label className="block text-[11px] text-gri-600">
+                  Yükseklik (mm)
+                  <Input
+                    type="number"
+                    min={5}
+                    max={500}
+                    step={0.1}
+                    value={heightMm}
+                    className="mt-1"
+                    onChange={(e) =>
+                      handleHeightChange(parseFloat(e.target.value) || DEFAULT_HEIGHT_MM)
+                    }
+                  />
+                </label>
+              </div>
+              <label className="mt-2 flex items-center gap-2 text-[12px] text-gri-700">
+                <input
+                  type="checkbox"
+                  checked={lockAspect}
+                  onChange={(e) => handleLockAspectChange(e.target.checked)}
+                  className="accent-pim-mercan"
+                />
+                Oran kilidi
+              </label>
+              <p className="mt-2 text-[12px] tabular-nums text-gri-800">
+                {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
+              </p>
+            </EditorPanelSection>
 
-          <section className="mt-4 border-t border-gri-100 pt-3">
-            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
-              Özet
-            </h2>
-            <dl className="mt-2 space-y-1.5 text-[12px]">
-              <div className="flex justify-between gap-2">
-                <dt className="text-gri-600">Kaynak</dt>
-                <dd className="font-medium text-lacivert">{sourceLabel}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gri-600">Baskı boyutu</dt>
-                <dd className="font-medium tabular-nums text-lacivert">
-                  {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-gri-600">Bıçak</dt>
-                <dd
-                  className={cn(
-                    "font-medium",
-                    cutlineReady ? "text-yesil" : "text-gri-500"
-                  )}
-                >
-                  {cutlineReady ? "Hazır" : designLoaded ? "Hesaplanıyor…" : "—"}
-                </dd>
-              </div>
-              {dpiInfo ? (
-                <div className="flex justify-between gap-2">
-                  <dt className="text-gri-600">Baskı DPI</dt>
-                  <dd
+            <EditorPanelSection title="Kesim modu">
+              <div className="flex flex-wrap gap-1.5">
+                {CUT_MODES.map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={!designLoaded}
+                    onClick={() => handleCutModeChange(mode)}
                     className={cn(
-                      "font-medium tabular-nums text-right",
-                      dpiInfo.level === "ok"
-                        ? "text-yesil"
-                        : dpiInfo.level === "warn"
-                          ? "text-sari"
-                          : "text-kirmizi"
+                      "rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none",
+                      cutMode === mode
+                        ? "bg-pim-mercan text-white shadow-sm"
+                        : "bg-gri-100 text-gri-700 hover:bg-gri-200"
                     )}
                   >
-                    ≈{dpiInfo.dpi}
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </EditorPanelSection>
+
+            <EditorPanelSection title="Görsel ölçek">
+              <label className="block text-[11px] text-gri-600">
+                <span className="flex items-center justify-between gap-2">
+                  <span>Ölçek</span>
+                  <span className="tabular-nums font-medium text-lacivert">
+                    %{imageScalePct}
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min={25}
+                  max={200}
+                  step={1}
+                  value={imageScalePct}
+                  disabled={!designLoaded}
+                  onChange={(e) =>
+                    handleImageScaleChange(parseInt(e.target.value, 10))
+                  }
+                  className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+                />
+              </label>
+              <p className="mt-1 text-[10px] text-gri-500 leading-snug">
+                %25–%200 arası. Ortala / Sığdır / Doldur ile sıfırlanır.
+              </p>
+            </EditorPanelSection>
+
+            <EditorPanelSection title="Katmanlar">
+              <div className={cn(!designLoaded && "pointer-events-none opacity-40")}>
+                <EditorLayerToggles layers={layers} onToggleLayer={handleToggleLayer} />
+              </div>
+            </EditorPanelSection>
+
+            <EditorPanelSection title="Özet">
+              <dl className="space-y-1.5 text-[12px]">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-gri-600">Kaynak</dt>
+                  <dd className="font-medium text-lacivert">{sourceLabel}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-gri-600">Baskı boyutu</dt>
+                  <dd className="font-medium tabular-nums text-lacivert">
+                    {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
                   </dd>
                 </div>
-              ) : null}
-            </dl>
-            {dpiInfo?.message ? (
-              <p
-                className={cn(
-                  "mt-2 rounded-lg px-2 py-1.5 text-[11px] leading-snug",
-                  dpiInfo.level === "warn"
-                    ? "bg-sari-soft text-lacivert"
-                    : "bg-kirmizi-soft text-kirmizi"
-                )}
-              >
-                {dpiInfo.level === "ok"
-                  ? "Baskı kalitesi iyi"
-                  : dpiInfo.message}
-              </p>
-            ) : dpiInfo?.level === "ok" ? (
-              <p className="mt-2 text-[11px] text-yesil">Baskı kalitesi iyi</p>
-            ) : null}
-          </section>
-
-          <p className="mt-4 text-[11px] text-gri-600 leading-snug">
-            Kesim mesafesi ve katmanlar önizleme içinde.{" "}
-            <Link href="/sablonlar?tab=kesim" className="text-pim-mercan underline">
-              Kesim şablonları
-            </Link>
-          </p>
-        </aside>
-
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3 lg:p-4">
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-gri-200 bg-white p-1">
-              <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
-                Yerleştir
-              </span>
-              {(
-                [
-                  { id: "pim-fit-center", label: "Ortala" },
-                  { id: "pim-fit-contain", label: "Sığdır" },
-                  { id: "pim-fit-cover", label: "Doldur" },
-                ] as const
-              ).map((btn) => (
-                <button
-                  key={btn.id}
-                  type="button"
-                  disabled={!designLoaded}
-                  onClick={() => postToPoc({ type: btn.id })}
-                  className="rounded-md px-2.5 py-1 text-[12px] font-medium text-gri-700 hover:bg-gri-100 disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  {btn.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-gri-200 bg-white p-1">
-              <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
-                Kesim
-              </span>
-              {CUT_MODES.map(({ mode, label }) => (
-                <button
-                  key={mode}
-                  type="button"
-                  disabled={!designLoaded}
-                  onClick={() => handleCutModeChange(mode)}
+                <div className="flex justify-between gap-2">
+                  <dt className="text-gri-600">Bıçak</dt>
+                  <dd
+                    className={cn(
+                      "font-medium",
+                      cutlineReady ? "text-yesil" : "text-gri-500"
+                    )}
+                  >
+                    {cutlineReady ? "Hazır" : designLoaded ? "Hesaplanıyor…" : "—"}
+                  </dd>
+                </div>
+                {dpiInfo ? (
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-gri-600">Baskı DPI</dt>
+                    <dd
+                      className={cn(
+                        "font-medium tabular-nums text-right",
+                        dpiInfo.level === "ok"
+                          ? "text-yesil"
+                          : dpiInfo.level === "warn"
+                            ? "text-sari"
+                            : "text-kirmizi"
+                      )}
+                    >
+                      ≈{dpiInfo.dpi}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              {dpiInfo?.message ? (
+                <p
                   className={cn(
-                    "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none",
-                    cutMode === mode
-                      ? "bg-pim-mercan text-white shadow-sm"
-                      : "text-gri-700 hover:bg-gri-100"
+                    "mt-2 rounded-lg px-2 py-1.5 text-[11px] leading-snug",
+                    dpiInfo.level === "warn"
+                      ? "bg-sari-soft text-lacivert"
+                      : "bg-kirmizi-soft text-kirmizi"
                   )}
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
+                  {dpiInfo.level === "ok"
+                    ? "Baskı kalitesi iyi"
+                    : dpiInfo.message}
+                </p>
+              ) : dpiInfo?.level === "ok" ? (
+                <p className="mt-2 text-[11px] text-yesil">Baskı kalitesi iyi</p>
+              ) : null}
+            </EditorPanelSection>
+
+            <p className="border-t border-gri-100 pt-3 text-[11px] text-gri-600 leading-snug">
+              <Link href="/sablonlar?tab=kesim" className="text-pim-mercan underline">
+                Kesim şablonları
+              </Link>
+            </p>
+          </div>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-col gap-2 p-3 lg:p-4">
+          <div className="flex flex-wrap items-center gap-1 shrink-0 rounded-lg bg-white px-1 py-1">
+            <span className="px-2 text-[10px] font-semibold uppercase tracking-wide text-gri-500">
+              Yerleştir
+            </span>
+            {(
+              [
+                { id: "pim-fit-center", label: "Ortala" },
+                { id: "pim-fit-contain", label: "Sığdır" },
+                { id: "pim-fit-cover", label: "Doldur" },
+              ] as const
+            ).map((btn) => (
+              <button
+                key={btn.id}
+                type="button"
+                disabled={!designLoaded}
+                onClick={() => postToPoc({ type: btn.id })}
+                className="rounded-md px-2.5 py-1 text-[12px] font-medium text-gri-700 hover:bg-gri-100 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
 
           <EditorPreviewLegend />

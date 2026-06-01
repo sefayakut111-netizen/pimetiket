@@ -1447,8 +1447,27 @@
   html.pim-editor-shell #outputPanel,
   html.pim-editor-shell .meta-item.meta-alpha,
   html.pim-editor-shell .meta-item.meta-path-nodes,
-  html.pim-editor-shell .meta-item.meta-file-size {
+  html.pim-editor-shell .meta-item.meta-file-size,
+  html.pim-editor-shell .sidebar,
+  html.pim-editor-shell #infoPanel,
+  html.pim-editor-shell .preview-header,
+  html.pim-editor-shell header,
+  html.pim-editor-shell #emptyState {
     display: none !important;
+  }
+  html.pim-editor-shell main {
+    display: block;
+    padding: 0;
+    grid-template-columns: 1fr;
+  }
+  html.pim-editor-shell .preview {
+    min-height: 420px;
+  }
+  html.pim-editor-shell .canvas-wrap {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    min-height: 420px;
   }
   .meta-order-size .val {
     font-weight: 700;
@@ -2089,6 +2108,25 @@ window.addEventListener('message', (e) => {
         if (msg.mimeType) PIM_PARAMS.designMime = msg.mimeType;
         void pimAutoLoadDesign();
       }
+    } else if (msg.type === 'pim-upload-file') {
+      if (!msg.base64 || !msg.fileName) return;
+      try {
+        const binary = atob(String(msg.base64));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const file = new File(
+          [bytes],
+          String(msg.fileName),
+          { type: msg.mimeType || 'application/octet-stream' }
+        );
+        handleFile(file);
+      } catch (err) {
+        pimPostToParent({ type: 'pim-poc-error', error: String(err) });
+      }
+    } else if (msg.type === 'pim-trigger-bg-remove') {
+      if (typeof performBackgroundRemoval === 'function') {
+        void performBackgroundRemoval();
+      }
     } else if (msg.type === 'pim-editor-set-size') {
       if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
         PIM_PARAMS.orderWidthMm = msg.widthMm;
@@ -2220,6 +2258,8 @@ function pimNotifyLoaded() {
     source: currentFileSource,
     width: w,
     height: h,
+    canRemoveBg: currentFileSource === 'raster',
+    fileName: imageMetadata?.filename ?? currentFile?.name ?? null,
   });
   pimScheduleHeightReport();
 }
@@ -2816,6 +2856,7 @@ function getPlacementFrame() {
 
 /** Standalone editör — hedef baskı mm çerçevesi (kontur modu geri bildirimi) */
 function drawOrderDimReference(ctx) {
+  if (PIM_PARAMS.editorShell) return;
   const dims = getOrderDimsMm();
   if (!PIM_PARAMS.standalone || !dims || !imageMetadata) return;
   if (useFixedCutlineFrame()) return;
@@ -2882,6 +2923,7 @@ function getPngPageRect() {
 
 /** PNG sayfa sınırı — yalnızca embed editörde (yerleşim referansı). Dolgu yok. */
 function drawPngPageBoundary(ctx) {
+  if (PIM_PARAMS.editorShell) return;
   if (!PIM_PARAMS.embed) return;
   const page = getPngPageRect();
   if (!page) return;
