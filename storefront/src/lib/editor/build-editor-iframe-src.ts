@@ -7,7 +7,10 @@ export function buildEditorIframeSrc(args?: {
   const p = new URLSearchParams({
     embed: "1",
     standalone: "1",
+    editorShell: "1",
     mode: args?.mode ?? "contour",
+    orderWidthMm: "50",
+    orderHeightMm: "50",
   });
   if (args?.material) {
     p.set("material", args.material);

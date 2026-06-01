@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Pill, useToast } from "@/components/ui";
+import { Button, Input, useToast } from "@/components/ui";
 import {
   EditorCoachmark,
   isEditorOnboarded,
@@ -18,9 +18,14 @@ import {
   type PocEditorSavedPayload,
 } from "@/lib/editor/editor-handoff";
 import { uploadFileToTempDesign } from "@/lib/design-temp-upload";
+import { roundEditorMm } from "@/lib/editor/coords";
 import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
+import { cn } from "@/lib/cn";
 
 type PocStatusState = "loading" | "ready" | "loaded" | "error" | "timeout";
+
+const DEFAULT_WIDTH_MM = 50;
+const DEFAULT_HEIGHT_MM = 50;
 
 function base64ToFile(
   base64: string,
@@ -33,6 +38,16 @@ function base64ToFile(
     bytes[i] = binary.charCodeAt(i);
   }
   return new File([bytes], fileName, { type: mimeType });
+}
+
+function iframeMaxHeightPx(): number {
+  if (typeof window === "undefined") return 720;
+  return Math.max(420, window.innerHeight - 168);
+}
+
+function capIframeHeight(reported: number): number {
+  const max = iframeMaxHeightPx();
+  return Math.max(420, Math.min(reported + 8, max));
 }
 
 export default function EditorShell() {
@@ -56,19 +71,31 @@ export default function EditorShell() {
   >(null);
 
   const [iframeSrc] = useState(() => buildEditorIframeSrc());
-  const [iframeHeight, setIframeHeight] = useState(900);
+  const [iframeHeight, setIframeHeight] = useState(() => capIframeHeight(720));
   const [designLoaded, setDesignLoaded] = useState(false);
+  const [cutlineReady, setCutlineReady] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [draftId, setDraftId] = useState<string | null>(null);
   const [showCoach, setShowCoach] = useState(false);
+  const [widthMm, setWidthMm] = useState(DEFAULT_WIDTH_MM);
+  const [heightMm, setHeightMm] = useState(DEFAULT_HEIGHT_MM);
+  const [lockAspect, setLockAspect] = useState(true);
+  const [aspect, setAspect] = useState(1);
   const [pocMeta, setPocMeta] = useState<PocCutlineMeta | null>(null);
   const [pocStatus, setPocStatus] = useState<{
     state: PocStatusState;
     message: string;
-  } | null>({ state: "loading", message: "POC editör yükleniyor…" });
+  } | null>({ state: "loading", message: "Editör yükleniyor…" });
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      setIframeHeight((h) => capIframeHeight(h - 8));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
@@ -83,11 +110,24 @@ export default function EditorShell() {
       heightMm: tpl.heightMm,
       cornerRadiusMm: tpl.cornerRadiusMm,
     };
+    setWidthMm(tpl.widthMm);
+    setHeightMm(tpl.heightMm);
+    setAspect(tpl.widthMm / tpl.heightMm);
   }, [searchParams]);
 
   const postToPoc = useCallback((payload: Record<string, unknown>) => {
-    iframeRef.current?.contentWindow?.postMessage(payload, window.location.origin);
+    iframeRef.current?.contentWindow?.postMessage(
+      payload,
+      window.location.origin
+    );
   }, []);
+
+  const syncSizeToPoc = useCallback(
+    (w: number, h: number) => {
+      postToPoc({ type: "pim-editor-set-size", widthMm: w, heightMm: h });
+    },
+    [postToPoc]
+  );
 
   const applyPendingSablon = useCallback(() => {
     const tpl = pendingSablonRef.current;
@@ -106,8 +146,9 @@ export default function EditorShell() {
       heightMm: tpl.heightMm,
       cornerRadiusMm: tpl.cornerRadiusMm ?? 0,
     });
+    syncSizeToPoc(tpl.widthMm, tpl.heightMm);
     pendingSablonRef.current = null;
-  }, [postToPoc]);
+  }, [postToPoc, syncSizeToPoc]);
 
   useEffect(() => {
     let timeoutHandle: number | null = null;
@@ -122,30 +163,45 @@ export default function EditorShell() {
       if (!data || typeof data.type !== "string") return;
 
       if (data.type === "pim-poc-ready") {
-        setPocStatus({ state: "ready", message: "Editör hazır — görsel yükleyin" });
+        setPocStatus({ state: "ready", message: "Görsel yükle — bıçak otomatik netleşir" });
+        syncSizeToPoc(widthMm, heightMm);
         applyPendingSablon();
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
         setDesignLoaded(true);
+        setCutlineReady(false);
         setPocStatus({
           state: "loaded",
-          message: "Tasarım yüklendi — bıçak otomatik netleşecek",
+          message: "Tasarım yüklendi — kontur hesaplanıyor…",
         });
-        window.setTimeout(() => setPocStatus(null), 3000);
+        postToPoc({ type: "pim-fit-contain" });
+      } else if (data.type === "pim-cutline-ready") {
+        setCutlineReady(true);
+        const meta = data.meta as PocCutlineMeta | undefined;
+        if (meta) {
+          setPocMeta((prev) => ({ ...prev, ...meta }));
+          if (typeof meta.width_mm === "number" && meta.width_mm > 0) {
+            setWidthMm(meta.width_mm);
+          }
+          if (typeof meta.height_mm === "number" && meta.height_mm > 0) {
+            setHeightMm(meta.height_mm);
+          }
+        }
+        setPocStatus({
+          state: "loaded",
+          message: "Bıçak hazır — ürüne ekleyebilirsin",
+        });
+        window.setTimeout(() => setPocStatus(null), 2500);
       } else if (data.type === "pim-poc-error") {
         setPocStatus({
           state: "error",
-          message: `POC hatası: ${String(data.error ?? "(boş)")}`,
+          message: `Editör hatası: ${String(data.error ?? "(boş)")}`,
         });
       } else if (
         data.type === "pim-poc-resize" &&
         typeof data.height === "number"
       ) {
-        const h = data.height;
-        setIframeHeight((prev) => {
-          const next = Math.max(720, Math.min(h + 8, 4800));
-          return Math.abs(prev - next) < 8 ? prev : next;
-        });
+        setIframeHeight(capIframeHeight(data.height));
       } else if (data.type === "pim-editor-saved") {
         const payload = data as unknown as PocEditorSavedPayload;
         setPocMeta(payload.meta);
@@ -181,7 +237,7 @@ export default function EditorShell() {
             : {
                 state: "timeout",
                 message:
-                  "Editör yanıt vermedi. Sayfayı yenileyin veya bir süre sonra tekrar deneyin.",
+                  "Editör yanıt vermedi. Sayfayı yenileyip tekrar deneyin.",
               }
         );
       }
@@ -191,12 +247,40 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon]);
+  }, [applyPendingSablon, postToPoc, syncSizeToPoc, widthMm, heightMm]);
 
   const productHint = useMemo(
     () => deriveEditorProductHint(pocMeta),
     [pocMeta]
   );
+
+  const ctaBlockedReason = useMemo(() => {
+    if (saving) return "Kaydediliyor…";
+    if (!designLoaded) return "Önce görsel yükle";
+    if (!cutlineReady) return "Bıçak hazırlanıyor…";
+    return null;
+  }, [saving, designLoaded, cutlineReady]);
+
+  const handleWidthChange = (raw: number) => {
+    const w = roundEditorMm(raw);
+    setWidthMm(w);
+    const h = lockAspect && aspect > 0 ? roundEditorMm(w / aspect) : heightMm;
+    if (lockAspect && aspect > 0) setHeightMm(h);
+    syncSizeToPoc(w, h);
+  };
+
+  const handleHeightChange = (raw: number) => {
+    const h = roundEditorMm(raw);
+    setHeightMm(h);
+    const w = lockAspect && aspect > 0 ? roundEditorMm(h * aspect) : widthMm;
+    if (lockAspect && aspect > 0) setWidthMm(w);
+    syncSizeToPoc(w, h);
+  };
+
+  const handleLockAspectChange = (on: boolean) => {
+    if (on && heightMm > 0) setAspect(widthMm / heightMm);
+    setLockAspect(on);
+  };
 
   const requestDesignFile = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {
@@ -241,8 +325,8 @@ export default function EditorShell() {
           mode: meta.mode ?? "contour",
           offset_mm: meta.offset_mm,
           smoothness: meta.smoothness,
-          width_mm: meta.width_mm,
-          height_mm: meta.height_mm,
+          width_mm: meta.width_mm ?? widthMm,
+          height_mm: meta.height_mm ?? heightMm,
           cutline_width_mm: meta.cutline_width_mm,
           cutline_height_mm: meta.cutline_height_mm,
           material_type: meta.material_type ?? "paper",
@@ -254,15 +338,14 @@ export default function EditorShell() {
         toast.error(data.error ?? "Bıçak kaydı başarısız");
         return null;
       }
-      setDraftId(data.draftId);
       return data.draftId;
     },
-    [toast]
+    [toast, widthMm, heightMm]
   );
 
   const addToProduct = async (product: "sticker" | "etiket") => {
-    if (!designLoaded) {
-      toast.error("Önce görsel yükle ve bıçağı ayarla");
+    if (ctaBlockedReason) {
+      toast.info(ctaBlockedReason);
       return;
     }
     if (!iframeRef.current) return;
@@ -271,7 +354,7 @@ export default function EditorShell() {
     try {
       const exported = await requestExport();
       if (!exported?.svg) {
-        toast.error("Bıçak dışa aktarılamadı — POC'ta Kaydet'e basmayı dene");
+        toast.error("Bıçak dışa aktarılamadı — tekrar dene");
         return;
       }
       setPocMeta(exported.meta);
@@ -288,8 +371,7 @@ export default function EditorShell() {
         return;
       }
 
-      const resolvedDraftId =
-        draftId ?? (await persistDraft(uploaded.tempId, exported));
+      const resolvedDraftId = await persistDraft(uploaded.tempId, exported);
       if (!resolvedDraftId) return;
 
       writeEditorHandoff({
@@ -299,8 +381,8 @@ export default function EditorShell() {
         mimeType: uploaded.mimeType,
         sizeBytes: uploaded.sizeBytes,
         editorCutlineDraftId: resolvedDraftId,
-        widthMm: exported.meta.width_mm ?? 50,
-        heightMm: exported.meta.height_mm ?? 50,
+        widthMm: exported.meta.width_mm ?? widthMm,
+        heightMm: exported.meta.height_mm ?? heightMm,
       });
 
       router.push(
@@ -313,9 +395,18 @@ export default function EditorShell() {
     }
   };
 
+  const sourceLabel = useMemo(() => {
+    const s = pocMeta?.source;
+    if (s === "vector") return "Vektörel";
+    if (s === "vector-with-cutline") return "Vektörel + bıçak";
+    if (s === "psd") return "PSD";
+    if (designLoaded) return "Raster";
+    return "—";
+  }, [pocMeta?.source, designLoaded]);
+
   return (
     <main
-      className="editor-workspace min-h-[calc(100dvh-56px)] bg-gri-50"
+      className="editor-workspace flex h-[calc(100dvh-56px)] flex-col overflow-hidden bg-gri-50"
       data-editor-workspace
     >
       <EditorCoachmark
@@ -327,41 +418,33 @@ export default function EditorShell() {
         onDismissSession={() => setShowCoach(false)}
       />
 
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-gri-200 bg-white px-4 py-3 shadow-1">
+      <header className="z-30 flex shrink-0 flex-wrap items-center gap-3 border-b border-gri-200 bg-white px-4 py-3 shadow-1">
         <div className="min-w-0 flex-1">
           <h1 className="text-[15px] md:text-[17px] font-semibold tracking-tight text-lacivert">
             Bıçak & baskı hazırlama
           </h1>
           <p className="mt-0.5 text-[12px] text-gri-600 leading-snug">
-            Görseli yükle, bıçağı ayarla, ardından ürüne ekle.
+            Görsel yükle, boyutu ayarla, ürüne ekle.
           </p>
         </div>
 
-        <div
-          className="flex shrink-0 flex-col items-end gap-1"
-          data-onboard="export"
-        >
+        <div className="flex shrink-0 flex-col items-end gap-1" data-onboard="export">
           {productHint.message ? (
             <p className="text-[10px] text-gri-500 leading-snug text-right max-w-[220px]">
               {productHint.message}
             </p>
           ) : null}
+          {ctaBlockedReason ? (
+            <p className="text-[11px] text-gri-600">{ctaBlockedReason}</p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
-            {saving ? (
-              <span className="text-[11px] text-gri-600">Kaydediliyor…</span>
-            ) : null}
-            {draftId ? (
-              <Pill variant="yesil" className="hidden sm:inline-flex">
-                Kayıtlı
-              </Pill>
-            ) : null}
             <Button
               type="button"
               variant={
                 productHint.primary === "sticker" ? "primary" : "secondary"
               }
               size="sm"
-              disabled={saving || !designLoaded}
+              disabled={!!ctaBlockedReason}
               onClick={() => void addToProduct("sticker")}
             >
               Sticker&apos;a ekle
@@ -372,7 +455,7 @@ export default function EditorShell() {
                 productHint.primary === "etiket" ? "primary" : "secondary"
               }
               size="sm"
-              disabled={saving || !designLoaded}
+              disabled={!!ctaBlockedReason}
               onClick={() => void addToProduct("etiket")}
             >
               Etiket&apos;e ekle
@@ -383,42 +466,121 @@ export default function EditorShell() {
 
       {pocStatus ? (
         <div
-          className={
-            "mx-auto mt-3 max-w-[1600px] px-4 shrink-0 rounded-xl border px-3 py-1.5 text-[12px] " +
-            (pocStatus.state === "error" || pocStatus.state === "timeout"
+          className={cn(
+            "mx-4 mt-2 shrink-0 rounded-xl border px-3 py-1.5 text-[12px]",
+            pocStatus.state === "error" || pocStatus.state === "timeout"
               ? "border-kirmizi/40 bg-kirmizi-soft text-kirmizi"
               : pocStatus.state === "loaded"
                 ? "border-yesil/40 bg-yesil-soft text-yesil"
                 : pocStatus.state === "ready"
                   ? "border-pim-mercan/40 bg-pim-mercan-tint text-lacivert"
-                  : "border-sari/40 bg-sari-soft text-lacivert")
-          }
+                  : "border-sari/40 bg-sari-soft text-lacivert"
+          )}
         >
-          <span className="font-semibold capitalize">{pocStatus.state}:</span>{" "}
           {pocStatus.message}
         </div>
       ) : null}
 
-      <div className="mx-auto max-w-[1600px] px-4 py-4">
-        <div className="overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
-          <iframe
-            ref={iframeRef}
-            src={iframeSrc}
-            title="Bıçak editörü"
-            className="block w-full border-0"
-            style={{ height: iframeHeight }}
-            scrolling="no"
-            sandbox="allow-scripts allow-same-origin allow-downloads"
-          />
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-0 lg:flex-row">
+        <aside className="shrink-0 border-b border-gri-200 bg-white px-4 py-3 lg:w-[280px] lg:border-b-0 lg:border-r">
+          <section>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
+              Baskı boyutu
+            </h2>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="block text-[11px] text-gri-600">
+                Genişlik (mm)
+                <Input
+                  type="number"
+                  min={5}
+                  max={500}
+                  step={0.1}
+                  value={widthMm}
+                  className="mt-1"
+                  onChange={(e) =>
+                    handleWidthChange(parseFloat(e.target.value) || DEFAULT_WIDTH_MM)
+                  }
+                />
+              </label>
+              <label className="block text-[11px] text-gri-600">
+                Yükseklik (mm)
+                <Input
+                  type="number"
+                  min={5}
+                  max={500}
+                  step={0.1}
+                  value={heightMm}
+                  className="mt-1"
+                  onChange={(e) =>
+                    handleHeightChange(parseFloat(e.target.value) || DEFAULT_HEIGHT_MM)
+                  }
+                />
+              </label>
+            </div>
+            <label className="mt-2 flex items-center gap-2 text-[12px] text-gri-700">
+              <input
+                type="checkbox"
+                checked={lockAspect}
+                onChange={(e) => handleLockAspectChange(e.target.checked)}
+                className="accent-pim-mercan"
+              />
+              Oran kilidi
+            </label>
+            <p className="mt-2 text-[12px] tabular-nums text-gri-800">
+              {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
+            </p>
+          </section>
 
-        <p className="mt-3 text-center text-[12px] text-gri-600">
-          Şablon arıyorsan{" "}
-          <Link href="/sablonlar?tab=kesim" className="text-pim-mercan underline">
-            kesim şablonları
-          </Link>
-          sayfasına bakabilirsin.
-        </p>
+          <section className="mt-4 border-t border-gri-100 pt-3">
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gri-600">
+              Özet
+            </h2>
+            <dl className="mt-2 space-y-1.5 text-[12px]">
+              <div className="flex justify-between gap-2">
+                <dt className="text-gri-600">Kaynak</dt>
+                <dd className="font-medium text-lacivert">{sourceLabel}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-gri-600">Baskı boyutu</dt>
+                <dd className="font-medium tabular-nums text-lacivert">
+                  {widthMm.toFixed(1)} × {heightMm.toFixed(1)} mm
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-gri-600">Bıçak</dt>
+                <dd
+                  className={cn(
+                    "font-medium",
+                    cutlineReady ? "text-yesil" : "text-gri-500"
+                  )}
+                >
+                  {cutlineReady ? "Hazır" : designLoaded ? "Hesaplanıyor…" : "—"}
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <p className="mt-4 text-[11px] text-gri-600 leading-snug">
+            Kesim mesafesi ve katmanlar önizleme içinde.{" "}
+            <Link href="/sablonlar?tab=kesim" className="text-pim-mercan underline">
+              Kesim şablonları
+            </Link>
+          </p>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col p-3 lg:p-4">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-white shadow-sm">
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc}
+              title="Bıçak editörü"
+              className="block h-full w-full min-h-[420px] border-0"
+              style={{ height: iframeHeight, maxHeight: iframeMaxHeightPx() }}
+              scrolling="no"
+              sandbox="allow-scripts allow-same-origin allow-downloads"
+            />
+          </div>
+        </section>
       </div>
     </main>
   );

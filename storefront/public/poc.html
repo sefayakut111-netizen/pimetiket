@@ -1437,6 +1437,18 @@
   html.pim-standalone-restricted.pim-hide-upload #btnRemoveBg {
     display: none !important;
   }
+  /* Dış React editör kabuğu — çift kontrol/CTA gizle, analiz sadeleştir */
+  html.pim-editor-shell #materialPanel,
+  html.pim-editor-shell #settingsPanel,
+  html.pim-editor-shell #placementPanel,
+  html.pim-editor-shell #resetSettingsPanel,
+  html.pim-editor-shell #actionBar,
+  html.pim-editor-shell #outputPanel,
+  html.pim-editor-shell .meta-item.meta-alpha,
+  html.pim-editor-shell .meta-item.meta-path-nodes,
+  html.pim-editor-shell .meta-item.meta-file-size {
+    display: none !important;
+  }
   .meta-order-size .val {
     font-weight: 700;
     font-size: 15px;
@@ -1857,6 +1869,7 @@ const PIM_PARAMS = (() => {
       mode: sp.get('mode') || 'contour',
       embeddedCutline: sp.get('embeddedCutline'),
       embeddedSource: sp.get('embeddedSource'),
+      editorShell: sp.get('editorShell') === '1',
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
@@ -1920,6 +1933,11 @@ function pimApplyStandaloneUiRestrictions() {
   pimReportHeight();
 }
 
+function pimApplyEditorShellUi() {
+  if (!PIM_PARAMS.editorShell) return;
+  document.documentElement.classList.add('pim-editor-shell');
+}
+
 /** Embed iframe — parent sayfa tek scroll kullansın diye yükseklik bildir */
 let pimLastReportedHeight = 0;
 
@@ -1957,11 +1975,13 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     pimApplyEmbedUiRestrictions();
     pimApplyStandaloneUiRestrictions();
+    pimApplyEditorShellUi();
     pimObserveEmbedHeight();
   });
 } else {
   pimApplyEmbedUiRestrictions();
   pimApplyStandaloneUiRestrictions();
+  pimApplyEditorShellUi();
   pimObserveEmbedHeight();
 }
 
@@ -2999,7 +3019,7 @@ function processImage(img, file) {
   hideLoading();
   pimScheduleAutoSave();
   pimScheduleHeightReport();
-  if (PIM_PARAMS.embed || PIM_PARAMS.designUrl) {
+  if (PIM_PARAMS.embed || PIM_PARAMS.designUrl || PIM_PARAMS.editorShell) {
     pimNotifyLoaded();
   }
 }
@@ -3095,6 +3115,19 @@ function generateCutline() {
 
   mask.delete();
   pimScheduleAutoSave();
+  runPreflight();
+  if (currentPaths.length > 0) {
+    pimPostToParent({
+      type: 'pim-cutline-ready',
+      pathCount: currentPaths.length,
+      meta: imageMetadata ? {
+        source: currentFileSource,
+        mode: currentMode,
+        width_mm: imageMetadata.orderWidthMm || imageMetadata.widthMm,
+        height_mm: imageMetadata.orderHeightMm || imageMetadata.heightMm,
+      } : {},
+    });
+  }
 }
 
 // ============================================================
@@ -3696,14 +3729,16 @@ function updateMetadataDisplay() {
       <div class="val">${imageMetadata.widthMm} × ${imageMetadata.heightMm} mm</div>
     </div>
     ` : ''}
-    <div class="meta-item">
+    ${PIM_PARAMS.editorShell ? '' : `
+    <div class="meta-item meta-alpha">
       <div class="key">Alpha</div>
       <div class="val">${imageMetadata.hasAlpha ? '✓ Var' : '✗ Yok'}</div>
     </div>
-    <div class="meta-item">
+    <div class="meta-item meta-path-nodes">
       <div class="key">Path düğümü</div>
       <div class="val">${totalNodes}</div>
     </div>
+    `}
   `;
 
   updateCutlineSizeRow();
