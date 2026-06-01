@@ -40,19 +40,39 @@ export function buildMask(
 
   if (hasAlpha) {
     const ch = new cv.MatVector();
-    cv.split(srcMat, ch);
-    const alpha = ch.get(3);
-    const meanAlpha = cv.mean(alpha)[0] ?? 255;
-    if (meanAlpha < 250) {
-      cv.threshold(alpha, mask, 200, 255, cv.THRESH_BINARY);
-    } else {
-      const gray = new cv.Mat();
-      cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
-      const bg = detectBackgroundColor(cv, gray);
-      cv.threshold(gray, mask, Math.max(200, bg - 8), 255, cv.THRESH_BINARY_INV);
-      gray.delete();
+    let alpha: OpenCvMat | null = null;
+    try {
+      cv.split(srcMat, ch);
+      alpha = ch.get(3);
+      const meanAlpha = cv.mean(alpha)[0] ?? 255;
+      if (meanAlpha < 250) {
+        cv.threshold(alpha, mask, 200, 255, cv.THRESH_BINARY);
+      } else {
+        const gray = new cv.Mat();
+        try {
+          cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
+          const bg = detectBackgroundColor(cv, gray);
+          cv.threshold(
+            gray,
+            mask,
+            Math.max(200, bg - 8),
+            255,
+            cv.THRESH_BINARY_INV
+          );
+        } finally {
+          gray.delete();
+        }
+      }
+    } finally {
+      if (alpha) {
+        try {
+          alpha.delete();
+        } catch {
+          /* Mat zaten serbest */
+        }
+      }
+      ch.delete();
     }
-    ch.delete();
   } else {
     const gray = new cv.Mat();
     cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
@@ -212,19 +232,29 @@ export function computePathsFromBitmap(
 ): PathRing[][] {
   const { mat: src, downscale } = bitmapToCvMatScaled(cv, bitmap);
   const mask = buildMask(cv, src);
-  const inv = downscale > 0 ? 1 / downscale : 1;
-  const out = offsetsMm.map((offsetMm) => {
-    const offsetPx = offsetMmToPx(offsetMm, pxPerMmInImage, downscale);
-    const pathsSmall = generateOffsetPaths(
-      cv,
-      mask,
-      offsetPx,
-      smoothness,
-      useHull
-    );
-    return scalePathsPx(pathsSmall, inv);
-  });
-  mask.delete();
-  src.delete();
-  return out;
+  try {
+    const inv = downscale > 0 ? 1 / downscale : 1;
+    return offsetsMm.map((offsetMm) => {
+      const offsetPx = offsetMmToPx(offsetMm, pxPerMmInImage, downscale);
+      const pathsSmall = generateOffsetPaths(
+        cv,
+        mask,
+        offsetPx,
+        smoothness,
+        useHull
+      );
+      return scalePathsPx(pathsSmall, inv);
+    });
+  } finally {
+    try {
+      mask.delete();
+    } catch {
+      /* Mat zaten serbest */
+    }
+    try {
+      src.delete();
+    } catch {
+      /* Mat zaten serbest */
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import { PDFDocument, rgb } from "pdf-lib";
 import sharp from "sharp";
+import type { Json } from "@/lib/supabase/types";
 import { uploadPrintReadyPdf } from "@/lib/proof/proof-artifacts";
 
 export interface PrintReadyResult {
@@ -9,7 +10,12 @@ export interface PrintReadyResult {
   includesCutline: boolean;
   includesWhiteLayer: boolean;
   fileSizeBytes: number;
+  /** pdf-lib spot kanalı yok — kesim hattı RGB magenta (RIP manuel dönüşüm) */
+  cutcontourIsRgbFallback: boolean;
 }
+
+export const CUTCONTOUR_RGB_FALLBACK_NOTE =
+  "⚠️ Kesim kanalı RGB magenta — RIP'te CutContour spot'a manuel çevir";
 
 export interface PrintReadyInput {
   orderId: string;
@@ -65,15 +71,17 @@ function drawCropMarks(
   ] as const;
 
   for (const [cx, cy] of corners) {
+    const isRight = cx > w / 2;
+    const isTop = cy > h / 2;
     page.drawLine({
-      start: { x: cx - markLen, y: cy },
-      end: { x: cx, y: cy },
+      start: { x: isRight ? cx : cx - markLen, y: cy },
+      end: { x: isRight ? cx + markLen : cx, y: cy },
       thickness: lw,
       color,
     });
     page.drawLine({
-      start: { x: cx, y: cy },
-      end: { x: cx, y: cy + markLen },
+      start: { x: cx, y: isTop ? cy : cy - markLen },
+      end: { x: cx, y: isTop ? cy + markLen : cy },
       thickness: lw,
       color,
     });
@@ -337,17 +345,25 @@ export async function generatePrintReadyPdf(
 
   drawCropMarks(page, input.designWidth, input.designHeight, bleedMm);
 
-  if (input.cutlineSvgPath) {
+  const includesCutline = !!input.cutlineSvgPath;
+  if (includesCutline) {
     drawCutlineAsSpotColor(
       page,
-      input.cutlineSvgPath,
+      input.cutlineSvgPath!,
       bleedMm,
       input.designWidth,
       input.designHeight
     );
   }
 
-  pdfDoc.setKeywords(["CutContour", "print-ready"]);
+  pdfDoc.setKeywords([
+    "CutContour",
+    "print-ready",
+    ...(includesCutline ? ["cutcontour_is_rgb_fallback"] : []),
+  ]);
+  if (includesCutline) {
+    pdfDoc.setSubject("cutcontour_is_rgb_fallback=true");
+  }
 
   if (input.whiteLayerPngUrl) {
     const whitePage = pdfDoc.addPage([widthPt, heightPt]);
@@ -379,9 +395,10 @@ export async function generatePrintReadyPdf(
     pdfStoragePath: storagePath,
     pageCount: input.whiteLayerPngUrl ? 2 : 1,
     includesBleed: true,
-    includesCutline: !!input.cutlineSvgPath,
+    includesCutline,
     includesWhiteLayer: !!input.whiteLayerPngUrl,
     fileSizeBytes: pdfBytes.length,
+    cutcontourIsRgbFallback: includesCutline,
   };
 }
 
@@ -493,10 +510,34 @@ export async function generatePrintReadyForOrder(
         materialKey,
       });
 
+      const nextMeta = {
+        ...(item.meta ?? {}),
+        ...(result.cutcontourIsRgbFallback
+          ? { cutcontour_is_rgb_fallback: true }
+          : {}),
+      };
+
       await admin
         .from("order_items")
-        .update({ print_ready_pdf_url: result.pdfStoragePath })
+        .update({
+          print_ready_pdf_url: result.pdfStoragePath,
+          meta: nextMeta,
+        })
         .eq("id", item.id);
+
+      if (result.cutcontourIsRgbFallback) {
+        await admin.from("order_events").insert({
+          order_id: orderId,
+          event_type: "note_added",
+          actor_role: "system",
+          summary: CUTCONTOUR_RGB_FALLBACK_NOTE,
+          detail: {
+            cutcontour_is_rgb_fallback: true,
+            order_item_id: item.id,
+            print_ready_pdf_url: result.pdfStoragePath,
+          } as Json,
+        });
+      }
 
       generated++;
     } catch (err) {

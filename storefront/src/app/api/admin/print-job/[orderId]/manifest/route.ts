@@ -38,6 +38,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { CUTCONTOUR_RGB_FALLBACK_NOTE } from "@/lib/proof/print-ready";
 import type { Enums, Json } from "@/lib/supabase/types";
 import { getSignedDownloadUrl } from "@/lib/storage/r2-client";
 import { SUPABASE_STORAGE_BUCKETS } from "@/lib/storage/buckets";
@@ -301,6 +302,7 @@ export async function GET(
         print_ready_pdf_url: it.print_ready_pdf_url
           ? await signSupabaseDesignUrl(it.print_ready_pdf_url)
           : null,
+        cutcontour_is_rgb_fallback: Boolean(it.meta?.cutcontour_is_rgb_fallback),
         designs,
       };
     })
@@ -324,6 +326,9 @@ export async function GET(
 
   const generatedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000).toISOString();
+  const hasRgbCutcontourFallback = itemRows.some((it) =>
+    Boolean(it.meta?.cutcontour_is_rgb_fallback)
+  );
 
   return NextResponse.json({
     order: {
@@ -336,6 +341,9 @@ export async function GET(
       created_at: orderRow.created_at,
     },
     items: itemsManifest,
+    operator_warnings: hasRgbCutcontourFallback
+      ? [CUTCONTOUR_RGB_FALLBACK_NOTE]
+      : [],
     generated_at: generatedAt,
     expires_at: expiresAt,
     expires_in_seconds: TTL_SECONDS,

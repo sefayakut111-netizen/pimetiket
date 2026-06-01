@@ -549,6 +549,11 @@ export default function AdminOrderDetailPage({
                       plan/tier) + SVG signed URL'leri içeren JSON paket. RIP
                       sisteminize alabilirsiniz. URL'ler 1 saat geçerli.
                     </p>
+                    <p className="text-[12px] text-sari-koyu mt-2 leading-relaxed font-medium">
+                      ⚠️ Kesim kanalı RGB magenta — RIP&apos;te CutContour
+                      spot&apos;a manuel çevir (manifest JSON&apos;da{" "}
+                      <code className="text-[11px]">operator_warnings</code>).
+                    </p>
                     <span
                       title={
                         assignmentInfo
