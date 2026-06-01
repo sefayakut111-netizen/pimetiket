@@ -145,6 +145,11 @@ export async function restoreCustomerToHot(
       .update({ archive_status: "hot", archived_at: null })
       .eq("user_id", userId);
 
+    await supabase
+      .from("design_files")
+      .update({ archive_status: "hot", archived_at: null })
+      .eq("user_id", userId);
+
     return { success: true };
   } catch (err) {
     return { success: false, error: (err as Error).message };

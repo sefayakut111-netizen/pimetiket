@@ -44,5 +44,12 @@ export async function POST(
       { status: 500 }
     );
   }
+
+  await admin
+    .from("fason_access_tokens")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("fason_partner_id", id)
+    .is("revoked_at", null);
+
   return NextResponse.json({ ok: true, status: "paused", reason });
 }

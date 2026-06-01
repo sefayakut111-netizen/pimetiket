@@ -40,6 +40,32 @@ const ACCEPT_ATTR =
   "application/pdf,image/png,image/jpeg,image/svg+xml," +
   "application/illustrator,image/vnd.adobe.photoshop";
 
+/** Tarayıcı MIME döndürmediğinde uzantıdan türet (DesignDropZone ile aynı kural). */
+function resolveMimeForUpload(file: File): string | null {
+  if (file.type && (ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
+    return file.type;
+  }
+  const dot = file.name.lastIndexOf(".");
+  const ext = dot === -1 ? "" : file.name.toLowerCase().slice(dot);
+  switch (ext) {
+    case ".ai":
+      return "application/illustrator";
+    case ".psd":
+      return "image/vnd.adobe.photoshop";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".pdf":
+      return "application/pdf";
+    case ".svg":
+      return "image/svg+xml";
+    default:
+      return null;
+  }
+}
+
 interface MultiDesignDropZoneProps {
   value: DesignTempState[];
   onChange: (next: DesignTempState[]) => void;
@@ -82,63 +108,80 @@ export function MultiDesignDropZone({
       );
       return null;
     }
-    if (file.type && !(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-      if (categorizeFile(file.name, file.type) === "blocked") {
-        toast.error(`${file.name}: ${BLOCKED_FILE_MESSAGE}`);
-        return null;
-      }
+    if (categorizeFile(file.name, file.type) === "blocked") {
+      toast.error(`${file.name}: ${BLOCKED_FILE_MESSAGE}`);
+      return null;
+    }
+
+    const mimeType = resolveMimeForUpload(file);
+    if (!mimeType) {
+      toast.error(`${file.name}: ${BLOCKED_FILE_MESSAGE}`);
+      return null;
     }
 
     setUploadingNames((prev) => [...prev, file.name]);
 
     try {
-      // 1) Init endpoint — temp upload signed URL
+      // 1) Init — DesignDropZone ile aynı şema
       const initRes = await fetch("/api/design/temp-upload-init", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          fileName: file.name,
-          mimeType: file.type || "application/octet-stream",
+          originalName: file.name,
           sizeBytes: file.size,
+          mimeType,
         }),
       });
-      const initData = (await initRes.json()) as {
-        ok?: boolean;
-        tempId?: string;
-        storagePath?: string;
-        signedUploadUrl?: string;
-        signedUploadToken?: string;
-        error?: string;
+      if (!initRes.ok) {
+        const e = (await initRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error ?? `init_failed_${initRes.status}`);
+      }
+      const init = (await initRes.json()) as {
+        token: string;
+        storagePath: string;
+        fileId: string;
+        uploadUrl?: string;
       };
-      if (!initRes.ok || !initData.ok || !initData.tempId) {
-        throw new Error(initData.error ?? "Upload init başarısız");
+      if (!init.token || !init.fileId || !init.storagePath) {
+        throw new Error("Upload init başarısız");
       }
 
-      // 2) Storage'a upload — Supabase signed URL ile
+      // 2) Storage upload
       const supabase = createSupabaseClient();
       const { error: uploadErr } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .uploadToSignedUrl(
-          initData.storagePath!,
-          initData.signedUploadToken!,
-          file,
-          { contentType: file.type || undefined, upsert: false }
-        );
+        .uploadToSignedUrl(init.storagePath, init.token, file);
       if (uploadErr) {
         throw new Error(uploadErr.message);
       }
 
-      // 3) Signed read URL — preview için (~1 saat geçerli)
-      const { data: signed } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(initData.storagePath!, 3600);
+      // 3) Complete — DB row + magic-byte + preview URL
+      const compRes = await fetch("/api/design/temp-upload-complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          fileId: init.fileId,
+          storagePath: init.storagePath,
+          originalName: file.name,
+          sizeBytes: file.size,
+          mimeType,
+        }),
+      });
+      if (!compRes.ok) {
+        const e = (await compRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(e.error ?? `complete_failed_${compRes.status}`);
+      }
+      const comp = (await compRes.json()) as {
+        tempId: string;
+        previewUrl: string | null;
+      };
 
       return {
-        tempId: initData.tempId,
-        previewUrl: signed?.signedUrl ?? "",
+        tempId: comp.tempId,
+        previewUrl: comp.previewUrl ?? "",
         fileName: file.name,
         sizeBytes: file.size,
-        mimeType: file.type || "application/octet-stream",
+        mimeType,
       };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Yükleme başarısız";

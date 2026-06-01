@@ -77,10 +77,14 @@ async function storageObjectExists(
   admin: SupabaseClient<Database>,
   path: string
 ): Promise<boolean> {
+  const slash = path.lastIndexOf("/");
+  const dir = slash >= 0 ? path.substring(0, slash) : "";
+  const name = slash >= 0 ? path.substring(slash + 1) : path;
   const { data, error } = await admin.storage
     .from(STORAGE_BUCKET)
-    .download(path);
-  return !error && !!data;
+    .list(dir, { search: name, limit: 1 });
+  if (error) return false;
+  return (data?.length ?? 0) > 0;
 }
 
 async function ensureFileAtOrderPath(args: {
