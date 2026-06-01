@@ -10,6 +10,7 @@ import type {
   TrafficRange,
   TrafficSummary,
   TrafficNotConfigured,
+  Ga4SetupStatus,
 } from "@/lib/analytics/ga4-data-api";
 
 type TrafficResponse = TrafficSummary | TrafficNotConfigured;
@@ -36,71 +37,124 @@ function formatPercent(rate: number): string {
   return `${pct.toFixed(1)}%`;
 }
 
-function SetupCard({ reason }: { reason?: string }) {
+function SetupCard({
+  reason,
+  setup,
+}: {
+  reason?: string;
+  setup?: Ga4SetupStatus;
+}) {
+  const missing = setup?.missing ?? [
+    "GA4_PROPERTY_ID",
+    "GA4_SA_CLIENT_EMAIL",
+    "GA4_SA_PRIVATE_KEY",
+  ];
+
   return (
-    <Card className="max-w-2xl">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
-          <Icon.Info size={20} />
-        </div>
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Trafik kurulumu gerekli
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              {reason ??
-                "GA4 ve Data API ortam değişkenleri tanımlı değil. Aşağıdaki adımları tamamlayın; veri akışı başladıktan sonra bu sayfa otomatik dolar."}
+    <div className="space-y-4">
+      {setup?.measurementIdSet && (
+        <Card className="border-yesil/30 bg-yesil-soft/20">
+          <div className="flex items-start gap-3">
+            <span className="text-yesil text-lg leading-none">✓</span>
+            <div>
+              <p className="text-sm font-semibold text-lacivert">
+                Site trafiği toplanıyor
+              </p>
+              <p className="mt-1 text-sm text-gri-700">
+                Measurement ID{" "}
+                <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs">
+                  {setup.measurementId}
+                </code>{" "}
+                canlı sitede aktif. Ziyaretçi verisi GA4&apos;te birikiyor — bu
+                bir hata değil.
+              </p>
+              <a
+                href="https://analytics.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex text-sm font-semibold text-pim-mercan hover:underline"
+              >
+                GA4 panelini aç →
+              </a>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card className="max-w-2xl">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+            <Icon.Info size={20} />
+          </div>
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Admin trafik paneli kurulumu
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                {reason ??
+                  "Bu sayfanın grafikleri için GA4 Data API env değişkenleri gerekli. Aşağıdaki 3 değişkeni Vercel'e ekleyip redeploy edin."}
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-gri-50 px-3 py-2.5 text-sm text-gri-700">
+              <p className="font-semibold text-lacivert mb-2">Eksik env:</p>
+              <ul className="space-y-1">
+                {missing.map((key) => (
+                  <li key={key} className="font-mono text-xs">
+                    {key}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <ol className="list-decimal space-y-3 pl-5 text-sm text-gray-700">
+              <li>
+                <strong>GA4 Property ID:</strong> analytics.google.com → Admin →
+                Property Settings → Property ID (sayı, örn.{" "}
+                <code className="rounded bg-gray-100 px-1 text-xs">123456789</code>
+                ) → Vercel env{" "}
+                <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
+                  GA4_PROPERTY_ID
+                </code>
+              </li>
+              <li>
+                <strong>Service account:</strong> Google Cloud Console → IAM →
+                Service Accounts → JSON key oluştur → GA4 property&apos;de bu
+                hesaba <strong>Viewer</strong> yetkisi ver.
+              </li>
+              <li>
+                <strong>Vercel env (Production):</strong>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
+                  <li>
+                    <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
+                      GA4_SA_CLIENT_EMAIL
+                    </code>
+                  </li>
+                  <li>
+                    <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
+                      GA4_SA_PRIVATE_KEY
+                    </code>{" "}
+                    (PEM, satır sonları <code>\n</code> ile)
+                  </li>
+                </ul>
+                Search Console için zaten{" "}
+                <code className="rounded bg-gray-100 px-1 text-xs">
+                  GSC_SA_*
+                </code>{" "}
+                tanımlıysa aynı service account kullanılabilir.
+              </li>
+            </ol>
+
+            <p className="text-xs text-gray-500">
+              Env ekledikten sonra Vercel&apos;de redeploy gerekir. Veri 24–48
+              saat içinde panelde görünür. Alternatif: Vercel Dashboard →
+              Analytics sekmesi (ek env gerektirmez).
             </p>
           </div>
-          <ol className="list-decimal space-y-3 pl-5 text-sm text-gray-700">
-            <li>
-              <strong>Veri toplama (Vercel env):</strong>{" "}
-              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-                NEXT_PUBLIC_GA4_MEASUREMENT_ID=G-XXXX
-              </code>{" "}
-              — analytics.google.com&apos;da property açıp Measurement ID alın.
-            </li>
-            <li>
-              <strong>PostHog (opsiyonel):</strong>{" "}
-              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-                NEXT_PUBLIC_POSTHOG_KEY
-              </code>{" "}
-              +{" "}
-              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-                NEXT_PUBLIC_POSTHOG_HOST
-              </code>
-            </li>
-            <li>
-              <strong>Admin panel (Data API):</strong> Google Cloud service
-              account → GA4 property&apos;ye Viewer → Vercel env:
-              <ul className="mt-2 list-disc space-y-1 pl-4">
-                <li>
-                  <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-                    GA4_PROPERTY_ID
-                  </code>
-                </li>
-                <li>
-                  <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-                    GA4_SA_CLIENT_EMAIL
-                  </code>
-                </li>
-                <li>
-                  <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">
-                    GA4_SA_PRIVATE_KEY
-                  </code>{" "}
-                  (PEM, satır sonları <code>\n</code>)
-                </li>
-              </ul>
-            </li>
-          </ol>
-          <p className="text-xs text-gray-500">
-            Vercel Analytics + Speed Insights ek ayar gerektirmez. GA4 panelinde
-            veri 24–48 saat içinde görünür.
-          </p>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -190,7 +244,12 @@ export function TrafficDashboard() {
   }
 
   if (!data || !data.configured) {
-    return <SetupCard reason={data?.configured === false ? data.reason : undefined} />;
+    return (
+      <SetupCard
+        reason={data?.configured === false ? data.reason : undefined}
+        setup={data?.configured === false ? data.setup : undefined}
+      />
+    );
   }
 
   const { totals, topPages } = data;

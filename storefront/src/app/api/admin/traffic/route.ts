@@ -9,6 +9,7 @@ import { z } from "zod";
 import { assertAdmin } from "@/lib/supabase/assert-admin";
 import {
   getTrafficSummary,
+  getGa4SetupStatus,
   type TrafficRange,
   type TrafficSummary,
   type TrafficNotConfigured,
@@ -72,7 +73,11 @@ export async function GET(req: Request) {
     console.error("[admin/traffic]", err);
     const reason =
       err instanceof Error ? err.message : "Trafik verisi alınamadı";
-    const fallback: TrafficNotConfigured = { configured: false, reason };
+    const fallback: TrafficNotConfigured = {
+      configured: false,
+      reason,
+      setup: getGa4SetupStatus(),
+    };
     return NextResponse.json(fallback);
   }
 }

@@ -22,9 +22,22 @@ export interface TrafficSummary {
   sources: Array<{ source: string; sessions: number }>;
 }
 
+export interface Ga4SetupStatus {
+  measurementIdSet: boolean;
+  measurementId: string | null;
+  dataApi: {
+    propertyId: boolean;
+    clientEmail: boolean;
+    privateKey: boolean;
+  };
+  missing: string[];
+  ready: boolean;
+}
+
 export interface TrafficNotConfigured {
   configured: false;
   reason: string;
+  setup: Ga4SetupStatus;
 }
 
 type GaRow = {
@@ -38,10 +51,41 @@ const RANGE_DAYS: Record<TrafficRange, number> = {
   "90d": 90,
 };
 
+export function getGa4SetupStatus(): Ga4SetupStatus {
+  const measurementId =
+    process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim() || null;
+  const propertyId = Boolean(process.env.GA4_PROPERTY_ID?.trim());
+  const clientEmail = Boolean(
+    process.env.GA4_SA_CLIENT_EMAIL?.trim() ||
+      process.env.GSC_SA_CLIENT_EMAIL?.trim()
+  );
+  const privateKey = Boolean(
+    process.env.GA4_SA_PRIVATE_KEY?.trim() ||
+      process.env.GSC_SA_PRIVATE_KEY?.trim()
+  );
+  const missing: string[] = [];
+  if (!propertyId) missing.push("GA4_PROPERTY_ID");
+  if (!clientEmail) missing.push("GA4_SA_CLIENT_EMAIL (veya GSC_SA_CLIENT_EMAIL)");
+  if (!privateKey) missing.push("GA4_SA_PRIVATE_KEY (veya GSC_SA_PRIVATE_KEY)");
+  return {
+    measurementIdSet: Boolean(measurementId),
+    measurementId,
+    dataApi: { propertyId, clientEmail, privateKey },
+    missing,
+    ready: propertyId && clientEmail && privateKey,
+  };
+}
+
 function getClient(): BetaAnalyticsDataClient | null {
-  const email = process.env.GA4_SA_CLIENT_EMAIL;
-  const key = process.env.GA4_SA_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  if (!email || !key || !process.env.GA4_PROPERTY_ID) return null;
+  const setup = getGa4SetupStatus();
+  if (!setup.ready) return null;
+  const email =
+    process.env.GA4_SA_CLIENT_EMAIL?.trim() ||
+    process.env.GSC_SA_CLIENT_EMAIL?.trim();
+  const key = (
+    process.env.GA4_SA_PRIVATE_KEY || process.env.GSC_SA_PRIVATE_KEY
+  )?.replace(/\\n/g, "\n");
+  if (!email || !key) return null;
   return new BetaAnalyticsDataClient({
     credentials: { client_email: email, private_key: key },
   });
@@ -91,10 +135,18 @@ function parseTotalsRow(row: GaRow | null | undefined) {
 export async function getTrafficSummary(
   range: TrafficRange
 ): Promise<TrafficSummary | TrafficNotConfigured> {
+  const setup = getGa4SetupStatus();
   const client = getClient();
-  const propertyId = process.env.GA4_PROPERTY_ID;
+  const propertyId = process.env.GA4_PROPERTY_ID?.trim();
   if (!client || !propertyId) {
-    return { configured: false, reason: "GA4 Data API env eksik" };
+    return {
+      configured: false,
+      reason:
+        setup.missing.length > 0
+          ? `Admin paneli için eksik env: ${setup.missing.join(", ")}`
+          : "GA4 Data API env eksik",
+      setup,
+    };
   }
 
   const property = `properties/${propertyId}`;
@@ -170,6 +222,6 @@ export async function getTrafficSummary(
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "GA4 Data API isteği başarısız";
-    return { configured: false, reason: message };
+    return { configured: false, reason: message, setup: getGa4SetupStatus() };
   }
 }
