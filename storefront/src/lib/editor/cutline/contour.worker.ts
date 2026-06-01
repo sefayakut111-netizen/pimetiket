@@ -11,7 +11,8 @@ import type { PathRing } from "@/lib/editor/cutline/types";
 const OPENCV_INIT_TIMEOUT_MS = 12_000;
 
 type CvGlobal = {
-  cv?: OpenCvModule & { onRuntimeInitialized?: () => void };
+  cv?: OpenCvModule;
+  Module?: unknown;
 };
 
 let cvPromise: Promise<OpenCvModule> | null = null;
@@ -41,38 +42,25 @@ function loadOpenCvInWorker(): Promise<OpenCvModule> {
     };
 
     try {
-      importScripts(OPENCV_JS_URL);
-      const raw = (g as { cv?: unknown }).cv;
+      // POC pattern (public/poc.html): Module global'i importScripts'ten ÖNCE kur.
+      // OpenCV WASM init bitince Module.onRuntimeInitialized çağrılır; cv.Mat o an hazır.
+      const gg = self as unknown as { Module?: unknown; cv?: OpenCvModule };
+      gg.Module = {
+        onRuntimeInitialized: () => {
+          const cv = (gg.cv ?? (gg.Module as OpenCvModule)) as OpenCvModule;
+          if (cv?.Mat) {
+            g.cv = cv;
+            finish(cv);
+          } else {
+            fail(new Error("OpenCV init OK ama Mat yok"));
+          }
+        },
+      };
 
-      // OpenCV 4.10+: cv thenable (gerçek Promise değil) — Promise.resolve ile sar
-      if (raw && typeof (raw as { then?: unknown }).then === "function") {
-        Promise.resolve(raw as PromiseLike<OpenCvModule>).then(
-          (real) => {
-            g.cv = real;
-            if (real?.Mat) finish(real);
-            else fail(new Error("OpenCV resolved ama Mat yok"));
-          },
-          (err) => fail(err)
-        );
-        return;
-      }
+      importScripts(OPENCV_JS_URL);
 
       if (g.cv?.Mat) {
         finish(g.cv);
-        return;
-      }
-
-      // Legacy 4.5.x: onRuntimeInitialized callback
-      const mod = g.cv as
-        | (OpenCvModule & { onRuntimeInitialized?: () => void })
-        | undefined;
-      if (mod) {
-        mod.onRuntimeInitialized = () => {
-          if (g.cv?.Mat) finish(g.cv);
-          else fail(new Error("OpenCV init başarısız"));
-        };
-      } else {
-        fail(new Error("OpenCV global yok (importScripts başarısız?)"));
       }
     } catch (err) {
       fail(err);
