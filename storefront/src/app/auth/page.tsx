@@ -149,7 +149,7 @@ function AuthInner() {
   // Sefa 16 May üyelik audit Kritik 2: Google OAuth
   const onGoogleSignIn = async () => {
     if (loading) return;
-    if (mode === "signup" && !acceptKvkk) {
+    if (!acceptKvkk) {
       toast.error("Devam etmek için KVKK metnini onayla");
       return;
     }
@@ -591,57 +591,55 @@ function AuthInner() {
               </label>
             )}
 
-            {mode === "signup" && (
-              <label className="flex items-start gap-2.5 text-[12.5px] text-gri-700 leading-relaxed cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={acceptKvkk}
-                  onChange={(e) => setAcceptKvkk(e.target.checked)}
-                  className="mt-0.5 accent-pim-mercan shrink-0"
-                />
-                <span>
-                  <Link
-                    href="/kvkk"
-                    className="text-pim-mercan font-semibold hover:underline"
-                    target="_blank"
-                  >
-                    KVKK Aydınlatma Metni
-                  </Link>
-                  ,{" "}
-                  <Link
-                    href="/sartlar"
-                    className="text-pim-mercan font-semibold hover:underline"
-                    target="_blank"
-                  >
-                    Kullanım Şartları
-                  </Link>{" "}
-                  ve{" "}
-                  <Link
-                    href="/cerez"
-                    className="text-pim-mercan font-semibold hover:underline"
-                    target="_blank"
-                  >
-                    Çerez Politikası
-                  </Link>
-                  &rsquo;nı okudum, kabul ediyorum.
-                  {" "}
-                  <strong>Pim asistanını kullandığımda sohbet
-                  içeriklerimin OpenAI (ABD) üzerinden işlenebileceğini,
-                  ödeme bilgilerimin PayTR&rsquo;ye, e-posta bildirimlerinin
-                  Resend (ABD) ile gönderilebileceğini ve verilerimin
-                  Supabase Frankfurt&rsquo;ta saklanabileceğini KVKK m.9
-                  kapsamında kabul ediyorum.</strong> Detayları{" "}
-                  <Link
-                    href="/kvkk#5-aktarim"
-                    className="text-pim-mercan font-semibold hover:underline"
-                    target="_blank"
-                  >
-                    KVKK Bölüm 5.2-5.5
-                  </Link>
-                  &rsquo;te okuyabilirim.
-                </span>
-              </label>
-            )}
+            <label className="flex items-start gap-2.5 text-[12.5px] text-gri-700 leading-relaxed cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptKvkk}
+                onChange={(e) => setAcceptKvkk(e.target.checked)}
+                className="mt-0.5 accent-pim-mercan shrink-0"
+              />
+              <span>
+                <Link
+                  href="/kvkk"
+                  className="text-pim-mercan font-semibold hover:underline"
+                  target="_blank"
+                >
+                  KVKK Aydınlatma Metni
+                </Link>
+                ,{" "}
+                <Link
+                  href="/sartlar"
+                  className="text-pim-mercan font-semibold hover:underline"
+                  target="_blank"
+                >
+                  Kullanım Şartları
+                </Link>{" "}
+                ve{" "}
+                <Link
+                  href="/cerez"
+                  className="text-pim-mercan font-semibold hover:underline"
+                  target="_blank"
+                >
+                  Çerez Politikası
+                </Link>
+                &rsquo;nı okudum, kabul ediyorum.
+                {" "}
+                <strong>Pim asistanını kullandığımda sohbet
+                içeriklerimin OpenAI (ABD) üzerinden işlenebileceğini,
+                ödeme bilgilerimin PayTR&rsquo;ye, e-posta bildirimlerinin
+                Resend (ABD) ile gönderilebileceğini ve verilerimin
+                Supabase Frankfurt&rsquo;ta saklanabileceğini KVKK m.9
+                kapsamında kabul ediyorum.</strong> Detayları{" "}
+                <Link
+                  href="/kvkk#5-aktarim"
+                  className="text-pim-mercan font-semibold hover:underline"
+                  target="_blank"
+                >
+                  KVKK Bölüm 5.2-5.5
+                </Link>
+                &rsquo;te okuyabilirim.
+              </span>
+            </label>
 
             <Button
               type="submit"
