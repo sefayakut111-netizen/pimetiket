@@ -1489,13 +1489,22 @@
     padding: 0;
     border: none;
     border-radius: 0;
-    overflow: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    place-items: center;
+    overflow: hidden;
+    display: block;
+    background: none;
+  }
+  html.pim-editor-shell #canvasZoomInner {
+    width: 100%;
+    height: 100%;
+    display: block;
+    transform: none !important;
   }
   html.pim-editor-shell #canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
     box-shadow: none;
     border-radius: 0;
     background: transparent;
@@ -1874,6 +1883,7 @@ let pimUserMovedImage = false;     // standalone: kullanıcı görseli elle oyna
 let cutlineFrame = null;         // { cx, cy, w, h, mode, refW, refH }
 let isCutlineLocked = true;        // drag sırasında path yeniden üretilmez
 let viewZoom = 1;                  // yalnızca önizleme (0.25–3.0)
+let cutType = 'kisscut';           // kisscut | thrucut — üretim spot rengi
 let isDraggingArt = false;
 let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
 
@@ -2257,6 +2267,9 @@ window.addEventListener('message', (e) => {
           render();
         }
       }
+    } else if (msg.type === 'pim-set-cut-type') {
+      cutType = msg.cutType === 'thrucut' ? 'thrucut' : 'kisscut';
+      render();
     } else if (msg.type === 'pim-set-view-zoom') {
       if (typeof msg.zoom === 'number' && msg.zoom > 0) {
         viewZoom = Math.max(0.25, Math.min(3, msg.zoom));
@@ -2315,11 +2328,18 @@ function pimNotifyLoaded() {
   pimScheduleHeightReport();
 }
 
-/** Dış editör kabuğu — canvas'ı önizleme alanına sığdır */
+/** Dış editör kabuğu — editorShell: canvas=wrap; diğer: viewZoom ile sığdır */
 function pimAutoFitViewZoomToWrap() {
   const wrap = document.getElementById('canvasWrap');
   const canvas = document.getElementById('canvas');
-  if (!wrap || !canvas || canvas.width <= 0 || canvas.height <= 0) return;
+  if (!wrap || !canvas) return;
+  if (PIM_PARAMS.editorShell && currentMat) {
+    viewZoom = 1;
+    applyViewZoom();
+    render();
+    return;
+  }
+  if (canvas.width <= 0 || canvas.height <= 0) return;
   const pad = 20;
   const availW = Math.max(120, wrap.clientWidth - pad);
   const availH = Math.max(120, (wrap.clientHeight || 480) - pad);
@@ -2333,21 +2353,18 @@ function pimPostImageScaleChanged() {
   pimPostToParent({ type: 'pim-image-scale-changed', scale: imageTransform.scale });
 }
 
-/** Editör kabuğu — görsel ölçeği %100 (scale=1), merkeze hizala; view-zoom önizlemeye sığdırır */
+/** Editör kabuğu — görseli bıçak çerçevesine sığdır+ortala */
 function pimEditorDefaultPlacement() {
   if (!PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) return;
   if (!currentMat || !imageMetadata) return;
   pimUserMovedImage = false;
-  resetImageTransform();
   const frame = getPlacementFrame();
   if (frame) {
-    imageTransform.scale = 1;
-    const artCx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
-    const artCy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
-    imageTransform.x = frame.cx - artCx;
-    imageTransform.y = frame.cy - artCy;
+    applyPlacementPreset('contain');
+  } else {
+    resetImageTransform();
+    render();
   }
-  render();
   pimAutoFitViewZoomToWrap();
   pimPostImageScaleChanged();
 }
@@ -3086,8 +3103,51 @@ function applyPlacementPreset(preset) {
 function applyViewZoom() {
   const inner = document.getElementById('canvasZoomInner');
   const label = document.getElementById('zoomLabel');
-  if (inner) inner.style.transform = `scale(${viewZoom})`;
+  if (inner) {
+    inner.style.transform = PIM_PARAMS.editorShell ? 'none' : `scale(${viewZoom})`;
+  }
   if (label) label.textContent = Math.round(viewZoom * 100) + '%';
+}
+
+function pimCutStrokeColor() {
+  return cutType === 'thrucut' ? '#0047FF' : '#E5007E';
+}
+
+function pimCutSpotGroupId() {
+  return cutType === 'thrucut' ? 'ThruCut' : 'CutContour';
+}
+
+function pimComputeEditorShellViewport(contentW, contentH) {
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return null;
+  const pad = 20;
+  const cw = Math.max(120, wrap.clientWidth);
+  const ch = Math.max(120, wrap.clientHeight || 480);
+  if (cw <= 0 || ch <= 0) return null;
+  const fitScale = Math.min((cw - pad * 2) / contentW, (ch - pad * 2) / contentH);
+  const scale = Math.max(0.25, Math.min(1, fitScale));
+  return {
+    cw,
+    ch,
+    scale,
+    offsetX: (cw - contentW * scale) / 2,
+    offsetY: (ch - contentH * scale) / 2,
+  };
+}
+
+function drawEditorShellCheckerboard(ctx, w, h) {
+  const tile = 10;
+  const patCanvas = document.createElement('canvas');
+  patCanvas.width = tile * 2;
+  patCanvas.height = tile * 2;
+  const pctx = patCanvas.getContext('2d');
+  pctx.fillStyle = '#faf8f3';
+  pctx.fillRect(0, 0, tile * 2, tile * 2);
+  pctx.fillStyle = '#efe9da';
+  pctx.fillRect(0, 0, tile, tile);
+  pctx.fillRect(tile, tile, tile, tile);
+  ctx.fillStyle = ctx.createPattern(patCanvas, 'repeat');
+  ctx.fillRect(0, 0, w, h);
 }
 
 function pimProductionExportUrl(type) {
@@ -3721,17 +3781,7 @@ function circleToPath(cx, cy, r, segments = 96) {
 // ============================================================
 // CANVAS RENDER
 // ============================================================
-function render() {
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-
-  if (!currentMat) return;
-
-  canvas.width = currentMat.cols;
-  canvas.height = currentMat.rows;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+function renderContentLayers(ctx) {
   // ============================================================
   // 0. PNG SAYFA SINIRI — sabit yarı saydam sayfa (bıçak üretiminde referans)
   // ============================================================
@@ -3742,18 +3792,14 @@ function render() {
   // ============================================================
   // 1. BEYAZ PLAN — ALT KATMAN (görselden ÖNCE çizilir)
   // ============================================================
-  // Gerçek baskı sırası: white ink → görsel → cut. Önizleme de aynı.
-  // Görsel alpha kanallı olduğu için silüet dışında beyaz plan görünür.
   if (layers.white && whitePlanPaths.length > 0) {
     const patternSize = 8;
     const patternCanvas = document.createElement('canvas');
     patternCanvas.width = patternSize;
     patternCanvas.height = patternSize;
     const pctx = patternCanvas.getContext('2d');
-    // Beyaz dolgu
     pctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
     pctx.fillRect(0, 0, patternSize, patternSize);
-    // Diagonal çizgi (beyaz mürekkep göstergesi)
     pctx.strokeStyle = 'rgba(71, 85, 105, 0.35)';
     pctx.lineWidth = 1;
     pctx.beginPath();
@@ -3774,7 +3820,6 @@ function render() {
       ctx.closePath();
       ctx.fill();
     }
-    // Beyaz planın kenarını da kesik çizgi olarak çiz
     ctx.strokeStyle = 'rgba(71, 85, 105, 0.7)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 3]);
@@ -3827,7 +3872,7 @@ function render() {
   }
 
   if (layers.cut && currentPaths.length > 0) {
-    ctx.strokeStyle = '#ff0080';
+    ctx.strokeStyle = pimCutStrokeColor();
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 4]);
     drawPaths(ctx, currentPaths);
@@ -3841,6 +3886,36 @@ function render() {
   }
 
   ctx.setLineDash([]);
+}
+
+function render() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!currentMat) return;
+
+  const contentW = currentMat.cols;
+  const contentH = currentMat.rows;
+
+  if (PIM_PARAMS.editorShell) {
+    const vp = pimComputeEditorShellViewport(contentW, contentH);
+    if (!vp) return;
+    canvas.width = vp.cw;
+    canvas.height = vp.ch;
+    ctx.clearRect(0, 0, vp.cw, vp.ch);
+    drawEditorShellCheckerboard(ctx, vp.cw, vp.ch);
+    ctx.save();
+    ctx.setTransform(vp.scale, 0, 0, vp.scale, vp.offsetX, vp.offsetY);
+    renderContentLayers(ctx);
+    ctx.restore();
+    return;
+  }
+
+  canvas.width = contentW;
+  canvas.height = contentH;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  renderContentLayers(ctx);
 }
 
 function drawPaths(ctx, paths) {
@@ -4686,7 +4761,7 @@ function pimCapturePreviewPng() {
       if (rect) ctx.drawImage(sourceImage, rect.x, rect.y, rect.w, rect.h);
     }
     if (layers.cut && currentPaths.length > 0) {
-      ctx.strokeStyle = '#ff0080';
+      ctx.strokeStyle = pimCutStrokeColor();
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
       for (const path of currentPaths) {
@@ -4732,7 +4807,7 @@ function pimBuildCutlineSvg() {
       d += ` L ${x} ${y}`;
     }
     d += ' Z';
-    svgPaths += `  <path d="${d}" fill="none" stroke="#FF0080" stroke-width="0.5"/>\n`;
+    svgPaths += `  <path d="${d}" fill="none" stroke="${pimCutStrokeColor()}" stroke-width="0.5"/>\n`;
   }
 
   let whitePaths = '';
@@ -4762,7 +4837,7 @@ ${whitePaths}  </g>` : '';
 <svg xmlns="http://www.w3.org/2000/svg"
      width="${viewW.toFixed(2)}" height="${viewH.toFixed(2)}"
      viewBox="${viewMinX.toFixed(2)} ${viewMinY.toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}">${whiteGroup}
-  <g id="CutContour" data-pim-cutline="true">
+  <g id="${pimCutSpotGroupId()}" data-pim-cutline="true" data-pim-cut-type="${cutType}">
 ${svgPaths}  </g>
 </svg>`;
 }

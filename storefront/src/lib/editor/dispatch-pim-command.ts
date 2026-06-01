@@ -8,6 +8,12 @@ import { SIZE_REFERENCES } from "@/lib/editor/size-references";
 import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
 import type { EditorLayer } from "@/components/editor/EditorPreviewToolbar";
 
+function triggerFitContain(
+  postToPoc: (payload: Record<string, unknown>) => void
+) {
+  postToPoc({ type: "pim-fit-contain" });
+}
+
 export type CutMode = "contour" | "hull" | "rect" | "circle";
 
 export interface PimCommandDispatchContext {
@@ -49,6 +55,7 @@ export function dispatchPimCommand(
       setWidthMm(w);
       setHeightMm(h);
       syncSizeToPoc(w, h);
+      triggerFitContain(postToPoc);
       return true;
     }
     case "set_size_from_reference": {
@@ -75,6 +82,7 @@ export function dispatchPimCommand(
           heightMm: h,
         });
       }
+      triggerFitContain(postToPoc);
       return true;
     }
     case "set_cut_offset":
@@ -93,6 +101,7 @@ export function dispatchPimCommand(
         widthMm,
         heightMm,
       });
+      triggerFitContain(postToPoc);
       return true;
     }
     case "apply_shape_cut": {
@@ -106,6 +115,7 @@ export function dispatchPimCommand(
         widthMm,
         heightMm,
       });
+      triggerFitContain(postToPoc);
       return true;
     }
     case "apply_template": {
@@ -129,6 +139,7 @@ export function dispatchPimCommand(
         widthMm: tpl.widthMm,
         heightMm: tpl.heightMm,
       });
+      triggerFitContain(postToPoc);
       return true;
     }
     case "toggle_layer":

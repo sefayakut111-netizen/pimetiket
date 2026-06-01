@@ -1,25 +1,30 @@
 import { pathRingToSvgD } from "@/lib/editor/cutline/shapes";
 import type { CutlineBundle } from "@/lib/editor/cutline/types";
+import type { CutSet } from "@/lib/templates/die-cut-templates";
+import { CUT_SET_META } from "@/lib/templates/die-cut-templates";
 
 /** Üretim SVG — viewBox mm (0…labelW × 0…labelH) */
 export function buildCutlineSvgMm(args: {
   bundle: CutlineBundle;
   labelWidthMm: number;
   labelHeightMm: number;
+  cutType?: CutSet;
 }): string {
   const w = args.labelWidthMm;
   const h = args.labelHeightMm;
+  const cutType = args.cutType ?? "kisscut";
+  const { spot, color } = CUT_SET_META[cutType];
   let pathsXml = "";
   for (const ring of args.bundle.cut) {
     const d = pathRingToSvgD(ring);
     if (!d) continue;
-    pathsXml += `    <path d="${d.replace(/"/g, "'")}" fill="none" stroke="#FF0080" stroke-width="0.35"/>\n`;
+    pathsXml += `    <path d="${d.replace(/"/g, "'")}" fill="none" stroke="${color}" stroke-width="0.35"/>\n`;
   }
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg"
      width="${w.toFixed(2)}" height="${h.toFixed(2)}"
      viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}">
-  <g id="CutContour" data-pim-cutline="true">
+  <g id="${spot}" data-pim-cutline="true" data-pim-cut-type="${cutType}">
 ${pathsXml}  </g>
 </svg>`;
 }

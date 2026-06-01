@@ -1,12 +1,14 @@
 /** Editör önizlemesindeki kontur renkleri — her zaman görünür legend */
 
-const ITEMS: {
+import type { CutSet } from "@/lib/templates/die-cut-templates";
+import { CUT_SET_META } from "@/lib/templates/die-cut-templates";
+
+const STATIC_ITEMS: {
   color: string;
   label: string;
   short: string;
   dashed?: boolean;
 }[] = [
-  { color: "#ff0080", label: "Bıçak", short: "Kesim hattı" },
   {
     color: "#64748b",
     label: "Beyaz plan",
@@ -55,7 +57,11 @@ function LegendSwatch({
   );
 }
 
-export function EditorPreviewLegend() {
+export function EditorPreviewLegend({ cutType = "kisscut" }: { cutType?: CutSet }) {
+  const cutMeta = CUT_SET_META[cutType];
+  const cutShort =
+    cutType === "thrucut" ? "Tam kesim (ayrılır)" : "Yarım kesim (soyulur)";
+
   return (
     <div
       className="flex flex-wrap items-center gap-2 rounded-lg border border-gri-200 bg-white px-3 py-2.5 shadow-sm"
@@ -64,7 +70,19 @@ export function EditorPreviewLegend() {
       <span className="text-[13px] font-semibold text-lacivert shrink-0">
         Renkler
       </span>
-      {ITEMS.map((item) => (
+      <span
+        className="inline-flex items-center gap-2 rounded-full bg-gri-50 px-2.5 py-1 ring-1 ring-gri-200"
+        title={`Bıçak: ${cutShort}`}
+      >
+        <LegendSwatch color={cutMeta.color} dashed />
+        <span className="text-[13px] font-medium leading-none text-lacivert">
+          Bıçak
+        </span>
+        <span className="hidden text-[12px] text-gri-600 sm:inline">
+          {cutShort}
+        </span>
+      </span>
+      {STATIC_ITEMS.map((item) => (
         <span
           key={item.label}
           className="inline-flex items-center gap-2 rounded-full bg-gri-50 px-2.5 py-1 ring-1 ring-gri-200"

@@ -24,6 +24,7 @@ import {
   printDpiStatus,
 } from "@/lib/editor/suggest-mm-from-pixels";
 import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
+import type { CutSet } from "@/lib/templates/die-cut-templates";
 import { EditorPreviewLegend } from "@/components/editor/EditorPreviewLegend";
 import { EditorPimPanel } from "@/components/editor/EditorPimPanel";
 import { EditorPanelSection } from "@/components/editor/EditorPanelSection";
@@ -62,6 +63,23 @@ const FIT_BUTTONS = [
   { id: "pim-fit-contain", label: "Sığdır" },
   { id: "pim-fit-cover", label: "Doldur" },
 ] as const;
+
+const CUT_TYPE_OPTIONS: {
+  id: CutSet;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "kisscut",
+    label: "Yarım kesim",
+    hint: "Sadece sticker katmanı kesilir, soyulur",
+  },
+  {
+    id: "thrucut",
+    label: "Tam kesim",
+    hint: "Kağıt boydan boya kesilir, parça ayrılır",
+  },
+];
 
 function base64ToFile(
   base64: string,
@@ -124,6 +142,7 @@ export default function EditorShell() {
     message: string;
   } | null>({ state: "loading", message: "Editör yükleniyor…" });
   const [toolTab, setToolTab] = useState<EditorToolTab>("gorsel");
+  const [cutType, setCutType] = useState<CutSet>("kisscut");
   const autoSwitchToBicakRef = useRef(false);
 
   useEffect(() => {
@@ -167,6 +186,21 @@ export default function EditorShell() {
       window.location.origin
     );
   }, []);
+
+  const syncCutTypeToPoc = useCallback(
+    (type: CutSet) => {
+      postToPoc({ type: "pim-set-cut-type", cutType: type });
+    },
+    [postToPoc]
+  );
+
+  const handleCutTypeChange = useCallback(
+    (type: CutSet) => {
+      setCutType(type);
+      syncCutTypeToPoc(type);
+    },
+    [syncCutTypeToPoc]
+  );
 
   const uploadFileToPoc = useCallback(
     async (file: File) => {
@@ -246,6 +280,7 @@ export default function EditorShell() {
       if (data.type === "pim-poc-ready") {
         setPocStatus({ state: "ready", message: "Görsel yükle — bıçak otomatik netleşir" });
         syncSizeToPoc(widthMm, heightMm);
+        syncCutTypeToPoc(cutType);
         applyPendingSablon();
       } else if (data.type === "pim-poc-loading") {
         setDesignLoaded(false);
@@ -361,7 +396,7 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, syncSizeToPoc, widthMm, heightMm]);
+  }, [applyPendingSablon, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm]);
 
   useEffect(() => {
     if (!designLoaded || cutlineReady) return;
@@ -754,6 +789,35 @@ export default function EditorShell() {
                   </div>
                 </EditorPanelSection>
 
+                <EditorPanelSection title="Kesim türü">
+                  <div className="flex flex-col gap-1.5">
+                    {CUT_TYPE_OPTIONS.map(({ id, label, hint }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        disabled={!designLoaded}
+                        onClick={() => handleCutTypeChange(id)}
+                        className={cn(
+                          "rounded-md px-2.5 py-2 text-left transition-colors disabled:opacity-40 disabled:pointer-events-none",
+                          cutType === id
+                            ? "bg-pim-mercan text-white shadow-sm"
+                            : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                        )}
+                      >
+                        <span className="block text-[12px] font-medium">{label}</span>
+                        <span
+                          className={cn(
+                            "mt-0.5 block text-[11px] leading-snug",
+                            cutType === id ? "text-white/90" : "text-gri-600"
+                          )}
+                        >
+                          {hint}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </EditorPanelSection>
+
                 <EditorPanelSection title="Yerleştir">
                   <div className="flex flex-wrap gap-1.5">
                     {FIT_BUTTONS.map((btn) => (
@@ -898,7 +962,7 @@ export default function EditorShell() {
         </aside>
 
         <section className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden p-3 lg:p-4">
-          <EditorPreviewLegend />
+          <EditorPreviewLegend cutType={cutType} />
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm">
             <iframe
