@@ -490,14 +490,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             module: "proof",
           },
           {
-            href: "/admin/yardim-talepleri",
-            label: "Prova Yardımı",
-            icon: <Icon.ChatBubble size={16} />,
-            badge: badges.helpRequests,
-            badgeAccent: badges.helpRequests > 0,
-            module: "help_requests",
-          },
-          {
             href: "/admin/kargo",
             label: "Kargo",
             icon: <Icon.Truck size={16} />,
@@ -512,10 +504,10 @@ function AdminShellInner({ children }: { children: ReactNode }) {
           },
           {
             href: "/admin/destek",
-            label: "Destek (Genel)",
+            label: "Destek",
             icon: <Icon.ChatBubble size={16} />,
-            badge: badges.supportOpen,
-            badgeAccent: badges.supportOpen > 0,
+            badge: badges.supportOpen + badges.helpRequests,
+            badgeAccent: badges.supportOpen + badges.helpRequests > 0,
             module: "help_requests",
           },
         ],
@@ -563,12 +555,6 @@ function AdminShellInner({ children }: { children: ReactNode }) {
           {
             href: "/admin/finans",
             label: "Finans & Raporlar",
-            icon: <Icon.Wallet size={16} />,
-            module: "finans",
-          },
-          {
-            href: "/admin/odemeler",
-            label: "Ödemeler",
             icon: <Icon.Wallet size={16} />,
             module: "finans",
           },
@@ -788,7 +774,11 @@ function AdminShellInner({ children }: { children: ReactNode }) {
                   const active =
                     pathname === item.href ||
                     (item.href !== "/admin" &&
-                      pathname.startsWith(item.href + "/"));
+                      pathname.startsWith(item.href + "/")) ||
+                    (item.href === "/admin/finans" &&
+                      pathname.startsWith("/admin/odemeler")) ||
+                    (item.href === "/admin/destek" &&
+                      pathname.startsWith("/admin/yardim-talepleri"));
                   const showBadge = item.badge != null && item.badge > 0;
                   return (
                     <li key={item.href}>

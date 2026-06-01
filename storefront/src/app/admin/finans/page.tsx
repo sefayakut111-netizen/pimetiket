@@ -40,9 +40,16 @@ import {
 } from "@/lib/admin-analytics";
 import { excludeTestOrders } from "@/lib/admin-order-filters";
 import { DetailReports } from "@/components/admin/reports/DetailReports";
+import { OdemelerPanel } from "@/components/admin/finans/OdemelerPanel";
 import type { FinancialSummary } from "@/lib/admin-financial-metrics";
 
-type ReportTab = "overview" | "detail";
+type ReportTab = "overview" | "detail" | "odemeler";
+
+function parseFinansTab(v: string | null): ReportTab {
+  if (v === "detail") return "detail";
+  if (v === "odemeler") return "odemeler";
+  return "overview";
+}
 
 type TimeRange = "7d" | "mtd" | "30d" | "all";
 
@@ -169,7 +176,7 @@ function AdminFinansPageInner() {
   const [range, setRange] = useState<TimeRange>("mtd");
   const [coupons, setCoupons] = useState<CouponSnapshot[]>([]);
   const [reportTab, setReportTab] = useState<ReportTab>(() =>
-    searchParams.get("tab") === "detail" ? "detail" : "overview"
+    parseFinansTab(searchParams.get("tab"))
   );
   const [showTestOrders, setShowTestOrders] = useState(false);
   const [financialSummary, setFinancialSummary] =
@@ -187,7 +194,7 @@ function AdminFinansPageInner() {
   };
 
   useEffect(() => {
-    setReportTab(searchParams.get("tab") === "detail" ? "detail" : "overview");
+    setReportTab(parseFinansTab(searchParams.get("tab")));
   }, [searchParams]);
 
   useEffect(() => {
@@ -330,10 +337,9 @@ function AdminFinansPageInner() {
 
   const setFinansTab = (tab: ReportTab) => {
     setReportTab(tab);
-    router.replace(
-      tab === "detail" ? "/admin/finans?tab=detail" : "/admin/finans",
-      { scroll: false }
-    );
+    const url =
+      tab === "overview" ? "/admin/finans" : `/admin/finans?tab=${tab}`;
+    router.replace(url, { scroll: false });
   };
 
   return (
@@ -367,7 +373,8 @@ function AdminFinansPageInner() {
             )}
           </div>
 
-          {/* Time range toggle */}
+          {/* Time range toggle — yalnızca genel bakış */}
+          {reportTab === "overview" && (
           <div className="bg-white rounded-full ring-1 ring-gri-200 p-1 inline-flex gap-1 shrink-0">
             {(Object.keys(RANGE_LABEL) as TimeRange[]).map((r) => (
               <button
@@ -385,6 +392,7 @@ function AdminFinansPageInner() {
               </button>
             ))}
           </div>
+          )}
         </div>
 
         <div className="flex gap-2 border-b border-gri-200 mb-6">
@@ -411,6 +419,18 @@ function AdminFinansPageInner() {
             )}
           >
             Raporlar
+          </button>
+          <button
+            type="button"
+            onClick={() => setFinansTab("odemeler")}
+            className={cn(
+              "px-4 py-2 text-[13.5px] font-medium transition-colors -mb-px",
+              reportTab === "odemeler"
+                ? "border-b-2 border-pim-mercan font-semibold text-lacivert"
+                : "text-gri-700 hover:text-lacivert"
+            )}
+          >
+            Ödemeler
           </button>
         </div>
 
@@ -884,6 +904,8 @@ function AdminFinansPageInner() {
             orders={showTestOrders ? orders : excludeTestOrders(orders)}
           />
         )}
+
+        {reportTab === "odemeler" && <OdemelerPanel variant="embedded" />}
       </div>
     </main>
   );
