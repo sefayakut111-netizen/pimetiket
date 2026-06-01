@@ -2245,6 +2245,18 @@ window.addEventListener('message', (e) => {
           render();
         }
       }
+    } else if (msg.type === 'pim-set-smoothness') {
+      const slider = document.getElementById('smoothSlider');
+      if (slider && typeof msg.smoothness === 'number') {
+        slider.value = String(Math.max(0, Math.min(100, msg.smoothness)));
+        const valEl = document.getElementById('smoothVal');
+        if (valEl) valEl.textContent = slider.value;
+        if (currentMat) {
+          generateCutline();
+          generateWhitePlan();
+          render();
+        }
+      }
     } else if (msg.type === 'pim-set-view-zoom') {
       if (typeof msg.zoom === 'number' && msg.zoom > 0) {
         viewZoom = Math.max(0.25, Math.min(3, msg.zoom));

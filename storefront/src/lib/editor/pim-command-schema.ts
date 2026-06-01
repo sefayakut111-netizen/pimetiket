@@ -67,7 +67,26 @@ export const PimEditorCommandSchema = z.discriminatedUnion("action", [
     action: z.literal("reject"),
     reason: z.string().min(1).max(500),
   }),
+  z.object({
+    action: z.literal("set_image_scale"),
+    scalePct: z.number().min(25).max(200),
+  }),
+  z.object({
+    action: z.literal("suggest_product"),
+    recommended: z.enum(["sticker", "etiket"]),
+    reason: z.string().min(1).max(500),
+  }),
 ]);
+
+/** LLM çıktısı — komut + kısa Türkçe yanıt */
+export const PimLlmOutputSchema = z.object({
+  reply: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe("Pim'in kısa Türkçe yanıtı, sen-dili, dalkavuk yok"),
+  command: PimEditorCommandSchema,
+});
 
 export type PimEditorCommand = z.infer<typeof PimEditorCommandSchema>;
 

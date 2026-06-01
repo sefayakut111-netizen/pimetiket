@@ -25,6 +25,7 @@ import {
 } from "@/lib/editor/suggest-mm-from-pixels";
 import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
 import { EditorPreviewLegend } from "@/components/editor/EditorPreviewLegend";
+import { EditorPimPanel } from "@/components/editor/EditorPimPanel";
 import { EditorPanelSection } from "@/components/editor/EditorPanelSection";
 import { EditorUploadZone } from "@/components/editor/EditorUploadZone";
 import {
@@ -32,6 +33,8 @@ import {
   type EditorLayer,
 } from "@/components/editor/EditorPreviewToolbar";
 import { cn } from "@/lib/cn";
+import { dispatchPimCommand } from "@/lib/editor/dispatch-pim-command";
+import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
 
 type PocStatusState = "loading" | "ready" | "loaded" | "error" | "timeout";
 type CutMode = "contour" | "hull" | "rect" | "circle";
@@ -399,6 +402,31 @@ export default function EditorShell() {
     setImageScalePct(clamped);
     postToPoc({ type: "pim-set-image-scale", scale: clamped / 100 });
   };
+
+  const handlePimCommand = useCallback(
+    (command: PimEditorCommand) => {
+      dispatchPimCommand(command, {
+        widthMm,
+        heightMm,
+        postToPoc,
+        setWidthMm,
+        setHeightMm,
+        setCutMode,
+        setCutlineReady,
+        setImageScalePct,
+        setLayers,
+        handleRemoveBg,
+        syncSizeToPoc,
+      });
+    },
+    [
+      widthMm,
+      heightMm,
+      postToPoc,
+      handleRemoveBg,
+      syncSizeToPoc,
+    ]
+  );
 
   const dpiInfo = useMemo(() => {
     if (imagePixelW <= 0 || imagePixelH <= 0) return null;
@@ -829,17 +857,10 @@ export default function EditorShell() {
           </div>
         </section>
 
-        <aside className="hidden min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
-          <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pim-mercan-tint text-[15px] font-bold text-pim-mercan">
-              P
-            </div>
-            <p className="mt-3 text-[13px] font-semibold text-lacivert">Pim sohbet</p>
-            <p className="mt-1.5 text-[12px] leading-snug text-gri-600">
-              Yakında — tasarımın ve bıçağın hakkında soru sorabileceksin.
-            </p>
-          </div>
-        </aside>
+        <EditorPimPanel
+          onCommand={handlePimCommand}
+          disabled={pocStatus?.state === "loading"}
+        />
       </div>
       </div>
     </main>

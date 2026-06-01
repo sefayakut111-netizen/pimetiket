@@ -1,6 +1,6 @@
 /**
- * POST /api/editor/pim-command — Pim editör komut iskeleti (Dalga 3 / Faz 1).
- * Whitelist validate + canlı ürün sınırları enjeksiyonu. LLM entegrasyonu sonraki faz.
+ * POST /api/editor/pim-command — Pim editör komut (kural + LLM).
+ * Whitelist validate + canlı ürün sınırları. gpt-4o-mini fallback.
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -11,29 +11,51 @@ import {
   PimCommandRequestSchema,
   type PimEditorCommand,
 } from "@/lib/editor/pim-command-schema";
+import {
+  buildReferenceReply,
+  clampPimCommand,
+  resolvePimCommandWithLlm,
+  STICKER_LIMITS,
+} from "@/lib/editor/pim-command-llm";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+export const maxDuration = 15;
 
-const STICKER_LIMITS = {
-  minWidthMm: 25,
-  maxWidthMm: 400,
-  minHeightMm: 25,
-  maxHeightMm: 650,
-  minQty: 25,
-  maxQty: 1000,
-} as const;
-
-function resolveReferenceCommand(text: string): PimEditorCommand | null {
+function resolveReferenceCommand(text: string): {
+  command: PimEditorCommand;
+  reply: string;
+} | null {
   const ref = lookupSizeReference(text);
   if (!ref) return null;
-  return {
+  const command = clampPimCommand({
     action: "set_size_from_reference",
     referenceKey: ref.labelTr,
     estimatedWidthMm: ref.widthMm,
     estimatedHeightMm: ref.heightMm,
     confidence: 1,
     isEstimate: false,
+  });
+  return {
+    command,
+    reply: buildReferenceReply(
+      ref.labelTr,
+      ref.widthMm,
+      ref.heightMm,
+      ref.shape
+    ),
+  };
+}
+
+function fallbackClarify(): { command: PimEditorCommand; reply: string } {
+  return {
+    command: {
+      action: "clarify",
+      question:
+        "Boyutu mm veya santim olarak yazar mısın? (Örn: 50 mm veya 5 cm)",
+    },
+    reply:
+      "Şimdilik basit komutları anlıyorum — boyut, kesim şekli, arka plan silme gibi. Net bir mm/cm değeri yazarsan uygularım.",
   };
 }
 
@@ -64,24 +86,23 @@ export async function POST(req: Request) {
   }
 
   let command = body.command ?? null;
+  let reply: string | null = null;
+
   if (!command && body.message) {
-    command = resolveReferenceCommand(body.message);
-    if (!command) {
-      return NextResponse.json({
-        ok: true,
-        command: {
-          action: "clarify",
-          question:
-            "Boyutu mm veya santim olarak yazar mısın? (Örn: 50 mm veya 5 cm)",
-        } satisfies PimEditorCommand,
-        limits: STICKER_LIMITS,
-        references: SIZE_REFERENCES.map((r) => ({
-          label: r.labelTr,
-          widthMm: r.widthMm,
-          heightMm: r.heightMm,
-          shape: r.shape,
-        })),
-      });
+    const refResult = resolveReferenceCommand(body.message);
+    if (refResult) {
+      command = refResult.command;
+      reply = refResult.reply;
+    } else {
+      const llmResult = await resolvePimCommandWithLlm(body.message);
+      if (llmResult) {
+        command = llmResult.command;
+        reply = llmResult.reply;
+      } else {
+        const fb = fallbackClarify();
+        command = fb.command;
+        reply = fb.reply;
+      }
     }
   }
 
@@ -89,11 +110,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "command_or_message_required" }, { status: 400 });
   }
 
+  command = clampPimCommand(command);
+
+  if (!reply) {
+    if (command.action === "clarify") {
+      reply = command.question;
+    } else if (command.action === "reject") {
+      reply = command.reason;
+    } else {
+      reply = "Tamam, uyguladım.";
+    }
+  }
+
   const pricing = await getLivePricingConfig("sticker").catch(() => null);
 
   return NextResponse.json({
     ok: true,
     command,
+    reply,
     limits: STICKER_LIMITS,
     liveConfigLoaded: pricing != null,
     references: SIZE_REFERENCES.map((r) => ({
