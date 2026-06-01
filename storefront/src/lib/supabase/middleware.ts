@@ -42,7 +42,7 @@ const PROTECTED_PATHS: ReadonlyArray<string> = [
   "/onay",
   "/yorum-yaz",
   "/demo", // staff/test sayfası — public erişimden gizlendi (UX audit P0)
-  "/admin", // staff role check ileride; şimdilik login zorunlu
+  "/admin", // admin/staff rol guard (middleware #8 — login + role)
 ];
 
 /**
@@ -93,6 +93,29 @@ function isProtected(pathname: string): boolean {
 
 function isAuthPath(pathname: string): boolean {
   return AUTH_PATHS.some((p) => pathname === p);
+}
+
+function redirectToHome(request: NextRequest) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = "/";
+  redirectUrl.search = "";
+  return NextResponse.redirect(redirectUrl);
+}
+
+async function loadProfileRole(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string
+): Promise<string | null> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+  return (profile as { role?: string } | null)?.role ?? null;
+}
+
+function isAdminOrStaffRole(role: string | null): boolean {
+  return role === "admin" || role === "staff";
 }
 
 async function isMaintenanceModeActive(): Promise<boolean> {
@@ -221,23 +244,24 @@ export async function updateSession(request: NextRequest) {
     (pathname === "/demo" || pathname.startsWith("/demo/"))
   ) {
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      const role = (profile as { role?: string } | null)?.role;
-      if (role !== "admin" && role !== "staff") {
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/";
-        redirectUrl.search = "";
-        return NextResponse.redirect(redirectUrl);
+      const role = await loadProfileRole(supabase, user.id);
+      if (!isAdminOrStaffRole(role)) {
+        return redirectToHome(request);
       }
     } catch {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/";
-      redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
+      return redirectToHome(request);
+    }
+  }
+
+  // 1a-alt) /admin — yalnızca admin/staff (#8 — müşteri/partner → /)
+  if (user && pathname.startsWith("/admin")) {
+    try {
+      const role = await loadProfileRole(supabase, user.id);
+      if (!isAdminOrStaffRole(role)) {
+        return redirectToHome(request);
+      }
+    } catch {
+      return redirectToHome(request);
     }
   }
 
@@ -295,27 +319,12 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 1b) /admin için role check + view_mode (impersonation)
-  // - admin/staff dışı kullanıcı asla giremez
+  // 1c) /admin — view_mode, 2FA, modül RBAC (rol guard yukarıda #8)
   // - admin/staff ama cookie pim_view_mode=customer ise → "müşteri görünümünde"
   //   sayar, /admin'i bloke et (cookie'yi silmek için /'a redirect değil — banner
   //   "Admin'e dön" butonu cookie'yi siler)
   if (user && pathname.startsWith("/admin")) {
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      const role = (profile as { role?: string } | null)?.role;
-      if (role !== "admin" && role !== "staff") {
-        // Yetkili değil — anasayfaya yönlendir (404 yerine zarif düşüş)
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/";
-        redirectUrl.search = "";
-        return NextResponse.redirect(redirectUrl);
-      }
-
       // Sefa 16 May Kritik 4 + 23 May v68 (P1.5): Admin 2FA enforcement
       //
       // İki katman:
@@ -439,10 +448,7 @@ export async function updateSession(request: NextRequest) {
       }
     } catch {
       // DB hatası olursa güvenli taraf — admin'e izin verme
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/";
-      redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
+      return redirectToHome(request);
     }
   }
 
