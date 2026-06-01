@@ -41,7 +41,7 @@ const EXPECTED_STICKER = [
   { key: "square", params: { cut: "diecut", shape: "square" } },
   { key: "oval", params: { cut: "diecut", shape: "oval" } },
   { key: "bumper", params: { cut: "diecut", shape: "bumper" } },
-  { key: "kisscut", params: { cut: "kisscut", shape: "diecut" } },
+  { key: "kisscut", params: { cut: "diecut", shape: "diecut" } },
   { key: "clear", params: { cut: "diecut", shape: "diecut", material: "transparan" } },
   { key: "holo", params: { cut: "diecut", shape: "diecut", material: "holo" } },
   { key: "glitter", params: { cut: "diecut", shape: "diecut", material: "simli" } },

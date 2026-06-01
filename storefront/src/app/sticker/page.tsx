@@ -12,10 +12,10 @@
  *   4. Square           → cut=diecut, shape=square
  *   5. Oval             → cut=diecut, shape=oval
  *   6. Bumper           → cut=diecut, shape=rectangle, preset 280×80, corner=rounded
- *   7. Kiss cut         → cut=kisscut, shape=ozel
- *   8. Clear            → cut=diecut, material=transparan
- *   9. Holographic      → cut=diecut, material=holo
- *   10. Glitter         → cut=diecut, material=simli
+ *   7. Clear            → cut=diecut, material=transparan
+ *   8. Holographic      → cut=diecut, material=holo
+ *   9. Glitter         → cut=diecut, material=simli
+ *  10. Yarı Kesim (die-cut fiyat) → cut=diecut, shape=diecut (die cut sütununun sonu)
  *   11. Sticker sheets  → cut=tabaka
  *
  * Müşteri /sticker'a gelince eskiden direkt konfigüratör vardı.
@@ -443,15 +443,6 @@ const STICKER_CARDS: StickerCard[] = [
     imageSrc: "/assets/img/cards/sticker-bumper.jpg",
   },
   {
-    query: "cut=kisscut&shape=diecut",
-    titleTr: "Yarı Kesim Sticker",
-    titleEn: "Kiss-Cut Sticker",
-    descTr: "Çevresi sağlam kağıttan tek tek çıkarılır",
-    descEn: "Sticker cut, backing intact — peel individually",
-    svg: <KissCutIcon />,
-    imageSrc: "/assets/img/cards/sticker-kisscut.jpg",
-  },
-  {
     query: "cut=diecut&shape=diecut&material=transparan",
     titleTr: "Şeffaf Sticker",
     titleEn: "Clear Sticker",
@@ -477,6 +468,15 @@ const STICKER_CARDS: StickerCard[] = [
     descEn: "Sparkly texture — kids, gifts",
     svg: <GlitterIcon />,
     imageSrc: "/assets/img/cards/sticker-glitter-holo.jpg",
+  },
+  {
+    query: "cut=diecut&shape=diecut",
+    titleTr: "Yarı Kesim Sticker",
+    titleEn: "Kiss-Cut Sticker",
+    descTr: "Çevresi sağlam kağıttan tek tek çıkarılır",
+    descEn: "Sticker cut, backing intact — peel individually",
+    svg: <KissCutIcon />,
+    imageSrc: "/assets/img/cards/sticker-kisscut.jpg",
   },
   {
     // Sefa 22 May v68 (revize): "Tabaka Sticker" → "Sticker Sayfası".

@@ -25,7 +25,7 @@ const STICKER_PRODUCTS = [
   { id: "S4", path: "/sticker/yapilandir?cut=diecut&shape=square", steps: 5 },
   { id: "S5", path: "/sticker/yapilandir?cut=diecut&shape=oval", steps: 5 },
   { id: "S6", path: "/sticker/yapilandir?cut=diecut&shape=bumper", steps: 5 },
-  { id: "S7", path: "/sticker/yapilandir?cut=kisscut&shape=diecut", steps: 5 },
+  { id: "S7", path: "/sticker/yapilandir?cut=diecut&shape=diecut", steps: 5 },
   { id: "S8", path: "/sticker/yapilandir?cut=diecut&shape=diecut&material=transparan", steps: 5 },
   { id: "S9", path: "/sticker/yapilandir?cut=diecut&shape=diecut&material=holo", steps: 5 },
   { id: "S10", path: "/sticker/yapilandir?cut=diecut&shape=diecut&material=simli", steps: 5 },
