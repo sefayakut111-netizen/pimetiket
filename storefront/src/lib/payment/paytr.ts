@@ -51,10 +51,9 @@ function getConfig(): PayTrConfig {
       "PayTR env eksik. .env.local'e PAYTR_MERCHANT_ID + PAYTR_MERCHANT_KEY + PAYTR_MERCHANT_SALT ekle."
     );
   }
-  // PAYTR_TEST_MODE=1 → sandbox; default 1 (güvenli başlangıç)
-  // Production'da explicit 0 set etmeli.
+  // PAYTR_TEST_MODE=1 → sandbox; default 0 (canlı — explicit 1 gerekir)
   const testRaw = process.env.PAYTR_TEST_MODE;
-  const testMode = testRaw === "0" ? 0 : 1;
+  const testMode = testRaw === "1" ? 1 : 0;
   return { merchantId, merchantKey, merchantSalt, testMode };
 }
 

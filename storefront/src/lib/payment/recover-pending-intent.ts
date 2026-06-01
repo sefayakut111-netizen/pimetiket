@@ -13,6 +13,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateOrderId } from "@/lib/customer-order";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
+import { promoteEditorCutlines } from "@/lib/editor/promote-editor-cutline";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
 import {
@@ -173,6 +174,17 @@ async function runPostFinalizeSideEffects(
           .eq("id", orderId);
 
         scheduleOrderDesignQC(admin, orderId);
+      }
+
+      try {
+        await promoteEditorCutlines({
+          admin,
+          orderId,
+          userId: intent.user_id,
+          orderItems: orderItemsForPromote,
+        });
+      } catch (err) {
+        console.error("[payment/recover] editor cutline promote failed:", err);
       }
     } catch (err) {
       console.error("[payment/recover] promote failed:", err);
@@ -396,10 +408,17 @@ export async function recoverPendingPaymentIntent(
   }
 
   if (queryResult.status === "success") {
-    let totalKurus =
+    const totalKurus =
       queryResult.paymentTotalKurus ?? queryResult.paymentAmountKurus ?? 0;
     if (totalKurus === 0) {
-      totalKurus = Math.round(intent.card_amount * 100);
+      Sentry.captureMessage(
+        "PayTR durum sorgusu tutar dönmedi — finalize atlandı, IPN bekleniyor",
+        {
+          level: "warning",
+          tags: { scope: "payment.recover.amount", merchant_oid: merchantOid },
+        }
+      );
+      return { status: "pending" };
     }
     return finalizeFromPaytrSuccess(admin, intent, {
       totalAmountKurus: totalKurus,

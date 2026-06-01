@@ -3,7 +3,7 @@
  *
  * UI preview: fn_validate_coupon (authenticated).
  * Ödeme init: sunucu tarafında total doğrulama.
- * Callback: coupon_uses kaydı (service role — fn_apply_coupon auth.uid gerektirir).
+ * Callback: fn_apply_coupon_admin RPC (service role, atomik FOR UPDATE).
  */
 
 import "server-only";
@@ -94,7 +94,7 @@ type AdminClient = SupabaseClient;
 
 /**
  * Sipariş oluşturulduktan sonra kupon kullanımını kaydet.
- * fn_apply_coupon ile aynı kurallar; service role ile çalışır.
+ * fn_apply_coupon_admin — atomik FOR UPDATE + insert (Mig 130).
  */
 export async function applyCouponAfterOrder(
   admin: AdminClient,
@@ -107,87 +107,28 @@ export async function applyCouponAfterOrder(
     chargedDiscount?: number;
   }
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const code = params.code.trim().toUpperCase();
+  const code = params.code.trim();
   if (!code) return { ok: false, reason: "empty_code" };
 
-  const { data: coupon, error: fetchErr } = await admin
-    .from("coupons")
-    .select("*")
-    .eq("code", code)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (fetchErr || !coupon) {
-    console.error("[coupon-server] apply fetch error:", fetchErr);
-    return { ok: false, reason: "invalid_or_expired" };
-  }
-
-  const now = new Date();
-  if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-    return { ok: false, reason: "invalid_or_expired" };
-  }
-  if (coupon.expires_at && new Date(coupon.expires_at) <= now) {
-    return { ok: false, reason: "invalid_or_expired" };
-  }
-
-  const subtotal = params.subtotal;
-  if (subtotal < Number(coupon.min_subtotal ?? 0)) {
-    return { ok: false, reason: "min_subtotal" };
-  }
-
-  if (coupon.total_uses_limit != null) {
-    const { count } = await admin
-      .from("coupon_uses")
-      .select("id", { count: "exact", head: true })
-      .eq("coupon_id", coupon.id);
-    if ((count ?? 0) >= coupon.total_uses_limit) {
-      return { ok: false, reason: "total_limit_reached" };
-    }
-  }
-
-  if (coupon.per_user_limit != null) {
-    const { count } = await admin
-      .from("coupon_uses")
-      .select("id", { count: "exact", head: true })
-      .eq("coupon_id", coupon.id)
-      .eq("user_id", params.userId);
-    if ((count ?? 0) >= coupon.per_user_limit) {
-      return { ok: false, reason: "user_limit_reached" };
-    }
-  }
-
-  let discount = 0;
-  const kind = coupon.kind as CouponKind;
-
-  if (params.chargedDiscount !== undefined) {
-    discount = kind === "free_ship" ? 0 : params.chargedDiscount;
-  } else {
-    const value = Number(coupon.value);
-
-    if (kind === "percent") {
-      discount = Math.round(subtotal * (value / 100) * 100) / 100;
-      if (
-        coupon.max_discount != null &&
-        discount > Number(coupon.max_discount)
-      ) {
-        discount = Number(coupon.max_discount);
-      }
-    } else if (kind === "fixed") {
-      discount = Math.min(value, subtotal);
-    }
-  }
-
-  const { error: insertErr } = await admin.from("coupon_uses").insert({
-    coupon_id: coupon.id,
-    user_id: params.userId,
-    order_id: params.orderId,
-    discount_amount: discount,
+  const { data, error } = await admin.rpc("fn_apply_coupon_admin", {
+    p_code: code,
+    p_subtotal: params.subtotal,
+    p_user_id: params.userId,
+    p_order_id: params.orderId,
+    p_charged_discount: params.chargedDiscount ?? null,
   });
 
-  if (insertErr) {
-    console.error("[coupon-server] apply insert error:", insertErr);
-    return { ok: false, reason: "insert_failed" };
+  if (error) {
+    console.error("[coupon-server] apply RPC error:", error);
+    return { ok: false, reason: "rpc_error" };
   }
 
-  return { ok: true };
+  if (!data || typeof data !== "object") {
+    return { ok: false, reason: "invalid_response" };
+  }
+
+  const r = data as { ok: boolean; reason?: string };
+  if (r.ok) return { ok: true };
+
+  return { ok: false, reason: r.reason ?? "unknown" };
 }

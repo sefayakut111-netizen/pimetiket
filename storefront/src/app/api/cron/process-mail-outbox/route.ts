@@ -75,6 +75,20 @@ export async function GET(req: Request) {
         process.env.RESEND_FROM_EMAIL ?? process.env.MAIL_FROM_ADDRESS;
       const stubMode = !resendKey || !fromAddress;
 
+      const staleSendingCutoff = new Date(
+        Date.now() - 30 * 60 * 1000
+      ).toISOString();
+      await admin
+        .from("fason_mail_outbox")
+        .update({
+          status: "failed",
+          last_error: "stale_sending_recovered",
+          next_retry_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("status", "sending")
+        .lt("updated_at", staleSendingCutoff);
+
       // Pending veya retry zamanı gelen kayıtları çek
       const { data: rows, error: selectErr } = await admin
         .from("fason_mail_outbox")

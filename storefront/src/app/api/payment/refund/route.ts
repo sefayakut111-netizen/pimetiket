@@ -182,30 +182,59 @@ export async function POST(req: NextRequest) {
   const isPartial = refundAmount < charge.amount;
   const action = isPartial ? "partial_refund" : "refund";
 
-  const { data: placeholderRow, error: phErr } = await admin
-    .from("payments")
-    .insert([
-      {
-        order_id: body.orderId,
-        psp_provider: "paytr",
-        psp_transaction_id: charge.psp_transaction_id,
-        action,
-        amount: refundAmount,
-        currency: "TRY",
-        status: "processing", // Mig 069: PayTR call sonuçlanana kadar lock
-        idempotency_key: `refund:${body.orderId}:${Date.now()}`,
-        psp_raw: {
-          refund_amount: refundAmount,
-          reason: body.reason ?? null,
-        } satisfies Json,
-      } satisfies TablesInsert<"payments">,
-    ])
-    .select("id")
-    .single();
+  const placeholderPayload = {
+    order_id: body.orderId,
+    psp_provider: "paytr",
+    psp_transaction_id: charge.psp_transaction_id,
+    action,
+    amount: refundAmount,
+    currency: "TRY",
+    status: "processing",
+    idempotency_key: `refund:${body.orderId}:${Date.now()}`,
+    psp_raw: {
+      refund_amount: refundAmount,
+      reason: body.reason ?? null,
+    } satisfies Json,
+  } satisfies TablesInsert<"payments">;
+
+  let placeholderRow: { id: string } | null = null;
+  let phErr: { code?: string; message?: string } | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await admin
+      .from("payments")
+      .insert([placeholderPayload])
+      .select("id")
+      .single();
+    placeholderRow = data as { id: string } | null;
+    phErr = error as { code?: string; message?: string } | null;
+    if (!phErr) break;
+
+    if (phErr.code !== "23505" || attempt > 0) break;
+
+    const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: staleRow } = await admin
+      .from("payments")
+      .select("id")
+      .eq("order_id", body.orderId)
+      .in("action", ["refund", "partial_refund"])
+      .eq("status", "processing")
+      .lt("created_at", staleCutoff)
+      .maybeSingle();
+
+    if (!staleRow) break;
+
+    await admin
+      .from("payments")
+      .update({
+        status: "failed",
+        failure_reason: "stale_processing_recovered",
+      })
+      .eq("id", (staleRow as { id: string }).id);
+  }
 
   if (phErr) {
-    // Unique constraint violation (23505) → başka refund zaten in-progress
-    const code = (phErr as { code?: string }).code;
+    const code = phErr.code;
     if (code === "23505") {
       return NextResponse.json(
         {
