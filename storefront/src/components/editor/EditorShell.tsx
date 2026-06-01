@@ -190,10 +190,13 @@ export default function EditorShell() {
         setPocStatus({ state: "ready", message: "Görsel yükle — bıçak otomatik netleşir" });
         syncSizeToPoc(widthMm, heightMm);
         applyPendingSablon();
+      } else if (data.type === "pim-poc-loading") {
+        setDesignLoaded(false);
+        setCutlineReady(false);
+        setImageScalePct(100);
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
         setDesignLoaded(true);
-        setCutlineReady(false);
         if (typeof data.width === "number" && data.width > 0) {
           setImagePixelW(data.width);
         }
@@ -204,7 +207,6 @@ export default function EditorShell() {
           state: "loaded",
           message: "Tasarım yüklendi — kontur hesaplanıyor…",
         });
-        postToPoc({ type: "pim-fit-contain" });
       } else if (data.type === "pim-image-scale-changed") {
         if (typeof data.scale === "number" && data.scale > 0) {
           setImageScalePct(
@@ -291,7 +293,20 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, postToPoc, syncSizeToPoc, widthMm, heightMm]);
+  }, [applyPendingSablon, syncSizeToPoc, widthMm, heightMm]);
+
+  useEffect(() => {
+    if (!designLoaded || cutlineReady) return;
+    const fallback = window.setTimeout(() => {
+      setCutlineReady(true);
+      setPocStatus((prev) =>
+        prev?.state === "loaded" && prev.message.includes("hesaplanıyor")
+          ? { state: "loaded", message: "Bıçak hazır — ürüne ekleyebilirsin" }
+          : prev
+      );
+    }, 4000);
+    return () => window.clearTimeout(fallback);
+  }, [designLoaded, cutlineReady]);
 
   const productHint = useMemo(
     () => deriveEditorProductHint(pocMeta),

@@ -2192,7 +2192,7 @@ window.addEventListener('message', (e) => {
       if (currentMat) {
         if (PIM_PARAMS.editorShell && getPlacementFrame()) {
           pimUserMovedImage = false;
-          applyPlacementPreset('contain');
+          pimEditorDefaultPlacement();
         }
         generateCutline();
         generateWhitePlan();
@@ -2242,16 +2242,43 @@ function pimPostImageScaleChanged() {
   pimPostToParent({ type: 'pim-image-scale-changed', scale: imageTransform.scale });
 }
 
-function pimFitEditorPreviewToFrame() {
+/** Editör kabuğu — görsel ölçeği %100 (scale=1), merkeze hizala; view-zoom önizlemeye sığdırır */
+function pimEditorDefaultPlacement() {
   if (!PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) return;
   if (!currentMat || !imageMetadata) return;
   pimUserMovedImage = false;
-  if (getPlacementFrame()) {
-    applyPlacementPreset('contain');
-  } else {
-    render();
+  resetImageTransform();
+  const frame = getPlacementFrame();
+  if (frame) {
+    imageTransform.scale = 1;
+    const artCx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
+    const artCy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
+    imageTransform.x = frame.cx - artCx;
+    imageTransform.y = frame.cy - artCy;
   }
+  render();
   pimAutoFitViewZoomToWrap();
+  pimPostImageScaleChanged();
+}
+
+function pimNotifyCutlineReady() {
+  if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone && !PIM_PARAMS.embed) return;
+  if (!currentPaths || currentPaths.length === 0) return;
+  pimPostToParent({
+    type: 'pim-cutline-ready',
+    pathCount: currentPaths.length,
+    meta: imageMetadata ? {
+      source: currentFileSource,
+      mode: currentMode,
+      width_mm: imageMetadata.orderWidthMm || imageMetadata.widthMm,
+      height_mm: imageMetadata.orderHeightMm || imageMetadata.heightMm,
+    } : {},
+  });
+}
+
+function pimFitEditorPreviewToFrame() {
+  if (!PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) return;
+  pimEditorDefaultPlacement();
 }
 
 /** Pre-order editör — mm değişince metadata güncelle (viewZoom çarpanı kaldırıldı) */
@@ -2433,6 +2460,9 @@ uploadZone.addEventListener('drop', (e) => {
 function handleFile(file) {
   pimAutoSaveDone = false;
   pimVisionFallbackSent = false;
+  if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
+    pimPostToParent({ type: 'pim-poc-loading' });
+  }
   if (!cvReady) {
     showStatus('OpenCV henüz hazır değil, lütfen bekleyin...', 'warn');
     return;
@@ -3082,9 +3112,7 @@ function processImage(img, file) {
     (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) &&
     getOrderDimsMm()
   ) {
-    applyPlacementPreset('contain');
-    pimAutoFitViewZoomToWrap();
-    pimPostImageScaleChanged();
+    pimEditorDefaultPlacement();
   } else {
     render();
   }
@@ -3095,6 +3123,7 @@ function processImage(img, file) {
   if (PIM_PARAMS.embed || PIM_PARAMS.designUrl || PIM_PARAMS.editorShell) {
     pimNotifyLoaded();
   }
+  pimNotifyCutlineReady();
 }
 
 // ============================================================
@@ -3189,18 +3218,7 @@ function generateCutline() {
   mask.delete();
   pimScheduleAutoSave();
   runPreflight();
-  if (currentPaths.length > 0) {
-    pimPostToParent({
-      type: 'pim-cutline-ready',
-      pathCount: currentPaths.length,
-      meta: imageMetadata ? {
-        source: currentFileSource,
-        mode: currentMode,
-        width_mm: imageMetadata.orderWidthMm || imageMetadata.widthMm,
-        height_mm: imageMetadata.orderHeightMm || imageMetadata.heightMm,
-      } : {},
-    });
-  }
+  pimNotifyCutlineReady();
 }
 
 // ============================================================
