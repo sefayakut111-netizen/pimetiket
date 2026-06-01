@@ -27,6 +27,7 @@ import {
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
+import { isAdminTestOrderPayment } from "@/lib/admin-test-order";
 
 const ALL_STATUSES: OrderStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
 
@@ -347,6 +348,7 @@ export default function AdminOrderDetailPage({
   }
 
   const meta = getAdminStatusMeta(order.status);
+  const isAdminTestOrder = isAdminTestOrderPayment(order.payment);
   const product =
     order.items.length === 1
       ? order.items[0].title
@@ -383,6 +385,11 @@ export default function AdminOrderDetailPage({
           </div>
 
           <div className="flex items-center gap-2">
+            {isAdminTestOrder && (
+              <span className="inline-flex items-center h-8 px-3 rounded-full text-[12px] font-semibold bg-gri-100 text-gri-700 ring-1 ring-gri-300">
+                Admin hesap siparişi
+              </span>
+            )}
             <span
               className={cn(
                 "inline-flex items-center h-8 px-3 rounded-full text-[12.5px] font-bold",
@@ -837,6 +844,11 @@ export default function AdminOrderDetailPage({
             {/* Ödeme */}
             <Card padding="p-5">
               <h2 className="text-[15px] font-semibold mb-4">Ödeme</h2>
+              {isAdminTestOrder && (
+                <p className="mb-3 text-[12.5px] text-gri-700 bg-gri-50 ring-1 ring-gri-200 rounded-lg px-3 py-2">
+                  Bu sipariş admin/staff hesabından verildi (test veya ödeme-atla).
+                </p>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[13.5px]">
                 <Field
                   label="Yöntem"

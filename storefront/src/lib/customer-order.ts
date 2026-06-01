@@ -48,6 +48,9 @@ export interface CustomerOrderPayment {
   method: "card" | "transfer";
   /** Maskelenmiş kart no — son 4 hane */
   masked?: string;
+  /** Admin/staff hesabından verilen test siparişi */
+  adminTestOrder?: boolean;
+  source?: string;
 }
 
 export interface CustomerOrder {

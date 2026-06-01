@@ -14,6 +14,7 @@ import {
   createPaidOrderViaServiceRole,
   type ServerCreateOrderPayload,
 } from "@/lib/payment/server-create-order";
+import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
 
 const CartItemSchema = z.object({
   product: z.enum(["sticker", "etiket"]),
@@ -139,7 +140,10 @@ export async function POST(req: Request) {
       companyName: body.invoice.companyName ?? undefined,
       taxOffice: body.invoice.taxOffice ?? undefined,
     },
-    payment: { method: "card", masked: "**** 0000 (admin bypass)" },
+    payment: withAdminTestOrderMarker({
+      method: "card",
+      masked: "**** 0000 (admin bypass)",
+    }),
     subtotal: body.subtotal,
     shipping: body.shipping,
     total: body.total,

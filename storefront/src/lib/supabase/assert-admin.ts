@@ -49,3 +49,20 @@ export async function assertAdmin(): Promise<AdminGuardResult | null> {
     return null;
   }
 }
+
+/** Sipariş sahibi admin/staff mi? (payment marker + guard) */
+export async function isAdminOrStaffUserId(userId: string): Promise<boolean> {
+  try {
+    const { createAdminClient } = await import("./admin");
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+    const role = (profile as { role?: string } | null)?.role;
+    return role === "admin" || role === "staff";
+  } catch {
+    return false;
+  }
+}

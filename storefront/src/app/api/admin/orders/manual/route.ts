@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertPermission } from "@/lib/supabase/assert-permission";
+import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
 
 interface ManualOrderItem {
   product: "etiket" | "sticker";
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
 
   const orderId = generateOrderId();
 
-  const paymentPayload = {
+  const paymentPayload = withAdminTestOrderMarker({
     ...body.payment,
     ...(body.discount && body.discount.amount > 0
       ? { manualDiscount: body.discount }
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
           },
         }
       : {}),
-  };
+  });
 
   const { error: rpcErr } = await admin.rpc(
     "fn_create_manual_order",

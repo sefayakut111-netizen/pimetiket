@@ -38,6 +38,8 @@ import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
 import { applyCouponAfterOrder } from "@/lib/payment/coupon-server";
 import { enqueueMail } from "@/lib/mail/enqueue";
+import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
+import { isAdminOrStaffUserId } from "@/lib/supabase/assert-admin";
 import type { Json } from "@/lib/supabase/types";
 
 interface IntentRow {
@@ -267,15 +269,19 @@ export async function POST(req: NextRequest) {
   const estimatedDelivery = addDaysIso(
     intent.snapshot.items.some((i) => i.product === "etiket") ? 10 : 5
   );
-  const paymentMeta = {
-    method: "card",
-    masked,
-    installment: installmentCount,
-    provider: "paytr",
-    cardPan,
-    paymentType: data.payment_type,
-    merchantOid,
-  };
+  const markAdminTestOrder = await isAdminOrStaffUserId(intent.user_id);
+  const paymentMeta = withAdminTestOrderMarker(
+    {
+      method: "card",
+      masked,
+      installment: installmentCount,
+      provider: "paytr",
+      cardPan,
+      paymentType: data.payment_type,
+      merchantOid,
+    },
+    markAdminTestOrder
+  );
 
   // Mig 078: client DDMMYYYY+rand4 üretir, RPC bunu kullanır. Çakışma
   // (unique_violation, PG kodu 23505) durumunda yeni ID ile 3 kez retry.

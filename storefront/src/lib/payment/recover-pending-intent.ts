@@ -23,6 +23,8 @@ import {
 import { enqueueMail } from "@/lib/mail/enqueue";
 import { queryPaymentStatus } from "@/lib/payment/paytr";
 import { resolveOrderIdFromIntent } from "@/lib/payment/resolve-order-from-intent";
+import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
+import { isAdminOrStaffUserId } from "@/lib/supabase/assert-admin";
 import type { Json } from "@/lib/supabase/types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -267,15 +269,19 @@ async function finalizeFromPaytrSuccess(
   const estimatedDelivery = addDaysIso(
     intent.snapshot.items.some((i) => i.product === "etiket") ? 10 : 5
   );
-  const paymentMeta = {
-    method: "card",
-    masked: "**** **** **** ****",
-    installment: opts.installmentCount ?? 1,
-    provider: "paytr",
-    merchantOid: intent.id,
-    source: opts.source,
-    recovered_at: new Date().toISOString(),
-  };
+  const markAdminTestOrder = await isAdminOrStaffUserId(intent.user_id);
+  const paymentMeta = withAdminTestOrderMarker(
+    {
+      method: "card",
+      masked: "**** **** **** ****",
+      installment: opts.installmentCount ?? 1,
+      provider: "paytr",
+      merchantOid: intent.id,
+      source: opts.source,
+      recovered_at: new Date().toISOString(),
+    },
+    markAdminTestOrder
+  );
 
   let candidateOrderId = generateOrderId();
   let rpcData: { order_id: string; was_duplicate: boolean }[] | null = null;

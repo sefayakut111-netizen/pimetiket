@@ -40,6 +40,7 @@ import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
+import { isAdminTestOrderPayment } from "@/lib/admin-test-order";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
 
 type AdminStatus = OrderStatus;
@@ -58,6 +59,7 @@ interface AdminOrder {
   estimatedDelivery?: string;
   fason?: string;
   tracking_number?: string;
+  isAdminTestOrder?: boolean;
 }
 
 const FILTERS = ADMIN_STATUS_FILTER_CHIPS;
@@ -221,6 +223,7 @@ function toAdminOrderRow(o: CustomerOrder): AdminOrder {
     fason: (o as CustomerOrder & { fasonName?: string }).fasonName,
     tracking_number: (o as CustomerOrder & { trackingNumber?: string })
       .trackingNumber,
+    isAdminTestOrder: isAdminTestOrderPayment(o.payment),
   };
 }
 
@@ -1008,7 +1011,14 @@ function AdminSiparislerPageInner() {
                         />
                       </td>
                       <td className="px-4 py-3 font-mono text-[12.5px]">
-                        {o.id}
+                        <div className="flex flex-col gap-1">
+                          <span>{o.id}</span>
+                          {o.isAdminTestOrder && (
+                            <span className="inline-flex w-fit items-center h-[20px] px-2 rounded-full text-[10.5px] font-semibold bg-gri-100 text-gri-700 ring-1 ring-gri-300">
+                              Admin hesap siparişi
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 font-semibold text-lacivert">
                         {o.customer}

@@ -31,6 +31,8 @@ import {
   sendOrderConfirmation,
   sendOrderProofRequired,
 } from "@/lib/mail/notifications";
+import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
+import { isAdminOrStaffUserId } from "@/lib/supabase/assert-admin";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -162,13 +164,17 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const paymentMeta = {
-          source: "paytr_reconciler",
-          payment_amount_kurus: queryResult.paymentAmountKurus,
-          payment_total_kurus: queryResult.paymentTotalKurus,
-          installment: queryResult.installmentCount,
-          recovered_at: new Date().toISOString(),
-        };
+        const markAdminTestOrder = await isAdminOrStaffUserId(intent.user_id);
+        const paymentMeta = withAdminTestOrderMarker(
+          {
+            source: "paytr_reconciler",
+            payment_amount_kurus: queryResult.paymentAmountKurus,
+            payment_total_kurus: queryResult.paymentTotalKurus,
+            installment: queryResult.installmentCount,
+            recovered_at: new Date().toISOString(),
+          },
+          markAdminTestOrder
+        );
 
         // Tahmini teslim 7 gün (mevcut callback ile aynı)
         const estimatedDelivery = new Date(

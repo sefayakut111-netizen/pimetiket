@@ -468,13 +468,12 @@ export default function OdemePage() {
       sb.auth.getUser().then(({ data }) => {
         if (!data.user) return;
         sb.from("profiles")
-          .select("admin_role")
+          .select("role")
           .eq("id", data.user.id)
           .single()
           .then(({ data: p }) => {
-            if (p && (p as { admin_role: string | null }).admin_role) {
-              setIsAdmin(true);
-            }
+            const r = (p as { role?: string } | null)?.role;
+            if (r === "admin" || r === "staff") setIsAdmin(true);
           });
       });
     });
