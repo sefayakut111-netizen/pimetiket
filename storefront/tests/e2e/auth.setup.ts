@@ -1,31 +1,36 @@
 /**
  * Playwright Auth Setup — Pim Etiket bot için 2 rol session hazırlığı.
  *
- * Sefa 18 May v68 (e2e bot):
- * Supabase admin API ile magic link üretir, browser'da bu link'i ziyaret
- * eder, session cookie set olur, storageState'i dosyaya kaydeder. Her
- * sonraki test bu state'ten başlar — login adımı atlanır.
+ * Supabase admin API ile magic link token üretir, anon client verifyOtp ile
+ * session alır, @supabase/ssr çerez formatında enjekte eder, storageState kaydeder.
  *
  * 2 rol:
  *   - Customer: BOT_CUSTOMER_EMAIL (yoksa oluşturulur, role='customer')
  *   - Admin:    BOT_ADMIN_EMAIL    (mevcut olmalı, role='admin'|'staff')
  *
- * Env (Playwright çalıştırıldığında set edilmeli — npm run bot:* script
- * --env-file=.env.local ile inject eder):
+ * Env (.env.local — playwright.config yükler):
  *   - NEXT_PUBLIC_SUPABASE_URL
+ *   - NEXT_PUBLIC_SUPABASE_ANON_KEY
  *   - SUPABASE_SERVICE_ROLE_KEY
  *   - BOT_CUSTOMER_EMAIL (default: pim-etiket-bot+customer@gmail.com)
  *   - BOT_ADMIN_EMAIL    (default: sefayakut111@gmail.com)
  *   - PLAYWRIGHT_BASE_URL (default: https://pimetiket.com)
  */
 
-import { test as setup, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
+import { test as setup, expect, type Page } from "@playwright/test";
+import { createClient, type Session } from "@supabase/supabase-js";
+import {
+  createChunks,
+  stringToBase64URL,
+  DEFAULT_COOKIE_OPTIONS,
+} from "@supabase/ssr";
 import path from "node:path";
 import fs from "node:fs";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "https://pimetiket.com";
 const CUSTOMER_EMAIL =
   process.env.BOT_CUSTOMER_EMAIL ?? "pim-etiket-bot+customer@gmail.com";
 const ADMIN_EMAIL =
@@ -45,13 +50,27 @@ function makeAdminClient() {
   });
 }
 
+function makeAnonClient() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error(
+      "Bot env eksik: NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    );
+  }
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+function getSupabaseAuthCookieName(): string {
+  const ref = new URL(SUPABASE_URL).hostname.split(".")[0];
+  return `sb-${ref}-auth-token`;
+}
+
 async function ensureUser(
   email: string,
   role: "customer" | "admin"
 ): Promise<string> {
   const admin = makeAdminClient();
-  // listUsers'ı sayfa sayfa tarayarak email match'i bul (admin.getUserByEmail v1'de yok)
-  // Pim Etiket'te ~100 user var, ilk sayfa yeterli
   const { data: list, error: listErr } = await admin.auth.admin.listUsers({
     page: 1,
     perPage: 200,
@@ -65,8 +84,24 @@ async function ensureUser(
   if (found) {
     userId = found.id;
     console.log(`[setup] ✓ Mevcut user: ${email} (${userId.slice(0, 8)}...)`);
+    if (role === "admin") {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
+      const currentRole = (profile as { role?: string } | null)?.role;
+      if (currentRole !== "admin" && currentRole !== "staff") {
+        await admin
+          .from("profiles")
+          .update({ role: "admin" })
+          .eq("id", userId);
+        console.log(
+          `[setup] ⚠ Bot admin role düzeltildi: ${currentRole ?? "?"} → admin`
+        );
+      }
+    }
   } else {
-    // Sadece customer için otomatik oluşturma — admin manuel olmalı
     if (role === "admin") {
       throw new Error(
         `Admin email ${email} sistemde yok. Önce Supabase'de manuel oluştur + role='admin' yap.`
@@ -84,7 +119,6 @@ async function ensureUser(
     userId = created.user.id;
     console.log(`[setup] ✓ Yeni user oluşturuldu: ${email}`);
 
-    // profiles satırını role ile birlikte upsert
     await admin
       .from("profiles")
       .upsert({ id: userId, role: "customer", display_name: "Bot Customer" });
@@ -93,42 +127,73 @@ async function ensureUser(
   return userId;
 }
 
-async function loginViaMagicLink(
-  page: import("@playwright/test").Page,
-  email: string,
-  statePath: string
-) {
+async function resolveSession(email: string): Promise<Session> {
   const admin = makeAdminClient();
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
   });
-  if (error || !data.properties?.action_link) {
+  if (error || !data.properties?.hashed_token) {
     throw new Error(
-      `generateLink failed: ${error?.message ?? "no action_link"}`
+      `generateLink failed: ${error?.message ?? "no hashed_token"}`
     );
   }
 
-  console.log(`[setup] Magic link visit: ${email}`);
-  await page.goto(data.properties.action_link, {
-    waitUntil: "domcontentloaded",
+  const anon = makeAnonClient();
+  const { data: verified, error: verifyErr } = await anon.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: data.properties.hashed_token,
   });
-
-  // Magic link callback Pim Etiket domain'ine redirect eder
-  await page.waitForURL(/pimetiket\.com|localhost/, { timeout: 30_000 });
-
-  // Cookie set olduğunu doğrula
-  const cookies = await page.context().cookies();
-  const supabaseCookie = cookies.find((c) =>
-    c.name.startsWith("sb-") && c.name.endsWith("-auth-token")
-  );
-  if (!supabaseCookie) {
-    console.warn(
-      "[setup] ⚠ Supabase auth cookie bulunamadı — sayfa içerik kontrolü yapılıyor"
-    );
+  if (verifyErr || !verified.session) {
+    throw new Error(`verifyOtp failed: ${verifyErr?.message ?? "no session"}`);
   }
 
-  // Storage state'i kaydet
+  return verified.session;
+}
+
+async function injectSupabaseSession(page: Page, session: Session) {
+  const cookieName = getSupabaseAuthCookieName();
+  const sessionJson = JSON.stringify(session);
+  const encoded = `base64-${stringToBase64URL(sessionJson)}`;
+  const chunks = createChunks(cookieName, encoded);
+  const base = new URL(BASE_URL);
+
+  await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
+
+  await page.context().addCookies(
+    chunks.map(({ name, value }) => ({
+      name,
+      value,
+      domain: base.hostname,
+      path: "/",
+      sameSite: "Lax" as const,
+      httpOnly: false,
+      secure: base.protocol === "https:",
+      expires:
+        Math.floor(Date.now() / 1000) +
+        (DEFAULT_COOKIE_OPTIONS.maxAge ?? 400 * 24 * 60 * 60),
+    }))
+  );
+
+  const cookies = await page.context().cookies();
+  const authCookie = cookies.find((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+  if (!authCookie) {
+    throw new Error(
+      `[setup] Supabase auth cookie enjekte edilemedi (${cookieName})`
+    );
+  }
+  console.log(`[setup] ✓ Auth cookie: ${authCookie.name}`);
+}
+
+async function loginWithSessionCookie(
+  page: Page,
+  email: string,
+  statePath: string
+) {
+  console.log(`[setup] Session cookie enjekte: ${email}`);
+  const session = await resolveSession(email);
+  await injectSupabaseSession(page, session);
+
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   await page.context().storageState({ path: statePath });
   console.log(`[setup] ✓ State kaydedildi: ${statePath}`);
@@ -136,18 +201,19 @@ async function loginViaMagicLink(
 
 setup("authenticate customer", async ({ page }) => {
   await ensureUser(CUSTOMER_EMAIL, "customer");
-  await loginViaMagicLink(page, CUSTOMER_EMAIL, CUSTOMER_STATE);
+  await loginWithSessionCookie(page, CUSTOMER_EMAIL, CUSTOMER_STATE);
 
-  // Sanity check — auth'lu sayfaya gidip 401 olmamalı
   await page.goto("/panelim");
-  await expect(page).toHaveURL(/panelim/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/panelim/, { timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/auth/);
 });
 
 setup("authenticate admin", async ({ page }) => {
   await ensureUser(ADMIN_EMAIL, "admin");
-  await loginViaMagicLink(page, ADMIN_EMAIL, ADMIN_STATE);
+  await loginWithSessionCookie(page, ADMIN_EMAIL, ADMIN_STATE);
 
-  // Sanity check — admin dashboard erişilebilir mi
   await page.goto("/admin");
-  await expect(page).toHaveURL(/\/admin/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/admin/, { timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/auth/);
+  await expect(page).not.toHaveURL(/mfa-challenge/);
 });

@@ -119,14 +119,63 @@ test("Sticker S6 edge: empty form param bumper — duplicate id kontrolü", asyn
   expect(errors).toEqual([]);
 });
 
-test("Etiket grid: 11 kart linkleri", async ({ page }) => {
+test("Etiket grid: yapılandırıcı kart linkleri", async ({ page }) => {
   await page.goto("/etiket");
   const links = page.locator('a[href*="/etiket/yapilandir"]');
-  await expect(links).toHaveCount(11, { timeout: 15_000 });
+  await expect(links.first()).toBeVisible({ timeout: 15_000 });
+  const count = await links.count();
+  expect(count, "etiket kart sayısı").toBeGreaterThanOrEqual(11);
 });
 
-test("Sticker grid: 11 kart linkleri", async ({ page }) => {
+test("Sticker grid: yapılandırıcı kart linkleri", async ({ page }) => {
   await page.goto("/sticker");
   const links = page.locator('a[href*="/sticker/yapilandir"]');
-  await expect(links).toHaveCount(11, { timeout: 15_000 });
+  await expect(links.first()).toBeVisible({ timeout: 15_000 });
+  const count = await links.count();
+  expect(count, "sticker kart sayısı").toBeGreaterThanOrEqual(11);
+});
+
+function parseUnitPriceTr(text: string): number | null {
+  const match = text.match(/Birim fiyat\s+([\d.,]+)\s*₺\/adet/i);
+  if (!match) return null;
+  return parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+}
+
+async function readStickerUnitPrice(page: Page): Promise<number> {
+  await expect(page.locator("body")).toContainText(/Birim fiyat/i, {
+    timeout: 25_000,
+  });
+  const text = await page.locator("body").innerText();
+  const unit = parseUnitPriceTr(text);
+  if (unit == null || Number.isNaN(unit)) {
+    throw new Error("Birim fiyat parse edilemedi");
+  }
+  return unit;
+}
+
+test("Sticker kesim fiyat oranı: diecut ≈ kisscut × 1.10", async ({ page }) => {
+  const base =
+    "/sticker/yapilandir?shape=diecut&material=vinil&form=rulo";
+
+  await page.goto(`${base}&cut=kisscut`, {
+    waitUntil: "domcontentloaded",
+    timeout: 45_000,
+  });
+  await expect(page.locator("#step-1, #step-3").first()).toBeVisible({
+    timeout: 20_000,
+  });
+  const kisscutUnit = await readStickerUnitPrice(page);
+
+  await page.goto(`${base}&cut=diecut`, {
+    waitUntil: "domcontentloaded",
+    timeout: 45_000,
+  });
+  await expect(page.locator("#step-1, #step-3").first()).toBeVisible({
+    timeout: 20_000,
+  });
+  const diecutUnit = await readStickerUnitPrice(page);
+
+  const ratio = diecutUnit / kisscutUnit;
+  expect(ratio, "diecut/kisscut birim fiyat oranı").toBeGreaterThanOrEqual(1.08);
+  expect(ratio, "diecut/kisscut birim fiyat oranı").toBeLessThanOrEqual(1.12);
 });

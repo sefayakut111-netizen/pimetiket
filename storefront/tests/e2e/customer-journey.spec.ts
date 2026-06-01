@@ -207,6 +207,17 @@ test("Customer: /panelim erişimi + alt sayfalar", async ({ page }) => {
 // ============================================================
 // 6. SEPETE EKLE (ödeme öncesi son adım)
 // ============================================================
+test("Customer: /admin erişimi engellenir (RBAC #8)", async ({ page }) => {
+  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await expect(page).not.toHaveURL(/\/admin/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/(\?.*)?$/, { timeout: 10_000 });
+});
+
+test("Customer: /api/me/permissions → 403", async ({ page }) => {
+  const res = await page.request.get("/api/me/permissions");
+  expect(res.status()).toBe(403);
+});
+
 test.skip("Customer: Etiket konfigüre + sepete ekle (ödeme öncesi DUR)", async ({
   page,
 }) => {
