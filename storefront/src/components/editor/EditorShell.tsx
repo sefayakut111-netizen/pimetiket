@@ -135,6 +135,7 @@ export default function EditorShell() {
   const [imageScalePct, setImageScalePct] = useState(100);
   const baseWidthMmRef = useRef(DEFAULT_WIDTH_MM);
   const baseHeightMmRef = useRef(DEFAULT_HEIGHT_MM);
+  const suppressScaleEchoRef = useRef(false);
   const [offsetMm, setOffsetMm] = useState(0);
   const [smoothness, setSmoothness] = useState(0);
   const [cornerRadiusMm, setCornerRadiusMm] = useState(0);
@@ -256,6 +257,7 @@ export default function EditorShell() {
 
   const syncSizeToPoc = useCallback(
     (w: number, h: number) => {
+      suppressScaleEchoRef.current = true;
       postToPoc({ type: "pim-editor-set-size", widthMm: w, heightMm: h });
     },
     [postToPoc]
@@ -287,7 +289,7 @@ export default function EditorShell() {
   const applyCoordinatedScale = useCallback(
     (pct: number, options?: { syncPocSize?: boolean; syncPocScale?: boolean }) => {
       const clamped = Math.max(25, Math.min(200, pct));
-      const { syncPocSize = true, syncPocScale = true } = options ?? {};
+      const { syncPocSize = true, syncPocScale = false } = options ?? {};
       setImageScalePct(clamped);
       const { w, h } = sizeFromScalePct(clamped);
       setWidthMm(w);
@@ -312,11 +314,10 @@ export default function EditorShell() {
       setHeightMm(nh);
       const pct = scalePctFromWidth(nw);
       setImageScalePct(pct);
-      postToPoc({ type: "pim-set-image-scale", scale: pct / 100 });
       syncSizeToPoc(nw, nh);
       setCutlineReady(false);
     },
-    [postToPoc, scalePctFromWidth, syncSizeToPoc]
+    [scalePctFromWidth, syncSizeToPoc]
   );
 
   const applyPendingSablon = useCallback(() => {
@@ -394,10 +395,20 @@ export default function EditorShell() {
         });
       } else if (data.type === "pim-image-scale-changed") {
         if (typeof data.scale === "number" && data.scale > 0) {
+          if (suppressScaleEchoRef.current) {
+            suppressScaleEchoRef.current = false;
+            return;
+          }
           const pct = Math.round(
             Math.max(25, Math.min(200, data.scale * 100))
           );
-          applyCoordinatedScale(pct, { syncPocScale: false });
+          // ECHO: POC kaynaklı — geri post yok, sadece state (sonsuz döngüyü kırar)
+          if (pct !== imageScalePct) {
+            applyCoordinatedScale(pct, {
+              syncPocScale: false,
+              syncPocSize: false,
+            });
+          }
         }
       } else if (data.type === "pim-cutline-ready") {
         setCutlineReady(true);
