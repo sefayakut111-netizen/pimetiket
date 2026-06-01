@@ -23,8 +23,12 @@ import {
   effectivePrintDpi,
   printDpiStatus,
 } from "@/lib/editor/suggest-mm-from-pixels";
-import { DIE_CUT_BY_ID } from "@/lib/templates/die-cut-templates";
-import type { CutSet } from "@/lib/templates/die-cut-templates";
+import {
+  DIE_CUT_BY_ID,
+  type CutSet,
+  type DieCutTemplate,
+} from "@/lib/templates/die-cut-templates";
+import { EditorDieCutPicker } from "@/components/editor/EditorDieCutPicker";
 import { EditorPreviewLegend } from "@/components/editor/EditorPreviewLegend";
 import { EditorPimPanel } from "@/components/editor/EditorPimPanel";
 import { EditorPanelSection } from "@/components/editor/EditorPanelSection";
@@ -44,13 +48,44 @@ import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
 
 type PocStatusState = "loading" | "ready" | "loaded" | "error" | "timeout";
 type CutMode = "contour" | "hull" | "rect" | "circle";
+type CutSource = "ozel" | "sekil" | "diecut";
+type SekilPreset = "circle" | "square" | "rect";
 
-const CUT_MODES: { mode: CutMode; label: string }[] = [
-  { mode: "contour", label: "Kontur" },
-  { mode: "hull", label: "Çevresel" },
-  { mode: "rect", label: "Dikdörtgen" },
-  { mode: "circle", label: "Yuvarlak" },
+const CUT_SOURCES: { id: CutSource; label: string; desc: string }[] = [
+  {
+    id: "ozel",
+    label: "Özel kesim",
+    desc: "Görselini izleyen bıçak (yükle, otomatik sarar)",
+  },
+  {
+    id: "sekil",
+    label: "Hazır şekil",
+    desc: "Yuvarlak / kare / dikdörtgen — düzgün geometri",
+  },
+  {
+    id: "diecut",
+    label: "Die-cut şablon",
+    desc: "Hazır kesim boyutlarından seç",
+  },
 ];
+
+const CONTOUR_VARIANTS: { mode: Extract<CutMode, "contour" | "hull">; label: string }[] =
+  [
+    { mode: "contour", label: "Sıkı kontur" },
+    { mode: "hull", label: "Geniş (çevresel)" },
+  ];
+
+const SEKIL_PRESETS: { id: SekilPreset; label: string }[] = [
+  { id: "circle", label: "Yuvarlak" },
+  { id: "square", label: "Kare" },
+  { id: "rect", label: "Dikdörtgen" },
+];
+
+function cutModeFromTemplate(tpl: DieCutTemplate): CutMode {
+  if (tpl.shape === "circle") return "circle";
+  if (tpl.shape === "rect" || tpl.shape === "ellipse") return "rect";
+  return "contour";
+}
 
 const DEFAULT_WIDTH_MM = 50;
 const DEFAULT_HEIGHT_MM = 50;
@@ -109,15 +144,7 @@ export default function EditorShell() {
     ((payload: PocEditorSavedPayload | null) => void) | null
   >(null);
   const designFileWaitRef = useRef<((file: File | null) => void) | null>(null);
-  const pendingSablonRef = useRef<
-    | {
-        shape: string;
-        widthMm: number;
-        heightMm: number;
-        cornerRadiusMm?: number;
-      }
-    | null
-  >(null);
+  const pendingTemplateRef = useRef<DieCutTemplate | null>(null);
 
   const [iframeSrc] = useState(() => buildEditorIframeSrc());
   const [designLoaded, setDesignLoaded] = useState(false);
@@ -129,6 +156,9 @@ export default function EditorShell() {
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1);
   const [pocMeta, setPocMeta] = useState<PocCutlineMeta | null>(null);
+  const [cutSource, setCutSource] = useState<CutSource>("ozel");
+  const [sekilPreset, setSekilPreset] = useState<SekilPreset>("circle");
+  const [activeDieCutId, setActiveDieCutId] = useState<string | null>(null);
   const [cutMode, setCutMode] = useState<CutMode>("contour");
   const [imagePixelW, setImagePixelW] = useState(0);
   const [imagePixelH, setImagePixelH] = useState(0);
@@ -167,36 +197,6 @@ export default function EditorShell() {
       setToolTab("bicak");
     }
   }, [designLoaded]);
-
-  useEffect(() => {
-    const id = searchParams.get("sablon")?.trim();
-    if (!id || sablonPrefilledRef.current) return;
-    const tpl = DIE_CUT_BY_ID.get(id);
-    if (!tpl) return;
-    sablonPrefilledRef.current = true;
-    pendingSablonRef.current = {
-      shape: tpl.shape,
-      widthMm: tpl.widthMm,
-      heightMm: tpl.heightMm,
-      cornerRadiusMm: tpl.cornerRadiusMm,
-    };
-    setWidthMm(tpl.widthMm);
-    setHeightMm(tpl.heightMm);
-    baseWidthMmRef.current = tpl.widthMm;
-    baseHeightMmRef.current = tpl.heightMm;
-    setImageScalePct(100);
-    setAspect(tpl.widthMm / tpl.heightMm);
-    if (typeof tpl.cornerRadiusMm === "number") {
-      setCornerRadiusMm(tpl.cornerRadiusMm);
-    }
-    setCutMode(
-      tpl.shape === "circle"
-        ? "circle"
-        : tpl.shape === "rect" || tpl.shape === "ellipse"
-          ? "rect"
-          : "contour"
-    );
-  }, [searchParams]);
 
   const postToPoc = useCallback((payload: Record<string, unknown>) => {
     iframeRef.current?.contentWindow?.postMessage(
@@ -320,26 +320,69 @@ export default function EditorShell() {
     [scalePctFromWidth, syncSizeToPoc]
   );
 
-  const applyPendingSablon = useCallback(() => {
-    const tpl = pendingSablonRef.current;
+  const applyTemplateState = useCallback((tpl: DieCutTemplate) => {
+    setWidthMm(tpl.widthMm);
+    setHeightMm(tpl.heightMm);
+    baseWidthMmRef.current = tpl.widthMm;
+    baseHeightMmRef.current = tpl.heightMm;
+    setImageScalePct(100);
+    setAspect(tpl.widthMm / tpl.heightMm);
+    setCornerRadiusMm(
+      typeof tpl.cornerRadiusMm === "number" ? tpl.cornerRadiusMm : 0
+    );
+    setCutMode(cutModeFromTemplate(tpl));
+    setActiveDieCutId(tpl.id);
+  }, []);
+
+  const applyTemplateToPoc = useCallback(
+    (tpl: DieCutTemplate) => {
+      const mode = cutModeFromTemplate(tpl);
+      setCutlineReady(false);
+      postToPoc({
+        type: "pim-editor-set-shape",
+        shape: tpl.shape,
+        mode,
+        widthMm: tpl.widthMm,
+        heightMm: tpl.heightMm,
+        cornerRadiusMm: tpl.cornerRadiusMm ?? 0,
+      });
+      syncSizeToPoc(tpl.widthMm, tpl.heightMm);
+    },
+    [postToPoc, syncSizeToPoc]
+  );
+
+  const applyTemplate = useCallback(
+    (tpl: DieCutTemplate) => {
+      applyTemplateState(tpl);
+      if (iframeRef.current?.contentWindow) {
+        applyTemplateToPoc(tpl);
+        pendingTemplateRef.current = null;
+      } else {
+        pendingTemplateRef.current = tpl;
+      }
+    },
+    [applyTemplateState, applyTemplateToPoc]
+  );
+
+  useEffect(() => {
+    const id = searchParams.get("sablon")?.trim();
+    if (!id || sablonPrefilledRef.current) return;
+    const tpl = DIE_CUT_BY_ID.get(id);
+    if (!tpl) return;
+    sablonPrefilledRef.current = true;
+    setCutSource("diecut");
+    applyTemplateState(tpl);
+    pendingTemplateRef.current = tpl;
+  }, [searchParams, applyTemplateState]);
+
+  const applyPendingTemplate = useCallback(() => {
+    const tpl = pendingTemplateRef.current;
     if (!tpl || !iframeRef.current?.contentWindow) return;
-    const mode =
-      tpl.shape === "circle"
-        ? "circle"
-        : tpl.shape === "rect" || tpl.shape === "ellipse"
-          ? "rect"
-          : "contour";
-    postToPoc({
-      type: "pim-editor-set-shape",
-      shape: tpl.shape,
-      mode,
-      widthMm: tpl.widthMm,
-      heightMm: tpl.heightMm,
-      cornerRadiusMm: tpl.cornerRadiusMm ?? 0,
-    });
-    syncSizeToPoc(tpl.widthMm, tpl.heightMm);
-    pendingSablonRef.current = null;
-  }, [postToPoc, syncSizeToPoc]);
+    applyTemplateToPoc(tpl);
+    pendingTemplateRef.current = null;
+  }, [applyTemplateToPoc]);
+
+  const applyPendingSablon = applyPendingTemplate;
 
   useEffect(() => {
     let timeoutHandle: number | null = null;
@@ -554,6 +597,84 @@ export default function EditorShell() {
       ...(mode === "rect" ? { cornerRadiusMm } : {}),
     });
   };
+
+  const handleCutSourceChange = useCallback(
+    (src: CutSource) => {
+      setCutSource(src);
+      if (src === "ozel") {
+        setCutMode("contour");
+        setCutlineReady(false);
+        postToPoc({
+          type: "pim-editor-set-shape",
+          shape: "contour",
+          mode: "contour",
+          widthMm,
+          heightMm,
+        });
+      } else if (src === "sekil") {
+        setSekilPreset("circle");
+        setCutMode("circle");
+        setCutlineReady(false);
+        postToPoc({
+          type: "pim-editor-set-shape",
+          shape: "circle",
+          mode: "circle",
+          widthMm,
+          heightMm,
+        });
+      }
+    },
+    [postToPoc, widthMm, heightMm]
+  );
+
+  const handleSekilPresetChange = useCallback(
+    (preset: SekilPreset) => {
+      setSekilPreset(preset);
+      setCutlineReady(false);
+      if (preset === "circle") {
+        setCutMode("circle");
+        postToPoc({
+          type: "pim-editor-set-shape",
+          shape: "circle",
+          mode: "circle",
+          widthMm,
+          heightMm,
+        });
+        return;
+      }
+      setCutMode("rect");
+      const radius = preset === "square" ? 0 : cornerRadiusMm;
+      if (preset === "square") {
+        setCornerRadiusMm(0);
+      }
+      postToPoc({
+        type: "pim-editor-set-shape",
+        shape: "rect",
+        mode: "rect",
+        widthMm,
+        heightMm,
+        cornerRadiusMm: radius,
+      });
+    },
+    [postToPoc, widthMm, heightMm, cornerRadiusMm]
+  );
+
+  const handleDieCutSelect = useCallback(
+    (tpl: DieCutTemplate) => {
+      setCutSource("diecut");
+      applyTemplate(tpl);
+    },
+    [applyTemplate]
+  );
+
+  const showCornerRadius = useMemo(() => {
+    if (cutSource === "sekil") return cutMode === "rect";
+    if (cutSource === "diecut") {
+      const tpl = activeDieCutId ? DIE_CUT_BY_ID.get(activeDieCutId) : null;
+      return tpl?.shape === "rect";
+    }
+    return false;
+  }, [cutSource, cutMode, activeDieCutId]);
 
   const handleImageScaleChange = (pct: number) => {
     applyCoordinatedScale(pct);
@@ -898,26 +1019,89 @@ export default function EditorShell() {
 
             {toolTab === "bicak" ? (
               <>
-                <EditorPanelSection title="Kesim modu" first>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CUT_MODES.map(({ mode, label }) => (
+                <EditorPanelSection title="Kesim kaynağı" first>
+                  <div className="flex flex-col gap-1.5">
+                    {CUT_SOURCES.map(({ id, label, desc }) => (
                       <button
-                        key={mode}
+                        key={id}
                         type="button"
-                        disabled={!designLoaded}
-                        onClick={() => handleCutModeChange(mode)}
+                        onClick={() => handleCutSourceChange(id)}
                         className={cn(
-                          "rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none",
-                          cutMode === mode
+                          "rounded-md px-2.5 py-2 text-left transition-colors",
+                          cutSource === id
                             ? "bg-pim-mercan text-white shadow-sm"
                             : "bg-gri-100 text-gri-700 hover:bg-gri-200"
                         )}
                       >
-                        {label}
+                        <span className="block text-[12px] font-medium">
+                          {label}
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-0.5 block text-[11px] leading-snug",
+                            cutSource === id ? "text-white/90" : "text-gri-600"
+                          )}
+                        >
+                          {desc}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </EditorPanelSection>
+
+                {cutSource === "ozel" ? (
+                  <EditorPanelSection title="Kontur tipi">
+                    <div className="flex flex-wrap gap-1.5">
+                      {CONTOUR_VARIANTS.map(({ mode, label }) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          disabled={!designLoaded}
+                          onClick={() => handleCutModeChange(mode)}
+                          className={cn(
+                            "rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none",
+                            cutMode === mode
+                              ? "bg-pim-mercan text-white shadow-sm"
+                              : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </EditorPanelSection>
+                ) : null}
+
+                {cutSource === "sekil" ? (
+                  <EditorPanelSection title="Şekil">
+                    <div className="flex flex-wrap gap-1.5">
+                      {SEKIL_PRESETS.map(({ id, label }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => handleSekilPresetChange(id)}
+                          className={cn(
+                            "rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors",
+                            sekilPreset === id
+                              ? "bg-pim-mercan text-white shadow-sm"
+                              : "bg-gri-100 text-gri-700 hover:bg-gri-200"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </EditorPanelSection>
+                ) : null}
+
+                {cutSource === "diecut" ? (
+                  <EditorPanelSection title="Şablon galerisi">
+                    <EditorDieCutPicker
+                      activeId={activeDieCutId}
+                      onSelect={handleDieCutSelect}
+                    />
+                  </EditorPanelSection>
+                ) : null}
 
                 <EditorPanelSection title="Kesim türü">
                   <div className="flex flex-col gap-1.5">
@@ -992,30 +1176,32 @@ export default function EditorShell() {
                   ) : null}
                 </EditorPanelSection>
 
-                <EditorPanelSection title="Yumuşatma">
-                  <label className="block text-[11px] text-gri-600">
-                    <span className="flex items-center justify-between gap-2">
-                      <span>Kontur köşeleri</span>
-                      <span className="tabular-nums font-medium text-lacivert">
-                        {smoothness}
+                {cutSource === "ozel" ? (
+                  <EditorPanelSection title="Yumuşatma">
+                    <label className="block text-[11px] text-gri-600">
+                      <span className="flex items-center justify-between gap-2">
+                        <span>Kontur köşeleri</span>
+                        <span className="tabular-nums font-medium text-lacivert">
+                          {smoothness}
+                        </span>
                       </span>
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={smoothness}
-                      disabled={!designLoaded}
-                      onChange={(e) =>
-                        handleSmoothnessChange(parseInt(e.target.value, 10))
-                      }
-                      className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
-                    />
-                  </label>
-                </EditorPanelSection>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={smoothness}
+                        disabled={!designLoaded}
+                        onChange={(e) =>
+                          handleSmoothnessChange(parseInt(e.target.value, 10))
+                        }
+                        className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
+                      />
+                    </label>
+                  </EditorPanelSection>
+                ) : null}
 
-                {cutMode === "rect" ? (
+                {showCornerRadius ? (
                   <EditorPanelSection title="Köşe yuvarlama">
                     <label className="block text-[11px] text-gri-600">
                       <span className="flex items-center justify-between gap-2">
