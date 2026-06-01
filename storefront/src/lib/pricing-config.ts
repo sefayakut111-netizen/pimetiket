@@ -45,6 +45,7 @@ import {
   FALLBACK_ETIKET_RULO_CONFIG,
   FALLBACK_ETIKET_TABAKA_CONFIG,
 } from "./pricing-config-types";
+import { mergePricingCatalog } from "./pricing-catalog-sync";
 
 // FALLBACK config'ler pricing-config-types.ts'te (client-safe)
 // Buradan re-export ediliyor (yukarıdaki import bloğunda)
@@ -126,6 +127,7 @@ export async function getAdminPricingConfig(
   draft_updated_by_email: string | null;
   live_updated_at: string | null;
   live_updated_by_email: string | null;
+  catalog_sync_added?: string[];
 } | null> {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -144,13 +146,32 @@ export async function getAdminPricingConfig(
     live_updated_at: string | null;
     live_updated_by_email: string | null;
   };
+
+  if (scope === "global") {
+    return {
+      draft: row.draft_config,
+      live: row.live_config,
+      draft_updated_at: row.draft_updated_at,
+      draft_updated_by_email: row.draft_updated_by_email,
+      live_updated_at: row.live_updated_at,
+      live_updated_by_email: row.live_updated_by_email,
+    };
+  }
+
+  const draftMerged = mergePricingCatalog(
+    scope,
+    row.draft_config as ProfileConfig
+  );
+
   return {
-    draft: row.draft_config,
+    draft: draftMerged.config,
     live: row.live_config,
     draft_updated_at: row.draft_updated_at,
     draft_updated_by_email: row.draft_updated_by_email,
     live_updated_at: row.live_updated_at,
     live_updated_by_email: row.live_updated_by_email,
+    catalog_sync_added:
+      draftMerged.added.length > 0 ? draftMerged.added : undefined,
   };
 }
 

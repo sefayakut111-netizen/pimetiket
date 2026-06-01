@@ -144,8 +144,9 @@ export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {
     { id: "kuse",    name: "Kuşe Etiket",    m2_cost_try: 350, desc: "Mat kaplamalı baskı kağıdı" },
     { id: "kraft",   name: "Kraft Etiket",   m2_cost_try: 300, desc: "Doğal, dokunsal" },
     { id: "beyaz",   name: "Opak PP Etiket", m2_cost_try: 400, desc: "Klasik, dayanıklı, parlak" },
-    { id: "ultra",   name: "Ultra clear",    m2_cost_try: 600, desc: "Şeffaf cam etkisi" },
-    { id: "metalik", name: "Metalik",        m2_cost_try: 900, desc: "Folyo gümüş" },
+    { id: "seffaf",  name: "Şeffaf Etiket",  m2_cost_try: 600, desc: "Arka planı gösteren saydam etiket" },
+    { id: "ultra",   name: "Ultra Clear Etiket", m2_cost_try: 600, desc: "Tamamen şeffaf, görünmez film" },
+    { id: "metalik", name: "Metalize Etiket", m2_cost_try: 900, desc: "Parlak metalik yüzey" },
   ],
   options: {
     coating: {

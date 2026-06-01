@@ -77,6 +77,7 @@ interface ApiResponse {
   live_updated_at?: string | null;
   live_updated_by_email?: string | null;
   history?: PricingHistoryRow[];
+  catalog_sync_added?: string[];
   error?: string;
 }
 
@@ -255,6 +256,12 @@ function FiyatlarPageInner() {
       }
       setData(j);
       setDraft(JSON.parse(JSON.stringify(j.draft)) as ProfileConfig);
+
+      if (j.catalog_sync_added?.length) {
+        toast.info(
+          `Eksik katalog öğeleri eklendi (${j.catalog_sync_added.length}): kaydetmek için Güncelle'ye basın.`
+        );
+      }
 
       // Preview defaults
       const firstMaterial = (j.draft as ProfileConfig).materials[0];
@@ -713,6 +720,14 @@ function FiyatlarPageInner() {
                   )}
                 </span>
               </div>
+              {data.catalog_sync_added && data.catalog_sync_added.length > 0 && (
+                <p className="text-[12px] text-saman-koyu mt-2 leading-relaxed">
+                  Konfigüratörde olan{" "}
+                  <strong>{data.catalog_sync_added.length} eksik öğe</strong>{" "}
+                  forma eklendi (henüz canlıda değil). Fiyatları kontrol edip{" "}
+                  <strong>Güncelle</strong> ile kaydedin.
+                </p>
+              )}
             </div>
             <Button
               variant="ghost"
