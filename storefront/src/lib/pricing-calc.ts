@@ -49,6 +49,8 @@ export interface PriceCalcInput {
   sheets_needed?: number;
   /** Area modunda geometri motorundan gelen fire dahil m² (tercih edilen). */
   billable_m2?: number;
+  /** Sticker kesim türü — fiyat çarpanı (geometry map'inden bağımsız). */
+  cut_type?: "diecut" | "kisscut" | "tabaka";
 }
 
 export interface PriceCalcOk {
@@ -294,9 +296,15 @@ export function calculatePrice(
       }
     }
 
-    const with_options_cost =
+    let with_options_cost =
       tiered_cost * (1 + options_cost_pct_total / 100);
-    const with_options = tiered_sell * (1 + options_sell_pct_total / 100);
+    let with_options = tiered_sell * (1 + options_sell_pct_total / 100);
+    if (scope === "sticker") {
+      const cutMult =
+        config.cut_multipliers?.[input.cut_type ?? "diecut"] ?? 1.0;
+      with_options_cost *= cutMult;
+      with_options *= cutMult;
+    }
     const opEnabled = config.operation.enabled !== false;
     const operation_cost = opEnabled
       ? dualPriceOperationCost(config, input.qty)
@@ -392,7 +400,12 @@ export function calculatePrice(
     }
   }
 
-  const with_options = tiered * (1 + options_pct_total / 100);
+  let with_options = tiered * (1 + options_pct_total / 100);
+  if (scope === "sticker") {
+    const cutMult =
+      config.cut_multipliers?.[input.cut_type ?? "diecut"] ?? 1.0;
+    with_options *= cutMult;
+  }
 
   // 7. Operation cost
   const op = config.operation;

@@ -21,6 +21,7 @@ export type {
   TierConfig,
   OperationConfig,
   PercentConfig,
+  CutMultipliers,
   ProfileConfig,
   ScopeConfig,
   PricingHistoryRow,

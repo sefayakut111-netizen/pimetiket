@@ -65,6 +65,12 @@ export interface PercentConfig {
   pct: number;
 }
 
+export interface CutMultipliers {
+  diecut: number;
+  kisscut: number;
+  tabaka: number;
+}
+
 export type PricingMode = "area" | "sheet" | "pricebook";
 
 export interface ProfileConfig {
@@ -80,6 +86,8 @@ export interface ProfileConfig {
   /** Etiket legacy — sticker dual-price profillerinde yok */
   margin?: PercentConfig;
   vat: PercentConfig;
+  /** Sticker: kesim türü fiyat çarpanı (diecut/kisscut/tabaka). Yoksa hepsi 1.0. */
+  cut_multipliers?: CutMultipliers;
 }
 
 export type ScopeConfig = ProfileConfig | Record<string, unknown>;
@@ -127,6 +135,7 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
   ],
   operation: { setup: 50, packaging_per_unit: 0.01, fee_pct: 2.5 },
   vat: { pct: 20 },
+  cut_multipliers: { diecut: 1.10, kisscut: 1.00, tabaka: 1.00 },
 };
 
 export const FALLBACK_ETIKET_RULO_CONFIG: ProfileConfig = {

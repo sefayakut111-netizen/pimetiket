@@ -16,7 +16,6 @@
 
 import {
   quoteSticker,
-  type CutType,
   type QuoteResult,
 } from "./pricing-engine";
 import { getDefaultInput } from "./pricing-profiles";
@@ -28,6 +27,7 @@ import { FALLBACK_STICKER_CONFIG } from "./pricing-config-types";
 
 export type StickerMaterial = "vinil" | "transparan" | "holo" | "simli";
 export type StickerFinish = "parlak" | "mat" | "yok";
+export type StickerCutType = "tabaka" | "diecut" | "kisscut";
 
 /** Customer-facing tier preset'leri — chip'ler için kullanılır.
  * Müşteri serbest qty seçer (25'er artış); engine en yakın tier
@@ -55,6 +55,13 @@ export const FINISH_MULT: Record<StickerFinish, number> = {
   yok: 0.95, // Kaplamasız — küçük indirim, kaplama maliyeti yok
 };
 
+/** Kesim türü → fiyat çarpanı (admin config fail fallback) */
+export const CUT_MULT: Record<StickerCutType, number> = {
+  diecut: 1.10,
+  kisscut: 1.00,
+  tabaka: 1.00,
+};
+
 export interface CustomerQuoteInput {
   /** Sticker genişliği mm. Min 25, max 400 (BIG_SHEET_W). */
   width: number;
@@ -64,7 +71,7 @@ export interface CustomerQuoteInput {
   finish: StickerFinish;
   qty: number;
   /** Kesim tipi — default die-cut (customer-friendly) */
-  cut?: CutType;
+  cut?: StickerCutType;
 }
 
 /** Sticker boyut sınırları (customer-facing) */
@@ -122,12 +129,15 @@ export function quoteCustomerSticker(
   const defaults = getDefaultInput();
   const matMult = MATERIAL_MULT[input.material];
   const finMult = FINISH_MULT[input.finish];
-  const surchargeMultiplier = matMult * finMult;
+  const cutKey = input.cut ?? "diecut";
+  const cutMult = CUT_MULT[cutKey];
+  const surchargeMultiplier = matMult * finMult * cutMult;
+  const geomCut = cutKey === "kisscut" ? "diecut" : cutKey;
 
   const result: QuoteResult = quoteSticker({
     width: input.width,
     height: input.height,
-    cut: input.cut ?? "diecut",
+    cut: geomCut === "tabaka" ? "tabaka" : "diecut",
     qty: input.qty,
     production: {
       mode: "fason",

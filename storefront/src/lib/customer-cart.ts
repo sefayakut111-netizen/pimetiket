@@ -53,7 +53,7 @@ export interface CustomerCartItem {
 
   // Sticker-specific (opsiyonel)
   shape?: "square" | "circle" | "ozel" | "die";
-  cut?: "tabaka" | "diecut";
+  cut?: "tabaka" | "diecut" | "kisscut";
   softCorners?: boolean;
   material?: "vinil" | "transparan" | "holo" | "simli";
   finish?: "parlak" | "mat" | "yok";

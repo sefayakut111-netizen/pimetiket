@@ -15,6 +15,7 @@ import { quoteSticker, quoteEtiket } from "./pricing-engine";
 import type {
   CustomerQuoteResult,
   CustomerQuoteInput,
+  StickerCutType,
 } from "./sticker-customer-pricing";
 import type {
   CustomerEtiketQuoteResult,
@@ -25,10 +26,12 @@ export function quoteStickerFromConfig(
   config: ProfileConfig,
   input: CustomerQuoteInput
 ): CustomerQuoteResult | null {
+  const geomCut: StickerCutType =
+    input.cut === "kisscut" ? "diecut" : (input.cut ?? "diecut");
   const geomResult = quoteSticker({
     width: input.width,
     height: input.height,
-    cut: input.cut ?? "diecut",
+    cut: geomCut === "tabaka" ? "tabaka" : "diecut",
     qty: input.qty,
     production: { mode: "fason", rate: 100 },
     operation: { setup: 0, packaging: 0, feePct: 0 },
@@ -54,6 +57,7 @@ export function quoteStickerFromConfig(
       material_id: input.material,
       selected_options,
       billable_m2: geomResult.geometry.totalM2,
+      cut_type: input.cut ?? "diecut",
     },
     config,
     "sticker"

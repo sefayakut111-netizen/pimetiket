@@ -552,7 +552,9 @@ function StickerPage() {
     if (it.width) setWidth(it.width);
     if (it.height) setHeight(it.height);
     if (it.softCorners !== undefined) setSoftCorners(it.softCorners);
-    if (it.cut === "tabaka" || it.cut === "diecut") setCutMode(it.cut);
+    if (it.cut === "tabaka" || it.cut === "diecut" || it.cut === "kisscut") {
+      setCutMode(it.cut);
+    }
     const designCnt = it.designCount ?? 1;
     setTier(Math.max(25, Math.round(it.qty / designCnt)));
     if (designCnt > 1) setDesignCount(designCnt);
@@ -904,16 +906,15 @@ function StickerPage() {
 
   // Faz 2: admin live_config varsa kullan, yoksa eski engine fallback.
   // Bridge null dönerse (config eksik / material ID admin'de yok) eski engine.
-  // Sefa 20 May v68: pricing engine "kisscut" enum'u bilmiyor — diecut'a
-  // map et (geometry/pricing impact yok). Yeni cut tipi cart config string'e
-  // ayrı yansır.
+  // Sefa 20 May v68: pricing engine "kisscut" enum'u bilmiyor — geometry
+  // quoteStickerFromConfig içinde map edilir. Fiyat çarpanı gerçek cutMode ile gider.
   const quoteInput = {
     width,
     height,
     material,
     finish,
     qty: tier,
-    cut: mapCutToLegacy(cutMode),
+    cut: cutMode,
   };
   const quote =
     (adminConfig && quoteStickerFromConfig(adminConfig, quoteInput)) ??
@@ -1924,8 +1925,8 @@ function StickerPage() {
             {cutMode === "kisscut" && (
               <p className="text-[12px] text-gri-600 leading-relaxed mb-2 px-0.5">
                 {locale === "en"
-                  ? "Price uses die-cut rates; kiss-cut (partial cut) is applied in production."
-                  : "Fiyat özel kesim tarifesinden hesaplanır; yarı kesim üretim aşamasında uygulanır."}
+                  ? "Kiss-cut pricing is lower than full die-cut; partial cut is applied in production."
+                  : "Yarı kesim fiyatı tam kesime göre daha düşüktür; üretimde yarı kesim uygulanır."}
               </p>
             )}
             <PriceCard
@@ -1951,7 +1952,7 @@ function StickerPage() {
                   unit: currentUnit,
                   total,
                   shape: mapShapeToLegacy(shape),
-                  cut: mapCutToLegacy(cutMode),
+                  cut: cutMode,
                   softCorners,
                   material,
                   finish,
@@ -2125,7 +2126,7 @@ function StickerPage() {
                   // map edilir. Cart config string'i ayrıca yeni etiketleri
                   // saklar (config field gerçek seçimi tutar).
                   shape: mapShapeToLegacy(shape),
-                  cut: mapCutToLegacy(cutMode),
+                  cut: cutMode,
                   softCorners,
                   material,
                   finish,

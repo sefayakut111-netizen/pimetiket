@@ -28,6 +28,7 @@ import type {
   OptionGroup,
   OptionItem,
   TierConfig,
+  CutMultipliers,
 } from "@/lib/pricing-config";
 import { PriceBookPanel } from "@/components/admin/pricing/PriceBookPanel";
 import { calcTabakaSheets } from "@/lib/pricing-tabaka-geo";
@@ -59,6 +60,12 @@ function parseScopeParam(v: string | null): Scope | null {
 }
 
 type Scope = "sticker" | "etiket_rulo" | "etiket_tabaka";
+
+const DEFAULT_CUT_MULTIPLIERS: CutMultipliers = {
+  diecut: 1.10,
+  kisscut: 1.00,
+  tabaka: 1.00,
+};
 
 interface ApiResponse {
   ok?: boolean;
@@ -591,6 +598,18 @@ function FiyatlarPageInner() {
 
   const updateVatPct = (value: number) => {
     setDraft({ ...draft, vat: { pct: value } });
+  };
+
+  const cutMultipliers = draft.cut_multipliers ?? DEFAULT_CUT_MULTIPLIERS;
+
+  const updateCutMultiplier = (key: keyof CutMultipliers, value: number) => {
+    setDraft({
+      ...draft,
+      cut_multipliers: {
+        ...cutMultipliers,
+        [key]: value,
+      },
+    });
   };
 
   return (
@@ -1234,6 +1253,43 @@ function FiyatlarPageInner() {
               </div>
             </Card>
 
+            {scope === "sticker" && (
+              <Card padding="p-5">
+                <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
+                  <span>Kesim Çarpanı</span>
+                </h2>
+                <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
+                  Die Cut tam kesim olduğu için kiss cut&apos;tan pahalıdır. Oran = diecut ÷ kisscut.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <NumField
+                    label="Die Cut"
+                    value={cutMultipliers.diecut}
+                    step={0.01}
+                    min={0.5}
+                    max={3}
+                    onChange={(v) => updateCutMultiplier("diecut", v)}
+                  />
+                  <NumField
+                    label="Kiss Cut"
+                    value={cutMultipliers.kisscut}
+                    step={0.01}
+                    min={0.5}
+                    max={3}
+                    onChange={(v) => updateCutMultiplier("kisscut", v)}
+                  />
+                  <NumField
+                    label="Tabaka"
+                    value={cutMultipliers.tabaka}
+                    step={0.01}
+                    min={0.5}
+                    max={3}
+                    onChange={(v) => updateCutMultiplier("tabaka", v)}
+                  />
+                </div>
+              </Card>
+            )}
+
             {/* Operation + Margin + KDV (single card) */}
             <Card padding="p-5">
               <div className="flex items-center justify-between mb-3">
@@ -1750,11 +1806,15 @@ function NumField({
   value,
   step,
   onChange,
+  min,
+  max,
 }: {
   label: string;
   value: number;
   step: number;
   onChange: (v: number) => void;
+  min?: number;
+  max?: number;
 }) {
   return (
     <div>
@@ -1765,6 +1825,8 @@ function NumField({
         type="number"
         value={value}
         step={step}
+        min={min}
+        max={max}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full px-3 h-10 rounded-[10px] bg-white ring-1 ring-gri-200 text-[14px] tabular-nums focus:outline-none focus:ring-pim-mercan"
       />
