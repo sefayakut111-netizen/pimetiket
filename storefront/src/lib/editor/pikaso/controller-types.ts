@@ -21,6 +21,8 @@ export interface PikasoEditorController {
   fitContain(): void;
   fitCenter(): void;
   fitCover(): void;
+  rotateImage(deltaDeg: number): void;
+  flipImage(axis: "h" | "v"): void;
   requestExport(): void;
   setLayerVisibility(layer: EditorLayer, on: boolean): void;
   setEditTarget(target: EditorEditTarget): void;

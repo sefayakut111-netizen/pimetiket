@@ -4,11 +4,11 @@ import { cn } from "@/lib/cn";
 
 export type EditorLayer = "cut" | "white" | "bleed" | "safe";
 
-export const LAYER_LABELS: { id: EditorLayer; label: string }[] = [
-  { id: "cut", label: "Bıçak" },
-  { id: "bleed", label: "Bleed" },
-  { id: "safe", label: "Safe" },
-  { id: "white", label: "Beyaz" },
+export const LAYER_LABELS: { id: EditorLayer; label: string; hint: string }[] = [
+  { id: "cut", label: "Bıçak", hint: "Kesim çizgisi — etiketin kesileceği hat" },
+  { id: "bleed", label: "Bleed", hint: "Taşma payı — baskı kayması için kenar fazlası" },
+  { id: "safe", label: "Safe", hint: "Güvenli bölge — yazı/logo bu alanın içinde kalsın" },
+  { id: "white", label: "Beyaz", hint: "Beyaz mürekkep katmanı — şeffaf/metalik zeminde" },
 ];
 
 interface EditorZoomControlsProps {
@@ -71,7 +71,7 @@ export function EditorLayerToggles({
 }: EditorLayerTogglesProps) {
   return (
     <div className="flex flex-wrap gap-2">
-      {LAYER_LABELS.map(({ id, label }) => {
+      {LAYER_LABELS.map(({ id, label, hint }) => {
         const on = layers[id];
         return (
           <button
@@ -79,8 +79,8 @@ export function EditorLayerToggles({
             type="button"
             role="switch"
             aria-checked={on}
-            aria-label={`${label} katmanı`}
-            title={on ? `${label} açık` : `${label} kapalı`}
+            aria-label={`${label} katmanı — ${hint}`}
+            title={hint}
             onClick={() => onToggleLayer(id, !on)}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 px-3 rounded-full text-[11.5px] font-semibold whitespace-nowrap transition-colors",

@@ -21,3 +21,44 @@ export function suggestMmFromPixels(
     aspect,
   };
 }
+
+export type PrintDpiLevel = "ok" | "warn" | "critical";
+
+/** Baskı etkin DPI — boyut mm ile piksel genişliğinden (dar kenar). */
+export function effectivePrintDpi(
+  widthPx: number,
+  heightPx: number,
+  widthMm: number,
+  heightMm: number
+): number {
+  if (widthPx <= 0 || heightPx <= 0 || widthMm <= 0 || heightMm <= 0) {
+    return DEFAULT_DPI;
+  }
+  const dpiW = widthPx / (widthMm / 25.4);
+  const dpiH = heightPx / (heightMm / 25.4);
+  return Math.min(dpiW, dpiH);
+}
+
+export function printDpiStatus(dpi: number): {
+  level: PrintDpiLevel;
+  dpi: number;
+  message: string | null;
+} {
+  const rounded = Math.round(dpi);
+  if (rounded >= 150) {
+    return { level: "ok", dpi: rounded, message: null };
+  }
+  if (rounded >= 100) {
+    return {
+      level: "warn",
+      dpi: rounded,
+      message: `Bu boyutta baskı kalitesi düşebilir (≈${rounded} DPI). Daha küçük boyut veya yüksek çözünürlüklü görsel öner.`,
+    };
+  }
+  return {
+    level: "critical",
+    dpi: rounded,
+    message:
+      "Çözünürlük baskı için düşük — pikselli çıkabilir.",
+  };
+}

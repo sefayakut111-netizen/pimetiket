@@ -601,6 +601,56 @@ export const PikasoEditorCanvas = forwardRef<
     applyImagePreset("cover");
   }, [applyImagePreset]);
 
+  const rotateImage = useCallback(
+    (deltaDeg: number) => {
+      const shape = imageShapeRef.current;
+      const editor = editorRef.current;
+      if (!shape || !editor) return;
+      const w = shape.width() * Math.abs(shape.scaleX());
+      const h = shape.height() * Math.abs(shape.scaleY());
+      const cx = shape.x() + w / 2;
+      const cy = shape.y() + h / 2;
+      const node = shape.node;
+      const nextRot = node.rotation() + deltaDeg;
+      shape.update({
+        x: cx - w / 2,
+        y: cy - h / 2,
+        rotation: nextRot,
+      });
+      shape.select();
+      editor.board.draw();
+      scheduleRecomputeCutline({ fastImmediate: true });
+    },
+    [editorRef, scheduleRecomputeCutline]
+  );
+
+  const flipImage = useCallback(
+    (axis: "h" | "v") => {
+      const shape = imageShapeRef.current;
+      const editor = editorRef.current;
+      if (!shape || !editor) return;
+      const w = shape.width() * Math.abs(shape.scaleX());
+      const h = shape.height() * Math.abs(shape.scaleY());
+      const cx = shape.x() + w / 2;
+      const cy = shape.y() + h / 2;
+      if (axis === "h") {
+        shape.update({
+          scaleX: -shape.scaleX(),
+          x: cx - w / 2,
+        });
+      } else {
+        shape.update({
+          scaleY: -shape.scaleY(),
+          y: cy - h / 2,
+        });
+      }
+      shape.select();
+      editor.board.draw();
+      scheduleRecomputeCutline({ fastImmediate: true });
+    },
+    [editorRef, scheduleRecomputeCutline]
+  );
+
   /** Opak içerik label'ı doldursun — şeffaf kenarlar kırpılmış bbox ile cover */
   const fitImageOpaqueCover = useCallback(() => {
     const shape = imageShapeRef.current;
@@ -812,6 +862,8 @@ export const PikasoEditorCanvas = forwardRef<
       fitContain: () => fitImageContain(),
       fitCenter: () => fitImageCenter(),
       fitCover: () => fitImageCover(),
+      rotateImage: (deltaDeg: number) => rotateImage(deltaDeg),
+      flipImage: (axis: "h" | "v") => flipImage(axis),
       requestExport: () => {
         void exportCutline();
       },
@@ -844,6 +896,8 @@ export const PikasoEditorCanvas = forwardRef<
       fitImageContain,
       fitImageCenter,
       fitImageCover,
+      rotateImage,
+      flipImage,
       ready,
       renderBundle,
       editorRef,

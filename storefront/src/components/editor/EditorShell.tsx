@@ -46,7 +46,7 @@ import type {
   BladeShapeConfig,
   EditorEditTarget,
 } from "@/lib/editor/pikaso/controller-types";
-import { suggestMmFromPixels } from "@/lib/editor/suggest-mm-from-pixels";
+import { suggestMmFromPixels, effectivePrintDpi, printDpiStatus } from "@/lib/editor/suggest-mm-from-pixels";
 import {
   CATEGORY_LABELS,
   DIE_CUT_BY_ID,
@@ -111,6 +111,13 @@ export default function EditorShell() {
   const [showCoach, setShowCoach] = useState(false);
   const [showCanvasHint, setShowCanvasHint] = useState(false);
   const [contourRefining, setContourRefining] = useState(false);
+  const [contourReadyFlash, setContourReadyFlash] = useState(false);
+  const prevContourRefiningRef = useRef(false);
+  const [cornerRadiusMm, setCornerRadiusMm] = useState(0);
+  const [imagePixelDims, setImagePixelDims] = useState<{
+    widthPx: number;
+    heightPx: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
@@ -154,6 +161,7 @@ export default function EditorShell() {
       setCanvasMounted(false);
       canvasReadyRef.current = false;
       setContourRefining(false);
+      setImagePixelDims(null);
       return;
     }
     setDesignUrl(
@@ -197,12 +205,69 @@ export default function EditorShell() {
     }
     if (bladeTab === "shape") {
       if (shapeMode === "rect" || shapeMode === "circle") {
-        return { kind: shapeMode };
+        return shapeMode === "rect"
+          ? { kind: "rect", cornerRadiusMm }
+          : { kind: shapeMode };
       }
       return { kind: shapeMode };
     }
     return { kind: "none" };
-  }, [selectedTpl, bladeTab, shapeMode]);
+  }, [selectedTpl, bladeTab, shapeMode, cornerRadiusMm]);
+
+  const productHint = useMemo((): {
+    primary: "sticker" | "etiket" | null;
+    message: string | null;
+  } => {
+    const isCircle =
+      shapeMode === "circle" ||
+      selectedTpl?.shape === "circle" ||
+      selectedTpl?.category === "yuvarlak";
+    if (isCircle) {
+      return {
+        primary: "sticker",
+        message: "Yuvarlak kesim → Sticker önerilir",
+      };
+    }
+    const isRectLike =
+      shapeMode === "rect" ||
+      selectedTpl?.shape === "rect" ||
+      selectedTpl?.category === "dikdortgen" ||
+      selectedTpl?.category === "kare";
+    const rollTendency =
+      isRectLike &&
+      (widthMm >= heightMm * 1.8 ||
+        heightMm >= widthMm * 1.8 ||
+        widthMm * heightMm >= 2500);
+    if (rollTendency) {
+      return {
+        primary: "etiket",
+        message: "Dikdörtgen / rulo kesim → Etiket önerilir",
+      };
+    }
+    return { primary: null, message: null };
+  }, [shapeMode, selectedTpl, widthMm, heightMm]);
+
+  const printDpiWarning = useMemo(() => {
+    if (!imagePixelDims) return null;
+    const dpi = effectivePrintDpi(
+      imagePixelDims.widthPx,
+      imagePixelDims.heightPx,
+      widthMm,
+      heightMm
+    );
+    return printDpiStatus(dpi);
+  }, [imagePixelDims, widthMm, heightMm]);
+
+  useEffect(() => {
+    const was = prevContourRefiningRef.current;
+    if (was && !contourRefining) {
+      setContourReadyFlash(true);
+      const t = window.setTimeout(() => setContourReadyFlash(false), 2000);
+      prevContourRefiningRef.current = contourRefining;
+      return () => window.clearTimeout(t);
+    }
+    prevContourRefiningRef.current = contourRefining;
+  }, [contourRefining]);
 
   useEffect(() => {
     setBladeTransform(DEFAULT_BLADE_TRANSFORM);
@@ -257,6 +322,7 @@ export default function EditorShell() {
 
   const handleDesignLoaded = useCallback(
     ({ widthPx, heightPx }: { widthPx: number; heightPx: number }) => {
+      setImagePixelDims({ widthPx, heightPx });
       if (!design?.tempId || selectedTpl) return;
       if (dimsAppliedRef.current === design.tempId) return;
       dimsAppliedRef.current = design.tempId;
@@ -498,6 +564,18 @@ export default function EditorShell() {
     canvasRef.current?.fitCover();
   }, []);
 
+  const handleRotateImage = useCallback(() => {
+    canvasRef.current?.rotateImage(90);
+  }, []);
+
+  const handleFlipHorizontal = useCallback(() => {
+    canvasRef.current?.flipImage("h");
+  }, []);
+
+  const handleFlipVertical = useCallback(() => {
+    canvasRef.current?.flipImage("v");
+  }, []);
+
   const handleEditTargetChange = useCallback((target: EditorEditTarget) => {
     setEditTarget(target);
     canvasRef.current?.setEditTarget(target);
@@ -578,35 +656,46 @@ export default function EditorShell() {
           </div>
 
           <div
-            className="flex shrink-0 flex-wrap items-center gap-2 ml-auto"
+            className="flex shrink-0 flex-col items-end gap-1 ml-auto"
             data-onboard="export"
           >
-            {saving ? (
-              <span className="text-[11px] text-gri-600">Kaydediliyor…</span>
+            {productHint.message ? (
+              <p className="text-[10px] text-gri-500 leading-snug text-right max-w-[220px]">
+                {productHint.message}
+              </p>
             ) : null}
-            {draftId ? (
-              <Pill variant="yesil" className="hidden sm:inline-flex">
-                Kayıtlı
-              </Pill>
-            ) : null}
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={saving}
-              onClick={() => void addToProduct("sticker")}
-            >
-              Sticker&apos;a ekle
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={saving}
-              onClick={() => void addToProduct("etiket")}
-            >
-              Etiket&apos;e ekle
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {saving ? (
+                <span className="text-[11px] text-gri-600">Kaydediliyor…</span>
+              ) : null}
+              {draftId ? (
+                <Pill variant="yesil" className="hidden sm:inline-flex">
+                  Kayıtlı
+                </Pill>
+              ) : null}
+              <Button
+                type="button"
+                variant={
+                  productHint.primary === "sticker" ? "primary" : "secondary"
+                }
+                size="sm"
+                disabled={saving}
+                onClick={() => void addToProduct("sticker")}
+              >
+                Sticker&apos;a ekle
+              </Button>
+              <Button
+                type="button"
+                variant={
+                  productHint.primary === "etiket" ? "primary" : "secondary"
+                }
+                size="sm"
+                disabled={saving}
+                onClick={() => void addToProduct("etiket")}
+              >
+                Etiket&apos;e ekle
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -835,6 +924,10 @@ export default function EditorShell() {
                     <p className="mt-2 text-[12px] font-medium text-pim-mercan">
                       Kesim hattı iyileştiriliyor…
                     </p>
+                  ) : contourReadyFlash ? (
+                    <p className="mt-2 text-[12px] font-medium text-yesil-koyu">
+                      Kesim hattı hazır ✓
+                    </p>
                   ) : null}
                 </>
               ) : (
@@ -999,7 +1092,47 @@ export default function EditorShell() {
             <Pill variant="gri" className="mt-2">
               {widthMm}×{heightMm} mm
             </Pill>
+            {printDpiWarning?.message ? (
+              <p
+                className={cn(
+                  "mt-2 text-[11px] leading-snug rounded-lg px-2.5 py-2",
+                  printDpiWarning.level === "critical"
+                    ? "bg-kirmizi-soft text-kirmizi ring-1 ring-kirmizi/30"
+                    : "bg-sari-soft/80 text-lacivert ring-1 ring-sari/40"
+                )}
+              >
+                {printDpiWarning.message}
+              </p>
+            ) : null}
           </section>
+
+          {bladeShape.kind === "rect" ? (
+            <section>
+              <label
+                htmlFor="editor-corner-radius"
+                className="flex items-center justify-between text-[13px] font-semibold uppercase tracking-wide text-gri-600"
+              >
+                <span>Köşe yuvarlaklığı</span>
+                <span className="tabular-nums text-[12px] font-semibold text-gri-800 normal-case">
+                  {cornerRadiusMm} mm
+                </span>
+              </label>
+              <input
+                id="editor-corner-radius"
+                type="range"
+                min={0}
+                max={20}
+                step={0.5}
+                value={cornerRadiusMm}
+                aria-label="Köşe yuvarlaklığı"
+                aria-valuetext={`${cornerRadiusMm} mm`}
+                onChange={(e) =>
+                  setCornerRadiusMm(parseFloat(e.target.value) || 0)
+                }
+                className="mt-2 w-full accent-pim-mercan"
+              />
+            </section>
+          ) : null}
 
           {bladeShape.kind === "none" ? (
             <p className="text-[12px] text-gri-600 leading-snug">
@@ -1038,7 +1171,38 @@ export default function EditorShell() {
                 <p className="mt-2 text-[11px] text-gri-600 leading-snug">
                   Bıçağı sürükleyip köşelerden büyüt/küçült.
                 </p>
-              ) : null}
+              ) : (
+                <div
+                  className="mt-2 flex gap-1"
+                  role="group"
+                  aria-label="Görsel döndür ve çevir"
+                >
+                  <button
+                    type="button"
+                    title="90° saat yönünde döndür"
+                    onClick={handleRotateImage}
+                    className="h-8 flex-1 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
+                  >
+                    ↻ 90°
+                  </button>
+                  <button
+                    type="button"
+                    title="Yatay çevir"
+                    onClick={handleFlipHorizontal}
+                    className="h-8 flex-1 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
+                  >
+                    ⇄ Yatay
+                  </button>
+                  <button
+                    type="button"
+                    title="Dikey çevir"
+                    onClick={handleFlipVertical}
+                    className="h-8 flex-1 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold whitespace-nowrap hover:bg-gri-50"
+                  >
+                    ⇅ Dikey
+                  </button>
+                </div>
+              )}
             </section>
           ) : null}
 
