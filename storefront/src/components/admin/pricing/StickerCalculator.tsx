@@ -1302,23 +1302,32 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
       </div>
 
       {/* Foot */}
-      <div className="px-5 py-3 text-[11px] text-gri-500 bg-gri-50 border-t border-dashed border-gri-200 flex flex-wrap justify-between gap-2 tabular-nums">
-        <span>
-           {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
-          {roll.rollsNeeded === 1
-            ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka`
-            : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}{" "}
-          · {geometry.totalM2.toFixed(3)} m² · {roll.rollW}mm en
+      <div className="px-5 py-3.5 text-[13px] text-gri-600 bg-gri-50 border-t border-dashed border-gri-200 tabular-nums">
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
+          <span>
+            {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
+            {roll.rollsNeeded === 1
+              ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka`
+              : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
+          </span>
+          <span>
+            {fit.cols}×{fit.rows} grid ·{" "}
+            {fit.mode === "big" ? "40×65 büyük tabaka" : "23×31 küçük tabaka"}
+          </span>
+        </div>
+        <p className="mt-1.5 text-gri-700 leading-snug">
+          Baskı yapılan alan:{" "}
+          <strong>{geometry.sheetAreaM2.toFixed(3)} m²</strong>
+          {" · "}
+          Fireli rulo: <strong>{geometry.totalM2.toFixed(3)} m²</strong>
+          {" · "}
+          {roll.rollW}mm en
           {roll.rollW < 600 && (
             <span className="text-yesil ml-1">
               ({600 - roll.rollW}mm tasarruf)
             </span>
           )}
-        </span>
-        <span>
-          {fit.cols}×{fit.rows} grid ·{" "}
-          {fit.mode === "big" ? "40×65 büyük tabaka" : "23×31 küçük tabaka"}
-        </span>
+        </p>
       </div>
     </Card>
   );
@@ -1327,7 +1336,7 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
 function RpStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-right">
-      <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+      <div className="text-[11px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
         {label}
       </div>
       <div className="text-[20px] font-bold tracking-tight tabular-nums">
@@ -1348,13 +1357,13 @@ function SheetPreviewCard({
 
   return (
     <Card padding="p-5">
-      <div className="text-[11px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
+      <div className="text-[13px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
         <span>{fit.sheetW / 10}×{fit.sheetH / 10} cm Tabaka Görünümü</span>
-        <span className="text-[10px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
+        <span className="text-[12px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
           {fit.perSheet} ad/tabaka
         </span>
       </div>
-      <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-3 flex items-center justify-center overflow-hidden min-h-[200px]">
+      <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-3 flex items-center justify-center overflow-hidden min-h-[280px]">
         <SheetPreviewSvg geometry={geometry} />
       </div>
       {fit.rotated && (
@@ -1377,11 +1386,11 @@ function UretimOzetiCard({
 
   return (
     <Card padding="p-5">
-      <div className="text-[11px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
+      <div className="text-[13px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
         <span>Üretim Özeti</span>
         <span
           className={cn(
-            "text-[10px] tabular-nums px-2 py-0.5 rounded-full font-semibold",
+            "text-[11px] tabular-nums px-2 py-0.5 rounded-full font-semibold",
             fit.mode === "big"
               ? "bg-pim-mercan text-white"
               : "bg-krem text-lacivert"
@@ -1396,12 +1405,23 @@ function UretimOzetiCard({
         <StatCell label="Adet/Tabaka" value={fit.perSheet.toString()} />
         <StatCell label="Toplam Tabaka" value={fit.sheetsNeeded.toString()} />
         <StatCell
-          label="Harcanan Alan"
+          label="Baskı yapılan alan"
+          hint="tabakaların alanı"
+          value={geometry.sheetAreaM2.toFixed(3)}
+          unit="m²"
+        />
+        <StatCell
+          label="Fireli rulo tabaka"
+          hint="fire + kesim markası dahil"
           value={geometry.totalM2.toFixed(3)}
           unit="m²"
           accent
         />
-        <StatCell label="Toplam Rulo" value={roll.rollsNeeded.toString()} />
+        <StatCell
+          label="Toplam Rulo"
+          value={roll.rollsNeeded.toString()}
+          className="col-span-2"
+        />
       </div>
 
       {/* Mini bar */}
@@ -1416,8 +1436,10 @@ function UretimOzetiCard({
             %{geometry.wastePct.toFixed(1)} fire
           </strong>
         </span>
-        <span className="text-gri-700 tabular-nums text-[11px]">
-          {geometry.stickerArea.toFixed(3)} m² sticker / {geometry.totalM2.toFixed(3)} m² rulo
+        <span className="text-gri-700 tabular-nums text-[12px]">
+          {geometry.stickerArea.toFixed(3)} m² sticker ·{" "}
+          {geometry.sheetAreaM2.toFixed(3)} m² tabaka ·{" "}
+          {geometry.totalM2.toFixed(3)} m² rulo
         </span>
       </div>
 
@@ -1436,27 +1458,37 @@ function StatCell({
   value,
   unit,
   accent,
+  hint,
+  className,
 }: {
   label: string;
   value: string;
   unit?: string;
   accent?: boolean;
+  hint?: string;
+  className?: string;
 }) {
   return (
     <div
       className={cn(
         "rounded-lg p-3",
-        accent ? "bg-pim-mercan-tint/60" : "bg-gri-50"
+        accent ? "bg-pim-mercan-tint/60" : "bg-gri-50",
+        className
       )}
     >
       <div
         className={cn(
-          "text-[10px] uppercase tracking-[0.08em] font-bold mb-1",
+          "text-[11px] uppercase tracking-[0.08em] font-bold mb-1",
           accent ? "text-pim-mercan-koyu" : "text-gri-700"
         )}
       >
         {label}
       </div>
+      {hint ? (
+        <div className="text-[10px] text-gri-600 mb-1 normal-case tracking-normal font-medium">
+          {hint}
+        </div>
+      ) : null}
       <div className="text-[20px] font-bold tracking-tight tabular-nums">
         {value}
         {unit && <span className="text-[12px] text-gri-500 ml-1 font-medium">{unit}</span>}

@@ -356,6 +356,7 @@ export function RuloCalculator({
         extraSidePad: 0,
       },
       totalM2: eg.totalM2,
+      sheetAreaM2: eg.etiketArea,
       stickerArea: eg.etiketArea,
       wastePct: eg.wastePct,
       effectiveCut: "diecut" as const,
@@ -789,7 +790,7 @@ export function RuloCalculator({
                     </div>
                     <div className="flex gap-5 shrink-0">
                       <div className="text-right">
-                        <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+                        <div className="text-[11px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
                           Rulo
                         </div>
                         <div className="text-[20px] font-bold tracking-tight tabular-nums">
@@ -797,7 +798,7 @@ export function RuloCalculator({
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+                        <div className="text-[11px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
                           Etiket/Rulo
                         </div>
                         <div className="text-[20px] font-bold tracking-tight tabular-nums">
@@ -805,7 +806,7 @@ export function RuloCalculator({
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[9px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
+                        <div className="text-[11px] tracking-[0.12em] uppercase text-gri-700 font-bold mb-1">
                           Verimlilik
                         </div>
                         <div className="text-[20px] font-bold tracking-tight tabular-nums">
@@ -821,13 +822,27 @@ export function RuloCalculator({
                   <div className="bg-gri-50 p-6 flex justify-center min-h-[200px]">
                     <RollPlanSvg geometry={adaptEtiketToGeometryResult(result.geometry)} />
                   </div>
-                  <div className="px-5 py-3 text-[11px] text-gri-500 bg-gri-50 border-t border-dashed border-gri-200 flex flex-wrap justify-between gap-2 tabular-nums">
-                    <span>
-                       {result.geometry.rollsNeeded === 1 ? "Tek rulo" : `${result.geometry.rollsNeeded} rulo`}
+                  <div className="px-5 py-3.5 text-[13px] text-gri-600 bg-gri-50 border-t border-dashed border-gri-200 tabular-nums">
+                    <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
+                      <span>
+                        {result.geometry.rollsNeeded === 1
+                          ? "Tek rulo"
+                          : `${result.geometry.rollsNeeded} rulo`}
+                        {" · "}
+                        son: {result.geometry.etiketsOnLastRoll}/
+                        {result.geometry.perRoll}
+                      </span>
+                      <span>
+                        {result.geometry.cols}×{result.geometry.rowsPerRoll} grid · etiket{" "}
+                        {result.geometry.width}×{result.geometry.height}mm
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-gri-700 leading-snug">
+                      Baskı yapılan alan:{" "}
+                      <strong>{result.geometry.etiketArea.toFixed(3)} m²</strong>
                       {" · "}
-                      son: {result.geometry.etiketsOnLastRoll}/{result.geometry.perRoll}
-                      {" · "}
-                      {result.geometry.totalM2.toFixed(3)} m²
+                      Fireli rulo:{" "}
+                      <strong>{result.geometry.totalM2.toFixed(3)} m²</strong>
                       {" · "}
                       {result.geometry.rollW}mm en
                       {result.geometry.rollW < 600 && (
@@ -835,39 +850,51 @@ export function RuloCalculator({
                           ({600 - result.geometry.rollW}mm tasarruf)
                         </span>
                       )}
-                    </span>
-                    <span>
-                      {result.geometry.cols}×{result.geometry.rowsPerRoll} grid · etiket {result.geometry.width}×{result.geometry.height}mm
-                    </span>
+                    </p>
                   </div>
                 </Card>
 
                 {/* Stats */}
                 <Card padding="p-5">
-                  <div className="text-[11px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
+                  <div className="text-[13px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
                     <span>Üretim Özeti — Rulo</span>
-                    <span className="text-[10px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
+                    <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
                       die-cut rulo
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <StatCell label="Etiket/Rulo" value={result.geometry.perRoll.toString()} />
                     <StatCell label="Toplam Rulo" value={result.geometry.rollsNeeded.toString()} />
                     <StatCell
-                      label="Harcanan Alan"
+                      label="Baskı yapılan alan"
+                      hint="net etiket yüzeyi"
+                      value={result.geometry.etiketArea.toFixed(3)}
+                      unit="m²"
+                    />
+                    <StatCell
+                      label="Fireli rulo tabaka"
+                      hint="fire + kesim markası dahil"
                       value={result.geometry.totalM2.toFixed(3)}
                       unit="m²"
                       accent
-                    />
-                    <StatCell
-                      label="Fire"
-                      value={`%${result.geometry.wastePct.toFixed(1)}`}
                     />
                   </div>
 
                   {/* Mini bar */}
                   <div className="mt-3" title="Rulo doluluk dağılımı">
                     <RollMiniBar geometry={adaptEtiketToGeometryResult(result.geometry)} />
+                  </div>
+
+                  <div className="mt-3 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] flex justify-between items-center border-l-[3px] border-pim-mercan">
+                    <span>
+                      <strong className="text-pim-mercan-koyu">
+                        %{result.geometry.wastePct.toFixed(1)} fire
+                      </strong>
+                    </span>
+                    <span className="text-gri-700 tabular-nums text-[12px]">
+                      {result.geometry.etiketArea.toFixed(3)} m² etiket ·{" "}
+                      {result.geometry.totalM2.toFixed(3)} m² rulo
+                    </span>
                   </div>
 
                   <div className="mt-3 text-[11px] text-gri-500 tabular-nums">
@@ -1301,22 +1328,37 @@ function StatCell({
   value,
   unit,
   accent,
+  hint,
+  className,
 }: {
   label: string;
   value: string;
   unit?: string;
   accent?: boolean;
+  hint?: string;
+  className?: string;
 }) {
   return (
-    <div className={cn("rounded-lg p-3", accent ? "bg-pim-mercan-tint/60" : "bg-gri-50")}>
+    <div
+      className={cn(
+        "rounded-lg p-3",
+        accent ? "bg-pim-mercan-tint/60" : "bg-gri-50",
+        className
+      )}
+    >
       <div
         className={cn(
-          "text-[10px] uppercase tracking-[0.08em] font-bold mb-1",
+          "text-[11px] uppercase tracking-[0.08em] font-bold mb-1",
           accent ? "text-pim-mercan-koyu" : "text-gri-700"
         )}
       >
         {label}
       </div>
+      {hint ? (
+        <div className="text-[10px] text-gri-600 mb-1 normal-case tracking-normal font-medium">
+          {hint}
+        </div>
+      ) : null}
       <div className="text-[20px] font-bold tracking-tight tabular-nums">
         {value}
         {unit && <span className="text-[12px] text-gri-500 ml-1 font-medium">{unit}</span>}

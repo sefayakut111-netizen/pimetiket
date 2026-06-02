@@ -290,6 +290,7 @@ export function adaptEtiketToGeometryResult(
       extraSidePad: (g.rollW - g.cols * g.width - 2 * ROLL_MARGIN_X) / 2,
     },
     totalM2: g.totalM2,
+    sheetAreaM2: g.etiketArea,
     stickerArea: g.etiketArea,
     wastePct: g.wastePct,
     effectiveCut: "diecut" as CutType,

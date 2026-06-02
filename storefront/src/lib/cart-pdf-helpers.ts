@@ -55,6 +55,7 @@ export function reconstructGeometryFromCart(item: CartItem): GeometryResult {
       extraSidePad: 0,
     },
     totalM2: item.totalM2,
+    sheetAreaM2: (item.width * item.height * item.producedQty) / 1_000_000,
     stickerArea: (item.width * item.height * item.producedQty) / 1_000_000,
     wastePct: 0,
     effectiveCut: isEtiket ? "diecut" : (item.cut ?? "diecut"),

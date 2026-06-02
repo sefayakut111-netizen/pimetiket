@@ -311,6 +311,8 @@ export interface GeometryResult {
   roll: RollPlan;
   /** Toplam rulo alanı m² (fire dahil) */
   totalM2: number;
+  /** Basılan tabakaların toplam alanı m² (sheetW×sheetH×adet, fire hariç) */
+  sheetAreaM2: number;
   /** Stickerların kapladığı net alan m² (fire hariç) */
   stickerArea: number;
   /** Fire yüzdesi 0-100 */
@@ -348,6 +350,8 @@ export function computeGeometry(args: {
   if (!roll) return null;
 
   const totalM2 = (roll.rollW * roll.totalLengthMm) / 1_000_000;
+  const sheetAreaM2 =
+    (fit.sheetW * fit.sheetH * fit.sheetsNeeded) / 1_000_000;
   const stickerArea = (snapW * snapH * fit.producedQty) / 1_000_000;
   const wastePct =
     totalM2 > 0 ? ((totalM2 - stickerArea) / totalM2) * 100 : 0;
@@ -358,6 +362,7 @@ export function computeGeometry(args: {
     fit,
     roll,
     totalM2,
+    sheetAreaM2,
     stickerArea,
     wastePct,
     effectiveCut,

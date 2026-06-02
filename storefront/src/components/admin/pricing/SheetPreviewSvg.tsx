@@ -58,8 +58,9 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
   const gridOffsetX = (cutW - usedWidth) / 2;
   const gridOffsetY = (cutH - usedHeight) / 2;
 
-  const PAD = 16;
-  const LABEL_H = 22;
+  const PAD = 20;
+  const LABEL_H = 32;
+  const dimFontSize = Math.max(20, outerW * 0.055);
   const svgW = outerW + PAD * 2;
   const svgH = outerH + PAD * 2 + LABEL_H;
 
@@ -101,7 +102,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
     <svg
       viewBox={`0 0 ${svgW} ${svgH}`}
       xmlns="http://www.w3.org/2000/svg"
-      className="w-full h-auto max-h-[340px]"
+      className="w-full h-auto max-h-[340px] min-h-[200px]"
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={`Tabaka önizleme: ${cutW}×${cutH} mm, ${stickersOnThisSheet}/${fit.perSheet} sticker`}
@@ -138,9 +139,9 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         y={labelY}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="11"
-        fill="#4B5563"
-        fontWeight="600"
+        fontSize={dimFontSize}
+        fill="#1F2937"
+        fontWeight="700"
       >
         {cutW}×{cutH}mm
         {showEnvelope ? ` · zarf ${envW}×${envH}mm` : ""}

@@ -288,6 +288,7 @@ function RollGroup({
   const isLastRoll = rollI === rollsNeeded - 1;
   const sheetsThisRoll = isLastRoll ? sheetsOnLastRoll : sheetsPerRoll;
   const rollY = padTop + rollI * (rollW + rollGap);
+  const annotFont = Math.max(22, rollW * 0.045);
 
   // Build sheets
   // FILL ORDER (matches sticker-fiyatlama.html): outer = cols (en), inner = rows (boy)
@@ -349,7 +350,7 @@ function RollGroup({
         y={rollY + ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="24"
+        fontSize={annotFont}
         fill="#8B7B5C"
         fontWeight="700"
       >
@@ -368,7 +369,7 @@ function RollGroup({
         y={rollY + rollW - ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="24"
+        fontSize={annotFont}
         fill="#8B7B5C"
         fontWeight="700"
       >
@@ -414,7 +415,7 @@ function RollGroup({
         y={rollY + rollW / 2}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="22"
+        fontSize={annotFont}
         fill="#1F2937"
         fontWeight="700"
         transform={`rotate(-90 ${padX + ROLL_MARGIN_Y / 2} ${rollY + rollW / 2})`}
@@ -444,7 +445,7 @@ function RollGroup({
           y={rollY + rollW / 2}
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="22"
+          fontSize={annotFont}
           fill="#8B7B5C"
           fontWeight="700"
           opacity="0.75"
@@ -477,7 +478,7 @@ function RollGroup({
         <text
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
-          fontSize="22"
+          fontSize={annotFont}
           fill="#4B5563"
           fontWeight="700"
           transform="rotate(-90)"
@@ -510,6 +511,10 @@ function SheetRect({
   qty: number;
   sheetSize: string;
 }) {
+  const qtySize = Math.min(72, Math.max(32, Math.min(width, height) * 0.14));
+  const metaSize = Math.max(18, Math.min(width, height) * 0.045);
+  const labelSize = Math.max(20, metaSize + 2);
+
   return (
     <g>
       <rect
@@ -536,7 +541,7 @@ function SheetRect({
         y={y + height / 2 - 8}
         textAnchor="middle"
         fontFamily="Plus Jakarta Sans, sans-serif"
-        fontSize="64"
+        fontSize={qtySize}
         fontWeight="800"
         fill="#1F2937"
       >
@@ -544,10 +549,10 @@ function SheetRect({
       </text>
       <text
         x={x + width / 2}
-        y={y + height / 2 + 28}
+        y={y + height / 2 + qtySize * 0.35}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="22"
+        fontSize={metaSize}
         fill="#4B5563"
         fontWeight="600"
       >
@@ -556,9 +561,9 @@ function SheetRect({
       {/* T-label */}
       <text
         x={x + 14}
-        y={y + 28}
+        y={y + labelSize + 6}
         fontFamily="JetBrains Mono, monospace"
-        fontSize="24"
+        fontSize={labelSize}
         fill="#FF6B5B"
         fontWeight="700"
       >
@@ -570,9 +575,9 @@ function SheetRect({
         y={y + height - 12}
         textAnchor="end"
         fontFamily="JetBrains Mono, monospace"
-        fontSize="22"
-        fill="#9CA3AF"
-        fontWeight="500"
+        fontSize={metaSize}
+        fill="#6B7280"
+        fontWeight="600"
       >
         {sheetSize}
       </text>
