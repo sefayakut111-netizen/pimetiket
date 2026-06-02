@@ -1,24 +1,22 @@
 /**
- * Tabaka etiket geometri — ortak kaynak.
+ * Tabaka etiket geometri — ortak kaynak (etiket tabaka modu).
  *
- * Admin fiyat-hesapla-tabaka, müşteri bridge ve checkout recalc aynı
- * tabaka yerleşim formülünü kullanır.
+ * Sticker kiss-cut motorundan ayrı: etiket tabaka 33×45 cm sabit tabaka.
  */
 
-import {
-  SMALL_SHEET_W,
-  SMALL_SHEET_H,
-  TABAKA_MARGIN_X,
-  GAP_TABAKA,
-  snapSizeUp,
-} from "./pricing-engine/constants";
+import { GAP_TABAKA, snapSizeUp } from "./pricing-engine/constants";
 
-export const TABAKA_SHEET_W_MM = SMALL_SHEET_W;
-export const TABAKA_SHEET_H_MM = SMALL_SHEET_H;
-export const TABAKA_SHEET_MARGIN_MM = TABAKA_MARGIN_X;
+/** Etiket tabaka fiziksel boyutu — 33×45 cm */
+const ETIKET_TABAKA_SHEET_W = 330;
+const ETIKET_TABAKA_SHEET_H = 450;
+const ETIKET_TABAKA_MARGIN = 10;
 
-const USABLE_W_MM = SMALL_SHEET_W - 2 * TABAKA_MARGIN_X;
-const USABLE_H_MM = SMALL_SHEET_H - 2 * TABAKA_MARGIN_X;
+export const TABAKA_SHEET_W_MM = ETIKET_TABAKA_SHEET_W;
+export const TABAKA_SHEET_H_MM = ETIKET_TABAKA_SHEET_H;
+export const TABAKA_SHEET_MARGIN_MM = ETIKET_TABAKA_MARGIN;
+
+const USABLE_W_MM = ETIKET_TABAKA_SHEET_W - 2 * ETIKET_TABAKA_MARGIN;
+const USABLE_H_MM = ETIKET_TABAKA_SHEET_H - 2 * ETIKET_TABAKA_MARGIN;
 const GAP_MM = GAP_TABAKA;
 
 export interface TabakaSheetGeometry {

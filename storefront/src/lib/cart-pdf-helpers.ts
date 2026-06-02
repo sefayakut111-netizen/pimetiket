@@ -22,7 +22,10 @@ export function reconstructGeometryFromCart(item: CartItem): GeometryResult {
 
   return {
     fit: {
-      mode: (item.layoutMode ?? "small") as "small" | "big",
+      mode:
+        item.layoutMode === "big" || item.layoutMode === "diecut"
+          ? "diecut"
+          : "tabaka",
       cols: 1, // detail yok — PDF'te approximate
       rows: 1,
       perSheet: isEtiket ? 1 : 1,

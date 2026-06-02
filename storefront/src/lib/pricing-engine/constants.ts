@@ -28,37 +28,28 @@ export const ROLL_MARGIN_X = 40;
 export const ROLL_MARGIN_Y = 50;
 
 // ============================================================
-// Tabaka boyutları
+// Kiss-cut / tabaka — esnek iç tabaka (sticker yarım kesim)
 // ============================================================
 
-/** Standart tabaka — 33×45 cm (Sefa 2026 pricebook revizyonu).
- *  Kenarlardan 1 cm marj → kullanılabilir 31×43 cm. */
-export const SMALL_SHEET_W = 330;
-export const SMALL_SHEET_H = 450;
+/** Dış tabaka üst sınırı — 23×31 cm */
+export const TABAKA_OUTER_MAX_W = 230;
+export const TABAKA_OUTER_MAX_H = 310;
 
-/** Tabaka kenarlardan baskısız boşluk: her kenardan 1 cm = 10 mm. */
-export const TABAKA_MARGIN_X = 10;
-export const TABAKA_MARGIN_Y = 10;
+/** Her kenarda 2 cm baskısız kenar payı */
+export const TABAKA_EDGE_MARGIN = 20;
 
-/** Tabaka kullanılabilir baskı alanı (Sefa kuralı 15 May v5). */
-export const TABAKA_USABLE_W = SMALL_SHEET_W - 2 * TABAKA_MARGIN_X; // 310
-export const TABAKA_USABLE_H = SMALL_SHEET_H - 2 * TABAKA_MARGIN_Y; // 430
+/** Kullanılabilir grid alanı (190×270 mm) */
+export const TABAKA_USABLE_W =
+  TABAKA_OUTER_MAX_W - 2 * TABAKA_EDGE_MARGIN; // 190
+export const TABAKA_USABLE_H =
+  TABAKA_OUTER_MAX_H - 2 * TABAKA_EDGE_MARGIN; // 270
 
-/** Müşteri zarfı (küçük) */
-export const SMALL_ENVELOPE_W = 240;
-export const SMALL_ENVELOPE_H = 320;
-
-/** Büyük tabaka — sticker > küçük tabaka olduğunda zorla die-cut */
-export const BIG_SHEET_W = 400;
-export const BIG_SHEET_H = 650;
+/** Üretim adet fazlası tercih üst sınırı (%10) — min fire ile birlikte seçim */
+export const OVERAGE_TARGET_MAX = 0.10;
 
 // ============================================================
 // Üretim toleransları
 // ============================================================
-
-/** Adet en fazla %3 aşılabilir (eksik üretim olmaz, fazla = depo etiketi).
- *  Müşteri yüzüne "+hediye" olarak GÖSTERİLMEZ (Sefa kuralı 11 May). */
-export const QTY_TOLERANCE = 0.03;
 
 /**
  * Ölçü yuvarlama adımı (mm).
@@ -77,10 +68,10 @@ export function snapSizeUp(mm: number): number {
 }
 
 /** Tabaka modunda sticker'lar arası boşluk (yarım kesim) */
-export const GAP_TABAKA = 6;
+export const GAP_TABAKA = 3;
 
-/** Die-cut modunda sticker'lar arası boşluk (tam kesim) */
-export const GAP_DIECUT = 50;
+/** Die-cut modunda sticker'lar arası boşluk (tam kesim, direkt rulo) */
+export const GAP_DIECUT = 20;
 
 // ============================================================
 // Adet kademeleri (tier sistemi) — sticker

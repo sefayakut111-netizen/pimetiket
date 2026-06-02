@@ -1,19 +1,10 @@
 /**
- * SheetPreviewSvg — tek tabaka detay görseli.
+ * SheetPreviewSvg — tek tabaka detay görseli (esnek iç tabaka).
  *
- * sticker-fiyatlama.html v0.3 → renderSheet() port'u.
- *
- * Görsel:
- *   - Tabaka küçük zarfa sığıyorsa: zarf + iç tabaka iç içe
- *   - Tabaka zarftan büyükse (33×45 cm): yalnızca tabaka (viewBox tabakaya göre)
- *   - Die-cut / büyük mod: zarf yok
+ * Die-cut modunda iç tabaka yok — bu SVG yalnızca tabaka akışında anlamlı.
  */
 
-import {
-  SMALL_ENVELOPE_W,
-  SMALL_ENVELOPE_H,
-  type GeometryResult,
-} from "@/lib/pricing-engine";
+import type { GeometryResult } from "@/lib/pricing-engine";
 import { computeSheetDistribution } from "./layout-helpers";
 
 interface SheetPreviewSvgProps {
@@ -27,25 +18,8 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
   const stickersOnThisSheet =
     fit.sheetsNeeded === 1 ? fit.producedQty : dist.balancedPerSheet;
 
-  const isBigMode = fit.mode === "big";
   const cutW = fit.sheetW;
   const cutH = fit.sheetH;
-  const envW = SMALL_ENVELOPE_W;
-  const envH = SMALL_ENVELOPE_H;
-
-  /** 33×45 tabaka artık 24×32 zarftan büyük — zarf yalnızca sığıyorsa çizilir */
-  const showEnvelope =
-    !isBigMode && cutW <= envW && cutH <= envH;
-
-  const sheetInsetX = showEnvelope
-    ? Math.max(2, (envW - cutW) / 2)
-    : 0;
-  const sheetInsetY = showEnvelope
-    ? Math.max(2, (envH - cutH) / 2)
-    : 0;
-
-  const outerW = showEnvelope ? envW : cutW;
-  const outerH = showEnvelope ? envH : cutH;
 
   const W = fit.stickerW;
   const H = fit.stickerH;
@@ -60,12 +34,12 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
 
   const PAD = 20;
   const LABEL_H = 32;
-  const dimFontSize = Math.max(20, outerW * 0.055);
-  const svgW = outerW + PAD * 2;
-  const svgH = outerH + PAD * 2 + LABEL_H;
+  const dimFontSize = Math.max(20, cutW * 0.055);
+  const svgW = cutW + PAD * 2;
+  const svgH = cutH + PAD * 2 + LABEL_H;
 
-  const sheetX = PAD + sheetInsetX;
-  const sheetY = PAD + sheetInsetY;
+  const sheetX = PAD;
+  const sheetY = PAD;
 
   const stickers: React.ReactNode[] = [];
   let pos = 0;
@@ -83,9 +57,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
           width={W}
           height={H}
           rx="2"
-          fill={
-            isFilled ? (isAccent ? "#FF6B5B" : "#FFA89E") : "none"
-          }
+          fill={isFilled ? (isAccent ? "#FF6B5B" : "#FFA89E") : "none"}
           stroke={isFilled ? "none" : "#C4B091"}
           strokeWidth={isFilled ? 0 : 1}
           strokeDasharray={isFilled ? undefined : "3,2"}
@@ -96,7 +68,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
     }
   }
 
-  const labelY = PAD + outerH + LABEL_H - 6;
+  const labelY = PAD + cutH + LABEL_H - 6;
 
   return (
     <svg
@@ -107,20 +79,6 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
       role="img"
       aria-label={`Tabaka önizleme: ${cutW}×${cutH} mm, ${stickersOnThisSheet}/${fit.perSheet} sticker`}
     >
-      {showEnvelope && (
-        <rect
-          x={PAD}
-          y={PAD}
-          width={envW}
-          height={envH}
-          fill="#F5EBD9"
-          stroke="#C4B091"
-          strokeWidth="1.5"
-          strokeDasharray="4,3"
-          rx="6"
-        />
-      )}
-
       <rect
         x={sheetX}
         y={sheetY}
@@ -143,8 +101,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         fill="#1F2937"
         fontWeight="700"
       >
-        {cutW}×{cutH}mm
-        {showEnvelope ? ` · zarf ${envW}×${envH}mm` : ""}
+        {cutW}×{cutH}mm · kullanılabilir {fit.usedW}×{fit.usedH}mm
       </text>
     </svg>
   );

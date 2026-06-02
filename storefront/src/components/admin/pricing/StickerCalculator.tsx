@@ -1312,7 +1312,11 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
           </span>
           <span>
             {fit.cols}×{fit.rows} grid ·{" "}
-            {fit.mode === "big" ? "40×65 büyük tabaka" : "23×31 küçük tabaka"}
+            {fit.mode === "diecut"
+              ? fit.forcedDieCut
+                ? "die-cut (tabaka sığmadı)"
+                : "die-cut direkt rulo"
+              : `esnek tabaka ${fit.sheetW}×${fit.sheetH}mm`}
           </span>
         </div>
         <p className="mt-1.5 text-gri-700 leading-snug">
@@ -1355,6 +1359,8 @@ function SheetPreviewCard({
   const { geometry } = result;
   const { fit } = geometry;
 
+  if (fit.mode === "diecut") return null;
+
   return (
     <Card padding="p-5">
       <div className="text-[13px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
@@ -1391,12 +1397,16 @@ function UretimOzetiCard({
         <span
           className={cn(
             "text-[11px] tabular-nums px-2 py-0.5 rounded-full font-semibold",
-            fit.mode === "big"
+            fit.mode === "diecut"
               ? "bg-pim-mercan text-white"
               : "bg-krem text-lacivert"
           )}
         >
-          {fit.mode === "big" ? "büyük tabaka · die-cut" : "tabaka"}
+          {fit.mode === "diecut"
+            ? fit.forcedDieCut
+              ? "die-cut · tabaka sığmadı"
+              : "die-cut · direkt rulo"
+            : "esnek tabaka"}
         </span>
       </div>
 

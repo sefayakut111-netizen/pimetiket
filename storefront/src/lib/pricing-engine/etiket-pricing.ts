@@ -254,7 +254,7 @@ export function adaptEtiketToGeometryResult(
   // perSheet = perRoll, sheetsNeeded = rollsNeeded
   return {
     fit: {
-      mode: "small", // big-mode davranışı yok (paketleme×2 vs)
+      mode: "diecut",
       cols: g.cols,
       rows: g.rowsPerRoll,
       perSheet: g.perRoll,

@@ -323,7 +323,7 @@ export function RuloCalculator({
     const eg = result.geometry;
     const fakeGeom = {
       fit: {
-        mode: "small" as const,
+        mode: "diecut" as const,
         cols: eg.cols,
         rows: eg.rowsPerRoll,
         perSheet: eg.perRoll,

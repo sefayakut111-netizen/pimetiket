@@ -245,7 +245,8 @@ function computeOperationItems(
 export function computeCost(input: CostInput): CostResult {
   const { geometry, requestedQty, production, operation, margin, tier } = input;
   const { totalM2, fit } = geometry;
-  const isBigMode = fit.mode === "big";
+  /** Büyük tabaka (40×65) kaldırıldı — operasyon kalemleri küçük zarf formülünde kalır. */
+  const isBigMode = false;
   const envelopeCount = fit.sheetsNeeded;
 
   // 1. Üretim + operasyon → baseCost

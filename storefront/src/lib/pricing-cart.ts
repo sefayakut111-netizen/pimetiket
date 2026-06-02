@@ -49,7 +49,7 @@ export interface CartItem {
   mode: "fason" | "uretim";
   /** Sticker özel */
   cut?: "tabaka" | "diecut";
-  layoutMode?: "small" | "big";
+  layoutMode?: "tabaka" | "diecut" | "small" | "big";
   /** Etiket özel */
   materialId?: string;
   coatingId?: string;

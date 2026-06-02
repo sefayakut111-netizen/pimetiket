@@ -1,30 +1,27 @@
 /**
  * Sticker pricing — geometri optimizasyon (saf fonksiyon).
  *
- * Kaynak: docs/PRICING_SPEC.md §2-3
- * Modül: sticker-fiyatlama.html v0.3 — `findOptimalSheet`, `computeRollPlan`
+ * İki ayrı akış (Sefa onaylı):
+ *   - tabaka (kiss-cut): esnek iç tabaka 23×31 cm max, kullanılabilir 19×27, gap 3mm
+ *   - diecut: sticker doğrudan plotter rulosuna, gap 20mm, iç tabaka yok
  *
- * İki ana fonksiyon:
- *   - findOptimalSheet: sticker boyutu + adet → tabaka seçimi (küçük/büyük/red)
- *   - computeRollPlan: tabaka boyutu + sayısı → optimum rulo planı (fire min)
- *
- * Saf fonksiyon. DB / I/O yok. Test edilebilir.
+ * Saf fonksiyon. DB / I/O yok.
  */
 
 import {
-  BIG_SHEET_H,
-  BIG_SHEET_W,
   GAP_DIECUT,
   GAP_TABAKA,
+  OVERAGE_TARGET_MAX,
   ROLL_L,
   ROLL_MARGIN_X,
   ROLL_MARGIN_Y,
   ROLL_W_MAX,
   ROLL_W_MIN,
-  SMALL_SHEET_H,
-  SMALL_SHEET_W,
-  TABAKA_USABLE_W,
+  TABAKA_EDGE_MARGIN,
+  TABAKA_OUTER_MAX_H,
+  TABAKA_OUTER_MAX_W,
   TABAKA_USABLE_H,
+  TABAKA_USABLE_W,
   snapSizeUp,
 } from "./constants";
 
@@ -33,221 +30,120 @@ import {
 // ============================================================
 
 export type CutType = "tabaka" | "diecut";
-export type SheetMode = "small" | "big";
+export type SheetMode = "tabaka" | "diecut";
 
 export interface SheetFit {
   mode: SheetMode;
-  /** Sticker rotated mı (W↔H) */
   rotated: boolean;
-  /** Rotated sonrası efektif sticker boyutu */
   stickerW: number;
   stickerH: number;
-  /** Tabaka grid */
   cols: number;
   rows: number;
   perSheet: number;
-  /** Tabaka boyutu (her zaman SMALL veya BIG sabitlerinden biri) */
+  /** Dış tabaka boyutu (tabaka akışı) veya sticker grid birimi (die-cut viz) */
   sheetW: number;
   sheetH: number;
-  /** Stickerların kapladığı toplam alan (gap dahil, tabaka içinde) */
   usedW: number;
   usedH: number;
-  /** Bu mod için kullanılan boşluk */
   gap: number;
-  /** Kullanıcı tabaka istese bile büyük tabakada zorla die-cut */
+  /** Tabaka sığmadığında die-cut'a düşüldü */
   forcedDieCut: boolean;
-  /** Hedeflenen adet için gerekli tabaka */
   sheetsNeeded: number;
-  /** Üretilen toplam adet (sheetsNeeded × perSheet) */
   producedQty: number;
-  /** producedQty / requestedQty - 1 (örn 0.024 = %2.4 fazla) */
   overrun: number;
 }
 
 export interface RollPlan {
-  /** Algoritmanın seçtiği dinamik rulo eni */
   rollW: number;
-  /** Rulo enine kaç tabaka yan yana */
   cols: number;
-  /** Rulo boyuna kaç tabaka peş peşe (max) */
   rows: number;
-  /** Bir rulonun max tabaka kapasitesi */
   sheetsPerRoll: number;
-  /** Sipariş için gereken rulo sayısı */
   rollsNeeded: number;
-  /** Son rulodaki tabaka sayısı */
   sheetsOnLastRoll: number;
-  /** Son rulodaki kullanılan satır sayısı */
   lastRowsCount: number;
-  /** Son rulonun kullanılan boyu */
   lastRollLengthMm: number;
-  /** Tüm ruloların toplam boy uzunluğu */
   totalLengthMm: number;
-  /** Toplam rulo alanı (mm²) — fire dahil */
   totalArea: number;
-  /** Rulo eninin tabakaların kapladığı kısmı (gap'siz) */
   usableW: number;
-  /** Rulo boyunun kullanılabilir kısmı (margin sonrası) */
   usableL: number;
-  /** Rulo eninin extra boş kısmı (min eni dayandığında oluşur) */
   extraSidePad: number;
 }
 
-// ============================================================
-// findOptimalSheet
-// ============================================================
-
-interface FindOptimalArgs {
-  width: number;
-  height: number;
-  requestedCut: CutType;
-  targetQty: number;
+export interface GeometryResult {
+  fit: SheetFit;
+  roll: RollPlan;
+  totalM2: number;
+  sheetAreaM2: number;
+  stickerArea: number;
+  wastePct: number;
+  effectiveCut: CutType;
 }
 
-/**
- * Sticker boyutu ve hedef adete göre en iyi tabaka düzenini bulur.
- *
- * Algoritma:
- *  1. Küçük tabakaya (230×310) sığıyor mu — her iki rotasyonla dene
- *     → tabaka modunda gap=6mm, diecut modunda gap=50mm
- *     → en çok sticker sığan rotasyonu seç
- *  2. Sığmıyorsa büyük tabakaya (400×650) geç — gap=50mm zorla, forcedDieCut=true
- *  3. Hâlâ sığmıyorsa null (red, "büyük etiket servisi yakında")
- */
-export function findOptimalSheet(args: FindOptimalArgs): SheetFit | null {
-  const { width: W, height: H, requestedCut, targetQty } = args;
-
-  // ====== ÖNCE KÜÇÜK TABAKA — her iki rotasyon ======
-  const gap = requestedCut === "tabaka" ? GAP_TABAKA : GAP_DIECUT;
-  let smallFit: Omit<SheetFit, "sheetsNeeded" | "producedQty" | "overrun"> | null = null;
-
-  for (const rotated of [false, true]) {
-    const sw = rotated ? H : W;
-    const sh = rotated ? W : H;
-
-    // Sığmıyorsa sonraki rotasyon (Sefa kuralı 15 May v5: kullanılabilir
-    // alan = SMALL_SHEET - 2× MARGIN, 190×270 mm sınırı).
-    if (sw > TABAKA_USABLE_W || sh > TABAKA_USABLE_H) continue;
-
-    const cols = Math.floor((TABAKA_USABLE_W + gap) / (sw + gap));
-    const rows = Math.floor((TABAKA_USABLE_H + gap) / (sh + gap));
-
-    if (cols < 1 || rows < 1) continue;
-
-    const perSheet = cols * rows;
-    const usedW = cols * sw + (cols - 1) * gap;
-    const usedH = rows * sh + (rows - 1) * gap;
-
-    if (!smallFit || perSheet > smallFit.perSheet) {
-      smallFit = {
-        mode: "small",
-        rotated,
-        stickerW: sw,
-        stickerH: sh,
-        cols,
-        rows,
-        perSheet,
-        sheetW: SMALL_SHEET_W,
-        sheetH: SMALL_SHEET_H,
-        usedW,
-        usedH,
-        gap,
-        forcedDieCut: false,
-      };
-    }
-  }
-
-  if (smallFit) {
-    const sheetsNeeded = Math.ceil(targetQty / smallFit.perSheet);
-    const producedQty = sheetsNeeded * smallFit.perSheet;
-    return {
-      ...smallFit,
-      sheetsNeeded,
-      producedQty,
-      overrun: (producedQty - targetQty) / targetQty,
-    };
-  }
-
-  // ====== BÜYÜK TABAKA — gap=50mm zorla, forcedDieCut=true ======
-  let bigFit: Omit<SheetFit, "sheetsNeeded" | "producedQty" | "overrun"> | null = null;
-  const bigGap = GAP_DIECUT;
-
-  for (const rotated of [false, true]) {
-    const sw = rotated ? H : W;
-    const sh = rotated ? W : H;
-
-    if (sw > BIG_SHEET_W || sh > BIG_SHEET_H) continue;
-
-    const cols = Math.floor((BIG_SHEET_W + bigGap) / (sw + bigGap));
-    const rows = Math.floor((BIG_SHEET_H + bigGap) / (sh + bigGap));
-
-    if (cols < 1 || rows < 1) continue;
-
-    const perSheet = cols * rows;
-    const usedW = cols * sw + (cols - 1) * bigGap;
-    const usedH = rows * sh + (rows - 1) * bigGap;
-
-    if (!bigFit || perSheet > bigFit.perSheet) {
-      bigFit = {
-        mode: "big",
-        rotated,
-        stickerW: sw,
-        stickerH: sh,
-        cols,
-        rows,
-        perSheet,
-        sheetW: BIG_SHEET_W,
-        sheetH: BIG_SHEET_H,
-        usedW,
-        usedH,
-        gap: bigGap,
-        forcedDieCut: true,
-      };
-    }
-  }
-
-  if (bigFit) {
-    const sheetsNeeded = Math.ceil(targetQty / bigFit.perSheet);
-    const producedQty = sheetsNeeded * bigFit.perSheet;
-    return {
-      ...bigFit,
-      sheetsNeeded,
-      producedQty,
-      overrun: (producedQty - targetQty) / targetQty,
-    };
-  }
-
-  // 40×65 cm'e bile sığmıyor — RED
-  return null;
+interface LayoutCandidate {
+  fit: SheetFit;
+  roll: RollPlan;
+  totalM2: number;
+  overage: number;
 }
 
 // ============================================================
-// computeRollPlan
+// Yardımcılar
 // ============================================================
 
-/**
- * Tabaka boyutu ve sayısı verilince en optimum rulo planını döndürür.
- *
- * Algoritma:
- *   - Rulo eni dinamik (250-600mm), boy sabit (1520mm)
- *   - cols=1..maxCols için her seçenek dene
- *   - Toplam alan (rollW × totalLength) en az olanı seç → fire minimum
- *
- * Pratik etki:
- *   - Az adet → dar rulo (310mm vs 600mm = %48 tasarruf)
- *   - Çok adet → geniş rulo (2-3 yan yana tabaka)
- */
+function overageRatio(producedQty: number, targetQty: number): number {
+  if (targetQty <= 0) return 0;
+  return producedQty / targetQty - 1;
+}
+
+/** Geçerli adaylar içinde min alan; overage ≤ hedef olanlar öncelikli. */
+function pickBestCandidate(candidates: LayoutCandidate[]): LayoutCandidate | null {
+  if (candidates.length === 0) return null;
+
+  const withinTarget = candidates.filter(
+    (c) => c.overage <= OVERAGE_TARGET_MAX + 1e-9
+  );
+  const pool = withinTarget.length > 0 ? withinTarget : candidates;
+
+  return pool.reduce<LayoutCandidate | null>((best, c) => {
+    if (!best) return c;
+    if (withinTarget.length > 0) {
+      if (c.totalM2 < best.totalM2 - 1e-9) return c;
+      if (
+        Math.abs(c.totalM2 - best.totalM2) <= 1e-9 &&
+        c.overage < best.overage - 1e-9
+      ) {
+        return c;
+      }
+      return best;
+    }
+    if (c.overage < best.overage - 1e-9) return c;
+    if (
+      Math.abs(c.overage - best.overage) <= 1e-9 &&
+      c.totalM2 < best.totalM2 - 1e-9
+    ) {
+      return c;
+    }
+    return best;
+  }, null);
+}
+
+function stickerFitsTabakaUsable(sw: number, sh: number): boolean {
+  return sw <= TABAKA_USABLE_W && sh <= TABAKA_USABLE_H;
+}
+
+// ============================================================
+// computeRollPlan — tabakalar plotter rulosuna dizilir
+// ============================================================
+
 export function computeRollPlan(
   sheetW: number,
   sheetH: number,
   sheetsNeeded: number
 ): RollPlan | null {
-  const usableMaxW = ROLL_W_MAX - 2 * ROLL_MARGIN_X; // 520mm
-  const usableMaxL = ROLL_L - ROLL_MARGIN_Y; // 1470mm
+  const usableMaxW = ROLL_W_MAX - 2 * ROLL_MARGIN_X;
+  const usableMaxL = ROLL_L - ROLL_MARGIN_Y;
 
-  // Tabaka rulodan büyükse imkansız
-  if (sheetW > usableMaxW) return null;
-  if (sheetH > usableMaxL) return null;
+  if (sheetW > usableMaxW || sheetH > usableMaxL) return null;
 
   const maxCols = Math.floor(usableMaxW / sheetW);
   if (maxCols < 1) return null;
@@ -257,11 +153,7 @@ export function computeRollPlan(
   for (let cols = 1; cols <= maxCols; cols++) {
     const usedWidth = cols * sheetW;
     let rollW = usedWidth + 2 * ROLL_MARGIN_X;
-
-    // Minimum rulo eninin altına düşmesin
-    if (rollW < ROLL_W_MIN) {
-      rollW = ROLL_W_MIN;
-    }
+    if (rollW < ROLL_W_MIN) rollW = ROLL_W_MIN;
     if (rollW > ROLL_W_MAX) continue;
 
     const maxRowsPerRoll = Math.floor(usableMaxL / sheetH);
@@ -269,7 +161,8 @@ export function computeRollPlan(
 
     const sheetsPerRoll = cols * maxRowsPerRoll;
     const rollsNeeded = Math.ceil(sheetsNeeded / sheetsPerRoll);
-    const sheetsOnLastRoll = sheetsNeeded - (rollsNeeded - 1) * sheetsPerRoll;
+    const sheetsOnLastRoll =
+      sheetsNeeded - (rollsNeeded - 1) * sheetsPerRoll;
 
     const lastRowsCount = Math.ceil(sheetsOnLastRoll / cols);
     const lastRollLengthMm = ROLL_MARGIN_Y + lastRowsCount * sheetH;
@@ -303,60 +196,293 @@ export function computeRollPlan(
 }
 
 // ============================================================
-// Yardımcı: tek hesapta full geometri
+// Tabaka akışı — esnek iç tabaka
 // ============================================================
 
-export interface GeometryResult {
-  fit: SheetFit;
-  roll: RollPlan;
-  /** Toplam rulo alanı m² (fire dahil) */
-  totalM2: number;
-  /** Basılan tabakaların toplam alanı m² (sheetW×sheetH×adet, fire hariç) */
-  sheetAreaM2: number;
-  /** Stickerların kapladığı net alan m² (fire hariç) */
-  stickerArea: number;
-  /** Fire yüzdesi 0-100 */
-  wastePct: number;
-  /** Efektif kesim tipi (büyük tabakada zorla diecut) */
-  effectiveCut: CutType;
+function buildTabakaCandidates(
+  W: number,
+  H: number,
+  targetQty: number
+): LayoutCandidate[] {
+  const candidates: LayoutCandidate[] = [];
+  const gap = GAP_TABAKA;
+
+  for (const rotated of [false, true]) {
+    const sw = rotated ? H : W;
+    const sh = rotated ? W : H;
+    if (!stickerFitsTabakaUsable(sw, sh)) continue;
+
+    const maxCols = Math.floor((TABAKA_USABLE_W + gap) / (sw + gap));
+    const maxRows = Math.floor((TABAKA_USABLE_H + gap) / (sh + gap));
+
+    for (let cols = 1; cols <= maxCols; cols++) {
+      const usedW = cols * sw + (cols - 1) * gap;
+      if (usedW > TABAKA_USABLE_W) break;
+
+      for (let rows = 1; rows <= maxRows; rows++) {
+        const usedH = rows * sh + (rows - 1) * gap;
+        if (usedH > TABAKA_USABLE_H) break;
+
+        const outerW = usedW + 2 * TABAKA_EDGE_MARGIN;
+        const outerH = usedH + 2 * TABAKA_EDGE_MARGIN;
+        if (outerW > TABAKA_OUTER_MAX_W || outerH > TABAKA_OUTER_MAX_H) continue;
+
+        const perTabaka = cols * rows;
+        const tabakasNeeded = Math.ceil(targetQty / perTabaka);
+        const producedQty = tabakasNeeded * perTabaka;
+
+        const roll = computeRollPlan(outerW, outerH, tabakasNeeded);
+        if (!roll) continue;
+
+        const totalM2 = roll.totalArea / 1_000_000;
+        const fit: SheetFit = {
+          mode: "tabaka",
+          rotated,
+          stickerW: sw,
+          stickerH: sh,
+          cols,
+          rows,
+          perSheet: perTabaka,
+          sheetW: outerW,
+          sheetH: outerH,
+          usedW,
+          usedH,
+          gap,
+          forcedDieCut: false,
+          sheetsNeeded: tabakasNeeded,
+          producedQty,
+          overrun: overageRatio(producedQty, targetQty),
+        };
+
+        candidates.push({
+          fit,
+          roll,
+          totalM2,
+          overage: fit.overrun,
+        });
+      }
+    }
+  }
+
+  return candidates;
 }
 
-/**
- * findOptimalSheet + computeRollPlan + m²/fire hesabı tek çağrıda.
- * cost.ts bunu input olarak alır.
- */
+function findOptimalTabakaLayout(
+  W: number,
+  H: number,
+  targetQty: number
+): LayoutCandidate | null {
+  return pickBestCandidate(buildTabakaCandidates(W, H, targetQty));
+}
+
+// ============================================================
+// Die-cut akışı — direkt rulo, iç tabaka yok
+// ============================================================
+
+function buildDiecutRollPlan(
+  sw: number,
+  sh: number,
+  cols: number,
+  rows: number,
+  targetQty: number,
+  rollW: number,
+  rotated: boolean
+): LayoutCandidate | null {
+  const gap = GAP_DIECUT;
+  const usableW = rollW - 2 * ROLL_MARGIN_X;
+  const usableL = ROLL_L - ROLL_MARGIN_Y;
+
+  if (cols < 1 || rows < 1) return null;
+  if (cols * sw + (cols - 1) * gap > usableW + 1e-9) return null;
+  if (rows * sh + (rows - 1) * gap > usableL + 1e-9) return null;
+
+  const perRoll = cols * rows;
+  const rollsNeeded = Math.ceil(targetQty / perRoll);
+  const producedQty = rollsNeeded * perRoll;
+  const stickersOnLastRoll = producedQty - (rollsNeeded - 1) * perRoll;
+  const lastRowsCount = Math.ceil(stickersOnLastRoll / cols);
+  const lastRollLengthMm =
+    ROLL_MARGIN_Y + lastRowsCount * sh + (lastRowsCount - 1) * gap;
+
+  const fullRolls = rollsNeeded - 1;
+  const totalLengthMm = fullRolls * ROLL_L + lastRollLengthMm;
+  const totalArea = rollW * totalLengthMm;
+  const usedWidth = cols * sw + (cols - 1) * gap;
+
+  const roll: RollPlan = {
+    rollW,
+    cols,
+    rows,
+    sheetsPerRoll: perRoll,
+    rollsNeeded,
+    sheetsOnLastRoll: stickersOnLastRoll,
+    lastRowsCount,
+    lastRollLengthMm,
+    totalLengthMm,
+    totalArea,
+    usableW: usedWidth,
+    usableL: usableL,
+    extraSidePad: Math.max(0, (rollW - usedWidth - 2 * ROLL_MARGIN_X) / 2),
+  };
+
+  const fit: SheetFit = {
+    mode: "diecut",
+    rotated,
+    stickerW: sw,
+    stickerH: sh,
+    cols,
+    rows,
+    perSheet: perRoll,
+    sheetW: sw,
+    sheetH: sh,
+    usedW: usedWidth,
+    usedH: rows * sh + (rows - 1) * gap,
+    gap,
+    forcedDieCut: false,
+    sheetsNeeded: rollsNeeded,
+    producedQty,
+    overrun: overageRatio(producedQty, targetQty),
+  };
+
+  return {
+    fit,
+    roll,
+    totalM2: totalArea / 1_000_000,
+    overage: fit.overrun,
+  };
+}
+
+function buildDiecutCandidates(
+  W: number,
+  H: number,
+  targetQty: number,
+  forcedDieCut: boolean
+): LayoutCandidate[] {
+  const candidates: LayoutCandidate[] = [];
+  const gap = GAP_DIECUT;
+
+  for (const rotated of [false, true]) {
+    const sw = rotated ? H : W;
+    const sh = rotated ? W : H;
+
+    for (let rollW = ROLL_W_MIN; rollW <= ROLL_W_MAX; rollW += 10) {
+      const usableW = rollW - 2 * ROLL_MARGIN_X;
+      const usableL = ROLL_L - ROLL_MARGIN_Y;
+
+      const maxCols = Math.floor((usableW + gap) / (sw + gap));
+      const maxRows = Math.floor((usableL + gap) / (sh + gap));
+      if (maxCols < 1 || maxRows < 1) continue;
+
+      for (let cols = 1; cols <= maxCols; cols++) {
+        for (let rows = 1; rows <= maxRows; rows++) {
+          const candidate = buildDiecutRollPlan(
+            sw,
+            sh,
+            cols,
+            rows,
+            targetQty,
+            rollW,
+            rotated
+          );
+          if (!candidate) continue;
+          candidate.fit.forcedDieCut = forcedDieCut;
+          candidates.push(candidate);
+        }
+      }
+    }
+  }
+
+  return candidates;
+}
+
+function findOptimalDiecutLayout(
+  W: number,
+  H: number,
+  targetQty: number,
+  forcedDieCut = false
+): LayoutCandidate | null {
+  return pickBestCandidate(
+    buildDiecutCandidates(W, H, targetQty, forcedDieCut)
+  );
+}
+
+// ============================================================
+// findOptimalSheet — geriye uyum export
+// ============================================================
+
+interface FindOptimalArgs {
+  width: number;
+  height: number;
+  requestedCut: CutType;
+  targetQty: number;
+}
+
+export function findOptimalSheet(args: FindOptimalArgs): SheetFit | null {
+  const layout = computeLayout({
+    width: args.width,
+    height: args.height,
+    cut: args.requestedCut,
+    qty: args.targetQty,
+  });
+  return layout?.fit ?? null;
+}
+
+function computeLayout(args: {
+  width: number;
+  height: number;
+  cut: CutType;
+  qty: number;
+}): LayoutCandidate | null {
+  const { width: W, height: H, cut, qty } = args;
+
+  if (cut === "tabaka") {
+    const tabaka = findOptimalTabakaLayout(W, H, qty);
+    if (tabaka) return tabaka;
+
+    const canFitUsable =
+      stickerFitsTabakaUsable(W, H) || stickerFitsTabakaUsable(H, W);
+    if (!canFitUsable) {
+      return findOptimalDiecutLayout(W, H, qty, true);
+    }
+    return null;
+  }
+
+  return findOptimalDiecutLayout(W, H, qty, false);
+}
+
+// ============================================================
+// computeGeometry
+// ============================================================
+
 export function computeGeometry(args: {
   width: number;
   height: number;
   cut: CutType;
   qty: number;
 }): GeometryResult | null {
-  // Sefa kuralı 11 May: ölçüler 5 mm katlarına yukarı yuvarlanır.
-  // Müşteri 38×48 girse de hesaplama 40×50 üzerinden yapılır.
-  // UI'da bu yuvarlanmış değer "hesaplama: 40×50 mm" olarak gösterilmeli.
   const snapW = snapSizeUp(args.width);
   const snapH = snapSizeUp(args.height);
 
-  const fit = findOptimalSheet({
+  const layout = computeLayout({
     width: snapW,
     height: snapH,
-    requestedCut: args.cut,
-    targetQty: args.qty,
+    cut: args.cut,
+    qty: args.qty,
   });
 
-  if (!fit) return null;
+  if (!layout) return null;
 
-  const roll = computeRollPlan(fit.sheetW, fit.sheetH, fit.sheetsNeeded);
-  if (!roll) return null;
-
-  const totalM2 = (roll.rollW * roll.totalLengthMm) / 1_000_000;
+  const { fit, roll, totalM2 } = layout;
   const sheetAreaM2 =
-    (fit.sheetW * fit.sheetH * fit.sheetsNeeded) / 1_000_000;
+    fit.mode === "tabaka"
+      ? (fit.sheetW * fit.sheetH * fit.sheetsNeeded) / 1_000_000
+      : 0;
   const stickerArea = (snapW * snapH * fit.producedQty) / 1_000_000;
   const wastePct =
     totalM2 > 0 ? ((totalM2 - stickerArea) / totalM2) * 100 : 0;
 
-  const effectiveCut: CutType = fit.forcedDieCut ? "diecut" : args.cut;
+  const effectiveCut: CutType =
+    fit.mode === "diecut" || fit.forcedDieCut ? "diecut" : args.cut;
 
   return {
     fit,
