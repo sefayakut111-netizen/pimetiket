@@ -9,6 +9,7 @@
  */
 
 import {
+  DIECUT_EN,
   GAP_DIECUT,
   GAP_TABAKA,
   OVERAGE_TARGET_MAX,
@@ -75,6 +76,10 @@ export interface RollPlan {
   usableW: number;
   usableL: number;
   extraSidePad: number;
+  /** Die-cut: her rulo tabaka segmentinin yüksekliği (mm) */
+  segmentHeights?: number[];
+  /** Die-cut: her segmentteki satır sayısı */
+  segmentRows?: number[];
 }
 
 export interface GeometryResult {
@@ -333,64 +338,71 @@ function findOptimalTabakaLayout(
 }
 
 // ============================================================
-// Die-cut akışı — direkt rulo, iç tabaka yok
+// Die-cut akışı — rulo tabaka EN 1500 sabit, yükseklik 250-600 esnek
 // ============================================================
+
+/** Satırları min sayıda (her biri ≤600 yükseklik) rulo tabakaya dengeli böl. */
+function distributeDiecutSegments(totalRows: number, sh: number, gap: number) {
+  const hUsableMax = ROLL_W_MAX - 2 * ROLL_MARGIN_X; // 540
+  const maxRowsPerSeg = Math.floor((hUsableMax + gap) / (sh + gap));
+  if (maxRowsPerSeg < 1) return null;
+  const N = Math.ceil(totalRows / maxRowsPerSeg);
+  const base = Math.floor(totalRows / N);
+  const rem = totalRows % N;
+  const segments: { rows: number; height: number }[] = [];
+  for (let s = 0; s < N; s++) {
+    const rows = base + (s < rem ? 1 : 0);
+    let height = rows * sh + (rows - 1) * gap + 2 * ROLL_MARGIN_X;
+    if (height < ROLL_W_MIN) height = ROLL_W_MIN; // min 250 pad
+    segments.push({ rows, height });
+  }
+  return { N, maxRowsPerSeg, segments };
+}
 
 function buildDiecutRollPlan(
   sw: number,
   sh: number,
   cols: number,
-  rows: number,
   targetQty: number,
-  rollW: number,
-  rotated: boolean
+  rotated: boolean,
+  forcedDieCut: boolean
 ): LayoutCandidate | null {
   const gap = GAP_DIECUT;
-  const usableW = rollW - 2 * ROLL_MARGIN_X;
-  const usableL = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
+  const enUsable = DIECUT_EN - ROLL_START_MARGIN - ROLL_END_MARGIN; // 1390
+  if (cols < 1) return null;
+  if (cols * sw + (cols - 1) * gap > enUsable + 1e-9) return null;
 
-  if (cols < 1 || rows < 1) return null;
-  if (cols * sw + (cols - 1) * gap > usableW + 1e-9) return null;
-  if (rows * sh + (rows - 1) * gap > usableL + 1e-9) return null;
+  const totalRows = Math.ceil(targetQty / cols);
+  const seg = distributeDiecutSegments(totalRows, sh, gap);
+  if (!seg) return null;
+  if (seg.segments.some((s) => s.height > ROLL_W_MAX + 1e-9)) return null;
 
-  const perRoll = cols * rows;
-  const rollsNeeded = Math.ceil(targetQty / perRoll);
-  const producedQty = rollsNeeded * perRoll;
-  const stickersOnLastRoll = producedQty - (rollsNeeded - 1) * perRoll;
-  const lastRowsCount = Math.ceil(stickersOnLastRoll / cols);
-  const fullRollLengthMm =
-    ROLL_START_MARGIN +
-    rows * sh +
-    (rows - 1) * gap +
-    ROLL_END_MARGIN;
-  const lastRollLengthMm =
-    ROLL_START_MARGIN +
-    lastRowsCount * sh +
-    (lastRowsCount - 1) * gap +
-    ROLL_END_MARGIN;
-
-  const fullRolls = rollsNeeded - 1;
-  const totalLengthMm = fullRolls * fullRollLengthMm + lastRollLengthMm;
-  const totalArea = rollW * totalLengthMm;
+  const producedQty = cols * totalRows;
+  const totalHeight = seg.segments.reduce((a, s) => a + s.height, 0);
+  const totalArea = DIECUT_EN * totalHeight; // EN her zaman 1500
   const usedWidth = cols * sw + (cols - 1) * gap;
+  const first = seg.segments[0];
+  const last = seg.segments[seg.segments.length - 1];
 
   const roll: RollPlan = {
-    rollW,
+    rollW: DIECUT_EN, // SABİT EN 1500
     cols,
-    rows,
-    sheetsPerRoll: perRoll,
-    rollsNeeded,
-    sheetsOnLastRoll: stickersOnLastRoll,
-    lastRowsCount,
-    lastRollLengthMm,
-    lastRollW: rollW,
+    rows: first.rows,
+    sheetsPerRoll: cols * first.rows,
+    rollsNeeded: seg.N, // rulo tabaka sayısı
+    sheetsOnLastRoll: cols * last.rows,
+    lastRowsCount: last.rows,
+    lastRollLengthMm: last.height,
+    lastRollW: DIECUT_EN,
     lastRollUsedCols: cols,
-    lastRollUsedRows: lastRowsCount,
-    totalLengthMm,
+    lastRollUsedRows: last.rows,
+    totalLengthMm: totalHeight, // yığılmış toplam yükseklik
     totalArea,
     usableW: usedWidth,
-    usableL: usableL,
-    extraSidePad: Math.max(0, (rollW - usedWidth - 2 * ROLL_MARGIN_X) / 2),
+    usableL: totalHeight,
+    extraSidePad: Math.max(0, (enUsable - usedWidth) / 2),
+    segmentHeights: seg.segments.map((s) => s.height),
+    segmentRows: seg.segments.map((s) => s.rows),
   };
 
   const fit: SheetFit = {
@@ -399,15 +411,15 @@ function buildDiecutRollPlan(
     stickerW: sw,
     stickerH: sh,
     cols,
-    rows,
-    perSheet: perRoll,
+    rows: totalRows,
+    perSheet: cols * seg.maxRowsPerSeg,
     sheetW: sw,
     sheetH: sh,
     usedW: usedWidth,
-    usedH: rows * sh + (rows - 1) * gap,
+    usedH: totalHeight,
     gap,
-    forcedDieCut: false,
-    sheetsNeeded: rollsNeeded,
+    forcedDieCut,
+    sheetsNeeded: seg.N,
     producedQty,
     overrun: overageRatio(producedQty, targetQty),
   };
@@ -428,38 +440,24 @@ function buildDiecutCandidates(
 ): LayoutCandidate[] {
   const candidates: LayoutCandidate[] = [];
   const gap = GAP_DIECUT;
-
+  const enUsable = DIECUT_EN - ROLL_START_MARGIN - ROLL_END_MARGIN;
   for (const rotated of [false, true]) {
     const sw = rotated ? H : W;
     const sh = rotated ? W : H;
-
-    for (let rollW = ROLL_W_MIN; rollW <= ROLL_W_MAX; rollW += 10) {
-      const usableW = rollW - 2 * ROLL_MARGIN_X;
-      const usableL = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
-
-      const maxCols = Math.floor((usableW + gap) / (sw + gap));
-      const maxRows = Math.floor((usableL + gap) / (sh + gap));
-      if (maxCols < 1 || maxRows < 1) continue;
-
-      for (let cols = 1; cols <= maxCols; cols++) {
-        for (let rows = 1; rows <= maxRows; rows++) {
-          const candidate = buildDiecutRollPlan(
-            sw,
-            sh,
-            cols,
-            rows,
-            targetQty,
-            rollW,
-            rotated
-          );
-          if (!candidate) continue;
-          candidate.fit.forcedDieCut = forcedDieCut;
-          candidates.push(candidate);
-        }
-      }
+    const maxCols = Math.floor((enUsable + gap) / (sw + gap));
+    if (maxCols < 1) continue;
+    for (let cols = 1; cols <= maxCols; cols++) {
+      const c = buildDiecutRollPlan(
+        sw,
+        sh,
+        cols,
+        targetQty,
+        rotated,
+        forcedDieCut
+      );
+      if (c) candidates.push(c);
     }
   }
-
   return candidates;
 }
 

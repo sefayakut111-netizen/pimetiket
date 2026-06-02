@@ -174,6 +174,15 @@ export function runRegressionTests() {
   });
   assert(kartli?.ok === true, "kartli quote must succeed");
 
+  // kartli 75×75×25 baseline: 524.57 → 556.85 (diecut EN1500 rewrite, 2 Haz)
+  const KARTLI_BASELINE_TOTAL = 556.85;
+  if (kartli?.ok) {
+    assert(
+      Math.abs(kartli.total - KARTLI_BASELINE_TOTAL) <= 0.5,
+      `kartli baseline expected ${KARTLI_BASELINE_TOTAL}, got ${kartli.total.toFixed(2)}`
+    );
+  }
+
   console.log("[payment-validation-kartli-regression] OK");
   if (kartli?.ok) {
     console.log(`  kartli 75×75 config total: ${kartli.total.toFixed(2)} ₺`);

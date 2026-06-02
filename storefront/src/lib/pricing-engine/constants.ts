@@ -30,6 +30,9 @@ export const ROLL_START_MARGIN = 30;
 /** Sağ uçta plotter boşluğu (boy yönü) */
 export const ROLL_END_MARGIN = 80;
 
+/** Die-cut rulo tabaka EN — SABİT 1500mm (Sefa 2 Haz). Tabaka akışı ROLL_L kullanır; DOKUNMA. */
+export const DIECUT_EN = 1500;
+
 // ============================================================
 // Kiss-cut / tabaka — esnek iç tabaka (sticker yarım kesim)
 // ============================================================
