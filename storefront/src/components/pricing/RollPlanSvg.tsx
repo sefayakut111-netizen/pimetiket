@@ -16,6 +16,7 @@
  *   - 3 ruloya kadar göster, daha çoksa "+ N rulo daha" özet
  */
 
+import type { ReactNode } from "react";
 import {
   ROLL_L,
   ROLL_END_MARGIN,
@@ -32,6 +33,268 @@ interface RollPlanSvgProps {
   maxRollsToShow?: number;
 }
 
+function RollPatternDefs() {
+  return (
+    <>
+      <pattern
+        id="fire-pat"
+        patternUnits="userSpaceOnUse"
+        width="10"
+        height="10"
+        patternTransform="rotate(45)"
+      >
+        <rect width="10" height="10" fill="#F5EBD9" />
+        <line x1="0" y1="0" x2="0" y2="10" stroke="#D8C9AC" strokeWidth="2.5" />
+      </pattern>
+      <pattern
+        id="cut-mark-pat"
+        patternUnits="userSpaceOnUse"
+        width="20"
+        height="20"
+      >
+        <rect width="20" height="20" fill="#FEF3F2" />
+        <line
+          x1="0"
+          y1="10"
+          x2="20"
+          y2="10"
+          stroke="#FF6B5B"
+          strokeWidth="0.5"
+          strokeDasharray="2,2"
+        />
+        <circle cx="10" cy="10" r="1.5" fill="#FF6B5B" />
+      </pattern>
+      <pattern
+        id="start-pat"
+        patternUnits="userSpaceOnUse"
+        width="10"
+        height="10"
+        patternTransform="rotate(-45)"
+      >
+        <rect width="10" height="10" fill="#FFFCEC" />
+        <line x1="0" y1="0" x2="0" y2="10" stroke="#F5C842" strokeWidth="2.5" />
+      </pattern>
+    </>
+  );
+}
+
+function DiecutRollPlanSvg({
+  geometry,
+  maxRollsToShow = 3,
+}: RollPlanSvgProps) {
+  const { fit, roll } = geometry;
+  const EN = roll.rollW;
+  const heights = roll.segmentHeights ?? [roll.lastRollLengthMm];
+  const segRows = roll.segmentRows ?? [roll.rows];
+  const N = roll.rollsNeeded;
+  const cols = roll.cols;
+  const sw = fit.stickerW;
+  const sh = fit.stickerH;
+  const gap = fit.gap;
+  const enStart = ROLL_START_MARGIN;
+  const enEnd = ROLL_END_MARGIN;
+  const mY = ROLL_MARGIN_X;
+  const segsToShow = Math.min(N, maxRollsToShow);
+  const showSummary = N > maxRollsToShow;
+
+  const PAD_X = 80;
+  const PAD_TOP = 50;
+  const PAD_BOTTOM = 30;
+  const SEG_GAP = 70;
+
+  let cy = PAD_TOP;
+  const segs: ReactNode[] = [];
+  for (let i = 0; i < segsToShow; i++) {
+    const H = heights[i]!;
+    const rowsI = segRows[i]!;
+    const stickerCount = cols * rowsI;
+    const contentH = rowsI * sh + (rowsI - 1) * gap;
+    const padBottom = Math.max(0, H - mY * 2 - contentH);
+    const annotFont = Math.max(20, H * 0.05);
+
+    const cells: ReactNode[] = [];
+    const gapMarks: ReactNode[] = [];
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rowsI; r++) {
+        const x = PAD_X + enStart + c * (sw + gap);
+        const y = cy + mY + r * (sh + gap);
+        if (c > 0) {
+          gapMarks.push(
+            <rect
+              key={`gx-${i}-${c}-${r}`}
+              x={x - gap}
+              y={y}
+              width={gap}
+              height={sh}
+              fill="#E8E0D0"
+              opacity={0.85}
+            />
+          );
+        }
+        if (r > 0) {
+          gapMarks.push(
+            <rect
+              key={`gy-${i}-${c}-${r}`}
+              x={x}
+              y={y - gap}
+              width={sw}
+              height={gap}
+              fill="#E8E0D0"
+              opacity={0.85}
+            />
+          );
+        }
+        cells.push(
+          <rect
+            key={`s-${i}-${c}-${r}`}
+            x={x + 2}
+            y={y + 2}
+            width={sw - 4}
+            height={sh - 4}
+            rx="4"
+            fill="#FFF8F2"
+            stroke="#FF6B5B"
+            strokeWidth="2"
+          />
+        );
+      }
+    }
+
+    segs.push(
+      <g key={`seg-${i}`}>
+        <rect
+          x={PAD_X}
+          y={cy}
+          width={EN}
+          height={H}
+          fill="white"
+          stroke="#1F2937"
+          strokeWidth="2.5"
+          rx="4"
+        />
+        <rect
+          x={PAD_X}
+          y={cy}
+          width={EN}
+          height={mY}
+          fill="url(#cut-mark-pat)"
+        />
+        <rect
+          x={PAD_X}
+          y={cy + H - mY}
+          width={EN}
+          height={mY}
+          fill="url(#cut-mark-pat)"
+        />
+        <rect
+          x={PAD_X}
+          y={cy + mY}
+          width={enStart}
+          height={H - 2 * mY}
+          fill="url(#start-pat)"
+        />
+        <rect
+          x={PAD_X + EN - enEnd}
+          y={cy + mY}
+          width={enEnd}
+          height={H - 2 * mY}
+          fill="url(#fire-pat)"
+        />
+        {padBottom > 0 && (
+          <rect
+            x={PAD_X + enStart}
+            y={cy + mY + contentH}
+            width={EN - enStart - enEnd}
+            height={padBottom}
+            fill="url(#fire-pat)"
+          />
+        )}
+        {gapMarks}
+        {cells}
+        <g transform={`translate(${PAD_X - 22}, ${cy + H / 2})`}>
+          <text
+            textAnchor="middle"
+            fontFamily="JetBrains Mono, monospace"
+            fontSize={annotFont}
+            fill="#4B5563"
+            fontWeight="700"
+            transform="rotate(-90)"
+          >
+            RULO TABAKA {i + 1}/{N}
+          </text>
+        </g>
+        <text
+          x={PAD_X + EN - enEnd - 8}
+          y={cy + 18}
+          textAnchor="end"
+          fontFamily="JetBrains Mono, monospace"
+          fontSize={Math.max(16, annotFont * 0.8)}
+          fill="#4B5563"
+          fontWeight="600"
+        >
+          {stickerCount} sticker · {Math.round(H)}mm yük.
+        </text>
+      </g>
+    );
+    cy += H + SEG_GAP;
+  }
+
+  const totalSvgWidth = EN + PAD_X * 2;
+  const totalSvgHeight = cy - SEG_GAP + PAD_BOTTOM + (showSummary ? 44 : 0);
+
+  return (
+    <svg
+      viewBox={`0 0 ${totalSvgWidth} ${totalSvgHeight}`}
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full max-w-[1100px] h-auto"
+      role="img"
+      aria-label={`Rulo plan: ${N} rulo tabaka, EN 1500mm`}
+    >
+      <defs>
+        <RollPatternDefs />
+      </defs>
+      <g transform={`translate(${PAD_X}, ${PAD_TOP - 18})`}>
+        <line x1="0" y1="0" x2={EN} y2="0" stroke="#9CA3AF" strokeWidth="1.2" />
+        <line x1="0" y1="-7" x2="0" y2="7" stroke="#9CA3AF" strokeWidth="1.2" />
+        <line
+          x1={EN}
+          y1="-7"
+          x2={EN}
+          y2="7"
+          stroke="#9CA3AF"
+          strokeWidth="1.2"
+        />
+        <rect x={EN / 2 - 90} y="-12" width="180" height="22" fill="#FCFAF5" />
+        <text
+          x={EN / 2}
+          y="4"
+          textAnchor="middle"
+          fontFamily="JetBrains Mono, monospace"
+          fontSize="22"
+          fill="#1F2937"
+          fontWeight="700"
+        >
+          1500 mm EN (sabit)
+        </text>
+      </g>
+      {segs}
+      {showSummary && (
+        <text
+          x={PAD_X + EN / 2}
+          y={totalSvgHeight - 14}
+          textAnchor="middle"
+          fontFamily="Plus Jakarta Sans, sans-serif"
+          fontSize="22"
+          fill="#1F2937"
+          fontWeight="600"
+        >
+          + {N - maxRollsToShow} rulo tabaka daha (toplam {N})
+        </text>
+      )}
+    </svg>
+  );
+}
+
 export function RollPlanSvg({
   geometry,
   maxRollsToShow = 3,
@@ -39,7 +302,13 @@ export function RollPlanSvg({
   const { fit, roll } = geometry;
   const dist = computeSheetDistribution(geometry);
 
-  const isDiecut = fit.mode === "diecut";
+  if (fit.mode === "diecut") {
+    return (
+      <DiecutRollPlanSvg geometry={geometry} maxRollsToShow={maxRollsToShow} />
+    );
+  }
+
+  const isDiecut = false;
   const gap = fit.gap;
   const cellX = fit.sheetH;
   const cellY = fit.sheetW;
@@ -211,44 +480,7 @@ export function RollPlanSvg({
       aria-label={`Rulo plan görseli: ${roll.rollsNeeded} rulo, ${fit.sheetsNeeded} tabaka`}
     >
       <defs>
-        <pattern
-          id="fire-pat"
-          patternUnits="userSpaceOnUse"
-          width="10"
-          height="10"
-          patternTransform="rotate(45)"
-        >
-          <rect width="10" height="10" fill="#F5EBD9" />
-          <line x1="0" y1="0" x2="0" y2="10" stroke="#D8C9AC" strokeWidth="2.5" />
-        </pattern>
-        <pattern
-          id="cut-mark-pat"
-          patternUnits="userSpaceOnUse"
-          width="20"
-          height="20"
-        >
-          <rect width="20" height="20" fill="#FEF3F2" />
-          <line
-            x1="0"
-            y1="10"
-            x2="20"
-            y2="10"
-            stroke="#FF6B5B"
-            strokeWidth="0.5"
-            strokeDasharray="2,2"
-          />
-          <circle cx="10" cy="10" r="1.5" fill="#FF6B5B" />
-        </pattern>
-        <pattern
-          id="start-pat"
-          patternUnits="userSpaceOnUse"
-          width="10"
-          height="10"
-          patternTransform="rotate(-45)"
-        >
-          <rect width="10" height="10" fill="#FFFCEC" />
-          <line x1="0" y1="0" x2="0" y2="10" stroke="#F5C842" strokeWidth="2.5" />
-        </pattern>
+        <RollPatternDefs />
       </defs>
       {topLabel}
       {rolls}

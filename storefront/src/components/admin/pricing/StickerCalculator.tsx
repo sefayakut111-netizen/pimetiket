@@ -1445,12 +1445,31 @@ function UretimOzetiCard({
 
       {/* 4 stat */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCell
-          label={isTabaka ? "Adet/Tabaka" : "Adet/Rulo"}
-          value={fit.perSheet.toString()}
-        />
-        {isTabaka && (
-          <StatCell label="Toplam Tabaka" value={fit.sheetsNeeded.toString()} />
+        {isTabaka ? (
+          <>
+            <StatCell label="Adet/Tabaka" value={fit.perSheet.toString()} />
+            <StatCell
+              label="Toplam Tabaka"
+              value={fit.sheetsNeeded.toString()}
+            />
+          </>
+        ) : (
+          <>
+            <StatCell label="Rulo tabaka" value={roll.rollsNeeded.toString()} />
+            <StatCell
+              label="Yükseklikler"
+              value={
+                roll.segmentHeights
+                  ?.map((h) => `${Math.round(h)}mm`)
+                  .join(" + ") ?? `${Math.round(roll.lastRollLengthMm)}mm`
+              }
+            />
+            <StatCell
+              label="Toplam üretilen"
+              value={fit.producedQty.toString()}
+              className="col-span-2"
+            />
+          </>
         )}
         <StatCell
           label="Baskı yapılan alan"
@@ -1465,11 +1484,13 @@ function UretimOzetiCard({
           unit="m²"
           accent
         />
-        <StatCell
-          label="Toplam Rulo"
-          value={roll.rollsNeeded.toString()}
-          className="col-span-2"
-        />
+        {isTabaka && (
+          <StatCell
+            label="Toplam Rulo"
+            value={roll.rollsNeeded.toString()}
+            className="col-span-2"
+          />
+        )}
       </div>
 
       {/* Mini bar */}
