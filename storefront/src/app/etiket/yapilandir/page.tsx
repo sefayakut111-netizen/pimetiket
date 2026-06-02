@@ -20,6 +20,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/lib/use-sequential-steps";
+import {
+  focusPendingConfiguratorStep,
+  getFirstPendingStepId,
+} from "@/lib/configurator-step-highlight";
 import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
@@ -1278,6 +1282,20 @@ function EtiketPage() {
     [formFactor]
   );
 
+  const optionalConfiguratorSteps = useMemo(
+    () => new Set([OPTIONAL_DESIGN_STEP]),
+    []
+  );
+  const firstPendingStepId = useMemo(
+    () =>
+      getFirstPendingStepId(stepIds, touchedSteps, optionalConfiguratorSteps),
+    [stepIds, touchedSteps, optionalConfiguratorSteps]
+  );
+  const focusPendingStep = useCallback(() => {
+    if (firstPendingStepId == null) return;
+    focusPendingConfiguratorStep(firstPendingStepId, scrollToStep, stepIds);
+  }, [firstPendingStepId, scrollToStep, stepIds]);
+
   // Sepete ekle — hem PriceCard hem sticky bar tetikler.
   // Sefa kuralı (15 May v2): max 50 tasarım. Şu an cart item modeli tek
   // tasarım bağlar → designs[0] cart'a, designs[1..N] design_metadata
@@ -1299,17 +1317,7 @@ function EtiketPage() {
           ? `Complete "${label}" first.`
           : `Önce "${label}" adımını seç.`
       );
-      scrollToStep(idx + 1);
-      // DOM flash — kart kenarında 2.5sn mercan halka animasyonu
-      const el = document.getElementById(`step-${missingStepId}`);
-      if (el) {
-        el.classList.add("ring-2", "ring-pim-mercan", "ring-offset-2", "transition-all");
-        el.style.boxShadow = "0 0 0 4px var(--color-pim-mercan-tint)";
-        setTimeout(() => {
-          el.classList.remove("ring-2", "ring-pim-mercan", "ring-offset-2");
-          el.style.boxShadow = "";
-        }, 2500);
-      }
+      focusPendingConfiguratorStep(missingStepId, scrollToStep, stepIds);
       return;
     }
     if (!quote.ok) {
@@ -1598,6 +1606,7 @@ function EtiketPage() {
               number={uiStepNumber(0)}
               title={t.etiket.stepFormFactor}
               hint="Rulo etiketlerde ekstra özelleştirme seçenekleri mevcuttur."
+              needsAttention={firstPendingStepId === 0}
             >
               <div className="grid grid-cols-2 gap-2">
                 {FORM_FACTORS.map((f) => {
@@ -1666,6 +1675,7 @@ function EtiketPage() {
                   activeStep={activeStep}
                   completedSet={touchedSteps}
                   onStepClick={scrollToStep}
+                  attentionStepId={firstPendingStepId}
                 />
               </div>
             </div>
@@ -1682,6 +1692,7 @@ function EtiketPage() {
               }
               locked={isStepLocked(1)}
               lockMessage={getLockMessage(1)}
+              needsAttention={firstPendingStepId === 1}
             >
               {!stepComplete(1) && (
                 <p className="mb-3 text-[13px] font-medium text-pim-mercan bg-pim-mercan-tint/40 rounded-lg px-3 py-2">
@@ -1781,6 +1792,7 @@ function EtiketPage() {
               hint=""
               locked={isStepLocked(2)}
               lockMessage={getLockMessage(2)}
+              needsAttention={firstPendingStepId === 2}
             >
               {/* Sefa 20 May v68: grid kart sayısına göre dinamik. HIDDEN +
                   formFactor sonrası görünür kart sayısı = sütun sayısı,
@@ -1858,6 +1870,7 @@ function EtiketPage() {
               }
               locked={isStepLocked(3)}
               lockMessage={getLockMessage(3)}
+              needsAttention={firstPendingStepId === 3}
             >
               {/* Sefa 18 May v68: 4 özelleştirme → 4 kolon (md+).
                   Kompakt + tek satır görünüm. */}
@@ -2014,6 +2027,7 @@ function EtiketPage() {
               hint={t.etiket.sizeHint}
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
+              needsAttention={firstPendingStepId === 6}
             >
               {detectedDims && dimsPromptShown && !dimsAccepted && (
                 <div className="mb-4 p-3 rounded-lg bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/40 flex items-center justify-between gap-3 flex-wrap">
@@ -2366,6 +2380,7 @@ function EtiketPage() {
               }
               locked={isStepLocked(8)}
               lockMessage={getLockMessage(8)}
+              needsAttention={firstPendingStepId === 8}
             >
               {isStepLocked(8) ? (
                 <p className="text-[14px] text-gri-600 leading-relaxed">
@@ -2503,6 +2518,7 @@ function EtiketPage() {
               hint={t.etiket.windingHint}
               locked={isStepLocked(4)}
               lockMessage={getLockMessage(4)}
+              needsAttention={firstPendingStepId === 4}
             >
               {/* Sefa 18 May v46: Kalın guidance — eski alt info kutusunun
                   içeriği üstte vurgulu olarak. */}
@@ -2625,6 +2641,7 @@ function EtiketPage() {
               hint="Göbek çapı ve rulo başına etiket adedi — makine uyumu için."
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
+              needsAttention={firstPendingStepId === 5}
             >
               {/* Göbek çapı — Sefa 20 May v68 (Aşama B):
                   Picker gizli, 76mm sabit badge gösterilir. 25/40mm gizlendi
@@ -2847,6 +2864,7 @@ function EtiketPage() {
                   const idx = stepIds.indexOf(firstPending);
                   return stepLabels[idx];
                 })()}
+                onPendingStepsClick={focusPendingStep}
                 /* Sefa 18 May v62: footnote kaldırıldı — KDV bilgisi
                    unitPrice'da, teslim ve özet zaten kart içinde var. */
                 footnote={null}
@@ -2870,6 +2888,7 @@ function EtiketPage() {
                 activeStep={activeStep}
                 completedSet={touchedSteps}
                 onStepClick={scrollToStep}
+                attentionStepId={firstPendingStepId}
               />
             </div>
           </aside>

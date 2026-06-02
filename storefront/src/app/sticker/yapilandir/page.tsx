@@ -21,6 +21,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/lib/use-sequential-steps";
+import {
+  focusPendingConfiguratorStep,
+  getFirstPendingStepId,
+} from "@/lib/configurator-step-highlight";
 import { track } from "@/lib/analytics/posthog-events";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
@@ -840,6 +844,17 @@ function StickerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const OPTIONAL_CONFIGURATOR_STEPS = useMemo(() => new Set([7]), []);
+  const firstPendingStepId = useMemo(
+    () =>
+      getFirstPendingStepId(stepIds, touchedSteps, OPTIONAL_CONFIGURATOR_STEPS),
+    [stepIds, touchedSteps, OPTIONAL_CONFIGURATOR_STEPS]
+  );
+  const focusPendingStep = useCallback(() => {
+    if (firstPendingStepId == null) return;
+    focusPendingConfiguratorStep(firstPendingStepId, scrollToStep, stepIds);
+  }, [firstPendingStepId, scrollToStep, stepIds]);
+
   // Sticky CTA bar — PriceCard görünür değilse mobile'da bar göster
   const priceCardRef = useRef<HTMLDivElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
@@ -1102,6 +1117,7 @@ function StickerPage() {
                   activeStep={activeStep}
                   completedSet={touchedSteps}
                   onStepClick={scrollToStep}
+                  attentionStepId={firstPendingStepId}
                 />
               </div>
             </div>
@@ -1116,6 +1132,7 @@ function StickerPage() {
               number={uiStepNumber(1)}
               title={t.sticker.cutTypeTitle}
               hint={t.sticker.cutTypeHint}
+              needsAttention={firstPendingStepId === 1}
             >
               <div className="grid grid-cols-2 gap-3">
                 <CutModeCard
@@ -1155,6 +1172,7 @@ function StickerPage() {
                   ? t.sticker.shapeHintTabaka
                   : t.sticker.shapeHintDieCut
               }
+              needsAttention={firstPendingStepId === 2}
               locked={isStepLocked(2)}
               lockMessage={getLockMessage(2)}
             >
@@ -1252,6 +1270,7 @@ function StickerPage() {
               title={t.config.materialTitle}
               locked={isStepLocked(3)}
               lockMessage={getLockMessage(3)}
+              needsAttention={firstPendingStepId === 3}
             >
               {/* Sefa 20 May v68: grid kart sayısına göre dinamik
                   (gridColsForCount). Kart sayısı = sütun sayısı, boş hücre yok. */}
@@ -1345,6 +1364,7 @@ function StickerPage() {
               title={t.config.finishTitle}
               locked={isStepLocked(4)}
               lockMessage={getLockMessage(4)}
+              needsAttention={firstPendingStepId === 4}
             >
               <div className={`${gridColsForCount(FINISHES.length)} gap-2.5`}>
                 {FINISHES.map((f) => (
@@ -1438,6 +1458,7 @@ function StickerPage() {
               hint="Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin."
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
+              needsAttention={firstPendingStepId === 5}
             >
               {detectedDims && dimsPromptShown && !dimsAccepted && (
                 <div className="mb-4 p-3 rounded-lg bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/40 flex items-center justify-between gap-3 flex-wrap">
@@ -1855,6 +1876,7 @@ function StickerPage() {
               hint="Her tasarımdan kaç adet"
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
+              needsAttention={firstPendingStepId === 6}
             >
               {/* Sefa kuralı (Madde 9 + v4): adet bilgisi göster, fiyat
                   TOPLAM kartında. Duplicate kaldırıldı. */}
@@ -2005,6 +2027,7 @@ function StickerPage() {
                 const idx = stepIds.indexOf(firstPending);
                 return stepLabels[idx];
               })()}
+              onPendingStepsClick={focusPendingStep}
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={ctaLabel}
               ctaLoading={cartAdding}
@@ -2031,16 +2054,11 @@ function StickerPage() {
                       ? `Complete "${label}" first.`
                       : `Önce "${label}" adımını seç.`
                   );
-                  scrollToStep(idx + 1);
-                  const el = document.getElementById(`step-${missingStepId}`);
-                  if (el) {
-                    el.classList.add("ring-2", "ring-pim-mercan", "ring-offset-2", "transition-all");
-                    el.style.boxShadow = "0 0 0 4px var(--color-pim-mercan-tint)";
-                    setTimeout(() => {
-                      el.classList.remove("ring-2", "ring-pim-mercan", "ring-offset-2");
-                      el.style.boxShadow = "";
-                    }, 2500);
-                  }
+                  focusPendingConfiguratorStep(
+                    missingStepId,
+                    scrollToStep,
+                    stepIds
+                  );
                   return;
                 }
                 if (!quote.ok) {
@@ -2223,6 +2241,7 @@ function StickerPage() {
                 activeStep={activeStep}
                 completedSet={touchedSteps}
                 onStepClick={scrollToStep}
+                attentionStepId={firstPendingStepId}
               />
             </div>
           </aside>

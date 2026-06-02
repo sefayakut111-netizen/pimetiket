@@ -16,6 +16,8 @@ interface FormSectionProps {
   locked?: boolean;
   /** Locked iken gösterilen mesaj. */
   lockMessage?: string;
+  /** Eksik zorunlu adım — sürekli ring pulse (locked değilken). */
+  needsAttention?: boolean;
 }
 
 /**
@@ -34,15 +36,21 @@ export function FormSection({
   id,
   locked,
   lockMessage,
+  needsAttention,
 }: FormSectionProps) {
   const numbered = number != null;
+  const showAttention = needsAttention && !locked;
   // scroll-mt-[140px]: stepper sticky offset (72px) + stepper yüksekliği
   // (~60px) + padding → tıklanınca section başlığı stepper'ın altına
   // değil, biraz aşağı düşsün ki header'la kaybolmasın.
   return (
     <Card
       padding="p-5"
-      className={cn("scroll-mt-[140px] relative", className)}
+      className={cn(
+        "scroll-mt-[140px] relative",
+        showAttention && "configurator-step-attention",
+        className
+      )}
       id={id}
       aria-disabled={locked || undefined}
     >
@@ -59,7 +67,9 @@ export function FormSection({
               "grid place-items-center w-7 h-7 rounded-full font-bold text-[13px] shrink-0 transition-colors",
               locked
                 ? "bg-saman text-saman-koyu ring-1 ring-saman-koyu/30"
-                : "bg-lacivert text-white"
+                : showAttention
+                  ? "bg-pim-mercan text-white ring-2 ring-pim-mercan-tint"
+                  : "bg-lacivert text-white"
             )}
           >
             {locked ? "🔒" : number}

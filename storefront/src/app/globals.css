@@ -176,10 +176,43 @@
 .step-circle-anim:nth-child(3) { animation-delay: 1.7s; }
 .step-circle-anim:nth-child(4) { animation-delay: 2.55s; }
 
+/* Konfigüratör — eksik zorunlu adım vurgusu (sticker + etiket) */
+@keyframes configurator-step-attention {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 91, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 107, 91, 0.35);
+  }
+}
+.configurator-step-attention {
+  animation: configurator-step-attention 2s ease-in-out infinite;
+  outline: 2px solid var(--color-pim-mercan);
+  outline-offset: 2px;
+}
+.configurator-step-dot-attention {
+  animation: step-pulse 2s ease-in-out infinite;
+  background-color: var(--color-pim-mercan) !important;
+  color: white !important;
+}
+.configurator-step-burst {
+  animation: configurator-step-attention 0.6s ease-in-out 3;
+  outline: 2px solid var(--color-pim-mercan);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flow-line,
-  .step-circle-anim {
+  .step-circle-anim,
+  .configurator-step-attention,
+  .configurator-step-dot-attention,
+  .configurator-step-burst {
     animation: none !important;
+  }
+  .configurator-step-attention,
+  .configurator-step-burst {
+    outline: 2px solid var(--color-pim-mercan);
+    outline-offset: 2px;
   }
 }
 

@@ -41,6 +41,8 @@ interface PriceCardProps {
    *  varsayılan değerlere göre tahmini olarak gösterildiği belirtilir. */
   pendingStepsCount?: number;
   firstPendingStepLabel?: string;
+  /** Eksik adım uyarısına tıklanınca ilgili adıma scroll + burst. */
+  onPendingStepsClick?: () => void;
 }
 
 /**
@@ -66,8 +68,39 @@ export function PriceCard({
   summaryItems,
   pendingStepsCount,
   firstPendingStepLabel,
+  onPendingStepsClick,
 }: PriceCardProps) {
   const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
+
+  const pendingWarning =
+    pendingStepsCount && pendingStepsCount > 0 ? (
+      onPendingStepsClick ? (
+        <button
+          type="button"
+          onClick={onPendingStepsClick}
+          className={cn(
+            "mb-4 w-full rounded-lg bg-sari-soft ring-1 ring-sari/30 px-3.5 py-2.5",
+            "text-[12.5px] text-lacivert text-left transition-colors",
+            "hover:bg-sari/20 hover:ring-sari/50 cursor-pointer"
+          )}
+        >
+          <span className="font-semibold">⚠️ Tahmini fiyat</span> —{" "}
+          <strong>{pendingStepsCount} adım</strong> seçilmedi
+          {firstPendingStepLabel ? ` (önce "${firstPendingStepLabel}")` : ""}.
+          Seçimini tamamladıkça gerçek fiyat oluşur.{" "}
+          <span className="font-semibold text-pim-mercan underline underline-offset-2">
+            Adıma git →
+          </span>
+        </button>
+      ) : (
+        <div className="mb-4 rounded-lg bg-sari-soft ring-1 ring-sari/30 px-3.5 py-2.5 text-[12.5px] text-lacivert">
+          <span className="font-semibold">⚠️ Tahmini fiyat</span> —{" "}
+          <strong>{pendingStepsCount} adım</strong> seçilmedi
+          {firstPendingStepLabel ? ` (önce "${firstPendingStepLabel}")` : ""}.
+          Seçimini tamamladıkça gerçek fiyat oluşur.
+        </div>
+      )
+    ) : null;
 
   if (variant === "bold") {
     return (
@@ -104,6 +137,8 @@ export function PriceCard({
             </span>
           )}
         </div>
+
+        {pendingWarning}
 
         <div className="relative mt-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-white/10 text-[13px]">
           <Icon.Calendar size={14} />
@@ -170,14 +205,7 @@ export function PriceCard({
       {/* Sefa 21 May v68 (konfigüratör denetim #4): henüz tamamlanmamış
           zorunlu adımlar varken özet ve fiyat varsayılan değerlerle
           tahmini gösterildiği için kullanıcıya uyar. */}
-      {pendingStepsCount && pendingStepsCount > 0 ? (
-        <div className="mb-4 rounded-lg bg-sari-soft ring-1 ring-sari/30 px-3.5 py-2.5 text-[12.5px] text-lacivert">
-          <span className="font-semibold">⚠️ Tahmini fiyat</span> —{" "}
-          <strong>{pendingStepsCount} adım</strong> seçilmedi
-          {firstPendingStepLabel ? ` (önce "${firstPendingStepLabel}")` : ""}.
-          Seçimini tamamladıkça gerçek fiyat oluşur.
-        </div>
-      ) : null}
+      {pendingWarning}
 
       {/* Sefa 18 May v62: İşlem özeti — caller satır listesi geçer.
           v63 UX/A11y reviewer fix:

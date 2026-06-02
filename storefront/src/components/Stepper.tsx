@@ -24,6 +24,8 @@ interface StepperProps {
   activeStep: number;
   completedSet: Set<number>;
   onStepClick: (stepIndex: number) => void;
+  /** İlk eksik zorunlu adım — pulse animasyonu (DOM step id). */
+  attentionStepId?: number;
 }
 
 export function StepProgress({
@@ -32,6 +34,7 @@ export function StepProgress({
   activeStep,
   completedSet,
   onStepClick,
+  attentionStepId,
 }: StepperProps) {
   const { t } = useT();
   const total = steps.length;
@@ -74,6 +77,8 @@ export function StepProgress({
             const sectionId = stepIds[i];
             const isActive = stepNum === activeStep;
             const isDone = completedSet.has(sectionId) && !isActive;
+            const needsAttention =
+              attentionStepId === sectionId && !isDone && !isActive;
             return (
               <div key={stepNum} className="flex items-center gap-1.5 flex-1">
                 <button
@@ -85,11 +90,14 @@ export function StepProgress({
                     "text-[11px] font-bold tabular-nums transition-all duration-200",
                     "hover:scale-110 active:scale-95 cursor-pointer",
                     "focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2",
+                    needsAttention && "configurator-step-dot-attention",
                     isActive
                       ? "w-6 h-6 bg-pim-mercan text-white ring-2 ring-pim-mercan-tint"
                       : isDone
                         ? "w-5 h-5 bg-pim-mercan text-white"
-                        : "w-5 h-5 bg-gri-200 text-gri-700 hover:bg-gri-300"
+                        : needsAttention
+                          ? "w-5 h-5"
+                          : "w-5 h-5 bg-gri-200 text-gri-700 hover:bg-gri-300"
                   )}
                 >
                   {stepNum}
@@ -116,6 +124,8 @@ export function StepProgress({
             const sectionId = stepIds[i];
             const isActive = stepNum === activeStep;
             const isDone = completedSet.has(sectionId) && !isActive;
+            const needsAttention =
+              attentionStepId === sectionId && !isDone && !isActive;
             return (
               <button
                 key={stepNum}
@@ -124,11 +134,14 @@ export function StepProgress({
                 className={cn(
                   "text-[10.5px] font-semibold tabular-nums truncate text-left",
                   "transition-colors hover:text-pim-mercan cursor-pointer",
+                  needsAttention && "text-pim-mercan animate-pulse",
                   isActive
                     ? "text-pim-mercan"
                     : isDone
                       ? "text-lacivert"
-                      : "text-gri-500"
+                      : needsAttention
+                        ? "text-pim-mercan"
+                        : "text-gri-500"
                 )}
               >
                 {label}
@@ -147,6 +160,7 @@ export function VerticalStepProgress({
   activeStep,
   completedSet,
   onStepClick,
+  attentionStepId,
 }: StepperProps) {
   const { t } = useT();
   const total = steps.length;
@@ -161,6 +175,8 @@ export function VerticalStepProgress({
         const sectionId = stepIds[i];
         const isActive = stepNum === activeStep;
         const isDone = completedSet.has(sectionId) && !isActive;
+        const needsAttention =
+          attentionStepId === sectionId && !isDone && !isActive;
         const isLast = i === total - 1;
         return (
           <button
@@ -169,7 +185,7 @@ export function VerticalStepProgress({
             onClick={() => onStepClick(stepNum)}
             aria-current={isActive ? "step" : undefined}
             aria-label={`${stepNum}. adım: ${label}${
-              isDone ? " (tamamlandı)" : isActive ? " (aktif)" : ""
+              isDone ? " (tamamlandı)" : isActive ? " (aktif)" : needsAttention ? " (seçim gerekli)" : ""
             }`}
             className={cn(
               "group relative flex items-start gap-3 py-2 pr-3",
@@ -184,11 +200,14 @@ export function VerticalStepProgress({
                   "rounded-full grid place-items-center shrink-0",
                   "transition-all duration-200 font-bold tabular-nums",
                   "group-hover:scale-110 group-active:scale-95",
+                  needsAttention && "configurator-step-dot-attention",
                   isActive
                     ? "w-7 h-7 bg-pim-mercan text-white text-[12px] ring-[3px] ring-pim-mercan-tint"
                     : isDone
                       ? "w-6 h-6 bg-pim-mercan text-white"
-                      : "w-6 h-6 bg-gri-200 text-gri-700 text-[11px] group-hover:bg-gri-300"
+                      : needsAttention
+                        ? "w-6 h-6 text-[11px]"
+                        : "w-6 h-6 bg-gri-200 text-gri-700 text-[11px] group-hover:bg-gri-300"
                 )}
               >
                 {isDone ? (
@@ -226,11 +245,14 @@ export function VerticalStepProgress({
               <div
                 className={cn(
                   "text-[12.5px] font-semibold transition-colors leading-tight",
+                  needsAttention && "text-pim-mercan",
                   isActive
                     ? "text-pim-mercan"
                     : isDone
                       ? "text-lacivert"
-                      : "text-gri-500 group-hover:text-pim-mercan"
+                      : needsAttention
+                        ? "text-pim-mercan"
+                        : "text-gri-500 group-hover:text-pim-mercan"
                 )}
               >
                 {label}
