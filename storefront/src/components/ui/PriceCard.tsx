@@ -28,6 +28,8 @@ interface PriceCardProps {
   upsell?: Upsell | null;
   deliveryDate: string;
   ctaLabel: string;
+  /** Sepete ekleme devam ederken buton devre dışı + yükleme metni */
+  ctaLoading?: boolean;
   onCta?: () => void;
   footnote?: string | null;
   className?: string;
@@ -57,6 +59,7 @@ export function PriceCard({
   upsell,
   deliveryDate,
   ctaLabel,
+  ctaLoading = false,
   onCta,
   footnote,
   className,
@@ -114,9 +117,11 @@ export function PriceCard({
           size="lg"
           block
           onClick={onCta}
+          disabled={ctaLoading}
           className="relative mt-4"
         >
-          {ctaLabel} <Icon.ArrowR />
+          {ctaLoading ? "Sepete ekleniyor…" : ctaLabel}{" "}
+          {!ctaLoading && <Icon.ArrowR />}
         </Button>
 
         {footnote && (
@@ -235,8 +240,15 @@ export function PriceCard({
         </span>
       </div>
 
-      <Button variant="primary" size="lg" block onClick={onCta}>
-        {ctaLabel} <Icon.ArrowR />
+      <Button
+        variant="primary"
+        size="lg"
+        block
+        onClick={onCta}
+        disabled={ctaLoading}
+      >
+        {ctaLoading ? "Sepete ekleniyor…" : ctaLabel}{" "}
+        {!ctaLoading && <Icon.ArrowR />}
       </Button>
 
       {footnote && (

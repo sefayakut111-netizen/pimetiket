@@ -693,6 +693,7 @@ function StickerPage() {
   }, []);
   // Sefa 18 May v60: Sepete eklendi pop-up'ı
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
+  const [cartAdding, setCartAdding] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
   const [noDesignModalOpen, setNoDesignModalOpen] = useState(false);
   const bypassNoDesignConfirmRef = useRef(false);
@@ -2006,8 +2007,12 @@ function StickerPage() {
               })()}
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
               ctaLabel={ctaLabel}
+              ctaLoading={cartAdding}
               onCta={async () => {
                 const runAddToCart = async () => {
+                if (cartAdding) return;
+                setCartAdding(true);
+                try {
                 // Sefa 20 May v68: zorunlu step kontrolü — touched değilse
                 // o adıma scroll + flash + toast. Tasarım (7) opsiyonel.
                 const OPTIONAL_STEPS = new Set([7]);
@@ -2099,48 +2104,21 @@ function StickerPage() {
                 }
                 bypassNoDesignConfirmRef.current = false;
 
-                // Sefa 20 May v68 (test): Native image/PSD/PDF için kalıcı
-                // Supabase URL üret. design.generatedPreviewUrl varsa onu kullan
-                // (DesignDropZone zaten Supabase'e yüklüyor), yoksa designs[0]
-                // için persistDesignPreview ile yükle.
-                let _resolvedPreviewUrl: string | undefined =
-                  design?.generatedPreviewUrl;
-                const { persistDesignPreview } = await import(
-                  "@/lib/design-preview"
+                const { prepareDesignsForCart } = await import(
+                  "@/lib/cart/prepare-designs-for-cart"
                 );
-                const persistedDesigns = await Promise.all(
-                  designs.map(async (d) => {
-                    const url =
-                      (await persistDesignPreview(d.file, d.id)) ??
-                      d.previewUrl;
-                    return { ...d, previewUrl: url };
-                  })
-                );
-                if (!_resolvedPreviewUrl && persistedDesigns[0]) {
-                  _resolvedPreviewUrl = persistedDesigns[0].previewUrl;
-                }
-
-                let resolvedDesignTempId: string | undefined = design?.tempId;
-                if (persistedDesigns[0] && !resolvedDesignTempId) {
-                  const { uploadFileToTempDesign } = await import(
-                    "@/lib/design-temp-upload"
+                const {
+                  persistedDesigns,
+                  resolvedDesignTempId,
+                  resolvedPreviewUrl: _resolvedPreviewUrl,
+                  additionalDesigns,
+                  uploadFailed,
+                } = await prepareDesignsForCart(designs, design);
+                if (uploadFailed) {
+                  toast.error(
+                    "Tasarım sunucuya yüklenemedi — giriş yapıp tekrar dene."
                   );
-                  const uploaded = await uploadFileToTempDesign(
-                    persistedDesigns[0].file
-                  );
-                  console.log("[cart-add] designTempId:", uploaded?.tempId ?? null);
-                  if (!uploaded?.tempId) {
-                    toast.error(
-                      "Tasarım sunucuya yüklenemedi — giriş yapıp tekrar dene."
-                    );
-                    return;
-                  }
-                  resolvedDesignTempId = uploaded.tempId;
-                  if (uploaded.generatedPreviewUrl) {
-                    _resolvedPreviewUrl = uploaded.generatedPreviewUrl;
-                  }
-                } else {
-                  console.log("[cart-add] designTempId:", resolvedDesignTempId ?? null);
+                  return;
                 }
 
                 const result = await addToCustomerCart({
@@ -2179,27 +2157,7 @@ function StickerPage() {
                       ? { editorCutlineDraftId: editorCutlineDraftIdRef.current }
                       : {}),
                   },
-                  additionalDesigns:
-                    persistedDesigns.length > 1
-                      ? (
-                          await Promise.all(
-                            persistedDesigns.slice(1).map(async (d) => {
-                              const { uploadFileToTempDesign } = await import(
-                                "@/lib/design-temp-upload"
-                              );
-                              const up = await uploadFileToTempDesign(d.file);
-                              return {
-                                tempId: up?.tempId ?? `local-${d.id}`,
-                                previewUrl:
-                                  up?.generatedPreviewUrl ?? d.previewUrl,
-                                fileName: d.name,
-                                sizeBytes: d.sizeBytes,
-                                mimeType: d.mimeType,
-                              };
-                            })
-                          )
-                        )
-                      : undefined,
+                  additionalDesigns,
                 });
                 if (!result.ok) {
                   toast.error(result.reason);
@@ -2238,6 +2196,9 @@ function StickerPage() {
                   });
                   setDesigns([]);
                   setDesignCount(1);
+                }
+                } finally {
+                  setCartAdding(false);
                 }
                 };
                 stickerAddToCartRef.current = runAddToCart;

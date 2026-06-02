@@ -207,8 +207,11 @@ export default function SepetPage() {
       refresh();
       setHydrated(true);
       clearTimeout(skeletonTimer);
-      void repriceCustomerCart().then(() => {
-        refresh();
+      // Reprice arka planda — sepet UI önce render olsun
+      queueMicrotask(() => {
+        void repriceCustomerCart().then(() => {
+          refresh();
+        });
       });
     });
     const handler = () => refresh();

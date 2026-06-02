@@ -926,6 +926,7 @@ function EtiketPage() {
   );
   // Sefa 18 May v60: Sepete eklendi pop-up'ı (toast yerine modal)
   const [cartSuccessOpen, setCartSuccessOpen] = useState(false);
+  const [cartAdding, setCartAdding] = useState(false);
   const [cartSuccessSummary, setCartSuccessSummary] = useState<string>("");
   const [noDesignModalOpen, setNoDesignModalOpen] = useState(false);
   const bypassNoDesignConfirmRef = useRef(false);
@@ -1282,6 +1283,7 @@ function EtiketPage() {
   // tasarım bağlar → designs[0] cart'a, designs[1..N] design_metadata
   // alanına serileştirilir (cart genişlemesi sonraki commit'te).
   const handleAddToCart = useCallback(async () => {
+    if (cartAdding) return;
     // Sefa 20 May v68: zorunlu step kontrolü — touched değilse o adıma
     // scroll + flash + toast. Tasarım step (7) opsiyonel (sonra yükleme
     // akışı aktif).
@@ -1358,46 +1360,27 @@ function EtiketPage() {
     }
     bypassNoDesignConfirmRef.current = false;
 
-    // Sefa 20 May v68 (test "önizleme gözükmüyor"): Native image için
-    // kalıcı Supabase URL üret. Yoksa sayfa refresh sonrası blob URL invalid.
-    let _resolvedPreviewUrl: string | undefined;
-    const { persistDesignPreview } = await import("@/lib/design-preview");
-    const persistedDesigns = await Promise.all(
-      designs.map(async (d) => {
-        const url =
-          (await persistDesignPreview(d.file, d.id)) ?? d.previewUrl;
-        return { ...d, previewUrl: url };
-      })
+    setCartAdding(true);
+    try {
+    const { prepareDesignsForCart } = await import(
+      "@/lib/cart/prepare-designs-for-cart"
+    );
+    const {
+      persistedDesigns,
+      resolvedDesignTempId,
+      resolvedPreviewUrl: _resolvedPreviewUrl,
+      additionalDesigns,
+      uploadFailed,
+    } = await prepareDesignsForCart(
+      designs,
+      editorDesignRef.current ?? undefined
     );
     const primaryPersisted = persistedDesigns[0];
-    if (primaryPersisted) {
-      _resolvedPreviewUrl = primaryPersisted.previewUrl;
-    }
-
-    let resolvedDesignTempId: string | undefined;
-    if (editorDesignRef.current?.tempId) {
-      resolvedDesignTempId = editorDesignRef.current.tempId;
-      if (editorDesignRef.current.generatedPreviewUrl) {
-        _resolvedPreviewUrl = editorDesignRef.current.generatedPreviewUrl;
-      }
-    } else if (primaryPersisted) {
-      const { uploadFileToTempDesign } = await import(
-        "@/lib/design-temp-upload"
+    if (uploadFailed) {
+      toast.error(
+        "Tasarım sunucuya yüklenemedi — giriş yapıp tekrar dene."
       );
-      const uploaded = await uploadFileToTempDesign(primaryPersisted.file);
-      console.log("[cart-add] designTempId:", uploaded?.tempId ?? null);
-      if (!uploaded?.tempId) {
-        toast.error(
-          "Tasarım sunucuya yüklenemedi — giriş yapıp tekrar dene."
-        );
-        return;
-      }
-      resolvedDesignTempId = uploaded.tempId;
-      if (uploaded.generatedPreviewUrl) {
-        _resolvedPreviewUrl = uploaded.generatedPreviewUrl;
-      }
-    } else {
-      console.log("[cart-add] designTempId: (no design)");
+      return;
     }
 
     const result = await addToCustomerCart({
@@ -1436,26 +1419,7 @@ function EtiketPage() {
       // Multi-design metadata (Sefa 15 May v6): designCount + ek dosyalar
       // (primary hariç — sepet badge doğru sayı göstersin).
       designCount: designCount > 1 ? designCount : undefined,
-      additionalDesigns:
-        persistedDesigns.length > 1
-          ? (
-              await Promise.all(
-                persistedDesigns.slice(1).map(async (d) => {
-                  const { uploadFileToTempDesign } = await import(
-                    "@/lib/design-temp-upload"
-                  );
-                  const up = await uploadFileToTempDesign(d.file);
-                  return {
-                    tempId: up?.tempId ?? `local-${d.id}`,
-                    previewUrl: up?.generatedPreviewUrl ?? d.previewUrl,
-                    fileName: d.name,
-                    sizeBytes: d.sizeBytes,
-                    mimeType: d.mimeType,
-                  };
-                })
-              )
-            )
-          : undefined,
+      additionalDesigns,
     });
     if (!result.ok) {
       toast.error(result.reason);
@@ -1490,7 +1454,11 @@ function EtiketPage() {
     setCartSuccessOpen(true);
     setDesigns([]);
     setDesignCount(1);
+    } finally {
+      setCartAdding(false);
+    }
   }, [
+    cartAdding,
     quote,
     toast,
     material,
@@ -2855,6 +2823,7 @@ function EtiketPage() {
                 }
                 deliveryDate={teslim}
                 ctaLabel={t.config.addToCart}
+                ctaLoading={cartAdding}
                 onCta={handleAddToCart}
                 /* Sefa 21 May v68 (konfigüratör denetim #4): zorunlu
                    adımlar tamamlanmadıkça PriceCard'da "tahmini fiyat"
@@ -2945,7 +2914,7 @@ function EtiketPage() {
         <button
           type="button"
           onClick={handleAddToCart}
-          disabled={!quote.ok}
+          disabled={!quote.ok || cartAdding}
           // Sefa 21 May v68 (konfigüratör denetim #6): unique aria-label
           // — PriceCard ana buton ile karışmasın (screen reader iki kez
           // "Sepete ekle" okumaz).
@@ -2958,8 +2927,8 @@ function EtiketPage() {
             "disabled:opacity-50 disabled:cursor-not-allowed"
           )}
         >
-          Sepete ekle
-          <Icon.ArrowR size={14} />
+          {cartAdding ? "Ekleniyor…" : "Sepete ekle"}
+          {!cartAdding && <Icon.ArrowR size={14} />}
         </button>
       </div>
 
