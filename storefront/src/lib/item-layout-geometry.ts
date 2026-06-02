@@ -144,5 +144,5 @@ export function computeOrderItemLayoutGeometry(
 }
 
 export function showSheetPreviewForLayout(geometry: GeometryResult): boolean {
-  return geometry.fit.mode === "tabaka" && geometry.effectiveCut === "tabaka";
+  return geometry.fit.mode === "tabaka" || geometry.fit.mode === "diecut";
 }

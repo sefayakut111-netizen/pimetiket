@@ -1378,15 +1378,20 @@ function SheetPreviewCard({
   if (!result.ok) return null;
   const { geometry } = result;
   const { fit } = geometry;
-
-  if (fit.mode === "diecut") return null;
+  const isTabaka = fit.mode === "tabaka";
 
   return (
     <Card padding="p-5">
       <div className="text-[13px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
-        <span>{fit.sheetW / 10}×{fit.sheetH / 10} cm Esnek Tabaka</span>
+        <span>
+          {isTabaka
+            ? `${fit.sheetW / 10}×${fit.sheetH / 10} cm Esnek Tabaka`
+            : `Die-cut Yakın Plan · ${fit.stickerW}×${fit.stickerH} mm`}
+        </span>
         <span className="text-[12px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
-          {fit.cols}×{fit.rows} · {fit.perSheet} ad · gap {fit.gap}mm
+          {isTabaka
+            ? `${fit.cols}×${fit.rows} · ${fit.perSheet} ad · gap ${fit.gap}mm`
+            : `${fit.cols}×${fit.rows} rulo grid · gap ${fit.gap}mm`}
         </span>
       </div>
       <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-3 flex items-center justify-center overflow-hidden min-h-[280px]">

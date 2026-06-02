@@ -364,20 +364,33 @@ function RollGroup({
             />
           );
         }
+        sheets.push(
+          <rect
+            key={`s-${localIdx}`}
+            x={sx + 2}
+            y={sy + 2}
+            width={cellX - 4}
+            height={cellY - 4}
+            rx="4"
+            fill="#FFF8F2"
+            stroke="#FF6B5B"
+            strokeWidth="2"
+          />
+        );
+      } else {
+        sheets.push(
+          <SheetRect
+            key={`s-${localIdx}`}
+            x={sx + 4}
+            y={sy + 4}
+            width={cellX - 8}
+            height={cellY - 8}
+            label={`T${rollI * sheetsPerRoll + localIdx + 1}`}
+            qty={stickersInThisSheet}
+            sheetSize={`${sheetW}×${sheetH} · ${stickerGrid}`}
+          />
+        );
       }
-
-      sheets.push(
-        <SheetRect
-          key={`s-${localIdx}`}
-          x={sx + 4}
-          y={sy + 4}
-          width={cellX - 8}
-          height={cellY - 8}
-          label={`T${rollI * sheetsPerRoll + localIdx + 1}`}
-          qty={stickersInThisSheet}
-          sheetSize={`${sheetW}×${sheetH} · ${stickerGrid}`}
-        />
-      );
       localIdx++;
     }
     if (localIdx >= sheetsThisRoll) break;
@@ -546,6 +559,19 @@ function RollGroup({
           fontWeight="700"
         >
           {effectiveRollW}mm EN (dar)
+        </text>
+      )}
+      {isDiecut && (
+        <text
+          x={padX + ROLL_L - 12}
+          y={rollY + 18}
+          textAnchor="end"
+          fontFamily="JetBrains Mono, monospace"
+          fontSize={Math.max(16, annotFont * 0.75)}
+          fill="#4B5563"
+          fontWeight="600"
+        >
+          {sheetsThisRoll} sticker/rulo · {stickerGrid}
         </text>
       )}
       {cutMarks}

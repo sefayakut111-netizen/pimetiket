@@ -77,7 +77,9 @@ export function PartnerProductionLayout({ item }: PartnerProductionLayoutProps) 
       {showSheet && (
         <div className="mb-4">
           <p className="mb-2 text-[11px] font-semibold text-gri-700">
-            İç tabaka dizgisi
+            {geometry.fit.mode === "tabaka"
+              ? "İç tabaka dizgisi"
+              : "Sticker dizgisi (yakın plan)"}
           </p>
           <div className="rounded-lg bg-white ring-1 ring-gri-200 p-3 overflow-hidden">
             <SheetPreviewSvg geometry={geometry} />
