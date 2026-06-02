@@ -340,20 +340,12 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (pendingIntent?.iyzico_token) {
-    const createdAt = new Date(pendingIntent.created_at).getTime();
-    const ageMs = Date.now() - createdAt;
-    const MAX_PENDING_MS = 30 * 60 * 1000;
-    if (ageMs < MAX_PENDING_MS) {
-      return NextResponse.json({
-        paymentPageUrl: `https://www.paytr.com/odeme/guvenli/${pendingIntent.iyzico_token}`,
-        token: pendingIntent.iyzico_token,
-        merchantOid: pendingIntent.id,
-        checkoutInProgress: true,
-      });
-    }
     await admin
       .from("payment_intents")
-      .update({ status: "expired" })
+      .update({
+        status: "expired",
+        failure_reason: "superseded_by_new_init",
+      })
       .eq("id", pendingIntent.id)
       .eq("status", "pending");
   }

@@ -118,6 +118,17 @@ function OdemeSonucInner() {
   const [verifyTimedOut, setVerifyTimedOut] = useState(false);
 
   useEffect(() => {
+    try {
+      sessionStorage.removeItem("pim_checkout_init_lock");
+    } catch {
+      /* ignore */
+    }
+    if (status === "fail") {
+      void fetch("/api/payment/abandon", { method: "POST" }).catch(() => {});
+    }
+  }, [status]);
+
+  useEffect(() => {
     if (!isPendingVerification || !oid) return;
 
     let cancelled = false;

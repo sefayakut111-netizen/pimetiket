@@ -76,6 +76,23 @@ import {
 
 const CHECKOUT_INIT_LOCK_KEY = "pim_checkout_init_lock";
 
+function clearCheckoutSessionLock(): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function abandonPendingCheckout(): Promise<void> {
+  try {
+    await fetch("/api/payment/abandon", { method: "POST" });
+  } catch {
+    /* best-effort */
+  }
+}
+
 const CHECKOUT_STAY_ON_PAGE_ERRORS = new Set([
   "coupon_invalid",
   "subtotal_mismatch",
@@ -86,7 +103,6 @@ const CHECKOUT_STAY_ON_PAGE_ERRORS = new Set([
   "max_order_exceeded",
   "invalid_body",
   "amount_too_low",
-  "checkout_in_progress",
 ]);
 
 // ============================================================
@@ -411,6 +427,16 @@ export default function OdemePage() {
   useEffect(() => {
     ensureAuthBindings();
 
+    const resetCheckoutSession = () => {
+      clearCheckoutSessionLock();
+      void abandonPendingCheckout();
+    };
+    resetCheckoutSession();
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) resetCheckoutSession();
+    };
+    window.addEventListener("pageshow", onPageShow);
+
     // Cart
     void refreshCustomerCart().then(() => {
       void repriceCustomerCart().then((repriceResult) => {
@@ -518,6 +544,10 @@ export default function OdemePage() {
         /* ignore */
       }
     }
+
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, [router]);
 
   // ============================================================
@@ -726,14 +756,6 @@ export default function OdemePage() {
 
     setLoading(true);
 
-    if (
-      typeof sessionStorage !== "undefined" &&
-      sessionStorage.getItem(CHECKOUT_INIT_LOCK_KEY)
-    ) {
-      toast.error(mapApiError("checkout_in_progress", locale));
-      setLoading(false);
-      return;
-    }
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(CHECKOUT_INIT_LOCK_KEY, String(Date.now()));
     }
@@ -927,12 +949,9 @@ export default function OdemePage() {
 
       const payload = (await res.json()) as {
         paymentPageUrl?: string;
-        checkoutInProgress?: boolean;
       };
-      if (payload.checkoutInProgress) {
-        toast.info(mapApiError("checkout_in_progress", locale));
-      }
       if (!payload.paymentPageUrl) throw new Error("missing_payment_page_url");
+      clearCheckoutSessionLock();
       window.location.href = payload.paymentPageUrl;
     } catch (err) {
       if (typeof sessionStorage !== "undefined") {
