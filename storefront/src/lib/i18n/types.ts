@@ -175,6 +175,7 @@ export type TranslationDict = {
     materialHoloDesc: string;
     materialSimli: string;
     materialSimliDesc: string;
+    laminationTitle: string;
     finishParlak: string;
     finishParlakDesc: string;
     finishMat: string;

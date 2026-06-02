@@ -153,6 +153,7 @@ export const en: TranslationDict = {
     materialHoloDesc: "Iridescent, festival",
     materialSimli: "Glitter",
     materialSimliDesc: "Sparkle particles",
+    laminationTitle: "Lamination",
     finishParlak: "Glossy",
     finishParlakDesc: "Vivid colors",
     finishMat: "Matte",

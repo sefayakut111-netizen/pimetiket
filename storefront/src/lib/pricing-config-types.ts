@@ -115,7 +115,7 @@ export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
   ],
   options: {
     finish: {
-      label: "Finiş",
+      label: "Laminasyon",
       required: true,
       single_select: true,
       items: [

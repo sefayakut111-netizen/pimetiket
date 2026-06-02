@@ -1,7 +1,7 @@
 /**
  * StickerLivePreview — Sticker konfigüratörünün ÜRÜN simülasyonu.
  *
- * Sefa kuralı (18 May v67): Cut mode + şekil + malzeme + yüzey
+ * Sefa kuralı (18 May v67): Cut mode + şekil + malzeme + laminasyon
  * seçimleri canlı yansır. Karga maskotu default placeholder.
  *
  * Cut mode mantığı:
@@ -22,7 +22,7 @@
  *   - holo        → holografik.svg (gökkuşağı iridescence)
  *   - simli       → simli.svg (multi-spark glitter)
  *
- * Yüzey:
+ * Laminasyon:
  *   - parlak      → glossy sheen overlay (yansıma)
  *   - mat         → düz, parlama yok
  *   - yok         → düz

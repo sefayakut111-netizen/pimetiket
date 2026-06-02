@@ -153,6 +153,7 @@ export const tr: TranslationDict = {
     materialHoloDesc: "Yansımalı, festival",
     materialSimli: "Simli",
     materialSimliDesc: "Parıltı taneli zemin",
+    laminationTitle: "Laminasyon",
     finishParlak: "Parlak",
     finishParlakDesc: "Canlı renkler",
     finishMat: "Mat",

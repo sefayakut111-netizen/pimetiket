@@ -9,7 +9,7 @@
  * sayfasına aynı item summary üretir. Cart item → SummaryItem[] çevirir.
  *
  * Kapsam:
- *   - Sticker: Şekil, Boyut, Malzeme, Yüzey, Kesim, Adet, (Tasarım sayısı)
+ *   - Sticker: Şekil, Boyut, Malzeme, Laminasyon, Kesim, Adet, (Tasarım sayısı)
  *   - Etiket: Şekil, Köşe, Malzeme, Kaplama, Özelleştirme, Boyut, Sarım yönü,
  *     Göbek, Rulo başına adet, Toplam adet, (Tasarım sayısı)
  */
@@ -163,11 +163,11 @@ function buildStickerSummary(
     });
   }
 
-  // Yüzey (finish — "yok" değilse anlamlı)
+  // Laminasyon (finish — "yok" değilse anlamlı)
   if (item.finish && item.finish !== "yok") {
     items.push({
       icon: "✨",
-      label: locale === "en" ? "Finish" : "Yüzey",
+      label: locale === "en" ? "Lamination" : "Laminasyon",
       value: STICKER_FINISH_LABEL[item.finish] ?? item.finish,
     });
   }

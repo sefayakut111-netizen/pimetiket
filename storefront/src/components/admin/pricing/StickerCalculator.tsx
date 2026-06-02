@@ -115,7 +115,6 @@ function applyLiveConfigDefaults(
     setFasonRate: (n: number) => void;
     setSetup: (n: number) => void;
     setPackaging: (n: number) => void;
-    setFeePct: (n: number) => void;
     setOperationEnabled: (v: boolean) => void;
   }
 ) {
@@ -126,7 +125,6 @@ function applyLiveConfigDefaults(
   }
   setters.setSetup(config.operation.setup);
   setters.setPackaging(config.operation.packaging_per_unit);
-  setters.setFeePct(config.operation.fee_pct);
   setters.setOperationEnabled(config.operation.enabled !== false);
 }
 
@@ -181,11 +179,10 @@ export function StickerCalculator({
   // Operatör simülasyonu — operasyon (cargo/margin yok)
   const [setup, setSetup] = useState<number>(DEFAULTS.setup);
   const [packaging, setPackaging] = useState<number>(DEFAULTS.packaging);
-  const [feePct, setFeePct] = useState<number>(DEFAULTS.feePct);
 
   const [operationEnabled, setOperationEnabled] = useState(true);
 
-  // Site fiyat önizleme (live config malzeme/finiş)
+  // Site fiyat önizleme (live config malzeme/laminasyon)
   const [previewMaterialId, setPreviewMaterialId] = useState<string>(
     DEFAULT_PREVIEW_MATERIAL
   );
@@ -235,7 +232,6 @@ export function StickerCalculator({
           setFasonRate,
           setSetup,
           setPackaging,
-          setFeePct,
           setOperationEnabled,
         });
       }
@@ -250,7 +246,6 @@ export function StickerCalculator({
       setFasonRate,
       setSetup,
       setPackaging,
-      setFeePct,
       setOperationEnabled,
     });
   }, [liveConfigLoaded, liveStickerConfig]);
@@ -286,7 +281,7 @@ export function StickerCalculator({
     qty,
     production: { mode: "fason", rate: fasonRate },
     operation: operationEnabled
-      ? { setup, packaging, feePct }
+      ? { setup, packaging, feePct: 0 }
       : { setup: 0, packaging: 0, feePct: 0 },
     vatPct: liveStickerConfig.vat.pct,
   });
@@ -324,7 +319,7 @@ export function StickerCalculator({
       requestedQty: qty,
       production: { mode: "fason", rate: fasonRate },
       operation: operationEnabled
-        ? { setup, packaging, feePct, cargo: 0 }
+        ? { setup, packaging, feePct: 0, cargo: 0 }
         : { setup: 0, packaging: 0, feePct: 0, cargo: 0 },
       margin: {
         marginPct: 0,
@@ -339,7 +334,6 @@ export function StickerCalculator({
     fasonRate,
     setup,
     packaging,
-    feePct,
     operationEnabled,
     liveStickerConfig.vat.pct,
   ]);
@@ -411,7 +405,7 @@ export function StickerCalculator({
     depreciation,
     setup,
     packaging,
-    feePct,
+    feePct: 0,
     vatPct: liveStickerConfig.vat.pct,
     customerType,
   };
@@ -432,7 +426,6 @@ export function StickerCalculator({
     setDepreciation(i.depreciation);
     setSetup(i.setup);
     setPackaging(i.packaging);
-    setFeePct(i.feePct);
     setCustomerType(i.customerType);
     setActiveProfileId(p.id);
     toast.success(`"${p.name}" profili yüklendi`);
@@ -449,7 +442,6 @@ export function StickerCalculator({
       setFasonRate,
       setSetup,
       setPackaging,
-      setFeePct,
       setOperationEnabled,
     });
     setPaper(DEFAULTS.paper);
@@ -568,7 +560,7 @@ export function StickerCalculator({
                 />
               </Field>
 
-              <Field label="Finiş">
+              <Field label="Laminasyon">
                 <ChipGrid
                   columns={3}
                   options={(liveStickerConfig.options.finish?.items ?? []).map(
@@ -680,14 +672,6 @@ export function StickerCalculator({
                       onChange={setPackaging}
                       suffix="₺/zarf"
                       step={5}
-                    />
-                  </Field>
-                  <Field label="Komisyon">
-                    <NumInput
-                      value={feePct}
-                      onChange={setFeePct}
-                      suffix="%"
-                      step={0.5}
                     />
                   </Field>
                 </div>

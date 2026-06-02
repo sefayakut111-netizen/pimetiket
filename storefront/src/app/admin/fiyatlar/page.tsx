@@ -85,7 +85,7 @@ const SCOPE_META: Record<Scope, { label: string; emoji: string; desc: string }> 
   sticker: {
     label: "Sticker",
     emoji: "",
-    desc: "Vinil / Opak / Şeffaf / Holografik / Metalik · Finiş seçimi",
+    desc: "Vinil / Opak / Şeffaf / Holografik / Metalik · Laminasyon seçimi",
   },
   etiket_rulo: {
     label: "Rulo Etiket",

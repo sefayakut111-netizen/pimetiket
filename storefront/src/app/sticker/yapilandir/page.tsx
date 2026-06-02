@@ -6,7 +6,7 @@
  * 5 step:
  *   1. Şekil (4: yuvarlak/kare/yumuşak köşe/kontur kesim)
  *   2. Malzeme (4: vinil/transparan/holografik/kraft)
- *   3. Yüzey (3: parlak/mat/simli)
+ *   3. Laminasyon (3: parlak/mat/kaplamasız)
  *   4. Boyut (4 preset: 50/75/100/150 mm)
  *   5. Adet (6 tier card: 50/100/250/500/1000/2500)
  *
@@ -634,7 +634,7 @@ function StickerPage() {
   const [previewView, setPreviewView] = useState<PreviewView>("3d");
 
   // Stepper state (Sefa kuralı 15 May v4 — UX paketi sticker'a):
-  // 7 adım: Kesim → Şekil → Malzeme → Yüzey → Boyut → Adet → Tasarım
+  // 7 adım: Kesim → Şekil → Malzeme → Laminasyon → Boyut → Adet → Tasarım
   // Sefa 20 May v68: cut+shape picker'lar gizliyse, gridden geldiği için
   // step 1 ve 2 "touched" varsayılır (sequential locked guard düşmesin).
   // Sefa 21 May v68 (konfigüratör denetim #2/#10 — kendi bug fix'i):
@@ -764,7 +764,7 @@ function StickerPage() {
     if (SHOW_STICKER_SHAPE_PICKER) labels.push(t.sticker.shapeTitle);
     labels.push(
       t.config.materialTitle,
-      t.config.finishTitle,
+      t.sticker.laminationTitle,
       t.config.designTitle,
       t.config.sizeTitle,
       t.config.qtyTitle
@@ -1361,7 +1361,7 @@ function StickerPage() {
             <FormSection
               id="step-4"
               number={uiStepNumber(4)}
-              title={t.config.finishTitle}
+              title={t.sticker.laminationTitle}
               locked={isStepLocked(4)}
               lockMessage={getLockMessage(4)}
               needsAttention={firstPendingStepId === 4}
