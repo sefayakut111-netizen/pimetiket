@@ -1198,11 +1198,20 @@ function SitePriceHero({
           {fmt(liveSitePrice.unit_price, 2)} ₺/adet · {qty.toLocaleString("tr-TR")}{" "}
           adet · {sheetsNeeded} tabaka
           {layoutHint ? ` · ${layoutHint}` : ""} · fatura {billableM2.toFixed(3)} m²
-          {geometry && geometry.sheetAreaM2 > 0 ? (
+          {geometry ? (
             <>
               <br />
-              Tabaka alanı {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
-              {geometry.totalM2.toFixed(3)} m² · Tier {tier.label}
+              {geometry.fit.mode === "tabaka" ? (
+                <>
+                  Tabaka alanı {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
+                  {geometry.totalM2.toFixed(3)} m² · Tier {tier.label}
+                </>
+              ) : (
+                <>
+                  Sticker alanı {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
+                  {geometry.totalM2.toFixed(3)} m² · Tier {tier.label}
+                </>
+              )}
             </>
           ) : (
             <> · Tier {tier.label}</>

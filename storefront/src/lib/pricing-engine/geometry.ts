@@ -541,11 +541,12 @@ export function computeGeometry(args: {
   if (!layout) return null;
 
   const { fit, roll, totalM2 } = layout;
+  const stickerArea = (snapW * snapH * fit.producedQty) / 1_000_000;
+  /** Tabaka: tabakaların alanı. Die-cut: sticker alanı (iç tabaka yok — display-only, fiyat totalM2). */
   const sheetAreaM2 =
     fit.mode === "tabaka"
       ? (fit.sheetW * fit.sheetH * fit.sheetsNeeded) / 1_000_000
-      : 0;
-  const stickerArea = (snapW * snapH * fit.producedQty) / 1_000_000;
+      : stickerArea;
   const wastePct =
     totalM2 > 0 ? ((totalM2 - stickerArea) / totalM2) * 100 : 0;
 

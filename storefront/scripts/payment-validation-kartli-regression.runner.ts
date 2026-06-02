@@ -99,8 +99,12 @@ function assertGeometryScenario(args: {
   } else {
     assert(fit.mode === "diecut", `${args.label}: expected diecut mode`);
     assert(
-      geometry.sheetAreaM2 === 0,
-      `${args.label}: sheetAreaM2 should be 0 for diecut`
+      geometry.sheetAreaM2 > 0,
+      `${args.label}: sheetAreaM2 should be > 0 for diecut (sticker area)`
+    );
+    assert(
+      Math.abs(geometry.sheetAreaM2 - geometry.stickerArea) < 1e-9,
+      `${args.label}: diecut sheetAreaM2 should equal stickerArea`
     );
   }
 }
