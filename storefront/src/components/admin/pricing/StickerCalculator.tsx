@@ -1289,8 +1289,7 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
   if (!result.ok) return null;
   const { geometry } = result;
   const { fit, roll } = geometry;
-  const efficiency =
-    (fit.sheetsNeeded / (roll.rollsNeeded * roll.sheetsPerRoll)) * 100;
+  const efficiency = 100 - geometry.wastePct;
 
   return (
     <Card padding="p-0" className="overflow-hidden">

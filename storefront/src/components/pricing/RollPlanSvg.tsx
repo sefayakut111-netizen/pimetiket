@@ -54,21 +54,27 @@ export function RollPlanSvg({
   const PAD_BOTTOM = 30;
   const ROLL_GAP = 60;
 
-  const totalSvgWidth = ROLL_L + PAD_X * 2;
-  const totalSvgHeight =
-    (rollW + ROLL_GAP) * rollsToShow +
-    PAD_TOP +
-    PAD_BOTTOM +
-    (showSummary ? 40 : 0);
+  const getRollHeight = (rollI: number) =>
+    rollI === roll.rollsNeeded - 1 ? roll.lastRollW : rollW;
 
+  let cumulativeY = PAD_TOP;
+  const rollHeights: number[] = [];
   const rolls: React.ReactNode[] = [];
   for (let rollI = 0; rollI < rollsToShow; rollI++) {
+    const effectiveRollW = getRollHeight(rollI);
+    rollHeights.push(effectiveRollW);
+    const isActualLastRoll = rollI === roll.rollsNeeded - 1;
     rolls.push(
       <RollGroup
         key={rollI}
         rollI={rollI}
+        rollY={cumulativeY}
         rollW={rollW}
+        effectiveRollW={effectiveRollW}
         sidePad={sidePad}
+        usedCols={isActualLastRoll ? roll.lastRollUsedCols : roll.cols}
+        usedRows={isActualLastRoll ? roll.lastRollUsedRows : roll.rows}
+        hideEmptySlots={isActualLastRoll && roll.sheetsOnLastRoll < roll.sheetsPerRoll}
         sheetX={SHEET_X}
         sheetY={SHEET_Y}
         cols={roll.cols}
@@ -82,11 +88,14 @@ export function RollPlanSvg({
         sheetH={fit.sheetH}
         stickerGrid={`${fit.cols}×${fit.rows}`}
         padX={PAD_X}
-        padTop={PAD_TOP}
-        rollGap={ROLL_GAP}
       />
     );
+    cumulativeY += effectiveRollW + ROLL_GAP;
   }
+
+  const totalSvgWidth = ROLL_L + PAD_X * 2;
+  const totalSvgHeight =
+    cumulativeY - ROLL_GAP + PAD_BOTTOM + (showSummary ? 40 : 0);
 
   const topLabel = (
     <g transform={`translate(${PAD_X}, ${PAD_TOP - 16})`}>
@@ -129,7 +138,7 @@ export function RollPlanSvg({
   );
 
   const rightLabel = (
-    <g transform={`translate(${PAD_X + ROLL_L + 24}, ${PAD_TOP + rollW / 2})`}>
+    <g transform={`translate(${PAD_X + ROLL_L + 24}, ${PAD_TOP + rollHeights[0]! / 2})`}>
       <text
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
@@ -159,7 +168,7 @@ export function RollPlanSvg({
     <g>
       <rect
         x={PAD_X}
-        y={PAD_TOP + maxRollsToShow * (rollW + ROLL_GAP)}
+        y={PAD_TOP + rollHeights.reduce((a, h) => a + h + ROLL_GAP, 0) - ROLL_GAP}
         width={ROLL_L}
         height="32"
         fill="#F5EBD9"
@@ -170,7 +179,7 @@ export function RollPlanSvg({
       />
       <text
         x={PAD_X + ROLL_L / 2}
-        y={PAD_TOP + maxRollsToShow * (rollW + ROLL_GAP) + 21}
+        y={PAD_TOP + rollHeights.reduce((a, h) => a + h + ROLL_GAP, 0) - ROLL_GAP + 21}
         textAnchor="middle"
         fontFamily="Plus Jakarta Sans, sans-serif"
         fontSize="22"
@@ -241,8 +250,13 @@ export function RollPlanSvg({
 
 interface RollGroupProps {
   rollI: number;
+  rollY: number;
   rollW: number;
+  effectiveRollW: number;
   sidePad: number;
+  usedCols: number;
+  usedRows: number;
+  hideEmptySlots: boolean;
   sheetX: number;
   sheetY: number;
   cols: number;
@@ -256,14 +270,17 @@ interface RollGroupProps {
   sheetH: number;
   stickerGrid: string;
   padX: number;
-  padTop: number;
-  rollGap: number;
 }
 
 function RollGroup({
   rollI,
+  rollY,
   rollW,
-  sidePad,
+  effectiveRollW,
+  sidePad: _fullSidePad,
+  usedCols,
+  usedRows,
+  hideEmptySlots,
   sheetX,
   sheetY,
   cols,
@@ -277,42 +294,55 @@ function RollGroup({
   sheetH,
   stickerGrid,
   padX,
-  padTop,
-  rollGap,
 }: RollGroupProps) {
   const isLastRoll = rollI === rollsNeeded - 1;
   const sheetsThisRoll = isLastRoll ? sheetsOnLastRoll : sheetsPerRoll;
-  const rollY = padTop + rollI * (rollW + rollGap);
-  const annotFont = Math.max(22, rollW * 0.045);
+  const contentW = usedCols * sheetY;
+  const sidePad = Math.max(ROLL_MARGIN_X, (effectiveRollW - contentW) / 2);
+  const annotFont = Math.max(22, effectiveRollW * 0.045);
 
   const sheets: React.ReactNode[] = [];
   let localIdx = 0;
 
-  for (let yy = 0; yy < cols; yy++) {
-    for (let xx = 0; xx < rows; xx++) {
+  const colLimit = hideEmptySlots ? usedCols : cols;
+  const rowLimit = hideEmptySlots ? usedRows : rows;
+
+  for (let yy = 0; yy < colLimit; yy++) {
+    for (let xx = 0; xx < rowLimit; xx++) {
+      if (localIdx >= sheetsThisRoll) break;
+
       const sx = padX + ROLL_START_MARGIN + xx * sheetX;
       const sy = rollY + sidePad + yy * sheetY;
-      const isUsed = localIdx < sheetsThisRoll;
       const isVeryLast = isLastRoll && localIdx === sheetsThisRoll - 1;
       const stickersInThisSheet = isVeryLast ? lastSheetCount : balancedPerSheet;
 
-      if (isUsed) {
-        sheets.push(
-          <SheetRect
-            key={`s-${localIdx}`}
-            x={sx + 4}
-            y={sy + 4}
-            width={sheetX - 8}
-            height={sheetY - 8}
-            label={`T${rollI * sheetsPerRoll + localIdx + 1}`}
-            qty={stickersInThisSheet}
-            sheetSize={`${sheetW}×${sheetH} · ${stickerGrid}`}
-          />
-        );
-      } else {
+      sheets.push(
+        <SheetRect
+          key={`s-${localIdx}`}
+          x={sx + 4}
+          y={sy + 4}
+          width={sheetX - 8}
+          height={sheetY - 8}
+          label={`T${rollI * sheetsPerRoll + localIdx + 1}`}
+          qty={stickersInThisSheet}
+          sheetSize={`${sheetW}×${sheetH} · ${stickerGrid}`}
+        />
+      );
+      localIdx++;
+    }
+    if (localIdx >= sheetsThisRoll) break;
+  }
+
+  if (!hideEmptySlots) {
+    for (let yy = 0; yy < cols; yy++) {
+      for (let xx = 0; xx < rows; xx++) {
+        const idx = yy * rows + xx;
+        if (idx < sheetsThisRoll) continue;
+        const sx = padX + ROLL_START_MARGIN + xx * sheetX;
+        const sy = rollY + sidePad + yy * sheetY;
         sheets.push(
           <EmptySheet
-            key={`e-${localIdx}`}
+            key={`e-${idx}`}
             x={sx + 4}
             y={sy + 4}
             width={sheetX - 8}
@@ -320,7 +350,6 @@ function RollGroup({
           />
         );
       }
-      localIdx++;
     }
   }
 
@@ -346,14 +375,14 @@ function RollGroup({
       </text>
       <rect
         x={padX}
-        y={rollY + rollW - ROLL_MARGIN_X}
+        y={rollY + effectiveRollW - ROLL_MARGIN_X}
         width={ROLL_L}
         height={ROLL_MARGIN_X}
         fill="url(#cut-mark-pat)"
       />
       <text
         x={padX + ROLL_L / 2}
-        y={rollY + rollW - ROLL_MARGIN_X / 2 + 5}
+        y={rollY + effectiveRollW - ROLL_MARGIN_X / 2 + 5}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize={annotFont}
@@ -367,7 +396,7 @@ function RollGroup({
 
   const extraHavaUstte = sidePad - ROLL_MARGIN_X;
   const extraHava =
-    extraHavaUstte > 0 ? (
+    !hideEmptySlots && extraHavaUstte > 0 ? (
       <>
         <rect
           x={padX}
@@ -378,7 +407,7 @@ function RollGroup({
         />
         <rect
           x={padX}
-          y={rollY + rollW - sidePad}
+          y={rollY + effectiveRollW - sidePad}
           width={ROLL_L}
           height={extraHavaUstte}
           fill="url(#fire-pat)"
@@ -386,32 +415,32 @@ function RollGroup({
       </>
     ) : null;
 
+  const contentH = effectiveRollW - 2 * sidePad;
   const startArea = (
     <>
       <rect
         x={padX}
         y={rollY + sidePad}
         width={ROLL_START_MARGIN}
-        height={rollW - 2 * sidePad}
+        height={contentH}
         fill="url(#start-pat)"
       />
       <text
         x={padX + ROLL_START_MARGIN / 2}
-        y={rollY + rollW / 2}
+        y={rollY + effectiveRollW / 2}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize={annotFont}
         fill="#1F2937"
         fontWeight="700"
-        transform={`rotate(-90 ${padX + ROLL_START_MARGIN / 2} ${rollY + rollW / 2})`}
+        transform={`rotate(-90 ${padX + ROLL_START_MARGIN / 2} ${rollY + effectiveRollW / 2})`}
       >
         {ROLL_START_MARGIN}mm BAŞLANGIÇ
       </text>
     </>
   );
 
-  const lastRowsCount = isLastRoll ? Math.ceil(sheetsOnLastRoll / cols) : rows;
-  const usedLength = lastRowsCount * sheetX;
+  const usedLength = usedRows * sheetX;
   const usableLength = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
   const slackInUsable = Math.max(0, usableLength - usedLength);
   const wasteEndX = padX + ROLL_START_MARGIN + usedLength;
@@ -423,12 +452,12 @@ function RollGroup({
           x={wasteEndX}
           y={rollY + sidePad}
           width={wasteEndW}
-          height={rollW - 2 * sidePad}
+          height={contentH}
           fill="url(#fire-pat)"
         />
         <text
           x={wasteEndX + wasteEndW / 2}
-          y={rollY + rollW / 2}
+          y={rollY + effectiveRollW / 2}
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
           fontSize={annotFont}
@@ -448,18 +477,31 @@ function RollGroup({
         x={padX}
         y={rollY}
         width={ROLL_L}
-        height={rollW}
+        height={effectiveRollW}
         fill="white"
         stroke="#1F2937"
         strokeWidth="2.5"
         rx="4"
       />
+      {hideEmptySlots && effectiveRollW < rollW && (
+        <text
+          x={padX + ROLL_L - 12}
+          y={rollY + effectiveRollW - 8}
+          textAnchor="end"
+          fontFamily="JetBrains Mono, monospace"
+          fontSize={Math.max(18, annotFont * 0.85)}
+          fill="#10B981"
+          fontWeight="700"
+        >
+          {effectiveRollW}mm EN (dar)
+        </text>
+      )}
       {cutMarks}
       {extraHava}
       {startArea}
       {endFire}
       {sheets}
-      <g transform={`translate(${padX - 22}, ${rollY + rollW / 2})`}>
+      <g transform={`translate(${padX - 22}, ${rollY + effectiveRollW / 2})`}>
         <text
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"

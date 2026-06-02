@@ -61,8 +61,15 @@ export interface RollPlan {
   sheetsPerRoll: number;
   rollsNeeded: number;
   sheetsOnLastRoll: number;
+  /** Son ruloda boy yönünde kullanılan satır sayısı (column-major dizgi) */
   lastRowsCount: number;
   lastRollLengthMm: number;
+  /** Son rulonun faturalanan eni (kısmi rulo daraltma) */
+  lastRollW: number;
+  /** Son ruloda en yönünde kullanılan sütun sayısı */
+  lastRollUsedCols: number;
+  /** Son ruloda boy yönünde kullanılan satır sayısı */
+  lastRollUsedRows: number;
   totalLengthMm: number;
   totalArea: number;
   usableW: number;
@@ -132,6 +139,39 @@ function stickerFitsTabakaUsable(sw: number, sh: number): boolean {
   return sw <= TABAKA_USABLE_W && sh <= TABAKA_USABLE_H;
 }
 
+/**
+ * Son rulonun gerçek ayak izi — RollPlanSvg column-major dizgi ile aynı.
+ * Önce en-sütunu dolar (yy), sonra boy (xx).
+ */
+function computeLastRollFootprint(args: {
+  sheetsOnLastRoll: number;
+  cols: number;
+  rows: number;
+  sheetW: number;
+  sheetH: number;
+}): {
+  usedCols: number;
+  usedLengthRows: number;
+  lastRollW: number;
+  lastRollLengthMm: number;
+} {
+  const { sheetsOnLastRoll, cols, rows, sheetW, sheetH } = args;
+
+  const usedCols = Math.min(cols, Math.ceil(sheetsOnLastRoll / rows));
+  let usedLengthRows = 0;
+  for (let c = 0; c < usedCols; c++) {
+    const inCol = Math.min(rows, Math.max(0, sheetsOnLastRoll - c * rows));
+    usedLengthRows = Math.max(usedLengthRows, inCol);
+  }
+
+  const contentW = usedCols * sheetW;
+  const lastRollW = Math.max(ROLL_W_MIN, contentW + 2 * ROLL_MARGIN_X);
+  const lastRollLengthMm =
+    ROLL_START_MARGIN + usedLengthRows * sheetH + ROLL_END_MARGIN;
+
+  return { usedCols, usedLengthRows, lastRollW, lastRollLengthMm };
+}
+
 // ============================================================
 // computeRollPlan — tabakalar plotter rulosuna dizilir
 // ============================================================
@@ -165,15 +205,25 @@ export function computeRollPlan(
     const sheetsOnLastRoll =
       sheetsNeeded - (rollsNeeded - 1) * sheetsPerRoll;
 
-    const lastRowsCount = Math.ceil(sheetsOnLastRoll / cols);
     const fullRollLengthMm =
       ROLL_START_MARGIN + maxRowsPerRoll * sheetH + ROLL_END_MARGIN;
-    const lastRollLengthMm =
-      ROLL_START_MARGIN + lastRowsCount * sheetH + ROLL_END_MARGIN;
+
+    const lastFootprint = computeLastRollFootprint({
+      sheetsOnLastRoll,
+      cols,
+      rows: maxRowsPerRoll,
+      sheetW,
+      sheetH,
+    });
 
     const fullRolls = rollsNeeded - 1;
-    const totalLengthMm = fullRolls * fullRollLengthMm + lastRollLengthMm;
-    const totalArea = rollW * totalLengthMm;
+    const fullRollArea = rollW * fullRollLengthMm;
+    const lastRollArea =
+      lastFootprint.lastRollW * lastFootprint.lastRollLengthMm;
+    const totalArea =
+      fullRolls * fullRollArea + lastRollArea;
+    const totalLengthMm =
+      fullRolls * fullRollLengthMm + lastFootprint.lastRollLengthMm;
 
     const candidate: RollPlan = {
       rollW,
@@ -182,8 +232,11 @@ export function computeRollPlan(
       sheetsPerRoll,
       rollsNeeded,
       sheetsOnLastRoll,
-      lastRowsCount,
-      lastRollLengthMm,
+      lastRowsCount: lastFootprint.usedLengthRows,
+      lastRollLengthMm: lastFootprint.lastRollLengthMm,
+      lastRollW: lastFootprint.lastRollW,
+      lastRollUsedCols: lastFootprint.usedCols,
+      lastRollUsedRows: lastFootprint.usedLengthRows,
       totalLengthMm,
       totalArea,
       usableW: usedWidth,
@@ -330,6 +383,9 @@ function buildDiecutRollPlan(
     sheetsOnLastRoll: stickersOnLastRoll,
     lastRowsCount,
     lastRollLengthMm,
+    lastRollW: rollW,
+    lastRollUsedCols: cols,
+    lastRollUsedRows: lastRowsCount,
     totalLengthMm,
     totalArea,
     usableW: usedWidth,
