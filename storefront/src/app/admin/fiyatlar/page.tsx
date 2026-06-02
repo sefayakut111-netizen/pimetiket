@@ -33,6 +33,7 @@ import type {
 import { PriceBookPanel } from "@/components/admin/pricing/PriceBookPanel";
 import { calcTabakaSheets } from "@/lib/pricing-tabaka-geo";
 import { calculatePrice } from "@/lib/pricing-calc";
+import { quoteSticker } from "@/lib/pricing-engine";
 import {
   isPricebookMode,
   quoteRuloFromPricebook,
@@ -239,6 +240,7 @@ function FiyatlarPageInner() {
   const [previewQty, setPreviewQty] = useState(
     SCOPE_PREVIEW_DEFAULTS.sticker.qty
   );
+  const [previewCut, setPreviewCut] = useState<"diecut" | "tabaka">("diecut");
   const [showMatrix, setShowMatrix] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -404,6 +406,24 @@ function FiyatlarPageInner() {
     const sheets_needed = isSheetMode
       ? calcSheetsNeeded(previewWidth, previewHeight, previewQty)
       : undefined;
+
+    let billable_m2: number | undefined;
+    let cut_type: "diecut" | "tabaka" | undefined;
+    if (scope === "sticker") {
+      const g = quoteSticker({
+        width: previewWidth,
+        height: previewHeight,
+        cut: previewCut,
+        qty: previewQty,
+        production: { mode: "fason", rate: 100 },
+        operation: { setup: 0, packaging: 0, feePct: 0 },
+      });
+      if (g.ok) {
+        billable_m2 = g.geometry.totalM2;
+        cut_type = previewCut;
+      }
+    }
+
     return calculatePrice(
       {
         width_mm: previewWidth,
@@ -412,6 +432,8 @@ function FiyatlarPageInner() {
         material_id: previewMaterialId,
         selected_options: previewOptions,
         sheets_needed,
+        billable_m2,
+        cut_type,
       },
       draft,
       scope
@@ -423,6 +445,7 @@ function FiyatlarPageInner() {
     previewWidth,
     previewHeight,
     previewQty,
+    previewCut,
     isSheetMode,
     isRuloPricebook,
     scope,
@@ -1427,6 +1450,31 @@ function FiyatlarPageInner() {
               <h3 className="font-semibold text-[13.5px] mb-3 flex items-center gap-2">
                  <span>Canlı Simülasyon</span>
               </h3>
+
+              {scope === "sticker" && (
+                <div className="mb-3">
+                  <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
+                    Kesim
+                  </label>
+                  <div className="flex gap-1.5">
+                    {(["tabaka", "diecut"] as const).map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setPreviewCut(c)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-md text-[11.5px] font-semibold transition",
+                          previewCut === c
+                            ? "bg-lacivert text-white"
+                            : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan/40"
+                        )}
+                      >
+                        {c === "tabaka" ? "Tabaka" : "Die Cut"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Boyut */}
               <div className="mb-3">
