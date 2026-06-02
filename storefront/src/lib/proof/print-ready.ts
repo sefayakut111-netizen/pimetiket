@@ -2,6 +2,8 @@ import { PDFDocument, rgb } from "pdf-lib";
 import sharp from "sharp";
 import type { Json } from "@/lib/supabase/types";
 import { uploadPrintReadyPdf } from "@/lib/proof/proof-artifacts";
+import { CUT_SET_META } from "@/lib/templates/die-cut-templates";
+import type { CutSet } from "@/lib/templates/die-cut-templates";
 
 export interface PrintReadyResult {
   pdfStoragePath: string;
@@ -90,6 +92,55 @@ function drawCropMarks(
 
 /** CutContour — baskı endüstrisi standardı (%100 Magenta). RIP sistemleri bu rengi tanır. */
 const CUTCONTOUR_COLOR = rgb(1, 0, 1);
+
+function hexToRgbColor(hex: string) {
+  const h = hex.replace("#", "");
+  return rgb(
+    parseInt(h.slice(0, 2), 16) / 255,
+    parseInt(h.slice(2, 4), 16) / 255,
+    parseInt(h.slice(4, 6), 16) / 255
+  );
+}
+
+function colorForCutSet(cutType: CutSet | undefined, groupId: string) {
+  if (cutType && CUT_SET_META[cutType]) {
+    return hexToRgbColor(CUT_SET_META[cutType].color);
+  }
+  if (groupId === CUT_SET_META.thrucut.spot) {
+    return hexToRgbColor(CUT_SET_META.thrucut.color);
+  }
+  if (groupId === CUT_SET_META.kisscut.spot) {
+    return hexToRgbColor(CUT_SET_META.kisscut.color);
+  }
+  return CUTCONTOUR_COLOR;
+}
+
+type CutlineDrawGroup = { color: ReturnType<typeof rgb>; pathDs: string[] };
+
+function extractCutlineGroups(svgText: string): CutlineDrawGroup[] {
+  const groups: CutlineDrawGroup[] = [];
+  const groupRe =
+    /<g\b[^>]*\bid=["']([^"']+)["'][^>]*(?:data-pim-cut-type=["']([^"']+)["'])?[^>]*>([\s\S]*?)<\/g>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = groupRe.exec(svgText)) !== null) {
+    const groupId = match[1]!;
+    const cutType = match[2] as CutSet | undefined;
+    const inner = match[3]!;
+    const pathDs = extractSvgPathDs(inner);
+    if (pathDs.length === 0) continue;
+    groups.push({
+      color: colorForCutSet(cutType, groupId),
+      pathDs,
+    });
+  }
+  if (groups.length === 0) {
+    const pathDs = extractSvgPathDs(svgText);
+    if (pathDs.length > 0) {
+      groups.push({ color: CUTCONTOUR_COLOR, pathDs });
+    }
+  }
+  return groups;
+}
 
 type Pt = { x: number; y: number };
 
@@ -270,50 +321,52 @@ function drawCutlineAsSpotColor(
   designWidthMm: number,
   designHeightMm: number
 ) {
-  const pathDs = extractSvgPathDs(svgText);
-  if (pathDs.length === 0) return;
+  const groups = extractCutlineGroups(svgText);
+  if (groups.length === 0) return;
 
   const frame = parseSvgViewFrame(svgText, designWidthMm, designHeightMm);
   const bleedPt = mmToPt(bleedMm);
   const thickness = 0.5;
 
-  for (const d of pathDs) {
-    const points = parseSvgPathToPoints(d);
-    if (points.length < 2) continue;
+  for (const group of groups) {
+    for (const d of group.pathDs) {
+      const points = parseSvgPathToPoints(d);
+      if (points.length < 2) continue;
 
-    for (let i = 1; i < points.length; i++) {
-      const a = points[i - 1]!;
-      const b = points[i]!;
-      const aLabel = svgPointToLabelMm(
-        a.x,
-        a.y,
-        frame,
-        designWidthMm,
-        designHeightMm
-      );
-      const bLabel = svgPointToLabelMm(
-        b.x,
-        b.y,
-        frame,
-        designWidthMm,
-        designHeightMm
-      );
-      page.drawLine({
-        start: labelMmToPdfPt(
-          aLabel.labelXmm,
-          aLabel.labelYmm,
-          designHeightMm,
-          bleedPt
-        ),
-        end: labelMmToPdfPt(
-          bLabel.labelXmm,
-          bLabel.labelYmm,
-          designHeightMm,
-          bleedPt
-        ),
-        thickness,
-        color: CUTCONTOUR_COLOR,
-      });
+      for (let i = 1; i < points.length; i++) {
+        const a = points[i - 1]!;
+        const b = points[i]!;
+        const aLabel = svgPointToLabelMm(
+          a.x,
+          a.y,
+          frame,
+          designWidthMm,
+          designHeightMm
+        );
+        const bLabel = svgPointToLabelMm(
+          b.x,
+          b.y,
+          frame,
+          designWidthMm,
+          designHeightMm
+        );
+        page.drawLine({
+          start: labelMmToPdfPt(
+            aLabel.labelXmm,
+            aLabel.labelYmm,
+            designHeightMm,
+            bleedPt
+          ),
+          end: labelMmToPdfPt(
+            bLabel.labelXmm,
+            bLabel.labelYmm,
+            designHeightMm,
+            bleedPt
+          ),
+          thickness,
+          color: group.color,
+        });
+      }
     }
   }
 }
@@ -386,6 +439,7 @@ async function buildPrintReadyDocument(
 
   pdfDoc.setKeywords([
     "CutContour",
+    "ThruCut",
     "print-ready",
     ...(includesCutline ? ["cutcontour_is_rgb_fallback"] : []),
   ]);

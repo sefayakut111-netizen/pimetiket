@@ -52,8 +52,16 @@ export interface CustomerCartItem {
   total: number;
 
   // Sticker-specific (opsiyonel)
-  shape?: "square" | "circle" | "ozel" | "die";
-  cut?: "tabaka" | "diecut" | "kisscut";
+  shape?:
+    | "square"
+    | "circle"
+    | "ozel"
+    | "die"
+    | "rectangle"
+    | "oval"
+    | "bumper"
+    | "diecut";
+  cut?: "tabaka" | "diecut" | "kisscut" | "kartli";
   softCorners?: boolean;
   material?: "vinil" | "transparan" | "holo" | "simli";
   finish?: "parlak" | "mat" | "yok";

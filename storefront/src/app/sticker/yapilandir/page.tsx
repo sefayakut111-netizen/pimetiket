@@ -130,8 +130,8 @@ const SHAPE_IDS = [
 ] as const;
 type ShapeId = (typeof SHAPE_IDS)[number];
 
-/** CutMode — "kisscut" Sefa 20 May v68 eklendi (yarı kesim, arka kağıt sağlam). */
-type CutMode = "tabaka" | "diecut" | "kisscut";
+/** CutMode — "kisscut" Sefa 20 May v68; "kartli" hibrit ThruCut+KissCut kart. */
+type CutMode = "tabaka" | "diecut" | "kisscut" | "kartli";
 
 /** Bumper sticker varsayılan boyutu (mm) — Sefa 20 May v68 kararı. */
 const BUMPER_PRESET_WIDTH = 280;
@@ -165,10 +165,10 @@ function mapShapeToLegacy(shape: ShapeId): "circle" | "square" | "ozel" | "die" 
   }
 }
 
-/** kisscut → diecut (pricing/geometry impact yok, cart config string'inde
- *  ayrı saklanır). */
+/** kisscut/kartli → diecut (pricing/geometry legacy). Cart config'te ayrı saklanır. */
 function mapCutToLegacy(cut: CutMode): "diecut" | "tabaka" {
-  return cut === "kisscut" ? "diecut" : cut;
+  if (cut === "kisscut" || cut === "kartli") return "diecut";
+  return cut;
 }
 
 const MATERIAL_SWATCHES = {
@@ -254,7 +254,8 @@ function readInitialCutMode(searchParams: URLSearchParams): CutMode {
     return "diecut";
   }
   const cut = searchParams.get("cut");
-  if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") return cut;
+  if (cut === "tabaka" || cut === "diecut" || cut === "kisscut" || cut === "kartli")
+    return cut;
   return "diecut";
 }
 
@@ -499,7 +500,12 @@ function StickerPage() {
         setCutMode("diecut");
       }
       const cut = params.get("cut");
-      if (cut === "tabaka" || cut === "diecut" || cut === "kisscut") {
+      if (
+        cut === "tabaka" ||
+        cut === "diecut" ||
+        cut === "kisscut" ||
+        cut === "kartli"
+      ) {
         setCutMode(cut);
       }
     }
@@ -552,7 +558,12 @@ function StickerPage() {
     if (it.width) setWidth(it.width);
     if (it.height) setHeight(it.height);
     if (it.softCorners !== undefined) setSoftCorners(it.softCorners);
-    if (it.cut === "tabaka" || it.cut === "diecut" || it.cut === "kisscut") {
+    if (
+      it.cut === "tabaka" ||
+      it.cut === "diecut" ||
+      it.cut === "kisscut" ||
+      it.cut === "kartli"
+    ) {
       setCutMode(it.cut);
     }
     const designCnt = it.designCount ?? 1;
@@ -650,7 +661,7 @@ function StickerPage() {
     const cutParam = initialParams.get("cut");
     const shapeParam = initialParams.get("shape");
     const matParam = initialParams.get("material");
-    const validCuts = ["tabaka", "diecut", "kisscut"];
+    const validCuts = ["tabaka", "diecut", "kisscut", "kartli"];
     const validShapes = [
       "diecut",
       "die",
@@ -999,6 +1010,8 @@ function StickerPage() {
             {(() => {
               const isEn = locale === "en";
               if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Sticker Sayfası";
+              if (cutMode === "kartli")
+                return isEn ? "Kiss-Cut Single" : "Kartlı Sticker";
               if (cutMode === "kisscut") return isEn ? "Kiss-Cut Sticker" : "Yarı Kesim Sticker";
               if (material === "holo") return isEn ? "Holographic Sticker" : "Holografik Sticker";
               if (material === "simli") return isEn ? "Glitter Sticker" : "Simli Sticker";
@@ -1922,6 +1935,13 @@ function StickerPage() {
                 ayrıca üretim diagramı olarak kalır. */}
 
             <div ref={priceCardRef}>
+            {cutMode === "kartli" && (
+              <p className="text-[12px] text-gri-600 leading-relaxed mb-2 px-0.5">
+                {locale === "en"
+                  ? "Card pricing uses outer card size (sticker + 10 mm margin) with die-cut multiplier."
+                  : "Fiyat dış kart boyutundan (sticker + 10 mm kenar boşluğu) die-cut çarpanıyla hesaplanır."}
+              </p>
+            )}
             {cutMode === "kisscut" && (
               <p className="text-[12px] text-gri-600 leading-relaxed mb-2 px-0.5">
                 {locale === "en"
@@ -1951,7 +1971,7 @@ function StickerPage() {
                   qty: tier * designCount,
                   unit: currentUnit,
                   total,
-                  shape: mapShapeToLegacy(shape),
+                  shape,
                   cut: cutMode,
                   softCorners,
                   material,
@@ -2036,9 +2056,11 @@ function StickerPage() {
                 const cutLabel =
                   cutMode === "tabaka"
                     ? "Tabaka"
-                    : cutMode === "kisscut"
-                      ? "Yarı Kesim"
-                      : "Die-cut";
+                    : cutMode === "kartli"
+                      ? "Kartlı"
+                      : cutMode === "kisscut"
+                        ? "Yarı Kesim"
+                        : "Die-cut";
                 const cornerLabel = supportsCornerStyle(shape)
                   ? softCorners
                     ? " · Yumuşatılmış köşe"
@@ -2122,10 +2144,9 @@ function StickerPage() {
                   qty: totalStickerCount, // tier × designCount
                   unit: parseFloat(currentUnit.toFixed(2)),
                   total: Math.round(total),
-                  // Sefa 20 May v68: yeni shape/cut değerleri legacy enum'a
-                  // map edilir. Cart config string'i ayrıca yeni etiketleri
-                  // saklar (config field gerçek seçimi tutar).
-                  shape: mapShapeToLegacy(shape),
+                  // Orijinal shape saklanır (İşlem Özeti etiketi için).
+                  // Fiyat/geometri mapShapeToLegacy ile ayrı hesaplanır.
+                  shape,
                   cut: cutMode,
                   softCorners,
                   material,

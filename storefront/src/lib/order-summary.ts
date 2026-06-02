@@ -15,6 +15,7 @@
  */
 
 import type { CustomerCartItem } from "./customer-cart";
+import { KARTLI_MARGIN_MM } from "@/lib/editor/cutline/export-svg";
 
 export interface SummaryItem {
   icon: string;
@@ -48,6 +49,7 @@ const STICKER_CUT_LABEL: Record<string, string> = {
   diecut: "Özel kesim (die-cut)",
   tabaka: "Tabaka",
   kisscut: "Yarı kesim (kiss-cut)",
+  kartli: "Kartlı (dış tam + iç yarım kesim)",
 };
 
 const STICKER_SHAPE_LABEL: Record<string, string> = {
@@ -55,8 +57,10 @@ const STICKER_SHAPE_LABEL: Record<string, string> = {
   circle: "Yuvarlak",
   rectangle: "Dikdörtgen",
   oval: "Oval",
+  bumper: "Bumper",
   ozel: "Özel form",
   die: "Özel kesim",
+  diecut: "Özel kesim",
 };
 
 const ETIKET_MATERIAL_LABEL: Record<string, string> = {
@@ -131,7 +135,11 @@ function buildStickerSummary(
   // Köşe (sadece kare/dikdörtgen/özel için anlamlı)
   if (
     item.softCorners !== undefined &&
-    (item.shape === "square" || item.shape === "ozel" || item.shape === "die")
+    (item.shape === "square" ||
+      item.shape === "rectangle" ||
+      item.shape === "bumper" ||
+      item.shape === "ozel" ||
+      item.shape === "die")
   ) {
     items.push({
       icon: item.softCorners ? "🔘" : "▫️",
@@ -166,11 +174,24 @@ function buildStickerSummary(
 
   // Boyut
   if (item.width && item.height) {
-    items.push({
-      icon: "📐",
-      label: locale === "en" ? "Size" : "Boyut",
-      value: `${item.width}×${item.height} mm`,
-    });
+    if (item.cut === "kartli") {
+      const cardW = item.width + 2 * KARTLI_MARGIN_MM;
+      const cardH = item.height + 2 * KARTLI_MARGIN_MM;
+      items.push({
+        icon: "📐",
+        label: locale === "en" ? "Size" : "Boyut",
+        value:
+          locale === "en"
+            ? `Sticker ${item.width}×${item.height} · Card ${cardW}×${cardH} mm`
+            : `Sticker ${item.width}×${item.height} · Kart ${cardW}×${cardH} mm`,
+      });
+    } else {
+      items.push({
+        icon: "📐",
+        label: locale === "en" ? "Size" : "Boyut",
+        value: `${item.width}×${item.height} mm`,
+      });
+    }
   }
 
   // Tasarım sayısı (designCount > 1 ise)

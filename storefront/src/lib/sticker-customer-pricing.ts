@@ -27,7 +27,7 @@ import { FALLBACK_STICKER_CONFIG } from "./pricing-config-types";
 
 export type StickerMaterial = "vinil" | "transparan" | "holo" | "simli";
 export type StickerFinish = "parlak" | "mat" | "yok";
-export type StickerCutType = "tabaka" | "diecut" | "kisscut";
+export type StickerCutType = "tabaka" | "diecut" | "kisscut" | "kartli";
 
 /** Customer-facing tier preset'leri — chip'ler için kullanılır.
  * Müşteri serbest qty seçer (25'er artış); engine en yakın tier
@@ -58,6 +58,7 @@ export const FINISH_MULT: Record<StickerFinish, number> = {
 /** Kesim türü → fiyat çarpanı (admin config fail fallback) */
 export const CUT_MULT: Record<StickerCutType, number> = {
   diecut: 1.10,
+  kartli: 1.10,
   kisscut: 1.00,
   tabaka: 1.00,
 };
@@ -132,11 +133,16 @@ export function quoteCustomerSticker(
   const cutKey = input.cut ?? "diecut";
   const cutMult = CUT_MULT[cutKey];
   const surchargeMultiplier = matMult * finMult * cutMult;
-  const geomCut = cutKey === "kisscut" ? "diecut" : cutKey;
+  const geomCut =
+    cutKey === "kisscut" || cutKey === "kartli" ? "diecut" : cutKey;
+  const geomWidth =
+    cutKey === "kartli" ? input.width + 10 : input.width;
+  const geomHeight =
+    cutKey === "kartli" ? input.height + 10 : input.height;
 
   const result: QuoteResult = quoteSticker({
-    width: input.width,
-    height: input.height,
+    width: geomWidth,
+    height: geomHeight,
     cut: geomCut === "tabaka" ? "tabaka" : "diecut",
     qty: input.qty,
     production: {

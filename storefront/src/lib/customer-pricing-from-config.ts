@@ -26,11 +26,16 @@ export function quoteStickerFromConfig(
   config: ProfileConfig,
   input: CustomerQuoteInput
 ): CustomerQuoteResult | null {
+  const isKartli = input.cut === "kartli";
+  const geomWidth = isKartli ? input.width + 10 : input.width;
+  const geomHeight = isKartli ? input.height + 10 : input.height;
   const geomCut: StickerCutType =
-    input.cut === "kisscut" ? "diecut" : (input.cut ?? "diecut");
+    input.cut === "kisscut" || input.cut === "kartli"
+      ? "diecut"
+      : (input.cut ?? "diecut");
   const geomResult = quoteSticker({
-    width: input.width,
-    height: input.height,
+    width: geomWidth,
+    height: geomHeight,
     cut: geomCut === "tabaka" ? "tabaka" : "diecut",
     qty: input.qty,
     production: { mode: "fason", rate: 100 },

@@ -15,7 +15,7 @@
  *   7. Clear            → cut=diecut, material=transparan
  *   8. Holographic      → cut=diecut, material=holo
  *   9. Glitter         → cut=diecut, material=simli
- *  10. Yarı Kesim (die-cut fiyat) → cut=diecut, shape=diecut (die cut sütununun sonu)
+ *  10. Kartlı Sticker → cut=kartli, shape=diecut (die cut sütununun sonu)
  *   11. Sticker sheets  → cut=tabaka
  *
  * Müşteri /sticker'a gelince eskiden direkt konfigüratör vardı.
@@ -470,11 +470,11 @@ const STICKER_CARDS: StickerCard[] = [
     imageSrc: "/assets/img/cards/sticker-glitter-holo.jpg",
   },
   {
-    query: "cut=diecut&shape=diecut",
-    titleTr: "Yarı Kesim Sticker",
-    titleEn: "Kiss-Cut Sticker",
-    descTr: "Çevresi sağlam kağıttan tek tek çıkarılır",
-    descEn: "Sticker cut, backing intact — peel individually",
+    query: "cut=kartli&shape=diecut",
+    titleTr: "Kartlı Sticker",
+    titleEn: "Kiss-Cut Single",
+    descTr: "Sticker kendi die-cut kartında; içinden tek tek soyulur",
+    descEn: "Sticker on its own die-cut card; peel off individually",
     svg: <KissCutIcon />,
     imageSrc: "/assets/img/cards/sticker-kisscut.jpg",
   },
@@ -644,7 +644,10 @@ export default function StickerGridPage() {
     };
   }, []);
 
-  const diecutCards = cards.filter((c) => cutOf(c) === "diecut");
+  const diecutCards = cards.filter((c) => {
+    const cut = cutOf(c);
+    return cut === "diecut" || cut === "kartli";
+  });
   const kissCutCards = cards.filter((c) => {
     const cut = cutOf(c);
     return cut === "kisscut" || cut === "tabaka";

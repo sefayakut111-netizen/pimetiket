@@ -37,6 +37,13 @@ import type {
   StickerMaterial,
   StickerFinish,
 } from "@/lib/sticker-customer-pricing";
+import {
+  CUT_SET_META,
+} from "@/lib/templates/die-cut-templates";
+import {
+  KARTLI_CARD_RADIUS_MM,
+  KARTLI_MARGIN_MM,
+} from "@/lib/editor/cutline/export-svg";
 
 // Sefa 21 May v68 (konfigüratör denetim #5): preview ShapeId genişletildi
 // — oval, rectangle, bumper için özel render (önceden hepsi "ozel" olarak
@@ -68,7 +75,7 @@ const FINISH_SHEEN: Record<StickerFinish, number> = {
 interface StickerLivePreviewProps {
   // Sefa 21 May v68 (konfigüratör denetim #5): kisscut artık preview'da
   // ayrı render — taşıyıcı kağıt outline ile gösterilir.
-  cutMode: "diecut" | "tabaka" | "kisscut";
+  cutMode: "diecut" | "tabaka" | "kisscut" | "kartli";
   shape: ShapeId;
   softCorners: boolean;
   material: StickerMaterial;
@@ -256,6 +263,57 @@ export function StickerLivePreview({
       </div>
     );
   };
+
+  // ─────────────────────────────────────────────────────────────
+  // KARTLI MODE — dış ThruCut kart (mavi) + iç KissCut silüet (magenta)
+  // ─────────────────────────────────────────────────────────────
+  if (cutMode === "kartli") {
+    const cardW = width + 2 * KARTLI_MARGIN_MM;
+    const cardH = height + 2 * KARTLI_MARGIN_MM;
+    const marginPxX = stickerWidthPx * (KARTLI_MARGIN_MM / width);
+    const marginPxY = stickerHeightPx * (KARTLI_MARGIN_MM / height);
+    const cardRadiusPx = Math.min(
+      (KARTLI_CARD_RADIUS_MM / cardW) * (stickerWidthPx + marginPxX * 2),
+      (KARTLI_CARD_RADIUS_MM / cardH) * (stickerHeightPx + marginPxY * 2)
+    );
+    const thrucutColor = CUT_SET_META.thrucut.color;
+    const kisscutColor = CUT_SET_META.kisscut.color;
+
+    return (
+      <div style={view3dWrap} className="relative">
+        <div style={view3dInner} className="flex flex-col items-center gap-3">
+          <div
+            className="relative bg-krem-soft"
+            style={{
+              padding: `${marginPxY}px ${marginPxX}px`,
+              borderRadius: cardRadiusPx,
+              border: `3px solid ${thrucutColor}`,
+              boxShadow: "0 10px 24px rgba(0,71,255,0.12)",
+            }}
+            title="Die-cut kart — tam kesim dış kenar"
+          >
+            <div
+              className="relative"
+              style={{
+                outline: `3px solid ${kisscutColor}`,
+                outlineOffset: 2,
+                borderRadius: radius,
+              }}
+            >
+              {renderSingleSticker("kartli-inner", {
+                withCutPath: false,
+                withShadow: false,
+              })}
+            </div>
+          </div>
+          <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
+            Kartlı · Sticker {Math.round(width)}×{Math.round(height)} · Kart{" "}
+            {Math.round(cardW)}×{Math.round(cardH)} mm
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────
   // DIE-CUT MODE — TEK sticker, BEYAZ KONTUR (cut path) belirgin.
