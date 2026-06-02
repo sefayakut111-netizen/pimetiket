@@ -81,6 +81,7 @@ export function RollPlanSvg({
         lastSheetCount={dist.lastSheetCount}
         sheetW={fit.sheetW}
         sheetH={fit.sheetH}
+        stickerGrid={`${fit.cols}×${fit.rows}`}
         padX={PAD_X}
         padTop={PAD_TOP}
         rollGap={ROLL_GAP}
@@ -261,6 +262,7 @@ interface RollGroupProps {
   lastSheetCount: number;
   sheetW: number;
   sheetH: number;
+  stickerGrid: string;
   padX: number;
   padTop: number;
   rollGap: number;
@@ -281,6 +283,7 @@ function RollGroup({
   lastSheetCount,
   sheetW,
   sheetH,
+  stickerGrid,
   padX,
   padTop,
   rollGap,
@@ -316,7 +319,7 @@ function RollGroup({
             height={sheetY - 8}
             label={`T${rollI * sheetsPerRoll + localIdx + 1}`}
             qty={stickersInThisSheet}
-            sheetSize={`${sheetW}×${sheetH}mm`}
+            sheetSize={`${sheetW}×${sheetH} · ${stickerGrid}`}
           />
         );
       } else {

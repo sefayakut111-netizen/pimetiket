@@ -698,8 +698,7 @@ export function StickerCalculator({
               liveSitePrice={liveSitePrice}
               qty={qty}
               tier={displayTier}
-              totalM2={result.ok ? result.geometry.totalM2 : 0}
-              sheetsNeeded={result.ok ? result.geometry.fit.sheetsNeeded : 0}
+              geometry={result.ok ? result.geometry : null}
             />
 
             <OperatorCostHero
@@ -718,14 +717,13 @@ export function StickerCalculator({
 
             {result.ok ? (
               <>
-                {/* Rulo plan SVG (full width) */}
-                <RollPlanCard result={result} />
-
-                {/* Tabaka detay + Üretim özeti (2-col) */}
+                {/* Tabaka dizgisi + özet — rulo planından önce (esnek tabaka görünür olsun) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <SheetPreviewCard result={result} />
                   <UretimOzetiCard result={result} />
                 </div>
+
+                <RollPlanCard result={result} />
               </>
             ) : (
               <Card padding="p-8" className="text-center">
@@ -1055,8 +1053,14 @@ function OperatorCostHero({
       <p className="text-[12px] text-gri-600 mt-1">
         Fason + operasyon · tier uygulanmaz
       </p>
-      <p className="text-[12px] text-gri-500 mt-2 tabular-nums">
+      <p className="text-[12px] text-gri-500 mt-2 tabular-nums leading-relaxed">
         {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka ·{" "}
+        {geometry.fit.cols}×{geometry.fit.rows} grid ·{" "}
+        {geometry.fit.mode === "tabaka"
+          ? `esnek tabaka ${geometry.fit.sheetW}×${geometry.fit.sheetH}mm`
+          : "die-cut direkt rulo"}
+        <br />
+        Baskı alanı {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
         {geometry.totalM2.toFixed(3)} m²
       </p>
       {!compact && (
@@ -1144,14 +1148,12 @@ function SitePriceHero({
   liveSitePrice,
   qty,
   tier,
-  totalM2,
-  sheetsNeeded = 0,
+  geometry,
 }: {
   liveSitePrice: ReturnType<typeof calculatePrice> | null;
   qty: number;
   tier: StickerTier | { qty: number; multiplier: number; label: string };
-  totalM2: number;
-  sheetsNeeded?: number;
+  geometry: import("@/lib/pricing-engine").GeometryResult | null;
 }) {
   if (!liveSitePrice?.ok) {
     return (
@@ -1179,7 +1181,14 @@ function SitePriceHero({
       : 0;
   const fee = liveSitePrice.with_fee - liveSitePrice.with_margin;
   const vat = liveSitePrice.final - liveSitePrice.with_fee;
-  const billableM2 = liveSitePrice.billable_m2 ?? totalM2;
+  const billableM2 = liveSitePrice.billable_m2 ?? geometry?.totalM2 ?? 0;
+  const sheetsNeeded = geometry?.fit.sheetsNeeded ?? 0;
+  const layoutHint =
+    geometry?.fit.mode === "tabaka"
+      ? `${geometry.fit.cols}×${geometry.fit.rows} · esnek ${geometry.fit.sheetW}×${geometry.fit.sheetH}mm`
+      : geometry
+        ? `${geometry.fit.cols}×${geometry.fit.rows} · die-cut`
+        : "";
 
   return (
     <Card
@@ -1198,10 +1207,19 @@ function SitePriceHero({
           {fmt(Math.round(liveSitePrice.final))}{" "}
           <span className="text-pim-mercan text-[22px]">₺</span>
         </div>
-        <p className="text-[12px] text-white/70 mt-1 tabular-nums">
+        <p className="text-[12px] text-white/70 mt-1 tabular-nums leading-relaxed">
           {fmt(liveSitePrice.unit_price, 2)} ₺/adet · {qty.toLocaleString("tr-TR")}{" "}
-          adet · {sheetsNeeded} tabaka · {billableM2.toFixed(3)} m² · Tier{" "}
-          {tier.label}
+          adet · {sheetsNeeded} tabaka
+          {layoutHint ? ` · ${layoutHint}` : ""} · fatura {billableM2.toFixed(3)} m²
+          {geometry && geometry.sheetAreaM2 > 0 ? (
+            <>
+              <br />
+              Tabaka alanı {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
+              {geometry.totalM2.toFixed(3)} m² · Tier {tier.label}
+            </>
+          ) : (
+            <> · Tier {tier.label}</>
+          )}
         </p>
         <div className="mt-4 pt-4 border-t border-white/15 grid grid-cols-2 md:grid-cols-5 gap-3">
           <VatCell
@@ -1283,7 +1301,11 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
             Rulo Üretim Planı
           </h3>
           <p className="text-[12px] text-gri-700 mt-0.5">
-            Dinamik en (250-600mm) · 40mm kesim markası · 50mm başlangıç
+            Dinamik en (250–600mm) · gap {fit.gap}mm · 40mm kesim markası · 50mm
+            başlangıç
+            {fit.mode === "tabaka"
+              ? " · esnek iç tabaka (max 230×310mm)"
+              : " · sticker doğrudan rulo"}
           </p>
         </div>
         <div className="flex gap-5 shrink-0">
@@ -1364,9 +1386,9 @@ function SheetPreviewCard({
   return (
     <Card padding="p-5">
       <div className="text-[13px] uppercase tracking-[0.12em] text-gri-700 font-bold mb-3 flex items-center justify-between">
-        <span>{fit.sheetW / 10}×{fit.sheetH / 10} cm Tabaka Görünümü</span>
+        <span>{fit.sheetW / 10}×{fit.sheetH / 10} cm Esnek Tabaka</span>
         <span className="text-[12px] tabular-nums px-2 py-0.5 rounded-full bg-krem text-lacivert font-semibold">
-          {fit.perSheet} ad/tabaka
+          {fit.cols}×{fit.rows} · {fit.perSheet} ad · gap {fit.gap}mm
         </span>
       </div>
       <div className="bg-gri-50 ring-1 ring-dashed ring-gri-200 rounded-lg p-3 flex items-center justify-center overflow-hidden min-h-[280px]">
