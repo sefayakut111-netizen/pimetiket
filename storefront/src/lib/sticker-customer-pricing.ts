@@ -169,7 +169,7 @@ export function quoteCustomerSticker(
   const result: QuoteResult = quoteSticker({
     width: geomWidth,
     height: geomHeight,
-    cut: geomCut === "tabaka" ? "tabaka" : "diecut",
+    cut: geomCut,
     qty: input.qty,
     production: {
       mode: "fason",

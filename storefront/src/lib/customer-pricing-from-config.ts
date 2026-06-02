@@ -35,7 +35,7 @@ export function quoteStickerFromConfig(
   const geomResult = quoteSticker({
     width: geomWidth,
     height: geomHeight,
-    cut: geomCut === "tabaka" ? "tabaka" : "diecut",
+    cut: geomCut,
     qty: input.qty,
     production: { mode: "fason", rate: 100 },
     operation: { setup: 0, packaging: 0, feePct: 0 },

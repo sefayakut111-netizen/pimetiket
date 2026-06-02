@@ -194,6 +194,9 @@ export function computeRollPlan(
   const maxCols = Math.floor(usableMaxW / sheetW);
   if (maxCols < 1) return null;
 
+  const maxRowsPerRoll = Math.floor(usableMaxL / sheetH);
+  if (maxRowsPerRoll < 1) return null;
+
   let best: RollPlan | null = null;
 
   for (let cols = 1; cols <= maxCols; cols++) {
@@ -201,9 +204,6 @@ export function computeRollPlan(
     let rollW = usedWidth + 2 * ROLL_MARGIN_X;
     if (rollW < ROLL_W_MIN) rollW = ROLL_W_MIN;
     if (rollW > ROLL_W_MAX) continue;
-
-    const maxRowsPerRoll = Math.floor(usableMaxL / sheetH);
-    if (maxRowsPerRoll < 1) continue;
 
     const sheetsPerRoll = cols * maxRowsPerRoll;
     const rollsNeeded = Math.ceil(sheetsNeeded / sheetsPerRoll);
@@ -528,6 +528,7 @@ export function computeGeometry(args: {
 }): GeometryResult | null {
   const snapW = snapSizeUp(args.width);
   const snapH = snapSizeUp(args.height);
+  if (snapW <= 0 || snapH <= 0) return null;
 
   const layout = computeLayout({
     width: snapW,

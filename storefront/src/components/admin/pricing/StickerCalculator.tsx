@@ -1312,11 +1312,21 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
           </p>
         </div>
         <div className="flex gap-5 shrink-0">
-          <RpStat label="Rulo" value={roll.rollsNeeded.toString()} />
           <RpStat
-            label={isTabaka ? "Tabaka/Rulo" : "Sticker/Rulo"}
-            value={`${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
+            label={isTabaka ? "Rulo" : "Rulo tabaka"}
+            value={roll.rollsNeeded.toString()}
           />
+          {isTabaka ? (
+            <RpStat
+              label="Tabaka/Rulo"
+              value={`${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
+            />
+          ) : (
+            <RpStat
+              label="Toplam sticker"
+              value={fit.producedQty.toString()}
+            />
+          )}
           <RpStat label="Verimlilik" value={`%${efficiency.toFixed(0)}`} />
         </div>
       </div>
@@ -1330,10 +1340,13 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
       <div className="px-5 py-3.5 text-[13px] text-gri-600 bg-gri-50 border-t border-dashed border-gri-200 tabular-nums">
         <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
           <span>
-            {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
-            {roll.rollsNeeded === 1
-              ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} ${isTabaka ? "tabaka" : "sticker"}`
-              : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}${isTabaka ? "" : " sticker"}`}
+            {isTabaka
+              ? `${roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} · ${
+                  roll.rollsNeeded === 1
+                    ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka`
+                    : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`
+                }`
+              : `${roll.rollsNeeded} rulo tabaka · ${fit.producedQty} sticker`}
           </span>
           <span>
             {fit.cols}×{fit.rows} grid ·{" "}
@@ -1458,11 +1471,9 @@ function UretimOzetiCard({
             <StatCell label="Rulo tabaka" value={roll.rollsNeeded.toString()} />
             <StatCell
               label="Yükseklikler"
-              value={
-                roll.segmentHeights
-                  ?.map((h) => `${Math.round(h)}mm`)
-                  .join(" + ") ?? `${Math.round(roll.lastRollLengthMm)}mm`
-              }
+              value={(roll.segmentHeights ?? [])
+                .map((h) => `${Math.round(h)}mm`)
+                .join(" + ")}
             />
             <StatCell
               label="Toplam üretilen"
@@ -1493,10 +1504,12 @@ function UretimOzetiCard({
         )}
       </div>
 
-      {/* Mini bar */}
-      <div className="mt-3" title="60cm rulo eninde dolu / fire dağılımı">
-        <RollMiniBar geometry={geometry} />
-      </div>
+      {/* Mini bar — tabaka only (die-cut birim karışık, bar anlamsız) */}
+      {isTabaka && (
+        <div className="mt-3" title="60cm rulo eninde dolu / fire dağılımı">
+          <RollMiniBar geometry={geometry} />
+        </div>
+      )}
 
       {/* Waste */}
       <div className="mt-3 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] flex justify-between items-center border-l-[3px] border-pim-mercan">
