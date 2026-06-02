@@ -38,6 +38,9 @@ import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   STICKER_TIERS,
+  ROLL_MARGIN_X,
+  ROLL_START_MARGIN,
+  ROLL_END_MARGIN,
   type StickerTier,
   type CutType,
   type ProductionMode,
@@ -1301,8 +1304,8 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
             Rulo Üretim Planı
           </h3>
           <p className="text-[12px] text-gri-700 mt-0.5">
-            Dinamik en (250–600mm) · gap {fit.gap}mm · 40mm kesim markası · 50mm
-            başlangıç
+            Dinamik en (250–600mm) · gap {fit.gap}mm · {ROLL_MARGIN_X}mm kesim markası ·{" "}
+            {ROLL_START_MARGIN}mm başlangıç · {ROLL_END_MARGIN}mm bitiş
             {fit.mode === "tabaka"
               ? " · esnek iç tabaka (max 230×310mm)"
               : " · sticker doğrudan rulo"}

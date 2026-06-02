@@ -16,7 +16,7 @@ import type {
   GeometryResult,
   ProductionMode,
 } from "./pricing-engine";
-import { ROLL_L, ROLL_MARGIN_X, ROLL_MARGIN_Y } from "./pricing-engine";
+import { ROLL_L, ROLL_MARGIN_X, ROLL_START_MARGIN, ROLL_END_MARGIN } from "./pricing-engine";
 import {
   computeSheetDistribution,
 } from "@/components/pricing/layout-helpers";
@@ -347,12 +347,12 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.rect(M, y + rollPxH - cutH, rollPxW, cutH, "F");
   pdf.setTextColor(139, 123, 92);
   pdf.setFontSize(6);
-  pdf.text("40mm KESİM MARKASI", M + rollPxW / 2, y + cutH / 2 + 1, {
+  pdf.text(`${ROLL_MARGIN_X}mm KESİM MARKASI`, M + rollPxW / 2, y + cutH / 2 + 1, {
     align: "center",
   });
 
-  // Start area (left 50mm)
-  const startW = ROLL_MARGIN_Y * scaleX;
+  // Start area (left)
+  const startW = ROLL_START_MARGIN * scaleX;
   const sidePad = (roll.rollW - roll.cols * fit.sheetW) / 2;
   const sidePadPx = sidePad * scaleX;
   pdf.setFillColor(255, 252, 236);
@@ -369,7 +369,7 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
   let localIdx = 0;
   for (let yy = 0; yy < roll.cols && localIdx < sheetsThisRoll; yy++) {
     for (let xx = 0; xx < roll.rows && localIdx < sheetsThisRoll; xx++) {
-      const sx = M + ROLL_MARGIN_Y * scaleX + xx * sheetXpx;
+      const sx = M + ROLL_START_MARGIN * scaleX + xx * sheetXpx;
       const sy = y + sidePadPx + yy * sheetYpx;
       pdf.setFillColor(255, 248, 242);
       pdf.setDrawColor(255, 107, 91);

@@ -5,8 +5,9 @@
  *
  * Görsel:
  *   - Yatay rulo (X = boy 1520mm, Y = en dinamik 250-600mm)
- *   - Üst+alt 40mm kesim markası (mercan dotted pattern)
- *   - Sol 50mm plotter başlangıcı (sarı stripe pattern)
+ *   - Üst+alt 30mm kesim markası (mercan dotted pattern)
+ *   - Sol 30mm plotter başlangıcı (sarı stripe pattern)
+ *   - Sağ 80mm plotter bitişi (cream zigzag)
  *   - Tabakalar grid içinde, dolu = "X adet", boş = dashed
  *   - Son rulonun sağ kısmında fire (cream zigzag)
  *   - Min eni dayandığında ekstra hava (üst+alt cream zigzag)
@@ -17,8 +18,9 @@
 
 import {
   ROLL_L,
+  ROLL_END_MARGIN,
   ROLL_MARGIN_X,
-  ROLL_MARGIN_Y,
+  ROLL_START_MARGIN,
   ROLL_W_MAX,
   type GeometryResult,
 } from "@/lib/pricing-engine";
@@ -37,19 +39,17 @@ export function RollPlanSvg({
   const { fit, roll } = geometry;
   const dist = computeSheetDistribution(geometry);
 
-  // SVG'de rulo yatay çizilir: X = boy yönü (ROLL_L=1520mm), Y = en yönü (rollW)
   const rollW = roll.rollW;
   const usedW = roll.cols * fit.sheetW;
-  const sidePad = (rollW - usedW) / 2; // her iki tarafa eşit boşluk
+  const sidePad = (rollW - usedW) / 2;
 
-  // Tabaka X = boy yönünde dizilen kenar (sheetH boyut adına rağmen rulo akışında uzun olan)
   const SHEET_X = fit.sheetH;
   const SHEET_Y = fit.sheetW;
 
   const rollsToShow = Math.min(roll.rollsNeeded, maxRollsToShow);
   const showSummary = roll.rollsNeeded > maxRollsToShow;
 
-  const PAD_X = 80; // sol etiketler ("RULO N/M" rotated) + sağ EN etiketi için
+  const PAD_X = 80;
   const PAD_TOP = 45;
   const PAD_BOTTOM = 30;
   const ROLL_GAP = 60;
@@ -61,7 +61,6 @@ export function RollPlanSvg({
     PAD_BOTTOM +
     (showSummary ? 40 : 0);
 
-  // Build roll groups
   const rolls: React.ReactNode[] = [];
   for (let rollI = 0; rollI < rollsToShow; rollI++) {
     rolls.push(
@@ -89,7 +88,6 @@ export function RollPlanSvg({
     );
   }
 
-  // Top dimension label (1520mm BOY) — only on first roll
   const topLabel = (
     <g transform={`translate(${PAD_X}, ${PAD_TOP - 16})`}>
       <line
@@ -130,7 +128,6 @@ export function RollPlanSvg({
     </g>
   );
 
-  // Right en label
   const rightLabel = (
     <g transform={`translate(${PAD_X + ROLL_L + 24}, ${PAD_TOP + rollW / 2})`}>
       <text
@@ -158,7 +155,6 @@ export function RollPlanSvg({
     </g>
   );
 
-  // Summary row if more than maxRollsToShow
   const summaryRow = showSummary ? (
     <g>
       <rect
@@ -243,10 +239,6 @@ export function RollPlanSvg({
   );
 }
 
-// ============================================================
-// Single roll group
-// ============================================================
-
 interface RollGroupProps {
   rollI: number;
   rollW: number;
@@ -293,18 +285,13 @@ function RollGroup({
   const rollY = padTop + rollI * (rollW + rollGap);
   const annotFont = Math.max(22, rollW * 0.045);
 
-  // Build sheets
-  // FILL ORDER (matches sticker-fiyatlama.html): outer = cols (en), inner = rows (boy)
-  // T1 = en-col=0, boy-row=0 (leftmost-top)
-  // T2 = en-col=0, boy-row=1 (one cell right along boy)
-  // T(rows+1) = en-col=1, boy-row=0 (next en-row down)
   const sheets: React.ReactNode[] = [];
   let localIdx = 0;
 
   for (let yy = 0; yy < cols; yy++) {
     for (let xx = 0; xx < rows; xx++) {
-      const sx = padX + ROLL_MARGIN_Y + xx * sheetX; // X axis = rulo BOY (xx iterates rows)
-      const sy = rollY + sidePad + yy * sheetY; // Y axis = rulo EN (yy iterates cols)
+      const sx = padX + ROLL_START_MARGIN + xx * sheetX;
+      const sy = rollY + sidePad + yy * sheetY;
       const isUsed = localIdx < sheetsThisRoll;
       const isVeryLast = isLastRoll && localIdx === sheetsThisRoll - 1;
       const stickersInThisSheet = isVeryLast ? lastSheetCount : balancedPerSheet;
@@ -337,10 +324,8 @@ function RollGroup({
     }
   }
 
-  // Cut mark areas (top + bottom 40mm)
   const cutMarks = (
     <>
-      {/* Top cut mark */}
       <rect
         x={padX}
         y={rollY}
@@ -357,9 +342,8 @@ function RollGroup({
         fill="#8B7B5C"
         fontWeight="700"
       >
-        ↑ 40mm KESİM MARKASI
+        ↑ {ROLL_MARGIN_X}mm KESİM MARKASI
       </text>
-      {/* Bottom cut mark */}
       <rect
         x={padX}
         y={rollY + rollW - ROLL_MARGIN_X}
@@ -376,12 +360,11 @@ function RollGroup({
         fill="#8B7B5C"
         fontWeight="700"
       >
-        ↓ 40mm KESİM MARKASI
+        ↓ {ROLL_MARGIN_X}mm KESİM MARKASI
       </text>
     </>
   );
 
-  // Extra hava if min rulo eni dayandı
   const extraHavaUstte = sidePad - ROLL_MARGIN_X;
   const extraHava =
     extraHavaUstte > 0 ? (
@@ -403,36 +386,36 @@ function RollGroup({
       </>
     ) : null;
 
-  // Plotter başlangıç (sol 50mm)
   const startArea = (
     <>
       <rect
         x={padX}
         y={rollY + sidePad}
-        width={ROLL_MARGIN_Y}
+        width={ROLL_START_MARGIN}
         height={rollW - 2 * sidePad}
         fill="url(#start-pat)"
       />
       <text
-        x={padX + ROLL_MARGIN_Y / 2}
+        x={padX + ROLL_START_MARGIN / 2}
         y={rollY + rollW / 2}
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize={annotFont}
         fill="#1F2937"
         fontWeight="700"
-        transform={`rotate(-90 ${padX + ROLL_MARGIN_Y / 2} ${rollY + rollW / 2})`}
+        transform={`rotate(-90 ${padX + ROLL_START_MARGIN / 2} ${rollY + rollW / 2})`}
       >
-        50mm BAŞLANGIÇ
+        {ROLL_START_MARGIN}mm BAŞLANGIÇ
       </text>
     </>
   );
 
-  // Tabakaların boy yönündeki kullanılmayan kısmı (fire — son rulo'da)
   const lastRowsCount = isLastRoll ? Math.ceil(sheetsOnLastRoll / cols) : rows;
   const usedLength = lastRowsCount * sheetX;
-  const wasteEndX = padX + ROLL_MARGIN_Y + usedLength;
-  const wasteEndW = ROLL_L - ROLL_MARGIN_Y - usedLength;
+  const usableLength = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
+  const slackInUsable = Math.max(0, usableLength - usedLength);
+  const wasteEndX = padX + ROLL_START_MARGIN + usedLength;
+  const wasteEndW = ROLL_END_MARGIN + slackInUsable;
   const endFire =
     wasteEndW > 0 ? (
       <>
@@ -453,14 +436,14 @@ function RollGroup({
           fontWeight="700"
           opacity="0.75"
         >
-          {wasteEndW}mm boş
+          {ROLL_END_MARGIN}mm bitiş
+          {slackInUsable > 0 ? ` + ${slackInUsable}mm` : ""}
         </text>
       </>
     ) : null;
 
   return (
     <g>
-      {/* Roll outer rect */}
       <rect
         x={padX}
         y={rollY}
@@ -476,7 +459,6 @@ function RollGroup({
       {startArea}
       {endFire}
       {sheets}
-      {/* Roll label rotated on left */}
       <g transform={`translate(${padX - 22}, ${rollY + rollW / 2})`}>
         <text
           textAnchor="middle"
@@ -492,10 +474,6 @@ function RollGroup({
     </g>
   );
 }
-
-// ============================================================
-// Filled sheet rect with adet count
-// ============================================================
 
 function SheetRect({
   x,
@@ -538,7 +516,6 @@ function SheetRect({
         fill="rgba(255, 107, 91, 0.08)"
         rx="3"
       />
-      {/* QTY — büyük rakam ortalanır */}
       <text
         x={x + width / 2}
         y={y + height / 2 - 8}
@@ -561,7 +538,6 @@ function SheetRect({
       >
         adet
       </text>
-      {/* T-label */}
       <text
         x={x + 14}
         y={y + labelSize + 6}
@@ -572,7 +548,6 @@ function SheetRect({
       >
         {label}
       </text>
-      {/* Sheet size */}
       <text
         x={x + width - 14}
         y={y + height - 12}

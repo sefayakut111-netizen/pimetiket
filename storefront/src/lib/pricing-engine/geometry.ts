@@ -2,7 +2,7 @@
  * Sticker pricing — geometri optimizasyon (saf fonksiyon).
  *
  * İki ayrı akış (Sefa onaylı):
- *   - tabaka (kiss-cut): esnek iç tabaka 23×31 cm max, kullanılabilir 19×27, gap 3mm
+ *   - tabaka (kiss-cut): esnek iç tabaka 23×31 cm max, kullanılabilir 21×29, gap 3mm
  *   - diecut: sticker doğrudan plotter rulosuna, gap 20mm, iç tabaka yok
  *
  * Saf fonksiyon. DB / I/O yok.
@@ -14,7 +14,8 @@ import {
   OVERAGE_TARGET_MAX,
   ROLL_L,
   ROLL_MARGIN_X,
-  ROLL_MARGIN_Y,
+  ROLL_START_MARGIN,
+  ROLL_END_MARGIN,
   ROLL_W_MAX,
   ROLL_W_MIN,
   TABAKA_EDGE_MARGIN,
@@ -141,7 +142,7 @@ export function computeRollPlan(
   sheetsNeeded: number
 ): RollPlan | null {
   const usableMaxW = ROLL_W_MAX - 2 * ROLL_MARGIN_X;
-  const usableMaxL = ROLL_L - ROLL_MARGIN_Y;
+  const usableMaxL = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
 
   if (sheetW > usableMaxW || sheetH > usableMaxL) return null;
 
@@ -165,10 +166,13 @@ export function computeRollPlan(
       sheetsNeeded - (rollsNeeded - 1) * sheetsPerRoll;
 
     const lastRowsCount = Math.ceil(sheetsOnLastRoll / cols);
-    const lastRollLengthMm = ROLL_MARGIN_Y + lastRowsCount * sheetH;
+    const fullRollLengthMm =
+      ROLL_START_MARGIN + maxRowsPerRoll * sheetH + ROLL_END_MARGIN;
+    const lastRollLengthMm =
+      ROLL_START_MARGIN + lastRowsCount * sheetH + ROLL_END_MARGIN;
 
     const fullRolls = rollsNeeded - 1;
-    const totalLengthMm = fullRolls * ROLL_L + lastRollLengthMm;
+    const totalLengthMm = fullRolls * fullRollLengthMm + lastRollLengthMm;
     const totalArea = rollW * totalLengthMm;
 
     const candidate: RollPlan = {
@@ -290,7 +294,7 @@ function buildDiecutRollPlan(
 ): LayoutCandidate | null {
   const gap = GAP_DIECUT;
   const usableW = rollW - 2 * ROLL_MARGIN_X;
-  const usableL = ROLL_L - ROLL_MARGIN_Y;
+  const usableL = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
 
   if (cols < 1 || rows < 1) return null;
   if (cols * sw + (cols - 1) * gap > usableW + 1e-9) return null;
@@ -301,11 +305,19 @@ function buildDiecutRollPlan(
   const producedQty = rollsNeeded * perRoll;
   const stickersOnLastRoll = producedQty - (rollsNeeded - 1) * perRoll;
   const lastRowsCount = Math.ceil(stickersOnLastRoll / cols);
+  const fullRollLengthMm =
+    ROLL_START_MARGIN +
+    rows * sh +
+    (rows - 1) * gap +
+    ROLL_END_MARGIN;
   const lastRollLengthMm =
-    ROLL_MARGIN_Y + lastRowsCount * sh + (lastRowsCount - 1) * gap;
+    ROLL_START_MARGIN +
+    lastRowsCount * sh +
+    (lastRowsCount - 1) * gap +
+    ROLL_END_MARGIN;
 
   const fullRolls = rollsNeeded - 1;
-  const totalLengthMm = fullRolls * ROLL_L + lastRollLengthMm;
+  const totalLengthMm = fullRolls * fullRollLengthMm + lastRollLengthMm;
   const totalArea = rollW * totalLengthMm;
   const usedWidth = cols * sw + (cols - 1) * gap;
 
@@ -367,7 +379,7 @@ function buildDiecutCandidates(
 
     for (let rollW = ROLL_W_MIN; rollW <= ROLL_W_MAX; rollW += 10) {
       const usableW = rollW - 2 * ROLL_MARGIN_X;
-      const usableL = ROLL_L - ROLL_MARGIN_Y;
+      const usableL = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
 
       const maxCols = Math.floor((usableW + gap) / (sw + gap));
       const maxRows = Math.floor((usableL + gap) / (sh + gap));

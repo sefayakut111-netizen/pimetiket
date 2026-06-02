@@ -21,11 +21,14 @@ export const ROLL_W_MIN = 250;
 /** Rulo boy — sabit fiziksel sınır */
 export const ROLL_L = 1520;
 
-/** Sağ + sol kenar kesim markası (her iki yanda) */
-export const ROLL_MARGIN_X = 40;
+/** Alt/üst kenar kesim markası (en yönü, her iki yan) */
+export const ROLL_MARGIN_X = 30;
 
-/** Sol başlangıçta plotter boşluğu */
-export const ROLL_MARGIN_Y = 50;
+/** Sol başlangıçta plotter boşluğu (boy yönü) */
+export const ROLL_START_MARGIN = 30;
+
+/** Sağ uçta plotter boşluğu (boy yönü) */
+export const ROLL_END_MARGIN = 80;
 
 // ============================================================
 // Kiss-cut / tabaka — esnek iç tabaka (sticker yarım kesim)
@@ -35,14 +38,14 @@ export const ROLL_MARGIN_Y = 50;
 export const TABAKA_OUTER_MAX_W = 230;
 export const TABAKA_OUTER_MAX_H = 310;
 
-/** Her kenarda 2 cm baskısız kenar payı */
-export const TABAKA_EDGE_MARGIN = 20;
+/** Her kenarda 1 cm baskısız kenar payı */
+export const TABAKA_EDGE_MARGIN = 10;
 
-/** Kullanılabilir grid alanı (190×270 mm) */
+/** Kullanılabilir grid alanı (210×290 mm) */
 export const TABAKA_USABLE_W =
-  TABAKA_OUTER_MAX_W - 2 * TABAKA_EDGE_MARGIN; // 190
+  TABAKA_OUTER_MAX_W - 2 * TABAKA_EDGE_MARGIN; // 210
 export const TABAKA_USABLE_H =
-  TABAKA_OUTER_MAX_H - 2 * TABAKA_EDGE_MARGIN; // 270
+  TABAKA_OUTER_MAX_H - 2 * TABAKA_EDGE_MARGIN; // 290
 
 /** Üretim adet fazlası tercih üst sınırı (%10) — min fire ile birlikte seçim */
 export const OVERAGE_TARGET_MAX = 0.10;
