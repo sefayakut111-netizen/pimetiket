@@ -11,7 +11,7 @@
 
 import type { GeometryResult } from "@/lib/pricing-engine";
 import { cn } from "@/lib/cn";
-import { computeMiniBarSegments } from "./layout-helpers";
+import { computeMiniBarSegments } from "@/components/pricing/layout-helpers";
 
 interface RollMiniBarProps {
   geometry: GeometryResult;

@@ -23,6 +23,7 @@ import { Button, Card, Eyebrow, Skeleton, useToast } from "@/components/ui";
 import {
   PartnerStatusActions,
   PartnerStatusPill,
+  PartnerProductionLayout,
   ProductionDownloadBar,
 } from "@/components/partner";
 
@@ -407,6 +408,16 @@ function ItemCard({
               <strong>Notun:</strong> {item.partner_decision.note}
             </div>
           )}
+
+          <PartnerProductionLayout
+            item={{
+              product: item.product,
+              width: item.width,
+              height: item.height,
+              qty: item.qty,
+              meta: item.meta,
+            }}
+          />
 
           {/* Aksiyon butonları */}
           {decided ? (

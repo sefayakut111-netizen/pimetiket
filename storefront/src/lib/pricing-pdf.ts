@@ -19,7 +19,7 @@ import type {
 import { ROLL_L, ROLL_MARGIN_X, ROLL_MARGIN_Y } from "./pricing-engine";
 import {
   computeSheetDistribution,
-} from "@/components/admin/pricing/layout-helpers";
+} from "@/components/pricing/layout-helpers";
 
 // ============================================================
 // Helpers
