@@ -1029,12 +1029,18 @@ export default function ProofApprovalPage({
     return () => window.removeEventListener("keydown", onKey);
   }, [lightboxOpen]);
 
-  // SLA countdown — proof_generating'de her saniye now'ı güncelle
+  // SLA countdown — proof_generating veya arka plan bıçak üretiminde
   useEffect(() => {
-    if (data?.order.status !== "proof_generating") return;
+    if (
+      data?.order.status !== "proof_generating" &&
+      !bgGenItemId
+    ) {
+      return;
+    }
+    if (!data?.order.sla_proof_deadline) return;
     const t = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [data?.order.status]);
+  }, [data?.order.status, data?.order.sla_proof_deadline, bgGenItemId]);
 
   // ============================================================
   // BACKGROUND AUTO-CUTLINE (B1 fallback) — cutline'sız itemları sırayla üret
@@ -1871,6 +1877,21 @@ export default function ProofApprovalPage({
   };
 
   const showFinalizeBar = order.status === "proof_pending";
+  const showBladeGeneratingBanner =
+    order.status === "proof_generating" || !!bgGenItemId;
+  const bladeDeadlineMs = order.sla_proof_deadline
+    ? new Date(order.sla_proof_deadline).getTime()
+    : null;
+  const bladeRemainingSec =
+    bladeDeadlineMs !== null
+      ? Math.max(0, Math.floor((bladeDeadlineMs - nowMs) / 1000))
+      : null;
+  const bladeSlaMm =
+    bladeRemainingSec !== null ? Math.floor(bladeRemainingSec / 60) : null;
+  const bladeSlaSs =
+    bladeRemainingSec !== null ? bladeRemainingSec % 60 : null;
+  const bladeSlaExpired =
+    bladeRemainingSec !== null && bladeRemainingSec === 0;
 
   return (
     <main
@@ -1924,6 +1945,36 @@ export default function ProofApprovalPage({
                 : `${designProgress.approved}/${designProgress.total} tasarım onaylandı, az kaldı! Kalan ${designProgress.total - designProgress.approved} tasarımı da gözden geçirelim.`}
         </p>
       </Card>
+
+      {showBladeGeneratingBanner && (
+        <Card className="mb-6 border border-pim-mercan/40 bg-white p-3 shadow-sm">
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-pim-mercan" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-semibold text-lacivert">
+                {bladeSlaExpired ? "Operatöre düştü" : "Bıçak hazırlanıyor…"}
+              </p>
+              {!bladeSlaExpired &&
+                bladeSlaMm !== null &&
+                bladeSlaSs !== null && (
+                  <p className="mt-0.5 font-mono text-xs text-pim-mercan">
+                    {`Kalan süre: ${bladeSlaMm}:${bladeSlaSs.toString().padStart(2, "0")}`}
+                  </p>
+                )}
+              <p className="mt-0.5 text-xs text-gri-700">
+                {bladeSlaExpired
+                  ? "5 dakikalık otomatik üretim süresi doldu — operatörümüz devraldı. Birkaç saat içinde tamamlanacak."
+                  : "Otomasyon bıçağını çıkarıyor. Sayfayı kapatabilirsin, hazır olunca mail atacağız."}
+              </p>
+              {bgGenError && (
+                <p className="mt-1 text-xs text-kirmizi">
+                  Hata: {bgGenError} — manuel düzenleyebilirsin
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {proofValidation?.finalVerdict === "warn" && (
         <Card className="mb-6 border-sari-soft/60 bg-sari-soft/30 p-4">
@@ -2714,54 +2765,6 @@ export default function ProofApprovalPage({
           aria-hidden="true"
         />
       )}
-
-      {/* "Bıçak hazırlanıyor" banner — proof_generating veya queue aktifken.
-          SLA: orders.sla_proof_deadline (Mig 062, 5dk). Süre dolduğunda
-          fason operatöre düşer, müşteriye "operatör inceliyor" mesajı. */}
-      {(data?.order.status === "proof_generating" || bgGenItemId) && (() => {
-        const deadlineIso = data?.order.sla_proof_deadline;
-        const deadlineMs = deadlineIso ? new Date(deadlineIso).getTime() : null;
-        const remainingMs = deadlineMs ? deadlineMs - nowMs : null;
-        const remainingSec =
-          remainingMs !== null ? Math.max(0, Math.floor(remainingMs / 1000)) : null;
-        const mm = remainingSec !== null ? Math.floor(remainingSec / 60) : null;
-        const ss = remainingSec !== null ? remainingSec % 60 : null;
-        const slaExpired = remainingSec !== null && remainingSec === 0;
-        return (
-          <div
-            className={cn(
-              "fixed right-4 z-40 max-w-sm rounded-lg border border-pim-mercan/40 bg-white p-3 shadow-lg",
-              showFinalizeBar ? "bottom-36" : "bottom-20"
-            )}
-          >
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 h-2 w-2 animate-pulse rounded-full bg-pim-mercan" />
-              <div className="flex-1 text-sm">
-                <p className="font-semibold text-lacivert">
-                  {slaExpired
-                    ? "Operatöre düştü"
-                    : "Bıçak hazırlanıyor…"}
-                </p>
-                {!slaExpired && mm !== null && ss !== null && (
-                  <p className="mt-0.5 font-mono text-xs text-pim-mercan">
-                    {`Kalan süre: ${mm}:${ss.toString().padStart(2, "0")}`}
-                  </p>
-                )}
-                <p className="mt-0.5 text-xs text-gri-700">
-                  {slaExpired
-                    ? "5 dakikalık otomatik üretim süresi doldu — operatörümüz devraldı. Birkaç saat içinde tamamlanacak."
-                    : "Otomasyon bıçağını çıkarıyor. Sayfayı kapatabilirsin, hazır olunca mail atacağız."}
-                </p>
-                {bgGenError && (
-                  <p className="mt-1 text-xs text-kirmizi">
-                    Hata: {bgGenError} — manuel düzenleyebilirsin
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Lightbox modal — aktif katman önizlemesi */}
       {lightboxOpen &&
