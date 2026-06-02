@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const HOME_GALLERY_MAX = 20;
 const CAROUSEL_INTERVAL_MS = 3000;
+const COLUMN_GAP_PX = 16; // gap-4
 
 interface GalleryItem {
   id: string;
@@ -45,6 +46,34 @@ function useVisibleColumns(): number {
   }, []);
 
   return count;
+}
+
+function useColumnLayout(visibleCols: number) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [colWidth, setColWidth] = useState(0);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const w = el.clientWidth;
+      setColWidth((w - COLUMN_GAP_PX * (visibleCols - 1)) / visibleCols);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [visibleCols]);
+
+  const stepPx = colWidth > 0 ? colWidth + COLUMN_GAP_PX : 0;
+
+  return { viewportRef, colWidth, stepPx };
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -117,6 +146,7 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
   const [paused, setPaused] = useState(false);
   const visibleCols = useVisibleColumns();
   const prefersReducedMotion = usePrefersReducedMotion();
+  const { viewportRef, colWidth, stepPx } = useColumnLayout(visibleCols);
 
   const columns = useMemo(
     () => (items ? chunkIntoColumns(items) : []),
@@ -175,6 +205,7 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
 
         {carouselEnabled ? (
           <div
+            ref={viewportRef}
             className="mt-10 overflow-hidden"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
@@ -184,15 +215,17 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
             <div
               className="flex gap-4 transition-transform duration-500 ease-out"
               style={{
-                width: `${(columns.length * 100) / visibleCols}%`,
-                transform: `translateX(-${(activeCol * 100) / columns.length}%)`,
+                transform:
+                  stepPx > 0
+                    ? `translateX(-${activeCol * stepPx}px)`
+                    : undefined,
               }}
             >
               {columns.map((col, colIdx) => (
                 <div
                   key={colIdx}
                   className="flex-shrink-0 flex flex-col gap-4 min-w-0"
-                  style={{ width: `${100 / columns.length}%` }}
+                  style={colWidth > 0 ? { width: colWidth } : undefined}
                 >
                   <GalleryCell item={col[0]} />
                   <GalleryCell item={col[1]} />
