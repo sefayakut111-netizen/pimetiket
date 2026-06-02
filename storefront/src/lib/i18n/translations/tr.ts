@@ -69,6 +69,8 @@ export const tr: TranslationDict = {
     productFrom: "adetten",
     howItWorksEyebrow: "Nasıl çalışır",
     howItWorksTitle: "4 Adımda Baskı Hazır.",
+    galleryEyebrow: "Galeri",
+    galleryTitle: "Baskı örneklerimizden",
     step1: "Konfigüre et",
     step1Desc: "Malzeme ve baskı ayarlarını seç.",
     step2: "Dosyanı yükle",

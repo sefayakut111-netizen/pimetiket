@@ -41,6 +41,19 @@ const FAQ_QUESTIONS_TR = [
   },
 ];
 
+// Placeholder — Sefa public/assets/img/galeri/ içindeki dosyaları gerçek baskı
+// fotoğraflarıyla (aynı isimle) değiştirecek.
+const GALLERY_IMAGES = [
+  { src: "/assets/img/galeri/galeri-1.jpg", alt: "Pim Etiket baskı örneği 1" },
+  { src: "/assets/img/galeri/galeri-2.jpg", alt: "Pim Etiket baskı örneği 2" },
+  { src: "/assets/img/galeri/galeri-3.jpg", alt: "Pim Etiket baskı örneği 3" },
+  { src: "/assets/img/galeri/galeri-4.jpg", alt: "Pim Etiket baskı örneği 4" },
+  { src: "/assets/img/galeri/galeri-5.jpg", alt: "Pim Etiket baskı örneği 5" },
+  { src: "/assets/img/galeri/galeri-6.jpg", alt: "Pim Etiket baskı örneği 6" },
+  { src: "/assets/img/galeri/galeri-7.jpg", alt: "Pim Etiket baskı örneği 7" },
+  { src: "/assets/img/galeri/galeri-8.jpg", alt: "Pim Etiket baskı örneği 8" },
+] as const;
+
 const FAQ_QUESTIONS_EN = [
   {
     q: "What is the minimum order quantity at Pim Etiket?",
@@ -89,11 +102,12 @@ export default function HomePage() {
         YENİ ORDER:
           1. Hero (+ CTA mikrokopi)
           2. How it works
-          3. HomeReviews
-          4. FAQ + Pim
-          5. Blog
-          6. Instagram
-          7. Mobile sticky CTA
+          3. Galeri (baskı örnekleri)
+          4. HomeReviews
+          5. FAQ + Pim
+          6. Blog
+          7. Instagram
+          8. Mobile sticky CTA
       ============================== */}
 
       {/* ============================== HERO ============================== */}
@@ -268,6 +282,39 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================== GALLERY ============================== */}
+      <section className="py-20">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <div className="text-center">
+            <Eyebrow>{t.home.galleryEyebrow}</Eyebrow>
+            <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
+              {t.home.galleryTitle}
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-10">
+            {GALLERY_IMAGES.map((img, i) => (
+              <div
+                key={img.src}
+                className="relative aspect-square rounded-lg overflow-hidden ring-1 ring-black/[0.04] shadow-1 hover:scale-[1.03] transition-transform"
+              >
+                <Image
+                  src={img.src}
+                  alt={
+                    locale === "en"
+                      ? `Pim Etiket print sample ${i + 1}`
+                      : img.alt
+                  }
+                  fill
+                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  loading="lazy"
+                  className="object-cover"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </section>

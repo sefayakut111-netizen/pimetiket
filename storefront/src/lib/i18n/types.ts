@@ -92,6 +92,8 @@ export type TranslationDict = {
     productFrom: string;
     howItWorksEyebrow: string;
     howItWorksTitle: string;
+    galleryEyebrow: string;
+    galleryTitle: string;
     step1: string;
     step1Desc: string;
     step2: string;
