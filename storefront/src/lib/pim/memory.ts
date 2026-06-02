@@ -294,11 +294,18 @@ export class ServerMemoryProvider implements PimMemoryProvider {
       this.flushTimer = null;
     }
     if (!this.cache) return;
-    await fetch("/api/pim/memory", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(memoryToApiPayload(this.cache)),
-    });
+    try {
+      const res = await fetch("/api/pim/memory", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(memoryToApiPayload(this.cache)),
+      });
+      if (!res.ok && process.env.NODE_ENV !== "production") {
+        console.warn("[pim/memory] flush failed:", res.status);
+      }
+    } catch {
+      /* ağ hatası — sessiz; bir sonraki flush dener */
+    }
   }
 
   async read(): Promise<PimMemory> {

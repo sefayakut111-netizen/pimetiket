@@ -939,13 +939,15 @@ export default function OdemePage() {
         sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
       }
       setLoading(false);
-      console.error("[odeme] payment init failed:", err);
       const raw =
         err instanceof Error ? err.message : "unknown";
       const errCode = raw.split(" (")[0]?.split(":")[0] ?? raw;
       if (CHECKOUT_STAY_ON_PAGE_ERRORS.has(errCode)) {
         toast.error(mapApiError(errCode, locale, raw));
         return;
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[odeme] payment init failed:", err);
       }
       router.push(
         `/odeme-sonuc?status=fail&reason=${encodeURIComponent(raw)}`

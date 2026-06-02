@@ -98,16 +98,28 @@ export async function PUT(req: Request) {
 
   const clamped = clampMemoryPayload(parsed.data);
 
-  const { error } = await supabase.from("pim_conversations").upsert(
-    {
-      user_id: user.id,
-      display_name: clamped.displayName ?? null,
-      facts: (clamped.facts ?? []) as unknown as import("@/lib/supabase/types").Json,
-      history: (clamped.history ?? []) as unknown as import("@/lib/supabase/types").Json,
-      last_summary: clamped.lastSummary ?? null,
-    },
-    { onConflict: "user_id" }
-  );
+  const row = {
+    user_id: user.id,
+    display_name: clamped.displayName ?? null,
+    facts: (clamped.facts ?? []) as unknown as import("@/lib/supabase/types").Json,
+    history: (clamped.history ?? []) as unknown as import("@/lib/supabase/types").Json,
+    last_summary: clamped.lastSummary ?? null,
+  };
+
+  const { data: existing, error: selectErr } = await supabase
+    .from("pim_conversations")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (selectErr) {
+    console.error("[pim/memory PUT] select", selectErr);
+    return NextResponse.json({ error: selectErr.message }, { status: 500 });
+  }
+
+  const { error } = existing
+    ? await supabase.from("pim_conversations").update(row).eq("user_id", user.id)
+    : await supabase.from("pim_conversations").insert(row);
 
   if (error) {
     console.error("[pim/memory PUT]", error);
