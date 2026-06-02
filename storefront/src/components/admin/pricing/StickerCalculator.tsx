@@ -1397,6 +1397,9 @@ function UretimOzetiCard({
   if (!result.ok) return null;
   const { geometry } = result;
   const { fit, roll } = geometry;
+  const isTabaka = fit.mode === "tabaka";
+  const baskiAlanM2 = isTabaka ? geometry.sheetAreaM2 : geometry.stickerArea;
+  const baskiAlanHint = isTabaka ? "tabakaların alanı" : "sticker alanı";
 
   return (
     <Card padding="p-5">
@@ -1424,8 +1427,8 @@ function UretimOzetiCard({
         <StatCell label="Toplam Tabaka" value={fit.sheetsNeeded.toString()} />
         <StatCell
           label="Baskı yapılan alan"
-          hint="tabakaların alanı"
-          value={geometry.sheetAreaM2.toFixed(3)}
+          hint={baskiAlanHint}
+          value={baskiAlanM2.toFixed(3)}
           unit="m²"
         />
         <StatCell
@@ -1455,8 +1458,14 @@ function UretimOzetiCard({
           </strong>
         </span>
         <span className="text-gri-700 tabular-nums text-[12px]">
-          {geometry.stickerArea.toFixed(3)} m² sticker ·{" "}
-          {geometry.sheetAreaM2.toFixed(3)} m² tabaka ·{" "}
+          {geometry.stickerArea.toFixed(3)} m² sticker
+          {isTabaka ? (
+            <>
+              {" · "}
+              {geometry.sheetAreaM2.toFixed(3)} m² tabaka
+            </>
+          ) : null}
+          {" · "}
           {geometry.totalM2.toFixed(3)} m² rulo
         </span>
       </div>
