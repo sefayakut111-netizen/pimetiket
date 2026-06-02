@@ -41,6 +41,7 @@ export const tr: TranslationDict = {
     searchOpen: "Ara",
     searchPlaceholder: "Sayfa, blog veya sipariş…",
     searchEmpty: "Sonuç bulunamadı",
+    comingSoon: "Yakında",
   },
   home: {
     eyebrow: "Online etiket ve sticker baskı — etikette uzman",
@@ -183,6 +184,11 @@ export const tr: TranslationDict = {
     stepQty: "Adet",
     livePreviewNoFile: "Canlı önizleme — her seçim anlık",
     livePreviewWithFile: "✓ Senin tasarımın önizlemede",
+    comingSoonBadge: "Yakında",
+    launchBannerTitle: "Etiket baskımız yakında",
+    launchBannerBody: (launchDate) =>
+      `Etiket baskımız şu an tasarım aşamasında. ${launchDate}'da kullanıma açılacaktır. O zamana kadar sticker baskı tam açık.`,
+    launchBannerCta: "Sticker'a göz at",
   },
   cart: {
     title: "Sepetim",

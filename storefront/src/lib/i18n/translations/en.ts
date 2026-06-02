@@ -41,6 +41,7 @@ export const en: TranslationDict = {
     searchOpen: "Search",
     searchPlaceholder: "Pages, blog or order…",
     searchEmpty: "No results found",
+    comingSoon: "Coming soon",
   },
   home: {
     eyebrow: "Online label & sticker printing — label specialists",
@@ -184,6 +185,11 @@ export const en: TranslationDict = {
     stepQty: "Quantity",
     livePreviewNoFile: "Live preview — every choice instantly",
     livePreviewWithFile: "✓ Your design is in the preview",
+    comingSoonBadge: "Coming soon",
+    launchBannerTitle: "Label printing coming soon",
+    launchBannerBody: (launchDate) =>
+      `Our label printing is currently in the design phase. It will open on ${launchDate}. Until then, sticker printing is fully available.`,
+    launchBannerCta: "Browse stickers",
   },
   cart: {
     title: "My cart",

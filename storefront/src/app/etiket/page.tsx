@@ -28,6 +28,10 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
 import { track } from "@/lib/analytics/posthog-events";
 import { ga4ViewItem } from "@/lib/analytics/ga4-events";
+import {
+  ETIKET_ENABLED,
+  ETIKET_LAUNCH_LABEL,
+} from "@/lib/etiket-feature-flags";
 import type { ProductCard as DbProductCard } from "@/lib/product-cards";
 
 interface EtiketCard {
@@ -185,21 +189,22 @@ const TABAKA_CARDS: EtiketCard[] = [
 function ProductCard({
   card,
   isEn,
+  previewOnly,
+  comingSoonLabel,
 }: {
   card: EtiketCard;
   isEn: boolean;
+  previewOnly?: boolean;
+  comingSoonLabel?: string;
 }) {
-  return (
-    <Link
-      href={`/etiket/yapilandir?form=${card.form}&shape=${card.shape}`}
-      prefetch={false}
-      className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
-    >
-      {/* Sefa 20 May v68: aspect reservation → CLS=0.
-          Sefa 22 May v68: 220/130 (1.69) → 3/2 (1.5) — Sefa'nın illüstrasyon
-          PNG'leri ~3:2 oran, kutu uygun. object-contain → object-cover +
-          padding kaldırıldı → görsel kart'a tam sığar, daha "premium" his. */}
+  const content = (
+    <>
       <div className="relative bg-gri-50 group-hover:bg-pim-mercan-tint/30 rounded-xl mb-3 transition-colors aspect-[3/2] overflow-hidden">
+        {previewOnly && comingSoonLabel ? (
+          <span className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-lacivert/90 text-white text-[11px] font-semibold uppercase tracking-wide">
+            {comingSoonLabel}
+          </span>
+        ) : null}
         <Image
           src={card.imageSrc}
           alt={isEn ? card.titleEn : card.titleTr}
@@ -215,6 +220,27 @@ function ProductCard({
       <p className="text-sm text-gri-600 mt-1">
         {isEn ? card.descEn : card.descTr}
       </p>
+    </>
+  );
+
+  if (previewOnly) {
+    return (
+      <div
+        aria-disabled="true"
+        className="block bg-white rounded-2xl border border-gri-200 p-4 opacity-75 pointer-events-none select-none"
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/etiket/yapilandir?form=${card.form}&shape=${card.shape}`}
+      prefetch={false}
+      className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
+    >
+      {content}
     </Link>
   );
 }
@@ -224,8 +250,9 @@ function ProductCard({
 // ============================================================
 
 export default function EtiketGridPage() {
-  const { locale } = useT();
+  const { locale, t } = useT();
   const isEn = locale === "en";
+  const previewOnly = !ETIKET_ENABLED;
 
   // Sefa 21 May v68 Mig 074: DB'den admin yönetimli kartlar.
   // İlk render fallback (hardcoded RULO_CARDS/TABAKA_CARDS) ile başlar
@@ -283,6 +310,23 @@ export default function EtiketGridPage() {
           </p>
         </header>
 
+        {previewOnly ? (
+          <div className="mb-10 rounded-2xl border border-pim-mercan/30 bg-pim-mercan-tint/40 p-6 md:p-8 text-center shadow-sm">
+            <h2 className="text-xl md:text-2xl font-bold text-lacivert">
+              {t.etiket.launchBannerTitle}
+            </h2>
+            <p className="mt-3 text-[15px] text-gri-800 max-w-2xl mx-auto leading-relaxed">
+              {t.etiket.launchBannerBody(ETIKET_LAUNCH_LABEL)}
+            </p>
+            <Link
+              href="/sticker"
+              className="inline-flex mt-5 items-center gap-1.5 px-5 py-2.5 rounded-full bg-pim-mercan text-white text-[14px] font-semibold hover:bg-pim-mercan/90 transition-colors"
+            >
+              {t.etiket.launchBannerCta} →
+            </Link>
+          </div>
+        ) : null}
+
         {/* Sefa 20 May v68: 2 sütunlu layout — sol RULO, sağ TABAKA.
             lg+: yan yana (2-col), her sütun içinde 2-col kart grid + ortada
             ince dikey ayırıcı çizgi (lg:divide-x).
@@ -308,6 +352,10 @@ export default function EtiketGridPage() {
                   key={`${card.form}-${card.shape}`}
                   card={card}
                   isEn={isEn}
+                  previewOnly={previewOnly}
+                  comingSoonLabel={
+                    previewOnly ? t.etiket.comingSoonBadge : undefined
+                  }
                 />
               ))}
             </div>
@@ -333,6 +381,10 @@ export default function EtiketGridPage() {
                   key={`${card.form}-${card.shape}`}
                   card={card}
                   isEn={isEn}
+                  previewOnly={previewOnly}
+                  comingSoonLabel={
+                    previewOnly ? t.etiket.comingSoonBadge : undefined
+                  }
                 />
               ))}
             </div>

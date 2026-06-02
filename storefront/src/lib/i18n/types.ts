@@ -67,6 +67,7 @@ export type TranslationDict = {
     searchOpen: string;
     searchPlaceholder: string;
     searchEmpty: string;
+    comingSoon: string;
   };
   // ====== Home ======
   home: {
@@ -205,6 +206,10 @@ export type TranslationDict = {
     stepQty: string;
     livePreviewNoFile: string;
     livePreviewWithFile: string;
+    comingSoonBadge: string;
+    launchBannerTitle: string;
+    launchBannerBody: (launchDate: string) => string;
+    launchBannerCta: string;
   };
   // ====== Cart + Checkout ======
   cart: {

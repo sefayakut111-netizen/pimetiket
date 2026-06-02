@@ -1,3 +1,7 @@
+/** Kademeli açılış: etiket sipariş/konfigüratör kapalı; 29 Haziran 2026'da true yapılacak. */
+export const ETIKET_ENABLED = false;
+export const ETIKET_LAUNCH_LABEL = "29 Haziran 2026";
+
 /**
  * Pim Etiket — /etiket/yapilandir feature flags
  *

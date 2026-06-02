@@ -22,6 +22,7 @@ import {
 } from "@/lib/customer-cart";
 import { useUser, signOut } from "@/lib/supabase/use-user";
 import { useT } from "@/lib/i18n/context";
+import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 
 export function TopBar() {
   const pathname = usePathname();
@@ -49,7 +50,11 @@ export function TopBar() {
   const navItems = [
     { href: "/", label: t.nav.home },
     { href: "/sticker", label: t.nav.sticker },
-    { href: "/etiket", label: t.nav.etiket },
+    {
+      href: "/etiket",
+      label: t.nav.etiket,
+      badge: !ETIKET_ENABLED ? t.nav.comingSoon : undefined,
+    },
     { href: "/sablonlar", label: t.nav.templates },
     ...(user ? [{ href: "/editor", label: t.nav.editor }] : []),
     ...(user ? [{ href: "/panelim", label: t.nav.dashboard }] : []),
@@ -204,6 +209,11 @@ export function TopBar() {
                   )}
                 >
                   {item.label}
+                  {"badge" in item && item.badge ? (
+                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full bg-lacivert/10 text-lacivert text-[10px] font-semibold uppercase tracking-wide align-middle">
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -435,6 +445,11 @@ export function TopBar() {
                     )}
                   >
                     {item.label}
+                    {"badge" in item && item.badge ? (
+                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/20 text-[11px] font-semibold uppercase tracking-wide">
+                        {item.badge}
+                      </span>
+                    ) : null}
                   </Link>
                 );
               })}

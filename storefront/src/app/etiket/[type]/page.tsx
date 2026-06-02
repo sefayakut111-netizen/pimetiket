@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 import { TypeLandingPage } from "@/components/seo/TypeLandingPage";
 import { withSocialMetadata } from "@/lib/seo/page-metadata";
 import {
@@ -37,6 +38,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export const revalidate = 3600;
 
 export default async function EtiketTypeLandingPage({ params }: Props) {
+  if (!ETIKET_ENABLED) redirect("/etiket");
+
   const { type } = await params;
   const landing = getEtiketTypeLanding(type);
   if (!landing) notFound();

@@ -4,6 +4,7 @@
 
 import { tool } from "ai";
 import { z } from "zod";
+import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function buildConfiguratorUrl(params: {
@@ -13,6 +14,14 @@ function buildConfiguratorUrl(params: {
   height?: number;
   qty?: number;
 }): { type: "redirect"; url: string; label: string } {
+  if (params.product === "etiket" && !ETIKET_ENABLED) {
+    return {
+      type: "redirect",
+      url: "/etiket",
+      label: "Etiket sayfasına git (yakında)",
+    };
+  }
+
   const base = params.product === "sticker" ? "/sticker" : "/etiket";
   const qs = new URLSearchParams();
   if (params.material) qs.set("material", params.material);
