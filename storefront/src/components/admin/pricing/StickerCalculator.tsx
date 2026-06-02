@@ -1041,13 +1041,16 @@ function OperatorCostHero({
         Fason + operasyon · tier uygulanmaz
       </p>
       <p className="text-[12px] text-gri-500 mt-2 tabular-nums leading-relaxed">
-        {qty.toLocaleString("tr-TR")} adet · {geometry.fit.sheetsNeeded} tabaka ·{" "}
+        {qty.toLocaleString("tr-TR")} adet ·{" "}
+        {geometry.fit.sheetsNeeded}{" "}
+        {geometry.fit.mode === "tabaka" ? "tabaka" : "rulo"} ·{" "}
         {geometry.fit.cols}×{geometry.fit.rows} grid ·{" "}
         {geometry.fit.mode === "tabaka"
           ? `esnek tabaka ${geometry.fit.sheetW}×${geometry.fit.sheetH}mm`
           : "die-cut direkt rulo"}
         <br />
-        Baskı alanı {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
+        {geometry.fit.mode === "tabaka" ? "Baskı alanı" : "Sticker alanı"}{" "}
+        {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
         {geometry.totalM2.toFixed(3)} m²
       </p>
       {!compact && (
@@ -1170,6 +1173,7 @@ function SitePriceHero({
   const vat = liveSitePrice.final - liveSitePrice.with_fee;
   const billableM2 = liveSitePrice.billable_m2 ?? geometry?.totalM2 ?? 0;
   const sheetsNeeded = geometry?.fit.sheetsNeeded ?? 0;
+  const isTabakaLayout = geometry?.fit.mode === "tabaka";
   const layoutHint =
     geometry?.fit.mode === "tabaka"
       ? `${geometry.fit.cols}×${geometry.fit.rows} · esnek ${geometry.fit.sheetW}×${geometry.fit.sheetH}mm`
@@ -1196,7 +1200,8 @@ function SitePriceHero({
         </div>
         <p className="text-[12px] text-white/70 mt-1 tabular-nums leading-relaxed">
           {fmt(liveSitePrice.unit_price, 2)} ₺/adet · {qty.toLocaleString("tr-TR")}{" "}
-          adet · {sheetsNeeded} tabaka
+          adet · {sheetsNeeded}{" "}
+          {isTabakaLayout ? "tabaka" : "rulo"}
           {layoutHint ? ` · ${layoutHint}` : ""} · fatura {billableM2.toFixed(3)} m²
           {geometry ? (
             <>
@@ -1309,7 +1314,7 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
         <div className="flex gap-5 shrink-0">
           <RpStat label="Rulo" value={roll.rollsNeeded.toString()} />
           <RpStat
-            label="Tabaka/Rulo"
+            label={isTabaka ? "Tabaka/Rulo" : "Sticker/Rulo"}
             value={`${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
           />
           <RpStat label="Verimlilik" value={`%${efficiency.toFixed(0)}`} />
@@ -1327,15 +1332,15 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
           <span>
             {roll.rollsNeeded === 1 ? "Tek rulo" : `${roll.rollsNeeded} rulo`} ·{" "}
             {roll.rollsNeeded === 1
-              ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} tabaka`
-              : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
+              ? `${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll} ${isTabaka ? "tabaka" : "sticker"}`
+              : `son: ${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}${isTabaka ? "" : " sticker"}`}
           </span>
           <span>
             {fit.cols}×{fit.rows} grid ·{" "}
             {fit.mode === "diecut"
               ? fit.forcedDieCut
                 ? "die-cut (tabaka sığmadı)"
-                : "die-cut direkt rulo"
+                : `Sticker ${fit.stickerW}×${fit.stickerH}mm · die-cut direkt rulo`
               : `esnek tabaka ${fit.sheetW}×${fit.sheetH}mm`}
           </span>
         </div>
@@ -1440,8 +1445,13 @@ function UretimOzetiCard({
 
       {/* 4 stat */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCell label="Adet/Tabaka" value={fit.perSheet.toString()} />
-        <StatCell label="Toplam Tabaka" value={fit.sheetsNeeded.toString()} />
+        <StatCell
+          label={isTabaka ? "Adet/Tabaka" : "Adet/Rulo"}
+          value={fit.perSheet.toString()}
+        />
+        {isTabaka && (
+          <StatCell label="Toplam Tabaka" value={fit.sheetsNeeded.toString()} />
+        )}
         <StatCell
           label="Baskı yapılan alan"
           hint={baskiAlanHint}
@@ -1449,7 +1459,7 @@ function UretimOzetiCard({
           unit="m²"
         />
         <StatCell
-          label="Fireli rulo tabaka"
+          label={isTabaka ? "Fireli rulo tabaka" : "Fireli rulo"}
           hint="fire + kesim markası dahil"
           value={geometry.totalM2.toFixed(3)}
           unit="m²"
@@ -1489,8 +1499,12 @@ function UretimOzetiCard({
 
       {/* Layout details */}
       <div className="mt-3 text-[10.5px] text-gri-500 tabular-nums">
-        Tabaka: {fit.sheetW}×{fit.sheetH}mm · Grid: {fit.cols}×{fit.rows} · Gap:{" "}
-        {fit.gap}mm
+        {isTabaka ? (
+          <>Tabaka: {fit.sheetW}×{fit.sheetH}mm · </>
+        ) : (
+          <>Sticker: {fit.stickerW}×{fit.stickerH}mm · </>
+        )}
+        Grid: {fit.cols}×{fit.rows} · Gap: {fit.gap}mm
         {fit.forcedDieCut && " · zorla die-cut"}
       </div>
     </Card>
