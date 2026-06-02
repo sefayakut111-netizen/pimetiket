@@ -48,17 +48,24 @@ function useVisibleColumns(): number {
   return count;
 }
 
-function useColumnLayout(visibleCols: number) {
+function useColumnLayout(visibleCols: number, enabled: boolean) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [colWidth, setColWidth] = useState(0);
 
   useEffect(() => {
+    if (!enabled) {
+      setColWidth(0);
+      return;
+    }
+
     const el = viewportRef.current;
     if (!el) return;
 
     const measure = () => {
       const w = el.clientWidth;
-      setColWidth((w - COLUMN_GAP_PX * (visibleCols - 1)) / visibleCols);
+      if (w > 0) {
+        setColWidth((w - COLUMN_GAP_PX * (visibleCols - 1)) / visibleCols);
+      }
     };
 
     measure();
@@ -69,11 +76,12 @@ function useColumnLayout(visibleCols: number) {
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [visibleCols]);
+  }, [visibleCols, enabled]);
 
   const stepPx = colWidth > 0 ? colWidth + COLUMN_GAP_PX : 0;
+  const colWidthCss = `calc((100% - ${(visibleCols - 1) * COLUMN_GAP_PX}px) / ${visibleCols})`;
 
-  return { viewportRef, colWidth, stepPx };
+  return { viewportRef, colWidth, stepPx, colWidthCss };
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -146,11 +154,18 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
   const [paused, setPaused] = useState(false);
   const visibleCols = useVisibleColumns();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const { viewportRef, colWidth, stepPx } = useColumnLayout(visibleCols);
 
   const columns = useMemo(
     () => (items ? chunkIntoColumns(items) : []),
     [items]
+  );
+
+  const carouselEnabled =
+    columns.length > visibleCols && !prefersReducedMotion;
+
+  const { viewportRef, colWidth, stepPx, colWidthCss } = useColumnLayout(
+    visibleCols,
+    carouselEnabled
   );
 
   const fetchItems = useCallback(async () => {
@@ -173,9 +188,6 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
   useEffect(() => {
     void fetchItems();
   }, [fetchItems]);
-
-  const carouselEnabled =
-    columns.length > visibleCols && !prefersReducedMotion;
 
   useEffect(() => {
     setActiveCol(0);
@@ -207,6 +219,11 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
           <div
             ref={viewportRef}
             className="mt-10 overflow-hidden"
+            style={
+              {
+                "--col-w": colWidthCss,
+              } as React.CSSProperties
+            }
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             onFocusCapture={() => setPaused(true)}
@@ -218,14 +235,16 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
                 transform:
                   stepPx > 0
                     ? `translateX(-${activeCol * stepPx}px)`
-                    : undefined,
+                    : `translateX(calc(-${activeCol} * (var(--col-w) + ${COLUMN_GAP_PX}px)))`,
               }}
             >
               {columns.map((col, colIdx) => (
                 <div
                   key={colIdx}
                   className="flex-shrink-0 flex flex-col gap-4 min-w-0"
-                  style={colWidth > 0 ? { width: colWidth } : undefined}
+                  style={{
+                    width: colWidth > 0 ? colWidth : "var(--col-w)",
+                  }}
                 >
                   <GalleryCell item={col[0]} />
                   <GalleryCell item={col[1]} />
