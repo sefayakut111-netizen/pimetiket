@@ -1274,6 +1274,9 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
   const { geometry } = result;
   const { fit, roll } = geometry;
   const efficiency = 100 - geometry.wastePct;
+  const isTabaka = fit.mode === "tabaka";
+  const baskiAlanM2 = isTabaka ? geometry.sheetAreaM2 : geometry.stickerArea;
+  const baskiAlanLabel = isTabaka ? "Baskı yapılan alan" : "Sticker alanı";
 
   return (
     <Card padding="p-0" className="overflow-hidden">
@@ -1328,8 +1331,8 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
           </span>
         </div>
         <p className="mt-1.5 text-gri-700 leading-snug">
-          Baskı yapılan alan:{" "}
-          <strong>{geometry.sheetAreaM2.toFixed(3)} m²</strong>
+          {baskiAlanLabel}:{" "}
+          <strong>{baskiAlanM2.toFixed(3)} m²</strong>
           {" · "}
           Fireli rulo: <strong>{geometry.totalM2.toFixed(3)} m²</strong>
           {" · "}
