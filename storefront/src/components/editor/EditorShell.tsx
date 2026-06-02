@@ -1166,6 +1166,9 @@ export default function EditorShell() {
                       onChange={(e) =>
                         handleOffsetChange(parseFloat(e.target.value))
                       }
+                      onPointerUp={() =>
+                        postToPoc({ type: "pim-flush-cutline" })
+                      }
                       className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
                     />
                   </label>
@@ -1194,6 +1197,9 @@ export default function EditorShell() {
                         disabled={!designLoaded}
                         onChange={(e) =>
                           handleSmoothnessChange(parseInt(e.target.value, 10))
+                        }
+                        onPointerUp={() =>
+                          postToPoc({ type: "pim-flush-cutline" })
                         }
                         className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
                       />

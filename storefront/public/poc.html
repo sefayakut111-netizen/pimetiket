@@ -2250,9 +2250,7 @@ window.addEventListener('message', (e) => {
         document.getElementById('offsetVal').textContent = parseFloat(slider.value).toFixed(1);
         updateOffsetNote();
         if (currentMat) {
-          generateCutline();
-          generateWhitePlan();
-          render();
+          pimScheduleCutlineRefresh();
         }
       }
     } else if (msg.type === 'pim-set-smoothness') {
@@ -2262,10 +2260,12 @@ window.addEventListener('message', (e) => {
         const valEl = document.getElementById('smoothVal');
         if (valEl) valEl.textContent = slider.value;
         if (currentMat) {
-          generateCutline();
-          generateWhitePlan();
-          render();
+          pimScheduleCutlineRefresh();
         }
+      }
+    } else if (msg.type === 'pim-flush-cutline') {
+      if (currentMat) {
+        pimScheduleCutlineRefresh(true);
       }
     } else if (msg.type === 'pim-set-cut-type') {
       cutType = msg.cutType === 'thrucut' ? 'thrucut' : 'kisscut';
@@ -3284,6 +3284,32 @@ function processImage(img, file) {
 // ============================================================
 // BIÇAK ÜRETİMİ (Ana algoritma)
 // ============================================================
+let pimCutlineRefreshTimer = null;
+
+/** Slider sürüklerken OpenCV'yi her input'ta değil, kısa gecikmeyle çalıştır. */
+function pimRunCutlineRefresh() {
+  pimCutlineRefreshTimer = null;
+  if (!currentMat) return;
+  generateCutline();
+  generateWhitePlan();
+  render();
+  updateMetadataDisplay();
+  generatePimComment();
+}
+
+function pimScheduleCutlineRefresh(immediate) {
+  if (immediate) {
+    if (pimCutlineRefreshTimer) {
+      clearTimeout(pimCutlineRefreshTimer);
+      pimCutlineRefreshTimer = null;
+    }
+    pimRunCutlineRefresh();
+    return;
+  }
+  if (pimCutlineRefreshTimer) clearTimeout(pimCutlineRefreshTimer);
+  pimCutlineRefreshTimer = setTimeout(pimRunCutlineRefresh, 80);
+}
+
 function generateCutline() {
   if (!currentMat || !cvReady) return;
 
@@ -4605,11 +4631,7 @@ sliders.forEach(id => {
           imageMetadata.heightMm = ((imageMetadata.originalH / dpi) * 25.4).toFixed(1);
         }
       }
-      generateCutline();
-      generateWhitePlan();
-      render();
-      updateMetadataDisplay();
-      generatePimComment();
+      pimScheduleCutlineRefresh();
     }
   });
 });

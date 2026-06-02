@@ -22,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isFason = pathname?.startsWith("/fason/") ?? false;
   const isEditor = pathname?.startsWith("/editor") ?? false;
   const isCheckout = pathname?.startsWith("/odeme") ?? false;
+  const isProofEditor = pathname?.includes("/duzenle/") ?? false;
 
   // Şema bump'ında stale cache temizliği — sadece bir kez boot'ta çalışır
   useEffect(() => {
@@ -51,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       {!isEditor ? <Footer /> : null}
-      {!isEditor && !isCheckout ? <PimChat /> : null}
+      {!isEditor && !isCheckout && !isProofEditor ? <PimChat /> : null}
     </>
   );
 }
