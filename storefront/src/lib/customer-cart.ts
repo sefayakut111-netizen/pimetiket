@@ -125,6 +125,8 @@ export interface CustomerCartSummary {
   shipping: number;
   total: number;
   itemCount: number;
+  freeShippingThreshold: number;
+  shippingFee: number;
 }
 
 // Kargo eşiği — 500 ₺ üzeri ücretsiz (Sefa kararı 18 May — KB ve SSS
@@ -147,6 +149,14 @@ export function setCustomerCartShippingSettings(
     runtimeFreeShippingThreshold = freeThreshold;
   }
   notifyChange();
+}
+
+export function getRuntimeFreeShippingThreshold(): number {
+  return runtimeFreeShippingThreshold;
+}
+
+export function getRuntimeShippingFee(): number {
+  return runtimeShippingFee;
 }
 
 // ============================================================
@@ -586,6 +596,8 @@ export function summarizeCustomerCart(): CustomerCartSummary {
     shipping,
     total: subtotal + shipping,
     itemCount: items.length,
+    freeShippingThreshold: runtimeFreeShippingThreshold,
+    shippingFee: runtimeShippingFee,
   };
 }
 

@@ -15,7 +15,10 @@ import { quoteSticker, quoteEtiket } from "./pricing-engine";
 import type {
   CustomerQuoteResult,
   CustomerQuoteInput,
-  StickerCutType,
+} from "./sticker-customer-pricing";
+import {
+  resolveStickerGeomCut,
+  resolveStickerQuoteDimensions,
 } from "./sticker-customer-pricing";
 import type {
   CustomerEtiketQuoteResult,
@@ -26,13 +29,9 @@ export function quoteStickerFromConfig(
   config: ProfileConfig,
   input: CustomerQuoteInput
 ): CustomerQuoteResult | null {
-  const isKartli = input.cut === "kartli";
-  const geomWidth = isKartli ? input.width + 10 : input.width;
-  const geomHeight = isKartli ? input.height + 10 : input.height;
-  const geomCut: StickerCutType =
-    input.cut === "kisscut" || input.cut === "kartli"
-      ? "diecut"
-      : (input.cut ?? "diecut");
+  const { geomWidth, geomHeight, pricingWidthMm, pricingHeightMm } =
+    resolveStickerQuoteDimensions(input);
+  const geomCut = resolveStickerGeomCut(input.cut);
   const geomResult = quoteSticker({
     width: geomWidth,
     height: geomHeight,
@@ -56,8 +55,8 @@ export function quoteStickerFromConfig(
 
   const priceResult = calculatePrice(
     {
-      width_mm: input.width,
-      height_mm: input.height,
+      width_mm: pricingWidthMm,
+      height_mm: pricingHeightMm,
       qty: input.qty,
       material_id: input.material,
       selected_options,

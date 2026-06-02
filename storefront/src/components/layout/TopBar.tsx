@@ -17,6 +17,7 @@ import {
   summarizeCustomerCart,
   refreshCustomerCart,
   ensureAuthBindings,
+  setCustomerCartShippingSettings,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
 import { useUser, signOut } from "@/lib/supabase/use-user";
@@ -77,6 +78,19 @@ export function TopBar() {
       });
     };
     void refreshCustomerCart().then(refresh);
+    void fetch("/api/public/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json?.settings) {
+          setCustomerCartShippingSettings(
+            Number(json.settings.shipping_fee_try ?? 49),
+            Number(json.settings.free_shipping_threshold ?? 500)
+          );
+        }
+      })
+      .catch(() => {
+        /* silent — fallback const kalır */
+      });
     window.addEventListener("pim_customer_cart_updated", refresh);
     window.addEventListener("storage", refresh);
     return () => {

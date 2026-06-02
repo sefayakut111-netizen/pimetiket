@@ -5,12 +5,14 @@
  * Desktop-only (md+); mobile'da hover yok zaten direkt /sepet'e gider.
  */
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Pim } from "@/components/Pim";
 import {
   type CustomerCartItem,
   FREE_SHIPPING_THRESHOLD,
+  getRuntimeFreeShippingThreshold,
 } from "@/lib/customer-cart";
 import { useT } from "@/lib/i18n/context";
 
@@ -25,6 +27,20 @@ interface Props {
 
 export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
   const { t } = useT();
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(
+    FREE_SHIPPING_THRESHOLD
+  );
+
+  useEffect(() => {
+    setFreeShippingThreshold(getRuntimeFreeShippingThreshold());
+    const onCartUpdated = () => {
+      setFreeShippingThreshold(getRuntimeFreeShippingThreshold());
+    };
+    window.addEventListener("pim_customer_cart_updated", onCartUpdated);
+    return () => {
+      window.removeEventListener("pim_customer_cart_updated", onCartUpdated);
+    };
+  }, []);
 
   return (
     <div className="hidden md:block absolute top-full right-0 mt-2 w-[340px] bg-white rounded-2xl shadow-2 ring-1 ring-gri-200 overflow-hidden z-50 invisible opacity-0 translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
@@ -104,7 +120,7 @@ export function MiniCartPopup({ items, subtotal, shipping, total }: Props) {
 
           {shipping > 0 && (
             <div className="px-3 py-2 bg-sari-soft text-sari-koyu text-[11.5px] leading-tight">
-              💡 {fmt(FREE_SHIPPING_THRESHOLD - subtotal)} ₺
+              💡 {fmt(freeShippingThreshold - subtotal)} ₺
             </div>
           )}
 

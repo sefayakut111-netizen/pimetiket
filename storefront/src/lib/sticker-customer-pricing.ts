@@ -20,6 +20,7 @@ import {
 } from "./pricing-engine";
 import { getDefaultInput } from "./pricing-profiles";
 import { FALLBACK_STICKER_CONFIG } from "./pricing-config-types";
+import { KARTLI_MARGIN_MM } from "@/lib/editor/cutline/export-svg";
 
 // ============================================================
 // Customer-facing types
@@ -113,6 +114,35 @@ export interface CustomerQuoteError {
 
 export type CustomerQuoteResult = CustomerQuoteSuccess | CustomerQuoteError;
 
+/** Kartlı sticker — fiyat/geometri için dış kart boyutu (sticker + 2×margin). */
+export function resolveStickerQuoteDimensions(
+  input: Pick<CustomerQuoteInput, "width" | "height" | "cut">
+): {
+  geomWidth: number;
+  geomHeight: number;
+  pricingWidthMm: number;
+  pricingHeightMm: number;
+} {
+  const isKartli = input.cut === "kartli";
+  const marginTotal = KARTLI_MARGIN_MM * 2;
+  const geomWidth = isKartli ? input.width + marginTotal : input.width;
+  const geomHeight = isKartli ? input.height + marginTotal : input.height;
+  return {
+    geomWidth,
+    geomHeight,
+    pricingWidthMm: geomWidth,
+    pricingHeightMm: geomHeight,
+  };
+}
+
+export function resolveStickerGeomCut(
+  cut: StickerCutType | undefined
+): "tabaka" | "diecut" {
+  const key = cut ?? "diecut";
+  if (key === "kisscut" || key === "kartli") return "diecut";
+  return key === "tabaka" ? "tabaka" : "diecut";
+}
+
 // ============================================================
 // Quote
 // ============================================================
@@ -133,12 +163,8 @@ export function quoteCustomerSticker(
   const cutKey = input.cut ?? "diecut";
   const cutMult = CUT_MULT[cutKey];
   const surchargeMultiplier = matMult * finMult * cutMult;
-  const geomCut =
-    cutKey === "kisscut" || cutKey === "kartli" ? "diecut" : cutKey;
-  const geomWidth =
-    cutKey === "kartli" ? input.width + 10 : input.width;
-  const geomHeight =
-    cutKey === "kartli" ? input.height + 10 : input.height;
+  const { geomWidth, geomHeight } = resolveStickerQuoteDimensions(input);
+  const geomCut = resolveStickerGeomCut(cutKey);
 
   const result: QuoteResult = quoteSticker({
     width: geomWidth,

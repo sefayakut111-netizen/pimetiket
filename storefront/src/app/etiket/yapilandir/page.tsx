@@ -630,7 +630,7 @@ function shapeLabel(shape: EtiketShape, locale: string): string {
     case "diecut":
       return isEn ? "Die-Cut" : "Özel Kesim";
     case "clear":
-      return isEn ? "Clear" : "Şeffaf";
+      return isEn ? "Rectangle" : "Dikdörtgen";
     case "circle":
       return isEn ? "Circle" : "Yuvarlak";
     case "square":
@@ -692,17 +692,13 @@ function EtiketPage() {
   // searchParams değişirse (client-side nav) sync — kullanıcı farklı karttan
   // yeni girerse formFactor + shape + cornerStyle yeniden eşleşir
   useEffect(() => {
-    const sp = searchParams.get("shape");
-    // Eski "rounded" link'i → rectangle + cornerStyle rounded
-    if (sp === "rounded") {
-      setShape("rectangle");
-      setCornerStyle("rounded");
-    } else if (sp && (VALID_SHAPES as readonly string[]).includes(sp)) {
-      setShape(sp as EtiketShape);
-    }
-    const corner = searchParams.get("corner");
+    const params = new URLSearchParams(searchParams.toString());
+    setShape(readInitialShape(params));
+    const corner = params.get("corner");
     if (corner === "rounded" || corner === "sharp") {
       setCornerStyle(corner);
+    } else if (params.get("shape") === "rounded") {
+      setCornerStyle("rounded");
     }
   }, [searchParams]);
   const [material, setMaterial] = useState<EtiketMaterialId>(

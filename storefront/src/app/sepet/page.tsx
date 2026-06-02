@@ -28,7 +28,6 @@ import {
   ensureAuthBindings,
   setCustomerCartShippingSettings,
   isCustomerCartHydrating,
-  FREE_SHIPPING_THRESHOLD,
   CUSTOMER_CART_LIMIT,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
@@ -274,6 +273,7 @@ export default function SepetPage() {
   const subtotal = summary.subtotal;
   const shipping = summary.shipping;
   const total = summary.total;
+  const freeShippingThreshold = summary.freeShippingThreshold;
   const belowMinOrder =
     minOrderTotal > 0 && subtotal < minOrderTotal && subtotal > 0;
   const aboveMaxOrder = maxOrderTotal > 0 && subtotal > maxOrderTotal;
@@ -541,7 +541,7 @@ export default function SepetPage() {
                     <div className="text-[12.5px] leading-relaxed font-semibold mb-1.5">
                       🚚{" "}
                       {t.cart.freeShippingHint(
-                        fmt(FREE_SHIPPING_THRESHOLD - subtotal)
+                        fmt(freeShippingThreshold - subtotal)
                       )}
                     </div>
                     <div
@@ -549,7 +549,7 @@ export default function SepetPage() {
                       role="progressbar"
                       aria-valuenow={Math.min(
                         100,
-                        Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100)
+                        Math.round((subtotal / freeShippingThreshold) * 100)
                       )}
                       aria-valuemin={0}
                       aria-valuemax={100}
@@ -558,13 +558,13 @@ export default function SepetPage() {
                       <div
                         className="h-full bg-sari rounded-full transition-all duration-500"
                         style={{
-                          width: `${Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)}%`,
+                          width: `${Math.min(100, (subtotal / freeShippingThreshold) * 100)}%`,
                         }}
                       />
                     </div>
                     <div className="mt-1 flex justify-between text-[10.5px] tabular-nums">
                       <span>{fmt(subtotal)} ₺</span>
-                      <span>{fmt(FREE_SHIPPING_THRESHOLD)} ₺</span>
+                      <span>{fmt(freeShippingThreshold)} ₺</span>
                     </div>
                   </div>
                 )}
@@ -573,10 +573,10 @@ export default function SepetPage() {
                 {shipping === 0 && subtotal > 0 && (
                   <div
                     className="bg-yesil-soft text-yesil p-2.5 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5"
-                    aria-label={`Kargo bedava: ${fmt(subtotal)} ₺, eşik ${fmt(FREE_SHIPPING_THRESHOLD)} ₺`}
+                    aria-label={`Kargo bedava: ${fmt(subtotal)} ₺, eşik ${fmt(freeShippingThreshold)} ₺`}
                   >
                     <span aria-hidden="true">🎉</span>
-                    {x.shippingFreeFull(fmt(subtotal), fmt(FREE_SHIPPING_THRESHOLD))}
+                    {x.shippingFreeFull(fmt(subtotal), fmt(freeShippingThreshold))}
                   </div>
                 )}
               </div>
