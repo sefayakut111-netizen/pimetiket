@@ -39,12 +39,18 @@ export function RollPlanSvg({
   const { fit, roll } = geometry;
   const dist = computeSheetDistribution(geometry);
 
-  const rollW = roll.rollW;
-  const usedW = roll.cols * fit.sheetW;
-  const sidePad = (rollW - usedW) / 2;
+  const isDiecut = fit.mode === "diecut";
+  const gap = fit.gap;
+  const cellX = fit.sheetH;
+  const cellY = fit.sheetW;
+  const pitchX = isDiecut ? cellX + gap : cellX;
+  const pitchY = isDiecut ? cellY + gap : cellY;
 
-  const SHEET_X = fit.sheetH;
-  const SHEET_Y = fit.sheetW;
+  const rollW = roll.rollW;
+  const usedW = isDiecut
+    ? roll.cols * cellY + Math.max(0, roll.cols - 1) * gap
+    : roll.cols * cellY;
+  const sidePad = (rollW - usedW) / 2;
 
   const rollsToShow = Math.min(roll.rollsNeeded, maxRollsToShow);
   const showSummary = roll.rollsNeeded > maxRollsToShow;
@@ -75,8 +81,12 @@ export function RollPlanSvg({
         usedCols={isActualLastRoll ? roll.lastRollUsedCols : roll.cols}
         usedRows={isActualLastRoll ? roll.lastRollUsedRows : roll.rows}
         hideEmptySlots={isActualLastRoll && roll.sheetsOnLastRoll < roll.sheetsPerRoll}
-        sheetX={SHEET_X}
-        sheetY={SHEET_Y}
+        pitchX={pitchX}
+        pitchY={pitchY}
+        cellX={cellX}
+        cellY={cellY}
+        isDiecut={isDiecut}
+        gap={gap}
         cols={roll.cols}
         rows={roll.rows}
         sheetsPerRoll={roll.sheetsPerRoll}
@@ -257,8 +267,12 @@ interface RollGroupProps {
   usedCols: number;
   usedRows: number;
   hideEmptySlots: boolean;
-  sheetX: number;
-  sheetY: number;
+  pitchX: number;
+  pitchY: number;
+  cellX: number;
+  cellY: number;
+  isDiecut: boolean;
+  gap: number;
   cols: number;
   rows: number;
   sheetsPerRoll: number;
@@ -281,8 +295,12 @@ function RollGroup({
   usedCols,
   usedRows,
   hideEmptySlots,
-  sheetX,
-  sheetY,
+  pitchX,
+  pitchY,
+  cellX,
+  cellY,
+  isDiecut,
+  gap,
   cols,
   rows,
   sheetsPerRoll,
@@ -297,11 +315,14 @@ function RollGroup({
 }: RollGroupProps) {
   const isLastRoll = rollI === rollsNeeded - 1;
   const sheetsThisRoll = isLastRoll ? sheetsOnLastRoll : sheetsPerRoll;
-  const contentW = usedCols * sheetY;
+  const contentW = isDiecut
+    ? usedCols * cellY + Math.max(0, usedCols - 1) * gap
+    : usedCols * cellY;
   const sidePad = Math.max(ROLL_MARGIN_X, (effectiveRollW - contentW) / 2);
   const annotFont = Math.max(22, effectiveRollW * 0.045);
 
   const sheets: React.ReactNode[] = [];
+  const gapMarkers: React.ReactNode[] = [];
   let localIdx = 0;
 
   const colLimit = hideEmptySlots ? usedCols : cols;
@@ -311,18 +332,47 @@ function RollGroup({
     for (let xx = 0; xx < rowLimit; xx++) {
       if (localIdx >= sheetsThisRoll) break;
 
-      const sx = padX + ROLL_START_MARGIN + xx * sheetX;
-      const sy = rollY + sidePad + yy * sheetY;
+      const sx = padX + ROLL_START_MARGIN + xx * pitchX;
+      const sy = rollY + sidePad + yy * pitchY;
       const isVeryLast = isLastRoll && localIdx === sheetsThisRoll - 1;
       const stickersInThisSheet = isVeryLast ? lastSheetCount : balancedPerSheet;
+
+      if (isDiecut) {
+        if (xx > 0) {
+          gapMarkers.push(
+            <rect
+              key={`gx-${localIdx}`}
+              x={sx - gap}
+              y={sy}
+              width={gap}
+              height={cellY}
+              fill="#E8E0D0"
+              opacity={0.85}
+            />
+          );
+        }
+        if (yy > 0) {
+          gapMarkers.push(
+            <rect
+              key={`gy-${localIdx}`}
+              x={sx}
+              y={sy - gap}
+              width={cellX}
+              height={gap}
+              fill="#E8E0D0"
+              opacity={0.85}
+            />
+          );
+        }
+      }
 
       sheets.push(
         <SheetRect
           key={`s-${localIdx}`}
           x={sx + 4}
           y={sy + 4}
-          width={sheetX - 8}
-          height={sheetY - 8}
+          width={cellX - 8}
+          height={cellY - 8}
           label={`T${rollI * sheetsPerRoll + localIdx + 1}`}
           qty={stickersInThisSheet}
           sheetSize={`${sheetW}×${sheetH} · ${stickerGrid}`}
@@ -338,15 +388,15 @@ function RollGroup({
       for (let xx = 0; xx < rows; xx++) {
         const idx = yy * rows + xx;
         if (idx < sheetsThisRoll) continue;
-        const sx = padX + ROLL_START_MARGIN + xx * sheetX;
-        const sy = rollY + sidePad + yy * sheetY;
+        const sx = padX + ROLL_START_MARGIN + xx * pitchX;
+        const sy = rollY + sidePad + yy * pitchY;
         sheets.push(
           <EmptySheet
             key={`e-${idx}`}
             x={sx + 4}
             y={sy + 4}
-            width={sheetX - 8}
-            height={sheetY - 8}
+            width={cellX - 8}
+            height={cellY - 8}
           />
         );
       }
@@ -440,7 +490,9 @@ function RollGroup({
     </>
   );
 
-  const usedLength = usedRows * sheetX;
+  const usedLength = isDiecut
+    ? usedRows * cellX + Math.max(0, usedRows - 1) * gap
+    : usedRows * pitchX;
   const usableLength = ROLL_L - ROLL_START_MARGIN - ROLL_END_MARGIN;
   const slackInUsable = Math.max(0, usableLength - usedLength);
   const wasteEndX = padX + ROLL_START_MARGIN + usedLength;
@@ -500,6 +552,7 @@ function RollGroup({
       {extraHava}
       {startArea}
       {endFire}
+      {gapMarkers}
       {sheets}
       <g transform={`translate(${padX - 22}, ${rollY + effectiveRollW / 2})`}>
         <text
