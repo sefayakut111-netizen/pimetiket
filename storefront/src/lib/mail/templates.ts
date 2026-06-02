@@ -107,6 +107,51 @@ function renderFasonNewAssignment(input: MailTemplateInput): MailRendered {
 }
 
 // ============================================================
+// fason_partner_welcome — yeni üretim partneri kaydı
+// ============================================================
+function renderFasonPartnerWelcome(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const fasonName = escape(p.fason_name);
+  const contactEmail = escape(p.contact_email ?? "");
+  const partnerLink = `${SITE_URL}/partner`;
+
+  const subject = "Pim Etiket üretim partneri kaydınız tamamlandı";
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">Merhaba ${fasonName},</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Pim Etiket üretim partneri kaydınız oluşturuldu. Size atanan işleri
+      partner panelinden takip edebilir, yeni iş bildirimlerini e-posta ile alırsınız.
+    </p>
+
+    <table role="presentation" style="width: 100%; margin: 20px 0; font-size: 13px;">
+      <tr><td style="padding: 6px 0; color: #57534e;">Giriş e-postası</td><td style="padding: 6px 0; font-weight: 600;">${contactEmail}</td></tr>
+    </table>
+
+    <div style="margin: 24px 0;">
+      <a href="${partnerLink}" style="display: inline-block; background: #1e293b; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Partner paneline git →
+      </a>
+    </div>
+
+    <p style="font-size: 12px; color: #78716c; line-height: 1.6;">
+      Giriş için e-posta adresinize tek kullanımlık doğrulama kodu gönderilir.
+      Size atanan her iş için ayrıca kişisel iş bağlantısı e-posta ile iletilir.
+    </p>
+  `;
+
+  const footer = `
+    KVKK m.12 — Veri işleyici sıfatınızla aktarılan müşteri verileri ve tasarım
+    dosyaları yalnızca ilgili sipariş için kullanılır. Sözleşmesel yükümlülüklerinizi
+    hatırlatırız.
+  `;
+
+  const text = `Pim Etiket üretim partneri kaydınız tamamlandı\n\nMerhaba ${fasonName},\n\nPartner paneli: ${partnerLink}\nGiriş e-postası: ${contactEmail}\n\nGiriş için OTP kodu gönderilir. Yeni işler e-posta ile bildirilir.\n\nKVKK m.12 — veri işleyici yükümlülükleri geçerlidir.`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
 // customer_in_production — müşteriye üretim başladı
 // ============================================================
 function renderCustomerInProduction(input: MailTemplateInput): MailRendered {
@@ -613,6 +658,7 @@ const RENDERERS: Record<
   (input: MailTemplateInput) => MailRendered | null
 > = {
   fason_new_assignment: renderFasonNewAssignment,
+  fason_partner_welcome: renderFasonPartnerWelcome,
   customer_in_production: renderCustomerInProduction,
   customer_shipped: renderCustomerShipped,
   customer_delivered: renderCustomerDelivered,

@@ -50,7 +50,7 @@ export async function GET(
 
   const { data: rows, error } = await admin
     .from("fason_mail_outbox")
-    .select("template_key, sent_at, status, created_at")
+    .select("template_key, sent_at, status, created_at, last_error")
     .or(orParts.join(","))
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -64,10 +64,12 @@ export async function GET(
     sent_at: string | null;
     status: string;
     created_at: string | null;
+    last_error: string | null;
   }>).map((r) => ({
     template: r.template_key,
     sentAt: r.sent_at ?? r.created_at ?? new Date().toISOString(),
     status: r.status,
+    lastError: r.last_error,
   }));
 
   return NextResponse.json({ mails });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Modal, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -39,6 +40,10 @@ import {
 
 const HISTORY_PAGE_SIZE = 10;
 
+function partnerEditPath(id: string): string {
+  return `/admin/fason/yeni?edit=${encodeURIComponent(id)}`;
+}
+
 function PartnerSidebar({
   partner,
   onPartnerUpdated,
@@ -46,6 +51,7 @@ function PartnerSidebar({
   partner: FasonPartner;
   onPartnerUpdated: (p: FasonPartner) => void;
 }) {
+  const router = useRouter();
   const [perfOpen, setPerfOpen] = useState(false);
   const hasContractPdf = !!(
     partner.contract_pdf_url && partner.contract_pdf_url.trim().length > 0
@@ -67,12 +73,13 @@ function PartnerSidebar({
             <h3 className="text-[11px] font-bold uppercase text-gri-500">
               Firma bilgileri
             </h3>
-            <Link
-              href={`/admin/fason/yeni?edit=${encodeURIComponent(partner.id)}`}
+            <button
+              type="button"
+              onClick={() => router.push(partnerEditPath(partner.id))}
               className="text-[12px] font-semibold text-pim-mercan hover:underline shrink-0"
             >
               Duzenle
-            </Link>
+            </button>
           </div>
           <dl className="space-y-2 text-[13px]">
             <div>
@@ -339,7 +346,7 @@ function AssignOrderToPartner({
       setUnassigned((prev) => prev.filter((o) => o.id !== orderId));
       setConfirmOrder(null);
       toast.success(
-        `${orderId} siparisi ${json.fasonName ?? partner.name} partnere atandi`
+        `${orderId} siparisi ${json.fasonName ?? partner.name} partnere atandi — partner maili gonderiliyor`
       );
       onAssigned();
     } catch {
@@ -1145,15 +1152,9 @@ export function PartnerActions({
   partner: FasonPartner;
   onUpdated: () => void;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [open]);
 
   const action = async (endpoint: string, reason: string) => {
     setBusy(true);
@@ -1192,10 +1193,17 @@ export function PartnerActions({
         <Icon.Menu size={16} />
       </button>
       {open && (
-        <div
-          className="absolute right-0 top-9 z-20 w-48 rounded-lg bg-white shadow-lg ring-1 ring-gri-200 py-1"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-10 cursor-default"
+            aria-label="Menuyu kapat"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="absolute right-0 top-9 z-20 w-48 rounded-lg bg-white shadow-lg ring-1 ring-gri-200 py-1"
+            onClick={(e) => e.stopPropagation()}
+          >
           {partner.status !== "paused" && partner.active && (
             <button
               type="button"
@@ -1246,14 +1254,18 @@ export function PartnerActions({
             </button>
           )}
           <div className="border-t border-gri-100 my-1" />
-          <Link
-            href={`/admin/fason/yeni?edit=${partner.id}`}
-            className="block px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
-            onClick={() => setOpen(false)}
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
+            onClick={() => {
+              setOpen(false);
+              router.push(partnerEditPath(partner.id));
+            }}
           >
             Duzenle
-          </Link>
+          </button>
         </div>
+        </>
       )}
     </div>
   );
@@ -1261,39 +1273,73 @@ export function PartnerActions({
 
 export function PartnerMailLog({ partnerId }: { partnerId: string }) {
   const [mails, setMails] = useState<
-    Array<{ template: string; sentAt: string; status: string }>
+    Array<{
+      template: string;
+      sentAt: string;
+      status: string;
+      lastError?: string | null;
+    }>
   >([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    setLoaded(false);
     fetch(`/api/admin/fason/partners/${partnerId}/mail-log?limit=10`)
       .then((r) => r.json())
       .then((d) => setMails(d.mails ?? []))
-      .catch(() => {});
+      .catch(() => setMails([]))
+      .finally(() => setLoaded(true));
   }, [partnerId]);
 
-  if (mails.length === 0) return null;
+  const statusLabel = (status: string) => {
+    if (status === "sent" || status === "delivered") return "Gonderildi";
+    if (status === "pending" || status === "sending") return "Bekliyor";
+    if (status === "failed") return "Basarisiz";
+    return status;
+  };
+
+  const statusClass = (status: string) => {
+    if (status === "sent" || status === "delivered") return "text-yesil";
+    if (status === "failed") return "text-kirmizi";
+    return "text-gri-500";
+  };
 
   return (
     <div className="pt-3 border-t border-gri-100">
       <h4 className="text-[11px] font-bold uppercase text-gri-500 mb-2">
         Son iletisim
       </h4>
-      <ul className="space-y-1">
-        {mails.map((m, i) => (
-          <li
-            key={i}
-            className="text-[11px] text-gri-600 flex justify-between gap-2"
-          >
-            <span>{m.template.replace(/_/g, " ")}</span>
-            <span className="text-gri-400 shrink-0">
-              {new Date(m.sentAt).toLocaleDateString("tr-TR", {
-                day: "2-digit",
-                month: "short",
-              })}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {!loaded ? (
+        <p className="text-[11px] text-gri-500">Yukleniyor...</p>
+      ) : mails.length === 0 ? (
+        <p className="text-[11px] text-gri-500">Henuz mail kaydi yok.</p>
+      ) : (
+        <ul className="space-y-2">
+          {mails.map((m, i) => (
+            <li key={i} className="text-[11px] text-gri-600">
+              <div className="flex justify-between gap-2">
+                <span>{m.template.replace(/_/g, " ")}</span>
+                <span className={`shrink-0 font-semibold ${statusClass(m.status)}`}>
+                  {statusLabel(m.status)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2 text-gri-400 mt-0.5">
+                <span>
+                  {new Date(m.sentAt).toLocaleDateString("tr-TR", {
+                    day: "2-digit",
+                    month: "short",
+                  })}
+                </span>
+                {m.lastError && (
+                  <span className="text-kirmizi truncate max-w-[140px]" title={m.lastError}>
+                    {m.lastError}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

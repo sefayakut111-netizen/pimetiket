@@ -96,12 +96,17 @@ type PartnerDetailRow = {
   iban: string | null;
   contract_pdf_url: string | null;
   contract_uploaded_at: string | null;
+  contract_signed_at: string | null;
   notes: string | null;
   contact_email: string | null;
   contact_person: string | null;
   contact_whatsapp: string | null;
   specialties: string[] | null;
   created_at: string;
+  cached_score: number | null;
+  score_updated_at: string | null;
+  active: boolean | null;
+  max_concurrent_orders: number | null;
 };
 
 type RouteCtx = { params: Promise<{ id: string }> };
@@ -120,7 +125,8 @@ export async function GET(_req: Request, { params }: RouteCtx) {
         "status, status_reason, default_lead_days, express_lead_time_days, " +
         "min_order_amount_try, payment_term, iban, contract_pdf_url, " +
         "contract_uploaded_at, notes, contact_email, contact_person, " +
-        "contact_whatsapp, specialties, created_at"
+        "contact_whatsapp, specialties, created_at, contract_signed_at, " +
+        "cached_score, score_updated_at, active, max_concurrent_orders"
     )
     .eq("id", id)
     .maybeSingle();
@@ -169,6 +175,11 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       contact_whatsapp: row.contact_whatsapp,
       specialties: row.specialties ?? [],
       created_at: row.created_at,
+      contract_signed_at: row.contract_signed_at,
+      cached_score: row.cached_score,
+      score_updated_at: row.score_updated_at,
+      active: row.active ?? row.status === "active",
+      max_concurrent_orders: row.max_concurrent_orders,
       contacts: contacts ?? [],
       capabilities: capabilities ?? [],
     },

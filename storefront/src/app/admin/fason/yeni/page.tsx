@@ -17,7 +17,7 @@
 
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -251,6 +251,7 @@ function PartnerFormPage() {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [existingContractUrl, setExistingContractUrl] = useState<string | null>(
     null
   );
@@ -310,141 +311,163 @@ function PartnerFormPage() {
     });
   };
 
-  useEffect(() => {
+  const loadPartnerForEdit = useCallback(async () => {
     if (!editId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/admin/fason/partners/${editId}`);
-        const json = (await res.json()) as {
-          partner?: {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch(`/api/admin/fason/partners/${editId}`);
+      const json = (await res.json()) as {
+        partner?: {
+          name: string;
+          short_name: string | null;
+          tax_number: string | null;
+          tax_office: string | null;
+          address_line: string | null;
+          city: string | null;
+          town: string | null;
+          status: string;
+          default_lead_days: number;
+          express_lead_time_days: number | null;
+          min_order_amount_try: number | null;
+          payment_term: string | null;
+          iban: string | null;
+          notes: string | null;
+          contract_pdf_url: string | null;
+          contact_email: string | null;
+          contact_person: string | null;
+          contact_whatsapp: string | null;
+          specialties?: string[];
+          contacts: Array<{
+            role: string;
             name: string;
-            short_name: string | null;
-            tax_number: string | null;
-            tax_office: string | null;
-            address_line: string | null;
-            city: string | null;
-            town: string | null;
-            status: string;
-            default_lead_days: number;
-            express_lead_time_days: number | null;
-            min_order_amount_try: number | null;
-            payment_term: string | null;
-            iban: string | null;
-            notes: string | null;
-            contract_pdf_url: string | null;
-            contact_email: string | null;
-            contact_person: string | null;
-            contact_whatsapp: string | null;
-            specialties?: string[];
-            contacts: Array<{
-              role: string;
-              name: string;
-              title: string | null;
-              email: string;
-              phone_e164: string;
-              auto_notification: boolean;
-            }>;
-            capabilities: Array<{
-              capability_type: string;
-              capability_value: string;
-            }>;
-          };
-          error?: string;
+            title: string | null;
+            email: string;
+            phone_e164: string;
+            auto_notification: boolean;
+          }>;
+          capabilities: Array<{
+            capability_type: string;
+            capability_value: string;
+          }>;
         };
-        if (!res.ok || !json.partner) {
-          toast.error(json.error ?? "Partner yüklenemedi");
-          router.push("/admin/fason");
-          return;
-        }
-        if (cancelled) return;
-        const p = json.partner;
-        setName(p.name);
-        setShortName(p.short_name ?? "");
-        setTaxNumber(p.tax_number ?? "");
-        setTaxOffice(p.tax_office ?? "");
-        setAddressLine(p.address_line ?? "");
-        setCity(p.city ?? "");
-        setTown(
-          p.town?.trim() ||
-            (p.city ? defaultTownForCity(p.city) : "")
-        );
-        setStatus(p.status === "paused" ? "paused" : "active");
-        setDefaultLeadTimeDays(p.default_lead_days ?? 7);
-        setExpressLeadTimeDays(p.express_lead_time_days);
-        setMinOrderAmountTry(
-          p.min_order_amount_try != null ? Number(p.min_order_amount_try) : null
-        );
-        setPaymentTerm((p.payment_term as PaymentTerm) ?? "");
-        setIban(p.iban ?? "");
-        setNotes(p.notes ?? "");
-        setExistingContractUrl(p.contract_pdf_url);
-
-        const pts = p.capabilities
-          .filter((c) => c.capability_type === "product_type")
-          .map((c) => c.capability_value as ProductType);
-        const mats = p.capabilities
-          .filter((c) => c.capability_type === "material")
-          .map((c) => c.capability_value as Material);
-        const legacyPts =
-          pts.length === 0
-            ? legacySpecialtiesToProductTypes(p.specialties ?? [])
-            : [];
-        const resolvedPts = pts.length > 0 ? pts : legacyPts;
-        setProductTypes(resolvedPts);
-        setMaterials(
-          mats.length > 0
-            ? mats
-            : resolvedPts.length > 0
-              ? defaultMaterialsForProductTypes(resolvedPts)
-              : []
-        );
-
-        const contactByRole = (role: string) =>
-          p.contacts.find((c) => c.role === role);
-        const ow = contactByRole("owner");
-        const op = contactByRole("operator");
-        const ac = contactByRole("accounting");
-        if (ow) {
-          setOwner({
-            name: ow.name,
-            title: ow.title ?? "",
-            email: ow.email,
-            phone: phoneFromE164(ow.phone_e164),
-          });
-        } else if (p.contact_email) {
-          setOwner(backfillLegacyContact(p, "owner"));
-        }
-        if (op) {
-          setOperator({
-            name: op.name,
-            title: op.title ?? "",
-            email: op.email,
-            phone: phoneFromE164(op.phone_e164),
-            autoNotify: op.auto_notification,
-          });
-        } else if (p.contact_email) {
-          setOperator(backfillLegacyContact(p, "operator"));
-        }
-        if (ac) {
-          setAccounting({
-            name: ac.name,
-            title: ac.title ?? "",
-            email: ac.email,
-            phone: phoneFromE164(ac.phone_e164),
-          });
-        }
-      } catch {
-        if (!cancelled) toast.error("Partner yüklenemedi");
-      } finally {
-        if (!cancelled) setLoading(false);
+        error?: string;
+      };
+      if (!res.ok || !json.partner) {
+        const msg =
+          res.status === 403
+            ? "Bu partneri düzenlemek için yetkiniz yok"
+            : res.status === 404
+              ? "Partner bulunamadı"
+              : json.error ?? "Partner yüklenemedi";
+        setLoadError(msg);
+        toast.error(msg);
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [editId, router, toast]);
+      const p = json.partner;
+      setName(p.name);
+      setShortName(p.short_name ?? "");
+      setTaxNumber(p.tax_number ?? "");
+      setTaxOffice(p.tax_office ?? "");
+      setAddressLine(p.address_line ?? "");
+      const cityVal = p.city ?? "";
+      let townVal =
+        p.town?.trim() || (cityVal ? defaultTownForCity(cityVal) : "");
+      if (cityVal && townVal && !isValidIlIlce(cityVal, townVal)) {
+        townVal = defaultTownForCity(cityVal);
+      }
+      setCity(cityVal);
+      setTown(townVal);
+      setStatus(p.status === "paused" ? "paused" : "active");
+      setDefaultLeadTimeDays(p.default_lead_days ?? 7);
+      setExpressLeadTimeDays(p.express_lead_time_days);
+      setMinOrderAmountTry(
+        p.min_order_amount_try != null ? Number(p.min_order_amount_try) : null
+      );
+      setPaymentTerm((p.payment_term as PaymentTerm) ?? "");
+      setIban(p.iban ?? "");
+      setNotes(p.notes ?? "");
+      setExistingContractUrl(p.contract_pdf_url);
+
+      const pts = p.capabilities
+        .filter((c) => c.capability_type === "product_type")
+        .map((c) => c.capability_value as ProductType);
+      const mats = p.capabilities
+        .filter((c) => c.capability_type === "material")
+        .map((c) => c.capability_value as Material);
+      const legacyPts =
+        pts.length === 0
+          ? legacySpecialtiesToProductTypes(p.specialties ?? [])
+          : [];
+      const resolvedPts = pts.length > 0 ? pts : legacyPts;
+      setProductTypes(resolvedPts);
+      setMaterials(
+        mats.length > 0
+          ? mats
+          : resolvedPts.length > 0
+            ? defaultMaterialsForProductTypes(resolvedPts)
+            : []
+      );
+
+      const contactByRole = (role: string) =>
+        p.contacts.find((c) => c.role === role);
+      const ow = contactByRole("owner");
+      const op = contactByRole("operator");
+      const ac = contactByRole("accounting");
+
+      let ownerForm: ContactForm = emptyContact();
+      let operatorForm: ContactForm = { ...emptyContact(), autoNotify: true };
+
+      if (ow) {
+        ownerForm = {
+          name: ow.name,
+          title: ow.title ?? "",
+          email: ow.email,
+          phone: phoneFromE164(ow.phone_e164),
+        };
+      } else if (p.contact_email) {
+        ownerForm = backfillLegacyContact(p, "owner");
+      }
+      if (op) {
+        operatorForm = {
+          name: op.name,
+          title: op.title ?? "",
+          email: op.email,
+          phone: phoneFromE164(op.phone_e164),
+          autoNotify: op.auto_notification,
+        };
+      } else if (p.contact_email) {
+        operatorForm = backfillLegacyContact(p, "operator");
+      }
+      if (
+        digitsOnly(operatorForm.phone).length !== 10 &&
+        digitsOnly(ownerForm.phone).length === 10
+      ) {
+        operatorForm = { ...operatorForm, phone: ownerForm.phone };
+      }
+      setOwner(ownerForm);
+      setOperator(operatorForm);
+
+      if (ac) {
+        setAccounting({
+          name: ac.name,
+          title: ac.title ?? "",
+          email: ac.email,
+          phone: phoneFromE164(ac.phone_e164),
+        });
+      }
+    } catch {
+      const msg = "Partner yüklenemedi";
+      setLoadError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [editId, toast]);
+
+  useEffect(() => {
+    void loadPartnerForEdit();
+  }, [loadPartnerForEdit]);
 
   // Validation (kısa öz)
   const errors = useMemo(() => {
@@ -585,6 +608,34 @@ function PartnerFormPage() {
       <main className="py-8 pb-20">
         <div className="mx-auto max-w-[920px] px-4 md:px-8 text-gri-700">
           Partner bilgileri yükleniyor…
+        </div>
+      </main>
+    );
+  }
+
+  if (isEdit && loadError) {
+    return (
+      <main className="py-8 pb-20">
+        <div className="mx-auto max-w-[920px] px-4 md:px-8">
+          <Card padding="p-6" className="text-center">
+            <p className="text-gri-700">{loadError}</p>
+            <div className="mt-4 flex gap-3 justify-center flex-wrap">
+              <Button variant="primary" onClick={() => void loadPartnerForEdit()}>
+                Tekrar dene
+              </Button>
+              {editId && (
+                <Button
+                  variant="secondary"
+                  href={`/admin/fason/${encodeURIComponent(editId)}`}
+                >
+                  Partner detayına dön
+                </Button>
+              )}
+              <Button variant="ghost" href="/admin/fason">
+                Listeye dön
+              </Button>
+            </div>
+          </Card>
         </div>
       </main>
     );

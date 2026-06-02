@@ -15,6 +15,7 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
+import { enqueueMail } from "@/lib/mail/enqueue";
 
 // ============================================================
 // Zod schemas
@@ -298,6 +299,20 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    const newPartnerId = String(partnerId);
+    void enqueueMail({
+      templateKey: "fason_partner_welcome",
+      to: body.owner.email,
+      category: "fason",
+      targetId: newPartnerId,
+      idempotencyKey: `fason_welcome:${newPartnerId}`,
+      payload: {
+        fason_name: body.name,
+        contact_email: body.owner.email.trim().toLowerCase(),
+      },
+    });
+
     return NextResponse.json({
       id: partnerId,
       name: body.name,

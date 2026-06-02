@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logServerAudit } from "@/lib/audit-log-server";
+import { triggerMailProcess } from "@/lib/mail/trigger-mail-process";
 
 interface BodyShape {
   orderId?: unknown;
@@ -168,6 +169,8 @@ export async function POST(req: Request) {
     userAgent: req.headers.get("user-agent"),
   });
 
+  void triggerMailProcess();
+
   return NextResponse.json({
     ok: true,
     assignmentId: row.assignment_id,
@@ -175,5 +178,6 @@ export async function POST(req: Request) {
     fasonName,
     orderStatusBefore: row.order_status_before,
     orderStatusAfter: row.order_status_after,
+    mailQueued: true,
   });
 }

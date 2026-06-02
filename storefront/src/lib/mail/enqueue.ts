@@ -22,6 +22,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
+import { triggerMailProcess } from "@/lib/mail/trigger-mail-process";
 
 export interface EnqueueMailParams {
   /** Şablon anahtarı — `templates.ts` RENDERERS'da kayıtlı */
@@ -92,38 +93,5 @@ export async function enqueueMail(
     const msg = e instanceof Error ? e.message : "unknown_error";
     console.error("[mail/enqueue] exception:", msg);
     return { ok: false, error: msg };
-  }
-}
-
-/**
- * Process-mail-outbox cron endpoint'ini eş zamanlı tetikler.
- * Fire-and-forget — caller bekletilmez, hata loglanır ama atılmaz.
- *
- * NOT: CRON_SECRET zorunlu (assertCronAuth). Env yoksa istek 401 alır,
- * sessizce log'lanır — bir sonraki cron run mail'i alır.
- */
-async function triggerMailProcess(): Promise<void> {
-  try {
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret) {
-      // Env yoksa cron'u tetiklemiyoruz, ama enqueue başarılı —
-      // mail kuyrukta, gece cron'u alır.
-      return;
-    }
-    // Fire-and-forget, response bekletmiyoruz
-    await fetch(`${siteUrl}/api/cron/process-mail-outbox`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${cronSecret}` },
-      // Vercel function timeout'unu uzatma
-      signal: AbortSignal.timeout(15000),
-    });
-  } catch (err) {
-    // Network error vs — sessiz fail. Cron yedek olarak çalışır.
-    console.warn(
-      "[mail/enqueue] process trigger failed (will run on cron):",
-      err instanceof Error ? err.message : err
-    );
   }
 }

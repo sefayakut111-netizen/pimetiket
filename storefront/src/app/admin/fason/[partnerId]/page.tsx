@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Skeleton, useToast } from "@/components/ui";
 import {
@@ -15,8 +15,13 @@ import { ContractDownloadButton } from "@/components/admin/fason/contract-downlo
 import { PerformanceScoreModal } from "@/components/admin/fason/performance-score-modal";
 import { useSetAdminPathLabel } from "@/hooks/useAdminPathLabel";
 
+function partnerEditPath(id: string): string {
+  return `/admin/fason/yeni?edit=${encodeURIComponent(id)}`;
+}
+
 export default function AdminFasonPartnerDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const partnerId = decodeURIComponent(String(params.partnerId ?? ""));
   const toast = useToast();
 
@@ -36,19 +41,34 @@ export default function AdminFasonPartnerDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/fason/partners", { cache: "no-store" });
+      const res = await fetch(
+        `/api/admin/fason/partners/${encodeURIComponent(partnerId)}`,
+        { cache: "no-store" }
+      );
       const json = (await res.json()) as {
-        partners?: FasonPartner[];
+        partner?: FasonPartner & {
+          default_lead_days?: number;
+          contact_whatsapp?: string | null;
+          contact_person?: string | null;
+        };
         error?: string;
       };
-      if (!res.ok) throw new Error(json.error ?? "list_failed");
-      const found = (json.partners ?? []).find((p) => p.id === partnerId) ?? null;
-      if (!found) {
-        setError("Partner bulunamadi");
-        setPartner(null);
-        return;
+      if (!res.ok || !json.partner) {
+        throw new Error(json.error ?? "Partner bulunamadi");
       }
-      setPartner(found);
+      const p = json.partner;
+      setPartner({
+        ...p,
+        contact_email: p.contact_email ?? "",
+        contact_whatsapp: p.contact_whatsapp ?? null,
+        contact_person: p.contact_person ?? null,
+        specialties: p.specialties ?? [],
+        default_lead_days: p.default_lead_days ?? 7,
+        cached_score: p.cached_score ?? null,
+        score_updated_at: p.score_updated_at ?? null,
+        active: p.active ?? p.status === "active",
+        contract_signed_at: p.contract_signed_at ?? null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Yukleme hatasi");
       setPartner(null);
@@ -176,12 +196,13 @@ export default function AdminFasonPartnerDetailPage() {
                       hasContract={hasContractPdf}
                     />
                   )}
-                  <Link
-                    href={`/admin/fason/yeni?edit=${encodeURIComponent(partner.id)}`}
-                    className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-[15px] font-semibold whitespace-nowrap bg-white text-lacivert ring-[1.5px] ring-lacivert hover:bg-lacivert hover:text-white transition-all"
+                  <Button
+                    variant="secondary"
+                    className="gap-2"
+                    onClick={() => router.push(partnerEditPath(partner.id))}
                   >
                     <Icon.Edit size={14} /> Duzenle
-                  </Link>
+                  </Button>
                 </div>
               </div>
 
