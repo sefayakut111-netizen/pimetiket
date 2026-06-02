@@ -17,6 +17,31 @@ interface RollMiniBarProps {
   geometry: GeometryResult;
 }
 
+export function DiecutFireBar({ geometry }: RollMiniBarProps) {
+  const total = geometry.totalM2;
+  if (total <= 0) return null;
+  const usedPct = Math.min(100, (geometry.stickerArea / total) * 100);
+  const firePct = Math.max(0, 100 - usedPct);
+  return (
+    <div
+      className="flex items-stretch p-1 bg-gri-50 rounded-lg h-9 gap-px"
+      role="img"
+      aria-label={`Sticker alanı %${usedPct.toFixed(0)} · fire %${firePct.toFixed(0)}`}
+    >
+      <div
+        className="rounded-sm bg-pim-mercan"
+        style={{ flex: usedPct }}
+        title={`Sticker alanı: %${usedPct.toFixed(0)}`}
+      />
+      <div
+        className="rounded-sm bg-[repeating-linear-gradient(45deg,#E8DBC4_0_4px,#DDD0B8_4px_8px)]"
+        style={{ flex: firePct }}
+        title={`Fire: %${firePct.toFixed(0)}`}
+      />
+    </div>
+  );
+}
+
 export function RollMiniBar({ geometry }: RollMiniBarProps) {
   const segments = computeMiniBarSegments(geometry);
   const totalSlots = geometry.roll.rollsNeeded * geometry.roll.sheetsPerRoll;

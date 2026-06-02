@@ -52,7 +52,7 @@ import {
 import { ProfileTabs } from "@/components/admin/pricing/ProfileTabs";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
 import { SheetPreviewSvg } from "@/components/admin/pricing/SheetPreviewSvg";
-import { RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
+import { DiecutFireBar, RollMiniBar } from "@/components/admin/pricing/RollMiniBar";
 import { ProfileBar } from "@/components/admin/pricing/ProfileBar";
 import {
   getDefaultInput,
@@ -536,14 +536,12 @@ export function StickerCalculator({
                     onClick={() => setCut("tabaka")}
                     title="Tabaka"
                     desc="Yarım kesim, müşteri soyar"
-                    spec="6 mm boşluk"
                   />
                   <CutCard
                     selected={cut === "diecut"}
                     onClick={() => setCut("diecut")}
                     title="Die Cut"
                     desc="Tam kesim, tek tek"
-                    spec="50 mm boşluk"
                   />
                 </div>
               </Field>
@@ -843,13 +841,11 @@ function CutCard({
   onClick,
   title,
   desc,
-  spec,
 }: {
   selected: boolean;
   onClick: () => void;
   title: string;
   desc: string;
-  spec: string;
 }) {
   return (
     <button
@@ -866,20 +862,12 @@ function CutCard({
       <div className="font-semibold text-[13px] mb-0.5">{title}</div>
       <div
         className={cn(
-          "text-[11px] leading-tight mb-1.5",
+          "text-[11px] leading-tight",
           selected ? "text-white/70" : "text-gri-700"
         )}
       >
         {desc}
       </div>
-      <span
-        className={cn(
-          "inline-block text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full",
-          selected ? "bg-pim-mercan text-white" : "bg-gri-100 text-gri-700"
-        )}
-      >
-        {spec}
-      </span>
     </button>
   );
 }
@@ -1424,6 +1412,17 @@ function SheetPreviewCard({
   );
 }
 
+function formatSegmentHeights(heights: number[]): string {
+  if (heights.length === 0) return "—";
+  const r = heights.map((h) => Math.round(h));
+  if (r.length === 1) return `${r[0]}mm`;
+  const allEqual = r.every((h) => h === r[0]);
+  if (allEqual) return `${r.length} × ${r[0]}mm`;
+  if (r.length <= 4) return r.map((h) => `${h}mm`).join(" + ");
+  const total = r.reduce((a, b) => a + b, 0);
+  return `${r.length} rulo tabaka · toplam ${total}mm`;
+}
+
 function UretimOzetiCard({
   result,
 }: {
@@ -1471,9 +1470,7 @@ function UretimOzetiCard({
             <StatCell label="Rulo tabaka" value={roll.rollsNeeded.toString()} />
             <StatCell
               label="Yükseklikler"
-              value={(roll.segmentHeights ?? [])
-                .map((h) => `${Math.round(h)}mm`)
-                .join(" + ")}
+              value={formatSegmentHeights(roll.segmentHeights ?? [])}
             />
             <StatCell
               label="Toplam üretilen"
@@ -1504,12 +1501,20 @@ function UretimOzetiCard({
         )}
       </div>
 
-      {/* Mini bar — tabaka only (die-cut birim karışık, bar anlamsız) */}
-      {isTabaka && (
-        <div className="mt-3" title="60cm rulo eninde dolu / fire dağılımı">
+      <div
+        className="mt-3"
+        title={
+          isTabaka
+            ? "rulo eninde dolu / fire dağılımı"
+            : "sticker alanı / fire oranı"
+        }
+      >
+        {isTabaka ? (
           <RollMiniBar geometry={geometry} />
-        </div>
-      )}
+        ) : (
+          <DiecutFireBar geometry={geometry} />
+        )}
+      </div>
 
       {/* Waste */}
       <div className="mt-3 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] flex justify-between items-center border-l-[3px] border-pim-mercan">

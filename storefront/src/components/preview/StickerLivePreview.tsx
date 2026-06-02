@@ -590,7 +590,7 @@ export function StickerLivePreview({
           {isCapped ? "≈" : ""}
           <span
             className="text-pim-mercan cursor-help"
-            title="Tabaka 230×310 mm, kenar boşluğu 20 mm + sticker arası boşluk 6 mm hesaba dahil. Üretim toleransı için zorunlu."
+            title="Tabaka 230×310 mm, kenar boşluğu 10 mm + sticker arası boşluk 3 mm hesaba dahil. Üretim toleransı için zorunlu."
           >
             {realPerSheet}
           </span>{" "}

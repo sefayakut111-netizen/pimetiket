@@ -346,16 +346,43 @@ function distributeDiecutSegments(totalRows: number, sh: number, gap: number) {
   const hUsableMax = ROLL_W_MAX - 2 * ROLL_MARGIN_X; // 540
   const maxRowsPerSeg = Math.floor((hUsableMax + gap) / (sh + gap));
   if (maxRowsPerSeg < 1) return null;
-  const N = Math.ceil(totalRows / maxRowsPerSeg);
-  const base = Math.floor(totalRows / N);
-  const rem = totalRows % N;
-  const segments: { rows: number; height: number }[] = [];
-  for (let s = 0; s < N; s++) {
-    const rows = base + (s < rem ? 1 : 0);
-    let height = rows * sh + (rows - 1) * gap + 2 * ROLL_MARGIN_X;
-    if (height < ROLL_W_MIN) height = ROLL_W_MIN; // min 250 pad
-    segments.push({ rows, height });
+
+  // 250'ye ulaşan en az satır (padding'siz min)
+  let minRowsPerSeg = 1;
+  while (
+    minRowsPerSeg * sh + (minRowsPerSeg - 1) * gap + 2 * ROLL_MARGIN_X <
+    ROLL_W_MIN
+  ) {
+    minRowsPerSeg++;
   }
+
+  const N = Math.ceil(totalRows / maxRowsPerSeg);
+  const rowsPerSeg: number[] = [];
+
+  if (N === 1) {
+    rowsPerSeg.push(totalRows);
+  } else {
+    const lastRows = totalRows - (N - 1) * maxRowsPerSeg;
+    if (lastRows >= minRowsPerSeg) {
+      for (let i = 0; i < N - 1; i++) rowsPerSeg.push(maxRowsPerSeg);
+      rowsPerSeg.push(lastRows);
+    } else {
+      let rem = totalRows - minRowsPerSeg;
+      for (let i = 0; i < N - 1; i++) {
+        const r = Math.min(maxRowsPerSeg, rem);
+        rowsPerSeg.push(r);
+        rem -= r;
+      }
+      rowsPerSeg.push(minRowsPerSeg);
+    }
+  }
+
+  const segments = rowsPerSeg.map((rows) => {
+    let height = rows * sh + (rows - 1) * gap + 2 * ROLL_MARGIN_X;
+    if (height < ROLL_W_MIN) height = ROLL_W_MIN;
+    return { rows, height };
+  });
+
   return { N, maxRowsPerSeg, segments };
 }
 

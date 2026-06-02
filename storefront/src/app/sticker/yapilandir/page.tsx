@@ -2667,9 +2667,6 @@ function CutModeCard({
               ? t.sticker.cutTabakaDesc
               : t.sticker.cutDieCutDesc}
           </div>
-          <div className="text-[10.5px] text-gri-500 mt-1.5 tabular-nums">
-            {kind === "tabaka" ? "6 mm gap" : "50 mm gap"}
-          </div>
         </div>
       </div>
     </button>
