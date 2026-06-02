@@ -38,6 +38,8 @@ function publicUrlOf(path: string): string {
   return `${base}/storage/v1/object/public/public-assets/${path}`;
 }
 
+const HOME_GALLERY_ON_PAGE_MAX = 20;
+
 export function GaleriTab() {
   const toast = useToast();
   const [items, setItems] = useState<GalleryItem[]>([]);
@@ -129,6 +131,11 @@ export function GaleriTab() {
                 {items.filter((x) => x.is_published).length} yayında
               </span>
             </p>
+            <p className="mt-1 text-[13px] text-gri-600 leading-relaxed max-w-[560px]">
+              Sıralamada ilk {HOME_GALLERY_ON_PAGE_MAX} yayındaki öğe anasayfa
+              carousel&apos;inde; geri kalanlar yalnızca /galeri sayfasında
+              görünür.
+            </p>
           </div>
           <Button variant="primary" onClick={() => setShowAdd(true)}>
             <Icon.Plus size={14} /> Yeni öğe ekle
@@ -163,8 +170,10 @@ export function GaleriTab() {
               Henüz galeri öğesi yok
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
-              İlk öğeyi eklemek için sağ üstteki butonu kullan. Galerideki
-              öğeler ana sayfada ve /galeri sayfasında gösterilir.
+              İlk öğeyi eklemek için sağ üstteki butonu kullan. Yayındaki
+              öğeler /galeri sayfasında listelenir; sıralamada ilk{" "}
+              {HOME_GALLERY_ON_PAGE_MAX} tanesi ayrıca anasayfa carousel&apos;inde
+              gösterilir.
             </p>
             <Button variant="primary" size="sm" onClick={() => setShowAdd(true)} className="mt-4">
               <Icon.Plus size={14} /> İlk öğeyi ekle
@@ -174,7 +183,14 @@ export function GaleriTab() {
 
         {!loading && items.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((item, idx) => (
+            {(() => {
+              const homeIds = new Set(
+                items
+                  .filter((x) => x.is_published)
+                  .slice(0, HOME_GALLERY_ON_PAGE_MAX)
+                  .map((x) => x.id)
+              );
+              return items.map((item, idx) => (
               <Card
                 key={item.id}
                 padding="p-0"
@@ -210,6 +226,18 @@ export function GaleriTab() {
                     <p className="text-[11.5px] text-gri-700 mt-1 truncate">
                       {item.features}
                     </p>
+                  )}
+                  {item.is_published && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center h-5 px-2 rounded-full text-[10px] font-semibold mt-1.5",
+                        homeIds.has(item.id)
+                          ? "bg-lacivert/10 text-lacivert"
+                          : "bg-gri-100 text-gri-700"
+                      )}
+                    >
+                      {homeIds.has(item.id) ? "Anasayfa" : "Sadece /galeri"}
+                    </span>
                   )}
                   <div className="flex items-center gap-1 mt-3">
                     <button
@@ -264,7 +292,8 @@ export function GaleriTab() {
                   </div>
                 </div>
               </Card>
-            ))}
+            ));
+            })()}
           </div>
         )}
       </div>
