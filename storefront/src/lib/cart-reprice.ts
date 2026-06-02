@@ -122,7 +122,8 @@ function toValidationItem(item: CustomerCartItem): CartItemForValidation {
 }
 
 export async function repriceCartItems(
-  items: CustomerCartItem[]
+  items: CustomerCartItem[],
+  options?: { forceAll?: boolean }
 ): Promise<RepriceResult> {
   const timestamps = await fetchPricingScopeTimestamps();
   const now = Date.now();
@@ -130,9 +131,10 @@ export async function repriceCartItems(
   const changed: RepriceChangedItem[] = [];
   const removed: RepriceRemovedItem[] = [];
   const refreshedIds: string[] = [];
+  const forceAll = options?.forceAll === true;
 
   for (const item of items) {
-    if (!isItemStale(item, timestamps)) {
+    if (!forceAll && !isItemStale(item, timestamps)) {
       result.push(item);
       continue;
     }

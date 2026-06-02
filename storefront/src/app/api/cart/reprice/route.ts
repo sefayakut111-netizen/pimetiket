@@ -14,9 +14,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  let body: { items?: CustomerCartItem[] };
+  let body: { items?: CustomerCartItem[]; forceAll?: boolean };
   try {
-    body = (await req.json()) as { items?: CustomerCartItem[] };
+    body = (await req.json()) as { items?: CustomerCartItem[]; forceAll?: boolean };
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   const { items: repriced, changed, removed, refreshedIds } =
-    await repriceCartItems(items);
+    await repriceCartItems(items, { forceAll: body.forceAll === true });
 
   try {
     const supabase = await createServerClient();

@@ -627,7 +627,9 @@ export function applyRepricedCartItems(items: CustomerCartItem[]): void {
  * Bayat sepet satırlarını sunucuda yeniden fiyatla.
  * Hata olursa null — snapshot fiyatla devam (checkout doğrular).
  */
-export async function repriceCustomerCart(): Promise<CartRepriceResult | null> {
+export async function repriceCustomerCart(options?: {
+  forceAll?: boolean;
+}): Promise<CartRepriceResult | null> {
   const current = listCustomerCart();
   if (current.length === 0) {
     return { items: [], changed: [], removed: [] };
@@ -637,7 +639,7 @@ export async function repriceCustomerCart(): Promise<CartRepriceResult | null> {
     const res = await fetch("/api/cart/reprice", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ items: current }),
+      body: JSON.stringify({ items: current, forceAll: options?.forceAll === true }),
     });
     if (!res.ok) return null;
 

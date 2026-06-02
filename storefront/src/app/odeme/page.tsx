@@ -738,7 +738,7 @@ export default function OdemePage() {
       sessionStorage.setItem(CHECKOUT_INIT_LOCK_KEY, String(Date.now()));
     }
 
-    const repriceResult = await repriceCustomerCart();
+    const repriceResult = await repriceCustomerCart({ forceAll: true });
     const paymentItems = repriceResult?.items ?? listCustomerCart();
     if (paymentItems.length === 0) {
       toast.error("Sepetiniz boş — ödeme yapılamaz.");
@@ -748,6 +748,24 @@ export default function OdemePage() {
       }
       router.replace("/sepet");
       return;
+    }
+    if (repriceResult?.removed.length) {
+      toast.error(
+        "Sepette fiyatı doğrulanamayan ürün var — sepeti kontrol edin."
+      );
+      setLoading(false);
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(CHECKOUT_INIT_LOCK_KEY);
+      }
+      router.replace("/sepet");
+      return;
+    }
+    if (repriceResult?.changed.length) {
+      toast.info(
+        locale === "en"
+          ? "Cart prices were refreshed to match current rates."
+          : "Sepet fiyatları güncel tarifeye göre yenilendi."
+      );
     }
     setCartItems(paymentItems);
     const paymentSummary = summarizeCustomerCart();
@@ -2000,6 +2018,34 @@ export default function OdemePage() {
                     if (loading || cartItems.length === 0) return;
                     setLoading(true);
                     try {
+                      const repriceResult = await repriceCustomerCart({
+                        forceAll: true,
+                      });
+                      if (repriceResult?.removed.length) {
+                        throw new Error("pricing_validation_failed");
+                      }
+                      const bypassItems =
+                        repriceResult?.items ?? listCustomerCart();
+                      if (bypassItems.length === 0) {
+                        throw new Error("empty_cart");
+                      }
+                      setCartItems(bypassItems);
+                      const bypassSummary = summarizeCustomerCart();
+                      const bypassSubtotal = bypassSummary.subtotal;
+                      const bypassShipping = bypassSummary.shipping;
+                      const bypassCouponDiscount =
+                        couponResult?.ok && couponResult.kind !== "free_ship"
+                          ? couponResult.discount
+                          : 0;
+                      const bypassEffectiveShipping =
+                        couponResult?.ok && couponResult.kind === "free_ship"
+                          ? 0
+                          : bypassShipping;
+                      const bypassTotal =
+                        bypassSubtotal -
+                        bypassCouponDiscount +
+                        bypassEffectiveShipping;
+
                       const addr = selectedAddress
                         ? {
                             label: selectedAddress.label ?? undefined,
@@ -2019,14 +2065,14 @@ export default function OdemePage() {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          items: cartItems,
+                          items: bypassItems,
                           address: addr,
                           invoice,
-                          subtotal,
-                          shipping: effectiveShipping,
-                          total: effectiveTotal,
+                          subtotal: bypassSubtotal,
+                          shipping: bypassEffectiveShipping,
+                          total: bypassTotal,
                           estimatedDelivery: addDaysIso(
-                            cartItems.some((i) => i.product === "etiket") ? 10 : 5
+                            bypassItems.some((i) => i.product === "etiket") ? 10 : 5
                           ),
                         }),
                       });
@@ -2049,7 +2095,7 @@ export default function OdemePage() {
                           body: JSON.stringify({ orderId: order.id }),
                         });
                       } catch { /* sessiz — sipariş zaten oluştu */ }
-                      const hasDesigns = cartItems.some(
+                      const hasDesigns = bypassItems.some(
                         (i) =>
                           !!i.designTempId &&
                           !i.designTempId.startsWith("local-")

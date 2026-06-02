@@ -33,6 +33,7 @@ const CartItemSchema = z.object({
   material: z.string().nullish(),
   finish: z.string().nullish(),
   hediyeAdet: z.number().nullish(),
+  designCount: z.number().int().positive().nullish(),
   materialId: z.string().nullish(),
   coatingId: z.string().nullish(),
   customizationId: z.string().nullish(),
@@ -108,9 +109,11 @@ export async function POST(req: Request) {
     customizationId: item.customizationId,
     materialId: item.materialId,
     designCount:
-      item.meta && typeof item.meta.designCount === "number"
-        ? item.meta.designCount
-        : null,
+      typeof item.designCount === "number"
+        ? item.designCount
+        : item.meta && typeof item.meta.designCount === "number"
+          ? item.meta.designCount
+          : null,
   }));
 
   const pricingValidation = await validateCartPricing(
