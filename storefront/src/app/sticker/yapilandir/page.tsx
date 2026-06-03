@@ -216,11 +216,10 @@ const SAYFA_BOYUTLARI = [
   { id: "a6", ad: "A6", w: 105, h: 148 },
   { id: "a5", ad: "A5", w: 148, h: 210 },
   { id: "a4", ad: "A4", w: 210, h: 297 },
+  { id: "foto-13x18", ad: "13×18 cm", w: 130, h: 180 },
   { id: "kare-100", ad: "Kare 10cm", w: 100, h: 100 },
   { id: "kare-148", ad: "Kare 15cm", w: 148, h: 148 },
   { id: "kare-200", ad: "Kare 20cm", w: 200, h: 200 },
-  { id: "serit-dikey", ad: "Şerit (dikey)", w: 50, h: 210 },
-  { id: "serit-yatay", ad: "Şerit (yatay)", w: 210, h: 50 },
 ] as const;
 
 const SAYFA_QTY_PRESETS = [10, 25, 50, 75, 100, 250, 500, 1000] as const;
