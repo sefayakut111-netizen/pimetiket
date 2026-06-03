@@ -742,6 +742,7 @@ export function StickerCalculator({
               qty={qty}
               tier={displayTier}
               geometry={result.ok ? result.geometry : null}
+              maliyetTotal={simulationCost?.total}
             />
 
             <OperatorCostHero
@@ -1050,7 +1051,7 @@ function OperatorCostHero({
     return (
       <Card padding="p-6" className="ring-1 ring-gri-200">
         <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
-          Operatör Maliyet Simülasyonu
+          Maliyet
         </div>
         <div className="text-[32px] font-bold text-gri-400">—</div>
         <p className="mt-2 text-[13px] text-gri-600">{result.reason}</p>
@@ -1064,7 +1065,7 @@ function OperatorCostHero({
     return (
       <Card padding="p-6" className="ring-1 ring-gri-200">
         <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
-          Operatör Maliyet Simülasyonu
+          Maliyet
         </div>
         <div className="text-[32px] font-bold text-gri-400">—</div>
       </Card>
@@ -1080,7 +1081,7 @@ function OperatorCostHero({
       )}
     >
       <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
-        Simülasyon Maliyeti
+        Maliyet
       </div>
       <div
         className={cn(
@@ -1097,7 +1098,7 @@ function OperatorCostHero({
         KDV dahil · KDV hariç {fmt(Math.round(cost.baseCost))} ₺
       </p>
       <p className="text-[12px] text-gri-600 mt-1">
-        Fason + operasyon · tier uygulanmaz
+        Fason + operasyon · partner alacağı
       </p>
       <p className="text-[12px] text-gri-500 mt-2 tabular-nums leading-relaxed">
         {qty.toLocaleString("tr-TR")} adet ·{" "}
@@ -1123,7 +1124,7 @@ function OperatorCostHero({
             {fmt(Math.round(cost.operationCost))} ₺
           </div>
           <div>
-            <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil sim.</div>
+            <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil</div>
             {fmt(Math.round(cost.total))} ₺
           </div>
           <div>
@@ -1160,7 +1161,7 @@ function ProfitCompareStrip({
       <div className="space-y-1.5 font-mono text-[13px] tabular-nums text-lacivert">
         <div className="flex justify-between gap-4">
           <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
-            Simülasyon maliyeti
+            Maliyet
           </span>
           <span>
             {fmt(Math.round(simulationTotal))} ₺{" "}
@@ -1169,7 +1170,7 @@ function ProfitCompareStrip({
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
-            Site satış fiyatı
+            Satış fiyatı
           </span>
           <span className="font-semibold">{fmt(Math.round(siteFinal))} ₺</span>
         </div>
@@ -1198,11 +1199,13 @@ function SitePriceHero({
   qty,
   tier,
   geometry,
+  maliyetTotal,
 }: {
   liveSitePrice: ReturnType<typeof calculatePrice> | null;
   qty: number;
   tier: StickerTier | { qty: number; multiplier: number; label: string };
   geometry: import("@/lib/pricing-engine").GeometryResult | null;
+  maliyetTotal?: number;
 }) {
   if (!liveSitePrice?.ok) {
     return (
@@ -1211,7 +1214,7 @@ function SitePriceHero({
         className="!bg-gradient-to-br !from-lacivert !to-lacivert-koyu !text-white"
       >
         <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-          Site Fiyatı (KDV Dahil)
+          Satış Fiyatı (KDV Dahil)
         </div>
         <div className="text-[32px] font-bold">—</div>
         <p className="mt-2 text-[13px] text-white/70">
@@ -1223,11 +1226,6 @@ function SitePriceHero({
     );
   }
 
-  const profit = liveSitePrice.with_margin - liveSitePrice.cost_total;
-  const profitPct =
-    liveSitePrice.cost_total > 0
-      ? (profit / liveSitePrice.cost_total) * 100
-      : 0;
   const fee = liveSitePrice.with_fee - liveSitePrice.with_margin;
   const vat = liveSitePrice.final - liveSitePrice.with_fee;
   const billableM2 = liveSitePrice.billable_m2 ?? geometry?.totalM2 ?? 0;
@@ -1251,7 +1249,7 @@ function SitePriceHero({
       />
       <div className="relative">
         <div className="text-[11px] uppercase tracking-[0.15em] text-white/50 mb-2 font-semibold">
-          Site Fiyatı (KDV Dahil)
+          Satış Fiyatı (KDV Dahil)
         </div>
         <div className="text-[36px] font-bold tabular-nums leading-none">
           {fmt(Math.round(liveSitePrice.final))}{" "}
@@ -1281,23 +1279,28 @@ function SitePriceHero({
             <> · Tier {tier.label}</>
           )}
         </p>
-        <div className="mt-4 pt-4 border-t border-white/15 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="mt-4 pt-4 border-t border-white/15 grid grid-cols-2 md:grid-cols-4 gap-3">
           <VatCell
-            label="Maliyet (Alış)"
-            value={`${fmt(Math.round(liveSitePrice.cost_total))} ₺`}
-          />
-          <VatCell
-            label="Satış Fiyatı"
+            label="Satış (KDV hariç)"
             value={`${fmt(Math.round(liveSitePrice.with_margin))} ₺`}
-          />
-          <VatCell
-            label={profit >= 0 ? "Kâr" : "Zarar"}
-            value={`${fmt(Math.round(profit))} ₺`}
-            subtitle={`%${Math.abs(profitPct).toFixed(0)} ${profit >= 0 ? "kâr" : "zarar"}`}
-            warning={profit < 0}
           />
           <VatCell label="PSP" value={`${fmt(Math.round(fee))} ₺`} />
           <VatCell label="KDV" value={`${fmt(Math.round(vat))} ₺`} />
+          {maliyetTotal != null &&
+            maliyetTotal > 0 &&
+            (() => {
+              const fark = liveSitePrice.final - maliyetTotal;
+              const farkPct =
+                maliyetTotal > 0 ? (fark / maliyetTotal) * 100 : 0;
+              return (
+                <VatCell
+                  label={fark >= 0 ? "Fark (kâr)" : "Fark (zarar)"}
+                  value={`${fark >= 0 ? "+" : ""}${fmt(Math.round(fark))} ₺`}
+                  subtitle={`%${Math.abs(farkPct).toFixed(0)} ${fark >= 0 ? "kâr" : "zarar"}`}
+                  warning={fark < 0}
+                />
+              );
+            })()}
         </div>
       </div>
     </Card>
