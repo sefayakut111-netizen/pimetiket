@@ -308,7 +308,7 @@ export const en: TranslationDict = {
     newsletterSuccess: "You're on the list",
     newsletterSuccessDesc: "First issue coming soon.",
     groupProduct: "Product",
-    groupCompany: "Company",
+    groupCompany: "Corporate",
     groupSupport: "Support",
     groupAccount: "My account",
     copyright: "Pim Etiket — All rights reserved.",

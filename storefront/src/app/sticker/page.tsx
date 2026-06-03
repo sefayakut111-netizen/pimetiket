@@ -51,6 +51,7 @@ import {
 } from "@/lib/sticker-card-svg-registry";
 import type { ProductCard as DbProductCard } from "@/lib/product-cards";
 import { buildCardQueryString } from "@/lib/product-cards";
+import { StickerInfoSection } from "@/components/sticker/StickerInfoSection";
 
 // Sefa 21 May v68 Mig 074: Registry'den gelen ikonlar — eski inline tanımlar
 // hala bu dosyada (uzun edit'i azaltmak için), ama registry source-of-truth.
@@ -446,7 +447,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=diecut&shape=diecut&material=transparan",
     titleTr: "Şeffaf Sticker",
     titleEn: "Clear Sticker",
-    descTr: "Saydam zemin — cam, arka plan görünsün",
+    descTr: "Saydam zemin, arka plan görünür",
     descEn: "Transparent base — glass, background visible",
     svg: <ClearIcon />,
     imageSrc: "/assets/img/cards/sticker-clear.jpg",
@@ -455,7 +456,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=diecut&shape=diecut&material=holo",
     titleTr: "Holografik Sticker",
     titleEn: "Holographic Sticker",
-    descTr: "Gökkuşağı yansıma — premium, etkinlik",
+    descTr: "Gökkuşağı yansımalı, premium",
     descEn: "Rainbow reflection — premium, events",
     svg: <HoloIcon />,
     imageSrc: "/assets/img/cards/sticker-hologram.jpg",
@@ -473,7 +474,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=kartli&shape=diecut",
     titleTr: "Kartlı Sticker",
     titleEn: "Kiss-Cut Single",
-    descTr: "Sticker kendi die-cut kartında; içinden tek tek soyulur",
+    descTr: "Kendi kartında, tek tek soyulur",
     descEn: "Sticker on its own die-cut card; peel off individually",
     svg: <KissCutIcon />,
     imageSrc: "/assets/img/cards/sticker-kisscut.jpg",
@@ -486,7 +487,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=tabaka&shape=square&sayfa=1",
     titleTr: "Sticker Sayfası",
     titleEn: "Sticker Sheet",
-    descTr: "Aynı tasarımdan çok adet — tek tabakada",
+    descTr: "Tek tabakada çok adet",
     descEn: "Many copies of one design — on a single sheet",
     svg: <SheetIcon />,
     imageSrc: "/assets/img/cards/sticker-sheet.jpg",
@@ -495,7 +496,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=tabaka&shape=circle&kilit=tabaka",
     titleTr: "Yuvarlak Etiket Sayfası",
     titleEn: "Circle Label Sheet",
-    descTr: "Tek tabakada çok adet yuvarlak — sticker fiyatına",
+    descTr: "Yuvarlak, sticker fiyatına",
     descEn: "Many circles on one sheet — at sticker price",
     svg: <CircleIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-circle.jpg",
@@ -504,7 +505,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=tabaka&shape=square&kilit=tabaka",
     titleTr: "Kare Etiket Sayfası",
     titleEn: "Square Label Sheet",
-    descTr: "Tek tabakada çok adet kare — sticker fiyatına",
+    descTr: "Kare, sticker fiyatına",
     descEn: "Many squares on one sheet — at sticker price",
     svg: <SquareIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-square.jpg",
@@ -513,7 +514,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=tabaka&shape=rectangle&kilit=tabaka",
     titleTr: "Dikdörtgen Etiket Sayfası",
     titleEn: "Rectangle Label Sheet",
-    descTr: "Tek tabakada çok adet dikdörtgen — sticker fiyatına",
+    descTr: "Dikdörtgen, sticker fiyatına",
     descEn: "Many rectangles on one sheet — at sticker price",
     svg: <RectangleIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-rectangle.jpg",
@@ -522,7 +523,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=tabaka&shape=ozel&material=holo&kilit=tabaka",
     titleTr: "Hologram Sticker Sayfası",
     titleEn: "Holographic Sticker Sheet",
-    descTr: "Gökkuşağı yansımalı tabaka — premium",
+    descTr: "Gökkuşağı yansımalı tabaka",
     descEn: "Rainbow-reflective sheet — premium",
     svg: <HoloIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-holo.jpg",
@@ -531,7 +532,7 @@ const STICKER_CARDS: StickerCard[] = [
     query: "cut=tabaka&shape=ozel&material=simli&kilit=tabaka",
     titleTr: "Simli Sticker Sayfası",
     titleEn: "Glitter Sticker Sheet",
-    descTr: "Parıltılı dokulu tabaka — hediye, çocuk",
+    descTr: "Parıltılı dokulu tabaka",
     descEn: "Sparkly-texture sheet — gifts, kids",
     svg: <GlitterIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-simli.jpg",
@@ -553,7 +554,7 @@ function StickerProductCard({
     <Link
       href={`/sticker/yapilandir?${card.query}`}
       prefetch={false}
-      className="group block bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
+      className="group flex flex-col h-full bg-white rounded-2xl border border-gri-200 hover:border-pim-mercan hover:shadow-lg transition-all duration-150 p-4 focus:outline-none focus:ring-2 focus:ring-pim-mercan focus:ring-offset-2"
     >
       {/* Sefa 20 May v68: aspect reservation → CLS=0.
           Sefa 22 May v68: 200/130 (1.54) → 3/2 (1.5) — Sefa'nın illüstrasyon
@@ -575,7 +576,7 @@ function StickerProductCard({
       <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
         {isEn ? card.titleEn : card.titleTr}
       </h3>
-      <p className="text-sm text-gri-600 mt-1">
+      <p className="text-sm text-gri-600 mt-1 line-clamp-1">
         {isEn ? card.descEn : card.descTr}
       </p>
     </Link>
@@ -686,9 +687,11 @@ export default function StickerGridPage() {
                 ? "Cut to your design's edge — pieces peel off individually. Ideal for logos, brand marks, and custom silhouettes."
                 : "Tasarımın kenarından tam kesim, parçalar ayrı. Logo, marka ve özel silüetler için."}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
               {diecutCards.map((card) => (
-                <StickerProductCard key={card.query} card={card} isEn={isEn} />
+                <div key={card.query} className="h-full">
+                  <StickerProductCard card={card} isEn={isEn} />
+                </div>
               ))}
             </div>
           </section>
@@ -706,13 +709,17 @@ export default function StickerGridPage() {
                 ? "Kiss-cut on intact backing — sheet or page format. Peel stickers without separating the liner."
                 : "Yarım kesim, arka kağıt sağlam; tabaka/sayfa halinde. Kağıttan ayırmadan sticker çıkar."}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
               {kissCutCards.map((card) => (
-                <StickerProductCard key={card.query} card={card} isEn={isEn} />
+                <div key={card.query} className="h-full">
+                  <StickerProductCard card={card} isEn={isEn} />
+                </div>
               ))}
             </div>
           </section>
         </div>
+
+        <StickerInfoSection />
 
         {/* Alt CTA — etiket yönlendirme */}
         <div className="mt-12 text-center">

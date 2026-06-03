@@ -45,6 +45,7 @@ export function Footer() {
       // Şirket → kurumsal yasal (KVKK / Gizlilik / Kullanım Şartları)
       links: [
         { label: t.nav.about, href: "/hakkimizda" },
+        { label: "Terim Sözlüğü", href: "/terim-sozlugu" },
         { label: t.nav.contact, href: "/iletisim" },
         { label: "KVKK", href: "/kvkk" },
         { label: "Gizlilik", href: "/gizlilik" },

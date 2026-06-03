@@ -310,7 +310,7 @@ export const tr: TranslationDict = {
     newsletterSuccess: "Listeye eklendin",
     newsletterSuccessDesc: "İlk yazıyı yakında alacaksın.",
     groupProduct: "Ürün",
-    groupCompany: "Şirket",
+    groupCompany: "Kurumsal",
     groupSupport: "Destek",
     groupAccount: "Hesabım",
     copyright: "Pim Etiket — Tüm hakları saklıdır.",
