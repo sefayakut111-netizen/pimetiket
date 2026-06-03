@@ -74,7 +74,7 @@ import {
   type MaterialItem,
   type ProfileConfig,
 } from "@/lib/pricing-config-types";
-import { resolveM2Cost } from "@/lib/pricing-dual-price";
+import { resolveM2Cost, resolveM2Sell } from "@/lib/pricing-dual-price";
 
 // ============================================================
 // Defaults — v0.4: overhead 45 (SaaS recovery), customerType
@@ -180,7 +180,9 @@ export function StickerCalculator({
   const [setup, setSetup] = useState<number>(DEFAULTS.setup);
   const [packaging, setPackaging] = useState<number>(DEFAULTS.packaging);
 
-  const [operationEnabled, setOperationEnabled] = useState(true);
+  const [operationEnabled, setOperationEnabled] = useState(
+    () => (liveConfig ?? FALLBACK_STICKER_CONFIG).operation.enabled !== false
+  );
 
   // Site fiyat önizleme (live config malzeme/laminasyon)
   const [previewMaterialId, setPreviewMaterialId] = useState<string>(
@@ -249,6 +251,12 @@ export function StickerCalculator({
       setOperationEnabled,
     });
   }, [liveConfigLoaded, liveStickerConfig]);
+
+  useEffect(() => {
+    setSetup(liveStickerConfig.operation.setup);
+    setPackaging(liveStickerConfig.operation.packaging_per_unit);
+    setOperationEnabled(liveStickerConfig.operation.enabled !== false);
+  }, [liveStickerConfig]);
 
   useEffect(() => {
     if (liveConfig) return;
@@ -526,6 +534,56 @@ export function StickerCalculator({
           <div className="space-y-4">
             <FlowStepCard
               step={1}
+              title="Maliyet ve satış"
+              subtitle="Fiyat Yönetimi'nden canlı — salt-okunur"
+            >
+              <div className="space-y-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.02em] text-gri-700 mb-1.5">
+                    Kesim Çarpanı
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <ConfigReadOnly
+                      label="Die Cut"
+                      value={`×${(liveStickerConfig.cut_multipliers?.diecut ?? 1.1).toFixed(2)}`}
+                    />
+                    <ConfigReadOnly
+                      label="Kiss Cut"
+                      value={`×${(liveStickerConfig.cut_multipliers?.kisscut ?? 1).toFixed(2)}`}
+                    />
+                    <ConfigReadOnly
+                      label="Tabaka"
+                      value={`×${(liveStickerConfig.cut_multipliers?.tabaka ?? 1).toFixed(2)}`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.02em] text-gri-700 mb-1.5">
+                    m² maliyet / satış
+                  </div>
+                  {selectedMaterial ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <ConfigReadOnly
+                        label="Maliyet"
+                        value={`${fmt(resolveM2Cost(selectedMaterial))} ₺/m²`}
+                      />
+                      <ConfigReadOnly
+                        label="Satış"
+                        value={`${fmt(resolveM2Sell(selectedMaterial))} ₺/m²`}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-gri-500">Malzeme seçilmedi</p>
+                  )}
+                </div>
+                <p className="text-[10.5px] text-gri-500 leading-snug">
+                  Bu değerler Fiyat Yönetimi&apos;nde ayarlanır; burada salt-okunur (canlı).
+                </p>
+              </div>
+            </FlowStepCard>
+
+            <FlowStepCard
+              step={2}
               title="Sipariş tanımı"
               subtitle="Kesim tipi ve ürün seçimi — müşteri konfigüratörüyle aynı sıra"
             >
@@ -571,7 +629,7 @@ export function StickerCalculator({
             </FlowStepCard>
 
             <FlowStepCard
-              step={2}
+              step={3}
               title="Boyut ve adet"
               subtitle="Dizgi, tabaka, m² ve fiyat kademesini belirler"
             >
@@ -601,7 +659,7 @@ export function StickerCalculator({
             </FlowStepCard>
 
             <FlowStepCard
-              step={3}
+              step={4}
               title="Maliyet simülasyonu"
               subtitle="Operatör referansı — site fiyatından bağımsız"
               muted
@@ -733,6 +791,19 @@ export function StickerCalculator({
 // ============================================================
 // Subcomponents
 // ============================================================
+
+function ConfigReadOnly({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-3 py-2 rounded-lg bg-gri-50 ring-1 ring-gri-200">
+      <div className="text-[10px] font-bold uppercase tracking-[0.04em] text-gri-500 mb-0.5">
+        {label}
+      </div>
+      <div className="text-[13px] font-semibold tabular-nums text-lacivert">
+        {value}
+      </div>
+    </div>
+  );
+}
 
 function FlowStepCard({
   step,

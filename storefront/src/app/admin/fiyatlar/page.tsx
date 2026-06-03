@@ -62,6 +62,15 @@ function parseScopeParam(v: string | null): Scope | null {
 
 type Scope = "sticker" | "etiket_rulo" | "etiket_tabaka";
 
+function optionGroupDisplayLabel(
+  scope: Scope,
+  groupId: string,
+  label: string
+): string {
+  if (scope === "sticker" && groupId === "finish") return "Laminasyon";
+  return label;
+}
+
 const DEFAULT_CUT_MULTIPLIERS: CutMultipliers = {
   diecut: 1.10,
   kisscut: 1.00,
@@ -1055,7 +1064,7 @@ function FiyatlarPageInner() {
             {Object.entries(draft.options).map(([group_id, group]) => (
               <Card padding="p-5" key={group_id}>
                 <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
-                   <span>{group.label}</span>
+                   <span>{optionGroupDisplayLabel(scope, group_id, group.label)}</span>
                   <span
                     className={cn(
                       "ml-2 inline-flex items-center h-[20px] px-2 rounded-full text-[10px] font-bold",
@@ -1233,6 +1242,43 @@ function FiyatlarPageInner() {
               </Card>
             ))}
 
+            {scope === "sticker" && (
+              <Card padding="p-5">
+                <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
+                  <span>Kesim Çarpanı</span>
+                </h2>
+                <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
+                  Die Cut tam kesim olduğu için kiss cut&apos;tan pahalıdır. Oran = diecut ÷ kisscut.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <NumField
+                    label="Die Cut"
+                    value={cutMultipliers.diecut}
+                    step={0.01}
+                    min={0.5}
+                    max={3}
+                    onChange={(v) => updateCutMultiplier("diecut", v)}
+                  />
+                  <NumField
+                    label="Kiss Cut"
+                    value={cutMultipliers.kisscut}
+                    step={0.01}
+                    min={0.5}
+                    max={3}
+                    onChange={(v) => updateCutMultiplier("kisscut", v)}
+                  />
+                  <NumField
+                    label="Tabaka"
+                    value={cutMultipliers.tabaka}
+                    step={0.01}
+                    min={0.5}
+                    max={3}
+                    onChange={(v) => updateCutMultiplier("tabaka", v)}
+                  />
+                </div>
+              </Card>
+            )}
+
             {/* Tiers */}
             <Card padding="p-5">
               <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
@@ -1290,43 +1336,6 @@ function FiyatlarPageInner() {
                 })}
               </div>
             </Card>
-
-            {scope === "sticker" && (
-              <Card padding="p-5">
-                <h2 className="font-semibold text-[16px] mb-1 flex items-center gap-2">
-                  <span>Kesim Çarpanı</span>
-                </h2>
-                <p className="text-[12px] text-gri-700 mb-3 leading-relaxed">
-                  Die Cut tam kesim olduğu için kiss cut&apos;tan pahalıdır. Oran = diecut ÷ kisscut.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <NumField
-                    label="Die Cut"
-                    value={cutMultipliers.diecut}
-                    step={0.01}
-                    min={0.5}
-                    max={3}
-                    onChange={(v) => updateCutMultiplier("diecut", v)}
-                  />
-                  <NumField
-                    label="Kiss Cut"
-                    value={cutMultipliers.kisscut}
-                    step={0.01}
-                    min={0.5}
-                    max={3}
-                    onChange={(v) => updateCutMultiplier("kisscut", v)}
-                  />
-                  <NumField
-                    label="Tabaka"
-                    value={cutMultipliers.tabaka}
-                    step={0.01}
-                    min={0.5}
-                    max={3}
-                    onChange={(v) => updateCutMultiplier("tabaka", v)}
-                  />
-                </div>
-              </Card>
-            )}
 
             {/* Operation + Margin + KDV (single card) */}
             <Card padding="p-5">
@@ -1571,7 +1580,7 @@ function FiyatlarPageInner() {
               {Object.entries(draft.options).map(([gid, group]) => (
                 <div key={gid} className="mb-3">
                   <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
-                    {group.label}
+                    {optionGroupDisplayLabel(scope, gid, group.label)}
                   </label>
                   {group.single_select ? (
                     <select
