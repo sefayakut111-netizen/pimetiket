@@ -2264,7 +2264,9 @@ function StickerPage() {
                 const result = await addToCustomerCart({
                   product: "sticker",
                   title: `Sticker · ${matName} + ${finName}${titleSuffix}`,
-                  config: `${shapeName} · ${width}×${height}mm · ${cutLabel}${cornerLabel}`,
+                  config: isSayfaMode
+                    ? `Sayfa · ${width}×${height}mm`
+                    : `${shapeName} · ${width}×${height}mm · ${cutLabel}${cornerLabel}`,
                   width,
                   height,
                   qty: totalStickerCount, // tier × designCount
@@ -2312,10 +2314,15 @@ function StickerPage() {
                   setEditingItemId(null);
                 }
                 // Sefa 18 May v60-v61: toast yerine modal popup; locale-aware
+                const qtyUnit = isSayfaMode
+                  ? locale === "en"
+                    ? "pages"
+                    : "sayfa"
+                  : t.cart.unitPiece;
                 const summary =
                   designs.length > 0
-                    ? `${matName} · ${width}×${height} mm · ${designCount} ${locale === "en" ? "designs" : "tasarım"} × ${tier.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} = ${totalStickerCount.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitSticker}`
-                    : `${matName} · ${width}×${height} mm · ${tier.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${t.cart.unitPiece}`;
+                    ? `${matName} · ${width}×${height} mm · ${designCount} ${locale === "en" ? "designs" : "tasarım"} × ${tier.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} = ${totalStickerCount.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${isSayfaMode ? qtyUnit : t.cart.unitSticker}`
+                    : `${matName} · ${width}×${height} mm · ${tier.toLocaleString(locale === "en" ? "en-US" : "tr-TR")} ${qtyUnit}`;
                 setCartSuccessSummary(summary);
                 setCartSuccessOpen(true);
 

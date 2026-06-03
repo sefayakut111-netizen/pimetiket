@@ -483,7 +483,7 @@ const STICKER_CARDS: StickerCard[] = [
     // Önceki "web sayfası izlenimi" gerekçesi geri alındı — Sefa müşteri
     // dilinde "tabaka" yerine "sayfa"yı tercih ediyor (e-ticaret yaygın
     // kullanım: "sticker sayfası satın al"). Mig 082 ile DB de senkron.
-    query: "cut=tabaka&shape=square",
+    query: "cut=tabaka&shape=square&sayfa=1",
     titleTr: "Sticker Sayfası",
     titleEn: "Sticker Sheet",
     descTr: "Aynı tasarımdan çok adet — tek tabakada",
