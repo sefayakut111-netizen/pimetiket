@@ -46,8 +46,6 @@ import {
   type ProductionMode,
   quoteSticker,
   findTier,
-  computeCost,
-  type CostResult,
 } from "@/lib/pricing-engine";
 import { ProfileTabs } from "@/components/admin/pricing/ProfileTabs";
 import { RollPlanSvg } from "@/components/admin/pricing/RollPlanSvg";
@@ -83,9 +81,6 @@ import { resolveM2Cost, resolveM2Sell } from "@/lib/pricing-dual-price";
 const DEFAULT_PREVIEW_MATERIAL = "vinil";
 const DEFAULT_PREVIEW_FINISH = "parlak";
 const DEFAULTS: ProfileInputSnapshot = getDefaultInput();
-
-/** Simülasyon maliyetinde tier uygulanmaz — referans çarpan 1 */
-const SIM_TIER: StickerTier = { qty: 250, multiplier: 1, label: "referans" };
 
 /** Varsayılan malzeme: Opak Folyo / Vinil (id veya isim) */
 function findOpakFolyoMaterial(
@@ -322,31 +317,8 @@ export function StickerCalculator({
 
   const displayTier = liveSitePrice?.ok ? liveSitePrice.tier : findTier(qty);
 
-  const simulationCost = useMemo(() => {
-    if (!result.ok) return null;
-    return computeCost({
-      geometry: result.geometry,
-      requestedQty: qty,
-      production: { mode: "fason", rate: fasonRate },
-      operation: operationEnabled
-        ? { setup, packaging, feePct: 0, cargo: 0 }
-        : { setup: 0, packaging: 0, feePct: 0, cargo: 0 },
-      margin: {
-        marginPct: 0,
-        vatPct: liveStickerConfig.vat.pct,
-        minMarkupFraction: 0,
-      },
-      tier: SIM_TIER,
-    });
-  }, [
-    result,
-    qty,
-    fasonRate,
-    setup,
-    packaging,
-    operationEnabled,
-    liveStickerConfig.vat.pct,
-  ]);
+  const maliyetHaric = liveSitePrice?.ok ? liveSitePrice.cost_total : 0;
+  const maliyetDahil = maliyetHaric * (1 + liveStickerConfig.vat.pct / 100);
 
   function handleGeneratePDF() {
     if (!result.ok) {
@@ -744,19 +716,23 @@ export function StickerCalculator({
               qty={qty}
               tier={displayTier}
               geometry={result.ok ? result.geometry : null}
-              maliyetTotal={simulationCost?.total}
+              maliyetTotal={maliyetDahil}
             />
 
             <OperatorCostHero
               result={result}
-              simulationCost={simulationCost}
+              maliyetHaric={maliyetHaric}
+              maliyetDahil={maliyetDahil}
+              m2Cost={
+                liveSitePrice?.ok ? liveSitePrice.material.m2_cost_try : undefined
+              }
               qty={qty}
               compact
             />
 
-            {result.ok && simulationCost && liveSitePrice?.ok && (
+            {result.ok && liveSitePrice?.ok && (
               <ProfitCompareStrip
-                simulationTotal={simulationCost.total}
+                simulationTotal={maliyetDahil}
                 siteFinal={liveSitePrice.final}
               />
             )}
@@ -1040,12 +1016,16 @@ function TierGrid({
 
 function OperatorCostHero({
   result,
-  simulationCost,
+  maliyetHaric,
+  maliyetDahil,
+  m2Cost,
   qty,
   compact = false,
 }: {
   result: ReturnType<typeof quoteSticker>;
-  simulationCost: CostResult | null;
+  maliyetHaric: number;
+  maliyetDahil: number;
+  m2Cost?: number;
   qty: number;
   compact?: boolean;
 }) {
@@ -1062,8 +1042,7 @@ function OperatorCostHero({
   }
 
   const { geometry } = result;
-  const cost = simulationCost;
-  if (!cost) {
+  if (maliyetDahil <= 0) {
     return (
       <Card padding="p-6" className="ring-1 ring-gri-200">
         <div className="text-[11px] uppercase tracking-[0.15em] text-gri-500 mb-2 font-semibold">
@@ -1091,16 +1070,16 @@ function OperatorCostHero({
           compact ? "text-[28px]" : "text-[36px]"
         )}
       >
-        {fmt(Math.round(cost.total))}{" "}
+        {fmt(Math.round(maliyetDahil))}{" "}
         <span className={cn("text-gri-500", compact ? "text-[16px]" : "text-[20px]")}>
           ₺
         </span>
       </div>
       <p className="text-[12px] text-gri-500 mt-0.5 tabular-nums">
-        KDV dahil · KDV hariç {fmt(Math.round(cost.baseCost))} ₺
+        KDV dahil · KDV hariç {fmt(Math.round(maliyetHaric))} ₺
       </p>
       <p className="text-[12px] text-gri-600 mt-1">
-        Fason + operasyon · partner alacağı
+        partner alacağı · m² maliyet × (laminasyon+kesim) × tier
       </p>
       <p className="text-[12px] text-gri-500 mt-2 tabular-nums leading-relaxed">
         {qty.toLocaleString("tr-TR")} adet ·{" "}
@@ -1114,27 +1093,13 @@ function OperatorCostHero({
         {geometry.fit.mode === "tabaka" ? "Baskı alanı" : "Sticker alanı"}{" "}
         {geometry.sheetAreaM2.toFixed(3)} m² · fireli rulo{" "}
         {geometry.totalM2.toFixed(3)} m²
+        {m2Cost != null && (
+          <>
+            <br />
+            m² maliyet {fmt(m2Cost, 2)} ₺ · fireli rulo {geometry.totalM2.toFixed(3)} m²
+          </>
+        )}
       </p>
-      {!compact && (
-        <div className="mt-4 pt-4 border-t border-gri-200 grid grid-cols-2 gap-3 text-[13px] tabular-nums">
-          <div>
-            <div className="text-[10px] uppercase text-gri-500 font-semibold">Üretim</div>
-            {fmt(Math.round(cost.productionCost))} ₺
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-gri-500 font-semibold">Operasyon</div>
-            {fmt(Math.round(cost.operationCost))} ₺
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-gri-500 font-semibold">KDV dahil</div>
-            {fmt(Math.round(cost.total))} ₺
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-gri-500 font-semibold">Birim (KDV dahil)</div>
-            {fmt(cost.unitPrice, 2)} ₺
-          </div>
-        </div>
-      )}
     </Card>
   );
 }
