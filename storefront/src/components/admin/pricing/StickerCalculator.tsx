@@ -93,21 +93,10 @@ function findOpakFolyoMaterial(
   return config.materials.find((m) => /opak|vinil/i.test(m.name));
 }
 
-function fasonRateForMaterial(
-  config: ProfileConfig,
-  materialId: string
-): number {
-  const selected = config.materials.find((m) => m.id === materialId);
-  if (selected) return resolveM2Cost(selected);
-  const opak = findOpakFolyoMaterial(config);
-  return opak ? resolveM2Cost(opak) : DEFAULTS.fasonRate;
-}
-
 function applyLiveConfigDefaults(
   config: ProfileConfig,
   setters: {
     setPreviewMaterialId: (id: string) => void;
-    setFasonRate: (n: number) => void;
     setSetup: (n: number) => void;
     setPackaging: (n: number) => void;
     setOperationEnabled: (v: boolean) => void;
@@ -116,7 +105,6 @@ function applyLiveConfigDefaults(
   const opak = findOpakFolyoMaterial(config);
   if (opak) {
     setters.setPreviewMaterialId(opak.id);
-    setters.setFasonRate(resolveM2Cost(opak));
   }
   setters.setSetup(config.operation.setup);
   setters.setPackaging(config.operation.packaging_per_unit);
@@ -154,14 +142,6 @@ export function StickerCalculator({
   const [width, setWidth] = useState<number>(DEFAULTS.width);
   const [height, setHeight] = useState<number>(DEFAULTS.height);
   const [qty, setQty] = useState<number>(DEFAULTS.qty);
-
-  // Fason — varsayılan Opak Folyo config alış (m²)
-  const [fasonRate, setFasonRate] = useState(() =>
-    fasonRateForMaterial(
-      liveConfig ?? FALLBACK_STICKER_CONFIG,
-      DEFAULT_PREVIEW_MATERIAL
-    )
-  );
 
   // Üretim
   const [paper, setPaper] = useState<number>(DEFAULTS.paper);
@@ -211,7 +191,6 @@ export function StickerCalculator({
 
   const handleMaterialChange = (materialId: string) => {
     setPreviewMaterialId(materialId);
-    setFasonRate(fasonRateForMaterial(liveStickerConfig, materialId));
   };
 
   useEffect(() => {
@@ -226,7 +205,6 @@ export function StickerCalculator({
         configDefaultsApplied.current = true;
         applyLiveConfigDefaults(liveConfig, {
           setPreviewMaterialId,
-          setFasonRate,
           setSetup,
           setPackaging,
           setOperationEnabled,
@@ -240,7 +218,6 @@ export function StickerCalculator({
     configDefaultsApplied.current = true;
     applyLiveConfigDefaults(liveStickerConfig, {
       setPreviewMaterialId,
-      setFasonRate,
       setSetup,
       setPackaging,
       setOperationEnabled,
@@ -276,13 +253,18 @@ export function StickerCalculator({
     };
   }, [liveConfig]);
 
-  // Hesap — sol: operatör maliyet simülasyonu (fason, tier simülasyonda yok)
+  const geometryFasonRate = selectedMaterial
+    ? resolveM2Cost(selectedMaterial)
+    : resolveM2Cost(findOpakFolyoMaterial(liveStickerConfig) ?? liveStickerConfig.materials[0]) ??
+      100;
+
+  // Hesap — geometri (rate yalnızca quoteSticker imzası için; geometriyi etkilemez)
   const result = quoteSticker({
     width,
     height,
     cut,
     qty,
-    production: { mode: "fason", rate: fasonRate },
+    production: { mode: "fason", rate: geometryFasonRate },
     operation: operationEnabled
       ? { setup, packaging, feePct: 0 }
       : { setup: 0, packaging: 0, feePct: 0 },
@@ -378,7 +360,7 @@ export function StickerCalculator({
     width,
     height,
     qty,
-    fasonRate,
+    fasonRate: geometryFasonRate,
     paper,
     ink,
     coating,
@@ -399,7 +381,6 @@ export function StickerCalculator({
     setWidth(i.width);
     setHeight(i.height);
     setQty(i.qty);
-    setFasonRate(i.fasonRate);
     setPaper(i.paper);
     setInk(i.ink);
     setCoating(i.coating);
@@ -421,7 +402,6 @@ export function StickerCalculator({
     setQty(DEFAULTS.qty);
     applyLiveConfigDefaults(liveStickerConfig, {
       setPreviewMaterialId,
-      setFasonRate,
       setSetup,
       setPackaging,
       setOperationEnabled,
@@ -638,23 +618,7 @@ export function StickerCalculator({
               subtitle="Operatör referansı — site fiyatından bağımsız"
               muted
             >
-              <Field
-                label="Fason birim maliyet"
-                hint={
-                  selectedMaterial
-                    ? `${selectedMaterial.name} · config alış ${fmt(resolveM2Cost(selectedMaterial))} ₺/m²`
-                    : "Opak Folyo varsayılan"
-                }
-              >
-                <NumInput
-                  value={fasonRate}
-                  onChange={setFasonRate}
-                  suffix="₺ / m²"
-                  step={5}
-                />
-              </Field>
-
-              <div className="border-t border-gri-200 pt-4 mt-2">
+              <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[12px] font-semibold uppercase tracking-[0.02em]">
                     Operasyon
