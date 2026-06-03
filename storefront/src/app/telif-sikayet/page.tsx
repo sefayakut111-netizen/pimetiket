@@ -153,8 +153,9 @@ export default function TelifSikayetPage() {
               <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
             </li>
             <li>
-              <strong>Adres:</strong> Yamanevler Mahallesi, Ümraniye /
-              İstanbul (Sefa Yakut, Alemdağ VD 9290558622)
+              <strong>Adres:</strong> Beştepeler Mah. Nergis Sok. No:7/2
+              ViaFlat İş Merkezi Ofis:27-28, 06510 Çankaya/Ankara (SEFA YAKUT
+              KIRTASİYE BASKI TİC. LTD. ŞTİ., Doğanbey VD 7580607612)
             </li>
           </ul>
 

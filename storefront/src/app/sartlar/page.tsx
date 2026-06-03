@@ -24,7 +24,7 @@ export default function SartlarPage() {
       <p>
         Pim Etiket, kullanıcılarına dijital baskı (rulo etiket ve sticker)
         siparişi verme, dosya yükleme, AI destekli kalite kontrolü, prova
-        onayı ve fason ortaklar üzerinden üretim ile teslim hizmetleri sunar.
+        onayı ve anlaşmalı üretim ortakları üzerinden üretim ile teslim hizmetleri sunar.
       </p>
 
       <h2>2. Hesap Açma ve Sorumluluk</h2>
@@ -151,7 +151,7 @@ export default function SartlarPage() {
           tasarımın baskı kalitesi ve içeriği nihai sorumluluğu sizdedir.
         </li>
         <li>
-          Mücbir sebep, kargo gecikmeleri, fason ortak kaynaklı gecikmeler
+          Mücbir sebep, kargo gecikmeleri, üretim ortağı kaynaklı gecikmeler
           için doğrudan sorumluluk üstlenilmez. Detaylar{" "}
           <a href="/mesafeli-satis">Mesafeli Satış Sözleşmesi</a>nde.
         </li>

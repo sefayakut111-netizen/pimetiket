@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { assertAdmin } from "@/lib/supabase/assert-admin";
 
 // Demo sayfası SEO indeksinden gizlenir — staff/test amaçlı.
-// Middleware /demo'yu auth-gate ediyor; bu meta arama motorlarına da
-// "indekslenmesin" sinyali verir.
 export const metadata: Metadata = {
   title: "Demo (test)",
   robots: {
@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function DemoLayout({ children }: { children: ReactNode }) {
+export default async function DemoLayout({ children }: { children: ReactNode }) {
+  const auth = await assertAdmin();
+  if (!auth) {
+    notFound();
+  }
   return children;
 }

@@ -176,6 +176,16 @@ export default function ProofEditPage({
   } | null>(null);
 
   useEffect(() => {
+    if (!designLoadError) return;
+    console.error("[cutline-editor] design load failed", {
+      orderId,
+      itemId,
+      designFileId,
+      error: designLoadError,
+    });
+  }, [designLoadError, orderId, itemId, designFileId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     (async () => {
@@ -279,10 +289,11 @@ export default function ProofEditPage({
           })
         );
         setDesignLoaded(false);
-        setPocStatus({ state: "loading", message: "POC iframe yükleniyor…" });
+        setPocStatus({ state: "loading", message: "Editör hazırlanıyor…" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
-        toast.error(`POC açılamadı: ${msg}`);
+        console.error("[cutline-editor] iframe open failed", { orderId, itemId, error: msg });
+        toast.error("Editör açılamadı, sayfayı yenile.");
       }
     })();
     return () => {
@@ -302,7 +313,7 @@ export default function ProofEditPage({
       const data = e.data as { type?: string; error?: string; source?: string } | undefined;
       if (!data || typeof data.type !== "string") return;
       if (data.type === "pim-poc-ready") {
-        setPocStatus({ state: "ready", message: "POC hazır, tasarım çekiliyor…" });
+        setPocStatus({ state: "ready", message: "Tasarım yükleniyor…" });
         const pending = pendingDesignRef.current;
         if (pending && iframeRef.current?.contentWindow) {
           iframeRef.current.contentWindow.postMessage(
@@ -320,13 +331,18 @@ export default function ProofEditPage({
         setDesignLoaded(true);
         setPocStatus({
           state: "loaded",
-          message: `Tasarım yüklendi (source=${data.source ?? "?"})`,
+          message: "Tasarım yüklendi.",
         });
         setTimeout(() => setPocStatus(null), 3000);
       } else if (data.type === "pim-poc-error") {
+        console.error("[cutline-editor] editor error", {
+          orderId,
+          itemId,
+          error: data.error,
+        });
         setPocStatus({
           state: "error",
-          message: `POC hatası: ${data.error ?? "(boş)"}`,
+          message: "Editör açılamadı, sayfayı yenile.",
         });
       } else if (
         data.type === "pim-poc-resize" &&
@@ -348,7 +364,9 @@ export default function ProofEditPage({
             : {
                 state: "timeout",
                 message:
-                  "12 saniyedir POC tasarım yüklemedi. Sayfayı yenilemeyi dene veya tasarım dosyasının erişilebilir olduğundan emin ol.",
+                  process.env.NODE_ENV !== "production"
+                    ? "12 saniyedir tasarım yüklenmedi. Sayfayı yenilemeyi dene veya tasarım dosyasının erişilebilir olduğundan emin ol."
+                    : "Tasarım yüklenmesi beklenenden uzun sürdü. Sayfayı yenileyin; sorun sürerse destek@pimetiket.com'a yazın.",
               }
         );
       }
@@ -573,8 +591,7 @@ export default function ProofEditPage({
                   : "border-sari/40 bg-sari-soft text-lacivert")
           }
         >
-          <span className="font-semibold capitalize">{pocStatus.state}:</span>{" "}
-          {pocStatus.message}
+          <span className="font-semibold">{pocStatus.message}</span>
         </div>
       )}
 
@@ -597,15 +614,15 @@ export default function ProofEditPage({
                 Tasarım yüklenemedi
               </div>
               <p className="text-sm text-lacivert mb-3">
-                POC editöre tasarımı geçiremedik. Lütfen aşağıdaki hata mesajını
-                Sefa&apos;ya iletin.
-              </p>
-              <pre className="overflow-auto rounded bg-white p-3 text-left text-[11px] text-gri-700 whitespace-pre-wrap break-all">
-                {designLoadError}
-              </pre>
-              <p className="mt-3 text-[11px] text-gri-700">
-                orderId: {orderId} · itemId: {itemId}
-                {designFileId ? ` · designFileId: ${designFileId}` : ""}
+                Tasarımını editöre yükleyemedik. Lütfen sayfayı yenile; sorun
+                sürerse{" "}
+                <a
+                  href="mailto:destek@pimetiket.com"
+                  className="text-pim-mercan underline"
+                >
+                  destek@pimetiket.com
+                </a>
+                &apos;a yaz.
               </p>
             </div>
           </div>

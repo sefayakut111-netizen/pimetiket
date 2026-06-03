@@ -62,9 +62,8 @@ const COPY = {
       "Sorunu kısa anlat: ne bekliyordun, ne aldın? Boyut, renk, kargo durumu… Pim mümkün olduğunca hızlı çözer.",
     photoIntro:
       "Üretim hatası / kargo hasarı için fotoğraf çok yardımcı olur. Aldığın ürünü ve problemi gösteren 1-3 foto yükle.",
-    addMock: "Foto ekle (mock)",
     photoMockNote: (
-      <>Fotoğraf yükleme henüz aktif değil — opsiyonel etiketler yalnızca talebin kaydı içindir. Gerçek dosya yükleme yakında eklenecek.</>
+      <>Fotoğraf yükleme yakında eklenecek. Şimdilik açıklama alanındaki detaylar yeterli — ekibimiz gerekirse senden foto isteyecek.</>
     ),
     cancel: "İptal",
     submit: "İade talebi gönder",
@@ -74,8 +73,6 @@ const COPY = {
     pcs: "adet",
     currency: "₺",
     remove: "Kaldır",
-    mockAdded: (file: string) =>
-      `${file} eklendi (mock — gerçek upload Faz 2)`,
     requestCreated: (id: string) =>
       `İade talebi oluşturuldu: ${id.slice(0, 8)}…`,
     unexpectedErr: "Beklenmedik hata",
@@ -115,9 +112,8 @@ const COPY = {
       "Briefly describe the issue: what did you expect, what did you get? Size, color, shipping condition… Pim will resolve it as fast as possible.",
     photoIntro:
       "For production errors / shipping damage, photos help a lot. Upload 1-3 photos showing the product and the issue.",
-    addMock: "Add photo (mock)",
     photoMockNote: (
-      <>Photo upload is not active yet — optional labels are for your request record only.</>
+      <>Photo upload is coming soon. For now, the description field is enough — our team will ask for photos if needed.</>
     ),
     cancel: "Cancel",
     submit: "Submit return request",
@@ -127,8 +123,6 @@ const COPY = {
     pcs: "units",
     currency: "TRY",
     remove: "Remove",
-    mockAdded: (file: string) =>
-      `${file} added (mock — real upload in Phase 2)`,
     requestCreated: (id: string) => `Return request created: ${id.slice(0, 8)}…`,
     unexpectedErr: "Unexpected error",
     reasonLabel: {
@@ -177,12 +171,6 @@ export default function IadeTalepPage() {
   const selectedOrder = orders.find((o) => o.id === orderId);
   const canSubmit =
     orderId && description.trim().length >= 20 && !loading;
-
-  const onAddMockFile = () => {
-    const fileName = `foto_${Date.now() % 10000}.jpg`;
-    setAttachments((arr) => [...arr, fileName]);
-    toast.info(c.mockAdded(fileName));
-  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -373,7 +361,7 @@ export default function IadeTalepPage() {
             </label>
           </Card>
 
-          {/* Step 4 — Foto (mock) */}
+          {/* Step 4 — Foto */}
           <Card padding="p-6" className="mb-4">
             <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-3">
               {c.step4}
@@ -381,36 +369,7 @@ export default function IadeTalepPage() {
             <p className="text-[13px] text-gri-700 mb-3 leading-relaxed">
               {c.photoIntro}
             </p>
-            <div className="flex gap-2 flex-wrap mb-3">
-              {attachments.map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-pim-mercan-tint text-pim-mercan text-[12px] font-semibold"
-                >
-                  <Icon.Box size={12} /> {f}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAttachments((arr) => arr.filter((x) => x !== f))
-                    }
-                    className="ml-1 hover:text-pim-mercan-koyu"
-                    aria-label={c.remove}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={onAddMockFile}
-              disabled={attachments.length >= 3}
-            >
-              <Icon.Plus size={14} /> {c.addMock}
-            </Button>
-            <div className="text-[11.5px] text-gri-500 mt-3 leading-relaxed">
+            <div className="text-[11.5px] text-gri-500 leading-relaxed">
               {c.photoMockNote}
             </div>
           </Card>

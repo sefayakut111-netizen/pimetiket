@@ -362,7 +362,7 @@ export default function YorumYazPage() {
                     Adımı baş harfle göster
                   </span>
                   <p className="text-[11.5px] text-gri-500 mt-0.5">
-                    Örn: &ldquo;{shortenDisplayName(displayName ?? "Sefa Yakut")}&rdquo;
+                    Örn: &ldquo;{shortenDisplayName(displayName ?? "Ayşe Y.")}&rdquo;
                     olarak gösterilir.
                   </p>
                 </div>

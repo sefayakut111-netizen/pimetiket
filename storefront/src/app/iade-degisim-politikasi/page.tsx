@@ -158,7 +158,7 @@ export default function IadeDegisimPolitikasiPage() {
               </li>
               <li>Pim ekibi 1-2 iş günü içinde inceler ve sana döner.</li>
               <li>
-                Onaylanırsa: kargo etiketi gönderirz, ürünü geri yollarsın
+                Onaylanırsa: kargo etiketi göndeririz, ürünü geri yollarsın
                 (kargonu biz öderiz).
               </li>
               <li>

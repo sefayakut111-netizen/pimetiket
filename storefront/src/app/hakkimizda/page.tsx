@@ -39,7 +39,7 @@ const COPY = {
     pimWhoEyebrow: "Pim kim?",
     pimWhoTitle: "Selam, ben Pim. Bu işin kargasıyım.",
     pimWho1:
-      "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse fason atölyeyi kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — kargayım, saymıyoruz.",
+      "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse üretim atölyesini kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — kargayım, saymıyoruz.",
     pimWho2:
       "Tek başıma çalışıyorum ama her konuya hâkimim — sen ne sorarsan, hangi kategoriye giriyorsa doğru cevabı vermek için eğitildim:",
     pimRole1Name: "Sipariş & fiyat",
@@ -99,13 +99,13 @@ const COPY = {
     story4post: ".",
     storyPromise: "What we promise you",
     story5:
-      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses, no “5 business days” turning into ten.",
+      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses — we don't miss the delivery days we promise: labels in 10, stickers in 5 business days in transit.",
     story6:
       "Thank you for walking with us on this journey. 75 years of trading experience + the AI era — Pim Etiket is where these two meet.",
     pimWhoEyebrow: "Who's Pim?",
     pimWhoTitle: "Hi, I'm Pim. The crow behind this whole thing.",
     pimWho1:
-      "When things get tangled, just call me — I quote prices, track orders, chase the contract workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm a crow, I don't count.",
+      "When things get tangled, just call me — I quote prices, track orders, chase the production workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm a crow, I don't count.",
     pimWho2:
       "I work solo but I cover every angle — whatever you ask, whatever category it falls in, I'm trained to answer:",
     pimRole1Name: "Orders & pricing",
@@ -120,7 +120,7 @@ const COPY = {
     valuesTitle: "The four promises behind Pim.",
     val1Title: "Flexible from low quantity",
     val1Desc:
-      "Print without stocking, no quality compromise even at low volumes. We start from 1000 labels.",
+      "Print without stocking, no quality compromise even at low volumes. Roll labels from 1,000, sheet labels from 250, stickers from 25.",
     val2Title: "AI checks your file",
     val2Desc:
       "DPI, CMYK, bleed — anything missing, we flag it before production. Pre-press errors don't blow up in your hand.",

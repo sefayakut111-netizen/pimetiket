@@ -66,8 +66,8 @@ export default function CaymaHakkiPage() {
       </ul>
       <p>
         Prova onayı sonrası üretim aşamasına girmiş siparişler{" "}
-        <strong>iptal edilemez</strong>; bu noktada SATICI fason ortağa
-        ödeme yapmış olur.
+        <strong>iptal edilemez</strong>; bu noktada kişiye özel üretim
+        başlamış olduğundan cayma hakkı kullanılamaz.
       </p>
 
       <h2>Ayıplı Ürün ve Yasal Haklar</h2>

@@ -177,7 +177,7 @@ export const STICKER_MATERIALS: MaterialInfo[] = [
       "Kalın, esnek vinil film. Sticker klasiği — UV ve suya dayanıklı, dış mekana uygun.",
     use: "Laptop, su şişesi, araba, dış mekan, ürün ambalajı",
     surface: "Standart parlak ya da mat. Renkler canlı, kontrast yüksek.",
-    durability: "3-5 yıl dış mekan dayanımı. Çamaşır makinesi tehlikesi DEĞİL.",
+    durability: "3-5 yıl dış mekan dayanımı. Çamaşır makinesine dayanmaz.",
     suitableFor:
       "Dış mekan, promosyon ve dayanıklılık isteyen markalar; laptop ve araç stickerları.",
     productType: "sticker",

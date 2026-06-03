@@ -99,7 +99,7 @@ export default function KvkkPage() {
       </p>
       <ul>
         <li>
-          <strong>Fason üretim ortakları</strong>: ad-soyad, teslim adresi,
+          <strong>Anlaşmalı üretim ortakları</strong>: ad-soyad, teslim adresi,
           telefon, sipariş detayları ve tasarım dosyası (üretim için zorunlu —
           aşağıda detaylı açıklama)
         </li>
@@ -124,11 +124,11 @@ export default function KvkkPage() {
       </p>
 
       <h3 className="text-base font-semibold mt-5">
-        5.1 Üretim Ortakları (Fason İşletmeler)
+        5.1 Anlaşmalı Üretim Ortakları
       </h3>
       <p>
         Sipariş ettiğin baskı ürününün üretimi için anlaşmalı{" "}
-        <strong>fason üretim ortaklarımıza</strong> aşağıdaki verilerin
+        <strong>anlaşmalı üretim ortaklarımıza</strong> aşağıdaki verilerin
         aktarılır:
       </p>
       <ul>
@@ -147,13 +147,13 @@ export default function KvkkPage() {
         ifası için zorunlu olduğunda açık rıza aranmaksızın aktarım yapılır.
       </p>
       <p>
-        <strong>Veri işleyen statüsü:</strong> Fason ortaklarımız KVKK
+        <strong>Veri işleyen statüsü:</strong> Anlaşmalı üretim ortaklarımız KVKK
         m.3/1-ı uyarınca &ldquo;veri işleyen&rdquo; sıfatına sahiptir;
         bizimle imzalı veri işleyici sözleşmesi olmadan veri aktarımı
         yapılmaz.
       </p>
       <p>
-        <strong>Sözleşmesel güvenceler:</strong> Tüm fason ortaklarımızla:
+        <strong>Sözleşmesel güvenceler:</strong> Tüm anlaşmalı üretim ortaklarımızla:
       </p>
       <ul>
         <li>Sadece ilgili sipariş için kullanım taahhüdü</li>
@@ -166,7 +166,7 @@ export default function KvkkPage() {
         yükümlülüklerini içeren bağlayıcı sözleşmeler imzalanmıştır.
       </p>
       <p>
-        <strong>Yurt dışı aktarım YAPILMAZ.</strong> Tüm fason ortaklarımız
+        <strong>Yurt dışı aktarım YAPILMAZ.</strong> Tüm anlaşmalı üretim ortaklarımız
         Türkiye sınırları içinde faaliyet gösterir.
       </p>
 
@@ -421,7 +421,7 @@ export default function KvkkPage() {
         </li>
         <li>
           Üretim ortağımıza önceden aktarılmış dosyalar en geç 30 gün
-          içinde fason tarafından imha edilir (veri işleyici sözleşmesi
+          içinde anlaşmalı üretim ortağı tarafından imha edilir (veri işleyici sözleşmesi
           gereği).
         </li>
       </ul>
