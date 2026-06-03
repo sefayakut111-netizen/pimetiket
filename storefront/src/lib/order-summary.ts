@@ -100,22 +100,25 @@ function fmtInt(n: number, locale: Locale): string {
  */
 export function buildSummaryItems(
   item: CustomerCartItem,
-  locale: Locale = "tr"
+  locale: Locale = "tr",
+  opts: { pageMode?: boolean } = {}
 ): SummaryItem[] {
   if (item.product === "sticker") {
-    return buildStickerSummary(item, locale);
+    return buildStickerSummary(item, locale, opts);
   }
   return buildEtiketSummary(item, locale);
 }
 
 function buildStickerSummary(
   item: CustomerCartItem,
-  locale: Locale
+  locale: Locale,
+  opts: { pageMode?: boolean } = {}
 ): SummaryItem[] {
   const items: SummaryItem[] = [];
+  const pageMode = opts.pageMode === true;
 
   // Şekil
-  if (item.shape) {
+  if (!pageMode && item.shape) {
     items.push({
       icon: "🔷",
       label: locale === "en" ? "Shape" : "Şekil",
@@ -134,6 +137,7 @@ function buildStickerSummary(
 
   // Köşe (sadece kare/dikdörtgen/özel için anlamlı)
   if (
+    !pageMode &&
     item.softCorners !== undefined &&
     (item.shape === "square" ||
       item.shape === "rectangle" ||
@@ -206,8 +210,22 @@ function buildStickerSummary(
   // Toplam adet
   items.push({
     icon: "📋",
-    label: locale === "en" ? "Total qty" : "Toplam adet",
-    value: `${fmtInt(item.qty, locale)} ${locale === "en" ? "stickers" : "sticker"}`,
+    label: pageMode
+      ? locale === "en"
+        ? "Pages"
+        : "Sayfa adedi"
+      : locale === "en"
+        ? "Total qty"
+        : "Toplam adet",
+    value: `${fmtInt(item.qty, locale)} ${
+      pageMode
+        ? locale === "en"
+          ? "pages"
+          : "sayfa"
+        : locale === "en"
+          ? "stickers"
+          : "sticker"
+    }`,
   });
 
   return items;

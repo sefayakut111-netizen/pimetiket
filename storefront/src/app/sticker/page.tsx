@@ -496,7 +496,7 @@ const STICKER_CARDS: StickerCard[] = [
     titleTr: "Yuvarlak Etiket Sayfası",
     titleEn: "Circle Label Sheet",
     descTr: "Tek tabakada çok adet yuvarlak — sticker fiyatına",
-    descEn: "Many circles on one sheet",
+    descEn: "Many circles on one sheet — at sticker price",
     svg: <CircleIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-circle.jpg",
   },
@@ -505,7 +505,7 @@ const STICKER_CARDS: StickerCard[] = [
     titleTr: "Kare Etiket Sayfası",
     titleEn: "Square Label Sheet",
     descTr: "Tek tabakada çok adet kare — sticker fiyatına",
-    descEn: "Many squares on one sheet",
+    descEn: "Many squares on one sheet — at sticker price",
     svg: <SquareIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-square.jpg",
   },
@@ -514,7 +514,7 @@ const STICKER_CARDS: StickerCard[] = [
     titleTr: "Dikdörtgen Etiket Sayfası",
     titleEn: "Rectangle Label Sheet",
     descTr: "Tek tabakada çok adet dikdörtgen — sticker fiyatına",
-    descEn: "Many rectangles on one sheet",
+    descEn: "Many rectangles on one sheet — at sticker price",
     svg: <RectangleIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-rectangle.jpg",
   },
@@ -704,7 +704,7 @@ export default function StickerGridPage() {
             <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
               {isEn
                 ? "Kiss-cut on intact backing — sheet or page format. Peel stickers without separating the liner."
-                : "Yarım kesim, arka kağıt sağlam; tabaka/sayfa halinde. Liner ayrılmadan sticker çıkar."}
+                : "Yarım kesim, arka kağıt sağlam; tabaka/sayfa halinde. Kağıttan ayırmadan sticker çıkar."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {kissCutCards.map((card) => (

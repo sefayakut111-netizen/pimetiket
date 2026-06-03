@@ -1198,10 +1198,10 @@ function StickerPage() {
               <p className="mb-4 rounded-xl border border-gri-200 bg-white px-4 py-3 text-[13px] text-gri-700 leading-relaxed">
                 {isSayfaMode
                   ? locale === "en"
-                    ? "Page mode: choose a sheet size and page count. Price is based on roll layout m² per page."
-                    : "Sayfa modu: sayfa boyutu ve adet seç. Fiyat, sayfanın rulo dizgisindeki m²'sine göre hesaplanır."
+                    ? "Page mode: choose a sheet size and page count. Price is based on the page area and quantity."
+                    : "Sayfa modu: sayfa boyutu ve adet seç. Fiyat, sayfa alanına ve adedine göre hesaplanır."
                   : locale === "en"
-                    ? "This product is produced as a sheet (tabaka)."
+                    ? "This product is produced as a sheet."
                     : "Bu ürün sayfa (tabaka) olarak üretilir."}
               </p>
             ) : null}
@@ -1514,7 +1514,7 @@ function StickerPage() {
               title={isSayfaMode ? "Sayfa boyutu" : t.config.sizeTitle}
               hint={
                 isSayfaMode
-                  ? "Sayfa preset'lerinden birini seç — fiyat seçilen sayfanın plotter rulosu m²'sine göre hesaplanır."
+                  ? "Sayfa ölçülerinden birini seç — fiyat sayfanın alanına göre hesaplanır."
                   : "Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin."
               }
               locked={isStepLocked(5)}
@@ -2001,7 +2001,7 @@ function StickerPage() {
               <div className="flex flex-wrap gap-2 mb-3">
                 {savings > 0 && (
                   <div className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-yesil-soft text-yesil text-[11.5px] font-semibold">
-                    %{savings} tasarruf 🎯 — adet indirimi
+                    %{savings} tasarruf 🎯 — {isSayfaMode ? "sayfa indirimi" : "adet indirimi"}
                   </div>
                 )}
                 {!isSayfaMode && designDiscountPct > 0 && (
@@ -2114,7 +2114,8 @@ function StickerPage() {
                   designCount: designCount > 1 ? designCount : undefined,
                   addedAt: 0,
                 },
-                locale
+                locale,
+                { pageMode: isSayfaMode }
               )}
               unitPrice={
                 <>
@@ -2125,7 +2126,11 @@ function StickerPage() {
                   · KDV dahil
                 </>
               }
-              savingsLabel={savings > 0 ? `%${savings} adet indirimi` : null}
+              savingsLabel={
+                savings > 0
+                  ? `%${savings} ${isSayfaMode ? "sayfa indirimi" : "adet indirimi"}`
+                  : null
+              }
               footnote={null}
               pendingStepsCount={
                 stepIds.filter(
