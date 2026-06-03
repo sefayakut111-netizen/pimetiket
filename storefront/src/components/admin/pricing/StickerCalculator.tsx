@@ -610,7 +610,7 @@ export function StickerCalculator({
                 {/* Tabaka dizgisi + özet — rulo planından önce (esnek tabaka görünür olsun) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <SheetPreviewCard result={result} />
-                  <UretimOzetiCard result={result} />
+                  <UretimOzetiCard result={result} qty={qty} />
                 </div>
 
                 <RollPlanCard result={result} />
@@ -1206,8 +1206,8 @@ function RollPlanCard({ result }: { result: ReturnType<typeof quoteSticker> }) {
           />
           {isTabaka ? (
             <RpStat
-              label="Tabaka/Rulo"
-              value={`${roll.sheetsOnLastRoll}/${roll.sheetsPerRoll}`}
+              label="Toplam tabaka"
+              value={fit.sheetsNeeded.toString()}
             />
           ) : (
             <RpStat
@@ -1325,8 +1325,10 @@ function formatSegmentHeights(heights: number[]): string {
 
 function UretimOzetiCard({
   result,
+  qty,
 }: {
   result: ReturnType<typeof quoteSticker>;
+  qty: number;
 }) {
   if (!result.ok) return null;
   const { geometry } = result;
@@ -1363,6 +1365,15 @@ function UretimOzetiCard({
             <StatCell
               label="Toplam Tabaka"
               value={fit.sheetsNeeded.toString()}
+            />
+            <StatCell
+              label="Toplam üretilen"
+              value={fit.producedQty.toString()}
+              hint={
+                fit.producedQty > qty
+                  ? `+${fit.producedQty - qty} fazla`
+                  : undefined
+              }
             />
           </>
         ) : (
@@ -1420,8 +1431,11 @@ function UretimOzetiCard({
       <div className="mt-3 px-3 py-2 rounded-lg bg-pim-mercan-tint/40 text-[12px] flex justify-between items-center border-l-[3px] border-pim-mercan">
         <span>
           <strong className="text-pim-mercan-koyu">
-            %{geometry.wastePct.toFixed(1)} fire
+            %{geometry.wastePct.toFixed(1)} fire (sticker / fireli rulo)
           </strong>
+          <span className="block text-[10px] text-gri-600 font-normal mt-0.5 normal-case">
+            fire = sticker alanı dışındaki tüm rulo
+          </span>
         </span>
         <span className="text-gri-700 tabular-nums text-[12px]">
           {geometry.stickerArea.toFixed(3)} m² sticker
