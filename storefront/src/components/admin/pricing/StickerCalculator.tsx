@@ -304,6 +304,7 @@ export function StickerCalculator({
         material_id: previewMaterialId,
         selected_options: { finish: previewFinishId },
         billable_m2: result.geometry.totalM2,
+        cut_type: cut,
       },
       liveStickerConfig,
       "sticker"
@@ -316,6 +317,7 @@ export function StickerCalculator({
     previewMaterialId,
     previewFinishId,
     liveStickerConfig,
+    cut,
   ]);
 
   const displayTier = liveSitePrice?.ok ? liveSitePrice.tier : findTier(qty);
