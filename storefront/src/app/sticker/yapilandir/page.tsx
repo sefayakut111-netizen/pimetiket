@@ -1194,17 +1194,6 @@ function StickerPage() {
             </FormSection>
             )}
 
-            {(cutLocked || isSayfaMode) ? (
-              <p className="mb-4 rounded-xl border border-gri-200 bg-white px-4 py-3 text-[13px] text-gri-700 leading-relaxed">
-                {isSayfaMode
-                  ? locale === "en"
-                    ? "Page mode: choose a sheet size and page count. Price is based on the page area and quantity."
-                    : "Sayfa modu: sayfa boyutu ve adet seç. Fiyat, sayfa alanına ve adedine göre hesaplanır."
-                  : locale === "en"
-                    ? "This product is produced as a sheet."
-                    : "Bu ürün sayfa (tabaka) olarak üretilir."}
-              </p>
-            ) : null}
 
             {/* Step 2 — Şekil seçici. Sefa 20 May v68 (2. revize):
                 SHOW_STICKER_SHAPE_PICKER false ise tüm FormSection gizli.
