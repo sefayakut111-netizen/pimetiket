@@ -221,7 +221,6 @@ const SAYFA_BOYUTLARI = [
   { id: "kare-200", ad: "Kare 20cm", w: 200, h: 200 },
   { id: "serit-dikey", ad: "Şerit (dikey)", w: 50, h: 210 },
   { id: "serit-yatay", ad: "Şerit (yatay)", w: 210, h: 50 },
-  { id: "yarim-a5", ad: "Yarım A5", w: 100, h: 210 },
 ] as const;
 
 const SAYFA_QTY_PRESETS = [10, 25, 50, 75, 100, 250, 500, 1000] as const;
