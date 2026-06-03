@@ -1,15 +1,42 @@
 import Link from "next/link";
-import { TERIMLER } from "@/lib/terimler";
-import { cn } from "@/lib/cn";
+import { TERIMLER, type Terim } from "@/lib/terimler";
 
-const TURKISH_ALPHABET = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ".split("");
+const CATEGORY_ORDER = [
+  "Kesim & Üretim",
+  "Malzeme",
+  "Kaplama & Sonlandırma",
+  "Baskı & Dosya",
+  "Form & Sarım",
+  "Ölçü & Ticari",
+] as const;
 
-function firstLetter(text: string): string {
-  return text.trim().charAt(0).toLocaleUpperCase("tr-TR");
+const CATEGORY_SLUG: Record<(typeof CATEGORY_ORDER)[number], string> = {
+  "Kesim & Üretim": "kesim-uretim",
+  Malzeme: "malzeme",
+  "Kaplama & Sonlandırma": "kaplama-sonlandirma",
+  "Baskı & Dosya": "baski-dosya",
+  "Form & Sarım": "form-sarim",
+  "Ölçü & Ticari": "olcu-ticari",
+};
+
+function groupByCategory(): { kategori: (typeof CATEGORY_ORDER)[number]; items: Terim[] }[] {
+  const byCat = new Map<string, Terim[]>();
+  for (const item of TERIMLER) {
+    const list = byCat.get(item.kategori) ?? [];
+    list.push(item);
+    byCat.set(item.kategori, list);
+  }
+
+  return CATEGORY_ORDER.map((kategori) => ({
+    kategori,
+    items: (byCat.get(kategori) ?? []).sort((a, b) =>
+      a.terim.localeCompare(b.terim, "tr-TR")
+    ),
+  })).filter((section) => section.items.length > 0);
 }
 
 export default function TerimSozluguPage() {
-  const usedLetters = new Set(TERIMLER.map((t) => firstLetter(t.terim)));
+  const sections = groupByCategory();
 
   return (
     <main className="min-h-screen bg-gri-50 pt-24 pb-20">
@@ -28,67 +55,54 @@ export default function TerimSozluguPage() {
         </header>
 
         <nav
-          aria-label="Alfabeye göre atlama"
-          className="mb-8 flex gap-1.5 overflow-x-auto pb-2 scrollbar-thin"
+          aria-label="Kategoriye göre atlama"
+          className="mb-10 flex flex-wrap justify-center gap-2"
         >
-          {TURKISH_ALPHABET.map((letter) => {
-            const active = usedLetters.has(letter);
-            return active ? (
-              <Link
-                key={letter}
-                href={`#harf-${letter}`}
-                className="inline-flex h-9 min-w-9 shrink-0 items-center justify-center rounded-lg border border-gri-200 bg-white px-2 text-[13px] font-semibold text-lacivert hover:border-pim-mercan hover:text-pim-mercan transition-colors"
-              >
-                {letter}
-              </Link>
-            ) : (
-              <span
-                key={letter}
-                className="inline-flex h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-2 text-[13px] font-semibold text-gri-300"
-                aria-hidden
-              >
-                {letter}
-              </span>
-            );
-          })}
+          {sections.map(({ kategori }) => (
+            <Link
+              key={kategori}
+              href={`#kat-${CATEGORY_SLUG[kategori]}`}
+              className="inline-flex shrink-0 items-center rounded-full border border-gri-200 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-lacivert hover:border-pim-mercan hover:text-pim-mercan transition-colors"
+            >
+              {kategori}
+            </Link>
+          ))}
         </nav>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TERIMLER.map((item, idx) => {
-            const letter = firstLetter(item.terim);
-            const prevLetter =
-              idx > 0 ? firstLetter(TERIMLER[idx - 1].terim) : null;
-            const isFirstOfLetter = letter !== prevLetter;
-
-            return (
-              <article
-                key={item.terim}
-                id={isFirstOfLetter ? `harf-${letter}` : undefined}
-                className={cn(
-                  "flex flex-col h-full bg-white border border-gri-200 rounded-2xl p-4",
-                  "hover:shadow-md transition-shadow scroll-mt-28"
-                )}
-              >
-                <div>
-                  <h2 className="text-[15px] font-semibold text-lacivert leading-snug">
-                    {item.terim}
-                  </h2>
-                  {item.ingilizce ? (
-                    <p className="text-[12px] text-gri-500 mt-0.5">{item.ingilizce}</p>
-                  ) : null}
-                </div>
-                <p className="text-[13px] text-gri-700 leading-relaxed mt-2 flex-1">
-                  {item.aciklama}
-                </p>
-                <span
-                  className="mt-auto pt-3 inline-flex self-start rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                  style={{ backgroundColor: "#FFF1EE", color: "#FF6B5B" }}
-                >
-                  {item.kategori}
-                </span>
-              </article>
-            );
-          })}
+        <div className="flex flex-col gap-12">
+          {sections.map(({ kategori, items }) => (
+            <section
+              key={kategori}
+              id={`kat-${CATEGORY_SLUG[kategori]}`}
+              className="scroll-mt-28"
+            >
+              <h2 className="text-xl md:text-2xl font-bold text-lacivert mb-4">
+                {kategori}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {items.map((item) => (
+                  <article
+                    key={item.terim}
+                    className="flex flex-col h-full bg-white border border-gri-200 rounded-2xl p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-lacivert leading-snug">
+                        {item.terim}
+                      </h3>
+                      {item.ingilizce ? (
+                        <p className="text-[12px] text-gri-500 mt-0.5">
+                          {item.ingilizce}
+                        </p>
+                      ) : null}
+                    </div>
+                    <p className="text-[13px] text-gri-700 leading-relaxed mt-2 flex-1">
+                      {item.aciklama}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
     </main>
