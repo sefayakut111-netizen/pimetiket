@@ -74,7 +74,7 @@ const STEPS: ProductionStep[] = [
 export function StickerInfoSection({ isEn }: { isEn: boolean }) {
   return (
     <section className="mt-16 border-t border-gri-200 pt-16">
-      <div className="text-center mb-12">
+      <div className="text-center mb-10">
         <span className="text-[12px] font-semibold uppercase tracking-[0.18em] text-pim-mercan">
           {isEn ? "Production" : "Üretim"}
         </span>
@@ -88,40 +88,38 @@ export function StickerInfoSection({ isEn }: { isEn: boolean }) {
         </p>
       </div>
 
-      <div className="space-y-12 md:space-y-20">
+      <div className="space-y-5 md:space-y-6">
         {STEPS.map((step, i) => (
           <div
             key={step.n}
-            className={`flex flex-col gap-6 md:gap-12 md:items-center ${
+            className={`overflow-hidden rounded-3xl bg-gri-50 ring-1 ring-black/[0.04] flex flex-col ${
               i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"
             }`}
           >
-            {/* Görsel */}
-            <div className="md:w-[45%]">
-              <div className="relative aspect-[16/10] rounded-2xl overflow-hidden ring-1 ring-black/[0.04] shadow-1 bg-gri-100">
-                <Image
-                  src={step.img}
-                  alt={step.alt}
-                  fill
-                  loading="lazy"
-                  sizes="(max-width: 768px) 100vw, 45vw"
-                  className="object-cover"
-                />
-              </div>
+            {/* Görsel — yarıyı baştan başa kaplar, beyaz kalmaz */}
+            <div className="relative w-full aspect-[16/11] md:aspect-auto md:w-1/2 md:min-h-[300px]">
+              <Image
+                src={step.img}
+                alt={step.alt}
+                fill
+                loading="lazy"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+              />
             </div>
 
-            {/* Metin */}
-            <div className="md:flex-1">
+            {/* Metin — yumuşak zeminde dikey ortalı */}
+            <div className="w-full md:w-1/2 p-7 md:p-12 flex flex-col justify-center">
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-pim-mercan font-bold text-lg tabular-nums">
                   {step.n}
                 </span>
                 <span className="h-px w-8 bg-pim-mercan/40" aria-hidden />
               </div>
-              <h3 className="text-lg md:text-xl font-bold text-lacivert">
+              <h3 className="text-lg md:text-2xl font-bold text-lacivert">
                 {isEn ? step.titleEn : step.titleTr}
               </h3>
-              <p className="mt-2 text-gri-600 leading-relaxed max-w-xl">
+              <p className="mt-2 text-gri-600 leading-relaxed">
                 {isEn ? step.descEn : step.descTr}
               </p>
               {step.partners && (
