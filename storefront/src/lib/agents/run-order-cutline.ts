@@ -12,6 +12,7 @@ import {
 } from "@/lib/proof/cutline-detect";
 import { runProofPipeline } from "@/lib/proof/orchestrator";
 import { sendProofReady } from "@/lib/mail/notifications";
+import { shapeToPocMode } from "@/lib/proof/shape-to-poc-mode";
 
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -168,6 +169,12 @@ export async function runOrderCutlineGeneration(
         detectedCutlineSvg:
           detected.found && detected.svgPath ? detected.svgPath : undefined,
         detectionSource: detected.detectionMethod,
+        shapeMode: shapeToPocMode(
+          typeof itemMeta?.shape === "string" ? itemMeta.shape : null,
+          typeof itemMeta?.cut === "string" ? itemMeta.cut : null
+        ),
+        orderWidthMm: item.width,
+        orderHeightMm: item.height,
       });
 
       if (!result) {

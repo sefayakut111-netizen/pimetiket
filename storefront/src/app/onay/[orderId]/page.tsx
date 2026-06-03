@@ -47,6 +47,7 @@ import {
   orderAllDesignsApproved,
 } from "@/lib/order-item-meta";
 import { buildPocIframeSrc } from "@/lib/proof/build-poc-iframe-src";
+import { shapeToPocMode } from "@/lib/proof/shape-to-poc-mode";
 import { track } from "@/lib/analytics/posthog-events";
 
 // ============================================================
@@ -1062,6 +1063,8 @@ export default function ProofApprovalPage({
       material: string;
       orderWidthMm: number;
       orderHeightMm: number;
+      shape?: string | null;
+      cut?: string | null;
     };
     // Konfigüratör material → POC material mapping.
     // Sticker: vinil/transparan/holo/simli, Etiket: kraft/kuşe/...
@@ -1086,6 +1089,9 @@ export default function ProofApprovalPage({
             material,
             orderWidthMm: item.width,
             orderHeightMm: item.height,
+            shape:
+              typeof item.meta?.shape === "string" ? item.meta.shape : null,
+            cut: typeof item.meta?.cut === "string" ? item.meta.cut : null,
           };
           break;
         }
@@ -1097,6 +1103,8 @@ export default function ProofApprovalPage({
           material,
           orderWidthMm: item.width,
           orderHeightMm: item.height,
+          shape: typeof item.meta?.shape === "string" ? item.meta.shape : null,
+          cut: typeof item.meta?.cut === "string" ? item.meta.cut : null,
         };
         break;
       }
@@ -1137,6 +1145,7 @@ export default function ProofApprovalPage({
             editorMode: true,
             orderWidthMm: candidate.orderWidthMm,
             orderHeightMm: candidate.orderHeightMm,
+            mode: shapeToPocMode(candidate.shape, candidate.cut),
             origin: window.location.origin,
           })
         );

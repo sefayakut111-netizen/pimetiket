@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { PocCutlineMode } from "@/lib/proof/shape-to-poc-mode";
+
 interface CutlineResult {
   svg: string;
   preview_png_base64: string | null;
@@ -21,6 +23,9 @@ export async function generateCutlineHeadless(args: {
   /** Gömülü bıçak path — varsa POC bounding-box üretmez */
   detectedCutlineSvg?: string;
   detectionSource?: string;
+  shapeMode?: PocCutlineMode;
+  orderWidthMm?: number;
+  orderHeightMm?: number;
 }): Promise<CutlineResult | null> {
   const chromium = await import("@sparticuz/chromium");
   const puppeteer = await import("puppeteer-core");
@@ -102,12 +107,19 @@ export async function generateCutlineHeadless(args: {
       designName: args.designName,
       designMime: args.designMime,
       material: args.material,
-      mode: args.detectedCutlineSvg ? "use-embedded" : "contour",
+      mode: args.detectedCutlineSvg ? "use-embedded" : (args.shapeMode ?? "contour"),
       autoSave: "1",
       headless: "1",
       orderId: args.orderId,
       itemId: args.itemId,
     });
+
+    if (args.orderWidthMm != null && args.orderWidthMm > 0) {
+      params.set("orderWidthMm", String(args.orderWidthMm));
+    }
+    if (args.orderHeightMm != null && args.orderHeightMm > 0) {
+      params.set("orderHeightMm", String(args.orderHeightMm));
+    }
 
     if (args.detectedCutlineSvg) {
       params.set("embeddedCutline", args.detectedCutlineSvg);

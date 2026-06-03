@@ -1,5 +1,7 @@
 /** POC iframe src — same-origin design-file proxy (signed URL query truncation fix). */
 
+import type { PocCutlineMode } from "@/lib/proof/shape-to-poc-mode";
+
 export function mapConfiguratorMaterial(m: unknown): string {
   if (typeof m !== "string") return "paper";
   const k = m.toLowerCase();
@@ -24,6 +26,8 @@ export function buildPocIframeSrc(args: {
   orderHeightMm?: number;
   /** Partner/üretim: indirme paneli görünür */
   partnerMode?: boolean;
+  /** POC bıçak modu — verilmezse contour (silüet) */
+  mode?: PocCutlineMode;
   origin: string;
 }): string {
   const dfQs = args.designFileId
@@ -37,7 +41,7 @@ export function buildPocIframeSrc(args: {
     designName: args.fileName,
     designMime: args.mimeType,
     material: args.material,
-    mode: "contour",
+    mode: args.mode ?? "contour",
     autoSave: args.autoSave ? "1" : "0",
     orderId: args.orderId,
     itemId: args.itemId,

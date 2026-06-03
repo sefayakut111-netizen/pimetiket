@@ -71,6 +71,7 @@ import {
   buildPocIframeSrc,
   mapConfiguratorMaterial,
 } from "@/lib/proof/build-poc-iframe-src";
+import { shapeToPocMode } from "@/lib/proof/shape-to-poc-mode";
 
 interface ProofItem {
   id: string;
@@ -285,6 +286,10 @@ export default function ProofEditPage({
             editorMode: true,
             orderWidthMm: item.width,
             orderHeightMm: item.height,
+            mode: shapeToPocMode(
+              typeof item.meta?.shape === "string" ? item.meta.shape : null,
+              typeof item.meta?.cut === "string" ? item.meta.cut : null
+            ),
             origin,
           })
         );
