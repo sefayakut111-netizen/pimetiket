@@ -120,6 +120,19 @@ Domain listesi ve diğer örnek komutlar: **`docs/DOMAIN-SCHEMA-REFERENCE.md`** 
 
 ---
 
+## İkon tasarım dili (BAĞLAYICI)
+
+Sisteme eklenen **her yeni ikon** `docs/ICON-DESIGN-SPEC.md` anayasasına uymak zorundadır. Bu, Sefa onaylı kalıcı yönergedir.
+
+- **Tek kaynak:** `src/components/Icon.tsx` (merkezî kütüphane). Yeni ikon buraya component + `Icon` registry kaydı olarak eklenir.
+- **Değişmezler:** `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, round cap/join, `baseProps(size)` helper.
+- **Stroke skalası:** 1.6 / 1.7 (varsayılan) / 1.8 / 2.0 — istisna yalnız Check (3.0).
+- **Marka aksanı:** kontur kesim ipucu mercan kesikli çizgi (`#FF6B5B`, `stroke-dasharray`); renk gövdeye değil aksana.
+- **Yasak:** inline SVG ile var olan ikonu kopyalama; renk hard-code; viewBox/stroke skalası dışına çıkma.
+- Spec değişirse `docs/ICON-DESIGN-SPEC.md` güncellenir; bu blok ona işaret eder.
+
+---
+
 ## İlgili dosyalar
 
 | Dosya | Ne için |
@@ -131,3 +144,4 @@ Domain listesi ve diğer örnek komutlar: **`docs/DOMAIN-SCHEMA-REFERENCE.md`** 
 | `docs/PRICING-MATRIX.md` | Fiyat / indirim matrisi |
 | `docs/DOMAIN-SCHEMA-REFERENCE.md` | Domain → migration → tablo → komut şablonları |
 | `docs/SCHEMA-TYPES-AGENT-GUIDE.md` | Kalıcı sistem kaydı (24 May oturumu) |
+| `docs/ICON-DESIGN-SPEC.md` | İkon tasarım anayasası (bağlayıcı) — yeni ikon kuralları |

@@ -277,6 +277,135 @@ const Instagram = ({ size = 16, className }: IconProps) => (
   </svg>
 );
 
+// Sefa Haz v69 — kritik UI ikon seti (ICON-DESIGN-SPEC.md uyumlu).
+// Lock: SSL / 3D Secure / KVKK güven rozetleri (PaymentBadges, checkout, footer).
+const Lock = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <rect x="4" y="10.5" width="16" height="10" rx="2.2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    <path d="M12 14.5v2.5" />
+  </svg>
+);
+
+// Heart: favori / beğeni (ürün kartları, galeri).
+const Heart = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7z" />
+  </svg>
+);
+
+// Download: dosya/prova/rapor indirme (admin, profil).
+const Download = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M7 10l5 5 5-5" />
+    <path d="M12 15V3" />
+  </svg>
+);
+
+// Upload: dosya/tasarım yükleme (editor, sipariş, admin).
+const Upload = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M17 8l-5-5-5 5" />
+    <path d="M12 3v12" />
+  </svg>
+);
+
+// ArrowL: geri / önceki (wizard, pagination). ArrowR'ın ayna eşi, aynı 2.0 stroke.
+const ArrowL = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="2" className={className}>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </svg>
+);
+
+// Sefa Haz v69 — orta + konfor set (ICON-DESIGN-SPEC.md uyumlu).
+// Clock: teslimat süresi / sipariş timeline (kargo, sipariş detayı).
+const Clock = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3.5 2" />
+  </svg>
+);
+
+// Copy: kopyala (sipariş no, kupon, referans kodu).
+const Copy = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+// AlertCircle: uyarı / form doğrulama / stok bildirimi.
+const AlertCircle = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v5" />
+    <path d="M12 16.5v0" />
+  </svg>
+);
+
+// Trash: sil (sepetten çıkar, admin tablo).
+const Trash = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+);
+
+// WhatsApp: destek + sosyal (footer, iletişim). Marka glyph, 2.0 stroke.
+const WhatsApp = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="2" className={className}>
+    <path d="M12 3a9 9 0 0 0-7.74 13.6L3 21l4.6-1.2A9 9 0 1 0 12 3z" />
+    <path d="M9.4 8.6c.2-.4.4-.4.6-.4h.5c.2 0 .4 0 .6.4l.6 1.5c.1.2 0 .4-.1.5l-.5.6c-.1.1-.1.3 0 .4.5 1 1.3 1.8 2.3 2.3.2.1.3 0 .4 0l.6-.6c.1-.1.3-.2.5-.1l1.5.7c.4.2.4.4.4.6 0 .5-.2 1-.6 1.3-.4.3-.9.5-1.4.4-1.7-.2-3.4-1.2-4.7-2.5s-2.3-3-2.5-4.7c0-.5.1-1 .3-1.4z" />
+  </svg>
+);
+
+// Share: paylaş (sosyal, referral, tasarım).
+const Share = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+  </svg>
+);
+
+// Print: yazdır (kargo etiketi, prova).
+const Print = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <path d="M6 9V3h12v6" />
+    <path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
+    <rect x="6" y="14" width="12" height="7" rx="1" />
+  </svg>
+);
+
+// CreditCard: ödeme yöntemi (checkout, profil).
+const CreditCard = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.6" className={className}>
+    <rect x="2" y="5" width="20" height="14" rx="2.5" />
+    <path d="M2 10h20" />
+    <path d="M6 15h4" />
+  </svg>
+);
+
+// Mail: e-posta / iletişim (footer, contact).
+const Mail = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M3 7l9 6 9-6" />
+  </svg>
+);
+
+// Phone: telefon destek (contact, admin).
+const Phone = ({ size = 18, className }: IconProps) => (
+  <svg {...baseProps(size)} strokeWidth="1.7" className={className}>
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+
 export const Icon = {
   Sparkle,
   Box,
@@ -310,6 +439,21 @@ export const Icon = {
   Shield,
   Package,
   Instagram,
+  Lock,
+  Heart,
+  Download,
+  Upload,
+  ArrowL,
+  Clock,
+  Copy,
+  AlertCircle,
+  Trash,
+  WhatsApp,
+  Share,
+  Print,
+  CreditCard,
+  Mail,
+  Phone,
 };
 
 export type IconName = keyof typeof Icon;
