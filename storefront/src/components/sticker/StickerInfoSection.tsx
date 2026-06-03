@@ -1,30 +1,141 @@
-export function StickerInfoSection() {
+import Image from "next/image";
+
+interface ProductionStep {
+  n: string;
+  img: string;
+  alt: string;
+  titleTr: string;
+  titleEn: string;
+  descTr: string;
+  descEn: string;
+  /** 03 — malzeme partnerleri satırı */
+  partners?: boolean;
+}
+
+const STEPS: ProductionStep[] = [
+  {
+    n: "01",
+    img: "/assets/img/uretim/mimaki-baski.jpg",
+    alt: "Mimaki baskı makinesi",
+    titleTr: "Mimaki ile baskı",
+    titleEn: "Printed on Mimaki",
+    descTr:
+      "Baskıyı Mimaki makinelerde alıyoruz. Renkler canlı, detaylar keskin, sonuç her seferinde aynı.",
+    descEn:
+      "We print on Mimaki machines. Vivid colors, sharp details, consistent results every time.",
+  },
+  {
+    n: "02",
+    img: "/assets/img/uretim/greenguard-boya.jpg",
+    alt: "GREENGUARD Gold sertifikası",
+    titleTr: "GREENGUARD sertifikalı boya",
+    titleEn: "GREENGUARD-certified inks",
+    descTr:
+      "Sağlığını riske atmıyoruz. Boyalarımız GREENGUARD sertifikalı — iç mekânda güvenle kullanılır.",
+    descEn:
+      "We don't risk your health. Our inks are GREENGUARD certified — safe for indoor use.",
+  },
+  {
+    n: "03",
+    img: "/assets/img/uretim/malzeme-folyo.jpg",
+    alt: "Folyo ruloları — opak ve şeffaf",
+    titleTr: "Orafol & Avery Dennison malzeme",
+    titleEn: "Orafol & Avery Dennison materials",
+    descTr:
+      "Folyolarımız Avrupa'dan. Dış mekân koşullarına uzun süre dayanır, söküldüğünde iz bırakmaz.",
+    descEn:
+      "Our vinyl comes from Europe. It withstands outdoor conditions and removes without residue.",
+    partners: true,
+  },
+  {
+    n: "04",
+    img: "/assets/img/uretim/laminasyon.jpg",
+    alt: "Laminasyon makinesi",
+    titleTr: "Laminasyon koruması",
+    titleEn: "Lamination protection",
+    descTr:
+      "İstersen ekstra dayanım için laminasyonla koruma altına alabilir, parlak ya da mat bir görünüme kavuşturabilirsin.",
+    descEn:
+      "Optionally add lamination for extra durability — and choose a glossy or matte look.",
+  },
+  {
+    n: "05",
+    img: "/assets/img/uretim/kesim.jpg",
+    alt: "Tek tek ve tabaka kesim",
+    titleTr: "Talebine göre kesim",
+    titleEn: "Cut to your needs",
+    descTr:
+      "İhtiyacına göre ister tek tek, istersen kolay istifleme için tabaka hâlinde kesiyoruz — özenle paketleyip yola çıkarıyoruz.",
+    descEn:
+      "Die-cut individually or in sheets for easy stacking — carefully packed and shipped.",
+  },
+];
+
+export function StickerInfoSection({ isEn }: { isEn: boolean }) {
   return (
-    <>
-      {/* SEFA: başlık + özet + 4 görsel/metin. İçerik+görseller verilecek. */}
-      <section className="mt-16 border-t border-gri-200 pt-16">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-bold text-lacivert">
-            [Sefa başlık]
-          </h2>
-          <p className="mt-3 text-gri-700 max-w-2xl mx-auto leading-relaxed">
-            [Sefa metin]
-          </p>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="flex flex-col">
-              <div className="aspect-[4/3] rounded-xl bg-gri-100 flex items-center justify-center text-gri-500 text-sm mb-3">
-                Görsel
+    <section className="mt-16 border-t border-gri-200 pt-16">
+      <div className="text-center mb-12">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.18em] text-pim-mercan">
+          {isEn ? "Production" : "Üretim"}
+        </span>
+        <h2 className="mt-3 text-2xl md:text-[32px] font-bold text-lacivert tracking-tight">
+          {isEn ? "How we produce" : "Nasıl üretiyoruz?"}
+        </h2>
+        <p className="mt-3 text-gri-700 max-w-2xl mx-auto leading-relaxed">
+          {isEn
+            ? "A quick look behind your stickers."
+            : "Sticker'ının arkasında ne var, kısaca anlatalım."}
+        </p>
+      </div>
+
+      <div className="space-y-12 md:space-y-20">
+        {STEPS.map((step, i) => (
+          <div
+            key={step.n}
+            className={`flex flex-col gap-6 md:gap-12 md:items-center ${
+              i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"
+            }`}
+          >
+            {/* Görsel */}
+            <div className="md:w-[45%]">
+              <div className="relative aspect-[16/10] rounded-2xl overflow-hidden ring-1 ring-black/[0.04] shadow-1 bg-gri-100">
+                <Image
+                  src={step.img}
+                  alt={step.alt}
+                  fill
+                  loading="lazy"
+                  sizes="(max-width: 768px) 100vw, 45vw"
+                  className="object-cover"
+                />
               </div>
-              <h3 className="font-semibold text-lacivert text-sm">Alan {n}</h3>
-              <p className="text-[13px] text-gri-700 mt-1 leading-relaxed line-clamp-2">
-                [İçerik — Sefa]
-              </p>
             </div>
-          ))}
-        </div>
-      </section>
-    </>
+
+            {/* Metin */}
+            <div className="md:flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-pim-mercan font-bold text-lg tabular-nums">
+                  {step.n}
+                </span>
+                <span className="h-px w-8 bg-pim-mercan/40" aria-hidden />
+              </div>
+              <h3 className="text-lg md:text-xl font-bold text-lacivert">
+                {isEn ? step.titleEn : step.titleTr}
+              </h3>
+              <p className="mt-2 text-gri-600 leading-relaxed max-w-xl">
+                {isEn ? step.descEn : step.descTr}
+              </p>
+              {step.partners && (
+                <p className="mt-3 text-[11px] text-gri-500">
+                  {isEn ? "Material partners: " : "Malzeme partnerlerimiz: "}
+                  <span className="font-semibold text-gri-700">
+                    ORAFOL® · Avery Dennison®
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

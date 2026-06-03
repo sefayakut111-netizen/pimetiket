@@ -719,7 +719,7 @@ export default function StickerGridPage() {
           </section>
         </div>
 
-        <StickerInfoSection />
+        <StickerInfoSection isEn={isEn} />
 
         {/* Alt CTA — etiket yönlendirme */}
         <div className="mt-12 text-center">
