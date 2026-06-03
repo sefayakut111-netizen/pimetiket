@@ -159,6 +159,7 @@ async function computeStickerQuote(
     return null;
   }
 
+  const pageMode = item.meta?.["pageMode"] === true;
   const result = quoteStickerFromConfig(config, {
     width: item.width,
     height: item.height,
@@ -169,6 +170,7 @@ async function computeStickerQuote(
     material: item.material as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     finish: item.finish as any,
+    pageMode,
   });
   if (!result || !result.ok) return null;
 

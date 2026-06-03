@@ -150,6 +150,33 @@ function assertPageModeCase(args: {
   );
 }
 
+/** Faz 3: sepet meta.pageMode → computeStickerQuote ile aynı quote yolu */
+function assertPageModeMetaRecalcParity() {
+  const itemQty = 25;
+  const pageMode = true; // item.meta?.["pageMode"] === true
+  const result = quoteStickerFromConfig(FALLBACK_STICKER_CONFIG, {
+    width: 210,
+    height: 297,
+    qty: itemQty,
+    material: "vinil",
+    finish: "yok",
+    cut: "tabaka",
+    pageMode,
+  });
+  assert(result?.ok === true, "pageMode meta recalc: quote failed");
+  if (!result?.ok) return;
+
+  const serverLine = expectedCartLineFromPerDesignQuote(
+    result.unitPrice,
+    itemQty,
+    1
+  );
+  assert(
+    Math.abs(serverLine.total - 2436.66) <= 0.5,
+    `pageMode meta recalc: expected ~2436.66, got ${serverLine.total.toFixed(2)}`
+  );
+}
+
 export function runRegressionTests() {
   assertRecalcPasses({
     cut: "kartli",
@@ -241,6 +268,7 @@ export function runRegressionTests() {
     expectedBillableM2: 1.055,
     expectedTotal: 1328.37,
   });
+  assertPageModeMetaRecalcParity();
 
   console.log("[payment-validation-kartli-regression] OK");
   if (kartli?.ok) {

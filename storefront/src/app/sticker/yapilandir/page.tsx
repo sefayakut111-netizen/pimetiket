@@ -2296,6 +2296,7 @@ function StickerPage() {
                     ...(editorCutlineDraftIdRef.current
                       ? { editorCutlineDraftId: editorCutlineDraftIdRef.current }
                       : {}),
+                    ...(isSayfaMode ? { pageMode: true } : {}),
                   },
                   additionalDesigns,
                 });

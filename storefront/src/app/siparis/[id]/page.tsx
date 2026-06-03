@@ -1015,7 +1015,8 @@ export default function SiparisDetailPage({
                 {order.items.map((item) => {
                   const summaryItems = buildSummaryItems(
                     item,
-                    c.locale === "en-US" ? "en" : "tr"
+                    c.locale === "en-US" ? "en" : "tr",
+                    { pageMode: item.meta?.pageMode === true }
                   );
                   const designFiles = itemDesignFiles[item.id] ?? [];
                   const designRows =
