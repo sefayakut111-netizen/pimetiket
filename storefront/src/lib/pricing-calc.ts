@@ -252,7 +252,6 @@ export function calculatePrice(
       material_cost_base = m2Cost * billable;
       material_sell_base = m2Sell * billable;
     }
-    const tiered_cost = material_cost_base * tier.multiplier;
     const tiered_sell = material_sell_base * tier.multiplier;
 
     let options_cost_pct_total = 0;
@@ -303,8 +302,14 @@ export function calculatePrice(
       const cutMult = config.cut_multipliers?.[cutKey] ?? 1.0;
       cutAdd = cutMult - 1;
     }
+
+    const isStickerScope = scope === "sticker";
+    const cost_base = isStickerScope
+      ? material_cost_base
+      : material_cost_base * tier.multiplier;
+    const cost_cutAdd = isStickerScope ? 0 : cutAdd;
     const with_options_cost =
-      tiered_cost * (1 + options_cost_pct_total / 100 + cutAdd);
+      cost_base * (1 + options_cost_pct_total / 100 + cost_cutAdd);
     const with_options =
       tiered_sell * (1 + options_sell_pct_total / 100 + cutAdd);
     const opEnabled = config.operation.enabled !== false;
@@ -342,7 +347,9 @@ export function calculatePrice(
       material_cost_base,
       material_sell_base,
       options_cost_pct_total,
-      material_profit: tiered_sell - tiered_cost,
+      material_profit: isStickerScope
+        ? tiered_sell - material_cost_base
+        : tiered_sell - material_cost_base * tier.multiplier,
       final,
       unit_price,
     };
