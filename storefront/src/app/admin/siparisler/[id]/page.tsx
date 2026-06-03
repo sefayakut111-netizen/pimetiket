@@ -28,6 +28,7 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
 import { isAdminTestOrderPayment } from "@/lib/admin-test-order";
+import { mapOrderItemToCapability } from "@/components/admin/fason/fason-capabilities";
 
 const ALL_STATUSES: OrderStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
 
@@ -70,18 +71,31 @@ function mapAdminOrderResponse(json: {
     estimatedDelivery: json.order.estimated_delivery ?? undefined,
     createdAt: ts,
     createdAtIso: json.order.created_at,
-    items: json.items.map((i) => ({
-      id: i.id,
-      product: i.product,
-      title: i.title,
-      config: i.config,
-      width: Number(i.width),
-      height: Number(i.height),
-      qty: i.qty,
-      unit: Number(i.unit),
-      total: Number(i.total),
-      addedAt: ts,
-    })),
+    items: json.items.map((i) => {
+      const meta = (i.meta ?? {}) as Record<string, unknown>;
+      return {
+        id: i.id,
+        product: i.product,
+        title: i.title,
+        config: i.config,
+        width: Number(i.width),
+        height: Number(i.height),
+        qty: i.qty,
+        unit: Number(i.unit),
+        total: Number(i.total),
+        addedAt: ts,
+        material:
+          typeof meta.material === "string"
+            ? (meta.material as CustomerOrder["items"][0]["material"])
+            : undefined,
+        materialId:
+          typeof meta.materialId === "string" ? meta.materialId : undefined,
+        meta:
+          i.meta && typeof i.meta === "object" && !Array.isArray(i.meta)
+            ? (i.meta as Record<string, unknown>)
+            : undefined,
+      };
+    }),
   };
 }
 
@@ -143,10 +157,24 @@ export default function AdminOrderDetailPage({
     fasonName: string;
   } | null>(null);
 
-  const loadFasonSuggestions = async (specialty: "etiket" | "sticker" | null) => {
+  const loadFasonSuggestions = async (orderData: CustomerOrder) => {
+    const firstItem = orderData.items[0];
+    if (!firstItem) {
+      toast.error("Sipariş kalemi yok — partner önerisi alınamadı");
+      return;
+    }
     try {
-      const qs = specialty ? `?specialty=${specialty}` : "";
-      const res = await fetch(`/api/admin/fason/suggest${qs}`);
+      const cap = mapOrderItemToCapability(firstItem.product, {
+        material: firstItem.material,
+        materialId: firstItem.materialId,
+        formFactor: String(firstItem.meta?.formFactor ?? ""),
+      });
+      const params = new URLSearchParams({
+        productType: cap.productType,
+        amount: String(orderData.total),
+      });
+      if (cap.material) params.set("material", cap.material);
+      const res = await fetch(`/api/admin/fason/suggest?${params}`);
       if (res.ok) {
         const json = (await res.json()) as {
           suggestions: typeof fasonSuggestions;
@@ -640,11 +668,7 @@ export default function AdminOrderDetailPage({
                     <button
                       type="button"
                       onClick={() => {
-                        const specialty =
-                          order.items[0]?.product === "etiket"
-                            ? "etiket"
-                            : "sticker";
-                        void loadFasonSuggestions(specialty);
+                        void loadFasonSuggestions(order);
                       }}
                       className="w-full h-10 rounded-lg bg-pim-mercan-tint text-pim-mercan text-[13px] font-semibold hover:bg-pim-mercan/15"
                     >

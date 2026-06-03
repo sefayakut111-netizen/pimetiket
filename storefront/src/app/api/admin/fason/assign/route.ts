@@ -21,6 +21,10 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logServerAudit } from "@/lib/audit-log-server";
 import { triggerMailProcess } from "@/lib/mail/trigger-mail-process";
+import {
+  assertAssignCapacityGuard,
+  assertAssignCapabilityGuard,
+} from "@/lib/fason/assign-guards";
 
 interface BodyShape {
   orderId?: unknown;
@@ -81,6 +85,26 @@ export async function POST(req: Request) {
 
 
   const admin = createAdminClient();
+
+  const capacityGuard = await assertAssignCapacityGuard(admin, fasonPartnerId);
+  if (!capacityGuard.ok) {
+    return NextResponse.json(
+      { error: capacityGuard.error },
+      { status: capacityGuard.status }
+    );
+  }
+
+  const capabilityGuard = await assertAssignCapabilityGuard(
+    admin,
+    fasonPartnerId,
+    orderId
+  );
+  if (!capabilityGuard.ok) {
+    return NextResponse.json(
+      { error: capabilityGuard.error },
+      { status: capabilityGuard.status }
+    );
+  }
 
   const deliveryDate =
     estimatedDelivery && estimatedDelivery.length > 0

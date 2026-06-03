@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchActiveOrderCountByPartner } from "@/lib/fason/assign-guards";
 
 type ProductType = "roll_label" | "sheet_label" | "sticker";
 type MaterialType = "paper" | "transparent" | "metallic" | "holographic";
@@ -68,12 +69,16 @@ export async function GET(req: Request) {
       specialties: string[] | null;
     };
     const rows = (data ?? []) as Row[];
+    const activeCounts = await fetchActiveOrderCountByPartner(
+      admin,
+      rows.map((r) => r.id)
+    );
     return NextResponse.json({
       suggestions: rows.map((r) => ({
         fason_id: r.id,
         fason_name: r.name,
         cached_score: r.cached_score,
-        active_count: 0, // (legacy yapı için placeholder)
+        active_count: activeCounts.get(r.id) ?? 0,
         reason: "Tüm aktif partnerler",
       })),
     });
@@ -106,13 +111,17 @@ export async function GET(req: Request) {
     cached_score: number | null;
   };
   const rows = (data as RpcRow[] | null) ?? [];
+  const activeCounts = await fetchActiveOrderCountByPartner(
+    admin,
+    rows.map((r) => r.partner_id)
+  );
 
   return NextResponse.json({
     suggestions: rows.map((r) => ({
       fason_id: r.partner_id,
       fason_name: r.partner_name,
       cached_score: r.cached_score,
-      active_count: 0,
+      active_count: activeCounts.get(r.partner_id) ?? 0,
       reason: `${productType}${material ? ` + ${material}` : ""} kapasiteli`,
     })),
     productType,
