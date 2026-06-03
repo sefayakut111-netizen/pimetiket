@@ -97,18 +97,12 @@ function applyLiveConfigDefaults(
   config: ProfileConfig,
   setters: {
     setPreviewMaterialId: (id: string) => void;
-    setSetup: (n: number) => void;
-    setPackaging: (n: number) => void;
-    setOperationEnabled: (v: boolean) => void;
   }
 ) {
   const opak = findOpakFolyoMaterial(config);
   if (opak) {
     setters.setPreviewMaterialId(opak.id);
   }
-  setters.setSetup(config.operation.setup);
-  setters.setPackaging(config.operation.packaging_per_unit);
-  setters.setOperationEnabled(config.operation.enabled !== false);
 }
 
 // ============================================================
@@ -150,14 +144,6 @@ export function StickerCalculator({
   const [labor, setLabor] = useState<number>(DEFAULTS.labor);
   const [overhead, setOverhead] = useState<number>(DEFAULTS.overhead);
   const [depreciation, setDepreciation] = useState<number>(DEFAULTS.depreciation);
-
-  // Operatör simülasyonu — operasyon (cargo/margin yok)
-  const [setup, setSetup] = useState<number>(DEFAULTS.setup);
-  const [packaging, setPackaging] = useState<number>(DEFAULTS.packaging);
-
-  const [operationEnabled, setOperationEnabled] = useState(
-    () => (liveConfig ?? FALLBACK_STICKER_CONFIG).operation.enabled !== false
-  );
 
   // Site fiyat önizleme (live config malzeme/laminasyon)
   const [previewMaterialId, setPreviewMaterialId] = useState<string>(
@@ -205,9 +191,6 @@ export function StickerCalculator({
         configDefaultsApplied.current = true;
         applyLiveConfigDefaults(liveConfig, {
           setPreviewMaterialId,
-          setSetup,
-          setPackaging,
-          setOperationEnabled,
         });
       }
     }
@@ -218,17 +201,8 @@ export function StickerCalculator({
     configDefaultsApplied.current = true;
     applyLiveConfigDefaults(liveStickerConfig, {
       setPreviewMaterialId,
-      setSetup,
-      setPackaging,
-      setOperationEnabled,
     });
   }, [liveConfigLoaded, liveStickerConfig]);
-
-  useEffect(() => {
-    setSetup(liveStickerConfig.operation.setup);
-    setPackaging(liveStickerConfig.operation.packaging_per_unit);
-    setOperationEnabled(liveStickerConfig.operation.enabled !== false);
-  }, [liveStickerConfig]);
 
   useEffect(() => {
     if (liveConfig) return;
@@ -253,21 +227,17 @@ export function StickerCalculator({
     };
   }, [liveConfig]);
 
-  const geometryFasonRate = selectedMaterial
-    ? resolveM2Cost(selectedMaterial)
-    : resolveM2Cost(findOpakFolyoMaterial(liveStickerConfig) ?? liveStickerConfig.materials[0]) ??
-      100;
-
   // Hesap — geometri (rate yalnızca quoteSticker imzası için; geometriyi etkilemez)
   const result = quoteSticker({
     width,
     height,
     cut,
     qty,
-    production: { mode: "fason", rate: geometryFasonRate },
-    operation: operationEnabled
-      ? { setup, packaging, feePct: 0 }
-      : { setup: 0, packaging: 0, feePct: 0 },
+    production: {
+      mode: "fason",
+      rate: selectedMaterial ? resolveM2Cost(selectedMaterial) : 100,
+    },
+    operation: { setup: 0, packaging: 0, feePct: 0 },
     vatPct: liveStickerConfig.vat.pct,
   });
 
@@ -360,15 +330,15 @@ export function StickerCalculator({
     width,
     height,
     qty,
-    fasonRate: geometryFasonRate,
+    fasonRate: selectedMaterial ? resolveM2Cost(selectedMaterial) : DEFAULTS.fasonRate,
     paper,
     ink,
     coating,
     labor,
     overhead,
     depreciation,
-    setup,
-    packaging,
+    setup: DEFAULTS.setup,
+    packaging: DEFAULTS.packaging,
     feePct: 0,
     vatPct: liveStickerConfig.vat.pct,
     customerType,
@@ -387,8 +357,6 @@ export function StickerCalculator({
     setLabor(i.labor);
     setOverhead(i.overhead);
     setDepreciation(i.depreciation);
-    setSetup(i.setup);
-    setPackaging(i.packaging);
     setCustomerType(i.customerType);
     setActiveProfileId(p.id);
     toast.success(`"${p.name}" profili yüklendi`);
@@ -402,9 +370,6 @@ export function StickerCalculator({
     setQty(DEFAULTS.qty);
     applyLiveConfigDefaults(liveStickerConfig, {
       setPreviewMaterialId,
-      setSetup,
-      setPackaging,
-      setOperationEnabled,
     });
     setPaper(DEFAULTS.paper);
     setInk(DEFAULTS.ink);
@@ -611,66 +576,6 @@ export function StickerCalculator({
                 <TierGrid value={qty} onChange={setQty} />
               </Field>
             </FlowStepCard>
-
-            <FlowStepCard
-              step={4}
-              title="Maliyet simülasyonu"
-              subtitle="Operatör referansı — site fiyatından bağımsız"
-              muted
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[12px] font-semibold uppercase tracking-[0.02em]">
-                    Operasyon
-                  </span>
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-gri-700">
-                      {operationEnabled ? "Aktif" : "Devre dışı"}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={operationEnabled}
-                      onClick={() => setOperationEnabled((v) => !v)}
-                      className={cn(
-                        "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
-                        operationEnabled ? "bg-yesil" : "bg-gri-300"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform mt-0.5",
-                          operationEnabled ? "translate-x-5" : "translate-x-0.5"
-                        )}
-                      />
-                    </button>
-                  </label>
-                </div>
-                <div
-                  className={cn(
-                    "grid grid-cols-2 gap-3",
-                    !operationEnabled && "opacity-40 pointer-events-none"
-                  )}
-                >
-                  <Field label="Hazırlık">
-                    <NumInput
-                      value={setup}
-                      onChange={setSetup}
-                      suffix="₺"
-                      step={10}
-                    />
-                  </Field>
-                  <Field label="Paketleme">
-                    <NumInput
-                      value={packaging}
-                      onChange={setPackaging}
-                      suffix="₺/zarf"
-                      step={5}
-                    />
-                  </Field>
-                </div>
-              </div>
-            </FlowStepCard>
           </div>
 
           {/* RIGHT — Output: site fiyatı üstte (ana), simülasyon altta (ikincil) */}
@@ -680,7 +585,6 @@ export function StickerCalculator({
               qty={qty}
               tier={displayTier}
               geometry={result.ok ? result.geometry : null}
-              maliyetTotal={maliyetDahil}
             />
 
             <OperatorCostHero
@@ -696,8 +600,8 @@ export function StickerCalculator({
 
             {result.ok && liveSitePrice?.ok && (
               <ProfitCompareStrip
-                simulationTotal={maliyetDahil}
-                siteFinal={liveSitePrice.final}
+                costTotal={liveSitePrice.cost_total}
+                withMargin={liveSitePrice.with_margin}
               />
             )}
 
@@ -1069,14 +973,14 @@ function OperatorCostHero({
 }
 
 function ProfitCompareStrip({
-  simulationTotal,
-  siteFinal,
+  costTotal,
+  withMargin,
 }: {
-  simulationTotal: number;
-  siteFinal: number;
+  costTotal: number;
+  withMargin: number;
 }) {
-  const diff = siteFinal - simulationTotal;
-  const pct = simulationTotal > 0 ? (diff / simulationTotal) * 100 : 0;
+  const diff = withMargin - costTotal;
+  const pct = costTotal > 0 ? (diff / costTotal) * 100 : 0;
   const isProfit = diff >= 0;
 
   return (
@@ -1092,22 +996,19 @@ function ProfitCompareStrip({
       <div className="space-y-1.5 font-mono text-[13px] tabular-nums text-lacivert">
         <div className="flex justify-between gap-4">
           <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
-            Maliyet
+            Maliyet (KDV hariç)
           </span>
-          <span>
-            {fmt(Math.round(simulationTotal))} ₺{" "}
-            <span className="text-gri-500 font-sans text-[12px]">(KDV dahil)</span>
-          </span>
+          <span>{fmt(Math.round(costTotal))} ₺</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
-            Satış fiyatı
+            Satış (KDV hariç)
           </span>
-          <span className="font-semibold">{fmt(Math.round(siteFinal))} ₺</span>
+          <span className="font-semibold">{fmt(Math.round(withMargin))} ₺</span>
         </div>
         <div className="flex justify-between gap-4 border-t border-gri-200 pt-1.5">
           <span className="text-gri-600 uppercase tracking-wide text-[11px] font-sans font-semibold">
-            Fark
+            Kâr
           </span>
           <span
             className={cn(
@@ -1130,13 +1031,11 @@ function SitePriceHero({
   qty,
   tier,
   geometry,
-  maliyetTotal,
 }: {
   liveSitePrice: ReturnType<typeof calculatePrice> | null;
   qty: number;
   tier: StickerTier | { qty: number; multiplier: number; label: string };
   geometry: import("@/lib/pricing-engine").GeometryResult | null;
-  maliyetTotal?: number;
 }) {
   if (!liveSitePrice?.ok) {
     return (
@@ -1159,6 +1058,11 @@ function SitePriceHero({
 
   const fee = liveSitePrice.with_fee - liveSitePrice.with_margin;
   const vat = liveSitePrice.final - liveSitePrice.with_fee;
+  const farkHaric = liveSitePrice.with_margin - liveSitePrice.cost_total;
+  const farkPct =
+    liveSitePrice.cost_total > 0
+      ? (farkHaric / liveSitePrice.cost_total) * 100
+      : 0;
   const billableM2 = liveSitePrice.billable_m2 ?? geometry?.totalM2 ?? 0;
   const sheetsNeeded = geometry?.fit.sheetsNeeded ?? 0;
   const isTabakaLayout = geometry?.fit.mode === "tabaka";
@@ -1217,21 +1121,12 @@ function SitePriceHero({
           />
           <VatCell label="PSP" value={`${fmt(Math.round(fee))} ₺`} />
           <VatCell label="KDV" value={`${fmt(Math.round(vat))} ₺`} />
-          {maliyetTotal != null &&
-            maliyetTotal > 0 &&
-            (() => {
-              const fark = liveSitePrice.final - maliyetTotal;
-              const farkPct =
-                maliyetTotal > 0 ? (fark / maliyetTotal) * 100 : 0;
-              return (
-                <VatCell
-                  label={fark >= 0 ? "Fark (kâr)" : "Fark (zarar)"}
-                  value={`${fark >= 0 ? "+" : ""}${fmt(Math.round(fark))} ₺`}
-                  subtitle={`%${Math.abs(farkPct).toFixed(0)} ${fark >= 0 ? "kâr" : "zarar"}`}
-                  warning={fark < 0}
-                />
-              );
-            })()}
+          <VatCell
+            label="Kâr (KDV hariç)"
+            value={`${farkHaric >= 0 ? "+" : ""}${fmt(Math.round(farkHaric))} ₺`}
+            subtitle={`%${Math.abs(farkPct).toFixed(0)} kâr`}
+            warning={farkHaric < 0}
+          />
         </div>
       </div>
     </Card>
