@@ -62,6 +62,10 @@ interface Props {
   qtyPerDesign: number;
   /** Max tasarım sayısı, default 50 */
   maxCount?: number;
+  /** Sticker Sayfası modu — çoklu tasarım sayacı gizlenir (tek sayfa dosyası) */
+  hideDesignCountPicker?: boolean;
+  /** Sayfa modu üst notu */
+  pageModeHint?: string;
   /** Ürün etiketi (Sefa kuralı 15 May v6 — etiket+sticker shared):
    *  "sticker" → "...= 250 sticker"
    *  "etiket"  → "...= 250 etiket" */
@@ -111,6 +115,8 @@ export function MultiDesignUploader({
   maxCount = 50,
   productLabel = "sticker",
   onDimensionsDetected,
+  hideDesignCountPicker = false,
+  pageModeHint,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [lightbox, setLightbox] = useState<PendingDesign | null>(null);
@@ -309,6 +315,13 @@ export function MultiDesignUploader({
     <div className="space-y-3">
       {/* Adet × Tasarım sayısı özeti */}
       <div className="rounded-xl bg-gradient-to-br from-pim-mercan-tint to-krem-soft p-4 ring-1 ring-pim-mercan/20">
+        {hideDesignCountPicker ? (
+          <p className="text-[13px] text-gri-700 leading-relaxed">
+            {pageModeHint ??
+              "Sayfanın tamamını içindeki yarım-kesim dizilimiyle hazırla — tek dosya yükle."}
+          </p>
+        ) : (
+          <>
         <div className="flex flex-wrap items-center gap-2 text-[13px]">
           <span className="text-gri-700">Her tasarımdan</span>
           <strong className="text-pim-mercan tabular-nums">
@@ -373,6 +386,8 @@ export function MultiDesignUploader({
           Tüm tasarımlarda aynı malzeme + ölçü + yüzey kullanılır; sadece
           görsel değişir.
         </p>
+          </>
+        )}
       </div>
 
       {/* Upload + thumbnail grid */}

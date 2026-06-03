@@ -56,6 +56,7 @@ import {
   MultiDesignUploader,
   type PendingDesign,
 } from "@/components/sticker/MultiDesignUploader";
+import { SayfaBoyutIkon } from "@/components/sticker/SayfaBoyutIkon";
 // Sefa 18 May v68 (6): TabakaPreview kaldırıldı — sol canlı önizleme
 // (eskiz modu) zaten tabaka yerleşimini gösteriyor. Admin tarafında kalır.
 // import { TabakaPreview } from "@/components/sticker/TabakaPreview";
@@ -209,6 +210,31 @@ const STICKER_PRESETS = CUSTOMER_STICKER_TIERS; // [25, 50, 100, 250, 500, 1000]
 /** En çok seçilen preset — "Popüler" rozeti gösterilir */
 const STICKER_POPULAR_PRESET = 250;
 
+/** Sticker Sayfası boyut presetleri (?sayfa=1) — A3 yok */
+const SAYFA_BOYUTLARI = [
+  { id: "a7", ad: "A7", w: 74, h: 105 },
+  { id: "a6", ad: "A6", w: 105, h: 148 },
+  { id: "a5", ad: "A5", w: 148, h: 210 },
+  { id: "a4", ad: "A4", w: 210, h: 297 },
+  { id: "kare-100", ad: "Kare 10cm", w: 100, h: 100 },
+  { id: "kare-148", ad: "Kare 15cm", w: 148, h: 148 },
+  { id: "kare-200", ad: "Kare 20cm", w: 200, h: 200 },
+  { id: "serit-dikey", ad: "Şerit (dikey)", w: 50, h: 210 },
+  { id: "serit-yatay", ad: "Şerit (yatay)", w: 210, h: 50 },
+  { id: "yarim-a5", ad: "Yarım A5", w: 100, h: 210 },
+] as const;
+
+const SAYFA_QTY_PRESETS = [10, 25, 50, 75, 100, 250, 500, 1000] as const;
+const SAYFA_MIN_QTY = 10;
+const SAYFA_MAX_QTY = 1000;
+const SAYFA_POPULAR_PRESET = 25;
+
+/** Qty'i sayfa modunda clamp et (min 10) */
+function snapSayfaQty(n: number): number {
+  if (!Number.isFinite(n)) return SAYFA_MIN_QTY;
+  return Math.min(SAYFA_MAX_QTY, Math.max(SAYFA_MIN_QTY, Math.round(n)));
+}
+
 /** Sequential step id → funnel adım adı (PostHog configurator_step) */
 const STICKER_STEP_NAMES: Record<number, string> = {
   2: "shape",
@@ -250,6 +276,9 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
 // Sefa 20 May v68 (Sticker reform): /sticker grid'den gelen URL pre-fill helper'ları
 function readInitialCutMode(searchParams: URLSearchParams): CutMode {
+  if (searchParams.get("sayfa") === "1") {
+    return "tabaka";
+  }
   if (searchParams.get("kilit") === "tabaka") {
     return "tabaka";
   }
@@ -322,6 +351,7 @@ function StickerPage() {
   const { t, locale, hydrated } = useT();
   const searchParams = useSearchParams();
   useSanitizeEmptyQueryParam("form");
+  const isSayfaMode = searchParams.get("sayfa") === "1";
   const cutLocked = searchParams.get("kilit") === "tabaka";
 
   // Faz 2 (Sefa 19 May v68): admin /admin/fiyatlar live_config
@@ -495,8 +525,18 @@ function StickerPage() {
   // Sefa 20 May v68: searchParams değişirse (client-side nav) sync —
   // kullanıcı farklı karttan yeni girerse state'ler yeniden eşleşir
   useEffect(() => {
+    if (isSayfaMode) {
+      setCutMode("tabaka");
+      setDesignCount(1);
+    }
+  }, [isSayfaMode]);
+
+  useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
-    if (params.get("kilit") === "tabaka") {
+    if (params.get("sayfa") === "1") {
+      setCutMode("tabaka");
+      setDesignCount(1);
+    } else if (params.get("kilit") === "tabaka") {
       setCutMode("tabaka");
     } else {
       const formParam = params.get("form");
@@ -582,7 +622,9 @@ function StickerPage() {
   // Sefa 20 May v68: bumper sticker varsayılan 280×80mm (klasik tampon),
   // diğerleri 75×75. URL ?shape=... ve useEffect ile sync.
   const initialDims =
-    initialParams.get("shape") === "bumper"
+    initialParams.get("sayfa") === "1"
+      ? { w: 210, h: 297 }
+      : initialParams.get("shape") === "bumper"
       ? { w: BUMPER_PRESET_WIDTH, h: BUMPER_PRESET_HEIGHT }
       : initialParams.get("shape") === "rectangle"
         ? { w: 50, h: 80 }
@@ -760,20 +802,20 @@ function StickerPage() {
   // stepIds + stepLabels'tan da çıkar → sequential lock + stepper UI temizlenir.
   const stepLabels = (() => {
     const labels: string[] = [];
-    if (SHOW_STICKER_CUT_MODE_PICKER) labels.push(t.sticker.cutTypeTitle);
+    if (SHOW_STICKER_CUT_MODE_PICKER && !isSayfaMode) labels.push(t.sticker.cutTypeTitle);
     if (SHOW_STICKER_SHAPE_PICKER) labels.push(t.sticker.shapeTitle);
     labels.push(
       t.config.materialTitle,
       t.sticker.laminationTitle,
       t.config.designTitle,
-      t.config.sizeTitle,
-      t.config.qtyTitle
+      isSayfaMode ? "Sayfa boyutu" : t.config.sizeTitle,
+      isSayfaMode ? "Sayfa adedi" : t.config.qtyTitle
     );
     return labels;
   })();
   const stepIds: readonly number[] = (() => {
     const ids: number[] = [];
-    if (SHOW_STICKER_CUT_MODE_PICKER) ids.push(1);
+    if (SHOW_STICKER_CUT_MODE_PICKER && !isSayfaMode) ids.push(1);
     if (SHOW_STICKER_SHAPE_PICKER) ids.push(2);
     // DOM: Tasarım (7) → Boyut (5) → Adet (6)
     ids.push(3, 4, 7, 5, 6);
@@ -941,7 +983,8 @@ function StickerPage() {
     material,
     finish,
     qty: tier,
-    cut: cutMode,
+    cut: isSayfaMode ? ("tabaka" as const) : cutMode,
+    ...(isSayfaMode ? { pageMode: true as const } : {}),
   };
   const configQuote = adminConfig
     ? quoteStickerFromConfig(adminConfig, quoteInput)
@@ -962,8 +1005,10 @@ function StickerPage() {
   const totalStickerCount = tier * designCount;
   // Tasarruf hesabı: en küçük tier (25) baseline alınır
   const savings = computeTierSavings(
-    { width, height, material, finish },
-    STICKER_MIN_QTY,
+    isSayfaMode
+      ? { width, height, material, finish, cut: "tabaka", pageMode: true }
+      : { width, height, material, finish },
+    isSayfaMode ? SAYFA_MIN_QTY : STICKER_MIN_QTY,
     tier
   );
   const sizeError = !quote.ok ? quote.reason : null;
@@ -1020,6 +1065,7 @@ function StickerPage() {
                 Sticker", "Yarı Kesim Sticker", "Sticker Sayfası". */}
             {(() => {
               const isEn = locale === "en";
+              if (isSayfaMode) return isEn ? "Sticker Page" : "Sticker Sayfası";
               if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Sticker Sayfası";
               if (cutMode === "kartli")
                 return isEn ? "Kiss-Cut Single" : "Kartlı Sticker";
@@ -1126,7 +1172,7 @@ function StickerPage() {
                 Sefa 20 May v68 (Sticker reform): /sticker grid'den
                 ?cut=... ile pre-fill geldiği için bu adım gizli.
                 SHOW_STICKER_CUT_MODE_PICKER true yapılırsa geri gelir. */}
-            {SHOW_STICKER_CUT_MODE_PICKER && !cutLocked && (
+            {SHOW_STICKER_CUT_MODE_PICKER && !cutLocked && !isSayfaMode && (
             <FormSection
               id="step-1"
               number={uiStepNumber(1)}
@@ -1149,11 +1195,15 @@ function StickerPage() {
             </FormSection>
             )}
 
-            {cutLocked ? (
+            {(cutLocked || isSayfaMode) ? (
               <p className="mb-4 rounded-xl border border-gri-200 bg-white px-4 py-3 text-[13px] text-gri-700 leading-relaxed">
-                {locale === "en"
-                  ? "This product is produced as a sheet (tabaka)."
-                  : "Bu ürün sayfa (tabaka) olarak üretilir."}
+                {isSayfaMode
+                  ? locale === "en"
+                    ? "Page mode: choose a sheet size and page count. Price is based on roll layout m² per page."
+                    : "Sayfa modu: sayfa boyutu ve adet seç. Fiyat, sayfanın rulo dizgisindeki m²'sine göre hesaplanır."
+                  : locale === "en"
+                    ? "This product is produced as a sheet (tabaka)."
+                    : "Bu ürün sayfa (tabaka) olarak üretilir."}
               </p>
             ) : null}
 
@@ -1418,8 +1468,9 @@ function StickerPage() {
                 </div>
               )}
               <MultiDesignUploader
-                designCount={designCount}
+                designCount={isSayfaMode ? 1 : designCount}
                 onDesignCountChange={(n) => {
+                  if (isSayfaMode) return;
                   setDesignCount(n);
                   markTouched(7);
                 }}
@@ -1430,13 +1481,20 @@ function StickerPage() {
                 }}
                 qtyPerDesign={tier}
                 productLabel="sticker"
-                onDimensionsDetected={(dims) => {
-                  setDetectedDims(dims);
-                  setDimsPromptShown(true);
-                  setDimsAccepted(false);
-                }}
+                hideDesignCountPicker={isSayfaMode}
+                pageModeHint="Sayfanın tamamını içindeki yarım-kesim dizilimiyle hazırla — tek dosya yükle."
+                maxCount={isSayfaMode ? 1 : undefined}
+                onDimensionsDetected={
+                  isSayfaMode
+                    ? undefined
+                    : (dims) => {
+                        setDetectedDims(dims);
+                        setDimsPromptShown(true);
+                        setDimsAccepted(false);
+                      }
+                }
               />
-              {designDiscountPct > 0 && (
+              {!isSayfaMode && designDiscountPct > 0 && (
                 <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
                   ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
                 </p>
@@ -1454,12 +1512,59 @@ function StickerPage() {
             <FormSection
               id="step-5"
               number={uiStepNumber(5)}
-              title={t.config.sizeTitle}
-              hint="Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin."
+              title={isSayfaMode ? "Sayfa boyutu" : t.config.sizeTitle}
+              hint={
+                isSayfaMode
+                  ? "Sayfa preset'lerinden birini seç — fiyat seçilen sayfanın plotter rulosu m²'sine göre hesaplanır."
+                  : "Esnek boyut girebilirsin ya da en çok tercih edilen ölçülere göz atabilirsin."
+              }
               locked={isStepLocked(5)}
               lockMessage={getLockMessage(5)}
               needsAttention={firstPendingStepId === 5}
             >
+              {isSayfaMode ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {SAYFA_BOYUTLARI.map((preset) => {
+                    const active =
+                      touchedSteps.has(5) &&
+                      width === preset.w &&
+                      height === preset.h;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setWidth(preset.w);
+                          setHeight(preset.h);
+                          markTouched(5);
+                          track("size_selected", {
+                            product: "sticker",
+                            width: preset.w,
+                            height: preset.h,
+                            preset: true,
+                            pageMode: true,
+                          });
+                        }}
+                        className={cn(
+                          "flex flex-col items-center gap-2 rounded-xl p-3 text-center transition-all ring-[1.5px]",
+                          active
+                            ? "ring-pim-mercan bg-pim-mercan-tint/40 shadow-1"
+                            : "ring-gri-200 bg-white hover:ring-pim-mercan-soft"
+                        )}
+                      >
+                        <SayfaBoyutIkon w={preset.w} h={preset.h} />
+                        <div className="font-semibold text-[13px] text-lacivert leading-tight">
+                          {preset.ad}
+                        </div>
+                        <div className="text-[11px] text-gri-600 tabular-nums">
+                          {preset.w}×{preset.h} mm
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <>
               {detectedDims && dimsPromptShown && !dimsAccepted && (
                 <div className="mb-4 p-3 rounded-lg bg-pim-mercan-tint/30 ring-1 ring-pim-mercan/40 flex items-center justify-between gap-3 flex-wrap">
                   <div className="text-[13px] text-lacivert">
@@ -1861,6 +1966,8 @@ function StickerPage() {
                 })}
                 </div>
               </div>
+                </>
+              )}
 
               {sizeError && (
                 <div className="mt-3 px-3 py-2 rounded-lg bg-kirmizi/10 text-kirmizi text-[12.5px] font-semibold">
@@ -1872,8 +1979,12 @@ function StickerPage() {
             <FormSection
               id="step-6"
               number={uiStepNumber(6)}
-              title={t.config.qtyTitle}
-              hint="Her tasarımdan kaç adet"
+              title={isSayfaMode ? "Sayfa adedi" : t.config.qtyTitle}
+              hint={
+                isSayfaMode
+                  ? "Kaç sayfa bastırılacak?"
+                  : "Her tasarımdan kaç adet"
+              }
               locked={isStepLocked(6)}
               lockMessage={getLockMessage(6)}
               needsAttention={firstPendingStepId === 6}
@@ -1884,7 +1995,7 @@ function StickerPage() {
                 <span className="text-[28px] font-bold text-lacivert tabular-nums leading-none">
                   {tier.toLocaleString("tr-TR")}
                   <span className="text-[14px] font-medium text-gri-700 ml-1">
-                    adet
+                    {isSayfaMode ? "sayfa" : "adet"}
                   </span>
                 </span>
               </div>
@@ -1894,7 +2005,7 @@ function StickerPage() {
                     %{savings} tasarruf 🎯 — adet indirimi
                   </div>
                 )}
-                {designDiscountPct > 0 && (
+                {!isSayfaMode && designDiscountPct > 0 && (
                   <div
                     className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold"
                     title={`${designCount} tasarım için ek iskonto`}
@@ -1910,25 +2021,32 @@ function StickerPage() {
                 <span className="text-[11.5px] text-gri-500 mr-1">
                   {t.config.suggested}
                 </span>
-                {(adminConfig?.tiers
-                  ? [...adminConfig.tiers]
-                      .sort((a, b) => a.qty - b.qty)
-                      .map((t) => t.qty)
-                  : STICKER_PRESETS
+                {(isSayfaMode
+                  ? SAYFA_QTY_PRESETS
+                  : adminConfig?.tiers
+                    ? [...adminConfig.tiers]
+                        .sort((a, b) => a.qty - b.qty)
+                        .map((t) => t.qty)
+                    : STICKER_PRESETS
                 ).map((q) => {
                   const active = touchedSteps.has(6) && tier === q;
-                  const popular = q === STICKER_POPULAR_PRESET;
+                  const popular = isSayfaMode
+                    ? q === SAYFA_POPULAR_PRESET
+                    : q === STICKER_POPULAR_PRESET;
                   return (
                     <button
                       key={q}
                       type="button"
                       onClick={() => {
-                        setTier(q);
+                        setTier(
+                          isSayfaMode ? snapSayfaQty(q) : snapStickerQty(q)
+                        );
                         markTouched(6);
                         track("tier_selected", {
                           product: "sticker",
                           qty: q,
                           tierLabel: String(q),
+                          pageMode: isSayfaMode,
                         });
                       }}
                       aria-pressed={active}
