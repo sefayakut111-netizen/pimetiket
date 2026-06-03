@@ -10,7 +10,7 @@
  *   - Operation (setup/packaging/cargo/fee%)
  *   - Margin + KDV
  *
- * Sağ panel: Canlı preview (örnek sipariş ile gerçek hesap)
+ * Sağ panel: kaydet aksiyonu + fiyat tablosu
  */
 
 "use client";
@@ -31,15 +31,6 @@ import type {
   CutMultipliers,
 } from "@/lib/pricing-config";
 import { PriceBookPanel } from "@/components/admin/pricing/PriceBookPanel";
-import { calcTabakaSheets } from "@/lib/pricing-tabaka-geo";
-import { calculatePrice } from "@/lib/pricing-calc";
-import { quoteSticker } from "@/lib/pricing-engine";
-import {
-  isPricebookMode,
-  quoteRuloFromPricebook,
-  FALLBACK_PRICEBOOK_SNAPSHOT,
-  type RuloPricebookQuoteResult,
-} from "@/lib/pricing-pricebook";
 import {
   diffProfileConfig,
   isMaterialChanged,
@@ -108,48 +99,6 @@ const SCOPE_META: Record<Scope, { label: string; emoji: string; desc: string }> 
     desc: "Kraft / Kuşe / Beyaz · Kaplama (özelleştirme yok)",
   },
 };
-
-const SCOPE_PREVIEW_DEFAULTS: Record<
-  Scope,
-  { width: number; height: number; qty: number }
-> = {
-  sticker: { width: 50, height: 50, qty: 250 },
-  etiket_rulo: { width: 60, height: 40, qty: 5000 },
-  etiket_tabaka: { width: 70, height: 50, qty: 1000 },
-};
-
-const PREVIEW_QTY_PRESETS: Record<Scope, number[]> = {
-  sticker: [25, 50, 100, 250, 500, 1000],
-  etiket_rulo: [1000, 3000, 5000, 10000],
-  etiket_tabaka: [250, 500, 1000, 2500, 5000],
-};
-
-function customerTotalFromPreview(
-  r: NonNullable<ReturnType<typeof calculatePrice>> | RuloPricebookQuoteResult
-): number | null {
-  if (!r.ok) return null;
-  return "final" in r ? r.final : r.total;
-}
-
-function unitPriceFromPreview(
-  r: NonNullable<ReturnType<typeof calculatePrice>> | RuloPricebookQuoteResult
-): number | null {
-  if (!r.ok) return null;
-  return "unit_price" in r ? r.unit_price : r.unitPrice;
-}
-
-// Tabaka geometry — ortak modul (33×45 cm, 1 cm marj)
-function calcSheetsNeeded(width_mm: number, height_mm: number, qty: number): number {
-  return calcTabakaSheets(width_mm, height_mm, qty);
-}
-
-function fmtMoney(n: number): string {
-  return Math.round(n).toLocaleString("tr-TR") + " ₺";
-}
-
-function fmtMoney2(n: number): string {
-  return n.toFixed(2).replace(".", ",") + " ₺";
-}
 
 function fmtDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -228,28 +177,6 @@ function FiyatlarPageInner() {
     if (parsed) setScope(parsed);
   }, [searchParams]);
 
-  useEffect(() => {
-    const d = SCOPE_PREVIEW_DEFAULTS[scope];
-    setPreviewWidth(d.width);
-    setPreviewHeight(d.height);
-    setPreviewQty(d.qty);
-  }, [scope]);
-
-  // Preview state — interaktif simülasyon
-  const [previewMaterialId, setPreviewMaterialId] = useState<string>("");
-  const [previewOptions, setPreviewOptions] = useState<
-    Record<string, string | string[]>
-  >({});
-  const [previewWidth, setPreviewWidth] = useState(
-    SCOPE_PREVIEW_DEFAULTS.sticker.width
-  );
-  const [previewHeight, setPreviewHeight] = useState(
-    SCOPE_PREVIEW_DEFAULTS.sticker.height
-  );
-  const [previewQty, setPreviewQty] = useState(
-    SCOPE_PREVIEW_DEFAULTS.sticker.qty
-  );
-  const [previewCut, setPreviewCut] = useState<"diecut" | "tabaka">("diecut");
   const [showMatrix, setShowMatrix] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -273,22 +200,6 @@ function FiyatlarPageInner() {
           `Eksik katalog öğeleri eklendi (${j.catalog_sync_added.length}): kaydetmek için Güncelle'ye basın.`
         );
       }
-
-      // Preview defaults
-      const firstMaterial = (j.draft as ProfileConfig).materials[0];
-      if (firstMaterial) setPreviewMaterialId(firstMaterial.id);
-
-      const defaultOptions: Record<string, string | string[]> = {};
-      for (const [group_id, group] of Object.entries(
-        (j.draft as ProfileConfig).options
-      )) {
-        if (group.single_select && group.items[0]) {
-          defaultOptions[group_id] = group.items[0].id;
-        } else if (!group.single_select) {
-          defaultOptions[group_id] = [];
-        }
-      }
-      setPreviewOptions(defaultOptions);
     } catch (err) {
       setError(err instanceof Error ? err.message : "network");
     } finally {
@@ -391,158 +302,30 @@ function FiyatlarPageInner() {
     return scope === "etiket_tabaka";
   }, [draft, scope]);
 
-  const isRuloPricebook = useMemo(() => {
-    if (!draft) return scope === "etiket_rulo";
-    return isPricebookMode(draft);
-  }, [draft, scope]);
-
   const isDualPrice = scope === "sticker" || scope === "etiket_tabaka";
 
-  // Live preview hesaplama
-  const previewResult = useMemo(() => {
-    if (!draft || !previewMaterialId) return null;
-
-    if (isRuloPricebook) {
-      return quoteRuloFromPricebook(FALLBACK_PRICEBOOK_SNAPSHOT, draft, {
-        width_mm: previewWidth,
-        height_mm: previewHeight,
-        qty: previewQty,
-        material_key: previewMaterialId,
-        selected_options: previewOptions,
-      });
-    }
-
-    const sheets_needed = isSheetMode
-      ? calcSheetsNeeded(previewWidth, previewHeight, previewQty)
-      : undefined;
-
-    let billable_m2: number | undefined;
-    let cut_type: "diecut" | "tabaka" | undefined;
-    if (scope === "sticker") {
-      const g = quoteSticker({
-        width: previewWidth,
-        height: previewHeight,
-        cut: previewCut,
-        qty: previewQty,
-        production: { mode: "fason", rate: 100 },
-        operation: { setup: 0, packaging: 0, feePct: 0 },
-      });
-      if (g.ok) {
-        billable_m2 = g.geometry.totalM2;
-        cut_type = previewCut;
-      }
-    }
-
-    return calculatePrice(
-      {
-        width_mm: previewWidth,
-        height_mm: previewHeight,
-        qty: previewQty,
-        material_id: previewMaterialId,
-        selected_options: previewOptions,
-        sheets_needed,
-        billable_m2,
-        cut_type,
-      },
-      draft,
-      scope
-    );
-  }, [
-    draft,
-    previewMaterialId,
-    previewOptions,
-    previewWidth,
-    previewHeight,
-    previewQty,
-    previewCut,
-    isSheetMode,
-    isRuloPricebook,
-    scope,
-  ]);
-
-  const costBreakdown = useMemo(() => {
-    if (!previewResult?.ok || !draft) return null;
-
-    const total = customerTotalFromPreview(previewResult);
-    if (total === null) return null;
-
-    const vatAmount = total - total / (1 + draft.vat.pct / 100);
-    const subtotal = total - vatAmount;
-    const opEnabled = draft.operation.enabled !== false;
-    const feeAmount =
-      opEnabled &&
-      previewResult.ok &&
-      "with_fee" in previewResult &&
-      "with_margin" in previewResult
-        ? previewResult.with_fee - previewResult.with_margin
-        : 0;
-    const unitPrice = unitPriceFromPreview(previewResult);
-
-    if (
-      isDualPrice &&
-      "tier" in previewResult &&
-      previewResult.material_cost_base != null &&
-      previewResult.material_sell_base != null
-    ) {
-      const pr = previewResult;
-      const matCostBase = pr.material_cost_base!;
-      const matSellBase = pr.material_sell_base!;
-      const tierMult = pr.tier.multiplier;
-      const matCost = matCostBase * tierMult;
-      const matSell = matSellBase * tierMult;
-      const optCostPct = pr.options_cost_pct_total ?? 0;
-      const optSellPct = pr.options_pct_total;
-      const optionCostAmt = matCost * (optCostPct / 100);
-      const optionSellAmt = matSell * (optSellPct / 100);
-      const materialProfit = matSell - matCost + (optionSellAmt - optionCostAmt);
-      const profitPct =
-        subtotal > 0 ? (materialProfit / subtotal) * 100 : 0;
-
+  const priceMatrixDefaults = useMemo(() => {
+    if (!draft) {
       return {
-        unitPrice,
-        subtotal,
-        vatAmount,
-        total,
-        feeAmount,
-        marginAmount: materialProfit,
-        partnerCost: pr.cost_total,
-        profitPct,
-        dualSticker: true as const,
-        matCost,
-        matSell,
-        optionCostAmt,
-        optionSellAmt,
-        materialProfit,
+        materialId: "",
+        selectedOptions: {} as Record<string, string | string[]>,
       };
     }
-
-    const marginPct = draft.margin?.pct ?? 0;
-    const marginAmount =
-      marginPct > 0
-        ? (subtotal - feeAmount) * (marginPct / (100 + marginPct))
-        : 0;
-    const partnerCost = subtotal - feeAmount - marginAmount;
-    const profitPct = subtotal > 0 ? (marginAmount / subtotal) * 100 : 0;
-
+    const firstMaterial =
+      draft.materials.find((m) => m.active !== false) ?? draft.materials[0];
+    const selectedOptions: Record<string, string | string[]> = {};
+    for (const [group_id, group] of Object.entries(draft.options)) {
+      if (group.single_select && group.items[0]) {
+        selectedOptions[group_id] = group.items[0].id;
+      } else if (!group.single_select) {
+        selectedOptions[group_id] = [];
+      }
+    }
     return {
-      unitPrice,
-      subtotal,
-      vatAmount,
-      total,
-      feeAmount,
-      marginAmount,
-      partnerCost,
-      profitPct,
-      dualSticker: false as const,
+      materialId: firstMaterial?.id ?? "",
+      selectedOptions,
     };
-  }, [previewResult, draft, isDualPrice]);
-
-  const previewUnitPrice = costBreakdown?.unitPrice ?? null;
-
-  const selectedMaterial = useMemo(
-    () => draft?.materials.find((m) => m.id === previewMaterialId) ?? null,
-    [draft, previewMaterialId]
-  );
+  }, [draft]);
 
   if (loading && !data) {
     return (
@@ -1192,17 +975,6 @@ function FiyatlarPageInner() {
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gri-500 text-[11px]">
                           %
                         </span>
-                        {!isDualPrice &&
-                          previewUnitPrice != null &&
-                          it.pct_add > 0 && (
-                            <span className="block text-[10px] text-gri-500 mt-0.5 text-right whitespace-nowrap">
-                              ≈ +
-                              {(previewUnitPrice * (it.pct_add / 100))
-                                .toFixed(2)
-                                .replace(".", ",")}
-                              ₺/birim @ {previewQty.toLocaleString("tr-TR")} ad
-                            </span>
-                          )}
                       </div>
                       {isDualPrice ? (
                         <div className="relative">
@@ -1223,15 +995,6 @@ function FiyatlarPageInner() {
                           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gri-500 text-[11px]">
                             %
                           </span>
-                          {previewUnitPrice != null && it.pct_add > 0 && (
-                            <span className="block text-[10px] text-gri-500 mt-0.5 text-right whitespace-nowrap">
-                              ≈ +
-                              {(previewUnitPrice * (it.pct_add / 100))
-                                .toFixed(2)
-                                .replace(".", ",")}
-                              ₺/birim @ {previewQty.toLocaleString("tr-TR")} ad
-                            </span>
-                          )}
                         </div>
                       ) : null}
                     </div>
@@ -1425,7 +1188,7 @@ function FiyatlarPageInner() {
             </Card>
           </div>
 
-          {/* SAĞ — Aksiyon + Preview */}
+          {/* SAĞ — Aksiyon + fiyat tablosu */}
           <div className="space-y-4 xl:sticky xl:top-4 h-fit">
             {/* Sefa 17 May v4: Tek buton — direkt canlıya kaydet */}
             <Card padding="p-4">
@@ -1454,350 +1217,6 @@ function FiyatlarPageInner() {
               </div>
             </Card>
 
-            {/* Live preview — interaktif simülasyon */}
-            <Card padding="p-4" className="!bg-krem">
-              <h3 className="font-semibold text-[13.5px] mb-3 flex items-center gap-2">
-                 <span>Canlı Simülasyon</span>
-              </h3>
-
-              {scope === "sticker" && (
-                <div className="mb-3">
-                  <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
-                    Kesim
-                  </label>
-                  <div className="flex gap-1.5">
-                    {(["tabaka", "diecut"] as const).map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setPreviewCut(c)}
-                        className={cn(
-                          "px-2.5 py-1 rounded-md text-[11.5px] font-semibold transition",
-                          previewCut === c
-                            ? "bg-lacivert text-white"
-                            : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan/40"
-                        )}
-                      >
-                        {c === "tabaka" ? "Tabaka" : "Die Cut"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Boyut */}
-              <div className="mb-3">
-                <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
-                  Boyut (mm)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    value={previewWidth}
-                    onChange={(e) => setPreviewWidth(Number(e.target.value) || 1)}
-                    className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] tabular-nums"
-                  />
-                  <span className="text-gri-500 text-[12px]">×</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={previewHeight}
-                    onChange={(e) =>
-                      setPreviewHeight(Number(e.target.value) || 1)
-                    }
-                    className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] tabular-nums"
-                  />
-                </div>
-              </div>
-
-              {/* Adet */}
-              <div className="mb-3">
-                <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
-                  Adet
-                </label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {PREVIEW_QTY_PRESETS[scope].map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => setPreviewQty(q)}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-[11.5px] font-semibold transition",
-                        previewQty === q
-                          ? "bg-lacivert text-white"
-                          : "bg-white ring-1 ring-gri-200 text-gri-700 hover:ring-pim-mercan/40"
-                      )}
-                    >
-                      {q.toLocaleString("tr-TR")}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gri-500 shrink-0">Özel:</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={previewQty}
-                    onChange={(e) => setPreviewQty(Number(e.target.value) || 1)}
-                    className="w-full px-2 h-8 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px] tabular-nums"
-                  />
-                </div>
-              </div>
-
-              {/* Material seçimi */}
-              <div className="mb-3">
-                <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
-                  Malzeme
-                </label>
-                <select
-                  value={previewMaterialId}
-                  onChange={(e) => setPreviewMaterialId(e.target.value)}
-                  className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px]"
-                >
-                  {draft.materials
-                    .filter((m) => m.active !== false)
-                    .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} (
-                      {isSheetMode
-                        ? `${m.sheet_sell_try ?? m.sheet_cost_try ?? "?"} ₺/tabaka satış`
-                        : isDualPrice
-                          ? `${m.m2_sell_try ?? m.m2_cost_try ?? "?"} ₺/m² satış`
-                          : `${m.m2_cost_try ?? "?"} ₺/m²`}
-                      )
-                    </option>
-                  ))}
-                </select>
-                {selectedMaterial?.competitor_ref && (
-                  <p className="text-[11px] text-gri-500 mt-1">
-                     Rakip ref: {selectedMaterial.competitor_ref}
-                  </p>
-                )}
-              </div>
-
-              {/* Options seçimi */}
-              {Object.entries(draft.options).map(([gid, group]) => (
-                <div key={gid} className="mb-3">
-                  <label className="block text-[10.5px] font-bold uppercase text-gri-700 mb-1">
-                    {optionGroupDisplayLabel(scope, gid, group.label)}
-                  </label>
-                  {group.single_select ? (
-                    <select
-                      value={(previewOptions[gid] as string) ?? ""}
-                      onChange={(e) =>
-                        setPreviewOptions({
-                          ...previewOptions,
-                          [gid]: e.target.value,
-                        })
-                      }
-                      className="w-full px-2 h-9 rounded-lg bg-white ring-1 ring-gri-200 text-[12.5px]"
-                    >
-                      <option value="">— seçilmedi —</option>
-                      {(group.items ?? []).map((it: OptionItem) => (
-                        <option key={it.id} value={it.id}>
-                          {it.name} (+{it.pct_add}%)
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="space-y-1">
-                      {(group.items ?? []).map((it: OptionItem) => {
-                        const arr = (previewOptions[gid] as string[]) ?? [];
-                        const checked = arr.includes(it.id);
-                        return (
-                          <label
-                            key={it.id}
-                            className="flex items-center gap-2 text-[12px] cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                const newArr = e.target.checked
-                                  ? [...arr, it.id]
-                                  : arr.filter((id) => id !== it.id);
-                                setPreviewOptions({
-                                  ...previewOptions,
-                                  [gid]: newArr,
-                                });
-                              }}
-                              className="accent-pim-mercan"
-                            />
-                            <span>
-                              {it.name} (+{it.pct_add}%)
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <div className="border-t border-gri-200 pt-3 mt-1">
-                {previewResult?.ok && costBreakdown ? (
-                  <>
-                    <div className="space-y-1.5 text-[12.5px]">
-                      <Row
-                        label=" Birim fiyat"
-                        value={fmtMoney2(costBreakdown.unitPrice ?? 0)}
-                      />
-                      <Row
-                        label=" Ara toplam"
-                        value={fmtMoney(costBreakdown.subtotal)}
-                      />
-                      <Row
-                        label={` KDV (%${draft.vat.pct})`}
-                        value={fmtMoney(costBreakdown.vatAmount)}
-                      />
-                      <div className="border-t border-pim-mercan/30 pt-2 mt-2">
-                        <div className="flex justify-between items-baseline gap-2">
-                          <span className="font-bold text-lacivert">
-                             Müşteri toplam
-                          </span>
-                          <span className="text-[18px] font-bold text-pim-mercan tabular-nums">
-                            {fmtMoney(costBreakdown.total)}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-gri-700 mt-0.5">
-                          {previewWidth}×{previewHeight} mm ·{" "}
-                          {previewQty.toLocaleString("tr-TR")} adet
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-dashed border-gri-300">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.04em] text-gri-500 mb-2">
-                        Maliyet kırılımı (sadece admin)
-                      </div>
-                      <div className="space-y-1 text-[11.5px] font-mono">
-                        {costBreakdown.dualSticker ? (
-                          <>
-                            <Row
-                              label="Malzeme alış"
-                              value={fmtMoney(costBreakdown.matCost ?? 0)}
-                            />
-                            <Row
-                              label="Malzeme satış"
-                              value={fmtMoney(costBreakdown.matSell ?? 0)}
-                            />
-                            <Row
-                              label="Kâr (malzeme)"
-                              value={`${fmtMoney(costBreakdown.materialProfit ?? 0)} (%${costBreakdown.profitPct.toFixed(0)})`}
-                            />
-                            <Row
-                              label="Seçenek maliyeti"
-                              value={fmtMoney(costBreakdown.optionCostAmt ?? 0)}
-                            />
-                            <Row
-                              label="Seçenek satış"
-                              value={fmtMoney(costBreakdown.optionSellAmt ?? 0)}
-                            />
-                            <Row
-                              label="Setup"
-                              value={fmtMoney(
-                                draft.operation.enabled !== false
-                                  ? draft.operation.setup
-                                  : 0
-                              )}
-                            />
-                            <Row
-                              label="Paketleme"
-                              value={fmtMoney(
-                                draft.operation.enabled !== false
-                                  ? draft.operation.packaging_per_unit * previewQty
-                                  : 0
-                              )}
-                            />
-                            <Row
-                              label="PSP komisyon"
-                              value={fmtMoney(costBreakdown.feeAmount)}
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <Row
-                              label=" Partner maliyeti"
-                              value={fmtMoney(costBreakdown.partnerCost)}
-                            />
-                            <Row
-                              label=" Senin kârın"
-                              value={fmtMoney(costBreakdown.marginAmount)}
-                            />
-                            <Row
-                              label=" Kâr marjı"
-                              value={`%${costBreakdown.profitPct.toFixed(1)}`}
-                            />
-                            <Row
-                              label=" PSP komisyon"
-                              value={fmtMoney(costBreakdown.feeAmount)}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {costBreakdown.profitPct < 15 && (
-                      <div className="mt-2 text-[12px] text-sari-koyu bg-sari-soft/30 rounded px-3 py-2">
-                         Kâr marjı %{costBreakdown.profitPct.toFixed(1)} —
-                        eşik %15 altında
-                      </div>
-                    )}
-                  </>
-                ) : previewResult && !previewResult.ok ? (
-                  <div className="text-[12px] text-kirmizi">
-                     {previewResult.reason}
-                    {"hint" in previewResult && previewResult.hint && (
-                      <>
-                        <br />
-                        {previewResult.hint}
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-[12px] text-gri-500 italic">
-                    Malzeme seç — simülasyon hesaplanır
-                  </div>
-                )}
-              </div>
-
-              {/* Detaylı hesap (genişletilmiş) */}
-              {previewResult?.ok && !isRuloPricebook && "base" in previewResult && (
-                <details className="mt-3 text-[11px]">
-                  <summary className="cursor-pointer text-gri-600 font-medium">
-                    Adım adım hesap
-                  </summary>
-                  <div className="mt-2 space-y-1 font-mono leading-relaxed text-lacivert">
-                    <Row
-                      label={
-                        isSheetMode && previewResult.sheets_used
-                          ? `Base (${previewResult.sheets_used} tabaka)`
-                          : "Base (m²×alan×adet)"
-                      }
-                      value={fmtMoney2(previewResult.base)}
-                    />
-                    <Row
-                      label={`Tier × ${previewResult.tier.multiplier}`}
-                      value={fmtMoney2(previewResult.tiered)}
-                    />
-                    <Row
-                      label={`+ % toplam ${previewResult.options_pct_total}`}
-                      value={fmtMoney2(previewResult.with_options)}
-                    />
-                    <Row
-                      label="+ Operasyon"
-                      value={`+${fmtMoney2(previewResult.operation_cost)}`}
-                    />
-                    <Row
-                      label="Toplam maliyet"
-                      value={fmtMoney2(previewResult.cost_total)}
-                    />
-                  </div>
-                </details>
-              )}
-            </Card>
-
             <div>
               <Button
                 variant="ghost"
@@ -1810,8 +1229,8 @@ function FiyatlarPageInner() {
                 <PriceMatrix
                   config={draft}
                   scope={scope}
-                  materialId={previewMaterialId}
-                  selectedOptions={previewOptions}
+                  materialId={priceMatrixDefaults.materialId}
+                  selectedOptions={priceMatrixDefaults.selectedOptions}
                 />
               )}
             </div>
@@ -1902,15 +1321,6 @@ function NumField({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full px-3 h-10 rounded-[10px] bg-white ring-1 ring-gri-200 text-[14px] tabular-nums focus:outline-none focus:ring-pim-mercan"
       />
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-2">
-      <span className="text-gri-700">{label}</span>
-      <span className="font-semibold tabular-nums">{value}</span>
     </div>
   );
 }
