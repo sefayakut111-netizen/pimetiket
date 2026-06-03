@@ -35,15 +35,56 @@ export interface CutlineDetectResult {
 const CUT_LAYER_NAMES =
   /die|cut|knife|bicak|bıçak|cutline|contour|kesim|cutcontour|thru-cut/i;
 
-const MAGENTA_STROKES = new Set([
-  "#ff00ff",
-  "magenta",
-  "rgb(255,0,255)",
-  "rgb(255, 0, 255)",
-]);
+function parseColorToRgb(value: string): { r: number; g: number; b: number } | null {
+  const v = value.trim().toLowerCase();
+  if (v === "magenta") return { r: 255, g: 0, b: 255 };
+  let m = v.match(/^#([0-9a-f]{3})$/);
+  if (m) {
+    const h = m[1];
+    return {
+      r: parseInt(h[0] + h[0], 16),
+      g: parseInt(h[1] + h[1], 16),
+      b: parseInt(h[2] + h[2], 16),
+    };
+  }
+  m = v.match(/^#([0-9a-f]{6})$/);
+  if (m) {
+    const h = m[1];
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16),
+    };
+  }
+  m = v.match(/^rgba?\(([^)]+)\)$/);
+  if (m) {
+    const parts = m[1].split(",").slice(0, 3).map((s) => s.trim());
+    const toNum = (s: string) =>
+      s.endsWith("%") ? Math.round(parseFloat(s) * 2.55) : parseFloat(s);
+    const nums = parts.map(toNum);
+    if (nums.length === 3 && nums.every((n) => Number.isFinite(n))) {
+      return { r: nums[0], g: nums[1], b: nums[2] };
+    }
+  }
+  return null;
+}
 
+/** CutContour magenta ailesi: #ff00ff (255,0,255) + #ff0080 (255,0,128) + varyantlar */
 function isMagentaStroke(value: string): boolean {
-  return MAGENTA_STROKES.has(value.trim().toLowerCase());
+  const rgb = parseColorToRgb(value);
+  if (!rgb) return false;
+  return rgb.r >= 200 && rgb.g <= 80 && rgb.b >= 100;
+}
+
+function strokeOfPathAttrs(attrs: string): string | null {
+  const direct = attrs.match(/\bstroke=["']([^"']+)["']/i)?.[1];
+  if (direct) return direct;
+  const style = attrs.match(/\bstyle=["']([^"']+)["']/i)?.[1];
+  if (style) {
+    const s = style.match(/stroke\s*:\s*([^;"']+)/i)?.[1];
+    if (s) return s.trim();
+  }
+  return null;
 }
 
 function findMagentaStrokePath(svgText: string): string | null {
@@ -51,7 +92,7 @@ function findMagentaStrokePath(svgText: string): string | null {
   let match: RegExpExecArray | null;
   while ((match = pathRegex.exec(svgText)) !== null) {
     const attrs = match[1];
-    const stroke = attrs.match(/\bstroke=["']([^"']+)["']/i)?.[1];
+    const stroke = strokeOfPathAttrs(attrs);
     if (!stroke || !isMagentaStroke(stroke)) continue;
     const d = attrs.match(/\bd=["']([^"']+)["']/i)?.[1];
     if (d) return d;
