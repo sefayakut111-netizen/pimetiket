@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ACTIVE_ASSIGNMENT_STATUS_LIST } from "@/lib/fason/active-assignment-statuses";
 
 const phoneRegex = /^(\+90)?5\d{9}$/;
 
@@ -150,6 +151,12 @@ export async function GET(_req: Request, { params }: RouteCtx) {
     .select("id, capability_type, capability_value, is_verified, approval_status")
     .eq("partner_id", id);
 
+  const { data: activeAssignments } = await admin
+    .from("order_assignments")
+    .select("id")
+    .eq("fason_partner_id", id)
+    .in("status", [...ACTIVE_ASSIGNMENT_STATUS_LIST]);
+
   return NextResponse.json({
     partner: {
       id: row.id,
@@ -180,6 +187,7 @@ export async function GET(_req: Request, { params }: RouteCtx) {
       score_updated_at: row.score_updated_at,
       active: row.active ?? row.status === "active",
       max_concurrent_orders: row.max_concurrent_orders,
+      active_order_count: activeAssignments?.length ?? 0,
       contacts: contacts ?? [],
       capabilities: capabilities ?? [],
     },
@@ -360,6 +368,11 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: upErr.message }, { status: 500 });
   }
 
+  const { data: existingContacts } = await admin
+    .from("partner_contacts")
+    .select("role, name, title, email, phone_e164, auto_notification")
+    .eq("partner_id", id);
+
   const contacts: Array<{
     role: "owner" | "operator" | "accounting";
     name: string;
@@ -398,6 +411,20 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
       phone_e164: normalizePhoneE164(body.accounting.phone),
       auto_notification: false,
     });
+  } else {
+    const existingAccounting = (existingContacts ?? []).find(
+      (c) => c.role === "accounting"
+    );
+    if (existingAccounting) {
+      contacts.push({
+        role: "accounting",
+        name: existingAccounting.name,
+        title: existingAccounting.title ?? undefined,
+        email: existingAccounting.email,
+        phone_e164: existingAccounting.phone_e164,
+        auto_notification: existingAccounting.auto_notification ?? false,
+      });
+    }
   }
 
   await admin.from("partner_contacts").delete().eq("partner_id", id);

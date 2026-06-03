@@ -16,6 +16,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import { enqueueMail } from "@/lib/mail/enqueue";
+import { ACTIVE_ASSIGNMENT_STATUS_LIST } from "@/lib/fason/active-assignment-statuses";
 
 // ============================================================
 // Zod schemas
@@ -152,14 +153,14 @@ export async function GET() {
     capsByPartner.get(c.partner_id)!.push(c);
   }
 
-  // Aktif atama sayıları (assigned / acknowledged / in_production)
+  // Aktif atama sayıları (assigned … issue — tek kaynak ACTIVE_ASSIGNMENT_STATUS_LIST)
   const activeCountByPartner = new Map<string, number>();
   if (partnerIds.length > 0) {
     const { data: activeAssignments } = await admin
       .from("order_assignments")
       .select("fason_partner_id")
       .in("fason_partner_id", partnerIds)
-      .in("status", ["assigned", "acknowledged", "in_production"]);
+      .in("status", [...ACTIVE_ASSIGNMENT_STATUS_LIST]);
     for (const row of (activeAssignments ?? []) as Array<{
       fason_partner_id: string;
     }>) {

@@ -214,6 +214,7 @@ function buildSubmitBody(state: {
       state.accounting.name.trim().length >= 3
         ? {
             name: state.accounting.name.trim(),
+            title: state.accounting.title.trim() || undefined,
             email: state.accounting.email.trim().toLowerCase(),
             phone: digitsOnly(state.accounting.phone),
           }

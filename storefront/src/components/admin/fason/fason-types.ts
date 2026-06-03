@@ -144,14 +144,13 @@ export const CAPABILITY_LABEL: Record<string, string> = {
   holographic: "Holografik",
 };
 
-export const ACTIVE_ASSIGNMENT_STATUSES = new Set([
-  "assigned",
-  "sent",
-  "acknowledged",
-  "in_production",
-  "ready",
-  "issue",
-]);
+import {
+  ACTIVE_ASSIGNMENT_STATUS_LIST,
+  ACTIVE_ASSIGNMENT_STATUSES,
+} from "@/lib/fason/active-assignment-statuses";
+
+export { ACTIVE_ASSIGNMENT_STATUS_LIST, ACTIVE_ASSIGNMENT_STATUSES };
+export type { ActiveAssignmentStatus } from "@/lib/fason/active-assignment-statuses";
 
 export function formatShortDate(iso: string | null | undefined): string {
   if (!iso) return "—";
