@@ -11,7 +11,7 @@ import {
   quoteRuloFromPricebook,
   type PricebookSnapshot,
 } from "./pricing-pricebook";
-import { quoteSticker, quoteEtiket } from "./pricing-engine";
+import { quoteSticker, computeRollPlan, quoteEtiket } from "./pricing-engine";
 import type {
   CustomerQuoteResult,
   CustomerQuoteInput,
@@ -31,6 +31,54 @@ export function quoteStickerFromConfig(
 ): CustomerQuoteResult | null {
   const { geomWidth, geomHeight, pricingWidthMm, pricingHeightMm } =
     resolveStickerQuoteDimensions(input);
+
+  if (input.pageMode) {
+    const rollPlan = computeRollPlan(geomWidth, geomHeight, input.qty);
+    if (!rollPlan) {
+      return {
+        ok: false,
+        reason: "Sayfa boyutu plotter rulosuna sığmıyor.",
+      };
+    }
+    const billable_m2 = rollPlan.totalArea / 1_000_000;
+    const priceResult = calculatePrice(
+      {
+        width_mm: pricingWidthMm,
+        height_mm: pricingHeightMm,
+        qty: input.qty,
+        material_id: input.material,
+        selected_options: { finish: input.finish },
+        billable_m2,
+        cut_type: "tabaka",
+      },
+      config,
+      "sticker"
+    );
+    if (!priceResult.ok) {
+      console.warn(
+        `[customer-pricing-bridge] sticker pageMode calc failed: ${priceResult.reason}`,
+        priceResult.hint
+      );
+      return null;
+    }
+    return {
+      ok: true,
+      total: priceResult.final,
+      unitPrice: priceResult.unit_price,
+      overrunCount: 0,
+      tierMultiplier: priceResult.tier.multiplier,
+      surchargeMultiplier: 1,
+      geometry: {
+        cols: rollPlan.cols,
+        rows: rollPlan.rows,
+        perSheet: 1,
+        sheetsNeeded: input.qty,
+        sheetW: geomWidth,
+        sheetH: geomHeight,
+      },
+    };
+  }
+
   const geomCut = resolveStickerGeomCut(input.cut);
   const geomResult = quoteSticker({
     width: geomWidth,

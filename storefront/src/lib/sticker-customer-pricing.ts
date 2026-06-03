@@ -16,8 +16,10 @@
 
 import {
   quoteSticker,
+  computeRollPlan,
   type QuoteResult,
 } from "./pricing-engine";
+import { calculatePrice } from "./pricing-calc";
 import { getDefaultInput } from "./pricing-profiles";
 import { FALLBACK_STICKER_CONFIG } from "./pricing-config-types";
 import { KARTLI_MARGIN_MM } from "@/lib/editor/cutline/export-svg";
@@ -74,6 +76,8 @@ export interface CustomerQuoteInput {
   qty: number;
   /** Kesim tipi — default die-cut (customer-friendly) */
   cut?: StickerCutType;
+  /** Sticker Sayfası modeli — qty = sayfa adedi, billable = computeRollPlan m² */
+  pageMode?: boolean;
 }
 
 /** Sticker boyut sınırları (customer-facing) */
@@ -157,6 +161,51 @@ export function resolveStickerGeomCut(
 export function quoteCustomerSticker(
   input: CustomerQuoteInput
 ): CustomerQuoteResult {
+  if (input.pageMode) {
+    const { geomWidth, geomHeight, pricingWidthMm, pricingHeightMm } =
+      resolveStickerQuoteDimensions(input);
+    const rollPlan = computeRollPlan(geomWidth, geomHeight, input.qty);
+    if (!rollPlan) {
+      return {
+        ok: false,
+        reason: "Sayfa boyutu plotter rulosuna sığmıyor.",
+      };
+    }
+    const billable_m2 = rollPlan.totalArea / 1_000_000;
+    const priceResult = calculatePrice(
+      {
+        width_mm: pricingWidthMm,
+        height_mm: pricingHeightMm,
+        qty: input.qty,
+        material_id: input.material,
+        selected_options: { finish: input.finish },
+        billable_m2,
+        cut_type: "tabaka",
+      },
+      FALLBACK_STICKER_CONFIG,
+      "sticker"
+    );
+    if (!priceResult.ok) {
+      return { ok: false, reason: priceResult.reason };
+    }
+    return {
+      ok: true,
+      total: priceResult.final,
+      unitPrice: priceResult.unit_price,
+      overrunCount: 0,
+      tierMultiplier: priceResult.tier.multiplier,
+      surchargeMultiplier: 1,
+      geometry: {
+        cols: rollPlan.cols,
+        rows: rollPlan.rows,
+        perSheet: 1,
+        sheetsNeeded: input.qty,
+        sheetW: geomWidth,
+        sheetH: geomHeight,
+      },
+    };
+  }
+
   const defaults = getDefaultInput();
   const matMult = MATERIAL_MULT[input.material];
   const finMult = FINISH_MULT[input.finish];

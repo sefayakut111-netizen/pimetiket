@@ -5,7 +5,7 @@
 import { quoteStickerFromConfig } from "../src/lib/customer-pricing-from-config";
 import { FALLBACK_STICKER_CONFIG } from "../src/lib/pricing-config-types";
 import { expectedCartLineFromPerDesignQuote } from "../src/lib/design-count-pricing";
-import { computeGeometry } from "../src/lib/pricing-engine/geometry";
+import { computeGeometry, computeRollPlan } from "../src/lib/pricing-engine/geometry";
 import { OVERAGE_TARGET_MAX } from "../src/lib/pricing-engine/constants";
 import type { StickerCutType } from "../src/lib/sticker-customer-pricing";
 import {
@@ -109,6 +109,47 @@ function assertGeometryScenario(args: {
   }
 }
 
+function assertPageModeCase(args: {
+  label: string;
+  width: number;
+  height: number;
+  qty: number;
+  expectedBillableM2: number;
+  expectedTotal: number;
+}) {
+  const rollPlan = computeRollPlan(args.width, args.height, args.qty);
+  assert(rollPlan != null, `${args.label}: computeRollPlan null`);
+  if (!rollPlan) return;
+
+  const billableM2 = rollPlan.totalArea / 1_000_000;
+  assert(
+    Math.abs(billableM2 - args.expectedBillableM2) <= 0.002,
+    `${args.label}: billable expected ~${args.expectedBillableM2}, got ${billableM2.toFixed(3)}`
+  );
+
+  const quote = quoteStickerFromConfig(FALLBACK_STICKER_CONFIG, {
+    width: args.width,
+    height: args.height,
+    qty: args.qty,
+    material: "vinil",
+    finish: "yok",
+    cut: "tabaka",
+    pageMode: true,
+  });
+  assert(quote?.ok === true, `${args.label}: pageMode quote failed`);
+  if (!quote?.ok) return;
+
+  assert(
+    Math.abs(quote.total - args.expectedTotal) <= 0.5,
+    `${args.label}: total expected ${args.expectedTotal}, got ${quote.total.toFixed(2)}`
+  );
+  assert(quote.overrunCount === 0, `${args.label}: overrunCount should be 0`);
+  assert(
+    quote.geometry.sheetsNeeded === args.qty,
+    `${args.label}: sheetsNeeded should equal qty (sayfa adedi)`
+  );
+}
+
 export function runRegressionTests() {
   assertRecalcPasses({
     cut: "kartli",
@@ -182,6 +223,24 @@ export function runRegressionTests() {
       `kartli baseline expected ${KARTLI_BASELINE_TOTAL}, got ${kartli.total.toFixed(2)}`
     );
   }
+
+  // Sticker Sayfası (pageMode) — Faz 1 motor; billable = computeRollPlan m², cut nötr
+  assertPageModeCase({
+    label: "sayfa A4 210×297×25",
+    width: 210,
+    height: 297,
+    qty: 25,
+    expectedBillableM2: 1.979,
+    expectedTotal: 2436.66,
+  });
+  assertPageModeCase({
+    label: "sayfa A5 148×210×25",
+    width: 148,
+    height: 210,
+    qty: 25,
+    expectedBillableM2: 1.055,
+    expectedTotal: 1328.37,
+  });
 
   console.log("[payment-validation-kartli-regression] OK");
   if (kartli?.ok) {
