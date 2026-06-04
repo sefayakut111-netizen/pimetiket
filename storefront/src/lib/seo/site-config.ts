@@ -10,13 +10,23 @@ export interface SeoSiteConfig {
   contactPhone?: string;
 }
 
+// Sefa 4 Haz: resmî sosyal hesaplar — JSON-LD sameAs varsayılanı (entity SEO).
+// Öncelik: DB site_settings.social_links > env NEXT_PUBLIC_SOCIAL_LINKS > bu liste.
+// Admin → Ayarlar'dan girilen değer her zaman bunları override eder.
+const DEFAULT_SOCIAL_LINKS = [
+  "https://instagram.com/pimetiket",
+  "https://x.com/pimetiket",
+  "https://pinterest.com/pimetiket",
+  "https://youtube.com/@pimetiket",
+];
+
 function parseSocialLinks(raw: string | null | undefined): string[] {
   if (!raw?.trim()) {
     const env = (process.env.NEXT_PUBLIC_SOCIAL_LINKS ?? "")
       .split(",")
       .map((s) => s.trim())
       .filter((s) => s.startsWith("https://"));
-    return env;
+    return env.length > 0 ? env : DEFAULT_SOCIAL_LINKS;
   }
   return raw
     .split(",")
