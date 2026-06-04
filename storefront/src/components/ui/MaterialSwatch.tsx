@@ -39,6 +39,10 @@ export type SurfaceId =
   | "ozyok";
 
 interface MaterialSwatchProps {
+  /** Sefa 3 Haz v69: Tam görsel yolu (raster/foto). Verilirse `surface`tan
+   *  ÖNCELİKLİDİR. Yalnız sticker konfigüratörü malzeme adımı kullanır;
+   *  etiket + finish swatch'ları `surface` (SVG) ile devam eder. */
+  src?: string | null;
   /** SVG doku ID — `public/assets/svg/surfaces/<id>.svg` */
   surface?: SurfaceId | null;
   /** Legacy CSS background — surface yoksa fallback */
@@ -68,6 +72,7 @@ const ROUNDED_CLS: Record<NonNullable<MaterialSwatchProps["rounded"]>, string> =
 };
 
 export function MaterialSwatch({
+  src,
   surface,
   fallback,
   className = "",
@@ -79,6 +84,30 @@ export function MaterialSwatch({
   const roundedCls = ROUNDED_CLS[rounded];
   const base = `relative overflow-hidden ring-1 ring-black/[0.06] ${roundedCls} ${className}`;
   const objectFitClass = fit === "contain" ? "object-contain" : "object-cover";
+
+  // Sefa 3 Haz v69: tam yol raster görsel — surface'tan öncelikli
+  if (src) {
+    return (
+      <div
+        className={base}
+        style={style}
+        role={label ? "img" : undefined}
+        aria-label={label}
+        aria-hidden={label ? undefined : true}
+      >
+        <Image
+          src={src}
+          alt=""
+          aria-hidden="true"
+          fill
+          sizes="(max-width: 768px) 45vw, 220px"
+          loading="lazy"
+          decoding="async"
+          className={objectFitClass}
+        />
+      </div>
+    );
+  }
 
   if (surface) {
     return (
