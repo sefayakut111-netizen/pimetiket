@@ -88,14 +88,13 @@ export async function GET(req: Request) {
   const amount = amountParam ? Number(amountParam) : 0;
 
   const admin = createAdminClient();
-  const { data, error } = await admin.rpc(
-    "fn_find_best_partner",
-    {
-      p_product_type: productType,
-      p_material: (material ?? null) as unknown as string,
-      p_order_amount: Number.isFinite(amount) ? amount : 0,
-    }
-  );
+  // Sefa kararı (4 Haz): suggest yalnız ürün tipine göre filtreler; malzeme soft.
+  // p_material=null → fn_find_best_partner material filtresini atlar (mig 117).
+  const { data, error } = await admin.rpc("fn_find_best_partner", {
+    p_product_type: productType,
+    p_material: null as unknown as string,
+    p_order_amount: Number.isFinite(amount) ? amount : 0,
+  });
 
   if (error) {
     return NextResponse.json(
@@ -122,7 +121,7 @@ export async function GET(req: Request) {
       fason_name: r.partner_name,
       cached_score: r.cached_score,
       active_count: activeCounts.get(r.partner_id) ?? 0,
-      reason: `${productType}${material ? ` + ${material}` : ""} kapasiteli`,
+      reason: `${productType} ürün grubu onaylı`,
     })),
     productType,
     material,

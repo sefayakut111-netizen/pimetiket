@@ -146,8 +146,14 @@ export async function assertAssignCapabilityGuard(
     return {
       ok: false,
       status: 400,
-      error: "Partner bu ürün/malzeme için onaylı değil (yetkinlik eksik).",
+      error: "Partner bu ürün grubu için onaylı değil (yetkinlik eksik).",
     };
+  }
+
+  if (!match.materialOk) {
+    console.warn(
+      `[fason/assign] malzeme onaysız (soft): partner ${fasonPartnerId} order ${orderId} material ${material ?? "—"} — product_type onaylı, atamaya izin verildi.`
+    );
   }
 
   return { ok: true };

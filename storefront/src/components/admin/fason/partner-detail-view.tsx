@@ -306,9 +306,12 @@ function AssignOrderToPartner({
     const materialLabel = cap.material
       ? FASON_MATERIAL_LABELS[cap.material]
       : null;
-    const label = materialLabel
-      ? `"${productLabel} + ${materialLabel}" yetenek onayli`
-      : `"${productLabel}" urun grubu onayli`;
+    const label =
+      materialLabel && match.materialOk
+        ? `"${productLabel} + ${materialLabel}" yetenek onayli`
+        : materialLabel
+          ? `"${productLabel}" onayli — ${materialLabel} dogrulanmamis (uyari)`
+          : `"${productLabel}" urun grubu onayli`;
     return { ok: match.ok, label, cap, match };
   }, [confirmOrder, partner.capabilities]);
 

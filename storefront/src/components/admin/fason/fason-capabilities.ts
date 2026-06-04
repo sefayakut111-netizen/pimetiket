@@ -167,7 +167,9 @@ export function partnerHasApprovedCapability(
   const materialOk =
     !!materialCap && resolveApprovalStatus(materialCap) === "approved";
 
-  return { ok: productOk && materialOk, productOk, materialOk };
+  // Sefa kararı (4 Haz): yetkinlik gate'i YALNIZ ürün tipi. Malzeme onayı soft
+  // sinyal — bloklamaz. materialOk ayrı dönüyor; çağıran warn/etiket için kullanır.
+  return { ok: productOk, productOk, materialOk };
 }
 
 export function setMaterialsForProduct(
