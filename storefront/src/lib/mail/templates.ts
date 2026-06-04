@@ -574,6 +574,103 @@ function renderAdminNewOrder(input: MailTemplateInput): MailRendered {
 }
 
 // ============================================================
+// admin_new_support_ticket — admin'e yeni destek talebi bildirimi
+// ============================================================
+function renderAdminNewSupportTicket(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const rawTicketId = String(p.ticket_id ?? "");
+  const ticketId = escape(rawTicketId);
+  const ticketSubject = escape(p.subject);
+  const category = escape(p.category ?? "genel");
+  const messagePreview = escape(p.message_preview ?? "—");
+  const customerEmail = escape(p.customer_email ?? "—");
+  const customerName = escape(p.customer_name ?? "—");
+  const orderId = p.order_id ? escape(p.order_id) : null;
+  const isGuest = Boolean(p.is_guest);
+  const memberLabel = isGuest ? "Misafir" : "Üye";
+  const adminLink = `${SITE_URL}/admin/destek/${rawTicketId}`;
+
+  const subject = `🎫 Yeni destek talebi — ${category} · ${ticketSubject}`;
+
+  const orderRow = orderId
+    ? `<tr><td style="padding: 6px 0; color: #57534e;">Sipariş No</td><td style="padding: 6px 0; font-weight: 600;">${orderId}</td></tr>`
+    : "";
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px; color: #FF6B5B;">🎫 Yeni destek talebi geldi</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px;">
+      Müşteri panelinden yeni bir destek talebi oluşturuldu.
+    </p>
+
+    <table role="presentation" style="width: 100%; margin: 20px 0; font-size: 13px;">
+      <tr><td style="padding: 6px 0; color: #57534e;">Ticket ID</td><td style="padding: 6px 0; font-weight: 600; font-family: monospace;">${ticketId}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">Müşteri</td><td style="padding: 6px 0;">${customerName} · ${customerEmail}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">Tip</td><td style="padding: 6px 0;">${memberLabel}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e;">Kategori</td><td style="padding: 6px 0; font-weight: 600;">${category}</td></tr>
+      ${orderRow}
+      <tr><td style="padding: 6px 0; color: #57534e;">Konu</td><td style="padding: 6px 0; font-weight: 600;">${ticketSubject}</td></tr>
+      <tr><td style="padding: 6px 0; color: #57534e; vertical-align: top;">Mesaj</td><td style="padding: 6px 0; line-height: 1.5;">${messagePreview}</td></tr>
+    </table>
+
+    <div style="margin: 24px 0;">
+      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Destek talebini aç →
+      </a>
+    </div>
+  `;
+
+  const footer = `
+    Bu mail Pim Etiket admin bildirim sisteminden gönderildi.
+    Bildirimi durdurmak için <code>ADMIN_NOTIFICATION_EMAIL</code> env'ini Vercel'den kaldır.
+  `;
+
+  const text = `Yeni destek talebi — ${category}\n\nKonu: ${ticketSubject}\nTicket: ${ticketId}\nMüşteri: ${customerName} (${customerEmail}) · ${memberLabel}\n${orderId ? `Sipariş: ${orderId}\n` : ""}Mesaj: ${messagePreview}\n\nAç: ${adminLink}`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
+// customer_support_ticket_received — müşteriye talep alındı onayı
+// ============================================================
+function renderCustomerSupportReceived(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const ticketId = String(p.ticket_id ?? "");
+  const ticketIdShort = escape(ticketId.slice(0, 8));
+  const ticketSubject = escape(p.subject);
+  const category = escape(p.category ?? "genel");
+  const rawName = typeof p.customer_name === "string" ? p.customer_name.trim() : "";
+  const greeting = rawName ? `Merhaba ${escape(rawName)}` : "Merhaba";
+
+  const subject = `Destek talebiniz alındı — #${ticketIdShort}`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">${greeting},</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px;">
+      Destek talebinizi aldık. 24 saat içinde size dönüş yapacağız.
+    </p>
+
+    <table role="presentation" style="width: 100%; margin: 20px 0; font-size: 13px; background: #fafaf9; border-radius: 8px; padding: 4px 0;">
+      <tr><td style="padding: 8px 12px; color: #57534e;">Talep No</td><td style="padding: 8px 12px; font-weight: 600; font-family: monospace;">#${ticketIdShort}</td></tr>
+      <tr><td style="padding: 8px 12px; color: #57534e;">Konu</td><td style="padding: 8px 12px; font-weight: 600;">${ticketSubject}</td></tr>
+      <tr><td style="padding: 8px 12px; color: #57534e;">Kategori</td><td style="padding: 8px 12px;">${category}</td></tr>
+    </table>
+
+    <p style="font-size: 13px; line-height: 1.6; color: #57534e; margin: 16px 0 0;">
+      Acil bir konu varsa WhatsApp üzerinden yazabilirsiniz: <strong>+90 545 699 90 63</strong>
+    </p>
+  `;
+
+  const footer = `
+    Bu mail işlem bildirimidir (transactional).
+    Sorularınız için <a href="mailto:info@pimetiket.com">info@pimetiket.com</a> adresine yazabilirsiniz.
+  `;
+
+  const text = `${greeting},\n\nDestek talebinizi aldık. 24 saat içinde size dönüş yapacağız.\n\nTalep No: #${ticketIdShort}\nKonu: ${ticketSubject}\nKategori: ${category}\n\nAcil: WhatsApp +90 545 699 90 63\n\ninfo@pimetiket.com`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
 // admin_daily_summary — Sefa'ya günlük operasyon özeti (TR 09:00)
 // Sefa 21 May v68: kahvesini içerken günün durumunu görür.
 // ============================================================
@@ -667,6 +764,8 @@ const RENDERERS: Record<
   customer_abandoned_cart: renderCustomerAbandonedCart,
   customer_review_request: renderCustomerReviewRequest,
   admin_new_order: renderAdminNewOrder,
+  admin_new_support_ticket: renderAdminNewSupportTicket,
+  customer_support_ticket_received: renderCustomerSupportReceived,
   admin_daily_summary: renderAdminDailySummary,
   // Sefa 21 May v68 — caller-rendered React Email helpers için bypass
   _prerendered: renderPrerendered,

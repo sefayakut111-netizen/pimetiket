@@ -34,7 +34,7 @@ export interface EnqueueMailParams {
   /** Kategori — admin filter için */
   category?: "fason" | "customer" | "lead" | "admin";
   /** Polymorphic ref tipi */
-  targetType?: "assignment" | "order" | "subscriber" | "user" | "cart";
+  targetType?: "assignment" | "order" | "subscriber" | "user" | "cart" | "ticket";
   /** Polymorphic ref id */
   targetId?: string;
   /** Subject override (template'in default'u kullanılacaksa null bırak) */

@@ -83,12 +83,23 @@ export const MAIL_TEMPLATES = [
     label: "Günlük Özet",
     subject: "Pim Etiket günlük rapor",
   },
+  {
+    key: "admin-new-support-ticket",
+    label: "Destek Talebi (Admin)",
+    subject: "Yeni destek talebi",
+  },
+  {
+    key: "customer-support-received",
+    label: "Destek Talebi Alındı (Müşteri)",
+    subject: "Destek talebiniz alındı",
+  },
 ] as const;
 
 export type MailTemplateKey = (typeof MAIL_TEMPLATES)[number]["key"];
 
 const MOCK_ORDER_ID = "PE-2026-001234";
 const MOCK_NAME = "Ayşe Yılmaz";
+const MOCK_TICKET_ID = "tkt_demo_001";
 
 function templateMeta(key: MailTemplateKey) {
   return MAIL_TEMPLATES.find((t) => t.key === key)!;
@@ -265,6 +276,29 @@ export async function previewMailTemplate(
           inProduction: 8,
           shipped24h: 6,
           partnerCapacityWarn: 1,
+        }) ?? null
+      );
+    case "admin-new-support-ticket":
+      return (
+        renderMailTemplate("admin_new_support_ticket", {
+          ticket_id: MOCK_TICKET_ID,
+          subject: "Sipariş durumu hakkında",
+          category: "siparis",
+          message_preview:
+            "Merhaba, PE-2026-001234 numaralı siparişimin kargo durumunu öğrenmek istiyorum. Tahmini teslimat tarihi nedir?",
+          customer_email: "ayse@example.com",
+          customer_name: MOCK_NAME,
+          order_id: MOCK_ORDER_ID,
+          is_guest: false,
+        }) ?? null
+      );
+    case "customer-support-received":
+      return (
+        renderMailTemplate("customer_support_ticket_received", {
+          ticket_id: MOCK_TICKET_ID,
+          subject: "Sipariş durumu hakkında",
+          category: "siparis",
+          customer_name: MOCK_NAME,
         }) ?? null
       );
     default:
