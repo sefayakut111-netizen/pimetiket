@@ -198,10 +198,10 @@ const MATERIAL_SURFACES = {
  *  boş/baskısız malzeme örneği, doku odaklı. YALNIZ sticker konfigüratörü
  *  malzeme adımında kullanılır; finish ve etiket SVG surface ile devam eder. */
 const MATERIAL_IMAGES: Record<StickerMaterial, string> = {
-  vinil: "/assets/img/surfaces/opak.png",
-  transparan: "/assets/img/surfaces/seffaf.png",
-  holo: "/assets/img/surfaces/hologram.png",
-  simli: "/assets/img/surfaces/simli.png",
+  vinil: "/assets/img/surfaces/opak.jpg",
+  transparan: "/assets/img/surfaces/seffaf.jpg",
+  holo: "/assets/img/surfaces/hologram.jpg",
+  simli: "/assets/img/surfaces/simli.jpg",
 };
 
 /** Sticker finish (parlak/mat/yok) için surface mapping.
