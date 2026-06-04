@@ -1156,6 +1156,7 @@ export function PartnerActions({
   onUpdated: () => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -1170,7 +1171,18 @@ export function PartnerActions({
           body: JSON.stringify({ reason }),
         }
       );
-      if (res.ok) onUpdated();
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        status?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Islem basarisiz");
+        return;
+      }
+      toast.success("Partner durumu guncellendi");
+      onUpdated();
+    } catch {
+      toast.error("Ag hatasi — tekrar deneyin");
     } finally {
       setBusy(false);
       setOpen(false);

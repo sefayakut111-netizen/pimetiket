@@ -280,6 +280,16 @@ export async function GET(req: Request) {
         })
         .eq("id", row.id);
 
+      // Atama maili gönderildi → assignment assigned→sent (operasyonel görünürlük).
+      // status='assigned' guard'ı: acknowledge/issue daha önce olduysa EZME. Template-gated.
+      if (row.template_key === "fason_new_assignment" && row.assignment_id) {
+        await admin
+          .from("order_assignments")
+          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .eq("id", row.assignment_id)
+          .eq("status", "assigned");
+      }
+
       sent++;
     } catch (err) {
       failed++;
