@@ -586,10 +586,10 @@ export function StickerLivePreview({
             tooltip — kullanıcı "230×310'a 12 sığması lazım, 6 nasıl?"
             diye düşünebilir. Margin + gap açıklaması net olsun. */}
         <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
-          Tabaka · {Math.round(width)}×{Math.round(height)} mm ·{" "}
+          Sticker · {Math.round(width)}×{Math.round(height)} mm ·{" "}
           {isCapped ? "≈" : ""}
           <span
-            className="text-pim-mercan cursor-help"
+            className="text-pim-mercan-koyu cursor-help"
             title="Tabaka 230×310 mm, kenar boşluğu 10 mm + sticker arası boşluk 3 mm hesaba dahil. Üretim toleransı için zorunlu."
           >
             {realPerSheet}

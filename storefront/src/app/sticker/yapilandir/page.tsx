@@ -67,6 +67,7 @@ import {
 } from "@/lib/design-dimensions";
 import { useEditorPrefill } from "@/lib/editor/use-editor-prefill";
 import { useT } from "@/lib/i18n/context";
+import { getStickerProductName } from "@/lib/sticker-product-name";
 import { useSanitizeEmptyQueryParam } from "@/lib/use-sanitize-empty-query-param";
 import { useExperiment } from "@/lib/analytics/feature-flags";
 import { deliveryEstimate } from "@/lib/pricing";
@@ -1072,29 +1073,15 @@ function StickerPage() {
             {/* Sefa 20 May v68: dinamik ürün başlığı — cut/material/shape
                 önceliklerine göre. Örn: "Özel Kesim Sticker", "Holografik
                 Sticker", "Yarı Kesim Sticker", "Sticker Sayfası". */}
-            {(() => {
-              const isEn = locale === "en";
-              if (isSayfaMode) return isEn ? "Sticker Page" : "Sticker Sayfası";
-              if (cutMode === "tabaka") return isEn ? "Sticker Sheet" : "Sticker Sayfası";
-              if (cutMode === "kartli")
-                return isEn ? "Kiss-Cut Single" : "Kartlı Sticker";
-              if (cutMode === "kisscut") return isEn ? "Kiss-Cut Sticker" : "Yarı Kesim Sticker";
-              if (material === "holo") return isEn ? "Holographic Sticker" : "Holografik Sticker";
-              if (material === "simli") return isEn ? "Glitter Sticker" : "Simli Sticker";
-              if (material === "transparan") return isEn ? "Clear Sticker" : "Şeffaf Sticker";
-              if (shape === "bumper") return "Bumper Sticker";
-              const shapeMap: Record<string, [string, string]> = {
-                diecut: ["Die-Cut", "Özel Kesim"],
-                die: ["Die-Cut", "Özel Kesim"],
-                ozel: ["Die-Cut", "Özel Kesim"],
-                circle: ["Circle", "Yuvarlak"],
-                square: ["Square", "Kare"],
-                rectangle: ["Rectangle", "Dikdörtgen"],
-                oval: ["Oval", "Oval"],
-              };
-              const [en, tr] = shapeMap[shape] ?? ["Die-Cut", "Özel Kesim"];
-              return isEn ? `${en} Sticker` : `${tr} Sticker`;
-            })()}
+            {getStickerProductName(
+              {
+                sayfa: isSayfaMode ? "1" : undefined,
+                cut: cutMode,
+                shape,
+                material,
+              },
+              locale === "en" ? "en" : "tr"
+            )}
           </h1>
         </div>
       </div>
