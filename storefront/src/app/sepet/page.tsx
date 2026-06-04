@@ -619,7 +619,7 @@ export default function SepetPage() {
                     daha iyi fiyat + kişisel destek.
                   </p>
                   <a
-                    href="https://wa.me/905330000000?text=Toplu%20sipari%C5%9F%20i%C3%A7in%20bilgi%20almak%20istiyorum"
+                    href="https://wa.me/905456999063?text=Toplu%20sipari%C5%9F%20i%C3%A7in%20bilgi%20almak%20istiyorum"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-mavi-koyu underline"
