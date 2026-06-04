@@ -46,7 +46,7 @@ export function StepProgress({
       {/* Mobile: compact bar + text */}
       <div className="md:hidden">
         <div className="flex items-baseline justify-between mb-2">
-          <span className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-pim-mercan">
+          <span className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-pim-mercan-koyu">
             {t.config.stepperStepN(activeStep)} / {total}
           </span>
           <span className="text-[12.5px] font-semibold text-lacivert">
@@ -133,14 +133,14 @@ export function StepProgress({
                 onClick={() => onStepClick(stepNum)}
                 className={cn(
                   "text-[10.5px] font-semibold tabular-nums truncate text-left",
-                  "transition-colors hover:text-pim-mercan cursor-pointer",
-                  needsAttention && "text-pim-mercan animate-pulse",
+                  "transition-colors hover:text-pim-mercan-koyu cursor-pointer",
+                  needsAttention && "text-pim-mercan-koyu animate-pulse",
                   isActive
-                    ? "text-pim-mercan"
+                    ? "text-pim-mercan-koyu"
                     : isDone
                       ? "text-lacivert"
                       : needsAttention
-                        ? "text-pim-mercan"
+                        ? "text-pim-mercan-koyu"
                         : "text-gri-500"
                 )}
               >
@@ -245,14 +245,14 @@ export function VerticalStepProgress({
               <div
                 className={cn(
                   "text-[12.5px] font-semibold transition-colors leading-tight",
-                  needsAttention && "text-pim-mercan",
+                  needsAttention && "text-pim-mercan-koyu",
                   isActive
-                    ? "text-pim-mercan"
+                    ? "text-pim-mercan-koyu"
                     : isDone
                       ? "text-lacivert"
                       : needsAttention
-                        ? "text-pim-mercan"
-                        : "text-gri-500 group-hover:text-pim-mercan"
+                        ? "text-pim-mercan-koyu"
+                        : "text-gri-500 group-hover:text-pim-mercan-koyu"
                 )}
               >
                 {label}
@@ -261,7 +261,7 @@ export function VerticalStepProgress({
                 className={cn(
                   "text-[10.5px] mt-0.5 transition-colors uppercase tracking-[0.04em]",
                   isActive
-                    ? "text-pim-mercan/80"
+                    ? "text-pim-mercan-koyu/80"
                     : isDone
                       ? "text-yesil"
                       : "text-gri-500"

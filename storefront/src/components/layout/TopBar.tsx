@@ -204,7 +204,7 @@ export function TopBar() {
                   className={cn(
                     "px-3.5 py-2 rounded-full text-[14.5px] font-medium transition-colors",
                     active
-                      ? "bg-pim-mercan-tint text-pim-mercan"
+                      ? "bg-pim-mercan-tint text-pim-mercan-koyu"
                       : "text-gri-700 hover:bg-gri-100 hover:text-lacivert"
                   )}
                 >
@@ -252,7 +252,7 @@ export function TopBar() {
               className={cn(
                 "relative inline-flex p-2.5 rounded-full transition-colors",
                 pathname === "/sepet"
-                  ? "bg-pim-mercan-tint text-pim-mercan"
+                  ? "bg-pim-mercan-tint text-pim-mercan-koyu"
                   : "text-gri-700 hover:bg-gri-100 hover:text-lacivert"
               )}
             >
@@ -410,6 +410,7 @@ export function TopBar() {
               size="sm"
               className="ml-1.5"
               href="/auth"
+              aria-label="Giriş yap"
             >
               <Icon.User size={14} />{" "}
               <span className="hidden sm:inline">{t.nav.login}</span>

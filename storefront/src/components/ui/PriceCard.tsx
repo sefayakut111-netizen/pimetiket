@@ -210,14 +210,14 @@ export function PriceCard({
       {/* Sefa 18 May v62: İşlem özeti — caller satır listesi geçer.
           v63 UX/A11y reviewer fix:
           - Eyebrow rengi mercan (2.42:1 fail) → kahve (~13:1, WCAG AAA)
-          - <section aria-label> + sr-only <h3> → ekran okuyucu için
-            başlık-liste ilişkisi kuruldu */}
+          - <section aria-label> + sr-only <h2> → ekran okuyucu için
+            başlık-liste ilişkisi kuruldu (sayfa h1 sonrası h2) */}
       {summaryItems && summaryItems.length > 0 && (
         <section
           aria-label="İşlem özeti"
           className="mb-4 rounded-lg bg-krem-soft/70 ring-1 ring-krem-koyu/30 px-3.5 py-2.5"
         >
-          <h3 className="sr-only">İşlem özeti</h3>
+          <h2 className="sr-only">İşlem özeti</h2>
           <div
             aria-hidden
             className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-kahve mb-1.5"

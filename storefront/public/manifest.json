@@ -1,7 +1,7 @@
 {
   "name": "Pim Etiket — Markanın Etiketi, Fikrinin Sticker'ı",
   "short_name": "Pim Etiket",
-  "description": "AI destekli dijital baskı ekosistemi. Etiket ve sticker baskı 1000 adetten, 5 iş günü içinde kargoda.",
+  "description": "Türkiye'de online etiket ve sticker baskı. Kuşe, şeffaf, kraft etikette uzman; küçük adetten, AI destekli. Tasarımını yükle ya da şablon seç, baskıya gönder.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

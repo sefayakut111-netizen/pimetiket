@@ -757,7 +757,7 @@ export default function StickerGridPage() {
             {isEn ? "Looking for labels instead?" : "Etiket mi arıyorsun?"}{" "}
             <Link
               href="/etiket"
-              className="text-pim-mercan font-semibold underline underline-offset-2 hover:decoration-2"
+              className="text-pim-mercan-koyu font-semibold underline underline-offset-2 hover:decoration-2"
             >
               {isEn ? "Browse labels" : "Etiket sayfasına git"}
             </Link>

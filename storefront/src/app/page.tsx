@@ -207,7 +207,7 @@ export default function HomePage() {
                 </span>
                 <Link
                   href="/auth?mode=signup"
-                  className="text-pim-mercan font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
+                  className="text-pim-mercan-koyu font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
                 >
                   {locale === "en"
                     ? "create a free account"
@@ -260,7 +260,7 @@ export default function HomePage() {
               {STEPS.map((s, i) => (
                 <div key={i} className="text-center">
                   {/* step-circle-anim → sırayla pulse (0s, 0.85s, 1.7s, 2.55s) */}
-                  <div className="step-circle-anim grid place-items-center w-[72px] h-[72px] rounded-full bg-white ring-2 ring-gri-200 mx-auto mb-5 font-bold text-[22px] text-pim-mercan shadow-1">
+                  <div className="step-circle-anim grid place-items-center w-[72px] h-[72px] rounded-full bg-white ring-2 ring-gri-200 mx-auto mb-5 font-bold text-[22px] text-pim-mercan-koyu shadow-1">
                     {s.n}
                   </div>
                   <h3 className="text-xl font-semibold mb-1.5">{s.t}</h3>

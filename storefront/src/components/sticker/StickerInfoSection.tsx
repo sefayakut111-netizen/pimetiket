@@ -75,7 +75,7 @@ export function StickerInfoSection({ isEn }: { isEn: boolean }) {
   return (
     <section className="mt-16 border-t border-gri-200 pt-16">
       <div className="text-center mb-10">
-        <span className="text-[12px] font-semibold uppercase tracking-[0.18em] text-pim-mercan">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.18em] text-pim-mercan-koyu">
           {isEn ? "Production" : "Üretim"}
         </span>
         <h2 className="mt-3 text-2xl md:text-[32px] font-bold text-lacivert tracking-tight">

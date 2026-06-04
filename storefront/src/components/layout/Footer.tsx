@@ -165,7 +165,7 @@ export function Footer() {
               desc satırı sağ bloğun checkbox satırıyla aynı baseline'da
               biter, alttaki border-bottom çizgisine ikisi de yakın. */}
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan mb-1.5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan-koyu mb-1.5">
               {t.footer.newsletterEyebrow}
             </div>
             <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-1">
@@ -216,7 +216,7 @@ export function Footer() {
                   <Link
                     href="/kvkk"
                     prefetch={false}
-                    className="text-pim-mercan font-semibold hover:underline"
+                    className="text-pim-mercan-koyu font-semibold hover:underline"
                   >
                     KVKK aydınlatma
                   </Link>
@@ -275,7 +275,7 @@ export function Footer() {
             <div key={g.t}>
               {/* Sefa 17 May v27: sütun başlıkları mercan rengine
                   (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan-koyu">
                 {g.t}
               </div>
               <div className="flex flex-col gap-2">

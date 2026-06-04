@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
@@ -19,9 +19,10 @@ interface ButtonAsButton
   href?: never;
 }
 
-interface ButtonAsLink extends CommonProps {
+interface ButtonAsLink
+  extends CommonProps,
+    Pick<AnchorHTMLAttributes<HTMLAnchorElement>, "aria-label" | "title"> {
   href: string;
-  // İsteğe bağlı: yeni sekme açtırma vs için target/rel
   target?: string;
   rel?: string;
 }
@@ -69,12 +70,32 @@ export function Button(props: ButtonProps) {
 
   // href verildiyse <Link> olarak render et
   if ("href" in props && props.href) {
-    const { href, target, rel, ...rest } = props as ButtonAsLink & {
-      [key: string]: unknown;
-    };
-    void rest;
+    const {
+      href,
+      target,
+      rel,
+      "aria-label": ariaLabel,
+      title,
+      variant: _v,
+      size: _s,
+      block: _b,
+      className: _c,
+      children: _ch,
+    } = props as ButtonAsLink;
+    void _v;
+    void _s;
+    void _b;
+    void _c;
+    void _ch;
     return (
-      <Link href={href} target={target} rel={rel} className={classes}>
+      <Link
+        href={href}
+        target={target}
+        rel={rel}
+        aria-label={ariaLabel}
+        title={title}
+        className={classes}
+      >
         {children}
       </Link>
     );

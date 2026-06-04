@@ -1064,7 +1064,7 @@ function StickerPage() {
               aria-hidden
               className="inline-block w-2 h-2 rounded-full bg-pim-mercan"
             />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan-koyu">
               Konfigüratör
             </span>
           </div>
@@ -1363,7 +1363,7 @@ function StickerPage() {
                 href="/malzemeler#sticker-malzemeleri"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-2.5 text-[12.5px] font-semibold text-pim-mercan hover:underline"
+                className="inline-flex items-center gap-1 mt-2.5 text-[12.5px] font-semibold text-pim-mercan-koyu hover:underline"
               >
                 Malzeme detayları
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
@@ -1396,7 +1396,7 @@ function StickerPage() {
                       <p className="mt-1.5 text-gri-700">
                         İleri tasarımcıysan ve kendi beyaz planını
                         yüklemek istiyorsan, sipariş sonrası{" "}
-                        <strong className="text-pim-mercan">
+                        <strong className="text-pim-mercan-koyu">
                           Prova sayfasında
                         </strong>{" "}
                         manuel beyaz plan yükleyebilirsin.
@@ -1458,7 +1458,7 @@ function StickerPage() {
                   kayıt için{" "}
                   <Link
                     href="/auth?next=/sticker/yapilandir"
-                    className="font-semibold text-pim-mercan underline"
+                    className="font-semibold text-pim-mercan-koyu underline"
                   >
                     giriş yap
                   </Link>
@@ -1494,7 +1494,7 @@ function StickerPage() {
                 }
               />
               {!isSayfaMode && designDiscountPct > 0 && (
-                <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
+                <p className="mt-3 text-[12px] text-pim-mercan-koyu font-semibold">
                   ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
                 </p>
               )}
@@ -2006,7 +2006,7 @@ function StickerPage() {
                 )}
                 {!isSayfaMode && designDiscountPct > 0 && (
                   <div
-                    className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[11.5px] font-semibold"
+                    className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-pim-mercan-tint text-pim-mercan-koyu text-[11.5px] font-semibold"
                     title={`${designCount} tasarım için ek iskonto`}
                   >
                     %{designDiscountPct} tasarım iskonto ✨ ({designCount} çeşit)

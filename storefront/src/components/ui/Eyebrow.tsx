@@ -16,7 +16,7 @@ export function Eyebrow({ children, className }: EyebrowProps) {
     <span
       className={cn(
         "inline-flex items-center gap-2",
-        "text-xs font-bold uppercase tracking-[0.08em] text-pim-mercan",
+        "text-xs font-bold uppercase tracking-[0.08em] text-pim-mercan-koyu",
         className
       )}
     >

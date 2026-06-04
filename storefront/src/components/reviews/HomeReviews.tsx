@@ -102,7 +102,7 @@ export function HomeReviews({ limit = 9 }: Props) {
         <div className="text-center mt-10">
           <Link
             href="/yorumlar"
-            className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold hover:underline"
+            className="inline-flex items-center gap-1.5 text-pim-mercan-koyu font-semibold hover:underline"
           >
             Tüm yorumlar <Icon.ArrowR size={14} />
           </Link>
@@ -138,7 +138,7 @@ function ReviewCard({ review, onPhotoClick }: ReviewCardProps) {
     <article className="bg-white rounded-2xl p-6 ring-1 ring-gri-200 shadow-1 hover:shadow-2 transition-shadow flex flex-col">
       {/* Star rating + featured badge */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex gap-0.5" aria-label={`${review.rating} yıldız`}>
+        <div className="flex gap-0.5" role="img" aria-label={`${review.rating} yıldız`}>
           {Array.from({ length: 5 }).map((_, i) => (
             <Icon.Star
               key={i}
@@ -148,7 +148,7 @@ function ReviewCard({ review, onPhotoClick }: ReviewCardProps) {
           ))}
         </div>
         {review.featured && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-pim-mercan-koyu">
             <Icon.Sparkle size={11} /> Öne çıkan
           </span>
         )}

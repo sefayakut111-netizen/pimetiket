@@ -47,7 +47,11 @@ export function ProductReviews({ productType, limit = 6 }: Props) {
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex gap-0.5" aria-label={`Ortalama ${avgRating.toFixed(1)} yıldız`}>
+            <div
+              className="flex gap-0.5"
+              role="img"
+              aria-label={`Ortalama ${avgRating.toFixed(1)} yıldız`}
+            >
               {Array.from({ length: 5 }).map((_, i) => (
                 <Icon.Star
                   key={i}
@@ -71,7 +75,7 @@ export function ProductReviews({ productType, limit = 6 }: Props) {
         <div className="text-center mt-8">
           <Link
             href={`/yorumlar?kategori=${productType}`}
-            className="inline-flex items-center gap-1.5 text-pim-mercan font-semibold hover:underline"
+            className="inline-flex items-center gap-1.5 text-pim-mercan-koyu font-semibold hover:underline"
           >
             Tüm {productType} yorumları <Icon.ArrowR size={14} />
           </Link>
@@ -101,7 +105,7 @@ function ProductReviewCard({ review }: { review: Review }) {
           ))}
         </div>
         {review.featured && (
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan-koyu">
             ✨ Öne çıkan
           </span>
         )}
@@ -139,7 +143,7 @@ function ProductReviewCard({ review }: { review: Review }) {
         <div className="flex items-center gap-2 min-w-0">
           <span
             aria-hidden
-            className="shrink-0 w-7 h-7 rounded-full bg-pim-mercan-tint text-pim-mercan grid place-items-center text-[11px] font-bold tracking-tight"
+            className="shrink-0 w-7 h-7 rounded-full bg-pim-mercan-tint text-pim-mercan-koyu grid place-items-center text-[11px] font-bold tracking-tight"
           >
             {getInitials(review.display_name)}
           </span>

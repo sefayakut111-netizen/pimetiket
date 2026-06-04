@@ -10,7 +10,7 @@
   --color-pim-mercan: #ff6b5b;
   --color-pim-mercan-soft: #ffa89e;
   --color-pim-mercan-tint: #fff1ee;
-  --color-pim-mercan-koyu: #e85544;
+  --color-pim-mercan-koyu: #c8443a; /* WCAG AA 4.5:1+ on white/krem (small text) */
   --color-krem: #f5ebd9;
   --color-krem-soft: #faf4e8;
   --color-lacivert: #1f2937;
