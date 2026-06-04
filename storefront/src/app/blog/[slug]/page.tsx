@@ -75,9 +75,35 @@ function formatDate(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+const IMAGE_BLOCK_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;
+
 function renderBody(body: string): React.ReactNode[] {
   const blocks = body.split(/\n\n+/);
   return blocks.map((block, i) => {
+    const imgMatch = block.trim().match(IMAGE_BLOCK_RE);
+    if (imgMatch) {
+      const [, alt, src] = imgMatch;
+      const safe = src.startsWith("https://") || src.startsWith("/");
+      if (!safe) return null;
+      return (
+        <figure key={i} className="my-6">
+          <Image
+            src={src}
+            alt={alt || ""}
+            width={1200}
+            height={800}
+            className="w-full h-auto rounded-xl ring-1 ring-gri-200"
+            sizes="(max-width: 768px) 100vw, 760px"
+          />
+          {alt ? (
+            <figcaption className="mt-2 text-[13px] text-gri-500 text-center">
+              {alt}
+            </figcaption>
+          ) : null}
+        </figure>
+      );
+    }
+
     const parts = block.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (

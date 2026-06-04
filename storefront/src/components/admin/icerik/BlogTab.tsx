@@ -89,6 +89,8 @@ export function BlogTab() {
   const [saving, setSaving] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [inlineUploading, setInlineUploading] = useState(false);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<BlogPostRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -173,6 +175,71 @@ export function BlogTab() {
     } finally {
       setCoverUploading(false);
       if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
+  const handleInlineImageUpload = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Maksimum 5 MB");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("JPG, PNG veya WebP olmalı");
+      return;
+    }
+
+    setInlineUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const urlRes = await fetch("/api/admin/blog/upload-image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ extension: ext }),
+      });
+      const urlJson = (await urlRes.json()) as {
+        error?: string;
+        uploadUrl?: string;
+        publicUrl?: string;
+      };
+      if (!urlRes.ok || !urlJson.uploadUrl || !urlJson.publicUrl) {
+        throw new Error(urlJson.error ?? "URL alınamadı");
+      }
+
+      const upRes = await fetch(urlJson.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "content-type": file.type },
+      });
+      if (!upRes.ok) throw new Error("Yükleme başarısız");
+
+      const ta = bodyTextareaRef.current;
+      if (!ta) return;
+
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const currentBody = draft.body_tr ?? "";
+      const before = currentBody.slice(0, start);
+      const after = currentBody.slice(end);
+      const altText = file.name
+        .replace(/\.[^.]+$/, "")
+        .replace(/[-_]/g, " ");
+      const needsNewlineBefore = before.length > 0 && !before.endsWith("\n\n");
+      const needsNewlineAfter = after.length > 0 && !after.startsWith("\n\n");
+      const insert = `${needsNewlineBefore ? "\n\n" : ""}![${altText}](${urlJson.publicUrl})${needsNewlineAfter ? "\n\n" : ""}`;
+      const newBody = before + insert + after;
+
+      setDraft((d) => ({ ...d, body_tr: newBody }));
+      toast.success("Resim eklendi");
+
+      setTimeout(() => {
+        ta.focus();
+        const newPos = before.length + insert.length;
+        ta.setSelectionRange(newPos, newPos);
+      }, 0);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Hata");
+    } finally {
+      setInlineUploading(false);
     }
   };
 
@@ -470,11 +537,38 @@ export function BlogTab() {
             <label className="block">
               <span className="text-[13px] font-semibold mb-1 block">İçerik (TR)</span>
               <textarea
+                ref={bodyTextareaRef}
                 value={draft.body_tr ?? ""}
                 onChange={(e) => setDraft({ ...draft, body_tr: e.target.value })}
                 rows={12}
                 className="w-full px-3 py-2 rounded-lg bg-white ring-1 ring-gri-200 text-[13px] leading-relaxed"
               />
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gri-100 hover:bg-gri-200 cursor-pointer text-[12px] font-medium text-lacivert transition">
+                  {inlineUploading ? (
+                    <>
+                      <Icon.Refresh size={14} className="animate-spin" />
+                      Yükleniyor...
+                    </>
+                  ) : (
+                    <>📷 Resim ekle</>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={inlineUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleInlineImageUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <span className="text-[11px] text-gri-500">
+                  JPG/PNG/WebP · max 5MB · cursor pozisyonuna eklenir
+                </span>
+              </div>
             </label>
             <label className="block">
               <span className="text-[13px] font-semibold mb-1 block">SEO başlık</span>
