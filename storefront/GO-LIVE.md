@@ -174,7 +174,62 @@ Vercel Dashboard'da `pimetiket.com` yanında ✓ yeşil + SSL aktif olunca tamam
 
 ---
 
+## 💾 Adım 4.5 — Pre-launch Backup Snapshot (10 dk)
+
+> **Amaç:** Canlıya çıkmadan ÖNCE temiz bir restore noktası al. Smoke test'te bir şey patlarsa veya ilk gün veri bozulursa, buraya dönülür.
+
+### 4.5.1 GitHub Actions backup workflow tetikle (manuel)
+
+Normalde Pazar 03:00 UTC otomatik çalışıyor. Şimdi elle çalıştır:
+
+1. https://github.com/sefayakut111-netizen/pimetiket/actions → **"Supabase Backup"** workflow
+2. **Run workflow** → branch: `main` → Run
+3. Yaklaşık 3-5 dk sürer. Tamamlanınca **Run summary**'i aç → log'da R2 upload başarılı olmalı
+
+### 4.5.2 R2'de backup dosyasını doğrula
+
+1. https://dash.cloudflare.com/ → R2 → `pimetiket-backups`
+2. `weekly/` prefix'inde yeni dosya görünmeli (timestamp bugün)
+3. Boyut > 1 MB olmalı (boş değil)
+
+### 4.5.3 Git tag at — kod restore noktası
+
+```bash
+git tag -a v1.0.0-launch -m "Pre-launch snapshot - $(date +%Y-%m-%d)"
+git push origin v1.0.0-launch
+```
+
+### 4.5.4 Vercel deployment ID kaydet
+
+1. https://vercel.com/ → proje **pimetiket** → Deployments
+2. En son production deployment'ın **commit hash + URL**'sini kopyala
+3. Bu satıra not düş (veya password manager'a kaydet):
+
+```
+LAUNCH DEPLOYMENT — {YYYY-MM-DD}
+- Commit: {hash}
+- Deployment URL: {vercel-preview-url}
+- DB snapshot: weekly/{filename}.dump
+- Git tag: v1.0.0-launch
+```
+
+### 4.5.5 Rollback senaryosu (referans)
+
+Bir şey patlarsa:
+
+| Senaryo | Aksiyon |
+|---|---|
+| Kod sorunu | Vercel Dashboard → Deployments → eski deployment "Promote to Production" |
+| DB bozulması | `pg_restore` ile R2'den son backup'ı geri yükle ([docs/BACKUP_SETUP.md](docs/BACKUP_SETUP.md) Bölüm 5) |
+| Migration patladı | Önce kod rollback, sonra DB geri yükle (sıra önemli) |
+
+> **NOT:** R2 backup tek başına yetmez — Supabase Pro 7-gün backup hâlâ etkin. Felaket senaryosunda ikisi de elinde olmalı.
+
+---
+
 ## ✅ Adım 5 — Smoke test (15 dk)
+
+> **Önce Adım 4.5 backup snapshot'ı aldığından emin ol.** Smoke test'te bug bulursan rollback için referans nokta lazım.
 
 ### 5.1 https://pimetiket.com — temel kontrol
 
