@@ -101,7 +101,7 @@ export function MaterialSwatch({
           aria-hidden="true"
           fill
           sizes="(max-width: 768px) 45vw, 220px"
-          loading="lazy"
+          loading="eager"
           decoding="async"
           className={objectFitClass}
         />
