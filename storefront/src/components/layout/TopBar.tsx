@@ -412,7 +412,8 @@ export function TopBar() {
               href="/auth"
               aria-label="Giriş yap"
             >
-              <Icon.User size={14} />{" "}
+              <Icon.User size={14} aria-hidden />
+              <span className="sr-only sm:hidden">{t.nav.login}</span>
               <span className="hidden sm:inline">{t.nav.login}</span>
             </Button>
           )}
