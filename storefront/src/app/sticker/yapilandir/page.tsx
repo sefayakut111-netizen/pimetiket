@@ -18,6 +18,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/lib/use-sequential-steps";
@@ -26,10 +27,8 @@ import {
   getFirstPendingStepId,
 } from "@/lib/configurator-step-highlight";
 import { track } from "@/lib/analytics/posthog-events";
-import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
 import { SchemaJsonLd, breadcrumbSchema } from "@/components/SchemaJsonLd";
-import { ProductReviews } from "@/components/reviews/ProductReviews";
 // Sefa 18 May v68: ProductInfoSection kaldırıldı (3 feature söylemi gereksiz)
 // import { ProductInfoSection } from "@/components/ProductInfoSection";
 import { StepProgress, VerticalStepProgress } from "@/components/Stepper";
@@ -52,10 +51,7 @@ import {
   StickerLivePreview,
   type PreviewView,
 } from "@/components/preview";
-import {
-  MultiDesignUploader,
-  type PendingDesign,
-} from "@/components/sticker/MultiDesignUploader";
+import type { PendingDesign } from "@/components/sticker/MultiDesignUploader";
 import { SayfaBoyutIkon } from "@/components/sticker/SayfaBoyutIkon";
 // Sefa 18 May v68 (6): TabakaPreview kaldırıldı — sol canlı önizleme
 // (eskiz modu) zaten tabaka yerleşimini gösteriyor. Admin tarafında kalır.
@@ -109,6 +105,35 @@ import { loadEditIntent, clearEditIntent } from "@/lib/cart-edit-intent";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 import { expectedCartLineFromPerDesignQuote } from "@/lib/design-count-pricing";
 import { buildSummaryItems } from "@/lib/order-summary";
+
+const ProductReviews = dynamic(
+  () =>
+    import("@/components/reviews/ProductReviews").then((m) => ({
+      default: m.ProductReviews,
+    })),
+  { ssr: false, loading: () => <div className="min-h-[200px]" aria-hidden /> }
+);
+
+const AddToCartSuccessModal = dynamic(
+  () =>
+    import("@/components/cart/AddToCartSuccessModal").then((m) => ({
+      default: m.AddToCartSuccessModal,
+    })),
+  { ssr: false }
+);
+
+const MultiDesignUploader = dynamic(
+  () =>
+    import("@/components/sticker/MultiDesignUploader").then((m) => ({
+      default: m.MultiDesignUploader,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[180px] rounded-lg bg-gri-50 animate-pulse" aria-hidden />
+    ),
+  }
+);
 
 // ============================================================
 // Configuration data
@@ -664,6 +689,51 @@ function StickerPage() {
   const [designCount, setDesignCount] = useState<number>(1);
   const [designs, setDesigns] = useState<PendingDesign[]>([]);
   const [cartAuthed, setCartAuthed] = useState(false);
+  const [mountDesignUploader, setMountDesignUploader] = useState(false);
+  const [mountProductReviews, setMountProductReviews] = useState(false);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") {
+      setMountDesignUploader(true);
+      setMountProductReviews(true);
+      return;
+    }
+    const designSection = document.getElementById("step-7");
+    const reviewsAnchor = document.getElementById("product-reviews-anchor");
+    const observers: IntersectionObserver[] = [];
+
+    if (designSection) {
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setMountDesignUploader(true);
+        },
+        { rootMargin: "400px 0px" }
+      );
+      obs.observe(designSection);
+      observers.push(obs);
+    } else {
+      setMountDesignUploader(true);
+    }
+
+    if (reviewsAnchor) {
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setMountProductReviews(true);
+        },
+        { rootMargin: "300px 0px" }
+      );
+      obs.observe(reviewsAnchor);
+      observers.push(obs);
+    } else {
+      setMountProductReviews(true);
+    }
+
+    return () => observers.forEach((obs) => obs.disconnect());
+  }, []);
+
+  useEffect(() => {
+    if (designs.length > 0) setMountDesignUploader(true);
+  }, [designs.length]);
 
   useEffect(() => {
     setCartAuthed(isLoggedInSync());
@@ -888,6 +958,7 @@ function StickerPage() {
   const scrollToStep = useCallback((stepIndex: number) => {
     const sectionId = stepIds[stepIndex - 1];
     if (sectionId == null) return;
+    if (sectionId === 7) setMountDesignUploader(true);
     const el = document.getElementById(`step-${sectionId}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1466,33 +1537,40 @@ function StickerPage() {
                   sayfasından dosyalarını iletebilirsin.
                 </div>
               )}
-              <MultiDesignUploader
-                designCount={isSayfaMode ? 1 : designCount}
-                onDesignCountChange={(n) => {
-                  if (isSayfaMode) return;
-                  setDesignCount(n);
-                  markTouched(7);
-                }}
-                designs={designs}
-                onDesignsChange={(d) => {
-                  setDesigns(d);
-                  markTouched(7);
-                }}
-                qtyPerDesign={tier}
-                productLabel="sticker"
-                hideDesignCountPicker={isSayfaMode}
-                pageModeHint="Sayfanın tamamını içindeki yarım-kesim dizilimiyle hazırla — tek dosya yükle."
-                maxCount={isSayfaMode ? 1 : undefined}
-                onDimensionsDetected={
-                  isSayfaMode
-                    ? undefined
-                    : (dims) => {
-                        setDetectedDims(dims);
-                        setDimsPromptShown(true);
-                        setDimsAccepted(false);
-                      }
-                }
-              />
+              {mountDesignUploader ? (
+                <MultiDesignUploader
+                  designCount={isSayfaMode ? 1 : designCount}
+                  onDesignCountChange={(n) => {
+                    if (isSayfaMode) return;
+                    setDesignCount(n);
+                    markTouched(7);
+                  }}
+                  designs={designs}
+                  onDesignsChange={(d) => {
+                    setDesigns(d);
+                    markTouched(7);
+                  }}
+                  qtyPerDesign={tier}
+                  productLabel="sticker"
+                  hideDesignCountPicker={isSayfaMode}
+                  pageModeHint="Sayfanın tamamını içindeki yarım-kesim dizilimiyle hazırla — tek dosya yükle."
+                  maxCount={isSayfaMode ? 1 : undefined}
+                  onDimensionsDetected={
+                    isSayfaMode
+                      ? undefined
+                      : (dims) => {
+                          setDetectedDims(dims);
+                          setDimsPromptShown(true);
+                          setDimsAccepted(false);
+                        }
+                  }
+                />
+              ) : (
+                <div
+                  className="min-h-[180px] rounded-lg bg-gri-50 animate-pulse"
+                  aria-hidden
+                />
+              )}
               {!isSayfaMode && designDiscountPct > 0 && (
                 <p className="mt-3 text-[12px] text-pim-mercan font-semibold">
                   ✨ {designCount} tasarım için <strong>%{designDiscountPct} iskonto</strong> uygulanıyor — fiyat kartında görünür
@@ -2382,7 +2460,12 @@ function StickerPage() {
 
       {/* Sefa 18 May v68: ProductInfoSection (3 feature söylemi) kaldırıldı.
           Yorumlar direkt gösterilir. */}
-      <ProductReviews productType="sticker" limit={6} />
+      <div id="product-reviews-anchor" className="min-h-px" aria-hidden />
+      {mountProductReviews ? (
+        <ProductReviews productType="sticker" limit={6} />
+      ) : (
+        <div className="min-h-[200px]" aria-hidden />
+      )}
 
       {/* Sticky checkout bar — mobile-only (Sefa 15 May v4) */}
       <div
@@ -2458,11 +2541,13 @@ function StickerPage() {
       </Modal>
 
       {/* Sefa 18 May v60: Sepete eklendi onay pop-up'ı */}
-      <AddToCartSuccessModal
-        open={cartSuccessOpen}
-        onClose={() => setCartSuccessOpen(false)}
-        productSummary={cartSuccessSummary}
-      />
+      {cartSuccessOpen ? (
+        <AddToCartSuccessModal
+          open={cartSuccessOpen}
+          onClose={() => setCartSuccessOpen(false)}
+          productSummary={cartSuccessSummary}
+        />
+      ) : null}
     </main>
   );
 }
