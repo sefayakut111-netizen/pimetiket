@@ -644,15 +644,17 @@ Tüm sayfalar kodda mevcut; canlı rotalar 200 döndürüyor (örneklem):
 
 | # | Bulgu |
 |---|-------|
-| 13 | Etiket launch mesajları ↔ home CTA hizalama (29 Haz açılış öncesi kondisyonel — [[project-etiket-acilis-29haz]]) |
+| ~~13~~ | ~~Etiket launch mesajları ↔ home CTA hizalama~~ → ✅ ÇÖZÜLDÜ commit `8cbc129` (`ETIKET_ENABLED` kondisyonel home CTA — kapsam genişletildi) |
 | 14 | `/teklif-iste` veya merkezi Teklif Al CTA |
 | 15 | `next/dynamic` konfigüratör bundle split |
 | 16 | Header logo `priority` |
 | 17 | Bing Webmaster Tools |
 | 18 | Sitewide link crawler CI |
 | 19 | Admin destek ticket detay sayfası (`/admin/destek/[ticket_id]` dinamik route) — şu an admin mail CTA listing'e iniyor |
-| 20 | Hero CTA contrast kozmetik fix — mercan bg + white text 2.79:1 (büyük buton sınır, WCAG AA 3:1 hedef) |
+| ~~20~~ | ~~Hero CTA contrast kozmetik fix~~ → ✅ ÇÖZÜLDÜ commit `caef3a0` (Button primary `pim-mercan` → `pim-mercan-koyu` global, marka tüm sitede; contrast 2.79 → 4.88 WCAG AA ✓) |
 | 21 | Review card meta `text-gri-500` 2.92:1 — date/author text contrast |
+| ~~22~~ | ~~Konfigüratör tabaka 8 ürün için unique h1+title~~ → ✅ ÇÖZÜLDÜ commit `8ae649d` + `da9c9a5` (`sticker-product-name.ts` ortak helper, generateMetadata page.tsx'e taşındı — Next.js layout searchParams kısıtı, 7/7 unique title canlıda doğrulandı) |
+| ~~23~~ | ~~Önizleme alt metni "Tabaka" → "Sticker"~~ → ✅ ÇÖZÜLDÜ (`8ae649d` aynı commit; "STİCKER · 75×75 mm · 2 ad/tabaka" canlıda görüldü) |
 
 ---
 
