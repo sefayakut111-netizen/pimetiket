@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
 
 // Cloudflare bindings'i `next dev` sırasında ihtiyaç olunca aktive et.
@@ -7,10 +6,6 @@ import { withSentryConfig } from "@sentry/nextjs";
 // Cloudflare'e migrate olunca tekrar aç:
 //   import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 //   if (process.env.NODE_ENV === "development") initOpenNextCloudflareForDev();
-
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
-});
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -231,6 +226,4 @@ const sentryWebpackPluginOptions = {
   tunnelRoute: "/monitoring",
 };
 
-export default withBundleAnalyzer(
-  withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-);
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
