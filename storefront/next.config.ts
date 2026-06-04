@@ -181,6 +181,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.pimetiket.com" }],
+        destination: "https://pimetiket.com/:path*",
+        permanent: true,
+      },
+      {
         source: "/iade-cayma",
         destination: "/iade-degisim-politikasi",
         permanent: true,
