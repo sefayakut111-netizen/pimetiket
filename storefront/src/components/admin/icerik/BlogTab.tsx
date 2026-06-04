@@ -5,7 +5,8 @@
  * Blog yazıları CRUD (blog_posts tablosu).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import {
@@ -86,6 +87,8 @@ export function BlogTab() {
   const [editing, setEditing] = useState<BlogPostRow | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
   const [saving, setSaving] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<BlogPostRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -124,6 +127,55 @@ export function BlogTab() {
     setModalOpen(true);
   };
 
+  const uploadCover = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kapak görseli en fazla 5 MB olabilir");
+      return;
+    }
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      toast.error("JPG, PNG veya WebP yükleyin");
+      return;
+    }
+
+    setCoverUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      const sigRes = await fetch("/api/admin/blog/upload-cover", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ extension: ext }),
+      });
+      const sigJson = (await sigRes.json()) as {
+        error?: string;
+        uploadUrl?: string;
+        publicUrl?: string;
+      };
+      if (!sigRes.ok || !sigJson.uploadUrl || !sigJson.publicUrl) {
+        toast.error(sigJson.error ?? "Upload URL alınamadı");
+        return;
+      }
+
+      const putRes = await fetch(sigJson.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "content-type": file.type },
+      });
+      if (!putRes.ok) {
+        toast.error("Dosya yüklenemedi");
+        return;
+      }
+
+      setDraft((d) => ({ ...d, cover_image_url: sigJson.publicUrl! }));
+      toast.success("Kapak görseli yüklendi");
+    } catch {
+      toast.error("Yükleme hatası");
+    } finally {
+      setCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
   const savePost = async (publish = false) => {
     if (!draft.title_tr?.trim() || !draft.body_tr?.trim()) {
       toast.error("Başlık ve içerik zorunlu");
@@ -143,6 +195,7 @@ export function BlogTab() {
         ...draft,
         slug,
         status,
+        cover_image_url: draft.cover_image_url?.trim() || null,
       };
 
       const res = await fetch("/api/admin/blog", {
@@ -355,16 +408,57 @@ export function BlogTab() {
                   ))}
                 </select>
               </label>
-              <label className="block">
-                <span className="text-[13px] font-semibold mb-1 block">Kapak görseli URL</span>
-                <Input
-                  value={draft.cover_image_url ?? ""}
-                  onChange={(e) =>
-                    setDraft({ ...draft, cover_image_url: e.target.value })
-                  }
-                  placeholder="https://..."
-                />
-              </label>
+            </div>
+            <div className="block">
+              <span className="text-[13px] font-semibold mb-2 block">Kapak görseli</span>
+              <div className="flex flex-wrap items-start gap-4">
+                {draft.cover_image_url ? (
+                  <div className="relative w-full max-w-[280px] aspect-[16/9] rounded-xl overflow-hidden ring-1 ring-gri-200">
+                    <Image
+                      src={draft.cover_image_url}
+                      alt={draft.title_tr?.trim() || "Kapak önizleme"}
+                      fill
+                      className="object-cover"
+                      sizes="280px"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full max-w-[280px] aspect-[16/9] rounded-xl bg-gri-100 ring-1 ring-gri-200 grid place-items-center text-[12px] text-gri-500">
+                    Kapak seçilmedi (opsiyonel)
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void uploadCover(file);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={coverUploading}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    {coverUploading ? "Yükleniyor…" : "Dosya seç"}
+                  </Button>
+                  {draft.cover_image_url ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDraft({ ...draft, cover_image_url: "" })}
+                    >
+                      Kapağı kaldır
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             </div>
             <label className="block">
               <span className="text-[13px] font-semibold mb-1 block">Özet</span>

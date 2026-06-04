@@ -40,6 +40,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = post.seoTitle ?? post.title;
   const description = post.seoDescription ?? post.excerpt;
   const canonical = `/blog/${post.slug}`;
+  const ogImages = post.coverImageUrl
+    ? [{ url: post.coverImageUrl, alt: post.title }]
+    : undefined;
   return {
     title,
     description,
@@ -57,6 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: post.publishedAt,
       authors: [post.author],
       url: canonical,
+      ...(ogImages ? { images: ogImages } : {}),
     },
   };
 }
@@ -173,11 +177,12 @@ export default async function BlogPostPage({ params }: Props) {
           {coverSrc ? (
             <Image
               src={coverSrc}
-              alt={defaultHero?.altText ?? post.title}
+              alt={post.title}
               width={1200}
               height={630}
               sizes="(max-width: 768px) 100vw, 800px"
               className="w-full h-full object-cover max-h-[360px]"
+              priority
             />
           ) : (
             <Pim pose="inspect" size={160} />
