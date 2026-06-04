@@ -18,6 +18,7 @@ import { HomeBlogSection } from "@/components/blog/BlogPreview";
 import { Pim } from "@/components/Pim";
 import { useSiteImage } from "@/lib/site-images-client";
 import { useUser } from "@/lib/supabase/use-user";
+import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 
 // Sefa kararı 17 May v11: baselineStickerPrice/baselineEtiketPrice/
 // formatUnitPriceLocale helper'ları + QuickReorderWidget + Product
@@ -171,9 +172,11 @@ export default function HomePage() {
               <Button variant="primary" size="lg" href="/sticker">
                 <Icon.Sticker size={18} /> {t.home.ctaSticker}
               </Button>
-              <Button variant="secondary" size="lg" href="/etiket">
-                <Icon.Roll size={18} /> {t.home.ctaEtiket}
-              </Button>
+              {ETIKET_ENABLED && (
+                <Button variant="secondary" size="lg" href="/etiket">
+                  <Icon.Roll size={18} /> {t.home.ctaEtiket}
+                </Button>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gri-500">
               <span className="flex items-center gap-1.5">
@@ -354,9 +357,11 @@ export default function HomePage() {
           <Button variant="primary" size="sm" href="/sticker" className="flex-1">
             <Icon.Sticker size={14} /> {t.home.ctaSticker}
           </Button>
-          <Button variant="secondary" size="sm" href="/etiket" className="flex-1">
-            <Icon.Roll size={14} /> {t.home.ctaEtiket}
-          </Button>
+          {ETIKET_ENABLED && (
+            <Button variant="secondary" size="sm" href="/etiket" className="flex-1">
+              <Icon.Roll size={14} /> {t.home.ctaEtiket}
+            </Button>
+          )}
         </div>
       </div>
       <div className="h-16 md:hidden" aria-hidden />
