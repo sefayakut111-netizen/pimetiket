@@ -80,7 +80,9 @@ const IMAGE_BLOCK_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;
 function renderBody(body: string): React.ReactNode[] {
   const blocks = body.split(/\n\n+/);
   return blocks.map((block, i) => {
-    const imgMatch = block.trim().match(IMAGE_BLOCK_RE);
+    const trimmed = block.trim();
+
+    const imgMatch = trimmed.match(IMAGE_BLOCK_RE);
     if (imgMatch) {
       const [, alt, src] = imgMatch;
       const safe = src.startsWith("https://") || src.startsWith("/");
@@ -104,12 +106,39 @@ function renderBody(body: string): React.ReactNode[] {
       );
     }
 
-    const parts = block.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
+    if (trimmed.startsWith("### ")) {
+      return (
+        <h3 key={i} className="text-[19px] font-bold text-lacivert mt-8 mb-3">
+          {trimmed.slice(4)}
+        </h3>
+      );
+    }
+    if (trimmed.startsWith("## ")) {
+      return (
+        <h2 key={i} className="text-[23px] font-bold text-lacivert mt-10 mb-4">
+          {trimmed.slice(3)}
+        </h2>
+      );
+    }
+
+    const parts = block.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g).map((part, j) => {
+      if (part?.startsWith("**") && part.endsWith("**")) {
         return (
           <strong key={j} className="text-lacivert font-semibold">
             {part.slice(2, -2)}
           </strong>
+        );
+      }
+      const link = part?.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (link) {
+        return (
+          <a
+            key={j}
+            href={link[2]}
+            className="text-pim-mercan font-semibold hover:underline"
+          >
+            {link[1]}
+          </a>
         );
       }
       return <span key={j}>{part}</span>;
