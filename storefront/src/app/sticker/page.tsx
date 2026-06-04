@@ -564,9 +564,11 @@ const STICKER_CARDS: StickerCard[] = [
 function StickerProductCard({
   card,
   isEn,
+  imagePriority = false,
 }: {
   card: StickerCard;
   isEn: boolean;
+  imagePriority?: boolean;
 }) {
   return (
     <Link
@@ -584,6 +586,8 @@ function StickerProductCard({
             src={card.imageSrc}
             alt={isEn ? card.titleEn : card.titleTr}
             fill
+            priority={imagePriority}
+            loading={imagePriority ? undefined : "lazy"}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
             className="object-cover"
           />
@@ -706,9 +710,13 @@ export default function StickerGridPage() {
                 : "Tasarımın kenarından tam kesim, parçalar ayrı. Logo, marka ve özel silüetler için."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
-              {diecutCards.map((card) => (
+              {diecutCards.map((card, index) => (
                 <div key={card.query} className="h-full">
-                  <StickerProductCard card={card} isEn={isEn} />
+                  <StickerProductCard
+                    card={card}
+                    isEn={isEn}
+                    imagePriority={index < 4}
+                  />
                 </div>
               ))}
             </div>
@@ -728,9 +736,13 @@ export default function StickerGridPage() {
                 : "Yarım kesim, arka kağıt sağlam; tabaka/sayfa halinde. Kağıttan ayırmadan sticker çıkar."}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
-              {kissCutCards.map((card) => (
+              {kissCutCards.map((card, index) => (
                 <div key={card.query} className="h-full">
-                  <StickerProductCard card={card} isEn={isEn} />
+                  <StickerProductCard
+                    card={card}
+                    isEn={isEn}
+                    imagePriority={index < 2}
+                  />
                 </div>
               ))}
             </div>

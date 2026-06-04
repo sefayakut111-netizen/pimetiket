@@ -19,6 +19,7 @@ const nunito = Nunito({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
+  preload: true,
 });
 
 // Sefa 20 May v68: explicit viewport export. Mobile Safari/Chrome'da

@@ -132,6 +132,11 @@ const nextConfig: NextConfig = {
   // React 19 strict-mode hata avlama.
   reactStrictMode: true,
 
+  // Mobile LCP: above-the-fold CSS inline (Critters) — render-blocking azaltma.
+  experimental: {
+    optimizeCss: true,
+  },
+
   // Sefa 18 May v68 (koruma): Source map'ler production'da tarayıcıya
   // SERVE EDİLMEZ — sadece Sentry'ye upload olur (debug için).
   // Bu, prod kodun okunmasını ciddi şekilde zorlaştırır (minified bundle
