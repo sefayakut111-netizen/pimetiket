@@ -7,13 +7,27 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { getDefaultFrom, isResendConfigured, sendMail } from "@/lib/mail/resend";
 
-export async function POST() {
+export async function POST(req: Request) {
   const auth = await assertPermission("mail_health", "view");
   if (!auth) {
     return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
 
-  const to = auth.user.email;
+  // Sefa 4 Haz: opsiyonel hedef — admin@ kutusu yok, info@'ya test atılabilsin.
+  // Güvenlik: yalnız @pimetiket.com (admin keyfi dış adrese test maili atamasın).
+  let to = auth.user.email ?? "";
+  const body = (await req.json().catch(() => ({}))) as { to?: string };
+  const reqTo =
+    typeof body.to === "string" ? body.to.trim().toLowerCase() : "";
+  if (reqTo) {
+    if (!reqTo.endsWith("@pimetiket.com")) {
+      return NextResponse.json(
+        { ok: false, error: "Hedef yalnız @pimetiket.com olabilir" },
+        { status: 400 }
+      );
+    }
+    to = reqTo;
+  }
   if (!to) {
     return NextResponse.json(
       { ok: false, error: "admin_email_missing" },
