@@ -80,14 +80,15 @@ export async function generateMetadata(): Promise<Metadata> {
     manifest: "/manifest.json",
     icons: {
       icon: [
+        { url: "/favicon.ico", sizes: "any", rel: "icon" },
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
         { url: "/pim/pim-etiket-mark-dark.svg", type: "image/svg+xml" },
       ],
       apple: [
-        // SVG'yi Apple touch icon olarak da sunarız; ileride 180×180 PNG
-        // üretilince yerine geçer.
-        { url: "/pim/pim-etiket-mark-dark.svg", sizes: "180x180" },
+        { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
       ],
-      shortcut: ["/pim/pim-etiket-mark-dark.svg"],
+      shortcut: ["/favicon.ico"],
     },
     keywords: [
       "online etiket baskı",
