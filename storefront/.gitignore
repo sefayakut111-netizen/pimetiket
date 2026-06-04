@@ -93,3 +93,6 @@ CURSOR-PROMPT-*.md
 *-gserviceaccount*.json
 ga4-*-key.json
 gsc-*-key.json
+
+# Local Lighthouse audit cache (Claude session)
+.lh-tmp/
