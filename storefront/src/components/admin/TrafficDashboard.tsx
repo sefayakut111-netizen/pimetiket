@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow } from "@/components/ui";
 import { LineChart, BarChart } from "@/components/charts";
@@ -11,9 +17,12 @@ import type {
   TrafficSummary,
   TrafficNotConfigured,
   Ga4SetupStatus,
+  RealtimeSummary,
+  RealtimeNotConfigured,
 } from "@/lib/analytics/ga4-data-api";
 
 type TrafficResponse = TrafficSummary | TrafficNotConfigured;
+type RealtimeResponse = RealtimeSummary | RealtimeNotConfigured;
 
 const RANGE_OPTIONS: { value: TrafficRange; label: string }[] = [
   { value: "7d", label: "7 gün" },
@@ -267,6 +276,128 @@ function KpiCard({ label, value, hint }: KpiCardProps) {
   );
 }
 
+function RealtimeCard() {
+  const [rt, setRt] = useState<RealtimeResponse | null>(null);
+  const [pulse, setPulse] = useState(false);
+
+  const loadRt = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/traffic/realtime", {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const json = (await res.json()) as RealtimeResponse;
+      setRt(json);
+      setPulse(true);
+      setTimeout(() => setPulse(false), 600);
+    } catch {
+      /* sessiz — canlı kart kritik değil */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRt();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void loadRt();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loadRt]);
+
+  if (!rt || !rt.configured) return null;
+
+  const maxMin = Math.max(...rt.byMinute.map((m) => m.users), 1);
+
+  return (
+    <Card className="border-yesil/40 bg-gradient-to-br from-yesil-soft/30 to-white">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "h-2.5 w-2.5 rounded-full bg-yesil transition-transform",
+                pulse && "scale-150"
+              )}
+            />
+            <Eyebrow>Şu an sitede</Eyebrow>
+          </div>
+          <p className="mt-1 text-4xl font-bold tabular-nums text-lacivert">
+            {formatCount(rt.activeUsers)}
+          </p>
+          <p className="text-xs text-gri-500">son 30 dakika · canlı (30 sn)</p>
+        </div>
+        <div className="flex h-16 items-end gap-0.5">
+          {rt.byMinute.map((m) => (
+            <div
+              key={m.minutesAgo}
+              className="w-1.5 rounded-t bg-yesil/70"
+              style={{ height: `${Math.max((m.users / maxMin) * 100, 4)}%` }}
+              title={`${m.minutesAgo} dk önce: ${m.users}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {rt.activeUsers > 0 && (
+        <div className="mt-4 grid gap-4 border-t border-gri-100 pt-4 sm:grid-cols-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gri-500">
+              Aktif sayfalar
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {rt.topPages.slice(0, 4).map((p) => (
+                <li key={p.path} className="flex justify-between gap-2 text-xs">
+                  <span className="truncate text-gri-700">{p.path}</span>
+                  <span className="font-medium tabular-nums text-lacivert">
+                    {formatCount(p.users)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gri-500">
+              Ülke
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {rt.byCountry.slice(0, 4).map((c) => (
+                <li
+                  key={c.country}
+                  className="flex justify-between gap-2 text-xs"
+                >
+                  <span className="truncate text-gri-700">{c.country}</span>
+                  <span className="font-medium tabular-nums text-lacivert">
+                    {formatCount(c.users)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gri-500">
+              Cihaz
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {rt.byDevice.slice(0, 4).map((d) => (
+                <li
+                  key={d.device}
+                  className="flex justify-between gap-2 text-xs"
+                >
+                  <span className="truncate capitalize text-gri-700">
+                    {d.device}
+                  </span>
+                  <span className="font-medium tabular-nums text-lacivert">
+                    {formatCount(d.users)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function TrafficDashboard() {
   const [range, setRange] = useState<TrafficRange>("28d");
   const [data, setData] = useState<TrafficResponse | null>(null);
@@ -317,36 +448,34 @@ export function TrafficDashboard() {
     }));
   }, [data]);
 
+  let main: ReactNode;
+
   if (loading && !data) {
-    return (
+    main = (
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Icon.Refresh size={16} className="animate-spin" />
         Trafik verisi yükleniyor…
       </div>
     );
-  }
-
-  if (error) {
-    return (
+  } else if (error) {
+    main = (
       <Card className="max-w-lg border-red-100 bg-red-50/50">
         <p className="text-sm text-red-800">{error}</p>
       </Card>
     );
-  }
-
-  if (!data || !data.configured) {
+  } else if (!data || !data.configured) {
     const kind = data?.configured === false ? data.kind : "env_missing";
     const setup = data?.configured === false ? data.setup : undefined;
-    if (kind === "env_missing") {
-      return <EnvMissingCard setup={setup} />;
-    }
-    return <TrafficLinksCard setup={setup} variant={kind} />;
-  }
-
-  const { totals, topPages } = data;
-
-  return (
-    <div className="space-y-6">
+    main =
+      kind === "env_missing" ? (
+        <EnvMissingCard setup={setup} />
+      ) : (
+        <TrafficLinksCard setup={setup} variant={kind} />
+      );
+  } else {
+    const { totals, topPages } = data;
+    main = (
+      <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
           Google Analytics 4 — son{" "}
@@ -462,6 +591,14 @@ export function TrafficDashboard() {
         <Icon.Refresh size={14} className={loading ? "animate-spin" : undefined} />
         Yenile
       </button>
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <RealtimeCard />
+      {main}
     </div>
   );
 }

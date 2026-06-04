@@ -41,6 +41,21 @@ export interface TrafficNotConfigured {
   setup: Ga4SetupStatus;
 }
 
+export interface RealtimeSummary {
+  configured: true;
+  activeUsers: number;
+  byMinute: Array<{ minutesAgo: number; users: number }>;
+  topPages: Array<{ path: string; users: number }>;
+  byCountry: Array<{ country: string; users: number }>;
+  byDevice: Array<{ device: string; users: number }>;
+}
+
+export interface RealtimeNotConfigured {
+  configured: false;
+  kind: "env_missing" | "no_access" | "error";
+  reason: string;
+}
+
 type GaRow = {
   dimensionValues?: { value?: string | null }[] | null;
   metricValues?: { value?: string | null }[] | null;
@@ -233,6 +248,111 @@ export async function getTrafficSummary(
       kind: isNoAccess ? "no_access" : "error",
       reason: message,
       setup: getGa4SetupStatus(),
+    };
+  }
+}
+
+export async function getRealtimeSummary(): Promise<
+  RealtimeSummary | RealtimeNotConfigured
+> {
+  const client = getClient();
+  const propertyId = process.env.GA4_PROPERTY_ID?.trim();
+  if (!client || !propertyId) {
+    return {
+      configured: false,
+      kind: "env_missing",
+      reason: "GA4 Data API env eksik",
+    };
+  }
+
+  const property = `properties/${propertyId}`;
+
+  try {
+    const [minuteRes, pageRes, countryRes, deviceRes] = await Promise.all([
+      client.runRealtimeReport({
+        property,
+        dimensions: [{ name: "minutesAgo" }],
+        metrics: [{ name: "activeUsers" }],
+      }),
+      client.runRealtimeReport({
+        property,
+        dimensions: [{ name: "unifiedScreenName" }],
+        metrics: [{ name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+        limit: 10,
+      }),
+      client.runRealtimeReport({
+        property,
+        dimensions: [{ name: "country" }],
+        metrics: [{ name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+        limit: 5,
+      }),
+      client.runRealtimeReport({
+        property,
+        dimensions: [{ name: "deviceCategory" }],
+        metrics: [{ name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+        limit: 5,
+      }),
+    ]);
+
+    const minuteMap = new Map<number, number>();
+    (minuteRes[0].rows ?? []).forEach((row) => {
+      const m = Number(dimAt(row, 0));
+      const u = metricAt(row, 0);
+      if (Number.isFinite(m)) minuteMap.set(m, u);
+    });
+    const byMinute = Array.from({ length: 30 }, (_, i) => ({
+      minutesAgo: 29 - i,
+      users: minuteMap.get(29 - i) ?? 0,
+    }));
+
+    const totalsRow = minuteRes[0].totals?.[0];
+    const totalFromTotals = totalsRow ? metricAt(totalsRow, 0) : 0;
+    const countryRows = countryRes[0].rows ?? [];
+    const totalFromCountry = countryRows.reduce(
+      (sum, row) => sum + metricAt(row, 0),
+      0
+    );
+    const activeUsers =
+      totalFromTotals > 0
+        ? totalFromTotals
+        : totalFromCountry > 0
+          ? totalFromCountry
+          : Array.from(minuteMap.values()).reduce(
+              (a, b) => Math.max(a, b),
+              0
+            );
+
+    return {
+      configured: true,
+      activeUsers,
+      byMinute,
+      topPages: (pageRes[0].rows ?? []).map((row) => ({
+        path: dimAt(row, 0) || "/",
+        users: metricAt(row, 0),
+      })),
+      byCountry: countryRows.map((row) => ({
+        country: dimAt(row, 0) || "—",
+        users: metricAt(row, 0),
+      })),
+      byDevice: (deviceRes[0].rows ?? []).map((row) => ({
+        device: dimAt(row, 0) || "—",
+        users: metricAt(row, 0),
+      })),
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "GA4 Realtime isteği başarısız";
+    const isNoAccess =
+      /PERMISSION_DENIED|permission|sufficient permissions|403|not have access/i.test(
+        message
+      );
+    return {
+      configured: false,
+      kind: isNoAccess ? "no_access" : "error",
+      reason: message,
     };
   }
 }
