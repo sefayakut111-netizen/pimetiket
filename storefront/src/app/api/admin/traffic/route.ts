@@ -73,10 +73,20 @@ export async function GET(req: Request) {
     console.error("[admin/traffic]", err);
     const reason =
       err instanceof Error ? err.message : "Trafik verisi alınamadı";
+    const setup = getGa4SetupStatus();
+    const isNoAccess =
+      /PERMISSION_DENIED|permission|sufficient permissions|403|not have access/i.test(
+        reason
+      );
     const fallback: TrafficNotConfigured = {
       configured: false,
+      kind: setup.ready
+        ? isNoAccess
+          ? "no_access"
+          : "error"
+        : "env_missing",
       reason,
-      setup: getGa4SetupStatus(),
+      setup,
     };
     return NextResponse.json(fallback);
   }

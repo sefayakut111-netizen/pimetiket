@@ -36,6 +36,7 @@ export interface Ga4SetupStatus {
 
 export interface TrafficNotConfigured {
   configured: false;
+  kind: "env_missing" | "no_access" | "error";
   reason: string;
   setup: Ga4SetupStatus;
 }
@@ -141,6 +142,7 @@ export async function getTrafficSummary(
   if (!client || !propertyId) {
     return {
       configured: false,
+      kind: "env_missing",
       reason:
         setup.missing.length > 0
           ? `Admin paneli için eksik env: ${setup.missing.join(", ")}`
@@ -222,6 +224,15 @@ export async function getTrafficSummary(
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "GA4 Data API isteği başarısız";
-    return { configured: false, reason: message, setup: getGa4SetupStatus() };
+    const isNoAccess =
+      /PERMISSION_DENIED|permission|sufficient permissions|403|not have access/i.test(
+        message
+      );
+    return {
+      configured: false,
+      kind: isNoAccess ? "no_access" : "error",
+      reason: message,
+      setup: getGa4SetupStatus(),
+    };
   }
 }

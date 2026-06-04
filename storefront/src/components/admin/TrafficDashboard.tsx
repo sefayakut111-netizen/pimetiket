@@ -37,13 +37,112 @@ function formatPercent(rate: number): string {
   return `${pct.toFixed(1)}%`;
 }
 
-function SetupCard({
-  reason,
+function TrafficLinksCard({
   setup,
+  variant,
 }: {
-  reason?: string;
   setup?: Ga4SetupStatus;
+  variant: "no_access" | "error";
 }) {
+  return (
+    <div className="space-y-4">
+      {setup?.measurementIdSet && (
+        <Card className="border-yesil/30 bg-yesil-soft/20">
+          <div className="flex items-start gap-3">
+            <span className="text-yesil text-lg leading-none">✓</span>
+            <div>
+              <p className="text-sm font-semibold text-lacivert">
+                Site trafiği toplanıyor
+              </p>
+              <p className="mt-1 text-sm text-gri-700">
+                Measurement ID{" "}
+                <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs">
+                  {setup.measurementId}
+                </code>{" "}
+                canlı sitede aktif. Ziyaretçi verisi toplanıyor.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <a
+          href="https://analytics.google.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group"
+        >
+          <Card className="h-full transition hover:border-pim-mercan-koyu/40 hover:shadow-sm">
+            <Eyebrow>Google Analytics 4</Eyebrow>
+            <p className="mt-2 text-sm text-gri-700">
+              Gerçek zamanlı ziyaretçi, oturum, dönüşüm ve kaynak analizi.
+            </p>
+            <span className="mt-3 inline-flex text-sm font-semibold text-pim-mercan-koyu group-hover:underline">
+              GA4 panelini aç →
+            </span>
+          </Card>
+        </a>
+
+        <a
+          href="https://eu.posthog.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group"
+        >
+          <Card className="h-full transition hover:border-pim-mercan-koyu/40 hover:shadow-sm">
+            <Eyebrow>PostHog</Eyebrow>
+            <p className="mt-2 text-sm text-gri-700">
+              Funnel, session replay, event analizi ve davranış haritası.
+            </p>
+            <span className="mt-3 inline-flex text-sm font-semibold text-pim-mercan-koyu group-hover:underline">
+              PostHog panelini aç →
+            </span>
+          </Card>
+        </a>
+      </div>
+
+      {variant === "no_access" && (
+        <details className="rounded-lg border border-gri-200 bg-gri-50 px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium text-gri-700">
+            Bu sayfada gömülü dashboard&apos;ı göstermek ister misin?
+          </summary>
+          <div className="mt-3 space-y-2 text-gri-700">
+            <p>
+              Gömülü kartlar için Google Analytics&apos;te servis hesabına{" "}
+              <strong>Görüntüleyici (Viewer)</strong> yetkisi vermelisin:
+            </p>
+            <ol className="list-decimal space-y-1 pl-5 text-xs">
+              <li>analytics.google.com → Yönetici → Mülk erişim yönetimi</li>
+              <li>
+                <strong>+</strong> → Kullanıcı ekle →{" "}
+                <code className="rounded bg-white px-1 text-[11px]">
+                  GA4_SA_CLIENT_EMAIL
+                </code>{" "}
+                (servis hesabı e-postası)
+              </li>
+              <li>Bildirim tikini kapat → Görüntüleyici → Ekle</li>
+              <li>Erişim 24-48 saat içinde aktif olur; sayfa otomatik dolar.</li>
+            </ol>
+            <p className="text-xs text-gri-500">
+              Reklam engelleyici uzantılar GA4 ekleme akışını bozabilir —
+              gerekirse gizli sekmede dene.
+            </p>
+          </div>
+        </details>
+      )}
+
+      {variant === "error" && (
+        <p className="text-xs text-gri-500">
+          Gömülü veri şu an çekilemedi. Yukarıdaki panellerden trafiği
+          görüntüleyebilirsin.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function EnvMissingCard({ setup }: { setup?: Ga4SetupStatus }) {
   const missing = setup?.missing ?? [
     "GA4_PROPERTY_ID",
     "GA4_SA_CLIENT_EMAIL",
@@ -65,17 +164,8 @@ function SetupCard({
                 <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs">
                   {setup.measurementId}
                 </code>{" "}
-                canlı sitede aktif. Ziyaretçi verisi GA4&apos;te birikiyor — bu
-                bir hata değil.
+                canlı sitede aktif. Ziyaretçi verisi GA4&apos;te birikiyor.
               </p>
-              <a
-                href="https://analytics.google.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex text-sm font-semibold text-pim-mercan hover:underline"
-              >
-                GA4 panelini aç →
-              </a>
             </div>
           </div>
         </Card>
@@ -89,11 +179,12 @@ function SetupCard({
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Admin trafik paneli kurulumu
+                GA4 Data API env eksik
               </h2>
               <p className="mt-1 text-sm text-gray-600">
-                {reason ??
-                  "Bu sayfanın grafikleri için GA4 Data API env değişkenleri gerekli. Aşağıdaki 3 değişkeni Vercel'e ekleyip redeploy edin."}
+                Bu sayfanın grafikleri için GA4 Data API env değişkenleri
+                gerekli. Aşağıdaki değişkenleri Vercel&apos;e ekleyip redeploy
+                edin.
               </p>
             </div>
 
@@ -244,12 +335,12 @@ export function TrafficDashboard() {
   }
 
   if (!data || !data.configured) {
-    return (
-      <SetupCard
-        reason={data?.configured === false ? data.reason : undefined}
-        setup={data?.configured === false ? data.setup : undefined}
-      />
-    );
+    const kind = data?.configured === false ? data.kind : "env_missing";
+    const setup = data?.configured === false ? data.setup : undefined;
+    if (kind === "env_missing") {
+      return <EnvMissingCard setup={setup} />;
+    }
+    return <TrafficLinksCard setup={setup} variant={kind} />;
   }
 
   const { totals, topPages } = data;
