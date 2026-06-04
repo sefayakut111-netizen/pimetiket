@@ -480,6 +480,24 @@ const STICKER_CARDS: StickerCard[] = [
     imageSrc: "/assets/img/cards/sticker-kisscut.jpg",
   },
   {
+    query: "cut=tabaka&shape=ozel&kilit=tabaka",
+    titleTr: "Özel Kesim Sticker Sayfası",
+    titleEn: "Die-Cut Sticker Sheet",
+    descTr: "Tek tabakada çok adet özel kesim",
+    descEn: "Many die-cut on one sheet",
+    svg: <DieCutIcon />,
+    imageSrc: "/assets/img/cards/sticker-tabaka-ozel.jpg",
+  },
+  {
+    query: "cut=tabaka&shape=ozel&material=transparan&kilit=tabaka",
+    titleTr: "Şeffaf Sticker Sayfası",
+    titleEn: "Clear Sticker Sheet",
+    descTr: "Şeffaf zeminde çok adet",
+    descEn: "Clear, many on one sheet",
+    svg: <ClearIcon />,
+    imageSrc: "/assets/img/cards/sticker-tabaka-seffaf.png",
+  },
+  {
     // Sefa 22 May v68 (revize): "Tabaka Sticker" → "Sticker Sayfası".
     // Önceki "web sayfası izlenimi" gerekçesi geri alındı — Sefa müşteri
     // dilinde "tabaka" yerine "sayfa"yı tercih ediyor (e-ticaret yaygın
@@ -536,24 +554,6 @@ const STICKER_CARDS: StickerCard[] = [
     descEn: "Sparkly-texture sheet — gifts, kids",
     svg: <GlitterIcon />,
     imageSrc: "/assets/img/cards/sticker-tabaka-simli.jpg",
-  },
-  {
-    query: "cut=tabaka&shape=ozel&kilit=tabaka",
-    titleTr: "Özel Kesim Sticker Sayfası",
-    titleEn: "Die-Cut Sticker Sheet",
-    descTr: "Tek tabakada çok adet özel kesim",
-    descEn: "Many die-cut on one sheet",
-    svg: <DieCutIcon />,
-    imageSrc: "/assets/img/cards/sticker-tabaka-ozel.jpg",
-  },
-  {
-    query: "cut=tabaka&shape=ozel&material=transparan&kilit=tabaka",
-    titleTr: "Şeffaf Sticker Sayfası",
-    titleEn: "Clear Sticker Sheet",
-    descTr: "Şeffaf zeminde çok adet",
-    descEn: "Clear, many on one sheet",
-    svg: <ClearIcon />,
-    imageSrc: "/assets/img/cards/sticker-tabaka-seffaf.png",
   },
 ];
 
