@@ -117,8 +117,8 @@ export default async function UnsubscribePage({
             giriş yaparak bildirim tercihlerini
           </Link>{" "}
           tekrar açabilirsin. Hesabın yoksa{" "}
-          <a href="mailto:destek@pimetiket.com" style={a}>
-            destek@pimetiket.com
+          <a href="mailto:info@pimetiket.com" style={a}>
+            info@pimetiket.com
           </a>{" "}
           adresine yaz.
         </p>
@@ -144,14 +144,14 @@ export default async function UnsubscribePage({
             Giriş yap → bildirim tercihleri
           </Link>
           {" · "}
-          <a href="mailto:destek@pimetiket.com" style={a}>
-            destek@pimetiket.com
+          <a href="mailto:info@pimetiket.com" style={a}>
+            info@pimetiket.com
           </a>
         </p>
         <p style={pMuted}>
           Sorun devam ederse:{" "}
-          <a href="mailto:destek@pimetiket.com" style={a}>
-            destek@pimetiket.com
+          <a href="mailto:info@pimetiket.com" style={a}>
+            info@pimetiket.com
           </a>
         </p>
       </Shell>
@@ -177,8 +177,8 @@ export default async function UnsubscribePage({
             giriş yaparak tercihlerini
           </Link>{" "}
           yönet; hesabın yoksa{" "}
-          <a href="mailto:destek@pimetiket.com" style={a}>
-            destek@pimetiket.com
+          <a href="mailto:info@pimetiket.com" style={a}>
+            info@pimetiket.com
           </a>
           .
         </p>

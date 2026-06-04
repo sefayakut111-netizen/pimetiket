@@ -33,10 +33,10 @@ export default function TelifSikayetPage() {
             tasarım) izinsiz kullanımını veya kopyalanmasını fark
             ettiyseniz, aşağıdaki bilgileri{" "}
             <a
-              href="mailto:legal@pimetiket.com"
+              href="mailto:info@pimetiket.com"
               className="text-pim-mercan font-semibold hover:underline"
             >
-              legal@pimetiket.com
+              info@pimetiket.com
             </a>{" "}
             adresine gönderin. 7 iş günü içinde yanıt veririz.
           </p>
@@ -145,7 +145,7 @@ export default function TelifSikayetPage() {
           <ul>
             <li>
               <strong>E-posta:</strong>{" "}
-              <a href="mailto:legal@pimetiket.com">legal@pimetiket.com</a>{" "}
+              <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>{" "}
               (telif/hukuki konular)
             </li>
             <li>

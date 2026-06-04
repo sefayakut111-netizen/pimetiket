@@ -371,7 +371,7 @@ export default function ProofEditPage({
                 message:
                   process.env.NODE_ENV !== "production"
                     ? "12 saniyedir tasarım yüklenmedi. Sayfayı yenilemeyi dene veya tasarım dosyasının erişilebilir olduğundan emin ol."
-                    : "Tasarım yüklenmesi beklenenden uzun sürdü. Sayfayı yenileyin; sorun sürerse destek@pimetiket.com'a yazın.",
+                    : "Tasarım yüklenmesi beklenenden uzun sürdü. Sayfayı yenileyin; sorun sürerse info@pimetiket.com'a yazın.",
               }
         );
       }
@@ -622,10 +622,10 @@ export default function ProofEditPage({
                 Tasarımını editöre yükleyemedik. Lütfen sayfayı yenile; sorun
                 sürerse{" "}
                 <a
-                  href="mailto:destek@pimetiket.com"
+                  href="mailto:info@pimetiket.com"
                   className="text-pim-mercan underline"
                 >
-                  destek@pimetiket.com
+                  info@pimetiket.com
                 </a>
                 &apos;a yaz.
               </p>

@@ -248,10 +248,10 @@ function PartnerGirisInner() {
         <p className="mt-6 text-center text-xs text-gri-700">
           Partner kaydınız yoksa Pim Etiket ekibiyle iletişime geçin:{" "}
           <a
-            href="mailto:partnerlik@pimetiket.com"
+            href="mailto:info@pimetiket.com"
             className="font-semibold text-lacivert hover:underline"
           >
-            partnerlik@pimetiket.com
+            info@pimetiket.com
           </a>
         </p>
       </div>
