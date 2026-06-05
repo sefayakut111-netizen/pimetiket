@@ -128,16 +128,23 @@ jobs:
         run: |
           mkdir -p "storage-snapshot/${STAMP}"
           SUPA_S3_ENDPOINT="${SUPABASE_S3_ENDPOINT:-https://${PROJECT_REF}.storage.supabase.co/storage/v1/s3}"
+          echo "🔧 Endpoint: $SUPA_S3_ENDPOINT  Region: $AWS_DEFAULT_REGION"
+
+          # Önce erişim testi — designs bucket'ı listele (hata GÖRÜNSÜN, yutma yok)
+          echo "🔍 aws s3 ls test (designs):"
+          aws s3 ls "s3://designs/" --endpoint-url "$SUPA_S3_ENDPOINT" --recursive | head -20 || echo "❌ ls FAILED (exit $?)"
 
           # Supabase Storage S3-compatible endpoint — aws s3 sync RECURSIVE (tüm nested dosyalar)
           for BUCKET in designs return-photos review-photos; do
             echo "📦 Sync bucket: $BUCKET"
             mkdir -p "storage-snapshot/${STAMP}/${BUCKET}"
+            set +e
             aws s3 sync "s3://${BUCKET}" "storage-snapshot/${STAMP}/${BUCKET}" \
-              --endpoint-url "$SUPA_S3_ENDPOINT" \
-              --no-progress || echo "⚠️ $BUCKET sync uyarı (boş olabilir)"
+              --endpoint-url "$SUPA_S3_ENDPOINT" --no-progress
+            SYNC_EXIT=$?
+            set -e
             FILE_COUNT=$(find "storage-snapshot/${STAMP}/${BUCKET}" -type f | wc -l)
-            echo "  → $BUCKET: $FILE_COUNT dosya indirildi"
+            echo "  → $BUCKET: exit=$SYNC_EXIT, $FILE_COUNT dosya"
           done
 
           # Tek tar.gz + checksum
