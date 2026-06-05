@@ -74,6 +74,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: siteDescription,
     applicationName: "Pim Etiket",
+    appleWebApp: {
+      capable: true,
+      title: "Pim Etiket",
+      statusBarStyle: "default",
+    },
     authors: [{ name: "Pim Etiket" }],
     generator: "Next.js",
     // Sefa 20 May v68: PWA manifest + favicon + Apple touch
