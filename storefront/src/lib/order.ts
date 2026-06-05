@@ -39,6 +39,7 @@ export type OrderStatus =
   // proof_validating: müşteri düzenleme yaptı, AI tekrar doğruluyor (kısa ömürlü 3-10sn)
   | "proof_validating"
   | "proof_approved" // Tüm itemler müşteri tarafından onaylandı (Mig 059)
+  | "operator_print_review" // Baskı öncesi operatör onayı (Mig 154 — FAZ 1, henüz akışta değil)
 
   // Üretim
   | "ready_to_ship" // AI QC + prova geçti, üretime hazır (Mig 039)
@@ -65,6 +66,7 @@ export const ORDER_STATUS_VALUES: readonly OrderStatus[] = [
   "proof_pending",
   "proof_validating",
   "proof_approved",
+  "operator_print_review",
   "ready_to_ship",
   "fason_assigned",
   "in_production",
@@ -114,7 +116,7 @@ export const ADMIN_STATUS_CHIP_MAP: Record<
     "operator_review",
   ],
   musteri_onayi: ["proof_generating", "proof_validating", "proof_pending"],
-  uretime_hazir: ["proof_approved", "ready_to_ship"],
+  uretime_hazir: ["proof_approved", "operator_print_review", "ready_to_ship"],
   uretimde: ["fason_assigned", "in_production"],
   kargo_teslim: ["shipped", "delivered"],
   iptal: ["cancelled"],
@@ -182,6 +184,7 @@ export const ADMIN_STATUS_FORWARD_ORDER: readonly OrderStatus[] = [
   "proof_validating",
   "proof_pending",
   "proof_approved",
+  "operator_print_review",
   "ready_to_ship",
   "fason_assigned",
   "in_production",
@@ -253,6 +256,7 @@ export function parseAdminStatusFilter(
 export const FASON_ASSIGN_ELIGIBLE_STATUSES: readonly OrderStatus[] = [
   "operator_review",
   "proof_approved",
+  "operator_print_review",
   "ready_to_ship",
   "in_production",
 ];
@@ -266,7 +270,8 @@ export const VALID_BULK_TRANSITIONS: Partial<
   qc_pending: ["proof_generating", "human_review", "cancelled"],
   proof_pending: ["proof_validating", "proof_approved", "cancelled"],
   proof_validating: ["proof_pending", "operator_review", "cancelled"],
-  proof_approved: ["ready_to_ship"],
+  proof_approved: ["ready_to_ship", "operator_print_review"],
+  operator_print_review: ["ready_to_ship", "proof_generating", "cancelled"],
   ready_to_ship: ["in_production"],
   in_production: ["shipped"],
   shipped: ["delivered"],
@@ -285,7 +290,8 @@ export const VALID_SINGLE_TRANSITIONS: Partial<
   proof_generating: ["proof_pending", "human_review"],
   proof_pending: ["proof_approved", "cancelled"],
   proof_validating: ["proof_pending"],
-  proof_approved: ["ready_to_ship"],
+  proof_approved: ["ready_to_ship", "operator_print_review"],
+  operator_print_review: ["ready_to_ship", "proof_generating", "cancelled"],
   ready_to_ship: ["in_production", "fason_assigned"],
   fason_assigned: ["in_production"],
   in_production: ["shipped"],

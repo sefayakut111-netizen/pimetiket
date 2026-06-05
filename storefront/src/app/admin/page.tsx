@@ -779,6 +779,7 @@ function AdminDashboardPageInner() {
       proof_pending: 0,
       proof_validating: 0,
       proof_approved: 0,
+      operator_print_review: 0,
       ready_to_ship: 0,
       fason_assigned: 0,
       in_production: 0,

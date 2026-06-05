@@ -149,6 +149,7 @@ export function aggregateStatus(orders: CustomerOrder[]): StatusCount {
     proof_pending: 0,
     proof_validating: 0,
     proof_approved: 0,
+    operator_print_review: 0,
     ready_to_ship: 0,
     fason_assigned: 0,
     in_production: 0,
@@ -279,6 +280,7 @@ export interface ProofFlowStats30d {
 
 const PROOF_APPROVED_OR_BEYOND: readonly OrderStatus[] = [
   "proof_approved",
+  "operator_print_review",
   "ready_to_ship",
   "fason_assigned",
   "in_production",

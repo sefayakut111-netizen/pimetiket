@@ -158,6 +158,7 @@ export function getCustomerStatusInfo(
         group: "proof_pending",
       };
     case "proof_approved":
+    case "operator_print_review":
     case "ready_to_ship":
     case "fason_assigned":
     case "in_production":

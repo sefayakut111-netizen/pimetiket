@@ -269,6 +269,7 @@ function statusToPhaseIndex(status: OrderStatus): number {
     case "proof_pending":
       return 5;
     case "proof_approved":
+    case "operator_print_review":
       return 6;
     case "ready_to_ship":
     case "fason_assigned":

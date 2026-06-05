@@ -4518,6 +4518,7 @@ export type Database = {
         | "proof_pending"
         | "proof_validating"
         | "proof_approved"
+        | "operator_print_review"
         | "in_production"
         | "shipped"
         | "delivered"
@@ -4754,6 +4755,7 @@ export const Constants = {
         "proof_pending",
         "proof_validating",
         "proof_approved",
+        "operator_print_review",
         "in_production",
         "shipped",
         "delivered",

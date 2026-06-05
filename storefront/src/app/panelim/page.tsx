@@ -184,6 +184,7 @@ function statusToPhaseIndex(status: OrderStatus): number {
     case "proof_pending":
       return 4;
     case "proof_approved":
+    case "operator_print_review":
     case "ready_to_ship":
     case "fason_assigned":
     case "in_production":
@@ -414,6 +415,7 @@ function statusMeta(
         pim: "inspect",
       };
     case "proof_approved":
+    case "operator_print_review":
       return {
         label: "Onayın alındı — üretime geçildi",
         color: "var(--color-yesil)",
