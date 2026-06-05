@@ -65,6 +65,10 @@
       "schedule": "0 4 * * *"
     },
     {
+      "path": "/api/cron/kvkk-delete-audit",
+      "schedule": "0 4 1 * *"
+    },
+    {
       "path": "/api/cron/detect-abandoned-carts",
       "schedule": "0 10 * * *"
     },

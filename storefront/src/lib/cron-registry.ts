@@ -11,6 +11,7 @@ export const CRON_REGISTRY = [
   { name: "archive-inactive", schedule: "30 3 * * *", label: "Arşiv (90gün)" },
   { name: "cleanup-stale-uploads", schedule: "45 3 * * *", label: "Stale upload" },
   { name: "purge-expired-designs", schedule: "0 4 * * *", label: "KVKK tasarım silme" },
+  { name: "kvkk-delete-audit", schedule: "0 4 1 * *", label: "KVKK R2 silme audit" },
   { name: "cleanup-orphan-previews", schedule: "0 4 * * 0", label: "Orphan preview" },
   { name: "auditors-security", schedule: "0 1 * * *", label: "Denetçi: güvenlik" },
   { name: "auditors-workflow", schedule: "0 5 * * *", label: "Denetçi: iş akışı" },
