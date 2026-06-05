@@ -12,6 +12,7 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
  * görüntüleme + indirme linki gösterir.
  */
 
+import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +24,6 @@ interface BackupItem {
   stamp: string;
   size_bytes: number;
   modified_at: string;
-}
-
-interface R2ListXmlObject {
-  Key: string;
-  LastModified: string;
-  Size: string;
 }
 
 export async function GET() {
@@ -57,18 +52,46 @@ export async function GET() {
     });
   }
 
-  // R2 S3-uyumlu ListObjectsV2 — AWS SigV4 imzalama gerekli.
-  // Bağımlılık eklemeden basit Web Crypto API ile imzala.
+  const client = new S3Client({
+    region: "auto",
+    endpoint:
+      process.env.R2_BACKUP_ENDPOINT ??
+      `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+    forcePathStyle: true,
+  });
+
   try {
-    const items = await listR2Backups({
-      accountId,
-      accessKey,
-      secretKey,
-      bucket,
-      prefix: "weekly/",
-    });
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: "weekly/",
+        MaxKeys: 500,
+      })
+    );
+    const contents = res.Contents ?? [];
+    const manifests = contents.filter((o) => o.Key?.endsWith("/manifest.json"));
+    const backups: BackupItem[] = manifests
+      .map((m) => {
+        const segs = (m.Key ?? "").split("/");
+        const year = segs[1] ?? "";
+        const folderName = segs[2] ?? "";
+        const weekMatch = folderName.match(/^W(\d+)-(.+)$/);
+        return {
+          key: (m.Key ?? "").replace(/\/manifest\.json$/, ""),
+          week: weekMatch?.[1] ?? "?",
+          year,
+          stamp: weekMatch?.[2] ?? folderName,
+          size_bytes: m.Size ?? 0,
+          modified_at: m.LastModified?.toISOString() ?? "",
+        };
+      })
+      .sort((a, b) => b.modified_at.localeCompare(a.modified_at));
+
     return NextResponse.json({
-      backups: items,
+      backups,
       configured: true,
     });
   } catch (err) {
@@ -83,155 +106,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-// ============================================================
-// R2 S3-compatible signed request (SigV4)
-// ============================================================
-
-async function listR2Backups(input: {
-  accountId: string;
-  accessKey: string;
-  secretKey: string;
-  bucket: string;
-  prefix: string;
-}): Promise<BackupItem[]> {
-  const { accountId, accessKey, secretKey, bucket, prefix } = input;
-  // Backup bucket non-EU (standart) — account-based endpoint (workflow ile aynı)
-  const envEndpoint = process.env.R2_BACKUP_ENDPOINT;
-  const host = envEndpoint
-    ? new URL(envEndpoint).host
-    : `${accountId}.r2.cloudflarestorage.com`;
-  const path = `/${bucket}`;
-  const query = `list-type=2&prefix=${encodeURIComponent(prefix)}&max-keys=500`;
-  const url = `https://${host}${path}?${query}`;
-
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
-  const dateStamp = amzDate.slice(0, 8);
-  const region = "auto";
-  const service = "s3";
-
-  const payloadHash = await sha256Hex("");
-
-  // Canonical request
-  const canonicalHeaders =
-    `host:${host}\n` + `x-amz-content-sha256:${payloadHash}\n` + `x-amz-date:${amzDate}\n`;
-  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-  const canonicalRequest =
-    `GET\n` +
-    `${path}\n` +
-    `${query}\n` +
-    `${canonicalHeaders}\n` +
-    `${signedHeaders}\n` +
-    `${payloadHash}`;
-
-  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const stringToSign =
-    `AWS4-HMAC-SHA256\n` +
-    `${amzDate}\n` +
-    `${credentialScope}\n` +
-    `${await sha256Hex(canonicalRequest)}`;
-
-  const kDate = await hmac(`AWS4${secretKey}`, dateStamp);
-  const kRegion = await hmac(kDate, region);
-  const kService = await hmac(kRegion, service);
-  const kSigning = await hmac(kService, "aws4_request");
-  const signature = await hmacHex(kSigning, stringToSign);
-
-  const authorization =
-    `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, ` +
-    `SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      host,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": amzDate,
-      authorization,
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`R2 list failed: ${res.status} ${text.slice(0, 200)}`);
-  }
-
-  const xml = await res.text();
-  const items = parseListObjectsXml(xml);
-
-  // Sadece manifest.json'lara bak — her yedek için 1 satır
-  const manifests = items.filter((i) => i.Key.endsWith("/manifest.json"));
-
-  return manifests
-    .map((m): BackupItem => {
-      // weekly/2026/W19-2026-05-11/manifest.json
-      const segs = m.Key.split("/");
-      const year = segs[1] ?? "";
-      const folderName = segs[2] ?? "";
-      const weekMatch = folderName.match(/^W(\d+)-(.+)$/);
-      return {
-        key: m.Key.replace(/\/manifest\.json$/, ""),
-        week: weekMatch?.[1] ?? "?",
-        year,
-        stamp: weekMatch?.[2] ?? folderName,
-        size_bytes: parseInt(m.Size, 10) || 0,
-        modified_at: m.LastModified,
-      };
-    })
-    .sort((a, b) =>
-      b.modified_at.localeCompare(a.modified_at)
-    );
-}
-
-function parseListObjectsXml(xml: string): R2ListXmlObject[] {
-  const objects: R2ListXmlObject[] = [];
-  const regex = /<Contents>([\s\S]*?)<\/Contents>/g;
-  let match;
-  while ((match = regex.exec(xml)) !== null) {
-    const body = match[1];
-    const key = body.match(/<Key>([\s\S]*?)<\/Key>/)?.[1] ?? "";
-    const lastModified =
-      body.match(/<LastModified>([\s\S]*?)<\/LastModified>/)?.[1] ?? "";
-    const size = body.match(/<Size>([\s\S]*?)<\/Size>/)?.[1] ?? "0";
-    objects.push({ Key: key, LastModified: lastModified, Size: size });
-  }
-  return objects;
-}
-
-async function sha256Hex(s: string): Promise<string> {
-  const buf = new TextEncoder().encode(s);
-  const hash = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function hmac(
-  key: string | Uint8Array,
-  data: string
-): Promise<Uint8Array> {
-  const keyBuf =
-    typeof key === "string" ? new TextEncoder().encode(key) : key;
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBuf as BufferSource,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    new TextEncoder().encode(data)
-  );
-  return new Uint8Array(sig);
-}
-
-async function hmacHex(key: Uint8Array, data: string): Promise<string> {
-  const sig = await hmac(key, data);
-  return Array.from(sig)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
