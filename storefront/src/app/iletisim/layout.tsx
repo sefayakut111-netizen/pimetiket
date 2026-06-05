@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 const ILETISIM_LOCAL_BUSINESS = localBusinessSchema({
-  phone: "+90 531 934 01 23",
+  phone: "+90 545 699 90 63",
   address:
     "Workinton Söğütözü, Beştepeler Mah. Nergis Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, Çankaya",
   email: "info@pimetiket.com",

@@ -28,7 +28,7 @@ export async function RootJsonLd() {
     ...(seo.socialLinks.length > 0 ? { sameAs: seo.socialLinks } : {}),
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: seo.contactPhone ?? "+90 531 934 01 23",
+      telephone: seo.contactPhone ?? "+90 545 699 90 63",
       contactType: "customer support",
       areaServed: "TR",
       availableLanguage: ["tr"],

@@ -62,7 +62,7 @@ const DEFAULTS: SiteSettings = {
   contactWhatsapp: "", // Henüz aktif değil
   holidays: "1 Ocak, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim + Ramazan + Kurban",
   seoSocialLinks: "",
-  seoContactPhone: "+90 531 934 01 23",
+  seoContactPhone: "+90 545 699 90 63",
 };
 
 const NUMERIC_KEYS: Array<
