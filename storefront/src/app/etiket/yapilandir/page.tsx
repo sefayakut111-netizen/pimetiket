@@ -790,8 +790,12 @@ function EtiketPage() {
     const filtered = adminIds.filter((id) =>
       (moduleIds as readonly string[]).includes(id)
     ) as T[];
-    // Module'da olup admin'de olmayan id'leri SONA EKLE (graceful fallback)
-    const missing = moduleIds.filter((id) => !filtered.includes(id));
+    const definedIds = new Set(
+      bucket === "materials"
+        ? (adminConfig?.materials ?? []).map((m) => m.id)
+        : (adminConfig?.options?.[bucket]?.items ?? []).map((i) => i.id)
+    );
+    const missing = moduleIds.filter((id) => !definedIds.has(id));
     return [...filtered, ...missing];
   };
   // Sefa kuralı (15 May v3): Rulo özelleştirmede birden fazla seçilebilir.

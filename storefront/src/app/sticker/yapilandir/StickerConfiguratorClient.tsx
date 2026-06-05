@@ -417,9 +417,8 @@ function StickerPage() {
       const adminFiltered = getActiveMaterials(adminConfig)
         .map((m) => m.id as StickerMaterial)
         .filter((id) => (MATERIAL_IDS as readonly string[]).includes(id));
-      const missing = MATERIAL_IDS.filter(
-        (id) => !(adminFiltered as readonly string[]).includes(id)
-      );
+      const definedIds = new Set(adminConfig.materials.map((m) => m.id));
+      const missing = MATERIAL_IDS.filter((id) => !definedIds.has(id));
       base = [...adminFiltered, ...missing] as readonly StickerMaterial[];
     }
     // Sefa 20 May v68: müşteri gizleme flag'i uygula
