@@ -368,15 +368,6 @@ export async function POST(req: NextRequest) {
         applyResult.reason,
         merchantOid
       );
-      Sentry.captureMessage("coupon_apply_failed_after_payment", {
-        level: "warning",
-        extra: {
-          merchantOid,
-          orderId,
-          reason: applyResult.reason,
-          code: intent.snapshot.couponCode,
-        },
-      });
     }
   }
 

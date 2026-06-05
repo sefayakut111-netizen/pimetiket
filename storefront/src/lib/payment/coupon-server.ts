@@ -8,8 +8,10 @@
 
 import "server-only";
 
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CouponKind } from "@/lib/customer-coupon";
+import { logOrderEvent } from "@/lib/order-events-server";
 
 export type CouponResolution =
   | { ok: true; discount: number; kind: CouponKind }
@@ -92,9 +94,48 @@ export function computeCheckoutTotals(
 
 type AdminClient = SupabaseClient;
 
+async function logCouponApplyFailure(
+  admin: AdminClient,
+  params: {
+    code: string;
+    orderId: string;
+    chargedDiscount?: number;
+    reason: string;
+    rpcMessage?: string;
+  }
+): Promise<void> {
+  await logOrderEvent(admin, {
+    orderId: params.orderId,
+    eventType: "coupon_apply_failed",
+    actorRole: "system",
+    summary: `Kupon uygulanamadı: ${params.code}`,
+    detail: {
+      coupon_code: params.code,
+      expected_discount: params.chargedDiscount ?? null,
+      order_id: params.orderId,
+      error: params.reason,
+      ...(params.rpcMessage ? { rpc_message: params.rpcMessage } : {}),
+    },
+  });
+
+  Sentry.captureMessage("coupon_apply_failed_after_payment", {
+    level: "warning",
+    tags: {
+      orderId: params.orderId,
+      couponCode: params.code,
+    },
+    extra: {
+      reason: params.reason,
+      expected_discount: params.chargedDiscount ?? null,
+      rpc_message: params.rpcMessage,
+    },
+  });
+}
+
 /**
  * Sipariş oluşturulduktan sonra kupon kullanımını kaydet.
  * fn_apply_coupon_admin — atomik FOR UPDATE + insert (Mig 130).
+ * Başarısızlıkta order_events + Sentry (ödeme akışı değişmez).
  */
 export async function applyCouponAfterOrder(
   admin: AdminClient,
@@ -120,15 +161,35 @@ export async function applyCouponAfterOrder(
 
   if (error) {
     console.error("[coupon-server] apply RPC error:", error);
+    await logCouponApplyFailure(admin, {
+      code,
+      orderId: params.orderId,
+      chargedDiscount: params.chargedDiscount,
+      reason: "rpc_error",
+      rpcMessage: error.message,
+    });
     return { ok: false, reason: "rpc_error" };
   }
 
   if (!data || typeof data !== "object") {
+    await logCouponApplyFailure(admin, {
+      code,
+      orderId: params.orderId,
+      chargedDiscount: params.chargedDiscount,
+      reason: "invalid_response",
+    });
     return { ok: false, reason: "invalid_response" };
   }
 
   const r = data as { ok: boolean; reason?: string };
   if (r.ok) return { ok: true };
 
-  return { ok: false, reason: r.reason ?? "unknown" };
+  const reason = r.reason ?? "unknown";
+  await logCouponApplyFailure(admin, {
+    code,
+    orderId: params.orderId,
+    chargedDiscount: params.chargedDiscount,
+    reason,
+  });
+  return { ok: false, reason };
 }
