@@ -19,6 +19,7 @@
  *     https://pimetiket.com/api/cron/process-mail-outbox
  */
 
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { renderMailTemplate } from "@/lib/mail/templates";
@@ -264,9 +265,24 @@ export async function GET(req: Request) {
         throw new Error(`resend_${resp.status}: ${text.slice(0, 200)}`);
       }
 
-      const json = (await resp.json().catch(() => ({}))) as {
-        id?: string;
-      };
+      let json: { id?: string } = {};
+      let parseFailed = false;
+      try {
+        json = (await resp.json()) as { id?: string };
+      } catch {
+        parseFailed = true;
+        Sentry.captureMessage("Resend response parse failed", {
+          level: "warning",
+          extra: { mailId: row.id, status: resp.status },
+        });
+      }
+
+      if (!parseFailed && !json.id) {
+        Sentry.captureMessage("Resend 200 but message_id missing", {
+          level: "warning",
+          extra: { mailId: row.id, status: resp.status },
+        });
+      }
 
       await admin
         .from("fason_mail_outbox")

@@ -22,6 +22,7 @@
  * tek import + tek void çağrısı yeter).
  */
 
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 // Faz 2 iptali: import { sendOrderProofApproved } from "@/lib/mail/notifications";
@@ -96,13 +97,40 @@ export async function POST(
   }
 
   void generatePrintReadyForOrder(orderId)
-    .then(({ errors }) => {
-      if (errors.length > 0) {
-        console.warn("[proof/finalize] print-ready partial:", errors);
-      }
-      // status update yok — operator_print_review'de kalır, operatör onaylayacak
+    .then(async ({ errors, generated }) => {
+      if (errors.length === 0) return;
+      console.warn("[proof/finalize] print-ready partial:", errors);
+      Sentry.captureMessage("Print-ready PDF generation failed", {
+        level: "warning",
+        extra: { orderId, errorCount: errors.length, generated },
+      });
+      await adminClient.from("order_events").insert([
+        {
+          order_id: orderId,
+          event_type: "print_ready_failed",
+          status_after: "operator_print_review",
+          actor_role: "system",
+          summary: `Print-ready PDF üretilemedi (${errors.length} kalem)`,
+          detail: { errors: errors.slice(0, 10), generated },
+        },
+      ]);
     })
-    .catch((err) => console.error("[proof/finalize] print-ready:", err));
+    .catch(async (err) => {
+      console.error("[proof/finalize] print-ready:", err);
+      Sentry.captureException(err, { extra: { orderId } });
+      await adminClient.from("order_events").insert([
+        {
+          order_id: orderId,
+          event_type: "print_ready_failed",
+          status_after: "operator_print_review",
+          actor_role: "system",
+          summary: "Print-ready PDF üretimi beklenmedik hata",
+          detail: {
+            error: err instanceof Error ? err.message : String(err),
+          },
+        },
+      ]);
+    });
 
   return NextResponse.json({
     ok: true,

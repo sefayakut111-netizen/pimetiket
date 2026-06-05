@@ -22,7 +22,7 @@ const QC_MAX_ATTEMPTS = 3;
 import type { SupabaseClient } from "@supabase/supabase-js";
 import * as Sentry from "@sentry/nextjs";
 import { runDesignQC, mimeToFormat } from "./design-qc";
-import { isAiCircuitOpen } from "./circuit-breaker";
+import { isAiCircuitOpen, notifyAiCircuitOpenIfNeeded } from "./circuit-breaker";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import {
   checkMultiDesignConsistency,
@@ -152,6 +152,7 @@ async function runOrderDesignQCInner(
   // AI'a hiç gitme, proof_generating (operatör baskı öncesi karar verir).
   const circuit = await isAiCircuitOpen(admin);
   if (circuit.open) {
+    await notifyAiCircuitOpenIfNeeded(admin, orderId, circuit);
     await admin
       .from("orders")
       .update({ status: "proof_generating" })

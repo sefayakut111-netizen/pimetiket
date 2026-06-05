@@ -15,7 +15,10 @@
  * okuruz. Window'lar hardcoded; ileride env var yapılabilir.
  */
 
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isResendConfigured, sendMail } from "@/lib/mail/resend";
+import { getSiteUrl } from "@/lib/site-url";
 
 /** Son kaç dakikalık pencere izlenir */
 export const AI_CIRCUIT_WINDOW_MIN = 10;
@@ -78,4 +81,58 @@ export async function isAiCircuitOpen(
     failureRate,
     windowMin: AI_CIRCUIT_WINDOW_MIN,
   };
+}
+
+const CIRCUIT_ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+
+/**
+ * Circuit OPEN → Sentry + (opsiyonel) admin mail. Saatte en fazla 1 kez.
+ * İlk `ai_circuit_open_fallback` event'i öncesi çağrılır.
+ */
+export async function notifyAiCircuitOpenIfNeeded(
+  admin: SupabaseClient,
+  orderId: string,
+  circuit: CircuitStatus
+): Promise<void> {
+  const sinceIso = new Date(Date.now() - CIRCUIT_ALERT_COOLDOWN_MS).toISOString();
+  const { count } = await admin
+    .from("order_events")
+    .select("id", { count: "exact", head: true })
+    .eq("event_type", "ai_circuit_open_fallback")
+    .gte("created_at", sinceIso);
+
+  if ((count ?? 0) > 0) return;
+
+  Sentry.captureMessage("AI QC circuit breaker OPEN", {
+    level: "error",
+    extra: {
+      failureRate: circuit.failureRate,
+      window: circuit.windowMin,
+      errorRuns: circuit.errorRuns,
+      totalRuns: circuit.totalRuns,
+      orderId,
+    },
+  });
+
+  const recipients = (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.includes("@"));
+
+  if (recipients.length === 0 || !isResendConfigured()) return;
+
+  const site = getSiteUrl();
+  const pct = Math.round(circuit.failureRate * 100);
+  await sendMail({
+    to: recipients,
+    subject: `[Pim Etiket] AI QC circuit breaker OPEN (%${pct} hata)`,
+    html: `
+      <h2>AI QC circuit breaker açıldı</h2>
+      <p>Son <strong>${circuit.windowMin} dk</strong> içinde hata oranı <strong>%${pct}</strong> (${circuit.errorRuns}/${circuit.totalRuns}).</p>
+      <p>Yeni siparişler proof_generating fallback'e yönlendiriliyor.</p>
+      <p>Tetikleyen sipariş: <code>${orderId}</code></p>
+      <p><a href="${site}/admin/siparisler">Sipariş paneli</a></p>
+    `,
+    text: `AI QC circuit OPEN — %${pct} hata (${circuit.errorRuns}/${circuit.totalRuns}). Sipariş: ${orderId}`,
+  });
 }
