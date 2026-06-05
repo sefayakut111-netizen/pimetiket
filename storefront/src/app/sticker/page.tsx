@@ -709,7 +709,7 @@ export default function StickerGridPage() {
                 ? "Cut to your design's edge — pieces peel off individually. Ideal for logos, brand marks, and custom silhouettes."
                 : "Tasarımın kenarından tam kesim, parçalar ayrı. Logo, marka ve özel silüetler için."}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 auto-rows-fr">
               {diecutCards.map((card, index) => (
                 <div key={card.query} className="h-full">
                   <StickerProductCard
@@ -735,7 +735,7 @@ export default function StickerGridPage() {
                 ? "Kiss-cut on intact backing — sheet or page format. Peel stickers without separating the liner."
                 : "Yarım kesim, arka kağıt sağlam; tabaka/sayfa halinde. Kağıttan ayırmadan sticker çıkar."}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 auto-rows-fr">
               {kissCutCards.map((card, index) => (
                 <div key={card.query} className="h-full">
                   <StickerProductCard
