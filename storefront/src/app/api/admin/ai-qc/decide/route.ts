@@ -6,16 +6,19 @@
  * Body:
  *   {
  *     orderId: string,
- *     decision: "approve" | "reject",
+ *     decision: "approve" | "reject" | "fix_and_proof",
  *     note?: string  // operatör notu (audit log için)
  *   }
  *
- * - approve → orders.status = "ready_to_ship" (üretime gönder)
- * - reject  → orders.status = "human_review_failed" (müşteriye düzeltme bildirimi)
+ * human_review / qc_* kaynak:
+ *   - approve → ready_to_ship
+ *   - fix_and_proof → proof_generating
+ *   - reject → human_review_failed (+ müşteriye düzeltme maili)
  *
- * Sefa kuralı (16 May v3): bu kararlar order_events tablosuna kayıt
- * düşer (audit trail). Reject durumunda müşteriye otomatik mail gider
- * (sonraki commit).
+ * operator_print_review kaynak (FAZ 3 — baskı öncesi):
+ *   - approve → ready_to_ship
+ *   - fix_and_proof → proof_generating
+ *   - reject → cancelled (iade akışı mevcut cancel mekanizmasına bırakılır)
  */
 
 import { NextResponse } from "next/server";
@@ -23,7 +26,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { logOrderEvent } from "@/lib/order-events-server";
-import { AI_QC_ACTIVE_STATUSES } from "@/lib/order";
+import { AI_QC_ACTIVE_STATUSES, isOrderStatus } from "@/lib/order";
 
 const BodySchema = z.object({
   orderId: z.string().min(1),
@@ -32,7 +35,6 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  // Sefa 18 May v68 (RBAC yayma): AI QC kararı production yetkisi
   const auth = await assertPermission("ai_qc", "approve");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -54,19 +56,51 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
+  const { data: currentOrder, error: fetchErr } = await admin
+    .from("orders")
+    .select("status")
+    .eq("id", body.orderId)
+    .single();
+
+  if (fetchErr || !currentOrder) {
+    return NextResponse.json(
+      { error: "Order not found", detail: fetchErr?.message },
+      { status: 404 }
+    );
+  }
+
+  const fromStatus = currentOrder.status as string;
+  if (!isOrderStatus(fromStatus)) {
+    return NextResponse.json(
+      { error: "Update failed", detail: "invalid_order_status" },
+      { status: 400 }
+    );
+  }
+  if (
+    !(AI_QC_ACTIVE_STATUSES as readonly string[]).includes(fromStatus)
+  ) {
+    return NextResponse.json(
+      { error: "Update failed", detail: "order_not_in_qc_queue" },
+      { status: 400 }
+    );
+  }
+
+  const isPrintReview = fromStatus === "operator_print_review";
+
   const nextStatus =
     body.decision === "approve"
       ? "ready_to_ship"
       : body.decision === "fix_and_proof"
         ? "proof_generating"
-        : "human_review_failed";
+        : isPrintReview
+          ? "cancelled"
+          : "human_review_failed";
 
-  // 1) Order status update — guard: yalnızca AI QC kuyruğundaki statüler
   const { data: updated, error: updateErr } = await admin
     .from("orders")
     .update({ status: nextStatus })
     .eq("id", body.orderId)
-    .in("status", [...AI_QC_ACTIVE_STATUSES])
+    .eq("status", fromStatus)
     .select("id, status")
     .single();
 
@@ -80,13 +114,29 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2) Order event audit
-  const eventType =
-    body.decision === "approve"
+  const eventType = isPrintReview
+    ? body.decision === "approve"
+      ? "print_review_approved"
+      : body.decision === "fix_and_proof"
+        ? "print_review_fix"
+        : "print_review_cancelled"
+    : body.decision === "approve"
       ? "qc_approved"
       : body.decision === "fix_and_proof"
         ? "qc_fixed_by_operator"
         : "qc_rejected";
+
+  const summary = isPrintReview
+    ? body.decision === "approve"
+      ? "Baskı öncesi onaylandı → üretime hazır"
+      : body.decision === "fix_and_proof"
+        ? "Baskı öncesi düzeltme → prova yeniden"
+        : "Baskı öncesi iptal → iade"
+    : body.decision === "approve"
+      ? "AI QC onaylandı → üretime hazır"
+      : body.decision === "fix_and_proof"
+        ? "Operatör düzeltecek → prova hazırlanıyor"
+        : "AI QC reddedildi → düzeltme istendi";
 
   await logOrderEvent(admin, {
     orderId: body.orderId,
@@ -94,22 +144,16 @@ export async function POST(req: Request) {
     statusAfter: nextStatus,
     actorId: auth.user.id,
     actorRole: auth.role === "admin" ? "admin" : "staff",
-    summary:
-      body.decision === "approve"
-        ? "AI QC onaylandı → üretime hazır"
-        : body.decision === "fix_and_proof"
-          ? "Operatör düzeltecek → prova hazırlanıyor"
-          : "AI QC reddedildi → düzeltme istendi",
+    summary,
     detail: {
       operator: auth.user.email ?? auth.user.id,
       note: body.note ?? null,
       next_status: nextStatus,
+      from_status: fromStatus,
     },
   });
 
-  // Sefa 19 May v68 (su borusu mail trigger):
-  // Reject ise müşteriye "düzeltme iste" maili — fire-and-forget
-  if (body.decision === "reject") {
+  if (body.decision === "reject" && !isPrintReview) {
     const { data: orderData } = await admin
       .from("orders")
       .select("user_id")

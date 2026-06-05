@@ -13,6 +13,9 @@ const QC_EVENT_TYPES = [
   "qc_approved",
   "qc_rejected",
   "qc_fixed_by_operator",
+  "print_review_approved",
+  "print_review_fix",
+  "print_review_cancelled",
 ] as const;
 
 async function computePeriodStats(
@@ -29,17 +32,17 @@ async function computePeriodStats(
     admin
       .from("order_events")
       .select("*", { count: "exact", head: true })
-      .eq("event_type", "qc_approved")
+      .in("event_type", ["qc_approved", "print_review_approved"])
       .gte("created_at", sinceIso),
     admin
       .from("order_events")
       .select("*", { count: "exact", head: true })
-      .eq("event_type", "qc_rejected")
+      .in("event_type", ["qc_rejected", "print_review_cancelled"])
       .gte("created_at", sinceIso),
     admin
       .from("order_events")
       .select("*", { count: "exact", head: true })
-      .eq("event_type", "qc_fixed_by_operator")
+      .in("event_type", ["qc_fixed_by_operator", "print_review_fix"])
       .gte("created_at", sinceIso),
     admin
       .from("design_quality_checks")
@@ -162,8 +165,18 @@ export async function GET(req: Request) {
 
   const history = rows.map((row) => {
     let decision: "approve" | "reject" | "fix_and_proof" = "approve";
-    if (row.event_type === "qc_rejected") decision = "reject";
-    if (row.event_type === "qc_fixed_by_operator") decision = "fix_and_proof";
+    if (
+      row.event_type === "qc_rejected" ||
+      row.event_type === "print_review_cancelled"
+    ) {
+      decision = "reject";
+    }
+    if (
+      row.event_type === "qc_fixed_by_operator" ||
+      row.event_type === "print_review_fix"
+    ) {
+      decision = "fix_and_proof";
+    }
 
     return {
       orderId: row.order_id,

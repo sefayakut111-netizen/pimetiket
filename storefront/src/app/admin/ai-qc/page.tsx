@@ -444,6 +444,7 @@ export default function AdminAiQcPage() {
 
   const activeIdx = filteredQueue.findIndex((q) => q.orderId === activeOrderId);
   const active = activeIdx >= 0 ? filteredQueue[activeIdx] : null;
+  const isPrintReview = active?.status === "operator_print_review";
 
   const decide = async (decision: Decision) => {
     if (!active || deciding) return;
@@ -932,6 +933,18 @@ export default function AdminAiQcPage() {
                             {VERDICT_LABELS[latestVerdict] ?? latestVerdict}
                           </span>
                         )}
+                        {q.status === "operator_print_review" && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center h-[18px] px-1.5 rounded-full text-[10px] font-semibold",
+                              isActive
+                                ? "bg-white/20 text-white"
+                                : "bg-mavi-soft text-mavi-koyu"
+                            )}
+                          >
+                            Baskı Öncesi
+                          </span>
+                        )}
                       </div>
                       <div className="font-semibold text-[13px] truncate">
                         {q.customerName}
@@ -980,6 +993,11 @@ export default function AdminAiQcPage() {
                   <h2 className="text-xl font-semibold mt-1">
                     {active.customerName}
                   </h2>
+                  {isPrintReview && (
+                    <span className="inline-flex mt-2 rounded-full bg-mavi-soft text-mavi-koyu text-[11px] font-semibold px-2 py-0.5">
+                      Baskı Öncesi Onay
+                    </span>
+                  )}
                   <div className="text-[13px] text-gri-700 mt-1">{product}</div>
                   <a
                     href={`/admin/siparisler/${active.orderId}#designs`}
@@ -1120,10 +1138,25 @@ export default function AdminAiQcPage() {
             <Card padding="p-6">
               <h3 className="font-semibold text-base mb-3">Operatör kararı</h3>
               <p className="text-[13px] text-gri-700 mb-3 leading-relaxed">
-                <strong>Onayla</strong> → baskıya (<code>ready_to_ship</code>).{" "}
-                <strong>Düzelt → Prova</strong> → operatör düzeltir (
-                <code>proof_generating</code>). <strong>Reddet</strong> → müşteriye
-                düzeltme bildirimi (<code>human_review_failed</code>).
+                {isPrintReview ? (
+                  <>
+                    <strong>Onayla → Baskıya</strong> (
+                    <code>ready_to_ship</code>).{" "}
+                    <strong>Düzelt → Prova</strong> → prova yeniden (
+                    <code>proof_generating</code>).{" "}
+                    <strong>İptal et</strong> → sipariş iptali (
+                    <code>cancelled</code>).
+                  </>
+                ) : (
+                  <>
+                    <strong>Onayla</strong> → baskıya (
+                    <code>ready_to_ship</code>).{" "}
+                    <strong>Düzelt → Prova</strong> → operatör düzeltir (
+                    <code>proof_generating</code>). <strong>Reddet</strong> →
+                    müşteriye düzeltme bildirimi (
+                    <code>human_review_failed</code>).
+                  </>
+                )}
               </p>
               <textarea
                 value={note}
@@ -1153,7 +1186,7 @@ export default function AdminAiQcPage() {
                   onClick={() => void decide("fix_and_proof")}
                   disabled={deciding}
                 >
-                   Düzelt → Prova hazırla
+                   {isPrintReview ? "Düzelt → Prova" : "Düzelt → Prova hazırla"}
                 </Button>
                 <Button
                   variant="secondary"
@@ -1161,7 +1194,7 @@ export default function AdminAiQcPage() {
                   disabled={deciding}
                   className="!text-kirmizi !ring-kirmizi/30 hover:!bg-kirmizi-soft/20"
                 >
-                   Reddet → Müşteriye geri
+                   {isPrintReview ? "İptal et (iade)" : "Reddet → Müşteriye geri"}
                 </Button>
                 {!hasDesignFile && (
                   <Button

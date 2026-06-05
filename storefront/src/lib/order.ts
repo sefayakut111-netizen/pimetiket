@@ -222,6 +222,7 @@ export const AI_QC_ACTIVE_STATUSES: readonly OrderStatus[] = [
   "human_review_failed",
   "proof_generating",
   "operator_review",
+  "operator_print_review",
 ];
 
 /** Admin sipariş listesi — tek veya çoklu durum filtresi URL'si */
