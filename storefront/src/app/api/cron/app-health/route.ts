@@ -4,7 +4,7 @@
  * Uygulama sağlığı smoke denetçisi — endpoint health + sipariş anomali.
  * auditor_runs / auditor_findings'e yazar (agent=app_health).
  *
- * Schedule: vercel.json → 0 6,18 * * * (günde 2 kez UTC)
+ * Schedule: vercel.json → 0 6 * * * (günlük 06:00 UTC — Hobby cron limiti)
  * Auth: CRON_SECRET Bearer
  *
  * SADECE okur + raporlar — state değiştirmez.

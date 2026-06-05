@@ -134,7 +134,7 @@
     },
     {
       "path": "/api/cron/app-health",
-      "schedule": "0 6,18 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }

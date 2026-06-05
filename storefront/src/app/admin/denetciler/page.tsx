@@ -87,7 +87,7 @@ const CRON_SCHEDULE: Record<string, { label: string; nextRun: () => string }> = 
     nextRun: () => nextWeeklyAt(5, 14, 0),
   },
   app_health: {
-    label: "Günde 2 kez · 06:00 & 18:00 UTC",
+    label: "Günlük 06:00 UTC",
     nextRun: () => nextDailyAt(6, 0),
   },
 };
