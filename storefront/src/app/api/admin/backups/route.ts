@@ -39,10 +39,14 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKey = process.env.R2_ACCESS_KEY_ID;
-  const secretKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET;
+  // Yedek bucket'ı storage'dan AYRI — R2_BACKUP_* öncelik, yoksa R2_* (geriye uyum)
+  const accountId =
+    process.env.R2_BACKUP_ACCOUNT_ID ?? process.env.R2_ACCOUNT_ID;
+  const accessKey =
+    process.env.R2_BACKUP_ACCESS_KEY_ID ?? process.env.R2_ACCESS_KEY_ID;
+  const secretKey =
+    process.env.R2_BACKUP_SECRET_ACCESS_KEY ?? process.env.R2_SECRET_ACCESS_KEY;
+  const bucket = process.env.R2_BACKUP_BUCKET ?? "pimetiket-backups";
 
   if (!accountId || !accessKey || !secretKey || !bucket) {
     return NextResponse.json({
@@ -93,14 +97,11 @@ async function listR2Backups(input: {
   prefix: string;
 }): Promise<BackupItem[]> {
   const { accountId, accessKey, secretKey, bucket, prefix } = input;
-  // Sefa 18 May v68 (yedek R2 403 fix):
-  // EU jurisdiction bucket'lar için endpoint'in .eu.r2.cloudflarestorage.com
-  // olması zorunlu (default endpoint silent 403 dönüyor, "Access Denied"
-  // hatası). R2_ENDPOINT env'inden host parse, yoksa EU default kullan.
-  const envEndpoint = process.env.R2_ENDPOINT;
+  // Backup bucket non-EU (standart) — account-based endpoint (workflow ile aynı)
+  const envEndpoint = process.env.R2_BACKUP_ENDPOINT;
   const host = envEndpoint
     ? new URL(envEndpoint).host
-    : `${accountId}.eu.r2.cloudflarestorage.com`;
+    : `${accountId}.r2.cloudflarestorage.com`;
   const path = `/${bucket}`;
   const query = `list-type=2&prefix=${encodeURIComponent(prefix)}&max-keys=500`;
   const url = `https://${host}${path}?${query}`;
