@@ -77,6 +77,7 @@ jobs:
         env:
           PGPASSWORD: ""
           STAMP: ${{ steps.date.outputs.stamp }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           # --no-owner + --no-acl portable backup üretir (restore başka projede çalışsın)
           # --schema=public + --schema=auth + --schema=storage (tüm önemli şemalar)
@@ -89,8 +90,6 @@ jobs:
           # SHA256 checksum
           sha256sum db-backup-${STAMP}.dump > db-backup-${STAMP}.sha256
           ls -lh db-backup-${STAMP}.dump db-backup-${STAMP}.sha256
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
       - name: Storage bucket snapshot (designs + review-photos + public-assets)
         env:
