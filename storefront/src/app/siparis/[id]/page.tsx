@@ -147,7 +147,7 @@ const COPY = {
         id: "baski_onay",
         label: "Baskı öncesi onay",
         currHint:
-          "Baskı öncesi son kontrolden geçiyor — onaylanınca üretime alınacak.",
+          "Baskı öncesi son kontrolden geçiyor — operatörümüz onaylayınca üretime alınacak.",
       },
       { id: "uretim", label: "Üretimde" },
       { id: "kargo", label: "Kargoda" },
@@ -253,7 +253,7 @@ const COPY = {
         id: "baski_onay",
         label: "Pre-print approval",
         currHint:
-          "Final pre-print check — will move to production once approved.",
+          "Final pre-print check — will move to production once our operator approves.",
       },
       { id: "uretim", label: "In production" },
       { id: "kargo", label: "In transit" },

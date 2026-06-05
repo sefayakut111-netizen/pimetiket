@@ -108,6 +108,6 @@ export async function POST(
     ok: true,
     newStatus: "operator_print_review",
     message:
-      "✅ Onayın alındı. Baskı öncesi son kontrolden geçiyor — kısa sürede üretime alınacak.",
+      "✅ Onayın alındı. Baskı öncesi son kontrolden geçiyor — operatörümüz onaylayınca üretime alınacak.",
   });
 }

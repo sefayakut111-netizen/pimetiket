@@ -136,7 +136,7 @@ export const tr: TranslationDict = {
     shapeSquareDesc: "Köşeli kenar",
     shapeCircle: "Yuvarlak",
     shapeCircleDesc: "Daire / oval",
-    shapeCustom: "Özel oran",
+    shapeCustom: "Özel form",
     shapeCustomDesc: "Dikdörtgen / bumper",
     shapeContour: "Kontur kesim",
     shapeContourDesc: "Pim karga silueti gibi",

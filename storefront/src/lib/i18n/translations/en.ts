@@ -136,7 +136,7 @@ export const en: TranslationDict = {
     shapeSquareDesc: "Cornered edge",
     shapeCircle: "Round",
     shapeCircleDesc: "Circle / oval",
-    shapeCustom: "Custom ratio",
+    shapeCustom: "Custom shape",
     shapeCustomDesc: "Rectangle / bumper",
     shapeContour: "Contour cut",
     shapeContourDesc: "Crow silhouette like Pim",

@@ -1393,7 +1393,7 @@ function EtiketPage() {
 
     const result = await addToCustomerCart({
       product: "etiket",
-      title: `Etiket · ${matName} + ${coatName}${
+      title: `Etiket · ${matName}${coating && coating !== "yok" ? ` + ${coatName}` : ""}${
         designCount > 1 ? ` (${designCount} tasarım)` : ""
       }${hasNoDesign ? " · 📎 Tasarım sonra yüklenecek" : ""}`,
       config: `${shapeLabel(shape, "tr")}${supportsCornerStyle(shape) ? ` (${cornerLabel(cornerStyle, "tr").toLowerCase()})` : ""} · ${width}×${height}mm · ${qty.toLocaleString("tr-TR")} adet · ${custName}${customSuffix}${formFactor === "rulo" ? ` · Sarım ${winding} · Göbek ${coreSize}mm · ${rollLabelCount} adet/rulo` : ""}${designCountSuffix}`,

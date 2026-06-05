@@ -115,7 +115,7 @@ import { buildSummaryItems } from "@/lib/order-summary";
 // Configuration data
 // ============================================================
 
-// Sıra: Kare → Yuvarlak → Özel oran → Kontur kesim
+// Sıra: Kare → Yuvarlak → Özel form → Kontur kesim
 // Tabaka modunda Kontur kesim GÖSTERİLMEZ (tabakada özel kontur yok).
 // Sefa kuralı (16 May denetim #1): name/desc i18n'a bağlandı —
 // SHAPES_DEFS, MATERIALS_DEFS, FINISHES_DEFS sadece id + non-text data,
@@ -1264,7 +1264,7 @@ function StickerPage() {
               </div>
               {shape === "ozel" && (
                 <div className="mt-3 px-3.5 py-2.5 rounded-lg bg-pim-mercan-tint/40 ring-1 ring-pim-mercan-soft text-[12.5px] text-lacivert leading-relaxed">
-                  <strong className="text-pim-mercan-koyu">Özel oran:</strong>{" "}
+                  <strong className="text-pim-mercan-koyu">Özel form:</strong>{" "}
                   Standart kare/yuvarlak yerine kendi oranını seç (60×80,
                   100×40, 25×255 mm). Köşe seçeneğiyle{" "}
                   <strong>bumper sticker / pill</strong> formuna ulaş.
@@ -2250,7 +2250,7 @@ function StickerPage() {
 
                 const result = await addToCustomerCart({
                   product: "sticker",
-                  title: `Sticker · ${matName} + ${finName}${titleSuffix}`,
+                  title: `Sticker · ${matName}${finish && finish !== "yok" ? ` + ${finName}` : ""}${titleSuffix}`,
                   config: isSayfaMode
                     ? `Sayfa · ${width}×${height}mm`
                     : `${shapeName} · ${width}×${height}mm · ${cutLabel}${cornerLabel}`,
