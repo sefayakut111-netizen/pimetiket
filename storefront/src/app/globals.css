@@ -393,6 +393,34 @@ select:-webkit-autofill:focus {
   animation: progress-indeterminate 1.5s ease-in-out infinite;
 }
 
+/* Açılış duyuru barı — CSS marquee (eski <marquee> değil) */
+@keyframes announce-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.announce-marquee-track {
+  animation: announce-marquee 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announce-marquee-track {
+    animation: none;
+    transform: none;
+    width: 100%;
+    justify-content: center;
+    padding-right: 0;
+  }
+
+  .announce-marquee-duplicate {
+    display: none;
+  }
+}
+
 /* Editör tuvali — poc.html .canvas-wrap kareli sarı/bej zemin */
 .editor-canvas-wrap {
   background-color: #f3efe6;

@@ -228,10 +228,10 @@ export function Footer() {
         </div>
         )}
 
-        {/* Brand + 4 nav columns */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8 mb-10">
+        {/* Brand (sol) + 4 nav kolonu (sağ hiza) */}
+        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between mb-10">
           {/* Brand column */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="md:max-w-[280px] shrink-0">
             <Link
               href="/"
               className="inline-flex items-center mb-3"
@@ -302,7 +302,7 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Link columns */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-x-10 md:gap-y-6 md:flex-1 md:max-w-[680px] md:ml-auto">
           {FOOTER_GROUPS.map((g) => (
             <div key={g.t}>
               {/* Sefa 17 May v27: sütun başlıkları mercan rengine
@@ -332,6 +332,7 @@ export function Footer() {
               </div>
             </div>
           ))}
+          </div>
         </div>
 
         {/* Trust strip — copyright (sol) + security badges (sağ)

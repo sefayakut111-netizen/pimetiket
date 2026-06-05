@@ -7,6 +7,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { AnnouncementBar } from "./AnnouncementBar";
 import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { AdminShell } from "./AdminShell";
@@ -46,6 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <ViewModeBanner />
+      <AnnouncementBar />
       <TopBar />
       <ReviewRequestBanner />
       <div id="main" tabIndex={-1} className="flex-1 outline-none">
