@@ -50,7 +50,9 @@ export async function GET(
 
   const { data: rows, error } = await admin
     .from("fason_mail_outbox")
-    .select("template_key, sent_at, status, created_at, last_error")
+    .select(
+      "template_key, sent_at, status, created_at, last_error, delivered_at, bounced_at, complaint_at, opened_at"
+    )
     .or(orParts.join(","))
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -59,18 +61,38 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const mails = ((rows ?? []) as Array<{
+  type MailRow = {
     template_key: string;
     sent_at: string | null;
     status: string;
     created_at: string | null;
     last_error: string | null;
-  }>).map((r) => ({
-    template: r.template_key,
-    sentAt: r.sent_at ?? r.created_at ?? new Date().toISOString(),
-    status: r.status,
-    lastError: r.last_error,
-  }));
+    delivered_at: string | null;
+    bounced_at: string | null;
+    complaint_at: string | null;
+    opened_at: string | null;
+  };
+
+  const mails = ((rows ?? []) as MailRow[]).map((r) => {
+    const effectiveStatus = r.bounced_at
+      ? "bounced"
+      : r.complaint_at
+        ? "complaint"
+        : r.delivered_at
+          ? "delivered"
+          : r.status;
+
+    return {
+      template: r.template_key,
+      sentAt: r.sent_at ?? r.created_at ?? new Date().toISOString(),
+      status: r.status,
+      effectiveStatus,
+      deliveredAt: r.delivered_at,
+      bouncedAt: r.bounced_at,
+      openedAt: r.opened_at,
+      lastError: r.last_error,
+    };
+  });
 
   return NextResponse.json({ mails });
 }

@@ -33,6 +33,18 @@ function escape(s: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+const FASON_KVKK_FOOTER = `
+    KVKK m.12 — Veri işleyici sıfatınızla:
+    aktarılan müşteri verileri ve tasarım dosyası yalnızca bu sipariş için kullanılır,
+    üretim sonrası en geç 30 gün içinde imha edilir, başkasına aktarılmaz.
+    Sözleşmesel yükümlülüklerinizi hatırlatırız.
+  `;
+
+const ADMIN_FOOTER = `
+    Bu mail Pim Etiket admin bildirim sisteminden gönderildi.
+    Bildirimi durdurmak için <code>ADMIN_NOTIFICATION_EMAIL</code> env'ini Vercel'den kaldır.
+  `;
+
 function shellHtml(title: string, body: string, footer: string): string {
   return `<!doctype html>
 <html lang="tr">
@@ -737,6 +749,109 @@ function renderAdminDailySummary(input: MailTemplateInput): MailRendered {
   return { subject, html: shellHtml(subject, body, footer), text };
 }
 
+// ============================================================
+// fason_assignment_cancelled — atama iptal bildirimi
+// ============================================================
+function renderFasonAssignmentCancelled(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const orderId = escape(p.order_id);
+  const fasonName = escape(p.fason_name ?? "");
+  const reason = escape(p.reason ?? "—");
+  const subject = `Sipariş ${orderId} ataması iptal edildi`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">Merhaba ${fasonName},</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      <strong>${orderId}</strong> numaralı baskı işi ataması iptal edilmiştir.
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Sebep: ${reason}
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Bu iş için aksiyon almanıza gerek yoktur. Yeni iş atandığında ayrıca bilgilendirileceksiniz.
+    </p>
+  `;
+
+  const text = `Sipariş ${orderId} ataması iptal edildi\n\nMerhaba ${fasonName},\n\n${orderId} numaralı baskı işi ataması iptal edilmiştir.\nSebep: ${reason}\n\nBu iş için aksiyon almanıza gerek yoktur.\n\nKVKK m.12 — veri işleyici yükümlülükleri geçerlidir.`;
+
+  return { subject, html: shellHtml(subject, body, FASON_KVKK_FOOTER), text };
+}
+
+// ============================================================
+// fason_deadline_reminder — teslim tarihi hatırlatması
+// ============================================================
+function renderFasonDeadlineReminder(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const orderId = escape(p.order_id);
+  const fasonName = escape(p.fason_name ?? "");
+  const due = escape(p.estimated_delivery ?? "yakında");
+  const token = typeof p.token === "string" ? p.token : "";
+  const linkBlock =
+    token.length > 0
+      ? `<div style="margin: 24px 0;">
+      <a href="${SITE_URL}/fason/${escape(token)}" style="display: inline-block; background: #1e293b; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        İşi aç →
+      </a>
+    </div>`
+      : "";
+
+  const subject = `Hatırlatma — Sipariş ${orderId} teslim tarihi yaklaşıyor (${due})`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">Merhaba ${fasonName},</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      <strong>${orderId}</strong> numaralı işin hedef teslim tarihi <strong>${due}</strong>.
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Henüz "kargoya verildi" olarak işaretlemediyseniz, lütfen durumu güncelleyin.
+    </p>
+    ${linkBlock}
+  `;
+
+  const linkText =
+    token.length > 0 ? `\n\nİşi aç: ${SITE_URL}/fason/${token}` : "";
+  const text = `Hatırlatma — Sipariş ${orderId}\n\nMerhaba ${fasonName},\n\nHedef teslim: ${due}\n\nDurumu güncelleyin.${linkText}\n\nKVKK m.12 — veri işleyici yükümlülükleri geçerlidir.`;
+
+  return { subject, html: shellHtml(subject, body, FASON_KVKK_FOOTER), text };
+}
+
+// ============================================================
+// admin_fason_status — partner durum güncellemesi → admin
+// ============================================================
+function renderAdminFasonStatus(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const orderId = escape(p.order_id);
+  const fasonName = escape(p.fason_name ?? "");
+  const action = escape(p.action_label ?? p.action ?? "");
+  const issueText =
+    typeof p.issue === "string" && p.issue.trim().length > 0
+      ? `<p style="font-size: 14px; line-height: 1.6; color: #b45309;">⚠️ Sorun: ${escape(p.issue)}</p>`
+      : "";
+  const adminLink = `${SITE_URL}/admin/fason`;
+
+  const subject = `Fason güncelleme — ${orderId}: ${action}`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px;">Partner durum güncellemesi</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      <strong>${fasonName}</strong> partneri <strong>${orderId}</strong> işini güncelledi:
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Yeni durum: <strong>${action}</strong>
+    </p>
+    ${issueText}
+    <div style="margin: 24px 0;">
+      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Partner panelini aç →
+      </a>
+    </div>
+  `;
+
+  const text = `Fason güncelleme — ${orderId}: ${action}\n\n${fasonName} partneri ${orderId} işini güncelledi.\nYeni durum: ${action}${typeof p.issue === "string" && p.issue.trim() ? `\nSorun: ${p.issue}` : ""}\n\n${adminLink}`;
+
+  return { subject, html: shellHtml(subject, body, ADMIN_FOOTER), text };
+}
+
 // Sefa 21 May v68 — Prerendered template bypass.
 // notifications.ts'in 10 müşteri mail helper'ı React Email render edip
 // outbox'a `_prerendered` key + payload.{subject,html,text} yazar.
@@ -755,6 +870,8 @@ const RENDERERS: Record<
   (input: MailTemplateInput) => MailRendered | null
 > = {
   fason_new_assignment: renderFasonNewAssignment,
+  fason_assignment_cancelled: renderFasonAssignmentCancelled,
+  fason_deadline_reminder: renderFasonDeadlineReminder,
   fason_partner_welcome: renderFasonPartnerWelcome,
   customer_in_production: renderCustomerInProduction,
   customer_shipped: renderCustomerShipped,
@@ -764,6 +881,7 @@ const RENDERERS: Record<
   customer_abandoned_cart: renderCustomerAbandonedCart,
   customer_review_request: renderCustomerReviewRequest,
   admin_new_order: renderAdminNewOrder,
+  admin_fason_status: renderAdminFasonStatus,
   admin_new_support_ticket: renderAdminNewSupportTicket,
   customer_support_ticket_received: renderCustomerSupportReceived,
   admin_daily_summary: renderAdminDailySummary,

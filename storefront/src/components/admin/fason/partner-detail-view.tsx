@@ -1292,6 +1292,9 @@ export function PartnerMailLog({ partnerId }: { partnerId: string }) {
       template: string;
       sentAt: string;
       status: string;
+      effectiveStatus: string;
+      deliveredAt?: string | null;
+      bouncedAt?: string | null;
       lastError?: string | null;
     }>
   >([]);
@@ -1307,14 +1310,20 @@ export function PartnerMailLog({ partnerId }: { partnerId: string }) {
   }, [partnerId]);
 
   const statusLabel = (status: string) => {
-    if (status === "sent" || status === "delivered") return "Gonderildi";
+    if (status === "delivered") return "Teslim edildi ✓";
+    if (status === "bounced") return "Geri döndü ✗";
+    if (status === "complaint") return "Spam işaretlendi";
+    if (status === "sent") return "Gönderildi (teslim bekleniyor)";
     if (status === "pending" || status === "sending") return "Bekliyor";
     if (status === "failed") return "Basarisiz";
     return status;
   };
 
   const statusClass = (status: string) => {
-    if (status === "sent" || status === "delivered") return "text-yesil";
+    if (status === "delivered") return "text-yesil";
+    if (status === "bounced") return "text-kirmizi";
+    if (status === "complaint") return "text-turuncu";
+    if (status === "sent") return "text-gri-500";
     if (status === "failed") return "text-kirmizi";
     return "text-gri-500";
   };
@@ -1334,8 +1343,8 @@ export function PartnerMailLog({ partnerId }: { partnerId: string }) {
             <li key={i} className="text-[11px] text-gri-600">
               <div className="flex justify-between gap-2">
                 <span>{m.template.replace(/_/g, " ")}</span>
-                <span className={`shrink-0 font-semibold ${statusClass(m.status)}`}>
-                  {statusLabel(m.status)}
+                <span className={`shrink-0 font-semibold ${statusClass(m.effectiveStatus ?? m.status)}`}>
+                  {statusLabel(m.effectiveStatus ?? m.status)}
                 </span>
               </div>
               <div className="flex justify-between gap-2 text-gri-400 mt-0.5">

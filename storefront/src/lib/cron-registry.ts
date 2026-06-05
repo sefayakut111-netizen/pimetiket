@@ -16,6 +16,7 @@ export const CRON_REGISTRY = [
   { name: "auditors-workflow", schedule: "0 5 * * *", label: "Denetçi: iş akışı" },
   { name: "auditors-finance", schedule: "0 6 * * *", label: "Denetçi: finans" },
   { name: "admin-daily-summary", schedule: "0 6 * * *", label: "Günlük özet" },
+  { name: "fason-deadline-reminder", schedule: "0 6 * * *", label: "Fason teslim hatırlatma" },
   { name: "auditors-daily-digest", schedule: "0 8 * * *", label: "Denetçi rapor" },
   { name: "auditors-ai_cost", schedule: "30 9 * * *", label: "Denetçi: AI maliyet" },
   { name: "auditors-compliance", schedule: "30 10 * * *", label: "Denetçi: uyumluluk" },

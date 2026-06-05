@@ -29,6 +29,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/cron/fason-deadline-reminder",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/auto-refund",
       "schedule": "0 2 * * *"
     },

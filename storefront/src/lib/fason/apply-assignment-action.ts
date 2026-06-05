@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { enqueueMail } from "@/lib/mail/enqueue";
 
 export type FasonAction =
   | "acknowledge"
@@ -45,6 +46,21 @@ const ACTION_TO_EVENT: Record<FasonAction, string> = {
   shipped: "fason_shipped",
   issue: "fason_issue_reported",
 };
+
+const ADMIN_FASON_ACTION_LABELS: Record<FasonAction, string> = {
+  acknowledge: "İşi aldı (onayladı)",
+  in_production: "Üretime başladı",
+  ready: "Üretim tamamlandı (hazır)",
+  shipped: "Kargoya verdi",
+  issue: "⚠️ Sorun bildirdi",
+};
+
+function getAdminNotificationEmails(): string[] {
+  return (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 const ACTION_TIMESTAMP_COLUMN: Record<FasonAction, string> = {
   acknowledge: "acknowledged_at",
@@ -272,6 +288,52 @@ export async function applyAssignmentAction(
       summary: "Sipariş kargoya verildi",
       detail: { via: opts.via ?? "fason_form" },
     });
+  }
+
+  const adminEmails = getAdminNotificationEmails();
+  if (adminEmails.length > 0) {
+    const { data: asgRow } = await admin
+      .from("order_assignments")
+      .select("fason_partner_id")
+      .eq("id", opts.assignmentId)
+      .maybeSingle();
+
+    let partnerName = "Partner";
+    if (asgRow) {
+      const { data: partnerRow } = await admin
+        .from("fason_partners")
+        .select("name")
+        .eq("id", (asgRow as { fason_partner_id: string }).fason_partner_id)
+        .maybeSingle();
+      partnerName =
+        (partnerRow as { name?: string } | null)?.name ?? partnerName;
+    }
+
+    const actionLabel = ADMIN_FASON_ACTION_LABELS[opts.action] ?? opts.action;
+    const issueDescription =
+      opts.action === "issue" &&
+      typeof opts.body.issue?.description === "string"
+        ? opts.body.issue.description.trim().slice(0, 500)
+        : undefined;
+
+    for (const to of adminEmails) {
+      await enqueueMail({
+        templateKey: "admin_fason_status",
+        to,
+        category: "admin",
+        targetType: "assignment",
+        targetId: opts.assignmentId,
+        payload: {
+          order_id: opts.orderId,
+          fason_name: partnerName,
+          action: opts.action,
+          action_label: actionLabel,
+          ...(issueDescription ? { issue: issueDescription } : {}),
+        },
+        idempotencyKey: `admin_fason:${opts.assignmentId}:${opts.action}:${to}`,
+        subject: `Fason güncelleme — ${opts.orderId}: ${actionLabel}`,
+      });
+    }
   }
 
   return { ok: true, newStatus: built.newStatus };
