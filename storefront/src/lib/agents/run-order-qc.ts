@@ -6,17 +6,14 @@
  *   2. Bu fonksiyon fire-and-forget çağrılır (PayTR "OK" yanıtını bekletmez)
  *   3. order_items'in tasarım dosyaları için QC agent çalışır
  *   4. Aggregate verdict'e göre order.status güncellenir:
- *      - all "iyi" → proof_generating (sonraki adım prova üretimi)
- *      - any "kotu" → human_review (admin /admin/ai-qc'da inceler)
- *      - mixed/normal → human_review (insan göz ister)
+ *      - verdict ne olursa olsun → proof_generating (AI rapor üretir, karar vermez)
+ *      - operatör baskı öncesi (operator_print_review) karar verir (FAZ 2)
  *
- * Kritik hata: human_review + order_event (paid'de takılma önlenir).
+ * Kritik hata: proof_generating + order_event (paid'de takılma önlenir).
  *
  * Sefa 20 May v68 (P1 #7 döngü guard):
  *   orders.qc_attempt_count >= QC_MAX_ATTEMPTS ise AI atlanır:
- *   status = operator_review (insan-only kuyruk). Sonsuz döngü
- *   senaryosu — müşteri bozuk dosya yükler, AI hep "kotu" der,
- *   admin reject, döngü başa — kırılır.
+ *   status = proof_generating (rapor/operatör akışı). Sonsuz döngü guard.
  */
 
 /** P1 #7: AI deneme limiti — bunu geçen sipariş insan-only kuyruğa düşer. */
@@ -65,13 +62,13 @@ async function recordQcFailureEscalation(
 ): Promise<void> {
   await admin
     .from("orders")
-    .update({ status: "human_review" })
+    .update({ status: "proof_generating" })
     .eq("id", orderId);
   await admin.from("order_events").insert([
     {
       order_id: orderId,
       event_type: "qc_pipeline_failure",
-      status_after: "human_review",
+      status_after: "proof_generating",
       actor_role: "system",
       summary,
       detail,
@@ -83,7 +80,7 @@ async function recordQcFailureEscalation(
  * Bir sipariş için tüm tasarım dosyalarının QC'sini çalıştırır,
  * audit log düşer, order.status'u günceller.
  *
- * Üst seviye hatalarda sipariş human_review'a alınır (paid'de takılmaz).
+ * Üst seviye hatalarda sipariş proof_generating'e alınır (paid'de takılmaz).
  */
 export async function runOrderDesignQC(
   admin: SupabaseClient,
@@ -118,7 +115,7 @@ async function runOrderDesignQCInner(
   orderId: string
 ): Promise<RunOrderQCResult> {
   // 0) P1 #7 — Sonsuz döngü guard: 3 attempt'tan sonra AI atlanır,
-  // sipariş insan-only kuyruğa düşer (operator_review).
+  // sipariş proof_generating'e düşer (operatör baskı öncesi yakalar).
   const { data: orderRow } = await admin
     .from("orders")
     .select("qc_attempt_count")
@@ -129,18 +126,17 @@ async function runOrderDesignQCInner(
       ?.qc_attempt_count ?? 0);
 
   if (currentAttempts >= QC_MAX_ATTEMPTS) {
-    // Escalate — AI'a gitmeden insan kuyruğuna at
     await admin
       .from("orders")
-      .update({ status: "operator_review" })
+      .update({ status: "proof_generating" })
       .eq("id", orderId);
     await admin.from("order_events").insert([
       {
         order_id: orderId,
         event_type: "qc_escalated_max_attempts",
-        status_after: "operator_review",
+        status_after: "proof_generating",
         actor_role: "system",
-        summary: `AI ${currentAttempts} kez çalıştı — insan kuyruğuna escalate edildi (sonsuz döngü guard).`,
+        summary: `AI ${currentAttempts} kez çalıştı — proof_generating'e escalate (sonsuz döngü guard).`,
         detail: { attempts: currentAttempts, max_attempts: QC_MAX_ATTEMPTS },
       },
     ]);
@@ -153,23 +149,22 @@ async function runOrderDesignQCInner(
   }
 
   // 0.5) P1 #8 — OpenAI circuit breaker. Son 10dk hata oranı eşiği geçtiyse
-  // AI'a hiç gitme, direkt human_review (insan kuyruğu). Müşteri "ödedim
-  // hiçbir şey olmuyor" senaryosu önlendi.
+  // AI'a hiç gitme, proof_generating (operatör baskı öncesi karar verir).
   const circuit = await isAiCircuitOpen(admin);
   if (circuit.open) {
     await admin
       .from("orders")
-      .update({ status: "human_review" })
+      .update({ status: "proof_generating" })
       .eq("id", orderId);
     await admin.from("order_events").insert([
       {
         order_id: orderId,
         event_type: "ai_circuit_open_fallback",
-        status_after: "human_review",
+        status_after: "proof_generating",
         actor_role: "system",
         summary: `AI circuit OPEN — son ${circuit.windowMin}dk hata oranı %${Math.round(
           circuit.failureRate * 100
-        )} (${circuit.errorRuns}/${circuit.totalRuns}). İnsan kuyruğuna fallback.`,
+        )} (${circuit.errorRuns}/${circuit.totalRuns}). proof_generating fallback.`,
         detail: { ...circuit },
       },
     ]);
@@ -391,9 +386,8 @@ async function runOrderDesignQCInner(
     }
   }
 
-  // 4) Aggregate karar — MVP müşteri akışı:
-  // Sadece QC agent hatası (error) insan gözüne gider.
-  // iyi / normal / kotu → proof_generating (uyarılar /onay'da gösterilir).
+  // 4) Aggregate karar — FAZ 2: AI rapor üretir, akışı durdurmaz.
+  // verdict ne olursa olsun proof_generating; uyarılar operatör baskı öncesi görülür.
   const needsHumanReview =
     verdictCounts.error > 0 || verdictCounts.kotu > 0;
   const hasAnyVerdict =
@@ -431,8 +425,7 @@ async function runOrderDesignQCInner(
 
   // 5) Order status update + P1 #7 attempt counter increment
   const nextAttemptCount = currentAttempts + 1;
-  const nextStatus =
-    aggregateVerdict === "ready_to_proof" ? "proof_generating" : "human_review";
+  const nextStatus = "proof_generating";
 
   const { error: statusUpdateErr } = await admin
     .from("orders")

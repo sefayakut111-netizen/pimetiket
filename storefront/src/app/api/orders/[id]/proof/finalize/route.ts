@@ -4,7 +4,7 @@
  * Sefa 19 May v68 (Migration 059):
  * Müşteri tüm itemleri onayladığında çağrılır (frontend allApproved=true
  * görünce). fn_finalize_proof RPC atomic state geçişi yapar:
- *   orders.status: proof_pending → proof_approved
+ *   orders.status: proof_pending → proof_approved → operator_print_review (FAZ 1b)
  *
  * RPC fail koşulları (jsonb.ok=false döner):
  *   - pending_items: hala approved olmayan item var
@@ -77,26 +77,37 @@ export async function POST(
   //   console.error("[proof/finalize] mail error:", err)
   // );
 
+  const adminClient = createAdminClient();
+  const { error: reviewErr } = await adminClient
+    .from("orders")
+    .update({ status: "operator_print_review" })
+    .eq("id", orderId)
+    .eq("status", "proof_approved");
+
+  if (reviewErr) {
+    console.error(
+      "[proof/finalize] operator_print_review update failed:",
+      reviewErr
+    );
+    return NextResponse.json(
+      { ok: false, error: "status_update_failed", detail: reviewErr.message },
+      { status: 500 }
+    );
+  }
+
   void generatePrintReadyForOrder(orderId)
-    .then(async ({ generated, errors }) => {
+    .then(({ errors }) => {
       if (errors.length > 0) {
         console.warn("[proof/finalize] print-ready partial:", errors);
       }
-      if (generated > 0) {
-        const admin = createAdminClient();
-        await admin
-          .from("orders")
-          .update({ status: "ready_to_ship" })
-          .eq("id", orderId)
-          .eq("status", "proof_approved");
-      }
+      // status update yok — operator_print_review'de kalır, operatör onaylayacak
     })
     .catch((err) => console.error("[proof/finalize] print-ready:", err));
 
   return NextResponse.json({
     ok: true,
-    newStatus: result.new_status,
+    newStatus: "operator_print_review",
     message:
-      "✅ Onayın alındı. Üretime aldık — ~5 iş günü içinde kargoda olacak.",
+      "✅ Onayın alındı. Baskı öncesi son kontrolden geçiyor — kısa sürede üretime alınacak.",
   });
 }
