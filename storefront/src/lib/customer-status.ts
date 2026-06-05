@@ -26,6 +26,7 @@ export type CustomerStatusGroup =
   | "reviewing"
   | "proof_generating"
   | "proof_pending"
+  | "pre_print_approval"
   | "in_production"
   | "shipped"
   | "delivered"
@@ -62,6 +63,7 @@ export interface CustomerStatusInfo {
  *   - qc_*, operator_review, human_review*, proof_approved öncesi → "İnceleniyor"
  *   - proof_generating → "Baskı provası hazırlanıyor" (5dk SLA)
  *   - proof_pending → "Onayını bekliyoruz" (CTA: /onay)
+ *   - operator_print_review → "Baskı öncesi onay" (operatör son kontrol)
  *   - proof_approved, ready_to_ship, fason_assigned, in_production → "Üretimde"
  *   - shipped → "Kargoda"
  *   - delivered → "Teslim edildi"
@@ -158,7 +160,29 @@ export function getCustomerStatusInfo(
         group: "proof_pending",
       };
     case "proof_approved":
+      return {
+        label: "Onayın alındı",
+        labelEn: "Approval received",
+        bg: "bg-gri-100",
+        color: "text-lacivert",
+        hint: "Baskı öncesi son kontrole geçiyor",
+        hintEn: "Moving to final pre-print check",
+        pimPose: "happy",
+        phase: 2,
+        group: "pre_print_approval",
+      };
     case "operator_print_review":
+      return {
+        label: "Baskı öncesi onay",
+        labelEn: "Pre-print approval",
+        bg: "bg-mavi-soft",
+        color: "text-mavi-koyu",
+        hint: "Operatör baskı öncesi son kontrolü yapıyor",
+        hintEn: "Final pre-print check in progress",
+        pimPose: "inspect",
+        phase: 3,
+        group: "pre_print_approval",
+      };
     case "ready_to_ship":
     case "fason_assigned":
     case "in_production":
@@ -240,6 +264,11 @@ export const CUSTOMER_STATUS_FILTER_GROUPS: Array<{
   { id: "awaiting_upload", labelTr: "Tasarım bekleniyor", labelEn: "Design needed" },
   { id: "reviewing", labelTr: "İnceleniyor", labelEn: "Reviewing" },
   { id: "proof_pending", labelTr: "Onayını bekliyoruz", labelEn: "Pending approval" },
+  {
+    id: "pre_print_approval",
+    labelTr: "Baskı öncesi onay",
+    labelEn: "Pre-print approval",
+  },
   { id: "in_production", labelTr: "Üretimde", labelEn: "In production" },
   { id: "shipped", labelTr: "Kargoda", labelEn: "Shipping" },
   { id: "delivered", labelTr: "Teslim edildi", labelEn: "Delivered" },

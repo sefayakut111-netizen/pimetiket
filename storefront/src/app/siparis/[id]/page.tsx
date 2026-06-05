@@ -137,12 +137,18 @@ const COPY = {
       { id: "konfigure", label: "Konfigüre" },
       { id: "odeme", label: "Ödendi" },
       { id: "dosya", label: "Dosya yüklendi" },
-      // Sefa 22 May v68: "AI kontrol" → "Yapay zekâ kontrolü"
-      // (sans-serif font'larda büyük "I" ve küçük "l" karışıyordu —
-      // ekranda "Al kontrol" gibi okunuyordu)
       { id: "ai", label: "Yapay zekâ kontrolü" },
-      { id: "operator", label: "Operatör onayı" },
-      { id: "prova", label: "Prova bekleniyor" },
+      {
+        id: "prova_hazir",
+        label: "Prova hazırlanıyor",
+      },
+      { id: "prova_onay", label: "Prova onayın" },
+      {
+        id: "baski_onay",
+        label: "Baskı öncesi onay",
+        currHint:
+          "Baskı öncesi son kontrolden geçiyor — onaylanınca üretime alınacak.",
+      },
       { id: "uretim", label: "Üretimde" },
       { id: "kargo", label: "Kargoda" },
       { id: "teslim", label: "Teslim edildi" },
@@ -241,8 +247,14 @@ const COPY = {
       { id: "odeme", label: "Paid" },
       { id: "dosya", label: "File uploaded" },
       { id: "ai", label: "AI check" },
-      { id: "operator", label: "Operator approval" },
-      { id: "prova", label: "Awaiting proof" },
+      { id: "prova_hazir", label: "Preparing proof" },
+      { id: "prova_onay", label: "Your proof approval" },
+      {
+        id: "baski_onay",
+        label: "Pre-print approval",
+        currHint:
+          "Final pre-print check — will move to production once approved.",
+      },
       { id: "uretim", label: "In production" },
       { id: "kargo", label: "In transit" },
       { id: "teslim", label: "Delivered" },
@@ -273,13 +285,12 @@ function statusToPhaseIndex(status: OrderStatus): number {
       return 6;
     case "ready_to_ship":
     case "fason_assigned":
-      return 6;
     case "in_production":
-      return 6;
-    case "shipped":
       return 7;
-    case "delivered":
+    case "shipped":
       return 8;
+    case "delivered":
+      return 9;
     case "cancelled":
       return -1;
     default:
@@ -678,7 +689,9 @@ export default function SiparisDetailPage({
     order.status === "operator_review" ||
     order.status === "proof_generating" ||
     order.status === "proof_pending" ||
-    order.status === "proof_validating";
+    order.status === "proof_validating" ||
+    order.status === "proof_approved" ||
+    order.status === "operator_print_review";
 
   const deliveryDate = order.estimatedDelivery
     ? new Date(order.estimatedDelivery).toLocaleDateString(c.locale, {
@@ -855,7 +868,9 @@ export default function SiparisDetailPage({
                         </div>
                         {state === "curr" && !isCancelled && (
                           <div className="text-[13px] text-gri-700 mt-0.5">
-                            {c.nextStepHint}
+                            {"currHint" in p && p.currHint
+                              ? p.currHint
+                              : c.nextStepHint}
                           </div>
                         )}
                       </div>

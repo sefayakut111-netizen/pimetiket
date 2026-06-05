@@ -52,6 +52,7 @@ const COPY = {
     ],
     statusInControl: "Kontrolde",
     statusProofPending: "Onay bekliyor",
+    statusPrePrintApproval: "Baskı öncesi onay",
     statusInProduction: "Üretimde",
     statusShipped: "Kargoda",
     statusDelivered: "Teslim edildi",
@@ -114,6 +115,7 @@ const COPY = {
     ],
     statusInControl: "In review",
     statusProofPending: "Awaiting approval",
+    statusPrePrintApproval: "Pre-print approval",
     statusInProduction: "In production",
     statusShipped: "In transit",
     statusDelivered: "Delivered",
@@ -185,6 +187,7 @@ function statusToPhaseIndex(status: OrderStatus): number {
       return 4;
     case "proof_approved":
     case "operator_print_review":
+      return 4;
     case "ready_to_ship":
     case "fason_assigned":
     case "in_production":
@@ -415,12 +418,18 @@ function statusMeta(
         pim: "inspect",
       };
     case "proof_approved":
-    case "operator_print_review":
       return {
-        label: "Onayın alındı — üretime geçildi",
+        label: "Onayın alındı",
         color: "var(--color-yesil)",
         soft: "var(--color-yesil-soft)",
         pim: "happy",
+      };
+    case "operator_print_review":
+      return {
+        label: c.statusPrePrintApproval,
+        color: "var(--color-mavi-koyu)",
+        soft: "var(--color-mavi-soft)",
+        pim: "inspect",
       };
     case "in_production":
       return {
