@@ -2,8 +2,9 @@
 -- Imza Mig 141 ile doğrulandı: (text, numeric, uuid, text)
 -- fn_apply_coupon_admin + fn_validate_coupon DOKUNULMADI.
 
-REVOKE EXECUTE ON FUNCTION public.fn_apply_coupon(text, numeric, uuid, text)
-  FROM authenticated, anon;
+REVOKE ALL ON FUNCTION public.fn_apply_coupon(text, numeric, uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_apply_coupon(text, numeric, uuid, text) FROM anon;
+REVOKE ALL ON FUNCTION public.fn_apply_coupon(text, numeric, uuid, text) FROM authenticated;
 
 COMMENT ON FUNCTION public.fn_apply_coupon(text, numeric, uuid, text) IS
   'DEAD — kullanılmıyor. Aktif yol: fn_apply_coupon_admin (callback). Yetki revoke edildi (güvenlik).';
