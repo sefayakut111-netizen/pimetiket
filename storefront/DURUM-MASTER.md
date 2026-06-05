@@ -1,7 +1,23 @@
 # DURUM-MASTER — Pencereler Arası Tek Referans
 
-> Son güncelleme: 2026-05-31 · Birden fazla Cursor/Claude penceresinde yürüyen işin tek konsolide görünümü.
+> Son güncelleme: 2026-06-04 (canlıya alım maratonu) · Birden fazla Cursor/Claude penceresinde yürüyen işin tek konsolide görünümü.
 > Git kökü: `pim-etiket/core` · App: `storefront` · Remote: `github.com/sefayakut111-netizen/pimetiket` (push → Vercel auto-deploy)
+
+---
+
+## 🚀 4 HAZİRAN — CANLIYA ALIM MARATONU (en güncel)
+
+**Canlı version:** `3ae9942` · **21 commit** bu oturumda · Detay: `docs/SESSION-LOG-2026-06-04.md` + `docs/CANLIYA-ALIM-ANALIZ-RAPORU-04-HAZ-2026.md`
+
+**Kapanan:** 5 P0 + 8 P1 + 5 P2 + 3 yeni özellik (blog inline resim, blog markdown, GA4 realtime kart)
+
+**Kod tarafı %100 hazır. Launch için kalan:**
+- 🔴 **P0 #4 PayTR 1₺ canlı test** — PayTR cevabı bekleniyor (tek blocker)
+- 👤 Sefa manuel (~45 dk): Mobil FAB/CTA QA · Blog kapak yükle · PWA telefon testi · GA4 SA incognito ekle · **SA key rotate (güvenlik)**
+
+**Analytics:** GA4 ✅ (2.5K event) · PostHog ✅ · GSC sitemap ✅ Success · IndexNow ✅ 44 URL · Admin trafik graceful + realtime kart (SA eklenince canlı)
+
+**Etiket:** 29 Haz açılış (ETIKET_ENABLED=false) — [[project-etiket-acilis-29haz]]
 
 ---
 

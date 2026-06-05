@@ -248,6 +248,8 @@ Sefa manuel olarak https://pagespeed.web.dev üzerinden 3 URL'yi test etti. Sonu
 
 *\* yapilandir SEO 69 = "Sayfanın dizine eklenmesi engellenmiş" — **✅ BİLİNÇLİ karar doğrulandı 4 Haz, Claude curl**: `<meta name="robots" content="noindex, follow">` mevcut. Konfigüratör search'te istenmez (kullanıcı /sticker'dan girer). Aksiyon: yok.*
 
+> **Admin trafik paneli graceful (5 Haz, commit `db1c7cc`):** SA GA4 property'ye eklenmemiş olsa bile panel ham PERMISSION_DENIED göstermez; yeşil "trafik toplanıyor" + GA4 & PostHog link kartları + katlanabilir Viewer kurulum notu gösterir. SA'ya Viewer verilince otomatik embedded'a geçer. DOM doğrulandı. GA4 client tracking (G-ZCN6RVXCEF) zaten çalışıyor (2.5K event/7gün). 503 = lokal adblock extension (gerçek kullanıcı etkilenmez).
+
 **🔴 Ortak ana sorun — LCP TÜM SAYFALARDA KIRMIZI (4.4-5.6 s):**
 
 LCP hedefi <2.5s yeşil, 2.5-4s sarı, >4s kırmızı. 3 sayfada da >4s. Google CWV ranking için en önemli sinyal. Tahmin (Claude) **render-blocking + hero priority + font preload eksik** kombinasyonu.
@@ -633,7 +635,7 @@ Tüm sayfalar kodda mevcut; canlı rotalar 200 döndürüyor (örneklem):
 
 | # | Bulgu |
 |---|-------|
-| 7 | GA4 Real-time + GSC sitemap submit doğrulama |
+| ~~7~~ | ~~GA4 Real-time + GSC sitemap submit~~ → ✅ DOĞRULANDI (5 Haz Claude Chrome): GA4 Real-time event alıyor (grafik çubukları + direct user), PostHog 200, GSC sitemap Success (3 Haz, 42 sayfa). **GA4 collect 503 = lokal Chrome extension** (manuel fetch 204 + Real-time çubuk kanıtı, gerçek kullanıcı etkilenmez). GA4 Data API admin dashboard SA engeli → post-launch P2 |
 | ~~8~~ | ~~`/terim-sozlugu` sitemap kararı~~ → ✅ ÇÖZÜLDÜ commit `0f27013` |
 | ~~9~~ | ~~PNG favicon + apple-touch + PWA icons~~ → ✅ ÇÖZÜLDÜ commit `18b7347` (favicon.ico + 4 PNG + sharp script `scripts/generate-icons.mjs`) |
 | 10 | Mobil FAB + sticky CTA QA |
