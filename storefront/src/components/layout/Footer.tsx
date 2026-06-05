@@ -290,6 +290,17 @@ export function Footer() {
                 WhatsApp · 0545 699 90 63
               </span>
             </a>
+            {/* Sefa 5 Haz: Telefon — aranabilir hat (WhatsApp ile aynı numara) */}
+            <a
+              href="tel:+905456999063"
+              className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3.5 py-2 transition-colors group"
+              aria-label="Telefon: 0545 699 90 63"
+            >
+              <Icon.Phone size={16} className="text-white/80" />
+              <span className="text-[13px] font-semibold text-white/90 group-hover:text-white">
+                Telefon · 0545 699 90 63
+              </span>
+            </a>
           </div>
 
           {/* Link columns */}

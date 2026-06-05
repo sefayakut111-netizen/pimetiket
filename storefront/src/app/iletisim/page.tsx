@@ -8,7 +8,7 @@
  * - Yanıt saatleri kaldırıldı, yerine sadece sabit "Mesai saatleri"
  * - Harita placeholder kaldırıldı
  *
- * Sonuç: HERO + 4 kart + Mesai saatleri + SSS link section'ları.
+ * Sonuç: HERO + 5 kart + Mesai saatleri + SSS link section'ları.
  */
 
 "use client";
@@ -32,6 +32,9 @@ const COPY = {
     whatsappTitle: "WhatsApp",
     whatsappDesc:
       "Hızlı soru, sipariş takibi ve toplu sipariş için WhatsApp hattımızdan yaz.",
+    phoneTitle: "Telefon",
+    phoneDesc:
+      "Mesai saatlerinde bizi doğrudan arayabilirsin. Hafta içi 09:00 – 18:00.",
     emailTitle: "E-posta",
     emailDesc:
       "Detaylı sorular, teklif istekleri, kurumsal işbirliği ve numune talepleri için.",
@@ -59,6 +62,9 @@ const COPY = {
     whatsappTitle: "WhatsApp",
     whatsappDesc:
       "Quick questions, order tracking and bulk orders — message us on WhatsApp.",
+    phoneTitle: "Phone",
+    phoneDesc:
+      "Call us directly during office hours. Weekdays 09:00 – 18:00.",
     emailTitle: "Email",
     emailDesc:
       "Detailed questions, RFQs, corporate partnerships and sample requests.",
@@ -108,6 +114,14 @@ export default function IletisimPage() {
       accent: "bg-yesil-soft text-yesil",
     },
     {
+      icon: <Icon.Phone size={20} />,
+      title: c.phoneTitle,
+      desc: c.phoneDesc,
+      cta: "0545 699 90 63",
+      href: "tel:+905456999063",
+      accent: "bg-mavi-soft text-mavi-koyu",
+    },
+    {
       icon: <Icon.Sparkle size={20} />,
       title: c.emailTitle,
       desc: c.emailDesc,
@@ -151,10 +165,10 @@ export default function IletisimPage() {
         </div>
       </section>
 
-      {/* 4 İLETİŞİM KANALI — Pim Sohbet, WhatsApp, E-posta, Destek */}
+      {/* 5 İLETİŞİM KANALI — Pim Sohbet, WhatsApp, Telefon, E-posta, Destek */}
       <section className="py-6 md:py-8">
         <div className="mx-auto max-w-[1100px] px-4 md:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {CONTACT_METHODS.map((m) => (
               <Card key={m.title} padding="p-6 md:p-7">
                 <div
