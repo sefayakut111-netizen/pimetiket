@@ -28,6 +28,7 @@ import { DataHygieneAuditor } from "@/lib/agents/auditors/data-hygiene";
 import { CustomerHealthAuditor } from "@/lib/agents/auditors/customer-health";
 import { SeoAuditor } from "@/lib/agents/auditors/seo";
 import { BrandAuditor } from "@/lib/agents/auditors/brand";
+import { AppHealthAuditor } from "@/lib/agents/auditors/app-health";
 
 const AUDITOR_FACTORIES: Record<
   AuditorName,
@@ -42,6 +43,7 @@ const AUDITOR_FACTORIES: Record<
   customer_health: () => new CustomerHealthAuditor(),
   seo: () => new SeoAuditor(),
   brand: () => new BrandAuditor(),
+  app_health: () => new AppHealthAuditor(),
 };
 
 interface AuditorResult {

@@ -32,6 +32,7 @@ import { DataHygieneAuditor } from "@/lib/agents/auditors/data-hygiene";
 import { CustomerHealthAuditor } from "@/lib/agents/auditors/customer-health";
 import { SeoAuditor } from "@/lib/agents/auditors/seo";
 import { BrandAuditor } from "@/lib/agents/auditors/brand";
+import { AppHealthAuditor } from "@/lib/agents/auditors/app-health";
 
 // Auditor name → factory function
 const AUDITOR_FACTORIES: Partial<
@@ -46,6 +47,7 @@ const AUDITOR_FACTORIES: Partial<
   customer_health: () => new CustomerHealthAuditor(),
   seo: () => new SeoAuditor(),
   brand: () => new BrandAuditor(),
+  app_health: () => new AppHealthAuditor(),
 };
 
 export async function GET(

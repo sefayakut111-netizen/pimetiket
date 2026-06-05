@@ -51,6 +51,8 @@ export interface RunOptions {
   triggerType: TriggerType;
   /** Cron schedule ismi veya user_id (manuel). */
   triggeredBy?: string;
+  /** true ise sendAuditorReport atlanır (özel mail akışı için). */
+  suppressReportMail?: boolean;
 }
 
 export abstract class AuditorBase {
@@ -238,7 +240,7 @@ export abstract class AuditorBase {
     const isManual = opts.triggerType === "manual";
     const shouldSendReport = hasIssue || isManual;
 
-    if (shouldSendReport) {
+    if (shouldSendReport && !opts.suppressReportMail) {
       void sendAuditorReport({
         auditorName: this.auditorName,
         runId,

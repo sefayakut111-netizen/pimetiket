@@ -30,6 +30,7 @@ export const CRON_REGISTRY = [
   { name: "poll-shipments", schedule: "0 9 * * *", label: "Kargo takip" },
   { name: "auditors-data_hygiene", schedule: "0 3 * * 0", label: "Denetçi: veri hijyeni" },
   { name: "auditors-customer_health", schedule: "0 10 * * 1", label: "Denetçi: müşteri sağlığı" },
+  { name: "app-health", schedule: "0 6,18 * * *", label: "App health smoke" },
 ] as const;
 
 export type CronRegistryName = (typeof CRON_REGISTRY)[number]["name"];

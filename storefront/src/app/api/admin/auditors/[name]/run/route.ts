@@ -25,6 +25,7 @@ import { DataHygieneAuditor } from "@/lib/agents/auditors/data-hygiene";
 import { CustomerHealthAuditor } from "@/lib/agents/auditors/customer-health";
 import { SeoAuditor } from "@/lib/agents/auditors/seo";
 import { BrandAuditor } from "@/lib/agents/auditors/brand";
+import { AppHealthAuditor } from "@/lib/agents/auditors/app-health";
 
 const AUDITOR_FACTORIES: Partial<
   Record<AuditorName, () => { run: (opts: { triggerType: "manual"; triggeredBy: string }) => Promise<string> }>
@@ -38,6 +39,7 @@ const AUDITOR_FACTORIES: Partial<
   customer_health: () => new CustomerHealthAuditor(),
   seo: () => new SeoAuditor(),
   brand: () => new BrandAuditor(),
+  app_health: () => new AppHealthAuditor(),
 };
 
 export async function POST(

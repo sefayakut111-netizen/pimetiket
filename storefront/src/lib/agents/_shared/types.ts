@@ -20,6 +20,7 @@ export const AUDITOR_NAMES = [
   "seo",             // 📈 SEO / Performance
   "ai_cost",         // 💸 AI Maliyet
   "brand",           // 🎨 Marka Tutarlılığı
+  "app_health",      // 🩺 Uygulama Sağlığı (smoke + anomali)
 ] as const;
 
 export type AuditorName = (typeof AUDITOR_NAMES)[number];
@@ -35,6 +36,7 @@ export const AUDITOR_LABELS: Record<AuditorName, string> = {
   seo: "SEO / Performance",
   ai_cost: "AI Maliyet",
   brand: "Marka Tutarlılığı",
+  app_health: "Uygulama Sağlığı",
 };
 
 /** Emoji (kart başlığı için). */
@@ -48,6 +50,7 @@ export const AUDITOR_EMOJI: Record<AuditorName, string> = {
   seo: "📈",
   ai_cost: "💸",
   brand: "🎨",
+  app_health: "🩺",
 };
 
 // ============================================================

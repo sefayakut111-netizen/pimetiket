@@ -131,6 +131,10 @@
     {
       "path": "/api/cron/seo-indexing",
       "schedule": "30 11 * * 3"
+    },
+    {
+      "path": "/api/cron/app-health",
+      "schedule": "0 6,18 * * *"
     }
   ]
 }
