@@ -60,6 +60,8 @@ jobs:
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
+          # pg17 binary'lerini PATH'e ekle (sonraki step'ler pg_dump 17 kullansın)
+          echo "/usr/lib/postgresql/17/bin" >> $GITHUB_PATH
 
       - name: Verify env secrets
         run: |
@@ -88,7 +90,13 @@ jobs:
         run: |
           # --no-owner + --no-acl portable backup üretir (restore başka projede çalışsın)
           # --schema=public + --schema=auth + --schema=storage (tüm önemli şemalar)
-          pg_dump "$SUPABASE_DB_URL" \
+          # pg_dump 17 tam yol — PATH'teki preinstalled 16'yı bypass et
+          PG_DUMP=/usr/lib/postgresql/17/bin/pg_dump
+          # Fallback: tam yol yoksa pg_dump'ı PATH'ten bul (ama 17 olmalı)
+          [ -x "$PG_DUMP" ] || PG_DUMP=$(command -v pg_dump)
+          echo "pg_dump path: $PG_DUMP"
+          "$PG_DUMP" --version   # teşhis — 17.x görmeli
+          "$PG_DUMP" "$SUPABASE_DB_URL" \
             --no-owner \
             --no-acl \
             --format=custom \
