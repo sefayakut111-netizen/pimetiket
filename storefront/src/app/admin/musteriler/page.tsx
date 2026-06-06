@@ -121,6 +121,7 @@ export default function AdminMusterilerPage() {
   const toast = useToast();
   const [customers, setCustomers] = useState<AdminCustomerWithSegment[]>([]);
   const [kpi, setKpi] = useState<KPI | null>(null);
+  const [dataSource, setDataSource] = useState<"view" | "fallback">("view");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
@@ -150,6 +151,7 @@ export default function AdminMusterilerPage() {
           ok?: boolean;
           customers?: AdminCustomerWithSegment[];
           kpi?: KPI;
+          source?: "view" | "fallback";
           error?: string;
         }) => {
           if (cancelled) return;
@@ -160,6 +162,7 @@ export default function AdminMusterilerPage() {
           setError(null);
           setCustomers(j.customers);
           if (j.kpi) setKpi(j.kpi);
+          setDataSource(j.source === "fallback" ? "fallback" : "view");
         }
       )
       .catch((err) => {
@@ -262,7 +265,7 @@ export default function AdminMusterilerPage() {
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
             {kpi
-              ? `${kpi.total} kayıtlı kullanıcı · ${repeatPlusVip} tekrar eden (${repeatRate}%) · ${fmt(kpi.total_revenue)} ₺ toplam ciro`
+              ? `${kpi.total} müşteri · ${repeatPlusVip} tekrar eden (${repeatRate}%) · ${fmt(kpi.total_revenue)} ₺ toplam ciro`
               : "—"}
           </p>
         </div>
@@ -271,7 +274,7 @@ export default function AdminMusterilerPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
             {
-              label: "Toplam kayıtlı",
+              label: "Toplam müşteri",
               value: kpi?.total ?? 0,
               accent: "text-pim-mercan",
               bg: "bg-pim-mercan-tint",
@@ -427,6 +430,32 @@ export default function AdminMusterilerPage() {
         {/* Error — Sefa 18 May v68: Friendly mesaj + hint
             Sefa 21 May v68: Diagnostic endpoint link eklendi — kullanıcı
             tıklayınca tek istek ile root cause görür (auth/env/view). */}
+        {dataSource === "fallback" && !error && (
+          <Card padding="p-4" className="mb-5 !bg-saman/10 ring-saman/30">
+            <div className="flex items-start gap-3 text-[13px] text-saman-koyu">
+              <span className="text-lg shrink-0" aria-hidden>
+                ⚠
+              </span>
+              <div>
+                <strong className="block mb-0.5">Yedek modda</strong>
+                <p className="text-gri-700 leading-relaxed">
+                  Müşteri listesi <code>v_admin_customers</code> view yerine
+                  yedek kaynaktan derleniyor — view sorunu olabilir. Sayılar
+                  dashboard ile uyumlu (role=customer).
+                </p>
+                <a
+                  href="/api/admin/customers/diagnostic"
+                  target="_blank"
+                  rel="noopener"
+                  className="mt-2 inline-block text-[12px] font-semibold text-pim-mercan hover:underline"
+                >
+                  Root cause (diagnostic) →
+                </a>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {error && (
           <Card padding="p-4" className="mb-5 !bg-kirmizi/5 ring-kirmizi/20">
             <div className="flex items-start gap-3">

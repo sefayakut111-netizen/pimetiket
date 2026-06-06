@@ -40,7 +40,10 @@ export async function fetchAdminCustomerRows(
     loyaltyRes,
     subscribersRes,
   ] = await Promise.all([
-    admin.from("profiles").select("id, display_name, phone, invoice_type"),
+    admin
+      .from("profiles")
+      .select("id, display_name, phone, invoice_type")
+      .eq("role", "customer"),
     admin
       .from("orders")
       .select("id, user_id, total, status, created_at")
@@ -169,8 +172,9 @@ export async function fetchAdminCustomerRows(
   const rows: AdminCustomerRow[] = [];
 
   for (const u of authUsers) {
-    seen.add(u.id);
     const profile = profileMap.get(u.id);
+    if (!profile) continue;
+    seen.add(u.id);
     const agg = orderAgg.get(u.id) ?? emptyAgg();
     rows.push({
       user_id: u.id,
