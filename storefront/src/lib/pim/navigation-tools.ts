@@ -82,18 +82,46 @@ export const redirectToConfiguratorTool = tool({
   execute: async (input) => buildConfiguratorUrl(input),
 });
 
-export const redirectToOrderTool = tool({
-  description:
-    "Müşteriyi sipariş detay, prova onay veya tasarım yükleme sayfasına yönlendir.",
-  inputSchema: z.object({
-    orderId: z.string().describe("Sipariş numarası (PE-2026-XXXX)"),
-    page: z
-      .enum(["detail", "proof", "upload"])
-      .default("detail")
-      .describe("detail=sipariş, proof=onay, upload=tasarım yükleme"),
-  }),
-  execute: async ({ orderId, page }) => buildOrderUrl(orderId, page),
-});
+export function createRedirectToOrderTool(callerUserId: string | null) {
+  return tool({
+    description:
+      "Müşteriyi sipariş detay, prova onay veya tasarım yükleme sayfasına yönlendir.",
+    inputSchema: z.object({
+      orderId: z.string().describe("Sipariş numarası (PE-2026-XXXX)"),
+      page: z
+        .enum(["detail", "proof", "upload"])
+        .default("detail")
+        .describe("detail=sipariş, proof=onay, upload=tasarım yükleme"),
+    }),
+    execute: async ({ orderId, page }) => {
+      if (!callerUserId) {
+        return {
+          type: "redirect" as const,
+          blocked: true,
+          message: "Giriş yapman gerekiyor.",
+        };
+      }
+
+      const admin = createAdminClient();
+      const { data: order } = await admin
+        .from("orders")
+        .select("id, user_id")
+        .ilike("id", orderId)
+        .maybeSingle();
+      const orderRow = order as { id: string; user_id: string } | null;
+
+      if (!orderRow || !orderOwnedByUser(orderRow.user_id, callerUserId)) {
+        return {
+          type: "redirect" as const,
+          blocked: true,
+          message: "Sipariş bulunamadı.",
+        };
+      }
+
+      return buildOrderUrl(orderRow.id, page);
+    },
+  });
+}
 
 export function createPimNavTools(callerUserId: string | null) {
   const getProofStatusTool = tool({
@@ -278,7 +306,7 @@ export function createPimNavTools(callerUserId: string | null) {
 
   return {
     redirect_to_configurator: redirectToConfiguratorTool,
-    redirect_to_order: redirectToOrderTool,
+    redirect_to_order: createRedirectToOrderTool(callerUserId),
     get_proof_status: getProofStatusTool,
     create_proof_help_request: createProofHelpRequestTool,
   };

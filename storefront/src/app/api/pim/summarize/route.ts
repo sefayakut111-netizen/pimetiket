@@ -15,6 +15,7 @@ import {
 } from "@/lib/pim/memory-clamp";
 import type { PimFact, PimMessage } from "@/lib/pim/memory";
 import { OPENAI_CHAT_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import { logAiUsage } from "@/lib/pim/ai-usage-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -80,14 +81,27 @@ export async function POST() {
     : `Mesajlar:\n${transcript}`;
 
   let summaryText: string;
+  const startedAt = Date.now();
   try {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: openai("gpt-4o-mini"),
       system,
       prompt: userPrompt,
       abortSignal: AbortSignal.timeout(OPENAI_CHAT_TIMEOUT_MS),
     });
     summaryText = text.trim().slice(0, MAX_SUMMARY_CHARS);
+    const inputTokens = usage?.inputTokens ?? 0;
+    const outputTokens = usage?.outputTokens ?? 0;
+    if (inputTokens + outputTokens > 0) {
+      await logAiUsage({
+        source: "pim_summarize",
+        model: "gpt-4o-mini",
+        inputTokens,
+        outputTokens,
+        userId: user.id,
+        durationMs: Date.now() - startedAt,
+      });
+    }
   } catch (err) {
     console.error("[pim/summarize] openai", err);
     return NextResponse.json({ error: "summarize_failed" }, { status: 502 });

@@ -40,6 +40,7 @@ import {
 } from "@/lib/pim/chat-consent";
 import { addToCustomerCart } from "@/lib/customer-cart";
 import { track } from "@/lib/analytics/posthog-events";
+import { ETIKET_ENABLED, ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
 
 // Sefa kararı (UX audit): kullanıcı persona seçmez, hazır cevap chip'i
 // önerilmez. Pim akıllı bir sistem — pathname + soru içeriğine göre
@@ -687,6 +688,13 @@ interface ToolResultError {
   success: false;
   reason: string;
   bigEtiketRedirect?: boolean;
+  etiketDisabled?: boolean;
+}
+
+interface ToolResultRedirectBlocked {
+  type: "redirect";
+  blocked: true;
+  message: string;
 }
 
 interface ToolResultRedirect {
@@ -714,7 +722,18 @@ function isRedirectResult(r: unknown): r is ToolResultRedirect {
     !!r &&
     typeof r === "object" &&
     "type" in r &&
-    (r as ToolResultRedirect).type === "redirect"
+    (r as ToolResultRedirect).type === "redirect" &&
+    !(r as ToolResultRedirectBlocked).blocked
+  );
+}
+
+function isRedirectBlocked(r: unknown): r is ToolResultRedirectBlocked {
+  return (
+    !!r &&
+    typeof r === "object" &&
+    "type" in r &&
+    (r as ToolResultRedirectBlocked).type === "redirect" &&
+    (r as ToolResultRedirectBlocked).blocked === true
   );
 }
 
@@ -729,6 +748,14 @@ function isProofStatusResult(r: unknown): r is ToolResultProofStatus {
 
 function ToolResultCard({ result }: { result: unknown }) {
   const toast = useToast();
+
+  if (isRedirectBlocked(result)) {
+    return (
+      <div className="max-w-[85%] rounded-xl bg-gri-100 ring-1 ring-gri-200 px-3.5 py-2.5 text-[12.5px] text-gri-700">
+        {result.message}
+      </div>
+    );
+  }
 
   if (isRedirectResult(result)) {
     return (
@@ -764,12 +791,27 @@ function ToolResultCard({ result }: { result: unknown }) {
   if (!("success" in quote) || !quote.success) {
     const err = quote as ToolResultError;
     return (
-      <div className="max-w-[85%] rounded-xl bg-kirmizi/10 ring-1 ring-kirmizi/30 px-3.5 py-2.5 text-[12.5px] text-kirmizi">
-        ⚠️ {err.reason}
+      <div
+        className={cn(
+          "max-w-[85%] rounded-xl px-3.5 py-2.5 text-[12.5px]",
+          err.etiketDisabled
+            ? "bg-sari-soft ring-1 ring-sari/30 text-lacivert"
+            : "bg-kirmizi/10 ring-1 ring-kirmizi/30 text-kirmizi"
+        )}
+      >
+        {err.etiketDisabled ? "📅" : "⚠️"} {err.reason}
         {err.bigEtiketRedirect && (
           <div className="text-[11px] text-kirmizi/70 mt-1">
             Büyük etiket servisi yakında.
           </div>
+        )}
+        {err.etiketDisabled && (
+          <Link
+            href="/sticker"
+            className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-pim-mercan text-white rounded-lg font-medium hover:bg-pim-mercan/90 text-sm"
+          >
+            Sticker konfigüratörüne git
+          </Link>
         )}
       </div>
     );
@@ -893,21 +935,27 @@ function ToolResultCard({ result }: { result: unknown }) {
         </div>
 
         <div className="mt-3 flex items-center justify-end gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-pim-mercan hover:bg-pim-mercan-koyu text-white text-[11.5px] font-semibold transition-colors"
-            >
-              <Icon.Cart size={11} /> Sepete ekle
-            </button>
-            <a
-              href={quote.configurator_url}
-              className="text-[11px] font-semibold text-pim-mercan hover:text-white transition-colors"
-            >
-              Düzenle →
-            </a>
-          </div>
+          {quote.product === "etiket" && !ETIKET_ENABLED ? (
+            <p className="text-[11px] text-white/70">
+              Etiket siparişi {ETIKET_LAUNCH_LABEL}&apos;da açılıyor.
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-pim-mercan hover:bg-pim-mercan-koyu text-white text-[11.5px] font-semibold transition-colors"
+              >
+                <Icon.Cart size={11} /> Sepete ekle
+              </button>
+              <a
+                href={quote.configurator_url}
+                className="text-[11px] font-semibold text-pim-mercan hover:text-white transition-colors"
+              >
+                Düzenle →
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

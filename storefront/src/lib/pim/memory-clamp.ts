@@ -1,3 +1,4 @@
+import type { UIMessage } from "ai";
 import type { PimFact, PimMessage } from "./memory";
 
 export const MAX_FACTS = 30;
@@ -45,4 +46,36 @@ export function clampMemoryPayload(input: PimMemoryPayload): PimMemoryPayload {
       ? input.lastSummary.slice(0, MAX_SUMMARY_CHARS)
       : null,
   };
+}
+
+export function extractTextFromUIMessage(msg: UIMessage): string {
+  if (Array.isArray(msg.parts)) {
+    return msg.parts
+      .filter((p) => p.type === "text")
+      .map((p) => String((p as { text?: string }).text ?? ""))
+      .join("");
+  }
+  const legacy = (msg as { content?: unknown }).content;
+  if (typeof legacy === "string") return legacy;
+  return "";
+}
+
+function withClampedText(msg: UIMessage, text: string): UIMessage {
+  if (Array.isArray(msg.parts)) {
+    return {
+      ...msg,
+      parts: [{ type: "text", text }],
+    } as UIMessage;
+  }
+  return { ...msg, content: text } as UIMessage;
+}
+
+/** Chat API — OpenAI'a gitmeden önce mesaj listesini sınırla. */
+export function clampChatMessages(messages: UIMessage[]): UIMessage[] {
+  if (!Array.isArray(messages)) return [];
+  return messages.slice(-MAX_HISTORY).map((msg) => {
+    if (msg.role !== "user" && msg.role !== "assistant") return msg;
+    const text = clampMessageContent(extractTextFromUIMessage(msg));
+    return withClampedText(msg, text);
+  });
 }

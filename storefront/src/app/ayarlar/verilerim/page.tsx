@@ -18,6 +18,8 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Modal, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { clearMemory } from "@/lib/pim/memory";
+import { clearChatConsent } from "@/lib/pim/chat-consent";
 
 interface KvkkRequestRow {
   id: string;
@@ -90,6 +92,11 @@ export default function VerilerimPage() {
   const [exportSubmitting, setExportSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const clearPimLocalData = () => {
+    clearMemory();
+    clearChatConsent();
+  };
+
   useEffect(() => {
     void fetch("/api/me/kvkk-requests", { cache: "no-store" })
       .then(async (r) => {
@@ -101,7 +108,16 @@ export default function VerilerimPage() {
         return r.json();
       })
       .then((json) => {
-        if (json) setRequests(json.requests ?? []);
+        if (!json) return;
+        const rows = (json.requests ?? []) as KvkkRequestRow[];
+        setRequests(rows);
+        const pimDeleted = rows.some(
+          (r) =>
+            r.kind === "partial_delete" &&
+            r.status === "completed" &&
+            r.scope?.pim_chat === true
+        );
+        if (pimDeleted) clearPimLocalData();
       })
       .catch(() => {
         toast.error("Talepler yüklenemedi. Sayfayı yenileyip tekrar dene.");
@@ -148,6 +164,7 @@ export default function VerilerimPage() {
       }
       toast.success("Talebin alındı. 48 saat içinde vazgeçebilirsin.");
       setRequests((arr) => [json.request, ...arr]);
+      if (scope.pim_chat) clearPimLocalData();
       setShowPartial(false);
       setScope(DEFAULT_SCOPE);
     } finally {

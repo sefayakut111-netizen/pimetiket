@@ -25,9 +25,43 @@ const TUNE = {
   expensiveRunThresholdUsd: 0.05,
 };
 
+type CombinedCostRow = {
+  cost_usd: number | string | null;
+  model: string | null;
+  duration_ms?: number | null;
+  tokens_used?: number | string | null;
+  source?: string | null;
+  created_at?: string;
+};
+
 export class AiCostAuditor extends AuditorBase {
   constructor() {
     super("ai_cost", "v1");
+  }
+
+  private async fetchCombinedCostRows(opts: {
+    since: string;
+    until?: string;
+  }): Promise<CombinedCostRow[]> {
+    let qcQuery = this.admin
+      .from("design_quality_checks")
+      .select("cost_usd, model, duration_ms, tokens_used, created_at")
+      .gte("created_at", opts.since);
+    if (opts.until) qcQuery = qcQuery.lt("created_at", opts.until);
+
+    let usageQuery = this.admin
+      .from("ai_usage_logs")
+      .select("cost_usd, model, duration_ms, tokens_used, source, created_at")
+      .gte("created_at", opts.since);
+    if (opts.until) usageQuery = usageQuery.lt("created_at", opts.until);
+
+    const [qcRes, usageRes] = await Promise.all([qcQuery, usageQuery]);
+    const qcRows = ((qcRes.data ?? []) as CombinedCostRow[]).map((r) => ({
+      ...r,
+      source: "design_qc",
+    }));
+    const usageRows = (usageRes.data ?? []) as CombinedCostRow[];
+    return [...qcRows, ...usageRows];
   }
 
   protected async runChecks(): Promise<AuditorRunResult> {
@@ -79,28 +113,25 @@ export class AiCostAuditor extends AuditorBase {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { data } = await this.admin
-      .from("design_quality_checks")
-      .select("cost_usd, model, duration_ms")
-      .gte("created_at", yesterday.toISOString())
-      .lt("created_at", today.toISOString());
-
-    const rows = (data ?? []) as Array<{
-      cost_usd: number | string | null;
-      model: string | null;
-      duration_ms: number | null;
-    }>;
+    const rows = await this.fetchCombinedCostRows({
+      since: yesterday.toISOString(),
+      until: today.toISOString(),
+    });
 
     const totalCost = rows.reduce((s, r) => s + Number(r.cost_usd || 0), 0);
     const runCount = rows.length;
     const avgCost = runCount > 0 ? totalCost / runCount : 0;
+    const pimCost = rows
+      .filter((r) => r.source === "pim_chat" || r.source === "pim_summarize")
+      .reduce((s, r) => s + Number(r.cost_usd || 0), 0);
+    const qcCost = totalCost - pimCost;
 
     findings.push(
       this.info(
         "daily_cost",
         `Dün AI maliyet: $${totalCost.toFixed(2)} (${runCount} run)`,
-        `Toplam $${totalCost.toFixed(2)} · Ortalama: $${avgCost.toFixed(4)}/run · Bütçe: $${TUNE.dailyBudgetUsd}/gün.`,
-        { totalCost, runCount, avgCost }
+        `Toplam $${totalCost.toFixed(2)} · Design QC: $${qcCost.toFixed(2)} · Pim chat: $${pimCost.toFixed(2)} · Ort: $${avgCost.toFixed(4)}/run · Bütçe: $${TUNE.dailyBudgetUsd}/gün.`,
+        { totalCost, runCount, avgCost, pimCost, qcCost }
       )
     );
 
@@ -139,15 +170,25 @@ export class AiCostAuditor extends AuditorBase {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const { data } = await this.admin
-      .from("design_quality_checks")
-      .select("id, cost_usd, model, file_format, duration_ms, order_id")
-      .gte("created_at", yesterday.toISOString())
-      .gte("cost_usd", TUNE.expensiveRunThresholdUsd)
-      .order("cost_usd", { ascending: false })
-      .limit(5);
+    const since = yesterday.toISOString();
+    const [qcRes, usageRes] = await Promise.all([
+      this.admin
+        .from("design_quality_checks")
+        .select("id, cost_usd, model, file_format, duration_ms, order_id")
+        .gte("created_at", since)
+        .gte("cost_usd", TUNE.expensiveRunThresholdUsd)
+        .order("cost_usd", { ascending: false })
+        .limit(5),
+      this.admin
+        .from("ai_usage_logs")
+        .select("id, cost_usd, model, duration_ms, source, persona")
+        .gte("created_at", since)
+        .gte("cost_usd", TUNE.expensiveRunThresholdUsd)
+        .order("cost_usd", { ascending: false })
+        .limit(5),
+    ]);
 
-    const rows = (data ?? []) as Array<{
+    const qcRows = (qcRes.data ?? []) as Array<{
       id: string;
       cost_usd: number;
       model: string | null;
@@ -155,26 +196,49 @@ export class AiCostAuditor extends AuditorBase {
       duration_ms: number | null;
       order_id: string | null;
     }>;
+    const usageRows = (usageRes.data ?? []) as Array<{
+      id: string;
+      cost_usd: number;
+      model: string | null;
+      duration_ms: number | null;
+      source: string | null;
+      persona: string | null;
+    }>;
 
-    if (rows.length === 0) return { findings, metrics: { count: 0 } };
+    const merged = [
+      ...qcRows.map((r) => ({
+        cost_usd: Number(r.cost_usd),
+        label: `${r.model ?? "?"} · QC · ${r.file_format ?? "?"}`,
+        duration_ms: r.duration_ms,
+      })),
+      ...usageRows.map((r) => ({
+        cost_usd: Number(r.cost_usd),
+        label: `${r.model ?? "?"} · ${r.source ?? "pim"}${r.persona ? ` · ${r.persona}` : ""}`,
+        duration_ms: r.duration_ms,
+      })),
+    ]
+      .sort((a, b) => b.cost_usd - a.cost_usd)
+      .slice(0, 5);
 
-    const totalExpensive = rows.reduce((s, r) => s + Number(r.cost_usd), 0);
+    if (merged.length === 0) return { findings, metrics: { count: 0 } };
+
+    const totalExpensive = merged.reduce((s, r) => s + r.cost_usd, 0);
 
     findings.push(
       this.info(
         "expensive_runs",
-        `${rows.length} pahalı run (toplam $${totalExpensive.toFixed(2)})`,
-        `Eşik üstü (>$${TUNE.expensiveRunThresholdUsd}) ${rows.length} run var:\n${rows
+        `${merged.length} pahalı run (toplam $${totalExpensive.toFixed(2)})`,
+        `Eşik üstü (>$${TUNE.expensiveRunThresholdUsd}) ${merged.length} run var:\n${merged
           .map(
             (r) =>
-              `- $${Number(r.cost_usd).toFixed(4)} · ${r.model ?? "?"} · ${r.file_format ?? "?"} · ${r.duration_ms ?? 0}ms${r.order_id ? ` · order: ${r.order_id.slice(0, 8)}` : ""}`
+              `- $${r.cost_usd.toFixed(4)} · ${r.label} · ${r.duration_ms ?? 0}ms`
           )
           .join("\n")}`,
-        { runs: rows }
+        { runs: merged }
       )
     );
 
-    return { findings, metrics: { count: rows.length, totalExpensive } };
+    return { findings, metrics: { count: merged.length, totalExpensive } };
   }
 
   // C) Aylık projeksiyon
@@ -185,12 +249,9 @@ export class AiCostAuditor extends AuditorBase {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const { data } = await this.admin
-      .from("design_quality_checks")
-      .select("cost_usd")
-      .gte("created_at", monthStart.toISOString());
-
-    const rows = (data ?? []) as Array<{ cost_usd: number | string | null }>;
+    const rows = await this.fetchCombinedCostRows({
+      since: monthStart.toISOString(),
+    });
     const monthCost = rows.reduce((s, r) => s + Number(r.cost_usd || 0), 0);
 
     const now = new Date();
@@ -257,18 +318,9 @@ export class AiCostAuditor extends AuditorBase {
     const since = new Date();
     since.setDate(since.getDate() - 7);
 
-    const { data } = await this.admin
-      .from("design_quality_checks")
-      .select("tokens_used, cost_usd, duration_ms, model")
-      .gte("created_at", since.toISOString())
-      .not("tokens_used", "is", null);
-
-    const rows = (data ?? []) as Array<{
-      tokens_used: number | string | null;
-      cost_usd: number | string | null;
-      duration_ms: number | null;
-      model: string | null;
-    }>;
+    const rows = (await this.fetchCombinedCostRows({
+      since: since.toISOString(),
+    })).filter((r) => r.tokens_used != null);
 
     if (rows.length === 0) {
       return { findings, metrics: { totalTokens: 0 } };
@@ -330,13 +382,10 @@ export class AiCostAuditor extends AuditorBase {
       const end = new Date(start);
       end.setDate(end.getDate() + 1);
 
-      const { data } = await this.admin
-        .from("design_quality_checks")
-        .select("cost_usd")
-        .gte("created_at", start.toISOString())
-        .lt("created_at", end.toISOString());
-
-      const rows = (data ?? []) as Array<{ cost_usd: number | string | null }>;
+      const rows = await this.fetchCombinedCostRows({
+        since: start.toISOString(),
+        until: end.toISOString(),
+      });
       const cost = rows.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0);
 
       days.push({
@@ -387,15 +436,9 @@ export class AiCostAuditor extends AuditorBase {
     const since = new Date();
     since.setDate(since.getDate() - 7);
 
-    const { data } = await this.admin
-      .from("design_quality_checks")
-      .select("cost_usd, model")
-      .gte("created_at", since.toISOString());
-
-    const rows = (data ?? []) as Array<{
-      cost_usd: number | string | null;
-      model: string | null;
-    }>;
+    const rows = await this.fetchCombinedCostRows({
+      since: since.toISOString(),
+    });
 
     if (rows.length === 0) {
       return { findings, metrics: { byModel: {} } };

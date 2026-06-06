@@ -1268,6 +1268,48 @@ export type Database = {
           },
         ]
       }
+      ai_usage_logs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          persona: string | null
+          source: string
+          tokens_used: number
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          persona?: string | null
+          source: string
+          tokens_used?: number
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          persona?: string | null
+          source?: string
+          tokens_used?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       design_quality_checks: {
         Row: {
           agent_name: string
