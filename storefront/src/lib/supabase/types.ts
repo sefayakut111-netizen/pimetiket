@@ -2243,7 +2243,6 @@ export type Database = {
           fason_partner_id: string
           id: string
           in_production_at: string | null
-          is_urgent: boolean
           issue_category: string | null
           issue_description: string | null
           issue_photo_path: string | null
@@ -2273,7 +2272,6 @@ export type Database = {
           fason_partner_id: string
           id?: string
           in_production_at?: string | null
-          is_urgent?: boolean
           issue_category?: string | null
           issue_description?: string | null
           issue_photo_path?: string | null
@@ -2303,7 +2301,6 @@ export type Database = {
           fason_partner_id?: string
           id?: string
           in_production_at?: string | null
-          is_urgent?: boolean
           issue_category?: string | null
           issue_description?: string | null
           issue_photo_path?: string | null

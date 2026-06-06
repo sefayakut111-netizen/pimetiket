@@ -29,7 +29,6 @@ export type PartnerAssignmentDto = {
   assigned_at: string | null;
   estimated_delivery: string | null;
   sla_deadline: string | null;
-  is_urgent: boolean;
   urgent_reason: UrgentReason | null;
   hours_left: number | null;
   title: string;
@@ -43,7 +42,6 @@ type RawAssignment = {
   status: string;
   assigned_at: string | null;
   estimated_delivery: string | null;
-  is_urgent?: boolean | null;
 };
 
 export async function enrichPartnerAssignments(
@@ -135,7 +133,6 @@ export async function enrichPartnerAssignments(
           : "(başlık yok)";
 
     const sla = resolveSlaDeadline(a.estimated_delivery);
-    const isUrgentFlag = a.is_urgent === true;
 
     return {
       assignment_id: a.id,
@@ -144,8 +141,7 @@ export async function enrichPartnerAssignments(
       assigned_at: a.assigned_at,
       estimated_delivery: a.estimated_delivery,
       sla_deadline: sla,
-      is_urgent: isUrgentFlag,
-      urgent_reason: getUrgentReason(isUrgentFlag, sla),
+      urgent_reason: getUrgentReason(sla),
       hours_left: hoursUntilDelivery(sla),
       title,
       item_count: mappedItems.length,

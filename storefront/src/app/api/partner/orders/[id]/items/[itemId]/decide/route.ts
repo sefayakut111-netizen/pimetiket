@@ -15,8 +15,7 @@
  *     order_items.partner_decided_by = user.id
  *     order_items.partner_decided_at = now
  *     Tüm itemler partner_approved olunca:
- *       order_assignments.status → 'in_production'
- *       order_assignments.in_production_at = now
+ *       (atama durumu ayrı — partner status-action ile acknowledge → in_production)
  *
  *   reject →
  *     order_items.proof_status = 'partner_rejected'
@@ -41,6 +40,10 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
+import {
+  isPartnerDecideAllowed,
+  isPartnerPending,
+} from "@/lib/fason/partner-proof-status";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -147,6 +150,16 @@ export async function POST(
     return NextResponse.json({ error: "item_not_found" }, { status: 404 });
   }
 
+  if (!isPartnerDecideAllowed(item.proof_status)) {
+    return NextResponse.json(
+      {
+        error: "already_decided",
+        message: "Bu kalem için zaten karar verilmiş veya karar verilemez.",
+      },
+      { status: 409 }
+    );
+  }
+
   // Karar update
   const newProofStatus =
     action === "approve" ? "partner_approved" : "partner_rejected";
@@ -202,19 +215,10 @@ export async function POST(
   const anyRejected = allItems.some(
     (i) => i.proof_status === "partner_rejected"
   );
+  const anyPending = allItems.some((i) => isPartnerPending(i.proof_status));
 
   let assignmentTransition: string | null = null;
-  if (allApproved && assignment.status !== "in_production") {
-    // Tümü onaylandı → üretime al
-    await admin
-      .from("order_assignments")
-      .update({
-        status: "in_production",
-        in_production_at: new Date().toISOString(),
-      })
-      .eq("id", assignment.id);
-    assignmentTransition = "in_production";
-  } else if (anyRejected && assignment.status !== "issue") {
+  if (anyRejected && assignment.status !== "issue") {
     // Bir item reddedildi → assignment issue'ya al, admin loop'a girer
     await admin
       .from("order_assignments")
@@ -242,6 +246,9 @@ export async function POST(
         .length,
       rejected: allItems.filter((i) => i.proof_status === "partner_rejected")
         .length,
+      pending: allItems.filter((i) => isPartnerPending(i.proof_status)).length,
+      all_approved: allApproved,
+      any_pending: anyPending,
     },
   });
 }

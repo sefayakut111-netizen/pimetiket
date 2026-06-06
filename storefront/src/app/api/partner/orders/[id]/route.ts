@@ -37,6 +37,7 @@ import {
   type ActivePartnerAssignmentRow,
 } from "@/lib/fason/assert-active-partner-assignment";
 import { redactOrderAddressForPartner } from "@/lib/fason/redact-order-address";
+import { isPartnerPending } from "@/lib/fason/partner-proof-status";
 
 export const runtime = "nodejs";
 
@@ -228,11 +229,7 @@ export async function GET(
     approved: items.filter((i) => i.proof_status === "partner_approved").length,
     rejected: items.filter((i) => i.proof_status === "partner_rejected").length,
     revised: items.filter((i) => i.proof_status === "partner_revised").length,
-    pending: items.filter(
-      (i) =>
-        i.proof_status === "approved" ||
-        i.proof_status === "partner_review"
-    ).length,
+    pending: items.filter((i) => isPartnerPending(i.proof_status)).length,
   };
 
   return NextResponse.json({

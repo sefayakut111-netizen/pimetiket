@@ -13,6 +13,7 @@ import {
   type FasonAction,
 } from "@/lib/fason/apply-assignment-action";
 import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
+import { isPartnerPending } from "@/lib/fason/partner-proof-status";
 
 export const runtime = "nodejs";
 
@@ -86,6 +87,42 @@ export async function POST(
     return NextResponse.json({ error: "not_your_order" }, { status: 403 });
   }
   const assignment = asg.assignment;
+
+  if (action === "in_production") {
+    const { data: itemRows, error: itemsErr } = await admin
+      .from("order_items")
+      .select("proof_status")
+      .eq("order_id", order.id);
+
+    if (itemsErr) {
+      console.error("[partner/status] items read error:", itemsErr);
+      return NextResponse.json(
+        { error: "items_read_failed" },
+        { status: 500 }
+      );
+    }
+
+    const items = (itemRows ?? []) as Array<{ proof_status: string }>;
+    if (items.length === 0) {
+      return NextResponse.json(
+        { error: "no_items", message: "Siparişte kalem yok." },
+        { status: 400 }
+      );
+    }
+
+    const allApproved = items.every((i) => i.proof_status === "partner_approved");
+    const anyPending = items.some((i) => isPartnerPending(i.proof_status));
+    if (!allApproved || anyPending) {
+      return NextResponse.json(
+        {
+          error: "items_not_all_approved",
+          message:
+            "Üretime başlamak için tüm tasarımların onaylanmış olması gerekir.",
+        },
+        { status: 409 }
+      );
+    }
+  }
 
   const result = await applyAssignmentAction(admin, {
     assignmentId: assignment.id,

@@ -126,7 +126,7 @@ export async function GET() {
 
   const { data: activeRows } = await admin
     .from("order_assignments")
-    .select("id, order_id, status, assigned_at, estimated_delivery, is_urgent")
+    .select("id, order_id, status, assigned_at, estimated_delivery")
     .eq("fason_partner_id", partnerId)
     .in("status", [...ACTIVE_STATUSES] as Enums<"assignment_status">[]);
 
@@ -138,7 +138,6 @@ export async function GET() {
       status: string;
       assigned_at: string | null;
       estimated_delivery: string | null;
-      is_urgent?: boolean | null;
     }>
   );
 

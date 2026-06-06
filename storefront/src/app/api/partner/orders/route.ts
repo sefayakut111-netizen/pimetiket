@@ -76,7 +76,7 @@ export async function GET(req: Request) {
   let query = admin
     .from("order_assignments")
     .select(
-      "id, order_id, status, assigned_at, estimated_delivery, is_urgent",
+      "id, order_id, status, assigned_at, estimated_delivery",
       { count: "exact" }
     )
     .eq("fason_partner_id", partnerId);
@@ -125,7 +125,6 @@ export async function GET(req: Request) {
     status: string;
     assigned_at: string | null;
     estimated_delivery: string | null;
-    is_urgent?: boolean | null;
   };
 
   let enriched = await enrichPartnerAssignments(

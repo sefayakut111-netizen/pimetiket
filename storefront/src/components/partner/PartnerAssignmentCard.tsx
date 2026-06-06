@@ -32,7 +32,6 @@ export interface PartnerAssignmentRow {
   assigned_at: string | null;
   estimated_delivery: string | null;
   sla_deadline?: string | null;
-  is_urgent?: boolean;
   urgent_reason?: UrgentReason | null;
   hours_left: number | null;
   title: string;

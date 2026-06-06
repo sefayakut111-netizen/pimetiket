@@ -1,14 +1,12 @@
-/** Acil atama tespiti — admin işareti veya SLA (48 saat) */
+/** Acil atama tespiti — SLA (48 saat kala) */
 
-export type UrgentReason = "admin" | "sla";
+export type UrgentReason = "sla";
 
 const SLA_URGENT_MS = 48 * 60 * 60 * 1000;
 
 export function getUrgentReason(
-  isUrgent: boolean,
   slaDeadline: string | null | undefined
 ): UrgentReason | null {
-  if (isUrgent) return "admin";
   if (!slaDeadline) return null;
   const remaining = new Date(slaDeadline).getTime() - Date.now();
   if (remaining > 0 && remaining < SLA_URGENT_MS) return "sla";
@@ -16,14 +14,13 @@ export function getUrgentReason(
 }
 
 export function isUrgentAssignment(
-  isUrgent: boolean,
   slaDeadline: string | null | undefined
 ): boolean {
-  return getUrgentReason(isUrgent, slaDeadline) !== null;
+  return getUrgentReason(slaDeadline) !== null;
 }
 
 export function urgentReasonLabel(reason: UrgentReason): string {
-  return reason === "admin" ? "Admin acil işaretledi" : "Son 48 saat";
+  return "Son 48 saat";
 }
 
 /** sla_deadline yoksa estimated_delivery kullan */

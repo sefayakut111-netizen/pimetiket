@@ -191,8 +191,6 @@ export async function POST(req: Request) {
     userAgent: req.headers.get("user-agent"),
   });
 
-  // TODO: notify_sms_on_urgent — Netgsm altyapısı var (lib/sms/netgsm.ts) ama
-  // partner SMS wire'lı değil: assign'da is_urgent + partner phone_e164 load gerekiyor.
   void triggerMailProcess();
 
   return NextResponse.json({

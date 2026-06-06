@@ -12,19 +12,15 @@ import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
 import { enqueueMail } from "@/lib/mail/enqueue";
+import { DEADLINE_REMINDER_STATUS_LIST } from "@/lib/fason/deadline-reminder-statuses";
 
 export const dynamic = "force-dynamic";
 
-const ACTIVE_STATUSES = ["assigned", "acknowledged", "in_production"] as const;
 const BATCH_LIMIT = 100;
 
 function istanbulYmd(addDays = 0): string {
   const dt = new Date(Date.now() + addDays * 86_400_000);
   return dt.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
-}
-
-function deliveryDateKey(value: string): string {
-  return value.slice(0, 10);
 }
 
 export async function GET(req: Request) {
@@ -47,15 +43,14 @@ export async function GET(req: Request) {
 
         const today = istanbulYmd(0);
         const tomorrow = istanbulYmd(1);
-        const targetDates = new Set([today, tomorrow]);
 
         const { data: assignments, error: asgErr } = await admin
           .from("order_assignments")
           .select(
             "id, order_id, fason_partner_id, estimated_delivery, status"
           )
-          .in("status", [...ACTIVE_STATUSES])
-          .not("estimated_delivery", "is", null)
+          .in("status", [...DEADLINE_REMINDER_STATUS_LIST])
+          .in("estimated_delivery", [today, tomorrow])
           .order("estimated_delivery", { ascending: true })
           .limit(BATCH_LIMIT);
 
@@ -72,9 +67,7 @@ export async function GET(req: Request) {
           status: string;
         };
 
-        const dueRows = ((assignments ?? []) as AssignmentRow[]).filter((a) =>
-          targetDates.has(deliveryDateKey(a.estimated_delivery))
-        );
+        const dueRows = (assignments ?? []) as AssignmentRow[];
 
         if (dueRows.length === 0) {
           return {
@@ -112,7 +105,7 @@ export async function GET(req: Request) {
             "idempotency_key",
             dueRows.map(
               (a) =>
-                `fason_deadline:${a.id}:${deliveryDateKey(a.estimated_delivery)}`
+                `fason_deadline:${a.id}:${String(a.estimated_delivery).slice(0, 10)}`
             )
           );
 
@@ -126,7 +119,7 @@ export async function GET(req: Request) {
         let skipped = 0;
 
         for (const asg of dueRows) {
-          const deliveryKey = deliveryDateKey(asg.estimated_delivery);
+          const deliveryKey = String(asg.estimated_delivery).slice(0, 10);
           const idempotencyKey = `fason_deadline:${asg.id}:${deliveryKey}`;
           if (alreadySent.has(idempotencyKey)) {
             skipped++;

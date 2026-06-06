@@ -163,9 +163,7 @@ export default function PartnerOrderDetailPage({
       toast.success(
         action === "approve" ? "Tasarım onaylandı" : "Tasarım reddedildi"
       );
-      if (j.assignment_transition === "in_production") {
-        toast.success("Tüm tasarımlar onaylandı — sipariş üretime alındı!");
-      } else if (j.assignment_transition === "issue") {
+      if (j.assignment_transition === "issue") {
         toast.error("Sipariş admin loop'una düştü (red sonrası)");
       }
       void loadData(); // refresh
@@ -202,9 +200,11 @@ export default function PartnerOrderDetailPage({
   }
 
   const { order, assignment, items, partner_decisions } = data;
-  const allDecided =
-    partner_decisions.approved + partner_decisions.rejected ===
-    items.length;
+  const allApproved =
+    items.length > 0 && partner_decisions.approved === items.length;
+  const productionStarted = ["in_production", "ready", "shipped"].includes(
+    assignmentStatus
+  );
 
   return (
     <main className="container py-8">
@@ -267,9 +267,15 @@ export default function PartnerOrderDetailPage({
             beklemede
           </span>
         </div>
-        {allDecided && partner_decisions.rejected === 0 && (
+        {allApproved && !productionStarted && (
           <p className="mt-2 text-sm font-semibold text-yesil">
-            🎉 Tüm tasarımları onayladın — sipariş üretime alındı.
+            Tüm tasarımları onayladın — üstteki &quot;Üretime başla&quot; ile
+            devam edebilirsin.
+          </p>
+        )}
+        {allApproved && productionStarted && (
+          <p className="mt-2 text-sm font-semibold text-yesil">
+            Tüm tasarımlar onaylandı — üretim süreci devam ediyor.
           </p>
         )}
       </div>
