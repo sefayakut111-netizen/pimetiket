@@ -18,7 +18,7 @@ const PUBLIC_ROUTES: RouteEntry[] = [
 
   // SEO + içerik
   { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
-  { path: "/galeri", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/galeri", changeFrequency: "weekly", priority: 0.7 },
   { path: "/malzemeler", changeFrequency: "monthly", priority: 0.8 },
   { path: "/yorumlar", changeFrequency: "weekly", priority: 0.7 },
   { path: "/hakkimizda", changeFrequency: "monthly", priority: 0.7 },

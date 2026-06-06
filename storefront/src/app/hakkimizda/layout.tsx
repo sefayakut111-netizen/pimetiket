@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
+
+const title = "Hakkımızda — Online etiket ve sticker baskı · Pim Etiket";
+const description =
+  "Küçük adetten etiket ve sticker baskı, AI dosya kontrolü, şeffaf teslim. Matbaa kökenli üretim deneyimi ile dijital sipariş akışı.";
+const canonical = "/hakkimizda";
 
 export const metadata: Metadata = {
-  title: "Hakkımızda — 75 yıllık matbaa ailesinin dijital atölyesi",
-  description:
-    "Pim Etiket: Türkiye'de online etiket ve sticker baskı — etikette uzman, küçük adetten, AI destekli. 75 yıllık matbaa ailesinin dijital atölyesi.",
-  alternates: { canonical: "/hakkimizda" },
-  openGraph: {
-    title: "Hakkımızda — Pim Etiket",
-    description:
-      "Online etiket ve sticker baskı — etikette uzman, küçük adetten. 75 yıllık matbaa ailesinin AI destekli dijital atölyesi.",
-    url: "/hakkimizda",
-    type: "website",
-  },
+  title,
+  description,
+  alternates: { canonical },
+  ...withSocialMetadata({ title, description, canonical }),
 };
 
 export default function HakkimizdaLayout({

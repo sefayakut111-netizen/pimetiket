@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { SchemaJsonLd, faqSchema } from "@/components/SchemaJsonLd";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
+import { getSssFaqSchemaItems } from "@/lib/sss/faq-schema";
+
+const title = "Sıkça Sorulanlar — Etiket ve sticker baskı süreci";
+const description =
+  "Minimum adet, dosya formatı, teslim süresi, iade ve ödeme: Pim Etiket'te sık sorulan soruların cevapları tek sayfada.";
+const canonical = "/sss";
 
 export const metadata: Metadata = {
-  title: "Sıkça Sorulanlar — Etiket ve sticker baskı süreci",
-  description:
-    "Minimum adet kaç? Hangi dosya formatlarını kabul ediyorsunuz? Teslim süresi ne kadar? Pim Etiket'te sık sorulan tüm soruların cevabı tek sayfada.",
-  alternates: { canonical: "/sss" },
-  openGraph: {
-    title: "Sıkça Sorulanlar — Pim Etiket",
-    description:
-      "Etiket ve sticker baskı süreci, minimum adet, teslim, iade — tüm soruların cevabı.",
-    url: "/sss",
-    type: "website",
-  },
+  title,
+  description,
+  alternates: { canonical },
+  ...withSocialMetadata({ title, description, canonical }),
 };
 
 export default function SssLayout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <SchemaJsonLd data={faqSchema(getSssFaqSchemaItems())} />
+      {children}
+    </>
+  );
 }

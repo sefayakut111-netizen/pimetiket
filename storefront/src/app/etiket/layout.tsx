@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SchemaJsonLd, productSchema, breadcrumbSchema } from "@/components/SchemaJsonLd";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
 
 // Sefa 21 May v68 SEO Sprint: ISR — sayfa 1 saatte bir yeniden üretilir
 // (admin product_cards değiştirirse yenilenir). TTFB 1.2s → ~0.3s düşmesi
@@ -15,24 +16,16 @@ export const revalidate = 3600;
 // Sefa 21 May v68 (site denetim P2 #12 + #4): "roll labels" yerine
 // "rulo + tabaka" — bu sayfa hem rulo hem tabaka grid'i içeriyor.
 // Teslim süresi 5 → 10 iş günü (site geneli).
+const title = "Etiket bastır — rulo ve tabaka etiket baskı";
+const description =
+  "Rulo ve tabaka etiket: kuşe, vinil, şeffaf malzemeler. 1.000 adetten, AI dosya kontrolü, 10 iş günü içinde kargoda.";
+const canonical = "/etiket";
+
 export const metadata: Metadata = {
-  title: "Etiket bastır — rulo ve tabaka etiket baskı · Custom labels",
-  description:
-    "Kozmetik, gıda, içecek, parfüm etiketleri. Vinil/kuşe/şeffaf. AI dosya kontrolü, 10 iş günü kargoda. 1.000 adetten. — Custom roll and sheet labels with AI file check.",
-  alternates: { canonical: "/etiket" },
-  openGraph: {
-    title: "Etiket bastır — Pim Etiket",
-    description:
-      "Vinil, kuşe, şeffaf etiket. 1.000 adetten, 10 iş günü içinde kargoda. AI dosya kontrolü.",
-    type: "website",
-    url: "/etiket",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Etiket bastır — Pim Etiket",
-    description:
-      "Vinil, kuşe, şeffaf etiket. 1.000 adetten, 10 iş günü içinde kargoda.",
-  },
+  title,
+  description,
+  alternates: { canonical },
+  ...withSocialMetadata({ title, description, canonical }),
 };
 
 // Sefa 21 May v68 SEO Sprint: Schema.org Product + BreadcrumbList.

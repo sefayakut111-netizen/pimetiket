@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SchemaJsonLd, localBusinessSchema } from "@/components/SchemaJsonLd";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
+
+const title = "İletişim — Pim Sohbet, e-posta, atölye bilgileri";
+const description =
+  "Pim Etiket ile iletişim: Pim Sohbet, info@pimetiket.com ve fason atölye bilgileri. Numune, teklif ve iş birliği için bize ulaş.";
+const canonical = "/iletisim";
 
 export const metadata: Metadata = {
-  title: "İletişim — Pim Sohbet, e-posta, atölye bilgileri",
-  description:
-    "Pim Etiket ile iletişim — AI sohbet (Pim Sohbet), info@pimetiket.com, fason atölye bilgileri. Numune, fiyat teklifi, iş birliği için bize ulaş.",
-  alternates: { canonical: "/iletisim" },
-  openGraph: {
-    title: "İletişim — Pim Etiket",
-    description:
-      "AI sohbet, e-posta ve fason atölyelerimiz. Numune, teklif, iş birliği için bize ulaş.",
-    url: "/iletisim",
-    type: "website",
-  },
+  title,
+  description,
+  alternates: { canonical },
+  ...withSocialMetadata({ title, description, canonical }),
 };
 
 const ILETISIM_LOCAL_BUSINESS = localBusinessSchema({

@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { withSocialMetadata } from "@/lib/seo/page-metadata";
+
+const title = "Galeri — Etiket ve sticker baskı örnekleri";
+const description =
+  "Pim Etiket'le bastıran markaların gerçek işleri: sticker, rulo etiket, holo, kraft ve ultra clear örnekleri.";
+const canonical = "/galeri";
 
 export const metadata: Metadata = {
-  title: "Galeri — Etiket ve sticker baskı örnekleri",
-  description:
-    "Pim Etiket'le bastıran markaların gerçek işleri. Sticker, rulo etiket, holo, kraft, ultra clear — küçük markaların raf hikâyeleri ve baskı örnekleri.",
-  alternates: { canonical: "/galeri" },
-  openGraph: {
-    title: "Galeri — Pim Etiket",
-    description:
-      "Sticker'dan etikete, küçük markaların raf hikayeleri. Gerçek baskı örnekleri.",
-    url: "/galeri",
-    type: "website",
-  },
+  title,
+  description,
+  alternates: { canonical },
+  ...withSocialMetadata({ title, description, canonical }),
 };
 
 export default function GaleriLayout({ children }: { children: ReactNode }) {
