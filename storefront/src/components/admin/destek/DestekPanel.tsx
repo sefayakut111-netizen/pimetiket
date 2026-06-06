@@ -20,11 +20,16 @@ interface SupportTicket {
   subject: string;
   message: string;
   category: string;
+  priority: string;
   status: TicketStatus;
   orderId: string | null;
   customerName: string | null;
   customerEmail: string | null;
   adminResponse: string | null;
+  aiCategorySuggestion: string | null;
+  aiPrioritySuggestion: string | null;
+  aiDraftResponse: string | null;
+  aiClassifiedAt: string | null;
   createdAt: string;
 }
 
@@ -47,10 +52,49 @@ const CATEGORIES = [
 ];
 
 const PRIORITIES = [
+  { id: "low", label: "Düşük" },
   { id: "normal", label: "Normal" },
-  { id: "yuksek", label: "Yüksek" },
-  { id: "acil", label: "Acil" },
+  { id: "high", label: "Yüksek" },
+  { id: "urgent", label: "Acil" },
 ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  genel: "Genel",
+  siparis: "Sipariş",
+  tasarim: "Tasarım",
+  kargo: "Kargo",
+  iade: "İade",
+  teknik: "Teknik",
+  fiyat: "Fiyat",
+};
+
+const PRIORITY_STYLES: Record<string, string> = {
+  low: "bg-gri-100 text-gri-700",
+  normal: "bg-mavi-soft text-mavi",
+  high: "bg-sari-soft text-sari-koyu",
+  urgent: "bg-kirmizi-soft text-kirmizi",
+};
+
+function CategoryBadge({ value }: { value: string }) {
+  return (
+    <span className="inline-flex h-[22px] px-2 rounded-full text-[10.5px] font-semibold bg-gri-100 text-gri-700">
+      {CATEGORY_LABELS[value] ?? value}
+    </span>
+  );
+}
+
+function PriorityBadge({ value }: { value: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-[22px] px-2 rounded-full text-[10.5px] font-semibold",
+        PRIORITY_STYLES[value] ?? PRIORITY_STYLES.normal
+      )}
+    >
+      {PRIORITIES.find((p) => p.id === value)?.label ?? value}
+    </span>
+  );
+}
 
 const STATUS_META: Record<TicketStatus, { label: string; dot: DotColor }> = {
   open: { label: "açık", dot: "sari" },
@@ -82,6 +126,7 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
   const [selected, setSelected] = useState<SupportTicket | null>(null);
   const [response, setResponse] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [acceptingAi, setAcceptingAi] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -189,6 +234,46 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
     }
   };
 
+  const acceptAiSuggestions = async () => {
+    if (!selected) return;
+    setAcceptingAi(true);
+    try {
+      const res = await fetch(`/api/admin/support/${selected.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accept_ai_suggestions: true }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        ticket?: {
+          category: string;
+          priority: string | null;
+        };
+      };
+      if (!json.ok) {
+        toast.error(json.error ?? "Öneri kabul edilemedi");
+        return;
+      }
+      toast.success("AI önerisi kabul edildi");
+      if (json.ticket) {
+        setSelected({
+          ...selected,
+          category: json.ticket.category,
+          priority: json.ticket.priority ?? selected.priority,
+        });
+      }
+      await load();
+    } finally {
+      setAcceptingAi(false);
+    }
+  };
+
+  const useAiDraft = () => {
+    if (!selected?.aiDraftResponse) return;
+    setResponse(selected.aiDraftResponse);
+  };
+
   const respond = async (status: TicketStatus) => {
     if (!selected || !response.trim()) {
       toast.error("Yanıt yazın");
@@ -286,6 +371,7 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
                 <tr>
                   <th className="px-4 py-3 text-left">Konu</th>
                   <th className="px-4 py-3 text-left">Kategori</th>
+                  <th className="px-4 py-3 text-left">Öncelik</th>
                   <th className="px-4 py-3 text-left">Müşteri</th>
                   <th className="px-4 py-3 text-left">Durum</th>
                 </tr>
@@ -300,11 +386,25 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
                     )}
                     onClick={() => {
                       setSelected(t);
-                      setResponse(t.adminResponse ?? "");
+                      setResponse(
+                        t.adminResponse ?? t.aiDraftResponse ?? ""
+                      );
                     }}
                   >
-                    <td className="px-4 py-3 font-semibold">{t.subject}</td>
-                    <td className="px-4 py-3">{t.category}</td>
+                    <td className="px-4 py-3 font-semibold">
+                      {t.subject}
+                      {t.aiClassifiedAt && (
+                        <span className="ml-1.5 text-[10px] text-mavi font-semibold">
+                          AI
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <CategoryBadge value={t.category} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <PriorityBadge value={t.priority ?? "normal"} />
+                    </td>
                     <td className="px-4 py-3">
                       {t.customerName ?? t.customerEmail ?? "—"}
                     </td>
@@ -324,6 +424,55 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
           ) : (
             <>
               <h2 className="font-semibold text-[16px] mb-2">{selected.subject}</h2>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <CategoryBadge value={selected.category} />
+                <PriorityBadge value={selected.priority ?? "normal"} />
+              </div>
+
+              {selected.aiClassifiedAt ? (
+                <div className="mb-4 p-3 rounded-lg bg-gri-50 ring-1 ring-gri-200">
+                  <p className="text-[11px] font-semibold text-gri-600 uppercase tracking-wide mb-2">
+                    AI önerisi
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selected.aiCategorySuggestion && (
+                      <CategoryBadge value={selected.aiCategorySuggestion} />
+                    )}
+                    {selected.aiPrioritySuggestion && (
+                      <PriorityBadge value={selected.aiPrioritySuggestion} />
+                    )}
+                  </div>
+                  {selected.aiDraftResponse && (
+                    <p className="text-[12.5px] text-gri-700 whitespace-pre-wrap mb-3">
+                      {selected.aiDraftResponse}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={acceptingAi}
+                      onClick={() => void acceptAiSuggestions()}
+                    >
+                      {acceptingAi ? "Kaydediliyor…" : "Öneriyi kabul et"}
+                    </Button>
+                    {selected.aiDraftResponse && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={useAiDraft}
+                      >
+                        Taslağı yanıta kopyala
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-gri-500 mb-3">
+                  Sınıflandırılmadı (AI henüz işlemedi veya bütçe limiti)
+                </p>
+              )}
+
               <p className="text-[13px] text-gri-700 whitespace-pre-wrap mb-4">
                 {selected.message}
               </p>

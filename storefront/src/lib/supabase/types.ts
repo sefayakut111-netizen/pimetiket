@@ -3921,6 +3921,10 @@ export type Database = {
           admin_responded_at: string | null
           admin_responded_by: string | null
           admin_response: string | null
+          ai_category_suggestion: string | null
+          ai_classified_at: string | null
+          ai_draft_response: string | null
+          ai_priority_suggestion: string | null
           category: string
           created_at: string
           guest_email: string | null
@@ -3928,6 +3932,7 @@ export type Database = {
           id: string
           message: string
           order_id: string | null
+          priority: string | null
           status: string
           subject: string
           updated_at: string
@@ -3937,6 +3942,10 @@ export type Database = {
           admin_responded_at?: string | null
           admin_responded_by?: string | null
           admin_response?: string | null
+          ai_category_suggestion?: string | null
+          ai_classified_at?: string | null
+          ai_draft_response?: string | null
+          ai_priority_suggestion?: string | null
           category?: string
           created_at?: string
           guest_email?: string | null
@@ -3944,6 +3953,7 @@ export type Database = {
           id?: string
           message: string
           order_id?: string | null
+          priority?: string | null
           status?: string
           subject: string
           updated_at?: string
@@ -3953,6 +3963,10 @@ export type Database = {
           admin_responded_at?: string | null
           admin_responded_by?: string | null
           admin_response?: string | null
+          ai_category_suggestion?: string | null
+          ai_classified_at?: string | null
+          ai_draft_response?: string | null
+          ai_priority_suggestion?: string | null
           category?: string
           created_at?: string
           guest_email?: string | null
@@ -3960,6 +3974,7 @@ export type Database = {
           id?: string
           message?: string
           order_id?: string | null
+          priority?: string | null
           status?: string
           subject?: string
           updated_at?: string

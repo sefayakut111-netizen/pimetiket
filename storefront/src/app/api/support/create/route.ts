@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueMail } from "@/lib/mail/enqueue";
 import type { Database } from "@/lib/supabase/types";
+import { scheduleSupportClassify } from "@/lib/support/schedule-classify";
 
 export const runtime = "nodejs";
 
@@ -165,6 +166,8 @@ export async function POST(req: Request) {
       },
     });
   }
+
+  scheduleSupportClassify(data.id);
 
   return NextResponse.json({ ok: true, id: data.id });
 }

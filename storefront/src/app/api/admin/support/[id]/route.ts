@@ -16,6 +16,18 @@ const VALID_STATUS = [
   "closed",
 ] as const;
 
+const VALID_CATEGORIES = [
+  "genel",
+  "siparis",
+  "tasarim",
+  "kargo",
+  "iade",
+  "teknik",
+  "fiyat",
+] as const;
+
+const VALID_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -29,6 +41,9 @@ export async function PATCH(
   const body = (await req.json()) as {
     admin_response?: string;
     status?: string;
+    accept_ai_suggestions?: boolean;
+    category?: string;
+    priority?: string;
   };
 
   const admin = createAdminClient();
@@ -43,6 +58,37 @@ export async function PATCH(
   }
 
   const patch: SupportUpdate = {};
+
+  if (body.accept_ai_suggestions) {
+    const aiCat = ticket.ai_category_suggestion as string | null;
+    const aiPri = ticket.ai_priority_suggestion as string | null;
+    if (
+      aiCat &&
+      VALID_CATEGORIES.includes(aiCat as (typeof VALID_CATEGORIES)[number])
+    ) {
+      patch.category = aiCat;
+    }
+    if (
+      aiPri &&
+      VALID_PRIORITIES.includes(aiPri as (typeof VALID_PRIORITIES)[number])
+    ) {
+      patch.priority = aiPri;
+    }
+  }
+
+  if (
+    body.category &&
+    VALID_CATEGORIES.includes(body.category as (typeof VALID_CATEGORIES)[number])
+  ) {
+    patch.category = body.category;
+  }
+  if (
+    body.priority &&
+    VALID_PRIORITIES.includes(body.priority as (typeof VALID_PRIORITIES)[number])
+  ) {
+    patch.priority = body.priority;
+  }
+
   if (body.admin_response?.trim()) {
     patch.admin_response = body.admin_response.trim();
     patch.admin_responded_by = auth.user.id;

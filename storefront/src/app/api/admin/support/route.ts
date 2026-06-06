@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
+import { scheduleSupportClassify } from "@/lib/support/schedule-classify";
 
 export const runtime = "nodejs";
 
@@ -17,11 +18,7 @@ const VALID_CATEGORIES = [
   "fiyat",
 ] as const;
 
-const PRIORITY_PREFIX: Record<string, string> = {
-  normal: "",
-  yuksek: "[Yüksek] ",
-  acil: "[Acil] ",
-};
+const VALID_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 
 export async function GET(req: Request) {
   const auth = await assertPermission("help_requests", "view");
@@ -70,6 +67,7 @@ export async function GET(req: Request) {
     subject: t.subject,
     message: t.message,
     category: t.category,
+    priority: t.priority ?? "normal",
     status: t.status,
     orderId: t.order_id,
     customerName: t.guest_name ?? null,
@@ -78,6 +76,10 @@ export async function GET(req: Request) {
       : t.guest_email,
     adminResponse: t.admin_response,
     adminRespondedAt: t.admin_responded_at,
+    aiCategorySuggestion: t.ai_category_suggestion,
+    aiPrioritySuggestion: t.ai_priority_suggestion,
+    aiDraftResponse: t.ai_draft_response,
+    aiClassifiedAt: t.ai_classified_at,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
   }));
@@ -116,9 +118,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const priority = body.priority ?? "normal";
-  const prefix = PRIORITY_PREFIX[priority] ?? "";
-  const subject = prefix + rawSubject;
+  const priority = VALID_PRIORITIES.includes(
+    body.priority as (typeof VALID_PRIORITIES)[number]
+  )
+    ? body.priority!
+    : "normal";
+  const subject = rawSubject;
 
   const category = VALID_CATEGORIES.includes(
     body.category as (typeof VALID_CATEGORIES)[number]
@@ -133,6 +138,7 @@ export async function POST(req: Request) {
         subject,
         message,
         category,
+        priority,
         order_id: body.order_id?.trim() || null,
         status: "open",
       }
@@ -142,6 +148,7 @@ export async function POST(req: Request) {
         subject,
         message,
         category,
+        priority,
         order_id: body.order_id?.trim() || null,
         status: "open",
       };
@@ -163,6 +170,8 @@ export async function POST(req: Request) {
     console.error("[admin/support] create:", error);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
+
+  scheduleSupportClassify(data.id);
 
   return NextResponse.json({ ok: true, id: data.id });
 }
