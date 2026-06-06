@@ -1,0 +1,31 @@
+---
+description: Her görev sonu commit+push+CLI deploy (Vercel auto-deploy güvenilmez)
+alwaysApply: true
+---
+
+# Deploy workflow (ZORUNLU — her kod görevi sonunda)
+
+Vercel auto-deploy webhook **GÜVENİLMEZ** (git push tek başına prod'a gitmez; 6 Haz 2026'da 3+ kez kaçtı).
+
+Her CURSOR-PROMPT / kod görevi tamamlandığında **SIRAYLA**:
+
+1. `git add` (ilgili dosyalar) + `git commit -m "..."`
+2. `git push origin main`
+3. **CLI deploy ZORUNLU** — auto-deploy'a güvenme:
+   ```powershell
+   cd pim-etiket/core/storefront
+   npx vercel --prod --yes --force --project pimetiket-storefront
+   ```
+   (`--force` = cache'siz temiz build; auth lokalde mevcut)
+4. Deploy doğrula:
+   ```powershell
+   Invoke-RestMethod https://pimetiket.com/api/health
+   ```
+   → `version` alanı yeni commit SHA'nın ilk 7 karakteri olmalı
+5. **Migration varsa:** Supabase MCP `apply_migration` veya Sefa dashboard (`db push` migration-history uyumsuz olabilir)
+
+## Notlar
+
+- Build fail olursa raporla; push'u geri alma
+- Boş commit ile redeploy tetikleme — CLI deploy kullan
+- `vercel.json` ignoreCommand yok; sorun webhook delivery
