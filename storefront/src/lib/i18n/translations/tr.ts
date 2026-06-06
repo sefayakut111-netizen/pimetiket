@@ -289,6 +289,53 @@ export const tr: TranslationDict = {
       "5 iş günü içinde kargoya veriyoruz. Süreci takip etmek için panelim sayfasına bakabilirsin.",
     orderDetail: "Sipariş detayı",
     backToPanel: "Panele git",
+    orderLoadingTitle: "Siparişin hazırlanıyor",
+    orderLoadingDesc:
+      "Ödemen alındı. Sipariş detaylarını yüklüyoruz — birkaç saniye sürebilir.",
+    orderFetchFailTitle: "Sipariş henüz görünmüyor",
+    orderFetchFailDesc:
+      "Ödemen alınmış olabilir ama sipariş detayı şu an yüklenemedi. Farklı bir hesapla giriş yapmış olabilirsin — Siparişlerim sayfasından kontrol et.",
+    orderNotFoundTitle: "Sipariş bulunamadı",
+    orderNotFoundDesc:
+      "Ödeme dönüş bağlantısı eksik. Son siparişini Siparişlerim sayfasından kontrol edebilirsin.",
+    backToCart: "Sepete dön",
+    step1DoneTitle: "Tasarım yüklendi",
+    step1DoneDesc: "Sistem ön-kontrolü için tasarımını teslim aldı.",
+    stepPrepProofGeneratingTitle: "Bıçak çizimi hazırlanıyor",
+    stepPrepQcFlaggedTitle: "AI ön-kontrol uyarısı",
+    stepPrepOperatorTitle: "Operatör inceliyor",
+    stepPrepDefaultTitle: "Sistem hazırlığı (AI + bıçak)",
+    stepPrepProofGeneratingDesc:
+      "AI ön-kontrol geçti, otomatik bıçak çizimi 5 dakika içinde hazır. Sipariş detayında ilerlemeyi izleyebilirsin.",
+    stepPrepOperatorDesc:
+      "Operatörümüz tasarımını manuel kontrol ediyor. 24 saat içinde sonuçlanır.",
+    stepPrepDefaultDesc:
+      "AI ön-kontrol + otomatik bıçak çizimi hazırlanır. Genelde 5-30 dakika sürer.",
+    stepDeliveryDeliveredTitle: "Teslim edildi",
+    stepDeliveryShippedTitle: "Kargoda — yolda",
+    stepDeliveryProductionTitle: "İşleminiz üretiliyor",
+    stepDeliveryProofApprovedTitle: "Üretime alındı",
+    stepDeliveryDefaultTitle: "Üretim ve kapına teslim",
+    stepDeliveryDeliveredDesc:
+      "Sipariş teslim edildi. Tekrar siparişin için panelime gel.",
+    stepDeliveryShippedDesc:
+      "Sipariş kargoya verildi. Detayda kargo takip numarasını görebilirsin.",
+    stepDeliveryProductionDesc:
+      "Üretim atölyemizde baskıda. 5 iş günü içinde kargoya verilir.",
+    stepDeliveryProofApprovedDesc:
+      "Onayın alındı, üretim kuyruğuna düştü. Kısa süre içinde baskı başlar.",
+    stepDeliveryDefaultDesc:
+      "Prova onayı sonrası baskı → 5 iş günü kargo → kapına teslim.",
+    reviewProof: "Provayı İncele →",
+    ctaProofReady:
+      "Provan hazır — baskı önizlemesini inceleyip onaylayabilirsin.",
+    ctaDesignUploaded:
+      "Tasarımın yüklendi — AI kalite kontrolü başlıyor. Genelde 30–60 saniye sürer.",
+    ctaViewOrderDetails: "Sipariş detayını gör →",
+    ctaOrderCreatedUpload:
+      "Siparişin oluştu! Şimdi tasarım dosyanı yükle — AI kontrol edecek ve baskı provası hazırlanacak.",
+    ctaUploadDesign: "Tasarım yükle →",
+    ctaUploadLater: "Sonra yükleyeceğim — sipariş detayı",
   },
   auth: {
     eyebrow: "Giriş",
@@ -315,6 +362,8 @@ export const tr: TranslationDict = {
     notReady: "Giriş yakında açılacak",
     notReadyDesc:
       "Auth altyapısı kurulum aşamasında. Şu an sipariş ve sepet akışlarını giriş yapmadan da kullanabilirsin.",
+    paymentSuccessHint:
+      "Ödemen alındı — siparişini görmek için giriş yap.",
   },
   pim: {
     composerPlaceholder: "Pim'e yaz…",

@@ -202,13 +202,11 @@ function OdemeSonucInner() {
   const orderId = resolvedOrderId;
 
   const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [orderLoading, setOrderLoading] = useState(hasValidOrderId);
+  const [orderFetchTimedOut, setOrderFetchTimedOut] = useState(false);
   const purchaseTracked = useRef(false);
   const failTracked = useRef(false);
-
-  useEffect(() => {
-    if (status !== "success" || !hasValidOrderId) return;
-    void clearCustomerCart().then(() => refreshCustomerCart());
-  }, [status, hasValidOrderId]);
+  const cartCleared = useRef(false);
 
   useEffect(() => {
     if (status !== "fail" || failTracked.current) return;
@@ -222,6 +220,7 @@ function OdemeSonucInner() {
     if (!order || purchaseTracked.current || status !== "success") return;
     const postPaid =
       order.status === "paid" ||
+      order.status === "awaiting_upload" ||
       order.status === "qc_pending" ||
       order.status === "proof_pending" ||
       order.status === "proof_generating" ||
@@ -268,8 +267,14 @@ function OdemeSonucInner() {
 
     const poll = async () => {
       const o = await fetchCustomerOrder(orderId);
-      if (cancelled || !o) return;
+      if (cancelled) return;
+      if (!o) return;
       setOrder(o);
+      setOrderLoading(false);
+      if (!cartCleared.current) {
+        cartCleared.current = true;
+        void clearCustomerCart().then(() => refreshCustomerCart());
+      }
       const terminal =
         o.status === "proof_pending" ||
         o.status === "proof_generating" ||
@@ -290,6 +295,10 @@ function OdemeSonucInner() {
 
     const timeout = setTimeout(() => {
       if (intervalId) clearInterval(intervalId);
+      if (!cancelled) {
+        setOrderFetchTimedOut(true);
+        setOrderLoading(false);
+      }
     }, 120000);
 
     return () => {
@@ -306,18 +315,17 @@ function OdemeSonucInner() {
 
   const orderHasDesigns =
     hasDesignsParam ||
-    (order != null &&
-      (order.status === "qc_pending" ||
-        order.status === "proof_pending" ||
-        order.status === "proof_generating" ||
-        order.status === "proof_validating" ||
-        order.status === "human_review" ||
-        order.status === "proof_approved" ||
-        order.status === "in_production" ||
-        order.status === "ready_to_ship" ||
-        order.status === "fason_assigned" ||
-        order.status === "shipped" ||
-        order.status === "delivered"));
+    order?.status === "qc_pending" ||
+    order?.status === "proof_pending" ||
+    order?.status === "proof_generating" ||
+    order?.status === "proof_validating" ||
+    order?.status === "human_review" ||
+    order?.status === "proof_approved" ||
+    order?.status === "in_production" ||
+    order?.status === "ready_to_ship" ||
+    order?.status === "fason_assigned" ||
+    order?.status === "shipped" ||
+    order?.status === "delivered";
 
   if (status === "fail") {
     const reason = sp.get("reason");
@@ -420,24 +428,78 @@ function OdemeSonucInner() {
         <div className="mx-auto max-w-[600px] px-6 text-center">
           <Pim pose="think" size={160} />
           <h1 className="mt-4 text-[24px] md:text-[32px] font-semibold tracking-tight">
-            {locale === "en" ? "Order not found" : "Sipariş bulunamadı"}
+            {t.orderSuccess.orderNotFoundTitle}
           </h1>
           <p className="mt-4 text-base text-gri-700 leading-relaxed">
-            {locale === "en"
-              ? "The payment return link is incomplete. Check My Orders for your recent purchase."
-              : "Ödeme dönüş bağlantısı eksik. Son siparişini Siparişlerim sayfasından kontrol edebilirsin."}
+            {t.orderSuccess.orderNotFoundDesc}
           </p>
           <div className="mt-6 flex gap-3 justify-center flex-wrap">
             <Button variant="primary" size="lg" href="/siparislerim">
               {t.orderSuccess.orderDetail}
             </Button>
             <Button variant="secondary" size="lg" href="/sepet">
-              {locale === "en" ? "Back to cart" : "Sepete dön"}
+              {t.orderSuccess.backToCart}
             </Button>
           </div>
         </div>
       </main>
     );
+  }
+
+  if (orderLoading && !order) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[600px] px-6 text-center">
+          <Pim pose="think" size={160} />
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-pim-mercan border-t-transparent"
+              aria-hidden="true"
+            />
+            <h1 className="text-[24px] md:text-[32px] font-semibold tracking-tight">
+              {t.orderSuccess.orderLoadingTitle}
+            </h1>
+          </div>
+          <p className="mt-4 text-base text-gri-700 leading-relaxed">
+            {t.orderSuccess.orderLoadingDesc}
+          </p>
+          <p className="mt-3 text-[13px] text-gri-500 font-mono">{orderId}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (orderFetchTimedOut && !order) {
+    return (
+      <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
+        <div className="mx-auto max-w-[600px] px-6 text-center">
+          <Pim pose="think" size={160} />
+          <h1 className="mt-4 text-[24px] md:text-[32px] font-semibold tracking-tight">
+            {t.orderSuccess.orderFetchFailTitle}
+          </h1>
+          <p className="mt-4 text-base text-gri-700 leading-relaxed">
+            {t.orderSuccess.orderFetchFailDesc}
+          </p>
+          <p className="mt-3 text-[13px] text-gri-500 font-mono">{orderId}</p>
+          <div className="mt-6 flex gap-3 justify-center flex-wrap">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => window.location.reload()}
+            >
+              {x.refresh}
+            </Button>
+            <Button variant="secondary" size="lg" href="/siparislerim">
+              {t.orderSuccess.orderDetail}
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!order) {
+    return null;
   }
 
   return (
@@ -525,7 +587,10 @@ function OdemeSonucInner() {
                   shipped -> 4
                 - delivered -> tumu done */}
             {(() => {
-              const s = order?.status ?? "awaiting_upload";
+              const s =
+                hasDesignsParam && order.status === "awaiting_upload"
+                  ? "qc_pending"
+                  : order.status;
               const activeStep =
                 s === "awaiting_upload"
                   ? 1
@@ -577,48 +642,46 @@ function OdemeSonucInner() {
                 return "waiting";
               }
 
-              // Dinamik step 2 başlığı — status'a göre nuance
+              const os = t.orderSuccess;
               const step2Title =
                 s === "proof_generating"
-                  ? "Bıçak çizimi hazırlanıyor"
+                  ? os.stepPrepProofGeneratingTitle
                   : s === "qc_flagged"
-                    ? "AI ön-kontrol uyarısı"
+                    ? os.stepPrepQcFlaggedTitle
                     : s === "operator_review" || s === "human_review"
-                      ? "Operatör inceliyor"
-                      : "Sistem hazırlığı (AI + bıçak)";
+                      ? os.stepPrepOperatorTitle
+                      : os.stepPrepDefaultTitle;
               const step2Desc =
                 s === "proof_generating"
-                  ? "AI ön-kontrol geçti, otomatik bıçak çizimi 5 dakika içinde hazır. Sipariş detayında ilerlemeyi izleyebilirsin."
+                  ? os.stepPrepProofGeneratingDesc
                   : s === "operator_review" || s === "human_review"
-                    ? "Operatörümüz tasarımını manuel kontrol ediyor. 24 saat içinde sonuçlanır."
-                    : "AI ön-kontrol + otomatik bıçak çizimi hazırlanır. Genelde 5-30 dakika sürer.";
+                    ? os.stepPrepOperatorDesc
+                    : os.stepPrepDefaultDesc;
 
-              // Dinamik step 4 başlığı — Sefa 22 May v68:
-              // "Kapına teslim" yerine sipariş aşamasını net yansıt.
               const step4Title =
                 s === "delivered"
-                  ? "Teslim edildi"
+                  ? os.stepDeliveryDeliveredTitle
                   : s === "shipped"
-                    ? "Kargoda — yolda"
+                    ? os.stepDeliveryShippedTitle
                     : s === "in_production" ||
                         s === "fason_assigned" ||
                         s === "ready_to_ship"
-                      ? "İşleminiz üretiliyor"
+                      ? os.stepDeliveryProductionTitle
                       : s === "proof_approved"
-                        ? "Üretime alındı"
-                        : "Üretim ve kapına teslim";
+                        ? os.stepDeliveryProofApprovedTitle
+                        : os.stepDeliveryDefaultTitle;
               const step4Desc =
                 s === "delivered"
-                  ? "Sipariş teslim edildi. Tekrar siparişin için panelime gel."
+                  ? os.stepDeliveryDeliveredDesc
                   : s === "shipped"
-                    ? "Sipariş kargoya verildi. Detayda kargo takip numarasını görebilirsin."
+                    ? os.stepDeliveryShippedDesc
                     : s === "in_production" ||
                         s === "fason_assigned" ||
                         s === "ready_to_ship"
-                      ? "Üretim atölyemizde baskıda. 5 iş günü içinde kargoya verilir."
+                      ? os.stepDeliveryProductionDesc
                       : s === "proof_approved"
-                        ? "Onayın alındı, üretim kuyruğuna düştü. Kısa süre içinde baskı başlar."
-                        : "Prova onayı sonrası baskı → 5 iş günü kargo → kapına teslim.";
+                        ? os.stepDeliveryProofApprovedDesc
+                        : os.stepDeliveryDefaultDesc;
 
               return (
                 <>
@@ -627,12 +690,12 @@ function OdemeSonucInner() {
                     <div>
                       <div className="font-semibold text-base">
                         {stateFor(1) === "done"
-                          ? "Tasarım yüklendi"
+                          ? os.step1DoneTitle
                           : t.orderSuccess.step1Title}
                       </div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
                         {stateFor(1) === "done"
-                          ? "Sistem ön-kontrolü için tasarımını teslim aldı."
+                          ? os.step1DoneDesc
                           : t.orderSuccess.step1Desc}
                       </p>
                     </div>
@@ -664,7 +727,7 @@ function OdemeSonucInner() {
                             size="md"
                             href={`/onay/${orderId}`}
                           >
-                            Provayı İncele →
+                            {os.reviewProof}
                           </Button>
                         </div>
                       )}
@@ -691,17 +754,13 @@ function OdemeSonucInner() {
             <>
               <p className="text-[14px] text-gri-700">
                 {orderReadyForProof
-                  ? locale === "en"
-                    ? "Your proof is ready — review and approve your print preview."
-                    : "Provan hazır — baskı önizlemesini inceleyip onaylayabilirsin."
-                  : locale === "en"
-                    ? "Your design is uploaded — AI quality check is starting. This usually takes 30–60 seconds."
-                    : "Tasarımın yüklendi — AI kalite kontrolü başlıyor. Genelde 30–60 saniye sürer."}
+                  ? t.orderSuccess.ctaProofReady
+                  : t.orderSuccess.ctaDesignUploaded}
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 {orderReadyForProof ? (
                   <Button variant="primary" size="lg" href={`/onay/${orderId}`}>
-                    {locale === "en" ? "Review proof →" : "Provayı incele →"}
+                    {t.orderSuccess.reviewProof}
                   </Button>
                 ) : null}
                 <Button
@@ -709,16 +768,14 @@ function OdemeSonucInner() {
                   size="lg"
                   href={`/siparis/${orderId}`}
                 >
-                  {locale === "en" ? "View order details →" : "Sipariş detayını gör →"}
+                  {t.orderSuccess.ctaViewOrderDetails}
                 </Button>
               </div>
             </>
           ) : (
             <>
               <p className="text-[14px] text-gri-700">
-                {locale === "en"
-                  ? "Order created! Upload your design file now — AI will check it and prepare the print proof."
-                  : "Siparişin oluştu! Şimdi tasarım dosyanı yükle — AI kontrol edecek ve baskı provası hazırlanacak."}
+                {t.orderSuccess.ctaOrderCreatedUpload}
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 <Button
@@ -726,13 +783,10 @@ function OdemeSonucInner() {
                   size="lg"
                   href={`/siparis/${orderId}/tasarim-yukle`}
                 >
-                  📁{" "}
-                  {locale === "en" ? "Upload design →" : "Tasarım yükle →"}
+                  📁 {t.orderSuccess.ctaUploadDesign}
                 </Button>
                 <Button variant="ghost" size="lg" href={`/siparis/${orderId}`}>
-                  {locale === "en"
-                    ? "Upload later — order details"
-                    : "Sonra yükleyeceğim — sipariş detayı"}
+                  {t.orderSuccess.ctaUploadLater}
                 </Button>
               </div>
             </>

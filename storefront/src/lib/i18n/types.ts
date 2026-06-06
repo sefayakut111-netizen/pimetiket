@@ -299,6 +299,39 @@ export type TranslationDict = {
     step3Desc: string;
     orderDetail: string;
     backToPanel: string;
+    orderLoadingTitle: string;
+    orderLoadingDesc: string;
+    orderFetchFailTitle: string;
+    orderFetchFailDesc: string;
+    orderNotFoundTitle: string;
+    orderNotFoundDesc: string;
+    backToCart: string;
+    step1DoneTitle: string;
+    step1DoneDesc: string;
+    stepPrepProofGeneratingTitle: string;
+    stepPrepQcFlaggedTitle: string;
+    stepPrepOperatorTitle: string;
+    stepPrepDefaultTitle: string;
+    stepPrepProofGeneratingDesc: string;
+    stepPrepOperatorDesc: string;
+    stepPrepDefaultDesc: string;
+    stepDeliveryDeliveredTitle: string;
+    stepDeliveryShippedTitle: string;
+    stepDeliveryProductionTitle: string;
+    stepDeliveryProofApprovedTitle: string;
+    stepDeliveryDefaultTitle: string;
+    stepDeliveryDeliveredDesc: string;
+    stepDeliveryShippedDesc: string;
+    stepDeliveryProductionDesc: string;
+    stepDeliveryProofApprovedDesc: string;
+    stepDeliveryDefaultDesc: string;
+    reviewProof: string;
+    ctaProofReady: string;
+    ctaDesignUploaded: string;
+    ctaViewOrderDetails: string;
+    ctaOrderCreatedUpload: string;
+    ctaUploadDesign: string;
+    ctaUploadLater: string;
   };
   // ====== Auth ======
   auth: {
@@ -321,6 +354,7 @@ export type TranslationDict = {
     linkSentDifferent: string;
     notReady: string;
     notReadyDesc: string;
+    paymentSuccessHint: string;
   };
   // ====== Pim chat ======
   pim: {

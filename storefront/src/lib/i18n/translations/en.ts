@@ -290,6 +290,53 @@ export const en: TranslationDict = {
       "We hand it over to the courier within 5 business days. You can track the process from the my-panel page.",
     orderDetail: "Order detail",
     backToPanel: "Go to panel",
+    orderLoadingTitle: "Preparing your order",
+    orderLoadingDesc:
+      "Payment received. Loading order details — this may take a few seconds.",
+    orderFetchFailTitle: "Order not visible yet",
+    orderFetchFailDesc:
+      "Your payment may have gone through but we couldn't load the order. You may be signed in with a different account — check My Orders.",
+    orderNotFoundTitle: "Order not found",
+    orderNotFoundDesc:
+      "The payment return link is incomplete. Check My Orders for your recent purchase.",
+    backToCart: "Back to cart",
+    step1DoneTitle: "Design uploaded",
+    step1DoneDesc: "We received your design for pre-check.",
+    stepPrepProofGeneratingTitle: "Preparing die-cut lines",
+    stepPrepQcFlaggedTitle: "AI pre-check flagged",
+    stepPrepOperatorTitle: "Operator reviewing",
+    stepPrepDefaultTitle: "System prep (AI + die-cut)",
+    stepPrepProofGeneratingDesc:
+      "AI pre-check passed. Auto die-cut lines ready within 5 minutes. Track progress on the order page.",
+    stepPrepOperatorDesc:
+      "Our operator is manually reviewing your design. Result within 24 hours.",
+    stepPrepDefaultDesc:
+      "AI pre-check and auto die-cut prep. Usually 5–30 minutes.",
+    stepDeliveryDeliveredTitle: "Delivered",
+    stepDeliveryShippedTitle: "In transit",
+    stepDeliveryProductionTitle: "In production",
+    stepDeliveryProofApprovedTitle: "Sent to production",
+    stepDeliveryDefaultTitle: "Production and delivery",
+    stepDeliveryDeliveredDesc:
+      "Order delivered. Visit your panel to order again.",
+    stepDeliveryShippedDesc:
+      "Order shipped. Tracking number is on the order detail page.",
+    stepDeliveryProductionDesc:
+      "Printing at our partner. Ships within 5 business days.",
+    stepDeliveryProofApprovedDesc:
+      "Approval received. Added to production queue. Printing starts soon.",
+    stepDeliveryDefaultDesc:
+      "After proof approval → print → ship within 5 business days.",
+    reviewProof: "Review proof →",
+    ctaProofReady:
+      "Your proof is ready — review and approve your print preview.",
+    ctaDesignUploaded:
+      "Design uploaded — AI quality check is starting. Usually 30–60 seconds.",
+    ctaViewOrderDetails: "View order details →",
+    ctaOrderCreatedUpload:
+      "Order created! Upload your design — AI will check it and prepare the print proof.",
+    ctaUploadDesign: "Upload design →",
+    ctaUploadLater: "Upload later — order details",
   },
   auth: {
     eyebrow: "Sign in",
@@ -315,6 +362,8 @@ export const en: TranslationDict = {
     notReady: "Sign-in coming soon",
     notReadyDesc:
       "Auth infrastructure is being set up. You can still browse products and use the cart without signing in.",
+    paymentSuccessHint:
+      "Payment received — sign in to view your order.",
   },
   pim: {
     composerPlaceholder: "Message Pim…",

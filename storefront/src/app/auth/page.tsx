@@ -51,6 +51,9 @@ function AuthInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const next = sanitizeNextPath(sp.get("next"), "/panelim");
+  const paymentSuccessNext =
+    next.includes("/odeme-sonuc") &&
+    (next.includes("status=success") || next.includes("status%3Dsuccess"));
   const initialMode = (sp.get("mode") === "signup" ? "signup" : "login") as AuthMode;
   const urlReferralCode = sp.get("ref");
   const authHero = useSiteImage("auth_hero");
@@ -436,6 +439,11 @@ function AuthInner() {
               ? "E-posta ve şifrenle hızlıca giriş yap."
               : "30 saniyelik form, sonra sipariş geçmeye hazırsın."}
           </p>
+          {mode === "login" && paymentSuccessNext && (
+            <div className="mt-4 rounded-lg bg-yesil-soft p-3 ring-1 ring-yesil/30 text-[13px] text-yesil font-medium leading-relaxed">
+              {t.auth.paymentSuccessHint}
+            </div>
+          )}
           {mode === "signup" && isReferralCodePresent(resolvedInviteCode) && (
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-yesil-soft ring-1 ring-yesil/30 text-[12.5px] font-semibold text-yesil">
               <Icon.Check size={12} /> Davet kodu:{" "}
