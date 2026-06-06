@@ -163,7 +163,7 @@ export async function PATCH(req: Request) {
   if (!ctx) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  if (ctx.isGenericPreview) {
+  if (ctx.isPreview || ctx.isGenericPreview) {
     return NextResponse.json(
       { error: "preview_readonly" },
       { status: 403 }

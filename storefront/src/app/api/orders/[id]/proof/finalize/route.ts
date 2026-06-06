@@ -28,6 +28,34 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 // Faz 2 iptali: import { sendOrderProofApproved } from "@/lib/mail/notifications";
 import { generatePrintReadyForOrder } from "@/lib/proof/print-ready";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Json } from "@/lib/supabase/types";
+
+async function logPrintReadyFailed(
+  admin: SupabaseClient<Database>,
+  orderId: string,
+  row: {
+    summary: string;
+    detail: Json;
+  }
+) {
+  const { error } = await admin.from("order_events").insert([
+    {
+      order_id: orderId,
+      event_type: "print_ready_failed",
+      status_after: "operator_print_review",
+      actor_role: "system",
+      summary: row.summary,
+      detail: row.detail,
+    },
+  ]);
+  if (error) {
+    console.error("[proof/finalize] print_ready_failed insert failed:", error);
+    Sentry.captureException(error, {
+      extra: { orderId, event_type: "print_ready_failed" },
+    });
+  }
+}
 
 export async function POST(
   _req: Request,
@@ -73,29 +101,17 @@ export async function POST(
     );
   }
 
+  const newStatus =
+    typeof result.new_status === "string"
+      ? result.new_status
+      : "operator_print_review";
+
   // Sefa 21 May v68 — Faz 2: mail iptal. Müşteri UI'da onay aldı.
   // void sendOrderProofApproved({ userId: user.id, orderId }).catch((err) =>
   //   console.error("[proof/finalize] mail error:", err)
   // );
 
   const adminClient = createAdminClient();
-  const { error: reviewErr } = await adminClient
-    .from("orders")
-    .update({ status: "operator_print_review" })
-    .eq("id", orderId)
-    .eq("status", "proof_approved");
-
-  if (reviewErr) {
-    console.error(
-      "[proof/finalize] operator_print_review update failed:",
-      reviewErr
-    );
-    return NextResponse.json(
-      { ok: false, error: "status_update_failed", detail: reviewErr.message },
-      { status: 500 }
-    );
-  }
-
   void generatePrintReadyForOrder(orderId)
     .then(async ({ errors, generated }) => {
       if (errors.length === 0) return;
@@ -104,37 +120,25 @@ export async function POST(
         level: "warning",
         extra: { orderId, errorCount: errors.length, generated },
       });
-      await adminClient.from("order_events").insert([
-        {
-          order_id: orderId,
-          event_type: "print_ready_failed",
-          status_after: "operator_print_review",
-          actor_role: "system",
-          summary: `Print-ready PDF üretilemedi (${errors.length} kalem)`,
-          detail: { errors: errors.slice(0, 10), generated },
-        },
-      ]);
+      await logPrintReadyFailed(adminClient, orderId, {
+        summary: `Print-ready PDF üretilemedi (${errors.length} kalem)`,
+        detail: { errors: errors.slice(0, 10), generated },
+      });
     })
     .catch(async (err) => {
       console.error("[proof/finalize] print-ready:", err);
       Sentry.captureException(err, { extra: { orderId } });
-      await adminClient.from("order_events").insert([
-        {
-          order_id: orderId,
-          event_type: "print_ready_failed",
-          status_after: "operator_print_review",
-          actor_role: "system",
-          summary: "Print-ready PDF üretimi beklenmedik hata",
-          detail: {
-            error: err instanceof Error ? err.message : String(err),
-          },
+      await logPrintReadyFailed(adminClient, orderId, {
+        summary: "Print-ready PDF üretimi beklenmedik hata",
+        detail: {
+          error: err instanceof Error ? err.message : String(err),
         },
-      ]);
+      });
     });
 
   return NextResponse.json({
     ok: true,
-    newStatus: "operator_print_review",
+    newStatus,
     message:
       "✅ Onayın alındı. Baskı öncesi son kontrolden geçiyor — operatörümüz onaylayınca üretime alınacak.",
   });

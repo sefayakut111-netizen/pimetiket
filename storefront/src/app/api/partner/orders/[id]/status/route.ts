@@ -42,7 +42,7 @@ export async function POST(
   if (!ctx) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  if (ctx.isGenericPreview) {
+  if (ctx.isPreview || ctx.isGenericPreview) {
     return NextResponse.json(
       { error: "preview_readonly", message: "Denetim modunda güncelleme yapılamaz." },
       { status: 403 }
