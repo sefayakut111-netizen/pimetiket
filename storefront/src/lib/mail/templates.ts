@@ -490,12 +490,9 @@ function renderCustomerReviewRequest(input: MailTemplateInput): MailRendered {
   const p = input.payload;
   const orderId = escape(p.order_id);
   const customerName = escape(p.customer_name ?? "");
-  const reviewToken = escape(p.review_token ?? "");
   const productName = escape(p.product_name ?? "siparişin");
 
-  const reviewLink = reviewToken
-    ? `${SITE_URL}/yorum-yaz/${reviewToken}`
-    : `${SITE_URL}/siparislerim`;
+  const reviewLink = `${SITE_URL}/yorum-yaz/${orderId}`;
 
   const subject = customerName
     ? `${customerName}, ${productName} nasıl oldu?`

@@ -29,7 +29,7 @@ import type { Json } from "@/lib/supabase/types";
 import { queryPaymentStatus, isPayTrConfigured } from "@/lib/payment/paytr";
 import {
   sendOrderConfirmation,
-  sendOrderProofRequired,
+  sendOrderProofRequiredIfEligible,
 } from "@/lib/mail/notifications";
 import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
 import { isAdminOrStaffUserId } from "@/lib/supabase/assert-admin";
@@ -239,7 +239,7 @@ export async function GET(req: Request) {
               err
             )
           );
-          void sendOrderProofRequired({
+          void sendOrderProofRequiredIfEligible({
             userId: intent.user_id,
             orderId: recoveredOrderId,
           }).catch((err) =>

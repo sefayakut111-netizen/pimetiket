@@ -22,6 +22,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   ALLOWED_MIME_TYPES,
+  CUSTOMER_UPLOADABLE_ORDER_STATUSES,
   MAX_FILE_SIZE,
   STORAGE_BUCKET,
   getExtensionFromMime,
@@ -47,15 +48,7 @@ const InitBodySchema = z.object({
   kind: z.enum(["design", "white"]).optional(),
 });
 
-const ACCEPTED_ORDER_STATUSES = [
-  "paid",
-  "awaiting_upload",
-  "qc_pending",
-  "qc_flagged",
-  "operator_review",
-  "human_review",
-  "human_review_failed",
-] as const;
+const ACCEPTED_ORDER_STATUSES = CUSTOMER_UPLOADABLE_ORDER_STATUSES;
 
 export async function POST(req: NextRequest) {
   // 1) Auth check

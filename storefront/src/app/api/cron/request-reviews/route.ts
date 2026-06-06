@@ -147,8 +147,7 @@ export async function GET(req: Request) {
         ? o.address.name.split(" ")[0]
         : "";
 
-    // Review token — login olmadan yorum yazabilmek için (gelecek özelliği,
-    // şu an /siparislerim üzerinden yönlendirilir)
+    // review_token şablonu artık doğrudan /yorum-yaz/[orderId] kullanıyor (giriş zorunlu).
     const reviewToken = "";
 
     const result = await enqueueMail({

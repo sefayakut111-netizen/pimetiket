@@ -30,7 +30,7 @@ import { recoverPendingPaymentIntentWithRetries } from "@/lib/payment/recover-wi
 import { resolveOrderIdFromIntent } from "@/lib/payment/resolve-order-from-intent";
 import {
   sendOrderConfirmation,
-  sendOrderProofRequired,
+  sendOrderProofRequiredIfEligible,
 } from "@/lib/mail/notifications";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { promoteEditorCutlines } from "@/lib/editor/promote-editor-cutline";
@@ -470,12 +470,9 @@ export async function POST(req: NextRequest) {
     console.error("[payment/callback] order mail failed:", err)
   );
 
-  // 14a) Sefa 19 May v68 (Migration 059 — baskı onay akışı):
-  // Migration 059'daki trg_auto_advance_to_proof_pending trigger orders.status
-  // 'paid' → 'proof_pending' yapar. Burada müşteriye onay sayfasına git
-  // mailini fire-and-forget yolluyoruz. Trigger fail olursa mail yine
-  // dönüş bilgisi verir; müşteri sipariş sayfasından erişebilir.
-  void sendOrderProofRequired({
+  // 14a) Baskı onay maili — yalnız prova aşamasında (awaiting_upload/qc'de yok).
+  // Prova hazır olunca run-order-cutline → sendProofReady ayrıca tetiklenir.
+  void sendOrderProofRequiredIfEligible({
     userId: intent.user_id,
     orderId,
   }).catch((err) =>

@@ -593,6 +593,34 @@ export async function sendShipmentStatus(args: {
 // DB trigger zaten 'proof_pending' state'ine geçirir; bu mail müşteriye
 // "onay sayfasına git" çağrısıdır.
 
+const PROOF_REQUIRED_MAIL_STATUSES = new Set([
+  "proof_generating",
+  "proof_pending",
+  "proof_validating",
+]);
+
+/** Ödeme/recover sonrası — yalnız prova aşamasında mail gönder (awaiting_upload/qc'de değil). */
+export async function sendOrderProofRequiredIfEligible(args: {
+  userId: string;
+  orderId: string;
+}): Promise<{ ok: boolean; reason?: string; skipped?: boolean }> {
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("status")
+    .eq("id", args.orderId)
+    .single();
+
+  if (!order) return { ok: false, reason: "order_not_found" };
+
+  const status = (order as { status: string }).status;
+  if (!PROOF_REQUIRED_MAIL_STATUSES.has(status)) {
+    return { ok: false, reason: "status_not_eligible", skipped: true };
+  }
+
+  return sendOrderProofRequired(args);
+}
+
 export async function sendOrderProofRequired(args: {
   userId: string;
   orderId: string;

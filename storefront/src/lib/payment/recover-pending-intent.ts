@@ -18,7 +18,7 @@ import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
 import {
   sendOrderConfirmation,
-  sendOrderProofRequired,
+  sendOrderProofRequiredIfEligible,
 } from "@/lib/mail/notifications";
 import { enqueueMail } from "@/lib/mail/enqueue";
 import { queryPaymentStatus } from "@/lib/payment/paytr";
@@ -222,7 +222,7 @@ async function runPostFinalizeSideEffects(
     console.error("[payment/recover] order mail failed:", err)
   );
 
-  void sendOrderProofRequired({
+  void sendOrderProofRequiredIfEligible({
     userId: intent.user_id,
     orderId,
   }).catch((err) =>

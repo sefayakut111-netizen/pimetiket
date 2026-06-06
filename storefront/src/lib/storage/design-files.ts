@@ -42,6 +42,23 @@ export const ALLOWED_EXTENSIONS = [
 
 export type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
 
+/** Müşteri upload API + sipariş detay kartı — upload-init ile aynı set */
+export const CUSTOMER_UPLOADABLE_ORDER_STATUSES = [
+  "paid",
+  "awaiting_upload",
+  "qc_pending",
+  "qc_flagged",
+  "operator_review",
+  "human_review",
+  "human_review_failed",
+] as const;
+
+export function isCustomerOrderUploadable(status: string): boolean {
+  return (CUSTOMER_UPLOADABLE_ORDER_STATUSES as readonly string[]).includes(
+    status
+  );
+}
+
 export const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30 MB — Supabase Storage limiti
 /** R2 direct upload üst sınırı (büyük PSD vb.) */
 export const MAX_R2_FILE_SIZE = 100 * 1024 * 1024; // 100 MB

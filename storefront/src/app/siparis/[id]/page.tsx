@@ -30,6 +30,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isLoggedInSync } from "@/lib/supabase/auth-bridge";
 import {
   ALLOWED_MIME_TYPES,
+  isCustomerOrderUploadable,
   MAX_FILE_SIZE,
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
@@ -1006,17 +1007,18 @@ export default function SiparisDetailPage({
               </div>
             )}
 
-            {/* File upload card — her order item icin ayri kart */}
-            {order.items.map((item) => (
-              <DesignUploadCard
-                key={item.id}
-                orderId={order.id}
-                orderItem={item}
-                orderItemId={item.id}
-                itemDesignFiles={itemDesignFiles}
-                c={c}
-              />
-            ))}
+            {/* File upload card — yalnız API'nin kabul ettiği durumlarda */}
+            {isCustomerOrderUploadable(order.status) &&
+              order.items.map((item) => (
+                <DesignUploadCard
+                  key={item.id}
+                  orderId={order.id}
+                  orderItem={item}
+                  orderItemId={item.id}
+                  itemDesignFiles={itemDesignFiles}
+                  c={c}
+                />
+              ))}
 
             {/* Tasarım versiyon geçmişi — 2+ versiyon varsa otomatik gösterir */}
             <OrderDesignHistory orderId={order.id} />

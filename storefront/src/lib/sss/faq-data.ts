@@ -113,18 +113,18 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Verdiğim siparişi iptal edebilir miyim?",
       summary:
-        "Siparişiniz üretime girmediği sürece sipariş detayından iptal edilebilir; üretime girdikten sonra iptal mümkün değildir.",
+        "Sipariş durumu uygunken (ödeme alındı veya tasarım bekleniyor) sipariş detayından iptal edilebilir; üretim başladıktan sonra iptal mümkün değildir.",
       detail:
-        "Sipariş onayını takip eden 2 saat içinde, üretim hazırlığı başlamadan önce /siparislerim sayfasından ilgili siparişe girin ve Siparişi iptal et butonunu kullanın. Bu süre sonunda sipariş üretim hattına aktarıldığı için, TKHK madde 15/b kapsamında kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır. İptal süreciyle ilgili sorularınız için müşteri hizmetlerimiz size yardımcı olur.",
+        "Sipariş durumu ödeme alındı veya tasarım bekleniyor iken /siparislerim sayfasından ilgili siparişe girin ve Siparişi iptal et butonunu kullanın. Tasarım kontrolü veya üretim aşamasına geçildikten sonra panelden iptal edilemez; bu durumda /destek veya /iletisim üzerinden bize ulaşın. TKHK madde 15/b kapsamında kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır.",
     },
   ],
   tasarim: [
     {
       q: "Hangi tasarım dosyası formatları kabul edilmektedir?",
       summary:
-        "Pim Etiket sistemi; PDF, PNG, AI, PSD ve EPS olmak üzere beş ana tasarım dosyası formatını kabul etmektedir.",
+        "Pim Etiket sistemi; PDF, PNG, JPEG, AI, PSD ve SVG formatlarını kabul etmektedir.",
       detail:
-        "Yüksek baskı kalitesi için PDF/X-1a veya AI formatı önerilir; bu formatlarda vektör veriler, font outline'ları ve renk profilleri korunur. PNG formatı rasterized olduğundan 300 DPI çözünürlük tavsiye edilir. JPEG dosyaları sıkıştırma artefaktları nedeniyle, SVG dosyaları ise font ve renk standartlarındaki tutarsızlıklar nedeniyle kabul edilmemektedir. Yüklenen dosyalar otomatik ön denetimden geçirilerek format, çözünürlük ve renk profili açısından kontrol edilir.",
+        "Yüksek baskı kalitesi için PDF/X-1a veya AI formatı önerilir; bu formatlarda vektör veriler, font outline'ları ve renk profilleri korunur. PNG ve JPEG raster formatlarında 300 DPI çözünürlük tavsiye edilir. EPS formatı desteklenmez. Yüklenen dosyalar otomatik ön denetimden geçirilerek format, çözünürlük ve renk profili açısından kontrol edilir.",
     },
     {
       q: "Maksimum dosya boyutu ve yükleme limiti nedir?",
@@ -138,7 +138,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Hayır, tasarım dosyanızı sipariş onaylandıktan sonra panel üzerinden de yükleyebilirsiniz.",
       detail:
-        "Konfigüratördeki tasarım yükleme alanı opsiyoneldir; bu adım atlandığı takdirde sipariş onaylanır ve dosyayı /siparislerim sayfasından ilgili siparişe girerek sipariş detayındaki tasarım yükleme alanından veya /siparis/[sipariş-no]/tasarim-yukle sayfasından sonradan ekleyebilirsiniz. Ancak üretim akışı yalnızca tasarım dosyası onaylandıktan sonra başlatılır; teslim süresinin gecikmemesi için dosyanın en kısa sürede yüklenmesi önerilir. Sipariş ön denetimden başarıyla geçen dosyalar otomatik olarak üretim hattına aktarılır.",
+        "Konfigüratördeki tasarım yükleme alanı opsiyoneldir; bu adım atlandığı takdirde sipariş onaylanır ve dosyayı /siparislerim sayfasından ilgili siparişe girerek sipariş detayındaki tasarım yükleme alanından veya /siparis/[sipariş-no]/tasarim-yukle sayfasından sonradan ekleyebilirsiniz. Ön denetim ve baskı provası tamamlandıktan sonra /onay/[sipariş-no] sayfasından baskı önizlemenizi onaylamanız gerekir; onay sonrası üretime geçilir. Teslim süresinin gecikmemesi için dosyanın en kısa sürede yüklenmesi önerilir.",
     },
     {
       q: "Tasarım dosyasının çözünürlüğü kaç olmalıdır?",
@@ -477,9 +477,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Hatalı tasarım dosyası yükledim, değiştirebilir miyim?",
       summary:
-        "Sipariş üretime alınmadığı sürece dosyanızı panelden silip yeniden yükleyebilirsiniz.",
+        "Sipariş durumu uygunken (ön denetim veya düzeltme aşamasında) dosyanızı panelden yeniden yükleyebilirsiniz.",
       detail:
-        "/siparislerim sayfasından ilgili siparişe girin; sipariş detayındaki tasarım yükleme alanından veya /siparis/[sipariş-no]/tasarim-yukle sayfasından yeni dosyayı yükleyebilirsiniz. Bu işlem yalnızca sipariş onayını takip eden 2 saatlik üretim hazırlık penceresinde mümkündür. Sipariş üretim hattına aktarıldıktan sonra dosya değişikliği kabul edilmez; bu durumda kişiye özel üretim ilkesi gereği yeni bir sipariş açılması gerekir.",
+        "/siparislerim sayfasından ilgili siparişe girin; sipariş detayındaki tasarım yükleme alanından veya /siparis/[sipariş-no]/tasarim-yukle sayfasından yeni dosyayı yükleyebilirsiniz. Dosya değişikliği, sipariş durumu yükleme veya düzeltme aşamasındayken mümkündür; baskı provası onaylandıktan veya üretim başladıktan sonra değişiklik kabul edilmez. Bu durumda /destek üzerinden bize ulaşın veya kişiye özel üretim ilkesi gereği yeni bir sipariş açın.",
     },
   ],
   onizleme: [
@@ -507,9 +507,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Üretim öncesi tasarım onay süreci nasıl işlemektedir?",
       summary:
-        "Evet, tasarım yüklendikten sonra otomatik yapay zeka ön denetimi yapılır ve müşterinin son onayı beklenir.",
+        "Tasarım yüklendikten sonra yapay zeka ön denetimi yapılır; ardından baskı provanı /onay sayfasından onaylamanız gerekir.",
       detail:
-        "Ön denetim sürecinde yapay zeka tabanlı kontrol mekanizması; DPI değeri, font outline durumu, taşma payı, mürekkep doygunluğu (%320 üzeri toplam ink coverage), kontur kesim hatları ve 1 mm altındaki ince çıkıntılar gibi teknik parametreleri analiz eder. Sorun tespit edildiğinde sipariş 'Onay bekleniyor' durumuna alınır ve müşteriye düzeltilmiş dosya yükleme talebi iletilir. Sorun bulunmadığında sipariş otomatik olarak üretim hattına aktarılır. Kurumsal müşteriler veya yüksek hassasiyet gerektiren projeler için sipariş öncesinde fiziksel prova baskı talep edilebilir; bu hizmet için ek ücret uygulanır.",
+        "Ön denetim sürecinde yapay zeka tabanlı kontrol mekanizması; DPI değeri, font outline durumu, taşma payı, mürekkep doygunluğu (%320 üzeri toplam ink coverage), kontur kesim hatları ve 1 mm altındaki ince çıkıntılar gibi teknik parametreleri analiz eder. Sorun tespit edildiğinde sipariş düzeltme aşamasına alınır ve müşteriye yeniden dosya yükleme talebi iletilir. Ön denetim tamamlandıktan sonra baskı provası hazırlanır; /onay/[sipariş-no] sayfasından tüm kalemleri onaylamanız gerekir. Onay sonrası üretime geçilir — otomatik üretim yoktur.",
     },
   ],
   kvkk: [
@@ -525,7 +525,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Hayır, tasarım dosyalarınız yalnızca üretim süreci için kullanılır ve üçüncü taraflarla kesinlikle paylaşılmaz.",
       detail:
-        "Tasarım dosyalarınız (PDF, PNG, AI, PSD, EPS), Supabase Storage altyapısında Row Level Security (RLS) ile kişisel hesabınıza bağlı olarak şifreli saklanır. Bu dosyalara yalnızca siz ve üretim ekibimiz erişebilir. Pazarlama, reklam veya başka müşterilere örnek gösterme gibi amaçlarla asla kullanılmaz. OpenAI API kullanımında sohbet verileri model eğitimi için kullanılmaz (OpenAI API tier kuralı).",
+        "Tasarım dosyalarınız (PDF, PNG, JPEG, AI, PSD, SVG), Supabase Storage altyapısında Row Level Security (RLS) ile kişisel hesabınıza bağlı olarak şifreli saklanır. Bu dosyalara yalnızca siz ve üretim ekibimiz erişebilir. Pazarlama, reklam veya başka müşterilere örnek gösterme gibi amaçlarla asla kullanılmaz. OpenAI API kullanımında sohbet verileri model eğitimi için kullanılmaz (OpenAI API tier kuralı).",
     },
     {
       q: "Verilerim ne kadar süre saklanıyor?",
@@ -606,9 +606,9 @@ export const SSS_FAQS_EN: Record<SssCategory, SssFaqItem[]> = {
   tasarim: [
     {
       q: "What file formats do you accept?",
-      summary: "PDF, PNG, AI, PSD, EPS — 5 formats total.",
+      summary: "PDF, PNG, JPEG, AI, PSD, SVG.",
       detail:
-        "PDF (X-1a) or AI recommended for best result. PNG, AI, PSD, EPS also accepted. JPEG/SVG not accepted.",
+        "PDF (X-1a) or AI recommended for best result. PNG and JPEG at 300 DPI. EPS not supported.",
     },
     {
       q: "What resolution should my design be?",
