@@ -179,13 +179,18 @@ export async function getTrafficSummary(
   ];
 
   try {
-    const [dailyRes, pagesRes, sourcesRes] = await Promise.all([
+    const [dailyRes, totalsRes, pagesRes, sourcesRes] = await Promise.all([
       client.runReport({
         property,
         dateRanges: dateRange,
         dimensions: [{ name: "date" }],
         metrics: dailyMetrics,
         orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+      client.runReport({
+        property,
+        dateRanges: dateRange,
+        metrics: dailyMetrics,
       }),
       client.runReport({
         property,
@@ -206,6 +211,7 @@ export async function getTrafficSummary(
     ]);
 
     const daily = dailyRes[0];
+    const totalsData = totalsRes[0];
     const pages = pagesRes[0];
     const sources = sourcesRes[0];
 
@@ -231,7 +237,7 @@ export async function getTrafficSummary(
     return {
       configured: true,
       range,
-      totals: parseTotalsRow(daily.totals?.[0]),
+      totals: parseTotalsRow(totalsData.rows?.[0]),
       byDay,
       topPages,
       sources: sourceRows,
