@@ -25,10 +25,18 @@ type TrafficResponse = TrafficSummary | TrafficNotConfigured;
 type RealtimeResponse = RealtimeSummary | RealtimeNotConfigured;
 
 const RANGE_OPTIONS: { value: TrafficRange; label: string }[] = [
+  { value: "24h", label: "24 saat" },
   { value: "7d", label: "7 gün" },
   { value: "28d", label: "28 gün" },
   { value: "90d", label: "90 gün" },
 ];
+
+const RANGE_SUBTITLE: Record<TrafficRange, string> = {
+  "24h": "son 24 saat (bugün)",
+  "7d": "son 7 gün",
+  "28d": "son 28 gün",
+  "90d": "son 90 gün",
+};
 
 function formatCount(n: number): string {
   return new Intl.NumberFormat("tr-TR").format(Math.round(n));
@@ -478,8 +486,7 @@ export function TrafficDashboard() {
       <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
-          Google Analytics 4 — son{" "}
-          {RANGE_OPTIONS.find((o) => o.value === range)?.label ?? range}
+          Google Analytics 4 — {RANGE_SUBTITLE[range]}
         </p>
         <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
           {RANGE_OPTIONS.map((opt) => (
@@ -519,12 +526,15 @@ export function TrafficDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <Eyebrow>Günlük oturumlar</Eyebrow>
+          <Eyebrow>
+            {range === "24h" ? "Saatlik oturumlar" : "Günlük oturumlar"}
+          </Eyebrow>
           <div className="mt-4">
             <LineChart
               points={chartPoints}
               height={160}
               formatY={formatCount}
+              valueUnit="oturum"
               emptyLabel="Bu dönemde oturum yok"
             />
           </div>
@@ -537,6 +547,7 @@ export function TrafficDashboard() {
               bars={sourceBars}
               height={160}
               formatY={formatCount}
+              valueUnit="oturum"
               emptyLabel="Kaynak verisi yok"
             />
           </div>

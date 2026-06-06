@@ -1,6 +1,6 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 
-export type TrafficRange = "7d" | "28d" | "90d";
+export type TrafficRange = "24h" | "7d" | "28d" | "90d";
 
 export interface TrafficSummary {
   configured: true;
@@ -61,11 +61,23 @@ type GaRow = {
   metricValues?: { value?: string | null }[] | null;
 };
 
-const RANGE_DAYS: Record<TrafficRange, number> = {
+const RANGE_DAYS: Record<Exclude<TrafficRange, "24h">, number> = {
   "7d": 7,
   "28d": 28,
   "90d": 90,
 };
+
+function trafficDateRange(range: TrafficRange) {
+  if (range === "24h") {
+    return [{ startDate: "today" as const, endDate: "today" as const }];
+  }
+  return [
+    {
+      startDate: `${RANGE_DAYS[range]}daysAgo` as const,
+      endDate: "today" as const,
+    },
+  ];
+}
 
 export function getGa4SetupStatus(): Ga4SetupStatus {
   const measurementId =
@@ -129,6 +141,12 @@ function formatGaDate(yyyymmdd: string): string {
   });
 }
 
+function formatGaHour(hourStr: string): string {
+  const h = Number(hourStr);
+  if (!Number.isFinite(h) || h < 0 || h > 23) return hourStr;
+  return `${String(h).padStart(2, "0")}:00`;
+}
+
 function parseTotalsRow(row: GaRow | null | undefined) {
   if (!row) {
     return {
@@ -167,8 +185,9 @@ export async function getTrafficSummary(
   }
 
   const property = `properties/${propertyId}`;
-  const startDate = `${RANGE_DAYS[range]}daysAgo`;
-  const dateRange = [{ startDate, endDate: "today" as const }];
+  const dateRange = trafficDateRange(range);
+  const breakdownDimension =
+    range === "24h" ? { name: "hour" } : { name: "date" };
 
   const dailyMetrics = [
     { name: "activeUsers" },
@@ -183,9 +202,11 @@ export async function getTrafficSummary(
       client.runReport({
         property,
         dateRanges: dateRange,
-        dimensions: [{ name: "date" }],
+        dimensions: [breakdownDimension],
         metrics: dailyMetrics,
-        orderBys: [{ dimension: { dimensionName: "date" } }],
+        orderBys: [
+          { dimension: { dimensionName: breakdownDimension.name } },
+        ],
       }),
       client.runReport({
         property,
@@ -216,13 +237,23 @@ export async function getTrafficSummary(
     const sources = sourcesRes[0];
 
     const byDay = [...(daily.rows ?? [])]
-      .sort((a, b) => dimAt(a, 0).localeCompare(dimAt(b, 0)))
-      .map((row) => ({
-        date: formatGaDate(dimAt(row, 0)),
-        users: metricAt(row, 0),
-        sessions: metricAt(row, 1),
-        pageViews: metricAt(row, 2),
-      }));
+      .sort((a, b) => {
+        const da = dimAt(a, 0);
+        const db = dimAt(b, 0);
+        return range === "24h"
+          ? Number(da) - Number(db)
+          : da.localeCompare(db);
+      })
+      .map((row) => {
+        const raw = dimAt(row, 0);
+        return {
+          date:
+            range === "24h" ? formatGaHour(raw) : formatGaDate(raw),
+          users: metricAt(row, 0),
+          sessions: metricAt(row, 1),
+          pageViews: metricAt(row, 2),
+        };
+      });
 
     const topPages = (pages.rows ?? []).map((row) => ({
       path: dimAt(row, 0) || "/",

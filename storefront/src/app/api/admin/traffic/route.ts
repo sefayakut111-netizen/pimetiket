@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/traffic?range=7d|28d|90d
+ * GET /api/admin/traffic?range=24h|7d|28d|90d
  *
  * GA4 Data API — admin trafik özeti (service account, server-side).
  */
@@ -18,7 +18,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RangeSchema = z.enum(["7d", "28d", "90d"]);
+const RangeSchema = z.enum(["24h", "7d", "28d", "90d"]);
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
