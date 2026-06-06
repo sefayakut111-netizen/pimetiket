@@ -466,11 +466,12 @@ function PartnerFormPage() {
     } finally {
       setLoading(false);
     }
-  }, [editId, toast]);
+  }, [editId]);
 
   useEffect(() => {
+    if (!editId) return;
     void loadPartnerForEdit();
-  }, [loadPartnerForEdit]);
+  }, [editId, loadPartnerForEdit]);
 
   // Validation (kısa öz)
   const errors = useMemo(() => {

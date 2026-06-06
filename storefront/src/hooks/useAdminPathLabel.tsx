@@ -60,10 +60,14 @@ export function useSetAdminPathLabel(
   label: string | null | undefined
 ) {
   const ctx = useAdminPathLabels();
+  const setLabel = ctx?.setLabel;
+  const clearLabel = ctx?.clearLabel;
 
   useEffect(() => {
-    if (!ctx || !label?.trim()) return;
-    ctx.setLabel(segment, label.trim());
-    return () => ctx.clearLabel(segment);
-  }, [ctx, segment, label]);
+    if (!setLabel || !clearLabel || !label?.trim()) return;
+    const trimmed = label.trim();
+    setLabel(segment, trimmed);
+    return () => clearLabel(segment);
+    // setLabel/clearLabel useCallback ile sabit — ctx/labels deps DÖNGÜ yaratır
+  }, [setLabel, clearLabel, segment, label]);
 }
