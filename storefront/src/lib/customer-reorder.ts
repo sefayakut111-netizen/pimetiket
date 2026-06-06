@@ -4,10 +4,8 @@
  * Mantık:
  *   - Order.items[] dolaş
  *   - Her item için cart_items'a yeni satır ekle (UUID yeni)
- *   - Tasarım dosyası varsa (design_files'tan order_item_id'ye bağlı)
- *     yeni cart_item.designTempId YOK — order_id'yi cart'a not düş,
- *     müşteri /sticker veya /etiket konfigüratöründe görsel olarak
- *     tasarımı seçebilir (Faz 2'de "Saved designs" library)
+ *   - Tasarım alanları (designTempId, additionalDesigns vb.) top-level kopyalanır
+ *   - Ekleme sonrası forceAll reprice — güncel tarife, ödeme doğrulaması geçer
  *
  * Akış:
  *   reorderFromOrder(orderId)
@@ -19,7 +17,11 @@
  */
 
 import type { CustomerOrder } from "./customer-order";
-import { addToCustomerCart, type CustomerCartItem } from "./customer-cart";
+import {
+  addToCustomerCart,
+  repriceCustomerCart,
+  type CustomerCartItem,
+} from "./customer-cart";
 
 export interface ReorderResult {
   ok: boolean;
@@ -94,6 +96,11 @@ export async function reorderFromOrder(
       coreSize: item.coreSize,
       rollLabelCount: item.rollLabelCount,
       designCount: item.designCount,
+      designTempId: item.designTempId,
+      designPreviewUrl: item.designPreviewUrl,
+      designFileName: item.designFileName,
+      designMimeType: item.designMimeType,
+      additionalDesigns: item.additionalDesigns,
       meta: item.meta,
     };
 
@@ -104,6 +111,10 @@ export async function reorderFromOrder(
       skipped++;
       lastReason = r.reason;
     }
+  }
+
+  if (added > 0) {
+    await repriceCustomerCart({ forceAll: true });
   }
 
   return {

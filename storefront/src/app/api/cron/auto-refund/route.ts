@@ -22,9 +22,10 @@ import {
   sendOrderProofReminder,
 } from "@/lib/mail/notifications";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { isPayTrConfigured, refundPayment } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import type { Database, Json, TablesInsert } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
@@ -71,34 +72,168 @@ async function processReminder(
   return { ok: true };
 }
 
+interface PaymentChargeRow {
+  id: string;
+  psp_transaction_id: string | null;
+  amount: number;
+}
+
 async function processRefund(
   admin: AdminClient,
   row: SlaProcessRow
 ): Promise<{ ok: boolean; reason?: string }> {
-  const { data: updated, error: updateErr } = await admin
+  const orderId = row.order_id;
+
+  const { data: claimed, error: claimErr } = await admin
     .from("orders")
     .update({ status: "cancelled" })
-    .eq("id", row.order_id)
+    .eq("id", orderId)
     .eq("status", "proof_pending")
-    .select("id")
+    .select("id, total")
     .maybeSingle();
 
-  if (updateErr || !updated) {
+  if (claimErr || !claimed) {
     return {
       ok: false,
-      reason: updateErr?.message ?? "order_not_proof_pending",
+      reason: claimErr?.message ?? "order_not_proof_pending",
     };
   }
 
+  let refundAmount: number | null = null;
+
+  if (isPayTrConfigured()) {
+    const { data: charges } = await admin
+      .from("payments")
+      .select("id, psp_transaction_id, amount")
+      .eq("order_id", orderId)
+      .eq("action", "charge")
+      .eq("status", "success")
+      .eq("psp_provider", "paytr")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const charge = (charges as PaymentChargeRow[] | null)?.[0];
+
+    if (charge?.psp_transaction_id) {
+      const { data: existingRefunds } = await admin
+        .from("payments")
+        .select("amount")
+        .eq("order_id", orderId)
+        .in("action", ["refund", "partial_refund"])
+        .eq("status", "success");
+
+      const refundedSoFar = (
+        (existingRefunds as { amount: number }[] | null) ?? []
+      ).reduce((s, r) => s + Number(r.amount), 0);
+
+      const remaining = charge.amount - refundedSoFar;
+
+      if (remaining > 0) {
+        const { data: placeholderRow, error: phErr } = await admin
+          .from("payments")
+          .insert([
+            {
+              order_id: orderId,
+              psp_provider: "paytr",
+              psp_transaction_id: charge.psp_transaction_id,
+              action: "refund",
+              amount: remaining,
+              currency: "TRY",
+              status: "processing",
+              idempotency_key: `auto-refund-stale-proof:${orderId}`,
+              psp_raw: {
+                refund_amount: remaining,
+                reason: "auto_refund_stale_proof",
+              } satisfies Json,
+            } satisfies TablesInsert<"payments">,
+          ])
+          .select("id")
+          .single();
+
+        if (phErr) {
+          const code = (phErr as { code?: string }).code;
+          if (code === "23505") {
+            console.warn(
+              `[cron/auto-refund] refund already in progress for ${orderId}`
+            );
+            await admin
+              .from("orders")
+              .update({ status: "proof_pending" })
+              .eq("id", orderId)
+              .eq("status", "cancelled");
+            return { ok: false, reason: "refund_already_in_progress" };
+          }
+
+          console.error(
+            `[cron/auto-refund] refund placeholder failed for ${orderId}:`,
+            phErr
+          );
+          await admin
+            .from("orders")
+            .update({ status: "proof_pending" })
+            .eq("id", orderId)
+            .eq("status", "cancelled");
+          return { ok: false, reason: "refund_init_failed" };
+        }
+
+        const placeholderId = (placeholderRow as { id: string }).id;
+        const result = await refundPayment({
+          merchantOid: charge.psp_transaction_id,
+          returnAmountTL: remaining,
+        });
+
+        if (!result.ok) {
+          await admin
+            .from("payments")
+            .update({
+              status: "failed",
+              psp_raw: {
+                refund_amount: remaining,
+                reason: "auto_refund_stale_proof",
+                paytr_error: { reason: result.reason, code: result.errCode },
+              } satisfies Json,
+            })
+            .eq("id", placeholderId);
+
+          await admin
+            .from("orders")
+            .update({ status: "proof_pending" })
+            .eq("id", orderId)
+            .eq("status", "cancelled");
+
+          console.error(
+            `[cron/auto-refund] PayTR refund rejected for ${orderId}:`,
+            result.reason
+          );
+          return { ok: false, reason: result.reason ?? "paytr_refund_rejected" };
+        }
+
+        await admin
+          .from("payments")
+          .update({
+            status: "success",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", placeholderId);
+
+        refundAmount = remaining;
+      }
+    }
+  }
+
   await logOrderEvent(admin, {
-    orderId: row.order_id,
+    orderId,
     eventType: "auto_refund_stale_proof",
     statusAfter: "cancelled",
     actorRole: "system",
-    summary: "36 saat onaysız iade — müşteri prova onayı vermedi",
+    summary:
+      refundAmount != null
+        ? `36 saat onaysız iade — ${refundAmount.toFixed(2)} ₺ PayTR iadesi`
+        : "36 saat onaysız iade — müşteri prova onayı vermedi",
     detail: {
       auto: true,
       hours_since_proof: row.hours_since_proof,
+      refundAmount,
     },
   });
 
@@ -108,7 +243,7 @@ async function processRefund(
 
   const mail = await sendAutoRefundStaleProof({
     userId: row.user_id,
-    orderId: row.order_id,
+    orderId,
   });
 
   return mail.ok ? { ok: true } : { ok: false, reason: mail.reason };
