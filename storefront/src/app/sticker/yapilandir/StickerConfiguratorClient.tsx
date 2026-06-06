@@ -346,6 +346,22 @@ function readInitialCorner(searchParams: URLSearchParams): boolean {
   return false;
 }
 
+function readInitialFinish(
+  searchParams: URLSearchParams
+): StickerFinish | null {
+  const f = searchParams.get("finish");
+  if (f === "parlak" || f === "mat" || f === "yok") return f;
+  return null;
+}
+
+function readInitialQty(searchParams: URLSearchParams): number | null {
+  const q = searchParams.get("qty");
+  if (!q) return null;
+  const n = Number.parseInt(q, 10);
+  if (Number.isFinite(n) && n >= 25 && n <= 1000) return n;
+  return null;
+}
+
 // Suspense boundary için (Next 16 useSearchParams Suspense ister prerender uyumu için)
 export default function StickerPageWrapper() {
   return (
@@ -529,7 +545,10 @@ function StickerPage() {
     const initial = readInitialMaterial(initialParams);
     return initial ?? "vinil";
   });
-  const [finish, setFinish] = useState<StickerFinish>("parlak");
+  const [finish, setFinish] = useState<StickerFinish>(() => {
+    const initial = readInitialFinish(initialParams);
+    return initial ?? "parlak";
+  });
 
   // Sefa 20 May v68: searchParams değişirse (client-side nav) sync —
   // kullanıcı farklı karttan yeni girerse state'ler yeniden eşleşir
@@ -571,6 +590,10 @@ function StickerPage() {
     }
     const matFromUrl = readInitialMaterial(params);
     if (matFromUrl) setMaterial(matFromUrl);
+    const finFromUrl = readInitialFinish(params);
+    if (finFromUrl) setFinish(finFromUrl);
+    const qtyFromUrl = readInitialQty(params);
+    if (qtyFromUrl) setTier(qtyFromUrl);
     const corner = params.get("corner");
     if (corner === "rounded") setSoftCorners(true);
     else if (corner === "sharp") setSoftCorners(false);
@@ -584,7 +607,10 @@ function StickerPage() {
   // Sefa 21 May v68 (sistem denetim #18): sticker default tier
   // 250 → 25. /sticker liste sayfası ve SSS "25 adetten başlar" diyor;
   // konfigüratör default'u da onunla aynı olsun.
-  const [tier, setTier] = useState<number>(25);
+  const [tier, setTier] = useState<number>(() => {
+    const initial = readInitialQty(initialParams);
+    return initial ?? 25;
+  });
 
   // Sefa 20 May v68 test #3: Sepetten "Düzenle" geldi mi? editingItemId
   // varsa "Sepete Ekle" sonrası eskiyi siler (replace pattern).

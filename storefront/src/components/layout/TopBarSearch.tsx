@@ -7,12 +7,18 @@ import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/context";
 import { searchSitePages } from "@/lib/search/site-pages";
+import type { SearchIntentAction } from "@/lib/search/search-intent-types";
 
 type SearchResult = {
   href: string;
   label: string;
   subtitle?: string;
   group: string;
+};
+
+type IntentPayload = {
+  action: SearchIntentAction;
+  fallback: boolean;
 };
 
 interface TopBarSearchProps {
@@ -27,16 +33,20 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [intent, setIntent] = useState<IntentPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [intentLoading, setIntentLoading] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intentDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
     setResults([]);
+    setIntent(null);
     setSelectedIdx(0);
   }, []);
 
@@ -74,8 +84,12 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
     setSelectedIdx(0);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (intentDebounceRef.current) clearTimeout(intentDebounceRef.current);
+
     if (q.length < 2) {
       setLoading(false);
+      setIntentLoading(false);
+      setIntent(null);
       return;
     }
 
@@ -92,8 +106,43 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
         .finally(() => setLoading(false));
     }, 220);
 
+    if (q.length >= 3) {
+      setIntentLoading(true);
+      intentDebounceRef.current = setTimeout(() => {
+        void fetch("/api/search/intent", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query: q }),
+        })
+          .then(async (r) => {
+            if (!r.ok) return null;
+            return r.json() as Promise<{
+              ok?: boolean;
+              action?: SearchIntentAction;
+              fallback?: boolean;
+            }>;
+          })
+          .then((data) => {
+            if (data?.ok && data.action) {
+              setIntent({
+                action: data.action,
+                fallback: Boolean(data.fallback),
+              });
+            } else {
+              setIntent(null);
+            }
+          })
+          .catch(() => setIntent(null))
+          .finally(() => setIntentLoading(false));
+      }, 380);
+    } else {
+      setIntent(null);
+      setIntentLoading(false);
+    }
+
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (intentDebounceRef.current) clearTimeout(intentDebounceRef.current);
     };
   }, [query, open, isMember]);
 
@@ -102,12 +151,26 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
     router.push(href);
   };
 
+  const openPim = () => {
+    close();
+    window.dispatchEvent(new CustomEvent("pim-chat-open"));
+  };
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (intent?.action.href) {
+      goTo(intent.action.href);
+      return;
+    }
     const hit = results[selectedIdx];
     if (hit) goTo(hit.href);
     else if (query.trim()) goTo(`/blog?q=${encodeURIComponent(query.trim())}`);
   };
+
+  const showPanel =
+    intent?.action ||
+    results.length > 0 ||
+    (query.trim() && (loading || intentLoading));
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -116,7 +179,7 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && results[selectedIdx]) {
+    } else if (e.key === "Enter" && results[selectedIdx] && !intent?.action.href) {
       e.preventDefault();
       goTo(results[selectedIdx].href);
     }
@@ -151,27 +214,78 @@ export function TopBarSearch({ isMember = false, className }: TopBarSearchProps)
               onKeyDown={onKeyDown}
               placeholder={t.nav.searchPlaceholder}
               aria-label={t.nav.searchPlaceholder}
-              aria-expanded={results.length > 0}
+              aria-expanded={Boolean(showPanel)}
               aria-controls="topbar-search-results"
               autoComplete="off"
               className={cn(
                 "h-9 pl-9 pr-3 rounded-full",
                 "text-[13px] text-lacivert placeholder:text-gri-500",
                 "bg-gri-50 ring-1 ring-gri-200 focus:ring-2 focus:ring-pim-mercan/40 focus:bg-white outline-none transition-all",
-                "w-[min(240px,calc(100vw-7rem))] sm:w-[200px] lg:w-[240px]"
+                "w-[min(280px,calc(100vw-7rem))] sm:w-[220px] lg:w-[280px]"
               )}
             />
-            {(results.length > 0 || (query.trim() && !loading)) && (
+            {showPanel && (
               <div
                 id="topbar-search-results"
                 role="listbox"
-                className="absolute top-full right-0 mt-2 w-[min(320px,calc(100vw-2rem))] max-h-[min(360px,50vh)] overflow-y-auto rounded-xl bg-white shadow-2 ring-1 ring-gri-200 z-[60]"
+                className="absolute top-full right-0 mt-2 w-[min(360px,calc(100vw-2rem))] max-h-[min(420px,55vh)] overflow-y-auto rounded-xl bg-white shadow-2 ring-1 ring-gri-200 z-[60]"
               >
-                {loading && results.length === 0 ? (
+                {intent?.action && (
+                  <div className="p-3 border-b border-gri-100 bg-gri-50/80">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-gri-500 mb-2">
+                      {t.nav.searchIntentLabel}
+                      {intent.fallback && (
+                        <span className="ml-1 normal-case text-gri-400">
+                          (basit eşleşme)
+                        </span>
+                      )}
+                    </div>
+                    {intent.action.href ? (
+                      <button
+                        type="button"
+                        onClick={() => goTo(intent.action.href!)}
+                        className="w-full text-left rounded-lg px-3 py-2.5 bg-white ring-1 ring-pim-mercan/30 hover:bg-pim-mercan-tint transition-colors"
+                      >
+                        <div className="text-[13.5px] font-semibold text-lacivert">
+                          {intent.action.label}
+                        </div>
+                        {intent.action.subtitle && (
+                          <div className="text-[11.5px] text-gri-600 mt-0.5">
+                            {intent.action.subtitle}
+                          </div>
+                        )}
+                        {intent.action.etiketDisabled && (
+                          <div className="text-[11px] text-sari-koyu mt-1 font-medium">
+                            {t.nav.searchEtiketSoon}
+                          </div>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="rounded-lg px-3 py-2.5 bg-white ring-1 ring-gri-200">
+                        {intent.action.subtitle && (
+                          <p className="text-[13px] text-gri-700">
+                            {intent.action.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {intent.action.showPimLink && (
+                      <button
+                        type="button"
+                        onClick={openPim}
+                        className="mt-2 text-[12px] font-semibold text-pim-mercan hover:underline"
+                      >
+                        {t.nav.searchAskPim} →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {loading && results.length === 0 && !intent ? (
                   <div className="px-4 py-3 text-[13px] text-gri-500">
                     {t.common.loading}
                   </div>
-                ) : results.length === 0 ? (
+                ) : results.length === 0 && !intent?.action ? (
                   <div className="px-4 py-3 text-[13px] text-gri-500">
                     {t.nav.searchEmpty}
                   </div>

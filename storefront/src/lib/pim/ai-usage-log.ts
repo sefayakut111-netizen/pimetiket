@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type AiUsageSource =
   | "pim_chat"
   | "pim_summarize"
-  | "support_classify";
+  | "support_classify"
+  | "search_intent";
 
 export const PIM_MODEL_PRICING = {
   "gpt-4o": { inputPerM: 2.5, outputPerM: 10 },

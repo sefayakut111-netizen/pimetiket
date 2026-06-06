@@ -66,6 +66,9 @@ export type TranslationDict = {
     editor: string;
     searchOpen: string;
     searchPlaceholder: string;
+    searchIntentLabel: string;
+    searchAskPim: string;
+    searchEtiketSoon: string;
     searchEmpty: string;
     comingSoon: string;
   };
