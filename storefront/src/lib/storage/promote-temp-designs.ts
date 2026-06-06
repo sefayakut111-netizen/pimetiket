@@ -17,7 +17,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
-import { collectDesignTempIds, type AdditionalDesignMeta } from "@/lib/order-item-meta";
+import { collectDesignTempIds, orderItemHasDesigns, type AdditionalDesignMeta } from "@/lib/order-item-meta";
 import { retryPendingEditorCutlineForItem } from "@/lib/editor/promote-editor-cutline";
 import { STORAGE_BUCKET } from "./design-files";
 
@@ -300,4 +300,89 @@ export async function promoteOrderDesigns(args: {
   }
 
   return promoted;
+}
+
+async function orderHasUsableDesignFiles(
+  admin: SupabaseClient<Database>,
+  orderId: string
+): Promise<boolean> {
+  const { data } = await admin
+    .from("design_files")
+    .select("id")
+    .eq("order_id", orderId)
+    .neq("status", "superseded")
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Ödeme sonrası temp → design_files promote (idempotent).
+ * IPN yarışı / kısmi callback / duplicate IPN sonrası kurtarma.
+ */
+export async function ensureOrderDesignsPromoted(args: {
+  admin: SupabaseClient<Database>;
+  orderId: string;
+  userId: string;
+}): Promise<{ promoted: number; hasDesignFiles: boolean }> {
+  const { admin, orderId, userId } = args;
+
+  if (await orderHasUsableDesignFiles(admin, orderId)) {
+    return { promoted: 0, hasDesignFiles: true };
+  }
+
+  const { data: insertedItems } = await admin
+    .from("order_items")
+    .select("id, product, meta")
+    .eq("order_id", orderId);
+
+  const orderItemsForPromote = (
+    (insertedItems as unknown as OrderItemWithDesign[]) ?? []
+  ).filter((i) => orderItemHasDesigns(i.meta));
+
+  if (orderItemsForPromote.length === 0) {
+    return { promoted: 0, hasDesignFiles: false };
+  }
+
+  let promoted = 0;
+  try {
+    promoted = await promoteOrderDesigns({
+      admin,
+      orderId,
+      userId,
+      orderItems: orderItemsForPromote,
+    });
+
+    if (promoted > 0) {
+      await admin
+        .from("orders")
+        .update({ status: "qc_pending" })
+        .eq("id", orderId)
+        .in("status", ["awaiting_upload", "paid"]);
+
+      const { scheduleOrderDesignQC } = await import(
+        "@/lib/agents/schedule-order-design-qc"
+      );
+      scheduleOrderDesignQC(admin, orderId);
+    }
+
+    try {
+      const { promoteEditorCutlines } = await import(
+        "@/lib/editor/promote-editor-cutline"
+      );
+      await promoteEditorCutlines({
+        admin,
+        orderId,
+        userId,
+        orderItems: orderItemsForPromote,
+      });
+    } catch (err) {
+      console.error("[ensureOrderDesignsPromoted] editor cutline failed:", err);
+    }
+  } catch (err) {
+    console.error("[ensureOrderDesignsPromoted] promote failed:", err);
+  }
+
+  const hasDesignFiles =
+    promoted > 0 || (await orderHasUsableDesignFiles(admin, orderId));
+  return { promoted, hasDesignFiles };
 }

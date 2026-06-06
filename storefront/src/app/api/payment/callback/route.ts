@@ -32,10 +32,8 @@ import {
   sendOrderConfirmation,
   sendOrderProofRequiredIfEligible,
 } from "@/lib/mail/notifications";
-import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
-import { promoteEditorCutlines } from "@/lib/editor/promote-editor-cutline";
-import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
-import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
+import { ensureOrderDesignsPromoted } from "@/lib/storage/promote-temp-designs";
+import { buildOrderItemMeta, orderItemsMetaHasDesignTempIds } from "@/lib/order-item-meta";
 import { applyCouponAfterOrder } from "@/lib/payment/coupon-server";
 import { enqueueMail } from "@/lib/mail/enqueue";
 import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
@@ -105,22 +103,18 @@ import { generateOrderId } from "@/lib/customer-order";
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-async function orderHasDesignFiles(
-  admin: ReturnType<typeof createAdminClient>,
-  orderId: string
-): Promise<boolean> {
-  const { data } = await admin
-    .from("design_files")
-    .select("id")
-    .eq("order_id", orderId)
-    .limit(1);
-  return (data?.length ?? 0) > 0;
-}
-
 async function resolveHasDesignsForRedirect(
   admin: ReturnType<typeof createAdminClient>,
-  orderId: string
+  orderId: string,
+  userId: string
 ): Promise<boolean> {
+  const { hasDesignFiles } = await ensureOrderDesignsPromoted({
+    admin,
+    orderId,
+    userId,
+  });
+  if (hasDesignFiles) return true;
+
   const { data: orderRow } = await admin
     .from("orders")
     .select("status")
@@ -128,9 +122,17 @@ async function resolveHasDesignsForRedirect(
     .single();
 
   const orderStatus = (orderRow as { status: string } | null)?.status;
-  return (
-    orderStatus !== "awaiting_upload" ||
-    (await orderHasDesignFiles(admin, orderId))
+  if (orderStatus && orderStatus !== "awaiting_upload") {
+    return true;
+  }
+
+  const { data: items } = await admin
+    .from("order_items")
+    .select("meta")
+    .eq("order_id", orderId);
+
+  return orderItemsMetaHasDesignTempIds(
+    (items as Array<{ meta: Record<string, unknown> | null }> | null) ?? []
   );
 }
 
@@ -366,6 +368,11 @@ export async function POST(req: NextRequest) {
     console.log(
       `[payment/callback] duplicate IPN ${merchantOid} → existing ${orderId}`
     );
+    await ensureOrderDesignsPromoted({
+      admin,
+      orderId,
+      userId: intent.user_id,
+    });
     return new NextResponse("OK");
   }
 
@@ -386,54 +393,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 7) Pre-purchase tasarım promote (RPC dışı — Storage işlemleri
-  // PostgreSQL içinden yapılmıyor). Hata olursa order kaydı kalır;
-  // kullanıcı /siparis/[id]'den yeniden upload edebilir.
-  const { data: insertedItems } = await admin
-    .from("order_items")
-    .select("id, product, meta")
-    .eq("order_id", orderId);
-
-  const orderItemsForPromote = (
-    (insertedItems as unknown as Array<{
-      id: string;
-      product: "sticker" | "etiket";
-      meta: Record<string, unknown>;
-    }>) ?? []
-  ).filter((i) => orderItemHasDesigns(i.meta));
-
-  if (orderItemsForPromote.length > 0) {
-    try {
-      const promotedCount = await promoteOrderDesigns({
-        admin,
-        orderId,
-        userId: intent.user_id,
-        orderItems: orderItemsForPromote,
-      });
-
-      if (promotedCount > 0) {
-        await admin
-          .from("orders")
-          .update({ status: "qc_pending" })
-          .eq("id", orderId);
-
-        scheduleOrderDesignQC(admin, orderId);
-      }
-
-      try {
-        await promoteEditorCutlines({
-          admin,
-          orderId,
-          userId: intent.user_id,
-          orderItems: orderItemsForPromote,
-        });
-      } catch (err) {
-        console.error("[payment/callback] editor cutline promote failed:", err);
-      }
-    } catch (err) {
-      console.error("[payment/callback] promote failed:", err);
-    }
-  }
+  // 7) Pre-purchase tasarım promote (idempotent — IPN retry kurtarır)
+  await ensureOrderDesignsPromoted({
+    admin,
+    orderId,
+    userId: intent.user_id,
+  });
 
   // (11) Cüzdan akışı KALDIRILDI — Migration 015
 
@@ -627,7 +592,11 @@ export async function GET(req: NextRequest) {
       intent.order_id
     );
     if (orderId) {
-      const hasDesigns = await resolveHasDesignsForRedirect(admin, orderId);
+      const hasDesigns = await resolveHasDesignsForRedirect(
+        admin,
+        orderId,
+        intent.user_id
+      );
       return NextResponse.redirect(
         successRedirectUrl(siteUrl, orderId, hasDesigns),
         303
@@ -654,7 +623,8 @@ export async function GET(req: NextRequest) {
     if (recovered.status === "consumed") {
       const hasDesigns = await resolveHasDesignsForRedirect(
         admin,
-        recovered.orderId
+        recovered.orderId,
+        intent.user_id
       );
       return NextResponse.redirect(
         successRedirectUrl(siteUrl, recovered.orderId, hasDesigns),

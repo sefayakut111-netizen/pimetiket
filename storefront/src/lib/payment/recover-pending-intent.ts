@@ -12,10 +12,8 @@ import "server-only";
 import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateOrderId } from "@/lib/customer-order";
-import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
-import { promoteEditorCutlines } from "@/lib/editor/promote-editor-cutline";
-import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
-import { buildOrderItemMeta, orderItemHasDesigns } from "@/lib/order-item-meta";
+import { ensureOrderDesignsPromoted } from "@/lib/storage/promote-temp-designs";
+import { buildOrderItemMeta } from "@/lib/order-item-meta";
 import {
   sendOrderConfirmation,
   sendOrderProofRequiredIfEligible,
@@ -141,51 +139,11 @@ async function runPostFinalizeSideEffects(
   intent: IntentRow,
   orderId: string
 ): Promise<void> {
-  const { data: insertedItems } = await admin
-    .from("order_items")
-    .select("id, product, meta")
-    .eq("order_id", orderId);
-
-  const orderItemsForPromote = (
-    (insertedItems as unknown as Array<{
-      id: string;
-      product: "sticker" | "etiket";
-      meta: Record<string, unknown>;
-    }>) ?? []
-  ).filter((i) => orderItemHasDesigns(i.meta));
-
-  if (orderItemsForPromote.length > 0) {
-    try {
-      const promotedCount = await promoteOrderDesigns({
-        admin,
-        orderId,
-        userId: intent.user_id,
-        orderItems: orderItemsForPromote,
-      });
-
-      if (promotedCount > 0) {
-        await admin
-          .from("orders")
-          .update({ status: "qc_pending" })
-          .eq("id", orderId);
-
-        scheduleOrderDesignQC(admin, orderId);
-      }
-
-      try {
-        await promoteEditorCutlines({
-          admin,
-          orderId,
-          userId: intent.user_id,
-          orderItems: orderItemsForPromote,
-        });
-      } catch (err) {
-        console.error("[payment/recover] editor cutline promote failed:", err);
-      }
-    } catch (err) {
-      console.error("[payment/recover] promote failed:", err);
-    }
-  }
+  await ensureOrderDesignsPromoted({
+    admin,
+    orderId,
+    userId: intent.user_id,
+  });
 
   try {
     const { count: priorOrders } = await admin
@@ -321,6 +279,11 @@ async function finalizeFromPaytrSuccess(
   const wasDuplicate = rpcRow?.was_duplicate ?? false;
 
   if (wasDuplicate) {
+    await ensureOrderDesignsPromoted({
+      admin,
+      orderId,
+      userId: intent.user_id,
+    });
     return { status: "consumed", orderId };
   }
 
@@ -369,6 +332,11 @@ export async function recoverPendingPaymentIntent(
       intent.order_id
     );
     if (orderId) {
+      await ensureOrderDesignsPromoted({
+        admin,
+        orderId,
+        userId: intent.user_id,
+      });
       return { status: "consumed", orderId };
     }
     return { status: "pending" };

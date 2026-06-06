@@ -102,6 +102,13 @@ export function orderItemHasDesigns(meta: Record<string, unknown>): boolean {
   return collectDesignTempIds(meta).length > 0;
 }
 
+/** Sipariş kalemlerinde promote bekleyen pre-purchase temp id var mı? */
+export function orderItemsMetaHasDesignTempIds(
+  items: Array<{ meta: Record<string, unknown> | null }>
+): boolean {
+  return items.some((i) => orderItemHasDesigns(i.meta ?? {}));
+}
+
 /** meta.designCount + additionalDesigns ile beklenen tasarım sayısı. */
 export function getExpectedDesignCount(
   meta: Record<string, unknown> | null | undefined,

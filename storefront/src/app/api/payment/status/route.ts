@@ -10,6 +10,8 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPayTrConfigured } from "@/lib/payment/paytr";
 import { recoverPendingPaymentIntentWithRetries } from "@/lib/payment/recover-with-retries";
+import { ensureOrderDesignsPromoted } from "@/lib/storage/promote-temp-designs";
+import { orderItemsMetaHasDesignTempIds } from "@/lib/order-item-meta";
 
 export async function GET(req: NextRequest) {
   if (!isPayTrConfigured()) {
@@ -44,15 +46,45 @@ export async function GET(req: NextRequest) {
   }
 
   if (result.status === "consumed") {
-    const { data: designFiles } = await admin
-      .from("design_files")
-      .select("id")
-      .eq("order_id", result.orderId)
-      .limit(1);
+    const { data: intentRow } = await admin
+      .from("payment_intents")
+      .select("user_id")
+      .eq("id", oid)
+      .maybeSingle();
+    const userId = (intentRow as { user_id: string } | null)?.user_id ?? user.id;
+
+    const { hasDesignFiles } = await ensureOrderDesignsPromoted({
+      admin,
+      orderId: result.orderId,
+      userId,
+    });
+
+    let hasDesigns = hasDesignFiles;
+    if (!hasDesigns) {
+      const { data: orderRow } = await admin
+        .from("orders")
+        .select("status")
+        .eq("id", result.orderId)
+        .maybeSingle();
+      const status = (orderRow as { status: string } | null)?.status;
+      if (status && status !== "awaiting_upload") {
+        hasDesigns = true;
+      } else {
+        const { data: items } = await admin
+          .from("order_items")
+          .select("meta")
+          .eq("order_id", result.orderId);
+        hasDesigns = orderItemsMetaHasDesignTempIds(
+          (items as Array<{ meta: Record<string, unknown> | null }> | null) ??
+            []
+        );
+      }
+    }
+
     return NextResponse.json({
       status: "consumed",
       orderId: result.orderId,
-      hasDesigns: (designFiles?.length ?? 0) > 0,
+      hasDesigns,
     });
   }
 

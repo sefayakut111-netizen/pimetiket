@@ -22,8 +22,8 @@ import type { Enums } from "@/lib/supabase/types";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 import { USABLE_DESIGN_STATUSES } from "@/lib/design-file-status";
+import { ensureOrderDesignsPromoted } from "@/lib/storage/promote-temp-designs";
 import { orderItemHasDesigns } from "@/lib/order-item-meta";
-import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 
 function qcMessageFromCheck(
@@ -87,25 +87,22 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Eksik temp upload'ları promote et (multi-design siparişlerde 2+ tasarım)
+  // Eksik temp upload'ları promote et (multi-design + ödeme sonrası kurtarma)
   try {
     const { data: promoteItems } = await admin
       .from("order_items")
       .select("id, product, meta")
       .eq("order_id", orderId);
-    const itemsToPromote = (
-      (promoteItems as unknown as Array<{
-        id: string;
-        product: "sticker" | "etiket";
-        meta: Record<string, unknown>;
-      }>) ?? []
-    ).filter((i) => orderItemHasDesigns(i.meta));
-    if (itemsToPromote.length > 0) {
-      const promoted = await promoteOrderDesigns({
+    const hasTempDesigns = (
+      (promoteItems as unknown as Array<{ meta: Record<string, unknown> }>) ??
+        []
+    ).some((i) => orderItemHasDesigns(i.meta));
+
+    if (hasTempDesigns) {
+      const { promoted } = await ensureOrderDesignsPromoted({
         admin,
         orderId,
         userId: user.id,
-        orderItems: itemsToPromote,
       });
       if (promoted > 0) {
         const slotsComplete = await orderDesignUploadSlotsComplete(

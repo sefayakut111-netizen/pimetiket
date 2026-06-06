@@ -266,6 +266,15 @@ function OdemeSonucInner() {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const poll = async () => {
+      if (orderId && orderId !== "pending") {
+        try {
+          await fetch(`/api/orders/${orderId}/upload-status`, {
+            cache: "no-store",
+          });
+        } catch {
+          /* promote kurtarma — sessiz */
+        }
+      }
       const o = await fetchCustomerOrder(orderId);
       if (cancelled) return;
       if (!o) return;
@@ -316,10 +325,14 @@ function OdemeSonucInner() {
   const orderHasDesigns =
     hasDesignsParam ||
     order?.status === "qc_pending" ||
+    order?.status === "qc_flagged" ||
     order?.status === "proof_pending" ||
     order?.status === "proof_generating" ||
     order?.status === "proof_validating" ||
     order?.status === "human_review" ||
+    order?.status === "human_review_failed" ||
+    order?.status === "operator_review" ||
+    order?.status === "operator_print_review" ||
     order?.status === "proof_approved" ||
     order?.status === "in_production" ||
     order?.status === "ready_to_ship" ||
