@@ -40,6 +40,7 @@ import { applyCouponAfterOrder } from "@/lib/payment/coupon-server";
 import { enqueueMail } from "@/lib/mail/enqueue";
 import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
 import { isAdminOrStaffUserId } from "@/lib/supabase/assert-admin";
+import { logServerAudit } from "@/lib/audit-log-server";
 import type { Json } from "@/lib/supabase/types";
 
 interface IntentRow {
@@ -200,6 +201,23 @@ export async function POST(req: NextRequest) {
 
   if (intentErr || !intentRow) {
     console.error("[payment/callback] intent not found:", merchantOid);
+    Sentry.captureMessage("PayTR callback: intent bulunamadı", {
+      level: "warning",
+      extra: { merchant_oid: merchantOid },
+    });
+    void logServerAudit(admin, {
+      actorId: null,
+      actorEmail: null,
+      actorRole: "system",
+      action: "settings.update",
+      targetType: "payment_intent",
+      targetId: merchantOid,
+      summary: "PayTR callback: intent bulunamadı",
+      detail: {
+        kind: "paytr_callback_intent_missing",
+        merchant_oid: merchantOid,
+      },
+    });
     // Intent yoksa "OK" dönelim — PayTR retry'lamasın, biz manuel düzeltiriz
     return new NextResponse("OK");
   }

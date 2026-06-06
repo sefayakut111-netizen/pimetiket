@@ -13,17 +13,21 @@
  * Body: { email: string }
  * Response: { ok: true, message: string }
  *
- * Rate limit: Supabase Auth tarafında (email_rate_limit_per_hour env).
- * Ek rate limit gerekirse partner_otp_attempts tablo eklenebilir (Faz 2).
+ * Rate limit: Supabase Auth + IP/email throttle (15 dk pencere).
  */
 
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findAuthUserIdByEmail } from "@/lib/auth-user-lookup";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { z } from "zod";
 
 export const runtime = "nodejs";
+
+const OTP_WINDOW_MS = 15 * 60_000;
+const OTP_IP_LIMIT = 10;
+const OTP_EMAIL_LIMIT = 5;
 
 const BodySchema = z.object({
   email: z.string().email().max(150),
@@ -38,6 +42,22 @@ const GENERIC_RESPONSE = {
 };
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipRl = await rateLimit({
+    key: `partner-otp:ip:${ip ?? "unknown"}`,
+    limit: OTP_IP_LIMIT,
+    windowMs: OTP_WINDOW_MS,
+  });
+  if (!ipRl.success) {
+    return NextResponse.json(
+      {
+        error: "rate_limited",
+        message: "Çok fazla deneme. Lütfen bir süre sonra tekrar deneyin.",
+      },
+      { status: 429, headers: { "Retry-After": String(ipRl.retryAfter) } }
+    );
+  }
+
   // Body parse
   let raw: unknown;
   try {
@@ -53,6 +73,21 @@ export async function POST(req: Request) {
     );
   }
   const email = parsed.data.email.trim().toLowerCase();
+
+  const emailRl = await rateLimit({
+    key: `partner-otp:email:${email}`,
+    limit: OTP_EMAIL_LIMIT,
+    windowMs: OTP_WINDOW_MS,
+  });
+  if (!emailRl.success) {
+    return NextResponse.json(
+      {
+        error: "rate_limited",
+        message: "Çok fazla deneme. Lütfen bir süre sonra tekrar deneyin.",
+      },
+      { status: 429, headers: { "Retry-After": String(emailRl.retryAfter) } }
+    );
+  }
 
   const admin = createAdminClient();
 

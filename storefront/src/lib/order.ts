@@ -284,7 +284,7 @@ export const VALID_SINGLE_TRANSITIONS: Partial<
 > = {
   paid: ["qc_pending", "awaiting_upload", "cancelled"],
   awaiting_upload: ["qc_pending", "cancelled"],
-  qc_pending: ["proof_generating", "human_review", "cancelled"],
+  qc_pending: ["proof_generating", "human_review", "qc_flagged", "cancelled"],
   qc_flagged: ["human_review", "cancelled"],
   human_review: ["proof_generating", "human_review_failed", "cancelled"],
   human_review_failed: ["qc_pending", "cancelled"],

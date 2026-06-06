@@ -17,9 +17,15 @@
  *   - 10+/15dk eşiği → pending action: block_ip
  *
  * Fail-open: RPC çağrı hatası kullanıcı akışını bozmaz (silently log).
+ *
+ * Cache: mutation endpoint — no-store bilinçli (Next.js build uyarısı önlemi).
  */
 
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
+const NO_STORE = { "Cache-Control": "no-store" } as const;
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
@@ -37,7 +43,10 @@ export async function POST(req: Request) {
     windowMs: 60_000,
   });
   if (!rl.success) {
-    return NextResponse.json({ ok: false, reason: "rate_limited" });
+    return NextResponse.json(
+      { ok: false, reason: "rate_limited" },
+      { headers: NO_STORE }
+    );
   }
 
   let body: z.infer<typeof BodySchema>;
@@ -45,13 +54,19 @@ export async function POST(req: Request) {
     const raw = (await req.json()) as unknown;
     body = BodySchema.parse(raw);
   } catch {
-    return NextResponse.json({ ok: false, reason: "invalid_body" });
+    return NextResponse.json(
+      { ok: false, reason: "invalid_body" },
+      { headers: NO_STORE }
+    );
   }
 
   const userAgent = req.headers.get("user-agent")?.slice(0, 500) ?? null;
 
   if (!ip) {
-    return NextResponse.json({ ok: false, reason: "no_ip" });
+    return NextResponse.json(
+      { ok: false, reason: "no_ip" },
+      { headers: NO_STORE }
+    );
   }
 
   try {
@@ -62,8 +77,11 @@ export async function POST(req: Request) {
       p_user_agent: userAgent ?? undefined,
       p_reason: body.reason ?? undefined,
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: NO_STORE });
   } catch {
-    return NextResponse.json({ ok: false, reason: "rpc_failed" });
+    return NextResponse.json(
+      { ok: false, reason: "rpc_failed" },
+      { headers: NO_STORE }
+    );
   }
 }

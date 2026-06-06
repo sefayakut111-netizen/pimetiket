@@ -12,7 +12,17 @@ import {
   cleanupSimulatorData,
 } from "@/lib/test-simulator";
 
+function simulateCheckoutBlocked(): boolean {
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.VERCEL_ENV === "production") return true;
+  return false;
+}
+
 export async function POST(req: Request) {
+  if (simulateCheckoutBlocked()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const auth = await assertPermission("manual_order", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
