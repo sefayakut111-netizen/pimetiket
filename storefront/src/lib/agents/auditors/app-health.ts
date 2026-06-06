@@ -349,10 +349,28 @@ export class AppHealthAuditor extends AuditorBase {
       const latest = manifests.sort((a, b) =>
         (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0)
       )[0];
+      const manifestKey = latest.Key ?? "";
+      const folderPrefix = manifestKey.replace(/manifest\.json$/, "");
       const ageMs =
         Date.now() - (latest.LastModified?.getTime() ?? Date.now());
       const ageDays = ageMs / 86_400_000;
-      const size = latest.Size ?? 0;
+      const manifestSize = latest.Size ?? 0;
+
+      const folderRes = await client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: folderPrefix,
+          MaxKeys: 20,
+        })
+      );
+      const folderObjects = folderRes.Contents ?? [];
+      const dbDump = folderObjects.find((o) => o.Key?.endsWith("db.dump"));
+      const storageArchive = folderObjects.find((o) =>
+        o.Key?.endsWith("storage.tar.gz")
+      );
+      const dbSize = dbDump?.Size ?? 0;
+      const storageSize = storageArchive?.Size ?? 0;
+      const totalArtifactBytes = dbSize + storageSize;
 
       if (ageDays > TUNE.backupMaxAgeDays) {
         findings.push(
@@ -365,13 +383,26 @@ export class AppHealthAuditor extends AuditorBase {
         );
       }
 
-      if (size < TUNE.backupMinBytes) {
+      if (!dbDump) {
+        findings.push(
+          this.warning(
+            "backup_incomplete",
+            "Son yedek klasöründe db.dump yok",
+            `${folderPrefix} altında Postgres dump bulunamadı — backup workflow kontrol edilmeli.`,
+            { key: manifestKey, folderPrefix }
+          )
+        );
+      } else if (dbSize < TUNE.backupMinBytes) {
         findings.push(
           this.warning(
             "backup_tiny",
-            "Son yedek manifest çok küçük",
-            `manifest.json boyutu ${size} byte — boş veya eksik yedek olabilir.`,
-            { size_bytes: size, key: latest.Key }
+            "Son DB yedeği çok küçük",
+            `db.dump boyutu ${dbSize} byte — boş veya bozuk yedek olabilir.`,
+            {
+              db_size_bytes: dbSize,
+              storage_size_bytes: storageSize,
+              key: dbDump.Key,
+            }
           )
         );
       }
@@ -382,7 +413,10 @@ export class AppHealthAuditor extends AuditorBase {
           configured: true,
           manifestCount: manifests.length,
           latestAgeDays: Math.round(ageDays * 10) / 10,
-          latestSize: size,
+          manifestSizeBytes: manifestSize,
+          dbSizeBytes: dbSize,
+          storageSizeBytes: storageSize,
+          totalArtifactBytes,
         },
       };
     } catch (err) {

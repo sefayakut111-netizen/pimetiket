@@ -19,9 +19,10 @@ import {
   type MaterialInfo,
 } from "@/lib/seo/materials";
 
-const title = "Malzemeler — Pim Etiket";
+const title =
+  "Etiket & Sticker Malzemeleri — Kuşe, Kraft, Şeffaf, Holografik";
 const description =
-  "Etiket ve sticker malzemelerinin detayları: kraft, beyaz semi-glos, ultra clear, metalik, vinil, transparan, holografik, simli. Kaplama seçenekleri ve özelleştirmeler.";
+  "Kuşe, kraft, şeffaf, holografik ve metalik etiket ile sticker malzemeleri. Kaplama (mat/parlak selefon, soft touch), dayanım ve kullanım alanları — konfigüratörden seçmeden önce detaylı incele.";
 
 export const metadata: Metadata = {
   title,
