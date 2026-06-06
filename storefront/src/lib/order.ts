@@ -192,6 +192,26 @@ export const ADMIN_STATUS_FORWARD_ORDER: readonly OrderStatus[] = [
   "delivered",
 ];
 
+/** Tahmini teslim tarihi gösterilmeden önceki durumlar (prova/üretim öncesi). */
+export const PRE_PRODUCTION_DELIVERY_STATUSES: readonly OrderStatus[] = [
+  "paid",
+  "awaiting_upload",
+  "qc_pending",
+  "qc_flagged",
+  "operator_review",
+  "human_review",
+  "human_review_failed",
+  "proof_generating",
+  "proof_pending",
+  "proof_validating",
+  "proof_approved",
+  "operator_print_review",
+];
+
+export function isPreProductionDeliveryStatus(status: OrderStatus): boolean {
+  return PRE_PRODUCTION_DELIVERY_STATUSES.includes(status);
+}
+
 /** Geri yönlü durum değişikliğine izin verme — cancelled hariç */
 export function isForwardStatusTransition(
   current: OrderStatus,

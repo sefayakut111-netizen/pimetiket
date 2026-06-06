@@ -63,10 +63,6 @@ import {
 } from "./templates/shipment-status";
 // Sefa 19 May v68 (Migration 059 — baskı onay akışı, 3 yeni mail):
 import {
-  OrderProofRequiredEmail,
-  type OrderProofRequiredProps,
-} from "./templates/order-proof-required";
-import {
   OrderProofReminderEmail,
   type OrderProofReminderProps,
 } from "./templates/order-proof-reminder";
@@ -246,12 +242,23 @@ export async function sendOrderConfirmation(args: {
 // 2) Proof ready
 // ============================================================
 
+/** İlk prova bildirimi — sendOrderProofRequired ile mükerrer önlenir. */
+export function customerProofNotifyIdempotencyKey(orderId: string): string {
+  return `customer_proof_notify:${orderId}`;
+}
+
 export async function sendProofReady(args: {
   userId: string;
   orderId: string;
+  /** Revize sonrası yeni bildirim için farklı anahtar ver. */
+  idempotencyKey?: string;
+  /** İşlemsel prova bildirimi — tercih opt-out'u atla. */
+  transactional?: boolean;
 }): Promise<{ ok: boolean; reason?: string }> {
-  const optedIn = await getEmailPref(args.userId, "email_proof_ready");
-  if (!optedIn) return { ok: false, reason: "opted_out" };
+  if (!args.transactional) {
+    const optedIn = await getEmailPref(args.userId, "email_proof_ready");
+    if (!optedIn) return { ok: false, reason: "opted_out" };
+  }
 
   const email = await getUserEmail(args.userId);
   if (!email) return { ok: false, reason: "no_email" };
@@ -293,6 +300,8 @@ export async function sendProofReady(args: {
     userId: args.userId,
     orderId: args.orderId,
     kind: "proof_ready",
+    idempotencyKey:
+      args.idempotencyKey ?? customerProofNotifyIdempotencyKey(args.orderId),
   });
 
   return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
@@ -593,13 +602,7 @@ export async function sendShipmentStatus(args: {
 // DB trigger zaten 'proof_pending' state'ine geçirir; bu mail müşteriye
 // "onay sayfasına git" çağrısıdır.
 
-const PROOF_REQUIRED_MAIL_STATUSES = new Set([
-  "proof_generating",
-  "proof_pending",
-  "proof_validating",
-]);
-
-/** Ödeme/recover sonrası — yalnız prova aşamasında mail gönder (awaiting_upload/qc'de değil). */
+/** Ödeme/recover sonrası — cutline sendProofReady ile aynı idempotency; yalnız proof_pending. */
 export async function sendOrderProofRequiredIfEligible(args: {
   userId: string;
   orderId: string;
@@ -614,66 +617,25 @@ export async function sendOrderProofRequiredIfEligible(args: {
   if (!order) return { ok: false, reason: "order_not_found" };
 
   const status = (order as { status: string }).status;
-  if (!PROOF_REQUIRED_MAIL_STATUSES.has(status)) {
+  if (status !== "proof_pending") {
     return { ok: false, reason: "status_not_eligible", skipped: true };
   }
 
   return sendOrderProofRequired(args);
 }
 
+/** Prova hazır bildirimi — sendProofReady ile tek kanal (mükerrer mail önlenir). */
 export async function sendOrderProofRequired(args: {
   userId: string;
   orderId: string;
+  idempotencyKey?: string;
 }): Promise<{ ok: boolean; reason?: string }> {
-  // Order updates kategorisinde — yasal/işlemsel, opt-out olsa bile gider
-  // (ödeme sonrası kritik aksiyon talebi — kontrat akışı parçası)
-  const email = await getUserEmail(args.userId);
-  if (!email) return { ok: false, reason: "no_email" };
-
-  const admin = createAdminClient();
-  const { data: order } = await admin
-    .from("orders")
-    .select("address, total")
-    .eq("id", args.orderId)
-    .single();
-
-  const { count: itemCount } = await admin
-    .from("order_items")
-    .select("id", { count: "exact", head: true })
-    .eq("order_id", args.orderId);
-
-  if (!order) return { ok: false, reason: "order_not_found" };
-
-  const orderData = order as unknown as {
-    address: { name: string };
-    total: number;
-  };
-  const customerName = orderData.address?.name ?? "Müşteri";
-
-  const props: OrderProofRequiredProps = {
-    customerName,
-    orderId: args.orderId,
-    itemCount: itemCount ?? 1,
-    totalLabel: orderData.total
-      ? `${Number(orderData.total).toLocaleString("tr-TR")} ₺`
-      : undefined,
-  };
-
-  const html = await render(OrderProofRequiredEmail(props));
-  const subject = `Baskı önizlemen hazır — ${args.orderId}`;
-  const text = `Baskı onayını bekliyoruz — ${args.orderId}. Onay sayfası: ${SITE_URL_FALLBACK}/onay/${args.orderId}`;
-
-  const result = await enqueuePrerendered({
-    to: email,
-    subject,
-    html,
-    text,
+  return sendProofReady({
     userId: args.userId,
     orderId: args.orderId,
-    kind: "proof_required",
+    idempotencyKey: args.idempotencyKey,
+    transactional: true,
   });
-
-  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
 
 // ============================================================

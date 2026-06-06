@@ -13,6 +13,7 @@ import { Icon } from "@/components/Icon";
 import { Button, Card } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
+import { isPreProductionDeliveryStatus } from "@/lib/order";
 import { ensureAuthBindings } from "@/lib/customer-cart";
 import { track } from "@/lib/analytics/posthog-events";
 import { mapApiError } from "@/lib/api-error-messages";
@@ -52,6 +53,7 @@ const EXTRA = {
     verifyingTimeout:
       "Doğrulama beklenenden uzun sürüyor. Sayfayı yenile veya birkaç dakika sonra siparişlerimden kontrol et.",
     refresh: "Sayfayı yenile",
+    deliveryPending: "Tasarım onayından sonra hesaplanır",
   },
   en: {
     failTitle: "Payment failed",
@@ -86,6 +88,7 @@ const EXTRA = {
     verifyingTimeout:
       "Verification is taking longer than expected. Refresh the page or check My Orders in a few minutes.",
     refresh: "Refresh page",
+    deliveryPending: "Calculated after design approval",
   },
 };
 
@@ -478,17 +481,19 @@ function OdemeSonucInner() {
                 </div>
               ))}
             </div>
-            {order.estimatedDelivery && (
-              <div className="mt-4 pt-3 border-t border-gri-200 text-[12.5px] text-gri-700 flex justify-between">
-                <span>{t.orderSuccess.estimatedDelivery}</span>
-                <span className="font-semibold text-lacivert">
-                  {new Date(order.estimatedDelivery).toLocaleDateString(
-                    x.locale,
-                    { day: "numeric", month: "long", year: "numeric" }
-                  )}
-                </span>
-              </div>
-            )}
+            <div className="mt-4 pt-3 border-t border-gri-200 text-[12.5px] text-gri-700 flex justify-between">
+              <span>{t.orderSuccess.estimatedDelivery}</span>
+              <span className="font-semibold text-lacivert">
+                {isPreProductionDeliveryStatus(order.status)
+                  ? x.deliveryPending
+                  : order.estimatedDelivery
+                    ? new Date(order.estimatedDelivery).toLocaleDateString(
+                        x.locale,
+                        { day: "numeric", month: "long", year: "numeric" }
+                      )
+                    : x.deliveryPending}
+              </span>
+            </div>
           </Card>
         )}
 

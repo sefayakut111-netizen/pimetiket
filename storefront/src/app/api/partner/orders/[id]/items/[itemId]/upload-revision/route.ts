@@ -280,6 +280,7 @@ export async function POST(
   void sendOrderProofRequired({
     userId: order.user_id,
     orderId: order.id,
+    idempotencyKey: `proof_revise:${order.id}:${designFileId}`,
   }).catch((err) => {
     console.error("[partner/upload-revision] proof mail:", err);
   });

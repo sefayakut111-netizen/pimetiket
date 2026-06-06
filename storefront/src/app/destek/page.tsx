@@ -139,7 +139,7 @@ export default function DestekPage() {
               <Input
                 value={orderId}
                 onChange={(e) => setOrderId(e.target.value)}
-                placeholder="00001234"
+                placeholder="PE-2026-001234"
               />
             </label>
 

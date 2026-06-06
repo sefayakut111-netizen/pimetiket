@@ -195,6 +195,7 @@ export async function POST(
     void sendOrderProofRequired({
       userId: orderRow.user_id,
       orderId,
+      idempotencyKey: `proof_revise:${orderId}:${itemId}`,
     }).catch((err) => {
       console.error("[proof/save-edit] partner revise proof mail:", err);
     });

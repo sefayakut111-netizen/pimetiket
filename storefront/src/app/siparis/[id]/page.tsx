@@ -34,7 +34,10 @@ import {
   MAX_FILE_SIZE,
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
-import type { OrderStatus } from "@/lib/order";
+import {
+  isPreProductionDeliveryStatus,
+  type OrderStatus,
+} from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 import { OrderDesignHistory } from "@/components/design/OrderDesignHistory";
 import {
@@ -682,17 +685,7 @@ export default function SiparisDetailPage({
   // göstermek yanlış (sepetteki "tasarım onayı baz alınır" mesajıyla
   // çelişiyordu). Sadece proof_approved + sonraki state'lerde gerçek
   // tarih, öncesinde "Tasarım onayından sonra" mesajı.
-  const isPreProductionStatus =
-    order.status === "paid" ||
-    order.status === "awaiting_upload" ||
-    order.status === "qc_pending" ||
-    order.status === "qc_flagged" ||
-    order.status === "operator_review" ||
-    order.status === "proof_generating" ||
-    order.status === "proof_pending" ||
-    order.status === "proof_validating" ||
-    order.status === "proof_approved" ||
-    order.status === "operator_print_review";
+  const isPreProductionStatus = isPreProductionDeliveryStatus(order.status);
 
   const deliveryDate = order.estimatedDelivery
     ? new Date(order.estimatedDelivery).toLocaleDateString(c.locale, {
@@ -779,14 +772,16 @@ export default function SiparisDetailPage({
                     : "Siparişi iptal et"}
               </Button>
             )}
-            <Button
-              variant="secondary"
-              onClick={handleReorder}
-              disabled={reordering}
-            >
-              <Icon.Bolt size={14} />{" "}
-              {reordering ? "Ekleniyor..." : c.reorder}
-            </Button>
+            {order.status === "delivered" && (
+              <Button
+                variant="secondary"
+                onClick={handleReorder}
+                disabled={reordering}
+              >
+                <Icon.Bolt size={14} />{" "}
+                {reordering ? "Ekleniyor..." : c.reorder}
+              </Button>
+            )}
           </div>
         </div>
 

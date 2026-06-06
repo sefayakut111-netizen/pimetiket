@@ -329,7 +329,11 @@ export async function runOrderCutlineGeneration(
     (orderAfter as { status: string } | null)?.status === "proof_pending" &&
     generated > 0
   ) {
-    void sendProofReady({ userId: orderUserId, orderId }).catch((err) => {
+    void sendProofReady({
+      userId: orderUserId,
+      orderId,
+      transactional: true,
+    }).catch((err) => {
       console.error("[run-order-cutline] sendProofReady failed:", err);
     });
   }
