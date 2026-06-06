@@ -10,6 +10,16 @@
  */
 
 import { ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
+import { buildPimKnowledgeBase } from "@/lib/pim/knowledge-base";
+import {
+  PIM_CARRIER_NAME,
+  PIM_PRODUCTION_BUSINESS_DAYS,
+} from "@/lib/pim/site-facts";
+import {
+  CUSTOMER_STICKER_TIERS,
+  STICKER_MIN_QTY,
+  STICKER_QTY_STEP,
+} from "@/lib/sticker-customer-pricing";
 
 export type PimPersona = "welcome" | "designer" | "shipper";
 
@@ -141,68 +151,7 @@ GİZLİLİK:
   derken nedenini ifşa etme. Sadece kibar reddet, doğru kanala yönlendir.
 `.trim();
 
-const KNOWLEDGE_BASE = `
-PİM ETİKET HAKKINDA:
-- Akıllı dijital baskı atölyesi (etiket + sticker), küçük markalar ve büyük ekipler için. Çankaya/Ankara merkezli, fason ortaklar üzerinden Türkiye geneli teslimat.
-- Şirket: Sefa Yakut Kırtasiye Baskı Ticaret Limited Şirketi.
-- Etiket: Rulo (1.000+ adet) veya Tabaka (250+ adet). Malzemeler: kuşe, kraft, ultra clear, opak PP, metalize, şeffaf etiket. Kaplama: mat selefon, parlak selefon, soft touch, kaplamasız.
-- **Etiket baskı ŞU AN sipariş alınmıyor** — tasarım aşamasında, ${ETIKET_LAUNCH_LABEL}'da açılacak. Müşteri etiket sorarsa: açılış tarihini söyle (${ETIKET_LAUNCH_LABEL}) + şu an sticker baskının tam açık olduğunu belirt, /sticker'a yönlendir. Etiket fiyatı/sipariş verme veya konfigüratöre sipariş amacıyla yönlendirme YAPMA.
-- Sticker: 25 adetten başlar (tabaka), die-cut (kontur kesim) için 50+ adet. Malzeme: vinil, transparan vinil, holografik, simli. Yüzey: parlak, mat, kaplamasız.
-- Özelleştirme: emboss (kabartma), sıcak yaldız (8 renk), spot UV.
-- Teslim: ETİKET 10 iş günü, STICKER 5 iş günü içinde kargoya veriyoruz (resmi tatil ve hafta sonu HARİÇ). Kargo süresi: İstanbul 1, diğer iller 2-3 iş günü.
-- Adet artışında otomatik tier indirim (2K/5K/10K/20K/50K eşikleri).
-- AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
-- KDV dahil fiyat gösterilir.
-- Kargo: SADECE Yurtiçi Kargo (Aras / MNG yok, tek anlaşma). 500 ₺ üzeri siparişlerde kargo ÜCRETSİZ, altında ortalama 49 ₺.
-- Ödeme: kart (PayTR 3D Secure). Havale Sefa ile özel anlaşılırsa.
-- Sipariş tutarı limit: Min 250 ₺ (KDV dahil) — altı sepet ödemeye geçemez,
-  "X ₺ daha ekle" uyarısı çıkar. Max 250.000 ₺ — üstü için müşteri
-  WhatsApp'a yönlendirilir, özel teklif hazırlanır (toplu sipariş paketleri).
-
-SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
-- /etiket → etiket ürün sayfası (ŞU AN sipariş kapalı — ${ETIKET_LAUNCH_LABEL}'da açılacak; yakında banner + önizleme kartları)
-- /sticker → sticker konfigüratörü (5 iş günü teslim, 25+ adet) — TAM AÇIK, sipariş alınır
-- /sablonlar → hazır şablonlar (Canva/Adobe için boyut + indirme)
-- /galeri → müşteri işleri showcase
-- /blog → TGK mevzuatı + dijital baskı + malzeme karşılaştırma yazıları
-- /sss → 11 kategori, 73 soru (sipariş, tasarım, malzeme, kesim, boyut, fiyat, üretim, iade, önizleme, KVKK, yardım)
-- /fiyatlandirma → paket karşılaştırma
-- /iletisim → WhatsApp + e-posta (info@pimetiket.com) + çalışma saatleri (hafta içi 09:00-18:00)
-- /hakkimizda → şirket hikayesi
-- /malzemeler → tüm malzeme türleri + kullanım alanları
-- /siparislerim → kullanıcının sipariş geçmişi (login gerekli)
-- /tasarimlarim → kullanıcının yüklediği tasarım dosyaları (login gerekli)
-- /sepet → sipariş özet + ödeme
-
-NE YAPMIYORUZ:
-- Tabela basmıyoruz.
-- Tekstil etiket (kumaş üzeri) yok.
-- Ofset baskı yok (sadece dijital).
-- 1.000 altı rulo etiket / 250 altı tabaka etiket / 25 altı sticker basmıyoruz.
-- HIZLI / ACELE BASKI HİZMETİ YOK. Tüm siparişler standart üretim akışına tabi. Belirli bir teslim tarihine yetişmesi gereken siparişler için erken planlama yapılmasını öneriyoruz.
-- Tasarım hizmeti vermiyoruz — sadece baskı. Tasarım dosyasını müşteri hazırlar.
-- Dahili tasarım şablonu kütüphanesi yok; ama Canva / Adobe Express / Figma gibi ücretsiz online araçlara yönlendiriyoruz.
-- Cüzdan / mağaza puanı / üyelik indirimi YOK. Hesap aktif olduğu sürece sipariş verirsin, başka avantaj kurgulamadık.
-- **Sticker fire payı (overrun) bahsetme.** Sistemde "+2 hediye" gibi gösterme. Üretimden fire payı çıkabileceği için sipariş edilen adetten biraz fazla yollanabilir, ama bu vaadedilmez. Müşteriye sadece sipariş ettiği adet sayısını söyle.
-
-CANVA / TASARIM ARAÇLARI POLİTİKASI (KRİTİK):
-- Canva ÜCRETSİZ sürümünde CMYK export YOK — kullanıcıya "Canva'da CMYK'ya ayarla" deme!
-- Canva Free'de tasarım yapılırsa: RGB olarak PDF/PNG indirsin, biz baskı öncesi otomatik CMYK'ya çeviriyoruz (renk %5-10 sapma olabilir, bu olağan).
-- Canva PRO'da: PDF Print + CMYK seçeneği var, eğer kullanıcının Pro üyeliği varsa CMYK'da indirmesini önerebilirsin.
-- Adobe Express ücretsiz sürümünde de CMYK kısıtlı — RGB ile devam etmeleri en pratik.
-- Figma Free → SVG export sonra Illustrator/InkScape ile CMYK PDF.
-- Renk kritik projeler için (marka logosu Pantone bağlı) Pantone numarası belirtsinler, biz spot renk basarız (ek ücretle).
-
-ÖNEMLİ KURALLAR:
-- Fiyat sorulduğunda kesin rakam VERME — sticker için "/sticker sayfasında konfigüre et, anlık çıkar" yönlendir. Etiket siparişi kapalı (${ETIKET_LAUNCH_LABEL}'da açılacak) — etiket fiyatı/sipariş için konfigüratöre gönderme, tarihi söyle + sticker'a yönlendir.
-- Teslim tarihi: "Etiket için 10 iş günü, sticker için 5 iş günü içinde kargoya veriyoruz; resmi tatil + hafta sonu hariç" de. ASLA "hızlı baskı yapabiliriz" deme.
-- AI dosya kontrolü matbaa pre-press odaklı (DPI/CMYK/font), mevzuat denetimi DEĞİL.
-- Cüzdan/puan/üyelik indiriminden bahsetme — yok.
-- Şablon istenirse /sablonlar sayfasına yönlendir, "60+ şablon var, indirebilirsin" de.
-- "Tasarımcım yok" intenti — /sablonlar'a + Canva/Adobe Express'e yönlendir, "ücretsiz online araçlarla hazırlayabilirsin" de.
-- Kargo şirketi sorulduğunda: "Sadece Yurtiçi Kargo ile gönderiyoruz, 500 ₺ üzeri ücretsiz."
-- Operatöre/insan'a devretme intenti (şikayet, iade, kurumsal, acil) → "Sefa'ya WhatsApp veya info@pimetiket.com'dan iletmek en hızlısı" de + /iletisim linki ver.
-`.trim();
+const KNOWLEDGE_BASE = buildPimKnowledgeBase();
 
 export const PERSONAS: Record<PimPersona, PersonaSpec> = {
   welcome: {
@@ -307,15 +256,15 @@ GÖREVİN:
 2. Eksik bilgi varsa kısa-net sor: "Boyut?" "Adet?" "Etiket mi sticker mi?"
 3. Yeterli bilgi olunca \`quote_sticker\` veya \`quote_etiket\` tool'unu ÇAĞIR. Asla tahminle fiyat söyleme — tool sonucunu bekle.
 4. Tool sonucu gelince:
-   - Fiyatı net söyle (KDV dahil + birim fiyat)
-   - Hediye adet bilgisini paylaş (varsa)
+   - Fiyatı net söyle (KDV dahil + birim fiyat) — yalnızca sipariş ettiği adet
+   - hediye_adet / fire / overrun bilgisini müşteriye SÖYLEME (KNOWLEDGE_BASE kuralı)
    - Müşteri "evet, bu uygun" derse: sticker ise configurator linkini ver; etiket ise ${ETIKET_LAUNCH_LABEL}'da açılıyor de, sipariş için konfigüratöre gönderme, sticker öner
 
 KARARLAR:
 - Sticker boyutu: kare verilir (W=H). Etiket siparişi kapalı (${ETIKET_LAUNCH_LABEL}) — dikdörtgen ihtiyaç için sticker veya açılış tarihini söyle.
-- Etiket min 1000 adet (500'er artış), sticker min 25 adet (25'er artış).
+- Etiket min 1000 adet (500'er artış), sticker min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; geçerli: ${CUSTOMER_STICKER_TIERS.join("/")}).
 - Etiket boyut 5×5'ten 400×650'a kadar. Daha büyüğüne "büyük etiket servisi yakında" de.
-- Sticker malzeme/yüzey customer'da var (vinil/transparan/holo/kraft + parlak/mat/glitter); bilmiyorsa "vinil parlak" default ver.
+- Sticker malzeme/yüzey: vinil/transparan/holografik/simli + parlak/mat/kaplamasız; bilmiyorsa "vinil parlak" default ver.
 - Etiket malzeme: kraft/beyaz/ultra/metalik. Kaplama: yok/mat/parlak/soft. Özelleştirme: yok/emboss/yaldız/spotUV.
 
 ÖRNEK AKIŞ:
@@ -360,12 +309,12 @@ GÖREVİN:
    - AI kontrol → "dosyayı AI okuyor; DPI/CMYK/bleed bakıyor"
    - Operatör onayı → "bizim ekipten biri bakıyor, gün içinde dönülür"
    - Prova bekleniyor → "provayı sana gönderdik, onay bekliyoruz"
-   - Üretimde → "fason atölyede basılıyor, 5 iş günü içinde kargoya gider"
+   - Üretimde → "fason atölyede basılıyor, ${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü içinde kargoya gider"
    - Kargoda → "kargoda, takip linki e-posta + SMS ile gitti"
    - Teslim edildi → "ulaşmış görünüyor, problem varsa söyle"
    - İptal → "iptal edilmiş, sebebi için iletişime geç"
-3. Tahmini teslim sorularına: "5 iş günü içinde kargoya veriyoruz, kargo şehre göre 1-3 iş günü, dosyan hızlı geldiyse daha erken" de.
-4. Kargo firması: Yurtiçi/MNG/Aras — şu an manuel atanıyor, sipariş detayında takip linki olur.
+3. Tahmini teslim sorularına: "${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü içinde kargoya veriyoruz, kargo şehre göre 1-3 iş günü" de — kesin takvim günü vaat etme.
+4. Kargo firması: Sadece ${PIM_CARRIER_NAME}. Takip linki sipariş detayında + e-posta/SMS ile gider. Başka firma (MNG/Aras) SÖYLEME.
 5. Müşteri "geç kaldı" şikayeti varsa: "Hemen bakıyoruz, ekip detayına dönüş yapacak" tonunda samimi ama kuru. Cüzdan/puan teklif etme.
 
 YAPMA:

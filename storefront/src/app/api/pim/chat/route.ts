@@ -34,7 +34,13 @@ import {
   quoteStickerFromConfig,
   quoteEtiketFromConfig,
 } from "@/lib/customer-pricing-from-config";
-import { quoteCustomerSticker } from "@/lib/sticker-customer-pricing";
+import {
+  quoteCustomerSticker,
+  CUSTOMER_STICKER_TIERS,
+  STICKER_MIN_QTY,
+  STICKER_MAX_QTY,
+  STICKER_QTY_STEP,
+} from "@/lib/sticker-customer-pricing";
 import { createPimNavTools } from "@/lib/pim/navigation-tools";
 import { ETIKET_ENABLED, ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
 import {
@@ -73,15 +79,23 @@ interface ChatRequestBody {
 
 const stickerTool = tool({
   description:
-    "Sticker fiyatı hesapla. Serbest W×H boyut (kare veya dikdörtgen). Min 25×25mm, max 400×650mm. Min 25 adet, max 1000 (25'er artış).",
+    `Sticker fiyatı hesapla. Serbest W×H boyut (kare veya dikdörtgen). Min 25×25mm, max 400×650mm. Adet ${STICKER_MIN_QTY}–${STICKER_MAX_QTY}, ${STICKER_QTY_STEP}'er artış (${CUSTOMER_STICKER_TIERS.join("/")}).`,
   inputSchema: z.object({
     width: z.number().min(25).max(400).describe("Sticker genişliği mm"),
     height: z.number().min(25).max(650).describe("Sticker yüksekliği mm"),
     qty: z
       .number()
-      .min(25)
-      .max(1000)
-      .describe("Sipariş adedi (25'er artış: 25/50/75/100/250/500/1000…)"),
+      .min(STICKER_MIN_QTY)
+      .max(STICKER_MAX_QTY)
+      .refine(
+        (n) => Number.isFinite(n) && n % STICKER_QTY_STEP === 0,
+        {
+          message: `Adet ${STICKER_QTY_STEP}'in katı olmalı. Geçerli örnekler: ${CUSTOMER_STICKER_TIERS.join(", ")}`,
+        }
+      )
+      .describe(
+        `Sipariş adedi (${STICKER_QTY_STEP}'er artış: ${CUSTOMER_STICKER_TIERS.join("/")})`
+      ),
     material: z
       .enum(["vinil", "transparan", "holo", "simli"])
       .default("vinil")
@@ -92,6 +106,13 @@ const stickerTool = tool({
       .describe("Yüzey kaplaması (parlak / mat / yok=kaplamasız)"),
   }),
   execute: async ({ width, height, qty, material, finish }) => {
+    if (qty % STICKER_QTY_STEP !== 0) {
+      return {
+        success: false,
+        reason: `Geçersiz adet: ${qty}. ${STICKER_QTY_STEP}'in katı olmalı (ör. ${CUSTOMER_STICKER_TIERS.join(", ")}).`,
+        valid_qty_examples: [...CUSTOMER_STICKER_TIERS],
+      };
+    }
     const config = await getLivePricingConfig("sticker");
     const result =
       quoteStickerFromConfig(config, {
