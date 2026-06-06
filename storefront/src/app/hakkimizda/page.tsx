@@ -23,9 +23,10 @@ const COPY = {
       "Pim Etiket'i kurarken aklımızda tek bir soru vardı: hayalindeki kalitede etiket bastırmak için neden binlerce adet stoklamak zorunda olsun? Bu site, o sorunun cevabı — küçük marka için de kurumsal alıcı için de aynı kapı.",
     storyEyebrow: "Pim Etiket nereden geliyor?",
     storyTitle: "Geleneksel ticaretin yapay zeka çağına ayak uyduruşu.",
-    story1: "75 yıldır ticaretle uğraşan bir ailenin ferdiyiz. Yolumuz kırtasiyecilikten başladı — defterler, kâğıtlar, mürekkepler. Sonra matbaacılığa uzandı; baskı makinelerinin sesi, kâğıdın kokusu kuşaklar boyu evimizin parçası oldu. Daha sonra ambalaj sektörüne geçtik — markaların raflara çıkış hikâyelerine yakından şahit olduk.",
+    story1:
+      "Yaklaşık on yıldır ticaretle uğraşıyoruz. Yolumuz kırtasiyecilikten başladı — defterler, kâğıtlar, mürekkepler. Sonra matbaacılığa uzandı; baskı makinelerinin sesi, kâğıdın kokusu işimizin parçası oldu. Daha sonra ambalaj sektörüne geçtik — markaların raflara çıkış hikâyelerine yakından şahit olduk.",
     story2:
-      "Pim Etiket bu uzun hikâyenin son halkası. Ama bu kez bir farkla: teknolojinin yardımıyla.",
+      "Pim Etiket bu yolculuğun yeni bir başlangıcı. Yeni marka, taze vitrin — bu kez teknolojinin yardımıyla.",
     storyWhy: "Neden böyle bir sistem?",
     story3:
       "Sektörün içinden gözlemledik: ister küçük marka olsun ister büyük alıcı, baskı süreci bir maraton olabiliyordu. Düşük adetlerde fiyatlar uçuyor, büyük adetlerde formaliteler uzuyor; ortada herkesin işini hızla halleden bir yer eksikti.",
@@ -35,7 +36,8 @@ const COPY = {
     storyPromise: "Sana ne vaat ediyoruz?",
     story5:
       "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok — söylediğimiz teslim gününü bekletmiyoruz: etiket 10, sticker 5 iş günü içinde kargoda.",
-    story6: "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 75 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası.",
+    story6:
+      "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 10 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası; yeni marka olarak yeniden başlıyoruz.",
     pimWhoEyebrow: "Pim kim?",
     pimWhoTitle: "Selam, ben Pim. Bu işin kargasıyım.",
     pimWho1:
@@ -67,7 +69,7 @@ const COPY = {
     founderEyebrow: "Kurucu",
     founderTitle: "Merhaba, ben Sefa.",
     founderNote:
-      "Mühendislik geçmişimle 75 yıllık aile ticaret birikimini birleştirerek Pim Etiket'i hayata geçirdim.",
+      "Mühendislik geçmişimle 10 yıllık ticaret deneyimimi birleştirerek Pim Etiket'i hayata geçirdim — yeni marka, yeni başlangıç.",
     founderText:
       " Hedefim, sektörün online'a geçişinde herkesin — küçük marka veya kurumsal — adil bir başlangıca sahip olması. Bizimle çalışmak istersen ",
     founderLink: "iletişim",
@@ -87,9 +89,9 @@ const COPY = {
     storyEyebrow: "Where Pim Etiket comes from",
     storyTitle: "Traditional trade adapting to the AI era.",
     story1:
-      "We come from a family with 75 years of trading experience. Our path started in stationery — notebooks, papers, inks. Then it moved into printing; the sound of press machines and the smell of paper became part of our home for generations. Then we entered the packaging industry — we witnessed brands' shelf-arrival stories firsthand.",
+      "For roughly ten years we've been in trade. Our path started in stationery — notebooks, papers, inks. Then it moved into printing; the sound of press machines and the smell of paper became part of our work. Then we entered the packaging industry — we witnessed brands' shelf-arrival stories firsthand.",
     story2:
-      "Pim Etiket is the latest chapter in that long story. But this time with a difference: with technology's help.",
+      "Pim Etiket is a fresh start on that path. A new brand, a new storefront — this time with technology's help.",
     storyWhy: "Why a system like this?",
     story3:
       "We saw it from inside the industry: whether you're a small brand or a corporate buyer, printing could turn into a marathon. Prices skyrocket at low volumes, paperwork drags at high volumes — the middle ground, where everyone could simply print, was missing.",
@@ -101,7 +103,7 @@ const COPY = {
     story5:
       "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses — we don't miss the delivery days we promise: labels in 10, stickers in 5 business days in transit.",
     story6:
-      "Thank you for walking with us on this journey. 75 years of trading experience + the AI era — Pim Etiket is where these two meet.",
+      "Thank you for walking with us on this journey. 10 years of trading experience + the AI era — Pim Etiket is where these two meet; we're starting anew as a new brand.",
     pimWhoEyebrow: "Who's Pim?",
     pimWhoTitle: "Hi, I'm Pim. The crow behind this whole thing.",
     pimWho1:
@@ -133,7 +135,7 @@ const COPY = {
     founderEyebrow: "Founder",
     founderTitle: "Hi, I'm Sefa.",
     founderNote:
-      "I built Pim Etiket combining my engineering background with 75 years of family trading experience.",
+      "I built Pim Etiket combining my engineering background with 10 years of trading experience — a new brand, a fresh start.",
     founderText:
       " — When I founded Pim Etiket, my goal was simple: make sure everyone — small brand or corporate buyer — gets a fair start as the industry moves online. If you want to work with us, reach out via the ",
     founderLink: "contact",
