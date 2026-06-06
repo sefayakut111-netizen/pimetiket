@@ -70,6 +70,8 @@ export interface CustomerOrder {
   createdAtIso: string;
   /** Tahmini teslim tarihi (ISO) — display için */
   estimatedDelivery?: string;
+  /** Prova SLA son tarihi (ISO) — kuyruk/prova/siparişler ile aynı metrik */
+  slaProofDeadline?: string;
 }
 
 // ============================================================

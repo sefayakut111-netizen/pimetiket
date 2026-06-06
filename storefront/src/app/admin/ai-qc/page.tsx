@@ -1,11 +1,8 @@
 /**
  * Pim Etiket — /admin/ai-qc (v2 — Supabase backed)
  *
- * Sefa kuralı (16 May v3 baskı onay akışı):
- *   Müşteri ödeme yapar → Design QC agent fire-and-forget çalışır →
- *   verdict'e göre order.status = "human_review" veya "proof_generating".
- *   Bu sayfa "human_review" / "human_review_failed" siparişlerini sunar,
- *   operatör approve → ready_to_ship, reject → human_review_failed.
+ * Design QC agent sonrası operatör kararı: qc_pending, qc_flagged,
+ * human_review, human_review_failed. Prova akışı → /admin/prova.
  */
 
 "use client";
@@ -241,7 +238,8 @@ function AdminAiQcPageInner() {
   const [orderHistory, setOrderHistory] = useState<HistoryItem[]>([]);
   const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [bulkCountdown, setBulkCountdown] = useState(BULK_CONFIRM_SECONDS);
+  const [queueTruncated, setQueueTruncated] = useState(false);
+  const [queueLimit, setQueueLimit] = useState(50);
 
   const catalogQueue = useMemo(
     () =>
@@ -268,12 +266,16 @@ function AdminAiQcPageInner() {
         ok?: boolean;
         queue?: QueueItem[];
         error?: string;
+        truncated?: boolean;
+        limit?: number;
       };
       if (!res.ok || data.ok === false) {
         throw new Error(data.error ?? "queue_fetch_failed");
       }
       if (Array.isArray(data.queue)) {
         setQueue(data.queue);
+        setQueueTruncated(Boolean(data.truncated));
+        setQueueLimit(data.limit ?? 50);
         setActiveOrderId((prev) => {
           if (
             deepLinkOrder &&
@@ -644,6 +646,17 @@ function AdminAiQcPageInner() {
             Test siparişlerini göster
           </label>
         )}
+        {!showHistory && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void fetchQueue()}
+            disabled={loading}
+          >
+            <Icon.Refresh size={14} className="mr-1.5" />
+            Yenile
+          </Button>
+        )}
         <Button
         variant="ghost"
         size="sm"
@@ -717,7 +730,22 @@ function AdminAiQcPageInner() {
     );
   }
 
-  if (queue.length === 0) {
+  if (queue.length === 0 && !showHistory) {
+    if (queueError) {
+      return (
+        <main className="py-12">
+          <div className="mx-auto max-w-[760px] px-6">
+            {headerBlock}
+            <AdminFetchErrorBanner
+              title="QC kuyruğu yüklenemedi"
+              message={queueError}
+              onRetry={() => void fetchQueue()}
+            />
+          </div>
+        </main>
+      );
+    }
+
     return (
       <main className="py-12">
         <div className="mx-auto max-w-[760px] px-6">
@@ -887,29 +915,38 @@ function AdminAiQcPageInner() {
           </div>
         )}
 
+        {queueTruncated && (
+          <div className="mb-4 rounded-lg bg-sari-soft/40 ring-1 ring-sari-koyu/30 px-4 py-2.5 text-[13px] text-sari-koyu">
+            İlk {queueLimit} sipariş gösteriliyor — kuyruk daha uzun olabilir.
+          </div>
+        )}
+
         <div className="flex gap-2 mb-4 flex-wrap">
           {[
-            { id: null, label: "Tümü", count: queue.length },
+            { id: null, label: "Tümü", count: catalogQueue.length },
             {
               id: "kotu",
               label: " Kötü",
-              count: queue.filter((q) => q.qcRuns[0]?.verdict === "kotu").length,
+              count: catalogQueue.filter((q) => q.qcRuns[0]?.verdict === "kotu")
+                .length,
             },
             {
               id: "normal",
               label: "~ Normal",
-              count: queue.filter((q) => q.qcRuns[0]?.verdict === "normal")
+              count: catalogQueue.filter((q) => q.qcRuns[0]?.verdict === "normal")
                 .length,
             },
             {
               id: "error",
               label: "! Hata",
-              count: queue.filter((q) => q.qcRuns[0]?.verdict === "error").length,
+              count: catalogQueue.filter((q) => q.qcRuns[0]?.verdict === "error")
+                .length,
             },
             {
               id: "iyi",
               label: " İyi",
-              count: queue.filter((q) => q.qcRuns[0]?.verdict === "iyi").length,
+              count: catalogQueue.filter((q) => q.qcRuns[0]?.verdict === "iyi")
+                .length,
             },
           ]
             .filter((f) => f.count > 0 || f.id === null)

@@ -67,13 +67,14 @@ export async function GET() {
 
   const admin = createAdminClient();
 
-  // 1) Sıradaki siparişler
+  // 1) Sıradaki siparişler (limit+1 ile tavan kontrolü)
+  const QUEUE_LIMIT = 50;
   const { data: ordersData, error: ordersErr } = await admin
     .from("orders")
     .select("id, status, created_at, total, address, user_id")
     .in("status", [...AI_QC_ACTIVE_STATUSES])
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(QUEUE_LIMIT + 1);
 
   if (ordersErr) {
     return NextResponse.json(
@@ -82,10 +83,12 @@ export async function GET() {
     );
   }
 
-  const orders = (ordersData ?? []) as unknown as OrderRow[];
+  const allFetched = (ordersData ?? []) as unknown as OrderRow[];
+  const truncated = allFetched.length > QUEUE_LIMIT;
+  const orders = truncated ? allFetched.slice(0, QUEUE_LIMIT) : allFetched;
 
   if (orders.length === 0) {
-    return NextResponse.json({ ok: true, queue: [] });
+    return NextResponse.json({ ok: true, queue: [], truncated: false, limit: QUEUE_LIMIT });
   }
 
   const orderIds = orders.map((o) => o.id);
@@ -184,5 +187,5 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ ok: true, queue });
+  return NextResponse.json({ ok: true, queue, truncated, limit: QUEUE_LIMIT });
 }

@@ -234,15 +234,12 @@ export const UNASSIGNED_PRODUCTION_STATUSES: readonly OrderStatus[] = [
   "proof_approved",
 ];
 
-/** AI QC kuyruk + dashboard badge statüleri — tek kaynak (dashboard, AdminShell, queue API) */
+/** AI QC kuyruk + dashboard badge — prova/baskı incelemesi hariç (→ /admin/prova) */
 export const AI_QC_ACTIVE_STATUSES: readonly OrderStatus[] = [
   "qc_pending",
   "qc_flagged",
   "human_review",
   "human_review_failed",
-  "proof_generating",
-  "operator_review",
-  "operator_print_review",
 ];
 
 /** Admin sipariş listesi — tek veya çoklu durum filtresi URL'si */

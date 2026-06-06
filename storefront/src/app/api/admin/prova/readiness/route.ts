@@ -9,10 +9,9 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTestOrderLike } from "@/lib/admin-order-filters";
+import { proofAgeFromOrder } from "@/lib/admin-operation-queue";
 
 export const dynamic = "force-dynamic";
-
-const SLA_MS = 36 * 60 * 60 * 1000;
 
 type ReadinessLevel = "ok" | "cutline_only" | "missing";
 
@@ -162,7 +161,7 @@ async function getKpiStats() {
 
   const { data: orderRows, error: orderErr } = await admin
     .from("orders")
-    .select("id, status, created_at, address")
+    .select("id, status, created_at, sla_proof_deadline, address")
     .in("status", [
       "proof_pending",
       "proof_generating",
@@ -186,8 +185,11 @@ async function getKpiStats() {
   for (const o of orders) {
     if (o.status !== "proof_pending") continue;
     pending++;
-    const created = new Date(o.created_at).getTime();
-    if (now - created > SLA_MS) slaBreached++;
+    const { deadline } = proofAgeFromOrder({
+      created_at: o.created_at,
+      sla_proof_deadline: o.sla_proof_deadline ?? null,
+    });
+    if (now > new Date(deadline).getTime()) slaBreached++;
   }
 
   const { data: approvedEvents, error: evErr } = await admin
@@ -272,6 +274,7 @@ function excludeTestOrderLikesFromRows(
     id: string;
     status: string;
     created_at: string;
+    sla_proof_deadline: string | null;
     address: unknown;
   }>
 ) {

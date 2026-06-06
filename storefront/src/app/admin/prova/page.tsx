@@ -22,13 +22,11 @@ import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
-  listCustomerOrders,
-  updateCustomerOrderStatus,
   type CustomerOrder,
 } from "@/lib/customer-order";
-import type { OrderStatus } from "@/lib/order";
-import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import { excludeTestOrders } from "@/lib/admin-order-filters";
+import { proofAgeFromOrder, PROOF_SLA_HOURS } from "@/lib/admin-operation-queue";
+import { AdminFetchErrorBanner } from "@/components/admin/AdminFetchErrorBanner";
 import { StatusDot } from "@/components/admin/ui";
 
 const PROOF_STATUSES = [
@@ -38,6 +36,14 @@ const PROOF_STATUSES = [
   "proof_approved",
   "operator_print_review",
 ] as const;
+
+const PROVA_FETCH_STATUSES = [
+  ...PROOF_STATUSES,
+  "cancelled",
+  "human_review_failed",
+] as const;
+
+const PROVA_FETCH_LIMIT = 500;
 
 const PROOF_STATUS_META: Record<
   string,
@@ -97,11 +103,24 @@ type OrderReadiness = {
   hasWhite: boolean;
 };
 
-const SLA_MS = 36 * 60 * 60 * 1000;
+function proofSlaFromOrder(order: {
+  createdAtIso: string;
+  slaProofDeadline?: string;
+}): ReturnType<typeof proofAgeFromOrder> {
+  return proofAgeFromOrder({
+    created_at: order.createdAtIso,
+    sla_proof_deadline: order.slaProofDeadline ?? null,
+  });
+}
 
-function isProofSlaBreached(createdAt: number, status: string): boolean {
-  if (status !== "proof_pending") return false;
-  return Date.now() - createdAt > SLA_MS;
+function isProofSlaBreached(order: {
+  createdAtIso: string;
+  slaProofDeadline?: string;
+  status: string;
+}): boolean {
+  if (order.status !== "proof_pending") return false;
+  const { deadline } = proofSlaFromOrder(order);
+  return Date.now() > new Date(deadline).getTime();
 }
 
 const READINESS_BADGE: Record<
@@ -156,19 +175,23 @@ function formatProofWaitDetail(hours: number): string {
 }
 
 function ProofSlaTag({
-  createdAt,
-  status,
+  order,
   autoRefundHealthy,
 }: {
-  createdAt: number;
-  status: string;
+  order: {
+    createdAtIso: string;
+    slaProofDeadline?: string;
+    status: string;
+  };
   autoRefundHealthy: boolean;
 }) {
-  if (status !== "proof_pending") return null;
+  if (order.status !== "proof_pending") return null;
 
-  const elapsedMs = Date.now() - createdAt;
-  const elapsedHours = elapsedMs / 3600000;
-  const remainingHours = 36 - elapsedHours;
+  const { deadline } = proofSlaFromOrder(order);
+  const deadlineMs = new Date(deadline).getTime();
+  const remainingMs = deadlineMs - Date.now();
+  const remainingHours = remainingMs / 3600000;
+  const elapsedHours = (Date.now() - (deadlineMs - PROOF_SLA_HOURS * 3600000)) / 3600000;
 
   if (remainingHours <= 0) {
     const slaDetail = formatProofWaitDetail(elapsedHours);
@@ -317,6 +340,11 @@ function AdminProvaPageInner() {
   const deepLinkOrder = searchParams.get("order");
   const scrolledOrderRef = useRef<string | null>(null);
   const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [limitWarning, setLimitWarning] = useState(false);
+  const [readinessTruncated, setReadinessTruncated] = useState(false);
   const [filter, setFilter] = useState<ProofFilter>("pending");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showTestOrders, setShowTestOrders] = useState(false);
@@ -373,24 +401,46 @@ function AdminProvaPageInner() {
       .catch(() => setHasContractedPartner(false));
   }, []);
 
+  const loadOrders = useCallback(async () => {
+    setListLoading(true);
+    try {
+      const params = new URLSearchParams({
+        limit: String(PROVA_FETCH_LIMIT),
+        status: PROVA_FETCH_STATUSES.join(","),
+      });
+      const res = await fetch(`/api/admin/orders/list?${params}`, {
+        cache: "no-store",
+      });
+      const data = (await res.json()) as {
+        orders?: CustomerOrder[];
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? "prova_list_failed");
+      }
+      const orders = data.orders ?? [];
+      setAllOrders(orders);
+      setLimitWarning(orders.length >= PROVA_FETCH_LIMIT);
+      setFetchError(null);
+    } catch (err) {
+      console.error("[prova] orders fetch failed:", err);
+      setFetchError(
+        err instanceof Error ? err.message : "Prova listesi yüklenemedi"
+      );
+    } finally {
+      setListLoading(false);
+      setOrdersLoaded(true);
+    }
+  }, []);
+
   useEffect(() => {
-    let cancelled = false;
-    const applyOrders = (all: CustomerOrder[]) => {
-      if (cancelled) return;
-      setAllOrders(all);
-    };
-    applyOrders(listCustomerOrders());
-    void fetchAllOrdersForAdmin({ limit: 500 }).then(applyOrders);
-    const refresh = () => {
-      applyOrders(listCustomerOrders());
-      void fetchAllOrdersForAdmin({ limit: 500 }).then(applyOrders);
-    };
+    void loadOrders();
+    const refresh = () => void loadOrders();
     window.addEventListener("pim_customer_orders_updated", refresh);
     return () => {
-      cancelled = true;
       window.removeEventListener("pim_customer_orders_updated", refresh);
     };
-  }, []);
+  }, [loadOrders]);
 
   const catalogOrders = useMemo(
     () => (showTestOrders ? allOrders : excludeTestOrders(allOrders)),
@@ -427,7 +477,7 @@ function AdminProvaPageInner() {
       approved: items.filter((o) => o.status === "proof_approved").length,
       rejected: rejectedItems.length,
       sla_breached: items.filter(
-        (o) => o.status === "proof_pending" && isProofSlaBreached(o.createdAt, o.status)
+        (o) => o.status === "proof_pending" && isProofSlaBreached(o)
       ).length,
     }),
     [items, rejectedItems]
@@ -452,8 +502,7 @@ function AdminProvaPageInner() {
       case "sla_breached":
         return items.filter(
           (o) =>
-            o.status === "proof_pending" &&
-            isProofSlaBreached(o.createdAt, o.status)
+            o.status === "proof_pending" && isProofSlaBreached(o)
         );
       default:
         return items;
@@ -541,7 +590,8 @@ function AdminProvaPageInner() {
 
   useEffect(() => {
     const ids = sortedItems.map((o) => o.id);
-    void loadReadiness(ids);
+    setReadinessTruncated(ids.length > 100);
+    void loadReadiness(ids.slice(0, 100));
   }, [sortedItems, loadReadiness]);
 
   useEffect(() => {
@@ -582,9 +632,7 @@ function AdminProvaPageInner() {
       approvedToday: kpi.approvedToday,
       avgResponseHours: kpi.avgResponseHours,
       slaBreached: items.filter(
-        (o) =>
-          o.status === "proof_pending" &&
-          isProofSlaBreached(o.createdAt, o.status)
+        (o) => o.status === "proof_pending" && isProofSlaBreached(o)
       ).length,
     }),
     [items, kpi]
@@ -606,8 +654,8 @@ function AdminProvaPageInner() {
         toast.error(`Güncelleme başarısız: ${j.error ?? res.status}`);
         return false;
       }
-      updateCustomerOrderStatus(orderId, status as OrderStatus);
       window.dispatchEvent(new Event("pim_customer_orders_updated"));
+      await loadOrders();
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "bilinmeyen hata";
@@ -719,20 +767,23 @@ function AdminProvaPageInner() {
 
     return (
       <div className="flex flex-col gap-2 shrink-0">
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!hasContractedPartner}
-          title={
-            !hasContractedPartner
-              ? "Sozlesmeli partner yok — once partner sozlesmesi tamamlanmali"
-              : undefined
-          }
-          onClick={() => void handleApprove(p)}
-        >
-          <Icon.Check size={12} />{" "}
-          {hasContractedPartner ? "Üretime al" : "Üretime al (partner yok)"}
-        </Button>
+        {(p.status === "proof_approved" ||
+          p.status === "operator_print_review") && (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!hasContractedPartner}
+            title={
+              !hasContractedPartner
+                ? "Sozlesmeli partner yok — once partner sozlesmesi tamamlanmali"
+                : undefined
+            }
+            onClick={() => void handleApprove(p)}
+          >
+            <Icon.Check size={12} />{" "}
+            {hasContractedPartner ? "Üretime al" : "Üretime al (partner yok)"}
+          </Button>
+        )}
         {p.status === "proof_pending" && (
           <>
             <Button
@@ -801,6 +852,18 @@ function AdminProvaPageInner() {
     );
   };
 
+  if (listLoading && !ordersLoaded) {
+    return (
+      <main className="py-12">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <div className="animate-pulse text-gri-700 text-center">
+            Prova kuyruğu yükleniyor…
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
@@ -811,9 +874,11 @@ function AdminProvaPageInner() {
             Prova kuyruğu
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {items.length === 0
-              ? "Prova sürecinde sipariş yok."
-              : `${items.length} sipariş prova akışında · ${counts.pending} onay bekliyor`}
+            {fetchError
+              ? "Prova listesi yüklenemedi."
+              : items.length === 0
+                ? "Prova sürecinde sipariş yok."
+                : `${items.length} sipariş prova akışında · ${counts.pending} onay bekliyor`}
             {hiddenTestCount > 0 && (
               <span className="ml-2 text-[12.5px] text-gri-500">
                 ({hiddenTestCount} test siparişi gizli)
@@ -821,16 +886,49 @@ function AdminProvaPageInner() {
             )}
           </p>
         </div>
-        <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none shrink-0">
-          <input
-            type="checkbox"
-            checked={showTestOrders}
-            onChange={(e) => setShowTestOrders(e.target.checked)}
-            className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
-          />
-          Test siparişlerini göster
-        </label>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadOrders()}
+            disabled={listLoading}
+          >
+            <Icon.Refresh size={14} className="mr-1.5" />
+            Yenile
+          </Button>
+          <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showTestOrders}
+              onChange={(e) => setShowTestOrders(e.target.checked)}
+              className="rounded border-gri-300 text-pim-mercan focus:ring-pim-mercan"
+            />
+            Test siparişlerini göster
+          </label>
+        </div>
       </div>
+
+        {fetchError && (
+          <AdminFetchErrorBanner
+            title="Prova listesi yüklenemedi"
+            message={fetchError}
+            onRetry={() => void loadOrders()}
+          />
+        )}
+
+        {limitWarning && !fetchError && (
+          <div className="mb-4 rounded-lg bg-sari-soft/40 ring-1 ring-sari-koyu/30 px-4 py-2.5 text-[13px] text-sari-koyu">
+            İlk {PROVA_FETCH_LIMIT} sipariş gösteriliyor — daha eski kayıtlar
+            listede görünmeyebilir.
+          </div>
+        )}
+
+        {readinessTruncated && (
+          <div className="mb-4 rounded-lg bg-gri-100 ring-1 ring-gri-200 px-4 py-2.5 text-[13px] text-gri-700">
+            Bıçak/beyaz rozetleri en fazla 100 sipariş için yüklenir — kalan
+            siparişlerde rozet eksik olabilir.
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {(
@@ -949,14 +1047,18 @@ function AdminProvaPageInner() {
           <Card padding="p-10" className="text-center">
             <Pim pose="happy" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
-              {items.length === 0 && filter !== "rejected"
-                ? "Prova kuyruğu temiz "
-                : "Bu filtrede sipariş yok"}
+              {fetchError
+                ? "Liste yüklenemedi"
+                : items.length === 0 && filter !== "rejected"
+                  ? "Prova kuyruğu temiz "
+                  : "Bu filtrede sipariş yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
-              {items.length === 0 && filter !== "rejected"
-                ? "Prova sürecinde sipariş yok. Yeni siparişler operatör incelemesinden geçince burada görünür."
-                : "Başka bir filtre sekmesine geçin veya tümünü görüntüleyin."}
+              {fetchError
+                ? "Yukarıdaki hatayı düzeltip yeniden deneyin."
+                : items.length === 0 && filter !== "rejected"
+                  ? "Prova sürecinde sipariş yok. Yeni siparişler operatör incelemesinden geçince burada görünür."
+                  : "Başka bir filtre sekmesine geçin veya tümünü görüntüleyin."}
             </p>
           </Card>
         ) : (
@@ -999,8 +1101,11 @@ function AdminProvaPageInner() {
                           {meta.label}
                         </span>
                         <ProofSlaTag
-                          createdAt={p.createdAt}
-                          status={p.status}
+                          order={{
+                            createdAtIso: p.createdAtIso,
+                            slaProofDeadline: p.slaProofDeadline,
+                            status: p.status,
+                          }}
                           autoRefundHealthy={autoRefundHealthy}
                         />
                       </div>
