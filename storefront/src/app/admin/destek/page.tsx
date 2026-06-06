@@ -30,6 +30,8 @@ function AdminDestekPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
+  const ticketId = searchParams.get("ticket");
+  const helpId = searchParams.get("help");
 
   const setTab = (next: DestekTab) => {
     router.replace(
@@ -66,7 +68,11 @@ function AdminDestekPageInner() {
           ))}
         </div>
 
-        {tab === "genel" ? <DestekPanel /> : <YardimPanel />}
+        {tab === "genel" ? (
+          <DestekPanel initialTicketId={ticketId} />
+        ) : (
+          <YardimPanel initialHelpId={helpId} />
+        )}
       </div>
     </main>
   );

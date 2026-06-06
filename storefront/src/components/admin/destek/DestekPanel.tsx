@@ -116,12 +116,18 @@ function StatusBadge({ status }: { status: TicketStatus }) {
 
 export type DestekPanelProps = {
   showHeader?: boolean;
+  initialTicketId?: string | null;
 };
 
-export function DestekPanel({ showHeader = false }: DestekPanelProps) {
+export function DestekPanel({
+  showHeader = false,
+  initialTicketId = null,
+}: DestekPanelProps) {
   const toast = useToast();
   const [items, setItems] = useState<SupportTicket[]>([]);
-  const [filter, setFilter] = useState("open");
+  const [filter, setFilter] = useState(
+    initialTicketId ? "all" : "open"
+  );
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<SupportTicket | null>(null);
   const [response, setResponse] = useState("");
@@ -160,6 +166,19 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!initialTicketId || items.length === 0) return;
+    const ticket = items.find((t) => t.id === initialTicketId);
+    if (ticket) {
+      setSelected(ticket);
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`support-ticket-${initialTicketId}`)
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    }
+  }, [initialTicketId, items]);
 
   useEffect(() => {
     if (!createOpen || customerSearch.trim().length < 2) {
@@ -380,9 +399,11 @@ export function DestekPanel({ showHeader = false }: DestekPanelProps) {
                 {items.map((t) => (
                   <tr
                     key={t.id}
+                    id={`support-ticket-${t.id}`}
                     className={cn(
                       "cursor-pointer hover:bg-gri-50",
-                      selected?.id === t.id && "bg-pim-mercan-tint/20"
+                      selected?.id === t.id && "bg-pim-mercan-tint/20",
+                      initialTicketId === t.id && "ring-2 ring-inset ring-pim-mercan/40"
                     )}
                     onClick={() => {
                       setSelected(t);

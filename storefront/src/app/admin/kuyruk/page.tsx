@@ -7,7 +7,9 @@ import { Button, Card, Eyebrow, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
   PROOF_SLA_HOURS,
+  QUEUE_MORE_HREFS,
   QUEUE_TYPE_LABELS,
+  emptyQueueCounts,
   type OperationQueueResponse,
   type QueueItem,
   type QueueItemType,
@@ -53,9 +55,9 @@ function formatAge(hours?: number): string {
   if (h >= 24) {
     const d = Math.floor(h / 24);
     const rem = h % 24;
-    return rem > 0 ? `${d}g ${rem}s` : `${d}g`;
+    return rem > 0 ? `${d}g ${rem}sa` : `${d}g`;
   }
-  return `${h}s`;
+  return `${h}sa`;
 }
 
 function proofRefundHint(item: QueueItem): string | null {
@@ -64,7 +66,7 @@ function proofRefundHint(item: QueueItem): string | null {
   const remainingH =
     (new Date(item.deadline).getTime() - Date.now()) / 3_600_000;
   if (remainingH <= 0) return "SLA doldu — iade tetiklenebilir";
-  if (remainingH < 2) return `${Math.ceil(remainingH)}s'de iade!`;
+  if (remainingH < 2) return `${Math.ceil(remainingH)}sa içinde iade!`;
   return null;
 }
 
@@ -103,6 +105,15 @@ export default function AdminKuyrukPage() {
     if (typeFilter === "all") return data.items;
     return data.items.filter((i) => i.type === typeFilter);
   }, [data, typeFilter]);
+
+  const shownByType = useMemo(() => {
+    const m = emptyQueueCounts();
+    if (!data) return m;
+    for (const item of data.items) {
+      m[item.type] += 1;
+    }
+    return m;
+  }, [data]);
 
   const grouped = useMemo(() => {
     const groups: Record<QueueUrgency, QueueItem[]> = {
@@ -168,6 +179,8 @@ export default function AdminKuyrukPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-6">
               {KPI_TYPES.map((type) => {
                 const count = data.counts[type];
+                const shown = shownByType[type];
+                const hidden = Math.max(0, count - shown);
                 const active = typeFilter === type;
                 return (
                   <button
@@ -189,6 +202,15 @@ export default function AdminKuyrukPage() {
                     <div className="text-[11px] font-semibold text-gri-600 mt-0.5">
                       {QUEUE_TYPE_LABELS[type]}
                     </div>
+                    {hidden > 0 && (
+                      <Link
+                        href={QUEUE_MORE_HREFS[type]}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 inline-block text-[10px] font-semibold text-pim-mercan hover:underline"
+                      >
+                        +{hidden} daha →
+                      </Link>
+                    )}
                   </button>
                 );
               })}

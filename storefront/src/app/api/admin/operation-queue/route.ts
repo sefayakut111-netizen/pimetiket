@@ -11,11 +11,13 @@ import type { Enums } from "@/lib/supabase/types";
 import {
   AI_QC_QUEUE_STATUSES,
   FASON_UNASSIGNED_STATUSES,
+  PROOF_SLA_STATUSES,
   SHIPPING_STATUSES,
   emptyQueueCounts,
   formatOrderTitle,
   isTestOrderDbRow,
   proofAgeFromOrder,
+  proofSlaTypeLabel,
   proofUrgency,
   sortQueueItems,
   type OperationQueueResponse,
@@ -24,7 +26,8 @@ import {
 
 export const runtime = "nodejs";
 
-const ITEM_LIMIT = 10;
+const ITEM_LIMIT = 25;
+const LIST_CAP = ITEM_LIMIT * 2;
 
 type OrderRow = {
   id: string;
@@ -69,7 +72,7 @@ function filterTestOrders(rows: OrderRow[]): OrderRow[] {
 }
 
 export async function GET() {
-  const auth = await assertPermission("dashboard", "view");
+  const auth = await assertPermission("orders", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -83,8 +86,10 @@ export async function GET() {
     aiQcRowsRes,
     proofCountRes,
     proofRowsRes,
-    unassignedRowsRes,
+    proofCriticalRowsRes,
+    fasonCandidateRowsRes,
     assignedIdsRes,
+    shippingCountRes,
     shippingRowsRes,
     supportCountRes,
     supportRowsRes,
@@ -108,23 +113,34 @@ export async function GET() {
     admin
       .from("orders")
       .select("id", { count: "exact", head: true })
-      .eq("status", "proof_pending"),
+      .in("status", PROOF_SLA_STATUSES as Enums<"order_status">[]),
     admin
       .from("orders")
       .select("id, status, address, created_at, sla_proof_deadline")
-      .eq("status", "proof_pending")
+      .in("status", PROOF_SLA_STATUSES as Enums<"order_status">[])
       .order("created_at", { ascending: true })
       .limit(ITEM_LIMIT),
     admin
       .from("orders")
       .select("id, status, address, created_at, sla_proof_deadline")
-      .in("status", FASON_UNASSIGNED_STATUSES as Enums<"order_status">[])
-      .order("created_at", { ascending: true })
-      .limit(50),
+      .in("status", PROOF_SLA_STATUSES as Enums<"order_status">[]),
+    admin
+      .from("orders")
+      .select("id, status, address, created_at, sla_proof_deadline")
+      .in("status", FASON_UNASSIGNED_STATUSES as Enums<"order_status">[]),
     admin
       .from("order_assignments")
       .select("order_id")
       .neq("status", "cancelled"),
+    admin
+      .from("order_assignments")
+      .select("order_id, orders!inner(status, address)", {
+        count: "exact",
+        head: true,
+      })
+      .is("tracking_number", null)
+      .neq("status", "cancelled")
+      .eq("orders.status", "ready_to_ship"),
     admin
       .from("order_assignments")
       .select(
@@ -182,21 +198,13 @@ export async function GET() {
   );
 
   const aiQcRows = filterTestOrders((aiQcRowsRes.data ?? []) as OrderRow[]);
-  if ((aiQcCountRes.count ?? 0) > ITEM_LIMIT) {
-    counts.ai_qc = aiQcCountRes.count ?? aiQcRows.length;
-  } else {
-    counts.ai_qc = aiQcRows.length;
-  }
+  counts.ai_qc = aiQcCountRes.count ?? aiQcRows.length;
 
   const proofRowsRaw = filterTestOrders((proofRowsRes.data ?? []) as OrderRow[]);
-  if ((proofCountRes.count ?? 0) > ITEM_LIMIT) {
-    counts.proof_sla = proofCountRes.count ?? proofRowsRaw.length;
-  } else {
-    counts.proof_sla = proofRowsRaw.length;
-  }
+  counts.proof_sla = proofCountRes.count ?? proofRowsRaw.length;
 
   const fasonRows = filterTestOrders(
-    ((unassignedRowsRes.data ?? []) as OrderRow[]).filter(
+    ((fasonCandidateRowsRes.data ?? []) as OrderRow[]).filter(
       (o) => !assignedOrderIds.has(o.id)
     )
   );
@@ -210,12 +218,18 @@ export async function GET() {
   const shippingRows = ((shippingRowsRes.data ?? []) as ShippingJoinRow[])
     .filter((r) => r.orders && !isTestOrderDbRow(r.orders))
     .slice(0, ITEM_LIMIT);
-  counts.shipping = shippingRows.length;
+  counts.shipping = shippingCountRes.count ?? shippingRows.length;
 
   counts.support =
     (supportCountRes.count ?? 0) + (helpCountRes.count ?? 0);
   counts.review = reviewCountRes.count ?? 0;
   counts.capability = capabilityCountRes.count ?? 0;
+
+  const criticalCount = filterTestOrders(
+    (proofCriticalRowsRes.data ?? []) as OrderRow[]
+  ).filter(
+    (o) => proofUrgency(proofAgeFromOrder(o).ageHours) === "critical"
+  ).length;
 
   const orderIdsForItems = [
     ...aiQcRows.map((o) => o.id),
@@ -241,17 +255,28 @@ export async function GET() {
 
   for (const o of proofRowsRaw) {
     const { ageHours, deadline } = proofAgeFromOrder(o);
-    const urgency = proofUrgency(ageHours);
+    const urgency =
+      o.status === "proof_pending" || o.status === "operator_print_review"
+        ? proofUrgency(ageHours)
+        : ageHours > 12
+          ? "warning"
+          : "normal";
+    const productLine = orderSubtitle(itemMap.get(o.id) ?? []);
     items.push({
       id: `${o.id}-proof_sla`,
       type: "proof_sla",
       title: formatOrderTitle(o.id, o.address),
-      subtitle: orderSubtitle(itemMap.get(o.id) ?? []),
+      subtitle: productLine
+        ? `${proofSlaTypeLabel(o.status)} · ${productLine}`
+        : proofSlaTypeLabel(o.status),
       urgency,
       ageHours,
       deadline,
       href: `/admin/prova?order=${o.id}`,
-      actionLabel: urgency === "critical" ? "Hatırlat" : "Görüntüle",
+      actionLabel:
+        urgency === "critical" && o.status === "proof_pending"
+          ? "Hatırlat"
+          : "Görüntüle",
     });
   }
 
@@ -295,7 +320,7 @@ export async function GET() {
         : (t.subject as string),
       urgency: ageHours > 24 ? "warning" : "normal",
       ageHours,
-      href: `/admin/destek`,
+      href: `/admin/destek?ticket=${t.id as string}`,
       actionLabel: "Yanıtla",
     });
   }
@@ -309,7 +334,7 @@ export async function GET() {
       subtitle: ((h.message as string) ?? "").slice(0, 80),
       urgency: ageHours > 12 ? "warning" : "normal",
       ageHours,
-      href: `/admin/yardim-talepleri`,
+      href: `/admin/destek?tab=yardim&help=${h.id as string}`,
       actionLabel: "Yanıtla",
     });
   }
@@ -362,8 +387,7 @@ export async function GET() {
     });
   }
 
-  const sorted = sortQueueItems(items).slice(0, ITEM_LIMIT * 3);
-  const criticalCount = sorted.filter((i) => i.urgency === "critical").length;
+  const sorted = sortQueueItems(items).slice(0, LIST_CAP);
 
   const response: OperationQueueResponse = {
     counts,

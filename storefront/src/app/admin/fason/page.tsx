@@ -13,9 +13,9 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Input, Modal, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -36,7 +36,22 @@ type SortBy = "score" | "name" | "lead_days" | "active_orders";
 // ============================================================
 
 export default function AdminFasonPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <AdminFasonPageInner />
+    </Suspense>
+  );
+}
+
+function AdminFasonPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignOrderId = searchParams.get("assign");
+
+  useEffect(() => {
+    if (!assignOrderId) return;
+    router.replace(`/admin/siparisler/${assignOrderId}`);
+  }, [assignOrderId, router]);
   const [partners, setPartners] = useState<FasonPartner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);

@@ -6,9 +6,17 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
@@ -28,6 +36,7 @@ const PROOF_STATUSES = [
   "proof_validating",
   "proof_pending",
   "proof_approved",
+  "operator_print_review",
 ] as const;
 
 const PROOF_STATUS_META: Record<
@@ -53,6 +62,11 @@ const PROOF_STATUS_META: Record<
     label: "Onaylandı ",
     bg: "bg-yesil-soft",
     color: "text-yesil-koyu",
+  },
+  operator_print_review: {
+    label: "Baskı incelemesi",
+    bg: "bg-mavi-soft",
+    color: "text-mavi-koyu",
   },
   cancelled: {
     label: "İptal",
@@ -273,7 +287,35 @@ function DesignThumb({
 }
 
 export default function AdminProvaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <AdminProvaPageInner />
+    </Suspense>
+  );
+}
+
+function filterForOrderStatus(status: string): ProofFilter {
+  switch (status) {
+    case "proof_generating":
+      return "generating";
+    case "proof_validating":
+      return "validating";
+    case "proof_pending":
+      return "pending";
+    case "proof_approved":
+      return "approved";
+    case "operator_print_review":
+      return "pending";
+    default:
+      return "all";
+  }
+}
+
+function AdminProvaPageInner() {
   const toast = useToast();
+  const searchParams = useSearchParams();
+  const deepLinkOrder = searchParams.get("order");
+  const scrolledOrderRef = useRef<string | null>(null);
   const [allOrders, setAllOrders] = useState<CustomerOrder[]>([]);
   const [filter, setFilter] = useState<ProofFilter>("pending");
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -377,7 +419,11 @@ export default function AdminProvaPage() {
       all: items.length,
       generating: items.filter((o) => o.status === "proof_generating").length,
       validating: items.filter((o) => o.status === "proof_validating").length,
-      pending: items.filter((o) => o.status === "proof_pending").length,
+      pending: items.filter(
+        (o) =>
+          o.status === "proof_pending" ||
+          o.status === "operator_print_review"
+      ).length,
       approved: items.filter((o) => o.status === "proof_approved").length,
       rejected: rejectedItems.length,
       sla_breached: items.filter(
@@ -394,7 +440,11 @@ export default function AdminProvaPage() {
       case "validating":
         return items.filter((o) => o.status === "proof_validating");
       case "pending":
-        return items.filter((o) => o.status === "proof_pending");
+        return items.filter(
+          (o) =>
+            o.status === "proof_pending" ||
+            o.status === "operator_print_review"
+        );
       case "approved":
         return items.filter((o) => o.status === "proof_approved");
       case "rejected":
@@ -421,6 +471,20 @@ export default function AdminProvaPage() {
       return a.createdAt - b.createdAt;
     });
   }, [filteredItems]);
+
+  useEffect(() => {
+    if (!deepLinkOrder) return;
+    const target = catalogOrders.find((o) => o.id === deepLinkOrder);
+    if (!target) return;
+    setFilter(filterForOrderStatus(target.status));
+    if (scrolledOrderRef.current === deepLinkOrder) return;
+    scrolledOrderRef.current = deepLinkOrder;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`prova-order-${deepLinkOrder}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }, [deepLinkOrder, catalogOrders, sortedItems]);
 
   const loadReminderLog = useCallback(async (orderIds: string[]) => {
     if (orderIds.length === 0) {
@@ -510,7 +574,11 @@ export default function AdminProvaPage() {
 
   const kpiDisplay = useMemo(
     () => ({
-      pending: items.filter((o) => o.status === "proof_pending").length,
+      pending: items.filter(
+        (o) =>
+          o.status === "proof_pending" ||
+          o.status === "operator_print_review"
+      ).length,
       approvedToday: kpi.approvedToday,
       avgResponseHours: kpi.avgResponseHours,
       slaBreached: items.filter(
@@ -906,7 +974,15 @@ export default function AdminProvaPage() {
                 PROOF_STATUS_META[p.status] ?? PROOF_STATUS_META.proof_pending;
 
               return (
-                <Card key={p.id} padding="p-5">
+                <Card
+                  key={p.id}
+                  id={`prova-order-${p.id}`}
+                  padding="p-5"
+                  className={cn(
+                    deepLinkOrder === p.id &&
+                      "ring-2 ring-pim-mercan shadow-md"
+                  )}
+                >
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-start">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2.5 mb-2 flex-wrap">

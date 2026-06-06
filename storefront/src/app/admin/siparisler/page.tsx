@@ -250,6 +250,7 @@ function AdminSiparislerPageInner() {
   const initialSearch = searchParams.get("q") ?? "";
   const initialFrom = searchParams.get("from") ?? "";
   const initialTo = searchParams.get("to") ?? "";
+  const initialView = searchParams.get("view");
 
   const [statusFilters, setStatusFilters] = useState<OrderStatus[] | null>(
     initialStatuses
@@ -266,7 +267,15 @@ function AdminSiparislerPageInner() {
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [activeView, setActiveView] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<string | null>(() => {
+    if (
+      initialView &&
+      SAVED_VIEWS.some((v) => v.id === initialView)
+    ) {
+      return initialView;
+    }
+    return null;
+  });
   const [bulkStatus, setBulkStatus] = useState<AdminStatus | "">("");
   const [showTestOrders, setShowTestOrders] = useState(false);
 

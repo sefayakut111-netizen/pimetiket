@@ -2,11 +2,7 @@
  * Operasyon kuyruğu — paylaşılan tipler ve SLA yardımcıları.
  */
 
-import {
-  AI_QC_ACTIVE_STATUSES,
-  UNASSIGNED_PRODUCTION_STATUSES,
-  type OrderStatus,
-} from "./order";
+import { UNASSIGNED_PRODUCTION_STATUSES, type OrderStatus } from "./order";
 
 export type QueueItemType =
   | "ai_qc"
@@ -52,17 +48,51 @@ export const PROOF_SLA_HOURS = 36;
 export const PROOF_CRITICAL_HOURS = 30;
 export const PROOF_WARNING_HOURS = 18;
 
-export const AI_QC_QUEUE_STATUSES: readonly OrderStatus[] =
-  AI_QC_ACTIVE_STATUSES.filter((s) => s !== "operator_review");
+/** Klasik AI QC — prova üretimi ve baskı incelemesi hariç */
+export const AI_QC_QUEUE_STATUSES: readonly OrderStatus[] = [
+  "qc_pending",
+  "qc_flagged",
+  "human_review",
+  "human_review_failed",
+];
+
+/** Prova SLA — takılan üretim/doğrulama dahil */
+export const PROOF_SLA_STATUSES: readonly OrderStatus[] = [
+  "proof_generating",
+  "proof_validating",
+  "proof_pending",
+  "operator_print_review",
+];
 
 export const FASON_UNASSIGNED_STATUSES: readonly OrderStatus[] =
   UNASSIGNED_PRODUCTION_STATUSES;
 
-export const SHIPPING_STATUSES: readonly OrderStatus[] = [
-  "ready_to_ship",
-  "in_production",
-  "fason_assigned",
-];
+/** Kargo etiketi basılmaya hazır */
+export const SHIPPING_STATUSES: readonly OrderStatus[] = ["ready_to_ship"];
+
+/** KPI > liste ise tam listeye yönlendirme */
+export const QUEUE_MORE_HREFS: Record<QueueItemType, string> = {
+  ai_qc: "/admin/ai-qc",
+  proof_sla: "/admin/prova",
+  fason_unassigned: "/admin/siparisler?view=unassigned",
+  shipping: "/admin/kargo",
+  support: "/admin/destek",
+  review: "/admin/yorumlar",
+  capability: "/admin/fason",
+};
+
+export function proofSlaTypeLabel(status: string): string {
+  switch (status) {
+    case "proof_generating":
+      return "Prova üretiliyor";
+    case "proof_validating":
+      return "Prova doğrulanıyor";
+    case "operator_print_review":
+      return "Baskı incelemesi";
+    default:
+      return QUEUE_TYPE_LABELS.proof_sla;
+  }
+}
 
 const URGENCY_RANK: Record<QueueUrgency, number> = {
   critical: 0,

@@ -10,8 +10,9 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Modal, useToast } from "@/components/ui";
@@ -206,7 +207,18 @@ function QCRunCard({ run }: { run: QCRun }) {
 }
 
 export default function AdminAiQcPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-56px)]" />}>
+      <AdminAiQcPageInner />
+    </Suspense>
+  );
+}
+
+function AdminAiQcPageInner() {
   const toast = useToast();
+  const searchParams = useSearchParams();
+  const deepLinkOrder = searchParams.get("order");
+  const scrolledOrderRef = useRef<string | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -263,6 +275,12 @@ export default function AdminAiQcPage() {
       if (Array.isArray(data.queue)) {
         setQueue(data.queue);
         setActiveOrderId((prev) => {
+          if (
+            deepLinkOrder &&
+            data.queue!.some((q) => q.orderId === deepLinkOrder)
+          ) {
+            return deepLinkOrder;
+          }
           if (prev && data.queue!.some((q) => q.orderId === prev)) return prev;
           return data.queue![0]?.orderId ?? null;
         });
@@ -276,7 +294,20 @@ export default function AdminAiQcPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [deepLinkOrder]);
+
+  useEffect(() => {
+    if (!deepLinkOrder || loading) return;
+    if (!catalogQueue.some((q) => q.orderId === deepLinkOrder)) return;
+    setActiveOrderId(deepLinkOrder);
+    if (scrolledOrderRef.current === deepLinkOrder) return;
+    scrolledOrderRef.current = deepLinkOrder;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`qc-order-${deepLinkOrder}`)
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }, [deepLinkOrder, catalogQueue, loading]);
 
   const fetchHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -908,9 +939,15 @@ export default function AdminAiQcPage() {
                 return (
                   <div
                     key={q.orderId}
+                    id={`qc-order-${q.orderId}`}
                     className={cn(
                       "rounded-lg transition-colors",
-                      isActive ? "bg-lacivert text-white" : "hover:bg-gri-100"
+                      isActive
+                        ? "bg-lacivert text-white ring-2 ring-pim-mercan"
+                        : "hover:bg-gri-100",
+                      deepLinkOrder === q.orderId &&
+                        !isActive &&
+                        "ring-2 ring-pim-mercan/40"
                     )}
                   >
                     <button

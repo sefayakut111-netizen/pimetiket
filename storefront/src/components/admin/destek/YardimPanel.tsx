@@ -49,14 +49,22 @@ const STATUS_META: Record<
 
 export type YardimPanelProps = {
   showHeader?: boolean;
+  initialHelpId?: string | null;
 };
 
-export function YardimPanel({ showHeader = false }: YardimPanelProps) {
+export function YardimPanel({
+  showHeader = false,
+  initialHelpId = null,
+}: YardimPanelProps) {
   const toast = useToast();
   const [items, setItems] = useState<HelpRequest[]>([]);
-  const [filter, setFilter] = useState<string>("active");
+  const [filter, setFilter] = useState<string>(
+    initialHelpId ? "all" : "active"
+  );
   const [loading, setLoading] = useState(true);
-  const [openTicketId, setOpenTicketId] = useState<string | null>(null);
+  const [openTicketId, setOpenTicketId] = useState<string | null>(
+    initialHelpId
+  );
   const [draftNote, setDraftNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -84,6 +92,16 @@ export function YardimPanel({ showHeader = false }: YardimPanelProps) {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  useEffect(() => {
+    if (!initialHelpId || items.length === 0) return;
+    setOpenTicketId(initialHelpId);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`help-request-${initialHelpId}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }, [initialHelpId, items]);
 
   const counts = useMemo(() => {
     return {
@@ -199,7 +217,14 @@ export function YardimPanel({ showHeader = false }: YardimPanelProps) {
                   : "text-gri-700";
 
             return (
-              <Card key={t.id} className="p-4">
+              <Card
+                key={t.id}
+                id={`help-request-${t.id}`}
+                className={cn(
+                  "p-4",
+                  initialHelpId === t.id && "ring-2 ring-pim-mercan"
+                )}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link
