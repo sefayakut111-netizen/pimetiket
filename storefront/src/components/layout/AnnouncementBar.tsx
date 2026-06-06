@@ -18,12 +18,12 @@ export function AnnouncementBar() {
       className="relative z-[60] h-10 bg-lacivert text-white border-b border-white/10"
     >
       <div className="h-full overflow-hidden group/announce">
-        <div className="announce-marquee-track flex h-full w-max items-center gap-12 group-hover/announce:[animation-play-state:paused]">
-          <span className="shrink-0 text-[13px] font-medium leading-none whitespace-nowrap">
+        <div className="announce-marquee-track flex h-full w-max items-center group-hover/announce:[animation-play-state:paused]">
+          <span className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap">
             {MESSAGE}
           </span>
           <span
-            className="shrink-0 text-[13px] font-medium leading-none whitespace-nowrap"
+            className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap"
             aria-hidden
           >
             {MESSAGE}
