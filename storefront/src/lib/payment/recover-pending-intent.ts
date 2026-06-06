@@ -77,12 +77,6 @@ export type RecoverPendingResult =
   | { status: "pending" }
   | { status: "not_found" };
 
-function addDaysIso(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 async function notifyAdminNewOrder({
   admin,
   orderId,
@@ -266,8 +260,11 @@ async function finalizeFromPaytrSuccess(
     meta: buildOrderItemMeta(i),
   }));
 
-  const estimatedDelivery = addDaysIso(
-    intent.snapshot.items.some((i) => i.product === "etiket") ? 10 : 5
+  const { estimatedDeliveryIsoForItems } = await import(
+    "@/lib/site-settings-server"
+  );
+  const estimatedDelivery = await estimatedDeliveryIsoForItems(
+    intent.snapshot.items
   );
   const markAdminTestOrder = await isAdminOrStaffUserId(intent.user_id);
   const paymentMeta = withAdminTestOrderMarker(

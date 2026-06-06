@@ -3865,6 +3865,8 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          contact_whatsapp: string | null
+          etiket_delivery_days: number
           free_shipping_threshold: number
           id: number
           maintenance_message: string | null
@@ -3878,11 +3880,14 @@ export type Database = {
           seo_contact_phone: string | null
           shipping_fee_try: number
           social_links: string | null
+          sticker_delivery_days: number
           updated_at: string
           updated_by: string | null
           welcome_credit_try: number
         }
         Insert: {
+          contact_whatsapp?: string | null
+          etiket_delivery_days?: number
           free_shipping_threshold?: number
           id?: number
           maintenance_message?: string | null
@@ -3896,11 +3901,14 @@ export type Database = {
           seo_contact_phone?: string | null
           shipping_fee_try?: number
           social_links?: string | null
+          sticker_delivery_days?: number
           updated_at?: string
           updated_by?: string | null
           welcome_credit_try?: number
         }
         Update: {
+          contact_whatsapp?: string | null
+          etiket_delivery_days?: number
           free_shipping_threshold?: number
           id?: number
           maintenance_message?: string | null
@@ -3914,6 +3922,7 @@ export type Database = {
           seo_contact_phone?: string | null
           shipping_fee_try?: number
           social_links?: string | null
+          sticker_delivery_days?: number
           updated_at?: string
           updated_by?: string | null
           welcome_credit_try?: number

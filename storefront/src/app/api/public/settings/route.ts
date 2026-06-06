@@ -31,6 +31,10 @@ interface PublicSettings {
   min_subtotal_for_credit: number;
   min_order_total_try: number;
   max_order_total_try: number;
+  sticker_delivery_days: number;
+  etiket_delivery_days: number;
+  seo_contact_phone: string | null;
+  contact_whatsapp: string | null;
 }
 
 // Migration 029 çalışmadıysa fallback default'lar
@@ -42,6 +46,10 @@ const DEFAULTS: PublicSettings = {
   min_subtotal_for_credit: 500,
   min_order_total_try: 250,
   max_order_total_try: 250000,
+  sticker_delivery_days: 5,
+  etiket_delivery_days: 10,
+  seo_contact_phone: null,
+  contact_whatsapp: null,
 };
 
 export async function GET() {
@@ -67,7 +75,9 @@ export async function GET() {
       // SADECE müşteri-görür alanlar — id/updated_by/updated_at/admin_flags hariç
       "shipping_fee_try, free_shipping_threshold, welcome_credit_try, " +
         "referral_credit_try, min_subtotal_for_credit, " +
-        "min_order_total_try, max_order_total_try"
+        "min_order_total_try, max_order_total_try, " +
+        "sticker_delivery_days, etiket_delivery_days, " +
+        "seo_contact_phone, contact_whatsapp"
     )
     .eq("id", 1)
     .maybeSingle();

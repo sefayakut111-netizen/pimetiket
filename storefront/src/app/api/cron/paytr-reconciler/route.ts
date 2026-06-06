@@ -176,12 +176,12 @@ export async function GET(req: Request) {
           markAdminTestOrder
         );
 
-        // Tahmini teslim 7 gün (mevcut callback ile aynı)
-        const estimatedDelivery = new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
-        )
-          .toISOString()
-          .split("T")[0];
+        const { estimatedDeliveryIsoForItems } = await import(
+          "@/lib/site-settings-server"
+        );
+        const estimatedDelivery = await estimatedDeliveryIsoForItems(
+          snapshot.items as Array<{ product?: string | null }>
+        );
 
         let candidateOrderId = generateOrderId();
         let finalizeResult: Array<{ order_id: string }> | null = null;

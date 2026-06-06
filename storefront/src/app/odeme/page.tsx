@@ -48,9 +48,12 @@ import {
   setCustomerCartShippingSettings,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
+import { addDaysIso } from "@/lib/customer-order";
 import {
-  addDaysIso,
-} from "@/lib/customer-order";
+  DEFAULT_ETIKET_DELIVERY_DAYS,
+  DEFAULT_STICKER_DELIVERY_DAYS,
+  formatDeliveryDaysLabel,
+} from "@/lib/site-settings-shared";
 import {
   validateCoupon,
   type CouponValidateResult,
@@ -357,6 +360,12 @@ export default function OdemePage() {
   // Cart hydration
   const [cartItems, setCartItems] = useState<CustomerCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [stickerDeliveryDays, setStickerDeliveryDays] = useState(
+    DEFAULT_STICKER_DELIVERY_DAYS
+  );
+  const [etiketDeliveryDays, setEtiketDeliveryDays] = useState(
+    DEFAULT_ETIKET_DELIVERY_DAYS
+  );
 
   // Address state
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -484,6 +493,20 @@ export default function OdemePage() {
         if (json?.settings) {
           setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
           setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
+          setStickerDeliveryDays(
+            Math.max(
+              1,
+              Number(json.settings.sticker_delivery_days) ||
+                DEFAULT_STICKER_DELIVERY_DAYS
+            )
+          );
+          setEtiketDeliveryDays(
+            Math.max(
+              1,
+              Number(json.settings.etiket_delivery_days) ||
+                DEFAULT_ETIKET_DELIVERY_DAYS
+            )
+          );
           setCustomerCartShippingSettings(
             Number(json.settings.shipping_fee_try ?? 49),
             Number(json.settings.free_shipping_threshold ?? 500)
@@ -922,7 +945,9 @@ export default function OdemePage() {
                 shipping: paymentEffectiveShipping,
                 total: paymentTotal,
                 estimatedDelivery: addDaysIso(
-                  paymentItems.some((i) => i.product === "etiket") ? 10 : 5
+                  paymentItems.some((i) => i.product === "etiket")
+                    ? etiketDeliveryDays
+                    : stickerDeliveryDays
                 ),
               }),
             });
@@ -1931,8 +1956,14 @@ export default function OdemePage() {
                       {c.estDelivery}:{" "}
                       <span className="text-pim-mercan">
                         {cartItems.some((i) => i.product === "etiket")
-                          ? c.deliveryDays.etiket
-                          : c.deliveryDays.sticker}
+                          ? formatDeliveryDaysLabel(
+                              etiketDeliveryDays,
+                              locale === "en" ? "en" : "tr"
+                            )
+                          : formatDeliveryDaysLabel(
+                              stickerDeliveryDays,
+                              locale === "en" ? "en" : "tr"
+                            )}
                       </span>
                     </div>
                     <div className="text-gri-700 text-[11px] mt-0.5">
@@ -2093,7 +2124,9 @@ export default function OdemePage() {
                           shipping: bypassEffectiveShipping,
                           total: bypassTotal,
                           estimatedDelivery: addDaysIso(
-                            bypassItems.some((i) => i.product === "etiket") ? 10 : 5
+                            bypassItems.some((i) => i.product === "etiket")
+                              ? etiketDeliveryDays
+                              : stickerDeliveryDays
                           ),
                         }),
                       });

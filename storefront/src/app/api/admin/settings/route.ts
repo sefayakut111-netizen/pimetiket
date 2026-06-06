@@ -32,6 +32,9 @@ interface BodyShape {
   maintenance_message?: unknown;
   social_links?: unknown;
   seo_contact_phone?: unknown;
+  sticker_delivery_days?: unknown;
+  etiket_delivery_days?: unknown;
+  contact_whatsapp?: unknown;
 }
 
 function serviceClient() {
@@ -61,6 +64,8 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   // Migration 029 çalışmadıysa default değerlerle dön
+  const canUpdate = !!(await assertPermission("settings", "update"));
+
   if (!data) {
     return NextResponse.json({
       settings: {
@@ -72,15 +77,19 @@ export async function GET() {
         min_subtotal_for_credit: 500,
         min_order_total_try: 250,
         max_order_total_try: 250000,
+        sticker_delivery_days: 5,
+        etiket_delivery_days: 10,
         maintenance_mode: false,
         maintenance_message:
           "Kısa süreli bakım yapılıyor. Birkaç dakika içinde tekrar deneyin.",
         updated_at: null,
       },
       stale: true,
+      canUpdate,
     });
   }
-  return NextResponse.json({ settings: data });
+
+  return NextResponse.json({ settings: data, canUpdate });
 }
 
 export async function PATCH(req: Request) {
@@ -108,11 +117,17 @@ export async function PATCH(req: Request) {
     // Sefa 18 May Migration 053
     "min_order_total_try",
     "max_order_total_try",
+    "sticker_delivery_days",
+    "etiket_delivery_days",
   ] as const;
   for (const f of fields) {
     const v = body[f];
     if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
-      update[f] = Math.round(v * 100) / 100;
+      if (f === "sticker_delivery_days" || f === "etiket_delivery_days") {
+        update[f] = Math.max(1, Math.round(v));
+      } else {
+        update[f] = Math.round(v * 100) / 100;
+      }
     }
   }
 
@@ -128,6 +143,9 @@ export async function PATCH(req: Request) {
   }
   if (typeof body.seo_contact_phone === "string") {
     update.seo_contact_phone = body.seo_contact_phone.slice(0, 32);
+  }
+  if (typeof body.contact_whatsapp === "string") {
+    update.contact_whatsapp = body.contact_whatsapp.slice(0, 32);
   }
 
   if (Object.keys(update).length === 0) {

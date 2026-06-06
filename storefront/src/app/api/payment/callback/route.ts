@@ -102,12 +102,6 @@ interface IntentRow {
 // Tek kaynak: src/lib/customer-order.ts. Duplicate logic kaldırıldı.
 import { generateOrderId } from "@/lib/customer-order";
 
-function addDaysIso(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 const SITE_URL = () =>
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -284,8 +278,11 @@ export async function POST(req: NextRequest) {
     meta: buildOrderItemMeta(i) as Json,
   }));
 
-  const estimatedDelivery = addDaysIso(
-    intent.snapshot.items.some((i) => i.product === "etiket") ? 10 : 5
+  const { estimatedDeliveryIsoForItems } = await import(
+    "@/lib/site-settings-server"
+  );
+  const estimatedDelivery = await estimatedDeliveryIsoForItems(
+    intent.snapshot.items
   );
   const markAdminTestOrder = await isAdminOrStaffUserId(intent.user_id);
   const paymentMeta = withAdminTestOrderMarker(
