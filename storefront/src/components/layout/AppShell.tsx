@@ -24,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isEditor = pathname?.startsWith("/editor") ?? false;
   const isCheckout = pathname?.startsWith("/odeme") ?? false;
   const isProofEditor = pathname?.includes("/duzenle/") ?? false;
+  const isHome = pathname === "/";
 
   // Şema bump'ında stale cache temizliği — sadece bir kez boot'ta çalışır
   useEffect(() => {
@@ -47,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <ViewModeBanner />
-      <AnnouncementBar />
+      {isHome ? <AnnouncementBar /> : null}
       <TopBar />
       <ReviewRequestBanner />
       <div id="main" tabIndex={-1} className="flex-1 outline-none">

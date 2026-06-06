@@ -405,6 +405,7 @@ select:-webkit-autofill:focus {
 
 .announce-marquee-track {
   animation: announce-marquee 28s linear infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -413,10 +414,9 @@ select:-webkit-autofill:focus {
     transform: none;
     width: 100%;
     justify-content: center;
-    padding-right: 0;
   }
 
-  .announce-marquee-duplicate {
+  .announce-marquee-track > span[aria-hidden="true"] {
     display: none;
   }
 }
