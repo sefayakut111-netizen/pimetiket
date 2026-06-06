@@ -35,6 +35,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { PARTNER_ACTIVE_ASSIGNMENT_STATUSES } from "@/lib/fason/partner-active-assignment-statuses";
 import { sendOrderProofRequired } from "@/lib/mail/notifications";
 
 export const runtime = "nodejs";
@@ -106,14 +107,16 @@ export async function POST(
   }
   const { data: asgRow } = await admin
     .from("order_assignments")
-    .select("id, fason_partner_id")
+    .select("id, fason_partner_id, status")
     .eq("order_id", order.id)
+    .in("status", [...PARTNER_ACTIVE_ASSIGNMENT_STATUSES])
     .order("assigned_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const assignment = asgRow as {
     id: string;
     fason_partner_id: string;
+    status: string;
   } | null;
   if (!assignment || assignment.fason_partner_id !== partnerId) {
     return NextResponse.json({ error: "not_your_order" }, { status: 403 });

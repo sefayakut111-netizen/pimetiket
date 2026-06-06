@@ -51,7 +51,7 @@ function escapeHtml(s: string): string {
 }
 
 export async function POST() {
-  const auth = await assertPermission("auditors", "view");
+  const auth = await assertPermission("auditors", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

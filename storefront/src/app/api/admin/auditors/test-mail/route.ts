@@ -18,7 +18,7 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { sendMail, isResendConfigured } from "@/lib/mail/resend";
 
 export async function POST() {
-  const auth = await assertPermission("auditors", "view");
+  const auth = await assertPermission("auditors", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

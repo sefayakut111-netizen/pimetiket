@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { logOrderEvent } from "@/lib/order-events-server";
+import {
+  getValidTransitions,
+  isOrderStatus,
+  type OrderStatus,
+} from "@/lib/order";
+
+const TARGET_STATUS: OrderStatus = "qc_pending";
 
 export async function POST(
   _req: NextRequest,
@@ -29,10 +37,24 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const status = (order as { status: string }).status;
+  const currentStatus = (order as { status: string }).status;
+  if (!isOrderStatus(currentStatus)) {
+    return NextResponse.json({ error: "invalid_status" }, { status: 409 });
+  }
 
-  if (status !== "awaiting_upload" && status !== "paid") {
-    return NextResponse.json({ ok: true, status, message: "Already advanced" });
+  if (currentStatus !== "awaiting_upload" && currentStatus !== "paid") {
+    return NextResponse.json({
+      ok: true,
+      status: currentStatus,
+      message: "Already advanced",
+    });
+  }
+
+  if (!getValidTransitions(currentStatus).includes(TARGET_STATUS)) {
+    return NextResponse.json(
+      { ok: false, error: "invalid_transition", from: currentStatus, to: TARGET_STATUS },
+      { status: 409 }
+    );
   }
 
   const { count } = await admin
@@ -45,12 +67,35 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "No design files found" });
   }
 
-  await admin
+  const { error: updateErr } = await admin
     .from("orders")
-    .update({ status: "qc_pending" })
-    .eq("id", orderId);
+    .update({ status: TARGET_STATUS })
+    .eq("id", orderId)
+    .eq("status", currentStatus);
+
+  if (updateErr) {
+    console.error("[advance-status] update failed:", updateErr);
+    return NextResponse.json(
+      { ok: false, error: "status_update_failed" },
+      { status: 500 }
+    );
+  }
+
+  await logOrderEvent(admin, {
+    orderId,
+    eventType: "status_changed",
+    statusAfter: TARGET_STATUS,
+    actorId: user.id,
+    actorRole: "customer",
+    summary: `Tasarım yüklendi — ${currentStatus} → ${TARGET_STATUS}`,
+    detail: {
+      from: currentStatus,
+      to: TARGET_STATUS,
+      trigger: "advance-status",
+    },
+  });
 
   scheduleOrderDesignQC(admin, orderId);
 
-  return NextResponse.json({ ok: true, status: "qc_pending" });
+  return NextResponse.json({ ok: true, status: TARGET_STATUS });
 }

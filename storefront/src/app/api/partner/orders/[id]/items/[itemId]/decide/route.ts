@@ -40,6 +40,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
+import { PARTNER_ACTIVE_ASSIGNMENT_STATUSES } from "@/lib/fason/partner-active-assignment-statuses";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -117,11 +118,12 @@ export async function POST(
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
 
-  // Cross-tenant guard: assignment bu partner'a mı ait?
+  // Cross-tenant + aktif atama guard (status route ile hizalı)
   const { data: asgRow } = await admin
     .from("order_assignments")
     .select("id, fason_partner_id, status")
     .eq("order_id", order.id)
+    .in("status", [...PARTNER_ACTIVE_ASSIGNMENT_STATUSES])
     .order("assigned_at", { ascending: false })
     .limit(1)
     .maybeSingle();

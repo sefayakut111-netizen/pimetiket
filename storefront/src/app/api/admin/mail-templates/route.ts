@@ -64,7 +64,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await assertPermission("mail_health", "view");
+  const auth = await assertPermission("mail_health", "create");
   if (!auth) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
@@ -79,10 +79,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Geçersiz şablon" }, { status: 400 });
   }
 
-  const to =
-    body.recipientEmail?.trim() ||
-    auth.user.email ||
-    null;
+  let to = auth.user.email ?? "";
+  const reqTo =
+    typeof body.recipientEmail === "string"
+      ? body.recipientEmail.trim().toLowerCase()
+      : "";
+  if (reqTo) {
+    if (!reqTo.endsWith("@pimetiket.com")) {
+      return NextResponse.json(
+        { ok: false, error: "Hedef yalnız @pimetiket.com olabilir" },
+        { status: 400 }
+      );
+    }
+    to = reqTo;
+  }
   if (!to) {
     return NextResponse.json(
       { ok: false, error: "Alıcı email bulunamadı" },

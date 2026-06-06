@@ -56,6 +56,11 @@ const HUMAN_ERRORS: Record<string, { msg: string; status: number }> = {
 };
 
 export async function POST(req: Request) {
+  const auth = await assertPermission("fason", "update");
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let body: BodyShape;
   try {
     body = (await req.json()) as BodyShape;
@@ -76,13 +81,6 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-
-  // Auth — admin/staff
-  const auth = await assertPermission("fason", "update");
-  if (!auth) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
 
   const admin = createAdminClient();
 
