@@ -3,8 +3,6 @@
  *
  * Sipariş detayı dynamic route. Statü timeline + dosya yükleme +
  * prova onay + ürün özeti + adres + ödeme + kargo takip.
- *
- * Mock data — gerçek bağlantı I adımında.
  */
 
 "use client";
@@ -54,10 +52,72 @@ const COPY = {
     notFoundTitle: "Sipariş bulunamadı",
     notFoundDesc: (id: string) => (
       <>
-        <strong className="font-mono">{id}</strong> numaralı sipariş bu cihazda
-        kayıtlı değil. Başka bir cihazdan bakmış olabilirsin.
+        <strong className="font-mono">{id}</strong> numaralı sipariş hesabında
+        bulunamadı — farklı bir hesapla giriş yapmış olabilirsin veya sipariş
+        henüz işleniyor. Siparişlerim&apos;den kontrol et.
       </>
     ),
+    orderLoadingTitle: "Sipariş yükleniyor",
+    orderLoadingDesc: "Sipariş bilgilerin getiriliyor…",
+    deliveryPending: "Tasarım onayından sonra hesaplanır",
+    uploadStepEyebrow: "Sıradaki adım",
+    uploadStepTitle: "Tasarım dosyanı yükle",
+    uploadStepDesc:
+      "Ödemen alındı. Tasarım dosyanı yüklediğinde AI ön-kontrol saniyeler içinde yapılır, operatörümüz inceler, bıçak çizimi otomatik hazırlanır. 3 gün içinde yüklemen gerekiyor (aksi halde sipariş iptal edilir).",
+    uploadStepCta: "Tasarımını yükle →",
+    designUploadedProcessing:
+      "Tasarımın yüklendi. Sistem ön-kontrolü başlatılıyor…",
+    proofValidatingTitle: "Düzenlemenizi kontrol ediyoruz…",
+    proofValidatingDesc: "Birkaç saniye.",
+    qcPendingTitle: "AI kalite kontrolü yapılıyor",
+    qcPendingDesc:
+      "Tasarımın AI tarafından kontrol ediliyor. Genellikle birkaç dakika sürer.",
+    proofGeneratingTitle: "Provan hazırlanıyor",
+    proofGeneratingDesc:
+      "Bıçak çizimi sunucuda üretiliyor. İlerlemeyi onay sayfasından takip edebilirsin.",
+    proofGeneratingCta: "Prova hazırlığını gör →",
+    proofPendingReviewCta: "Provayı incele ve onayla →",
+    youAreHere: "şu an burada",
+    cancelOrder: "Siparişi iptal et",
+    cancelling: "İptal ediliyor…",
+    cancelConfirm:
+      "Bu siparişi iptal etmek istediğine emin misin? İade işlemi başlatılacak.",
+    cancelFailed: "İptal başarısız",
+    cancelSuccess: "Sipariş iptal edildi — iade başlatıldı",
+    reordering: "Ekleniyor…",
+    reorderConfirm: (n: number) =>
+      `Bu siparişin ürünlerini sepete eklemek istiyor musun?\n\n${n} ürün eklenecek. Sepette varsa üzerine ekleme yapılır.`,
+    reorderToastAddedSkipped: (added: number, skipped: number) =>
+      `${added} ürün sepete eklendi · ${skipped} atlandı`,
+    reorderToastAdded: (n: number) => `${n} ürün sepete eklendi`,
+    reorderToastFail: "Sepete eklenemedi",
+    reorderToastError:
+      "Tekrar sipariş açılamadı — sayfayı yenileyip tekrar dene.",
+    designSlotLabel: (n: number) => `Tasarım ${n}`,
+    designUploadChange: "Tasarım yükle / değiştir →",
+    uploadDesignMobile: "Tasarım yükle",
+    designPreview: "Tasarım önizleme",
+    close: "Kapat",
+    designConnecting: "Bağlanıyor",
+    designConnectingDesc:
+      "Dosya siparişe bağlanıyor — birkaç saniye içinde hazır olur.",
+    fileTooLarge: (maxMb: number) => `Dosya çok büyük (max ${maxMb} MB)`,
+    fileTypeUnsupported: (type: string) =>
+      `Bu dosya formatı desteklenmiyor: ${type}`,
+    uploadFailed: "Yükleme başarısız",
+    shipmentHistoryTitle: "Durum geçmişi",
+    shipmentStatusCreated: "İşleme alındı",
+    shipmentStatusPickedUp: "Kargo alındı",
+    shipmentStatusInTransit: "Yolda",
+    shipmentStatusOutForDelivery: "Dağıtımda",
+    shipmentStatusDelivered: "Teslim edildi",
+    shipmentStatusFailed: "Teslim edilemedi",
+    shipmentStatusReturned: "İade edildi",
+    shipmentStatusCancelled: "İptal",
+    downloadInvoice: "Fatura indir",
+    returnTitle: "İade mi istiyorsun?",
+    returnDesc: "14 gün içinde iade talebi oluşturabilirsin",
+    returnCta: "İade talebi →",
     backToOrders: "Siparişlerime dön",
     newOrder: "Yeni sipariş",
     eyebrow: "Sipariş",
@@ -164,10 +224,71 @@ const COPY = {
     notFoundTitle: "Order not found",
     notFoundDesc: (id: string) => (
       <>
-        Order <strong className="font-mono">{id}</strong> isn&rsquo;t saved on
-        this device. You may have viewed it from another device.
+        Order <strong className="font-mono">{id}</strong> wasn&rsquo;t found on
+        this account — you may be signed in with a different account, or the
+        order is still being processed. Check My orders.
       </>
     ),
+    orderLoadingTitle: "Loading order",
+    orderLoadingDesc: "Fetching your order details…",
+    deliveryPending: "Calculated after design approval",
+    uploadStepEyebrow: "Next step",
+    uploadStepTitle: "Upload your design file",
+    uploadStepDesc:
+      "Payment received. Once you upload your design, AI pre-check runs in seconds, our operator reviews it, and the cut line is prepared automatically. Upload within 3 days (otherwise the order is cancelled).",
+    uploadStepCta: "Upload your design →",
+    designUploadedProcessing:
+      "Design uploaded. Starting system pre-check…",
+    proofValidatingTitle: "Checking your edit…",
+    proofValidatingDesc: "A few seconds.",
+    qcPendingTitle: "AI quality check in progress",
+    qcPendingDesc:
+      "Your design is being checked by AI. This usually takes a few minutes.",
+    proofGeneratingTitle: "Preparing your proof",
+    proofGeneratingDesc:
+      "Cut line is being generated on our servers. You can watch progress on the approval page.",
+    proofGeneratingCta: "View proof preparation →",
+    proofPendingReviewCta: "Review and approve proof →",
+    youAreHere: "you are here",
+    cancelOrder: "Cancel order",
+    cancelling: "Cancelling…",
+    cancelConfirm:
+      "Are you sure you want to cancel this order? A refund will be processed.",
+    cancelFailed: "Cancellation failed",
+    cancelSuccess: "Order cancelled — refund initiated",
+    reordering: "Adding…",
+    reorderConfirm: (n: number) =>
+      `Add this order's items to cart?\n\n${n} item(s) will be added. Existing cart items will be merged.`,
+    reorderToastAddedSkipped: (added: number, skipped: number) =>
+      `${added} item(s) added to cart · ${skipped} skipped`,
+    reorderToastAdded: (n: number) => `${n} item(s) added to cart`,
+    reorderToastFail: "Could not add to cart",
+    reorderToastError: "Reorder failed — refresh the page and try again.",
+    designSlotLabel: (n: number) => `Design ${n}`,
+    designUploadChange: "Upload / change design →",
+    uploadDesignMobile: "Upload design",
+    designPreview: "Design preview",
+    close: "Close",
+    designConnecting: "Linking",
+    designConnectingDesc:
+      "File is being linked to your order — ready in a few seconds.",
+    fileTooLarge: (maxMb: number) => `File too large (max ${maxMb} MB)`,
+    fileTypeUnsupported: (type: string) =>
+      `Unsupported file format: ${type}`,
+    uploadFailed: "Upload failed",
+    shipmentHistoryTitle: "Status history",
+    shipmentStatusCreated: "Processing started",
+    shipmentStatusPickedUp: "Picked up",
+    shipmentStatusInTransit: "In transit",
+    shipmentStatusOutForDelivery: "Out for delivery",
+    shipmentStatusDelivered: "Delivered",
+    shipmentStatusFailed: "Delivery failed",
+    shipmentStatusReturned: "Returned",
+    shipmentStatusCancelled: "Cancelled",
+    downloadInvoice: "Download invoice",
+    returnTitle: "Need to return?",
+    returnDesc: "Submit a return request within 14 days",
+    returnCta: "Return request →",
     backToOrders: "Back to orders",
     newOrder: "New order",
     eyebrow: "Order",
@@ -304,56 +425,32 @@ function statusToPhaseIndex(status: OrderStatus): number {
 
 const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 
-function SlaCountdown({
-  createdAt,
-  locale,
-}: {
-  createdAt: number;
-  locale: string;
-}) {
-  const [now, setNow] = useState(Date.now());
+const SHIPMENT_STATUS_EMOJI: Record<string, string> = {
+  created: "📝",
+  picked_up: "📦",
+  in_transit: "🚚",
+  out_for_delivery: "🛵",
+  delivered: "✅",
+  failed: "⚠️",
+  returned: "↩️",
+  cancelled: "❌",
+};
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-
-  const elapsedHours = (now - createdAt) / 3_600_000;
-  const remainingHours = Math.max(0, 36 - elapsedHours);
-  const isEn = locale === "en";
-
-  if (remainingHours <= 0) {
-    return (
-      <span className="text-[12px] font-bold text-kirmizi animate-pulse">
-        ⏰ {isEn ? "SLA expired" : "Süre doldu!"}
-      </span>
-    );
-  }
-
-  if (remainingHours <= 6) {
-    return (
-      <span className="text-[12px] font-bold text-kirmizi">
-        🔴 {Math.floor(remainingHours)}
-        {isEn ? "h left" : " saat kaldı"}
-      </span>
-    );
-  }
-
-  if (remainingHours <= 12) {
-    return (
-      <span className="text-[12px] font-semibold text-sari-koyu">
-        ⏰ {Math.floor(remainingHours)}
-        {isEn ? "h left" : " saat kaldı"}
-      </span>
-    );
-  }
-
-  return (
-    <span className="text-[11px] text-gri-500">
-      ⏳ {Math.floor(remainingHours)}
-      {isEn ? "h remaining" : " saat kaldı"}
-    </span>
-  );
+function shipmentStatusLabel(
+  status: string,
+  c: typeof COPY.tr | typeof COPY.en
+): string {
+  const map: Record<string, string> = {
+    created: c.shipmentStatusCreated,
+    picked_up: c.shipmentStatusPickedUp,
+    in_transit: c.shipmentStatusInTransit,
+    out_for_delivery: c.shipmentStatusOutForDelivery,
+    delivered: c.shipmentStatusDelivered,
+    failed: c.shipmentStatusFailed,
+    returned: c.shipmentStatusReturned,
+    cancelled: c.shipmentStatusCancelled,
+  };
+  return map[status] ?? status;
 }
 
 export default function SiparisDetailPage({
@@ -366,7 +463,7 @@ export default function SiparisDetailPage({
   const c = locale === "en" ? COPY.en : COPY.tr;
 
   const [order, setOrder] = useState<CustomerOrder | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(true);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   // Dosya yüklendi mi? — DesignUploadCard içindeki files state ana
@@ -411,21 +508,46 @@ export default function SiparisDetailPage({
 
   useEffect(() => {
     ensureAuthBindings();
-    void fetchCustomerOrder(id).then((o) => {
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const applyOrder = (o: CustomerOrder) => {
       setOrder(o);
-      setHydrated(true);
-      // Sefa 17 May P0-4: URL'i canonical ID ile değiştir (kullanıcı
-      // farklı case ile gelmişse). Bu sayede breadcrumb / header /
-      // linkler tek format gösterilir, paylaşılabilir URL düzgün kalır.
+      setOrderLoading(false);
       if (
-        o &&
         typeof window !== "undefined" &&
         o.id !== id &&
         o.id.toLowerCase() === id.toLowerCase()
       ) {
         window.history.replaceState(null, "", `/siparis/${o.id}`);
       }
-    });
+    };
+
+    const poll = async () => {
+      const o = await fetchCustomerOrder(id);
+      if (cancelled) return;
+      if (o) {
+        applyOrder(o);
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
+    };
+
+    void poll();
+    intervalId = setInterval(() => {
+      if (cancelled) return;
+      void poll();
+    }, 3000);
+
+    const timeout = setTimeout(() => {
+      if (intervalId) clearInterval(intervalId);
+      if (!cancelled) {
+        setOrderLoading(false);
+      }
+    }, 45000);
+
     void fetchMyOrderShipment(id).then(setShipment);
     void fetchMyShipmentTimeline(id).then(setShipmentTimeline);
 
@@ -459,8 +581,6 @@ export default function SiparisDetailPage({
         /* sessiz */
       });
 
-    // Design dosyası yüklü mü?
-    // "Dosya yüklendi" adımını doğru gösterir.
     void (async () => {
       try {
         const supabase = createSupabaseClient();
@@ -471,9 +591,15 @@ export default function SiparisDetailPage({
           .neq("status", "superseded");
         if (typeof count === "number") setHasUploadedDesign(count > 0);
       } catch {
-        // sessiz fallback — UI alt komponentten yine refresh edebilir
+        /* sessiz fallback */
       }
     })();
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+      clearTimeout(timeout);
+    };
   }, [id]);
 
   useEffect(() => {
@@ -549,29 +675,24 @@ export default function SiparisDetailPage({
   const handleReorder = async () => {
     if (!order) return;
     if (reordering) return; // double-click guard
-    const confirmed = window.confirm(
-      `Bu siparişin ürünlerini sepete eklemek istiyor musun?\n\n` +
-        `${order.items.length} ürün eklenecek. Sepette varsa üzerine ekleme yapılır.`
-    );
+    const confirmed = window.confirm(c.reorderConfirm(order.items.length));
     if (!confirmed) return;
     setReordering(true);
     try {
       const r = await reorderFromOrder(order);
       if (r.ok) {
         if (r.skipped > 0) {
-          toast.info(
-            `${r.added} ürün sepete eklendi · ${r.skipped} atlandı`
-          );
+          toast.info(c.reorderToastAddedSkipped(r.added, r.skipped));
         } else {
-          toast.success(`${r.added} ürün sepete eklendi`);
+          toast.success(c.reorderToastAdded(r.added));
         }
         router.push("/sepet");
       } else {
-        toast.error(r.reason ?? "Sepete eklenemedi");
+        toast.error(r.reason ?? c.reorderToastFail);
       }
     } catch (err) {
       console.error("[reorder] failed:", err);
-      toast.error("Tekrar sipariş açılamadı — sayfayı yenileyip tekrar dene.");
+      toast.error(c.reorderToastError);
     } finally {
       setReordering(false);
     }
@@ -580,11 +701,7 @@ export default function SiparisDetailPage({
   const handleCancelOrder = async () => {
     if (!order || cancelling) return;
     const isEn = locale === "en";
-    const confirmed = window.confirm(
-      isEn
-        ? "Are you sure you want to cancel this order? A refund will be processed."
-        : "Bu siparişi iptal etmek istediğine emin misin? İade işlemi başlatılacak."
-    );
+    const confirmed = window.confirm(c.cancelConfirm);
     if (!confirmed) return;
     setCancelling(true);
     try {
@@ -596,31 +713,23 @@ export default function SiparisDetailPage({
           orderId: order.id,
           total: order.total,
         });
-        toast.success(
-          isEn
-            ? "Order cancelled — refund initiated"
-            : "Sipariş iptal edildi — iade başlatıldı"
-        );
+        toast.success(c.cancelSuccess);
         void fetchCustomerOrder(id).then((o) => o && setOrder(o));
       } else {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         toast.error(
-          mapApiError(
-            j.error,
-            isEn ? "en" : "tr",
-            isEn ? "Cancellation failed" : "İptal başarısız"
-          )
+          mapApiError(j.error, isEn ? "en" : "tr", c.cancelFailed)
         );
       }
     } catch {
-      toast.error(isEn ? "Cancellation failed" : "İptal başarısız");
+      toast.error(c.cancelFailed);
     } finally {
       setCancelling(false);
     }
   };
 
-  // Hydration guard — skeleton loading
-  if (!hydrated) {
+  // Order fetch — skeleton while polling
+  if (orderLoading && !order) {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
@@ -629,6 +738,7 @@ export default function SiparisDetailPage({
             <Skeleton className="h-9 w-64" />
             <Skeleton className="h-3 w-48" />
           </div>
+          <p className="text-sm text-gri-600 mb-6">{c.orderLoadingDesc}</p>
           <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             <div className="flex flex-col gap-6">
               <Skeleton.Card />
@@ -644,7 +754,7 @@ export default function SiparisDetailPage({
     );
   }
 
-  // Order not found
+  // Order not found (after fetch retries exhausted)
   if (!order) {
     return (
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">
@@ -695,7 +805,7 @@ export default function SiparisDetailPage({
       })
     : "-";
   const deliveryDisplay = isPreProductionStatus
-    ? "Tasarım onayından sonra hesaplanır"
+    ? c.deliveryPending
     : deliveryDate;
   // Phase: status'a bakar, ama dosya zaten yüklendiyse "Dosya yüklendi"
   // adımını minimum aktif say (status trigger yansımamış olabilir — race
@@ -763,13 +873,7 @@ export default function SiparisDetailPage({
                 disabled={cancelling}
                 className="!text-kirmizi"
               >
-                {cancelling
-                  ? locale === "en"
-                    ? "Cancelling..."
-                    : "İptal ediliyor..."
-                  : locale === "en"
-                    ? "Cancel order"
-                    : "Siparişi iptal et"}
+                {cancelling ? c.cancelling : c.cancelOrder}
               </Button>
             )}
             {order.status === "delivered" && (
@@ -779,7 +883,7 @@ export default function SiparisDetailPage({
                 disabled={reordering}
               >
                 <Icon.Bolt size={14} />{" "}
-                {reordering ? "Ekleniyor..." : c.reorder}
+                {reordering ? c.reordering : c.reorder}
               </Button>
             )}
           </div>
@@ -795,10 +899,10 @@ export default function SiparisDetailPage({
                   aria-hidden="true"
                 />
                 <p className="font-semibold text-lacivert">
-                  Düzenlemenizi kontrol ediyoruz...
+                  {c.proofValidatingTitle}
                 </p>
               </div>
-              <p className="mt-1 text-sm text-gri-700">Birkaç saniye.</p>
+              <p className="mt-1 text-sm text-gri-700">{c.proofValidatingDesc}</p>
             </div>
           </Card>
         )}
@@ -858,7 +962,7 @@ export default function SiparisDetailPage({
                           {p.label}
                           {state === "curr" && !isCancelled && (
                             <span className="text-[11px] text-pim-mercan ml-2 font-semibold">
-                              ← {locale === "en" ? "you are here" : "şu an burada"}
+                              ← {c.youAreHere}
                             </span>
                           )}
                         </div>
@@ -878,16 +982,9 @@ export default function SiparisDetailPage({
               {order.status === "qc_pending" && (
                 <div className="mt-4 rounded-xl bg-mavi-soft/20 ring-1 ring-mavi/30 p-4">
                   <div className="font-semibold text-[14px] text-mavi-koyu mb-1">
-                    🤖{" "}
-                    {locale === "en"
-                      ? "AI quality check in progress"
-                      : "AI kalite kontrolü yapılıyor"}
+                    🤖 {c.qcPendingTitle}
                   </div>
-                  <p className="text-[13px] text-gri-700">
-                    {locale === "en"
-                      ? "Your design is being checked by AI. This usually takes a few minutes."
-                      : "Tasarımın AI tarafından kontrol ediliyor. Genellikle birkaç dakika sürer."}
-                  </p>
+                  <p className="text-[13px] text-gri-700">{c.qcPendingDesc}</p>
                 </div>
               )}
 
@@ -896,20 +993,31 @@ export default function SiparisDetailPage({
                   <div className="flex items-center gap-2 mb-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-pim-mercan animate-pulse" />
                     <div className="font-semibold text-[14px] text-pim-mercan">
-                      {locale === "en"
-                        ? "Preparing your proof"
-                        : "Provan hazırlanıyor"}
+                      {c.proofGeneratingTitle}
                     </div>
                   </div>
                   <p className="text-[13px] text-gri-700 mb-3">
-                    {locale === "en"
-                      ? "Cut line is being generated on our servers. You can watch progress on the approval page."
-                      : "Bıçak çizimi sunucuda üretiliyor. İlerlemeyi onay sayfasından takip edebilirsin."}
+                    {c.proofGeneratingDesc}
                   </p>
                   <Button variant="primary" size="sm" href={`/onay/${order.id}`}>
-                    {locale === "en"
-                      ? "View proof preparation →"
-                      : "Prova hazırlığını gör →"}
+                    {c.proofGeneratingCta}
+                  </Button>
+                </div>
+              )}
+
+              {order.status === "proof_pending" && (
+                <div className="mt-4 rounded-xl bg-pim-mercan-tint/20 ring-2 ring-pim-mercan/40 p-4">
+                  <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan mb-2">
+                    {c.proofActionRequired}
+                  </div>
+                  <div className="font-semibold text-[16px] text-lacivert mb-1">
+                    {c.proofTitle}
+                  </div>
+                  <p className="text-[13px] text-gri-700 mb-3 leading-relaxed">
+                    {c.proofDesc}
+                  </p>
+                  <Button variant="primary" size="lg" href={`/onay/${order.id}`}>
+                    {c.proofPendingReviewCta}
                   </Button>
                 </div>
               )}
@@ -927,16 +1035,13 @@ export default function SiparisDetailPage({
                   <PimMini pose="inspect" size={56} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[11.5px] font-semibold uppercase tracking-[0.04em] text-pim-mercan">
-                      Sıradaki adım
+                      {c.uploadStepEyebrow}
                     </div>
                     <h3 className="font-semibold text-[18px] mt-1 text-lacivert">
-                      Tasarım dosyanı yükle
+                      {c.uploadStepTitle}
                     </h3>
                     <p className="text-[14px] text-gri-700 mt-2 leading-relaxed">
-                      Ödemen alındı. Tasarım dosyanı yüklediğinde AI ön-kontrol
-                      saniyeler içinde yapılır, operatörümüz inceler, bıçak
-                      çizimi otomatik hazırlanır. 3 gün içinde yüklemen
-                      gerekiyor (aksi halde sipariş iptal edilir).
+                      {c.uploadStepDesc}
                     </p>
                     <div className="mt-4">
                       <Button
@@ -948,7 +1053,7 @@ export default function SiparisDetailPage({
                             : ""
                         }`}
                       >
-                        <Icon.Plus size={16} /> Tasarımını yükle →
+                        <Icon.Plus size={16} /> {c.uploadStepCta}
                       </Button>
                     </div>
                   </div>
@@ -961,7 +1066,7 @@ export default function SiparisDetailPage({
                 order.status === "awaiting_upload") && (
               <Card padding="p-5" className="text-center">
                 <p className="text-sm text-gri-700">
-                  Tasarımın yüklendi. Sistem ön-kontrolü başlatılıyor...
+                  {c.designUploadedProcessing}
                 </p>
                 <div className="mt-2 flex justify-center">
                   <span
@@ -972,7 +1077,7 @@ export default function SiparisDetailPage({
               </Card>
             )}
 
-            {/* Prova onay — /onay sayfasında; burada tekrar göstermiyoruz. */}
+            {/* Prova onay CTA — proof_pending durumunda timeline kartında */}
 
             {/* Üretim ortağı bilgilendirmesi — in_production / shipped / delivered */}
             {(order.status === "in_production" ||
@@ -1042,9 +1147,7 @@ export default function SiparisDetailPage({
                           label:
                             idx === 0
                               ? item.title
-                              : locale === "en"
-                                ? `Design ${idx + 1}`
-                                : `Tasarım ${idx + 1}`,
+                              : c.designSlotLabel(idx + 1),
                           showPrice: idx === 0,
                         }))
                       : [
@@ -1125,9 +1228,7 @@ export default function SiparisDetailPage({
                           href={`/siparis/${order.id}/tasarim-yukle?item=${item.id}`}
                           className="inline-block mt-2 ml-[3.25rem] text-[12px] font-semibold text-pim-mercan hover:underline"
                         >
-                          {locale === "en"
-                            ? "Upload / change design →"
-                            : "Tasarım yükle / değiştir →"}
+                          {c.designUploadChange}
                         </Link>
                       )}
                     </li>
@@ -1242,39 +1343,24 @@ export default function SiparisDetailPage({
                 {shipmentTimeline.length > 0 && (
                   <div className="mt-5 border-t border-yesil/20 pt-4">
                     <h4 className="mb-3 text-[12px] font-semibold uppercase text-gri-700">
-                      Durum geçmişi
+                      {c.shipmentHistoryTitle}
                     </h4>
                     <ol className="space-y-2">
                       {shipmentTimeline.map((ev, i) => {
-                        const meta = (
-                          {
-                            created: { tr: "İşleme alındı", emoji: "📝" },
-                            picked_up: { tr: "Kargo alındı", emoji: "📦" },
-                            in_transit: { tr: "Yolda", emoji: "🚚" },
-                            out_for_delivery: {
-                              tr: "Dağıtımda",
-                              emoji: "🛵",
-                            },
-                            delivered: { tr: "Teslim edildi", emoji: "✅" },
-                            failed: {
-                              tr: "Teslim edilemedi",
-                              emoji: "⚠️",
-                            },
-                            returned: { tr: "İade edildi", emoji: "↩️" },
-                            cancelled: { tr: "İptal", emoji: "❌" },
-                          } as const
-                        )[ev.status];
+                        const emoji =
+                          SHIPMENT_STATUS_EMOJI[ev.status] ?? "📍";
+                        const label = shipmentStatusLabel(ev.status, c);
                         return (
                           <li
                             key={`${ev.status}-${ev.eventTime}-${i}`}
                             className="flex gap-2.5 rounded-lg bg-white/70 p-2.5 text-[12.5px]"
                           >
                             <span className="text-base leading-none">
-                              {meta?.emoji ?? "📍"}
+                              {emoji}
                             </span>
                             <div className="flex-1 min-w-0">
                               <div className="font-semibold text-lacivert">
-                                {meta?.tr ?? ev.status}
+                                {label}
                               </div>
                               {(ev.description || ev.location) && (
                                 <div className="text-[11.5px] text-gri-700 mt-0.5">
@@ -1363,7 +1449,7 @@ export default function SiparisDetailPage({
                     className="text-[11px] font-semibold text-pim-mercan hover:underline shrink-0"
                   >
                     📄{" "}
-                    {locale === "en" ? "Download invoice" : "Fatura indir"}
+                    {c.downloadInvoice}
                   </button>
                 </div>
               </div>
@@ -1375,16 +1461,14 @@ export default function SiparisDetailPage({
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
                     <div className="font-semibold text-[13px]">
-                      {locale === "en" ? "Need to return?" : "İade mi istiyorsun?"}
+                      {c.returnTitle}
                     </div>
                     <div className="text-[12px] text-gri-700 mt-0.5">
-                      {locale === "en"
-                        ? "Submit a return request within 14 days"
-                        : "14 gün içinde iade talebi oluşturabilirsin"}
+                      {c.returnDesc}
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" href="/iade-talep">
-                    {locale === "en" ? "Return request" : "İade talebi →"}
+                    {c.returnCta}
                   </Button>
                 </div>
               </Card>
@@ -1424,19 +1508,19 @@ export default function SiparisDetailPage({
           className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 cursor-zoom-out"
           onClick={() => setLightboxSrc(null)}
           role="dialog"
-          aria-label={locale === "en" ? "Design preview" : "Tasarım önizleme"}
+          aria-label={c.designPreview}
         >
           <div className="relative max-w-lg max-h-[70vh] rounded-xl overflow-hidden bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <img
               src={lightboxSrc}
-              alt={locale === "en" ? "Design preview" : "Tasarım önizleme"}
+              alt={c.designPreview}
               className="w-full h-full max-h-[70vh] object-contain"
             />
             <button
               type="button"
               className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 text-sm"
               onClick={() => setLightboxSrc(null)}
-              aria-label={locale === "en" ? "Close" : "Kapat"}
+              aria-label={c.close}
             >
               ✕
             </button>
@@ -1446,14 +1530,14 @@ export default function SiparisDetailPage({
 
       {(order.status === "awaiting_upload" || order.status === "paid") &&
         !hasUploadedDesign && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">
+        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 pr-[88px] safe-area-bottom">
           <Button
             variant="primary"
             size="md"
             href={`/siparis/${order.id}/tasarim-yukle`}
             className="w-full"
           >
-            📁 {locale === "en" ? "Upload design" : "Tasarım yükle"}
+            📁 {c.uploadDesignMobile}
           </Button>
         </div>
       )}
@@ -1588,6 +1672,7 @@ function DesignUploadCard({
   >;
   c: typeof COPY.tr | typeof COPY.en;
 }) {
+  const toast = useToast();
   const [files, setFiles] = useState<Array<UploadedFile & { id?: string; status?: string }>>([]);
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -1749,11 +1834,13 @@ function DesignUploadCard({
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      alert(`Dosya çok büyük (max ${MAX_FILE_SIZE / 1024 / 1024} MB)`);
+      toast.error(c.fileTooLarge(MAX_FILE_SIZE / 1024 / 1024));
       return;
     }
     if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-      alert(`Bu dosya formatı desteklenmiyor: ${file.type || "bilinmiyor"}`);
+      toast.error(
+        c.fileTypeUnsupported(file.type || (c.locale === "en-US" ? "unknown" : "bilinmiyor"))
+      );
       return;
     }
 
@@ -1808,7 +1895,9 @@ function DesignUploadCard({
       await refreshDb();
     } catch (err) {
       console.error("[design] upload error:", err);
-      alert(err instanceof Error ? err.message : "Yükleme başarısız");
+      toast.error(
+        err instanceof Error ? err.message : c.uploadFailed
+      );
     } finally {
       setAnalyzing(false);
     }
@@ -1948,11 +2037,11 @@ function DesignUploadCard({
                       {f.name}
                     </span>
                     <span className="text-[10px] font-semibold text-gri-500 uppercase tracking-wide">
-                      Tasarım {f.slotIndex + 1}
+                      {c.designSlotLabel(f.slotIndex + 1)}
                     </span>
                     {f.pendingLink ? (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-mavi-soft text-mavi-koyu text-[11px] font-bold">
-                        Bağlanıyor
+                        {c.designConnecting}
                       </span>
                     ) : hasError ? (
                       <span className="inline-flex items-center h-[20px] px-1.5 rounded-full bg-kirmizi/10 text-kirmizi text-[11px] font-bold">
@@ -1978,8 +2067,7 @@ function DesignUploadCard({
                   )}
                   {f.pendingLink && (
                     <p className="text-[12px] text-gri-600 mt-1 leading-relaxed">
-                      Dosya siparişe bağlanıyor — birkaç saniye içinde hazır
-                      olur.
+                      {c.designConnectingDesc}
                     </p>
                   )}
                   <div className="mt-2 space-y-1">
