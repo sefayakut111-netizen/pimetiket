@@ -16,6 +16,13 @@ import { ShipmentStatusEmail } from "./templates/shipment-status";
 import { ShippingUpdateEmail } from "./templates/shipping-update";
 import { ProofHelpResolvedEmail } from "./templates/proof-help-resolved";
 import { OrderUploadReminderEmail } from "./templates/order-upload-reminder";
+import { OrderCancelledEmail } from "./templates/order-cancelled";
+import { PaymentFailedEmail } from "./templates/payment-failed";
+import { RefundRequestEmail } from "./templates/refund-request";
+import { RefundApprovedEmail } from "./templates/refund-approved";
+import { RefundRejectedEmail } from "./templates/refund-rejected";
+import { RefundCompletedEmail } from "./templates/refund-completed";
+import { MemberWelcomeEmail } from "./templates/member-welcome";
 
 export const MAIL_TEMPLATES = [
   {
@@ -92,6 +99,41 @@ export const MAIL_TEMPLATES = [
     key: "customer-support-received",
     label: "Destek Talebi Alındı (Müşteri)",
     subject: "Destek talebiniz alındı",
+  },
+  {
+    key: "order-cancelled",
+    label: "Sipariş İptal",
+    subject: "Siparişiniz iptal edildi",
+  },
+  {
+    key: "payment-failed",
+    label: "Ödeme Başarısız",
+    subject: "Ödeme alınamadı",
+  },
+  {
+    key: "refund-request",
+    label: "İade Talebi Alındı",
+    subject: "İade talebiniz alındı",
+  },
+  {
+    key: "refund-approved",
+    label: "İade Onaylandı",
+    subject: "İade talebiniz onaylandı",
+  },
+  {
+    key: "refund-rejected",
+    label: "İade Reddedildi",
+    subject: "İade talebi sonucu",
+  },
+  {
+    key: "refund-completed",
+    label: "Para İadesi",
+    subject: "İade kartınıza yansıyacak",
+  },
+  {
+    key: "member-welcome",
+    label: "Üyelik Hoşgeldin",
+    subject: "Pim Etiket'e hoş geldin",
   },
 ] as const;
 
@@ -301,6 +343,102 @@ export async function previewMailTemplate(
           customer_name: MOCK_NAME,
         }) ?? null
       );
+    case "order-cancelled": {
+      const html = await render(
+        OrderCancelledEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          reason:
+            "36 saat içinde prova onayı alınamadığı için sipariş otomatik iptal edildi.",
+          cancelSource: "stale_proof",
+          refundAmount: 939,
+          refundInitiated: true,
+        })
+      );
+      return {
+        subject: `Sipariş iptal edildi — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "payment-failed": {
+      const html = await render(
+        PaymentFailedEmail({
+          customerName: MOCK_NAME,
+          amount: 939,
+          failureHint: "3D Secure doğrulaması tamamlanmadı",
+        })
+      );
+      return { subject: "Ödeme alınamadı — sepetin duruyor", html, text: "" };
+    }
+    case "refund-request": {
+      const html = await render(
+        RefundRequestEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          returnId: "ret_demo_001",
+          reasonLabel: "Üretim hatası (renk/baskı bozuk)",
+        })
+      );
+      return {
+        subject: `İade talebin alındı — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "refund-approved": {
+      const html = await render(
+        RefundApprovedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          returnId: "ret_demo_001",
+          adminNote:
+            "İade talebin onaylandı. Ürünü kargoyla geri gönder, eline ulaşınca para iadesi başlatılacak.",
+        })
+      );
+      return {
+        subject: `İade talebin onaylandı — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "refund-rejected": {
+      const html = await render(
+        RefundRejectedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          returnId: "ret_demo_001",
+          reason:
+            "Gönderdiğin fotoğraflar üretim hatasını göstermiyor; iade koşulları karşılanmıyor.",
+        })
+      );
+      return {
+        subject: `İade talebi sonucu — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "refund-completed": {
+      const html = await render(
+        RefundCompletedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          refundAmount: 939,
+          cardLast4: "4242",
+        })
+      );
+      return {
+        subject: `İade kartına yansıyacak — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "member-welcome": {
+      const html = await render(
+        MemberWelcomeEmail({ customerName: MOCK_NAME })
+      );
+      return { subject: "Pim Etiket'e hoş geldin", html, text: "" };
+    }
     default:
       return null;
   }

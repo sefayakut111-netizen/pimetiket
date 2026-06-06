@@ -75,6 +75,36 @@ import {
   ProofHelpResolvedEmail,
   type ProofHelpResolvedProps,
 } from "./templates/proof-help-resolved";
+import {
+  OrderCancelledEmail,
+  type OrderCancelledProps,
+  type OrderCancelSource,
+} from "./templates/order-cancelled";
+import {
+  PaymentFailedEmail,
+  type PaymentFailedProps,
+} from "./templates/payment-failed";
+import {
+  RefundRequestEmail,
+  type RefundRequestProps,
+} from "./templates/refund-request";
+import {
+  RefundApprovedEmail,
+  type RefundApprovedProps,
+} from "./templates/refund-approved";
+import {
+  RefundRejectedEmail,
+  type RefundRejectedProps,
+} from "./templates/refund-rejected";
+import {
+  RefundCompletedEmail,
+  type RefundCompletedProps,
+} from "./templates/refund-completed";
+import {
+  MemberWelcomeEmail,
+  type MemberWelcomeProps,
+} from "./templates/member-welcome";
+import { humanizeOperatorNoteForCustomer } from "./humanize-operator-note";
 
 const SITE_URL_FALLBACK =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
@@ -689,46 +719,8 @@ export async function sendOrderProofReminder(args: {
 }
 
 // ============================================================
-// 9b) Auto-refund stale proof — cron SLA 36sa iptal
+// 9b) Auto-refund stale proof — sendRefundCompleted wrapper (aşağıda)
 // ============================================================
-
-export async function sendAutoRefundStaleProof(args: {
-  userId: string;
-  orderId: string;
-}): Promise<{ ok: boolean; reason?: string }> {
-  const email = await getUserEmail(args.userId);
-  if (!email) return { ok: false, reason: "no_email" };
-
-  const admin = createAdminClient();
-  const { data: order } = await admin
-    .from("orders")
-    .select("total")
-    .eq("id", args.orderId)
-    .maybeSingle();
-
-  const total = order ? Number((order as { total: number }).total) : 0;
-  const refundAmount = total.toLocaleString("tr-TR", {
-    maximumFractionDigits: 0,
-  });
-
-  const result = await enqueueMail({
-    templateKey: "auto_refund_stale_proof",
-    to: email,
-    payload: {
-      order_id: args.orderId,
-      refund_amount: refundAmount,
-    },
-    category: "customer",
-    targetType: "order",
-    targetId: args.orderId,
-    idempotencyKey: `auto_refund_stale_proof:${args.orderId}`,
-  });
-
-  return {
-    ok: result.ok && !result.suppressed,
-    reason: result.error ?? (result.suppressed ? "suppressed" : undefined),
-  };
-}
 
 // ============================================================
 // 10) Order proof approved — fn_finalize_proof sonrası
@@ -851,4 +843,392 @@ export async function sendProofHelpResolved(args: {
     ok: result.ok,
     reason: result.suppressed ? "suppressed" : result.error,
   };
+}
+
+// ============================================================
+// P0 launch — 7 yeni transactional mail helper
+// ============================================================
+
+const STALE_PROOF_CANCEL_REASON =
+  "36 saat içinde prova onayı alınamadığı için sipariş otomatik iptal edildi.";
+
+const CUSTOMER_CANCEL_REASON =
+  "Sipariş iptal talebin işlendi. Üretime girmeden vazgeçtin.";
+
+/** PayTR iade maili — auto_refund_stale_proof ile çakışmasın */
+export function refundCompletedIdempotencyKey(
+  orderId: string,
+  refundPaymentId?: string
+): string {
+  if (refundPaymentId) {
+    return `refund_completed:${orderId}:${refundPaymentId}`;
+  }
+  return `refund_completed:${orderId}`;
+}
+
+async function resolveCustomerName(
+  userId: string,
+  orderId?: string
+): Promise<string> {
+  const admin = createAdminClient();
+  if (orderId) {
+    const { data: order } = await admin
+      .from("orders")
+      .select("address")
+      .eq("id", orderId)
+      .maybeSingle();
+    const fromOrder = (
+      order as { address?: { name?: string } } | null
+    )?.address?.name;
+    if (fromOrder) return fromOrder;
+  }
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("display_name")
+    .eq("id", userId)
+    .maybeSingle();
+  const email = await getUserEmail(userId);
+  return (
+    (profile as { display_name?: string | null } | null)?.display_name ??
+    email?.split("@")[0] ??
+    "Müşteri"
+  );
+}
+
+/**
+ * 12) Sipariş iptal — müşteri / admin / SLA
+ */
+export async function sendOrderCancelled(args: {
+  userId: string;
+  orderId: string;
+  cancelSource: OrderCancelSource;
+  operatorNote?: string | null;
+  refundAmount?: number | null;
+  refundInitiated?: boolean;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_order_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  let reason: string;
+  if (args.cancelSource === "customer") {
+    reason = CUSTOMER_CANCEL_REASON;
+  } else if (args.cancelSource === "stale_proof") {
+    reason = STALE_PROOF_CANCEL_REASON;
+  } else {
+    reason = await humanizeOperatorNoteForCustomer({
+      operatorNote: args.operatorNote,
+      context: "order_cancel",
+      orderId: args.orderId,
+    });
+  }
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+
+  const props: OrderCancelledProps = {
+    customerName,
+    orderId: args.orderId,
+    reason,
+    cancelSource: args.cancelSource,
+    refundAmount: args.refundAmount,
+    refundInitiated: args.refundInitiated,
+  };
+
+  const html = await render(OrderCancelledEmail(props));
+  const subject = `Sipariş iptal edildi — ${args.orderId}`;
+  const text = `${reason} ${args.orderId}: ${SITE_URL_FALLBACK}/siparislerim`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "order_cancelled",
+    idempotencyKey: `order_cancelled:${args.orderId}:${args.cancelSource}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 13) Ödeme başarısız — sipariş oluşmadı
+ */
+export async function sendPaymentFailed(args: {
+  userId: string;
+  amount?: number;
+  failureHint?: string;
+  merchantOid?: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_order_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName = await resolveCustomerName(args.userId);
+
+  const props: PaymentFailedProps = {
+    customerName,
+    amount: args.amount,
+    failureHint: args.failureHint,
+  };
+
+  const html = await render(PaymentFailedEmail(props));
+  const subject = "Ödeme alınamadı — sepetin duruyor";
+  const text = `Ödeme tamamlanmadı. Sepet: ${SITE_URL_FALLBACK}/sepet`;
+
+  const idKey = args.merchantOid
+    ? `payment_failed:${args.merchantOid}`
+    : `payment_failed:${args.userId}:${Date.now()}`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    kind: "payment_failed",
+    idempotencyKey: idKey,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 14) İade talebi alındı
+ */
+export async function sendRefundRequest(args: {
+  userId: string;
+  orderId: string;
+  returnId: string;
+  reasonLabel: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_order_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+
+  const props: RefundRequestProps = {
+    customerName,
+    orderId: args.orderId,
+    returnId: args.returnId,
+    reasonLabel: args.reasonLabel,
+  };
+
+  const html = await render(RefundRequestEmail(props));
+  const subject = `İade talebin alındı — ${args.orderId}`;
+  const text = `İade talebi inceleniyor — ${args.orderId}`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "refund_request",
+    idempotencyKey: `refund_request:${args.returnId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 15) İade talebi onaylandı
+ */
+export async function sendRefundApproved(args: {
+  userId: string;
+  orderId: string;
+  returnId: string;
+  adminNote: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_order_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+
+  const props: RefundApprovedProps = {
+    customerName,
+    orderId: args.orderId,
+    returnId: args.returnId,
+    adminNote: args.adminNote,
+  };
+
+  const html = await render(RefundApprovedEmail(props));
+  const subject = `İade talebin onaylandı — ${args.orderId}`;
+  const text = args.adminNote;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "refund_approved",
+    idempotencyKey: `refund_approved:${args.returnId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 16) İade talebi reddedildi (AI gerekçe)
+ */
+export async function sendRefundRejected(args: {
+  userId: string;
+  orderId: string;
+  returnId: string;
+  operatorNote?: string | null;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_order_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const reason = await humanizeOperatorNoteForCustomer({
+    operatorNote: args.operatorNote,
+    context: "refund_rejected",
+    orderId: args.orderId,
+  });
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+
+  const props: RefundRejectedProps = {
+    customerName,
+    orderId: args.orderId,
+    returnId: args.returnId,
+    reason,
+  };
+
+  const html = await render(RefundRejectedEmail(props));
+  const subject = `İade talebi sonucu — ${args.orderId}`;
+  const text = reason;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "refund_rejected",
+    idempotencyKey: `refund_rejected:${args.returnId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 17) Para iadesi tamamlandı — PayTR success sonrası
+ * sendAutoRefundStaleProof yerine bu kullanılır (çift mail guard).
+ */
+export async function sendRefundCompleted(args: {
+  userId: string;
+  orderId: string;
+  refundAmount: number;
+  cardLast4?: string;
+  refundPaymentId?: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+
+  const props: RefundCompletedProps = {
+    customerName,
+    orderId: args.orderId,
+    refundAmount: args.refundAmount,
+    cardLast4: args.cardLast4,
+  };
+
+  const html = await render(RefundCompletedEmail(props));
+  const amountLabel = args.refundAmount.toLocaleString("tr-TR", {
+    maximumFractionDigits: 2,
+  });
+  const subject = `İade kartına yansıyacak — ${args.orderId}`;
+  const text = `${amountLabel} ₺ iade başlatıldı — ${args.orderId}`;
+
+  const idempotencyKey = refundCompletedIdempotencyKey(
+    args.orderId,
+    args.refundPaymentId
+  );
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "refund_completed",
+    idempotencyKey,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/** @deprecated sendRefundCompleted kullan — geriye uyum için wrapper */
+export async function sendAutoRefundStaleProof(args: {
+  userId: string;
+  orderId: string;
+  refundAmount?: number;
+  refundPaymentId?: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("total")
+    .eq("id", args.orderId)
+    .maybeSingle();
+
+  const total = args.refundAmount ?? (order ? Number((order as { total: number }).total) : 0);
+
+  return sendRefundCompleted({
+    userId: args.userId,
+    orderId: args.orderId,
+    refundAmount: total,
+    refundPaymentId: args.refundPaymentId,
+  });
+}
+
+/**
+ * 18) Üyelik hoşgeldin — transactional, tek sefer
+ */
+export async function sendMemberWelcome(args: {
+  userId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName = await resolveCustomerName(args.userId);
+
+  const props: MemberWelcomeProps = { customerName };
+
+  const html = await render(MemberWelcomeEmail(props));
+  const subject = "Pim Etiket'e hoş geldin";
+  const text = `Hoş geldin! Sticker/etiket siparişi: ${SITE_URL_FALLBACK}/sticker`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    kind: "member_welcome",
+    idempotencyKey: `member_welcome:${args.userId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }

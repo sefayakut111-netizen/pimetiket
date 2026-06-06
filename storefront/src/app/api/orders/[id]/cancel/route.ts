@@ -99,6 +99,7 @@ export async function POST(
 
   let refundAmount: number | null = null;
   let refundAttempted = false;
+  let refundPaymentId: string | undefined;
 
   if (isPayTrConfigured()) {
     const { data: charges } = await admin
@@ -173,6 +174,7 @@ export async function POST(
         }
 
         const placeholderId = (placeholderRow as { id: string }).id;
+        refundPaymentId = placeholderId;
         const result = await refundPayment({
           merchantOid: charge.psp_transaction_id,
           returnAmountTL: remaining,
@@ -240,6 +242,26 @@ export async function POST(
       } satisfies Json,
     } satisfies TablesInsert<"order_events">,
   ]);
+
+  const { sendOrderCancelled, sendRefundCompleted } = await import(
+    "@/lib/mail/notifications"
+  );
+  void sendOrderCancelled({
+    userId: user.id,
+    orderId,
+    cancelSource: "customer",
+    refundAmount,
+    refundInitiated: refundAmount != null && refundAmount > 0,
+  }).catch((err) => console.error("[orders/cancel] cancel mail:", err));
+
+  if (refundAmount != null && refundAmount > 0) {
+    void sendRefundCompleted({
+      userId: user.id,
+      orderId,
+      refundAmount,
+      refundPaymentId,
+    }).catch((err) => console.error("[orders/cancel] refund mail:", err));
+  }
 
   return NextResponse.json({ ok: true, refundAmount });
 }

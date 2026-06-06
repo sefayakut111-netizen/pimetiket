@@ -120,6 +120,22 @@ export async function POST(req: Request) {
     updated_at: string;
   };
 
+  const REASON_LABELS: Record<string, string> = {
+    yanlis_urun: "Yanlış ürün geldi",
+    uretim_hatasi: "Üretim hatası (renk/baskı bozuk)",
+    kargo_hasari: "Kargo hasarı",
+    kalite_problemi: "Kalite problemi",
+    diger: "Diğer",
+  };
+
+  const { sendRefundRequest } = await import("@/lib/mail/notifications");
+  void sendRefundRequest({
+    userId: user.id,
+    orderId: body.orderId,
+    returnId: row.id,
+    reasonLabel: REASON_LABELS[row.reason] ?? row.reason,
+  }).catch((err) => console.error("[me/returns] refund_request mail:", err));
+
   return NextResponse.json({
     return: {
       id: row.id,

@@ -227,16 +227,28 @@ export async function POST(req: NextRequest) {
 
   // 4) Failure path
   if (!isSuccess) {
+    const failureReason =
+      data.failed_reason_msg ??
+      data.failed_reason_code ??
+      "paytr_failed";
     await admin
       .from("payment_intents")
       .update({
         status: "failed",
-        failure_reason:
-          data.failed_reason_msg ??
-          data.failed_reason_code ??
-          "paytr_failed",
+        failure_reason: failureReason,
       })
       .eq("id", merchantOid);
+
+    const { sendPaymentFailed } = await import("@/lib/mail/notifications");
+    void sendPaymentFailed({
+      userId: intent.user_id,
+      amount: intent.card_amount + intent.wallet_amount,
+      failureHint: failureReason,
+      merchantOid,
+    }).catch((err) =>
+      console.error("[payment/callback] payment_failed mail:", err)
+    );
+
     return new NextResponse("OK");
   }
 

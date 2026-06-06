@@ -18,8 +18,9 @@ import { NextResponse } from "next/server";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
 import {
-  sendAutoRefundStaleProof,
   sendOrderProofReminder,
+  sendOrderCancelled,
+  sendRefundCompleted,
 } from "@/lib/mail/notifications";
 import { logOrderEvent } from "@/lib/order-events-server";
 import { isPayTrConfigured, refundPayment } from "@/lib/payment/paytr";
@@ -100,6 +101,7 @@ async function processRefund(
   }
 
   let refundAmount: number | null = null;
+  let refundPaymentId: string | undefined;
 
   if (isPayTrConfigured()) {
     const { data: charges } = await admin
@@ -177,6 +179,7 @@ async function processRefund(
         }
 
         const placeholderId = (placeholderRow as { id: string }).id;
+        refundPaymentId = placeholderId;
         const result = await refundPayment({
           merchantOid: charge.psp_transaction_id,
           returnAmountTL: remaining,
@@ -241,12 +244,27 @@ async function processRefund(
     return { ok: true, reason: "cancelled_no_user_mail" };
   }
 
-  const mail = await sendAutoRefundStaleProof({
+  void sendOrderCancelled({
     userId: row.user_id,
     orderId,
-  });
+    cancelSource: "stale_proof",
+    refundAmount,
+    refundInitiated: refundAmount != null && refundAmount > 0,
+  }).catch((err) =>
+    console.error(`[cron/auto-refund] cancel mail ${orderId}:`, err)
+  );
 
-  return mail.ok ? { ok: true } : { ok: false, reason: mail.reason };
+  if (refundAmount != null && refundAmount > 0) {
+    const mail = await sendRefundCompleted({
+      userId: row.user_id,
+      orderId,
+      refundAmount,
+      refundPaymentId,
+    });
+    return mail.ok ? { ok: true } : { ok: false, reason: mail.reason };
+  }
+
+  return { ok: true };
 }
 
 export async function GET(req: Request) {

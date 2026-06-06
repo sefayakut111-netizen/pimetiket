@@ -151,6 +151,12 @@ export async function POST(req: Request) {
       return genericOk();
     }
 
+    void import("@/lib/mail/notifications").then(({ sendMemberWelcome }) =>
+      sendMemberWelcome({ userId: lookup.user_id }).catch((err) =>
+        console.error("[auto-confirm] member_welcome mail:", err)
+      )
+    );
+
     // userId artık dönmüyor — enumeration koruması
     return genericOk();
   } catch (e) {

@@ -348,6 +348,33 @@ export async function POST(req: NextRequest) {
     } satisfies TablesInsert<"order_events">,
   ]);
 
+  const { data: orderForMail } = await admin
+    .from("orders")
+    .select("user_id, payment")
+    .eq("id", body.orderId)
+    .maybeSingle();
+  const orderMailRow = orderForMail as {
+    user_id?: string;
+    payment?: { masked?: string; cardPan?: string } | null;
+  } | null;
+  const orderUserId = orderMailRow?.user_id;
+  if (orderUserId) {
+    const masked = orderMailRow?.payment?.masked ?? "";
+    const cardLast4Match = masked.match(/(\d{4})\s*$/);
+    const cardLast4 = cardLast4Match?.[1];
+
+    const { sendRefundCompleted } = await import("@/lib/mail/notifications");
+    void sendRefundCompleted({
+      userId: orderUserId,
+      orderId: body.orderId,
+      refundAmount,
+      cardLast4,
+      refundPaymentId: (refundRow as { id: string }).id,
+    }).catch((err) =>
+      console.error("[payment/refund] refund_completed mail:", err)
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     refundAmount,

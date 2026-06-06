@@ -111,6 +111,26 @@ export async function POST(
     userAgent: req.headers.get("user-agent"),
   });
 
+  if (status === "cancelled") {
+    const { data: orderOwner } = await admin
+      .from("orders")
+      .select("user_id")
+      .eq("id", orderId)
+      .maybeSingle();
+    const userId = (orderOwner as { user_id?: string } | null)?.user_id;
+    if (userId) {
+      const { sendOrderCancelled } = await import("@/lib/mail/notifications");
+      void sendOrderCancelled({
+        userId,
+        orderId,
+        cancelSource: "admin",
+        operatorNote: note,
+      }).catch((err) =>
+        console.error("[admin/status] order_cancelled mail:", err)
+      );
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     from: existing.status,

@@ -60,6 +60,13 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      if (user?.id) {
+        const { sendMemberWelcome } = await import("@/lib/mail/notifications");
+        void sendMemberWelcome({ userId: user.id }).catch((err) =>
+          console.error("[auth/callback] member_welcome mail:", err)
+        );
+      }
+
       const response = NextResponse.redirect(`${origin}${next}`);
       clearReferralCookie(response);
       return response;
