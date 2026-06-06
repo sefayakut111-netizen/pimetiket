@@ -220,6 +220,27 @@ export const tr: TranslationDict = {
     unitPiece: "adet",
     unitLabel: "etiket",
     unitSticker: "sticker",
+    checkoutLoginHint:
+      "Ödeme için giriş yapmanız gerekir. Giriş yaptığınızda sepetiniz korunur.",
+    undo: "Geri al",
+    toastMergeDropped: (max, count) =>
+      `Giriş sonrası sepet limiti (${max} ürün) nedeniyle ${count} ürün eklenemedi.`,
+    toastPricesUpdated: (count) =>
+      `${count} ürünün fiyatı güncel tarifeye göre yenilendi.`,
+    toastItemsRemoved: (titles) =>
+      `Bazı ürünler artık sunulmadığı için sepetten kaldırıldı: ${titles}`,
+    priceUpdatedBadge: "Fiyat güncellendi",
+    designUploadedBadge: "✓ Tasarım yüklendi",
+    additionalDesignsBadge: (n) => `+${n} tasarım`,
+    designVariantsBadge: (n) => `${n} çeşit`,
+    quantityLabel: "Adet",
+    minOrderTitle: (amount) => `⚠️ Minimum sipariş tutarı ${amount} ₺`,
+    minOrderNeed: (amount) =>
+      `Sepete ${amount} ₺ daha eklemen gerekiyor. Adet yükselt veya yeni ürün ekle.`,
+    maxOrderTitle: (amount) => `📞 Toplu sipariş — WhatsApp'a yönlendir`,
+    maxOrderDesc: (amount) =>
+      `Sepetin ${amount} ₺'yi aştı. Bu büyüklükteki siparişler için özel teklif hazırlıyoruz — daha iyi fiyat + kişisel destek.`,
+    mobileSummaryAria: "Mobil sepet özeti",
   },
   checkout: {
     eyebrow: "Ödeme",

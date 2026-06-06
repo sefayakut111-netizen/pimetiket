@@ -23,6 +23,7 @@ import {
 } from "react";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/context";
 
 export type ToastVariant = "success" | "warning" | "error" | "info";
 
@@ -78,6 +79,7 @@ let nextId = 1;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
+  const { t } = useT();
 
   const push = useCallback(
     (
@@ -108,11 +110,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       info: (m: string) => push("info", m),
       undoable: (m: string, onUndo: () => void, ttlMs = 5000) =>
         push("info", m, {
-          action: { label: "Geri al", onClick: onUndo },
+          action: { label: t.cart.undo, onClick: onUndo },
           ttlMs,
         }),
     }),
-    [push]
+    [push, t.cart.undo]
   );
 
   return (

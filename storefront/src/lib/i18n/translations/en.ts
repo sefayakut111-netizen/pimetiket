@@ -221,6 +221,27 @@ export const en: TranslationDict = {
     unitPiece: "pcs",
     unitLabel: "labels",
     unitSticker: "stickers",
+    checkoutLoginHint:
+      "Sign in to pay. Your cart is kept when you log in.",
+    undo: "Undo",
+    toastMergeDropped: (max, count) =>
+      `${count} item(s) could not be added — cart limit is ${max} after sign-in.`,
+    toastPricesUpdated: (count) =>
+      `${count} item price(s) updated to current rates.`,
+    toastItemsRemoved: (titles) =>
+      `Some items were removed from your cart (no longer offered): ${titles}`,
+    priceUpdatedBadge: "Price updated",
+    designUploadedBadge: "✓ Design uploaded",
+    additionalDesignsBadge: (n) => `+${n} design(s)`,
+    designVariantsBadge: (n) => `${n} variants`,
+    quantityLabel: "Qty",
+    minOrderTitle: (amount) => `⚠️ Minimum order ${amount} TRY`,
+    minOrderNeed: (amount) =>
+      `Add ${amount} TRY more to your cart, or increase quantity.`,
+    maxOrderTitle: (amount) => `📞 Bulk order — contact us on WhatsApp`,
+    maxOrderDesc: (amount) =>
+      `Your cart exceeds ${amount} TRY. We prepare custom quotes for orders this size.`,
+    mobileSummaryAria: "Mobile cart summary",
   },
   checkout: {
     eyebrow: "Checkout",

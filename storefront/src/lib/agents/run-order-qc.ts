@@ -219,7 +219,8 @@ async function runOrderDesignQCInner(
   const { data: filesData, error: filesErr } = await admin
     .from("design_files")
     .select("id, storage_path, mime_type, original_name, order_id, order_item_id")
-    .eq("order_id", orderId);
+    .eq("order_id", orderId)
+    .neq("status", "superseded");
 
   if (filesErr) {
     await recordQcFailureEscalation(
@@ -246,7 +247,8 @@ async function runOrderDesignQCInner(
       .select(
         "id, storage_path, mime_type, original_name, order_id, order_item_id"
       )
-      .eq("order_id", orderId);
+      .eq("order_id", orderId)
+      .neq("status", "superseded");
 
     const retryFiles = (retryFilesData ?? []) as unknown as DesignFileForQC[];
     if (retryFiles.length > 0) {

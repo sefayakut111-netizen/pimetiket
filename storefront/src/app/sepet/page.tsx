@@ -26,7 +26,6 @@ import {
   repriceCustomerCart,
   ensureAuthBindings,
   setCustomerCartShippingSettings,
-  isCustomerCartHydrating,
   CUSTOMER_CART_LIMIT,
   type CustomerCartItem,
 } from "@/lib/customer-cart";
@@ -41,6 +40,8 @@ import {
   DEFAULT_STICKER_DELIVERY_DAYS,
   formatDeliveryDaysLabel,
 } from "@/lib/site-settings-shared";
+import { vatBreakdownFromGross } from "@/lib/vat-breakdown";
+import { useUser } from "@/lib/supabase/use-user";
 
 const EXTRA = {
   tr: {
@@ -112,16 +113,13 @@ const EXTRA = {
   },
 };
 
-// Sefa 20 May v68 UX paket B Madde #9: KDV kırılımı.
-// Birim fiyatlar zaten KDV dahil → çıkar.
-const VAT_RATE = 0.2;
-
 // Sefa 21 May v68: parseConfigChips ortak helper'a taşındı
 // (src/lib/cart-config-filter.ts) — sepet + ödeme aynı filter kullanır.
 
 export default function SepetPage() {
   const toast = useToast();
   const router = useRouter();
+  const { user } = useUser();
   const { t, locale } = useT();
   const x = locale === "en" ? EXTRA.en : EXTRA.tr;
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
@@ -149,10 +147,6 @@ export default function SepetPage() {
   const [etiketDeliveryDays, setEtiketDeliveryDays] = useState(
     DEFAULT_ETIKET_DELIVERY_DAYS
   );
-  // Sefa 16 May denetim #10: Skeleton 300ms eşiği — kısa yüklemelerde
-  // skeleton flicker'ı önler. Cart genelde localStorage'dan anında gelir,
-  // 300ms öncesi skeleton göstermiyoruz.
-  const [showSkeleton, setShowSkeleton] = useState(false);
   const [repricedIds, setRepricedIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(() => {
@@ -161,15 +155,6 @@ export default function SepetPage() {
 
   useEffect(() => {
     ensureAuthBindings();
-    // Sefa 16 May UX denetim P2-1:
-    //   1) localStorage'dan ilk render — anında görselleştir
-    //   2) Cart boşsa hydrated=true → skeleton hiç gözükmez,
-    //      direkt empty state. Auditer "3 sn skeleton sonra empty"
-    //      şikayetini çözer.
-    //   3) Cart doluysa hydrated=true → kart anında render olur,
-    //      arka planda Supabase ile freshen olunur.
-    //   4) Sadece "auth'ı yeni yenileme" gibi kenar senaryoda
-    //      300ms eşik + skeleton.
     refresh();
     // Sefa 21 May v68: müşteri tarafı /api/public/settings kullanır.
     // /api/admin/settings GET artık auth gerektiriyor — sadece müşteri-görür
@@ -203,19 +188,9 @@ export default function SepetPage() {
       .catch(() => {
         /* silent — limit kontrol opsiyonel */
       });
-    const initialCount = summarizeCustomerCart().itemCount;
-    if (initialCount === 0) {
-      // localStorage boş — empty state'i direkt göster, fetch arka planda
-      setHydrated(true);
-    }
-    const skeletonTimer = setTimeout(() => {
-      if (!hydrated && initialCount === 0) setShowSkeleton(true);
-    }, 300);
     void refreshCustomerCart().then(() => {
       refresh();
       setHydrated(true);
-      clearTimeout(skeletonTimer);
-      // Reprice arka planda — sepet UI önce render olsun
       queueMicrotask(() => {
         void repriceCustomerCart().then(() => {
           refresh();
@@ -226,9 +201,7 @@ export default function SepetPage() {
     const onMergeDropped = (ev: Event) => {
       const count = (ev as CustomEvent<{ count: number }>).detail?.count ?? 0;
       if (count > 0) {
-        toast.warning(
-          `Giriş sonrası sepet limiti (${MAX_ITEMS} ürün) nedeniyle ${count} ürün eklenemedi.`
-        );
+        toast.warning(t.cart.toastMergeDropped(MAX_ITEMS, count));
       }
     };
     const onPricesUpdated = (ev: Event) => {
@@ -236,9 +209,7 @@ export default function SepetPage() {
         .detail;
       const count = detail?.count ?? 0;
       if (count > 0) {
-        toast.info(
-          `${count} ürünün fiyatı güncel tarifeye göre yenilendi.`
-        );
+        toast.info(t.cart.toastPricesUpdated(count));
         if (detail?.ids?.length) {
           setRepricedIds(new Set(detail.ids));
         }
@@ -248,9 +219,7 @@ export default function SepetPage() {
       const titles =
         (ev as CustomEvent<{ titles: string[] }>).detail?.titles ?? [];
       if (titles.length > 0) {
-        toast.warning(
-          `Bazı ürünler artık sunulmadığı için sepetten kaldırıldı: ${titles.join(", ")}`
-        );
+        toast.warning(t.cart.toastItemsRemoved(titles.join(", ")));
         refresh();
       }
     };
@@ -260,7 +229,6 @@ export default function SepetPage() {
     window.addEventListener("pim_cart_prices_updated", onPricesUpdated);
     window.addEventListener("pim_cart_items_removed", onItemsRemoved);
     return () => {
-      clearTimeout(skeletonTimer);
       window.removeEventListener("pim_customer_cart_updated", handler);
       window.removeEventListener("storage", handler);
       window.removeEventListener("pim_cart_merge_dropped", onMergeDropped);
@@ -289,6 +257,12 @@ export default function SepetPage() {
     minOrderTotal > 0 && subtotal < minOrderTotal && subtotal > 0;
   const aboveMaxOrder = maxOrderTotal > 0 && subtotal > maxOrderTotal;
   const checkoutBlocked = belowMinOrder || aboveMaxOrder;
+  const checkoutBlockReason = belowMinOrder
+    ? t.cart.minOrderTitle(fmt(minOrderTotal))
+    : aboveMaxOrder
+      ? t.cart.maxOrderTitle(fmt(maxOrderTotal))
+      : undefined;
+  const vatBreakdown = vatBreakdownFromGross(subtotal);
 
   const remove = (item: CustomerCartItem) => {
     void removeFromCustomerCart(item.id);
@@ -301,29 +275,25 @@ export default function SepetPage() {
     });
   };
 
-  // Hydration guard — Sefa 16 May denetim #10:
-  // Girişli kullanıcı DB hydrate olana kadar skeleton; misafirde 300ms eşiği.
+  // Hydration guard — cart DB senkron bitene kadar skeleton
   if (!hydrated) {
-    if (isCustomerCartHydrating() || showSkeleton) {
-      return (
-        <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
-          <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-            <div className="mb-5 md:mb-7 space-y-3">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-9 w-48" />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
-              <div className="flex flex-col gap-3">
-                <Skeleton.OrderRow />
-                <Skeleton.OrderRow />
-              </div>
-              <Skeleton.Card className="lg:sticky lg:top-20" />
-            </div>
+    return (
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <div className="mb-5 md:mb-7 space-y-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-48" />
           </div>
-        </main>
-      );
-    }
-    return <main className="bg-gri-50 min-h-[calc(100vh-64px)]" />;
+          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
+            <div className="flex flex-col gap-3">
+              <Skeleton.OrderRow />
+              <Skeleton.OrderRow />
+            </div>
+            <Skeleton.Card className="lg:sticky lg:top-20" />
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (cart.length === 0) {
@@ -331,7 +301,7 @@ export default function SepetPage() {
       <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-16">
         <div className="mx-auto max-w-[440px] px-6 text-center">
           <Pim pose="think" size={160} />
-          <Eyebrow>Sepet</Eyebrow>
+          <Eyebrow>{t.nav.cart}</Eyebrow>
           <h1 className="mt-3 text-[28px] font-semibold tracking-tight">
             {t.cart.empty}
           </h1>
@@ -386,7 +356,7 @@ export default function SepetPage() {
                     </div>
                     {repricedIds.has(item.id) && (
                       <span className="inline-flex mt-1 px-2 py-0.5 rounded-full bg-pim-mercan-tint text-pim-mercan text-[10px] font-semibold">
-                        Fiyat güncellendi
+                        {t.cart.priceUpdatedBadge}
                       </span>
                     )}
                     {/* Sefa 20 May v68 UX paket B Madde #4: Config artık chip
@@ -405,7 +375,7 @@ export default function SepetPage() {
                     {item.designFileName && (
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         <div className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-yesil-soft text-yesil text-[11px] font-semibold">
-                          ✓ Tasarım yüklendi
+                          {t.cart.designUploadedBadge}
                         </div>
                         {item.additionalDesigns &&
                           item.additionalDesigns.length > 0 && (
@@ -413,7 +383,9 @@ export default function SepetPage() {
                               className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-pim-mercan-tint text-pim-mercan text-[11px] font-semibold"
                               title={`Toplam ${1 + item.additionalDesigns.length} tasarım`}
                             >
-                              +{item.additionalDesigns.length} tasarım
+                              {t.cart.additionalDesignsBadge(
+                                item.additionalDesigns.length
+                              )}
                             </div>
                           )}
                         {item.designCount && item.designCount > 1 && (
@@ -421,7 +393,7 @@ export default function SepetPage() {
                             className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full bg-krem ring-1 ring-gri-200 text-lacivert text-[11px] font-semibold"
                             title="Toplam farklı tasarım sayısı"
                           >
-                            {item.designCount} çeşit
+                            {t.cart.designVariantsBadge(item.designCount)}
                           </div>
                         )}
                       </div>
@@ -433,7 +405,7 @@ export default function SepetPage() {
                         Salt okunur "Adet: X · Birim: Y" etiketi kaldı. */}
                     <div className="flex items-center gap-3 mt-3 flex-wrap text-[12.5px] tabular-nums">
                       <span>
-                        <span className="text-gri-500">Adet:</span>{" "}
+                        <span className="text-gri-500">{t.cart.quantityLabel}:</span>{" "}
                         <strong className="text-lacivert">{fmt(item.qty)}</strong>
                       </span>
                       <span className="text-gri-300" aria-hidden="true">·</span>
@@ -452,7 +424,8 @@ export default function SepetPage() {
                         {fmt(item.total)} {x.currency}
                       </div>
                       <div className="text-[10.5px] text-gri-500 tabular-nums">
-                        {x.decimal(item.unit)} {x.currency} × {fmt(item.qty)} adet
+                        {x.decimal(item.unit)} {x.currency} × {fmt(item.qty)}{" "}
+                        {t.cart.unitPiece}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -515,13 +488,13 @@ export default function SepetPage() {
                 <div className="flex justify-between">
                   <span className="text-gri-700">{x.subtotalNoVat}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(subtotal / (1 + VAT_RATE))} {x.currency}
+                    {fmt(vatBreakdown.exVat)} {x.currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gri-700">{x.vatLabel}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(subtotal - subtotal / (1 + VAT_RATE))} {x.currency}
+                    {fmt(vatBreakdown.vat)} {x.currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -594,25 +567,28 @@ export default function SepetPage() {
 
               {/* Sefa 18 May v68 Migration 053: min/max sipariş limit uyarıları */}
               {belowMinOrder && (
-                <div className="mt-4 rounded-lg bg-sari-soft p-3 ring-1 ring-sari/30 text-[12.5px] text-sari-koyu">
+                <div
+                  id="checkout-block-reason"
+                  className="mt-4 rounded-lg bg-sari-soft p-3 ring-1 ring-sari/30 text-[12.5px] text-sari-koyu"
+                >
                   <div className="font-semibold mb-1">
-                    ⚠️ Minimum sipariş tutarı {fmt(minOrderTotal)} ₺
+                    {t.cart.minOrderTitle(fmt(minOrderTotal))}
                   </div>
                   <p className="leading-relaxed">
-                    Sepete <strong>{fmt(minOrderTotal - subtotal)} ₺</strong> daha
-                    eklemen gerekiyor. Adet yükselt veya yeni ürün ekle.
+                    {t.cart.minOrderNeed(fmt(minOrderTotal - subtotal))}
                   </p>
                 </div>
               )}
               {aboveMaxOrder && (
-                <div className="mt-4 rounded-lg bg-mavi-soft p-3 ring-1 ring-mavi/30 text-[12.5px] text-mavi-koyu">
+                <div
+                  id="checkout-block-reason"
+                  className="mt-4 rounded-lg bg-mavi-soft p-3 ring-1 ring-mavi/30 text-[12.5px] text-mavi-koyu"
+                >
                   <div className="font-semibold mb-1">
-                    📞 Toplu sipariş — WhatsApp'a yönlendir
+                    {t.cart.maxOrderTitle(fmt(maxOrderTotal))}
                   </div>
                   <p className="leading-relaxed mb-2">
-                    Sepetin {fmt(maxOrderTotal)} ₺'yi aştı. Bu büyüklükteki
-                    siparişler için <strong>özel teklif</strong> hazırlıyoruz —
-                    daha iyi fiyat + kişisel destek.
+                    {t.cart.maxOrderDesc(fmt(maxOrderTotal))}
                   </p>
                   <a
                     href="https://wa.me/905456999063?text=Toplu%20sipari%C5%9F%20i%C3%A7in%20bilgi%20almak%20istiyorum"
@@ -625,19 +601,35 @@ export default function SepetPage() {
                 </div>
               )}
 
-              <Button
-                variant="primary"
-                size="lg"
-                block
-                href={checkoutBlocked ? "#" : "/odeme"}
-                className={`mt-5 ${
-                  checkoutBlocked
-                    ? "opacity-50 cursor-not-allowed pointer-events-none"
-                    : ""
-                }`}
-              >
-                {t.cart.proceedToCheckout} <Icon.ArrowR />
-              </Button>
+              {checkoutBlocked ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  block
+                  disabled
+                  title={checkoutBlockReason}
+                  aria-describedby="checkout-block-reason"
+                  className="mt-5"
+                >
+                  {t.cart.proceedToCheckout} <Icon.ArrowR />
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  block
+                  href="/odeme"
+                  className="mt-5"
+                >
+                  {t.cart.proceedToCheckout} <Icon.ArrowR />
+                </Button>
+              )}
+
+              {!user && !checkoutBlocked && (
+                <p className="mt-2 text-[11.5px] text-gri-600 text-center leading-relaxed">
+                  {t.cart.checkoutLoginHint}
+                </p>
+              )}
 
               {/* Sefa-7: Tahmini teslimat — ürün tipine göre. Sticker
                   3-5, etiket 5-7. Karışık sepette en uzun süreyi gösterir. */}
@@ -716,9 +708,9 @@ export default function SepetPage() {
       <div
         className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gri-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
         role="region"
-        aria-label="Mobil sepet özeti"
+        aria-label={t.cart.mobileSummaryAria}
       >
-        <div className="px-4 py-3 flex items-center gap-3">
+        <div className="px-4 py-3 pr-[88px] flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="text-[10.5px] text-gri-500 uppercase tracking-wider">
               {x.mobileCheckoutTotal}
@@ -727,16 +719,21 @@ export default function SepetPage() {
               {fmt(total)} <span className="text-[13px] font-semibold text-gri-700">{x.currency}</span>
             </div>
           </div>
-          <Button
-            variant="primary"
-            size="md"
-            href={checkoutBlocked ? "#" : "/odeme"}
-            className={
-              checkoutBlocked ? "opacity-50 pointer-events-none" : ""
-            }
-          >
-            {t.cart.proceedToCheckout} <Icon.ArrowR />
-          </Button>
+          {checkoutBlocked ? (
+            <Button
+              variant="primary"
+              size="md"
+              disabled
+              title={checkoutBlockReason}
+              aria-describedby="checkout-block-reason"
+            >
+              {t.cart.proceedToCheckout} <Icon.ArrowR />
+            </Button>
+          ) : (
+            <Button variant="primary" size="md" href="/odeme">
+              {t.cart.proceedToCheckout} <Icon.ArrowR />
+            </Button>
+          )}
         </div>
       </div>
     </main>

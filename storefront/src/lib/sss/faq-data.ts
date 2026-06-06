@@ -389,9 +389,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "İndirim kuponu nasıl kullanılır?",
       summary:
-        "Sepet ekranındaki 'Kupon kodu' alanına kodu yazıp 'Uygula' butonuna basmanız yeterlidir.",
+        "Ödeme sayfasındaki 'Kupon kodun var mı?' alanına kodu yazıp 'Uygula' butonuna basmanız yeterlidir.",
       detail:
-        "Pim Etiket'te yüzde indirim, sabit indirim ve ücretsiz kargo kuponları sunulmaktadır. Kuponlar minimum sepet tutarı veya kullanım süresi şartı içerebilir; bu bilgiler kupon detay sayfasında belirtilir. Aktif kampanyalar için Pim Etiket sohbet asistanına \"kupon var mı?\" sorusunu yöneltebilirsiniz; sistem geçerli kuponları size sunar.",
+        "Pim Etiket'te yüzde indirim, sabit indirim ve ücretsiz kargo kuponları sunulmaktadır. Kupon alanı /odeme (checkout) ekranında sipariş özetinin altında yer alır. Kuponlar minimum sepet tutarı veya kullanım süresi şartı içerebilir; bu bilgiler kupon detay sayfasında belirtilir. Aktif kampanyalar için Pim Etiket sohbet asistanına \"kupon var mı?\" sorusunu yöneltebilirsiniz; sistem geçerli kuponları size sunar.",
     },
     {
       q: "Toplu sipariş için özel fiyat teklifi alınabilir mi?",

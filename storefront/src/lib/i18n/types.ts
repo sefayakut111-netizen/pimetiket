@@ -240,6 +240,21 @@ export type TranslationDict = {
     unitPiece: string;       // 'adet' / 'pcs'
     unitLabel: string;       // 'etiket' / 'labels'
     unitSticker: string;     // 'sticker' / 'stickers'
+    checkoutLoginHint: string;
+    undo: string;
+    toastMergeDropped: (max: number, count: number) => string;
+    toastPricesUpdated: (count: number) => string;
+    toastItemsRemoved: (titles: string) => string;
+    priceUpdatedBadge: string;
+    designUploadedBadge: string;
+    additionalDesignsBadge: (n: number) => string;
+    designVariantsBadge: (n: number) => string;
+    quantityLabel: string;
+    minOrderTitle: (amount: string) => string;
+    minOrderNeed: (amount: string) => string;
+    maxOrderTitle: (amount: string) => string;
+    maxOrderDesc: (amount: string) => string;
+    mobileSummaryAria: string;
   };
   checkout: {
     eyebrow: string;

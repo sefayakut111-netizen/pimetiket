@@ -162,16 +162,16 @@ export default function RootLayout({
         >
           İçeriğe atla
         </a>
-        <ToastProvider>
-          <LanguageProvider>
+        <LanguageProvider>
+          <ToastProvider>
             <AppShell>{children}</AppShell>
             <CookieConsent />
             <Analytics />
             {/* Sefa 18 May v68: Frontend caydırıcı koruma — DevTools detect
                 + agresif console uyarısı (self-XSS + telif). Production-only. */}
             <CopyProtection />
-          </LanguageProvider>
-        </ToastProvider>
+          </ToastProvider>
+        </LanguageProvider>
         {/* Vercel built-in pageview + Core Web Vitals — KVKK gated (sadece
             analytics izni varsa beacon gönderir). Bkz. VercelInsights.tsx. */}
         <VercelInsights />

@@ -29,6 +29,7 @@ import {
   Card,
   Input,
   Eyebrow,
+  Skeleton,
   ValidatedInput,
   useToast,
 } from "@/components/ui";
@@ -54,6 +55,7 @@ import {
   DEFAULT_STICKER_DELIVERY_DAYS,
   formatDeliveryDaysLabel,
 } from "@/lib/site-settings-shared";
+import { vatBreakdownFromGross } from "@/lib/vat-breakdown";
 import {
   validateCoupon,
   type CouponValidateResult,
@@ -125,6 +127,9 @@ const COPY = {
     title: "Sipariş özeti ve ödeme",
     summary: "Sipariş özeti",
     cartEmptyRedirect: "Sepetin boş — yönlendiriliyor…",
+    cartEmptyDesc:
+      "Ödemeye geçmeden önce sepetinde en az bir ürün olmalı.",
+    backToCart: "Sepete dön",
     currency: "₺",
     times: "×",
     locale: "tr-TR",
@@ -141,6 +146,38 @@ const COPY = {
     addressFormPhone: "Telefon",
     addressFormLabel: "Etiket (örn: Ev, Atölye)",
     addressFormSave: "Bu adresi kaydet (varsayılan yap)",
+    addrFirstNameLabel: "Ad",
+    addrLastNameLabel: "Soyad",
+    addrFirstNamePh: "Adınız",
+    addrLastNamePh: "Soyadınız",
+    addrPhoneLabel: "Telefon",
+    addrPhoneAria: "Telefon numarası",
+    addrStreetLabel: "Adres (mahalle + sokak + no)",
+    addrStreetPh: "Beştepeler Mah. Nergis Sok. No:7/2",
+    addrStreetAria: "Açık adres",
+    addrCityLabel: "Şehir",
+    addrDistrictLabel: "İlçe",
+    addrSelectPlaceholder: "Seç...",
+    addrDistrictSelectFirst: "Önce şehir seç",
+    requiredMark: "*",
+    missingPrefix: "Eksik:",
+    missingCartEmpty: "sepet boş",
+    missingMinOrder: (n: string) => `minimum sipariş tutarı (${n} ₺)`,
+    missingMaxOrder: (n: string) => `maksimum sipariş tutarı (${n} ₺)`,
+    missingAddress: "teslimat adresi",
+    missingTcEmpty: "TC kimlik numarası",
+    missingTcInvalid: "TC kimlik (geçersiz numara — kontrol et)",
+    missingCorpFields: (fields: string) => `kurumsal fatura (${fields})`,
+    missingCorpInvoice: "kurumsal fatura",
+    missingInvoiceInfo: "fatura bilgisi",
+    missingSalesContract: "Mesafeli Satış Sözleşmesi onayı",
+    missingCopyright: "Telif hakkı onayı",
+    missingFormFallback: "form alanları",
+    unitQtySuffix: "adet",
+    corpFieldVkn: "VKN",
+    corpFieldCompany: "şirket ünvanı",
+    corpFieldTaxOffice: "vergi dairesi",
+    corpFieldAddress: "fatura adresi",
 
     // Invoice
     invoiceTitle: "Fatura tercihi",
@@ -211,10 +248,6 @@ const COPY = {
 
     // Sefa 20 May v68 UX paket A:
     estDelivery: "Tahmini teslimat",
-    deliveryDays: {
-      sticker: "3-5 iş günü",
-      etiket: "5-7 iş günü",
-    } as Record<"sticker" | "etiket", string>,
     deliveryNote:
       "Tasarımı zamanında yüklersen kargo bu süre içinde elinde.",
     paymentMethodsTitle: "Kabul edilen ödeme araçları",
@@ -242,6 +275,8 @@ const COPY = {
     title: "Review & pay",
     summary: "Order summary",
     cartEmptyRedirect: "Cart is empty — redirecting…",
+    cartEmptyDesc: "Add at least one item to your cart before checkout.",
+    backToCart: "Back to cart",
     currency: "TRY",
     times: "×",
     locale: "en-US",
@@ -256,6 +291,38 @@ const COPY = {
     addressFormPhone: "Phone",
     addressFormLabel: "Label (e.g. Home, Workshop)",
     addressFormSave: "Save this address (set as default)",
+    addrFirstNameLabel: "First name",
+    addrLastNameLabel: "Last name",
+    addrFirstNamePh: "Your first name",
+    addrLastNamePh: "Your last name",
+    addrPhoneLabel: "Phone",
+    addrPhoneAria: "Phone number",
+    addrStreetLabel: "Street address",
+    addrStreetPh: "Neighborhood, street, building no.",
+    addrStreetAria: "Full address",
+    addrCityLabel: "City",
+    addrDistrictLabel: "District",
+    addrSelectPlaceholder: "Select...",
+    addrDistrictSelectFirst: "Select city first",
+    requiredMark: "*",
+    missingPrefix: "Missing:",
+    missingCartEmpty: "cart is empty",
+    missingMinOrder: (n: string) => `minimum order (${n} TRY)`,
+    missingMaxOrder: (n: string) => `maximum order (${n} TRY)`,
+    missingAddress: "shipping address",
+    missingTcEmpty: "TC ID number",
+    missingTcInvalid: "TC ID (invalid — check the number)",
+    missingCorpFields: (fields: string) => `corporate invoice (${fields})`,
+    missingCorpInvoice: "corporate invoice",
+    missingInvoiceInfo: "invoice details",
+    missingSalesContract: "Distance Sales Contract acceptance",
+    missingCopyright: "Copyright confirmation",
+    missingFormFallback: "form fields",
+    unitQtySuffix: "pcs",
+    corpFieldVkn: "tax number (VKN)",
+    corpFieldCompany: "company legal name",
+    corpFieldTaxOffice: "tax office",
+    corpFieldAddress: "invoice address",
 
     invoiceTitle: "Invoice preference",
     invoiceModeNone: "No invoice needed",
@@ -321,10 +388,6 @@ const COPY = {
     vatIncluded: "VAT included",
 
     estDelivery: "Est. delivery",
-    deliveryDays: {
-      sticker: "3-5 business days",
-      etiket: "5-7 business days",
-    } as Record<"sticker" | "etiket", string>,
     deliveryNote: "Ships within this window if you upload the design on time.",
     paymentMethodsTitle: "Accepted payment methods",
     paymentMethodsNote:
@@ -582,6 +645,7 @@ export default function OdemePage() {
   const shipping = summary.shipping;
   const total = summary.total;
   const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
+  const vatBreakdown = vatBreakdownFromGross(subtotal);
 
   const couponDiscount =
     couponResult?.ok && couponResult.kind !== "free_ship"
@@ -627,46 +691,47 @@ export default function OdemePage() {
     (selectedAddress !== undefined || isNewAddressFilled(newAddr)) &&
     invoiceComplete;
 
+  const needsAddress =
+    selectedAddress === undefined && !isNewAddressFilled(newAddr);
+
   /** Sefa 17 May UX K#3: Hangi alan eksik? — submit butonunun
       neden disabled olduğunu kullanıcıya net göster */
   const submitMissing: string[] = [];
-  // Sefa 17 May P1-9: "fatura bilgisi" yerine HANGI alan eksik söyle
-  if (cartItems.length === 0) submitMissing.push("sepet boş");
+  if (cartItems.length === 0) submitMissing.push(c.missingCartEmpty);
   if (minOrderTotal > 0 && subtotal < minOrderTotal) {
-    submitMissing.push(`minimum sipariş tutarı (${fmt(minOrderTotal)} ₺)`);
+    submitMissing.push(c.missingMinOrder(fmt(minOrderTotal)));
   }
   if (maxOrderTotal > 0 && subtotal > maxOrderTotal) {
-    submitMissing.push(`maksimum sipariş tutarı (${fmt(maxOrderTotal)} ₺)`);
+    submitMissing.push(c.missingMaxOrder(fmt(maxOrderTotal)));
   }
-  if (selectedAddress === undefined && !isNewAddressFilled(newAddr))
-    submitMissing.push("teslimat adresi");
+  if (needsAddress) submitMissing.push(c.missingAddress);
   if (!invoiceComplete) {
     if (invoiceMode === "individual") {
       if (tc.trim().length === 0) {
-        submitMissing.push("TC kimlik numarası");
+        submitMissing.push(c.missingTcEmpty);
       } else if (!validateTcKimlik(tc).valid) {
-        submitMissing.push("TC kimlik (geçersiz numara — kontrol et)");
+        submitMissing.push(c.missingTcInvalid);
       }
     } else if (invoiceMode === "corporate" && !selectedInvoiceProfile) {
       const missingFields: string[] = [];
-      if (!validateVkn(newInvoice.vkn).valid) missingFields.push("VKN");
+      if (!validateVkn(newInvoice.vkn).valid) missingFields.push(c.corpFieldVkn);
       if (newInvoice.companyName.trim().length < 2)
-        missingFields.push("şirket ünvanı");
+        missingFields.push(c.corpFieldCompany);
       if (newInvoice.taxOffice.trim().length < 2)
-        missingFields.push("vergi dairesi");
+        missingFields.push(c.corpFieldTaxOffice);
       if (newInvoice.companyAddress.trim().length < 5)
-        missingFields.push("fatura adresi");
+        missingFields.push(c.corpFieldAddress);
       if (missingFields.length > 0) {
-        submitMissing.push(`kurumsal fatura (${missingFields.join(", ")})`);
+        submitMissing.push(c.missingCorpFields(missingFields.join(", ")));
       } else {
-        submitMissing.push("kurumsal fatura");
+        submitMissing.push(c.missingCorpInvoice);
       }
     } else {
-      submitMissing.push("fatura bilgisi");
+      submitMissing.push(c.missingInvoiceInfo);
     }
   }
-  if (!acceptSatis) submitMissing.push("Mesafeli Satış Sözleşmesi onayı");
-  if (!acceptCopyright) submitMissing.push("Telif hakkı onayı");
+  if (!acceptSatis) submitMissing.push(c.missingSalesContract);
+  if (!acceptCopyright) submitMissing.push(c.missingCopyright);
 
   // ============================================================
   // Address delete (Sefa 17 May — 5 limit + UX)
@@ -755,14 +820,13 @@ export default function OdemePage() {
     // Sefa 17 May — Submit'te EKSİKSİZ guard
     // (canSubmit disabled olsa bile direkt çağrı olursa burada blokla)
     if (!canSubmit) {
-      const firstMissing = submitMissing[0] ?? "form alanları";
-      toast.error(`⚠ Eksik: ${firstMissing}`);
-      // İlk eksik alana scroll
+      const firstMissing = submitMissing[0] ?? c.missingFormFallback;
+      toast.error(`${c.missingPrefix} ${firstMissing}`);
       if (typeof document !== "undefined") {
         let target: HTMLElement | null = null;
-        if (submitMissing.includes("teslimat adresi")) {
+        if (needsAddress) {
           target = document.getElementById("addr-first-name");
-        } else if (submitMissing.includes("fatura bilgisi")) {
+        } else if (!invoiceComplete) {
           if (invoiceMode === "individual") {
             target = document.getElementById("tc-checkout");
           } else {
@@ -1007,7 +1071,27 @@ export default function OdemePage() {
   // boşken sayfanın geri kalanını HİÇ render etme — temiz "Sepete
   // yönlendiriliyor" durumu göster. Aksi halde adres formu vs.
   // boş alanlarla yarı render olup kullanıcı şaşırıyor.
-  if (hydrated && cartItems.length === 0) {
+  if (!hydrated) {
+    return (
+      <main className="bg-gri-50 min-h-[calc(100vh-64px)] py-6 md:py-8 pb-20">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <div className="mb-5 md:mb-7 space-y-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-64" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+            <div className="flex flex-col gap-4">
+              <Skeleton.Card />
+              <Skeleton.Card />
+            </div>
+            <Skeleton.Card className="lg:sticky lg:top-20" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (cartItems.length === 0) {
     return (
       <main className="bg-gri-50 min-h-[calc(100vh-64px)] grid place-items-center px-4 py-12">
         <div className="text-center max-w-[420px]">
@@ -1016,7 +1100,7 @@ export default function OdemePage() {
             {c.cartEmptyRedirect}
           </h1>
           <p className="mt-3 text-[14px] text-gri-700 leading-relaxed">
-            Ödemeye geçmeden önce sepetinde en az bir ürün olmalı.
+            {c.cartEmptyDesc}
           </p>
         </div>
       </main>
@@ -1041,7 +1125,7 @@ export default function OdemePage() {
             className="mt-4 inline-flex items-center gap-2 text-[15px] md:text-[16px] font-bold text-pim-mercan hover:underline"
           >
             <span aria-hidden="true">←</span>
-            {locale === "en" ? "Back to cart" : "Sepete dön"}
+            {c.backToCart}
           </Link>
         </div>
 
@@ -1073,12 +1157,13 @@ export default function OdemePage() {
                         htmlFor="addr-first-name"
                         className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
                       >
-                        Ad <span className="text-kirmizi">*</span>
+                        {c.addrFirstNameLabel}{" "}
+                        <span className="text-kirmizi">{c.requiredMark}</span>
                       </label>
                       <Input
                         id="addr-first-name"
-                        placeholder="Adınız"
-                        aria-label="Ad"
+                        placeholder={c.addrFirstNamePh}
+                        aria-label={c.addrFirstNameLabel}
                         value={newAddr.firstName}
                         onChange={(e) => {
                           const firstName = e.target.value;
@@ -1097,12 +1182,13 @@ export default function OdemePage() {
                         htmlFor="addr-last-name"
                         className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
                       >
-                        Soyad <span className="text-kirmizi">*</span>
+                        {c.addrLastNameLabel}{" "}
+                        <span className="text-kirmizi">{c.requiredMark}</span>
                       </label>
                       <Input
                         id="addr-last-name"
-                        placeholder="Soyadınız"
-                        aria-label="Soyad"
+                        placeholder={c.addrLastNamePh}
+                        aria-label={c.addrLastNameLabel}
                         value={newAddr.lastName}
                         onChange={(e) => {
                           const lastName = e.target.value;
@@ -1122,7 +1208,8 @@ export default function OdemePage() {
                       htmlFor="addr-phone"
                       className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
                     >
-                      Telefon <span className="text-kirmizi">*</span>
+                      {c.addrPhoneLabel}{" "}
+                      <span className="text-kirmizi">{c.requiredMark}</span>
                     </label>
                     {/* Sefa 17 May Dalga 2 #11: +90 prefix */}
                     <div className="flex gap-2">
@@ -1132,7 +1219,7 @@ export default function OdemePage() {
                       <Input
                         id="addr-phone"
                         placeholder="5XX XXX XX XX"
-                        aria-label="Telefon numarası"
+                        aria-label={c.addrPhoneAria}
                         value={dbPhoneToInputValue(newAddr.phone)}
                         onChange={(e) => {
                           // Sefa 17 May P0-1: parseTrPhoneToLocal "+90"/"90"/"0"
@@ -1157,13 +1244,13 @@ export default function OdemePage() {
                       htmlFor="addr-addr"
                       className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1"
                     >
-                      Adres (mahalle + sokak + no){" "}
-                      <span className="text-kirmizi">*</span>
+                      {c.addrStreetLabel}{" "}
+                      <span className="text-kirmizi">{c.requiredMark}</span>
                     </label>
                     <Input
                       id="addr-addr"
-                      placeholder="Beştepeler Mah. Nergis Sok. No:7/2"
-                      aria-label="Açık adres"
+                      placeholder={c.addrStreetPh}
+                      aria-label={c.addrStreetAria}
                       value={newAddr.addr}
                       onChange={(e) =>
                         setNewAddr({ ...newAddr, addr: e.target.value })
@@ -1179,7 +1266,8 @@ export default function OdemePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                        Şehir <span className="text-kirmizi">*</span>
+                        {c.addrCityLabel}{" "}
+                        <span className="text-kirmizi">{c.requiredMark}</span>
                       </label>
                       {/* Sefa 17 May Dalga 3 #13: custom chevron icon */}
                       <div className="relative">
@@ -1196,7 +1284,7 @@ export default function OdemePage() {
                           required
                           className="w-full h-11 pl-3 pr-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan appearance-none cursor-pointer"
                         >
-                          <option value="">Seç...</option>
+                          <option value="">{c.addrSelectPlaceholder}</option>
                           {TR_IL_LIST.map((il) => (
                             <option key={il} value={il}>
                               {il}
@@ -1221,7 +1309,8 @@ export default function OdemePage() {
                     </div>
                     <div>
                       <label className="block text-[11.5px] font-semibold uppercase tracking-[0.04em] text-gri-700 mb-1">
-                        İlçe <span className="text-kirmizi">*</span>
+                        {c.addrDistrictLabel}{" "}
+                        <span className="text-kirmizi">{c.requiredMark}</span>
                       </label>
                       <div className="relative">
                         <select
@@ -1235,7 +1324,9 @@ export default function OdemePage() {
                           className="w-full h-11 pl-3 pr-9 rounded-lg bg-white ring-1 ring-gri-200 text-[13.5px] text-lacivert focus:outline-none focus:ring-pim-mercan disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer disabled:cursor-not-allowed"
                         >
                           <option value="">
-                            {newAddr.city ? "Seç..." : "Önce şehir seç"}
+                            {newAddr.city
+                              ? c.addrSelectPlaceholder
+                              : c.addrDistrictSelectFirst}
                           </option>
                           {getIlceler(newAddr.city).map((ilce) => (
                             <option key={ilce} value={ilce}>
@@ -1778,9 +1869,6 @@ export default function OdemePage() {
               </h3>
 
               <div className="space-y-3 text-[13px]">
-                {hydrated && cartItems.length === 0 && (
-                  <div className="text-gri-500">{c.cartEmptyRedirect}</div>
-                )}
                 {/* Sefa 20 May v68 UX paket A #4: DesignThumb — sepetle aynı
                     3-öncelikli component. PDF/PSD/AI yüklendiyse gerçek
                     preview, yoksa format rozeti, yoksa ürün ikonu. */}
@@ -1801,7 +1889,7 @@ export default function OdemePage() {
                           {filterConfigString(item.config)}
                         </span>
                         <span className="block text-[11px] text-gri-500 mt-0.5 tabular-nums">
-                          {item.qty.toLocaleString(c.locale)} adet
+                          {item.qty.toLocaleString(c.locale)} {c.unitQtySuffix}
                         </span>
                       </div>
                     </div>
@@ -1821,13 +1909,13 @@ export default function OdemePage() {
                 <div className="flex justify-between border-t border-gri-200 pt-3">
                   <span className="text-gri-700">{c.subtotal}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(subtotal / 1.2)} {c.currency}
+                    {fmt(vatBreakdown.exVat)} {c.currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gri-700">{c.vatLabel}</span>
                   <span className="font-semibold tabular-nums">
-                    {fmt(subtotal - subtotal / 1.2)} {c.currency}
+                    {fmt(vatBreakdown.vat)} {c.currency}
                   </span>
                 </div>
                 {couponDiscount > 0 && (
@@ -2038,7 +2126,7 @@ export default function OdemePage() {
                   role="alert"
                   className="text-xs text-kirmizi mt-2"
                 >
-                  Eksik: {submitMissing[0]}
+                  {c.missingPrefix} {submitMissing[0]}
                 </p>
               )}
 
