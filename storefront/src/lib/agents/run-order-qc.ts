@@ -28,6 +28,7 @@ import {
   checkMultiDesignConsistency,
   type DesignQCResult,
 } from "@/lib/proof/multi-design-check";
+import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 
 interface OrderItemForQC {
   id: string;
@@ -200,6 +201,19 @@ async function runOrderDesignQCInner(
   }
 
   const items = itemsData as unknown as OrderItemForQC[];
+
+  const slotsComplete = await orderDesignUploadSlotsComplete(admin, orderId);
+  if (!slotsComplete) {
+    console.warn(
+      `[run-order-qc] Order ${orderId}: design upload slots incomplete — skipping QC`
+    );
+    return {
+      orderId,
+      ranCount: 0,
+      verdictCounts: { iyi: 0, normal: 0, kotu: 0, error: 0 },
+      aggregateVerdict: "needs_review",
+    };
+  }
 
   // 2) Tasarım dosyaları — order_id veya order_item_id ile
   const { data: filesData, error: filesErr } = await admin

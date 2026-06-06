@@ -208,8 +208,8 @@ export const en: TranslationDict = {
     vatIncluded: "VAT included",
     proceedToCheckout: "Proceed to checkout",
     continueShopping: "Continue shopping",
-    freeShippingHint: (remaining) =>
-      `💡 Free shipping over 1,500 ₺ — ${remaining} ₺ to go.`,
+    freeShippingHint: (threshold, remaining) =>
+      `💡 Free shipping over ${threshold} ₺ — ${remaining} ₺ to go.`,
     summary: "Order summary",
     // Sefa 18 May v60: Added-to-cart popup
     successTitle: "Added to cart 🎉",

@@ -4,6 +4,10 @@
 
 import { calculatePrice } from "./pricing-calc";
 import type { ProfileConfig } from "./pricing-config-types";
+import {
+  FALLBACK_ETIKET_RULO_CONFIG,
+  FALLBACK_ETIKET_TABAKA_CONFIG,
+} from "./pricing-config-types";
 import { calcTabakaSheets, calculateTabakaSheetGeometry } from "./pricing-tabaka-geo";
 import {
   FALLBACK_PRICEBOOK_SNAPSHOT,
@@ -24,6 +28,7 @@ import type {
   CustomerEtiketQuoteResult,
   CustomerEtiketQuoteInput,
 } from "./etiket-customer-pricing";
+import { quoteCustomerEtiket } from "./etiket-customer-pricing";
 
 export function quoteStickerFromConfig(
   config: ProfileConfig,
@@ -285,5 +290,43 @@ export function quoteEtiketFromConfig(
         },
     effectiveRate,
     multipliers,
+  };
+}
+
+/** Admin bridge fail → fallback config → legacy engine (rulo) sırası. */
+export function quoteEtiketWithFallback(
+  pricingConfig: ProfileConfig,
+  input: CustomerEtiketQuoteInput,
+  options?: EtiketBridgeOptions
+): CustomerEtiketQuoteResult {
+  const formFactor = options?.formFactor ?? "rulo";
+  const bridgeOpts: EtiketBridgeOptions = {
+    formFactor,
+    pricebookSnapshot:
+      formFactor === "rulo" ? options?.pricebookSnapshot : undefined,
+  };
+
+  const primary = quoteEtiketFromConfig(pricingConfig, input, bridgeOpts);
+  if (primary?.ok) return primary;
+
+  const fallbackConfig =
+    formFactor === "tabaka"
+      ? FALLBACK_ETIKET_TABAKA_CONFIG
+      : FALLBACK_ETIKET_RULO_CONFIG;
+
+  if (pricingConfig !== fallbackConfig) {
+    const fb = quoteEtiketFromConfig(fallbackConfig, input, bridgeOpts);
+    if (fb?.ok) return fb;
+  }
+
+  if (formFactor === "rulo") {
+    return quoteCustomerEtiket(input);
+  }
+
+  return {
+    ok: false,
+    reason:
+      primary?.reason ??
+      "Tabaka fiyatı hesaplanamadı — boyutu kontrol edin.",
   };
 }

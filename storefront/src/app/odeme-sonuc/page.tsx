@@ -14,7 +14,11 @@ import { Button, Card } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { fetchCustomerOrder, type CustomerOrder } from "@/lib/customer-order";
 import { isPreProductionDeliveryStatus } from "@/lib/order";
-import { ensureAuthBindings } from "@/lib/customer-cart";
+import {
+  ensureAuthBindings,
+  clearCustomerCart,
+  refreshCustomerCart,
+} from "@/lib/customer-cart";
 import { track } from "@/lib/analytics/posthog-events";
 import { mapApiError } from "@/lib/api-error-messages";
 import { ga4Purchase } from "@/lib/analytics/ga4-events";
@@ -200,6 +204,11 @@ function OdemeSonucInner() {
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const purchaseTracked = useRef(false);
   const failTracked = useRef(false);
+
+  useEffect(() => {
+    if (status !== "success" || !hasValidOrderId) return;
+    void clearCustomerCart().then(() => refreshCustomerCart());
+  }, [status, hasValidOrderId]);
 
   useEffect(() => {
     if (status !== "fail" || failTracked.current) return;

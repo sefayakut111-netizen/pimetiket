@@ -228,7 +228,7 @@ export type TranslationDict = {
     vatIncluded: string;
     proceedToCheckout: string;
     continueShopping: string;
-    freeShippingHint: (remaining: string) => string;
+    freeShippingHint: (threshold: string, remaining: string) => string;
     summary: string;
     // Sefa 18 May v60: Sepete eklendi pop-up'ı
     successTitle: string;

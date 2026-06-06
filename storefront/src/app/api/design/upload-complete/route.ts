@@ -22,6 +22,7 @@ import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import { isR2StorageKey } from "@/lib/storage/purge-r2";
 import { deleteFromR2, downloadFromR2 } from "@/lib/storage/r2-client";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 import type {
   Enums,
   Json,
@@ -223,7 +224,10 @@ export async function POST(req: NextRequest) {
         .update({ status: "qc_pending" })
         .eq("id", orderId);
     }
-    scheduleOrderDesignQC(admin, orderId);
+    const slotsComplete = await orderDesignUploadSlotsComplete(admin, orderId);
+    if (slotsComplete) {
+      scheduleOrderDesignQC(admin, orderId);
+    }
   }
 
   return NextResponse.json({

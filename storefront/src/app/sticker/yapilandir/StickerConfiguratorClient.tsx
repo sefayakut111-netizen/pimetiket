@@ -2199,16 +2199,8 @@ function StickerPage() {
                   toast.error(quote.reason ?? "Geçersiz seçim");
                   return;
                 }
-                if (!configQuote?.ok) {
-                  toast.error(
-                    locale === "en"
-                      ? "Price could not be verified — refresh and try again."
-                      : "Fiyat doğrulanamadı — sayfayı yenileyip tekrar dene."
-                  );
-                  return;
-                }
                 const checkoutLine = expectedCartLineFromPerDesignQuote(
-                  configQuote.unitPrice,
+                  quote.unitPrice,
                   tier * designCount,
                   designCount
                 );

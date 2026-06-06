@@ -207,8 +207,8 @@ export const tr: TranslationDict = {
     vatIncluded: "KDV dahil",
     proceedToCheckout: "Ödemeye geç",
     continueShopping: "Alışverişe devam et",
-    freeShippingHint: (remaining) =>
-      `💡 1.500 ₺ üzeri alışverişlerde kargo ücretsiz — ${remaining} ₺ kaldı.`,
+    freeShippingHint: (threshold, remaining) =>
+      `💡 ${threshold} ₺ üzeri alışverişlerde kargo ücretsiz — ${remaining} ₺ kaldı.`,
     summary: "Sipariş özeti",
     // Sefa 18 May v60: Sepete eklendi pop-up'ı
     successTitle: "Sepete eklendi 🎉",

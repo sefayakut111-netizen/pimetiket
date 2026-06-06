@@ -20,7 +20,6 @@ import { useT } from "@/lib/i18n/context";
 import {
   listCustomerCart,
   removeFromCustomerCart,
-  updateCustomerCartQty,
   addToCustomerCart,
   summarizeCustomerCart,
   refreshCustomerCart,
@@ -36,15 +35,12 @@ const MAX_ITEMS = CUSTOMER_CART_LIMIT;
 import { setEditIntent } from "@/lib/cart-edit-intent";
 import { parseConfigChips } from "@/lib/cart-config-filter";
 import { useRouter } from "next/navigation";
-import {
-  STICKER_MIN_QTY,
-  STICKER_QTY_STEP,
-} from "@/lib/sticker-customer-pricing";
-import {
-  ETIKET_MIN_QTY,
-  ETIKET_QTY_STEP,
-} from "@/lib/etiket-customer-pricing";
 import { track } from "@/lib/analytics/posthog-events";
+import {
+  DEFAULT_ETIKET_DELIVERY_DAYS,
+  DEFAULT_STICKER_DELIVERY_DAYS,
+  formatDeliveryDaysLabel,
+} from "@/lib/site-settings-shared";
 
 const EXTRA = {
   tr: {
@@ -77,10 +73,6 @@ const EXTRA = {
     subtotalNoVat: "Ara toplam (KDV hariç)",
     vatLabel: "KDV (%20)",
     estDelivery: "Tahmini teslimat",
-    deliveryDays: {
-      sticker: "3-5 iş günü",
-      etiket: "5-7 iş günü",
-    } as Record<"sticker" | "etiket", string>,
     // Sefa 20 May v68 (test geri bildirim #9): metin onay tarihi vurgusu
     deliveryNote:
       "Tasarım onay tarihiniz baz alınarak güncelleme yapılacaktır.",
@@ -113,10 +105,6 @@ const EXTRA = {
     subtotalNoVat: "Subtotal (VAT excl.)",
     vatLabel: "VAT (20%)",
     estDelivery: "Est. delivery",
-    deliveryDays: {
-      sticker: "3-5 business days",
-      etiket: "5-7 business days",
-    } as Record<"sticker" | "etiket", string>,
     deliveryNote: "Ships within this window if you upload the design on time.",
     shippingFreeFull: (curr: string, threshold: string) =>
       `Free shipping (${curr}/${threshold} TRY)`,
@@ -155,6 +143,12 @@ export default function SepetPage() {
   // Sefa 18 May v68 Migration 053: min/max sipariş tutarı limit
   const [minOrderTotal, setMinOrderTotal] = useState<number>(0);
   const [maxOrderTotal, setMaxOrderTotal] = useState<number>(0);
+  const [stickerDeliveryDays, setStickerDeliveryDays] = useState(
+    DEFAULT_STICKER_DELIVERY_DAYS
+  );
+  const [etiketDeliveryDays, setEtiketDeliveryDays] = useState(
+    DEFAULT_ETIKET_DELIVERY_DAYS
+  );
   // Sefa 16 May denetim #10: Skeleton 300ms eşiği — kısa yüklemelerde
   // skeleton flicker'ı önler. Cart genelde localStorage'dan anında gelir,
   // 300ms öncesi skeleton göstermiyoruz.
@@ -186,6 +180,20 @@ export default function SepetPage() {
         if (json?.settings) {
           setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
           setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
+          setStickerDeliveryDays(
+            Math.max(
+              1,
+              Number(json.settings.sticker_delivery_days) ||
+                DEFAULT_STICKER_DELIVERY_DAYS
+            )
+          );
+          setEtiketDeliveryDays(
+            Math.max(
+              1,
+              Number(json.settings.etiket_delivery_days) ||
+                DEFAULT_ETIKET_DELIVERY_DAYS
+            )
+          );
           setCustomerCartShippingSettings(
             Number(json.settings.shipping_fee_try ?? 49),
             Number(json.settings.free_shipping_threshold ?? 500)
@@ -282,19 +290,6 @@ export default function SepetPage() {
   const aboveMaxOrder = maxOrderTotal > 0 && subtotal > maxOrderTotal;
   const checkoutBlocked = belowMinOrder || aboveMaxOrder;
 
-  const updateQty = (item: CustomerCartItem, delta: number) => {
-    // Sefa 19 May v68 (UX agent P1 #11): step + min konfigüratörle hizalandı.
-    // Eski: sticker 50/50 (konfigüratör 25/25 → tier mismatch + fiyat
-    // yeniden hesabı kırılgan). Yeni: aynı constants kullan.
-    const minQty = item.product === "sticker" ? STICKER_MIN_QTY : ETIKET_MIN_QTY;
-    const step = item.product === "sticker" ? STICKER_QTY_STEP : ETIKET_QTY_STEP;
-    const next = Math.max(minQty, item.qty + delta * step);
-    void updateCustomerCartQty(item.id, next);
-  };
-
-  // Sefa 20 May v68 UX paket C #5: Modal confirm yerine undo snackbar.
-  // Item kaldırılır, toast'ta "Geri al" 5 sn aktif kalır; tıklanırsa
-  // item tekrar eklenir (id ve addedAt yeni, ama aynı config).
   const remove = (item: CustomerCartItem) => {
     void removeFromCustomerCart(item.id);
     toast.undoable(`${item.title} ${x.toastRemoved.toLowerCase()}`, () => {
@@ -544,6 +539,7 @@ export default function SepetPage() {
                     <div className="text-[12.5px] leading-relaxed font-semibold mb-1.5">
                       🚚{" "}
                       {t.cart.freeShippingHint(
+                        fmt(freeShippingThreshold),
                         fmt(freeShippingThreshold - subtotal)
                       )}
                     </div>
@@ -652,8 +648,14 @@ export default function SepetPage() {
                     {x.estDelivery}:{" "}
                     <span className="text-pim-mercan">
                       {cart.some((i) => i.product === "etiket")
-                        ? x.deliveryDays.etiket
-                        : x.deliveryDays.sticker}
+                        ? formatDeliveryDaysLabel(
+                            etiketDeliveryDays,
+                            locale === "en" ? "en" : "tr"
+                          )
+                        : formatDeliveryDaysLabel(
+                            stickerDeliveryDays,
+                            locale === "en" ? "en" : "tr"
+                          )}
                     </span>
                   </div>
                   <div className="text-gri-700 text-[11px] mt-0.5">

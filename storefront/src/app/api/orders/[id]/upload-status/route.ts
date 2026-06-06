@@ -20,6 +20,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/lib/supabase/types";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 import { USABLE_DESIGN_STATUSES } from "@/lib/design-file-status";
 import { orderItemHasDesigns } from "@/lib/order-item-meta";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
@@ -107,7 +108,13 @@ export async function GET(
         orderItems: itemsToPromote,
       });
       if (promoted > 0) {
-        scheduleOrderDesignQC(admin, orderId);
+        const slotsComplete = await orderDesignUploadSlotsComplete(
+          admin,
+          orderId
+        );
+        if (slotsComplete) {
+          scheduleOrderDesignQC(admin, orderId);
+        }
       }
     }
   } catch (promoteErr) {

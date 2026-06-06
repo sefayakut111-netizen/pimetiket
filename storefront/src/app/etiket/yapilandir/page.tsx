@@ -64,7 +64,6 @@ import { useEditorPrefill } from "@/lib/editor/use-editor-prefill";
 import { useT } from "@/lib/i18n/context";
 import { useSanitizeEmptyQueryParam } from "@/lib/use-sanitize-empty-query-param";
 import {
-  quoteCustomerEtiket,
   computeEtiketTierSavings,
   CUSTOMER_ETIKET_TIERS,
   ETIKET_MIN_QTY,
@@ -98,7 +97,7 @@ import {
   FALLBACK_ETIKET_TABAKA_CONFIG,
 } from "@/lib/pricing-config-types";
 import { getActiveMaterials } from "@/lib/pricing-materials";
-import { quoteEtiketFromConfig } from "@/lib/customer-pricing-from-config";
+import { quoteEtiketWithFallback } from "@/lib/customer-pricing-from-config";
 import type { PricebookSnapshot } from "@/lib/pricing-pricebook-types";
 import {
   FALLBACK_PRICEBOOK_SNAPSHOT,
@@ -1155,18 +1154,10 @@ function EtiketPage() {
     customization: primaryCustom,
     customizations: customs,
   };
-  const quote =
-    quoteEtiketFromConfig(pricingConfig, etiketQuoteInput, {
-      formFactor,
-      pricebookSnapshot:
-        formFactor === "rulo" ? pricebookSnapshot : undefined,
-    }) ??
-    (formFactor === "rulo"
-      ? quoteCustomerEtiket(etiketQuoteInput)
-      : {
-          ok: false as const,
-          reason: "Tabaka fiyatı hesaplanamadı — boyutu kontrol edin.",
-        });
+  const quote = quoteEtiketWithFallback(pricingConfig, etiketQuoteInput, {
+    formFactor,
+    pricebookSnapshot: formFactor === "rulo" ? pricebookSnapshot : undefined,
+  });
 
   const rawTotal = quote.ok ? quote.total : 0;
   const rawUnit = quote.ok ? quote.unitPrice : 0;
