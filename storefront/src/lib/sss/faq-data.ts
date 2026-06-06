@@ -108,14 +108,14 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Sipariş onayı, üyelik e-postanıza anında gönderilir; ayrıca panel üzerinden de görüntülenebilir.",
       detail:
-        "Sipariş tamamlandığı anda sipariş özetinizi ve tahmini teslim tarihinizi içeren onay e-postası info@pimetiket.com adresinden iletilir. Olası teslimat aksaklıklarını önlemek için e-postanızın spam klasörünü de kontrol etmenizi öneririz. Sipariş geçmişiniz ve aşama bilgileri /panelim/siparislerim sayfasında gerçek zamanlı olarak görüntülenir. Üretime giriş ve kargo teslim bildirimleri de aynı kanaldan gönderilir.",
+        "Sipariş tamamlandığı anda sipariş özetinizi ve tahmini teslim tarihinizi içeren onay e-postası info@pimetiket.com adresinden iletilir. Olası teslimat aksaklıklarını önlemek için e-postanızın spam klasörünü de kontrol etmenizi öneririz. Sipariş geçmişiniz ve aşama bilgileri /siparislerim sayfasında gerçek zamanlı olarak görüntülenir. Üretime giriş ve kargo teslim bildirimleri de aynı kanaldan gönderilir.",
     },
     {
       q: "Verdiğim siparişi iptal edebilir miyim?",
       summary:
-        "Siparişiniz üretime girmediği sürece panel üzerinden iptal edilebilir; üretime girdikten sonra iptal mümkün değildir.",
+        "Siparişiniz üretime girmediği sürece sipariş detayından iptal edilebilir; üretime girdikten sonra iptal mümkün değildir.",
       detail:
-        "Sipariş onayını takip eden 2 saat içinde, üretim hazırlığı başlamadan önce /panelim/siparislerim sayfasından iptal işlemi gerçekleştirilebilir. Bu süre sonunda sipariş üretim hattına aktarıldığı için, TKHK madde 15/b kapsamında kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır. İptal süreciyle ilgili sorularınız için müşteri hizmetlerimiz size yardımcı olur.",
+        "Sipariş onayını takip eden 2 saat içinde, üretim hazırlığı başlamadan önce /siparislerim sayfasından ilgili siparişe girin ve Siparişi iptal et butonunu kullanın. Bu süre sonunda sipariş üretim hattına aktarıldığı için, TKHK madde 15/b kapsamında kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır. İptal süreciyle ilgili sorularınız için müşteri hizmetlerimiz size yardımcı olur.",
     },
   ],
   tasarim: [
@@ -138,7 +138,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Hayır, tasarım dosyanızı sipariş onaylandıktan sonra panel üzerinden de yükleyebilirsiniz.",
       detail:
-        "Konfigüratördeki tasarım yükleme alanı opsiyoneldir; bu adım atlandığı takdirde sipariş onaylanır ve dosyayı /panelim/siparislerim → Sipariş Detay menüsünden sonradan ekleyebilirsiniz. Ancak üretim akışı yalnızca tasarım dosyası onaylandıktan sonra başlatılır; teslim süresinin gecikmemesi için dosyanın en kısa sürede yüklenmesi önerilir. Sipariş ön denetimden başarıyla geçen dosyalar otomatik olarak üretim hattına aktarılır.",
+        "Konfigüratördeki tasarım yükleme alanı opsiyoneldir; bu adım atlandığı takdirde sipariş onaylanır ve dosyayı /siparislerim sayfasından ilgili siparişe girerek sipariş detayındaki tasarım yükleme alanından veya /siparis/[sipariş-no]/tasarim-yukle sayfasından sonradan ekleyebilirsiniz. Ancak üretim akışı yalnızca tasarım dosyası onaylandıktan sonra başlatılır; teslim süresinin gecikmemesi için dosyanın en kısa sürede yüklenmesi önerilir. Sipariş ön denetimden başarıyla geçen dosyalar otomatik olarak üretim hattına aktarılır.",
     },
     {
       q: "Tasarım dosyasının çözünürlüğü kaç olmalıdır?",
@@ -310,7 +310,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Yumuşatılmış köşe; dikdörtgen sticker'ların köşelerinin yuvarlatılmış halidir ve pill veya bumper sticker görünümü oluşturur.",
       detail:
-        "Standart kare ve dikdörtgen sticker'lar varsayılan olarak keskin köşeli (radius 0) üretilir. Yumuşatılmış köşe seçeneği işaretlendiğinde 16-36 piksel arası bir köşe yumuşatma uygulanır; bu da otomobil bumper sticker'ları, pill formu ve kart benzeri görünümler için ideal bir estetik sağlar. Özel oran (örneğin 100×40 mm) ile birlikte yumuşatılmış köşe seçildiğinde klasik bumper sticker görünümü elde edilir; konfigüratör bu seçim için varsayılan bumper boyutunu otomatik olarak uygular.",
+        "Standart kare ve dikdörtgen sticker'lar varsayılan olarak keskin köşeli (radius 0) üretilir. Yumuşatılmış köşe seçeneği işaretlendiğinde 16-36 piksel arası bir köşe yumuşatma uygulanır; bu da otomobil bumper sticker'ları, pill formu ve kart benzeri görünümler için ideal bir estetik sağlar. Özel form (örneğin 100×40 mm) ile birlikte yumuşatılmış köşe seçildiğinde klasik bumper sticker görünümü elde edilir; konfigüratör bu seçim için varsayılan bumper boyutunu otomatik olarak uygular.",
     },
   ],
   boyut: [
@@ -343,11 +343,11 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
         "Hesaplama; SRA3 (320×450 mm) tabaka üzerinde etiketler arası 2 mm boşluk dikkate alınarak gerçekleştirilir. Sistem algoritması en yüksek verimliliği sağlayan yerleşimi (yatay veya çevrilmiş yön) otomatik olarak seçer. Örnek hesaplamalar: 30×50 mm etiket ≈ 84 adet, 60×80 mm etiket ≈ 30 adet, 100×150 mm etiket ≈ 9 adet. Canlı önizleme ekranındaki tabaka diyagramında sütun × satır olarak yerleşim ızgara biçiminde gösterilir; bu sayede müşteri her tabakadan kaç adet etiket alacağını net olarak görüntüleyebilir.",
     },
     {
-      q: "Özel oran (custom ratio) sticker seçeneği nedir?",
+      q: "Özel form sticker seçeneği nedir?",
       summary:
-        "Özel oran sticker seçeneği; standart kare veya yuvarlak boyutlar yerine müşterinin belirleyeceği en-boy oranıyla üretim imkanı sunar.",
+        "Özel form sticker seçeneği; standart kare veya yuvarlak boyutlar yerine müşterinin belirleyeceği en-boy oranıyla üretim imkanı sunar.",
       detail:
-        "Standart 75×75 mm kare sticker dışında, özel oran seçeneği ile 100×40 mm bumper sticker veya 25×255 mm çubuk sticker gibi farklı geometrilerde üretim yapılabilir. Konfigüratörde 'Özel oran' seçildiğinde sistem otomatik olarak bumper boyutunu (100×40 mm) varsayılan değer olarak uygular; bu değer boyut adımında müşteri tarafından düzenlenebilir. Köşe seçimi ile keskin köşeli veya yumuşatılmış köşeli (bumper sticker görünümü) arasında tercih yapılabilir.",
+        "Standart 75×75 mm kare sticker dışında, özel form seçeneği ile 100×40 mm bumper sticker veya 25×255 mm çubuk sticker gibi farklı geometrilerde üretim yapılabilir. Konfigüratörde 'Özel form' seçildiğinde sistem otomatik olarak bumper boyutunu (100×40 mm) varsayılan değer olarak uygular; bu değer boyut adımında müşteri tarafından düzenlenebilir. Köşe seçimi ile keskin köşeli veya yumuşatılmış köşeli (bumper sticker görünümü) arasında tercih yapılabilir.",
     },
   ],
   fiyat: [
@@ -433,16 +433,16 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Sipariş üretim aşamasını sistem üzerinden takip edebilir miyim?",
       summary:
-        "Evet, siparişlerinizin tüm üretim ve kargo aşamalarını /panelim/siparislerim sayfasından gerçek zamanlı takip edebilirsiniz.",
+        "Evet, siparişlerinizin tüm üretim ve kargo aşamalarını /siparislerim sayfasından gerçek zamanlı takip edebilirsiniz.",
       detail:
         "Sipariş takip akışı şu aşamaları içerir: Sipariş alındı → Tasarım onaylandı → Üretime girdi → Üretim tamamlandı → Kalite kontrolde → Kargoya verildi → Teslim edildi. Her aşama değişiminde sistem tarafından otomatik olarak e-posta bildirimi gönderilir. Sipariş geçmişiniz ve fatura kayıtlarınız da aynı panelden erişilebilir durumdadır.",
     },
     {
       q: "Sipariş verdikten sonra teslimat adresini değiştirebilir miyim?",
       summary:
-        "Sipariş kargoya verilmeden önce panelinizden adresi güncelleyebilirsiniz; kargoya verildikten sonra değişiklik mümkün değildir.",
+        "Panelde doğrudan adres düzenleme yok; kargoya verilmeden önce destek veya iletişim üzerinden talep edebilirsiniz.",
       detail:
-        "Üretim sürecindeki siparişlerin teslimat adresi /panelim/siparislerim → Sipariş Detay → Adres Düzenle yolu ile güncellenebilir. Sipariş kargoya teslim edildikten sonra kargo firmasının sistemi üzerinden yönlendirme talebinde bulunabilirsiniz; bu işlem kargo firmasının politikası gereği ek ücretlendirmeye tabi olabilir. Sipariş esnasında adres bilgilerinizi dikkatli girmenizi öneririz.",
+        "Sipariş detayında teslimat adresi salt okunur gösterilir; panelde adres düzenleme özelliği bulunmaz. Adres değişikliği için /destek üzerinden destek talebi açın veya /iletisim sayfasından bize ulaşın; üretim aşamasına göre güncelleyelim. Sipariş kargoya verildikten sonra değişiklik mümkün değildir. Sipariş esnasında adres bilgilerinizi dikkatli girmenizi öneririz.",
     },
   ],
   iade: [
@@ -479,7 +479,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Sipariş üretime alınmadığı sürece dosyanızı panelden silip yeniden yükleyebilirsiniz.",
       detail:
-        "/panelim/siparislerim → Sipariş Detay → Tasarım Dosyaları menüsünden eski dosyayı silip yeni dosyayı yükleyebilirsiniz. Bu işlem yalnızca sipariş onayını takip eden 2 saatlik üretim hazırlık penceresinde mümkündür. Sipariş üretim hattına aktarıldıktan sonra dosya değişikliği kabul edilmez; bu durumda kişiye özel üretim ilkesi gereği yeni bir sipariş açılması gerekir.",
+        "/siparislerim sayfasından ilgili siparişe girin; sipariş detayındaki tasarım yükleme alanından veya /siparis/[sipariş-no]/tasarim-yukle sayfasından yeni dosyayı yükleyebilirsiniz. Bu işlem yalnızca sipariş onayını takip eden 2 saatlik üretim hazırlık penceresinde mümkündür. Sipariş üretim hattına aktarıldıktan sonra dosya değişikliği kabul edilmez; bu durumda kişiye özel üretim ilkesi gereği yeni bir sipariş açılması gerekir.",
     },
   ],
   onizleme: [

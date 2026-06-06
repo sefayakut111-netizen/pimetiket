@@ -12,6 +12,7 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
+import { ETIKET_ENABLED, ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
 
 export default function NotFoundPage() {
   const { t, locale } = useT();
@@ -47,9 +48,18 @@ export default function NotFoundPage() {
           <Button variant="primary" size="lg" href="/">
             <Icon.Home size={16} /> {t.nav.home}
           </Button>
-          <Button variant="secondary" size="lg" href="/etiket">
-            <Icon.Roll size={16} /> {t.nav.etiket}
-          </Button>
+          {ETIKET_ENABLED ? (
+            <Button variant="secondary" size="lg" href="/etiket">
+              <Icon.Roll size={16} /> {t.nav.etiket}
+            </Button>
+          ) : (
+            <Button variant="secondary" size="lg" href="/etiket">
+              <Icon.Roll size={16} /> {t.nav.etiket}{" "}
+              <span className="text-[11px] font-semibold text-gri-500">
+                ({t.nav.comingSoon} · {ETIKET_LAUNCH_LABEL})
+              </span>
+            </Button>
+          )}
           <Button variant="secondary" size="lg" href="/sticker">
             <Icon.Sticker size={16} /> {t.nav.sticker}
           </Button>
