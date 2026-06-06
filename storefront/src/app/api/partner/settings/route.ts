@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import type { Database } from "@/lib/supabase/types";
+import { startPartnerEmailVerification } from "@/lib/fason/partner-email-verify";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -92,7 +93,7 @@ export async function GET() {
 
   const { data: contactRow } = await admin
     .from("partner_contacts")
-    .select("id, name, email, phone_e164, role")
+    .select("id, name, email, phone_e164, role, pending_email")
     .eq("partner_id", partnerId)
     .eq("user_id", ctx.userId)
     .maybeSingle();
@@ -103,12 +104,13 @@ export async function GET() {
     email: string;
     phone_e164: string;
     role: string;
+    pending_email: string | null;
   };
   let contact = contactRow as ContactRow | null;
   if (!contact) {
     const { data: ownerRow } = await admin
       .from("partner_contacts")
-      .select("id, name, email, phone_e164, role")
+      .select("id, name, email, phone_e164, role, pending_email")
       .eq("partner_id", partnerId)
       .eq("role", "owner")
       .maybeSingle();
@@ -148,6 +150,7 @@ export async function GET() {
           name: contact.name,
           email: contact.email,
           phone: phoneFromE164(contact.phone_e164),
+          pendingEmail: contact.pending_email,
         }
       : null,
     capabilities: { productTypes, materials },
@@ -201,20 +204,60 @@ export async function PATCH(req: Request) {
   if (body.contact) {
     const { data: contactRow } = await admin
       .from("partner_contacts")
-      .select("id")
+      .select("id, email")
       .eq("partner_id", partnerId)
       .eq("user_id", ctx.userId)
       .maybeSingle();
 
-    const contactId = (contactRow as { id: string } | null)?.id;
-    if (contactId) {
+    let contact = contactRow as { id: string; email: string } | null;
+    if (!contact) {
+      const { data: ownerRow } = await admin
+        .from("partner_contacts")
+        .select("id, email")
+        .eq("partner_id", partnerId)
+        .eq("role", "owner")
+        .maybeSingle();
+      contact = ownerRow as { id: string; email: string } | null;
+    }
+
+    if (contact) {
       const upd: Database["public"]["Tables"]["partner_contacts"]["Update"] = {};
       if (body.contact.name) upd.name = body.contact.name.trim();
-      if (body.contact.email) upd.email = body.contact.email.trim().toLowerCase();
       if (body.contact.phone) upd.phone_e164 = normalizePhone(body.contact.phone);
-      if (Object.keys(upd).length > 0) {
-        await admin.from("partner_contacts").update(upd).eq("id", contactId);
+
+      let emailPendingVerification = false;
+      if (body.contact.email) {
+        const nextEmail = body.contact.email.trim().toLowerCase();
+        if (nextEmail !== contact.email.trim().toLowerCase()) {
+          const verify = await startPartnerEmailVerification(
+            admin,
+            contact.id,
+            nextEmail
+          );
+          if (!verify.ok) {
+            return NextResponse.json(
+              { error: verify.error },
+              { status: verify.status }
+            );
+          }
+          emailPendingVerification = true;
+        }
       }
+
+      if (Object.keys(upd).length > 0) {
+        await admin.from("partner_contacts").update(upd).eq("id", contact.id);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        ...(emailPendingVerification
+          ? {
+              emailPendingVerification: true,
+              message:
+                "Yeni e-posta adresine doğrulama kodu gönderildi. Kodu girmeden değişiklik geçerli olmaz.",
+            }
+          : {}),
+      });
     }
   }
 

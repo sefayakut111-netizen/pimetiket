@@ -201,5 +201,8 @@ export async function POST(req: Request) {
     orderStatusBefore: row.order_status_before,
     orderStatusAfter: row.order_status_after,
     mailQueued: true,
+    ...(capabilityGuard.ok && capabilityGuard.warning
+      ? { warning: capabilityGuard.warning }
+      : {}),
   });
 }

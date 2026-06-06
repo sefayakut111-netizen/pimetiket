@@ -21,6 +21,7 @@ interface SettingsPayload {
     name: string;
     email: string;
     phone: string;
+    pendingEmail?: string | null;
   } | null;
   capabilities: {
     productTypes: string[];
@@ -41,6 +42,9 @@ export default function PartnerSettingsPage() {
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [emailOnAssign, setEmailOnAssign] = useState(true);
   const [smsOnUrgent, setSmsOnUrgent] = useState(false);
 
@@ -54,6 +58,7 @@ export default function PartnerSettingsPage() {
         setContactName(j.contact.name);
         setContactPhone(j.contact.phone);
         setContactEmail(j.contact.email);
+        setPendingEmail(j.contact.pendingEmail ?? null);
       }
       setEmailOnAssign(j.notifications.emailOnAssign);
       setSmsOnUrgent(j.notifications.smsOnUrgent);
@@ -67,6 +72,33 @@ export default function PartnerSettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const verifyEmail = async () => {
+    if (!verifyCode.trim()) {
+      toast.error("6 haneli doğrulama kodunu girin");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/partner/settings/verify-email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: verifyCode.trim() }),
+      });
+      const json = (await res.json()) as { error?: string; email?: string };
+      if (!res.ok) {
+        toast.error(json.error ?? "Doğrulama başarısız");
+        return;
+      }
+      toast.success("E-posta adresiniz doğrulandı ve güncellendi");
+      setVerifyCode("");
+      void load();
+    } catch {
+      toast.error("Doğrulama başarısız");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -86,8 +118,23 @@ export default function PartnerSettingsPage() {
           },
         }),
       });
-      if (!res.ok) throw new Error("save failed");
-      toast.success("Ayarlar kaydedildi");
+      const json = (await res.json()) as {
+        emailPendingVerification?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.error ?? "Kayıt başarısız");
+        return;
+      }
+      if (json.emailPendingVerification) {
+        toast.success(
+          json.message ??
+            "Doğrulama kodu yeni e-posta adresine gönderildi."
+        );
+      } else {
+        toast.success("Ayarlar kaydedildi");
+      }
       void load();
     } catch {
       toast.error("Kayıt başarısız");
@@ -175,7 +222,35 @@ export default function PartnerSettingsPage() {
               onChange={(e) => setContactEmail(e.target.value)}
               className="w-full rounded-lg border border-gri-200 px-3 py-2 text-[13px]"
             />
+            {pendingEmail && (
+              <p className="mt-2 text-[12px] text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                <strong>{pendingEmail}</strong> adresine doğrulama kodu gönderildi.
+                Kodu girmeden aktif e-posta değişmez.
+              </p>
+            )}
           </Field>
+          {pendingEmail && (
+            <Field label="E-posta doğrulama kodu">
+              <div className="flex gap-2">
+                <input
+                  value={verifyCode}
+                  onChange={(e) =>
+                    setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  inputMode="numeric"
+                  placeholder="6 haneli kod"
+                  className="flex-1 rounded-lg border border-gri-200 px-3 py-2 text-[13px] tracking-widest"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => void verifyEmail()}
+                  disabled={verifying}
+                >
+                  {verifying ? "…" : "Doğrula"}
+                </Button>
+              </div>
+            </Field>
+          )}
         </div>
       </section>
 

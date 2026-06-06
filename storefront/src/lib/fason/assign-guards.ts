@@ -11,7 +11,7 @@ import { ACTIVE_ASSIGNMENT_STATUS_LIST } from "./active-assignment-statuses";
 type AdminClient = SupabaseClient<Database>;
 
 export type AssignGuardResult =
-  | { ok: true }
+  | { ok: true; warning?: string }
   | { ok: false; status: number; error: string };
 
 export async function fetchActiveOrderCountByPartner(
@@ -99,18 +99,26 @@ export async function assertAssignCapabilityGuard(
 
   const first = items?.[0];
   if (!first) {
-    console.warn(
-      `[fason/assign] capability guard skipped: no items for order ${orderId}`
+    console.error(
+      `[fason/assign] capability guard blocked: no items for order ${orderId}`
     );
-    return { ok: true };
+    return {
+      ok: false,
+      status: 400,
+      error: "Sipariş kalemi yok — fason ataması yapılamaz.",
+    };
   }
 
   const product = String(first.product ?? "");
   if (product !== "etiket" && product !== "sticker") {
-    console.warn(
-      `[fason/assign] capability guard skipped: unknown product "${product}" order ${orderId}`
+    console.error(
+      `[fason/assign] capability guard blocked: unknown product "${product}" order ${orderId}`
     );
-    return { ok: true };
+    return {
+      ok: false,
+      status: 400,
+      error: `Bilinmeyen ürün tipi (${product}) — fason ataması yapılamaz.`,
+    };
   }
 
   const meta = (first.meta ?? {}) as Record<string, unknown>;
@@ -150,10 +158,12 @@ export async function assertAssignCapabilityGuard(
     };
   }
 
-  if (!match.materialOk) {
+  if (!match.materialOk && material) {
+    const warning = `Partner malzeme (${material}) için onaylı değil — atama yine de yapıldı.`;
     console.warn(
-      `[fason/assign] malzeme onaysız (soft): partner ${fasonPartnerId} order ${orderId} material ${material ?? "—"} — product_type onaylı, atamaya izin verildi.`
+      `[fason/assign] malzeme onaysız: partner ${fasonPartnerId} order ${orderId} material ${material}`
     );
+    return { ok: true, warning };
   }
 
   return { ok: true };

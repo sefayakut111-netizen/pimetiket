@@ -74,6 +74,24 @@ export async function resolvePartnerContext(): Promise<PartnerAuthContext | null
         .maybeSingle();
       const partner = partnerRow as { id: string; name: string } | null;
       if (partner) {
+        try {
+          await admin.from("audit_log").insert({
+            actor_id: user.id,
+            actor_email: user.email ?? null,
+            actor_role: role === "admin" ? "admin" : "staff",
+            action: "settings.update",
+            target_type: "fason_partner",
+            target_id: partner.id,
+            summary: `Legacy partner preview cookie read: ${partner.name}`,
+            detail: {
+              legacy_preview_cookie: true,
+              partner_id: partner.id,
+              partner_name: partner.name,
+            },
+          });
+        } catch {
+          // audit opsiyonel — preview akışını bloklama
+        }
         return {
           userId: user.id,
           partnerId: partner.id,

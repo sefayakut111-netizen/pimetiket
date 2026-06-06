@@ -91,19 +91,40 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
-  // 1) partner_contacts'ta email var mı? (case-insensitive)
-  const { data: contactRow } = await admin
+  // 1) partner_contacts'ta email var mı? (case-insensitive, unique index Mig 171)
+  const { data: contactRows, error: contactErr } = await admin
     .from("partner_contacts")
     .select("id, partner_id, name, user_id")
-    .ilike("email", email)
-    .maybeSingle();
+    .ilike("email", email);
+  if (contactErr) {
+    console.error("[partner/otp-request] contact lookup error:", contactErr);
+    return NextResponse.json(
+      { error: "contact_lookup_failed" },
+      { status: 500 }
+    );
+  }
   type ContactRow = {
     id: string;
     partner_id: string;
     name: string;
     user_id: string | null;
   };
-  const contact = contactRow as ContactRow | null;
+  const contacts = (contactRows as ContactRow[] | null) ?? [];
+  if (contacts.length > 1) {
+    console.error("[partner/otp-request] duplicate partner emails", {
+      email,
+      count: contacts.length,
+    });
+    return NextResponse.json(
+      {
+        error: "duplicate_partner_email",
+        detail:
+          "Bu e-posta birden fazla partner kaydına bağlı. Admin ile iletişime geçin.",
+      },
+      { status: 409 }
+    );
+  }
+  const contact = contacts[0] ?? null;
 
   if (!contact) {
     // Info leak guard: aynı generic mesajı dön (timing attack için de delay yok)

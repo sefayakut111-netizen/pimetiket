@@ -109,11 +109,36 @@ export async function POST(req: Request) {
 
   // 3) user_id yoksa auth.users oluştur + link
   let userId = primary.user_id;
+  let priorRole: string | null = null;
   if (!userId) {
     // Sefa 23 May v68 (P1.6): listUsers paging fix — RPC ile email lookup
     const existingUserId = await findAuthUserIdByEmail(admin, email);
 
     if (existingUserId) {
+      const { data: existingProfile } = await admin
+        .from("profiles")
+        .select("role")
+        .eq("id", existingUserId)
+        .maybeSingle();
+      priorRole = (existingProfile as { role?: string } | null)?.role ?? null;
+
+      if (priorRole === "customer") {
+        return NextResponse.json(
+          {
+            error: "role_conflict",
+            detail:
+              "Bu email müşteri hesabıyla kayıtlı — partner impersonation yapılamaz.",
+          },
+          { status: 409 }
+        );
+      }
+      if (priorRole === "admin" || priorRole === "staff") {
+        return NextResponse.json(
+          { error: "role_conflict_privileged" },
+          { status: 409 }
+        );
+      }
+
       userId = existingUserId;
     } else {
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -138,14 +163,38 @@ export async function POST(req: Request) {
       .from("partner_contacts")
       .update({ user_id: userId })
       .eq("id", primary.id);
+  } else if (userId) {
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+    priorRole = (existingProfile as { role?: string } | null)?.role ?? null;
+
+    if (priorRole === "customer") {
+      return NextResponse.json(
+        {
+          error: "role_conflict",
+          detail:
+            "Bu email müşteri hesabıyla kayıtlı — partner impersonation yapılamaz.",
+        },
+        { status: 409 }
+      );
+    }
+    if (priorRole === "admin" || priorRole === "staff") {
+      return NextResponse.json(
+        { error: "role_conflict_privileged" },
+        { status: 409 }
+      );
+    }
   }
 
-  // 4) profiles.role = 'partner' upsert
-  await admin
-    .from("profiles")
-    .upsert({ id: userId, role: "partner" }, {
-      onConflict: "id",
-    });
+  // 4) profiles.role = 'partner' ensure (orphan veya zaten partner)
+  if (priorRole !== "partner") {
+    await admin
+      .from("profiles")
+      .upsert({ id: userId, role: "partner" }, { onConflict: "id" });
+  }
 
   // 5) Magic-link üret
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
@@ -180,6 +229,8 @@ export async function POST(req: Request) {
         partner_name: partner.name,
         contact_email: email,
         contact_role: primary.role,
+        impersonated_user_id: userId,
+        prior_role: priorRole,
       },
     },
   ]);
@@ -193,7 +244,9 @@ export async function POST(req: Request) {
     url: linkData.properties.action_link,
     partner: { id: partner.id, name: partner.name },
     contact: { email, name: primary.name, role: primary.role },
+    incognitoRequired: true,
     warning:
-      "Magic-link kullanıldığında ANA tarayıcı session'ı geçici olarak partner'a değişebilir. Incognito/yeni pencerede açmanız önerilir.",
+      "ZORUNLU: Magic-link'i gizli/incognito pencerede açın. Aynı tarayıcıda açarsanız admin oturumunuz partner oturumuna dönüşür; işlem bitince /giris üzerinden admin hesabınızla tekrar giriş yapın.",
+    priorRole,
   });
 }

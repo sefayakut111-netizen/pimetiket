@@ -2708,6 +2708,9 @@ export type Database = {
           last_login_at: string | null
           name: string
           partner_id: string
+          pending_email: string | null
+          pending_email_expires_at: string | null
+          pending_email_otp_hash: string | null
           phone_e164: string
           role: string
           title: string | null
@@ -2722,6 +2725,9 @@ export type Database = {
           last_login_at?: string | null
           name: string
           partner_id: string
+          pending_email?: string | null
+          pending_email_expires_at?: string | null
+          pending_email_otp_hash?: string | null
           phone_e164: string
           role: string
           title?: string | null
@@ -2736,6 +2742,9 @@ export type Database = {
           last_login_at?: string | null
           name?: string
           partner_id?: string
+          pending_email?: string | null
+          pending_email_expires_at?: string | null
+          pending_email_otp_hash?: string | null
           phone_e164?: string
           role?: string
           title?: string | null

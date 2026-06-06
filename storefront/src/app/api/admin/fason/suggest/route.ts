@@ -87,12 +87,19 @@ export async function GET(req: Request) {
   const material = (materialParam as MaterialType | null) ?? null;
   const amount = amountParam ? Number(amountParam) : 0;
 
+  const VALID_MATERIALS = new Set<MaterialType>([
+    "paper",
+    "transparent",
+    "metallic",
+    "holographic",
+  ]);
+  const materialFilter =
+    material && VALID_MATERIALS.has(material) ? material : null;
+
   const admin = createAdminClient();
-  // Sefa kararı (4 Haz): suggest yalnız ürün tipine göre filtreler; malzeme soft.
-  // p_material=null → fn_find_best_partner material filtresini atlar (mig 117).
   const { data, error } = await admin.rpc("fn_find_best_partner", {
     p_product_type: productType,
-    p_material: null as unknown as string,
+    p_material: materialFilter,
     p_order_amount: Number.isFinite(amount) ? amount : 0,
   });
 
@@ -121,7 +128,9 @@ export async function GET(req: Request) {
       fason_name: r.partner_name,
       cached_score: r.cached_score,
       active_count: activeCounts.get(r.partner_id) ?? 0,
-      reason: `${productType} ürün grubu onaylı`,
+      reason: materialFilter
+        ? `${productType} + ${materialFilter} onaylı`
+        : `${productType} ürün grubu onaylı`,
     })),
     productType,
     material,
