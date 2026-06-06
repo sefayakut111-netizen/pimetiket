@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
 type DesignFileRow = {
   storage_path: string;
@@ -56,17 +57,12 @@ export async function resolveOrderDesignFile(
       if (!partnerId) {
         return { ok: false, status: 403, error: "Forbidden" };
       }
-      const { data: asgRow } = await admin
-        .from("order_assignments")
-        .select("fason_partner_id")
-        .eq("order_id", canonicalOrderId)
-        .order("assigned_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (
-        (asgRow as { fason_partner_id: string } | null)?.fason_partner_id !==
+      const asg = await assertActivePartnerAssignment(
+        admin,
+        canonicalOrderId,
         partnerId
-      ) {
+      );
+      if (!asg.ok) {
         return { ok: false, status: 403, error: "not_your_order" };
       }
     } else {

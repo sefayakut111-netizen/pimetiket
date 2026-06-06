@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { redactOrderAddressForPartner } from "@/lib/fason/redact-order-address";
 
 export const dynamic = "force-dynamic";
 
@@ -76,9 +77,21 @@ export async function GET(
     .eq("id", validation.fason_partner_id)
     .maybeSingle();
 
+  const orderRow = order as {
+    id: string;
+    created_at: string;
+    address: Record<string, unknown> | null;
+  } | null;
+
   return NextResponse.json({
     assignment,
-    order,
+    order: orderRow
+      ? {
+          id: orderRow.id,
+          created_at: orderRow.created_at,
+          address: redactOrderAddressForPartner(orderRow.address),
+        }
+      : null,
     items: items ?? [],
     fasonName: (fason as { name: string } | null)?.name ?? null,
     downloadUrl: `/api/fason/download/${token}`,

@@ -12,6 +12,7 @@ import {
   VALID_FASON_ACTIONS,
   type FasonAction,
 } from "@/lib/fason/apply-assignment-action";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
 export const runtime = "nodejs";
 
@@ -75,26 +76,16 @@ export async function POST(
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
 
-  const { data: asgRow } = await admin
-    .from("order_assignments")
-    .select("id, fason_partner_id, status")
-    .eq("order_id", order.id)
-    .in("status", [
-      "assigned",
-      "sent",
-      "acknowledged",
-      "in_production",
-      "ready",
-    ])
-    .order("assigned_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  type AsgRow = { id: string; fason_partner_id: string; status: string };
-  const assignment = asgRow as AsgRow | null;
-  if (!assignment || assignment.fason_partner_id !== partnerId) {
+  const asg = await assertActivePartnerAssignment(
+    admin,
+    order.id,
+    partnerId,
+    "id, fason_partner_id, status"
+  );
+  if (!asg.ok) {
     return NextResponse.json({ error: "not_your_order" }, { status: 403 });
   }
+  const assignment = asg.assignment;
 
   const result = await applyAssignmentAction(admin, {
     assignmentId: assignment.id,

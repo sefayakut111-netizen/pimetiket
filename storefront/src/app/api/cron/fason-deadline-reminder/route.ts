@@ -102,24 +102,7 @@ export async function GET(req: Request) {
           ).map((p) => [p.id, p])
         );
 
-        const assignmentIds = dueRows.map((a) => a.id);
-        const { data: tokens } = await admin
-          .from("fason_access_tokens")
-          .select("assignment_id, token")
-          .in("assignment_id", assignmentIds)
-          .is("revoked_at", null)
-          .gt("expires_at", new Date().toISOString())
-          .order("created_at", { ascending: false });
-
         const tokenByAssignment = new Map<string, string>();
-        for (const row of (tokens ?? []) as Array<{
-          assignment_id: string;
-          token: string;
-        }>) {
-          if (!tokenByAssignment.has(row.assignment_id)) {
-            tokenByAssignment.set(row.assignment_id, row.token);
-          }
-        }
 
         const { data: existingMails } = await admin
           .from("fason_mail_outbox")
@@ -161,6 +144,29 @@ export async function GET(req: Request) {
             { day: "2-digit", month: "long", year: "numeric" }
           );
 
+          let plainToken = tokenByAssignment.get(asg.id);
+          if (!plainToken) {
+            const { data: issued, error: issueErr } = await admin.rpc(
+              "fn_generate_fason_token",
+              {
+                p_assignment_id: asg.id,
+                p_fason_partner_id: asg.fason_partner_id,
+                p_days: 14,
+              }
+            );
+            if (issueErr || typeof issued !== "string" || !issued) {
+              console.error(
+                "[fason-deadline-reminder] token issue failed:",
+                asg.id,
+                issueErr
+              );
+              skipped++;
+              continue;
+            }
+            plainToken = issued;
+            tokenByAssignment.set(asg.id, plainToken);
+          }
+
           try {
             await enqueueMail({
               templateKey: "fason_deadline_reminder",
@@ -172,7 +178,7 @@ export async function GET(req: Request) {
                 order_id: asg.order_id,
                 fason_name: partner.name,
                 estimated_delivery: dueLabel,
-                token: tokenByAssignment.get(asg.id) ?? "",
+                token: plainToken,
               },
               idempotencyKey,
               subject: `Hatırlatma — Sipariş ${asg.order_id} teslim tarihi yaklaşıyor (${dueLabel})`,

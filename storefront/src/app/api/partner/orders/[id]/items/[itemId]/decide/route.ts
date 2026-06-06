@@ -40,7 +40,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
-import { PARTNER_ACTIVE_ASSIGNMENT_STATUSES } from "@/lib/fason/partner-active-assignment-statuses";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -118,23 +118,16 @@ export async function POST(
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
 
-  // Cross-tenant + aktif atama guard (status route ile hizalı)
-  const { data: asgRow } = await admin
-    .from("order_assignments")
-    .select("id, fason_partner_id, status")
-    .eq("order_id", order.id)
-    .in("status", [...PARTNER_ACTIVE_ASSIGNMENT_STATUSES])
-    .order("assigned_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  type AsgRow = { id: string; fason_partner_id: string; status: string };
-  const assignment = asgRow as AsgRow | null;
-  if (!assignment || assignment.fason_partner_id !== partnerId) {
-    return NextResponse.json(
-      { error: "not_your_order" },
-      { status: 403 }
-    );
+  const asg = await assertActivePartnerAssignment(
+    admin,
+    order.id,
+    partnerId,
+    "id, fason_partner_id, status"
+  );
+  if (!asg.ok) {
+    return NextResponse.json({ error: "not_your_order" }, { status: 403 });
   }
+  const assignment = asg.assignment;
 
   // Item validate
   const { data: itemRow } = await admin

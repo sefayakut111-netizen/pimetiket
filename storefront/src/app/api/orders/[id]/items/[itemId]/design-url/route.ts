@@ -22,6 +22,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
 export const runtime = "nodejs";
 
@@ -96,16 +97,12 @@ export async function GET(
       if (!partnerId) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const { data: asgRow } = await admin
-        .from("order_assignments")
-        .select("fason_partner_id")
-        .eq("order_id", canonicalOrderId)
-        .order("assigned_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const asgPartnerId = (asgRow as { fason_partner_id: string } | null)
-        ?.fason_partner_id;
-      if (asgPartnerId !== partnerId) {
+      const asg = await assertActivePartnerAssignment(
+        admin,
+        canonicalOrderId,
+        partnerId
+      );
+      if (!asg.ok) {
         return NextResponse.json(
           { error: "not_your_order" },
           { status: 403 }

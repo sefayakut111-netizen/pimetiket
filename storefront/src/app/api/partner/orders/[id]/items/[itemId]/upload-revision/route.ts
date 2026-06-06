@@ -14,7 +14,7 @@
  *   3. Supabase Storage upload (designs/{userId}/{orderId}/{itemId}/revised-{ts}.{ext})
  *   4. design_files INSERT:
  *      - version = (mevcut max + 1)
- *      - status = 'active'
+ *      - status = 'approved' (fason/download ile uyumlu)
  *      - revised_by_partner_id = partner_id
  *      - revised_at = now
  *   5. Önceki design_files'ı (aynı order_item_id) status='superseded'
@@ -35,7 +35,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
-import { PARTNER_ACTIVE_ASSIGNMENT_STATUSES } from "@/lib/fason/partner-active-assignment-statuses";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 import { sendOrderProofRequired } from "@/lib/mail/notifications";
 
 export const runtime = "nodejs";
@@ -105,22 +105,16 @@ export async function POST(
   if (!order) {
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
-  const { data: asgRow } = await admin
-    .from("order_assignments")
-    .select("id, fason_partner_id, status")
-    .eq("order_id", order.id)
-    .in("status", [...PARTNER_ACTIVE_ASSIGNMENT_STATUSES])
-    .order("assigned_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const assignment = asgRow as {
-    id: string;
-    fason_partner_id: string;
-    status: string;
-  } | null;
-  if (!assignment || assignment.fason_partner_id !== partnerId) {
+  const asg = await assertActivePartnerAssignment(
+    admin,
+    order.id,
+    partnerId,
+    "id, fason_partner_id, status"
+  );
+  if (!asg.ok) {
     return NextResponse.json({ error: "not_your_order" }, { status: 403 });
   }
+  const assignment = asg.assignment;
 
   // Item validate
   const { data: itemRow } = await admin
@@ -230,8 +224,7 @@ export async function POST(
         mime_type: file.type,
         size_bytes: file.size,
         version: nextVersion,
-        // @ts-expect-error — design_files.status 'active' henüz generated enum'da yok
-        status: "active",
+        status: "approved",
         revised_by_partner_id: partnerId,
         revised_at: new Date().toISOString(),
       },

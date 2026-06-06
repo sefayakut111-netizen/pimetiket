@@ -32,6 +32,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
+import {
+  assertActivePartnerAssignment,
+  type ActivePartnerAssignmentRow,
+} from "@/lib/fason/assert-active-partner-assignment";
+import { redactOrderAddressForPartner } from "@/lib/fason/redact-order-address";
 
 export const runtime = "nodejs";
 
@@ -82,20 +87,8 @@ export async function GET(
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
 
-  // 3) Cross-tenant guard: bu sipariş bu partner'a atanmış mı?
-  const { data: asgRow } = await admin
-    .from("order_assignments")
-    .select(
-      "id, fason_partner_id, status, assigned_at, estimated_delivery, in_production_at, ready_at, shipped_at, notes"
-    )
-    .eq("order_id", order.id)
-    .order("assigned_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  type AsgRow = {
-    id: string;
-    fason_partner_id: string;
-    status: string;
+  // 3) Cross-tenant guard — yalnızca aktif atama (cancelled/shipped eski partner yok)
+  type AsgRow = ActivePartnerAssignmentRow & {
     assigned_at: string;
     estimated_delivery: string | null;
     in_production_at: string | null;
@@ -103,13 +96,16 @@ export async function GET(
     shipped_at: string | null;
     notes: string | null;
   };
-  const assignment = asgRow as AsgRow | null;
-  if (!assignment || assignment.fason_partner_id !== partnerId) {
-    return NextResponse.json(
-      { error: "not_your_order" },
-      { status: 403 }
-    );
+  const asg = await assertActivePartnerAssignment<AsgRow>(
+    admin,
+    order.id,
+    partnerId,
+    "id, fason_partner_id, status, assigned_at, estimated_delivery, in_production_at, ready_at, shipped_at, notes"
+  );
+  if (!asg.ok) {
+    return NextResponse.json({ error: "not_your_order" }, { status: 403 });
   }
+  const assignment = asg.assignment;
 
   // 4) Items
   const { data: itemsRaw } = await admin
@@ -225,13 +221,7 @@ export async function GET(
   });
 
   // 7) Adres redaction — sadece şehir/ilçe (kargo hazırlık için)
-  const addr = order.address ?? {};
-  type Addr = { city?: string; district?: string };
-  const addrSafe = addr as Addr;
-  const addressRedacted = {
-    city: addrSafe.city ?? null,
-    district: addrSafe.district ?? null,
-  };
+  const addressRedacted = redactOrderAddressForPartner(order.address);
 
   // 8) Partner karar özeti
   const partnerDecisions = {

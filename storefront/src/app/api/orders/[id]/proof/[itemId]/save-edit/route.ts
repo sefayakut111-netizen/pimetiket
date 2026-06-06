@@ -46,6 +46,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveCutlineEdit } from "@/lib/proof/save-cutline-edit";
 import { sendOrderProofRequired } from "@/lib/mail/notifications";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
 interface Body {
   svg?: unknown;
@@ -124,16 +125,12 @@ export async function POST(
       if (!partnerId) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const { data: asgRow } = await admin
-        .from("order_assignments")
-        .select("fason_partner_id")
-        .eq("order_id", orderId)
-        .order("assigned_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const asgPartnerId = (asgRow as { fason_partner_id: string } | null)
-        ?.fason_partner_id;
-      if (asgPartnerId !== partnerId) {
+      const asg = await assertActivePartnerAssignment(
+        admin,
+        orderId,
+        partnerId
+      );
+      if (!asg.ok) {
         return NextResponse.json(
           { error: "not_your_order" },
           { status: 403 }

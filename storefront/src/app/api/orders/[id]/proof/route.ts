@@ -15,6 +15,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { orderItemHasDesigns } from "@/lib/order-item-meta";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
 export async function GET(
   req: Request,
@@ -71,16 +72,12 @@ export async function GET(
       if (!partnerId) {
         return NextResponse.json({ error: "forbidden" }, { status: 403 });
       }
-      const { data: asgRow } = await admin
-        .from("order_assignments")
-        .select("fason_partner_id")
-        .eq("order_id", orderRow.id)
-        .order("assigned_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const asgPartnerId = (asgRow as { fason_partner_id: string } | null)
-        ?.fason_partner_id;
-      if (asgPartnerId !== partnerId) {
+      const asg = await assertActivePartnerAssignment(
+        admin,
+        orderRow.id,
+        partnerId
+      );
+      if (!asg.ok) {
         return NextResponse.json({ error: "not_your_order" }, { status: 403 });
       }
       // Partner için /api/partner/orders/[id] endpoint'ine proxy

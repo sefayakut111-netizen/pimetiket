@@ -149,24 +149,20 @@ export async function GET(req: Request) {
       !renderPayload.fason_token &&
       row.assignment_id
     ) {
-      const { data: tokRow } = await admin
-        .from("fason_access_tokens")
-        .select("token")
-        .eq("assignment_id", row.assignment_id)
-        .is("revoked_at", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
+      const { data: asgPartner } = await admin
+        .from("order_assignments")
+        .select("fason_partner_id")
+        .eq("id", row.assignment_id)
         .maybeSingle();
-      const plain = (tokRow as { token: string } | null)?.token;
-      if (plain) {
-        renderPayload.fason_token = plain;
-      } else {
+      const partnerId = (asgPartner as { fason_partner_id: string } | null)
+        ?.fason_partner_id;
+      if (!partnerId) {
         await admin
           .from("fason_mail_outbox")
           .update({
             status: "failed",
             attempts: row.attempts + 1,
-            last_error: "fason_token_resolve_failed",
+            last_error: "fason_assignment_not_found",
             next_retry_at: new Date(
               Date.now() + backoffMinutes(row.attempts + 1) * 60_000
             ).toISOString(),
@@ -176,6 +172,32 @@ export async function GET(req: Request) {
         failed++;
         continue;
       }
+
+      const { data: issued, error: issueErr } = await admin.rpc(
+        "fn_generate_fason_token",
+        {
+          p_assignment_id: row.assignment_id,
+          p_fason_partner_id: partnerId,
+          p_days: 14,
+        }
+      );
+      if (issueErr || typeof issued !== "string" || !issued) {
+        await admin
+          .from("fason_mail_outbox")
+          .update({
+            status: "failed",
+            attempts: row.attempts + 1,
+            last_error: "fason_token_issue_failed",
+            next_retry_at: new Date(
+              Date.now() + backoffMinutes(row.attempts + 1) * 60_000
+            ).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", row.id);
+        failed++;
+        continue;
+      }
+      renderPayload.fason_token = issued;
     }
 
     const rendered = renderMailTemplate(row.template_key, renderPayload);

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
 type AccessResult =
   | { ok: true }
@@ -49,14 +50,8 @@ export async function assertProofOrderAccess(
     if (!partnerId) {
       return { ok: false, status: 403 };
     }
-    const { data: asgRow } = await admin
-      .from("order_assignments")
-      .select("fason_partner_id")
-      .eq("order_id", orderId)
-      .order("assigned_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if ((asgRow as { fason_partner_id: string } | null)?.fason_partner_id === partnerId) {
+    const asg = await assertActivePartnerAssignment(admin, orderId, partnerId);
+    if (asg.ok) {
       return { ok: true };
     }
   }
@@ -105,14 +100,8 @@ export async function assertProductionExportAccess(
     if (!partnerId) {
       return { ok: false, status: 403 };
     }
-    const { data: asgRow } = await admin
-      .from("order_assignments")
-      .select("fason_partner_id")
-      .eq("order_id", orderId)
-      .order("assigned_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if ((asgRow as { fason_partner_id: string } | null)?.fason_partner_id === partnerId) {
+    const asg = await assertActivePartnerAssignment(admin, orderId, partnerId);
+    if (asg.ok) {
       return { ok: true };
     }
   }
