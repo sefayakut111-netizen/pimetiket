@@ -36,6 +36,7 @@ import {
   type GeoShape,
 } from "@/components/proof/JpgShapeSelector";
 import { BgRemovalPrompt } from "@/components/proof/BgRemovalPrompt";
+import { ImageEnhancePrompt } from "@/components/design/ImageEnhancePrompt";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
 import type { ConsistencyIssue } from "@/lib/proof/multi-design-check";
 import {
@@ -661,6 +662,17 @@ export default function ProofApprovalPage({
     show: boolean;
     bgDetect: BgDetectResult | null;
   }>({ show: false, bgDetect: null });
+  const [enhancePrompt, setEnhancePrompt] = useState<{
+    show: boolean;
+    effectiveDpi: number | null;
+    designFileId: string | null;
+    previewUrl: string | null;
+  }>({
+    show: false,
+    effectiveDpi: null,
+    designFileId: null,
+    previewUrl: null,
+  });
   const [consistencyIssues, setConsistencyIssues] = useState<
     ConsistencyIssue[]
   >([]);
@@ -845,6 +857,45 @@ export default function ProofApprovalPage({
         }
       )
       .catch(() => setBgPrompt({ show: false, bgDetect: null }));
+  }, [activeItem?.id, data?.order.status, orderId]);
+
+  useEffect(() => {
+    if (!activeItem || data?.order.status !== "proof_pending") {
+      setEnhancePrompt({
+        show: false,
+        effectiveDpi: null,
+        designFileId: null,
+        previewUrl: null,
+      });
+      return;
+    }
+    fetch(`/api/orders/${orderId}/proof/${activeItem.id}/enhance-hint`, {
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : { showPrompt: false }))
+      .then(
+        (j: {
+          showPrompt?: boolean;
+          effectiveDpi?: number | null;
+          designFileId?: string | null;
+          previewUrl?: string | null;
+        }) => {
+          setEnhancePrompt({
+            show: !!j.showPrompt,
+            effectiveDpi: j.effectiveDpi ?? null,
+            designFileId: j.designFileId ?? null,
+            previewUrl: j.previewUrl ?? null,
+          });
+        }
+      )
+      .catch(() =>
+        setEnhancePrompt({
+          show: false,
+          effectiveDpi: null,
+          designFileId: null,
+          previewUrl: null,
+        })
+      );
   }, [activeItem?.id, data?.order.status, orderId]);
 
   useEffect(() => {
@@ -2391,6 +2442,42 @@ export default function ProofApprovalPage({
                     />
                   </div>
                 )}
+
+                {enhancePrompt.show &&
+                  enhancePrompt.designFileId &&
+                  activeItem && (
+                    <div className="border-b border-gri-200 p-4">
+                      <ImageEnhancePrompt
+                        mode="proof"
+                        orderId={orderId}
+                        itemId={activeItem.id}
+                        designFileId={enhancePrompt.designFileId}
+                        effectiveDpi={enhancePrompt.effectiveDpi}
+                        originalPreviewUrl={
+                          enhancePrompt.previewUrl ??
+                          designUrl ??
+                          cutlinePreviewSrc
+                        }
+                        onAccepted={() => {
+                          setEnhancePrompt({
+                            show: false,
+                            effectiveDpi: null,
+                            designFileId: null,
+                            previewUrl: null,
+                          });
+                          void load({ silent: true });
+                        }}
+                        onReject={() =>
+                          setEnhancePrompt({
+                            show: false,
+                            effectiveDpi: null,
+                            designFileId: null,
+                            previewUrl: null,
+                          })
+                        }
+                      />
+                    </div>
+                  )}
 
                 <div className="border-b border-gri-200 px-4 py-2">
                   <div

@@ -14,3 +14,5 @@ export const OPENAI_VISION_TIMEOUT_MS = 45_000;
 export const OPENAI_CHAT_TIMEOUT_MS = 90_000;
 /** gpt-4o-mini kısa metin */
 export const OPENAI_MINI_TIMEOUT_MS = 30_000;
+/** Replicate Real-ESRGAN upscale */
+export const REPLICATE_UPSCALE_TIMEOUT_MS = 120_000;

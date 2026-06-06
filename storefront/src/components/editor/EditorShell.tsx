@@ -18,6 +18,10 @@ import {
   type PocEditorSavedPayload,
 } from "@/lib/editor/editor-handoff";
 import { uploadFileToTempDesign } from "@/lib/design-temp-upload";
+import {
+  ImageEnhancePrompt,
+  type EnhanceResult,
+} from "@/components/design/ImageEnhancePrompt";
 import { roundEditorMm } from "@/lib/editor/coords";
 import {
   effectivePrintDpi,
@@ -173,6 +177,8 @@ export default function EditorShell() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [canRemoveBg, setCanRemoveBg] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [showEnhancePrompt, setShowEnhancePrompt] = useState(false);
+  const [enhanceDismissed, setEnhanceDismissed] = useState(false);
   const [layers, setLayers] = useState<Record<EditorLayer, boolean>>({
     cut: true,
     white: false,
@@ -774,6 +780,14 @@ export default function EditorShell() {
     return printDpiStatus(dpi);
   }, [imagePixelW, imagePixelH, widthMm, heightMm]);
 
+  const suggestEnhance = useMemo(() => {
+    if (!designLoaded || enhanceDismissed) return false;
+    if (pocMeta?.source === "vector" || pocMeta?.source === "vector-with-cutline") {
+      return false;
+    }
+    return dpiInfo?.level === "warn" || dpiInfo?.level === "critical";
+  }, [designLoaded, enhanceDismissed, dpiInfo?.level, pocMeta?.source]);
+
   const requestDesignFile = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {
       designFileWaitRef.current = resolve;
@@ -786,6 +800,52 @@ export default function EditorShell() {
       }, 20_000);
     });
   }, [postToPoc]);
+
+  const runEditorEnhance = useCallback(async (): Promise<EnhanceResult | null> => {
+    const file = await requestDesignFile();
+    if (!file) return null;
+    const uploaded = await uploadFileToTempDesign(file);
+    if (!uploaded) return null;
+
+    const res = await fetch("/api/design/enhance", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tempDesignId: uploaded.tempId }),
+    });
+    const j = (await res.json()) as EnhanceResult & {
+      ok?: boolean;
+      error?: string;
+    };
+    if (!res.ok || !j.ok || !j.enhancedTempDesignId) return null;
+    return {
+      originalPreviewUrl: j.originalPreviewUrl ?? uploaded.previewUrl,
+      enhancedPreviewUrl: j.enhancedPreviewUrl ?? null,
+      enhancedTempDesignId: j.enhancedTempDesignId,
+      originalWidth: j.originalWidth,
+      originalHeight: j.originalHeight,
+      enhancedWidth: j.enhancedWidth,
+      enhancedHeight: j.enhancedHeight,
+      scale: j.scale,
+    };
+  }, [requestDesignFile]);
+
+  const acceptEditorEnhance = useCallback(
+    async (result: EnhanceResult) => {
+      if (!result.enhancedPreviewUrl) return;
+      const res = await fetch(result.enhancedPreviewUrl);
+      if (!res.ok) {
+        toast.error("İyileştirilmiş görsel alınamadı");
+        return;
+      }
+      const blob = await res.blob();
+      const file = new File([blob], "enhanced.png", { type: "image/png" });
+      await uploadFileToPoc(file);
+      setShowEnhancePrompt(false);
+      setEnhanceDismissed(true);
+      toast.success("İyileştirilmiş görsel yüklendi");
+    },
+    [toast, uploadFileToPoc]
+  );
 
   const requestExport = useCallback((): Promise<PocEditorSavedPayload | null> => {
     return new Promise((resolve) => {
@@ -1010,9 +1070,42 @@ export default function EditorShell() {
                     canRemoveBg={canRemoveBg}
                     removingBg={removingBg}
                     disabled={pocStatus?.state === "loading"}
-                    onFileSelected={(file) => void uploadFileToPoc(file)}
+                    onFileSelected={(file) => {
+                      setEnhanceDismissed(false);
+                      setShowEnhancePrompt(false);
+                      void uploadFileToPoc(file);
+                    }}
                     onRemoveBg={handleRemoveBg}
                   />
+                  {designLoaded &&
+                  pocMeta?.source !== "vector" &&
+                  pocMeta?.source !== "vector-with-cutline" ? (
+                    <div className="mt-3 space-y-2">
+                      {(suggestEnhance || showEnhancePrompt) && !enhanceDismissed ? (
+                        <ImageEnhancePrompt
+                          mode="editor"
+                          effectiveDpi={dpiInfo?.dpi}
+                          onEnhanceRequest={runEditorEnhance}
+                          onAcceptEnhanced={acceptEditorEnhance}
+                          onReject={() => {
+                            setShowEnhancePrompt(false);
+                            setEnhanceDismissed(true);
+                          }}
+                        />
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          disabled={pocStatus?.state === "loading"}
+                          onClick={() => setShowEnhancePrompt(true)}
+                        >
+                          Görseli iyileştir (AI)
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
                 </EditorPanelSection>
               </>
             ) : null}

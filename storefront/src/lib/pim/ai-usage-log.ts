@@ -8,7 +8,8 @@ export type AiUsageSource =
   | "pim_chat"
   | "pim_summarize"
   | "support_classify"
-  | "search_intent";
+  | "search_intent"
+  | "image_upscale";
 
 export const PIM_MODEL_PRICING = {
   "gpt-4o": { inputPerM: 2.5, outputPerM: 10 },
