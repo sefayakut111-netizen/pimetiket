@@ -36,6 +36,7 @@ interface DbOrderRow {
   payment: Record<string, unknown> | null;
   estimated_delivery: string | null;
   created_at: string;
+  sla_proof_deadline: string | null;
 }
 
 interface DbItemRow {
@@ -76,7 +77,7 @@ export async function GET(req: Request) {
   let orderQuery = admin
     .from("orders")
     .select(
-      "id, user_id, status, subtotal, shipping, total, address, invoice, payment, estimated_delivery, created_at"
+      "id, user_id, status, subtotal, shipping, total, address, invoice, payment, estimated_delivery, created_at, sla_proof_deadline"
     )
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -184,6 +185,7 @@ export async function GET(req: Request) {
       createdAt: ts,
       createdAtIso: o.created_at,
       estimatedDelivery: o.estimated_delivery ?? undefined,
+      slaProofDeadline: o.sla_proof_deadline ?? undefined,
       fasonName: assignmentByOrder.get(o.id)?.fasonName,
       trackingNumber: assignmentByOrder.get(o.id)?.trackingNumber ?? undefined,
     };

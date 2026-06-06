@@ -82,14 +82,13 @@ export async function GET() {
   const items: QueueItem[] = [];
 
   const [
-    aiQcCountRes,
+    aiQcAllRowsRes,
     aiQcRowsRes,
-    proofCountRes,
+    proofAllRowsRes,
     proofRowsRes,
-    proofCriticalRowsRes,
     fasonCandidateRowsRes,
     assignedIdsRes,
-    shippingCountRes,
+    shippingAllRowsRes,
     shippingRowsRes,
     supportCountRes,
     supportRowsRes,
@@ -102,7 +101,7 @@ export async function GET() {
   ] = await Promise.all([
     admin
       .from("orders")
-      .select("id", { count: "exact", head: true })
+      .select("id, address")
       .in("status", AI_QC_QUEUE_STATUSES as Enums<"order_status">[]),
     admin
       .from("orders")
@@ -112,7 +111,7 @@ export async function GET() {
       .limit(ITEM_LIMIT),
     admin
       .from("orders")
-      .select("id", { count: "exact", head: true })
+      .select("id, status, address, created_at, sla_proof_deadline")
       .in("status", PROOF_SLA_STATUSES as Enums<"order_status">[]),
     admin
       .from("orders")
@@ -123,10 +122,6 @@ export async function GET() {
     admin
       .from("orders")
       .select("id, status, address, created_at, sla_proof_deadline")
-      .in("status", PROOF_SLA_STATUSES as Enums<"order_status">[]),
-    admin
-      .from("orders")
-      .select("id, status, address, created_at, sla_proof_deadline")
       .in("status", FASON_UNASSIGNED_STATUSES as Enums<"order_status">[]),
     admin
       .from("order_assignments")
@@ -134,13 +129,12 @@ export async function GET() {
       .neq("status", "cancelled"),
     admin
       .from("order_assignments")
-      .select("order_id, orders!inner(status, address)", {
-        count: "exact",
-        head: true,
-      })
+      .select(
+        "order_id, tracking_number, orders!inner(id, status, address, created_at, sla_proof_deadline)"
+      )
       .is("tracking_number", null)
       .neq("status", "cancelled")
-      .eq("orders.status", "ready_to_ship"),
+      .in("orders.status", SHIPPING_STATUSES as Enums<"order_status">[]),
     admin
       .from("order_assignments")
       .select(
@@ -198,10 +192,15 @@ export async function GET() {
   );
 
   const aiQcRows = filterTestOrders((aiQcRowsRes.data ?? []) as OrderRow[]);
-  counts.ai_qc = aiQcCountRes.count ?? aiQcRows.length;
+  counts.ai_qc = filterTestOrders(
+    (aiQcAllRowsRes.data ?? []) as OrderRow[]
+  ).length;
 
+  const proofAllRows = filterTestOrders(
+    (proofAllRowsRes.data ?? []) as OrderRow[]
+  );
   const proofRowsRaw = filterTestOrders((proofRowsRes.data ?? []) as OrderRow[]);
-  counts.proof_sla = proofCountRes.count ?? proofRowsRaw.length;
+  counts.proof_sla = proofAllRows.length;
 
   const fasonRows = filterTestOrders(
     ((fasonCandidateRowsRes.data ?? []) as OrderRow[]).filter(
@@ -215,19 +214,17 @@ export async function GET() {
     tracking_number: string | null;
     orders: OrderRow;
   };
-  const shippingRows = ((shippingRowsRes.data ?? []) as ShippingJoinRow[])
-    .filter((r) => r.orders && !isTestOrderDbRow(r.orders))
-    .slice(0, ITEM_LIMIT);
-  counts.shipping = shippingCountRes.count ?? shippingRows.length;
+  const shippingAllRows = ((shippingAllRowsRes.data ?? []) as ShippingJoinRow[])
+    .filter((r) => r.orders && !isTestOrderDbRow(r.orders));
+  const shippingRows = shippingAllRows.slice(0, ITEM_LIMIT);
+  counts.shipping = shippingAllRows.length;
 
   counts.support =
     (supportCountRes.count ?? 0) + (helpCountRes.count ?? 0);
   counts.review = reviewCountRes.count ?? 0;
   counts.capability = capabilityCountRes.count ?? 0;
 
-  const criticalCount = filterTestOrders(
-    (proofCriticalRowsRes.data ?? []) as OrderRow[]
-  ).filter(
+  const criticalCount = proofAllRows.filter(
     (o) => proofUrgency(proofAgeFromOrder(o).ageHours) === "critical"
   ).length;
 

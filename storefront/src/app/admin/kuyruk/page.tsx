@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, Skeleton } from "@/components/ui";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin-operation-queue";
 
 const REFRESH_MS = 30_000;
+const REFRESH_TICK_MS = 10_000;
 
 const KPI_TYPES: QueueItemType[] = [
   "ai_qc",
@@ -74,8 +75,15 @@ export default function AdminKuyrukPage() {
   const [data, setData] = useState<OperationQueueResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<QueueItemType | "all">("all");
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [nowTick, setNowTick] = useState(Date.now());
+  const dataRef = useRef<OperationQueueResponse | null>(null);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const load = useCallback(async () => {
     try {
@@ -86,9 +94,15 @@ export default function AdminKuyrukPage() {
       const json = (await res.json()) as OperationQueueResponse;
       setData(json);
       setError(null);
+      setRefreshError(null);
       setLastRefresh(Date.now());
     } catch {
-      setError("Kuyruk yüklenemedi");
+      if (dataRef.current) {
+        setRefreshError("Güncellenemedi — son bilinen liste gösteriliyor");
+      } else {
+        setError("Kuyruk yüklenemedi");
+        setRefreshError(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -98,7 +112,13 @@ export default function AdminKuyrukPage() {
     void load();
     const interval = setInterval(() => void load(), REFRESH_MS);
     return () => clearInterval(interval);
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const tick = setInterval(() => setNowTick(Date.now()), REFRESH_TICK_MS);
+    return () => clearInterval(tick);
+  }, []);
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
@@ -131,7 +151,7 @@ export default function AdminKuyrukPage() {
     ? Object.values(data.counts).reduce((s, n) => s + n, 0)
     : 0;
 
-  const refreshAgo = Math.floor((Date.now() - lastRefresh) / 1000);
+  const refreshAgo = Math.floor((nowTick - lastRefresh) / 1000);
 
   return (
     <main className="py-8 pb-20">
@@ -141,6 +161,11 @@ export default function AdminKuyrukPage() {
             <Eyebrow>Operasyon</Eyebrow>
             <h1 className="mt-2 text-[28px] font-semibold text-lacivert">
               Operasyon Kuyruğu
+              {data && data.criticalCount > 0 && (
+                <span className="ml-3 inline-flex items-center h-7 px-2.5 rounded-full bg-kirmizi text-white text-[13px] font-bold tabular-nums align-middle">
+                  {data.criticalCount} acil prova
+                </span>
+              )}
             </h1>
             <p className="text-sm text-gri-600 mt-2">
               AI QC, prova SLA, fason atama, kargo, destek ve onay bekleyen
@@ -155,7 +180,7 @@ export default function AdminKuyrukPage() {
               variant="secondary"
               size="sm"
               onClick={() => {
-                setLoading(true);
+                if (!data) setLoading(true);
                 void load();
               }}
             >
@@ -170,12 +195,25 @@ export default function AdminKuyrukPage() {
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-40 w-full" />
           </div>
-        ) : error ? (
+        ) : error && !data ? (
           <Card padding="p-6" className="text-kirmizi">
             {error}
           </Card>
         ) : data ? (
           <>
+            {refreshError && (
+              <div className="mb-4 rounded-lg bg-sari-soft/60 border border-sari/30 px-4 py-2.5 text-[13px] text-sari-koyu font-semibold flex items-center justify-between gap-3">
+                <span>{refreshError}</span>
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className="text-[12px] underline shrink-0"
+                >
+                  Tekrar dene
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-6">
               {KPI_TYPES.map((type) => {
                 const count = data.counts[type];
@@ -183,12 +221,8 @@ export default function AdminKuyrukPage() {
                 const hidden = Math.max(0, count - shown);
                 const active = typeFilter === type;
                 return (
-                  <button
+                  <div
                     key={type}
-                    type="button"
-                    onClick={() =>
-                      setTypeFilter((prev) => (prev === type ? "all" : type))
-                    }
                     className={cn(
                       "rounded-xl border p-3 text-left transition-colors",
                       active
@@ -196,22 +230,29 @@ export default function AdminKuyrukPage() {
                         : "border-gri-200 bg-white hover:bg-gri-50"
                     )}
                   >
-                    <div className="text-[22px] font-bold tabular-nums text-lacivert">
-                      {count}
-                    </div>
-                    <div className="text-[11px] font-semibold text-gri-600 mt-0.5">
-                      {QUEUE_TYPE_LABELS[type]}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTypeFilter((prev) => (prev === type ? "all" : type))
+                      }
+                      className="w-full text-left"
+                    >
+                      <div className="text-[22px] font-bold tabular-nums text-lacivert">
+                        {count}
+                      </div>
+                      <div className="text-[11px] font-semibold text-gri-600 mt-0.5">
+                        {QUEUE_TYPE_LABELS[type]}
+                      </div>
+                    </button>
                     {hidden > 0 && (
                       <Link
                         href={QUEUE_MORE_HREFS[type]}
-                        onClick={(e) => e.stopPropagation()}
                         className="mt-1 inline-block text-[10px] font-semibold text-pim-mercan hover:underline"
                       >
                         +{hidden} daha →
                       </Link>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>

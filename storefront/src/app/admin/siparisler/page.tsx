@@ -17,7 +17,7 @@ import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { Card, Input, Button } from "@/components/ui";
+import { Card, Input, Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/order";
 import {
@@ -36,12 +36,16 @@ import {
 // applyBulkStatus). listCustomerOrders sadece initial render fallback.
 // listCustomerOrders kaldırıldı — admin liste yalnızca API'den gelir
 import type { CustomerOrder } from "@/lib/customer-order";
-import { fetchAllOrdersForAdmin } from "@/lib/admin-orders";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { canAccessModule } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
 import { isAdminTestOrderPayment } from "@/lib/admin-test-order";
 import { excludeTestOrderLikes } from "@/lib/admin-order-filters";
+import {
+  proofAgeFromOrder,
+  proofUrgency,
+  PROOF_WARNING_HOURS,
+} from "@/lib/admin-operation-queue";
 
 type AdminStatus = OrderStatus;
 
@@ -57,6 +61,8 @@ interface AdminOrder {
   createdAt: number;
   /** Tahmini teslim (ISO) — gecikme vurgusu için */
   estimatedDelivery?: string;
+  /** Prova SLA deadline (ISO) — kuyruk ile aynı metrik */
+  slaProofDeadline?: string;
   fason?: string;
   tracking_number?: string;
   isAdminTestOrder?: boolean;
@@ -65,6 +71,14 @@ interface AdminOrder {
 const FILTERS = ADMIN_STATUS_FILTER_CHIPS;
 
 const PAGE_SIZE = 50;
+const LIST_FETCH_LIMIT = 1000;
+
+function adminOrderProofAge(o: AdminOrder) {
+  return proofAgeFromOrder({
+    created_at: new Date(o.createdAt).toISOString(),
+    sla_proof_deadline: o.slaProofDeadline ?? null,
+  });
+}
 
 const CANCEL_REASONS = [
   { id: "customer_request", label: "Müşteri talebi" },
@@ -102,8 +116,14 @@ function getOrderUrgency(
   now: number
 ): "critical" | "warn" | "high_value" | null {
   const day = 24 * 60 * 60 * 1000;
-  if (o.status === "proof_pending" && now - o.createdAt > 1.5 * day) {
-    return "critical";
+  if (
+    o.status === "proof_pending" ||
+    o.status === "operator_print_review"
+  ) {
+    const { ageHours } = adminOrderProofAge(o);
+    const urgency = proofUrgency(ageHours);
+    if (urgency === "critical") return "critical";
+    if (urgency === "warning") return "warn";
   }
   if (
     o.status === "in_production" &&
@@ -113,9 +133,15 @@ function getOrderUrgency(
     return "critical";
   }
   if (
-    ["qc_pending", "qc_flagged", "human_review", "operator_review"].includes(
-      o.status
-    ) &&
+    [
+      "qc_pending",
+      "qc_flagged",
+      "human_review",
+      "human_review_failed",
+      "operator_review",
+      "proof_generating",
+      "proof_validating",
+    ].includes(o.status) &&
     now - o.createdAt > day
   ) {
     return "warn";
@@ -153,13 +179,13 @@ const SAVED_VIEWS: SavedView[] = [
     id: "stuck-proof",
     label: "36h+ prova",
     emoji: "",
-    description: "36 saatten uzun prova bekleyen — hatırlatma zamanı",
-    apply: (orders) => {
-      const cutoff = Date.now() - 1.5 * DAY;
-      return orders.filter(
-        (o) => o.status === "proof_pending" && o.createdAt < cutoff
-      );
-    },
+    description: "Prova SLA riski — sla_proof_deadline metrik (kuyruk ile aynı)",
+    apply: (orders) =>
+      orders.filter((o) => {
+        if (o.status !== "proof_pending") return false;
+        const { ageHours } = adminOrderProofAge(o);
+        return ageHours >= PROOF_WARNING_HOURS;
+      }),
   },
   {
     id: "unassigned",
@@ -220,6 +246,8 @@ function toAdminOrderRow(o: CustomerOrder): AdminOrder {
     date,
     createdAt: o.createdAt ?? Date.now(),
     estimatedDelivery: o.estimatedDelivery,
+    slaProofDeadline: (o as CustomerOrder & { slaProofDeadline?: string })
+      .slaProofDeadline,
     fason: (o as CustomerOrder & { fasonName?: string }).fasonName,
     tracking_number: (o as CustomerOrder & { trackingNumber?: string })
       .trackingNumber,
@@ -241,6 +269,7 @@ function AdminSiparislerPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const toast = useToast();
   const { permissions } = useAdminPermissions();
   const canUpdateOrders = canAccessModule(permissions, "orders", "update");
   const initialStatuses = parseAdminStatusFilter(
@@ -278,6 +307,7 @@ function AdminSiparislerPageInner() {
   });
   const [bulkStatus, setBulkStatus] = useState<AdminStatus | "">("");
   const [showTestOrders, setShowTestOrders] = useState(false);
+  const [listAtCap, setListAtCap] = useState(false);
 
   const catalogOrders = useMemo(
     () => (showTestOrders ? orders : excludeTestOrderLikes(orders)),
@@ -313,9 +343,10 @@ function AdminSiparislerPageInner() {
     setListLoading(true);
     setListError(null);
     try {
-      const res = await fetch("/api/admin/orders/list?limit=500", {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/admin/orders/list?limit=${LIST_FETCH_LIMIT}`,
+        { cache: "no-store" }
+      );
       if (!res.ok) {
         setListError(
           res.status === 403
@@ -323,10 +354,13 @@ function AdminSiparislerPageInner() {
             : `Liste yüklenemedi (HTTP ${res.status})`
         );
         setOrders([]);
+        setListAtCap(false);
         return;
       }
       const data = (await res.json()) as { orders?: CustomerOrder[] };
-      setOrders((data.orders ?? []).map(toAdminOrderRow));
+      const rows = (data.orders ?? []).map(toAdminOrderRow);
+      setOrders(rows);
+      setListAtCap(rows.length >= LIST_FETCH_LIMIT);
     } catch {
       setListError("Bağlantı hatası — sipariş listesi alınamadı.");
       setOrders([]);
@@ -345,12 +379,13 @@ function AdminSiparislerPageInner() {
     if (search.trim()) params.set("q", search.trim());
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
+    if (activeView) params.set("view", activeView);
     const newUrl = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
     router.replace(newUrl, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilters, search, dateFrom, dateTo]);
+  }, [statusFilters, search, dateFrom, dateTo, activeView]);
 
   useEffect(() => {
     setPage(1);
@@ -377,13 +412,13 @@ function AdminSiparislerPageInner() {
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        alert(`Güncelleme başarısız: ${j.error ?? res.status}`);
+        toast.error(`Güncelleme başarısız: ${j.error ?? res.status}`);
         return;
       }
       // Fresh çek
       void loadOrders();
     },
-    [loadOrders]
+    [loadOrders, toast]
   );
 
   /** Filtreli + aranmış + saved view uygulanmış siparişler */
@@ -453,9 +488,14 @@ function AdminSiparislerPageInner() {
         "paid",
         "awaiting_upload",
         "qc_pending",
-        "proof_pending",
-        "operator_review",
+        "qc_flagged",
         "human_review",
+        "human_review_failed",
+        "operator_review",
+        "proof_generating",
+        "proof_validating",
+        "proof_pending",
+        "operator_print_review",
       ].includes(o.status)
     ).length;
     const todayStartTs = (() => {
@@ -554,14 +594,14 @@ function AdminSiparislerPageInner() {
       };
 
       if (!res.ok || !json.ok) {
-        alert(`Güncelleme başarısız: ${json.error ?? res.status}`);
+        toast.error(`Güncelleme başarısız: ${json.error ?? res.status}`);
         return;
       }
 
       const updated = json.updated ?? 0;
       const skipped = json.skipped ?? 0;
       if (skipped > 0) {
-        alert(`${updated}/${count} sipariş güncellendi. ${skipped} atlandı.`);
+        toast.info(`${updated}/${count} sipariş güncellendi. ${skipped} atlandı.`);
       }
 
       void loadOrders();
@@ -586,7 +626,7 @@ function AdminSiparislerPageInner() {
           /* silent */
         });
     },
-    [bulkStatus, selected, clearSelection, loadOrders]
+    [bulkStatus, selected, clearSelection, loadOrders, toast]
   );
 
   const handleBulkApply = useCallback(() => {
@@ -659,6 +699,15 @@ function AdminSiparislerPageInner() {
           </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void loadOrders()}
+              disabled={listLoading}
+            >
+              <Icon.Refresh size={14} className="mr-1.5" />
+              Yenile
+            </Button>
             <label className="flex items-center gap-2 text-[13px] text-gri-700 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -673,10 +722,10 @@ function AdminSiparislerPageInner() {
             </label>
             <button
               type="button"
-              onClick={() => downloadCsv(orders, "tum-siparisler")}
+              onClick={() => downloadCsv(catalogOrders, "tum-siparisler")}
               className="text-[12px] font-semibold text-gri-500 hover:text-pim-mercan"
             >
-               Tümünü indir ({orders.length})
+               Tümünü indir ({catalogOrders.length})
             </button>
             {sorted.length !== orders.length && (
               <button
@@ -724,6 +773,13 @@ function AdminSiparislerPageInner() {
             </div>
           </Card>
         </div>
+
+        {listAtCap && (
+          <div className="mb-4 rounded-xl bg-sari-soft/50 border border-sari/30 px-4 py-2.5 text-[13px] text-sari-koyu">
+            Son {LIST_FETCH_LIMIT} sipariş gösteriliyor — daha eski kayıtlar
+            listede yok. Durum filtresi veya arama ile daralt.
+          </div>
+        )}
 
         {listError && (
           <div className="mb-4 rounded-xl bg-kirmizi-soft text-kirmizi-koyu px-4 py-3 text-[13.5px] font-semibold">
@@ -857,6 +913,11 @@ function AdminSiparislerPageInner() {
           <div className="sticky top-14 md:top-4 z-30 mb-4 rounded-xl bg-lacivert text-white shadow-2 px-4 py-3 flex items-center gap-3 flex-wrap">
             <span className="font-semibold text-[13.5px]">
               {selected.size} sipariş seçildi
+              {selected.size > 0 && filtered.length > PAGE_SIZE && (
+                <span className="font-normal text-white/80 ml-1">
+                  (filtreli {filtered.length} kayıttan)
+                </span>
+              )}
             </span>
             <span className="text-white/50">·</span>
             <div className="flex items-center gap-2">
