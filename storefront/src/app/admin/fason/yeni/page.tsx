@@ -366,6 +366,8 @@ function PartnerFormPage() {
         return;
       }
       const p = json.partner;
+      const capabilityRows = p.capabilities ?? [];
+      const contactRows = p.contacts ?? [];
       setName(p.name);
       setShortName(p.short_name ?? "");
       setTaxNumber(p.tax_number ?? "");
@@ -390,10 +392,10 @@ function PartnerFormPage() {
       setNotes(p.notes ?? "");
       setExistingContractUrl(p.contract_pdf_url);
 
-      const pts = p.capabilities
+      const pts = capabilityRows
         .filter((c) => c.capability_type === "product_type")
         .map((c) => c.capability_value as ProductType);
-      const mats = p.capabilities
+      const mats = capabilityRows
         .filter((c) => c.capability_type === "material")
         .map((c) => c.capability_value as Material);
       const legacyPts =
@@ -411,7 +413,7 @@ function PartnerFormPage() {
       );
 
       const contactByRole = (role: string) =>
-        p.contacts.find((c) => c.role === role);
+        contactRows.find((c) => c.role === role);
       const ow = contactByRole("owner");
       const op = contactByRole("operator");
       const ac = contactByRole("accounting");
@@ -807,7 +809,7 @@ function PartnerFormPage() {
         </Card>
 
         {/* 3. Üretim yetkinliği */}
-        <Card padding="p-5" className="mb-4">
+        <Card id="uretim-yetkinligi" padding="p-5" className="mb-4 scroll-mt-24">
           <h2 className="text-[15px] font-semibold mb-4 flex items-center gap-2">
             <span className="text-[18px]"></span> 3. Üretim yetkinliği
           </h2>

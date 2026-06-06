@@ -47,17 +47,6 @@ export async function assertPermission(
     } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // RPC ile yetki kontrolü (server-side, SECURITY DEFINER)
-    const { data: hasPerm, error: rpcErr } = await supabase.rpc(
-      "fn_has_permission",
-      { p_module: module, p_action: action }
-    );
-
-    if (rpcErr || hasPerm !== true) {
-      return null;
-    }
-
-    // Profile bilgisini de al (caller için)
     const { data: profile } = await supabase
       .from("profiles")
       .select("role, admin_role")
@@ -69,11 +58,31 @@ export async function assertPermission(
       admin_role?: string | null;
     } | null;
 
-    return {
+    if (!p || (p.role !== "admin" && p.role !== "staff")) {
+      return null;
+    }
+
+    const guardResult: PermissionGuardResult = {
       user: { id: user.id, email: user.email },
-      role: (p?.role === "staff" ? "staff" : "admin") as "admin" | "staff",
-      adminRole: p?.admin_role ?? null,
+      role: (p.role === "staff" ? "staff" : "admin") as "admin" | "staff",
+      adminRole: p.admin_role ?? null,
     };
+
+    // fn_has_permission ile uyumlu: legacy admin (admin_role NULL) + super_admin → tam yetki
+    if (!p.admin_role || p.admin_role === "super_admin") {
+      return guardResult;
+    }
+
+    const { data: hasPerm, error: rpcErr } = await supabase.rpc(
+      "fn_has_permission",
+      { p_module: module, p_action: action }
+    );
+
+    if (rpcErr || hasPerm !== true) {
+      return null;
+    }
+
+    return guardResult;
   } catch (err) {
     console.error("[assertPermission] error:", err);
     return null;

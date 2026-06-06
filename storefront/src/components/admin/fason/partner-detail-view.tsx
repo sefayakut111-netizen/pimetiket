@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Modal, Skeleton, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -51,7 +50,6 @@ function PartnerSidebar({
   partner: FasonPartner;
   onPartnerUpdated: (p: FasonPartner) => void;
 }) {
-  const router = useRouter();
   const [perfOpen, setPerfOpen] = useState(false);
   const hasContractPdf = !!(
     partner.contract_pdf_url && partner.contract_pdf_url.trim().length > 0
@@ -73,13 +71,12 @@ function PartnerSidebar({
             <h3 className="text-[11px] font-bold uppercase text-gri-500">
               Firma bilgileri
             </h3>
-            <button
-              type="button"
-              onClick={() => router.push(partnerEditPath(partner.id))}
+            <Link
+              href={partnerEditPath(partner.id)}
               className="text-[12px] font-semibold text-pim-mercan hover:underline shrink-0"
             >
               Duzenle
-            </button>
+            </Link>
           </div>
           <dl className="space-y-2 text-[13px]">
             <div>
@@ -1155,7 +1152,6 @@ export function PartnerActions({
   partner: FasonPartner;
   onUpdated: () => void;
 }) {
-  const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1269,16 +1265,13 @@ export function PartnerActions({
             </button>
           )}
           <div className="border-t border-gri-100 my-1" />
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
-            onClick={() => {
-              setOpen(false);
-              router.push(partnerEditPath(partner.id));
-            }}
+          <Link
+            href={partnerEditPath(partner.id)}
+            className="block w-full text-left px-3 py-2 text-[13px] hover:bg-gri-50 text-lacivert"
+            onClick={() => setOpen(false)}
           >
             Duzenle
-          </button>
+          </Link>
         </div>
         </>
       )}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Skeleton, useToast } from "@/components/ui";
 import {
@@ -21,7 +21,6 @@ function partnerEditPath(id: string): string {
 
 export default function AdminFasonPartnerDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const partnerId = decodeURIComponent(String(params.partnerId ?? ""));
   const toast = useToast();
 
@@ -199,7 +198,7 @@ export default function AdminFasonPartnerDetailPage() {
                   <Button
                     variant="secondary"
                     className="gap-2"
-                    onClick={() => router.push(partnerEditPath(partner.id))}
+                    href={partnerEditPath(partner.id)}
                   >
                     <Icon.Edit size={14} /> Duzenle
                   </Button>

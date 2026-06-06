@@ -10,6 +10,27 @@ const MESSAGE = (
   </>
 );
 
+/** Geniş ekranda track > viewport olması için yarı başına tekrar sayısı */
+const MESSAGE_REPEATS_PER_HALF = 4;
+
+function MarqueeHalf({ hidden }: { hidden?: boolean }) {
+  return (
+    <div
+      className="flex shrink-0 items-center"
+      {...(hidden ? { "aria-hidden": true as const } : {})}
+    >
+      {Array.from({ length: MESSAGE_REPEATS_PER_HALF }, (_, i) => (
+        <span
+          key={i}
+          className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap"
+        >
+          {MESSAGE}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function AnnouncementBar() {
   return (
     <div
@@ -18,16 +39,9 @@ export function AnnouncementBar() {
       className="relative z-[60] h-10 bg-lacivert text-white border-b border-white/10"
     >
       <div className="h-full overflow-hidden group/announce">
-        <div className="announce-marquee-track flex h-full w-max items-center group-hover/announce:[animation-play-state:paused]">
-          <span className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap">
-            {MESSAGE}
-          </span>
-          <span
-            className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap"
-            aria-hidden
-          >
-            {MESSAGE}
-          </span>
+        <div className="announce-marquee-track flex h-full w-max min-w-[200vw] items-center group-hover/announce:[animation-play-state:paused]">
+          <MarqueeHalf />
+          <MarqueeHalf hidden />
         </div>
       </div>
     </div>
