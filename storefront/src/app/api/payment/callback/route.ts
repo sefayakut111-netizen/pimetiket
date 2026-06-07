@@ -225,6 +225,11 @@ export async function POST(req: NextRequest) {
     return new NextResponse("OK");
   }
 
+  // Manuel inceleme kuyruğu — otomatik finalize etme (M3)
+  if (intent.status === "needs_review") {
+    return new NextResponse("OK");
+  }
+
   // 4) Failure path
   if (!isSuccess) {
     const failureReason =
@@ -265,10 +270,39 @@ export async function POST(req: NextRequest) {
     await admin
       .from("payment_intents")
       .update({
-        status: "failed",
-        failure_reason: "amount_mismatch",
+        status: "needs_review",
+        failure_reason: `amount_mismatch: expected=${expectedKurus} incoming=${incomingKurus}`,
       })
       .eq("id", merchantOid);
+
+    Sentry.captureMessage("payment_amount_mismatch_orphan_risk", {
+      level: "error",
+      tags: { merchantOid },
+      extra: {
+        expected_kurus: expectedKurus,
+        incoming_kurus: incomingKurus,
+        user_id: intent.user_id,
+        card_amount: intent.card_amount,
+      },
+    });
+
+    const { notifyAdminCriticalAlert } = await import(
+      "@/lib/mail/admin-critical-alert"
+    );
+    void notifyAdminCriticalAlert({
+      alertKey: `amount_mismatch:${merchantOid}`,
+      subject: `🚨 ACİL — PayTR tutar uyumsuzluğu ${merchantOid}`,
+      title: "PayTR tutar uyumsuzluğu — orphaned charge riski",
+      body: `merchant_oid: ${merchantOid}\nBeklenen (kuruş): ${expectedKurus}\nPayTR gelen (kuruş): ${incomingKurus}\nKullanıcı: ${intent.user_id}\nIntent tutarı: ${intent.card_amount} ₺\n\nPayTR panelinden kontrol edin; sipariş oluşturulmadı.`,
+      targetType: "cart",
+      targetId: merchantOid,
+      extra: {
+        admin_link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/admin/finans?tab=odemeler`,
+      },
+    }).catch((err) =>
+      console.error("[payment/callback] amount mismatch admin alert:", err)
+    );
+
     return new NextResponse("OK");
   }
 
@@ -395,6 +429,7 @@ export async function POST(req: NextRequest) {
       userId: intent.user_id,
       orderId,
       chargedDiscount: intent.snapshot.couponDiscount ?? undefined,
+      paymentIntentId: merchantOid,
     });
     if (!applyResult.ok) {
       console.warn(

@@ -639,6 +639,35 @@ function renderAdminNewSupportTicket(input: MailTemplateInput): MailRendered {
 }
 
 // ============================================================
+// admin_critical_alert — PARA/güvenlik acil uyarı (M2/M3)
+// ============================================================
+function renderAdminCriticalAlert(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const title = escape(String(p.title ?? "Kritik uyarı"));
+  const bodyText = escape(String(p.body ?? "—"));
+  const adminLink =
+    typeof p.admin_link === "string" ? p.admin_link : `${SITE_URL}/admin/finans`;
+
+  const subject = `🚨 Pim Etiket — ${String(p.title ?? "Kritik uyarı")}`;
+
+  const body = `
+    <h1 style="font-size: 18px; margin: 0 0 12px; color: #dc2626;">🚨 ${title}</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px; white-space: pre-wrap;">${bodyText}</p>
+    <div style="margin: 24px 0;">
+      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Admin paneli →
+      </a>
+    </div>
+  `;
+
+  const footer = `Pim Etiket PARA/güvenlik bildirimi. ADMIN_NOTIFICATION_EMAIL ile kontrol edilir.`;
+
+  const text = `${title}\n\n${bodyText}\n\n${adminLink}`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+// ============================================================
 // customer_support_ticket_received — müşteriye talep alındı onayı
 // ============================================================
 function renderCustomerSupportReceived(input: MailTemplateInput): MailRendered {
@@ -880,6 +909,7 @@ const RENDERERS: Record<
   admin_new_order: renderAdminNewOrder,
   admin_fason_status: renderAdminFasonStatus,
   admin_new_support_ticket: renderAdminNewSupportTicket,
+  admin_critical_alert: renderAdminCriticalAlert,
   customer_support_ticket_received: renderCustomerSupportReceived,
   admin_daily_summary: renderAdminDailySummary,
   // Sefa 21 May v68 — caller-rendered React Email helpers için bypass

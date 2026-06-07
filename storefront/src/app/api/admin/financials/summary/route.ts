@@ -96,8 +96,20 @@ export async function GET(req: Request) {
     .lte("created_at", end);
   if (start) paymentsQuery = paymentsQuery.gte("created_at", start);
 
-  const [{ data: orders, error: ordersErr }, { data: payments, error: payErr }] =
-    await Promise.all([ordersQuery, paymentsQuery]);
+  const [{ data: orders, error: ordersErr }, { data: payments, error: payErr }, { count: needsReviewCount }, { count: couponFailCount }] =
+    await Promise.all([
+      ordersQuery,
+      paymentsQuery,
+      admin
+        .from("payment_intents")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "needs_review"),
+      admin
+        .from("order_events")
+        .select("id", { count: "exact", head: true })
+        .eq("event_type", "coupon_apply_failed")
+        .gte("created_at", new Date(Date.now() - 30 * DAY).toISOString()),
+    ]);
 
   if (ordersErr || payErr) {
     return NextResponse.json(
@@ -172,5 +184,9 @@ export async function GET(req: Request) {
     paymentCount: paymentRows.filter(
       (p) => p.action === "charge" && p.status === "success"
     ).length,
+    paraAlerts: {
+      needsReviewCount: needsReviewCount ?? 0,
+      couponApplyFailed30d: couponFailCount ?? 0,
+    },
   });
 }

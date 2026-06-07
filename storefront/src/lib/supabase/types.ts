@@ -4606,7 +4606,7 @@ export type Database = {
         | "human_review"
         | "human_review_failed"
         | "ready_to_ship"
-      payment_intent_status: "pending" | "consumed" | "failed" | "expired"
+      payment_intent_status: "pending" | "consumed" | "failed" | "expired" | "needs_review"
       return_reason:
         | "yanlis_urun"
         | "uretim_hatasi"
@@ -4844,7 +4844,7 @@ export const Constants = {
         "human_review_failed",
         "ready_to_ship",
       ],
-      payment_intent_status: ["pending", "consumed", "failed", "expired"],
+      payment_intent_status: ["pending", "consumed", "failed", "expired", "needs_review"],
       return_reason: [
         "yanlis_urun",
         "uretim_hatasi",

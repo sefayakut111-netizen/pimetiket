@@ -16,6 +16,10 @@ export interface FinancialSummary {
   gap: number;
   orderCount: number;
   paymentCount: number;
+  paraAlerts?: {
+    needsReviewCount: number;
+    couponApplyFailed30d: number;
+  };
 }
 
 export type DashboardTimeRange = "today" | "7d" | "mtd" | "30d" | "custom";

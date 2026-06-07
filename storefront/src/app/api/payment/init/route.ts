@@ -340,6 +340,9 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (pendingIntent?.iyzico_token) {
+    await admin.rpc("fn_release_coupon_reservation", {
+      p_payment_intent_id: pendingIntent.id,
+    });
     await admin
       .from("payment_intents")
       .update({
@@ -433,6 +436,34 @@ export async function POST(req: NextRequest) {
       { error: "intent_save_failed" },
       { status: 500 }
     );
+  }
+
+  // M2: Kupon slot rezervasyonu (total_uses_limit race)
+  if (couponCode) {
+    const { data: reserveData, error: reserveErr } = await admin.rpc(
+      "fn_reserve_coupon_for_payment",
+      {
+        p_code: couponCode,
+        p_user_id: user.id,
+        p_payment_intent_id: merchantOid,
+      }
+    );
+    if (reserveErr) {
+      console.error("[payment/init] coupon reserve RPC error:", reserveErr);
+      await admin.from("payment_intents").delete().eq("id", merchantOid);
+      return NextResponse.json(
+        { error: "coupon_reserve_failed" },
+        { status: 500 }
+      );
+    }
+    const reserve = reserveData as { ok?: boolean; reason?: string } | null;
+    if (!reserve?.ok) {
+      await admin.from("payment_intents").delete().eq("id", merchantOid);
+      return NextResponse.json(
+        { error: "coupon_invalid", reason: reserve?.reason ?? "total_limit_reached" },
+        { status: 400 }
+      );
+    }
   }
 
   // FSEK m.66 telif ispatı — order_events'a değil, audit_log'a yaz

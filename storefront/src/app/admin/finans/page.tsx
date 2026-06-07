@@ -519,6 +519,37 @@ function AdminFinansPageInner() {
           </div>
         </Card>
 
+        {(financialSummary?.paraAlerts?.needsReviewCount ?? 0) > 0 ||
+        (financialSummary?.paraAlerts?.couponApplyFailed30d ?? 0) > 0 ? (
+          <Card padding="p-4" className="mb-6 bg-kirmizi-soft ring-kirmizi/20">
+            <div className="flex items-start gap-3">
+              <StatusDot color="kirmizi" className="w-3 h-3 mt-1.5 shrink-0" />
+              <div className="flex-1">
+                <h2 className="text-[13.5px] font-semibold text-lacivert">
+                  PARA uyarıları — manuel inceleme gerekli
+                </h2>
+                <ul className="text-[12.5px] text-gri-700 mt-1.5 space-y-1 list-disc pl-4">
+                  {(financialSummary?.paraAlerts?.needsReviewCount ?? 0) > 0 ? (
+                    <li>
+                      <strong>{financialSummary?.paraAlerts?.needsReviewCount}</strong>{" "}
+                      ödeme intent&apos;i <code>needs_review</code> (PayTR tutar
+                      uyumsuzluğu — orphaned charge riski)
+                    </li>
+                  ) : null}
+                  {(financialSummary?.paraAlerts?.couponApplyFailed30d ?? 0) > 0 ? (
+                    <li>
+                      Son 30 günde{" "}
+                      <strong>{financialSummary?.paraAlerts?.couponApplyFailed30d}</strong>{" "}
+                      kupon uygulama hatası (indirimli ödeme, kupon tüketilmemiş
+                      olabilir)
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
         {financialSummary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <Card padding="p-4">

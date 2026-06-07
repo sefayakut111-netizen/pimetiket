@@ -119,7 +119,7 @@ async function logCouponApplyFailure(
   });
 
   Sentry.captureMessage("coupon_apply_failed_after_payment", {
-    level: "warning",
+    level: "error",
     tags: {
       orderId: params.orderId,
       couponCode: params.code,
@@ -130,6 +130,21 @@ async function logCouponApplyFailure(
       rpc_message: params.rpcMessage,
     },
   });
+
+  const { notifyAdminCriticalAlert } = await import(
+    "@/lib/mail/admin-critical-alert"
+  );
+  void notifyAdminCriticalAlert({
+    alertKey: `coupon_apply_failed:${params.orderId}`,
+    subject: `🚨 Kupon uygulanamadı — sipariş ${params.orderId}`,
+    title: "Kupon ödeme sonrası uygulanamadı",
+    body: `Sipariş: ${params.orderId}\nKupon: ${params.code}\nBeklenen indirim: ${params.chargedDiscount ?? "—"} ₺\nSebep: ${params.reason}${params.rpcMessage ? `\nRPC: ${params.rpcMessage}` : ""}\n\nMüşteri indirimli ödemiş olabilir — manuel inceleme gerekir.`,
+    targetType: "order",
+    targetId: params.orderId,
+    extra: { admin_link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/admin/siparisler/${params.orderId}` },
+  }).catch((err) =>
+    console.error("[coupon-server] admin alert failed:", err)
+  );
 }
 
 /**
@@ -146,6 +161,8 @@ export async function applyCouponAfterOrder(
     orderId: string;
     /** Init snapshot'tan gelen gerçek çekilen indirim (audit doğruluğu) */
     chargedDiscount?: number;
+    /** PayTR merchant_oid — rezervasyon temizliği (M2) */
+    paymentIntentId?: string;
   }
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const code = params.code.trim();
@@ -157,6 +174,7 @@ export async function applyCouponAfterOrder(
     p_user_id: params.userId,
     p_order_id: params.orderId,
     p_charged_discount: params.chargedDiscount ?? null,
+    p_payment_intent_id: params.paymentIntentId ?? null,
   });
 
   if (error) {

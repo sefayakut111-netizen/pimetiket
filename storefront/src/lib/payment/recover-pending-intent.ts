@@ -294,6 +294,8 @@ async function finalizeFromPaytrSuccess(
       subtotal: intent.snapshot.subtotal,
       userId: intent.user_id,
       orderId,
+      chargedDiscount: intent.snapshot.couponDiscount ?? undefined,
+      paymentIntentId: intent.id,
     });
   }
 

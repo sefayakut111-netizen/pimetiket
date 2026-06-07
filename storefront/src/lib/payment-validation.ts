@@ -10,15 +10,8 @@
  *        ile admin live_config kullanarak gerçek fiyat hesaplanır.
  *        Tolerans %2 (kur farkı, opsiyonel rounding ufak sapması için).
  *
- *     2) SANITY FLOOR — recalc başarısızsa (formFactor inferred
- *        edilemedi, config eksik) defensif kontroller:
- *           • unit_price ≥ 0.40 TL
- *           • width × height ≥ 100 mm² (min 10×10 mm)
- *           • |item.total - item.unit × item.qty| ≤ 0.5 TL
- *           • subtotal ≥ items.length × 1 TL
- *
- *   Faz 3 (Sefa kararı 19 May) pricing motoru birleştirmesinden sonra
- *   sanity floor kaldırılıp her item için tam recalc zorunlu yapılır.
+ *     2) RECALC ZORUNLU (PARA-FIX M1) — recalc başarısızsa checkout RED;
+ *        sanity floor bypass kapatıldı.
  */
 
 import {
@@ -71,7 +64,8 @@ export interface ValidationFailDetail {
     | "sanity_area_too_small"
     | "sanity_total_inconsistent"
     | "sanity_subtotal_too_low"
-    | "qty_above_max";
+    | "qty_above_max"
+    | "recalc_required";
   expected?: number;
   actual?: number;
   hint?: string;
@@ -418,18 +412,9 @@ export async function validateCartPricing(
   const failures: ValidationFailDetail[] = [];
   const recalcedItemIds: string[] = [];
 
-  // Subtotal alt limit
-  if (subtotal < items.length * SANITY_SUBTOTAL_PER_ITEM_MIN_TL) {
-    failures.push({
-      itemId: "*",
-      reason: "sanity_subtotal_too_low",
-      expected: items.length * SANITY_SUBTOTAL_PER_ITEM_MIN_TL,
-      actual: subtotal,
-      hint: `Subtotal ${subtotal} TL minimum ${items.length} × ${SANITY_SUBTOTAL_PER_ITEM_MIN_TL} = ${items.length} TL`,
-    });
-  }
+  // Subtotal alt limit kaldırıldı (PARA-FIX M1 — recalc tek otorite)
 
-  // Scope başına config cache (aynı sticker config'i tek fetch)
+  // Scope başına config cache
   const configCache: Partial<
     Record<"sticker" | "etiket_rulo" | "etiket_tabaka", ProfileConfig>
   > = {};
@@ -471,9 +456,12 @@ export async function validateCartPricing(
       continue;
     }
 
-    // Recalc başarısızsa sanity floor
-    const sanityFail = sanityCheckItem(item);
-    if (sanityFail) failures.push(sanityFail);
+    // PARA-FIX M1: recalc başarısız → checkout RED (sanity floor bypass kapatıldı)
+    failures.push({
+      itemId: item.id,
+      reason: "recalc_required",
+      hint: "Fiyat yeniden hesaplanamadı. Sepeti yenileyip tekrar deneyin.",
+    });
   }
 
   return {

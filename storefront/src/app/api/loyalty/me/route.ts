@@ -74,15 +74,13 @@ export async function GET() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  // Kullanıcının aktif sadakat kuponları (REF-NEW-* veya REF-VIP-* veya YORUM-* ile başlayan)
+  // Kullanıcının aktif sadakat kuponları — sadece kendisine atanmış (M7 PARA-FIX)
   const { data: coupons } = await admin
     .from("coupons")
     .select(
       "id, code, kind, value, max_discount, min_subtotal, expires_at, description, is_active"
     )
-    .or(
-      "code.like.REF-NEW-%,code.like.REF-VIP-%,code.like.YORUM-%"
-    )
+    .eq("target_user_id", user.id)
     .eq("is_active", true)
     .gt("expires_at", new Date().toISOString())
     .order("expires_at", { ascending: true })
