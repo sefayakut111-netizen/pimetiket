@@ -1,15 +1,10 @@
 /**
  * Pim Etiket — AI QC tasarım reddedildi maili.
  *
- * Sefa 19 May v68 (su borusu denetimi):
- * AI QC veya operatör tasarım dosyasını "düzelt" işaretledi → müşteriye
- * sebep + ne yapacağı açık talimat. Mesai dışı destek (Pim sohbet)
- * referansı dahil.
- *
  * Trigger: /api/admin/ai-qc/decide POST endpoint'i decision="reject"
  */
 
-import { Section, Text } from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
 import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
 
@@ -60,83 +55,73 @@ export function QcRejectedEmail({
   const issueLabel = ISSUE_LABELS[issueCategory];
   const issueHelp = ISSUE_HELP[issueCategory];
   const orderUrl = `${SITE}/siparis/${orderId}`;
+  const qcReason =
+    reason.trim() ||
+    "Dosyan mevcut hâliyle baskıya uygun değil; düzeltmek için bize ulaş.";
 
   return (
-    <BaseLayout preview={`Tasarım dosyası düzeltme gerekiyor — ${orderId}`}>
+    <BaseLayout preview="Düzeltmek için ne gerektiğini açıkladık.">
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
       <Text style={mailStyles.h1}>
-        {firstName}, tasarımda küçük bir düzeltme lazım 🛠️
+        Dosyan baskıya hazır değil — birlikte çözelim
       </Text>
       <Text style={mailStyles.p}>
-        Yüklediğin tasarım dosyasında baskıya geçmeden önce düzeltilmesi
-        gereken bir nokta tespit ettik. Endişelenme — yaygın bir durum,
-        2-3 dakikada halledebilirsin.
+        Merhaba {firstName}, {orderId} numaralı siparişinin dosyasını baskıya
+        hazırlarken şu nedenle olduğu gibi basamayacağımızı gördük:
       </Text>
 
-      {/* Sorun özeti */}
       <Section
         style={{
           background: COLORS.warningBg,
           border: `1px solid ${COLORS.warningBorder}`,
-          borderRadius: "10px",
+          borderRadius: 10,
           padding: "16px 18px",
           margin: "20px 0",
         }}
       >
-        <Text style={{ ...mailStyles.label, color: COLORS.warningText, marginTop: 0 }}>
-          ⚠️ Düzeltme konusu
-        </Text>
         <Text
           style={{
             ...mailStyles.p,
             color: COLORS.warningText,
-            margin: "4px 0 12px",
+            margin: 0,
             fontWeight: 600,
+            lineHeight: 1.6,
           }}
         >
-          {issueLabel}
+          {issueCategory !== "other" ? `${issueLabel}. ` : ""}
+          {qcReason}
         </Text>
         {fileName && (
-          <Text style={{ ...mailStyles.p, margin: "0 0 8px", fontSize: "13px" }}>
+          <Text style={{ ...mailStyles.p, margin: "12px 0 0", fontSize: 13 }}>
             Dosya: <code>{fileName}</code>
           </Text>
         )}
-        <Text style={{ ...mailStyles.p, margin: 0, fontSize: "13px" }}>
-          Operatör notu: <em>{reason}</em>
-        </Text>
       </Section>
 
-      {/* Nasıl yapılır */}
       {issueHelp && (
         <Section style={{ margin: "20px 0" }}>
-          <Text style={mailStyles.label}>💡 NASIL ÇÖZÜLÜR?</Text>
+          <Text style={mailStyles.label}>Nasıl çözülür?</Text>
           <Text style={{ ...mailStyles.p, margin: "6px 0 0" }}>{issueHelp}</Text>
         </Section>
       )}
 
-      {/* CTA — sipariş sayfasında dosya değiştirme */}
-      <Section style={{ textAlign: "center", margin: "32px 0 24px" }}>
-        <a
-          href={orderUrl}
-          style={{
-            background: COLORS.brand,
-            color: "#fff",
-            textDecoration: "none",
-            padding: "12px 28px",
-            borderRadius: "999px",
-            fontWeight: 600,
-            fontSize: "14px",
-            display: "inline-block",
-          }}
-        >
-          Düzeltilmiş dosyayı yükle →
-        </a>
+      <Text style={mailStyles.p}>
+        Çoğu durum kolayca çözülür. Düzeltilmiş dosyanı yükleyebilirsin; nasıl
+        hazırlayacağından emin değilsen adım adım yardımcı oluruz.
+      </Text>
+
+      <Section style={{ margin: "28px 0 8px" }}>
+        <Link href={orderUrl} style={mailStyles.buttonPrimary}>
+          Yeni dosya yükle →
+        </Link>
       </Section>
 
-      <Text style={{ ...mailStyles.p, fontSize: "13px", color: COLORS.muted }}>
-        Yardım gerekirse Pim sohbet asistanına yazabilir (sağ alt köşede)
-        veya info@pimetiket.com'a e-posta atabilirsin. Tasarım yüklenince
-        otomatik üretim akışına geçer.
+      <Text style={mailStyles.pSecondary}>
+        Takılırsan{" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>{" "}
+        üzerinden bize yaz — birlikte hallederiz.
       </Text>
     </BaseLayout>
   );

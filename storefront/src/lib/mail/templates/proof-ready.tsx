@@ -21,58 +21,64 @@ export function ProofReadyEmail({
   productTitle,
 }: ProofReadyProps) {
   const firstName = customerName.split(" ")[0] || customerName;
+  const proofUrl = `${SITE}/onay/${orderId}`;
 
   return (
-    <BaseLayout preview={`Provan hazır — ${orderId}`}>
+    <BaseLayout preview="Baskıdan önce son söz sende.">
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
       <Text style={mailStyles.h1}>
-        {firstName}, provan hazır! Bir göz at.
+        Provan hazır — onayını bekliyoruz
       </Text>
       <Text style={mailStyles.p}>
-        <strong>{productTitle}</strong> tasarımının matbaa öncesi nasıl
-        görüneceğini hazırladık. AI ön kontrolden geçti, operatörümüz baktı.
-        Şimdi sıra sende.
+        {orderId} numaralı siparişinin baskı provası hazır.{" "}
+        <strong>{productTitle}</strong> için operatörümüz baktı, AI ön
+        kontrolden geçti — şimdi sıra sende. Aşağıdan provanı incele; her şey
+        yolundaysa onayla, biz de baskıya geçelim.
       </Text>
 
-      <Section style={mailStyles.card}>
+      <Section
+        style={{
+          background: COLORS.krem,
+          border: `2px solid ${COLORS.pimMercan}`,
+          borderRadius: 12,
+          padding: "20px",
+          margin: "24px 0",
+          textAlign: "center" as const,
+        }}
+      >
         <Text
           style={{
-            margin: 0,
-            fontSize: 14,
-            color: COLORS.lacivert,
-            fontWeight: 600,
-          }}
-        >
-          Yapman gerekenler
-        </Text>
-        <Text
-          style={{
-            margin: "8px 0 0",
-            fontSize: 13,
+            margin: "0 0 8px",
+            fontSize: 12,
             color: COLORS.gri700,
-            lineHeight: 1.7,
+            fontWeight: 600,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.04em",
           }}
         >
-          1. Provayı yakınlaştır, kenarları/yazıları kontrol et<br />
-          2. Renkler ekrandakine göre küçük farklarla basılır (CMYK
-          kalibrasyonu)<br />
-          3. Onayla → üretime gider<br />
-          4. Değişiklik iste → operatörle revize ederiz
+          Baskı provası önizlemesi
         </Text>
-      </Section>
-
-      <Section style={{ margin: "24px 0 8px" }}>
+        <Text style={{ ...mailStyles.p, margin: "0 0 16px", fontSize: 14 }}>
+          Prova görselini onay sayfasında yakınlaştırarak inceleyebilirsin.
+          Onayladığın hâliyle basılır.
+        </Text>
         <Link
-          href={`${SITE}/siparis/${orderId}`}
-          style={mailStyles.buttonPrimary}
+          href={proofUrl}
+          style={{
+            ...mailStyles.buttonPrimary,
+            display: "inline-block",
+          }}
         >
-          Provayı incele →
+          Provamı incele ve onayla →
         </Link>
       </Section>
 
       <Text style={mailStyles.pSecondary}>
-        Onayını verdikten sonra üretim başlar — geri dönüş zor olabilir.
-        Acele etme, dikkatli bak.
+        Değişiklik istersen aynı sayfadan iletebilirsin. Sorun olursa{" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>{" "}
+        üzerinden bize yaz.
       </Text>
     </BaseLayout>
   );

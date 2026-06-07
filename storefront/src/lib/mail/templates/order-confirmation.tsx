@@ -19,7 +19,7 @@ export interface OrderConfirmationProps {
   subtotal: number;
   shipping: number;
   total: number;
-  estimatedDelivery?: string; // "8 Mayıs 2026"
+  estimatedDelivery?: string;
 }
 
 const fmt = (n: number) =>
@@ -37,17 +37,17 @@ export function OrderConfirmationEmail({
   const firstName = customerName.split(" ")[0] || customerName;
 
   return (
-    <BaseLayout
-      preview={`Siparişin alındı 🎉 — ${orderId}`}
-    >
+    <BaseLayout preview="Ödemeni aldık; sıradaki adımı aşağıda özetledik.">
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
-      <Text style={mailStyles.h1}>Teşekkürler {firstName}, siparişin alındı! 🎉</Text>
+      <Text style={mailStyles.h1}>
+        Teşekkürler {firstName}, siparişin alındı
+      </Text>
       <Text style={mailStyles.p}>
-        Ödemen başarıyla tahsil edildi. Şimdi tasarım dosyalarını yüklemen
-        gerekiyor — Pim AI saniyeler içinde DPI/CMYK/boşluk kontrolü yapacak.
+        {orderId} numaralı siparişin alındı ve ödemen başarıyla tahsil edildi.
+        Tasarım dosyanı henüz yüklemediysen yüklemen gerekiyor; yüklediysen
+        ekibimiz baskı öncesi kontrole alıyor.
       </Text>
 
-      {/* Order summary card */}
       <Section style={mailStyles.card}>
         {items.map((item, i) => (
           <Row
@@ -151,30 +151,28 @@ export function OrderConfirmationEmail({
 
       {estimatedDelivery && (
         <Text style={mailStyles.pSecondary}>
-          📦 Tahmini teslim tarihi:{" "}
+          Tahmini teslim:{" "}
           <strong style={{ color: COLORS.lacivert }}>
             {estimatedDelivery}
           </strong>
         </Text>
       )}
 
-      {/* CTA */}
       <Section style={{ margin: "28px 0 8px" }}>
         <Link
           href={`${SITE}/siparis/${orderId}`}
           style={mailStyles.buttonPrimary}
         >
-          Tasarım dosyamı yükle →
+          Siparişimi görüntüle →
         </Link>
       </Section>
 
       <Text style={mailStyles.pSecondary}>
-        3 gün içinde dosya yüklemen gerekiyor. Yüklemediğin sürece sipariş
-        bekler — Pim seni bunaltmaz, sen hazır olunca devam ederiz.
-      </Text>
-
-      <Text style={{ ...mailStyles.pSecondary, marginTop: 24 }}>
-        Sorun olursa yanıtla, Pim ekibinden biri 1 saat içinde döner. 🙋‍♂️
+        Her aşamada seni e-posta ile bilgilendireceğiz. Sorun olursa{" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>{" "}
+        üzerinden bize yazabilirsin.
       </Text>
     </BaseLayout>
   );

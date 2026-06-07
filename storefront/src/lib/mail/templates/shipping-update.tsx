@@ -10,7 +10,7 @@ import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
 export interface ShippingUpdateProps {
   customerName: string;
   orderId: string;
-  carrierName: string; // "Yurtiçi Kargo", "Aras", "MNG", "PTT"
+  carrierName: string;
   trackingNumber: string;
   trackingUrl?: string;
   estimatedDelivery?: string;
@@ -25,15 +25,18 @@ export function ShippingUpdateEmail({
   estimatedDelivery,
 }: ShippingUpdateProps) {
   const firstName = customerName.split(" ")[0] || customerName;
+  const preheader = estimatedDelivery
+    ? `${carrierName} · tahmini teslim ${estimatedDelivery}`
+    : `${carrierName} · takip numaran e-postada`;
 
   return (
-    <BaseLayout preview={`Siparişin yola çıktı — ${orderId}`}>
+    <BaseLayout preview={preheader}>
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
       <Text style={mailStyles.h1}>
-        {firstName}, siparişin yola çıktı 🚚
+        {firstName}, siparişin kargoda
       </Text>
       <Text style={mailStyles.p}>
-        Üretim tamamlandı, paketlendi ve kargoya verildi. Yakında elinde olur.
+        {orderId} numaralı siparişin kargoya verildi.
       </Text>
 
       <Section style={mailStyles.card}>
@@ -86,24 +89,20 @@ export function ShippingUpdateEmail({
       </Section>
 
       <Section style={{ margin: "24px 0 8px" }}>
-        {trackingUrl && (
-          <Link href={trackingUrl} style={mailStyles.buttonPrimary}>
-            Kargo takibi →
-          </Link>
-        )}
-        {!trackingUrl && (
-          <Link
-            href={`${SITE}/siparis/${orderId}`}
-            style={mailStyles.buttonPrimary}
-          >
-            Sipariş detayları →
-          </Link>
-        )}
+        <Link
+          href={trackingUrl ?? `${SITE}/siparis/${orderId}`}
+          style={mailStyles.buttonPrimary}
+        >
+          Kargomu takip et →
+        </Link>
       </Section>
 
       <Text style={mailStyles.pSecondary}>
-        Kargo gelince mutlaka kontrol et — paket hasarlıysa kargocu önünde tutanak
-        tut, fotoğrafla, bize ilet. İade gerekirse 14 gün içinde başlatabiliriz.
+        Teslimde bir sorun olursa bize hemen yaz —{" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>
+        .
       </Text>
     </BaseLayout>
   );

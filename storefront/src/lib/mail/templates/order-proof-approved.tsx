@@ -1,14 +1,8 @@
 /**
  * Pim Etiket — Tüm baskı onayları alındı maili.
- *
- * Sefa 19 May v68 (Migration 059):
- * `fn_finalize_proof` RPC orders.status='proof_approved' yaptıktan
- * hemen sonra fire-and-forget tetiklenir.
- *
- * Müşteri teşekkür edilir, üretim aşamaları + tahmini süreler verilir.
  */
 
-import { Section, Text } from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
 import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
 
@@ -16,9 +10,7 @@ export interface OrderProofApprovedProps {
   customerName: string;
   orderId: string;
   itemCount: number;
-  /** Üretim için tahmini iş günü (sabit 2 gün şimdilik) */
   estimatedProductionDays?: number;
-  /** Toplam tahmini teslim — sipariş'ten gelir */
   estimatedDelivery?: string | null;
 }
 
@@ -33,16 +25,15 @@ export function OrderProofApprovedEmail({
   const orderUrl = `${SITE}/siparis/${orderId}`;
 
   return (
-    <BaseLayout preview={`Onayın alındı — üretim başladı 🎉 — ${orderId}`}>
+    <BaseLayout preview="Onayın alındı, üretime geçiyoruz.">
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
       <Text style={mailStyles.h1}>
-        Teşekkürler {firstName}! Üretime başlıyoruz 🎉
+        Onayın alındı, üretime başlıyoruz
       </Text>
       <Text style={mailStyles.p}>
-        {itemCount === 1
-          ? "1 ürünün baskı önizlemesini"
-          : `${itemCount} ürünün baskı önizlemesini`}{" "}
-        onayladın. Tasarımların artık matbaa hattına aktarıldı.
+        Teşekkürler {firstName}. {orderId} numaralı siparişinde{" "}
+        {itemCount === 1 ? "1 ürünün" : `${itemCount} ürünün`} baskı
+        onayını aldık. Tasarımların üretim hattına aktarıldı.
       </Text>
 
       <Section
@@ -63,7 +54,7 @@ export function OrderProofApprovedEmail({
             fontSize: 14,
           }}
         >
-          ✓ Onayın alındı (şimdi)
+          Sıradaki adımlar
         </Text>
         <Text
           style={{
@@ -74,13 +65,13 @@ export function OrderProofApprovedEmail({
             lineHeight: 1.7,
           }}
         >
-          ○ Operatör son göz kontrolü (1-2 saat)
+          · Operatör son kontrol (1–2 saat)
           <br />
-          ○ Üretim hattı (~{estimatedProductionDays} iş günü)
+          · Üretim (~{estimatedProductionDays} iş günü)
           <br />
-          ○ Kargoya verildi mailini bekle
+          · Kargoya verildiğinde ayrı e-posta
           <br />
-          ○ Yurtiçi Kargo ile teslimat (3-5 iş günü)
+          · Kargo teslimi (3–5 iş günü, taşıyıcıya bağlı)
         </Text>
       </Section>
 
@@ -94,7 +85,7 @@ export function OrderProofApprovedEmail({
           }}
         >
           <Text style={{ ...mailStyles.label, marginTop: 0 }}>
-            🚚 TAHMİNİ TESLİMAT
+            TAHMİNİ TESLİMAT
           </Text>
           <Text style={{ ...mailStyles.p, margin: "4px 0 0", fontWeight: 600 }}>
             {estimatedDelivery}
@@ -102,47 +93,18 @@ export function OrderProofApprovedEmail({
         </Section>
       )}
 
-      <Section style={{ textAlign: "center" as const, margin: "28px 0" }}>
-        <a
-          href={orderUrl}
-          style={{
-            background: COLORS.brand,
-            color: "#fff",
-            textDecoration: "none",
-            padding: "14px 32px",
-            borderRadius: 999,
-            fontWeight: 600,
-            fontSize: 15,
-            display: "inline-block",
-          }}
-        >
-          Sipariş takibini aç →
-        </a>
+      <Section style={{ margin: "28px 0 8px" }}>
+        <Link href={orderUrl} style={mailStyles.buttonPrimary}>
+          Siparişimi takip et →
+        </Link>
       </Section>
 
-      <Text style={{ ...mailStyles.p, color: COLORS.muted, fontSize: 13 }}>
-        Her aşamada e-posta bildirimi alacaksın. Tasarımında kritik bir sorun
-        çıkarsa (matbaa raporu) operatörümüz seninle iletişime geçer. Sorunsuz
-        ilerleme için onayın matbaa standartlarımıza uyduğundan emin olduk.
-      </Text>
-
-      <Text
-        style={{
-          ...mailStyles.p,
-          color: COLORS.muted,
-          fontSize: 12,
-          marginTop: 20,
-          textAlign: "center" as const,
-        }}
-      >
-        Sorun yaşadıysan{" "}
-        <a
-          href="mailto:info@pimetiket.com"
-          style={{ color: COLORS.brand, fontWeight: 500 }}
-        >
-          info@pimetiket.com
-        </a>{" "}
-        veya Pim sohbet bot'undan ulaşabilirsin.
+      <Text style={mailStyles.pSecondary}>
+        Her aşamada e-posta bildirimi alacaksın. Sorun olursa{" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>{" "}
+        üzerinden bize yaz.
       </Text>
     </BaseLayout>
   );

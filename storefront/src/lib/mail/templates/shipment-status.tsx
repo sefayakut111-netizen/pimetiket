@@ -1,17 +1,11 @@
 /**
  * Pim Etiket — Kargo durum güncelleme maili (yolda / dağıtımda).
  *
- * Sefa 19 May v68: Cron poll-shipments yeni status event'i tespit
- * ettiğinde, eğer "delivered" değilse ara bildirim gönderir.
- *
- * Durum kategorileri:
- *   - in_transit / picked_up → "Kargon yola çıktı"
- *   - out_for_delivery → "Kargon bugün teslim için yolda"
- *   - failed → "Teslimat başarısız oldu"
- *   - returned → "Kargon iade edildi"
+ * Trigger: Cron poll-shipments yeni status event'i tespit ettiğinde
+ * (delivered değilse ara bildirim).
  */
 
-import { Section, Text } from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
 import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
 
@@ -27,40 +21,27 @@ export interface ShipmentStatusProps {
   status: ShipmentStatusKind;
   /** Yurtiçi'den gelen açıklama "Şubeye geldi" gibi */
   description: string;
-  location?: string | null; // "Üsküdar Şubesi"
+  location?: string | null;
   trackingNumber: string;
   trackingUrl?: string | null;
 }
 
-const STATUS_TITLE: Record<ShipmentStatusKind, string> = {
-  in_transit: "🚚 Kargon yola çıktı",
-  out_for_delivery: "🛵 Kargon bugün dağıtımda",
-  failed: "⚠️ Teslimat başarısız oldu",
-  returned: "↩️ Kargo iade edildi",
+const STATUS_TEXT: Record<ShipmentStatusKind, string> = {
+  in_transit: "kargo yolda",
+  out_for_delivery: "bugün dağıtımda",
+  failed: "teslimat başarısız",
+  returned: "kargo iade ediliyor",
 };
 
 const STATUS_BODY: Record<ShipmentStatusKind, string> = {
   in_transit:
-    "Siparişin Yurtiçi Kargo sistemine giriş yaptı ve transfer ediliyor. " +
-    "Tahmini 1-3 iş günü içinde elinde olacak.",
+    "Siparişin taşıyıcı sisteminde transfer ediliyor. Tahmini 1–3 iş günü içinde elinde olabilir.",
   out_for_delivery:
-    "Kargo bugün senin için yola çıktı. Kurye 09:00-18:00 arası teslim eder. " +
-    "Evde olamayacaksan kargo şubesinden alabilirsin.",
+    "Kargo bugün teslim için yola çıktı. Kurye genelde 09:00–18:00 arası teslim eder.",
   failed:
-    "Kurye seni evde bulamadı (3 deneme veya adres sorunu olabilir). " +
-    "Lütfen kargo şubesinden ne kadar süre saklanacağını öğrenmek için " +
-    "takip numarasıyla Yurtiçi'ne ulaş veya bize WhatsApp'tan haber ver.",
+    "Kurye teslimat yapamadı (adres veya ulaşılamama). Takip numarasıyla taşıyıcıya ulaş veya bize yaz.",
   returned:
-    "Kargo gönderici olarak bize iade ediliyor. Sorun ne kaynaklıydı " +
-    "tespit edip seninle iletişime geçeceğiz; ya yeniden gönderim ya " +
-    "ücret iadesi planlayacağız.",
-};
-
-const STATUS_COLOR: Record<ShipmentStatusKind, string> = {
-  in_transit: COLORS.lacivert,
-  out_for_delivery: "#AD6800",
-  failed: COLORS.errorText,
-  returned: COLORS.errorText,
+    "Kargo gönderici olarak bize iade ediliyor. Durumu netleştirip seninle iletişime geçeceğiz.",
 };
 
 export function ShipmentStatusEmail({
@@ -73,17 +54,20 @@ export function ShipmentStatusEmail({
   trackingUrl,
 }: ShipmentStatusProps) {
   const firstName = customerName.split(" ")[0] || customerName;
-  const title = STATUS_TITLE[status];
+  const statusText = STATUS_TEXT[status];
   const body = STATUS_BODY[status];
   const orderUrl = `${SITE}/siparis/${orderId}`;
 
   return (
-    <BaseLayout preview={`${title} — ${orderId}`}>
+    <BaseLayout preview="Kargo aşamasındaki son durum.">
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
-      <Text style={{ ...mailStyles.h1, color: STATUS_COLOR[status] }}>
-        {firstName}, {title}
+      <Text style={mailStyles.h1}>
+        Siparişin yolda ilerliyor
       </Text>
-      <Text style={mailStyles.p}>{body}</Text>
+      <Text style={mailStyles.p}>
+        Merhaba {firstName}, {orderId} numaralı siparişinde güncelleme var:{" "}
+        <strong>{statusText}</strong>. {body}
+      </Text>
 
       <Section
         style={{
@@ -94,13 +78,14 @@ export function ShipmentStatusEmail({
         }}
       >
         <Text style={{ ...mailStyles.label, marginTop: 0 }}>
-          Yurtiçi açıklaması
+          Taşıyıcı açıklaması
         </Text>
         <Text style={{ ...mailStyles.p, margin: "4px 0", fontWeight: 600 }}>
           {description}
           {location && (
             <span style={{ color: COLORS.muted, fontWeight: 400 }}>
-              {" "}· {location}
+              {" "}
+              · {location}
             </span>
           )}
         </Text>
@@ -112,42 +97,25 @@ export function ShipmentStatusEmail({
         </Text>
       </Section>
 
-      <Section style={{ textAlign: "center" as const, margin: "24px 0" }}>
-        {trackingUrl && (
-          <a
-            href={trackingUrl}
-            style={{
-              background: COLORS.brand,
-              color: "#fff",
-              textDecoration: "none",
-              padding: "12px 28px",
-              borderRadius: 999,
-              fontWeight: 600,
-              fontSize: 14,
-              display: "inline-block",
-              marginRight: 8,
-            }}
-          >
-            Yurtiçi'de takip et →
-          </a>
+      <Section style={{ margin: "28px 0 8px" }}>
+        {trackingUrl ? (
+          <Link href={trackingUrl} style={mailStyles.buttonPrimary}>
+            Kargomu takip et →
+          </Link>
+        ) : (
+          <Link href={orderUrl} style={mailStyles.buttonPrimary}>
+            Siparişimi takip et →
+          </Link>
         )}
-        <a
-          href={orderUrl}
-          style={{
-            background: "#fff",
-            color: COLORS.lacivert,
-            textDecoration: "none",
-            padding: "12px 28px",
-            borderRadius: 999,
-            fontWeight: 600,
-            fontSize: 14,
-            display: "inline-block",
-            border: `1px solid ${COLORS.gri200}`,
-          }}
-        >
-          Sipariş detayı
-        </a>
       </Section>
+
+      <Text style={mailStyles.pSecondary}>
+        Sorun olursa{" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>{" "}
+        üzerinden bize yaz.
+      </Text>
     </BaseLayout>
   );
 }

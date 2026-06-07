@@ -1,16 +1,11 @@
 /**
  * Pim Etiket — Tasarım yükleme hatırlatma maili.
  *
- * Sefa 19 May v68 (Migration 061 — awaiting_upload):
- * Müşteri ödeme yaptı ama tasarımını yüklemedi. Cron
- * `/api/cron/upload-reminders` (günde 1) tarafından tetiklenir.
+ * Trigger: /api/cron/upload-reminders (günde 1)
  * Kriter: orders.status='awaiting_upload' + 24+ saat önce paid.
- *
- * 2. hatırlatma (48 saat) ve 3. (5 gün) farklı tonda olabilir;
- * şimdilik tek mail yeterli — Faz 2'de eskalasyon eklenecek.
  */
 
-import { Section, Text } from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
 import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
 
@@ -26,83 +21,40 @@ export function OrderUploadReminderEmail({
   customerName,
   orderId,
   pendingCount,
-  hoursSincePaid,
 }: OrderUploadReminderProps) {
   const firstName = customerName.split(" ")[0] || customerName;
-  const uploadUrl = `${SITE}/siparis/${orderId}/tasarim-yukle`;
-  const daysLabel = Math.floor(hoursSincePaid / 24);
+  const uploadUrl = `${SITE}/siparis/${orderId}`;
 
   return (
-    <BaseLayout preview={`Tasarımını bekliyoruz — ${orderId}`}>
+    <BaseLayout preview="Baskıya başlamak için tek eksik dosyan.">
       <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
       <Text style={mailStyles.h1}>
-        {firstName}, tasarımını yüklemen lazım 📎
+        Tasarımını bekliyoruz
       </Text>
       <Text style={mailStyles.p}>
-        {daysLabel >= 1
-          ? `${daysLabel} gündür `
-          : `${hoursSincePaid} saattir `}
-        bekliyoruz. Ödeme aldık, sipariş hazır — sadece{" "}
-        <strong>
-          {pendingCount === 1 ? "1 ürün için tasarım" : `${pendingCount} ürün için tasarım`}
-        </strong>{" "}
-        bekliyoruz. Yükledikten sonra otomasyon 5 dakika içinde bıçak çizgilerini
-        hazırlar.
+        Merhaba {firstName}, {orderId} numaralı siparişin hazır, ama baskıya
+        başlayabilmemiz için tasarım dosyana ihtiyacımız var
+        {pendingCount > 1 && (
+          <>
+            {" "}
+            (<strong>{pendingCount} ürün</strong> bekliyor)
+          </>
+        )}
+        . Dosyanı yükler yüklemez sürecini başlatıyoruz.
       </Text>
 
-      <Section
-        style={{
-          background: COLORS.warningBg,
-          border: `1px solid ${COLORS.warningBorder}`,
-          borderRadius: 12,
-          padding: "16px 20px",
-          margin: "20px 0",
-        }}
-      >
-        <Text
-          style={{
-            ...mailStyles.p,
-            color: COLORS.warningText,
-            margin: 0,
-            fontSize: 14,
-          }}
-        >
-          ⚠️ <strong>Tasarım yüklemezsen ne olur?</strong>
-          <br />
-          • Üretime başlayamayız, sipariş bekleyişte kalır
-          <br />
-          • 14 takvim günü sonunda sipariş otomatik iptal + ücret iadesi
-        </Text>
+      <Section style={{ margin: "28px 0 8px" }}>
+        <Link href={uploadUrl} style={mailStyles.buttonPrimary}>
+          Tasarımımı yükle →
+        </Link>
       </Section>
 
-      <Section style={{ textAlign: "center" as const, margin: "28px 0" }}>
-        <a
-          href={uploadUrl}
-          style={{
-            background: COLORS.brand,
-            color: "#fff",
-            textDecoration: "none",
-            padding: "14px 32px",
-            borderRadius: 999,
-            fontWeight: 600,
-            fontSize: 15,
-            display: "inline-block",
-          }}
-        >
-          Tasarımı yükle →
-        </a>
-      </Section>
-
-      <Text style={{ ...mailStyles.p, color: COLORS.muted, fontSize: 13 }}>
-        Tasarım hazırlamayı bilmiyorsan{" "}
-        <a
-          href={`${SITE}/sablonlar`}
-          style={{ color: COLORS.brand, textDecoration: "underline" }}
-        >
-          ücretsiz şablon paketimizi
-        </a>{" "}
-        indirebilirsin — 60+ etiket şablonu, Canva/Illustrator uyumlu. Hazır
-        şablonu kişiselleştir, yükle, biz baskıyı yapalım.
+      <Text style={mailStyles.pSecondary}>
+        Dosya hazırlarken takıldıysan (ölçü, çözünürlük, kesim payı){" "}
+        <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
+          destek
+        </Link>{" "}
+        üzerinden bize yazabilirsin.
       </Text>
     </BaseLayout>
   );
