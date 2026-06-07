@@ -2197,7 +2197,7 @@ window.addEventListener('message', (e) => {
         pimScheduleHeightReport();
       }
     } else if (msg.type === 'pim-fit-contain') {
-      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat) {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell || PIM_PARAMS.embed) && currentMat) {
         pimUserMovedImage = false;
         if (getPlacementFrame()) {
           applyPlacementPreset('contain');
@@ -2207,7 +2207,7 @@ window.addEventListener('message', (e) => {
         pimAutoFitViewZoomToWrap();
       }
     } else if (msg.type === 'pim-fit-center') {
-      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat) {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell || PIM_PARAMS.embed) && currentMat) {
         pimUserMovedImage = false;
         if (getPlacementFrame()) {
           applyPlacementPreset('center');
@@ -2217,7 +2217,7 @@ window.addEventListener('message', (e) => {
         pimAutoFitViewZoomToWrap();
       }
     } else if (msg.type === 'pim-fit-cover') {
-      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell) && currentMat) {
+      if ((PIM_PARAMS.standalone || PIM_PARAMS.editorShell || PIM_PARAMS.embed) && currentMat) {
         pimUserMovedImage = false;
         if (getPlacementFrame()) {
           applyPlacementPreset('cover');
@@ -2895,6 +2895,17 @@ function useFixedCutlineFrame() {
   return PIM_PARAMS.embed && hasDims && fixedMode;
 }
 
+/** Embed (prova/headless) — sabit geometrik bıçakta contain, contour'da center. */
+function pimEmbedPlacementPreset() {
+  return useFixedCutlineFrame() ? 'contain' : 'center';
+}
+
+function pimApplyEmbedDefaultPlacement() {
+  if (!PIM_PARAMS.embed || !getPlacementFrame()) return false;
+  applyPlacementPreset(pimEmbedPlacementPreset());
+  return true;
+}
+
 function buildFixedCutlineFrame() {
   const dims = getOrderDimsMm();
   if (!dims || !imageMetadata) return null;
@@ -3035,8 +3046,16 @@ function resetEditorSettings() {
   updateOffsetNote();
   if (!currentMat || !sourceImage) return;
   resetImageTransform();
-  if (getPlacementFrame() && PIM_PARAMS.embed) {
-    applyPlacementPreset('center');
+  if (PIM_PARAMS.embed) {
+    generateCutline();
+    generateWhitePlan();
+    if (!pimApplyEmbedDefaultPlacement()) {
+      render();
+    }
+    updateMetadataDisplay();
+    generatePimComment();
+    pimScheduleAutoSave();
+    pimScheduleHeightReport();
   } else {
     generateCutline();
     generateWhitePlan();
@@ -3261,8 +3280,8 @@ function processImage(img, file) {
   updateMetadataDisplay();
   generateCutline();
   generateWhitePlan();
-  if (getPlacementFrame() && PIM_PARAMS.embed) {
-    applyPlacementPreset('center');
+  if (pimApplyEmbedDefaultPlacement()) {
+    /* geometrik → contain, contour → center */
   } else if (
     (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) &&
     getOrderDimsMm()
