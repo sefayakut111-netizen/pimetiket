@@ -1685,7 +1685,7 @@
         <button class="white-mode-btn active" data-wmode="full">Full</button>
         <button class="white-mode-btn" data-wmode="smart">Smart</button>
         <button class="white-mode-btn" data-wmode="ai">AI ile belirle</button>
-        <button class="white-mode-btn" data-wmode="custom" disabled>Custom</button>
+        <button class="white-mode-btn" data-wmode="custom" disabled title="Yakında — özel white spot color server export ile aktif olacak">Custom</button>
       </div>
       <div class="white-note" id="whiteNote">
         Şeffaf/metalize malzemede tasarımın altına beyaz mürekkep basılır. Renkler doğru çıkar.
@@ -2002,13 +2002,47 @@ function pimApplyStandaloneUiRestrictions() {
 function pimApplyEditorShellUi() {
   if (!PIM_PARAMS.editorShell) return;
   document.documentElement.classList.add('pim-editor-shell');
-  pimSyncEditorShellViewport();
+  pimObserveEditorShellViewport();
   window.addEventListener('resize', pimSyncEditorShellViewport);
+}
+
+let pimEditorShellFitToken = 0;
+
+/** wrap.clientHeight>0 olana kadar rAF ile bekle — ilk açılışta görsel ortalı */
+function pimScheduleEditorShellFit() {
+  if (!PIM_PARAMS.editorShell) return;
+  const token = ++pimEditorShellFitToken;
+  function tryFit(attempt) {
+    if (token !== pimEditorShellFitToken) return;
+    const wrap = document.getElementById('canvasWrap');
+    if (!wrap) return;
+    if (wrap.clientHeight <= 0 && attempt < 40) {
+      requestAnimationFrame(() => tryFit(attempt + 1));
+      return;
+    }
+    if (currentMat) {
+      render();
+      pimAutoFitViewZoomToWrap();
+    }
+  }
+  requestAnimationFrame(() => tryFit(0));
+}
+
+function pimObserveEditorShellViewport() {
+  if (!PIM_PARAMS.editorShell) return;
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap || typeof ResizeObserver === 'undefined') return;
+  const ro = new ResizeObserver(() => {
+    if (wrap.clientHeight > 0 && currentMat) {
+      render();
+    }
+  });
+  ro.observe(wrap);
 }
 
 function pimSyncEditorShellViewport() {
   if (!PIM_PARAMS.editorShell) return;
-  pimAutoFitViewZoomToWrap();
+  pimScheduleEditorShellFit();
 }
 
 /** Embed iframe — parent sayfa tek scroll kullansın diye yükseklik bildir */
@@ -2294,35 +2328,7 @@ window.addEventListener('message', (e) => {
         PIM_PARAMS.orderHeightMm = msg.heightMm;
       }
       const mode = msg.mode || (msg.shape === 'circle' ? 'circle' : msg.shape === 'rect' || msg.shape === 'ellipse' ? 'rect' : 'contour');
-      currentMode = mode;
-      document.querySelectorAll('.mode-btn').forEach((b) => {
-        b.classList.toggle('active', b.dataset.mode === mode);
-      });
-      if (PIM_PARAMS.standalone) {
-        pimUserMovedImage = false;
-      }
-      pimEditorOnOrderSizeChange();
-      if (currentMode !== 'circle') {
-        pimLastCircleRadialFit = null;
-        pimClearCircleContourSuggest();
-      }
-      if (currentMat) {
-        if ((PIM_PARAMS.editorShell || PIM_PARAMS.embed) && getPlacementFrame()) {
-          pimUserMovedImage = false;
-          if (PIM_PARAMS.embed && !PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) {
-            pimApplyEmbedDefaultPlacement();
-          } else {
-            pimEditorDefaultPlacement();
-          }
-        }
-        generateCutline();
-        generateWhitePlan();
-        render();
-        if (PIM_PARAMS.editorShell) {
-          pimAutoFitViewZoomToWrap();
-        }
-        updateMetadataDisplay();
-      }
+      pimOnCutModeChanged(mode);
     }
   } catch (err) {
     pimPostToParent({ type: 'pim-poc-error', error: String(err) });
@@ -2384,6 +2390,9 @@ function pimEditorDefaultPlacement() {
     render();
   }
   pimAutoFitViewZoomToWrap();
+  if (PIM_PARAMS.editorShell) {
+    pimScheduleEditorShellFit();
+  }
   pimPostImageScaleChanged();
 }
 
@@ -3111,6 +3120,72 @@ function getArtDrawRect() {
   return { x, y, w, h };
 }
 
+/** Beyaz plan silueti — görselle aynı imageTransform (radyal fit / sürükleme hizası) */
+function pimApplyImageTransformToCtx(ctx) {
+  if (!imageMetadata) return;
+  if (imageTransform.scale === 1 && imageTransform.x === 0 && imageTransform.y === 0) return;
+  const artCx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
+  const artCy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
+  ctx.translate(artCx + imageTransform.x, artCy + imageTransform.y);
+  ctx.scale(imageTransform.scale, imageTransform.scale);
+  ctx.translate(-artCx, -artCy);
+}
+
+function pimDrawWhitePlanOnCtx(ctx, options) {
+  const fill = options?.fill !== false;
+  const stroke = options?.stroke !== false;
+  if (!whitePlanPaths.length) return;
+
+  ctx.save();
+  pimApplyImageTransformToCtx(ctx);
+
+  if (fill) {
+    const patternSize = 8;
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = patternSize;
+    patternCanvas.height = patternSize;
+    const pctx = patternCanvas.getContext('2d');
+    pctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    pctx.fillRect(0, 0, patternSize, patternSize);
+    pctx.strokeStyle = 'rgba(71, 85, 105, 0.35)';
+    pctx.lineWidth = 1;
+    pctx.beginPath();
+    pctx.moveTo(0, patternSize);
+    pctx.lineTo(patternSize, 0);
+    pctx.stroke();
+    ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat');
+    for (const path of whitePlanPaths) {
+      if (path.length < 3) continue;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1]);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  if (stroke) {
+    ctx.strokeStyle = 'rgba(71, 85, 105, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    for (const path of whitePlanPaths) {
+      if (path.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][1]);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i][0], path[i][1]);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
 /** Dolu piksel maskesinden centroid + max radyal uzaklık (canvas koordinatı) */
 function computeContentRadialMetrics() {
   if (!imageMetadata) return null;
@@ -3517,6 +3592,9 @@ function processImage(img, file) {
     pimNotifyLoaded();
   }
   pimNotifyCutlineReady();
+  if (PIM_PARAMS.editorShell) {
+    pimScheduleEditorShellFit();
+  }
 }
 
 // ============================================================
@@ -3649,34 +3727,6 @@ function generateCutline() {
 //   - 'smart'  : sadece koyu/canlı renklerin altına (brightness threshold)
 //   - 'custom' : müşterinin kendi tasarladığı white spot color (PDF/PSD'den)
 
-/** Geometrik kesim (circle/rect) — opak folyo: beyaz plan = bıçak şekli (siluet değil). */
-function pimUseCutShapeWhitePlan() {
-  if (!useFixedCutlineFrame()) return false;
-  if (currentMode !== 'circle' && currentMode !== 'rect') return false;
-  // Şeffaf folyo: görsel altı siluet — etraf şeffaf kalsın
-  if (materialType === 'transparent') return false;
-  return true;
-}
-
-/** cutline ile aynı daire/dikdörtgen path (canvas koordinatı, imageTransform'dan bağımsız). */
-function buildCutShapeWhitePlanPaths() {
-  const frame = cutlineFrame || buildFixedCutlineFrame();
-  if (!frame || !imageMetadata) return [];
-  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
-  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
-  const slipToleranceMm = 0.3;
-  const effectiveOffsetMm = offsetMm === 0 ? -slipToleranceMm : offsetMm;
-  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
-  const offsetPx = Math.round(effectiveOffsetMm * pxPerMm);
-  const { cx, cy, w, h } = frame;
-  if (currentMode === 'rect') {
-    const baseRect = { x: cx - w / 2, y: cy - h / 2, w, h };
-    return [rectToPath(expandRect(baseRect, offsetPx))];
-  }
-  const r = Math.min(w, h) / 2;
-  return [circleToPath(cx, cy, r + offsetPx)];
-}
-
 function generateWhitePlan() {
   whitePlanPaths = [];
   if (!currentMat || !cvReady) return;
@@ -3688,14 +3738,7 @@ function generateWhitePlan() {
     return; // Next.js fazında server'dan path çıkarılır
   }
 
-  // Geometrik kesim (daire/dikdörtgen) + opak folyo → beyaz underbase = kesim şekli
-  if (pimUseCutShapeWhitePlan()) {
-    whitePlanPaths = buildCutShapeWhitePlanPaths();
-    return;
-  }
-
-  // Kontur/hull veya şeffaf folyo + geometrik → siluet (buildMask)
-  // Mask oluştur (silüetin gerçek sınırı)
+  // Beyaz plan = görsel silueti (buildMask) — geometrik kesimde de siluet
   const maskResult = buildMask(currentMat);
   let baseMask = maskResult.mask;
 
@@ -4092,51 +4135,10 @@ function renderContentLayers(ctx) {
   }
 
   // ============================================================
-  // 1. BEYAZ PLAN — ALT KATMAN (görselden ÖNCE çizilir)
+  // 1. BEYAZ PLAN — ALT KATMAN (görselden ÖNCE, imageTransform ile hizalı)
   // ============================================================
   if (layers.white && whitePlanPaths.length > 0) {
-    const patternSize = 8;
-    const patternCanvas = document.createElement('canvas');
-    patternCanvas.width = patternSize;
-    patternCanvas.height = patternSize;
-    const pctx = patternCanvas.getContext('2d');
-    pctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-    pctx.fillRect(0, 0, patternSize, patternSize);
-    pctx.strokeStyle = 'rgba(71, 85, 105, 0.35)';
-    pctx.lineWidth = 1;
-    pctx.beginPath();
-    pctx.moveTo(0, patternSize);
-    pctx.lineTo(patternSize, 0);
-    pctx.stroke();
-    const pattern = ctx.createPattern(patternCanvas, 'repeat');
-
-    ctx.save();
-    ctx.fillStyle = pattern;
-    for (const path of whitePlanPaths) {
-      if (path.length < 3) continue;
-      ctx.beginPath();
-      ctx.moveTo(path[0][0], path[0][1]);
-      for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i][0], path[i][1]);
-      }
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(71, 85, 105, 0.7)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 3]);
-    for (const path of whitePlanPaths) {
-      if (path.length < 2) continue;
-      ctx.beginPath();
-      ctx.moveTo(path[0][0], path[0][1]);
-      for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i][0], path[i][1]);
-      }
-      ctx.closePath();
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    ctx.restore();
+    pimDrawWhitePlanOnCtx(ctx);
   }
 
   // ============================================================
@@ -4201,7 +4203,10 @@ function render() {
 
   if (PIM_PARAMS.editorShell) {
     const vp = pimComputeEditorShellViewport(contentW, contentH);
-    if (!vp) return;
+    if (!vp) {
+      pimScheduleEditorShellFit();
+      return;
+    }
     canvas.width = vp.cw;
     canvas.height = vp.ch;
     ctx.clearRect(0, 0, vp.cw, vp.ch);
@@ -4751,19 +4756,50 @@ document.getElementById('helpModal').addEventListener('click', (e) => {
     document.getElementById('helpModal').classList.remove('open');
   }
 });
-// Mode butonları
+// Mode butonları — kesim modu değişince state temizle + yeniden üret
+function pimOnCutModeChanged(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  if (PIM_PARAMS.standalone) {
+    pimUserMovedImage = false;
+  }
+  pimLastCircleRadialFit = null;
+  if (currentMode !== 'circle') {
+    pimClearCircleContourSuggest();
+  }
+  if (materialType !== 'paper') {
+    whitePlanMode = defaultWhitePlanForMaterial(materialType);
+    document.querySelectorAll('.white-mode-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.wmode === whitePlanMode);
+    });
+    updateWhiteNote();
+  }
+  pimEditorOnOrderSizeChange();
+  if (currentMat) {
+    if ((PIM_PARAMS.editorShell || PIM_PARAMS.embed || PIM_PARAMS.standalone) && getPlacementFrame()) {
+      pimUserMovedImage = false;
+      if (PIM_PARAMS.embed && !PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) {
+        pimApplyEmbedDefaultPlacement();
+      } else {
+        pimEditorDefaultPlacement();
+      }
+    }
+    generateCutline();
+    generateWhitePlan();
+    render();
+    if (PIM_PARAMS.editorShell) {
+      pimScheduleEditorShellFit();
+    }
+    updateMetadataDisplay();
+    generatePimComment();
+  }
+}
+
 document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentMode = btn.dataset.mode;
-    if (currentMat) {
-      generateCutline();
-      generateWhitePlan();
-      render();
-      updateMetadataDisplay();
-      generatePimComment();
-    }
+    pimOnCutModeChanged(btn.dataset.mode);
   });
 });
 
@@ -5044,15 +5080,7 @@ function pimCapturePreviewPng() {
     const ctx = off.getContext('2d');
     ctx.clearRect(0, 0, off.width, off.height);
     if (layers.white && whitePlanPaths.length > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      for (const path of whitePlanPaths) {
-        if (path.length < 3) continue;
-        ctx.beginPath();
-        ctx.moveTo(path[0][0], path[0][1]);
-        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i][0], path[i][1]);
-        ctx.closePath();
-        ctx.fill();
-      }
+      pimDrawWhitePlanOnCtx(ctx, { stroke: false });
     }
     if (sourceImage) {
       const rect = getArtDrawRect();
