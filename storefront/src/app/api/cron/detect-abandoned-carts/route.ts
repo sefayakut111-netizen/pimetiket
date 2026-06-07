@@ -21,7 +21,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
-import { enqueueMail } from "@/lib/mail/enqueue";
+import { sendAbandonedCart } from "@/lib/mail/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -124,16 +124,21 @@ export async function GET(req: Request) {
   const sevenDaysAgo = new Date(
     Date.now() - 7 * 24 * 60 * 60 * 1000
   ).toISOString();
+  const dayKey = new Date().toISOString().slice(0, 10);
+  const idempotencyKeys = userIds.map((uid) => `abandoned_cart:${uid}:${dayKey}`);
   const { data: recentMails } = await admin
     .from("fason_mail_outbox")
-    .select("target_id")
-    .eq("template_key", "customer_abandoned_cart")
-    .in("target_id", userIds)
+    .select("idempotency_key")
+    .in("idempotency_key", idempotencyKeys)
     .gte("created_at", sevenDaysAgo);
 
   const usersWithMail = new Set(
-    ((recentMails ?? []) as Array<{ target_id: string | null }>)
-      .map((m) => m.target_id)
+    ((recentMails ?? []) as Array<{ idempotency_key: string | null }>)
+      .map((m) => {
+        const key = m.idempotency_key ?? "";
+        const parts = key.split(":");
+        return parts.length >= 3 ? parts[1] : null;
+      })
       .filter((id): id is string => !!id)
   );
 
@@ -185,19 +190,11 @@ export async function GET(req: Request) {
   // Kuyruğa enqueue
   let enqueued = 0;
   for (const s of summaries) {
-    const result = await enqueueMail({
-      templateKey: "customer_abandoned_cart",
-      to: s.email,
-      payload: {
-        item_count: s.item_count,
-        total: Math.round(s.cart_total),
-        customer_name: s.full_name?.split(" ")[0] ?? "",
-        // Coupon code: ileride dinamik üretilir, şu an boş
-        coupon_code: "",
-      },
-      category: "customer",
-      targetType: "user",
-      targetId: s.user_id,
+    const result = await sendAbandonedCart({
+      userId: s.user_id,
+      itemCount: s.item_count,
+      total: s.cart_total,
+      customerName: s.full_name?.split(" ")[0] ?? "",
     });
     if (result.ok) enqueued += 1;
   }

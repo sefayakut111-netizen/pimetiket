@@ -23,6 +23,10 @@ import { RefundApprovedEmail } from "./templates/refund-approved";
 import { RefundRejectedEmail } from "./templates/refund-rejected";
 import { RefundCompletedEmail } from "./templates/refund-completed";
 import { MemberWelcomeEmail } from "./templates/member-welcome";
+import { ReviewRequestEmail } from "./templates/review-request";
+import { AbandonedCartEmail } from "./templates/abandoned-cart";
+import { NewsletterWelcomeEmail } from "./templates/newsletter-welcome";
+import { buildUnsubscribeUrl } from "./unsubscribe";
 
 export const MAIL_TEMPLATES = [
   {
@@ -134,6 +138,11 @@ export const MAIL_TEMPLATES = [
     key: "member-welcome",
     label: "Üyelik Hoşgeldin",
     subject: "Pim Etiket'e hoş geldin",
+  },
+  {
+    key: "newsletter-welcome",
+    label: "Bülten Hoşgeldin",
+    subject: "Pim Etiket bültenine hoş geldin",
   },
 ] as const;
 
@@ -288,24 +297,34 @@ export async function previewMailTemplate(
       );
       return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
     }
-    case "abandoned-cart":
-      return (
-        renderMailTemplate("customer_abandoned_cart", {
-          customer_name: MOCK_NAME,
-          item_count: 2,
+    case "abandoned-cart": {
+      const unsub = buildUnsubscribeUrl("preview@example.com", "marketing");
+      const html = await render(
+        AbandonedCartEmail({
+          customerName: MOCK_NAME,
+          itemCount: 2,
           total: 1240,
-          coupon_code: "SEPET10",
-        }) ?? null
+          unsubscribeUrl: unsub,
+        })
       );
-    case "review-request":
-      return (
-        renderMailTemplate("customer_review_request", {
-          order_id: MOCK_ORDER_ID,
-          customer_name: MOCK_NAME,
-          product_name: "Yuvarlak Etiket 5cm",
-          review_token: "preview-token",
-        }) ?? null
+      return {
+        subject: meta.subject,
+        html,
+        text: "",
+      };
+    }
+    case "review-request": {
+      const unsub = buildUnsubscribeUrl("preview@example.com", "marketing");
+      const html = await render(
+        ReviewRequestEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          productName: "Yuvarlak Etiket 5cm",
+          unsubscribeUrl: unsub,
+        })
       );
+      return { subject: meta.subject, html, text: "" };
+    }
     case "admin-daily-summary":
       return (
         renderMailTemplate("admin_daily_summary", {
@@ -438,6 +457,13 @@ export async function previewMailTemplate(
         MemberWelcomeEmail({ customerName: MOCK_NAME })
       );
       return { subject: "Pim Etiket'e hoş geldin", html, text: "" };
+    }
+    case "newsletter-welcome": {
+      const unsub = buildUnsubscribeUrl("preview@example.com", "marketing");
+      const html = await render(
+        NewsletterWelcomeEmail({ unsubscribeUrl: unsub })
+      );
+      return { subject: meta.subject, html, text: "" };
     }
     default:
       return null;

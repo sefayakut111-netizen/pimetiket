@@ -18,7 +18,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
-import { enqueueMail } from "@/lib/mail/enqueue";
+import { sendReviewRequest } from "@/lib/mail/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -102,13 +102,13 @@ export async function GET(req: Request) {
   ).toISOString();
   const { data: recentMails } = await admin
     .from("fason_mail_outbox")
-    .select("target_id")
-    .eq("template_key", "customer_review_request")
+    .select("idempotency_key")
+    .like("idempotency_key", "review_request:%")
     .in("target_id", orderIds)
     .gte("created_at", thirtyDaysAgo);
   const mailedOrderIds = new Set(
-    ((recentMails ?? []) as Array<{ target_id: string | null }>)
-      .map((m) => m.target_id)
+    ((recentMails ?? []) as Array<{ idempotency_key: string | null }>)
+      .map((m) => m.idempotency_key?.replace(/^review_request:/, ""))
       .filter((id): id is string => !!id)
   );
 
@@ -142,29 +142,16 @@ export async function GET(req: Request) {
       continue;
     }
 
-    const customerName =
-      typeof o.address?.name === "string"
-        ? o.address.name.split(" ")[0]
-        : "";
-
-    // review_token şablonu artık doğrudan /yorum-yaz/[orderId] kullanıyor (giriş zorunlu).
-    const reviewToken = "";
-
-    const result = await enqueueMail({
-      templateKey: "customer_review_request",
-      to: email,
-      payload: {
-        order_id: o.id,
-        customer_name: customerName,
-        product_name: "siparişin",
-        review_token: reviewToken,
-      },
-      category: "customer",
-      targetType: "order",
-      targetId: o.id,
+    const result = await sendReviewRequest({
+      userId: o.user_id,
+      orderId: o.id,
+      productName: "siparişin",
     });
 
     if (result.ok) enqueued += 1;
+    else if (result.reason === "opted_out") {
+      /* marketing opt-out — sessiz atla */
+    }
   }
 
       const responseData = {

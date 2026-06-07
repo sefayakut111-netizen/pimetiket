@@ -146,19 +146,29 @@ export async function POST(req: Request) {
     );
   }
 
-  // Welcome maili kuyruğa düşür — Resend gelince otomatik gönderilir
+  // Welcome maili — newsletter için React Email, şablonlar için legacy lead_welcome
   const insertedRow = inserted as unknown as { id: string } | null;
-  await enqueueMail({
-    templateKey: "lead_welcome",
-    to: body.email,
-    payload: {
-      download_url: TEMPLATE_DOWNLOAD_URL ?? "",
-      interests: body.interests,
-    },
-    category: "lead",
-    targetType: "subscriber",
-    targetId: insertedRow?.id,
-  });
+  if (body.source === "newsletter" && insertedRow?.id) {
+    const { sendNewsletterWelcome } = await import("@/lib/mail/notifications");
+    void sendNewsletterWelcome({
+      email: body.email,
+      subscriberId: insertedRow.id,
+    }).catch((err) =>
+      console.error("[lead/subscribe] newsletter welcome:", err)
+    );
+  } else if (insertedRow?.id) {
+    await enqueueMail({
+      templateKey: "lead_welcome",
+      to: body.email,
+      payload: {
+        download_url: TEMPLATE_DOWNLOAD_URL ?? "",
+        interests: body.interests,
+      },
+      category: "lead",
+      targetType: "subscriber",
+      targetId: insertedRow.id,
+    });
+  }
 
   return NextResponse.json({
     ok: true,

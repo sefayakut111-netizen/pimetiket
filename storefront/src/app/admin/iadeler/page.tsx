@@ -6,15 +6,13 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import {
-  listReturns,
-  updateReturnStatus,
   RETURN_REASON_LABEL,
   STATUS_LABEL,
   type ReturnRequest,
@@ -40,28 +38,80 @@ export default function AdminIadelerPage() {
   const toast = useToast();
   const [items, setItems] = useState<ReturnRequest[]>([]);
   const [filter, setFilter] = useState<ReturnStatus | "all">("all");
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const loadReturns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/returns?status=all", {
+        cache: "no-store",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        items?: ReturnRequest[];
+        error?: string;
+      };
+      if (!res.ok || !data.ok || !data.items) {
+        toast.error(data.error ?? "İade listesi yüklenemedi");
+        setItems([]);
+        return;
+      }
+      setItems(data.items);
+    } catch {
+      toast.error("İade listesi yüklenemedi");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    const refresh = () => setItems(listReturns());
-    refresh();
-    window.addEventListener("pim_customer_returns_updated", refresh);
-    return () =>
-      window.removeEventListener("pim_customer_returns_updated", refresh);
-  }, []);
+    void loadReturns();
+  }, [loadReturns]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return items;
     return items.filter((r) => r.status === filter);
   }, [items, filter]);
 
+  const postStatus = async (
+    r: ReturnRequest,
+    status: "approved" | "rejected",
+    adminNote: string
+  ) => {
+    setActionId(r.id);
+    try {
+      const res = await fetch(`/api/admin/returns/${r.id}/status`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status, adminNote }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? "İşlem başarısız");
+        return;
+      }
+      toast.success(
+        status === "approved"
+          ? `${r.id.slice(0, 8)}… onaylandı`
+          : `${r.id.slice(0, 8)}… reddedildi`
+      );
+      await loadReturns();
+    } catch {
+      toast.error("İşlem başarısız");
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const handleApprove = (r: ReturnRequest) => {
     const note = prompt(
       "Onay notu (müşteriye görünür):",
       "İade talebin onaylandı. Ürünü kargoyla geri gönder, eline ulaşınca para iadesi başlatılacak."
     );
-    if (note == null) return;
-    updateReturnStatus(r.id, "approved", note);
-    toast.success(`${r.id.slice(0, 8)}… onaylandı`);
+    if (note == null || !note.trim()) return;
+    void postStatus(r, "approved", note.trim());
   };
 
   const handleReject = (r: ReturnRequest) => {
@@ -69,32 +119,58 @@ export default function AdminIadelerPage() {
       "Red sebebi (müşteriye görünür):",
       "Müşterinin sağladığı görseller üretim hatasına işaret etmiyor. Detay için iletişim formundan ulaşabilirsin."
     );
-    if (note == null) return;
-    updateReturnStatus(r.id, "rejected", note);
-    toast.info(`${r.id.slice(0, 8)}… reddedildi`);
+    if (note == null || !note.trim()) return;
+    void postStatus(r, "rejected", note.trim());
   };
 
-  const handleRefund = (r: ReturnRequest) => {
-    const amount = prompt(
-      "İade tutarı (₺):",
-      "0"
-    );
+  const handleRefund = async (r: ReturnRequest) => {
+    const amount = prompt("İade tutarı (₺):", String(r.refundAmount ?? ""));
     if (amount == null) return;
-    const parsed = Number(amount);
+    const parsed = Number(amount.replace(",", "."));
     if (!Number.isFinite(parsed) || parsed <= 0) {
       toast.error("Geçerli bir tutar gir");
       return;
     }
-    updateReturnStatus(
-      r.id,
-      "refunded",
-      `${parsed.toLocaleString("tr-TR")} ₺ karta iade edildi.`,
-      parsed
+
+    const reason = prompt(
+      "İade gerekçesi (audit log):",
+      `İade talebi ${r.id.slice(0, 8)} — admin onaylı para iadesi`
     );
-    toast.success(`${parsed.toLocaleString("tr-TR")} ₺ iade edildi`);
+    if (reason == null || reason.trim().length < 10) {
+      toast.error("Gerekçe en az 10 karakter olmalı");
+      return;
+    }
+
+    setActionId(r.id);
+    try {
+      const res = await fetch("/api/payment/refund", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderId: r.orderId,
+          amount: parsed,
+          returnId: r.id,
+          force: true,
+          reason: reason.trim(),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        hint?: string;
+      };
+      if (!res.ok) {
+        toast.error(data.hint ?? data.error ?? "Para iadesi başarısız");
+        return;
+      }
+      toast.success(`${parsed.toLocaleString("tr-TR")} ₺ iade başlatıldı`);
+      await loadReturns();
+    } catch {
+      toast.error("Para iadesi başarısız");
+    } finally {
+      setActionId(null);
+    }
   };
 
-  // KPI'lar
   const pending = items.filter((r) => r.status === "pending").length;
   const approved = items.filter((r) => r.status === "approved").length;
   const rejected = items.filter((r) => r.status === "rejected").length;
@@ -112,8 +188,7 @@ export default function AdminIadelerPage() {
             İade yönetimi
           </h1>
           <p className="mt-1.5 text-base text-gri-700">
-            {items.length} iade talebi · {pending} incelemede ·{" "}
-            {refunded} tamamlandı
+            {loading ? "Yükleniyor…" : `${items.length} iade talebi · ${pending} incelemede · ${refunded} tamamlandı`}
           </p>
           <p className="text-sm text-gri-600 mt-4">
             İade = teslim edildikten sonra müşteri geri göndermesi. İptal =
@@ -122,8 +197,6 @@ export default function AdminIadelerPage() {
           </p>
         </div>
 
-        {/* KPI strip — Sefa 21 May v68 (site denetim P2 #15): Reddedildi
-            kartı eklendi; tab listesi (5) ile uyumlu */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
           {[
             { label: "İncelemede", value: pending, accent: "text-sari-koyu", bg: "bg-sari-soft" },
@@ -150,7 +223,6 @@ export default function AdminIadelerPage() {
           ))}
         </div>
 
-        {/* Filter chips */}
         <Card padding="p-4" className="mb-5">
           <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map((f) => (
@@ -171,13 +243,16 @@ export default function AdminIadelerPage() {
           </div>
         </Card>
 
-        {/* List */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <Card padding="p-10" className="text-center text-gri-700">
+            İade talepleri yükleniyor…
+          </Card>
+        ) : filtered.length === 0 ? (
           <Card padding="p-10" className="text-center">
             <Pim pose="happy" size={120} />
             <h3 className="mt-4 text-xl font-semibold">
               {items.length === 0
-                ? "İade talebi yok "
+                ? "İade talebi yok"
                 : "Bu filtrede sonuç yok"}
             </h3>
             <p className="mt-2 text-[13px] text-gri-700 max-w-[420px] mx-auto leading-relaxed">
@@ -197,8 +272,6 @@ export default function AdminIadelerPage() {
                 minute: "2-digit",
                 timeZone: "Europe/Istanbul",
               });
-              // Sefa 18 May v68 (admin UX denetim): SLA yaş rozeti
-              // <24h yeşil, 24-72h sarı, >72h kırmızı (TKHK m.30 gün limit)
               const ageHours =
                 (Date.now() - new Date(r.createdAtIso).getTime()) /
                 (1000 * 60 * 60);
@@ -209,7 +282,9 @@ export default function AdminIadelerPage() {
                   ? { tr: "Yeni", bg: "bg-yesil-soft", color: "text-yesil-koyu" }
                   : ageHours < 72
                     ? { tr: `${Math.floor(ageHours)}sa`, bg: "bg-sari-soft", color: "text-sari-koyu" }
-                    : { tr: ` ${Math.floor(ageHours / 24)}g+`, bg: "bg-kirmizi-soft", color: "text-kirmizi-koyu" };
+                    : { tr: `${Math.floor(ageHours / 24)}g+`, bg: "bg-kirmizi-soft", color: "text-kirmizi-koyu" };
+              const busy = actionId === r.id;
+
               return (
                 <Card key={r.id} padding="p-5">
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
@@ -279,7 +354,7 @@ export default function AdminIadelerPage() {
                       )}
                       <div className="text-[11.5px] text-gri-500 mt-2 tabular-nums">
                         Açıldı: {date}
-                        {r.refundAmount && (
+                        {r.refundAmount != null && r.refundAmount > 0 && (
                           <>
                             {" · "}
                             <span className="text-yesil font-semibold">
@@ -294,6 +369,7 @@ export default function AdminIadelerPage() {
                         <Button
                           variant="primary"
                           size="sm"
+                          disabled={busy}
                           onClick={() => handleApprove(r)}
                           className="!bg-yesil hover:!bg-yesil-koyu"
                         >
@@ -302,6 +378,7 @@ export default function AdminIadelerPage() {
                         <Button
                           variant="secondary"
                           size="sm"
+                          disabled={busy}
                           onClick={() => handleReject(r)}
                         >
                           Reddet
@@ -312,7 +389,8 @@ export default function AdminIadelerPage() {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => handleRefund(r)}
+                        disabled={busy}
+                        onClick={() => void handleRefund(r)}
                       >
                         <Icon.Check size={12} /> İade et
                       </Button>

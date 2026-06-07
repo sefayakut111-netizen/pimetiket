@@ -104,6 +104,19 @@ import {
   MemberWelcomeEmail,
   type MemberWelcomeProps,
 } from "./templates/member-welcome";
+import {
+  ReviewRequestEmail,
+  type ReviewRequestProps,
+} from "./templates/review-request";
+import {
+  AbandonedCartEmail,
+  type AbandonedCartProps,
+} from "./templates/abandoned-cart";
+import {
+  NewsletterWelcomeEmail,
+  type NewsletterWelcomeProps,
+} from "./templates/newsletter-welcome";
+import { buildUnsubscribeUrl } from "./unsubscribe";
 import { humanizeOperatorNoteForCustomer } from "./humanize-operator-note";
 
 const SITE_URL_FALLBACK =
@@ -117,6 +130,7 @@ interface NotifPrefRow {
   email_order_updates: boolean;
   email_proof_ready: boolean;
   email_shipping_updates: boolean;
+  email_marketing: boolean;
 }
 
 async function getEmailPref(
@@ -126,12 +140,14 @@ async function getEmailPref(
   const admin = createAdminClient();
   const { data } = await admin
     .from("notification_prefs")
-    .select("email_order_updates, email_proof_ready, email_shipping_updates")
+    .select(
+      "email_order_updates, email_proof_ready, email_shipping_updates, email_marketing"
+    )
     .eq("user_id", userId)
     .single();
   if (!data) {
-    // Pref satırı yoksa default açık (order_updates yasal zorunlu)
-    return field === "email_order_updates" ? true : true;
+    if (field === "email_marketing") return false;
+    return true;
   }
   return Boolean((data as unknown as NotifPrefRow)[field]);
 }
@@ -184,6 +200,38 @@ async function enqueuePrerendered(args: {
         : undefined),
   });
   return result;
+}
+
+/** Ticari ileti — category lead + List-Unsubscribe (cron tarafında). */
+async function enqueueCommercialPrerendered(args: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  kind: string;
+  idempotencyKey: string;
+  userId?: string;
+  orderId?: string;
+  targetType?: "order" | "user" | "subscriber";
+  targetId?: string;
+}): Promise<{ ok: boolean; suppressed?: boolean; error?: string }> {
+  return enqueueMail({
+    to: args.to,
+    templateKey: "_prerendered",
+    category: "lead",
+    targetType: args.targetType,
+    targetId: args.targetId,
+    subject: args.subject,
+    payload: {
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+      _kind: args.kind,
+      _user_id: args.userId,
+      _order_id: args.orderId,
+    },
+    idempotencyKey: args.idempotencyKey,
+  });
 }
 
 // ============================================================
@@ -1229,6 +1277,153 @@ export async function sendMemberWelcome(args: {
     kind: "member_welcome",
     idempotencyKey: `member_welcome:${args.userId}`,
   });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 19) Yorum daveti — ticari (email_marketing opt-in zorunlu)
+ */
+export async function sendReviewRequest(args: {
+  userId: string;
+  orderId: string;
+  productName?: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_marketing");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+  const productName = args.productName ?? "siparişin";
+  const unsubscribeUrl = buildUnsubscribeUrl(email, "marketing");
+
+  const props: ReviewRequestProps = {
+    customerName,
+    orderId: args.orderId,
+    productName,
+    unsubscribeUrl,
+  };
+
+  const html = await render(ReviewRequestEmail(props));
+  const firstName = customerName.split(" ")[0] || customerName;
+  const subject = firstName
+    ? `${firstName}, ${productName} nasıl oldu?`
+    : `${productName} için yorumun bizim için kıymetli`;
+  const reviewLink = `${SITE_URL_FALLBACK}/yorum-yaz/${args.orderId}`;
+  const text = `${productName} (${args.orderId}) için yorum yaz: ${reviewLink}\n\nAbonelikten çık: ${unsubscribeUrl}`;
+
+  const result = await enqueueCommercialPrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "review_request",
+    idempotencyKey: `review_request:${args.orderId}`,
+    targetType: "order",
+    targetId: args.orderId,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 20) Terk sepet — ticari (email_marketing opt-in zorunlu)
+ */
+export async function sendAbandonedCart(args: {
+  userId: string;
+  itemCount: number;
+  total: number;
+  customerName?: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_marketing");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const customerName =
+    args.customerName ?? (await resolveCustomerName(args.userId));
+  const unsubscribeUrl = buildUnsubscribeUrl(email, "marketing");
+  const totalRounded = Math.round(args.total);
+
+  const props: AbandonedCartProps = {
+    customerName,
+    itemCount: args.itemCount,
+    total: totalRounded,
+    unsubscribeUrl,
+  };
+
+  const html = await render(AbandonedCartEmail(props));
+  const firstName = customerName.split(" ")[0] || customerName;
+  const subject = firstName
+    ? `${firstName}, sepetindeki ${args.itemCount} ürün hâlâ bekliyor`
+    : `Sepetindeki ${args.itemCount} ürün hâlâ bekliyor`;
+  const text = `Sepette ${args.itemCount} ürün, toplam ${totalRounded.toLocaleString("tr-TR")} ₺.\n\nSepete dön: ${SITE_URL_FALLBACK}/sepet\n\nAbonelikten çık: ${unsubscribeUrl}`;
+
+  const dayKey = new Date().toISOString().slice(0, 10);
+
+  const result = await enqueueCommercialPrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    kind: "abandoned_cart",
+    idempotencyKey: `abandoned_cart:${args.userId}:${dayKey}`,
+    targetType: "user",
+    targetId: args.userId,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * 21) Bülten hoşgeldin — ticari (abone onayı sonrası)
+ */
+export async function sendNewsletterWelcome(args: {
+  email: string;
+  subscriberId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const admin = createAdminClient();
+  const { data: sub } = await admin
+    .from("email_subscribers")
+    .select("subscribed, welcome_sent_at")
+    .eq("id", args.subscriberId)
+    .maybeSingle();
+
+  const row = sub as { subscribed?: boolean; welcome_sent_at?: string | null } | null;
+  if (!row?.subscribed) return { ok: false, reason: "not_subscribed" };
+  if (row.welcome_sent_at) return { ok: false, reason: "already_sent" };
+
+  const email = args.email.toLowerCase().trim();
+  const unsubscribeUrl = buildUnsubscribeUrl(email, "marketing");
+
+  const props: NewsletterWelcomeProps = { unsubscribeUrl };
+  const html = await render(NewsletterWelcomeEmail(props));
+  const subject = "Pim Etiket bültenine hoş geldin";
+  const text = `Bültene kaydoldun. Sticker/etiket: ${SITE_URL_FALLBACK}/sticker\n\nAbonelikten çık: ${unsubscribeUrl}`;
+
+  const result = await enqueueCommercialPrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    kind: "newsletter_welcome",
+    idempotencyKey: `newsletter_welcome:${args.subscriberId}`,
+    targetType: "subscriber",
+    targetId: args.subscriberId,
+  });
+
+  if (result.ok && !result.suppressed) {
+    await admin
+      .from("email_subscribers")
+      .update({ welcome_sent_at: new Date().toISOString() })
+      .eq("id", args.subscriberId);
+  }
 
   return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }
