@@ -30,6 +30,10 @@ import {
   calculateTabakaSheetGeometry,
   TABAKA_SHEET_H_MM,
   TABAKA_SHEET_W_MM,
+  TABAKA_MARGIN_TOP_MM,
+  TABAKA_MARGIN_X_MM,
+  TABAKA_USABLE_H_MM,
+  TABAKA_USABLE_W_MM,
 } from "@/lib/pricing-tabaka-geo";
 import { GAP_TABAKA } from "@/lib/pricing-engine/constants";
 import type { PreviewView } from "./ProductPreviewShell";
@@ -44,6 +48,7 @@ const ETIKET_SURFACE: Record<EtiketMaterialId, SurfaceId> = {
   kuse: "kuse",
   kraft: "kraft",
   beyaz: "opakpp",
+  folyo: "opakfolyo",
   seffaf: "transparan",
   ultra: "ultraclear",
   metalik: "metalik",
@@ -365,54 +370,66 @@ export function EtiketLivePreview({
   }
 
   // ─────────────────────────────────────────────────────────────
-  // TABAKA MODE — pricing-tabaka-geo ile aynı yerleşim (330×450, 10mm marj)
+  // TABAKA MODE — pricing-tabaka-geo ile aynı net alan (310×400, asimetrik marj)
   // ─────────────────────────────────────────────────────────────
   const tabakaGeom = calculateTabakaSheetGeometry(width, height, 1);
   const rawCols = tabakaGeom.cols;
   const rawRows = tabakaGeom.rows;
   const realPerSheet = tabakaGeom.per_sheet;
-  const TABAKA_W = TABAKA_SHEET_W_MM - 2 * 10;
-  const TABAKA_H = TABAKA_SHEET_H_MM - 2 * 10;
-  const TABAKA_GAP = GAP_TABAKA;
+  const TABAKA_USABLE_W = TABAKA_USABLE_W_MM;
+  const TABAKA_USABLE_H = TABAKA_USABLE_H_MM;
   const rotated = tabakaGeom.rotated_layout;
-  // Preview cap — overflow'u önle. Max 6×8 = 48 hücre.
   const displayCols = Math.min(rawCols, 6);
   const displayRows = Math.min(rawRows, 8);
   const isCapped = displayCols < rawCols || displayRows < rawRows;
-  // Hücre boyutu — preview 300×320 container hedefli
   const PREVIEW_MAX_W = 300;
   const PREVIEW_MAX_H = 320;
   const GAP_PX = 3;
-  // Rotated mod → hücre aspect ratio'su tersine döner
+  const previewScale = Math.min(
+    PREVIEW_MAX_W / TABAKA_SHEET_W_MM,
+    PREVIEW_MAX_H / TABAKA_SHEET_H_MM
+  );
+  const sheetPreviewW = TABAKA_SHEET_W_MM * previewScale;
+  const sheetPreviewH = TABAKA_SHEET_H_MM * previewScale;
+  const usablePreviewW = TABAKA_USABLE_W * previewScale;
+  const usablePreviewH = TABAKA_USABLE_H * previewScale;
+  const marginTopPx = TABAKA_MARGIN_TOP_MM * previewScale;
+  const marginLeftPx = TABAKA_MARGIN_X_MM * previewScale;
   const aspect = rotated ? height / width : width / height;
-  // En uzun kenar limit'i baz al
-  const cellByCols = (PREVIEW_MAX_W - GAP_PX * (displayCols - 1)) / displayCols;
-  const cellByRows = (PREVIEW_MAX_H - GAP_PX * (displayRows - 1)) / displayRows;
+  const cellByCols =
+    (usablePreviewW - 16 - GAP_PX * (displayCols - 1)) / displayCols;
+  const cellByRows =
+    (usablePreviewH - 16 - GAP_PX * (displayRows - 1)) / displayRows;
   const cellW = Math.min(cellByCols, cellByRows * aspect);
   const cellH = cellW / aspect;
-  // Sefa 18 May v68 (3): Karga artık TÜM hücrelerde (eski merkez 1 cell yerine)
   const totalDisplayCells = displayCols * displayRows;
   const cells = Array.from({ length: totalDisplayCells }, (_, i) => i);
 
-  // Sefa 18 May v68 (8): Etiket tabaka outer artık sticker ile birebir parity.
-  // Outer: solid white kağıt + soft shadow + ring-gri-200
-  // Üst sol köşe: SRA3 tabaka boyutu (320×450 mm) — bg-krem ile tabaka temasında
-  // Inner: dashed gri border (usable print area)
   return (
     <div style={view3dWrap} className="relative">
       <div style={view3dInner} className="flex flex-col items-center gap-2">
         <div
-          className="relative rounded-lg bg-white p-3 ring-1 ring-gri-200"
-          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+          className="relative rounded-lg bg-white ring-1 ring-gri-200"
+          style={{
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+            width: sheetPreviewW,
+            height: sheetPreviewH,
+          }}
         >
-          {/* Üst sol köşe: SRA3 tabaka boyutu etiketi */}
           <span className="absolute -top-2 left-3 px-1.5 text-[9px] font-bold uppercase tracking-[0.06em] text-gri-500 bg-krem tabular-nums">
             {TABAKA_SHEET_W_MM}×{TABAKA_SHEET_H_MM} mm
           </span>
-          {/* Inner dashed border (tabaka usable area) */}
-          <div className="rounded ring-1 ring-dashed ring-gri-400 p-2">
           <div
-            className="grid"
+            className="absolute rounded ring-1 ring-dashed ring-gri-400 p-2"
+            style={{
+              top: marginTopPx,
+              left: marginLeftPx,
+              width: usablePreviewW,
+              height: usablePreviewH,
+            }}
+          >
+          <div
+            className="grid h-full w-full"
             style={{
               gridTemplateColumns: `repeat(${displayCols}, ${cellW}px)`,
               gridTemplateRows: `repeat(${displayRows}, ${cellH}px)`,

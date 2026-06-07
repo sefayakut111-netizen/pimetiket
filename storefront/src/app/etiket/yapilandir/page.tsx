@@ -69,6 +69,8 @@ import {
   ETIKET_MIN_QTY,
   ETIKET_MAX_QTY,
   ETIKET_QTY_STEP,
+  ETIKET_TABAKA_MIN_QTY,
+  ETIKET_TABAKA_MAX_QTY,
   ETIKET_RULO_MIN_W,
   ETIKET_RULO_MIN_H,
   ETIKET_RULO_MAX_W,
@@ -98,8 +100,8 @@ import {
   FALLBACK_ETIKET_RULO_CONFIG,
   FALLBACK_ETIKET_TABAKA_CONFIG,
 } from "@/lib/pricing-config-types";
-import { getActiveMaterials } from "@/lib/pricing-materials";
-import { quoteEtiketWithFallback } from "@/lib/customer-pricing-from-config";
+import { getActiveMaterials, getPricedTabakaMaterialIds } from "@/lib/pricing-materials";
+import { quoteEtiketWithFallback, computeTabakaTierSavings } from "@/lib/customer-pricing-from-config";
 import type { PricebookSnapshot } from "@/lib/pricing-pricebook-types";
 import {
   FALLBACK_PRICEBOOK_SNAPSHOT,
@@ -358,8 +360,6 @@ const ETIKET_POPULAR_PRESET = -1;
  *  Min 250, max 10.000, step YOK (serbest girilir, 1'lik step).
  *  Presetler: 250, 500, 1K, 2.5K, 5K (popüler), 10K.
  */
-const ETIKET_TABAKA_MIN_QTY = 250;
-const ETIKET_TABAKA_MAX_QTY = 10000;
 const ETIKET_TABAKA_QTY_STEP = 1; // step yok — serbest sürükle/yaz
 const ETIKET_TABAKA_PRESETS = [250, 500, 1000, 2500, 5000, 10000] as const;
 const ETIKET_TABAKA_POPULAR_PRESET = 1000;
@@ -779,6 +779,18 @@ function EtiketPage() {
     };
   }, [formFactor]);
 
+  useEffect(() => {
+    if (formFactor !== "tabaka" || !adminConfig) return;
+    const pricedIds = getPricedTabakaMaterialIds(adminConfig);
+    if (pricedIds.length === 0) return;
+    if (!pricedIds.includes(material)) {
+      const fallbackId = (pricedIds.includes("kuse")
+        ? "kuse"
+        : pricedIds[0]) as EtiketMaterialId;
+      setMaterial(fallbackId);
+    }
+  }, [formFactor, adminConfig, material]);
+
   /** Admin live_config'ten name/desc override helper.
    *  bucket: "material" | "coating" | "customization"
    *  fallback: i18n string (locale === "en" ? *_en : *) */
@@ -810,6 +822,13 @@ function EtiketPage() {
     moduleIds: readonly T[],
     bucket: "materials" | "coating" | "customization"
   ): readonly T[] => {
+    if (formFactor === "tabaka" && bucket === "materials") {
+      const pricedIds = getPricedTabakaMaterialIds(adminConfig);
+      if (pricedIds.length === 0) return [];
+      return pricedIds.filter((id) =>
+        (moduleIds as readonly string[]).includes(id)
+      ) as T[];
+    }
     const adminIds =
       bucket === "materials"
         ? getActiveMaterials(adminConfig).map((m) => m.id)
@@ -1212,9 +1231,20 @@ function EtiketPage() {
   // referans olarak kalsın
   void rawTotal;
 
-  // Tier savings — 1K (min) baseline ile karşılaştır
+  // Tier savings — min qty baseline ile karşılaştır
   const tierSavings = quote.ok
-    ? computeEtiketTierSavings({ width, height, material, coating, customization: primaryCustom, customizations: customs }, minQty, qty)
+    ? formFactor === "tabaka"
+      ? computeTabakaTierSavings(
+          pricingConfig,
+          { width, height, material, coating, customization: primaryCustom, customizations: customs },
+          minQty,
+          qty
+        )
+      : computeEtiketTierSavings(
+          { width, height, material, coating, customization: primaryCustom, customizations: customs },
+          minQty,
+          qty
+        )
     : 0;
 
   const quoteError = !quote.ok ? quote.reason : null;

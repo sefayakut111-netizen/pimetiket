@@ -26,6 +26,10 @@ export type EtiketMaterialId =
   | "seffaf"
   | "ultra"
   | "metalik";
+
+/** Tabaka etiket adet sınırları — konfigüratör + ödeme guard. */
+export const ETIKET_TABAKA_MIN_QTY = 250;
+export const ETIKET_TABAKA_MAX_QTY = 10000;
 export type EtiketCoatingId = "yok" | "mat" | "parlak" | "soft";
 export type EtiketCustomId = "yok" | "emboss" | "yaldiz" | "spotuv";
 

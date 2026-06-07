@@ -24,7 +24,10 @@ import {
 } from "./pricing-config";
 import type { ProfileConfig } from "./pricing-config-types";
 import { fetchPricebookSnapshot } from "./pricing-pricebook-db";
-import type { EtiketCustomId } from "./etiket-customer-pricing";
+import {
+  type EtiketCustomId,
+  ETIKET_TABAKA_MIN_QTY,
+} from "./etiket-customer-pricing";
 import { isPricebookMode } from "./pricing-pricebook";
 import { PRICEBOOK_MAX_QTY } from "./pricing-pricebook-types";
 import {
@@ -298,6 +301,19 @@ async function recalcEtiket(
   config: ProfileConfig,
   formFactor: "rulo" | "tabaka"
 ): Promise<RecalcOutcome> {
+  if (formFactor === "tabaka" && item.qty < ETIKET_TABAKA_MIN_QTY) {
+    return {
+      recalced: true,
+      failure: {
+        itemId: item.id,
+        reason: "qty_below_min",
+        expected: ETIKET_TABAKA_MIN_QTY,
+        actual: item.qty,
+        hint: `Tabaka etiket minimum ${ETIKET_TABAKA_MIN_QTY} adet`,
+      },
+    };
+  }
+
   if (item.qty > PRICEBOOK_MAX_QTY) {
     return {
       recalced: true,

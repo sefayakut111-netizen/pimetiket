@@ -47,13 +47,12 @@ export const SHOW_ETIKET_FORM_FACTOR_PICKER = false;
  * Müşteriye gizlenmiş malzeme id'leri.
  *
  * Sefa kararı 20 May:
- *   - "kraft" — şu an üretim partneri yok; gözükmesin
  *   - "ultra" (Ultra Clear) — el ile yapıştırma zorluğu, partner şart
  *
  * NOT: Eğer kullanıcı eski URL/cookie ile bu malzemeleri seçmiş geliyorsa
  * konfigüratör yine de fiyatlandırma yapabilir — sadece grid'de gözükmez.
  */
-export const HIDDEN_ETIKET_MATERIALS: readonly string[] = ["kraft", "ultra"];
+export const HIDDEN_ETIKET_MATERIALS: readonly string[] = ["ultra"];
 
 // ============================================================
 // KAPLAMA (Step 2)

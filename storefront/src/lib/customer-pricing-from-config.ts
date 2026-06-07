@@ -330,3 +330,24 @@ export function quoteEtiketWithFallback(
       "Tabaka fiyatı hesaplanamadı — boyutu kontrol edin.",
   };
 }
+
+/** Tabaka sheet tier savings — canlı/fallback config ile. */
+export function computeTabakaTierSavings(
+  config: ProfileConfig,
+  input: Omit<CustomerEtiketQuoteInput, "qty">,
+  baseQty: number,
+  targetQty: number
+): number {
+  const base = quoteEtiketWithFallback(
+    config,
+    { ...input, qty: baseQty },
+    { formFactor: "tabaka" }
+  );
+  const target = quoteEtiketWithFallback(
+    config,
+    { ...input, qty: targetQty },
+    { formFactor: "tabaka" }
+  );
+  if (!base.ok || !target.ok || base.unitPrice === 0) return 0;
+  return Math.round((1 - target.unitPrice / base.unitPrice) * 100);
+}

@@ -42,7 +42,18 @@ import {
   STICKER_QTY_STEP,
 } from "@/lib/sticker-customer-pricing";
 import { createPimNavTools } from "@/lib/pim/navigation-tools";
-import { ETIKET_ENABLED, ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
+import {
+  ETIKET_ENABLED,
+  ETIKET_LAUNCH_LABEL,
+  ETIKET_RULO_ENABLED,
+  ETIKET_TABAKA_ENABLED,
+} from "@/lib/etiket-feature-flags";
+import {
+  ETIKET_TABAKA_MIN_QTY,
+  ETIKET_TABAKA_MAX_QTY,
+} from "@/lib/etiket-customer-pricing";
+import { calcTabakaSheets } from "@/lib/pricing-tabaka-geo";
+import { getPricedTabakaMaterialIds } from "@/lib/pricing-materials";
 import {
   clampChatMessages,
   extractTextFromUIMessage,
@@ -162,19 +173,23 @@ const stickerTool = tool({
 
 const etiketTool = tool({
   description:
-    "Etiket fiyatı hesapla. Rulo etiket (tabaka YOK). Min 1000 adet, max 25000. Boyut serbest (W×H mm).",
+    "Etiket fiyatı hesapla. form_factor=tabaka (250-10000 adet, sheet) veya rulo (1000-10000, rulo kapalıysa kullanma). Boyut W×H mm.",
   inputSchema: z.object({
-    width: z.number().min(15).max(300).describe("Etiket genişliği mm"),
-    height: z.number().min(25).max(500).describe("Etiket yüksekliği mm"),
+    form_factor: z
+      .enum(["rulo", "tabaka"])
+      .default(ETIKET_TABAKA_ENABLED ? "tabaka" : "rulo")
+      .describe("Etiket türü — tabaka (sheet) veya rulo (roll)"),
+    width: z.number().min(5).max(500).describe("Etiket genişliği mm"),
+    height: z.number().min(5).max(500).describe("Etiket yüksekliği mm"),
     qty: z
       .number()
-      .min(1000)
-      .max(25000)
-      .describe("Sipariş adedi (1K/2K/5K/10K/20K/25K önerilen)"),
+      .min(ETIKET_TABAKA_MIN_QTY)
+      .max(ETIKET_TABAKA_MAX_QTY)
+      .describe("Sipariş adedi"),
     material_id: z
-      .enum(["kraft", "beyaz", "ultra", "metalik"])
-      .default("kraft")
-      .describe("Malzeme — kraft/beyaz semi-glos/ultra clear/metalik"),
+      .string()
+      .default("kuse")
+      .describe("Malzeme id — tabaka: kuse/kraft/beyaz/folyo (canlı config'de olanlar)"),
     coating_id: z
       .enum(["yok", "mat", "parlak", "soft"])
       .default("yok")
@@ -182,9 +197,10 @@ const etiketTool = tool({
     customization_id: z
       .enum(["yok", "emboss", "yaldiz", "spotuv"])
       .default("yok")
-      .describe("Özelleştirme — yok/emboss/yaldız/spot UV"),
+      .describe("Özelleştirme — tabakada genelde yok; rulo için"),
   }),
   execute: async ({
+    form_factor,
     width,
     height,
     qty,
@@ -200,9 +216,45 @@ const etiketTool = tool({
       };
     }
 
+    if (form_factor === "rulo" && !ETIKET_RULO_ENABLED) {
+      return {
+        success: false,
+        reason: `Rulo etiket ${ETIKET_LAUNCH_LABEL}'da açılacak. Şimdilik tabaka etiket sipariş verebilirsin — form_factor=tabaka ile tekrar dene veya /etiket/yapilandir?form=tabaka.`,
+        ruloDisabled: true,
+      };
+    }
+
+    if (form_factor === "tabaka" && !ETIKET_TABAKA_ENABLED) {
+      return {
+        success: false,
+        reason: "Tabaka etiket şu an sipariş alınmıyor.",
+      };
+    }
+
+    if (form_factor === "tabaka") {
+      if (width > TABAKA_USABLE_W_MM || height > TABAKA_USABLE_H_MM) {
+        return {
+          success: false,
+          reason: `Tabaka net baskı alanı max ${TABAKA_USABLE_W_MM}×${TABAKA_USABLE_H_MM} mm — boyutu küçült.`,
+        };
+      }
+      if (qty < ETIKET_TABAKA_MIN_QTY) {
+        return {
+          success: false,
+          reason: `Tabaka etiket minimum ${ETIKET_TABAKA_MIN_QTY} adet.`,
+        };
+      }
+    } else if (qty < 1000) {
+      return {
+        success: false,
+        reason: "Rulo etiket minimum 1.000 adet.",
+      };
+    }
+
+    const scope = form_factor === "tabaka" ? "etiket_tabaka" : "etiket_rulo";
     let config;
     try {
-      config = await getLivePricingConfig("etiket_rulo");
+      config = await getLivePricingConfig(scope);
     } catch (e) {
       if (e instanceof PricingConfigUnavailableError) {
         return {
@@ -213,13 +265,24 @@ const etiketTool = tool({
       }
       throw e;
     }
+
+    if (form_factor === "tabaka") {
+      const pricedIds = getPricedTabakaMaterialIds(config);
+      if (!pricedIds.includes(material_id)) {
+        return {
+          success: false,
+          reason: `Malzeme "${material_id}" tabaka için şu an fiyatlandırılmıyor. Kullanılabilir: ${pricedIds.join(", ") || "—"}.`,
+        };
+      }
+    }
+
     const geom = quoteEtiket({
       width,
       height,
       qty,
-      materialId: material_id,
+      materialId: material_id as "kraft",
       coatingId: coating_id,
-      customizationId: customization_id,
+      customizationId: form_factor === "tabaka" ? "yok" : customization_id,
       production: { mode: "fason", rate: 100 },
       operation: { setup: 0, packaging: 0, cargo: 0, feePct: 0 },
       margin: { marginPct: 0, vatPct: 0, minMarkupFraction: 0 },
@@ -230,24 +293,29 @@ const etiketTool = tool({
         width,
         height,
         qty,
-        material: material_id,
+        material: material_id as "kraft",
         coating: coating_id,
-        customization: customization_id,
+        customization: form_factor === "tabaka" ? "yok" : customization_id,
       },
-      { formFactor: "rulo" }
+      { formFactor: form_factor }
     );
 
     if (bridged?.ok) {
       const matName =
-        ETIKET_MATERIALS.find((m) => m.id === material_id)?.name ?? material_id;
+        config.materials.find((m) => m.id === material_id)?.name ??
+        ETIKET_MATERIALS.find((m) => m.id === material_id)?.name ??
+        material_id;
       const coatName =
         ETIKET_COATINGS.find((c) => c.id === coating_id)?.name ?? coating_id;
       const custName =
-        ETIKET_CUSTOMIZATIONS.find((c) => c.id === customization_id)?.name ??
-        customization_id;
+        form_factor === "tabaka"
+          ? "Özelleştirme yok"
+          : ETIKET_CUSTOMIZATIONS.find((c) => c.id === customization_id)?.name ??
+            customization_id;
       return {
         success: true,
         product: "etiket",
+        form_factor,
         width_mm: width,
         height_mm: height,
         qty,
@@ -256,11 +324,27 @@ const etiketTool = tool({
         customization: custName,
         total_kdv_dahil: Math.round(bridged.total),
         unit_price_kdv_dahil: parseFloat(bridged.unitPrice.toFixed(2)),
-        rolls_needed: bridged.rollsNeeded,
+        rolls_needed: form_factor === "rulo" ? bridged.rollsNeeded : undefined,
+        sheets_needed:
+          form_factor === "tabaka"
+            ? calcTabakaSheets(width, height, qty)
+            : undefined,
         total_m2: geom.ok
           ? parseFloat(geom.geometry.totalM2.toFixed(3))
           : 0,
-        configurator_url: "/etiket",
+        configurator_url:
+          form_factor === "tabaka"
+            ? "/etiket/yapilandir?form=tabaka"
+            : "/etiket/yapilandir?form=rulo",
+      };
+    }
+
+    if (form_factor === "tabaka") {
+      return {
+        success: false,
+        reason:
+          bridged?.reason ??
+          "Tabaka fiyatı hesaplanamadı — boyut ve malzemeyi kontrol et.",
       };
     }
 
@@ -307,7 +391,10 @@ const etiketTool = tool({
       unit_price_kdv_dahil: parseFloat(result.cost.unitPrice.toFixed(2)),
       rolls_needed: result.geometry.rollsNeeded,
       total_m2: parseFloat(result.geometry.totalM2.toFixed(3)),
-      configurator_url: "/etiket",
+      configurator_url:
+        form_factor === "tabaka"
+          ? "/etiket/yapilandir?form=tabaka"
+          : "/etiket/yapilandir?form=rulo",
     };
   },
 });

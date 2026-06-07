@@ -8,13 +8,18 @@ import {
   DEFAULT_STICKER_DELIVERY_DAYS,
   type DeliveryDaysSettings,
 } from "@/lib/site-settings-shared";
-import { ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
+import {
+  ETIKET_LAUNCH_LABEL,
+  ETIKET_RULO_ENABLED,
+  ETIKET_TABAKA_ENABLED,
+} from "@/lib/etiket-feature-flags";
 import {
   CUSTOMER_STICKER_TIERS,
   STICKER_MIN_QTY,
   STICKER_QTY_STEP,
   type StickerMaterial,
 } from "@/lib/sticker-customer-pricing";
+import { ETIKET_TABAKA_MIN_QTY } from "@/lib/etiket-customer-pricing";
 import {
   ETIKET_COATINGS,
   ETIKET_CUSTOMIZATIONS,
@@ -39,6 +44,35 @@ function listNames<T extends { name: string }>(items: readonly T[]): string {
   return items.map((i) => i.name).join(", ");
 }
 
+function buildEtiketSalesBlock(): string {
+  if (ETIKET_TABAKA_ENABLED && !ETIKET_RULO_ENABLED) {
+    return `- **Tabaka etiket sipariş AÇIK** (${ETIKET_TABAKA_MIN_QTY}+ adet). Konfigüratör: /etiket/yapilandir?form=tabaka — kuşe, kraft, opak PP (canlı fiyat listesinde olan malzemeler). Kaplama: mat/parlak selefon veya kaplamasız.
+- **Rulo etiket ${ETIKET_LAUNCH_LABEL}'da açılacak** — şimdilik rulo sipariş alınmıyor. Müşteri rulo isterse tabaka alternatifini öner veya açılış tarihini söyle.
+- Kesin tabaka FİYAT için: quote_etiket tool (form_factor=tabaka) veya /etiket/yapilandir?form=tabaka konfigüratörü.`;
+  }
+  if (ETIKET_TABAKA_ENABLED && ETIKET_RULO_ENABLED) {
+    return `- Etiket: Rulo (1.000+ adet) ve Tabaka (${ETIKET_TABAKA_MIN_QTY}+ adet) — ikisi de sipariş açık. Kesin fiyat için quote_etiket tool veya /etiket konfigüratörü.`;
+  }
+  return `- **Etiket baskı ŞU AN sipariş alınmıyor** — ${ETIKET_LAUNCH_LABEL}'da açılacak. Müşteri etiket sorarsa: açılış tarihini söyle + şu an sticker baskının tam açık olduğunu belirt, /sticker'a yönlendir. Etiket fiyatı/sipariş verme veya konfigüratöre sipariş amacıyla yönlendirme YAPMA.`;
+}
+
+function buildEtiketPageLine(): string {
+  if (ETIKET_TABAKA_ENABLED && !ETIKET_RULO_ENABLED) {
+    return `- /etiket → tabaka etiket ürün sayfası (tabaka sipariş AÇIK — /etiket/yapilandir?form=tabaka). Rulo ${ETIKET_LAUNCH_LABEL}'da.`;
+  }
+  if (ETIKET_TABAKA_ENABLED) {
+    return `- /etiket → etiket ürün sayfası (rulo + tabaka sipariş açık)`;
+  }
+  return `- /etiket → etiket ürün sayfası (ŞU AN sipariş kapalı — ${ETIKET_LAUNCH_LABEL}'da açılacak)`;
+}
+
+function buildEtiketPriceRule(): string {
+  if (ETIKET_TABAKA_ENABLED) {
+    return `- Kesin FİYAT için: sticker → quote_sticker tool veya /sticker konfigüratörü. Tabaka etiket → quote_etiket tool (form_factor=tabaka) veya /etiket/yapilandir?form=tabaka. Rulo kapalıysa rulo fiyatı VERME.`;
+  }
+  return `- Kesin FİYAT için: sticker → quote_sticker tool veya /sticker konfigüratörü. Etiket siparişi kapalı — tahmini rakam VERME.`;
+}
+
 /** Pim system prompt'a inject edilen bilgi tabanı (sync). */
 export function buildPimKnowledgeBase(
   deliveryDays: DeliveryDaysSettings = {
@@ -51,13 +85,16 @@ export function buildPimKnowledgeBase(
   const etiketMaterials = listNames(ETIKET_MATERIALS);
   const etiketCoatings = listNames(ETIKET_COATINGS);
   const etiketCustom = listNames(ETIKET_CUSTOMIZATIONS);
+  const etiketSalesBlock = buildEtiketSalesBlock();
+  const etiketPageLine = buildEtiketPageLine();
+  const etiketPriceRule = buildEtiketPriceRule();
 
   return `
 PİM ETİKET HAKKINDA:
 - Akıllı dijital baskı atölyesi (etiket + sticker), küçük markalar ve büyük ekipler için. Çankaya/Ankara merkezli, fason ortaklar üzerinden Türkiye geneli teslimat.
 - Şirket: Sefa Yakut Kırtasiye Baskı Ticaret Limited Şirketi.
-- Etiket: Rulo (1.000+ adet) veya Tabaka (250+ adet). Güncel malzeme listesi (pricing-engine): ${etiketMaterials}. Kaplama: ${etiketCoatings}. Özelleştirme: ${etiketCustom}.
-- **Etiket baskı ŞU AN sipariş alınmıyor** — tasarım aşamasında, ${ETIKET_LAUNCH_LABEL}'da açılacak. Müşteri etiket sorarsa: açılış tarihini söyle (${ETIKET_LAUNCH_LABEL}) + şu an sticker baskının tam açık olduğunu belirt, /sticker'a yönlendir. Etiket fiyatı/sipariş verme veya konfigüratöre sipariş amacıyla yönlendirme YAPMA.
+- Etiket ürün ailesi: Rulo (1.000+ adet) ve Tabaka (${ETIKET_TABAKA_MIN_QTY}+ adet). Referans malzeme listesi (pricing-engine): ${etiketMaterials}. Kaplama: ${etiketCoatings}. Özelleştirme (rulo): ${etiketCustom}.
+${etiketSalesBlock}
 - Sticker: min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; önerilen: ${stickerQtyPresets}). Malzeme: ${stickerMaterials}. Yüzey: ${STICKER_FINISH_LABELS.join(", ")}.
 - Teslim: ETİKET ${deliveryDays.etiket} iş günü, STICKER ${deliveryDays.sticker} iş günü içinde kargoya veriyoruz (resmi tatil ve hafta sonu HARİÇ). Kargo süresi: İstanbul 1, diğer iller 2-3 iş günü.
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
@@ -67,7 +104,7 @@ PİM ETİKET HAKKINDA:
 - Sipariş tutarı limit: Min ${PIM_ORDER_LIMITS.minTotalTry} ₺ (KDV dahil) — altı sepet ödemeye geçemez. Max ${PIM_ORDER_LIMITS.maxTotalTry} ₺ — üstü için müşteri WhatsApp'a yönlendirilir.
 
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
-- /etiket → etiket ürün sayfası (ŞU AN sipariş kapalı — ${ETIKET_LAUNCH_LABEL}'da açılacak)
+${etiketPageLine}
 - /sticker → sticker konfigüratörü (${deliveryDays.sticker} iş günü teslim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
 - /malzemeler → tüm malzeme türleri + kullanım alanları (güncel liste)
 - /sablonlar → hazır şablonlar (Canva/Adobe için boyut + indirme)
@@ -81,14 +118,14 @@ SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
 
 NE YAPMIYORUZ:
 - Tabela basmıyoruz. Tekstil etiket yok. Ofset baskı yok (sadece dijital).
-- 1.000 altı rulo etiket / 250 altı tabaka etiket / ${STICKER_MIN_QTY} altı sticker basmıyoruz.
+- 1.000 altı rulo etiket / ${ETIKET_TABAKA_MIN_QTY} altı tabaka etiket / ${STICKER_MIN_QTY} altı sticker basmıyoruz.
 - HIZLI / ACELE BASKI HİZMETİ YOK. Belirli teslim tarihine yetişmesi gereken siparişler için erken planlama öner.
 - Tasarım hizmeti vermiyoruz — sadece baskı.
 - Cüzdan / mağaza puanı / üyelik indirimi YOK.
 - **Sticker fire payı (overrun) bahsetme.** Tool sonucundaki hediye_adet bilgisini müşteriye SÖYLEME. Sadece sipariş ettiği adet sayısını söyle.
 
 DOĞRULUK KURALLARI (KRİTİK — halüsinasyon önleme):
-- Kesin FİYAT için: sticker → quote_sticker tool veya /sticker konfigüratörü. Etiket siparişi kapalı — tahmini rakam VERME.
+${etiketPriceRule}
 - Kesin MALZEME / kaplama / özelleştirme listesi için: /malzemeler veya konfigüratör — ezbere malzeme uydurma.
 - Kesin TESLİM tarihi için: yukarıdaki iş günü süreleri + /sss — kesin takvim günü vaat etme.
 - Kargo firması: yalnızca ${PIM_CARRIER_NAME}. Başka firma (MNG/Aras/Sürat vb.) SÖYLEME.
