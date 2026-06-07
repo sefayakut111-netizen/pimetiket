@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
-import { Button, Card, Eyebrow, Modal, useToast } from "@/components/ui";
+import { Button, Card, Eyebrow, Input, Modal, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { clearMemory } from "@/lib/pim/memory";
 import { clearChatConsent } from "@/lib/pim/chat-consent";
@@ -91,6 +91,7 @@ export default function VerilerimPage() {
   const [scope, setScope] = useState<ScopeMap>(DEFAULT_SCOPE);
   const [exportSubmitting, setExportSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
   const clearPimLocalData = () => {
     clearMemory();
@@ -150,12 +151,20 @@ export default function VerilerimPage() {
       toast.error("En az bir veri tipi seç");
       return;
     }
+    if (!deletePassword.trim()) {
+      toast.error("Güvenlik için şifreni gir");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/me/kvkk-requests", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind: "partial_delete", scope }),
+        body: JSON.stringify({
+          kind: "partial_delete",
+          scope,
+          password: deletePassword,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -167,18 +176,26 @@ export default function VerilerimPage() {
       if (scope.pim_chat) clearPimLocalData();
       setShowPartial(false);
       setScope(DEFAULT_SCOPE);
+      setDeletePassword("");
     } finally {
       setSubmitting(false);
     }
   };
 
   const submitAccountDelete = async () => {
+    if (!deletePassword.trim()) {
+      toast.error("Güvenlik için şifreni gir");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/me/kvkk-requests", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind: "account_delete" }),
+        body: JSON.stringify({
+          kind: "account_delete",
+          password: deletePassword,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -188,6 +205,7 @@ export default function VerilerimPage() {
       toast.success("Talebin alındı. 48 saat içinde vazgeçebilirsin.");
       setRequests((arr) => [json.request, ...arr]);
       setShowAccountDelete(false);
+      setDeletePassword("");
     } finally {
       setSubmitting(false);
     }
@@ -435,8 +453,26 @@ export default function VerilerimPage() {
               onChange={(v) => setScope({ ...scope, orders: v })}
             />
           </div>
+          <div className="mt-4">
+            <label className="block text-[12px] font-semibold text-lacivert mb-1.5">
+              Şifren (güvenlik doğrulaması)
+            </label>
+            <Input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Mevcut şifren"
+              autoComplete="current-password"
+            />
+          </div>
           <div className="mt-5 flex gap-2 justify-end">
-            <Button variant="ghost" onClick={() => setShowPartial(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowPartial(false);
+                setDeletePassword("");
+              }}
+            >
               Vazgeç
             </Button>
             <Button variant="primary" onClick={submitPartialDelete} disabled={submitting}>
@@ -477,8 +513,26 @@ export default function VerilerimPage() {
               </li>
             </ul>
           </div>
+          <div className="mt-4">
+            <label className="block text-[12px] font-semibold text-lacivert mb-1.5">
+              Şifren (güvenlik doğrulaması)
+            </label>
+            <Input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Mevcut şifren"
+              autoComplete="current-password"
+            />
+          </div>
           <div className="mt-5 flex gap-2 justify-end">
-            <Button variant="ghost" onClick={() => setShowAccountDelete(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowAccountDelete(false);
+                setDeletePassword("");
+              }}
+            >
               Vazgeç
             </Button>
             <Button

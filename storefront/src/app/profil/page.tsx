@@ -147,6 +147,7 @@ export default function ProfilPage() {
   const [pwNew2, setPwNew2] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
   useEffect(() => {
     ensureAuthBindings();
@@ -216,12 +217,23 @@ export default function ProfilPage() {
   };
 
   const onRequestAccountDelete = async () => {
+    if (!deletePassword.trim()) {
+      toast.error(
+        locale === "en"
+          ? "Enter your password to confirm"
+          : "Onaylamak için şifreni gir"
+      );
+      return;
+    }
     setDeleteSubmitting(true);
     try {
       const res = await fetch("/api/me/kvkk-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "account_delete" }),
+        body: JSON.stringify({
+          kind: "account_delete",
+          password: deletePassword,
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -233,6 +245,7 @@ export default function ProfilPage() {
       toast.warning(c.deleteSubmitted);
       setShowDelete(false);
       setConfirmText("");
+      setDeletePassword("");
     } finally {
       setDeleteSubmitting(false);
     }
@@ -401,6 +414,16 @@ export default function ProfilPage() {
                 placeholder={c.confirmKeyword}
                 className="!ring-kirmizi/30"
               />
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder={
+                  locale === "en" ? "Current password" : "Mevcut şifren"
+                }
+                autoComplete="current-password"
+                className="!ring-kirmizi/30 mt-2"
+              />
               <div className="flex gap-2 mt-3 justify-end">
                 <Button
                   variant="ghost"
@@ -408,13 +431,18 @@ export default function ProfilPage() {
                   onClick={() => {
                     setShowDelete(false);
                     setConfirmText("");
+                    setDeletePassword("");
                   }}
                 >
                   {c.cancel}
                 </Button>
                 <button
                   type="button"
-                  disabled={confirmText !== c.confirmKeyword || deleteSubmitting}
+                  disabled={
+                    confirmText !== c.confirmKeyword ||
+                    deleteSubmitting ||
+                    !deletePassword.trim()
+                  }
                   onClick={() => void onRequestAccountDelete()}
                   className="h-9 px-3.5 rounded-full bg-kirmizi text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-kirmizi-koyu"
                 >

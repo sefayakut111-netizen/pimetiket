@@ -1,7 +1,7 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 import {
@@ -11,7 +11,7 @@ import {
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("manual_order", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

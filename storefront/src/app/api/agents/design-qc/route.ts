@@ -26,7 +26,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { runDesignQC, mimeToFormat, type DesignQCResult } from "@/lib/agents/design-qc";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
@@ -46,7 +46,7 @@ const OrderRerunSchema = z.object({
 
 export async function POST(req: Request) {
   // Auth — admin/staff
-  const auth = await assertAdmin();
+  const auth = await assertPermission("ai_qc", "create");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

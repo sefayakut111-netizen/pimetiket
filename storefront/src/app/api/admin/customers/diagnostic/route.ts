@@ -25,7 +25,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -47,14 +47,14 @@ export async function GET() {
   const ts = new Date().toISOString();
 
   // ─── 1. Auth ───
-  const auth = await assertAdmin();
+  const auth = await assertPermission("customers", "view");
   if (!auth) {
     const result: DiagnosticResult = {
       ok: false,
       step: "auth",
       error: "Admin auth fail (cookie yok ya da rol uygun değil)",
       fix: "Önce /auth'tan admin hesabıyla giriş yap, sonra bu endpoint'i çağır",
-      auth: { ok: false, reason: "assertAdmin null döndü" },
+      auth: { ok: false, reason: "assertPermission null döndü" },
       timestamp: ts,
     };
     return NextResponse.json(result, { status: 403 });

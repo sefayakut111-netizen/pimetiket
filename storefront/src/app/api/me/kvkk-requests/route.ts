@@ -24,6 +24,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
+import { isSameOriginRequest } from "@/lib/security/csrf-origin";
+import { verifyStepUpAuth } from "@/lib/security/step-up-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +44,14 @@ interface BodyShape {
   kind?: unknown;
   scope?: unknown;
   userNote?: unknown;
+  password?: unknown;
+  totpCode?: unknown;
 }
+
+const IRREVERSIBLE_KINDS = new Set<KvkkKind>([
+  "account_delete",
+  "partial_delete",
+]);
 
 interface KvkkRow {
   id: string;
@@ -109,6 +118,27 @@ export async function POST(req: Request) {
   const kind = typeof body.kind === "string" ? (body.kind as KvkkKind) : null;
   if (!kind || !VALID_KINDS.includes(kind)) {
     return NextResponse.json({ error: "Geçersiz talep tipi" }, { status: 400 });
+  }
+
+  if (IRREVERSIBLE_KINDS.has(kind)) {
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json({ error: "Geçersiz istek kaynağı" }, { status: 403 });
+    }
+
+    const stepUp = await verifyStepUpAuth(supabase, user.email, {
+      password:
+        typeof body.password === "string" ? body.password : undefined,
+      totpCode: typeof body.totpCode === "string" ? body.totpCode : undefined,
+    });
+    if (!stepUp.ok) {
+      return NextResponse.json(
+        {
+          error: stepUp.message,
+          requiresTotp: stepUp.requiresTotp ?? false,
+        },
+        { status: stepUp.status }
+      );
+    }
   }
 
   const scope =

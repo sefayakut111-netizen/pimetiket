@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { assertAdmin } from "@/lib/supabase/assert-admin";
+import { assertPermission } from "@/lib/supabase/assert-permission";
 import {
   getTrafficSummary,
   getGa4SetupStatus,
@@ -48,7 +48,7 @@ function setCache(range: TrafficRange, data: TrafficSummary | TrafficNotConfigur
 }
 
 export async function GET(req: Request) {
-  const auth = await assertAdmin();
+  const auth = await assertPermission("dashboard", "view");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
