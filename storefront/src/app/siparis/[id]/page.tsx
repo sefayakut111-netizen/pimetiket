@@ -658,6 +658,11 @@ export default function SiparisDetailPage({
       void fetchCustomerOrder(id).then((o) => {
         if (o) setOrder(o);
       });
+      if (order.status === "qc_pending") {
+        void fetch(`/api/orders/${id}/upload-status`, { cache: "no-store" }).catch(
+          () => {}
+        );
+      }
     }, 5000);
 
     const timeout = setTimeout(() => clearInterval(interval), 300000);

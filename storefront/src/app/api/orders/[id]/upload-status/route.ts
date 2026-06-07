@@ -118,6 +118,15 @@ export async function GET(
     console.error("[GET /upload-status] promote failed:", promoteErr);
   }
 
+  try {
+    const { resumeOrderPipelineIfStuck } = await import(
+      "@/lib/agents/resume-order-pipeline"
+    );
+    await resumeOrderPipelineIfStuck(admin, orderId);
+  } catch (resumeErr) {
+    console.error("[GET /upload-status] resume pipeline:", resumeErr);
+  }
+
   // Item'lari cek — meta'dan designCount al (multi-design destek)
   const { data: items } = await admin
     .from("order_items")

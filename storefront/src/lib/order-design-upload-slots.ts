@@ -5,14 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getExpectedDesignCount } from "./order-item-meta";
-
-const USABLE_DESIGN_STATUSES = [
-  "uploaded",
-  "analyzing",
-  "approved",
-  "flagged",
-  "rejected",
-] as const;
+import { USABLE_DESIGN_STATUSES } from "./design-file-status";
 
 export async function orderDesignUploadSlotsComplete(
   admin: SupabaseClient,

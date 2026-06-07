@@ -412,6 +412,13 @@ export async function POST(req: NextRequest) {
     userId: intent.user_id,
   });
 
+  const { resumeOrderPipelineIfStuck } = await import(
+    "@/lib/agents/resume-order-pipeline"
+  );
+  void resumeOrderPipelineIfStuck(admin, orderId).catch((err) =>
+    console.error("[payment/callback] resume pipeline:", err)
+  );
+
   // (11) Cüzdan akışı KALDIRILDI — Migration 015
 
   // (11b) Referans tamamlama — bu kullanıcının ilk siparişi mi?

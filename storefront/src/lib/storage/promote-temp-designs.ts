@@ -327,6 +327,12 @@ export async function ensureOrderDesignsPromoted(args: {
   const { admin, orderId, userId } = args;
 
   if (await orderHasUsableDesignFiles(admin, orderId)) {
+    const { resumeOrderPipelineIfStuck } = await import(
+      "@/lib/agents/resume-order-pipeline"
+    );
+    void resumeOrderPipelineIfStuck(admin, orderId).catch((err) =>
+      console.error("[ensureOrderDesignsPromoted] resume pipeline:", err)
+    );
     return { promoted: 0, hasDesignFiles: true };
   }
 
