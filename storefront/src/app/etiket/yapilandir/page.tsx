@@ -1692,8 +1692,8 @@ function EtiketPage() {
               {!stepComplete(1) && (
                 <p className="mb-3 text-[13px] font-medium text-pim-mercan bg-pim-mercan-tint/40 rounded-lg px-3 py-2">
                   {locale === "en"
-                    ? "Select a material to unlock the next steps."
-                    : "Devam etmek için bir malzeme seç — sonraki adımlar açılacak."}
+                    ? "Select a material to unlock the coating step."
+                    : "Devam etmek için bir malzeme seç — kaplama adımı açılacak."}
                 </p>
               )}
               {/* Sefa 20 May v68: grid kart sayısına göre dinamik (gridColsForCount).
@@ -2844,7 +2844,7 @@ function EtiketPage() {
                   stepIds.filter(
                     (id) =>
                       id !== 7 /* Tasarım opsiyonel */ &&
-                      !stepComplete(id)
+                      !touchedSteps.has(id)
                   ).length
                 }
                 firstPendingStepLabel={(() => {

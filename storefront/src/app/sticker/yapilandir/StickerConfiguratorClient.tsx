@@ -1753,7 +1753,9 @@ function StickerPage() {
                     </span>
                     <input
                       type="number"
-                      value={width}
+                      value={touchedSteps.has(5) ? width : ""}
+                      placeholder={shape === "circle" ? "örn. 50" : "örn. 75"}
+                      autoComplete="off"
                       onChange={(e) => {
                         const v = Math.max(
                           STICKER_MIN_DIM,
@@ -1803,7 +1805,9 @@ function StickerPage() {
                       Önce keystroke'ta clamp ediyordu, kullanıcı 252→25 silmek
                       isteyince anında 60'a (MIN) snap oluyordu. */}
                   <ClampedNumberInput
-                    value={width}
+                    value={touchedSteps.has(5) ? width : undefined}
+                    placeholder="örn. 60"
+                    autoComplete="off"
                     onChange={(v) => {
                       setWidth(v);
                       markTouched(5);
@@ -1857,7 +1861,9 @@ function StickerPage() {
                         : "Yükseklik (mm)"}
                   </span>
                   <ClampedNumberInput
-                    value={height}
+                    value={touchedSteps.has(5) ? height : undefined}
+                    placeholder="örn. 80"
+                    autoComplete="off"
                     onChange={(v) => {
                       setHeight(v);
                       markTouched(5);
@@ -2161,7 +2167,7 @@ function StickerPage() {
               footnote={null}
               pendingStepsCount={
                 stepIds.filter(
-                  (id) => id !== 7 && !stepComplete(id)
+                  (id) => id !== 7 && !touchedSteps.has(id)
                 ).length
               }
               firstPendingStepLabel={(() => {
