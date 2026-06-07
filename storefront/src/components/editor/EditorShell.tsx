@@ -179,6 +179,7 @@ export default function EditorShell() {
   const [removingBg, setRemovingBg] = useState(false);
   const [showEnhancePrompt, setShowEnhancePrompt] = useState(false);
   const [enhanceDismissed, setEnhanceDismissed] = useState(false);
+  const [showCircleContourSuggest, setShowCircleContourSuggest] = useState(false);
   const [layers, setLayers] = useState<Record<EditorLayer, boolean>>({
     cut: true,
     white: false,
@@ -442,6 +443,13 @@ export default function EditorShell() {
           state: "loaded",
           message: "Tasarım yüklendi — kontur hesaplanıyor…",
         });
+        setShowCircleContourSuggest(false);
+      } else if (data.type === "pim-circle-contour-suggest") {
+        if (cutMode === "circle" && cutSource === "sekil") {
+          setShowCircleContourSuggest(true);
+        }
+      } else if (data.type === "pim-circle-contour-suggest-clear") {
+        setShowCircleContourSuggest(false);
       } else if (data.type === "pim-image-scale-changed") {
         if (typeof data.scale === "number" && data.scale > 0) {
           // Shell kaynaklı set-size'dan gelen echo penceresi → TÜMÜNÜ yok say (slider zıplamasın)
@@ -546,7 +554,7 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct]);
+  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource]);
 
   useEffect(() => {
     if (!designLoaded || cutlineReady) return;
@@ -632,6 +640,17 @@ export default function EditorShell() {
     },
     [postToPoc, widthMm, heightMm]
   );
+
+  const dismissCircleContourSuggest = useCallback(() => {
+    setShowCircleContourSuggest(false);
+    postToPoc({ type: "pim-dismiss-circle-contour-suggest" });
+  }, [postToPoc]);
+
+  const acceptCircleContourSuggest = useCallback(() => {
+    setShowCircleContourSuggest(false);
+    postToPoc({ type: "pim-dismiss-circle-contour-suggest" });
+    handleCutSourceChange("ozel");
+  }, [postToPoc, handleCutSourceChange]);
 
   const handleSekilPresetChange = useCallback(
     (preset: SekilPreset) => {
@@ -1488,6 +1507,33 @@ export default function EditorShell() {
               onZoomReset={zoomReset}
             />
           </div>
+
+          {showCircleContourSuggest ? (
+            <div className="shrink-0 rounded-xl border border-sari/40 bg-sari-soft px-3 py-2.5 text-[12px] text-lacivert">
+              <p className="leading-relaxed">
+                Bu görsel daireye tam oturmuyor. Şekline göre özel kesim (die-cut)
+                daha şık durabilir — ister misin?
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={acceptCircleContourSuggest}
+                >
+                  Özel kesime geç
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={dismissCircleContourSuggest}
+                >
+                  Yuvarlak kalsın
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm">
             <iframe

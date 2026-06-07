@@ -170,6 +170,7 @@ export default function ProofEditPage({
     state: "loading" | "ready" | "loaded" | "error" | "timeout";
     message: string;
   } | null>(null);
+  const [showCircleContourSuggest, setShowCircleContourSuggest] = useState(false);
   const pendingDesignRef = useRef<{
     url: string;
     fileName: string;
@@ -334,11 +335,16 @@ export default function ProofEditPage({
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
         setDesignLoaded(true);
+        setShowCircleContourSuggest(false);
         setPocStatus({
           state: "loaded",
           message: "Tasarım yüklendi.",
         });
         setTimeout(() => setPocStatus(null), 3000);
+      } else if (data.type === "pim-circle-contour-suggest") {
+        setShowCircleContourSuggest(true);
+      } else if (data.type === "pim-circle-contour-suggest-clear") {
+        setShowCircleContourSuggest(false);
       } else if (data.type === "pim-poc-error") {
         console.error("[cutline-editor] editor error", {
           orderId,
@@ -579,6 +585,55 @@ export default function ProofEditPage({
           </div>
         </div>
       )}
+
+      {showCircleContourSuggest ? (
+        <div className="mb-2 shrink-0 rounded-xl border border-sari/40 bg-sari-soft px-3 py-2.5 text-[12px] text-lacivert">
+          <p className="leading-relaxed">
+            Bu görsel daireye tam oturmuyor. Şekline göre özel kesim (die-cut)
+            daha şık durabilir — ister misin?
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setShowCircleContourSuggest(false);
+                iframeRef.current?.contentWindow?.postMessage(
+                  { type: "pim-dismiss-circle-contour-suggest" },
+                  "*"
+                );
+                iframeRef.current?.contentWindow?.postMessage(
+                  {
+                    type: "pim-editor-set-shape",
+                    shape: "contour",
+                    mode: "contour",
+                    widthMm: item?.width,
+                    heightMm: item?.height,
+                  },
+                  "*"
+                );
+              }}
+            >
+              Özel kesime geç
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setShowCircleContourSuggest(false);
+                iframeRef.current?.contentWindow?.postMessage(
+                  { type: "pim-dismiss-circle-contour-suggest" },
+                  "*"
+                );
+              }}
+            >
+              Yuvarlak kalsın
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Sefa 23 May v68 — POC iframe status banner (postMessage'den).
           Loading -> sari, ready -> mavi, loaded -> yesil (3sn sonra kaybolur),

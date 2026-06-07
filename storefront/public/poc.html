@@ -1881,6 +1881,11 @@ let sourceImage = null;            // trim edilmiş görsel (offscreen canvas)
 let imageTransform = { x: 0, y: 0, scale: 1 }; // px, contentOffset'a göre
 let pimUserMovedImage = false;     // standalone: kullanıcı görseli elle oynattı mı
 let cutlineFrame = null;         // { cx, cy, w, h, mode, refW, refH }
+/** Daire kesim — içerik kenarına güvenlik payı (%6, üretim toleransı) */
+const CIRCLE_RADIAL_INSET = 0.06;
+/** Son radyal fit metrikleri (contour öneri eşiği) */
+let pimLastCircleRadialFit = null;
+let pimCircleContourSuggestDismissed = false;
 let isCutlineLocked = true;        // drag sırasında path yeniden üretilmez
 let viewZoom = 1;                  // yalnızca önizleme (0.25–3.0)
 let cutType = 'kisscut';           // kisscut | thrucut — üretim spot rengi
@@ -2278,6 +2283,9 @@ window.addEventListener('message', (e) => {
           render();
         }
       }
+    } else if (msg.type === 'pim-dismiss-circle-contour-suggest') {
+      pimCircleContourSuggestDismissed = true;
+      pimClearCircleContourSuggest();
     } else if (msg.type === 'pim-editor-set-shape') {
       if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
         PIM_PARAMS.orderWidthMm = msg.widthMm;
@@ -2294,10 +2302,18 @@ window.addEventListener('message', (e) => {
         pimUserMovedImage = false;
       }
       pimEditorOnOrderSizeChange();
+      if (currentMode !== 'circle') {
+        pimLastCircleRadialFit = null;
+        pimClearCircleContourSuggest();
+      }
       if (currentMat) {
-        if (PIM_PARAMS.editorShell && getPlacementFrame()) {
+        if ((PIM_PARAMS.editorShell || PIM_PARAMS.embed) && getPlacementFrame()) {
           pimUserMovedImage = false;
-          pimEditorDefaultPlacement();
+          if (PIM_PARAMS.embed && !PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) {
+            pimApplyEmbedDefaultPlacement();
+          } else {
+            pimEditorDefaultPlacement();
+          }
         }
         generateCutline();
         generateWhitePlan();
@@ -2925,11 +2941,22 @@ function getPlacementFrame() {
   if (cutlineFrame && PIM_PARAMS.embed) return cutlineFrame;
   const dims = getOrderDimsMm();
   if (!dims || !imageMetadata) return null;
-  if (!PIM_PARAMS.embed && !PIM_PARAMS.standalone) return null;
+  if (!PIM_PARAMS.embed && !PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) return null;
   const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
   const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
-  const fw = dims.w * pxPerMm;
-  const fh = dims.h * pxPerMm;
+  let fw;
+  let fh;
+  if (useFixedCutlineFrame() && currentMode === 'circle') {
+    const ref = getCutlineReferenceMm(dims.w, dims.h, 'circle');
+    fw = ref.w * pxPerMm;
+    fh = ref.h * pxPerMm;
+  } else if (useFixedCutlineFrame() && currentMode === 'rect') {
+    fw = dims.w * pxPerMm;
+    fh = dims.h * pxPerMm;
+  } else {
+    fw = dims.w * pxPerMm;
+    fh = dims.h * pxPerMm;
+  }
   const cx = imageMetadata.contentOffsetX + imageMetadata.contentW / 2;
   const cy = imageMetadata.contentOffsetY + imageMetadata.contentH / 2;
   return { cx, cy, w: fw, h: fh };
@@ -3059,7 +3086,11 @@ function resetEditorSettings() {
   } else {
     generateCutline();
     generateWhitePlan();
-    render();
+    if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
+      pimEditorDefaultPlacement();
+    } else {
+      render();
+    }
     updateMetadataDisplay();
     generatePimComment();
     pimScheduleAutoSave();
@@ -3078,6 +3109,174 @@ function getArtDrawRect() {
   const x = ox + imageTransform.x - (w - cw) / 2;
   const y = oy + imageTransform.y - (h - ch) / 2;
   return { x, y, w, h };
+}
+
+/** Dolu piksel maskesinden centroid + max radyal uzaklık (canvas koordinatı) */
+function computeContentRadialMetrics() {
+  if (!imageMetadata) return null;
+  const ox = imageMetadata.contentOffsetX;
+  const oy = imageMetadata.contentOffsetY;
+  const cw = imageMetadata.contentW;
+  const ch = imageMetadata.contentH;
+  const bboxDiag = Math.hypot(cw, ch);
+  const artCx = ox + cw / 2;
+  const artCy = oy + ch / 2;
+  const diagonalFallback = {
+    contentCx: artCx,
+    contentCy: artCy,
+    rContent: bboxDiag / 2,
+    method: 'diagonal',
+    bboxDiag,
+  };
+
+  if (currentMat && typeof cv !== 'undefined' && cvReady) {
+    let mask = null;
+    try {
+      const maskResult = buildMask(currentMat);
+      mask = maskResult.mask;
+      if (!maskResult.isAlphaUseful && maskResult.hasAlpha) {
+        mask.delete();
+        return diagonalFallback;
+      }
+      const moments = cv.moments(mask, true);
+      let contentCx = artCx;
+      let contentCy = artCy;
+      if (moments.m00 > 0) {
+        contentCx = moments.m10 / moments.m00;
+        contentCy = moments.m01 / moments.m00;
+      } else {
+        const rect = getBoundingRect(mask);
+        if (rect) {
+          contentCx = rect.x + rect.w / 2;
+          contentCy = rect.y + rect.h / 2;
+        }
+      }
+      let rContent = 0;
+      const data = mask.data;
+      const cols = mask.cols;
+      const rows = mask.rows;
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (data[y * cols + x] > 0) {
+            rContent = Math.max(rContent, Math.hypot(x - contentCx, y - contentCy));
+          }
+        }
+      }
+      mask.delete();
+      if (rContent > 0) {
+        return {
+          contentCx,
+          contentCy,
+          rContent,
+          method: maskResult.isAlphaUseful ? 'opencv-alpha' : 'diagonal',
+          bboxDiag,
+        };
+      }
+    } catch (e) {
+      if (mask) {
+        try { mask.delete(); } catch (err) {}
+      }
+    }
+  }
+
+  if (sourceImage) {
+    const ctx = sourceImage.getContext('2d');
+    const id = ctx.getImageData(0, 0, sourceImage.width, sourceImage.height);
+    const d = id.data;
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    let rContent = 0;
+    for (let y = 0; y < sourceImage.height; y++) {
+      for (let x = 0; x < sourceImage.width; x++) {
+        if (d[(y * sourceImage.width + x) * 4 + 3] > 10) {
+          const px = ox + x;
+          const py = oy + y;
+          sumX += px;
+          sumY += py;
+          count++;
+        }
+      }
+    }
+    if (count > 0) {
+      const contentCx = sumX / count;
+      const contentCy = sumY / count;
+      for (let y = 0; y < sourceImage.height; y++) {
+        for (let x = 0; x < sourceImage.width; x++) {
+          if (d[(y * sourceImage.width + x) * 4 + 3] > 10) {
+            const px = ox + x;
+            const py = oy + y;
+            rContent = Math.max(rContent, Math.hypot(px - contentCx, py - contentCy));
+          }
+        }
+      }
+      if (rContent > 0) {
+        return { contentCx, contentCy, rContent, method: 'canvas-alpha', bboxDiag };
+      }
+    }
+  }
+
+  return diagonalFallback;
+}
+
+/** Daire modu — içerik-farkında radyal contain (görsel kesilmez) */
+function applyCircleRadialContain(frame, artW, artH) {
+  const metrics = computeContentRadialMetrics();
+  if (!metrics || metrics.rContent <= 0) return false;
+
+  const rCircle = Math.min(frame.w, frame.h) / 2;
+  const scaleRadial = (rCircle * (1 - CIRCLE_RADIAL_INSET)) / metrics.rContent;
+  const scaleContain = Math.min(frame.w / artW, frame.h / artH);
+
+  imageTransform.scale = scaleRadial;
+  const ox = imageMetadata.contentOffsetX;
+  const oy = imageMetadata.contentOffsetY;
+  const artCx = ox + artW / 2;
+  const artCy = oy + artH / 2;
+  const relCx = metrics.contentCx - artCx;
+  const relCy = metrics.contentCy - artCy;
+  imageTransform.x = frame.cx - artCx - relCx * scaleRadial;
+  imageTransform.y = frame.cy - artCy - relCy * scaleRadial;
+
+  pimLastCircleRadialFit = {
+    method: metrics.method,
+    inset: CIRCLE_RADIAL_INSET,
+    rContent: metrics.rContent,
+    rCircle,
+    scaleRadial,
+    scaleContain,
+    scaleRatio: scaleContain > 0 ? scaleRadial / scaleContain : 1,
+    contentToCircle: metrics.rContent / rCircle,
+  };
+  return true;
+}
+
+function pimClearCircleContourSuggest() {
+  pimPostToParent({ type: 'pim-circle-contour-suggest-clear' });
+}
+
+function pimMaybeSuggestContourForCircle() {
+  if (currentMode !== 'circle' || pimCircleContourSuggestDismissed) {
+    pimClearCircleContourSuggest();
+    return;
+  }
+  const fit = pimLastCircleRadialFit;
+  if (!fit || fit.method === 'diagonal') {
+    pimClearCircleContourSuggest();
+    return;
+  }
+  const scaleDropped = fit.scaleRatio < 0.72;
+  const irregular = fit.contentToCircle > 1.35;
+  if (!scaleDropped && !irregular) {
+    pimClearCircleContourSuggest();
+    return;
+  }
+  pimPostToParent({
+    type: 'pim-circle-contour-suggest',
+    scaleRatio: fit.scaleRatio,
+    contentToCircle: fit.contentToCircle,
+    method: fit.method,
+  });
 }
 
 function applyPlacementPreset(preset) {
@@ -3107,11 +3306,29 @@ function applyPlacementPreset(preset) {
     imageTransform.x = frame.cx - artCx;
     imageTransform.y = frame.cy - artCy;
   } else if (preset === 'contain') {
-    imageTransform.scale = Math.min(frameW / artW, frameH / artH);
-    const artCx = imageMetadata.contentOffsetX + artW / 2;
-    const artCy = imageMetadata.contentOffsetY + artH / 2;
-    imageTransform.x = frame.cx - artCx;
-    imageTransform.y = frame.cy - artCy;
+    if (currentMode === 'circle' && useFixedCutlineFrame()) {
+      if (!applyCircleRadialContain(frame, artW, artH)) {
+        imageTransform.scale = Math.min(frameW / artW, frameH / artH);
+        const artCx = imageMetadata.contentOffsetX + artW / 2;
+        const artCy = imageMetadata.contentOffsetY + artH / 2;
+        imageTransform.x = frame.cx - artCx;
+        imageTransform.y = frame.cy - artCy;
+        pimLastCircleRadialFit = null;
+      }
+    } else {
+      imageTransform.scale = Math.min(frameW / artW, frameH / artH);
+      const artCx = imageMetadata.contentOffsetX + artW / 2;
+      const artCy = imageMetadata.contentOffsetY + artH / 2;
+      imageTransform.x = frame.cx - artCx;
+      imageTransform.y = frame.cy - artCy;
+      pimLastCircleRadialFit = null;
+    }
+  }
+  if (preset === 'contain' && currentMode === 'circle' && useFixedCutlineFrame()) {
+    pimMaybeSuggestContourForCircle();
+  } else if (currentMode !== 'circle') {
+    pimLastCircleRadialFit = null;
+    pimClearCircleContourSuggest();
   }
   render();
   pimScheduleHeightReport();
@@ -3233,6 +3450,8 @@ function processImage(img, file) {
   sourceImage.height = h;
   sourceImage.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
   pimUserMovedImage = false;
+  pimCircleContourSuggestDismissed = false;
+  pimLastCircleRadialFit = null;
   resetImageTransform();
 
   if (currentMat) currentMat.delete();
