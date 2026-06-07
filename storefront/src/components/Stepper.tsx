@@ -76,7 +76,7 @@ export function StepProgress({
             const stepNum = i + 1;
             const sectionId = stepIds[i];
             const isActive = stepNum === activeStep;
-            const isDone = completedSet.has(sectionId) && !isActive;
+            const isDone = completedSet.has(sectionId);
             const needsAttention =
               attentionStepId === sectionId && !isDone && !isActive;
             return (
@@ -123,7 +123,7 @@ export function StepProgress({
             const stepNum = i + 1;
             const sectionId = stepIds[i];
             const isActive = stepNum === activeStep;
-            const isDone = completedSet.has(sectionId) && !isActive;
+            const isDone = completedSet.has(sectionId);
             const needsAttention =
               attentionStepId === sectionId && !isDone && !isActive;
             return (
@@ -174,7 +174,7 @@ export function VerticalStepProgress({
         const stepNum = i + 1;
         const sectionId = stepIds[i];
         const isActive = stepNum === activeStep;
-        const isDone = completedSet.has(sectionId) && !isActive;
+        const isDone = completedSet.has(sectionId);
         const needsAttention =
           attentionStepId === sectionId && !isDone && !isActive;
         const isLast = i === total - 1;
