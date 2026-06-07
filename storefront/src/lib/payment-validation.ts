@@ -18,7 +18,10 @@ import {
   quoteStickerFromConfig,
   quoteEtiketFromConfig,
 } from "./customer-pricing-from-config";
-import { getLivePricingConfig } from "./pricing-config";
+import {
+  getLivePricingConfig,
+  PricingConfigUnavailableError,
+} from "./pricing-config";
 import type { ProfileConfig } from "./pricing-config-types";
 import { fetchPricebookSnapshot } from "./pricing-pricebook-db";
 import type { EtiketCustomId } from "./etiket-customer-pricing";
@@ -29,6 +32,7 @@ import {
   perDesignQty,
   resolveDesignCount,
 } from "./design-count-pricing";
+import * as Sentry from "@sentry/nextjs";
 
 // ============================================================
 // Types
@@ -65,7 +69,8 @@ export interface ValidationFailDetail {
     | "sanity_total_inconsistent"
     | "sanity_subtotal_too_low"
     | "qty_above_max"
-    | "recalc_required";
+    | "recalc_required"
+    | "pricing_config_unavailable";
   expected?: number;
   actual?: number;
   hint?: string;
@@ -428,7 +433,16 @@ export async function validateCartPricing(
       configCache[scope] = cfg;
       return cfg;
     } catch (e) {
-      console.warn(`[payment-validation] config fetch failed for ${scope}`, e);
+      if (e instanceof PricingConfigUnavailableError) {
+        Sentry.captureMessage("pricing_config_unavailable", {
+          level: "fatal",
+          tags: { scope },
+          extra: { scope, message: e.message },
+        });
+      } else {
+        Sentry.captureException(e, { extra: { scope } });
+      }
+      console.error(`[payment-validation] config fetch failed for ${scope}`, e);
       return null;
     }
   }
@@ -440,13 +454,29 @@ export async function validateCartPricing(
 
     if (item.product === "sticker") {
       const cfg = await getCfg("sticker");
-      if (cfg) recalcOutcome = await recalcSticker(item, cfg);
+      if (!cfg) {
+        failures.push({
+          itemId: item.id,
+          reason: "pricing_config_unavailable",
+          hint: "Fiyat şu an doğrulanamıyor, lütfen tekrar deneyin.",
+        });
+        continue;
+      }
+      recalcOutcome = await recalcSticker(item, cfg);
     } else if (item.product === "etiket") {
       const ff = inferEtiketFormFactor(item);
       if (ff) {
         const scope = ff === "rulo" ? "etiket_rulo" : "etiket_tabaka";
         const cfg = await getCfg(scope);
-        if (cfg) recalcOutcome = await recalcEtiket(item, cfg, ff);
+        if (!cfg) {
+          failures.push({
+            itemId: item.id,
+            reason: "pricing_config_unavailable",
+            hint: "Fiyat şu an doğrulanamıyor, lütfen tekrar deneyin.",
+          });
+          continue;
+        }
+        recalcOutcome = await recalcEtiket(item, cfg, ff);
       }
     }
 
@@ -476,26 +506,16 @@ export async function quoteCartItemPrice(
   item: CartItemForValidation
 ): Promise<CartItemQuote | null> {
   if (item.product === "sticker") {
-    try {
-      const cfg = await getLivePricingConfig<ProfileConfig>("sticker");
-      return computeStickerQuote(item, cfg);
-    } catch (e) {
-      console.warn("[payment-validation] sticker quote failed", e);
-      return null;
-    }
+    const cfg = await getLivePricingConfig<ProfileConfig>("sticker");
+    return computeStickerQuote(item, cfg);
   }
 
   if (item.product === "etiket") {
     const ff = inferEtiketFormFactor(item);
     if (!ff) return null;
     const scope = ff === "rulo" ? "etiket_rulo" : "etiket_tabaka";
-    try {
-      const cfg = await getLivePricingConfig<ProfileConfig>(scope);
-      return computeEtiketQuote(item, cfg, ff);
-    } catch (e) {
-      console.warn(`[payment-validation] etiket quote failed (${scope})`, e);
-      return null;
-    }
+    const cfg = await getLivePricingConfig<ProfileConfig>(scope);
+    return computeEtiketQuote(item, cfg, ff);
   }
 
   return null;

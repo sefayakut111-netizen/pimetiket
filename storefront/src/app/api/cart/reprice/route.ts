@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { repriceCartItems } from "@/lib/cart-reprice";
+import { PricingConfigUnavailableError } from "@/lib/pricing-config";
 import type { CustomerCartItem } from "@/lib/customer-cart";
 
 export const runtime = "nodejs";
@@ -27,7 +28,24 @@ export async function POST(req: Request) {
   }
 
   const { items: repriced, changed, removed, refreshedIds } =
-    await repriceCartItems(items, { forceAll: body.forceAll === true });
+    await repriceCartItems(items, { forceAll: body.forceAll === true }).catch(
+      (e: unknown) => {
+        if (e instanceof PricingConfigUnavailableError) {
+          return null;
+        }
+        throw e;
+      }
+    );
+
+  if (!repriced) {
+    return NextResponse.json(
+      {
+        error: "pricing_config_unavailable",
+        hint: "Fiyat şu an doğrulanamıyor, lütfen tekrar deneyin.",
+      },
+      { status: 503 }
+    );
+  }
 
   try {
     const supabase = await createServerClient();

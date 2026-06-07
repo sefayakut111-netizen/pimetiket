@@ -1033,7 +1033,13 @@ function StickerPage() {
   const configQuote = adminConfig
     ? quoteStickerFromConfig(adminConfig, quoteInput)
     : null;
-  const quote = configQuote ?? quoteCustomerSticker(quoteInput);
+  const quote =
+    adminConfig != null
+      ? (configQuote ?? {
+          ok: false as const,
+          reason: "Fiyat şu an hesaplanamıyor.",
+        })
+      : quoteCustomerSticker(quoteInput);
 
   // Checkout recalc ile aynı satır fiyatı (designCount iskonto + quantizeForCart).
   const cartLine = quote.ok

@@ -106,12 +106,13 @@ export interface PricingHistoryRow {
 // FALLBACK Defaults
 // ============================================================
 
+/** v_pricing_live (2026-06) ile senkron — son savunma; checkout sessiz fallback kullanmaz. */
 export const FALLBACK_STICKER_CONFIG: ProfileConfig = {
   materials: [
-    { id: "vinil",      name: "Vinil",      m2_cost_try: 500,  m2_sell_try: 750,  desc: "Standart parlak vinil, açıkhava dayanımlı" },
-    { id: "transparan", name: "Transparan", m2_cost_try: 700,  m2_sell_try: 1050, desc: "Şeffaf, cam üstü görünmez efekt" },
-    { id: "holo",       name: "Holografik", m2_cost_try: 1200, m2_sell_try: 1800, desc: "Yansıtıcı, prizmatik efekt" },
-    { id: "simli",      name: "Simli",      m2_cost_try: 1500, m2_sell_try: 2250, desc: "Metalik gümüş/altın parıltı" },
+    { id: "vinil",      name: "Opak Folyo",         m2_cost_try: 400,  m2_sell_try: 650,  desc: "Standart parlak opak folyo, açıkhava dayanımlı" },
+    { id: "transparan", name: "Şeffaf Folyo",       m2_cost_try: 500,  m2_sell_try: 800,  desc: "Şeffaf, cam üstü görünmez efekt" },
+    { id: "holo",       name: "Hologram Folyo",     m2_cost_try: 600,  m2_sell_try: 1000, desc: "Yansıtıcı, prizmatik efekt" },
+    { id: "simli",      name: "Simli Hologram Folyo", m2_cost_try: 700, m2_sell_try: 1250, desc: "Metalik gümüş/altın parıltı" },
   ],
   options: {
     finish: {

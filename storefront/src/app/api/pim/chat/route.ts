@@ -30,13 +30,12 @@ import {
   ETIKET_COATINGS,
   ETIKET_CUSTOMIZATIONS,
 } from "@/lib/pricing-engine";
-import { getLivePricingConfig } from "@/lib/pricing-config";
+import { getLivePricingConfig, PricingConfigUnavailableError } from "@/lib/pricing-config";
 import {
   quoteStickerFromConfig,
   quoteEtiketFromConfig,
 } from "@/lib/customer-pricing-from-config";
 import {
-  quoteCustomerSticker,
   CUSTOMER_STICKER_TIERS,
   STICKER_MIN_QTY,
   STICKER_MAX_QTY,
@@ -114,7 +113,19 @@ const stickerTool = tool({
         valid_qty_examples: [...CUSTOMER_STICKER_TIERS],
       };
     }
-    const config = await getLivePricingConfig("sticker");
+    let config;
+    try {
+      config = await getLivePricingConfig("sticker");
+    } catch (e) {
+      if (e instanceof PricingConfigUnavailableError) {
+        return {
+          success: false,
+          reason:
+            "Fiyat şu an doğrulanamıyor, lütfen tekrar deneyin.",
+        };
+      }
+      throw e;
+    }
     const result =
       quoteStickerFromConfig(config, {
         width,
@@ -122,14 +133,10 @@ const stickerTool = tool({
         material,
         finish,
         qty,
-      }) ??
-      quoteCustomerSticker({
-        width,
-        height,
-        material,
-        finish,
-        qty,
-      });
+      }) ?? {
+        ok: false as const,
+        reason: "Fiyat hesaplanamadı.",
+      };
     if (!result.ok) {
       return {
         success: false,
@@ -193,7 +200,19 @@ const etiketTool = tool({
       };
     }
 
-    const config = await getLivePricingConfig("etiket_rulo");
+    let config;
+    try {
+      config = await getLivePricingConfig("etiket_rulo");
+    } catch (e) {
+      if (e instanceof PricingConfigUnavailableError) {
+        return {
+          success: false,
+          reason:
+            "Fiyat şu an doğrulanamıyor, lütfen tekrar deneyin.",
+        };
+      }
+      throw e;
+    }
     const geom = quoteEtiket({
       width,
       height,

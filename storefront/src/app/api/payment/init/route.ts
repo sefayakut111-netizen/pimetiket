@@ -301,6 +301,9 @@ export async function POST(req: NextRequest) {
     body.subtotal
   );
   if (!pricingValidation.ok) {
+    const configUnavailable = pricingValidation.failures.some(
+      (f) => f.reason === "pricing_config_unavailable"
+    );
     console.warn("[payment/init] pricing validation failed:", {
       userId: user.id,
       failures: pricingValidation.failures,
@@ -309,9 +312,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "pricing_validation_failed",
-        // Müşteriye ayrıntı yazmıyoruz — saldırgan calibration yapmasın.
-        // Detay log'da. Müşteri "Fiyat eşleşmedi, sepeti yenileyin" görür.
-        hint: "Fiyat doğrulaması başarısız. Sepeti yenileyip tekrar deneyin.",
+        hint: configUnavailable
+          ? "Fiyat şu an doğrulanamıyor, lütfen tekrar deneyin."
+          : "Fiyat doğrulaması başarısız. Sepeti yenileyip tekrar deneyin.",
       },
       { status: 400 }
     );

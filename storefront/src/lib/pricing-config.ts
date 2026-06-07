@@ -8,7 +8,6 @@
  * ayrı dosyada (build hatası fix).
  */
 
-import { createClient } from "@/lib/supabase/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 
@@ -40,11 +39,6 @@ import type {
   PricingHistoryRow,
 } from "./pricing-config-types";
 
-import {
-  FALLBACK_STICKER_CONFIG,
-  FALLBACK_ETIKET_RULO_CONFIG,
-  FALLBACK_ETIKET_TABAKA_CONFIG,
-} from "./pricing-config-types";
 import { mergePricingCatalog } from "./pricing-catalog-sync";
 
 // FALLBACK config'ler pricing-config-types.ts'te (client-safe)
@@ -83,39 +77,57 @@ export function invalidatePricingCache(scope?: ScopeName): void {
   else liveCache.clear();
 }
 
+/** Canlı config okunamadığında — checkout/reprice sessiz fallback YASAK. */
+export class PricingConfigUnavailableError extends Error {
+  readonly scope: ScopeName;
+
+  constructor(scope: ScopeName, cause?: unknown) {
+    super(`Live pricing config unavailable for scope: ${scope}`);
+    this.name = "PricingConfigUnavailableError";
+    this.scope = scope;
+    if (cause !== undefined) {
+      this.cause = cause;
+    }
+  }
+}
+
 // ============================================================
 // Public API
 // ============================================================
 
+/**
+ * Server-only canlı config — service role ile pricing_config okur (RLS bypass).
+ * Başarısızlıkta FALLBACK dönmez; PricingConfigUnavailableError fırlatır.
+ */
 export async function getLivePricingConfig<T extends ScopeConfig = ProfileConfig>(
   scope: ScopeName
 ): Promise<T> {
   const cached = getCached(scope);
   if (cached) return cached as T;
 
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("pricing_config")
-      .select("live_config")
-      .eq("scope", scope)
-      .maybeSingle();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("pricing_config")
+    .select("live_config")
+    .eq("scope", scope)
+    .maybeSingle();
 
-    if (error || !data) {
-      console.warn(`[pricing-config] DB read failed for ${scope}, fallback`);
-      return getFallback(scope) as T;
-    }
-
-    const cfg = (data as { live_config: ScopeConfig }).live_config;
-    if (!cfg || Object.keys(cfg).length === 0) {
-      return getFallback(scope) as T;
-    }
-    setCached(scope, cfg);
-    return cfg as T;
-  } catch (err) {
-    console.error("[pricing-config] unexpected error:", err);
-    return getFallback(scope) as T;
+  if (error) {
+    console.error(`[pricing-config] DB read failed for ${scope}:`, error);
+    throw new PricingConfigUnavailableError(scope, error);
   }
+  if (!data) {
+    console.error(`[pricing-config] no row for scope ${scope}`);
+    throw new PricingConfigUnavailableError(scope, "no_row");
+  }
+
+  const cfg = (data as { live_config: ScopeConfig }).live_config;
+  if (!cfg || Object.keys(cfg).length === 0) {
+    throw new PricingConfigUnavailableError(scope, "empty_config");
+  }
+
+  setCached(scope, cfg);
+  return cfg as T;
 }
 
 export async function getAdminPricingConfig(
@@ -364,16 +376,3 @@ export async function listPricingHistory(
 // ============================================================
 // Helpers
 // ============================================================
-
-function getFallback(scope: ScopeName): ScopeConfig {
-  switch (scope) {
-    case "sticker":
-      return FALLBACK_STICKER_CONFIG;
-    case "etiket_rulo":
-      return FALLBACK_ETIKET_RULO_CONFIG;
-    case "etiket_tabaka":
-      return FALLBACK_ETIKET_TABAKA_CONFIG;
-    default:
-      return {};
-  }
-}
