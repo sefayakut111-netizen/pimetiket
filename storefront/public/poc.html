@@ -3648,6 +3648,35 @@ function generateCutline() {
 //   - 'full'   : tüm baskı alanını kapla (hafif inset)
 //   - 'smart'  : sadece koyu/canlı renklerin altına (brightness threshold)
 //   - 'custom' : müşterinin kendi tasarladığı white spot color (PDF/PSD'den)
+
+/** Geometrik kesim (circle/rect) — opak folyo: beyaz plan = bıçak şekli (siluet değil). */
+function pimUseCutShapeWhitePlan() {
+  if (!useFixedCutlineFrame()) return false;
+  if (currentMode !== 'circle' && currentMode !== 'rect') return false;
+  // Şeffaf folyo: görsel altı siluet — etraf şeffaf kalsın
+  if (materialType === 'transparent') return false;
+  return true;
+}
+
+/** cutline ile aynı daire/dikdörtgen path (canvas koordinatı, imageTransform'dan bağımsız). */
+function buildCutShapeWhitePlanPaths() {
+  const frame = cutlineFrame || buildFixedCutlineFrame();
+  if (!frame || !imageMetadata) return [];
+  const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
+  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+  const slipToleranceMm = 0.3;
+  const effectiveOffsetMm = offsetMm === 0 ? -slipToleranceMm : offsetMm;
+  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
+  const offsetPx = Math.round(effectiveOffsetMm * pxPerMm);
+  const { cx, cy, w, h } = frame;
+  if (currentMode === 'rect') {
+    const baseRect = { x: cx - w / 2, y: cy - h / 2, w, h };
+    return [rectToPath(expandRect(baseRect, offsetPx))];
+  }
+  const r = Math.min(w, h) / 2;
+  return [circleToPath(cx, cy, r + offsetPx)];
+}
+
 function generateWhitePlan() {
   whitePlanPaths = [];
   if (!currentMat || !cvReady) return;
@@ -3659,6 +3688,13 @@ function generateWhitePlan() {
     return; // Next.js fazında server'dan path çıkarılır
   }
 
+  // Geometrik kesim (daire/dikdörtgen) + opak folyo → beyaz underbase = kesim şekli
+  if (pimUseCutShapeWhitePlan()) {
+    whitePlanPaths = buildCutShapeWhitePlanPaths();
+    return;
+  }
+
+  // Kontur/hull veya şeffaf folyo + geometrik → siluet (buildMask)
   // Mask oluştur (silüetin gerçek sınırı)
   const maskResult = buildMask(currentMat);
   let baseMask = maskResult.mask;
