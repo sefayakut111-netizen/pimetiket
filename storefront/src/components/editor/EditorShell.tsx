@@ -93,6 +93,9 @@ function cutModeFromTemplate(tpl: DieCutTemplate): CutMode {
 
 const DEFAULT_WIDTH_MM = 50;
 const DEFAULT_HEIGHT_MM = 50;
+/** Tasarım yüklendikten sonra bıçak beklemesi (OpenCV cold start için makul süre). */
+const CUTLINE_WAIT_MS = 10_000;
+const CUTLINE_FAIL_MESSAGE = "Bıçak hazırlanamadı — lütfen tekrar dene";
 
 const EDITOR_TOOL_TABS = [
   { id: "gorsel", label: "Görsel" },
@@ -152,7 +155,9 @@ export default function EditorShell() {
 
   const [iframeSrc] = useState(() => buildEditorIframeSrc());
   const [designLoaded, setDesignLoaded] = useState(false);
+  const designLoadedRef = useRef(false);
   const [cutlineReady, setCutlineReady] = useState(false);
+  const [cutlineError, setCutlineError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const [widthMm, setWidthMm] = useState(DEFAULT_WIDTH_MM);
@@ -196,6 +201,21 @@ export default function EditorShell() {
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
+  }, []);
+
+  useEffect(() => {
+    designLoadedRef.current = designLoaded;
+  }, [designLoaded]);
+
+  const markCutlinePending = useCallback(() => {
+    setCutlineReady(false);
+    setCutlineError(null);
+  }, []);
+
+  const reportCutlineFailure = useCallback((message: string) => {
+    setCutlineError(message);
+    setCutlineReady(false);
+    setPocStatus({ state: "error", message });
   }, []);
 
   useEffect(() => {
@@ -306,11 +326,11 @@ export default function EditorShell() {
       }
       if (syncPocSize) {
         syncSizeToPoc(w, h);
-        setCutlineReady(false);
+        markCutlinePending();
       }
       return { w, h, pct: clamped };
     },
-    [postToPoc, sizeFromScalePct, syncSizeToPoc]
+    [postToPoc, sizeFromScalePct, syncSizeToPoc, markCutlinePending]
   );
 
   const applyCoordinatedSize = useCallback(
@@ -322,9 +342,9 @@ export default function EditorShell() {
       const pct = scalePctFromWidth(nw);
       setImageScalePct(pct);
       syncSizeToPoc(nw, nh);
-      setCutlineReady(false);
+      markCutlinePending();
     },
-    [scalePctFromWidth, syncSizeToPoc]
+    [scalePctFromWidth, syncSizeToPoc, markCutlinePending]
   );
 
   const applyTemplateState = useCallback((tpl: DieCutTemplate) => {
@@ -344,7 +364,7 @@ export default function EditorShell() {
   const applyTemplateToPoc = useCallback(
     (tpl: DieCutTemplate) => {
       const mode = cutModeFromTemplate(tpl);
-      setCutlineReady(false);
+      markCutlinePending();
       postToPoc({
         type: "pim-editor-set-shape",
         shape: tpl.shape,
@@ -355,7 +375,7 @@ export default function EditorShell() {
       });
       syncSizeToPoc(tpl.widthMm, tpl.heightMm);
     },
-    [postToPoc, syncSizeToPoc]
+    [postToPoc, syncSizeToPoc, markCutlinePending]
   );
 
   const applyTemplate = useCallback(
@@ -410,7 +430,7 @@ export default function EditorShell() {
         applyPendingSablon();
       } else if (data.type === "pim-poc-loading") {
         setDesignLoaded(false);
-        setCutlineReady(false);
+        markCutlinePending();
         setImageScalePct(100);
         baseWidthMmRef.current = DEFAULT_WIDTH_MM;
         baseHeightMmRef.current = DEFAULT_HEIGHT_MM;
@@ -423,6 +443,7 @@ export default function EditorShell() {
         setRemovingBg(false);
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
+        markCutlinePending();
         setDesignLoaded(true);
         setRemovingBg(false);
         if (typeof data.fileName === "string" && data.fileName) {
@@ -467,6 +488,7 @@ export default function EditorShell() {
           }
         }
       } else if (data.type === "pim-cutline-ready") {
+        setCutlineError(null);
         setCutlineReady(true);
         const meta = data.meta as PocCutlineMeta | undefined;
         if (meta) {
@@ -505,10 +527,18 @@ export default function EditorShell() {
       } else if (data.type === "pim-bg-remove-done") {
         setRemovingBg(false);
       } else if (data.type === "pim-poc-error") {
-        setPocStatus({
-          state: "error",
-          message: `Editör hatası: ${String(data.error ?? "(boş)")}`,
-        });
+        const errMsg = String(data.error ?? "(boş)");
+        if (designLoadedRef.current) {
+          reportCutlineFailure(`${CUTLINE_FAIL_MESSAGE} (${errMsg})`);
+        } else {
+          setPocStatus({
+            state: "error",
+            message: `Editör hatası: ${errMsg}`,
+          });
+        }
+      } else if (data.type === "pim-cutline-auto-failed") {
+        const errMsg = String(data.error ?? "kontur_uretilemedi");
+        reportCutlineFailure(`${CUTLINE_FAIL_MESSAGE} (${errMsg})`);
       } else if (data.type === "pim-editor-saved") {
         const payload = data as unknown as PocEditorSavedPayload;
         setPocMeta(payload.meta);
@@ -554,20 +584,25 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource]);
+  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure]);
 
   useEffect(() => {
-    if (!designLoaded || cutlineReady) return;
-    const fallback = window.setTimeout(() => {
-      setCutlineReady(true);
-      setPocStatus((prev) =>
-        prev?.state === "loaded" && prev.message.includes("hesaplanıyor")
-          ? { state: "loaded", message: "Bıçak hazır — ürüne ekleyebilirsin" }
-          : prev
-      );
-    }, 4000);
-    return () => window.clearTimeout(fallback);
-  }, [designLoaded, cutlineReady]);
+    if (!designLoaded || cutlineReady || cutlineError) return;
+    const timeout = window.setTimeout(() => {
+      reportCutlineFailure(CUTLINE_FAIL_MESSAGE);
+    }, CUTLINE_WAIT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [designLoaded, cutlineReady, cutlineError, reportCutlineFailure]);
+
+  const retryCutline = useCallback(() => {
+    if (!designLoadedRef.current) return;
+    markCutlinePending();
+    setPocStatus({
+      state: "loaded",
+      message: "Kontur yeniden hesaplanıyor…",
+    });
+    postToPoc({ type: "pim-flush-cutline" });
+  }, [markCutlinePending, postToPoc]);
 
   const productHint = useMemo(
     () => deriveEditorProductHint(pocMeta),
@@ -577,9 +612,10 @@ export default function EditorShell() {
   const ctaBlockedReason = useMemo(() => {
     if (saving) return "Kaydediliyor…";
     if (!designLoaded) return "Önce görsel yükle";
+    if (cutlineError) return cutlineError;
     if (!cutlineReady) return "Bıçak hazırlanıyor…";
     return null;
-  }, [saving, designLoaded, cutlineReady]);
+  }, [saving, designLoaded, cutlineReady, cutlineError]);
 
   const handleWidthChange = (raw: number) => {
     const w = roundEditorMm(raw);
@@ -602,7 +638,7 @@ export default function EditorShell() {
 
   const handleCutModeChange = (mode: CutMode) => {
     setCutMode(mode);
-    setCutlineReady(false);
+    markCutlinePending();
     postToPoc({
       type: "pim-editor-set-shape",
       mode,
@@ -617,7 +653,7 @@ export default function EditorShell() {
       setCutSource(src);
       if (src === "ozel") {
         setCutMode("contour");
-        setCutlineReady(false);
+        markCutlinePending();
         postToPoc({
           type: "pim-editor-set-shape",
           shape: "contour",
@@ -628,7 +664,7 @@ export default function EditorShell() {
       } else if (src === "sekil") {
         setSekilPreset("circle");
         setCutMode("circle");
-        setCutlineReady(false);
+        markCutlinePending();
         postToPoc({
           type: "pim-editor-set-shape",
           shape: "circle",
@@ -638,7 +674,7 @@ export default function EditorShell() {
         });
       }
     },
-    [postToPoc, widthMm, heightMm]
+    [postToPoc, widthMm, heightMm, markCutlinePending]
   );
 
   const dismissCircleContourSuggest = useCallback(() => {
@@ -655,7 +691,7 @@ export default function EditorShell() {
   const handleSekilPresetChange = useCallback(
     (preset: SekilPreset) => {
       setSekilPreset(preset);
-      setCutlineReady(false);
+      markCutlinePending();
       if (preset === "circle") {
         setCutMode("circle");
         postToPoc({
@@ -681,7 +717,7 @@ export default function EditorShell() {
         cornerRadiusMm: radius,
       });
     },
-    [postToPoc, widthMm, heightMm, cornerRadiusMm]
+    [postToPoc, widthMm, heightMm, cornerRadiusMm, markCutlinePending]
   );
 
   const handleDieCutSelect = useCallback(
@@ -725,7 +761,7 @@ export default function EditorShell() {
   const handleCornerRadiusChange = (raw: number) => {
     const clamped = Math.max(0, Math.min(maxCornerRadiusMm, raw));
     setCornerRadiusMm(clamped);
-    setCutlineReady(false);
+    markCutlinePending();
     postToPoc({
       type: "pim-editor-set-shape",
       shape: "rect",
@@ -1049,7 +1085,19 @@ export default function EditorShell() {
                   : "border-sari/40 bg-sari-soft text-lacivert"
           )}
         >
-          {pocStatus.message}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>{pocStatus.message}</span>
+            {cutlineError ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => retryCutline()}
+              >
+                Tekrar dene
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -1454,10 +1502,20 @@ export default function EditorShell() {
                 <dd
                   className={cn(
                     "font-medium",
-                    cutlineReady ? "text-yesil" : "text-gri-500"
+                    cutlineReady
+                      ? "text-yesil"
+                      : cutlineError
+                        ? "text-kirmizi"
+                        : "text-gri-500"
                   )}
                 >
-                  {cutlineReady ? "Hazır" : designLoaded ? "Hesaplanıyor…" : "—"}
+                  {cutlineReady
+                    ? "Hazır"
+                    : cutlineError
+                      ? "Hata"
+                      : designLoaded
+                        ? "Hesaplanıyor…"
+                        : "—"}
                 </dd>
               </div>
               {dpiInfo ? (
