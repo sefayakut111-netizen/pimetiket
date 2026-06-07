@@ -30,12 +30,7 @@ import {
   calculateTabakaSheetGeometry,
   TABAKA_SHEET_H_MM,
   TABAKA_SHEET_W_MM,
-  TABAKA_MARGIN_TOP_MM,
-  TABAKA_MARGIN_X_MM,
-  TABAKA_USABLE_H_MM,
-  TABAKA_USABLE_W_MM,
 } from "@/lib/pricing-tabaka-geo";
-import { GAP_TABAKA } from "@/lib/pricing-engine/constants";
 import type { PreviewView } from "./ProductPreviewShell";
 import type {
   EtiketMaterialId,
@@ -370,36 +365,24 @@ export function EtiketLivePreview({
   }
 
   // ─────────────────────────────────────────────────────────────
-  // TABAKA MODE — pricing-tabaka-geo ile aynı net alan (310×400, asimetrik marj)
+  // TABAKA MODE — Gerçek pricing geometrisi; görsel scale-to-fit (StickerLivePreview)
   // ─────────────────────────────────────────────────────────────
   const tabakaGeom = calculateTabakaSheetGeometry(width, height, 1);
-  const rawCols = tabakaGeom.cols;
-  const rawRows = tabakaGeom.rows;
-  const realPerSheet = tabakaGeom.per_sheet;
-  const TABAKA_USABLE_W = TABAKA_USABLE_W_MM;
-  const TABAKA_USABLE_H = TABAKA_USABLE_H_MM;
+  const rawCols = geometryCols ?? tabakaGeom.cols;
+  const rawRows = geometryRows ?? tabakaGeom.rows;
+  const realPerSheet = geometryPerSheet ?? tabakaGeom.per_sheet;
   const rotated = tabakaGeom.rotated_layout;
   const displayCols = Math.min(rawCols, 6);
-  const displayRows = Math.min(rawRows, 8);
+  const displayRows = Math.min(rawRows, 7);
   const isCapped = displayCols < rawCols || displayRows < rawRows;
-  const PREVIEW_MAX_W = 300;
-  const PREVIEW_MAX_H = 320;
-  const GAP_PX = 3;
-  const previewScale = Math.min(
-    PREVIEW_MAX_W / TABAKA_SHEET_W_MM,
-    PREVIEW_MAX_H / TABAKA_SHEET_H_MM
-  );
-  const sheetPreviewW = TABAKA_SHEET_W_MM * previewScale;
-  const sheetPreviewH = TABAKA_SHEET_H_MM * previewScale;
-  const usablePreviewW = TABAKA_USABLE_W * previewScale;
-  const usablePreviewH = TABAKA_USABLE_H * previewScale;
-  const marginTopPx = TABAKA_MARGIN_TOP_MM * previewScale;
-  const marginLeftPx = TABAKA_MARGIN_X_MM * previewScale;
+  const PREVIEW_MAX_W = 280;
+  const PREVIEW_MAX_H = 260;
+  const GAP_PX = 4;
   const aspect = rotated ? height / width : width / height;
   const cellByCols =
-    (usablePreviewW - 16 - GAP_PX * (displayCols - 1)) / displayCols;
+    (PREVIEW_MAX_W - GAP_PX * (displayCols - 1)) / displayCols;
   const cellByRows =
-    (usablePreviewH - 16 - GAP_PX * (displayRows - 1)) / displayRows;
+    (PREVIEW_MAX_H - GAP_PX * (displayRows - 1)) / displayRows;
   const cellW = Math.min(cellByCols, cellByRows * aspect);
   const cellH = cellW / aspect;
   const totalDisplayCells = displayCols * displayRows;
@@ -409,94 +392,87 @@ export function EtiketLivePreview({
     <div style={view3dWrap} className="relative">
       <div style={view3dInner} className="flex flex-col items-center gap-2">
         <div
-          className="relative rounded-lg bg-white ring-1 ring-gri-200"
-          style={{
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            width: sheetPreviewW,
-            height: sheetPreviewH,
-          }}
+          className="relative rounded-lg bg-white p-3 ring-1 ring-gri-200"
+          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
         >
-          <span className="absolute -top-2 left-3 px-1.5 text-[9px] font-bold uppercase tracking-[0.06em] text-gri-500 bg-krem tabular-nums">
+          <span className="absolute top-2 left-3 px-1.5 text-[9px] font-bold uppercase tracking-[0.06em] text-gri-500 bg-white tabular-nums">
             {TABAKA_SHEET_W_MM}×{TABAKA_SHEET_H_MM} mm
           </span>
-          <div
-            className="absolute rounded ring-1 ring-dashed ring-gri-400 p-2"
-            style={{
-              top: marginTopPx,
-              left: marginLeftPx,
-              width: usablePreviewW,
-              height: usablePreviewH,
-            }}
-          >
-          <div
-            className="grid h-full w-full"
-            style={{
-              gridTemplateColumns: `repeat(${displayCols}, ${cellW}px)`,
-              gridTemplateRows: `repeat(${displayRows}, ${cellH}px)`,
-              gap: GAP_PX,
-            }}
-          >
-            {cells.map((i) => (
-              <div
-                key={i}
-                className={
-                  isSketch
-                    ? "relative overflow-hidden ring-1 ring-pim-mercan"
-                    : isDiecut
-                      ? "relative overflow-hidden ring-2 ring-dashed ring-pim-mercan/60"
-                      : "relative overflow-hidden ring-1 ring-black/[0.08]"
-                }
-                style={{
-                  borderRadius: shapeRadius,
-                  boxShadow: isSketch ? "none" : "0 1px 3px rgba(0,0,0,0.08)",
-                  background: isSketch
-                    ? "rgba(255, 107, 91, 0.18)"
-                    : undefined,
-                }}
-              >
-                {!isSketch && (
-                  <MaterialSwatch
-                    surface={surface}
-                    className="absolute inset-0 w-full h-full"
-                    rounded="md"
-                  />
-                )}
-                {designUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={designUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <MaskotPlaceholder
-                    theme={isDarkMaterial ? "dark" : "light"}
-                    sizePct={60}
-                    showBrand
-                  />
-                )}
-                {!isSketch && sheen > 0.08 && (
-                  <div
-                    aria-hidden
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background: `radial-gradient(80% 50% at 30% 0%, rgba(255,255,255,${sheen}) 0%, transparent 70%)`,
-                      mixBlendMode: "screen",
-                    }}
-                  />
-                )}
-              </div>
-            ))}
+          <div className="mt-3 rounded ring-1 ring-dashed ring-gri-400 p-2">
+            <div
+              className="grid mx-auto"
+              style={{
+                gridTemplateColumns: `repeat(${displayCols}, ${cellW}px)`,
+                gridTemplateRows: `repeat(${displayRows}, ${cellH}px)`,
+                gap: GAP_PX * 1.5,
+                width: "fit-content",
+              }}
+            >
+              {cells.map((i) => (
+                <div
+                  key={i}
+                  className={
+                    isSketch
+                      ? "relative overflow-hidden ring-1 ring-pim-mercan"
+                      : isDiecut
+                        ? "relative overflow-hidden ring-2 ring-dashed ring-pim-mercan/60"
+                        : "relative overflow-hidden ring-1 ring-black/[0.08]"
+                  }
+                  style={{
+                    borderRadius: shapeRadius,
+                    boxShadow: isSketch ? "none" : "0 1px 3px rgba(0,0,0,0.08)",
+                    background: isSketch
+                      ? "rgba(255, 107, 91, 0.18)"
+                      : undefined,
+                  }}
+                >
+                  {!isSketch && (
+                    <MaterialSwatch
+                      surface={surface}
+                      className="absolute inset-0 w-full h-full"
+                      rounded="md"
+                    />
+                  )}
+                  {designUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={designUrl}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <MaskotPlaceholder
+                      theme={isDarkMaterial ? "dark" : "light"}
+                      sizePct={60}
+                      showBrand
+                    />
+                  )}
+                  {!isSketch && sheen > 0.08 && (
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: `radial-gradient(80% 50% at 30% 0%, rgba(255,255,255,${sheen}) 0%, transparent 70%)`,
+                        mixBlendMode: "screen",
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-          </div>{/* /inner dashed border */}
         </div>
-        {/* Sefa 18 May v68: alt yazı format standardı —
-            "TABAKA · 60×80 MM · 84 AD/TABAKA" 3 parça (sticker tabaka ile aynı) */}
         <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gri-700">
           Tabaka · {Math.round(width)}×{Math.round(height)} mm ·{" "}
           {isCapped ? "≈" : ""}
-          <span className="text-pim-mercan">{realPerSheet}</span> ad/tabaka
+          <span
+            className="text-pim-mercan-koyu cursor-help"
+            title="Tabaka 330×450 mm, kenar boşluğu ve etiket arası 3 mm hesaba dahil. Alt marj kesici tutunma alanı."
+          >
+            {realPerSheet}
+          </span>{" "}
+          ad/tabaka
         </span>
       </div>
     </div>
