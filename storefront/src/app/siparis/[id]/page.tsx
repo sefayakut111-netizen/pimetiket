@@ -105,6 +105,7 @@ const COPY = {
     fileTypeUnsupported: (type: string) =>
       `Bu dosya formatı desteklenmiyor: ${type}`,
     uploadFailed: "Yükleme başarısız",
+    uploadSessionWaiting: "Oturum yükleniyor, birkaç saniye sonra tekrar dene.",
     shipmentHistoryTitle: "Durum geçmişi",
     shipmentStatusCreated: "İşleme alındı",
     shipmentStatusPickedUp: "Kargo alındı",
@@ -276,6 +277,7 @@ const COPY = {
     fileTypeUnsupported: (type: string) =>
       `Unsupported file format: ${type}`,
     uploadFailed: "Upload failed",
+    uploadSessionWaiting: "Session loading — please try again in a few seconds.",
     shipmentHistoryTitle: "Status history",
     shipmentStatusCreated: "Processing started",
     shipmentStatusPickedUp: "Picked up",
@@ -1833,8 +1835,7 @@ function DesignUploadCard({
     if (!file) return;
 
     if (!isLoggedInSync()) {
-      // Guest mode → mock akışına düş (geriye uyumlu)
-      handleMockUpload(file);
+      toast.error(c.uploadSessionWaiting);
       return;
     }
 
@@ -1906,31 +1907,6 @@ function DesignUploadCard({
     } finally {
       setAnalyzing(false);
     }
-  };
-
-  const handleMockUpload = (file: File) => {
-    setAnalyzing(true);
-    setTimeout(() => {
-      const flagSet: UploadedFile["flags"] = [
-        { kind: "ok", message: c.flagDpiOk },
-        { kind: "ok", message: c.flagCmykOk },
-      ];
-      if (Math.random() < 0.3) {
-        flagSet.push({
-          kind: "warning",
-          message: c.flagMarginWarn,
-        });
-      }
-      const fresh: UploadedFile = {
-        name: file.name,
-        size: file.size,
-        uploadedAt: Date.now(),
-        flags: flagSet,
-      };
-      const next = [fresh, ...files];
-      setFiles(next);
-      setAnalyzing(false);
-    }, 1500);
   };
 
   // Sefa 22 May v68: handleRemove kaldırıldı — müşteri tasarım silemez,

@@ -265,8 +265,8 @@ export default function SiparislerimPage() {
     });
     void fetch("/api/public/settings")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { welcome_credit_try?: number } | null) => {
-        if (data && (data.welcome_credit_try ?? 0) > 0) {
+      .then((data: { settings?: { welcome_credit_try?: number } } | null) => {
+        if ((data?.settings?.welcome_credit_try ?? 0) > 0) {
           setWelcomeCreditActive(true);
         }
       })

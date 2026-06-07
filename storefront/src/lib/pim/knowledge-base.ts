@@ -3,6 +3,11 @@
  * Hardcoded malzeme/teslim/kargo listesi yerine tek kaynak.
  */
 
+import {
+  DEFAULT_ETIKET_DELIVERY_DAYS,
+  DEFAULT_STICKER_DELIVERY_DAYS,
+  type DeliveryDaysSettings,
+} from "@/lib/site-settings-shared";
 import { ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
 import {
   CUSTOMER_STICKER_TIERS,
@@ -18,7 +23,6 @@ import {
 import {
   PIM_CARRIER_NAME,
   PIM_ORDER_LIMITS,
-  PIM_PRODUCTION_BUSINESS_DAYS,
   PIM_SHIPPING_DEFAULTS,
 } from "./site-facts";
 
@@ -36,7 +40,12 @@ function listNames<T extends { name: string }>(items: readonly T[]): string {
 }
 
 /** Pim system prompt'a inject edilen bilgi tabanı (sync). */
-export function buildPimKnowledgeBase(): string {
+export function buildPimKnowledgeBase(
+  deliveryDays: DeliveryDaysSettings = {
+    sticker: DEFAULT_STICKER_DELIVERY_DAYS,
+    etiket: DEFAULT_ETIKET_DELIVERY_DAYS,
+  }
+): string {
   const stickerMaterials = Object.values(STICKER_MATERIAL_LABELS).join(", ");
   const stickerQtyPresets = CUSTOMER_STICKER_TIERS.join(", ");
   const etiketMaterials = listNames(ETIKET_MATERIALS);
@@ -50,7 +59,7 @@ PİM ETİKET HAKKINDA:
 - Etiket: Rulo (1.000+ adet) veya Tabaka (250+ adet). Güncel malzeme listesi (pricing-engine): ${etiketMaterials}. Kaplama: ${etiketCoatings}. Özelleştirme: ${etiketCustom}.
 - **Etiket baskı ŞU AN sipariş alınmıyor** — tasarım aşamasında, ${ETIKET_LAUNCH_LABEL}'da açılacak. Müşteri etiket sorarsa: açılış tarihini söyle (${ETIKET_LAUNCH_LABEL}) + şu an sticker baskının tam açık olduğunu belirt, /sticker'a yönlendir. Etiket fiyatı/sipariş verme veya konfigüratöre sipariş amacıyla yönlendirme YAPMA.
 - Sticker: min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; önerilen: ${stickerQtyPresets}). Malzeme: ${stickerMaterials}. Yüzey: ${STICKER_FINISH_LABELS.join(", ")}.
-- Teslim: ETİKET ${PIM_PRODUCTION_BUSINESS_DAYS.etiket} iş günü, STICKER ${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü içinde kargoya veriyoruz (resmi tatil ve hafta sonu HARİÇ). Kargo süresi: İstanbul 1, diğer iller 2-3 iş günü.
+- Teslim: ETİKET ${deliveryDays.etiket} iş günü, STICKER ${deliveryDays.sticker} iş günü içinde kargoya veriyoruz (resmi tatil ve hafta sonu HARİÇ). Kargo süresi: İstanbul 1, diğer iller 2-3 iş günü.
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
 - KDV dahil fiyat gösterilir.
 - Kargo: SADECE ${PIM_CARRIER_NAME} (Aras / MNG yok, tek anlaşma). ${PIM_SHIPPING_DEFAULTS.freeThresholdTry} ₺ üzeri siparişlerde kargo ÜCRETSİZ, altında ortalama ${PIM_SHIPPING_DEFAULTS.feeTry} ₺.
@@ -59,7 +68,7 @@ PİM ETİKET HAKKINDA:
 
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
 - /etiket → etiket ürün sayfası (ŞU AN sipariş kapalı — ${ETIKET_LAUNCH_LABEL}'da açılacak)
-- /sticker → sticker konfigüratörü (${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü teslim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
+- /sticker → sticker konfigüratörü (${deliveryDays.sticker} iş günü teslim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
 - /malzemeler → tüm malzeme türleri + kullanım alanları (güncel liste)
 - /sablonlar → hazır şablonlar (Canva/Adobe için boyut + indirme)
 - /galeri → müşteri işleri showcase
@@ -93,7 +102,7 @@ CANVA / TASARIM ARAÇLARI POLİTİKASI (KRİTİK):
 
 ÖNEMLİ KURALLAR:
 - Fiyat sorulduğunda kesin rakam VERME (welcome) — sticker için "/sticker sayfasında konfigüre et". Designer persona quote tool kullanır.
-- Teslim: "Etiket ${PIM_PRODUCTION_BUSINESS_DAYS.etiket} iş günü, sticker ${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü içinde kargoya" de. ASLA "hızlı baskı" deme.
+- Teslim: "Etiket ${deliveryDays.etiket} iş günü, sticker ${deliveryDays.sticker} iş günü içinde kargoya" de. ASLA "hızlı baskı" deme.
 - Kargo: "Sadece ${PIM_CARRIER_NAME}, ${PIM_SHIPPING_DEFAULTS.freeThresholdTry} ₺ üzeri ücretsiz."
 - Operatöre devretme (şikayet, iade, kurumsal) → info@pimetiket.com veya WhatsApp + /iletisim.
 `.trim();

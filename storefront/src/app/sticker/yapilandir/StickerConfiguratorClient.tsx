@@ -70,6 +70,7 @@ import { useT } from "@/lib/i18n/context";
 import { getStickerProductName } from "@/lib/sticker-product-name";
 import { useSanitizeEmptyQueryParam } from "@/lib/use-sanitize-empty-query-param";
 import { useExperiment } from "@/lib/analytics/feature-flags";
+import { formatProductDeliveryLabel, useDeliveryDays } from "@/hooks/useDeliveryDays";
 import { deliveryEstimate } from "@/lib/pricing";
 import {
   quoteCustomerSticker,
@@ -374,6 +375,12 @@ export default function StickerPageWrapper() {
 function StickerPage() {
   const toast = useToast();
   const { t, locale, hydrated } = useT();
+  const deliveryDays = useDeliveryDays();
+  const stickerDeliveryLabel = formatProductDeliveryLabel(
+    "sticker",
+    deliveryDays,
+    locale === "en" ? "en" : "tr"
+  );
   const searchParams = useSearchParams();
   useSanitizeEmptyQueryParam("form");
   const isSayfaMode = searchParams.get("sayfa") === "1";
@@ -526,7 +533,9 @@ function StickerPage() {
   ]);
   const ctaLabel =
     ctaVariant === "test"
-      ? `${t.config.addToCart} · 5 iş günü içinde kargoda`
+      ? locale === "en"
+        ? `${t.config.addToCart} · ships within ${stickerDeliveryLabel}`
+        : `${t.config.addToCart} · ${stickerDeliveryLabel} içinde kargoda`
       : t.config.addToCart;
   // Sefa 21 May v68 (site denetim P0 #2): useSearchParams initial state'te
   // kullanılır (typeof window check'i SSR'da boş döndürüyor + ilk render

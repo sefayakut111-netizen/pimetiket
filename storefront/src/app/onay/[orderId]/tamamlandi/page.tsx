@@ -14,6 +14,11 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Skeleton } from "@/components/ui";
+import {
+  deliveryDaysForOrderItems,
+  useDeliveryDays,
+} from "@/hooks/useDeliveryDays";
+import { formatDeliveryDaysLabel } from "@/lib/site-settings-shared";
 
 interface OrderInfo {
   id: string;
@@ -31,6 +36,7 @@ export default function ProofCompletedPage({
 }) {
   const { orderId } = use(params);
   const router = useRouter();
+  const deliverySettings = useDeliveryDays();
 
   const [info, setInfo] = useState<OrderInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +90,13 @@ export default function ProofCompletedPage({
     );
   }
 
-  const deliveryDays = info?.hasEtiket ? "10 iş günü" : "5 iş günü";
+  const productionDays = info
+    ? deliveryDaysForOrderItems(
+        [{ product: info.hasEtiket ? "etiket" : "sticker" }],
+        deliverySettings
+      )
+    : deliverySettings.sticker;
+  const deliveryDays = formatDeliveryDaysLabel(productionDays, "tr");
 
   return (
     <main className="bg-gri-50 animate-fade-up min-h-[calc(100vh-64px)] py-12">

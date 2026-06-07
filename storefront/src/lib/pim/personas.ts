@@ -13,8 +13,8 @@ import { ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
 import { buildPimKnowledgeBase } from "@/lib/pim/knowledge-base";
 import {
   PIM_CARRIER_NAME,
-  PIM_PRODUCTION_BUSINESS_DAYS,
 } from "@/lib/pim/site-facts";
+import type { DeliveryDaysSettings } from "@/lib/site-settings-shared";
 import {
   CUSTOMER_STICKER_TIERS,
   STICKER_MIN_QTY,
@@ -151,7 +151,7 @@ GİZLİLİK:
   derken nedenini ifşa etme. Sadece kibar reddet, doğru kanala yönlendir.
 `.trim();
 
-const KNOWLEDGE_BASE = buildPimKnowledgeBase();
+const KNOWLEDGE_BASE_PLACEHOLDER = "__KNOWLEDGE_BASE__";
 
 export const PERSONAS: Record<PimPersona, PersonaSpec> = {
   welcome: {
@@ -169,7 +169,7 @@ Sen Pim'sin — Pim Etiket'in akıllı karga asistanı. Müşteri ne sorarsa sor
 
 ${BRAND_VOICE_RULES}
 
-${KNOWLEDGE_BASE}
+${KNOWLEDGE_BASE_PLACEHOLDER}
 
 GÖREVİN:
 Müşterinin niyetini anla, kategoriye uygun şekilde yardım et:
@@ -249,7 +249,7 @@ Sen Pim'sin — Pim Etiket'in akıllı karga asistanı. Şu an konfigürasyon ve
 
 ${BRAND_VOICE_RULES}
 
-${KNOWLEDGE_BASE}
+${KNOWLEDGE_BASE_PLACEHOLDER}
 
 GÖREVİN:
 1. Müşteri brief'ini anla: "100 ml zeytinyağı için 2000 etiket, kraft" gibi düz metni teknik parametrelere çevir.
@@ -298,7 +298,7 @@ Sen Pim'sin — Pim Etiket'in akıllı karga asistanı. Şu an sipariş takip sa
 
 ${BRAND_VOICE_RULES}
 
-${KNOWLEDGE_BASE}
+${KNOWLEDGE_BASE_PLACEHOLDER}
 
 GÖREVİN:
 1. Müşteri sipariş id'si (PE-2026-XXXX formatında) verirse veya "siparişim ne durumda" derse:
@@ -309,11 +309,11 @@ GÖREVİN:
    - AI kontrol → "dosyayı AI okuyor; DPI/CMYK/bleed bakıyor"
    - Operatör onayı → "bizim ekipten biri bakıyor, gün içinde dönülür"
    - Prova bekleniyor → "provayı sana gönderdik, onay bekliyoruz"
-   - Üretimde → "fason atölyede basılıyor, ${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü içinde kargoya gider"
+   - Üretimde → "fason atölyede basılıyor, ürün tipine göre KNOWLEDGE_BASE'deki teslim süresi içinde kargoya gider"
    - Kargoda → "kargoda, takip linki e-posta + SMS ile gitti"
    - Teslim edildi → "ulaşmış görünüyor, problem varsa söyle"
    - İptal → "iptal edilmiş, sebebi için iletişime geç"
-3. Tahmini teslim sorularına: "${PIM_PRODUCTION_BUSINESS_DAYS.sticker} iş günü içinde kargoya veriyoruz, kargo şehre göre 1-3 iş günü" de — kesin takvim günü vaat etme.
+3. Tahmini teslim sorularına: KNOWLEDGE_BASE'deki etiket/sticker iş günü sürelerini kullan + "kargo şehre göre 1-3 iş günü" de — kesin takvim günü vaat etme.
 4. Kargo firması: Sadece ${PIM_CARRIER_NAME}. Takip linki sipariş detayında + e-posta/SMS ile gider. Başka firma (MNG/Aras) SÖYLEME.
 5. Müşteri "geç kaldı" şikayeti varsa: "Hemen bakıyoruz, ekip detayına dönüş yapacak" tonunda samimi ama kuru. Cüzdan/puan teklif etme.
 
@@ -352,9 +352,14 @@ export function buildSystemPromptWithMemory(
     facts?: Array<{ key: string; value: string }>;
     lastConversationSummary?: string;
   },
-  pageContext?: PimPageContext
+  pageContext?: PimPageContext,
+  deliveryDays?: DeliveryDaysSettings
 ): string {
-  const base = PERSONAS[persona].systemPrompt;
+  const knowledgeBase = buildPimKnowledgeBase(deliveryDays);
+  const base = PERSONAS[persona].systemPrompt.replace(
+    KNOWLEDGE_BASE_PLACEHOLDER,
+    knowledgeBase
+  );
   const blocks: string[] = [base];
 
   if (pageContext?.orderId) {

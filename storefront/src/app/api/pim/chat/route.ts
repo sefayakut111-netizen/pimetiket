@@ -18,6 +18,7 @@ import {
   type PimPageContext,
   type PimPersona,
 } from "@/lib/pim/personas";
+import { getSiteDeliveryDays } from "@/lib/site-settings-server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { OPENAI_CHAT_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -424,10 +425,12 @@ export async function POST(req: Request) {
   }
 
   const memory = body.memory ?? {};
+  const deliveryDays = await getSiteDeliveryDays();
   const systemPrompt = buildSystemPromptWithMemory(
     persona,
     memory,
-    body.pageContext
+    body.pageContext,
+    deliveryDays
   );
   const modelMessages = await convertToModelMessages(clampedMessages);
 

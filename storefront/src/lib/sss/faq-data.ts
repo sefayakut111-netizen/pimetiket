@@ -569,7 +569,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "WhatsApp en hızlı yanıt kanalımızdır; e-posta (info@pimetiket.com) ve /iletisim formu da kullanılabilir.",
       detail:
-        "İletişim kanallarımız ve ortalama yanıt süreleri: WhatsApp — hafta içi mesai saatlerinde 30 dakika, hafta sonu 12 saat içinde dönüş. E-posta (info@pimetiket.com) — 24 saat içinde detaylı yanıt. /iletisim formu — sipariş numarası ile birlikte iletildiğinde aynı gün incelenir. Telefonla iletişim kanalımız henüz aktif değildir; 2026 Q2'de hizmete açılacaktır.",
+        "İletişim kanallarımız ve ortalama yanıt süreleri: WhatsApp — hafta içi mesai saatlerinde 30 dakika, hafta sonu 12 saat içinde dönüş. E-posta (info@pimetiket.com) — 24 saat içinde detaylı yanıt. /iletisim formu — sipariş numarası ile birlikte iletildiğinde aynı gün incelenir. Telefon — hafta içi 09:00–18:00 mesai saatlerinde 0545 699 90 63 numarasından bizi arayabilirsiniz (site ayarlarından güncellenir).",
     },
     {
       q: "Çalışma saatleriniz nedir?",

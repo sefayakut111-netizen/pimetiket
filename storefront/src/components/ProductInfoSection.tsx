@@ -18,6 +18,10 @@
 "use client";
 
 import { Icon } from "@/components/Icon";
+import {
+  formatProductDeliveryLabel,
+  useDeliveryDays,
+} from "@/hooks/useDeliveryDays";
 
 interface FeatureCard {
   icon: React.ReactNode;
@@ -34,44 +38,6 @@ interface ProductInfoSectionProps {
   product: "etiket" | "sticker";
 }
 
-const ETIKET_FEATURES: FeatureCard[] = [
-  {
-    icon: <Icon.Box size={24} />,
-    title: "5 iş günü içinde kargoda",
-    desc: "5 iş günü içinde kargoya veriyoruz. Kargo şehre göre 1-3 iş günü daha sürer.",
-  },
-  {
-    icon: <Icon.Sparkle size={24} />,
-    title: "AI dosya kontrol",
-    desc: "DPI, CMYK, taşma, güvenli alan — dosyan otomatik check edilir.",
-  },
-  {
-    icon: <Icon.Check size={24} />,
-    title: "Esnek adetler",
-    desc: "Rulo etiket 1.000'den, tabaka etiket 250 adetten başlar. Her ihtiyaca uygun parti.",
-  },
-];
-
-const STICKER_FEATURES: FeatureCard[] = [
-  {
-    icon: <Icon.Box size={24} />,
-    title: "3-5 iş günü kargo",
-    desc: "Sticker daha hızlı üretilir. Acil mi? Premium kargo da var.",
-  },
-  {
-    icon: <Icon.Sparkle size={24} />,
-    title: "Die-cut precision kesim",
-    desc: "Tasarımının dış hattı milimetrik kesilir, hiçbir fazla kağıt yok.",
-  },
-  {
-    icon: <Icon.Check size={24} />,
-    title: "Esnek adetler",
-    desc: "25 adetten başlar. Küçük partilerde bile uygun fiyat — etkinlik, doğum günü, lansman.",
-  },
-];
-
-// Şimdilik placeholder görseller — Sefa /admin/galeri'den yüklediğinde
-// gallery_items DB'den çekilebilir (sonraki commit).
 const ETIKET_GALLERY: GalleryImage[] = [
   { src: "/gallery/etiket-wine.jpg", alt: "Şarap şişesi etiketi" },
   { src: "/gallery/etiket-honey.jpg", alt: "Bal kavanozu etiketi" },
@@ -87,7 +53,45 @@ const STICKER_GALLERY: GalleryImage[] = [
 ];
 
 export function ProductInfoSection({ product }: ProductInfoSectionProps) {
-  const features = product === "etiket" ? ETIKET_FEATURES : STICKER_FEATURES;
+  const deliveryDays = useDeliveryDays();
+  const deliveryLabel = formatProductDeliveryLabel(product, deliveryDays);
+
+  const features: FeatureCard[] =
+    product === "etiket"
+      ? [
+          {
+            icon: <Icon.Box size={24} />,
+            title: `${deliveryLabel} içinde kargoda`,
+            desc: `${deliveryLabel} içinde kargoya veriyoruz. Kargo şehre göre 1-3 iş günü daha sürer.`,
+          },
+          {
+            icon: <Icon.Sparkle size={24} />,
+            title: "AI dosya kontrol",
+            desc: "DPI, CMYK, taşma, güvenli alan — dosyan otomatik check edilir.",
+          },
+          {
+            icon: <Icon.Check size={24} />,
+            title: "Esnek adetler",
+            desc: "Rulo etiket 1.000'den, tabaka etiket 250 adetten başlar. Her ihtiyaca uygun parti.",
+          },
+        ]
+      : [
+          {
+            icon: <Icon.Box size={24} />,
+            title: `${deliveryLabel} içinde kargoda`,
+            desc: `${deliveryLabel} içinde kargoya veriyoruz. Kargo şehre göre 1-3 iş günü daha sürer.`,
+          },
+          {
+            icon: <Icon.Sparkle size={24} />,
+            title: "Die-cut precision kesim",
+            desc: "Tasarımının dış hattı milimetrik kesilir, hiçbir fazla kağıt yok.",
+          },
+          {
+            icon: <Icon.Check size={24} />,
+            title: "Esnek adetler",
+            desc: "25 adetten başlar. Küçük partilerde bile uygun fiyat — etkinlik, doğum günü, lansman.",
+          },
+        ];
   const gallery = product === "etiket" ? ETIKET_GALLERY : STICKER_GALLERY;
 
   const highlightTitle =
@@ -113,7 +117,6 @@ export function ProductInfoSection({ product }: ProductInfoSectionProps) {
   return (
     <section className="bg-white py-16 md:py-24 border-t border-gri-200">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        {/* 3 feature cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-16 md:mb-20">
           {features.map((f) => (
             <div key={f.title} className="text-center">
@@ -130,19 +133,8 @@ export function ProductInfoSection({ product }: ProductInfoSectionProps) {
           ))}
         </div>
 
-        {/* Sefa kuralı (16 May UX denetim P0-2 + P0-4):
-            Görsel placeholder'lı bölümler gizlendi — Sefa gerçek
-            ürün fotoğraflarını yükleyince koşulu kaldırıp tekrar
-            açılacak. Boş kartlar konversiyon sayfası ortasında
-            kötü izlenim veriyor.
-
-            Geri açmak için: HIGHLIGHT_IMAGES_READY = true yap +
-            gerçek <img src={...} /> ile placeholder'ı değiştir.
-            highlightTitle, highlightBody, galleryTitle, galleryBody,
-            gallery sabitleri zaten kullanıma hazır. */}
         {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
         {(() => {
-          // referansları "unused" lint'inden kurtarmak için bir kez kullan
           void highlightTitle;
           void highlightBody;
           void galleryTitle;

@@ -3,6 +3,26 @@ export const DEFAULT_ETIKET_DELIVERY_DAYS = 10;
 export const DEFAULT_CONTACT_PHONE = "+90 545 699 90 63";
 export const DEFAULT_CONTACT_WHATSAPP = "+90 545 699 90 63";
 
+export interface DeliveryDaysSettings {
+  sticker: number;
+  etiket: number;
+}
+
+export function parseDeliveryDaysFromSettings(
+  settings: Record<string, unknown>
+): DeliveryDaysSettings {
+  return {
+    sticker: Math.max(
+      1,
+      Number(settings.sticker_delivery_days) || DEFAULT_STICKER_DELIVERY_DAYS
+    ),
+    etiket: Math.max(
+      1,
+      Number(settings.etiket_delivery_days) || DEFAULT_ETIKET_DELIVERY_DAYS
+    ),
+  };
+}
+
 export function formatDeliveryDaysLabel(
   days: number,
   locale: "tr" | "en" = "tr"

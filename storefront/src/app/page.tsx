@@ -19,6 +19,9 @@ import { Pim } from "@/components/Pim";
 import { useSiteImage } from "@/lib/site-images-client";
 import { useUser } from "@/lib/supabase/use-user";
 import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
+import { useMemo } from "react";
+import { formatDeliveryDaysLabel } from "@/lib/site-settings-shared";
+import { useDeliveryDays } from "@/hooks/useDeliveryDays";
 
 // Sefa kararı 17 May v11: baselineStickerPrice/baselineEtiketPrice/
 // formatUnitPriceLocale helper'ları + QuickReorderWidget + Product
@@ -27,40 +30,52 @@ import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 // kullanılmıyor → silindi.
 
 // Sefa 18 May v68: Anasayfa SSS özeti — /sss tam sayfayla uyumlu.
-// "Acele baskı" sorusu kaldırıldı (Sefa: "acele baskı yapmıyoruz").
-const FAQ_QUESTIONS_TR = [
-  {
-    q: "Pim Etiket'te minimum kaç adet sipariş verilebilir?",
-    a: "Rulo etiket siparişleri 1.000 adetten, tabaka etiket siparişleri 250 adetten, sticker siparişleri ise 25 adetten başlamaktadır. Tabaka başına kaç ürün sığacağını konfigüratör ekranındaki canlı önizleme bölümünden görüntüleyebilirsiniz.",
-  },
-  {
-    q: "Tasarım dosyam yok, nasıl bir yol izlemeliyim?",
-    a: "Canva, Adobe Express ve Figma gibi ücretsiz online tasarım araçlarıyla tasarımınızı hazırlayıp PDF veya PNG formatında indirebilir, ardından sistemimize yükleyebilirsiniz. Sektörünüze uygun renk paleti ve font kombinasyonu önerileri için Pim Etiket sohbet asistanına sorularınızı yöneltebilirsiniz.",
-  },
-  {
-    q: "Üretim ve teslimat süresi ne kadardır?",
-    a: "Standart etiket siparişleri 10 iş günü, sticker siparişleri 5 iş günü içinde üretilmektedir (resmi tatiller hariç). Üretim tamamlandıktan sonra kargo süresi şehir bazında 1-3 iş günüdür. Tahmini teslim tarihi konfigüratör ve sepet ekranında otomatik olarak hesaplanıp gösterilir.",
-  },
-];
+// Teslim günleri site_settings'ten (useDeliveryDays).
+function buildHomeFaqs(
+  locale: "tr" | "en",
+  deliveryDays: { sticker: number; etiket: number }
+) {
+  const etiketLabel = formatDeliveryDaysLabel(deliveryDays.etiket, locale);
+  const stickerLabel = formatDeliveryDaysLabel(deliveryDays.sticker, locale);
 
-const FAQ_QUESTIONS_EN = [
-  {
-    q: "What is the minimum order quantity at Pim Etiket?",
-    a: "Roll labels start at 1,000 units, sheet labels at 250, and stickers at 25. The live preview in the configurator shows how many items fit per sheet, helping you plan your order size.",
-  },
-  {
-    q: "I don't have a design file — what should I do?",
-    a: "Free online design tools such as Canva, Adobe Express, and Figma make it easy to prepare your artwork. Export your design as PDF or PNG and upload it to our system. For industry-specific color palette or typography suggestions, ask the Pim Etiket chat assistant.",
-  },
-  {
-    q: "How long does production and delivery take?",
-    a: "Standard production lead times are 10 business days for labels and 5 business days for stickers (excluding public holidays). Shipping adds 1-3 business days depending on the city. Estimated delivery date is calculated and displayed automatically at checkout.",
-  },
-];
+  if (locale === "en") {
+    return [
+      {
+        q: "What is the minimum order quantity at Pim Etiket?",
+        a: "Roll labels start at 1,000 units, sheet labels at 250, and stickers at 25. The live preview in the configurator shows how many items fit per sheet, helping you plan your order size.",
+      },
+      {
+        q: "I don't have a design file — what should I do?",
+        a: "Free online design tools such as Canva, Adobe Express, and Figma make it easy to prepare your artwork. Export your design as PDF or PNG and upload it to our system. For industry-specific color palette or typography suggestions, ask the Pim Etiket chat assistant.",
+      },
+      {
+        q: "How long does production and delivery take?",
+        a: `Standard production lead times are ${etiketLabel} for labels and ${stickerLabel} for stickers (excluding public holidays). Shipping adds 1-3 business days depending on the city. Estimated delivery date is calculated and displayed automatically at checkout.`,
+      },
+    ];
+  }
+
+  return [
+    {
+      q: "Pim Etiket'te minimum kaç adet sipariş verilebilir?",
+      a: "Rulo etiket siparişleri 1.000 adetten, tabaka etiket siparişleri 250 adetten, sticker siparişleri ise 25 adetten başlamaktadır. Tabaka başına kaç ürün sığacağını konfigüratör ekranındaki canlı önizleme bölümünden görüntüleyebilirsiniz.",
+    },
+    {
+      q: "Tasarım dosyam yok, nasıl bir yol izlemeliyim?",
+      a: "Canva, Adobe Express ve Figma gibi ücretsiz online tasarım araçlarıyla tasarımınızı hazırlayıp PDF veya PNG formatında indirebilir, ardından sistemimize yükleyebilirsiniz. Sektörünüze uygun renk paleti ve font kombinasyonu önerileri için Pim Etiket sohbet asistanına sorularınızı yöneltebilirsiniz.",
+    },
+    {
+      q: "Üretim ve teslimat süresi ne kadardır?",
+      a: `Standart etiket siparişleri ${etiketLabel}, sticker siparişleri ${stickerLabel} içinde üretilmektedir (resmi tatiller hariç). Üretim tamamlandıktan sonra kargo süresi şehir bazında 1-3 iş günüdür. Tahmini teslim tarihi konfigüratör ve sepet ekranında otomatik olarak hesaplanıp gösterilir.`,
+    },
+  ];
+}
 
 export default function HomePage() {
   const { t, locale } = useT();
   const { user } = useUser();
+  const deliveryDays = useDeliveryDays();
+  const homeLocale = locale === "en" ? "en" : "tr";
   // Admin panelinden yüklenen görsel slot'u (varsa Pim fallback'i ezer)
   // Product Cards kaldırıldığı için home_etiket_card / home_sticker_card
   // artık kullanılmıyor (slot'lar admin'de hâlâ durur, ileride kullanılırsa).
@@ -68,14 +83,27 @@ export default function HomePage() {
 
   // PILLARS array kaldırıldı (Sefa kararı 17 May v10) — section silindi
 
-  const STEPS = [
-    { n: "01", t: t.home.step1, d: t.home.step1Desc },
-    { n: "02", t: t.home.step2, d: t.home.step2Desc },
-    { n: "03", t: t.home.step3, d: t.home.step3Desc },
-    { n: "04", t: t.home.step4, d: t.home.step4Desc },
-  ];
+  const STEPS = useMemo(
+    () => [
+      { n: "01", t: t.home.step1, d: t.home.step1Desc },
+      { n: "02", t: t.home.step2, d: t.home.step2Desc },
+      { n: "03", t: t.home.step3, d: t.home.step3Desc },
+      {
+        n: "04",
+        t: t.home.step4,
+        d:
+          homeLocale === "en"
+            ? `Labels ${formatDeliveryDaysLabel(deliveryDays.etiket, "en")} to ship, stickers ${formatDeliveryDaysLabel(deliveryDays.sticker, "en")}.`
+            : `Etiket ${formatDeliveryDaysLabel(deliveryDays.etiket, "tr")}, sticker ${formatDeliveryDaysLabel(deliveryDays.sticker, "tr")} içinde kargoda.`,
+      },
+    ],
+    [t.home, deliveryDays, homeLocale]
+  );
 
-  const FAQS = locale === "en" ? FAQ_QUESTIONS_EN : FAQ_QUESTIONS_TR;
+  const FAQS = useMemo(
+    () => buildHomeFaqs(homeLocale, deliveryDays),
+    [homeLocale, deliveryDays]
+  );
   return (
     <main className="animate-fade-up">
       {/* ============================== SECTION ORDER ==============================

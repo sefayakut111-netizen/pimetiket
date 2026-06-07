@@ -22,6 +22,11 @@ import {
 import { track } from "@/lib/analytics/posthog-events";
 import { mapApiError } from "@/lib/api-error-messages";
 import { ga4Purchase } from "@/lib/analytics/ga4-events";
+import {
+  deliveryDaysForOrderItems,
+  formatProductionDeliveryDesc,
+  useDeliveryDays,
+} from "@/hooks/useDeliveryDays";
 
 const EXTRA = {
   tr: {
@@ -108,6 +113,8 @@ function OdemeSonucInner() {
   const sp = useSearchParams();
   const router = useRouter();
   const { t, locale } = useT();
+  const deliverySettings = useDeliveryDays();
+  const contentLocale = locale === "en" ? "en" : "tr";
   const x = locale === "en" ? EXTRA.en : EXTRA.tr;
   const fmt = (n: number) => Math.round(n).toLocaleString(x.locale);
 
@@ -691,10 +698,24 @@ function OdemeSonucInner() {
                     : s === "in_production" ||
                         s === "fason_assigned" ||
                         s === "ready_to_ship"
-                      ? os.stepDeliveryProductionDesc
+                      ? formatProductionDeliveryDesc(
+                          deliveryDaysForOrderItems(
+                            order?.items ?? [],
+                            deliverySettings
+                          ),
+                          contentLocale,
+                          "production"
+                        )
                       : s === "proof_approved"
                         ? os.stepDeliveryProofApprovedDesc
-                        : os.stepDeliveryDefaultDesc;
+                        : formatProductionDeliveryDesc(
+                            deliveryDaysForOrderItems(
+                              order?.items ?? [],
+                              deliverySettings
+                            ),
+                            contentLocale,
+                            "default"
+                          );
 
               return (
                 <>

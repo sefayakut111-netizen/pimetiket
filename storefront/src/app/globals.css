@@ -404,7 +404,7 @@ select:-webkit-autofill:focus {
 }
 
 .announce-marquee-track {
-  animation: announce-marquee 14s linear infinite;
+  animation: announce-marquee 22s linear infinite;
   will-change: transform;
 }
 

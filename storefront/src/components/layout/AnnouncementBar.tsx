@@ -1,5 +1,8 @@
 "use client";
 
+/** HAZIRAN20 kampanyası — 30 Haziran 2026 23:59 TR sonrası gizlenir. */
+const CAMPAIGN_VALID_UNTIL = new Date("2026-06-30T23:59:59+03:00");
+
 const MESSAGE = (
   <>
     <span aria-hidden>🎉</span> Açılışa özel — Haziran boyunca{" "}
@@ -32,6 +35,10 @@ function MarqueeHalf({ hidden }: { hidden?: boolean }) {
 }
 
 export function AnnouncementBar() {
+  if (new Date() > CAMPAIGN_VALID_UNTIL) {
+    return null;
+  }
+
   return (
     <div
       role="region"

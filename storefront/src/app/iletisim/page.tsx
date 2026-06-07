@@ -16,6 +16,14 @@
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Card, Eyebrow } from "@/components/ui";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  DEFAULT_CONTACT_PHONE,
+  DEFAULT_CONTACT_WHATSAPP,
+  formatPhoneDisplay,
+  phoneToTelHref,
+  phoneToWaHref,
+} from "@/lib/site-settings-shared";
 import { useT } from "@/lib/i18n/context";
 
 const COPY = {
@@ -84,11 +92,37 @@ const COPY = {
 export default function IletisimPage() {
   const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
+  const [contactPhone, setContactPhone] = useState(DEFAULT_CONTACT_PHONE);
+  const [contactWhatsapp, setContactWhatsapp] = useState(DEFAULT_CONTACT_WHATSAPP);
 
-  const openPimChat = () => {
+  useEffect(() => {
+    void fetch("/api/public/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json?.settings) return;
+        const s = json.settings as {
+          seo_contact_phone?: string | null;
+          contact_whatsapp?: string | null;
+        };
+        if (s.seo_contact_phone?.trim()) {
+          setContactPhone(s.seo_contact_phone.trim());
+        }
+        if (s.contact_whatsapp?.trim()) {
+          setContactWhatsapp(s.contact_whatsapp.trim());
+        }
+      })
+      .catch(() => {
+        /* fallback defaults */
+      });
+  }, []);
+
+  const phoneDisplay = formatPhoneDisplay(contactPhone);
+  const whatsappDisplay = formatPhoneDisplay(contactWhatsapp);
+
+  const openPimChat = useCallback(() => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent("pim-chat-open"));
-  };
+  }, []);
 
   const WHATSAPP_ICON = (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -96,48 +130,58 @@ export default function IletisimPage() {
     </svg>
   );
 
-  const CONTACT_METHODS = [
-    {
-      icon: <Icon.ChatBubble size={20} />,
-      title: c.waTitle,
-      desc: c.waDesc,
-      cta: c.waCta,
-      onClick: openPimChat,
-      accent: "bg-pim-mercan-tint text-pim-mercan",
-    },
-    {
-      icon: WHATSAPP_ICON,
-      title: c.whatsappTitle,
-      desc: c.whatsappDesc,
-      cta: "0545 699 90 63",
-      href: "https://wa.me/905456999063",
-      accent: "bg-yesil-soft text-yesil",
-    },
-    {
-      icon: <Icon.Phone size={20} />,
-      title: c.phoneTitle,
-      desc: c.phoneDesc,
-      cta: "0545 699 90 63",
-      href: "tel:+905456999063",
-      accent: "bg-mavi-soft text-mavi-koyu",
-    },
-    {
-      icon: <Icon.Sparkle size={20} />,
-      title: c.emailTitle,
-      desc: c.emailDesc,
-      cta: "info@pimetiket.com",
-      href: "mailto:info@pimetiket.com",
-      accent: "bg-gri-100 text-lacivert",
-    },
-    {
-      icon: <Icon.ChatBubble size={20} />,
-      title: "Destek talebi",
-      desc: "Sipariş, tasarım veya kargo ile ilgili sorularınız için destek formunu kullanın.",
-      cta: "Destek talebi oluştur",
-      href: "/destek",
-      accent: "bg-lacivert/10 text-lacivert",
-    },
-  ];
+  const CONTACT_METHODS = useMemo(
+    () => [
+      {
+        icon: <Icon.ChatBubble size={20} />,
+        title: c.waTitle,
+        desc: c.waDesc,
+        cta: c.waCta,
+        onClick: openPimChat,
+        accent: "bg-pim-mercan-tint text-pim-mercan",
+      },
+      {
+        icon: WHATSAPP_ICON,
+        title: c.whatsappTitle,
+        desc: c.whatsappDesc,
+        cta: whatsappDisplay,
+        href: phoneToWaHref(contactWhatsapp),
+        accent: "bg-yesil-soft text-yesil",
+      },
+      {
+        icon: <Icon.Phone size={20} />,
+        title: c.phoneTitle,
+        desc: c.phoneDesc,
+        cta: phoneDisplay,
+        href: phoneToTelHref(contactPhone),
+        accent: "bg-mavi-soft text-mavi-koyu",
+      },
+      {
+        icon: <Icon.Sparkle size={20} />,
+        title: c.emailTitle,
+        desc: c.emailDesc,
+        cta: "info@pimetiket.com",
+        href: "mailto:info@pimetiket.com",
+        accent: "bg-gri-100 text-lacivert",
+      },
+      {
+        icon: <Icon.ChatBubble size={20} />,
+        title: "Destek talebi",
+        desc: "Sipariş, tasarım veya kargo ile ilgili sorularınız için destek formunu kullanın.",
+        cta: "Destek talebi oluştur",
+        href: "/destek",
+        accent: "bg-lacivert/10 text-lacivert",
+      },
+    ],
+    [
+      c,
+      contactPhone,
+      contactWhatsapp,
+      phoneDisplay,
+      whatsappDisplay,
+      openPimChat,
+    ]
+  );
 
   const FAQ_LINKS = [
     { q: c.faqOrder, href: "/sss#siparis" },
