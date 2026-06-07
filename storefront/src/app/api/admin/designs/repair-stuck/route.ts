@@ -9,8 +9,29 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import {
+  filterActionableStuckDesigns,
+  STUCK_DESIGN_CUTOFF_MS,
+  type StuckDesignRow,
+} from "@/lib/admin-stuck-designs";
 
 export const runtime = "nodejs";
+
+async function fetchStuckDesignRows(admin: ReturnType<typeof createAdminClient>) {
+  const cutoff = new Date(Date.now() - STUCK_DESIGN_CUTOFF_MS).toISOString();
+
+  const { data, error } = await admin
+    .from("design_files")
+    .select("id, order_id, orders!inner(id, status, address)")
+    .eq("status", "analyzing")
+    .lt("created_at", cutoff);
+
+  if (error) {
+    throw error;
+  }
+
+  return filterActionableStuckDesigns((data ?? []) as StuckDesignRow[]);
+}
 
 export async function GET() {
   const auth = await assertPermission("designs", "view");
@@ -19,22 +40,14 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
-  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-  const { count, error } = await admin
-    .from("design_files")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "analyzing")
-    .lt("created_at", cutoff);
-
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
+  try {
+    const stuck = await fetchStuckDesignRows(admin);
+    return NextResponse.json({ ok: true, stuckCount: stuck.length });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Query failed";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true, stuckCount: count ?? 0 });
 }
 
 export async function POST() {
@@ -44,23 +57,16 @@ export async function POST() {
   }
 
   const admin = createAdminClient();
-  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-  const { data: stuck, error } = await admin
-    .from("design_files")
-    .select("id, order_id")
-    .eq("status", "analyzing")
-    .lt("created_at", cutoff);
-
-  if (error) {
+  let files: StuckDesignRow[];
+  try {
+    files = await fetchStuckDesignRows(admin);
+  } catch (error) {
     console.error("[admin/designs/repair-stuck]", error);
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Query failed";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 
-  const files = stuck ?? [];
   const orderIds = new Set<string>();
 
   for (const file of files) {
@@ -72,7 +78,7 @@ export async function POST() {
       console.error("[admin/designs/repair-stuck] update:", file.id, updErr);
       continue;
     }
-    orderIds.add(file.order_id as string);
+    orderIds.add(file.order_id);
   }
 
   for (const orderId of orderIds) {
