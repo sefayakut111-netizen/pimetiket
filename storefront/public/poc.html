@@ -1665,6 +1665,10 @@
         <div class="toggle on" data-layer="cut"></div>
       </div>
       <div class="toggle-row">
+        <span>Renk</span>
+        <div class="toggle on" data-layer="color"></div>
+      </div>
+      <div class="toggle-row">
         <span>Beyaz plan</span>
         <div class="toggle" data-layer="white"></div>
       </div>
@@ -1862,7 +1866,7 @@ let currentPaths = [];       // Bıçak path'leri (canvas koordinatlarında)
 let bleedPaths = [];         // Bleed path'leri (offset +bleed)
 let safePaths = [];          // Safe zone path'leri (offset -safe)
 let currentMode = 'contour';
-let layers = { cut: true, white: false, bleed: false, safe: false };
+let layers = { cut: true, color: true, white: false, bleed: false, safe: false };
 let imageMetadata = null;
 let currentPdfDoc = null;    // PDF.js document instance
 let currentPageNum = 1;
@@ -1900,7 +1904,7 @@ let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
 //   ?material=<paper|transparent|metallic|holographic>
 //   ?orderId=<id> & ?itemId=<id>  — postMessage payload'ında geri döner
 //   ?headless=1                 — toolbar/sidebar gizle, sadece canvas
-//   ?layers=cut,white           — başlangıç katman seti
+//   ?layers=cut,color,white       — başlangıç katman seti
 //
 // postMessage (parent ↔ iframe):
 //   parent → iframe: { type:'pim-toggle-layer', layer, on }
@@ -2138,12 +2142,17 @@ window.addEventListener('message', (e) => {
   if (!msg || typeof msg !== 'object') return;
   try {
     if (msg.type === 'pim-toggle-layer') {
-      const valid = ['cut', 'white', 'bleed', 'safe'];
+      const valid = ['cut', 'color', 'white', 'bleed', 'safe'];
       if (valid.includes(msg.layer)) {
         layers[msg.layer] = !!msg.on;
         // Sync UI toggle
         const t = document.querySelector(`.toggle[data-layer="${msg.layer}"]`);
         if (t) t.classList.toggle('on', !!msg.on);
+        if (msg.layer === 'color' && !layers.color && materialType !== 'paper') {
+          layers.white = true;
+          const whiteToggle = document.querySelector('.toggle[data-layer="white"]');
+          if (whiteToggle) whiteToggle.classList.add('on');
+        }
         if (typeof render === 'function') render();
       }
     } else if (msg.type === 'pim-set-white-mode') {
@@ -2540,7 +2549,7 @@ function onOpenCvReady() {
     }
     // Başlangıç katmanları
     if (PIM_PARAMS.layers.length > 0) {
-      ['cut', 'white', 'bleed', 'safe'].forEach((lyr) => {
+      ['cut', 'color', 'white', 'bleed', 'safe'].forEach((lyr) => {
         const wanted = PIM_PARAMS.layers.includes(lyr);
         if (layers[lyr] !== wanted) {
           layers[lyr] = wanted;
@@ -4147,7 +4156,9 @@ function renderContentLayers(ctx) {
   if (sourceImage) {
     const rect = getArtDrawRect();
     if (rect) {
+      ctx.globalAlpha = layers.color ? 1.0 : 0.2;
       ctx.drawImage(sourceImage, rect.x, rect.y, rect.w, rect.h);
+      ctx.globalAlpha = 1.0;
     }
   } else {
     const offscreen = document.createElement('canvas');
@@ -4807,7 +4818,13 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 document.querySelectorAll('.toggle').forEach(t => {
   t.addEventListener('click', () => {
     t.classList.toggle('on');
-    layers[t.dataset.layer] = t.classList.contains('on');
+    const layer = t.dataset.layer;
+    layers[layer] = t.classList.contains('on');
+    if (layer === 'color' && !layers.color && materialType !== 'paper') {
+      layers.white = true;
+      const whiteToggle = document.querySelector('.toggle[data-layer="white"]');
+      if (whiteToggle) whiteToggle.classList.add('on');
+    }
     render();
   });
 });
