@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
+import { EtiketYapilandirFormGuard } from "./EtiketYapilandirFormGuard";
 
 // Sefa 21 May v68 (sistem denetim #13): konfigüratör sayfasının kendi
 // title'ı olsun — liste sayfasının title'ını miras almasın. SEO + sekme
@@ -16,5 +17,9 @@ export const metadata: Metadata = {
 
 export default function EtiketYapilandirLayout({ children }: { children: ReactNode }) {
   if (!ETIKET_ENABLED) redirect("/etiket");
-  return children;
+  return (
+    <Suspense fallback={null}>
+      <EtiketYapilandirFormGuard>{children}</EtiketYapilandirFormGuard>
+    </Suspense>
+  );
 }

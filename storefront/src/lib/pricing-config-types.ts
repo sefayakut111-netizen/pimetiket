@@ -195,6 +195,7 @@ export const FALLBACK_ETIKET_TABAKA_CONFIG: ProfileConfig = {
     { id: "kuse",  name: "Kuşe Etiket",    sheet_cost_try: 22, sheet_sell_try: 33, desc: "Mat kaplamalı baskı kağıdı (33×45 cm)" },
     { id: "kraft", name: "Kraft Etiket",   sheet_cost_try: 20, sheet_sell_try: 30, desc: "Doğal, dokunsal (33×45 cm)" },
     { id: "beyaz", name: "Opak PP Etiket", sheet_cost_try: 27, sheet_sell_try: 40, desc: "Klasik, dayanıklı, parlak (33×45 cm)" },
+    { id: "folyo", name: "Folyo Etiket",   sheet_cost_try: 32, sheet_sell_try: 48, desc: "Vinil folyo taban — suya ve neme dayanıklı (33×45 cm)" },
   ],
   options: {
     coating: {

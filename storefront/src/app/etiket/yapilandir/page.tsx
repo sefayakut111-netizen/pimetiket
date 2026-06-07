@@ -17,7 +17,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSequentialSteps, isStepComplete, findFirstIncompleteStep } from "@/lib/use-sequential-steps";
 import {
@@ -85,6 +85,8 @@ import {
   SHOW_ETIKET_CORE_SIZE_PICKER,
   ETIKET_DEFAULT_CORE_SIZE,
   SHOW_ETIKET_FORM_FACTOR_PICKER,
+  ETIKET_RULO_ENABLED,
+  ETIKET_TABAKA_ENABLED,
 } from "@/lib/etiket-feature-flags";
 // Sefa 20 May v68: kart sayısına göre dinamik grid sütun helper
 import { gridColsForCount } from "@/lib/grid-cols";
@@ -106,9 +108,9 @@ import {
 import { isPricebookMode } from "@/lib/pricing-pricebook";
 import { deriveScopeFromProduct } from "@/lib/pricing-calc";
 import {
-  TABAKA_USABLE_H,
-  TABAKA_USABLE_W,
-} from "@/lib/pricing-engine/constants";
+  TABAKA_USABLE_H_MM as TABAKA_USABLE_H,
+  TABAKA_USABLE_W_MM as TABAKA_USABLE_W,
+} from "@/lib/pricing-tabaka-geo";
 import {
   addToCustomerCart,
   removeFromCustomerCart,
@@ -176,6 +178,18 @@ const MATERIALS = [
     modes: ["rulo", "tabaka"] as const,
     tooltip:
       "PP (Polipropilen): Suya, neme, yağa dayanıklı plastik etiket. Buzdolabı / soğuk zincir ürünlerinde tercih edilir.",
+  },
+  {
+    id: "folyo",
+    name: "Folyo Etiket",
+    name_en: "Vinyl foil label",
+    desc: "Vinil folyo taban — suya ve neme dayanıklı.",
+    desc_en: "Vinyl foil base — water and moisture resistant.",
+    swatch: "linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 50%, #F1F5F9 100%)",
+    surface: "opakfolyo" as const,
+    modes: ["tabaka"] as const,
+    tooltip:
+      "Folyo (vinil) taban: Nemli ortamlarda ve soğuk zincirde dayanıklı etiket.",
   },
   {
     id: "seffaf",
@@ -449,6 +463,10 @@ const FORM_FACTORS: {
   },
 ];
 
+const ENABLED_FORM_FACTORS = FORM_FACTORS.filter((f) =>
+  f.id === "rulo" ? ETIKET_RULO_ENABLED : ETIKET_TABAKA_ENABLED
+);
+
 /** Progress stepper için adım etiketleri.
  *  IntersectionObserver "step-1"..."step-N" id'lerini izler.
  *  Form factor'a göre dinamik.
@@ -548,8 +566,11 @@ const fmtUnit = (n: number) => n.toFixed(2).replace(".", ",");
 //   - shape: dinamik boyut input için (kare/daire = orantı kilitli tek input)
 function readInitialFormFactor(searchParams: URLSearchParams): FormFactor {
   const form = searchParams.get("form");
-  if (form === "tabaka") return "tabaka";
-  return "rulo"; // varsayılan + bilinmeyen değerlerde
+  if (form === "tabaka" && ETIKET_TABAKA_ENABLED) return "tabaka";
+  if (form === "rulo" && ETIKET_RULO_ENABLED) return "rulo";
+  if (ETIKET_TABAKA_ENABLED) return "tabaka";
+  if (ETIKET_RULO_ENABLED) return "rulo";
+  return "tabaka";
 }
 
 /** Etiket şekli — Aşama A grid kartlarından gelen değerler.
@@ -599,7 +620,7 @@ function readInitialMaterial(searchParams: URLSearchParams): EtiketMaterialId | 
   const shape = searchParams.get("shape");
   if (shape === "clear") return "seffaf";
   const mat = searchParams.get("material");
-  if (mat === "kuse" || mat === "kraft" || mat === "beyaz" || mat === "seffaf" || mat === "ultra") {
+  if (mat === "kuse" || mat === "kraft" || mat === "beyaz" || mat === "folyo" || mat === "seffaf" || mat === "ultra") {
     return mat;
   }
   return null;
@@ -665,6 +686,7 @@ export default function EtiketPageWrapper() {
 
 function EtiketPage() {
   const toast = useToast();
+  const router = useRouter();
   const { t, locale, hydrated } = useT();
   const searchParams = useSearchParams();
   useSanitizeEmptyQueryParam("form");
@@ -682,6 +704,13 @@ function EtiketPage() {
   useEffect(() => {
     track("configurator_started", { product: "etiket" });
   }, []);
+
+  useEffect(() => {
+    const form = searchParams.get("form");
+    if (form === "rulo" && !ETIKET_RULO_ENABLED) {
+      router.replace("/etiket");
+    }
+  }, [searchParams, router]);
 
   const [formFactor, setFormFactor] = useState<FormFactor>(() =>
     readInitialFormFactor(initialParams)
@@ -989,6 +1018,8 @@ function EtiketPage() {
   // URL ?form= değişince picker ile aynı reset (grid navigasyonu)
   useEffect(() => {
     const form = searchParams.get("form");
+    if (form === "rulo" && !ETIKET_RULO_ENABLED) return;
+    if (form === "tabaka" && !ETIKET_TABAKA_ENABLED) return;
     if (form !== "rulo" && form !== "tabaka") return;
     if (form !== formFactor) {
       handleFormFactorChange(form);
@@ -1604,7 +1635,7 @@ function EtiketPage() {
               needsAttention={firstPendingStepId === 0}
             >
               <div className="grid grid-cols-2 gap-2">
-                {FORM_FACTORS.map((f) => {
+                {ENABLED_FORM_FACTORS.map((f) => {
                   // Touched değilse görsel seçili yok (Sefa kuralı 15 May v4)
                   const active = formFactorTouched && formFactor === f.id;
                   return (

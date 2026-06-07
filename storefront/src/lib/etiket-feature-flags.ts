@@ -1,5 +1,7 @@
-/** Kademeli açılış: etiket sipariş/konfigüratör kapalı; 29 Haziran 2026'da true yapılacak. */
-export const ETIKET_ENABLED = false;
+/** Kademeli açılış: tabaka açık, rulo 29 Haziran 2026'da açılacak. */
+export const ETIKET_ENABLED = true;
+export const ETIKET_TABAKA_ENABLED = true;
+export const ETIKET_RULO_ENABLED = false;
 export const ETIKET_LAUNCH_LABEL = "29 Haziran 2026";
 
 /**

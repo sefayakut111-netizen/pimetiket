@@ -3,11 +3,11 @@
  *
  * Rulo etiketten farklılaşma:
  *   - Rolls yerine SHEETS (tabaka sayısı)
- *   - Standart tabaka 23×31 cm (zarf 24×32 cm)
- *   - Kullanılabilir alan 19×27 cm (4 cm marj)
+ *   - Standart tabaka 33×45 cm
+ *   - Kullanılabilir alan 31×40 cm (asimetrik marj)
  *   - Min 250, max 10000 adet
  *   - Tier 250/500/1K/2.5K/5K/10K
- *   - Materials: kraft / kuşe / beyaz (3 tane, ultra+metalik YOK)
+ *   - Materials: kraft / kuşe / beyaz / folyo
  *   - Coatings: yok / mat / parlak (soft touch YOK)
  *   - Özelleştirme YOK (tabakada emboss/yaldız/spot UV yapılmıyor)
  *
@@ -31,19 +31,18 @@ import {
   calculateTabakaSheetGeometry,
   TABAKA_SHEET_W_MM,
   TABAKA_SHEET_H_MM,
-  TABAKA_SHEET_MARGIN_MM,
+  TABAKA_MARGIN_TOP_MM,
+  TABAKA_MARGIN_BOTTOM_MM,
+  TABAKA_MARGIN_X_MM,
+  TABAKA_USABLE_W_MM,
+  TABAKA_USABLE_H_MM,
 } from "@/lib/pricing-tabaka-geo";
-import {
-  TABAKA_USABLE_W,
-  TABAKA_USABLE_H,
-  GAP_TABAKA,
-} from "@/lib/pricing-engine/constants";
+import { GAP_TABAKA } from "@/lib/pricing-engine/constants";
 
 const SHEET_W_MM = TABAKA_SHEET_W_MM;
 const SHEET_H_MM = TABAKA_SHEET_H_MM;
-const SHEET_MARGIN_MM = TABAKA_SHEET_MARGIN_MM;
-const USABLE_W_MM = TABAKA_USABLE_W;
-const USABLE_H_MM = TABAKA_USABLE_H;
+const USABLE_W_MM = TABAKA_USABLE_W_MM;
+const USABLE_H_MM = TABAKA_USABLE_H_MM;
 const GAP_MM = GAP_TABAKA;
 
 // ============================================================
@@ -165,8 +164,8 @@ export function TabakaCalculator({
                Tabaka Etiket Fiyat Hesapla
             </h1>
             <p className="mt-2 text-base text-gri-700">
-              Kraft / Kuşe / Beyaz · 23×31 cm tabaka (zarf 24×32) ·
-              özelleştirme yok · min 250 adet.
+              Kuşe / Kraft / Beyaz / Folyo · 33×45 cm tabaka · kullanılabilir
+              alan 31×40 cm · özelleştirme yok · min 250 adet.
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={reset}>
@@ -591,10 +590,12 @@ function SheetPreview({
   const SCALE = 1;
   const W = SHEET_W_MM * SCALE;
   const H = SHEET_H_MM * SCALE;
-  const margin = SHEET_MARGIN_MM * SCALE;
+  const marginTop = TABAKA_MARGIN_TOP_MM * SCALE;
+  const marginBottom = TABAKA_MARGIN_BOTTOM_MM * SCALE;
+  const marginX = TABAKA_MARGIN_X_MM * SCALE;
+  const usableW = USABLE_W_MM * SCALE;
+  const usableH = USABLE_H_MM * SCALE;
   const gap = GAP_MM * SCALE;
-  const usableW = W - 2 * margin;
-  const usableH = H - 2 * margin;
   const cellW = (usableW - (cols - 1) * gap) / Math.max(1, cols);
   const cellH = (usableH - (rows - 1) * gap) / Math.max(1, rows);
 
@@ -604,8 +605,8 @@ function SheetPreview({
       cells.push(
         <rect
           key={`${r}-${c}`}
-          x={margin + c * (cellW + gap)}
-          y={margin + r * (cellH + gap)}
+          x={marginX + c * (cellW + gap)}
+          y={marginTop + r * (cellH + gap)}
           width={cellW}
           height={cellH}
           fill="#FFC9C2"
@@ -618,16 +619,16 @@ function SheetPreview({
   }
 
   return (
-    <div className="relative w-full max-w-[280px] mx-auto aspect-[230/310] bg-white ring-1 ring-gri-200 rounded-lg overflow-hidden">
+    <div className="relative w-full max-w-[280px] mx-auto aspect-[330/450] bg-white ring-1 ring-gri-200 rounded-lg overflow-hidden">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="xMidYMid meet"
         className="absolute inset-0 w-full h-full"
       >
-        {/* Margin guide (light) */}
+        {/* Net baskı alanı (asimetrik marj) */}
         <rect
-          x={margin}
-          y={margin}
+          x={marginX}
+          y={marginTop}
           width={usableW}
           height={usableH}
           fill="none"

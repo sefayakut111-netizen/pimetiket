@@ -2,6 +2,7 @@
  * Tabaka etiket geometri — ortak kaynak (etiket tabaka modu).
  *
  * Sticker kiss-cut motorundan ayrı: etiket tabaka 33×45 cm sabit tabaka.
+ * Net baskı alanı 31×40 cm (asimetrik marj: üst 1cm, alt 4cm kesici tutunma).
  */
 
 import { GAP_TABAKA, snapSizeUp } from "./pricing-engine/constants";
@@ -9,14 +10,28 @@ import { GAP_TABAKA, snapSizeUp } from "./pricing-engine/constants";
 /** Etiket tabaka fiziksel boyutu — 33×45 cm */
 const ETIKET_TABAKA_SHEET_W = 330;
 const ETIKET_TABAKA_SHEET_H = 450;
-const ETIKET_TABAKA_MARGIN = 10;
+
+/** Asimetrik kenar payları (mm) */
+export const TABAKA_MARGIN_TOP_MM = 10;
+export const TABAKA_MARGIN_BOTTOM_MM = 40;
+export const TABAKA_MARGIN_X_MM = 10;
+
+/** Geriye uyumluluk — yan marj (simetrik sol/sağ) */
+export const TABAKA_SHEET_MARGIN_MM = TABAKA_MARGIN_X_MM;
 
 export const TABAKA_SHEET_W_MM = ETIKET_TABAKA_SHEET_W;
 export const TABAKA_SHEET_H_MM = ETIKET_TABAKA_SHEET_H;
-export const TABAKA_SHEET_MARGIN_MM = ETIKET_TABAKA_MARGIN;
 
-const USABLE_W_MM = ETIKET_TABAKA_SHEET_W - 2 * ETIKET_TABAKA_MARGIN;
-const USABLE_H_MM = ETIKET_TABAKA_SHEET_H - 2 * ETIKET_TABAKA_MARGIN;
+/** Net baskı alanı — 31×40 cm */
+export const TABAKA_USABLE_W_MM =
+  ETIKET_TABAKA_SHEET_W - 2 * TABAKA_MARGIN_X_MM;
+export const TABAKA_USABLE_H_MM =
+  ETIKET_TABAKA_SHEET_H -
+  TABAKA_MARGIN_TOP_MM -
+  TABAKA_MARGIN_BOTTOM_MM;
+
+const USABLE_W_MM = TABAKA_USABLE_W_MM;
+const USABLE_H_MM = TABAKA_USABLE_H_MM;
 const GAP_MM = GAP_TABAKA;
 
 export interface TabakaSheetGeometry {

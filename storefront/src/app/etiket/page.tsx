@@ -29,8 +29,9 @@ import { useT } from "@/lib/i18n/context";
 import { track } from "@/lib/analytics/posthog-events";
 import { ga4ViewItem } from "@/lib/analytics/ga4-events";
 import {
-  ETIKET_ENABLED,
   ETIKET_LAUNCH_LABEL,
+  ETIKET_RULO_ENABLED,
+  ETIKET_TABAKA_ENABLED,
 } from "@/lib/etiket-feature-flags";
 import type { ProductCard as DbProductCard } from "@/lib/product-cards";
 
@@ -252,7 +253,9 @@ function ProductCard({
 export default function EtiketGridPage() {
   const { locale, t } = useT();
   const isEn = locale === "en";
-  const previewOnly = !ETIKET_ENABLED;
+  const ruloPreviewOnly = !ETIKET_RULO_ENABLED;
+  const tabakaPreviewOnly = !ETIKET_TABAKA_ENABLED;
+  const showLaunchBanner = !ETIKET_TABAKA_ENABLED && !ETIKET_RULO_ENABLED;
 
   // Sefa 21 May v68 Mig 074: DB'den admin yönetimli kartlar.
   // İlk render fallback (hardcoded RULO_CARDS/TABAKA_CARDS) ile başlar
@@ -310,7 +313,7 @@ export default function EtiketGridPage() {
           </p>
         </header>
 
-        {previewOnly ? (
+        {showLaunchBanner ? (
           <div className="mb-10 rounded-2xl border border-pim-mercan/30 bg-pim-mercan-tint/40 p-6 md:p-8 text-center shadow-sm">
             <h2 className="text-xl md:text-2xl font-bold text-lacivert">
               {t.etiket.launchBannerTitle}
@@ -352,9 +355,9 @@ export default function EtiketGridPage() {
                   key={`${card.form}-${card.shape}`}
                   card={card}
                   isEn={isEn}
-                  previewOnly={previewOnly}
+                  previewOnly={ruloPreviewOnly}
                   comingSoonLabel={
-                    previewOnly ? t.etiket.comingSoonBadge : undefined
+                    ruloPreviewOnly ? t.etiket.comingSoonBadge : undefined
                   }
                 />
               ))}
@@ -381,9 +384,9 @@ export default function EtiketGridPage() {
                   key={`${card.form}-${card.shape}`}
                   card={card}
                   isEn={isEn}
-                  previewOnly={previewOnly}
+                  previewOnly={tabakaPreviewOnly}
                   comingSoonLabel={
-                    previewOnly ? t.etiket.comingSoonBadge : undefined
+                    tabakaPreviewOnly ? t.etiket.comingSoonBadge : undefined
                   }
                 />
               ))}
