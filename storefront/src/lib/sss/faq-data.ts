@@ -59,14 +59,14 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Tasarım yükleme ve sipariş takibi için üyelik gereklidir; konfigüratör ve fiyat görüntüleme misafir olarak da kullanılabilir.",
       detail:
-        "Pim Etiket sisteminde tasarım dosyaları, KVKK 6698 sayılı kanun uyumlu olarak yalnızca kullanıcının erişebileceği kişisel depolama alanında saklanır. Bu güvenlik politikası gereği dosya yükleme işlemi için üye girişi zorunludur. Üyelik işlemi yalnızca e-posta ve şifre ile 30 saniyede tamamlanır. Üyelik avantajları arasında sipariş geçmişi takibi, yeniden basım kolaylığı, çoklu fatura adresi tanımlama ve özel kampanya bildirimleri yer alır.",
+        "Pim Etiket sisteminde tasarım dosyaları, KVKK 6698 sayılı kanun uyumlu olarak yalnızca kullanıcının erişebileceği kişisel depolama alanında saklanır. Bu güvenlik politikası gereği dosya yükleme işlemi için üye girişi zorunludur. Üyelik işlemi yalnızca e-posta ve şifre ile 30 saniyede tamamlanır. Üyelik avantajları arasında sipariş geçmişi takibi, tekrar sipariş kolaylığı ve çoklu fatura adresi tanımlama yer alır.",
     },
     {
       q: "Hangi ödeme yöntemlerini kabul ediyorsunuz?",
       summary:
         "Visa, Mastercard, Troy ve American Express kartları ile PayTR Sanal POS üzerinden 3D Secure güvenli ödeme kabul edilmektedir.",
       detail:
-        "Pim Etiket'in ödeme altyapısı, BDDK lisanslı PayTR Sanal POS sistemidir. Türkiye'de en yaygın kullanılan ödeme aracılarından biri olan PayTR, PCI-DSS sertifikalı altyapısıyla kart bilgilerinizin güvenli işlenmesini sağlar. Her ödeme işlemi 3D Secure 2.0 standardına uygun olarak bankanız tarafından SMS veya mobil uygulama doğrulamasıyla onaylanır. Kapıda ödeme, havale/EFT ve kripto para ödeme yöntemleri kabul edilmemektedir. Kurumsal toplu siparişler için özel ödeme koşulları WhatsApp üzerinden görüşülebilir.",
+        "Pim Etiket'in ödeme altyapısı, BDDK lisanslı PayTR Sanal POS sistemidir. Türkiye'de en yaygın kullanılan ödeme aracılarından biri olan PayTR, PCI-DSS sertifikalı altyapısıyla kart bilgilerinizin güvenli işlenmesini sağlar. Her ödeme işlemi 3D Secure 2.0 standardına uygun olarak bankanız tarafından SMS veya mobil uygulama doğrulamasıyla onaylanır. Kapıda ödeme, havale/EFT ve kripto para ödeme yöntemleri kabul edilmemektedir; yalnızca kart ile online ödeme alınır.",
     },
     {
       q: "Kredi kartı bilgilerim güvende mi?",
@@ -80,7 +80,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Hayır, Pim Etiket'te yalnızca online kart ile ödeme kabul edilmektedir.",
       detail:
-        "Tüketicinin Korunması Hakkında Kanun (TKHK) madde 15/b uyarınca, kişiye özel olarak üretilen ürünlerde cayma hakkı bulunmadığından, kapıda ödeme yöntemi Pim Etiket'in iş modeli için uygun değildir. Üretimi tamamlanan özel siparişlerin teslimat sırasında reddedilmesi durumunda doğacak maliyet riski nedeniyle bu yöntem desteklenmemektedir. Kurumsal toplu siparişler için banka havalesi/EFT seçeneği müşteri temsilcimiz üzerinden talep edilebilir.",
+        "Tüketicinin Korunması Hakkında Kanun (TKHK) madde 15/b uyarınca, kişiye özel olarak üretilen ürünlerde cayma hakkı bulunmadığından, kapıda ödeme yöntemi Pim Etiket'in iş modeli için uygun değildir. Üretimi tamamlanan özel siparişlerin teslimat sırasında reddedilmesi durumunda doğacak maliyet riski nedeniyle bu yöntem desteklenmemektedir.",
     },
     {
       q: "Taksitli ödeme yapabilir miyim?",
@@ -94,14 +94,14 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "E-arşiv faturanız sipariş onayını takip eden 7 iş günü içinde kayıtlı e-posta adresinize iletilir.",
       detail:
-        "Pim Etiket faturalarını şahıs işletmesi statüsünde (Sefa Yakut, Alemdağ Vergi Dairesi, Vergi No: 9290558622) düzenler. Bireysel siparişlerde e-arşiv fatura, ticari siparişlerde e-fatura formatında düzenleme yol haritamızdadır. Şirket adına fatura için sepet ekranında \"Şirket adına\" seçeneğini işaretleyerek vergi numaranızı girmeniz yeterlidir. Vergi mevzuatı uyarınca fatura, sipariş tarihinden itibaren 7 takvim günü içinde kesilir.",
+        "Pim Etiket faturaları SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ unvanıyla (Doğanbey Vergi Dairesi, VKN: 7580606076) e-Fatura olarak kesilir. Şirket adına fatura için sepet ekranında \"Şirket adına\" seçeneğini işaretleyerek unvan ve VKN bilgilerinizi girmeniz yeterlidir. Vergi mevzuatı uyarınca fatura, sipariş tarihinden itibaren 7 takvim günü içinde düzenlenir.",
     },
     {
       q: "Şirket adına fatura düzenlenebilir mi?",
       summary:
         "Evet, sepet ekranında 'Şirket adına' seçeneğiyle unvan, VKN ve vergi dairesi bilgilerini girmeniz yeterlidir.",
       detail:
-        "Kurumsal müşterilerimiz için e-arşiv fatura unvan, vergi kimlik numarası (VKN) ve bağlı bulunulan vergi dairesi bilgileri ile düzenlenir. Tüm fiyatlar KDV %20 dahil olarak görüntülenir; fatura üzerinde matrah ve KDV tutarı ayrı satırlarda detaylandırılır. E-fatura mükellefiyseniz, e-fatura entegrasyonumuz devreye alındığında otomatik aktarım sağlanacaktır.",
+        "Kurumsal müşterilerimiz için e-Fatura unvan, vergi kimlik numarası (VKN) ve bağlı bulunulan vergi dairesi bilgileri ile düzenlenir. Tüm fiyatlar KDV %20 dahil olarak görüntülenir; fatura üzerinde matrah ve KDV tutarı ayrı satırlarda detaylandırılır.",
     },
     {
       q: "Sipariş onay bildirimi nereden iletilir?",
@@ -116,6 +116,13 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
         "Sipariş durumu uygunken (ödeme alındı veya tasarım bekleniyor) sipariş detayından iptal edilebilir; üretim başladıktan sonra iptal mümkün değildir.",
       detail:
         "Sipariş durumu ödeme alındı veya tasarım bekleniyor iken /siparislerim sayfasından ilgili siparişe girin ve Siparişi iptal et butonunu kullanın. Tasarım kontrolü veya üretim aşamasına geçildikten sonra panelden iptal edilemez; bu durumda /destek veya /iletisim üzerinden bize ulaşın. TKHK madde 15/b kapsamında kişiye özel üretilen ürünler için cayma hakkı bulunmamaktadır.",
+    },
+    {
+      q: "Daha önce verdiğim siparişi tekrar verebilir miyim?",
+      summary:
+        "Evet — /siparislerim veya sipariş detayındaki «Tekrar sipariş» ile ürünleri sepete ekleyebilirsin.",
+      detail:
+        "Siparişlerim sayfasında veya sipariş detayında «Tekrar sipariş» butonuna basarak önceki siparişin ürün yapılandırmasını (malzeme, boyut, adet) sepete kopyalarsın. Tasarım dosyalarını yeniden yüklemen gerekir; güncel fiyatlar sepette otomatik hesaplanır ve /sepet üzerinden ödemeye geçilir.",
     },
   ],
   tasarim: [
@@ -178,9 +185,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Çoklu tasarım siparişi nasıl çalışır, indirim oranı nedir?",
       summary:
-        "Aynı sipariş içinde birden fazla farklı tasarım yükleyebilirsiniz; tasarım sayısına göre %2 ile %10 arasında otomatik indirim uygulanır.",
+        "Aynı siparişte birden fazla tasarımda kademeli indirim uygulanır; kesin oran konfigüratörde görünür.",
       detail:
-        "Çoklu tasarım indirim kademeleri: 2-3 tasarım %2, 4-5 tasarım %4, 6-10 tasarım %6, 11-25 tasarım %8 ve 26-50 tasarım %10. Konfigüratördeki 'Tasarım sayısı' alanına yazdığınız değer kadar tasarımdan, seçtiğiniz adet kadar baskı üretilir; örneğin 3 tasarım × 1.000 adet = toplamda 3.000 etiket. Bu indirim, baskı hazırlık (setup) maliyetinin çoklu tasarıma dağıtılması esasına dayanır ve birim fiyatın düşmesini sağlar. Her tasarım için ayrı dosya yüklenmesi gerekmektedir.",
+        "Konfigüratördeki «Tasarım sayısı» alanına yazdığınız değer kadar farklı tasarımdan, seçtiğiniz adet kadar baskı üretilir. Aynı siparişte birden fazla tasarım eklediğinizde birim fiyatta otomatik indirim uygulanır; güncel oranı konfigüratör ve sepet ekranında anlık görürsünüz. Her tasarım için ayrı dosya yüklenmesi gerekir.",
     },
     {
       q: "Yüklediğim tasarıma Pim Etiket tarafından müdahale ediliyor mu?",
@@ -231,21 +238,21 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Mat ve parlak selefon; etiket yüzeyine uygulanan koruyucu film kaplamalarıdır. Çizik ve aşınmalara karşı dayanım sağlar ve görsel hissi belirler.",
       detail:
-        "Parlak Selefon, yüksek yansıma değeri ve canlı renkler sunar; klasik perakende ürünlerde tercih edilir. Mat Selefon ise yansımayı ortadan kaldırarak premium ve sade bir his uyandırır; dokunulduğunda yumuşak bir doku verir. Her iki selefon türü de su geçirmezliği artırır ve çizik dayanımını yaklaşık %200 oranında yükseltir. Selefon uygulaması, etiketin temel fiyatına %10-15 oranında ek bir maliyet ekler.",
+        "Parlak Selefon, yüksek yansıma değeri ve canlı renkler sunar; klasik perakende ürünlerde tercih edilir. Mat Selefon ise yansımayı ortadan kaldırarak premium ve sade bir his uyandırır; dokunulduğunda yumuşak bir doku verir. Her iki selefon türü de su geçirmezliği artırır ve çizik dayanımını yükseltir. Kaplama seçiminin fiyat etkisini konfigüratörde anlık görürsünüz.",
     },
     {
       q: "Soft Touch kaplama hangi ürünler için uygundur?",
       summary:
         "Soft Touch; kadife veya şeftali kabuğu dokusunda yumuşak mat bir kaplamadır ve premium algı oluşturan ürünler için tercih edilir.",
       detail:
-        "Soft Touch kaplama, parmak ucuyla dokunulduğunda hissedilen yumuşak doku ile diğer kaplamalardan ayrışır. Kozmetik, parfüm ve premium hediye etiketlerinde tercih edilen bir çözümdür; lüks marka algısı oluşturmaya katkı sağlar. Mat selefona göre yaklaşık %30-40 daha yüksek bir maliyet farkı bulunur. Soft Touch kaplama yalnızca rulo etiket üretiminde mevcuttur; tabaka etiket üretiminde sunulmamaktadır.",
+        "Soft Touch kaplama, parmak ucuyla dokunulduğunda hissedilen yumuşak doku ile diğer kaplamalardan ayrışır. Kozmetik, parfüm ve premium hediye etiketlerinde tercih edilen bir çözümdür; lüks marka algısı oluşturmaya katkı sağlar. Soft Touch kaplama yalnızca rulo etiket üretiminde mevcuttur (rulo sipariş 29 Haziran 2026'da açılacak); tabaka etiket üretiminde sunulmamaktadır.",
     },
     {
       q: "Spot UV, Emboss ve Sıcak Yaldız özelleştirmeleri kombine edilebilir mi?",
       summary:
         "Evet, Spot UV, Emboss ve Sıcak Yaldız özelleştirmeleri tek bir tasarım üzerinde kombine olarak uygulanabilir (yalnızca rulo etiket modunda).",
       detail:
-        "Konfigüratördeki Özelleştirme adımında çoklu seçim yapılabilir; birden fazla efekt aynı etiket üzerine uygulanabilir. Her ek özelleştirme fiyat çarpanını yükseltir; örneğin sıcak yaldız ×1,25 ve Spot UV ×1,30 uygulandığında toplam fiyat yaklaşık 1,6 katına çıkar. Hangi alana hangi özelleştirmenin uygulanacağını belirtmek için tasarım dosyasının PDF formatında ayrı katmanlar halinde hazırlanması gerekir; Spot UV katmanı 'SpotUV' adıyla ve sıcak yaldız katmanı ilgili Pantone numarasıyla işaretlenmelidir.",
+        "Konfigüratördeki Özelleştirme adımında çoklu seçim yapılabilir; birden fazla efekt aynı etiket üzerine uygulanabilir. Rulo etiket siparişi şu an kapalıdır — 29 Haziran 2026'da açılacak; şimdilik tabaka etiket ve sticker siparişi verilebilir. Hangi alana hangi özelleştirmenin uygulanacağını belirtmek için tasarım dosyasının PDF formatında ayrı katmanlar halinde hazırlanması gerekir; Spot UV katmanı «SpotUV» adıyla ve sıcak yaldız katmanı ilgili Pantone numarasıyla işaretlenmelidir.",
     },
     {
       q: "Holografik ve Simli sticker malzemeleri arasındaki fark nedir?",
@@ -268,14 +275,14 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Rulo etiket; silindir biçiminde sarılı, otomatik aplikatör makineler için tasarlanmıştır. Tabaka etiket ise düz sayfa formatında yarı kesimli olarak hazırlanır ve elle uygulamaya uygundur.",
       detail:
-        "Rulo etiket üretimi; minimum 1.000 adetlik siparişler için sürekli makine akışında gerçekleştirilir ve endüstriyel ölçekte şişe etiketleme, kavanoz ve kozmetik aplikasyonlarında tercih edilir. Tabaka etiket ise minimum 250 adet ile SRA3 (320×450 mm) tabakada yarı kesimli olarak üretilir; etiketler elle ayrılarak ürüne uygulanır ve küçük tirajlı el yapımı ürünler için ideal bir çözümdür. Konfigüratörde Etiket türü ilk adım olarak seçilir; Tabaka tercih edildiğinde sarım yönü ve göbek çapı adımları otomatik olarak devre dışı kalır ve süreç 5 adıma düşer.",
+        "Rulo etiket üretimi; minimum 1.000 adetlik siparişler için sürekli makine akışında gerçekleştirilir ve endüstriyel ölçekte şişe etiketleme, kavanoz ve kozmetik aplikasyonlarında tercih edilir. Rulo sipariş şu an kapalıdır — 29 Haziran 2026'da açılacak. Tabaka etiket ise minimum 250 adet ile SRA3 (320×450 mm) tabakada yarı kesimli olarak üretilir; etiketler elle ayrılarak ürüne uygulanır ve küçük tirajlı el yapımı ürünler için ideal bir çözümdür. Konfigüratörde Etiket türü ilk adım olarak seçilir; Tabaka tercih edildiğinde sarım yönü ve göbek çapı adımları otomatik olarak devre dışı kalır.",
     },
     {
       q: "Rulo etiket mi Tabaka etiket mi seçmeliyim?",
       summary:
         "1.000+ adet sipariş ve otomatik aplikatör kullanıyorsanız Rulo etiket; 250-1.000 arası tirajlı el uygulaması yapıyorsanız Tabaka etiket önerilir.",
       detail:
-        "Rulo etiket üretimi için ekonomik eşik 1.000 adettir; bu rakamın altında birim maliyet yükselir ve Tabaka etiket daha avantajlı bir seçim haline gelir. Tabaka etiket otomatik aplikatör makineye uygun değildir; yarı kesimli yapısı nedeniyle elle ayırma ve uygulama gerektirir. El yapımı sabun, kozmetik ve küçük seri üretim için Tabaka etiket önerilirken; içecek, parfüm ve seri üretim için Rulo etiket tercih edilmelidir.",
+        "Rulo etiket üretimi için ekonomik eşik 1.000 adettir. Rulo sipariş şu an kapalıdır — 29 Haziran 2026'da açılacak; şimdilik tabaka etiket (min. 250 adet) veya sticker tercih edilebilir. Tabaka etiket otomatik aplikatör makineye uygun değildir; elle ayırma ve uygulama gerektirir. El yapımı sabun, kozmetik ve küçük seri üretim için Tabaka etiket önerilirken; içecek, parfüm ve seri üretim için Rulo etiket tercih edilmelidir.",
     },
     {
       q: "Rulo etikette sarım yönü ne anlama gelir?",
@@ -331,9 +338,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Maksimum kaç adet sipariş verilebilir?",
       summary:
-        "Etiket siparişleri için maksimum 50.000 adet, sticker siparişleri için 1.000 adet üzeri özel teklifle gerçekleştirilebilir.",
+        "Konfigüratördeki adet üst sınırına kadar sipariş verebilirsin; çok yüksek tutarlar için sepet limiti uygulanır.",
       detail:
-        "Etiket siparişleri için 50.000 adet üzerindeki tirajlar konfigüratör üzerinden doğrudan oluşturulamaz; bu tür siparişler için WhatsApp veya e-posta aracılığıyla özel teklif talep edilmesi önerilir. Yüksek adetli siparişlerde birim fiyat indirim kademesi düşer ve üretim 2-3 makineye bölünerek teslim süresi optimize edilir. Sticker'da 1.000 adet üzeri siparişler teknik olarak kabul edilir; ancak üretim süresi 5 iş gününü aşabilir. Tek seferlik veya parçalı teslim ihtiyacınız doğrultusunda özel üretim planı oluşturulur.",
+        "Etiket ve sticker siparişlerinde konfigüratörde seçilebilen maksimum adet sınırı vardır. Sepet toplamı belirli bir üst limite ulaştığında ödeme ekranına geçilemez; bu durumda /iletisim veya WhatsApp üzerinden bize yazabilirsin. Adet arttıkça birim fiyat konfigüratörde otomatik düşer.",
     },
     {
       q: "Tabaka etikette tek tabakaya kaç adet etiket sığar?",
@@ -361,9 +368,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Kargo ücreti ne kadar, ücretsiz kargo limiti var mı?",
       summary:
-        "500 ₺ ve üzeri siparişlerde kargo ücretsizdir; bu limitin altındaki siparişlere kargo ücreti uygulanır.",
+        "1000 ₺ ve üzeri siparişlerde kargo ücretsizdir; altında kargo ücreti sepette görünür.",
       detail:
-        "500 ₺ altı siparişlerde Yurtiçi Kargo standart ücreti (yaklaşık 45-60 ₺) sepete eklenir. Tüm gönderimlerimiz Yurtiçi Kargo aracılığıyla, Türkiye geneli kapı teslim şeklinde yapılır. Adres erişiminin zor olduğu bölgelerde (uzak ada/dağ köyleri) ek ücret çıkması durumunda sipariş onayı sonrasında bilgilendirilirsiniz.",
+        "1000 ₺ altı siparişlerde kargo ücreti sepete otomatik eklenir; tutarı ödeme öncesi sepet ekranında görürsün. Gönderimler Yurtiçi Kargo (birincil) ve DHL ile Türkiye geneli kapı teslim yapılır. Adres erişiminin zor olduğu bölgelerde ek ücret çıkması durumunda sipariş onayı sonrasında bilgilendirilirsiniz.",
     },
     {
       q: "Gizli ücret veya sürpriz masraf var mı?",
@@ -375,16 +382,16 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Adet arttıkça birim fiyat düşüyor mu?",
       summary:
-        "Evet, miktar bazlı kademeli indirim uygulanır; sipariş adetiniz arttıkça birim fiyat otomatik düşer.",
+        "Evet, adet arttıkça birim fiyat düşer; güncel fiyatı konfigüratörde anlık görürsün.",
       detail:
-        "Etiket siparişlerinde indirim kademeleri: 1.000, 2.000, 5.000, 10.000, 25.000 ve 50.000 adet. Sticker siparişlerinde: 25, 50, 100, 250, 500 ve 1.000 adet. Konfigüratörde adet seçicisini hareket ettirdiğinizde fiyat ve birim maliyet anlık olarak güncellenir; sistem ayrıca \"+1.000 adet daha ekleyin, %X tasarruf edin\" gibi öneriler sunarak optimum sipariş büyüklüğünü görmenize yardımcı olur.",
+        "Konfigüratörde adet seçicisini değiştirdiğinizde toplam fiyat ve birim maliyet anlık güncellenir. Adet kademelerine göre otomatik indirim uygulanır; kesin oran ve tutar sepet ekranında görünür.",
     },
     {
       q: "Çoklu tasarım indirimi nasıl uygulanır?",
       summary:
-        "Aynı siparişte birden fazla tasarım yüklediğinizde, otomatik olarak %2 ile %10 arasında indirim uygulanır.",
+        "Aynı siparişte birden fazla tasarımda kademeli indirim uygulanır; kesin oran konfigüratörde görünür.",
       detail:
-        "Çoklu tasarım indirim oranları: 2-3 tasarım %2, 4-5 tasarım %4, 6-10 tasarım %6, 11-25 tasarım %8 ve 26-50 tasarım %10. Bu yapı, baskı hazırlık (setup) maliyetinin çoklu tasarıma dağıtılması esasına dayanır. Örneğin 5 farklı tasarımdan her birinden 1.000 adet basıldığında toplam 5.000 etiket %4 indirimli fiyatla üretilir. Her tasarım için ayrı PDF veya PNG dosyası yüklenmesi gerekir.",
+        "Aynı siparişe birden fazla tasarım eklediğinizde birim fiyatta otomatik indirim uygulanır. Güncel indirim oranını konfigüratör ve sepet ekranında anlık görürsünüz. Her tasarım için ayrı PDF veya PNG dosyası yüklenmesi gerekir.",
     },
     {
       q: "İndirim kuponu nasıl kullanılır?",
@@ -393,35 +400,28 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       detail:
         "Pim Etiket'te yüzde indirim, sabit indirim ve ücretsiz kargo kuponları sunulmaktadır. Kupon alanı /odeme (checkout) ekranında sipariş özetinin altında yer alır. Kuponlar minimum sepet tutarı veya kullanım süresi şartı içerebilir; bu bilgiler kupon detay sayfasında belirtilir. Aktif kampanyalar için Pim Etiket sohbet asistanına \"kupon var mı?\" sorusunu yöneltebilirsiniz; sistem geçerli kuponları size sunar.",
     },
-    {
-      q: "Toplu sipariş için özel fiyat teklifi alınabilir mi?",
-      summary:
-        "20.000+ etiket veya 500+ sticker siparişleriniz için WhatsApp veya e-posta üzerinden özel teklif talep edebilirsiniz.",
-      detail:
-        "Toplu siparişlerde birim fiyat üzerinden ekstra indirim, palet/koli düzeyinde özel kargo planlaması, e-fatura ile vadeli faturalama ve özelleştirilmiş teslim takvimi gibi avantajlar sunulur. Talep için ürün tipi, adet, boyut, malzeme ve teslim adresi bilgilerini içeren bir mesajı WhatsApp veya info@pimetiket.com adresine iletmeniz yeterlidir; 24 saat içinde detaylı teklif tarafınıza ulaştırılır.",
-    },
   ],
   uretim: [
     {
       q: "Pim Etiket üretim süresi ne kadardır?",
       summary:
-        "Standart etiket siparişleri 10 iş günü, sticker siparişleri 5 iş günü içinde üretilir (resmi tatiller hariç).",
+        "Sticker 3, tabaka etiket 3, rulo etiket 10 iş günü (tasarım onayından sonra; resmi tatiller hariç).",
       detail:
-        "Pim Etiket'te sabit üretim süreleri uygulanmaktadır: rulo etiket ve tabaka etiket üretimi 10 iş günü, sticker (tabaka ve kontur kesim/die-cut) üretimi 5 iş günü sürmektedir. Bu süreler tasarım dosyanızın onaylanmasının ardından başlar; cumartesi, pazar ve resmi tatil günleri hesaba katılmaz. Üretim tamamlandıktan sonra kargo süresi (şehir bazında 1-3 iş günü) eklenir. Konfigüratör ve sepet ekranında, siparişiniz için tahmini teslim tarihi otomatik olarak hesaplanıp gösterilir.",
+        "Üretim süreleri tasarım onayınızdan sonra başlar; cumartesi, pazar ve resmi tatil günleri sayılmaz. Sticker: 3 iş günü. Tabaka etiket: 3 iş günü. Rulo etiket: 10 iş günü (rulo sipariş 29 Haziran 2026'da açılacak). Üretim tamamlandıktan sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü). Tahmini teslim tarihi konfigüratör ve sepet ekranında otomatik gösterilir.",
     },
     {
       q: "Siparişlerinizi hangi kargo firmasıyla gönderiyorsunuz?",
       summary:
-        "Tüm siparişlerimiz Yurtiçi Kargo aracılığıyla, Türkiye geneli kapı teslim olarak gönderilmektedir.",
+        "Yurtiçi Kargo (birincil) ve DHL ile Türkiye geneli kapı teslim gönderim yapılır.",
       detail:
-        "Pim Etiket olarak siparişlerinizi yalnızca Yurtiçi Kargo aracılığıyla göndermekteyiz. Teslimat süresi İstanbul içi 1 iş günü, diğer iller için 2-3 iş günü olarak gerçekleşmektedir. Kargo takip numaranız, siparişiniz kargoya verildiği anda sistemde görüntülenir ve kayıtlı e-posta adresinize otomatik olarak iletilir. Eksik veya hatalı adres bilgisi nedeniyle iade olan siparişlerin yeniden gönderim ücreti müşteriye aittir.",
+        "Pim Etiket siparişleri Yurtiçi Kargo (birincil) ve DHL aracılığıyla gönderilir; Aras veya MNG kullanılmaz. Teslimat süresi İstanbul içi 1 iş günü, diğer iller için 2-3 iş günü olarak gerçekleşir. Kargo takip numaranız sipariş kargoya verildiğinde sistemde görünür ve kayıtlı e-posta adresinize iletilir. Eksik veya hatalı adres nedeniyle iade olan siparişlerin yeniden gönderim ücreti müşteriye aittir.",
     },
     {
       q: "Tahmini teslim tarihi sipariş ekranında gösteriliyor mu?",
       summary:
         "Evet, sepete eklediğiniz andan itibaren tahmini teslim tarihi konfigüratör ekranında otomatik gösterilir.",
       detail:
-        "Hesaplama formülü: sipariş tarihi + üretim süresi (etiket için 10, sticker için 5 iş günü) + kargo süresi (1-3 iş günü). Bu hesaplamada hafta sonları ve resmi tatil günleri dikkate alınmaz. Üretim sürecinde olası bir gecikme durumunda, beklenen teslim tarihinden en az 48 saat önce e-posta ve sistem bildirimi ile bilgilendirilirsiniz.",
+        "Hesaplama formülü: sipariş tarihi + üretim süresi (sticker 3, tabaka etiket 3, rulo etiket 10 iş günü) + kargo süresi (1-3 iş günü). Hafta sonları ve resmi tatil günleri sayılmaz. Olası gecikmede beklenen teslim tarihinden en az 48 saat önce e-posta ve sistem bildirimi ile bilgilendirilirsiniz.",
     },
     {
       q: "Hızlı baskı veya acil sipariş hizmetiniz var mı?",
@@ -602,6 +602,20 @@ export const SSS_FAQS_EN: Record<SssCategory, SssFaqItem[]> = {
       summary: "Yes, all displayed prices include 20% VAT.",
       detail: "Turkey's standard VAT rate for printed materials is 20%.",
     },
+    {
+      q: "How is invoicing handled?",
+      summary:
+        "e-Invoice is issued under SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ (Doğanbey V.D., VKN 7580606076).",
+      detail:
+        "Company invoices: enter company name and VKN at checkout. Card payment only (PayTR 3D Secure) — no bank transfer.",
+    },
+    {
+      q: "Can I reorder a previous order?",
+      summary:
+        "Yes — use «Reorder» on /siparislerim or the order detail page.",
+      detail:
+        "Adds the same product configuration to your cart. Re-upload design files; current prices apply at checkout.",
+    },
   ],
   tasarim: [
     {
@@ -667,37 +681,46 @@ export const SSS_FAQS_EN: Record<SssCategory, SssFaqItem[]> = {
   fiyat: [
     {
       q: "Are there volume discounts?",
-      summary: "Yes, automatic tier discounts — more quantity = lower unit price.",
+      summary:
+        "Yes — unit price drops as quantity increases; see live price in the configurator.",
       detail:
-        "Labels: 1K, 2K, 5K, 10K, 25K, 50K tiers with progressive discount up to ~7%.",
+        "Move the quantity slider in the configurator to see updated totals. No fixed tier percentages published — checkout shows the final amount.",
     },
     {
       q: "Multi-design discount?",
-      summary: "Yes, 2-50 designs in same order = 2-10% automatic discount.",
+      summary:
+        "Yes — tiered discount when multiple designs in one order; rate shown in configurator.",
       detail:
-        "Setup cost spreads across designs. 26-50 designs get the maximum 10%.",
+        "Add several designs in the same order; discount applies automatically. Upload a separate file per design.",
+    },
+    {
+      q: "Shipping cost and free shipping threshold?",
+      summary:
+        "Free shipping on orders 1000 ₺ and above; below that, fee shown in cart.",
+      detail:
+        "Shipped via Yurtiçi Kargo (primary) and DHL — Turkey-wide. No Aras/MNG.",
     },
   ],
   uretim: [
     {
       q: "How long does production take?",
       summary:
-        "Labels: 10 business days, stickers: 5 business days (public holidays excluded).",
+        "Stickers: 3 business days; sheet labels: 3; roll labels: 10 (after design approval).",
       detail:
-        "Fixed lead times: roll & sheet labels — 10 business days; stickers (sheet + die-cut) — 5 business days. Starts after design approval, public holidays not counted. Add 1-3 days for shipping. Estimated delivery date shown automatically at checkout.",
+        "Weekends and public holidays excluded. Roll label orders open 29 June 2026 — sheet labels and stickers available now. Add 1-3 days shipping (Istanbul 1, other cities 2-3).",
     },
     {
       q: "Which courier do you use?",
-      summary: "Yurtiçi Kargo and Aras Kargo — Turkey-wide delivery.",
+      summary: "Yurtiçi Kargo (primary) and DHL — Turkey-wide delivery.",
       detail:
-        "Istanbul 1 business day, other cities 2-3. Tracking number in your dashboard.",
+        "No Aras or MNG. Istanbul 1 business day, other cities 2-3. Tracking in your dashboard.",
     },
     {
       q: "Same-day shipping / rush print?",
       summary:
-        "No rush service. Fixed lead times: 10 days labels, 5 days stickers.",
+        "No rush service. Stickers 3, sheet labels 3, roll labels 10 business days.",
       detail:
-        "We keep fixed production windows for QC, pre-flight checks, and planned fason partner runs. Rush printing degrades quality; we don't compromise. Plan ahead — the sooner you order, the sooner it ships.",
+        "Fixed production windows for QC and quality. Plan ahead — order early for your deadline.",
     },
   ],
   iade: [
