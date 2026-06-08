@@ -22,6 +22,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isPartner = pathname?.startsWith("/partner") ?? false;
   const isFason = pathname?.startsWith("/fason/") ?? false;
   const isEditor = pathname?.startsWith("/editor") ?? false;
+  const isStudio = pathname?.startsWith("/studio") ?? false;
+  const isMinimalShell = isEditor || isStudio;
   const isCheckout = pathname?.startsWith("/odeme") ?? false;
   const isProofEditor = pathname?.includes("/duzenle/") ?? false;
   const isHome = pathname === "/";
@@ -54,8 +56,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div id="main" tabIndex={-1} className="flex-1 outline-none">
         {children}
       </div>
-      {!isEditor ? <Footer /> : null}
-      {!isEditor && !isCheckout && !isProofEditor ? <PimChat /> : null}
+      {!isMinimalShell ? <Footer /> : null}
+      {!isMinimalShell && !isCheckout && !isProofEditor ? <PimChat /> : null}
     </>
   );
 }

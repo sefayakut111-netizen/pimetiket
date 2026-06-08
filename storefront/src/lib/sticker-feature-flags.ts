@@ -60,3 +60,13 @@ export const HIDDEN_STICKER_FINISHES: readonly string[] = [];
  * İleride pricing'e dahil edilecek (Mig 072 sonrası).
  */
 export const ENABLE_KISSCUT = true;
+
+// ============================================================
+// STUDIO EDİTÖR (/studio) — Kapalı devre Aşama 1
+// ============================================================
+
+/**
+ * /studio tek-sayfa reactive editör. Kapalı devre: false → route 404.
+ * Test için true yap; nav/sitemap'te yok — sadece direkt URL.
+ */
+export const ENABLE_STUDIO_EDITOR = false;
