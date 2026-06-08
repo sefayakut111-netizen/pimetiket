@@ -4,39 +4,88 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
+import {
+  ETIKET_LAUNCH_LABEL,
+  ETIKET_RULO_ENABLED,
+  ETIKET_TABAKA_ENABLED,
+} from "@/lib/etiket-feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+type ConfiguratorRedirect =
+  | { type: "redirect"; url: string; label: string }
+  | { type: "redirect"; blocked: true; message: string };
 
 function buildConfiguratorUrl(params: {
   product: "sticker" | "etiket";
+  formFactor?: "tabaka" | "rulo";
   material?: string;
   width?: number;
   height?: number;
   qty?: number;
-}): { type: "redirect"; url: string; label: string } {
-  if (params.product === "etiket" && !ETIKET_ENABLED) {
+}): ConfiguratorRedirect {
+  if (params.product === "etiket") {
+    const formFactor = params.formFactor ?? "tabaka";
+
+    if (formFactor === "rulo" && !ETIKET_RULO_ENABLED) {
+      return {
+        type: "redirect",
+        blocked: true,
+        message: `Rulo etiket ${ETIKET_LAUNCH_LABEL}'da açılıyor; tabaka için hazırım.`,
+      };
+    }
+
+    if (formFactor === "tabaka" && !ETIKET_TABAKA_ENABLED) {
+      return {
+        type: "redirect",
+        blocked: true,
+        message: `Tabaka etiket şu an sipariş alınmıyor — ${ETIKET_LAUNCH_LABEL}'da açılacak.`,
+      };
+    }
+
+    const base = "/etiket/yapilandir";
+    const qs = new URLSearchParams();
+    qs.set("form", formFactor);
+    if (params.material) qs.set("material", params.material);
+    if (params.width) qs.set("width", String(params.width));
+    if (params.height) qs.set("height", String(params.height));
+    if (params.qty) qs.set("qty", String(params.qty));
+    const query = qs.toString();
+
+    const parts: string[] = [];
+    if (params.width && params.height) parts.push(`${params.width}×${params.height} mm`);
+    if (params.qty) parts.push(`${params.qty} adet`);
+    if (params.material) parts.push(params.material);
+    const detail = parts.length > 0 ? ` (${parts.join(", ")})` : "";
+
+    const label =
+      formFactor === "tabaka"
+        ? `Tabaka etiket — hazır ayarlarla git${detail}`
+        : `Rulo etiket — hazır ayarlarla git${detail}`;
+
     return {
       type: "redirect",
-      url: "/etiket",
-      label: "Etiket sayfasına git (yakında)",
+      url: `${base}?${query}`,
+      label,
     };
   }
 
-  const base = params.product === "sticker" ? "/sticker" : "/etiket";
   const qs = new URLSearchParams();
   if (params.material) qs.set("material", params.material);
   if (params.width) qs.set("width", String(params.width));
   if (params.height) qs.set("height", String(params.height));
   if (params.qty) qs.set("qty", String(params.qty));
   const query = qs.toString();
-  const label =
-    params.product === "sticker"
-      ? "Sticker konfigüratörüne git"
-      : "Etiket konfigüratörüne git";
+
+  const parts: string[] = [];
+  if (params.width && params.height) parts.push(`${params.width}×${params.height} mm`);
+  if (params.qty) parts.push(`${params.qty} adet`);
+  if (params.material) parts.push(params.material);
+  const detail = parts.length > 0 ? ` (${parts.join(", ")})` : "";
+
   return {
     type: "redirect",
-    url: query ? `${base}?${query}` : base,
-    label,
+    url: query ? `/sticker?${query}` : "/sticker",
+    label: `Sticker — hazır ayarlarla git${detail}`,
   };
 }
 
@@ -71,9 +120,10 @@ function orderOwnedByUser(
 
 export const redirectToConfiguratorTool = tool({
   description:
-    "Müşteriyi etiket veya sticker konfigüratörüne yönlendir. Fiyat ve ürün seçimi için.",
+    "Müşteriyi doldurulmuş (prefilled) etiket veya sticker konfigüratörüne yönlendir. Fiyat sohbette değil, konfigüratörde görünür.",
   inputSchema: z.object({
     product: z.enum(["sticker", "etiket"]),
+    formFactor: z.enum(["tabaka", "rulo"]).optional(),
     material: z.string().optional(),
     width: z.number().optional(),
     height: z.number().optional(),

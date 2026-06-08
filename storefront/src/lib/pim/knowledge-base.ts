@@ -44,10 +44,10 @@ function buildEtiketSalesBlock(): string {
   if (ETIKET_TABAKA_ENABLED && !ETIKET_RULO_ENABLED) {
     return `- **Tabaka etiket sipariş AÇIK** (${ETIKET_TABAKA_MIN_QTY}+ adet). Konfigüratör: /etiket/yapilandir?form=tabaka — kuşe, kraft, opak PP (canlı fiyat listesinde olan malzemeler). Kaplama: mat/parlak selefon veya kaplamasız.
 - **Rulo etiket ${ETIKET_LAUNCH_LABEL}'da açılacak** — şimdilik rulo sipariş alınmıyor. Müşteri rulo isterse tabaka alternatifini öner veya açılış tarihini söyle.
-- Kesin tabaka FİYAT için: quote_etiket tool (form_factor=tabaka) veya /etiket/yapilandir?form=tabaka konfigüratörü.`;
+- Kesin tabaka FİYAT için: redirect_to_configurator (product=etiket, formFactor=tabaka) veya /etiket/yapilandir?form=tabaka konfigüratörü.`;
   }
   if (ETIKET_TABAKA_ENABLED && ETIKET_RULO_ENABLED) {
-    return `- Etiket: Rulo (1.000+ adet) ve Tabaka (${ETIKET_TABAKA_MIN_QTY}+ adet) — ikisi de sipariş açık. Kesin fiyat için quote_etiket tool veya /etiket konfigüratörü.`;
+    return `- Etiket: Rulo (1.000+ adet) ve Tabaka (${ETIKET_TABAKA_MIN_QTY}+ adet) — ikisi de sipariş açık. Kesin fiyat için redirect_to_configurator veya /etiket konfigüratörü.`;
   }
   return `- **Etiket baskı ŞU AN sipariş alınmıyor** — ${ETIKET_LAUNCH_LABEL}'da açılacak. Müşteri etiket sorarsa: açılış tarihini söyle + şu an sticker baskının tam açık olduğunu belirt, /sticker'a yönlendir. Etiket fiyatı/sipariş verme veya konfigüratöre sipariş amacıyla yönlendirme YAPMA.`;
 }
@@ -64,9 +64,9 @@ function buildEtiketPageLine(): string {
 
 function buildEtiketPriceRule(): string {
   if (ETIKET_TABAKA_ENABLED) {
-    return `- Kesin FİYAT için: sticker → quote_sticker tool veya /sticker konfigüratörü. Tabaka etiket → quote_etiket tool (form_factor=tabaka) veya /etiket/yapilandir?form=tabaka. Rulo kapalıysa rulo fiyatı VERME.`;
+    return `- Kesin FİYAT için: sticker → redirect_to_configurator (product=sticker) veya /sticker konfigüratörü. Tabaka etiket → redirect_to_configurator (product=etiket, formFactor=tabaka) veya /etiket/yapilandir?form=tabaka. Rulo kapalıysa rulo fiyatı VERME — redirect ETME.`;
   }
-  return `- Kesin FİYAT için: sticker → quote_sticker tool veya /sticker konfigüratörü. Etiket siparişi kapalı — tahmini rakam VERME.`;
+  return `- Kesin FİYAT için: sticker → redirect_to_configurator veya /sticker konfigüratörü. Etiket siparişi kapalı — tahmini rakam VERME.`;
 }
 
 /** Pim system prompt'a inject edilen bilgi tabanı (sync). */
@@ -135,7 +135,7 @@ CANVA / TASARIM ARAÇLARI POLİTİKASI (KRİTİK):
 - Renk kritik projeler için Pantone numarası belirtsinler (spot renk, ek ücret).
 
 ÖNEMLİ KURALLAR:
-- Fiyat sorulduğunda kesin rakam VERME (welcome) — sticker için "/sticker sayfasında konfigüre et". Designer persona quote tool kullanır.
+- Fiyat sorulduğunda kesin rakam VERME — redirect_to_configurator ile doldurulmuş konfigüratöre götür; fiyat orada canlı görünür.
 - Teslim: "Sticker 3, tabaka etiket 3, rulo etiket 10 iş günü (onay sonrası) içinde kargoya" de. ASLA "hızlı baskı" deme.
 - Kargo: "Yurtiçi Kargo (birincil) + DHL; 1000 ₺ üzeri ücretsiz, altında sepette görünür."
 - Operatöre devretme (şikayet, iade, kurumsal) → info@pimetiket.com veya WhatsApp + /iletisim.
