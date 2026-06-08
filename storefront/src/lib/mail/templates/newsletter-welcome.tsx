@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface NewsletterWelcomeProps {
   unsubscribeUrl: string;
@@ -19,6 +19,7 @@ export function NewsletterWelcomeEmail({
       unsubscribeCategory="marketing"
       unsubscribeUrl={unsubscribeUrl}
     >
+      <Eyebrow>Pim&apos;in Defteri</Eyebrow>
       <Text style={mailStyles.h1}>Bültene kaydoldun</Text>
       <Text style={mailStyles.p}>
         Pim Etiket&apos;ten ara sıra yeni ürünler, baskı ipuçları ve
@@ -40,11 +41,7 @@ export function NewsletterWelcomeEmail({
         </Text>
       </Section>
 
-      <Section style={{ textAlign: "center", margin: "28px 0" }}>
-        <a href={`${SITE}/sticker`} style={mailStyles.buttonPrimary}>
-          Sticker fiyatına bak →
-        </a>
-      </Section>
+      <Button href={`${SITE}/sticker`} label="Sticker fiyatına bak" />
 
       <Text style={mailStyles.pSecondary}>
         Hesap ayarlarından{" "}

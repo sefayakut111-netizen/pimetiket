@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface RefundRequestProps {
   customerName: string;
@@ -24,7 +24,7 @@ export function RefundRequestEmail({
 
   return (
     <BaseLayout preview={`İade talebin alındı — ${orderId}`}>
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         {firstName}, iade talebin kayda geçti
       </Text>
@@ -49,15 +49,11 @@ export function RefundRequestEmail({
           Konu: <strong>{reasonLabel}</strong>
         </Text>
         <Text style={{ ...mailStyles.pSecondary, margin: "12px 0 0", fontSize: 13 }}>
-          Durum: <strong>İnceleniyor</strong> — ortalama 1–3 iş günü
+          Durum: <strong>İnceleniyor</strong>
         </Text>
       </Section>
 
-      <Section style={{ textAlign: "center", margin: "24px 0" }}>
-        <a href={returnsUrl} style={mailStyles.buttonPrimary}>
-          İade talebini takip et →
-        </a>
-      </Section>
+      <Button href={returnsUrl} label="İade talebini takip et" />
     </BaseLayout>
   );
 }

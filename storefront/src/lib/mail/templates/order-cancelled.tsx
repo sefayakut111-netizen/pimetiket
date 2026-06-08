@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export type OrderCancelSource =
   | "customer"
@@ -40,7 +40,7 @@ export function OrderCancelledEmail({
 
   return (
     <BaseLayout preview={`Sipariş iptal — ${orderId}`}>
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>{headline}</Text>
       <Text style={mailStyles.p}>{reason}</Text>
 
@@ -60,18 +60,13 @@ export function OrderCancelledEmail({
             </Text>
           )}
           <Text style={{ ...mailStyles.pSecondary, margin: 0, fontSize: 13 }}>
-            Ödeme kartına iade banka tarafından işlenir; genelde 3–10 iş
-            günü içinde hesabında görünür. Ayrı bir &quot;iade tamamlandı&quot;
-            maili de gönderebiliriz.
+            Ödeme kartına iade banka tarafından işlenir; tamamlanınca ayrı bir
+            &quot;iade tamamlandı&quot; maili göndeririz.
           </Text>
         </Section>
       )}
 
-      <Section style={{ textAlign: "center", margin: "28px 0" }}>
-        <a href={ordersUrl} style={mailStyles.buttonPrimary}>
-          Siparişlerime git →
-        </a>
-      </Section>
+      <Button href={ordersUrl} label="Siparişlerime git" />
 
       <Text style={{ ...mailStyles.pSecondary, fontSize: 13 }}>
         Sorun varsa{" "}

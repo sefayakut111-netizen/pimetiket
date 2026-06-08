@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface RefundCompletedProps {
   customerName: string;
@@ -26,13 +26,13 @@ export function RefundCompletedEmail({
 
   return (
     <BaseLayout preview={`İade kartına yansıyacak — ${orderId}`}>
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         {firstName}, iade işlemi başlatıldı
       </Text>
       <Text style={mailStyles.p}>
-        PayTR üzerinden iade banka tarafına iletildi. Tutar genelde 3–10 iş
-        günü içinde kartında görünür (banka süreleri değişebilir).
+        PayTR üzerinden iade banka tarafına iletildi. Tutar bankana bağlı
+        olarak birkaç iş günü içinde kartında görünür.
       </Text>
 
       <Section
@@ -54,11 +54,7 @@ export function RefundCompletedEmail({
         )}
       </Section>
 
-      <Section style={{ textAlign: "center", margin: "24px 0" }}>
-        <a href={`${SITE}/siparis/${orderId}`} style={mailStyles.buttonPrimary}>
-          Sipariş detayı →
-        </a>
-      </Section>
+      <Button href={`${SITE}/siparis/${orderId}`} label="Sipariş detayı" />
 
       <Text style={{ ...mailStyles.pSecondary, fontSize: 13 }}>
         Banka ekstende henüz görünmüyorsa birkaç iş günü daha bekle. Sorun

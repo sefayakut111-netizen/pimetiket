@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface MemberWelcomeProps {
   customerName: string;
@@ -15,6 +15,7 @@ export function MemberWelcomeEmail({ customerName }: MemberWelcomeProps) {
 
   return (
     <BaseLayout preview="Pim Etiket'e hoş geldin">
+      <Eyebrow>Hoş geldin</Eyebrow>
       <Text style={mailStyles.h1}>Hoş geldin, {firstName}</Text>
       <Text style={mailStyles.p}>
         Pim Etiket hesabın hazır. Sticker ve etiket siparişlerini buradan
@@ -40,11 +41,7 @@ export function MemberWelcomeEmail({ customerName }: MemberWelcomeProps) {
         </Text>
       </Section>
 
-      <Section style={{ textAlign: "center", margin: "28px 0" }}>
-        <a href={`${SITE}/sticker`} style={mailStyles.buttonPrimary}>
-          Sticker fiyatına bak →
-        </a>
-      </Section>
+      <Button href={`${SITE}/sticker`} label="Sticker fiyatına bak" />
 
       <Text style={{ ...mailStyles.pSecondary, fontSize: 13 }}>
         Hesap ayarların{" "}

@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface RefundApprovedProps {
   customerName: string;
@@ -23,7 +23,7 @@ export function RefundApprovedEmail({
 
   return (
     <BaseLayout preview={`İade talebin onaylandı — ${orderId}`}>
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         {firstName}, iade talebin onaylandı
       </Text>
@@ -47,11 +47,7 @@ export function RefundApprovedEmail({
         </Text>
       </Section>
 
-      <Section style={{ textAlign: "center", margin: "24px 0" }}>
-        <a href={`${SITE}/iadelerim`} style={mailStyles.buttonPrimary}>
-          İade detayları →
-        </a>
-      </Section>
+      <Button href={`${SITE}/iadelerim`} label="İade detayları" />
     </BaseLayout>
   );
 }

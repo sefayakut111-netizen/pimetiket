@@ -2,9 +2,9 @@
  * Yorum daveti — ticari ileti (email_marketing opt-in gerekir).
  */
 
-import { Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, SITE } from "./base";
 
 export interface ReviewRequestProps {
   customerName: string;
@@ -28,6 +28,7 @@ export function ReviewRequestEmail({
       unsubscribeCategory="marketing"
       unsubscribeUrl={unsubscribeUrl}
     >
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>Etiketin elinde — şimdi?</Text>
       <Text style={mailStyles.p}>
         {firstName ? `${firstName}, geçen hafta teslim aldığın` : "Geçen hafta teslim aldığın"}{" "}
@@ -35,11 +36,7 @@ export function ReviewRequestEmail({
         sonraki müşterinin kararına yardımcı olur.
       </Text>
 
-      <Section style={{ textAlign: "center", margin: "28px 0" }}>
-        <a href={reviewLink} style={mailStyles.buttonPrimary}>
-          Yorum yaz →
-        </a>
-      </Section>
+      <Button href={reviewLink} label="Yorum yaz" />
 
       <Text style={mailStyles.pSecondary}>
         Bir sorun varsa{" "}

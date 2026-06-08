@@ -2,9 +2,9 @@
  * Terk sepet hatırlatması — ticari ileti (indirim baskısı yok).
  */
 
-import { Section, Text } from "@react-email/components";
+import { Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, SITE } from "./base";
 
 export interface AbandonedCartProps {
   customerName: string;
@@ -32,6 +32,7 @@ export function AbandonedCartEmail({
       unsubscribeCategory="marketing"
       unsubscribeUrl={unsubscribeUrl}
     >
+      <Eyebrow>Sepetin</Eyebrow>
       <Text style={mailStyles.h1}>
         {firstName ? `${firstName}, sepetin` : "Sepetin"} kapanmadı
       </Text>
@@ -43,11 +44,7 @@ export function AbandonedCartEmail({
         Tasarım hâlâ sepete bağlı. Kaldığın yerden devam edebilirsin.
       </Text>
 
-      <Section style={{ textAlign: "center", margin: "28px 0" }}>
-        <a href={`${SITE}/sepet`} style={mailStyles.buttonPrimary}>
-          Sepete dön →
-        </a>
-      </Section>
+      <Button href={`${SITE}/sepet`} label="Sepete dön" />
 
       <Text style={mailStyles.pSecondary}>
         Vazgeçtiysen sorun değil — başka bir tasarım için tekrar görüşürüz.

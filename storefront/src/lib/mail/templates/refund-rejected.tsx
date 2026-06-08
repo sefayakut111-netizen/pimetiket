@@ -4,7 +4,7 @@
 
 import { Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface RefundRejectedProps {
   customerName: string;
@@ -23,7 +23,7 @@ export function RefundRejectedEmail({
 
   return (
     <BaseLayout preview={`İade talebi sonucu — ${orderId}`}>
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         {firstName}, iade talebin hakkında
       </Text>
