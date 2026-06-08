@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { SchemaJsonLd, localBusinessSchema } from "@/components/SchemaJsonLd";
 import { withSocialMetadata } from "@/lib/seo/page-metadata";
 
-const title = "İletişim — Pim Sohbet, e-posta, atölye bilgileri";
+const title = "İletişim — Pim Sohbet, e-posta, telefon";
 const description =
-  "Pim Etiket ile iletişim: Pim Sohbet, info@pimetiket.com ve fason atölye bilgileri. Numune, teklif ve iş birliği için bize ulaş.";
+  "Pim Etiket ile iletişim: Pim Sohbet, info@pimetiket.com ve WhatsApp. Teklif ve iş birliği için bize ulaş.";
 const canonical = "/iletisim";
 
 export const metadata: Metadata = {

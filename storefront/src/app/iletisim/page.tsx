@@ -25,6 +25,7 @@ import {
   phoneToWaHref,
 } from "@/lib/site-settings-shared";
 import { useT } from "@/lib/i18n/context";
+import { formatLegalKunyeLine } from "@/lib/pim/site-facts";
 
 const COPY = {
   tr: {
@@ -45,7 +46,7 @@ const COPY = {
       "Mesai saatlerinde bizi doğrudan arayabilirsin. Hafta içi 09:00 – 18:00.",
     emailTitle: "E-posta",
     emailDesc:
-      "Detaylı sorular, teklif istekleri, kurumsal işbirliği ve numune talepleri için.",
+      "Detaylı sorular, teklif istekleri ve kurumsal işbirliği için.",
     hoursEyebrow: "Çalışma saatleri",
     hoursTitle: "Mesai saatleri",
     hoursLine: "Hafta içi · 09:00 – 18:00",
@@ -56,6 +57,8 @@ const COPY = {
     faqOrder: "Sipariş & Ödeme",
     faqProduction: "Üretim & Teslim",
     faqShipping: "İade & Garanti",
+    legalEyebrow: "Yasal bilgi",
+    legalTitle: "Satıcı künyesi",
   },
   en: {
     eyebrow: "Contact",
@@ -75,7 +78,7 @@ const COPY = {
       "Call us directly during office hours. Weekdays 09:00 – 18:00.",
     emailTitle: "Email",
     emailDesc:
-      "Detailed questions, RFQs, corporate partnerships and sample requests.",
+      "Detailed questions, RFQs and corporate partnerships.",
     hoursEyebrow: "Working hours",
     hoursTitle: "Office hours",
     hoursLine: "Weekdays · 09:00 – 18:00",
@@ -86,6 +89,8 @@ const COPY = {
     faqOrder: "Order & Payment",
     faqProduction: "Production & Delivery",
     faqShipping: "Returns & Warranty",
+    legalEyebrow: "Legal information",
+    legalTitle: "Seller details",
   },
 };
 
@@ -267,6 +272,19 @@ export default function IletisimPage() {
           </p>
           <p className="mt-3 text-[13.5px] text-gri-700 max-w-[480px] mx-auto leading-relaxed">
             {c.hoursNote}
+          </p>
+        </div>
+      </section>
+
+      {/* YASAL KÜNYE */}
+      <section className="py-8 md:py-10 border-t border-gri-100">
+        <div className="mx-auto max-w-[700px] px-4 md:px-8 text-center">
+          <Eyebrow>{c.legalEyebrow}</Eyebrow>
+          <h2 className="mt-4 text-[18px] md:text-[22px] font-semibold tracking-tight">
+            {c.legalTitle}
+          </h2>
+          <p className="mt-4 text-[13px] text-gri-700 leading-relaxed">
+            {formatLegalKunyeLine()}
           </p>
         </div>
       </section>
