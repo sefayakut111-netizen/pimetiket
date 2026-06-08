@@ -1,14 +1,20 @@
 "use client";
 
 /**
- * /studio — Aşama 1: iskelet + tek-state reactive + anlık fiyat.
+ * /studio — Aşama 2: görsel upload + gerçekçi önizleme + anlık fiyat.
  * Kapalı devre: ENABLE_STUDIO_EDITOR flag ile guard.
- * Mevcut motorlar reuse: getLivePricingConfig + quoteStickerFromConfig.
+ * Reuse: StickerLivePreview, ProductPreviewShell, EditorUploadZone.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
+import { EditorUploadZone } from "@/components/editor/EditorUploadZone";
 import { Icon } from "@/components/Icon";
+import {
+  ProductPreviewShell,
+  StickerLivePreview,
+  type PreviewView,
+} from "@/components/preview";
 import { FormSection, SelectableCard } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
@@ -42,6 +48,8 @@ export interface StudioState {
   finish: StickerFinish;
   qty: number;
   lockRatio: boolean;
+  designUrl: string | null;
+  designName?: string | null;
 }
 
 const MATERIAL_IDS = ["vinil", "transparan", "holo", "simli"] as const;
@@ -62,7 +70,31 @@ const DEFAULT_STATE: StudioState = {
   finish: "parlak",
   qty: 100,
   lockRatio: true,
+  designUrl: null,
+  designName: null,
 };
+
+function mapStudioShapeToPreview(shape: StudioShape): {
+  shape: "die" | "square" | "circle";
+  softCorners: boolean;
+} {
+  switch (shape) {
+    case "contour":
+      return { shape: "die", softCorners: false };
+    case "square":
+      return { shape: "square", softCorners: false };
+    case "circle":
+      return { shape: "circle", softCorners: false };
+    case "rounded":
+      return { shape: "square", softCorners: true };
+  }
+}
+
+function revokeBlobUrl(url: string | null | undefined) {
+  if (url?.startsWith("blob:")) {
+    URL.revokeObjectURL(url);
+  }
+}
 
 function isRatioLockedShape(shape: StudioShape): boolean {
   return shape === "square" || shape === "circle";
@@ -116,6 +148,7 @@ export default function StudioEditorClient() {
   const [state, setState] = useState<StudioState>(DEFAULT_STATE);
   const [adminConfig, setAdminConfig] = useState<ProfileConfig | null>(null);
   const [customQty, setCustomQty] = useState(false);
+  const [previewView, setPreviewView] = useState<PreviewView>("3d");
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +163,30 @@ export default function StudioEditorClient() {
   const patch = useCallback((patchValues: Partial<StudioState>) => {
     setState((prev) => patchStudioState(prev, patchValues));
   }, []);
+
+  const handleFileSelected = useCallback((file: File) => {
+    setState((prev) => {
+      revokeBlobUrl(prev.designUrl);
+      return patchStudioState(prev, {
+        designUrl: URL.createObjectURL(file),
+        designName: file.name,
+      });
+    });
+  }, []);
+
+  const handleRemoveDesign = useCallback(() => {
+    setState((prev) => {
+      revokeBlobUrl(prev.designUrl);
+      return patchStudioState(prev, {
+        designUrl: null,
+        designName: null,
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => revokeBlobUrl(state.designUrl);
+  }, [state.designUrl]);
 
   const materials = useMemo(() => {
     if (!adminConfig?.materials) {
@@ -180,26 +237,45 @@ export default function StudioEditorClient() {
   }, [adminConfig, state.width, state.height, state.material, state.finish, state.qty]);
 
   const priceError = quote && !quote.ok ? quote.reason : null;
+  const previewShape = mapStudioShapeToPreview(state.shape);
 
   return (
     <main className="flex flex-col h-[calc(100vh-64px)] bg-gri-50">
       <header className="shrink-0 border-b border-gri-200 bg-white px-4 py-3 flex items-center justify-between">
         <div>
           <h1 className="text-[15px] font-semibold text-lacivert">Studio</h1>
-          <p className="text-[12px] text-gri-500">Kapalı devre · Aşama 1</p>
+          <p className="text-[12px] text-gri-500">Kapalı devre · Aşama 2</p>
         </div>
         <span className="text-[11px] font-medium text-gri-500 bg-gri-100 px-2 py-1 rounded-md">
-          Önizleme & sepet — sonraki aşama
+          Cutline & sepet — sonraki aşama
         </span>
       </header>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[200px_1fr_320px] xl:grid-cols-[220px_1fr_360px] min-h-0">
-        {/* Sol — araç placeholder */}
-        <aside className="hidden lg:flex flex-col border-r border-gri-200 bg-white p-4 gap-3">
+        {/* Sol — tasarım upload + araç placeholder */}
+        <aside className="hidden lg:flex flex-col border-r border-gri-200 bg-white p-4 gap-3 overflow-y-auto">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-gri-400">
             Araçlar
           </p>
-          {["Tasarım", "Metin", "Şekil", "Katman"].map((tool) => (
+          <div className="space-y-2">
+            <p className="text-[12px] font-medium text-lacivert">Tasarım</p>
+            <EditorUploadZone
+              designLoaded={!!state.designUrl}
+              fileName={state.designName}
+              onFileSelected={handleFileSelected}
+              onRemoveBg={() => {}}
+            />
+            {state.designUrl ? (
+              <button
+                type="button"
+                onClick={handleRemoveDesign}
+                className="w-full text-[12px] font-medium text-gri-600 hover:text-red-600 py-1.5 rounded-lg hover:bg-gri-50 transition-colors"
+              >
+                Görseli kaldır
+              </button>
+            ) : null}
+          </div>
+          {["Metin", "Şekil", "Katman"].map((tool) => (
             <div
               key={tool}
               className="rounded-lg border border-dashed border-gri-200 px-3 py-2.5 text-[13px] text-gri-400"
@@ -209,15 +285,52 @@ export default function StudioEditorClient() {
           ))}
         </aside>
 
-        {/* Orta — önizleme placeholder */}
-        <section className="flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-gri-200">
-          <div className="flex-1 flex items-center justify-center p-6 min-h-[240px] lg:min-h-0">
-            <div className="w-full max-w-md aspect-square rounded-2xl border-2 border-dashed border-gri-200 bg-white flex flex-col items-center justify-center gap-2 text-gri-400">
-              <Icon.Sticker size={40} className="opacity-40 text-gri-400" />
-              <p className="text-[13px] font-medium">Önizleme alanı</p>
-              <p className="text-[11px] text-gri-400">
-                {state.width} × {state.height} mm · {state.shape}
-              </p>
+        {/* Orta — canlı önizleme */}
+        <section className="flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-gri-200 overflow-y-auto">
+          <div className="lg:hidden p-4 border-b border-gri-200 bg-white space-y-2">
+            <p className="text-[12px] font-medium text-lacivert">Tasarım</p>
+            <EditorUploadZone
+              designLoaded={!!state.designUrl}
+              fileName={state.designName}
+              onFileSelected={handleFileSelected}
+              onRemoveBg={() => {}}
+            />
+            {state.designUrl ? (
+              <button
+                type="button"
+                onClick={handleRemoveDesign}
+                className="w-full text-[12px] font-medium text-gri-600 hover:text-red-600 py-1.5"
+              >
+                Görseli kaldır
+              </button>
+            ) : null}
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4 md:p-6 min-h-[320px] lg:min-h-0">
+            <div className="w-full max-w-lg">
+              <ProductPreviewShell
+                width={state.width}
+                height={state.height}
+                view={previewView}
+                onViewChange={setPreviewView}
+                footnote={
+                  state.designUrl
+                    ? "Yüklediğin görsel canlı önizlemede"
+                    : "Görsel yüklemeden örnek sticker gösterilir"
+                }
+              >
+                <StickerLivePreview
+                  cutMode="diecut"
+                  shape={previewShape.shape}
+                  softCorners={previewShape.softCorners}
+                  material={state.material}
+                  finish={state.finish}
+                  width={state.width}
+                  height={state.height}
+                  qty={state.qty}
+                  view={previewView}
+                  designUrl={state.designUrl}
+                />
+              </ProductPreviewShell>
             </div>
           </div>
         </section>
