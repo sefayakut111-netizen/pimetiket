@@ -13,8 +13,11 @@ import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
+import { ETIKET_LAUNCH_LABEL } from "@/lib/etiket-feature-flags";
+import { formatProductionLeadTimeSummary } from "@/lib/pim/site-facts";
+import { useMemo } from "react";
 
-const COPY = {
+const COPY_BASE = {
   tr: {
     eyebrow: "Hakkımızda",
     h1Line1: "Türkiye'den,",
@@ -34,18 +37,18 @@ const COPY = {
     story4bold: "öngörerek",
     story4post: " katıldık.",
     storyPromise: "Sana ne vaat ediyoruz?",
-    story5:
-      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok — söylediğimiz teslim gününü bekletmiyoruz: etiket 10, sticker 5 iş günü içinde kargoda.",
+    story5Prefix:
+      "Seni anlayan bir sistem. Kıymetli vaktini boşa harcamayan, etiketini hızla ve doğru şekilde bastıran, sade bir vitrin. Sürpriz fiyat yok, gizli madde yok — söylediğimiz teslim gününü bekletmiyoruz: ",
     story6:
       "Bu yolculukta bizimle birlikte yürüdüğün için teşekkür ederiz. 10 yıllık ticaret deneyimi + yapay zeka çağı — Pim Etiket bu ikisinin birleşim noktası; yeni marka olarak yeniden başlıyoruz.",
     pimWhoEyebrow: "Pim kim?",
     pimWhoTitle: "Selam, ben Pim. Bu işin kargasıyım.",
     pimWho1:
-      "İşler karışırsa beni ara — fiyat çıkarırım, sipariş takip ederim, gerekirse üretim atölyesini kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — kargayım, saymıyoruz.",
+      "İşler karışırsa beni ara — fiyatını konfigüratörde çıkarmana yardım ederim, sipariş takip ederim, gerekirse üretim atölyesini kovalarım, gerekirse kargoyu. Bir gözüm konfigüratörde, bir gözüm üretim hattında. Üçüncü göz lazımsa ondan da var — kargayım, saymıyoruz.",
     pimWho2:
       "Tek başıma çalışıyorum ama her konuya hâkimim — sen ne sorarsan, hangi kategoriye giriyorsa doğru cevabı vermek için eğitildim:",
     pimRole1Name: "Sipariş & fiyat",
-    pimRole1Desc: "boyut, malzeme, adet hesabı",
+    pimRole1Desc: "doğru konfigüratöre yönlendirme",
     pimRole2Name: "Dosya hazırlığı",
     pimRole2Desc: "DPI, CMYK, bleed kontrolü",
     pimRole3Name: "Kargo takibi",
@@ -55,14 +58,15 @@ const COPY = {
     valuesEyebrow: "Değerlerimiz",
     valuesTitle: "Pim'in altında saklanan dört söz.",
     val1Title: "Esnek adet",
-    val1Desc:
-      "Stoklamadan, az miktarda da kaliteden ödün vermeden bastırırsın. Rulo etiket 1.000, tabaka etiket 250, sticker 25 adetten başlar.",
+    val1DescPrefix:
+      "Stoklamadan, az miktarda da kaliteden ödün vermeden bastırırsın. Rulo etiket 1.000 (yakında — ",
+    val1DescSuffix: "), tabaka etiket 250, sticker 25 adetten başlar.",
     val2Title: "AI dosyana bakar",
     val2Desc:
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler. Pre-press hatası elinde patlamaz.",
     val3Title: "Kapına teslim",
-    val3Desc:
-      "Etiket 10, sticker 5 iş günü içinde kargoda. Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
+    val3DescSuffix:
+      ". Şeffaf üretim takibi, gerçek zamanlı statü, Pim'in haberleri.",
     val4Title: "Açık ve dürüst fiyat",
     val4Desc:
       "Konfigüratörde gördüğün anlık fiyat sepete düştüğünde aynı kalır. Sürpriz ek yok.",
@@ -100,18 +104,18 @@ const COPY = {
     story4bold: "by foresight",
     story4post: ".",
     storyPromise: "What we promise you",
-    story5:
-      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses — we don't miss the delivery days we promise: labels in 10, stickers in 5 business days in transit.",
+    story5Prefix:
+      "A system that understands you. A clean storefront that doesn't waste your valuable time and prints your labels fast and right. No surprise fees, no hidden clauses — we don't miss the delivery days we promise: ",
     story6:
       "Thank you for walking with us on this journey. 10 years of trading experience + the AI era — Pim Etiket is where these two meet; we're starting anew as a new brand.",
     pimWhoEyebrow: "Who's Pim?",
     pimWhoTitle: "Hi, I'm Pim. The crow behind this whole thing.",
     pimWho1:
-      "When things get tangled, just call me — I quote prices, track orders, chase the production workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm a crow, I don't count.",
+      "When things get tangled, just call me — I help you get pricing in the configurator, track orders, chase the production workshop when needed, or chase the courier. One eye on the configurator, one eye on the production line. Need a third? I'm a crow, I don't count.",
     pimWho2:
       "I work solo but I cover every angle — whatever you ask, whatever category it falls in, I'm trained to answer:",
     pimRole1Name: "Orders & pricing",
-    pimRole1Desc: "sizing, materials, quantity calculations",
+    pimRole1Desc: "routing to the right configurator",
     pimRole2Name: "File prep",
     pimRole2Desc: "DPI, CMYK, bleed checks",
     pimRole3Name: "Shipping tracking",
@@ -121,14 +125,15 @@ const COPY = {
     valuesEyebrow: "Values",
     valuesTitle: "The four promises behind Pim.",
     val1Title: "Flexible from low quantity",
-    val1Desc:
-      "Print without stocking, no quality compromise even at low volumes. Roll labels from 1,000, sheet labels from 250, stickers from 25.",
+    val1DescPrefix:
+      "Print without stocking, no quality compromise even at low volumes. Roll labels from 1,000 (coming soon — ",
+    val1DescSuffix: "), sheet labels from 250, stickers from 25.",
     val2Title: "AI checks your file",
     val2Desc:
       "DPI, CMYK, bleed — anything missing, we flag it before production. Pre-press errors don't blow up in your hand.",
     val3Title: "Door delivery",
-    val3Desc:
-      "We ship within 5 business days. Transparent production tracking, real-time status, Pim's updates.",
+    val3DescSuffix:
+      ". Transparent production tracking, real-time status, Pim's updates.",
     val4Title: "Clear and honest pricing",
     val4Desc:
       "The instant price you see in the configurator stays the same in the cart. No hidden fees.",
@@ -148,9 +153,25 @@ const COPY = {
   },
 };
 
+function buildCopy(locale: "tr" | "en") {
+  const base = COPY_BASE[locale];
+  const production = formatProductionLeadTimeSummary(locale);
+  const launchLabel =
+    locale === "en" ? "June 29, 2026" : ETIKET_LAUNCH_LABEL;
+  return {
+    ...base,
+    story5: `${base.story5Prefix}${production}.`,
+    val1Desc: `${base.val1DescPrefix}${launchLabel}${base.val1DescSuffix}`,
+    val3Desc: `${production.charAt(0).toUpperCase()}${production.slice(1)}${base.val3DescSuffix}`,
+  };
+}
+
 export default function HakkimizdaPage() {
   const { locale } = useT();
-  const c = locale === "en" ? COPY.en : COPY.tr;
+  const c = useMemo(
+    () => buildCopy(locale === "en" ? "en" : "tr"),
+    [locale]
+  );
 
   const VALUES = [
     { icon: <Icon.Bolt size={22} />, t: c.val1Title, d: c.val1Desc },
